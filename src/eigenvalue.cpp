@@ -1094,23 +1094,15 @@ void run_alpha_iterations()
   std::string convergence_type = "None";
 
   // Adaptive convergence parameters
-  double relaxation_factor = 1.0;  // Start with no damping
+  double relaxation_factor = 1.0;  // Start with full step
   double k_prev = 0.0;               // Previous K' value
   bool use_aitken = false;           // Flag to enable Aitken acceleration
 
-  // Generation-time-scaled damping: For fast systems (small Λ), use more
-  // aggressive damping to prevent huge alpha updates. Scale by comparing
-  // prompt generation time to a reference thermal system (~100 μs).
-  // Fast systems (Λ < 1 μs) get much stronger damping.
-  double lambda_ref = 1.0e-4;  // 100 microseconds reference
-  double lambda_scale = std::min(1.0, simulation::prompt_gen_time / lambda_ref);
-  double min_relaxation = 0.01 * lambda_scale;  // Minimum damping scales with Λ
-  min_relaxation = std::max(min_relaxation, 0.01);  // Floor at 0.01
-
-  // For very fast systems, start with more conservative relaxation
-  if (simulation::prompt_gen_time < 1.0e-6) {  // < 1 microsecond
-    relaxation_factor = 0.1 * lambda_scale;
-  }
+  // Adaptive step sizing based on distance from target
+  // When K' is far from 1.0, use aggressive steps to converge quickly
+  // When K' is near 1.0, use conservative steps for stability
+  double min_relaxation = 0.1;  // Minimum relaxation factor
+  double max_relaxation = 5.0;  // Maximum relaxation factor (allow overshooting)
 
   for (simulation::alpha_iteration = 1;
        simulation::alpha_iteration <= settings::max_alpha_iterations;
@@ -1144,10 +1136,11 @@ void run_alpha_iterations()
 
     // TIER 2: Stagnation detection (alpha not changing)
     // Detects when iteration has reached practical convergence limit
-    // Uses last 5 iterations to check if alpha has stabilized
-    if (!converged && n_values >= 5) {
-      // Compute statistics on last 5 alpha values
-      int lookback = std::min(5, n_values);
+    // Uses last 8 iterations to check if alpha has stabilized
+    // Only trigger stagnation if K' is also reasonably close to 1.0
+    if (!converged && n_values >= 8) {
+      // Compute statistics on last 8 alpha values
+      int lookback = std::min(8, n_values);
       double alpha_sum = 0.0;
       double alpha_min = std::numeric_limits<double>::infinity();
       double alpha_max = -std::numeric_limits<double>::infinity();
@@ -1163,8 +1156,11 @@ void run_alpha_iterations()
       double alpha_range = alpha_max - alpha_min;
       double relative_variation = std::abs(alpha_range / alpha_mean);
 
-      // If alpha varying by less than 0.01% over last 5 iterations, converged
-      if (relative_variation < 1.0e-4) {
+      // If alpha varying by less than 1% over last 8 iterations AND
+      // K' residual is small enough, then we've stagnated
+      // This prevents premature stagnation when alpha is changing slowly
+      // but K' is still far from 1.0
+      if (relative_variation < 1.0e-2 && k_error < 0.05) {
         converged = true;
         convergence_type = "Stagnation";
       }
@@ -1227,56 +1223,80 @@ void run_alpha_iterations()
     double delta_alpha = (k_prime - 1.0) / simulation::prompt_gen_time;
 
     // ========================================================================
-    // ADAPTIVE CONVERGENCE STRATEGY
+    // ADAPTIVE CONVERGENCE STRATEGY WITH AGGRESSIVE STEP SIZING
     // ========================================================================
+    // Strategy: Scale relaxation factor based on how far K' is from 1.0
+    // - Far from target (|K'-1| > 0.1): Use aggressive steps (factor 2-5)
+    // - Medium distance (0.01 < |K'-1| < 0.1): Use moderate steps (factor 1-2)
+    // - Near target (|K'-1| < 0.01): Use conservative steps (factor 0.5-1)
 
     std::string method = "Standard";
 
-    if (simulation::alpha_iteration >= 3) {
+    // Compute distance-based relaxation factor
+    // This scales the step size based on how far we are from K'=1.0
+    double distance_factor = 1.0;
+    if (k_error > 0.1) {
+      // Very far from target - use aggressive steps
+      distance_factor = std::min(5.0, 1.0 + 20.0 * k_error);
+    } else if (k_error > 0.01) {
+      // Medium distance - use moderate steps
+      distance_factor = 1.0 + 5.0 * k_error;
+    } else {
+      // Close to target - use standard or conservative steps
+      distance_factor = 1.0;
+    }
+
+    if (simulation::alpha_iteration >= 2) {
       // Detect oscillation: K' changes sign relative to 1.0
       double residual_current = k_prime - 1.0;
       double residual_previous = k_prev - 1.0;
 
       if (residual_current * residual_previous < 0.0) {
         // Oscillation detected: apply under-relaxation
-        // Use generation-time-scaled minimum instead of fixed 0.1
-        relaxation_factor = std::max(0.5 * relaxation_factor, min_relaxation);
+        // But don't go too conservative if we're still far from target
+        double damping = (k_error > 0.05) ? 0.7 : 0.5;
+        relaxation_factor = std::max(damping * relaxation_factor, min_relaxation);
         use_aitken = false;  // Don't use Aitken when oscillating
         method = "Damped";
       } else if (std::abs(residual_current) < std::abs(residual_previous)) {
-        // Monotonic convergence: try Aitken acceleration
+        // Monotonic convergence: increase relaxation factor
         use_aitken = true;
-        // Don't let relaxation grow too fast for fast systems
-        double max_growth = std::min(1.2, 1.0 + lambda_scale);
-        relaxation_factor = std::min(max_growth * relaxation_factor, 1.0);
+        // Apply distance-based scaling
+        relaxation_factor = std::min(1.3 * relaxation_factor * distance_factor, max_relaxation);
+      } else {
+        // Not improving but not oscillating - apply distance-based scaling
+        relaxation_factor = std::min(relaxation_factor * distance_factor, max_relaxation);
       }
+    } else {
+      // First iteration: apply aggressive distance-based scaling
+      relaxation_factor = distance_factor;
+    }
 
-      // Apply Aitken's delta-squared acceleration for smooth convergence
-      if (use_aitken && simulation::alpha_iteration >= 4) {
-        // Aitken's method: extrapolate based on the sequence pattern
-        // alpha_n+1 = alpha_n - (delta_n)^2 / (delta_n+1 - delta_n)
-        // where delta_n = alpha_n - alpha_n-1
+    // Apply Aitken's delta-squared acceleration for smooth convergence
+    if (use_aitken && simulation::alpha_iteration >= 4) {
+      // Aitken's method: extrapolate based on the sequence pattern
+      // alpha_n+1 = alpha_n - (delta_n)^2 / (delta_n+1 - delta_n)
+      // where delta_n = alpha_n - alpha_n-1
 
-        int n = alpha_values.size();
-        double alpha_n = alpha_values[n-1];
-        double alpha_n_minus_1 = alpha_values[n-2];
-        double alpha_n_minus_2 = alpha_values[n-3];
+      int n = alpha_values.size();
+      double alpha_n = alpha_values[n-1];
+      double alpha_n_minus_1 = alpha_values[n-2];
+      double alpha_n_minus_2 = alpha_values[n-3];
 
-        double delta_n = alpha_n - alpha_n_minus_1;
-        double delta_n_minus_1 = alpha_n_minus_1 - alpha_n_minus_2;
-        double delta_delta = delta_n - delta_n_minus_1;
+      double delta_n = alpha_n - alpha_n_minus_1;
+      double delta_n_minus_1 = alpha_n_minus_1 - alpha_n_minus_2;
+      double delta_delta = delta_n - delta_n_minus_1;
 
-        // Only apply Aitken if denominator is not too small
-        if (std::abs(delta_delta) > 1.0e-15) {
-          double aitken_correction = -(delta_n * delta_n) / delta_delta;
+      // Only apply Aitken if denominator is not too small
+      if (std::abs(delta_delta) > 1.0e-15) {
+        double aitken_correction = -(delta_n * delta_n) / delta_delta;
 
-          // Limit the Aitken correction to avoid instability
-          double max_correction = 2.0 * std::abs(delta_alpha);
-          if (std::abs(aitken_correction) < max_correction) {
-            // Blend Aitken correction with standard update
-            delta_alpha = 0.7 * aitken_correction + 0.3 * delta_alpha;
-            method = "Aitken";
-          }
+        // Limit the Aitken correction to avoid instability
+        double max_correction = 2.0 * std::abs(delta_alpha);
+        if (std::abs(aitken_correction) < max_correction) {
+          // Blend Aitken correction with standard update
+          delta_alpha = 0.7 * aitken_correction + 0.3 * delta_alpha;
+          method = "Aitken";
         }
       }
     }

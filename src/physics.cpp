@@ -106,16 +106,11 @@ void sample_neutron_reaction(Particle& p)
           p.wgt() = 0.0;
           return;
         } else {
-          SourceSite site;
-          site.r = p.r();
-          site.u = p.u();
-          site.E = p.E();
-          site.wgt = p.wgt();
-          site.particle = ParticleType::neutron;
-          site.time = p.time();
-          site.surf_id = 0;
-          site.delayed_group = 0;
-          p.secondary_bank().push_back(site);
+          // For negative alpha (subcritical systems), use weight-based implicit
+          // handling instead of creating split particles to avoid fission bank
+          // overflow. Multiply weight by 2 to account for the population growth
+          // that would have occurred from the split.
+          p.wgt() *= 2.0;
         }
       }
 

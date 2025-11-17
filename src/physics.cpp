@@ -93,27 +93,44 @@ void collision(Particle& p)
 void sample_neutron_reaction(Particle& p)
 {
   double sigma_alpha = 0.0;
+  double material_xs_total = p.macro_xs().total;
 
   if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
     double velocity = p.speed();
     if (velocity > 0.0) {
       sigma_alpha = std::abs(simulation::alpha_previous / velocity);
 
-      // Sample whether this is a material reaction or pseudo-absorption
-      // Total cross section with pseudo-absorption: σ_total' = σ_total + σ_α
-      double total_with_alpha = p.macro_xs().total + sigma_alpha;
-      double cutoff = prn(p.current_seed()) * total_with_alpha;
+      // NOTE: p.macro_xs().total already includes sigma_alpha (added in particle.cpp)
+      // Calculate the original material cross section by subtracting sigma_alpha
+      material_xs_total = p.macro_xs().total - sigma_alpha;
 
-      // If pseudo-absorption is sampled (cutoff in [σ_total, σ_total + σ_α])
-      if (cutoff >= p.macro_xs().total) {
+      // Sample reaction type using the modified total cross section
+      double cutoff = prn(p.current_seed()) * p.macro_xs().total;
+
+      // If pseudo-absorption is sampled (cutoff in [material_xs, material_xs + σ_α])
+      if (cutoff >= material_xs_total) {
         p.wgt() = 0.0;
+        // Restore original cross sections before returning
+        p.macro_xs().total -= sigma_alpha;
+        p.macro_xs().absorption -= sigma_alpha;
         return;
       }
-      // Otherwise, continue with normal material reaction (no XS modification needed)
     }
   }
 
+  // For material reactions, temporarily remove sigma_alpha for nuclide sampling
+  if (sigma_alpha > 0.0) {
+    p.macro_xs().total -= sigma_alpha;
+    p.macro_xs().absorption -= sigma_alpha;
+  }
+
   int i_nuclide = sample_nuclide(p);
+
+  // Restore modified cross sections after nuclide sampling
+  if (sigma_alpha > 0.0) {
+    p.macro_xs().total += sigma_alpha;
+    p.macro_xs().absorption += sigma_alpha;
+  }
 
   // Save which nuclide particle had collision with
   p.event_nuclide() = i_nuclide;

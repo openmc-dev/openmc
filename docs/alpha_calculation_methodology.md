@@ -406,6 +406,56 @@ where v is the neutron speed. For supercritical systems (α > 0), this adds ener
 - Provides physical feedback through modified eigenvalue K'(α)
 - Converges to the unique α where K'(α) = 1.0
 
+### Hybrid Method for Deeply Subcritical Systems
+
+For deeply subcritical systems (k << 1), the magnitude of negative pseudo-production can exceed material cross sections, leading to:
+
+```
+|σ_α| = |α| / v >> Σ_material
+→ Σ_total = Σ_material + σ_α < 0
+→ Transport algorithm breakdown (particles lost in geometry)
+```
+
+OpenMC implements a **novel hybrid method** that combines cross-section modification with exact weight compensation:
+
+#### Algorithm
+
+1. **Compute desired pseudo-production**:
+   ```
+   σ_α,desired = α / v  (very negative for k << 1)
+   ```
+
+2. **Clamp to maintain transport stability**:
+   ```
+   σ_α,applied = max(σ_α,desired, -0.95 × Σ_material)
+   σ_α,missing = σ_α,desired - σ_α,applied  (< 0)
+   ```
+
+3. **Apply clamped value to cross sections**:
+   ```
+   Σ_total → Σ_total + σ_α,applied  (guaranteed > 0)
+   ```
+
+4. **Compensate via weight at collision**:
+   ```
+   w → w × (Σ_material + σ_α,missing) / Σ_material
+   ```
+
+#### Mathematical Equivalence
+
+The weight compensation is mathematically exact:
+- Transport uses: Σ_total = Σ_material + σ_α,applied
+- Weight adjustment gives the same effective production rate as if σ_α,desired were applied
+- For near-critical systems: σ_α,missing = 0, reduces to standard COG method
+- For deeply subcritical systems: weight factor < 1, increases survival probability
+
+#### Advantages
+
+- **Universal**: Works for any level of subcriticality (k → 0)
+- **Stable**: Transport algorithm never sees negative total cross sections
+- **Exact**: Weight compensation preserves physics correctness
+- **Smooth**: No discontinuities as system criticality changes
+
 ### COG Static Algorithm
 
 The basic iteration is:

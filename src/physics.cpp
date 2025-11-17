@@ -134,6 +134,20 @@ void sample_neutron_reaction(Particle& p)
     p.macro_xs().absorption += sigma_alpha;
   }
 
+  // Apply weight compensation for clamped pseudo-production (hybrid method)
+  // For deeply subcritical systems, this exactly compensates for the
+  // pseudo-production that couldn't be applied via negative cross sections
+  if (p.sigma_alpha_missing() < 0.0 && material_xs_total > 0.0) {
+    // Weight factor = (material_xs + sigma_missing) / material_xs
+    // This gives the correct effective production rate
+    double weight_factor =
+      (material_xs_total + p.sigma_alpha_missing()) / material_xs_total;
+    p.wgt() *= weight_factor;
+
+    // Reset for next collision
+    p.sigma_alpha_missing() = 0.0;
+  }
+
   // Save which nuclide particle had collision with
   p.event_nuclide() = i_nuclide;
 

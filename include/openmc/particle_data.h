@@ -559,9 +559,6 @@ private:
   // Prompt k-effective tally accumulators for kinetics calculations
   double keff_prompt_tally_tracklength_ {0.0};
 
-  // Alpha eigenvalue calculation - clamped pseudo-production tracking
-  double sigma_alpha_missing_ {0.0};
-
   bool trace_ {false};
 
   double collision_distance_;
@@ -734,10 +731,6 @@ public:
   {
     return keff_prompt_tally_tracklength_;
   }
-
-  // Alpha eigenvalue - clamped pseudo-production missing component
-  double& sigma_alpha_missing() { return sigma_alpha_missing_; }
-  const double& sigma_alpha_missing() const { return sigma_alpha_missing_; }
 
   // Shows debug info
   bool& trace() { return trace_; }

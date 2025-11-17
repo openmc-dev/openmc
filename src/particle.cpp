@@ -234,35 +234,7 @@ void Particle::event_calculate_xs()
     macro_xs().nu_fission = 0.0;
   }
 
-  if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
-    double velocity = this->speed();
-    if (velocity > 0.0) {
-      // Desired pseudo-absorption cross section
-      double sigma_alpha_desired = simulation::alpha_previous / velocity;
-      double material_xs = macro_xs().total;  // Before adding sigma_alpha
-
-      // Hybrid method: clamp negative sigma_alpha to prevent negative total XS
-      // For deeply subcritical systems, this prevents transport breakdown
-      double sigma_alpha_applied;
-      if (sigma_alpha_desired < 0.0 && material_xs > 0.0) {
-        // Subcritical: limit negative XS to 95% of material XS
-        // to ensure total XS stays positive
-        double clamp_limit = -0.95 * material_xs;
-        sigma_alpha_applied = std::max(sigma_alpha_desired, clamp_limit);
-
-        // Track the missing component for weight compensation at collision
-        sigma_alpha_missing() = sigma_alpha_desired - sigma_alpha_applied;
-      } else {
-        // Supercritical or near-critical: no clamping needed
-        sigma_alpha_applied = sigma_alpha_desired;
-        sigma_alpha_missing() = 0.0;
-      }
-
-      // Apply clamped pseudo-absorption to cross sections
-      macro_xs().total += sigma_alpha_applied;
-      macro_xs().absorption += sigma_alpha_applied;
-    }
-  }
+  // Alpha eigenvalue calculation uses weight-based method (no XS modification)
 }
 
 void Particle::event_advance()
@@ -293,6 +265,13 @@ void Particle::event_advance()
   double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
+
+  // Alpha eigenvalue: apply time-based weight adjustment
+  // For N(t) = N₀ * exp(α*t), weight evolves as w → w * exp(α*Δt)
+  if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
+    double weight_factor = std::exp(simulation::alpha_previous * dt);
+    this->wgt() *= weight_factor;
+  }
 
   // Score timed track-length tallies
   if (!model::active_timed_tracklength_tallies.empty()) {

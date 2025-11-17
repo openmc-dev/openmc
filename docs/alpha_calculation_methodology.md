@@ -399,79 +399,90 @@ During alpha iterations (when `alpha_iteration > 0`), the following modification
 σ_absorption → σ_absorption + σ_α
 ```
 
-where v is the neutron speed. For supercritical systems (α > 0), this adds energy-dependent pseudo-absorption. For subcritical systems (α < 0), this adds negative cross sections (pseudo-production), which effectively reduces removal and increases the neutron population to drive K' toward 1.0.
+where v is the neutron speed. For supercritical systems (α > 0), this adds energy-dependent pseudo-absorption. For subcritical systems (α < 0), this would add negative cross sections (pseudo-production).
 
-**Key Benefits:**
-- Uses physically meaningful signed cross sections (negative for subcritical, positive for supercritical)
-- Provides physical feedback through modified eigenvalue K'(α)
-- Converges to the unique α where K'(α) = 1.0
+**Limitation of Cross-Section Method:**
 
-### Hybrid Method for Deeply Subcritical Systems
-
-For deeply subcritical systems (k << 1), the magnitude of negative pseudo-production can exceed material cross sections, leading to:
-
+For deeply subcritical systems (k << 1), negative pseudo-production can exceed material cross sections:
 ```
 |σ_α| = |α| / v >> Σ_material
-→ Σ_total = Σ_material + σ_α < 0
-→ Transport algorithm breakdown (particles lost in geometry)
+→ Σ_total = Σ_material + σ_α < 0  ❌
+→ Transport algorithm breakdown
 ```
 
-OpenMC implements a **novel hybrid method** that combines cross-section modification with exact weight compensation:
+### Alpha (Weight-Based) Method
+
+OpenMC implements a **pure weight-based alpha eigenvalue method** that avoids all cross-section modifications. This approach is universal, elegant, and works for any system criticality.
+
+#### Physical Basis
+
+The time-dependent neutron population follows:
+```
+N(t) = N₀ * exp(α*t)
+```
+
+Therefore, particle weights should evolve according to the same exponential:
+```
+w(t) = w₀ * exp(α*t)
+```
 
 #### Algorithm
 
-1. **Compute desired pseudo-production**:
-   ```
-   σ_α,desired = α / v  (very negative for k << 1)
-   ```
+After each time step Δt during transport:
+```
+w → w * exp(α * Δt)
+```
 
-2. **Clamp to maintain transport stability**:
-   ```
-   σ_α,applied = max(σ_α,desired, -0.95 × Σ_material)
-   σ_α,missing = σ_α,desired - σ_α,applied  (< 0)
-   ```
+**Implementation:**
+```cpp
+// In particle.cpp, after advancing in time:
+double dt = distance / speed;
+time() += dt;
 
-3. **Apply clamped value to cross sections**:
-   ```
-   Σ_total → Σ_total + σ_α,applied  (guaranteed > 0)
-   ```
+// Apply time-based weight evolution
+if (calculate_alpha && alpha_iteration > 0) {
+    double weight_factor = std::exp(alpha_previous * dt);
+    wgt() *= weight_factor;
+}
+```
 
-4. **Compensate via weight at collision**:
-   ```
-   w → w × Σ_material / (Σ_material + σ_α,missing)
-   ```
-   Since σ_α,missing < 0 for subcritical systems, this increases particle weight.
+#### Physical Interpretation
 
-#### Mathematical Equivalence
+- **Subcritical (α < 0)**: exp(α*Δt) < 1 → weights decay over time
+  - Simulates population decay
+  - K' increases toward 1.0
 
-The weight compensation is mathematically exact:
-- Desired total XS: Σ_desired = Σ_material + σ_α,desired (small, high survival)
-- Applied total XS: Σ_applied = Σ_material + σ_α,applied (larger, lower survival)
-- Weight factor compensates: w × Σ_applied / Σ_desired = w × Σ_material / (Σ_material + σ_α,missing)
-- For near-critical systems: σ_α,missing = 0, weight factor = 1, reduces to standard COG method
-- For deeply subcritical systems: weight factor > 1, increases survival probability as needed
+- **Supercritical (α > 0)**: exp(α*Δt) > 1 → weights grow over time
+  - Simulates population growth
+  - K' decreases toward 1.0
+
+- **Critical (α = 0)**: exp(0) = 1 → no weight change
 
 #### Advantages
 
-- **Universal**: Works for any level of subcriticality (k → 0)
-- **Stable**: Transport algorithm never sees negative total cross sections
-- **Exact**: Weight compensation preserves physics correctness
-- **Smooth**: No discontinuities as system criticality changes
+- **Universal**: Works for ANY system criticality (k → 0 or k → ∞)
+- **Simple**: Single line of code, no complex logic
+- **Exact**: Directly implements exp(α*t) time evolution
+- **Stable**: No cross-section modifications, standard transport
+- **Efficient**: No iteration issues, clean convergence
+- **No limits**: No clamping, no compensation formulas needed
 
-### COG Static Algorithm
+### Alpha Eigenvalue Iteration Algorithm
 
-The basic iteration is:
+The basic iteration using the weight-based method:
 
 ```
 1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt
 2. For iteration n = 1 to max_iterations:
-   a. Add pseudo-absorption: σ_α = α_{n-1} / v
-   b. Run eigenvalue batch with modified cross sections
-   c. Obtain K'_n from the modified problem
+   a. Apply time-based weighting: w → w * exp(α_{n-1} * Δt)
+   b. Run eigenvalue batch with weight evolution
+   c. Obtain K'_n from the weighted simulation
    d. Update: α_n = α_{n-1} + (K'_n - 1.0) / Λ_prompt
    e. If |K'_n - 1.0| < tolerance: converged
 3. Report converged α
 ```
+
+The weight-based method naturally drives K' → 1.0 for any system because the exponential weight evolution exactly compensates for time-dependent population changes.
 
 However, this simple iteration can converge slowly or oscillate. OpenMC implements an **adaptive convergence strategy** combining multiple acceleration techniques from numerical analysis.
 

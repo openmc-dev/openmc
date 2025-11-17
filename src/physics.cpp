@@ -92,65 +92,9 @@ void collision(Particle& p)
 
 void sample_neutron_reaction(Particle& p)
 {
-  double sigma_alpha = 0.0;
-  double material_xs_total = p.macro_xs().total;
-
-  if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
-    double velocity = p.speed();
-    if (velocity > 0.0) {
-      sigma_alpha = simulation::alpha_previous / velocity;
-
-      // Cross sections already include pseudo-absorption from transport phase
-      // to properly account for its effect on mean free path and K'.
-      // Calculate the original material cross section for reaction sampling.
-      material_xs_total = p.macro_xs().total - sigma_alpha;
-
-      // Sample which reaction occurred using the modified total cross section
-      double cutoff = prn(p.current_seed()) * p.macro_xs().total;
-
-      // If the sampled reaction is pseudo-absorption (only for alpha > 0)
-      if (cutoff >= material_xs_total) {
-        // For supercritical systems (alpha > 0), use analog capture
-        // For subcritical systems (alpha < 0), this branch never executes
-        // because sigma_alpha < 0 makes material_xs_total > total
-        p.wgt() = 0.0;
-        p.macro_xs().total -= sigma_alpha;
-        p.macro_xs().absorption -= sigma_alpha;
-        return;
-      } else {
-        // Material reaction sampled - temporarily remove pseudo-absorption
-        // for correct nuclide sampling
-        p.macro_xs().total -= sigma_alpha;
-        p.macro_xs().absorption -= sigma_alpha;
-      }
-    }
-  }
+  // Alpha eigenvalue calculation uses weight-based method (no XS modification)
 
   int i_nuclide = sample_nuclide(p);
-
-  // Restore pseudo-absorption cross sections for continued transport
-  if (sigma_alpha != 0.0) {
-    p.macro_xs().total += sigma_alpha;
-    p.macro_xs().absorption += sigma_alpha;
-  }
-
-  // Apply weight compensation for clamped pseudo-production (hybrid method)
-  // For deeply subcritical systems, this exactly compensates for the
-  // pseudo-production that couldn't be applied via negative cross sections
-  if (p.sigma_alpha_missing() < 0.0 && material_xs_total > 0.0) {
-    // Particles survived with Σ_applied but should have survived with Σ_desired
-    // Σ_desired = Σ_material + sigma_alpha_desired (smaller, more survival)
-    // Σ_applied = Σ_material + sigma_alpha_applied (larger, less survival)
-    // Weight factor = Σ_applied / Σ_desired to compensate
-    //               = Σ_material / (Σ_material + sigma_alpha_missing)
-    // Since sigma_alpha_missing < 0, this increases weight (correct!)
-    double weight_factor =
-      material_xs_total / (material_xs_total + p.sigma_alpha_missing());
-    p.wgt() *= weight_factor;
-
-    // Reset for next collision
-    p.sigma_alpha_missing() = 0.0;
-  }
 
   // Save which nuclide particle had collision with
   p.event_nuclide() = i_nuclide;

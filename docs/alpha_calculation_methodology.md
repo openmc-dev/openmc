@@ -438,16 +438,18 @@ OpenMC implements a **novel hybrid method** that combines cross-section modifica
 
 4. **Compensate via weight at collision**:
    ```
-   w → w × (Σ_material + σ_α,missing) / Σ_material
+   w → w × Σ_material / (Σ_material + σ_α,missing)
    ```
+   Since σ_α,missing < 0 for subcritical systems, this increases particle weight.
 
 #### Mathematical Equivalence
 
 The weight compensation is mathematically exact:
-- Transport uses: Σ_total = Σ_material + σ_α,applied
-- Weight adjustment gives the same effective production rate as if σ_α,desired were applied
-- For near-critical systems: σ_α,missing = 0, reduces to standard COG method
-- For deeply subcritical systems: weight factor < 1, increases survival probability
+- Desired total XS: Σ_desired = Σ_material + σ_α,desired (small, high survival)
+- Applied total XS: Σ_applied = Σ_material + σ_α,applied (larger, lower survival)
+- Weight factor compensates: w × Σ_applied / Σ_desired = w × Σ_material / (Σ_material + σ_α,missing)
+- For near-critical systems: σ_α,missing = 0, weight factor = 1, reduces to standard COG method
+- For deeply subcritical systems: weight factor > 1, increases survival probability as needed
 
 #### Advantages
 

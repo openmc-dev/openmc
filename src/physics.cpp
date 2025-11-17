@@ -138,10 +138,14 @@ void sample_neutron_reaction(Particle& p)
   // For deeply subcritical systems, this exactly compensates for the
   // pseudo-production that couldn't be applied via negative cross sections
   if (p.sigma_alpha_missing() < 0.0 && material_xs_total > 0.0) {
-    // Weight factor = (material_xs + sigma_missing) / material_xs
-    // This gives the correct effective production rate
+    // Particles survived with Σ_applied but should have survived with Σ_desired
+    // Σ_desired = Σ_material + sigma_alpha_desired (smaller, more survival)
+    // Σ_applied = Σ_material + sigma_alpha_applied (larger, less survival)
+    // Weight factor = Σ_applied / Σ_desired to compensate
+    //               = Σ_material / (Σ_material + sigma_alpha_missing)
+    // Since sigma_alpha_missing < 0, this increases weight (correct!)
     double weight_factor =
-      (material_xs_total + p.sigma_alpha_missing()) / material_xs_total;
+      material_xs_total / (material_xs_total + p.sigma_alpha_missing());
     p.wgt() *= weight_factor;
 
     // Reset for next collision

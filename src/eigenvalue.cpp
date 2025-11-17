@@ -1083,8 +1083,8 @@ void run_alpha_iterations()
 
   if (mpi::master) {
     header("ALPHA EIGENVALUE SIMULATION", 3);
-    fmt::print(" Iteration     Alpha        K'       |K'-1|    Relax  Method\n");
-    fmt::print(" =========  ============  =========  ========= ====== ========\n");
+    fmt::print(" Iteration     Alpha        K'       |K'-1|\n");
+    fmt::print(" =========  ============  =========  =========\n");
   }
 
   simulation::alpha_converged = false;
@@ -1104,7 +1104,7 @@ void run_alpha_iterations()
   double lambda_ref = 1.0e-4;  // 100 microseconds reference
   double lambda_scale = std::min(1.0, simulation::prompt_gen_time / lambda_ref);
   double min_relaxation = 0.01 * lambda_scale;  // Minimum damping scales with Λ
-  min_relaxation = std::max(min_relaxation, 0.001);  // Floor at 0.001
+  min_relaxation = std::max(min_relaxation, 0.01);  // Floor at 0.01
 
   // For very fast systems, start with more conservative relaxation
   if (simulation::prompt_gen_time < 1.0e-6) {  // < 1 microsecond
@@ -1127,9 +1127,8 @@ void run_alpha_iterations()
     if (k_error < settings::alpha_tolerance) {
       // Print final iteration before convergence
       if (mpi::master) {
-        fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}  {:>5.2f}  Final\n",
-          simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error,
-          relaxation_factor);
+        fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}\n",
+          simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
       }
       simulation::alpha_converged = true;
       break;
@@ -1193,11 +1192,10 @@ void run_alpha_iterations()
       }
     }
 
-    // Print current iteration with diagnostic info
+    // Print current iteration
     if (mpi::master) {
-      fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}  {:>5.2f}  {}\n",
-        simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error,
-        relaxation_factor, method);
+      fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}\n",
+        simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
     }
 
     // Apply relaxation factor to the update

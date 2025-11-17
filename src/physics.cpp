@@ -99,31 +99,21 @@ void sample_neutron_reaction(Particle& p)
     if (velocity > 0.0) {
       sigma_alpha = std::abs(simulation::alpha_previous / velocity);
 
-      // Add pseudo-absorption to cross sections
-      p.macro_xs().total += sigma_alpha;
-      p.macro_xs().absorption += sigma_alpha;
+      // Sample whether this is a material reaction or pseudo-absorption
+      // Total cross section with pseudo-absorption: σ_total' = σ_total + σ_α
+      double total_with_alpha = p.macro_xs().total + sigma_alpha;
+      double cutoff = prn(p.current_seed()) * total_with_alpha;
 
-      // Sample reaction with modified cross sections
-      double cutoff = prn(p.current_seed()) * p.macro_xs().total;
-      double material_xs_total = p.macro_xs().total - sigma_alpha;
-
-      // If pseudo-absorption reaction is sampled, kill the particle
-      if (cutoff >= material_xs_total) {
+      // If pseudo-absorption is sampled (cutoff in [σ_total, σ_total + σ_α])
+      if (cutoff >= p.macro_xs().total) {
         p.wgt() = 0.0;
-        p.macro_xs().total -= sigma_alpha;
-        p.macro_xs().absorption -= sigma_alpha;
         return;
       }
+      // Otherwise, continue with normal material reaction (no XS modification needed)
     }
   }
 
   int i_nuclide = sample_nuclide(p);
-
-  // Restore cross sections (remove pseudo-absorption) before continuing
-  if (sigma_alpha > 0.0) {
-    p.macro_xs().total -= sigma_alpha;
-    p.macro_xs().absorption -= sigma_alpha;
-  }
 
   // Save which nuclide particle had collision with
   p.event_nuclide() = i_nuclide;

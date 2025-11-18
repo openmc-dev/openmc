@@ -61,9 +61,9 @@ double prompt_gen_time_std {0.0};
 // Index of internal kinetics tally (for alpha calculations)
 int kinetics_tally_index {-1};
 
-// Alpha eigenvalue calculation (COG Static method) - iteration state
+// Alpha eigenvalue calculation (Generation-Based method) - iteration state
 double alpha_previous {0.0};          // Previous iteration's alpha value
-double pseudo_absorption_sigma {0.0}; // Pseudo-absorption cross section
+double pseudo_absorption_sigma {0.0}; // Not used (kept for compatibility)
 int alpha_iteration {0};              // Current alpha iteration number
 bool alpha_converged {false};         // Alpha convergence flag
 
@@ -584,51 +584,43 @@ void calculate_kinetics_parameters()
         population_std = calc_std(5);
       }
 
-      // Calculate prompt generation time: Λ_prompt = num / (k_prompt × denom)
-      if (gen_time_denom > 0.0 && simulation::keff_prompt > 0.0) {
-        simulation::prompt_gen_time =
-          gen_time_num / (simulation::keff_prompt * gen_time_denom);
+      // Calculate prompt neutron lifetime: l_prompt = num / denom
+      // This is the average time from birth to ANY absorption (capture or fission)
+      if (gen_time_denom > 0.0) {
+        simulation::prompt_gen_time = gen_time_num / gen_time_denom;
 
-        // Error propagation for prompt generation time
-        // For Λ = num / (k_p × denom):
-        // σ_Λ² ≈ (∂Λ/∂num)² σ_num² + (∂Λ/∂denom)² σ_denom² + (∂Λ/∂k_p)² σ_kp²
+        // Error propagation for prompt neutron lifetime
+        // For l = num / denom:
+        // σ_l² ≈ (∂l/∂num)² σ_num² + (∂l/∂denom)² σ_denom²
         if (n > 1 && simulation::prompt_gen_time > 0.0) {
-          double dLambda_dnum =
-            1.0 / (simulation::keff_prompt * gen_time_denom);
-          double dLambda_ddenom =
-            -gen_time_num /
-            (simulation::keff_prompt * gen_time_denom * gen_time_denom);
-          double dLambda_dkp =
-            -gen_time_num / (simulation::keff_prompt * simulation::keff_prompt *
-                              gen_time_denom);
+          double dl_dnum = 1.0 / gen_time_denom;
+          double dl_ddenom = -gen_time_num / (gen_time_denom * gen_time_denom);
 
-          double var_Lambda =
-            dLambda_dnum * dLambda_dnum * gen_time_num_std * gen_time_num_std +
-            dLambda_ddenom * dLambda_ddenom * gen_time_denom_std *
-              gen_time_denom_std +
-            dLambda_dkp * dLambda_dkp * simulation::keff_prompt_std *
-              simulation::keff_prompt_std;
+          double var_l = dl_dnum * dl_dnum * gen_time_num_std * gen_time_num_std +
+                         dl_ddenom * dl_ddenom * gen_time_denom_std *
+                           gen_time_denom_std;
 
-          simulation::prompt_gen_time_std = std::sqrt(var_Lambda);
+          simulation::prompt_gen_time_std = std::sqrt(var_l);
         }
 
-        // Calculate alpha (k-based): α = (k_prompt - 1) / Λ_prompt
+        // Calculate alpha (k-based): α = (k_prompt - 1) / l_prompt
+        // where l_prompt is the prompt neutron lifetime
         if (simulation::prompt_gen_time > 0.0) {
           simulation::alpha_k_based =
             (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 
           // Error propagation for alpha_k_based
-          // For α = (k_p - 1) / Λ: σ_α² ≈ (1/Λ)² σ_kp² + ((k_p-1)/Λ²)² σ_Λ²
+          // For α = (k_p - 1) / l: σ_α² ≈ (1/l)² σ_kp² + ((k_p-1)/l²)² σ_l²
           if (n > 1 && simulation::prompt_gen_time > 0.0) {
             double dAlpha_dkp = 1.0 / simulation::prompt_gen_time;
-            double dAlpha_dLambda =
+            double dAlpha_dl =
               -(simulation::keff_prompt - 1.0) /
               (simulation::prompt_gen_time * simulation::prompt_gen_time);
 
             double var_alpha = dAlpha_dkp * dAlpha_dkp *
                                  simulation::keff_prompt_std *
                                  simulation::keff_prompt_std +
-                               dAlpha_dLambda * dAlpha_dLambda *
+                               dAlpha_dl * dAlpha_dl *
                                  simulation::prompt_gen_time_std *
                                  simulation::prompt_gen_time_std;
 
@@ -638,18 +630,19 @@ void calculate_kinetics_parameters()
       }
 
       // ========================================================================
-      // ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)
+      // ALPHA EIGENVALUE CALCULATION (GENERATION-BASED METHOD)
       // ========================================================================
       //
       // This method is implemented in run_alpha_iterations() which is called
-      // after normal eigenvalue batches complete, based on the COG Static
-      // method which uses iterative refinement with pseudo-absorption.
+      // after normal eigenvalue batches complete, using generation-to-generation
+      // source multiplication WITHOUT pseudo-absorption cross section modification.
       //
       // The method:
       //   1. Initializes α₀ = (k_prompt - 1) / Λ_prompt
-      //   2. Adds pseudo-absorption σ_α = α / v to cross sections
-      //   3. Runs batches and computes K'
-      //   4. Updates α and iterates until K' → 1.0
+      //   2. Runs eigenvalue batch with UNMODIFIED cross sections
+      //   3. Tracks fission bank size generation-to-generation
+      //   4. Calculates α = ln(N_fission_new / N_fission_old) / Λ_prompt
+      //   5. Iterates until α converges
       //
       // Initialize to NaN; will be set by run_alpha_iterations() if enabled
       simulation::alpha_static = std::numeric_limits<double>::quiet_NaN();
@@ -1028,32 +1021,29 @@ void run_alpha_iterations()
   using namespace openmc;
 
   // ============================================================================
-  // ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)
+  // ALPHA EIGENVALUE CALCULATION (GENERATION-BASED METHOD)
   // ============================================================================
   //
-  // This implements the alpha eigenvalue calculation using the COG Static
-  // method, which uses iterative refinement with pseudo-absorption to find
-  // the alpha eigenvalue.
+  // This implements alpha eigenvalue calculation using generation-to-generation
+  // source multiplication WITHOUT pseudo-absorption cross section modification.
+  // This approach remains stable for deeply subcritical systems where the
+  // pseudo-absorption method fails due to negative cross sections.
   //
   // Method:
   //   1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt (k-based estimate)
-  //   2. Add pseudo-absorption: σ_α(E) = α / v(E) to material cross sections
-  //   3. Run eigenvalue batch with modified cross sections → get K'
-  //   4. Update: α_new = α_old + (K' - 1) / Λ
-  //   5. Iterate until convergence: |K' - 1.0| < tolerance
+  //   2. Run eigenvalue batch with UNMODIFIED cross sections
+  //   3. Track fission bank size: N_fission
+  //   4. Calculate α = ln(N_fission_new / N_fission_old) / Λ_prompt
+  //   5. Iterate until α converges
   //
-  // The converged α satisfies K'(α) = 1, where K' is the eigenvalue of the
-  // transport equation with pseudo-absorption included.
-  //
-  // This method runs AFTER normal eigenvalue batches complete, using the
-  // converged source distribution. The alpha_iteration counter (> 0) signals
-  // that pseudo-absorption should be added during transport and that kinetics
-  // parameter calculation should be skipped to avoid corrupting k_prompt/Λ.
+  // Key advantages:
+  //   - Cross sections remain physical (non-negative) for all subcriticality
+  //   - No modifications to material properties
+  //   - Stable for deeply subcritical systems (k_eff << 1)
+  //   - Standard power iteration finds fundamental mode automatically
   //
   // Reference:
-  //   Wilcox, Thomas, Edward Lent, Richard Buck, and Chuck Lee, COG User's
-  //   Manual: A Multiparticle Monte Carlo Transport Code, 6th ed.,
-  //   UCRL-TM-202590, Lawrence Livermore National Laboratory, 2025.
+  //   Bell & Glasstone, Nuclear Reactor Theory, Section 5.3
   // ============================================================================
 
   // Only run if calculate_alpha is enabled and we're in eigenvalue mode
@@ -1078,29 +1068,21 @@ void run_alpha_iterations()
     return;
   }
 
+  // Initialize alpha estimate from k-based method
   simulation::alpha_previous =
     (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 
   if (mpi::master) {
     header("ALPHA EIGENVALUE SIMULATION", 3);
-    fmt::print(" Iteration     Alpha        K'       |K'-1|\n");
-    fmt::print(" =========  ============  =========  =========\n");
+    fmt::print(" Iteration     Alpha         k_eff     Source_Mult\n");
+    fmt::print(" =========  ============  =========  =============\n");
   }
 
-  double k_prime = 0.0;
   vector<double> alpha_values;
-  vector<double> k_prime_values;
+  vector<double> source_mult_values;
 
-  // Generation-time-scaled relaxation for fast systems
-  // Reference generation time (thermal systems): 100 μs = 1.0e-4 s
-  const double lambda_ref = 1.0e-4;
-  double lambda_scale = std::min(1.0, simulation::prompt_gen_time / lambda_ref);
-  double omega_min = std::max(0.01 * lambda_scale, 0.001);
-
-  // Start with moderate relaxation
-  double relaxation_factor = 0.3;
-  double k_prev = 0.0;
-  int oscillation_count = 0;
+  // Track fission bank size from previous generation
+  int64_t n_fission_prev = 0;
 
   // Convergence tracking
   bool converged = false;
@@ -1110,102 +1092,60 @@ void run_alpha_iterations()
        simulation::alpha_iteration <= settings::max_alpha_iterations;
        ++simulation::alpha_iteration) {
 
+    // Run one generation with unmodified cross sections
     int status = 0;
     openmc_next_batch(&status);
 
-    k_prime = simulation::k_generation.back();
-    double k_error = std::abs(k_prime - 1.0);
+    // Get current generation k_eff (for informational purposes)
+    double k_eff_gen = simulation::k_generation.back();
+
+    // Get total fission bank size across all MPI ranks
+    int64_t n_fission_local = simulation::fission_bank.size();
+    int64_t n_fission_total = n_fission_local;
+
+#ifdef OPENMC_MPI
+    MPI_Allreduce(&n_fission_local, &n_fission_total, 1, MPI_INT64_T,
+      MPI_SUM, mpi::intracomm);
+#endif
+
+    // Calculate source multiplication ratio
+    double source_mult = 0.0;
+    if (simulation::alpha_iteration > 1 && n_fission_prev > 0) {
+      source_mult = static_cast<double>(n_fission_total) /
+                    static_cast<double>(n_fission_prev);
+
+      // Calculate alpha from source multiplication
+      // α = ln(N_new / N_old) / Λ_prompt
+      if (source_mult > 0.0) {
+        simulation::alpha_previous =
+          std::log(source_mult) / simulation::prompt_gen_time;
+      }
+    } else {
+      // First iteration: use k-based estimate
+      source_mult = k_eff_gen;
+    }
 
     alpha_values.push_back(simulation::alpha_previous);
-    k_prime_values.push_back(k_prime);
-
-    // Compute the alpha update: Δα = (1 - K') / Λ_prompt
-    // If K' < 1: need less absorption, reduce |α| (make α less negative)
-    // If K' > 1: need more absorption, increase |α| (make α more negative)
-    double delta_alpha = (1.0 - k_prime) / simulation::prompt_gen_time;
-
-    // Oscillation detection and adaptive damping
-    if (simulation::alpha_iteration >= 2) {
-      double residual_current = k_prime - 1.0;
-      double residual_previous = k_prev - 1.0;
-
-      if (residual_current * residual_previous < 0.0) {
-        // Oscillating: reduce step size aggressively
-        oscillation_count++;
-        relaxation_factor *= 0.5;
-        if (relaxation_factor < omega_min) {
-          relaxation_factor = omega_min;
-        }
-      } else if (std::abs(residual_current) < std::abs(residual_previous)) {
-        // Improving: slightly increase step size
-        relaxation_factor *= 1.1;
-        if (relaxation_factor > 0.5) relaxation_factor = 0.5;
-      }
-    }
+    source_mult_values.push_back(source_mult);
 
     // Print iteration
     if (mpi::master) {
-      fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}\n",
-        simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
+      fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>13.5e}\n",
+        simulation::alpha_iteration, simulation::alpha_previous,
+        k_eff_gen, source_mult);
     }
+
+    // Store current fission bank size for next iteration
+    n_fission_prev = n_fission_total;
 
     // ========================================================================
-    // THREE-TIER CONVERGENCE DETECTION
+    // CONVERGENCE DETECTION
     // ========================================================================
 
-    // TIER 1: Tight Convergence (Traditional)
-    const double tight_tolerance = 1.0e-6;
-    if (k_error < tight_tolerance) {
-      converged = true;
-      convergence_type = "Tight";
-    }
-
-    // TIER 2: Stagnation Detection (requires 10 iterations minimum)
-    if (!converged && simulation::alpha_iteration >= 10) {
-      // Compute relative variation of alpha over last 10 iterations
-      int lookback = 10;
-      double alpha_min = alpha_values[alpha_values.size() - lookback];
-      double alpha_max = alpha_values[alpha_values.size() - lookback];
-      double alpha_sum = 0.0;
-
-      for (int i = alpha_values.size() - lookback; i < alpha_values.size(); ++i) {
-        double a = alpha_values[i];
-        if (a < alpha_min) alpha_min = a;
-        if (a > alpha_max) alpha_max = a;
-        alpha_sum += a;
-      }
-      double alpha_mean = alpha_sum / lookback;
-
-      double relative_variation = std::abs((alpha_max - alpha_min) / alpha_mean);
-      const double stagnation_tolerance = 1.0e-4;  // 0.01% variation
-
-      if (relative_variation < stagnation_tolerance) {
-        converged = true;
-        convergence_type = "Stagnation";
-      }
-    }
-
-    // TIER 3: Statistical Convergence (requires 5 iterations minimum)
-    if (!converged && simulation::alpha_iteration >= 5) {
-      // Compute K' statistics over last 5 iterations
-      int lookback = 5;
-      double k_sum = 0.0;
-      for (int i = k_prime_values.size() - lookback; i < k_prime_values.size(); ++i) {
-        k_sum += k_prime_values[i];
-      }
-      double k_mean = k_sum / lookback;
-
-      double k_var_sum = 0.0;
-      for (int i = k_prime_values.size() - lookback; i < k_prime_values.size(); ++i) {
-        double diff = k_prime_values[i] - k_mean;
-        k_var_sum += diff * diff;
-      }
-      double k_std = std::sqrt(k_var_sum / (lookback - 1));  // Bessel correction
-
-      double k_residual = std::abs(k_mean - 1.0);
-      double noise_ratio = (k_residual > 1.0e-10) ? (k_std / k_residual) : 0.0;
-
-      // Compute alpha coefficient of variation
+    // Require minimum iterations before checking convergence
+    if (simulation::alpha_iteration >= 5) {
+      // Compute alpha statistics over last 5 iterations
+      int lookback = std::min(5, static_cast<int>(alpha_values.size()));
       double alpha_sum = 0.0;
       for (int i = alpha_values.size() - lookback; i < alpha_values.size(); ++i) {
         alpha_sum += alpha_values[i];
@@ -1218,60 +1158,79 @@ void run_alpha_iterations()
         alpha_var_sum += diff * diff;
       }
       double alpha_std = std::sqrt(alpha_var_sum / (lookback - 1));
+
+      // Coefficient of variation (relative standard deviation)
       double alpha_cv = (std::abs(alpha_mean) > 1.0e-10) ?
                         (alpha_std / std::abs(alpha_mean)) : 0.0;
 
-      const double noise_threshold = 0.5;      // MC noise > 50% of residual
-      const double alpha_cv_tolerance = 1.0e-3; // 0.1% coefficient of variation
-
-      if (noise_ratio > noise_threshold && alpha_cv < alpha_cv_tolerance) {
+      // Convergence criterion: coefficient of variation < 0.1%
+      const double cv_tolerance = 1.0e-3;
+      if (alpha_cv < cv_tolerance) {
         converged = true;
         convergence_type = "Statistical";
       }
     }
 
+    // Additional convergence check for very stable iterations
+    if (!converged && simulation::alpha_iteration >= 10) {
+      int lookback = 10;
+      double alpha_min = alpha_values[alpha_values.size() - lookback];
+      double alpha_max = alpha_values[alpha_values.size() - lookback];
+
+      for (int i = alpha_values.size() - lookback; i < alpha_values.size(); ++i) {
+        double a = alpha_values[i];
+        if (a < alpha_min) alpha_min = a;
+        if (a > alpha_max) alpha_max = a;
+      }
+
+      double alpha_sum = 0.0;
+      for (int i = alpha_values.size() - lookback; i < alpha_values.size(); ++i) {
+        alpha_sum += alpha_values[i];
+      }
+      double alpha_mean = alpha_sum / lookback;
+
+      double relative_variation = std::abs((alpha_max - alpha_min) / alpha_mean);
+      const double stagnation_tolerance = 1.0e-4;  // 0.01% variation
+
+      if (relative_variation < stagnation_tolerance) {
+        converged = true;
+        convergence_type = "Stagnation";
+      }
+    }
+
     // If converged, break early
     if (converged) {
-      // Update alpha one last time before breaking
-      simulation::alpha_previous += relaxation_factor * delta_alpha;
-      alpha_values.push_back(simulation::alpha_previous);
-
       if (mpi::master) {
         fmt::print("\n Converged after {} iterations ({})\n",
                    simulation::alpha_iteration, convergence_type);
       }
       break;
     }
-
-    // Update alpha with relaxation
-    simulation::alpha_previous += relaxation_factor * delta_alpha;
-
-    // Store K' for next iteration's oscillation detection
-    k_prev = k_prime;
   }
 
-  // Set final alpha value
-  simulation::alpha_static = simulation::alpha_previous;
-
-  // Calculate uncertainty from last iterations (use all if converged early)
+  // Set final alpha value (average of last iterations for stability)
   int n_values = alpha_values.size();
-  if (n_values > 1) {
-    int n_for_std = std::min(10, n_values);  // Use up to 10 iterations for std
-    double alpha_mean = 0.0;
-    for (int i = n_values - n_for_std; i < n_values; ++i) {
-      alpha_mean += alpha_values[i];
+  if (n_values > 0) {
+    int n_for_avg = std::min(5, n_values);  // Average last 5 iterations
+    double alpha_sum = 0.0;
+    for (int i = n_values - n_for_avg; i < n_values; ++i) {
+      alpha_sum += alpha_values[i];
     }
-    alpha_mean /= n_for_std;
+    simulation::alpha_static = alpha_sum / n_for_avg;
 
-    double sum_sq = 0.0;
-    for (int i = n_values - n_for_std; i < n_values; ++i) {
-      double diff = alpha_values[i] - alpha_mean;
-      sum_sq += diff * diff;
+    // Calculate uncertainty from last iterations
+    if (n_for_avg > 1) {
+      double sum_sq = 0.0;
+      for (int i = n_values - n_for_avg; i < n_values; ++i) {
+        double diff = alpha_values[i] - simulation::alpha_static;
+        sum_sq += diff * diff;
+      }
+      simulation::alpha_static_std = std::sqrt(sum_sq / (n_for_avg - 1));
+    } else {
+      simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
     }
-    simulation::alpha_static_std = (n_for_std > 1)
-      ? std::sqrt(sum_sq / (n_for_std - 1))
-      : std::numeric_limits<double>::quiet_NaN();
   } else {
+    simulation::alpha_static = simulation::alpha_previous;
     simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
   }
 
@@ -1282,7 +1241,7 @@ void run_alpha_iterations()
                  settings::max_alpha_iterations);
     }
     if (!std::isnan(simulation::alpha_static)) {
-      fmt::print("\n Alpha (COG Static) = {:.5e}", simulation::alpha_static);
+      fmt::print("\n Alpha (Generation-Based) = {:.5e}", simulation::alpha_static);
       if (!std::isnan(simulation::alpha_static_std)) {
         fmt::print(" +/- {:.5e}", simulation::alpha_static_std);
       }

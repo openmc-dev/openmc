@@ -92,46 +92,11 @@ void collision(Particle& p)
 
 void sample_neutron_reaction(Particle& p)
 {
-  double sigma_alpha = 0.0;
-  double material_xs_total = p.macro_xs().total;
-
-  if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
-    double velocity = p.speed();
-    if (velocity > 0.0) {
-      sigma_alpha = simulation::alpha_previous / velocity;
-
-      // Cross sections already include pseudo-absorption from transport phase
-      // Calculate the original material cross section for reaction sampling
-      material_xs_total = p.macro_xs().total - sigma_alpha;
-
-      // Sample which reaction occurred using the modified total cross section
-      double cutoff = prn(p.current_seed()) * p.macro_xs().total;
-
-      // If the sampled reaction is pseudo-absorption (only possible for alpha > 0)
-      if (cutoff >= material_xs_total) {
-        // For supercritical systems (alpha > 0): analog capture
-        // For subcritical systems (alpha < 0): this branch never executes
-        // because sigma_alpha < 0 makes material_xs_total > total
-        p.wgt() = 0.0;
-        p.macro_xs().total -= sigma_alpha;
-        p.macro_xs().absorption -= sigma_alpha;
-        return;
-      } else {
-        // Material reaction sampled - temporarily remove pseudo-absorption
-        // for correct nuclide sampling
-        p.macro_xs().total -= sigma_alpha;
-        p.macro_xs().absorption -= sigma_alpha;
-      }
-    }
-  }
+  // Alpha eigenvalue: pseudo-absorption handling REMOVED
+  // Now using generation-based alpha estimation without modifying cross sections
+  // Cross sections remain physical (non-negative) for all subcriticality levels
 
   int i_nuclide = sample_nuclide(p);
-
-  // Restore pseudo-absorption cross sections for continued transport
-  if (sigma_alpha != 0.0) {
-    p.macro_xs().total += sigma_alpha;
-    p.macro_xs().absorption += sigma_alpha;
-  }
 
   // Save which nuclide particle had collision with
   p.event_nuclide() = i_nuclide;

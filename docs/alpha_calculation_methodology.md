@@ -38,11 +38,21 @@ k_eff = Production Rate / Removal Rate
 
 ### Relationship Between α and k_eff
 
-For a system with prompt neutron generation time Λ_prompt and prompt multiplication factor k_prompt:
+For a system with prompt neutron lifetime l_prompt and prompt multiplication factor k_prompt:
 
 ```
-α = (k_prompt - 1) / Λ_prompt
+α = (k_prompt - 1) / l_prompt
 ```
+
+where:
+- **l_prompt** = prompt neutron lifetime (average time from birth to ANY absorption - capture or fission)
+- **k_prompt** = prompt neutron multiplication factor (delayed chains excluded)
+
+**Important distinction:**
+- **Prompt neutron lifetime (l_prompt)**: Time from neutron birth to ANY absorption (capture or fission)
+- **Prompt generation time (Λ_prompt)**: Time from neutron birth to fission (time between fission generations)
+
+OpenMC uses the **prompt neutron lifetime** (l_prompt), which includes all absorptions.
 
 This can be understood as:
 - If k_prompt = 1: production = removal → α = 0 (critical)
@@ -55,7 +65,7 @@ COG implements alpha calculation through an iterative process:
 
 1. **Initial Estimate:**
    ```
-   α₀ ≈ (k_prompt - 1) / Λ_prompt
+   α₀ ≈ (k_prompt - 1) / l_prompt
    ```
 
 2. **Pseudo-Absorption Term:**
@@ -122,20 +132,24 @@ True Production Rate = k_prompt × (Measured Production Rate)
 
 ### K-Based Method (Implemented)
 
-OpenMC calculates α using the **k-based method**, which is mathematically equivalent to COG's converged rate-based result:
+OpenMC calculates α using the **k-based method**:
 
 ```
-α = (k_prompt - 1) / Λ_prompt
+α = (k_prompt - 1) / l_prompt
 ```
 
 Where:
 - `k_prompt` = prompt neutron multiplication factor (delayed chains excluded)
-- `Λ_prompt` = prompt neutron generation time
+- `l_prompt` = prompt neutron lifetime (time from birth to ANY absorption)
 
 **Calculation:**
+
+The prompt neutron lifetime is calculated by tallying at ALL absorption events (capture or fission):
 ```
-Λ_prompt = (Σ lifetime × weight) / (k_prompt × Σ weight)
+l_prompt = (Σ lifetime × weight at absorption) / (Σ weight at absorption)
 ```
+
+This gives the average time from neutron birth to any absorption event.
 
 **Status:** ✅ **Fully implemented and validated**
 

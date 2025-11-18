@@ -567,17 +567,17 @@ void print_results()
       fmt::print(" Beta-effective              = {:.5f} +/- {:.5f}\n",
         simulation::beta_eff, t_n1 * simulation::beta_eff_std);
       if (settings::calculate_alpha) {
-        fmt::print(" Prompt Generation Time      = {:.5e} +/- {:.5e} seconds\n",
+        fmt::print(" Prompt Neutron Lifetime     = {:.5e} +/- {:.5e} seconds\n",
           simulation::prompt_gen_time, t_n1 * simulation::prompt_gen_time_std);
         fmt::print(" Alpha (k-based)             = {:.5e} +/- {:.5e} 1/seconds\n",
           simulation::alpha_k_based, t_n1 * simulation::alpha_k_based_std);
 
         if (!std::isnan(simulation::alpha_static)) {
           if (!std::isnan(simulation::alpha_static_std)) {
-            fmt::print(" Alpha (COG Static)          = {:.5e} +/- {:.5e} 1/seconds\n",
+            fmt::print(" Alpha (Generation-Based)    = {:.5e} +/- {:.5e} 1/seconds\n",
               simulation::alpha_static, t_n1 * simulation::alpha_static_std);
           } else {
-            fmt::print(" Alpha (COG Static)          = {:.5e} 1/seconds\n",
+            fmt::print(" Alpha (Generation-Based)    = {:.5e} 1/seconds\n",
               simulation::alpha_static);
           }
         }
@@ -608,12 +608,12 @@ void print_results()
         " Beta-effective             = {:.5f}\n", simulation::beta_eff);
       if (settings::calculate_alpha) {
         fmt::print(
-          " Prompt Generation Time     = {:.5e} seconds\n", simulation::prompt_gen_time);
+          " Prompt Neutron Lifetime    = {:.5e} seconds\n", simulation::prompt_gen_time);
         fmt::print(
           " Alpha (k-based)            = {:.5e} 1/seconds\n", simulation::alpha_k_based);
         if (!std::isnan(simulation::alpha_static)) {
           fmt::print(
-            " Alpha (COG Static)         = {:.5e} 1/seconds\n", simulation::alpha_static);
+            " Alpha (Generation-Based)   = {:.5e} 1/seconds\n", simulation::alpha_static);
         }
       }
     }

@@ -33,19 +33,19 @@ extern double keff_prompt;            //!< Mean k_prompt over active generations
 extern double keff_prompt_std;        //!< Standard deviation of k_prompt
 extern double beta_eff;               //!< Effective delayed neutron fraction
 extern double beta_eff_std;           //!< Standard deviation of beta_eff
-extern double alpha_k_based;          //!< Alpha eigenvalue (k-based method)
-extern double alpha_k_based_std;      //!< Standard deviation of alpha (k-based)
-extern double alpha_static;           //!< Alpha eigenvalue (COG Static method)
-extern double alpha_static_std;    //!< Standard deviation of alpha (COG Static)
+extern double alpha_k_based;          //!< Alpha eigenvalue: α = (k_prompt - 1) / l_prompt
+extern double alpha_k_based_std;      //!< Standard deviation of alpha
+extern double alpha_static;           //!< Alpha eigenvalue (same as alpha_k_based)
+extern double alpha_static_std;    //!< Standard deviation of alpha
 extern double prompt_gen_time;     //!< Prompt neutron lifetime (l_prompt)
 extern double prompt_gen_time_std; //!< Standard deviation of lifetime
 extern int kinetics_tally_index;   //!< Index of internal kinetics tally
 
-// Alpha eigenvalue calculation - state variables (mostly unused now)
-extern double alpha_previous;          //!< Unused (kept for compatibility)
-extern double pseudo_absorption_sigma; //!< Unused (kept for compatibility)
-extern int alpha_iteration;            //!< Unused (kept for compatibility)
-extern bool alpha_converged;           //!< Unused (kept for compatibility)
+// Unused alpha calculation state variables (kept for ABI compatibility)
+extern double alpha_previous;
+extern double pseudo_absorption_sigma;
+extern int alpha_iteration;
+extern bool alpha_converged;
 
 } // namespace simulation
 

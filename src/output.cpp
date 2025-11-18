@@ -569,18 +569,8 @@ void print_results()
       if (settings::calculate_alpha) {
         fmt::print(" Prompt Neutron Lifetime     = {:.5e} +/- {:.5e} seconds\n",
           simulation::prompt_gen_time, t_n1 * simulation::prompt_gen_time_std);
-        fmt::print(" Alpha (k-based)             = {:.5e} +/- {:.5e} 1/seconds\n",
+        fmt::print(" Alpha Eigenvalue            = {:.5e} +/- {:.5e} 1/seconds\n",
           simulation::alpha_k_based, t_n1 * simulation::alpha_k_based_std);
-
-        if (!std::isnan(simulation::alpha_static)) {
-          if (!std::isnan(simulation::alpha_static_std)) {
-            fmt::print(" Alpha (Generation-Based)    = {:.5e} +/- {:.5e} 1/seconds\n",
-              simulation::alpha_static, t_n1 * simulation::alpha_static_std);
-          } else {
-            fmt::print(" Alpha (Generation-Based)    = {:.5e} 1/seconds\n",
-              simulation::alpha_static);
-          }
-        }
       }
     }
   } else {
@@ -610,11 +600,7 @@ void print_results()
         fmt::print(
           " Prompt Neutron Lifetime    = {:.5e} seconds\n", simulation::prompt_gen_time);
         fmt::print(
-          " Alpha (k-based)            = {:.5e} 1/seconds\n", simulation::alpha_k_based);
-        if (!std::isnan(simulation::alpha_static)) {
-          fmt::print(
-            " Alpha (Generation-Based)   = {:.5e} 1/seconds\n", simulation::alpha_static);
-        }
+          " Alpha Eigenvalue           = {:.5e} 1/seconds\n", simulation::alpha_k_based);
       }
     }
   }

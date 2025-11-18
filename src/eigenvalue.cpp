@@ -63,11 +63,11 @@ double prompt_gen_time_std {0.0};  // Standard deviation of l_prompt
 // Index of internal kinetics tally (for alpha calculations)
 int kinetics_tally_index {-1};
 
-// Alpha eigenvalue calculation (Generation-Based method) - iteration state
-double alpha_previous {0.0};          // Previous iteration's alpha value
-double pseudo_absorption_sigma {0.0}; // Not used (kept for compatibility)
-int alpha_iteration {0};              // Current alpha iteration number
-bool alpha_converged {false};         // Alpha convergence flag
+// Unused alpha calculation state variables (kept for ABI compatibility)
+double alpha_previous {0.0};
+double pseudo_absorption_sigma {0.0};
+int alpha_iteration {0};
+bool alpha_converged {false};
 
 } // namespace simulation
 
@@ -984,12 +984,12 @@ void setup_kinetics_tallies()
   // Set scores for alpha eigenvalue calculations
   vector<std::string> scores;
 
-  // Scores for k-based alpha: α = (k_prompt - 1) / l_prompt
+  // Scores for alpha calculation: α = (k_prompt - 1) / l_prompt
   // where l_prompt is the prompt neutron lifetime
   scores.push_back("prompt-chain-gen-time-num");   // Numerator: Σ(lifetime × weight)
   scores.push_back("prompt-chain-gen-time-denom"); // Denominator: Σ(weight)
 
-  // Scores for rate-based alpha: α = (R_prod - R_removal) / N_prompt
+  // Additional scores (for diagnostics/validation, not currently used in alpha calc)
   scores.push_back("prompt-chain-nu-fission-rate");
   scores.push_back("prompt-chain-absorption-rate");
   scores.push_back("prompt-chain-leakage-rate");

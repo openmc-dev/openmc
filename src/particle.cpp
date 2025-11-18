@@ -669,14 +669,25 @@ void Particle::cross_vacuum_bc(const Surface& surf)
   // Score to global leakage tally
   keff_tally_leakage() += wgt();
 
-  // Score to kinetics tally leakage rate (prompt chain only)
+  // Score to kinetics tally (prompt chain only)
+  // Leakage contributes to neutron lifetime calculation since it's a removal mechanism
   if (settings::calculate_alpha && simulation::kinetics_tally_index >= 0 &&
       !is_delayed()) {
     auto& tally = *model::tallies[simulation::kinetics_tally_index];
-    double score = wgt();
+
+    // Score lifetime * weight to numerator (index 0: prompt-chain-gen-time-num)
+    // Leakage ends the neutron's life just like absorption
+    double lifetime_score = lifetime() * wgt();
+#pragma omp atomic
+    tally.results_(0, 0, TallyResult::VALUE) += lifetime_score;
+
+    // Score weight to denominator (index 1: prompt-chain-gen-time-denom)
+#pragma omp atomic
+    tally.results_(0, 1, TallyResult::VALUE) += wgt();
+
     // Score to leakage_rate (index 4 in the kinetics tally scores)
 #pragma omp atomic
-    tally.results_(0, 4, TallyResult::VALUE) += score;
+    tally.results_(0, 4, TallyResult::VALUE) += wgt();
   }
 
   // Kill the particle

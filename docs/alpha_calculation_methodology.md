@@ -59,6 +59,8 @@ For each active generation, `calculate_kinetics_parameters()` computes:
 
 #### Step 1: Prompt Neutron Lifetime
 
+**Note on Leakage:** The prompt neutron lifetime calculation includes **both absorption and leakage** as removal mechanisms. When a neutron leaks out of the geometry (crosses a vacuum boundary), its lifetime contribution is scored just as if it were absorbed. This is physically correct because leakage is a removal process that terminates the neutron's life in the system.
+
 ```cpp
 // Extract tally results (accumulated over active batches)
 double gen_time_num = results(0, 0, SUM) / n_active;
@@ -71,10 +73,10 @@ l_prompt = gen_time_num / gen_time_denom
 **Physical meaning**:
 - Numerator: Sum of (neutron lifetime × neutron weight) for all prompt-chain neutrons
 - Denominator: Sum of neutron weights
-- Result: Weighted average lifetime from birth to ANY absorption (capture or fission)
+- Result: Weighted average lifetime from birth to ANY removal (absorption or leakage)
 
 **Important distinction**:
-- **Prompt neutron lifetime (l_prompt)**: Time from birth to ANY absorption
+- **Prompt neutron lifetime (l_prompt)**: Time from birth to ANY removal (absorption or leakage)
 - **Prompt generation time (Λ_prompt)**: Time from birth to FISSION only
 - We use l_prompt, not Λ_prompt
 
@@ -184,6 +186,8 @@ The alpha value is also written to statepoint files for post-processing.
 ### Code Location
 
 - **Setup**: `openmc/src/eigenvalue.cpp::setup_kinetics_tallies()`
+- **Scoring (Absorption)**: `openmc/src/tallies/tally_scoring.cpp::score_analog_tally_ce()` (lines ~1113-1126)
+- **Scoring (Leakage)**: `openmc/src/particle.cpp::cross_vacuum_bc()` (lines ~672-690)
 - **Calculation**: `openmc/src/eigenvalue.cpp::calculate_kinetics_parameters()`
 - **Output**: `openmc/src/output.cpp::print_results()`
 

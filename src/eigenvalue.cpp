@@ -635,12 +635,12 @@ void calculate_kinetics_parameters()
       //
       // This method is implemented in run_alpha_iterations() which is called
       // after normal eigenvalue batches complete. It runs additional generations
-      // and calculates alpha from the measured k_eff using: α = ln(k_eff) / Λ_prompt
+      // and calculates alpha from the measured k_eff using: α = (k_eff - 1) / Λ_prompt
       //
       // The method:
       //   1. Runs eigenvalue generations with UNMODIFIED cross sections
       //   2. Measures k_eff for each generation
-      //   3. Calculates α = ln(k_eff) / Λ_prompt for each generation
+      //   3. Calculates α = (k_eff - 1) / Λ_prompt for each generation
       //   4. Averages alpha over all generations for statistical precision
       //
       // Initialize to NaN; will be set by run_alpha_iterations() if enabled
@@ -1024,12 +1024,12 @@ void run_alpha_iterations()
   // ============================================================================
   //
   // This implements alpha eigenvalue calculation using the generation k_eff
-  // to determine alpha through the relationship: α = ln(k_eff) / Λ_prompt
+  // to determine alpha through the relationship: α = (k_eff - 1) / Λ_prompt
   //
   // Method:
   //   1. Run eigenvalue batches with UNMODIFIED cross sections
   //   2. Measure k_eff for each generation
-  //   3. Calculate α = ln(k_eff) / Λ_prompt ≈ (k_eff - 1) / Λ_prompt
+  //   3. Calculate α = (k_eff - 1) / Λ_prompt
   //   4. Average over multiple generations for statistics
   //
   // Key advantages:
@@ -1040,7 +1040,7 @@ void run_alpha_iterations()
   //
   // Physical basis:
   //   The population growth rate α and multiplication factor k are related
-  //   through the prompt neutron generation time Λ: k = exp(α·Λ) ≈ 1 + α·Λ
+  //   through the prompt neutron generation time Λ: α = (k - 1) / Λ
   // ============================================================================
 
   // Only run if calculate_alpha is enabled and we're in eigenvalue mode
@@ -1090,9 +1090,8 @@ void run_alpha_iterations()
     double k_eff_gen = simulation::k_generation.back();
 
     // Calculate alpha directly from k_eff using the relationship:
-    // α = ln(k_eff) / Λ_prompt
-    // For k close to 1, ln(k) ≈ k - 1, but we use the exact formula
-    double alpha_gen = std::log(k_eff_gen) / simulation::prompt_gen_time;
+    // α = (k_eff - 1) / Λ_prompt
+    double alpha_gen = (k_eff_gen - 1.0) / simulation::prompt_gen_time;
 
     alpha_values.push_back(alpha_gen);
     k_eff_values.push_back(k_eff_gen);

@@ -81,7 +81,7 @@ void setup_kinetics_tallies();
 //!
 //! This function runs additional batches after normal eigenvalue calculation
 //! to determine alpha from the measured k_eff values. Each generation provides
-//! an alpha estimate via α = ln(k_eff) / Λ_prompt, which are averaged for
+//! an alpha estimate via α = (k_eff - 1) / Λ_prompt, which are averaged for
 //! statistical precision.
 void run_alpha_iterations();
 

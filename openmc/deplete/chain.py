@@ -720,10 +720,13 @@ class Chain:
         the matrix itself and a few user-inputs.
 
         The redox term to add to the buffer nuclide :math:`N_j` can be written
-        as: :math:`\frac{dN_j(t)}{dt} =
-                \cdots - \frac{1}{OS_j}\sum_i N_i a_{ij} \cdot OS_i `
+        as:
 
-        where :math:`OS` is the oxidation states vector and `a_{ij}` the
+        .. math::
+            \frac{dN_j(t)}{dt} = \cdots - \frac{1}{OS_j}\sum_i N_i a_{ij}
+            \cdot OS_i
+
+        where :math:`OS` is the oxidation states vector and :math:`a_{ij}` the
         corresponding term in the Bateman matrix.
 
         Parameters

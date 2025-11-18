@@ -220,8 +220,8 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   }
 }
 
-float RotationalPeriodicBC::compute_periodic_rotation(
-  float rise_1, float run_1, float rise_2, float run_2) const
+double RotationalPeriodicBC::compute_periodic_rotation(
+  double rise_1, double run_1, double rise_2, double run_2) const
 {
   // Compute the BC rotation angle.  Here it is assumed that both surface
   // normal vectors point inwards---towards the valid geometry region.

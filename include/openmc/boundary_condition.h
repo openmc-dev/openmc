@@ -145,8 +145,8 @@ class RotationalPeriodicBC : public PeriodicBC {
 public:
   enum PeriodicAxis { x, y, z };
   RotationalPeriodicBC(int i_surf, int j_surf, PeriodicAxis axis = z);
-  float compute_periodic_rotation(
-    float rise_1, float run_1, float rise_2, float run_2) const;
+  double compute_periodic_rotation(
+    double rise_1, double run_1, double rise_2, double run_2) const;
   void handle_particle(Particle& p, const Surface& surf) const override;
 
 protected:

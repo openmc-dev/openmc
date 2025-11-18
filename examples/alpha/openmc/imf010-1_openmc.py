@@ -180,6 +180,10 @@ source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
 
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
+
 settings.export_to_xml()
 
 # ==============================================================================

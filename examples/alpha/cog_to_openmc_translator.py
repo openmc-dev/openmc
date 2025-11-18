@@ -989,14 +989,14 @@ class OpenMCGenerator:
     def _generate_settings(self):
         """Generate OpenMC settings"""
         lines = []
-        
+
         lines.append('settings = openmc.Settings()')
         lines.append(f'settings.particles = {self.parser.npart}')
         lines.append(f'settings.batches = {self.parser.nbatch}')
         lines.append(f'settings.inactive = {self.parser.nfirst}')
         lines.append('settings.run_mode = "eigenvalue"')
         lines.append('')
-        
+
         # Source
         x, y, z = self.parser.source['x'], self.parser.source['y'], self.parser.source['z']
         lines.append('# Source definition')
@@ -1006,9 +1006,16 @@ class OpenMCGenerator:
         lines.append('source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)')
         lines.append('settings.source = source')
         lines.append('')
+
+        # Enable delayed neutron kinetics and alpha eigenvalue calculations
+        lines.append('# Enable delayed neutron kinetics and alpha eigenvalue calculations')
+        lines.append('settings.calculate_prompt_k = True')
+        lines.append('settings.calculate_alpha = True')
+        lines.append('')
+
         lines.append('settings.export_to_xml()')
         lines.append('')
-        
+
         return lines
 
 

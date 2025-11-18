@@ -1,0 +1,222 @@
+====================
+What's New in 0.15.3
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC includes many bug fixes, performance improvements, and
+several notable new features. The major highlights of this release include a new
+:class:`~openmc.deplete.R2SManager` class that automates the workflow for
+rigorous 2-step (R2S) shutdown dose rate calculations, the ability to collect
+higher moments for tally results that can be used to test normality, a new
+uncertainty-aware criticality search method, a new collision tracking feature
+that enables detailed tracking of particle interactions, support for distributed
+cell densities, and several new tally filters. The random ray solver also
+continues to receive significant updates, including automatic setup
+capabilities, improved geometry handling, and better weight window support.
+Depletion capabilities have been expanded with thermochemical redox control,
+external transfer rates, and improved performance.
+
+------------------------------------
+Compatibility Notes and Deprecations
+------------------------------------
+
+MCPL has been changed from a build-time dependency to a runtime optional
+dependency, which means OpenMC will attempt to load the MCPL library at
+runtime when needed rather than requiring it at build time.
+
+The ``openmc.mgxs.Library.add_to_tallies_file`` method has been renamed to
+:meth:`openmc.mgxs.Library.add_to_tallies`.
+
+------------
+New Features
+------------
+
+- A new collision tracking feature enables detailed tracking of particle
+  interactions (`#3417 <https://github.com/openmc-dev/openmc/pull/3417>`_)
+- Added :meth:`openmc.Model.criticality_search` method for automated
+  criticality searches (`#3569 <https://github.com/openmc-dev/openmc/pull/3569>`_)
+- Introduced automated workflow for mesh- or cell-based R2S calculations
+  (`#3508 <https://github.com/openmc-dev/openmc/pull/3508>`_)
+- Ability to source electron/positrons directly for charged particle
+  simulations (`#3404 <https://github.com/openmc-dev/openmc/pull/3404>`_)
+- Multi-group capability for kinetics parameter calculations with Iterated
+  Fission Probability (`#3425
+  <https://github.com/openmc-dev/openmc/pull/3425>`_)
+- Introduced a new :class:`openmc.MeshMaterialFilter` class (`#3406
+  <https://github.com/openmc-dev/openmc/pull/3406>`_)
+- Added support for distributed cell densities (`#3546
+  <https://github.com/openmc-dev/openmc/pull/3546>`_)
+- Implemented a :class:`openmc.WeightWindowsList` class that enables export to
+  HDF5 (`#3456 <https://github.com/openmc-dev/openmc/pull/3456>`_)
+- Added :meth:`openmc.Material.mean_free_path` method (`#3469
+  <https://github.com/openmc-dev/openmc/pull/3469>`_)
+- Introduced :func:`openmc.lib.TemporarySession` context manager (`#3475
+  <https://github.com/openmc-dev/openmc/pull/3475>`_)
+- Added material depletion function for tracking individual material depletion
+  (`#3420 <https://github.com/openmc-dev/openmc/pull/3420>`_)
+- Added methods on :class:`~openmc.Material` class for waste disposal rating /
+  classification (`#3366 <https://github.com/openmc-dev/openmc/pull/3366>`_,
+  `#3376 <https://github.com/openmc-dev/openmc/pull/3376>`_)
+- Support for thermochemical redox control transfer rates in depletion
+  (`#2783 <https://github.com/openmc-dev/openmc/pull/2783>`_)
+- Support for external transfer rates source term in depletion (`#3088
+  <https://github.com/openmc-dev/openmc/pull/3088>`_)
+- Added combing capability for fission site sampling and delayed neutron
+  emission time (`#2992 <https://github.com/openmc-dev/openmc/pull/2992>`_)
+- Ability to specify reference direction for azimuthal angle in
+  :class:`~openmc.stats.PolarAzimuthal` distribution (`#3582
+  <https://github.com/openmc-dev/openmc/pull/3582>`_)
+- Allow spatial constraints on element sources within
+  :class:`~openmc.MeshSource` (`#3431
+  <https://github.com/openmc-dev/openmc/pull/3431>`_)
+- Added VTK HDF (.vtkhdf) format support for writing VTK data (`#3252
+  <https://github.com/openmc-dev/openmc/pull/3252>`_)
+- Implemented filter weight capability (`#3345
+  <https://github.com/openmc-dev/openmc/pull/3345>`_)
+- Optionally collect higher moments for tallies (`#3363
+  <https://github.com/openmc-dev/openmc/pull/3363>`_)
+- Several random ray solver enhancements:
+  - Random Ray AutoMagic Setup for automatic configuration (`#3351 <https://github.com/openmc-dev/openmc/pull/3351>`_)
+  - Point source locator for random ray mode (`#3360 <https://github.com/openmc-dev/openmc/pull/3360>`_)
+  - Explicit void treatment (`#3299 <https://github.com/openmc-dev/openmc/pull/3299>`_ referenced in 0.15.1.rst)
+  - Support for DAGMC geometries (`#3374 <https://github.com/openmc-dev/openmc/pull/3374>`_)
+  - Optimized mapping of source regions to tallies (`#3465 <https://github.com/openmc-dev/openmc/pull/3465>`_)
+  - Base source region refactor (`#3576 <https://github.com/openmc-dev/openmc/pull/3576>`_)
+
+---------------------------
+Bug Fixes and Small Changes
+---------------------------
+
+- Fix typo in DAGMC lost particle test (`#3634 <https://github.com/openmc-dev/openmc/pull/3634>`_)
+- Avoid multiprocessing Pool when running depletion tests with MPI (`#3633 <https://github.com/openmc-dev/openmc/pull/3633>`_)
+- Update documentation for particle tracks (`#3627 <https://github.com/openmc-dev/openmc/pull/3627>`_)
+- Adding variance of variance and normality tests for tally statistics (`#3454 <https://github.com/openmc-dev/openmc/pull/3454>`_)
+- Avoid divide-by-zero in ``from_multigroup_flux`` when flux is zero (`#3624 <https://github.com/openmc-dev/openmc/pull/3624>`_)
+- Write particle states as separate lines in track VTK files (`#3628 <https://github.com/openmc-dev/openmc/pull/3628>`_)
+- Reset DAGMC history when reviving from source (`#3601 <https://github.com/openmc-dev/openmc/pull/3601>`_)
+- Add energy group structure: SCALE-999 (`#3564 <https://github.com/openmc-dev/openmc/pull/3564>`_)
+- Fix bug in normalization of tally results with no_reduce (`#3619 <https://github.com/openmc-dev/openmc/pull/3619>`_)
+- Enable nuclide filters with get_decay_photon_energy (`#3614 <https://github.com/openmc-dev/openmc/pull/3614>`_)
+- Update ``check_type`` calls to accept both ``str`` and ``os.PathLike`` objects (`#3618 <https://github.com/openmc-dev/openmc/pull/3618>`_)
+- Speed up ``apply_time_correction`` by reducing file I/O and deepcopies (`#3617 <https://github.com/openmc-dev/openmc/pull/3617>`_)
+- FW-CADIS Disregard Max Realizations Setting (`#3616 <https://github.com/openmc-dev/openmc/pull/3616>`_)
+- Random Ray Geometry Debug Mode Fix (`#3615 <https://github.com/openmc-dev/openmc/pull/3615>`_)
+- Allow Path objects in MGXSLibrary.export_to_hdf5 (`#3608 <https://github.com/openmc-dev/openmc/pull/3608>`_)
+- Clip mixture distributions based on mean times integral (`#3603 <https://github.com/openmc-dev/openmc/pull/3603>`_)
+- Allow V0 in atomic_mass function (for ENDF/B-VII.0 data) (`#3607 <https://github.com/openmc-dev/openmc/pull/3607>`_)
+- Re-run flaky tests when needed (`#3604 <https://github.com/openmc-dev/openmc/pull/3604>`_)
+- Ability to load mesh objects from weight_windows.h5 file (`#3598 <https://github.com/openmc-dev/openmc/pull/3598>`_)
+- Switch to using coveralls github action for reporting (`#3594 <https://github.com/openmc-dev/openmc/pull/3594>`_)
+- Add user setting for free gas threshold (`#3593 <https://github.com/openmc-dev/openmc/pull/3593>`_)
+- Speed up time correction factors (`#3592 <https://github.com/openmc-dev/openmc/pull/3592>`_)
+- Fix caching issue when using NCrystal materials (`#3538 <https://github.com/openmc-dev/openmc/pull/3538>`_)
+- Fix random ray source region mesh export when using model.export_to_xml() (`#3579 <https://github.com/openmc-dev/openmc/pull/3579>`_)
+- Ensure weight_windows_file information is read from XML (`#3587 <https://github.com/openmc-dev/openmc/pull/3587>`_)
+- Add missing documentation on <source> in depletion chain file format (`#3590 <https://github.com/openmc-dev/openmc/pull/3590>`_)
+- Adding tally filter type option to statepoint get_tally (`#3584 <https://github.com/openmc-dev/openmc/pull/3584>`_)
+- Optional separation of mesh-material-volume calc from get_homogenized_materials (`#3581 <https://github.com/openmc-dev/openmc/pull/3581>`_)
+- Fix IFP implementation (`#3580 <https://github.com/openmc-dev/openmc/pull/3580>`_)
+- Remove several TODOs related to C++17 support (`#3574 <https://github.com/openmc-dev/openmc/pull/3574>`_)
+- Fix performance regression in libMesh unstructured mesh tallies (`#3577 <https://github.com/openmc-dev/openmc/pull/3577>`_)
+- Update find_package calls in OpenMCConfig.cmake (`#3572 <https://github.com/openmc-dev/openmc/pull/3572>`_)
+- Ensure n_dimension_ attribute is set for unstructured meshes (`#3575 <https://github.com/openmc-dev/openmc/pull/3575>`_)
+- Allow newer Sphinx version and fix docbuild warnings (`#3571 <https://github.com/openmc-dev/openmc/pull/3571>`_)
+- Fixed a bug when combining TimeFilter, MeshFilter, and tracklength estimator (`#3525 <https://github.com/openmc-dev/openmc/pull/3525>`_)
+- PowerLaw raises an error if sampling interval contains negative values (`#3542 <https://github.com/openmc-dev/openmc/pull/3542>`_)
+- depletion: fix performance of chain matrix construction (`#3567 <https://github.com/openmc-dev/openmc/pull/3567>`_)
+- Do not apply boundary conditions when initialized in volume calculation mode (`#3562 <https://github.com/openmc-dev/openmc/pull/3562>`_)
+- Bump up tolerance for flaky activation test (`#3560 <https://github.com/openmc-dev/openmc/pull/3560>`_)
+- Fixed a bug in plotting cross sections with S(a,b) data (`#3558 <https://github.com/openmc-dev/openmc/pull/3558>`_)
+- Change test order to run unit tests first (`#3533 <https://github.com/openmc-dev/openmc/pull/3533>`_)
+- adding ecco 33 (`#3556 <https://github.com/openmc-dev/openmc/pull/3556>`_)
+- Refactor endf_data to be a fixture (`#3539 <https://github.com/openmc-dev/openmc/pull/3539>`_)
+- Revert "fix broken CI" (`#3554 <https://github.com/openmc-dev/openmc/pull/3554>`_)
+- fix broken CI (`#3551 <https://github.com/openmc-dev/openmc/pull/3551>`_)
+- Leverage particle.move_distance in event advance (`#3544 <https://github.com/openmc-dev/openmc/pull/3544>`_)
+- fix tests that accidentaly got broken (`#3543 <https://github.com/openmc-dev/openmc/pull/3543>`_)
+- not printing nuclides with 0 percent to terminal (option 2 ) (`#3448 <https://github.com/openmc-dev/openmc/pull/3448>`_)
+- Fix a bug in time cutoff behavior (`#3526 <https://github.com/openmc-dev/openmc/pull/3526>`_)
+- Avoid duplicate materials written to XML (`#3536 <https://github.com/openmc-dev/openmc/pull/3536>`_)
+- Use cached property for openmc.data.Decay.sources (`#3535 <https://github.com/openmc-dev/openmc/pull/3535>`_)
+- more helpful error message for dose_coefficients (`#3534 <https://github.com/openmc-dev/openmc/pull/3534>`_)
+- Adding 616 group structure (`#3531 <https://github.com/openmc-dev/openmc/pull/3531>`_)
+- Remove unused special accessors for tallies (`#3527 <https://github.com/openmc-dev/openmc/pull/3527>`_)
+- Consistent XML parsing using functions from _xml module (`#3517 <https://github.com/openmc-dev/openmc/pull/3517>`_)
+- Add stat:sum field to MCPL files for proper weight normalization (`#3522 <https://github.com/openmc-dev/openmc/pull/3522>`_)
+- Remove reorder_attributes from openmc._xml (`#3519 <https://github.com/openmc-dev/openmc/pull/3519>`_)
+- fixed a bug in MeshMaterialFilter.from_volumes (`#3520 <https://github.com/openmc-dev/openmc/pull/3520>`_)
+- Fixed a bug in distribcell offsets logic (`#3424 <https://github.com/openmc-dev/openmc/pull/3424>`_)
+- Add test for FW-CADIS based WW generation on a DAGMC model (`#3504 <https://github.com/openmc-dev/openmc/pull/3504>`_)
+- Fix for Weight Window Scaling Bug (`#3511 <https://github.com/openmc-dev/openmc/pull/3511>`_)
+- Fix: ``materials``, ``plots``, and ``tallies`` cannot be passed as lists (`#3513 <https://github.com/openmc-dev/openmc/pull/3513>`_)
+- Allow already-initialized openmc.lib in TemporarySession (`#3505 <https://github.com/openmc-dev/openmc/pull/3505>`_)
+- Update DAGMC and libMesh precompiler definitions (`#3510 <https://github.com/openmc-dev/openmc/pull/3510>`_)
+- Avoid adding ParentNuclideFilter twice when calling prepare_tallies (`#3506 <https://github.com/openmc-dev/openmc/pull/3506>`_)
+- Enabling MCPL source files to be read when using surf_source_read (`#3472 <https://github.com/openmc-dev/openmc/pull/3472>`_)
+- Boundary info accessors (`#3496 <https://github.com/openmc-dev/openmc/pull/3496>`_)
+- automatically finding appropriate dimension when making regular mesh from domain (`#3468 <https://github.com/openmc-dev/openmc/pull/3468>`_)
+- Add accessor methods for LocalCoord (`#3494 <https://github.com/openmc-dev/openmc/pull/3494>`_)
+- Make MCPL a Runtime Optional Dependency (`#3429 <https://github.com/openmc-dev/openmc/pull/3429>`_)
+- Use auto-chunking for StepResult HDF5 writing (`#3498 <https://github.com/openmc-dev/openmc/pull/3498>`_)
+- Provide a way to get ID maps from plot parameters on the Model class (`#3481 <https://github.com/openmc-dev/openmc/pull/3481>`_)
+- Update OSX install instructions to point to x64 platform (`#3501 <https://github.com/openmc-dev/openmc/pull/3501>`_)
+- Update conda install instructions for macOS Apple silicon (`#3488 <https://github.com/openmc-dev/openmc/pull/3488>`_)
+- Only show warning if in restart mode (`#3478 <https://github.com/openmc-dev/openmc/pull/3478>`_)
+- Add flag to CMakeLists to use submodules instead of searching (`#3480 <https://github.com/openmc-dev/openmc/pull/3480>`_)
+- Added citation metadata file (`#3409 <https://github.com/openmc-dev/openmc/pull/3409>`_)
+- fix zam parsing (`#3484 <https://github.com/openmc-dev/openmc/pull/3484>`_)
+- Support flux collapse method in ``get_microxs_and_flux`` (`#3466 <https://github.com/openmc-dev/openmc/pull/3466>`_)
+- Stabilize Adjoint Source (`#3476 <https://github.com/openmc-dev/openmc/pull/3476>`_)
+- Refactor and Harden Configuration Management (`#3461 <https://github.com/openmc-dev/openmc/pull/3461>`_)
+- Updated Docs to Not Give Specific Python Version Requirement (`#3473 <https://github.com/openmc-dev/openmc/pull/3473>`_)
+- Parallelization of Weight Window Update (`#3467 <https://github.com/openmc-dev/openmc/pull/3467>`_)
+- Limit Random Ray Weight Window Generation to Final Batch (`#3464 <https://github.com/openmc-dev/openmc/pull/3464>`_)
+- Fix Dockerfile DAGMC build (`#3463 <https://github.com/openmc-dev/openmc/pull/3463>`_)
+- Fix Weight Window Infinite Loop Bug (`#3457 <https://github.com/openmc-dev/openmc/pull/3457>`_)
+- Weight Window Birth Scaling (`#3459 <https://github.com/openmc-dev/openmc/pull/3459>`_)
+- Adding checks to geometry.plot to avoid material name overlaps (`#3458 <https://github.com/openmc-dev/openmc/pull/3458>`_)
+- Fixing crash when calling Geometry.plot when DAGMCUniverse in geometry (`#3455 <https://github.com/openmc-dev/openmc/pull/3455>`_)
+- fixing expansion of elemental Ta bug (`#3443 <https://github.com/openmc-dev/openmc/pull/3443>`_)
+- Prevent Adjoint Sources from Trending towards Infinity (`#3449 <https://github.com/openmc-dev/openmc/pull/3449>`_)
+- adding plot function to DAGMCUnvierse (`#3451 <https://github.com/openmc-dev/openmc/pull/3451>`_)
+- Allow specifying number of equiprobable angles for thermal scattering data generation (`#3346 <https://github.com/openmc-dev/openmc/pull/3346>`_)
+- Change Dockerfile from debian:bookworm-slim to ubuntu:24.04 (`#3442 <https://github.com/openmc-dev/openmc/pull/3442>`_)
+- Fix Resetting of Auto IDs When Generating MGXS (`#3437 <https://github.com/openmc-dev/openmc/pull/3437>`_)
+- Allowing chain_file to be chain object to save reloading time (`#3436 <https://github.com/openmc-dev/openmc/pull/3436>`_)
+- update units for flux (`#3441 <https://github.com/openmc-dev/openmc/pull/3441>`_)
+- Fix raytrace infinite loop (`#3423 <https://github.com/openmc-dev/openmc/pull/3423>`_)
+- Apply Max Number of Events Check to Random Rays (`#3438 <https://github.com/openmc-dev/openmc/pull/3438>`_)
+- Add user setting for source rejection fraction (`#3433 <https://github.com/openmc-dev/openmc/pull/3433>`_)
+- Adding fix and tests for spherical mesh as spatial distribution (`#3428 <https://github.com/openmc-dev/openmc/pull/3428>`_)
+- Random Ray Missed Cell Policy Change for Adjoint Mode (`#3434 <https://github.com/openmc-dev/openmc/pull/3434>`_)
+- Random Ray External Source Plotting Fix (`#3430 <https://github.com/openmc-dev/openmc/pull/3430>`_)
+- Avoid negative heating values during pair production and bremsstrahlung (`#3426 <https://github.com/openmc-dev/openmc/pull/3426>`_)
+- Fix no serialization of periodic_surface_id bug (`#3421 <https://github.com/openmc-dev/openmc/pull/3421>`_)
+- Update _get_start_data to always grab the beginning of timestep time (`#3414 <https://github.com/openmc-dev/openmc/pull/3414>`_)
+- Fixed a bug in charged particle energy deposition (`#3416 <https://github.com/openmc-dev/openmc/pull/3416>`_)
+- Fix bug where the same mesh is written multiple times to settings.xml (`#3418 <https://github.com/openmc-dev/openmc/pull/3418>`_)
+- small typo - spelling of Debian (`#3411 <https://github.com/openmc-dev/openmc/pull/3411>`_)
+- added test for dagmc geometry plot (`#3375 <https://github.com/openmc-dev/openmc/pull/3375>`_)
+- Random Ray Misc Memory Error Fixes (`#3405 <https://github.com/openmc-dev/openmc/pull/3405>`_)
+- added type hints to model file (`#3399 <https://github.com/openmc-dev/openmc/pull/3399>`_)
+- Apply resolve paths to path values in ``config`` (`#3400 <https://github.com/openmc-dev/openmc/pull/3400>`_)
+- Fixing an incorrect computation of CDF of bremsstrahlung photons (`#3396 <https://github.com/openmc-dev/openmc/pull/3396>`_)
+- Fix weight modification for uniform source sampling (`#3395 <https://github.com/openmc-dev/openmc/pull/3395>`_)
+- Updates to VTK data checks (`#3371 <https://github.com/openmc-dev/openmc/pull/3371>`_)
+- Map Compton subshell data to atomic relaxation data (`#3392 <https://github.com/openmc-dev/openmc/pull/3392>`_)
+- Skip atomic relaxation if binding energy is larger than photon energy (`#3391 <https://github.com/openmc-dev/openmc/pull/3391>`_)
+- Fix extremely large yields from Bremsstrahlung (`#3386 <https://github.com/openmc-dev/openmc/pull/3386>`_)
+- corrected tally name in D1S example (`#3383 <https://github.com/openmc-dev/openmc/pull/3383>`_)
+- Install MCPL using same build type as OpenMC in CI (`#3388 <https://github.com/openmc-dev/openmc/pull/3388>`_)
+- using reduce chain level to remove need for reduce chain (`#3377 <https://github.com/openmc-dev/openmc/pull/3377>`_)
+- Fix negative distances from bins_crossed for CylindricalMesh (`#3370 <https://github.com/openmc-dev/openmc/pull/3370>`_)
+- Add check for equal value bins in an EnergyFilter (`#3372 <https://github.com/openmc-dev/openmc/pull/3372>`_)
+- Fix for Issue Loading MGXS Data Files with LLVM 20 or Newer (`#3368 <https://github.com/openmc-dev/openmc/pull/3368>`_)
+- Report plot ID instead of index for unsupported plot types in random ray mode (`#3361 <https://github.com/openmc-dev/openmc/pull/3361>`_)
+- Handle Missing Tags in Versioning by Setting Default to 0 (`#3359 <https://github.com/openmc-dev/openmc/pull/3359>`_)
+- added kg units to doc string in results class (`#3358 <https://github.com/openmc-dev/openmc/pull/3358>`_)

@@ -1,0 +1,88 @@
+"""
+U233-MET-FAST-006: 5.740 kg 233U(98.1) in FLATTOP
+Translated from COG to OpenMC
+"""
+
+import openmc
+import numpy as np
+
+# ==============================================================================
+# Materials
+# ==============================================================================
+
+# U-233 per Table 2
+mat1 = openmc.Material(material_id=1, name="U-233 per Table 2")
+mat1.set_density("atom/b-cm", 1.204200e+02)
+mat1.add_nuclide("P", 18.42)
+mat1.add_nuclide("U233", 98.13)
+mat1.add_nuclide("U234", 1.24)
+mat1.add_nuclide("U235", 0.03)
+mat1.add_nuclide("U238", 0.60)
+mat1.add_nuclide("Table", 2)
+
+# Nat-U
+mat2 = openmc.Material(material_id=2, name="Nat-U")
+mat2.set_density("atom/b-cm", 1.190000e+02)
+mat2.add_nuclide("F", 19.00)
+mat2.add_nuclide("U234", 0.005)
+mat2.add_nuclide("U235", 0.72)
+mat2.add_nuclide("U238", 99.275)
+
+materials = openmc.Materials([mat1, mat2])
+materials.export_to_xml()
+
+# ==============================================================================
+# Geometry
+# ==============================================================================
+
+# Dimensions per
+surf1 = openmc.Sphere(surface_id=1, r=4.2058)
+
+# Section 3.2
+surf2 = openmc.Sphere(surface_id=2, r=24.1194)
+
+
+# Cell: U233
+cell0 = openmc.Cell(cell_id=0, fill=mat1, name="U233")
+cell0.region = -surf1
+
+# Cell: Tu
+cell1 = openmc.Cell(cell_id=1, fill=mat2, name="Tu")
+cell1.region = +surf1 & -surf2
+
+# Create root universe and geometry
+root_universe = openmc.Universe(cells=[cell0, cell1])
+geometry = openmc.Geometry(root_universe)
+geometry.export_to_xml()
+
+# ==============================================================================
+# Settings
+# ==============================================================================
+
+settings = openmc.Settings()
+settings.particles = 15000
+settings.batches = 4400
+settings.inactive = 100
+settings.run_mode = "eigenvalue"
+
+# Source definition
+source = openmc.IndependentSource()
+source.space = openmc.stats.Point((0.0, 0.0, 0.0))
+source.angle = openmc.stats.Isotropic()
+source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
+settings.source = source
+
+settings.export_to_xml()
+
+# ==============================================================================
+# Tallies
+# ==============================================================================
+
+tallies = openmc.Tallies()
+tallies.export_to_xml()
+
+# ==============================================================================
+# Run OpenMC
+# ==============================================================================
+
+openmc.run()

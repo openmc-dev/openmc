@@ -33,19 +33,19 @@ extern double keff_prompt;            //!< Mean k_prompt over active generations
 extern double keff_prompt_std;        //!< Standard deviation of k_prompt
 extern double beta_eff;               //!< Effective delayed neutron fraction
 extern double beta_eff_std;           //!< Standard deviation of beta_eff
-extern double alpha_k_based;          //!< Alpha eigenvalue (k-based method)
-extern double alpha_k_based_std;      //!< Standard deviation of alpha (k-based)
-extern double alpha_static;           //!< Alpha eigenvalue (COG Static method)
-extern double alpha_static_std;    //!< Standard deviation of alpha (COG Static)
-extern double prompt_gen_time;     //!< Prompt neutron generation time
-extern double prompt_gen_time_std; //!< Standard deviation of gen time
+extern double alpha_k_based;          //!< Alpha eigenvalue: α = (k_prompt - 1) / l_prompt
+extern double alpha_k_based_std;      //!< Standard deviation of alpha
+extern double alpha_static;           //!< Alpha eigenvalue (same as alpha_k_based)
+extern double alpha_static_std;    //!< Standard deviation of alpha
+extern double prompt_gen_time;     //!< Prompt neutron lifetime (l_prompt)
+extern double prompt_gen_time_std; //!< Standard deviation of lifetime
 extern int kinetics_tally_index;   //!< Index of internal kinetics tally
 
-// Alpha eigenvalue calculation (COG Static method) - iteration state
-extern double alpha_previous;          //!< Previous iteration's alpha value
-extern double pseudo_absorption_sigma; //!< Pseudo-absorption cross section
-extern int alpha_iteration;            //!< Current alpha iteration number
-extern bool alpha_converged;           //!< Alpha convergence flag
+// Unused alpha calculation state variables (kept for ABI compatibility)
+extern double alpha_previous;
+extern double pseudo_absorption_sigma;
+extern int alpha_iteration;
+extern bool alpha_converged;
 
 } // namespace simulation
 
@@ -77,12 +77,10 @@ void calculate_kinetics_parameters();
 //! Creates tallies with prompt chain scores needed for alpha calculations
 void setup_kinetics_tallies();
 
-//! Run alpha eigenvalue calculation (COG Static method)
+//! Run alpha eigenvalue calculation
 //!
-//! This function runs additional batches after normal eigenvalue calculation
-//! to determine alpha through iterative refinement with pseudo-absorption.
-//! The method seeks alpha such that K'(alpha) = 1.0, based on the alpha
-//! static method implemented in the COG Monte Carlo code.
+//! Alpha is now calculated during normal eigenvalue batches (no separate
+//! iterations needed). This function is kept for compatibility but does nothing.
 void run_alpha_iterations();
 
 //! Calculates a minimum variance estimate of k-effective

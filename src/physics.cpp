@@ -92,9 +92,8 @@ void collision(Particle& p)
 
 void sample_neutron_reaction(Particle& p)
 {
-  // Alpha eigenvalue: pseudo-absorption handling REMOVED
-  // Now using generation-based alpha estimation without modifying cross sections
-  // Cross sections remain physical (non-negative) for all subcriticality levels
+  // Alpha eigenvalue calculation uses generation k_eff measurements
+  // Cross sections are not modified during alpha calculations
 
   int i_nuclide = sample_nuclide(p);
 

@@ -41,10 +41,10 @@ extern double prompt_gen_time;     //!< Prompt neutron generation time
 extern double prompt_gen_time_std; //!< Standard deviation of gen time
 extern int kinetics_tally_index;   //!< Index of internal kinetics tally
 
-// Alpha eigenvalue calculation (population growth method) - state variables
-extern double alpha_previous;          //!< Previous generation's alpha value
+// Alpha eigenvalue calculation - state variables (mostly unused now)
+extern double alpha_previous;          //!< Unused (kept for compatibility)
 extern double pseudo_absorption_sigma; //!< Unused (kept for compatibility)
-extern int alpha_iteration;            //!< Current iteration number (>0 disables population control)
+extern int alpha_iteration;            //!< Unused (kept for compatibility)
 extern bool alpha_converged;           //!< Unused (kept for compatibility)
 
 } // namespace simulation
@@ -77,12 +77,10 @@ void calculate_kinetics_parameters();
 //! Creates tallies with prompt chain scores needed for alpha calculations
 void setup_kinetics_tallies();
 
-//! Run alpha eigenvalue calculation (population growth method)
+//! Run alpha eigenvalue calculation
 //!
-//! This function runs additional batches after normal eigenvalue calculation
-//! with population control DISABLED, measuring actual population growth/decay.
-//! Each generation measures k from the fission bank ratio N(t+Λ)/N(t), then
-//! calculates α = (k - 1) / Λ_prompt. Results are averaged for precision.
+//! Alpha is now calculated during normal eigenvalue batches (no separate
+//! iterations needed). This function is kept for compatibility but does nothing.
 void run_alpha_iterations();
 
 //! Calculates a minimum variance estimate of k-effective

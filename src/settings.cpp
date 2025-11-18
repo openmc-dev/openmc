@@ -11,6 +11,7 @@
 #endif
 
 #include "openmc/capi.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/distribution.h"
@@ -26,6 +27,7 @@
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/random_ray/random_ray.h"
+#include "openmc/reaction.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
@@ -45,6 +47,7 @@ namespace settings {
 // Default values for boolean flags
 bool assume_separate {false};
 bool check_overlaps {false};
+bool collision_track {false};
 bool cmfd_run {false};
 bool confidence_intervals {false};
 bool create_delayed_neutrons {true};
@@ -128,6 +131,7 @@ std::unordered_set<int> statepoint_batch;
 double source_rejection_fraction {0.05};
 double free_gas_threshold {400.0};
 std::unordered_set<int> source_write_surf_id;
+CollisionTrackConfig collision_track_config {};
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
@@ -925,8 +929,72 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  // If source is not separate and is to be written out in the statepoint file,
-  // make sure that the sourcepoint batch numbers are contained in the
+  // Check if the user has specified to write specific collisions
+  if (check_for_node(root, "collision_track")) {
+    settings::collision_track = true;
+    // Get collision track node
+    xml_node node_ct = root.child("collision_track");
+    collision_track_config = CollisionTrackConfig {};
+
+    // Determine cell ids at which crossing particles are to be banked
+    if (check_for_node(node_ct, "cell_ids")) {
+      auto temp = get_node_array<int>(node_ct, "cell_ids");
+      for (const auto& b : temp) {
+        collision_track_config.cell_ids.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "reactions")) {
+      auto temp = get_node_array<std::string>(node_ct, "reactions");
+      for (const auto& b : temp) {
+        int reaction_int = reaction_type(b);
+        if (reaction_int > 0) {
+          collision_track_config.mt_numbers.insert(reaction_int);
+        }
+      }
+    }
+    if (check_for_node(node_ct, "universe_ids")) {
+      auto temp = get_node_array<int>(node_ct, "universe_ids");
+      for (const auto& b : temp) {
+        collision_track_config.universe_ids.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "material_ids")) {
+      auto temp = get_node_array<int>(node_ct, "material_ids");
+      for (const auto& b : temp) {
+        collision_track_config.material_ids.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "nuclides")) {
+      auto temp = get_node_array<std::string>(node_ct, "nuclides");
+      for (const auto& b : temp) {
+        collision_track_config.nuclides.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "deposited_E_threshold")) {
+      collision_track_config.deposited_energy_threshold =
+        std::stod(get_node_value(node_ct, "deposited_E_threshold"));
+    }
+    // Get maximum number of particles to be banked per collision
+    if (check_for_node(node_ct, "max_collisions")) {
+      collision_track_config.max_collisions =
+        std::stoll(get_node_value(node_ct, "max_collisions"));
+    } else {
+      warning("A maximum number of collisions needs to be specified. "
+              "By default the code sets 'max_collisions' parameter equals to "
+              "1000.");
+    }
+    // Get maximum number of collision_track files to be created
+    if (check_for_node(node_ct, "max_collision_track_files")) {
+      collision_track_config.max_files =
+        std::stoll(get_node_value(node_ct, "max_collision_track_files"));
+    }
+    if (check_for_node(node_ct, "mcpl")) {
+      collision_track_config.mcpl_write = get_node_value_bool(node_ct, "mcpl");
+    }
+  }
+
+  // If source is not separate and is to be written out in the statepoint
+  // file, make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
   if (!source_separate) {
     for (const auto& b : sourcepoint_batch) {
@@ -1171,8 +1239,8 @@ void read_settings_xml(pugi::xml_node root)
       variance_reduction::weight_windows_generators.emplace_back(
         std::make_unique<WeightWindowsGenerator>(node_wwg));
     }
-    // if any of the weight windows are intended to be generated otf, make sure
-    // they're applied
+    // if any of the weight windows are intended to be generated otf, make
+    // sure they're applied
     for (const auto& wwg : variance_reduction::weight_windows_generators) {
       if (wwg->on_the_fly_) {
         settings::weight_windows_on = true;
@@ -1217,11 +1285,6 @@ extern "C" int openmc_set_n_batches(
 {
   if (settings::n_inactive >= n_batches) {
     set_errmsg("Number of active batches must be greater than zero.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  if (simulation::current_batch >= n_batches) {
-    set_errmsg("Number of batches must be greater than current batch.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 

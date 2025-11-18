@@ -145,6 +145,33 @@ void synchronize_bank()
 {
   simulation::time_bank.start();
 
+  // During alpha eigenvalue iterations, we skip population control to allow
+  // natural population growth/decay measurement
+  if (simulation::alpha_iteration > 0) {
+    // Simply copy all fission sites to source bank without normalization
+    int64_t n_fission = simulation::fission_bank.size();
+
+#ifdef OPENMC_MPI
+    // Get total fission sites across all ranks
+    int64_t n_fission_total = 0;
+    MPI_Allreduce(&n_fission, &n_fission_total, 1, MPI_INT64_T,
+      MPI_SUM, mpi::intracomm);
+#else
+    int64_t n_fission_total = n_fission;
+#endif
+
+    // For single-processor or when each rank handles its own sites,
+    // simply copy fission bank to source bank
+    simulation::source_bank.resize(n_fission);
+    std::copy(simulation::fission_bank.begin(), simulation::fission_bank.end(),
+              simulation::source_bank.begin());
+
+    simulation::time_bank.stop();
+    return;
+  }
+
+  // Normal operation: population control enabled
+
   // In order to properly understand the fission bank algorithm, you need to
   // think of the fission and source bank as being one global array divided
   // over multiple processors. At the start, each processor has a random amount
@@ -630,18 +657,19 @@ void calculate_kinetics_parameters()
       }
 
       // ========================================================================
-      // ALPHA EIGENVALUE CALCULATION (GENERATION-BASED METHOD)
+      // ALPHA EIGENVALUE CALCULATION (POPULATION GROWTH METHOD)
       // ========================================================================
       //
       // This method is implemented in run_alpha_iterations() which is called
-      // after normal eigenvalue batches complete. It runs additional generations
-      // and calculates alpha from the measured k_eff using: α = (k_eff - 1) / Λ_prompt
+      // after normal eigenvalue batches complete. It disables population control
+      // and measures actual population growth: α = (k - 1) / Λ_prompt
       //
       // The method:
-      //   1. Runs eigenvalue generations with UNMODIFIED cross sections
-      //   2. Measures k_eff for each generation
-      //   3. Calculates α = (k_eff - 1) / Λ_prompt for each generation
-      //   4. Averages alpha over all generations for statistical precision
+      //   1. Disables population normalization (synchronize_bank skips sampling)
+      //   2. Runs generations with UNMODIFIED cross sections
+      //   3. Tracks fission bank population: k = N(t+Λ) / N(t)
+      //   4. Calculates α = (k - 1) / Λ_prompt for each generation
+      //   5. Averages alpha over all generations for statistical precision
       //
       // Initialize to NaN; will be set by run_alpha_iterations() if enabled
       simulation::alpha_static = std::numeric_limits<double>::quiet_NaN();
@@ -1020,27 +1048,29 @@ void run_alpha_iterations()
   using namespace openmc;
 
   // ============================================================================
-  // ALPHA EIGENVALUE CALCULATION (GENERATION-BASED METHOD)
+  // ALPHA EIGENVALUE CALCULATION (POPULATION GROWTH METHOD)
   // ============================================================================
   //
-  // This implements alpha eigenvalue calculation using the generation k_eff
-  // to determine alpha through the relationship: α = (k_eff - 1) / Λ_prompt
+  // This implements alpha eigenvalue calculation by measuring actual population
+  // growth/decay WITHOUT population control (normalization).
   //
   // Method:
-  //   1. Run eigenvalue batches with UNMODIFIED cross sections
-  //   2. Measure k_eff for each generation
-  //   3. Calculate α = (k_eff - 1) / Λ_prompt
-  //   4. Average over multiple generations for statistics
+  //   1. Disable population normalization in synchronize_bank()
+  //   2. Run eigenvalue batches with UNMODIFIED cross sections
+  //   3. Track fission bank population generation-to-generation
+  //   4. Calculate k = N_fission(t+Λ) / N_fission(t)
+  //   5. Calculate α = (k - 1) / Λ_prompt
+  //   6. Average over multiple generations for statistics
   //
   // Key advantages:
+  //   - Direct measurement of population growth/decay
   //   - Cross sections remain physical (non-negative)
-  //   - Uses standard k_eff measurement from eigenvalue calculation
+  //   - No artificial population control
   //   - Stable for all subcriticality levels
-  //   - Direct calculation, no iteration needed
   //
   // Physical basis:
-  //   The population growth rate α and multiplication factor k are related
-  //   through the prompt neutron generation time Λ: α = (k - 1) / Λ
+  //   Without normalization, the population evolves as N(t+Λ) = k·N(t)
+  //   The growth rate α relates to k through: α = (k - 1) / Λ
   // ============================================================================
 
   // Only run if calculate_alpha is enabled and we're in eigenvalue mode
@@ -1071,36 +1101,66 @@ void run_alpha_iterations()
 
   if (mpi::master) {
     header("ALPHA EIGENVALUE SIMULATION", 3);
-    fmt::print(" Iteration     Alpha         k_eff\n");
-    fmt::print(" =========  ============  =========\n");
+    fmt::print(" Iteration     Alpha         k_mult    Population\n");
+    fmt::print(" =========  ============  =========  ===========\n");
   }
 
   vector<double> alpha_values;
-  vector<double> k_eff_values;
+  vector<double> k_mult_values;
+
+  // Track fission bank size from previous generation
+  int64_t n_fission_prev = 0;
 
   for (simulation::alpha_iteration = 1;
        simulation::alpha_iteration <= settings::max_alpha_iterations;
        ++simulation::alpha_iteration) {
 
-    // Run one generation with unmodified cross sections
+    // Run one generation WITHOUT population control
+    // (synchronize_bank will skip normalization when alpha_iteration > 0)
     int status = 0;
     openmc_next_batch(&status);
 
-    // Get current generation k_eff
-    double k_eff_gen = simulation::k_generation.back();
+    // Get total fission bank size across all MPI ranks
+    int64_t n_fission_local = simulation::fission_bank.size();
+    int64_t n_fission_total = n_fission_local;
 
-    // Calculate alpha directly from k_eff using the relationship:
-    // α = (k_eff - 1) / Λ_prompt
-    double alpha_gen = (k_eff_gen - 1.0) / simulation::prompt_gen_time;
+#ifdef OPENMC_MPI
+    MPI_Allreduce(&n_fission_local, &n_fission_total, 1, MPI_INT64_T,
+      MPI_SUM, mpi::intracomm);
+#endif
 
-    alpha_values.push_back(alpha_gen);
-    k_eff_values.push_back(k_eff_gen);
+    // Calculate multiplication factor from population growth
+    double k_mult = 0.0;
+    double alpha_gen = 0.0;
+
+    if (simulation::alpha_iteration > 1 && n_fission_prev > 0) {
+      // k = N(t+Λ) / N(t)
+      k_mult = static_cast<double>(n_fission_total) /
+               static_cast<double>(n_fission_prev);
+
+      // α = (k - 1) / Λ_prompt
+      alpha_gen = (k_mult - 1.0) / simulation::prompt_gen_time;
+
+      alpha_values.push_back(alpha_gen);
+      k_mult_values.push_back(k_mult);
+    } else {
+      // First iteration: no previous population to compare
+      k_mult = 1.0;
+    }
 
     // Print iteration
     if (mpi::master) {
-      fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}\n",
-        simulation::alpha_iteration, alpha_gen, k_eff_gen);
+      if (simulation::alpha_iteration == 1) {
+        fmt::print(" {:>9d}  {: >12s}  {:>9s}  {:>11d}\n",
+          simulation::alpha_iteration, "---", "---", n_fission_total);
+      } else {
+        fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>11d}\n",
+          simulation::alpha_iteration, alpha_gen, k_mult, n_fission_total);
+      }
     }
+
+    // Store current fission bank size for next iteration
+    n_fission_prev = n_fission_total;
 
     // ========================================================================
     // CONVERGENCE DETECTION

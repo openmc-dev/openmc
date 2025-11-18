@@ -574,10 +574,10 @@ void print_results()
 
         if (!std::isnan(simulation::alpha_static)) {
           if (!std::isnan(simulation::alpha_static_std)) {
-            fmt::print(" Alpha (COG Static)          = {:.5e} +/- {:.5e} 1/seconds\n",
+            fmt::print(" Alpha (Generation-Based)    = {:.5e} +/- {:.5e} 1/seconds\n",
               simulation::alpha_static, t_n1 * simulation::alpha_static_std);
           } else {
-            fmt::print(" Alpha (COG Static)          = {:.5e} 1/seconds\n",
+            fmt::print(" Alpha (Generation-Based)    = {:.5e} 1/seconds\n",
               simulation::alpha_static);
           }
         }
@@ -613,7 +613,7 @@ void print_results()
           " Alpha (k-based)            = {:.5e} 1/seconds\n", simulation::alpha_k_based);
         if (!std::isnan(simulation::alpha_static)) {
           fmt::print(
-            " Alpha (COG Static)         = {:.5e} 1/seconds\n", simulation::alpha_static);
+            " Alpha (Generation-Based)   = {:.5e} 1/seconds\n", simulation::alpha_static);
         }
       }
     }

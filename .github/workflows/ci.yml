@@ -41,6 +41,13 @@ jobs:
             omp: n
             mpi: n
           - dagmc: y
+          - python-version: "3.13t"
+            omp: n
+            mpi: n
+          - python-version: "3.14t"
+            omp: n
+            mpi: n
+          - dagmc: y
             python-version: "3.12"
             mpi: y
             omp: y

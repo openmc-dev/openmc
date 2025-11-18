@@ -1,0 +1,69 @@
+MIX-COMP-THERM-004-7: 20x20 MOX pins with 2.225 cm pitch; Hc=60.32
+basic
+  neutron  CENTIMETERS URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1. nsource=4
+  -1.1 -1.1 30.16  -1.1  1.1 30.16
+   1.1 -1.1 30.16   1.1  1.1 30.16
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0     
+  mat=1  bunches   pu238 2.0003-6 pu239 2.7491-4 pu240 8.8417-5 pu241 2.8133-5 pu242 8.1234-6 am241 1.1498-6 $ MOX
+                    u234 7.1749-7  u235 9.3926-5  u238 1.2951-2   o16 2.7837-2   b10 6.0418-8   b11 2.4319-7 $  fuel
+  mat=2  bunches      zr 3.7772-2    sn 4.3737-4    fe 8.8570-5    cr 6.6119-5    ni 3.5864-5                $ Cladding (with air gap)
+  mat=3  bunches (h.h2o) 6.6735-2   o16 3.3368-2                                                             $ Water
+  mat=4  bunches      al 6.0224-2                                                                            $ Aluminum
+  mat=5  bunches       c 1.1928-4    si 1.7003-3    mn 1.7385-3     p 6.9381-5     s 4.4673-5    ni 8.9506-3 $ SS304L
+                      cr 1.7450-2    fe 5.7202-2                                                             $
+  mat=6  bunches (h.h2o) 1.3742-2   o16 4.5919-2     c 1.1532-4    na 9.6395-4    mg 1.2388-4    al 1.7409-3 $ Ordinary
+                      si 1.6617-2     k 4.6052-4    ca 1.5025-3    fe 3.4492-4                               $  concrete
+assign-mc
+  1 red 2 gray 3 sky 4 yellow 5 black 6 lime
+geometry
+  use unit 4 lttc   -5 -6
+  use unit 2 stuff   5 -6
+  boundary vacuum    6
+define unit 1 $ Mox fuel pin
+  sector 1 Mox      -1       -4
+  sector 4 Al        1 -2    -4
+  sector 2 Clad      1  2  3 -4
+define unit 2 $ Everything else
+  sector 4 Al       -6  10     $ Al middle grid
+  sector 3 H2O      -6 -11  12 $ Water
+  sector 4 Al       -6 -12  13 $ Al lower grid
+  sector 3 H2O      -6 -13  14 $ Water
+  sector 4 Al       -6 -14  15 $ Al support plate
+  sector 5 SS304L   -6 -15  16 $ SS304L support plate
+  sector 3 H2O      -6 -16  17 $ Water
+  sector 5 SS304L   -6 -17  18 $ SS304L liner
+  sector 6 Conc     -6 -18     $ Concrete
+define unit 3 $ Unit cell with a fuel rod
+  use unit 1 Frod   -4 -6
+  use unit 2 Alles   4 -6
+define unit 4 $ 20x20 lattice
+  {x  101 21 [-22.25  22.25]
+   y  141 21 [-22.25  22.25]
+   z  191    -999.0  999.0
+   fill 400*3} 
+picture cs material color -55 1.1 85 -55 1.1 -75  55 1.1 -75 title="axial view"
+picture cs material color -55 55 -12 -55 -55 -12  55 -55 -12 title="plane view in lower grid plate"
+picture cs material color -55 55   6 -55 -55   6  55 -55   6 title="plane view in water"
+surfaces
+$ --- Mox fuel rod
+  1 c z   0.5325   0.0    70.60 $ Fuel
+  2 c z   0.5325 -16.83    0.0  $ Aluminum
+  3 c z   0.5325  70.60   81.17 $ Void
+  4 c z   0.6115 -16.83   81.17 $ Cladding
+$ --- Lattice and problem boundaries
+  5 box  44.5     44.5   999.99 $ Lattice plane boundaries
+  6 box 104.5    104.5   152.77 tr 0 0 4.785 $ BCD
+$ --- Water and support structures w/o holes
+ 10 p z  80.57  $ Middle grid, bottom
+ 11 p z  60.32  $ Water height
+ 12 p z -11.785 $ Al lower grid, top
+ 13 p z -12.385 $ Al lower grid, bottom
+ 14 p z -16.83  $ Al support plate, top
+ 15 p z -18.10  $ Al support plate, bottom; SS304L, top
+ 16 p z -20.30  $ SS304L support plate, bottom
+ 17 p z -34.10  $ SS304L liner, top
+ 18 p z -34.60  $ SS304L liner, bottom
+end

@@ -1,0 +1,375 @@
+HMF072-3: ZEUS Config. No. 3 (Rev. 1)
+basic
+  neutron delayedn CM URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1. nsource=44
+  -6 0 47.83  6 0 47.83  0 -6 47.83  0  6 47.83
+  -6 0 50.60  6 0 50.60  0 -6 50.60  0  6 50.60
+  -6 0 53.37  6 0 53.37  0 -6 53.37  0  6 53.37
+  -6 0 56.15  6 0 56.15  0 -6 56.15  0  6 56.15
+  -6 0 58.92  6 0 58.92  0 -6 58.92  0  6 58.92
+  -6 0 61.96  6 0 61.96  0 -6 61.96  0  6 61.96
+  -6 0 64.77  6 0 64.77  0 -6 64.77  0  6 64.77
+  -6 0 67.55  6 0 67.55  0 -6 67.55  0  6 67.55
+  -6 0 70.03  6 0 70.03  0 -6 70.03  0  6 70.03
+  -6 0 73.18  6 0 73.18  0 -6 73.18  0  6 73.18
+  -6 0 75.98  6 0 75.98  0 -6 75.98  0  6 75.98
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+$
+$    Material cards
+$    - fuel number density data per Tables 39, 40, 41 & 42
+$      - most elemental data already converted to isotopic.
+$    - unique data given for each HEU plate
+$      - 8 "upper" plates & 8 "lower" plates in cases 1 & 2
+$      - 6 "upper" plates & 5 "lower" plates in case 3
+$
+$     m1  = HEU U1;              m21,22 = Carbon steel U1u, U1l
+$     m2  = HEU U2;              m23,24 = Carbon steel U2u, U2l
+$     m3  = HEU U3;              m25,26 = Carbon steel U3u, U3l
+$     m4  = HEU U4;              m27,28 = Carbon steel U4u, U4l
+$     m5  = HEU U5;              m29,30 = Carbon steel U5u, U5l
+$     m6  = HEU U6;              m31,32 = Carbon steel U6u, U6l
+$     m7  = HEU U7 (not case 3); m33,34 = Carbon steel U7u, U7l (not case 3)
+$     m8  = HEU U8 (not case 3); m35,36 = Carbon steel U8u, U8l (not case 3)
+$     m11 = HEU L1;              m41,42 = Carbon steel L1u, L1l
+$     m12 = HEU L2;              m43,44 = Carbon steel L2u, L2l
+$     m13 = HEU L3;              m45,46 = Carbon steel L3u, L3l
+$     m14 = HEU L4;              m47,48 = Carbon steel L4u, L4l
+$     m15 = HEU L5;              m49,50 = Carbon steel L5u, L5l
+$     m16 = HEU L6 (not case 3); m51,52 = Carbon steel L6u, L6l (not case 3)
+$     m17 = HEU L7 (not case 3); m53,54 = Carbon steel L7u, L7l (not case 3)
+$     m18 = HEU L8 (not case 3); m55,56 = Carbon steel L8u, L8l (not case 3)
+$
+$     m60 = CH2 (high density polyethylene; case 3 only)
+$     m61 = Cu
+$     m62 = Al6061 alignment tube, platen & platen adapter plate
+$     m63 = Aluminum shim plate & spacer
+$     m64 = Steel diaphragm
+$
+$
+$    For m1: U1 (case 3) (4.84653600e-2)
+ mat=1  bunches 92234 4.9981-4  92235 4.5185-2  92236 1.5985-4  92238 2.6207-3 $ HEU: U1
+$
+$   For m2: U2 (case 2) (4.80885200E-02)
+ mat=2  bunches 92234 4.9590-4  92235 4.4836-2  92236 1.5892-4  92238 2.5977-3 $ HEU: U2 (case 2)
+$
+$   For m3: U3 (case 3) (4.83675400E-02)
+ mat=3  bunches 92234 4.9879-4  92235 4.5126-2  92236 1.5955-4  92238 2.5832-3 $ HEU: U3
+$
+$    For m4: U4 (case 3) (4.83393200E-02)
+ mat=4  bunches 92234 4.9848-4  92235 4.5070-2  92236 1.5974-4  92238 2.6111-3 $ HEU: U4
+$
+$    For m5: U5 (case 3) (4.77288600E-02)
+ mat=5  bunches 92234 4.8986-4  92235 4.4520-2  92236 1.5760-4  92238 2.5614-3 $ HEU: U5
+$
+$   For m6: U6 (case 3) (4.83401500E-02)
+ mat=6  bunches 92234 4.9854-4  92235 4.5065-2  92236 1.5941-4  92238 2.6172-3 $ HEU: U5
+$
+$   For m11: L1 (case 3) (4.81785000E-02)
+ mat=11 bunches 92234 4.8719-4  92235 4.4909-2  92236 1.8421-4  92238 2.5981-3 $ HEU: L1
+$
+$   For m12: L2 (case 3) (4.79377300E-02)
+ mat=12 bunches 92234 4.9431-4  92235 4.4751-2  92236 1.5872-4  92238 2.5337-3 $ HEU: L2
+$
+$   For m13: L3 (case 3) (4.83624000E-02)
+ mat=13 bunches 92234 4.9630-4  92235 4.5145-2  92236 1.6020-4  92238 2.5609-3 $ HEU
+$
+$   For m14: L4 (case 3) (4.78512900E-02)
+ mat=14 bunches 92234 4.8628-4  92235 4.4670-2  92236 1.5871-4  92238 2.5363-3 $ HEU
+$
+$    For m15: L5 (case 3) (4.87506400E-02)
+ mat=15 bunches 92234 5.0511-4  92235 4.5481-2  92236 1.6143-4  92238 2.6031-3 $ HEU
+$
+$   For m21: U1u (case 3) (8.28044000E-02)
+ mat=21 bunches 26054 4.8441-3  26056 7.5973-2  26057 1.7555-3  26058 2.3180-4 $ Fe
+$
+$   For m22: U1l (case 3) (8.35127800E-02)
+ mat=22 bunches 26054 4.8855-3  26056 7.6623-2  26057 1.7705-3  26058 2.3378-4 $ Fe
+$
+$   For m23: U2u (case 3) (8.33165300E-02)
+ mat=23 bunches 26054 4.8740-3  26056 7.6443-2  26057 1.7663-3  26058 2.3323-4 $ Fe
+$
+$   For m24: U2l (case 3) (8.35530900E-02)
+ mat=24 bunches 26054 4.8879-3  26056 7.6660-2  26057 1.7713-3  26058 2.3389-4 $ Fe
+$
+$   For m25: U3u (case 3) (8.33830200E-02)
+ mat=25 bunches 26054 4.8779-3  26056 7.6504-2  26057 1.7677-3  26058 2.3342-4 $ Fe
+$
+$   For m26: U3l (case 3) (8.36664100E-02)
+ mat=26 bunches 26054 4.8945-3  26056 7.6764-2  26057 1.7737-3  26058 2.3421-4 $ Fe
+$
+$   For m27: U4u (case 3) (8.11813500E-02)
+ mat=27 bunches 26054 4.7491-3  26056 7.4484-2  26057 1.7210-3  26058 2.2725-4 $ Fe
+$
+$   For m28: U4l (case 3) (8.35411600E-02)
+ mat=28 bunches 26054 4.8872-3  26056 7.6649-2  26057 1.7711-3  26058 2.3386-4 $ Fe
+$
+$   For m29: U5u (case 3) (8.24435900E-02)
+ mat=29 bunches 26054 4.8230-3  26056 7.5642-2  26057 1.7478-3  26058 2.3079-4 $ Fe
+$
+$   For m30: U5l (case 3) (8.25514900E-02)
+ mat=30 bunches 26054 4.8293-3  26056 7.5741-2  26057 1.7501-3  26058 2.3109-4 $ Fe
+$
+$   For m31: U6u (case 3) (8.36228900E-02)
+ mat=31 bunches 26054 4.8920-3  26056 7.6724-2  26057 1.7728-3  26058 2.3409-4 $ Fe
+$
+$   For m32: U6l (case 3) (8.36947900E-02)
+ mat=32 bunches 26054 4.8962-3  26056 7.6790-2  26057 1.7743-3  26058 2.3429-4 $ Fe
+$
+$   For m41: L1u (case 3) (8.36010300E-02)
+ mat=41 bunches 26054 4.8907-3  26056 7.6704-2  26057 1.7723-3  26058 2.3403-4 $ Fe
+$
+$   For m42: L1l (case 3) (8.28674700E-02)
+ mat=42 bunches 26054 4.8477-3  26056 7.6031-2  26057 1.7568-3  26058 2.3197-4 $ Fe
+$
+$   For m43: L2u (case 3) (8.35204000E-02)
+ mat=43 bunches 26054 4.8860-3  26056 7.6630-2  26057 1.7706-3  26058 2.3380-4 $ Fe
+$
+$   For m44: L2l (case 3) (8.36980000E-02)
+ mat=44 bunches 26054 4.8963-3  26056 7.6793-2  26057 1.7744-3  26058 2.3430-4 $ Fe
+$
+$   For m45: L3u (case 3) (8.34419800E-02)
+ mat=45 bunches 26054 4.8814-3  26056 7.6558-2  26057 1.7690-3  26058 2.3358-4 $ Fe
+$
+$   For m46: L3l (case 3) (8.37035100E-02)
+ mat=46 bunches 26054 4.8967-3  26056 7.6798-2  26057 1.7745-3  26058 2.3431-4 $ Fe
+$
+$   For m47: L4u (case 3) (8.36828600E-02)
+ mat=47 bunches 26054 4.8955-3  26056 7.6779-2  26057 1.7741-3  26058 2.3426-4 $ Fe
+$
+$   For m48: L4l (case 3) (8.35225100E-02)
+ mat=48 bunches 26054 4.8860-3  26056 7.6632-2  26057 1.7707-3  26058 2.3381-4 $ Fe
+$
+$   For m49: L5u (case 3) (8.37601700E-02)
+ mat=49 bunches 26054 4.9000-3  26056 7.6850-2  26057 1.7757-3  26058 2.3447-4 $ Fe
+$
+$   For m50: L5l (case 3) (8.36980000E-02)
+ mat=50 bunches 26054 4.8963-3  26056 7.6793-2  26057 1.7744-3  26058 2.3430-4 $ Fe
+$
+$   For m60: CH2 (case 3) (1.21070600E-01)
+ mat=60 bunches (h.ch2) 8.07137-2   c 4.03569-2                                $ CH2
+$
+$   For m61: Cu (all cases) (8.27860000E-2)
+$    - natCu may be converted to isoCu (8.2786e-2)
+ mat=61 bunches 29063 5.72631-2 29065 2.55229-2                                $ Cu
+$
+$    For m62: Al6061 alloy (all cases) (5.91444544e-2)
+$     - alignment tube, platen
+$     - my calcs, based upon Table 54 elemental data
+$     - natMg may be converted to isoMg (6.6049e-4)
+$     - natSi may be converted to isoSi (3.4295e-4)
+$     - natTi may be converted to isoTi (2.5146e-5)
+$     - natCr may be converted to isoCr (7.7185e-5)
+$     - natFe may be converted to isoFe (1.0061e-4)
+$     - natCu may be converted to isoCu (6.9471e-5)
+$     - natZn may be converted to isoZn (3.0687e-5)
+ mat=62 bunches 13027 5.7816-2                                  $ Al
+                12024 5.21721-4 12025 6.60490-5 12026 7.27199-5 $ isoMg
+                14028 3.16302-4 14029 1.60610-5 14030 1.05876-5 $ isoSi
+                22046 2.07455-6 22047 1.87086-6 22048 1.85376-5
+                22049 1.36040-6 22050 1.30256-6                 $ isoTi
+                24050 3.35369-6 24052 6.46725-5 24053 7.33335-6
+                24054 1.82543-6                                 $ isoCr
+                25055 2.1915-5                                  $ Mn
+                26054 5.88065-6 26056 9.23137-5 26057 2.13193-6
+                26058 2.83720-7                                 $ isoFe
+                29063 4.80531-5 29065 2.14179-5                 $ isoCu
+$               30000 3.0687-5                                  $ natZn
+                30064 1.49231-5 30066 8.56167-6 30067 1.25817-6
+                30068 5.75381-6 30070 1.90259-7                 $ isoZn
+$
+$    For m63: Al shim plate & spacer (all cases) (5.98562508e-2)
+$     - Si, Ti and V isotopics by me; others per Table 56
+$     - natSi may be converted to isoSi (8.6564e-5)
+$     - natTi may be converted to isoTi (3.3851e-6)
+$     - natV  may be converted to isoV  (3.1817e-6)
+$     - natGa may be converted to isoGa (2.3246e-6)
+ mat=63 bunches 13027 5.9578-2                                  $ Al
+                14028 7.98377-5 14029 4.05397-6 14030 2.67240-6 $ isoSi
+                22046 2.79271-7 22047 2.51851-7 22048 2.49550-6 $
+                22049 1.83134-7 22050 1.75348-7                 $ isoTi
+                23050 7.95425-9 23051 3.17375-6                 $ isoV
+                26054 9.3381-6  26056 1.4646-4  26057 3.3841-6
+                26058 4.4685-7                                  $ isoFe
+                28058 1.8801-6  28060 7.2409-7  28061 3.1482-8  $
+                28062 1.0025-7  28064 2.5683-8                  $ isoNi
+                29063 1.4114-5  29065 6.2907-6                  $ isoCu
+                31069 1.39727-6 31071 9.27329-7                 $ isoGa
+$
+$    For m64: (SS304, 8.52710720e-2)
+$     - Si, S and Mo isotopics by me; others per Table 57
+$     - natSi may be converted to isoSi (1.0158e-3)
+$     - natS  may be converted to isoS  (5.8333e-6)
+$     - natMo may be converted to isoMo (1.3649e-4)
+ mat=64 bunches  6000 2.0637-4                                  $ C
+                 7014 1.6966-4   7015 6.3007-7                  $ isoN
+                14028 9.36869-4 14029 4.75719-5 14030 3.13598-5 $ isoSi
+                15031 4.2278-5                                  $ P
+                16032 5.53755-6 16033 4.43331-8 16034 2.50249-7 $
+                16036 1.16666-9                                 $ isoS
+                24050 7.1523-4  24052 1.3777-2  24053 1.5620-3  $
+                24054 3.8803-4                                  $ isoCr
+                25055 1.4557-3                                  $ Mn
+                26054 3.4624-3  26056 5.4304-2  26057 1.2548-3  $
+                26058 1.6568-4                                  $ isoFe
+                28058 4.3943-3  28060 1.6924-3  28061 7.3583-5  $
+                28062 2.3430-4  28064 6.0028-5                  $ isoNi
+                29063 1.0691-4  29065 4.7649-5                  $ isoCu
+                42092 2.02551-5 42094 1.26253-5 42095 2.17292-5 $
+                42096 2.27665-5 42097 1.30348-5 42098 3.29350-5 $
+                42100 1.31440-5                                 $ isoMo
+assign-mc
+   1 black  2 black  3 black  4 black  5 black  6 black  7 black  8 black                  $ HEU
+  11 black 12 black 13 black 14 black 15 black 16 black 17 black 18 black                  $ HEU
+  21 lime  22 lime  23 lime  24 lime  25 lime  26 lime  27 lime  28 lime  29 lime  30 lime $ Carbon steel
+  31 lime  32 lime  33 lime  34 lime  35 lime  36 lime                                     $ Carbon steel
+  41 lime  42 lime  43 lime  44 lime  45 lime  46 lime  47 lime  48 lime  49 lime  50 lime $ Carbon steel
+  51 lime  52 lime  53 lime  54 lime  55 lime  56 lime                                     $ Carbon steel
+  60 sky                                                                                   $ HDPE
+  61 orange                                                                                $ Copper
+  62 gray  63 gray                                                                         $ Aluminum
+  64 red                                                                                   $ Steel                    
+geometry
+
+$ - heu axial region (top to bottom):
+  sector  6 MAT6   -95 +94  -7                       $ HEU, u6
+  sector  5 MAT5   -91 +90  -7                       $ HEU, u5
+  sector  4 MAT4   -87 +86  -7                       $ HEU, u4
+  sector  3 MAT3   -83 +82  -7                       $ HEU, u5
+  sector  2 MAT2   -79 +78  -7                       $ HEU, u6
+  sector  1 MAT1   -75 +74  -7                       $ HEU, u7
+  sector 15 MAT15  -70 +69  -7 +3                    $ HEU, l5
+  sector 14 MAT14  -66 +65  -7 +3                    $ HEU, l4
+  sector 13 MAT13  -62 +61  -7 +3                    $ HEU, l3
+  sector 12 MAT12  -58 +57  -7 +3                    $ HEU, l2
+  sector 11 MAT11  -54 +53  -7 +5                    $ HEU, l1
+  sector 63 MAT63  -54 +53  -5 +3                    $ Al spacer
+
+$ - carbon steel (interstitual moderator, top to bottom)
+  sector 31 MAT31  -96 +95  -7                       $ u6-u
+  sector 32 MAT32  -94 +93  -7                       $ u6-l
+  sector 29 MAT29  -92 +91  -7                       $ u5-u
+  sector 30 MAT30  -90 +89  -7                       $ u5-l
+  sector 27 MAT27  -88 +87  -7                       $ u4-u
+  sector 28 MAT28  -86 +85  -7                       $ u4-l
+  sector 25 MAT25  -84 +83  -7                       $ u3-u
+  sector 26 MAT26  -82 +81  -7                       $ u3-l
+  sector 23 MAT23  -80 +79  -7                       $ u2-u
+  sector 24 MAT24  -78 +77  -7                       $ u2-l
+  sector 21 MAT21  -76 +75  -7                       $ u1-u
+  sector 22 MAT22  -74 +73  -7                       $ u1-l
+$
+  sector 49 MAT49  -71 +70  -7 +3                    $ l5-u
+  sector 50 MAT50  -69 +68  -7 +3                    $ l5-l
+  sector 47 MAT47  -67 +66  -7 +3                    $ l4-u
+  sector 48 MAT48  -65 +64  -7 +3                    $ l4-l
+  sector 45 MAT45  -63 +62  -7 +3                    $ l3-u
+  sector 46 MAT46  -61 +60  -7 +3                    $ l3-l
+  sector 43 MAT43  -59 +58  -7 +3                    $ l2-u
+  sector 44 MAT44  -57 +56  -7 +3                    $ l2-l
+  sector 41 MAT41  -55 +54  -7 +3                    $ l1-u
+  sector 42 MAT42  -53 +52  -7 +3                    $ l1-l
+$ - polyethylene (interstitiual moderator, top to bottom)
+  sector 60 POLY   -97 +96 -7    OR -93 +97 -7    OR
+                   -89 +88 -7    OR -85 +84 -7    OR
+                   -81 +80 -7    OR -77 +76 -7    OR
+                   -73 +72 -7    OR
+                   -68 +67 -7 +3 OR -64 +63 -7 +3 OR
+                   -60 +59 -7 +3 OR -56 +55 -7 +3 OR
+                   -52 +51 -7 +3
+$ - various axial regions, not fuel:
+   sector 61 MAT61  11 -12  16 -19  21 -22 OR 12 -13  16 -17  21 -22 OR  $ Side Cu reflector 
+                    12 -13  18 -19  21 -22 OR 13 -14  16 -19  21 -22     $  ditto
+   sector 61 MAT61  12 -13  17 -18  21 -23 +8                            $ Lower Cu corner reflector
+   sector 61 MAT61  12 -13  17 -18  24 -25 +8                            $ Upper Cu corner reflector
+   sector 61 MAT61  +12 -13  +17 -18   -30 +25         $ upper axial Cu reflector
+   sector 64 MAT64  +12 -13  +17 -18   -24 +23         $ diaphragm
+   sector 62 MAT62                     -23 +20  -2 +1  $ alignment tube
+   sector 61 MAT61                     -28 +27  -7 +3  $ lower axial Cu
+   sector 62 MAT62                     -27 +26  -7 +4  $ platen/adapter plate
+
+picture cs material color res=1500 -50  0 110  -50   0 -10  50   0 -10  title="x/z axial view"
+picture cs material color res=1500  -5  0  65   -5   0  55   5   0  55  title="x/z axial detail"
+picture cs material color res=1500 -50 50  56  -50 -50  56  50 -50  56  title="x/y plane view in HEU"
+picture cs material color res=1500 -50 50 77.4 -50 -50 77.4 50 -50 77.4 title="x/y plane view in CH2"
+
+surfaces 
+$ - cylindrical radii, per Tables 35 & 36, or Figures 17 through 28:
+  1    c z   2.54000   $ alignment tube inner radius
+  2    c z   3.14960   $ alignment tube outer radius
+  3    c z   3.17500   $ lower reflector inner radius
+  4    c z   4.76250   $ platen/adapter plate inner radius
+  5    c z   7.62      $ inner HEU IR
+  6    c z  19.05      $ inner HEU OR/outer HEU IR
+  7    c z  26.67      $ outer HEU/OR
+  8    c z  26.79700   $ corner reflector radius
+$ - x,y planes, per Figures 17 through 28:
+ 11    p x -44.1452    $
+ 12    p x -27.940     $
+ 13    p x  27.940     $
+ 14    p x  44.1452    $
+ 16    p y -44.1452    $
+ 17    p y -27.940     $
+ 18    p y  27.940     $
+ 19    p y  44.1452    $
+$ - axial planes, per Figures 31 and 17 through 29:
+ 20    p z  -3.2512    $ bottom of alignment tube (bottom of model)
+ 21    p z   2.540     $ bottom of side & corner reflector
+ 22    p z 105.791     $    top of side reflector (top of model)
+ 23    p z  60.24880   $ bottom of diaphragm/   top of lower corner reflector
+ 24    p z  60.51296   $    top of diaphragm/bottom of upper corner reflector
+ 25    p z  77.48016   $                        top of upper corner reflector
+ 26    p z  25.603019  $ bottom of platen/adapter plate
+ 27    p z  31.953019  $    top of platen/adapter plate / start lower axial Cu
+ 28    p z  46.380219  $                                   end lower axial Cu
+ 29    p z  77.420304  $ bottom of upper axial void / end 
+ 30    p z  91.907736  $                              end upper axial Cu
+$ - axial planes for fuel region (per Tables 35 & 36):
+ 51    p z  46.380219  $            start lp1
+ 52    p z  46.486391  $ end lp1   /start l1-l
+ 53    p z  47.678923  $ end l1-l  /start l1-heu & l1-al spacer
+ 54    p z  47.978643  $ end l1-heu & l1-al spacer/start l1-u
+ 55    p z  49.161859  $ end l1-u  /start lp2
+ 56    p z  49.268031  $ end lp2   /start l2-l
+ 57    p z  50.451247  $ end l2-l  /start l2-heu
+ 58    p z  50.750967  $ end l2-heu/start l2-u
+ 59    p z  51.933866  $ end l2-u  /start lp3
+ 60    p z  52.040038  $ end lp3   /start l3-l
+ 61    p z  53.222727  $ end l3-l  /start l3-heu
+ 62    p z  53.522447  $ end l3-heu/start l3-u
+ 63    p z  54.707359  $ end l3-u  /start lp4
+ 64    p z  54.813531  $ end lp4   /start l4-l
+ 65    p z  55.997875  $ end l4-l  /start l4-heu
+ 66    p z  56.297595  $ end l4-heu/start l4-u
+ 67    p z  57.479966  $ end l4-u  /start lp5
+ 68    p z  57.586138  $ end lp5   /start l5-l
+ 69    p z  58.768720  $ end l5-l  /start l5-heu
+ 70    p z  59.068440  $ end l5-heu/start l5-u
+ 71    p z  60.248800  $ end l5-u
+ 72    p z  60.512960  $            start up1
+ 73    p z  60.619132  $ end up1   /start u1-l
+ 74    p z  61.814624  $ end u1-l  /start u1-heu
+ 75    p z  62.114344  $ end u1-heu/start u1-u
+ 76    p z  63.315340  $ end u1-u  /start up2
+ 77    p z  63.421512  $ end up2   /start u2-l
+ 78    p z  64.612348  $ end u2-l  /start u2-heu
+ 79    p z  64.912068  $ end u2-heu/start u2-u
+ 80    p z  66.105444  $ end u2-u  /start up3
+ 81    p z  66.211616  $ end up3   /start u3-l
+ 82    p z  67.401608  $ end u3-l  /start u3-heu
+ 83    p z  67.701328  $ end u3-heu/start u3-u
+ 84    p z  68.893860  $ end u3-u  /start up4
+ 85    p z  69.000032  $ end up4   /start u4-l
+ 86    p z  70.191292  $ end u4-l  /start u4-heu
+ 87    p z  70.491012  $ end u4-heu/start u4-u
+ 88    p z  71.717408  $ end u4-u  /start up5
+ 89    p z  71.823580  $ end up5   /start u5-l
+ 90    p z  73.025424  $ end u5-l  /start u5-heu
+ 91    p z  73.325144  $ end u5-heu/start u5-u
+ 92    p z  74.532068  $ end u5-u  /start up6
+ 93    p z  74.638240  $ end up6   /start u6-l
+ 94    p z  75.826960  $ end u6-l  /start u6-heu
+ 95    p z  76.126680  $ end u6-heu/start u6-u
+ 96    p z  77.314132  $ end u6-u  /start up7
+ 97    p z  77.420304  $ end up7
+end

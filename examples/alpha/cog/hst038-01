@@ -1,0 +1,101 @@
+HEU-SOL-THERM-038-1:  WINCO SLAB TANKS; 3.692" Gap 
+basic
+ neutron  CENTIMETERS URRPT
+criticality
+ npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+ nsource=8  3 0   3  -3 0   3  0 3   3  0 -3   3
+  alpha eigenvalue
+            3 0 -13  -3 0 -13  0 3 -13  0 -3 -13
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0                         $
+ mat=11 bunches  u234 8.7477-6 u235 9.6338-4 u236 2.8747-6 u238 5.9027-5 $ Tank #1 Solution
+              (h.h2o) 5.7842-2    n 2.2608-3  o16 3.7675-2               $  per Table 36
+ mat=12 bunches  u234 8.7673-6 u235 9.6404-4 u236 2.8787-6 u238 5.9069-5 $ Tank #2 Solution
+              (h.h2o) 5.7871-2    n 2.2622-3  o16 3.7695-2               $  per Table 36
+ mat=21 w-p 7.8894 fe 70.194 cr 18.30 ni 8.21 mn 1.91 si 0.67 cu 0.31    $ Hoop #1 SST
+                   mo  0.26   n  0.06  p 0.031 c 0.05  s 0.005           $  per 3.3.2
+ mat=22 w-p 7.8932 fe 70.194 cr 18.30 ni 8.21 mn 1.91 si 0.67 cu 0.31    $ Hoop #2 SST
+                   mo  0.26   n  0.06  p 0.031 c 0.05  s 0.005           $  per 3.3.2
+ mat=23 w-p 7.8830 fe 70.194 cr 18.30 ni 8.21 mn 1.91 si 0.67 cu 0.31    $ Tank Plates SST
+                   mo  0.26   n  0.06  p 0.031 c 0.05  s 0.005           $  per 3.3.3
+ mat=24 w-p 7.8297 fe 70.194 cr 18.30 ni 8.21 mn 1.91 si 0.67 cu 0.31    $ Center Support SST
+                   mo  0.26   n  0.06  p 0.031 c 0.05  s 0.005           $  per 3.3.4
+ mat=30 w-p 2.69   al 97.325 mg  1.0  si 0.6  fe 0.35 cu 0.25 cr 0.2     $ Al-6061 Supports
+                   zn 0.125  mn 0.075 ti 0.075                           $  per 3.3.5
+assign-mc                                                                $
+ 11 red 12 orange 21 black 22 gray 23 blue 24 green 30 yellow
+geometry
+$ -------------------------------------------------------------------------
+$ Upper Tank #1 and Support Structure
+$ -------------------------------------------------------------------------
+  sector 24 Post     -1  4 -5 
+  sector 11 Soln--1   1 -2  4 -5
+  sector 21 Hoop--1   2 -3  4 -5
+  sector 23 Plate-B  -3  5
+  sector 23 Plate-C  -3 -4
+  sector 30 Part--A -11
+  sector 30 Part--B -12
+  sector 30 Part--C -13
+  sector 30 Part--D -14
+  sector 30 Part--E -15
+  sector 30 Part--F -16
+$ -------------------------------------------------------------------------
+$ Lower Tank #2 and Support Structure
+$ -------------------------------------------------------------------------
+  sector 24 Post     -1  24 -25 
+  sector 12 Soln--2   1 -22  24 -25
+  sector 22 Hoop--2  22 -23  24 -25
+  sector 23 Plate-A -23  25
+  sector 23 Plate-B -23 -24
+  sector  0 Air1     23 -31 -32  40
+  sector 30 Leg1     23  31 -32  40
+  sector  0 Air2     23 -33 -34  40
+  sector 30 Leg2     23  33 -34  40
+  sector  0 Air3     23 -35 -36  40
+  sector 30 Leg3     23  35 -36  40
+  sector  0 Air4     23 -37 -38  40
+  sector 30 Leg4     23  37 -38  40
+  sector 30 Plate-G -40
+picture cs material color
+ -60   0  15  -60   0 -60  60   0 -60 title="Axial view of the assembly"
+picture cs material color
+ -60  60  15  -60  60 -60  60 -60 -60 title="Axial view thru Legs"
+picture cs material color
+ -60  39  15  -60  39 -10  60  39 -10 title="Axial view thru Part D"
+picture cs material color
+ -60  60   5  -60 -60   5  60 -60   5 title="Plane view of Tank #1"
+picture cs material color
+ -60  60 -15  -60 -60 -15  60 -60 -15 title="Plane view of Tank #2"
+picture cs material color
+ -60  60 -25  -60 -60 -25  60 -60 -25 title="Plane view thru Legs"
+surfaces
+$ -------------------------------------------------------------------------
+$ Upper Tank #1 and Support Structure; Zero Elevation at Bottom of Plate C
+$ -------------------------------------------------------------------------
+ 1 cylinder z  1.26873               $ Support Post
+ 2 cylinder z 35.81654               $ Hoop #1/Inner
+ 3 cylinder z 37.90696 0.0 10.830054 $ Tank #1/Outer
+ 4 analytic 1. z  -0.967994 constant $ Plate C/Upper
+ 5 analytic 1. z  -9.868664 constant $ Plate B/Lower
+11 box   0.635 77.1652 7.62 tr -38.9001 0.  4.48 $ Part A
+12 box   0.635 77.1652 7.62 tr +38.9001 0.  4.48 $ Part B
+13 box 116.84   0.635  7.62 tr 0. -38.9001  4.48 $ Part C
+14 box 116.84   0.635  7.62 tr 0. +38.9001  4.48 $ Part D
+15 box  10.16 116.84   2.54 tr +53.3400 0. -0.60 $ Part E
+16 box  10.16 116.84   2.54 tr -53.3400 0. -0.60 $ Part F
+$ -------------------------------------------------------------------------
+$ Lower Tank #2 and Support Structure; Critical Gap = 3.692" = 9.37768 cm
+$ -------------------------------------------------------------------------
+22 cylinder z 35.78733                                                $ Hoop #2/Inner
+23 cylinder z 37.95903 -10.84199 0.0    tr   0.       0.     -9.37768 $ Tank #2/Outer
+24 analytic 1. z  +9.885426 constant    tr   0.       0.     -9.37768 $ Plate B/Upper
+25 analytic 1. z  +0.973836 constant    tr   0.       0.     -9.37768 $ Plate A/Lower
+31 cylinder z 1.905                     tr -26.4922 -26.4922 -9.37768 $ 
+32 cylinder z 2.540 -46.40199 -10.84199 tr -26.4922 -26.4922 -9.37768 $
+33 cylinder z 1.905                     tr +26.4922 -26.4922 -9.37768 $
+34 cylinder z 2.540 -46.40199 -10.84199 tr +26.4922 -26.4922 -9.37768 $
+35 cylinder z 1.905                     tr -26.4922 +26.4922 -9.37768 $
+36 cylinder z 2.540 -46.40199 -10.84199 tr -26.4922 +26.4922 -9.37768 $
+37 cylinder z 1.905                     tr +26.4922 +26.4922 -9.37768 $
+38 cylinder z 2.540 -46.40199 -10.84199 tr +26.4922 +26.4922 -9.37768 $
+40 box 78.74 78.74 1.27                 tr   0.       0.    -56.41467 $ Support Plate G with
+end                                                                   $ Zo = -47.03699 - 9.37768 

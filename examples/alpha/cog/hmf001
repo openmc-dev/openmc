@@ -1,0 +1,21 @@
+HEU-MET-FAST-001:  GODIVA (52.420 kg U(93.71) @ 18.74 g/cc)
+basic
+  neutron  CENTIMETERS URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+  nsource=1  0. 0. 0.
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0 $ Atom Densities per Table 6
+  mat=1 bunches u234 4.9184-4 u235 4.4994-2 u238 2.4984-3
+assign-mc   1  orange
+geometry
+  sector 1 CORE  -1
+  boundary vacuum 1
+picture cs material color
+  -9  0  9 -9  0 -9   9  0 -9
+volume material
+  -9 -9 -9  9 -9 -9  -9  9 -9
+  18 18 18
+surfaces 
+  1 sphere 8.7407 $ per Section 3.2
+end

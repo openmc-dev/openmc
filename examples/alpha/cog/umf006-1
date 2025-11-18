@@ -1,0 +1,25 @@
+U233-MET-FAST-006: 5.740 kg 233U(98.1) in FLATTOP
+basic
+  neutron  CENTIMETERS URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+  nsource=1  0. 0. 0.
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+  mat=1 w-p 18.42 u233 98.13 u234 1.24 u235 0.03 u238 0.60 $ U-233 per Table 2
+  mat=2 a-f 19.00 u234 0.005 u235 0.72 u238 99.275         $ Nat-U
+assign-mc
+  1 red 2 gray
+geometry
+  sector 1 U233   -1
+  sector 2 Tu      1 -2
+  boundary vacuum     2
+picture cs material color
+ -8  0  8  -8  0 -8   8 0 -8
+volume material
+ -8 -8 -8   8 -8 -8  -8 8 -8
+ 16 16 16
+surfaces
+   1 sphere  4.2058 $ Dimensions per
+   2 sphere 24.1194 $ Section 3.2
+end

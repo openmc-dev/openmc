@@ -1,0 +1,81 @@
+IEU-MET-FAST-010: ZPR-6/9 Loading 11; U9 Benchmark Model
+basic
+  neutron  CENTIMETERS
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+  nsource=1  0. 0. 0.
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0 $ Compositions per Table 14
+  mat=1 bunches u235 3.48543-3 u238 3.52634-2 u234 3.34211-5 u236 1.60227-5
+                  cr 1.86067-3   ni 7.49053-4   fe 6.65688-3    c 9.62990-5
+                  mo 1.18327-5   mn 1.63509-4   cu 2.38833-5    h 1.94580-5
+                  si 7.16001-5   cl 3.33506-5    f 9.91220-5
+  mat=2 bunches u235 3.47666-3 u238 3.53869-2 u234 3.33328-5 u236 1.59801-5
+                  cr 1.87418-3   ni 7.54654-4   fe 6.70752-3    c 9.64166-5
+                  mo 1.19799-5   mn 1.64823-4   cu 2.42329-5    h 1.94498-5
+                  si 7.42038-5   cl 3.34686-5    f 9.94726-5
+  mat=3 bunches u235 3.48543-3 u238 3.52634-2 u234 3.34211-5 u236 1.60227-5
+                  cr 1.86067-3   ni 7.49053-4   fe 6.65688-3    c 9.62606-5
+                  mo 1.18327-5   mn 1.63509-4   cu 2.38833-5    h 1.94471-5
+                  si 7.16001-5   cl 3.33314-5    f 9.90650-5
+  mat=4 bunches u235 3.47666-3 u238 3.53869-2 u234 3.33328-5 u236 1.59801-5
+                  cr 1.87418-3   ni 7.54654-4   fe 6.70752-3    c 9.63781-5
+                  mo 1.19799-5   mn 1.64823-4   cu 2.42329-5    h 1.94388-5
+                  si 7.42038-5   cl 3.34493-5    f 9.94154-5
+  mat=5 bunches u235 8.31425-5 u238 3.72293-2   cr 1.72627-3   ni 7.03836-4 
+                  fe 6.26656-3   al 4.16747-4    c 3.99149-5   mo 1.12206-5 
+                  mn 1.46859-4   cu 2.13537-5    h 2.85427-6   si 8.31237-5
+                  cl 4.93394-6    f 1.46107-5
+  mat=6 bunches u235 8.24312-5 u238 3.69113-2   cr 1.72627-3   ni 7.03836-4 
+                  fe 6.26607-3   al 4.16747-4    c 3.97675-5   mo 1.12206-5 
+                  mn 1.46859-4   cu 2.13537-5    h 2.81777-6   si 8.31237-5
+                  cl 4.87118-6    f 1.44249-5
+  mat=7 bunches u235 8.56868-5 u238 3.83747-2   cr 1.69502-3   ni 6.86302-4 
+                  fe 6.13244-3    c 3.77935-5   mo 1.07671-5   mn 1.46803-4 
+                  cu 2.16820-5    h 2.53803-6   si 7.69676-5   cl 4.39454-6
+                   f 1.30132-5
+  mat=8 bunches   cr 1.18909-3   ni 4.80175-4   fe 4.27914-3    c 1.87415-5 
+                  mo 8.25653-6   mn 1.05905-4   cu 1.72319-5   si 6.83105-5
+                   f 1.30132-5
+  mat=9 bunches   cr 1.17957-3   ni 4.76329-4   fe 4.24488-3    c 1.85933-5 
+                  mo 8.19076-6   mn 1.05057-4   cu 1.70944-5   si 6.77630-5
+                   f 1.30132-5
+assign-mc
+  1 white 2 white 3 white 4 white 5 orange 6 red 7 yellow 8 purple
+geometry
+  sector 1 CORE1   6  -7 -12
+  sector 2 CORE2   7  -8 -12
+  sector 3 CORE3   5  -6 -12
+  sector 4 CORE4   4  -5 -12
+  sector 5 DUUAX   8  -9 -12
+  sector 6 LDLAX   3  -4 -12
+  sector 8 MATRX   1  -3 -12
+  sector 8 MATRX   9 -11 -12
+  sector 7 DURAD   2 -10  12 -13
+  sector 8 MATRX   1  -2  12 -13
+  sector 8 MATRX  10 -11  12 -13
+  sector 9 MTRIX   1 -11  13 -14
+  boundary vacuum -1 -14
+  boundary vacuum 11 -14
+  boundary vacuum  1 -11  14
+picture cs material color
+     0    0  125    0    0 -125   110    0 -125
+volume material
+  -100 -100 -122  100 -100 -122  -100  100 -122
+   200  200  244
+surfaces $ Geometry per Figure 9
+  1 analytic 1. z  121.920 constant
+  2 analytic 1. z  120.975 constant
+  3 analytic 1. z  120.461 constant
+  4 analytic 1. z   38.181 constant
+  5 analytic 1. z   22.941 constant
+  6 analytic 1. z    0.000 constant
+  7 analytic 1. z  -22.941 constant
+  8 analytic 1. z  -38.181 constant
+  9 analytic 1. z -120.461 constant
+ 10 analytic 1. z -120.975 constant
+ 11 analytic 1. z -121.920 constant
+ 12 cylinder z 40.996 
+ 13 cylinder z 65.157
+ 14 cylinder z 96.623
+end

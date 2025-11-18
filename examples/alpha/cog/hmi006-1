@@ -1,0 +1,64 @@
+HEU-MET-INTER-006-1:  125.6 kg U(93.2) @ C/X=51.2 (1st Zeus Exp't)
+basic
+ neutron delayedn CENTIMETERS URRPT
+criticality
+ npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+ nsource=1  0 0 70.2
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0                        $
+ mat=1 bunches  u234 4.9483-4 u235 4.4918-2 u236 1.5917-4 u238 2.5740-3 $ Oralloy
+ mat=2 (c) 1.7029                                                       $ Graphite 
+ mat=3  cu 8.7351                                                       $ Copper  
+ mat=4 w-p 2.6657 al 97.175 mg 1.00  si 0.60  fe 0.35   cu 0.275        $ Al-6061 
+                  cr  0.25  zn 0.125 mg 0.075 ti 0.075 o16 0.075        $
+assign-mc
+  1 orange 2 green 3 yellow 4 gray 
+geometry
+  sector 1 HEU  -1  11 -12
+  sector 1 HEU  -2  11 -12
+  sector 1 HEU  -3  11 -12
+  sector 1 HEU  -4  11 -12
+  sector 1 HEU  -5  11 -12
+  sector 1 HEU  -6  11 -12
+  sector 1 HEU  -7  11 -12
+  sector 1 HEU  -8  11 -12
+  sector 1 HEU  -9  11 -12
+  sector 1 HEU -10  11 -12
+  sector 2 C        11 -12 1 2 3 4 5 6 7 8 9 10 $ Graphite Moderator
+  sector 3 Cu   11 -13     $ Cu on Ram
+  sector 3 Cu   14  15 -16 $ Cu Reflector
+  sector 4 Al   17 -18     $ Al-6061 Platen
+  sector 4 Al       19 -20 $ Al-6061 Alignment Tube
+ picture cs material color -50   0 130   -50   0 -10    50   0  -10   title="Axial view of the assembly"
+ picture cs material color -50  50   3   -50 -50   3    50 -50    3   title="HEU-MET-INTER-006: Figure 17"
+ picture cs material color -50  50   8   -50 -50   8    50 -50    8   title="HEU-MET-INTER-006: Figure 18"
+ picture cs material color -50  50  12   -50 -50  12    50 -50   12   title="HEU-MET-INTER-006: Figure 19"
+ picture cs material color -50  50  50   -50 -50  50    50 -50   50   title="HEU-MET-INTER-006: Figure 20"
+ picture cs material color -50  50  60   -50 -50  60    50 -50   60   title="HEU-MET-INTER-006: Figure 21"
+ picture cs material color -50  50 110   -50 -50 110    50 -50  110   title="HEU-MET-INTER-006: Figure 23"
+ picture cs material color -50  50 123.1 -50 -50 123.1  50 -50  123.1 title="HEU-MET-INTER-006: Figure 24"
+surfaces
+$ ---- HEU and Graphite -------------------------------------------------------------------
+  1 cylinder z 26.67   28.30384  28.60356 $ Oy/outer/1
+  2 cylinder z 26.67   36.66244  36.96216 $ Oy/outer/2
+  3 cylinder z 26.67   45.02104  45.32076 $ Oy/outer/3
+  4 cylinder z 26.67   53.37964  53.67936 $ Oy/outer/4
+  5 cylinder z 26.67   61.73824  62.03796 $ Oy/outer/5
+  6 cylinder z 26.67   70.09684  70.39656 $ Oy/outer/6
+  7 cylinder z 26.67   78.45544  78.75516 $ Oy/outer/7
+  8 cylinder z 26.67   86.81404  87.11376 $ Oy/outer/8
+  9 cylinder z 26.67   95.17264  95.47236 $ Oy/outer/9
+ 10 cylinder z 26.67  103.53124 103.83096 $ Oy/outer/10
+ 11 cylinder z  3.175  -5.79120  57.70880 $ Oy/inner/1-4 
+ 12 cylinder z 26.67   24.27440 107.86040 $ Graphite/outer
+$ ---- Copper -----------------------------------------------------------------------------
+ 13 cylinder z 26.67    9.8472   24.2744                 $ Copper/ram/outer
+ 14 cylinder z 26.797   0.0000  108.6104                 $ Copper/inner
+ 15 box        55.88   55.88      2.00   tr 0 0 124.0376 $ Copper/void
+ 16 box        88.2904 88.2904  123.9012 tr 0 0  61.9506 $ Copper/outer
+$ ---- Al-6061 Platen ---------------------------------------------------------------------
+ 17 cylinder z  4.7625                    $ Platen/Inner
+ 18 cylinder z 26.67    3.4972    9.8472  $ Platen/Outer
+$ --- Al-6061 Alignment Tube --------------------------------------------------------------
+ 19 cylinder z  2.54                      $ Alignment Tube/Inner
+ 20 cylinder z  3.1496 -5.7912   57.7088  $ Alignment Tube/Outer
+end

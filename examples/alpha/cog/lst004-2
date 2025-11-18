@@ -1,0 +1,30 @@
+LST004-2: Water-reflected 60-cm-diameter cylindrical tank with 10% enriched uranyl nitrate solution @ H/X=771 (Run 29)
+basic
+  neutron  CM URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1. nsource=1  0 0 23.35
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+  mat=1 bunches u234 5.9778-7 u235 7.4181-5 u236 7.4088-8 u238 6.6074-4 (h.h2o) 5.7216-2  n 2.8141-3 o16 3.7850-2             $ Solution: Run 29
+  mat=2 bunches    c 4.3736-5   si 1.0627-3   mn 1.1561-3    p 4.3170-5       s 2.9782-6 ni 8.3403-3  cr 1.6775-2 fe 5.9421-2 $ Stainless Steel
+  mat=3 bunches (h.h2o) 6.6658-2 o16 3.3329-2 $ Water
+  mat=4 bunches    n    3.9016-5 o16 1.0409-5 $ Air
+assign-mc
+  1 yellow 2 gray 3 sky 4 lime
+geometry
+  sector 1 Soln   -1 -4
+  sector 4 Air    -1  4
+  sector 2 SST     1 -2
+  sector 3 H2O     2 -3
+  boundary vacuum  3
+picture cs material color
+  -60   0 175 -60   0 -35  60   0 -35
+volume material
+  -60 -60 -32  60 -60 -32 -60  60 -32 
+  120 120 205
+surfaces 
+  1 c z 29.5   0.0 150.0
+  2 c z 29.8  -2.0 152.5
+  3 c z 59.8 -32.0 172.5
+  4 p z 46.70 $ Hc
+end

@@ -1,0 +1,50 @@
+PU-MET-INTER-002: ZPR-6/10 Loading 24; Benchmark Model
+basic
+neutron  CM URRPT
+criticality
+npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+nsource=1 0.0001 0.0001 0.0001
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0 $ Compositions per Tables 17 and 18
+mat=1 bunches pu238 1.69380-9 pu239 1.06299-3 pu240 5.03037-5 pu241 1.70034-6
+pu242 1.15592-7 am241 2.98613-6 cr 9.84199-3 al 1.11659-4
+mn 8.05254-4 co 3.71924-6 ni 4.08528-3 c 2.58213-2
+cu 1.01231-4 fe 3.52607-2 mo 7.42792-5 si 2.79577-4
+mat=2 bunches cr 1.57277-2 mn 1.56081-3 co 3.73582-6 ni 6.94657-3
+c 2.35948-4 cu 2.98115-5 fe 5.55221-2 mo 1.52120-5
+si 9.45490-4
+mat=3 bunches cr 1.56286-2 mn 1.42057-3 co 3.77932-6 ni 6.78410-3
+c 2.37106-4 cu 5.04052-5 fe 5.51964-2 mo 4.64023-5
+si 8.63360-4
+mat=4 bunches cr 1.82758-3 mn 5.50350-4 co 3.77222-6 ni 7.61435-4
+c 4.27315-4 cu 2.90457-5 fe 7.66532-2 mo 1.46235-5
+si 1.45148-4
+mat=5 bunches cr 1.18727-3 mn 1.05699-4 ni 4.79539-4 c 1.87078-5
+cu 1.71849-5 fe 4.27243-3 mo 8.23697-6 si 6.81747-5
+assign-mc
+1 purple 2 black 3 brown 4 red 5 yellow
+geometry
+sector 1 CORE 1 -2 -5
+sector 2 SSAXR 2 -3 -5
+sector 3 SSRDR 1 -3 5 -6
+sector 4 FERDR 1 -3 6 -7
+sector 5 MATRX 1 -3 7 -8
+sector 5 MATRX 3 -4 -8
+boundary reflecting -1 -8
+boundary vacuum 4 -8
+boundary vacuum 1 -4 8
+picture cs material color
+0 0 125 0 0 0 120 0 0
+volume material
+-116 -116 0 116 -116 0 -116 116 0
+232 232 122
+surfaces $ Geometry per Figure 6
+1 analytic 1. z 0.00000 constant
+2 analytic 1. z -38.17874 constant
+3 analytic 1. z -92.08002 constant
+4 analytic 1. z -121.92000 constant
+5 cylinder z 41.93313
+6 cylinder z 86.88175
+7 cylinder z 104.17047
+8 cylinder z 115.32402
+end

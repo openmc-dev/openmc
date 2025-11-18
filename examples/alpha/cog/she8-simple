@@ -1,0 +1,23 @@
+SHE-8 (JAERI-1257) Homogenized model
+basic
+  neutron  CM URRPT
+criticality
+  npart=100 nbatch=520 sdt=0.0001 nfirst=21 norm=1. nsource=1 0 0 0
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+  mat=1 bunches u235 0.3415-4 u238 1.379-4 (c30p) 0.7911-1 (h.h2o) 0.7191-4 o16 0.3867-3 $ Core
+  mat=2 bunches  (c) 0.7732-1 (h.h2o) 0.7137-4 o16 0.3673-4                              $ Reflector
+assign-mc
+  1 red 2 lime  
+geometry
+  sector 1 Core   -1 -2
+  sector 2 Refl    1 -2
+  boundary vacuum  2
+picture cs material color -155 155 0 -155 -155 0 155 -155 0 title="plane view" 
+picture cs material color -155 0 155 -155 0 -155 155 0 -155 title="axial view" 
+volume 
+  material -150 -150 -120  150 -150 -120 -150 150 -120 300 300 240
+surfaces 
+  1 c z 28.73
+  2 pri 6 150 0 75 129.9038 -75 129.9038 -150 0 -75 -129.9038 75 -129.9038 -120 120 tr 0 0 0 0 0 1 0 1 0
+end

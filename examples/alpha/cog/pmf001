@@ -1,0 +1,22 @@
+PU-MET-FAST-001: JEZEBEL (17.020 kg Pu(95.48)-1.02Ga @ 15.61 g/cc)
+basic
+neutron  CM URRPT
+criticality
+npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+nsource=1 0. 0. 0.
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0 $ Atom Densities per Table 3
+mat=1 bunches ga 1.3752-3 pu239 3.7047-2 pu240 1.7512-3 pu241 1.1674-4
+assign-mc
+1 purple
+geometry
+sector 1 alloy -1
+boundary vacuum 1
+picture cs material
+-7 0 7 -7 0 -7 7 0 -7
+volume
+-7 -7 -7 7 -7 -7 -7 7 -7
+14 14 14
+surfaces
+1 sphere 6.3849 $ per Section 3.2
+end

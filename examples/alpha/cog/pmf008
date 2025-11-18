@@ -1,0 +1,23 @@
+PU-MET-FAST-008: THOR (9.587 kg Pu(5.10)-1.01Ga 9 15.29 g/cc in 24.57 cm Th @ 11.58 g/cc)
+basic
+neutron  CM URRPT
+criticality
+npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+nsource=1 0. 0. 0.
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0 $ Atom Densities per Table 4 in Section 3.3
+mat=1 bunches pu239 3.6049-2 pu240 1.9562-3 pu241 1.1459-4 ga 1.3338-3
+mat=2 bunches th232 3.0054-2
+geometry
+sector 1 core -1
+sector 2 refl 1 -2
+boundary vacuum 2
+picture cs material
+-30 0 30 -30 0 -30 30 0 -30
+volume
+-30 -30 -30 30 -30 -30 -30 30 -30
+60 60 60
+surfaces
+1 sphere 5.310 $ per Section 3.2
+2 sphere 29.880 $ THK = 24.57 cm
+end

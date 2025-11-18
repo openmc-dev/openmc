@@ -1,0 +1,61 @@
+HEU-MET-INTER-001: ZPR-9/34 Loading 303; Benchmark Model
+basic
+  neutron  CENTIMETERS URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+  nsource=1  0. 0. 0.
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0 $ Compositions per Tables 34 and 35
+$ Core 1
+  mat=1 bunches u235 1.13762-3 u238 6.59390-5 u234 1.11576-5 u236 5.34915-6 cr 2.48397-3 ni 1.09667-3
+                  fe 7.00690-2   al 1.10944-3    c 3.27500-4   mo 8.76246-6 mn 5.36154-4 cu 1.81289-5   
+                   h 1.02562-6   si 1.25478-4   mg 3.19467-5   cl 1.74946-6  f 5.30509-6
+$ Core 2
+  mat=2 bunches u235 1.13252-3 u238 6.56432-5 u234 1.11077-5 u236 5.32515-6 cr 2.50498-3 ni 1.11058-3
+                  fe 7.02637-2   al 1.08972-3    c 3.28109-4   mo 9.42153-6 mn 5.36248-4 cu 1.90734-5   
+                   h 1.00168-6   si 1.27323-4   mg 3.13787-5   cl 1.75242-6  f 5.31408-6
+$ Core 3
+  mat=3 bunches u235 1.02854-3 u238 5.96166-5 u234 1.00880-5 u236 4.83609-6 cr 2.32285-3 ni 1.08400-3
+                  fe 6.93373-2   al 1.17803-3    c 3.34174-4   mo 1.49362-5 mn 4.92872-4 cu 2.56728-5   
+                   h 1.98835-6   si 1.27392-4   mg 3.39225-5   cl 3.47858-6  f 1.05485-5
+$ Core 4
+  mat=4 bunches u235 1.03816-3 u238 6.01743-5 u234 1.01821-5 u236 4.88142-6 cr 2.35918-3 ni 1.10332-3
+                  fe 6.96239-2   al 1.14885-3    c 3.32837-4   mo 1.49664-5 mn 4.96339-4 cu 2.57145-5   
+                   h 2.04463-6   si 1.28358-4   mg 3.30820-5   cl 3.48762-6  f 1.05760-5
+$ Axial SST Reflector
+  mat=5 bunches   cr 1.49836-2   ni 6.61034-3   fe 5.32325-2   al 1.15377-3  c 7.23704-5 mo 8.51061-6
+                  mn 1.44466-3   cu 1.75232-5   si 1.02272-3   mg 3.32222-5
+$ Radial SST Reflector
+  mat=6 bunches   cr 1.49334-2   ni 6.45653-3   fe 5.27897-2   al 2.35245-3  c 8.21637-5 mo 4.98640-5
+                  mn 1.32660-3   cu 4.26141-5   si 9.32072-4   mg 1.11300-4
+$ DU Room Return Shield
+  mat=7 bunches u235 8.59476-5 u238 3.84988-2   cr 1.86022-3   ni 8.08917-4 fe 6.86642-3  c 2.96046-5 
+                  mo 8.19033-6   mn 1.60588-4   cu 1.70935-5    h 2.42423-6 si 1.47420-4 cl 4.20406-6
+                   f 1.24495-5
+assign-mc
+  1 red 2 pink 3 orange 4 purple 5 gray 6 black 7 brown
+geometry
+  sector 1 CORE1  -1  6 -7
+  sector 2 CORE2  -1  5 -6
+  sector 3 CORE3  -1  4 -5
+  sector 4 CORE4  -1  7 -8
+  sector 5 AXSST  -1 -3  8
+  sector 5 AXSST  -1 -3 -4
+  sector 6 RDSST   1 -2 -3
+  sector 7 DURRS   2 -3
+  boundary vacuum  3
+picture cs material color
+  -125    0  125 -125    0 -125   125    0 -125
+volume material
+  -109 -120 -120  109 -120 -120  -109  120 -120
+   218  240  240 
+surfaces $ Geometry per Figure 11
+  1 cylinder z  62.571
+  2 cylinder z  96.018
+  3 cylinder z 108.016 -119.730 119.730
+  4 analytic 1. z +91.620 constant
+  5 analytic 1. z +81.380 constant
+  6 analytic 1. z +15.321 constant
+  7 analytic 1. z -76.300 constant
+  8 analytic 1. z -91.620 constant
+end

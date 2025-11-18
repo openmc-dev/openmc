@@ -1,0 +1,229 @@
+IEU-MET-FAST-007 (Rev. 2): Big Ten Detailed Benchmark Model (translated)
+basic
+  neutron  CENTIMETERS
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+  nsource=107
+    0.00   0.00 -39.60   0.00   0.00 -33.50   0.00   0.00 -27.00   0.00   0.00 -21.00   0.00   0.00 -15.00 
+    0.00   0.00  -9.00   0.00   0.00  -3.00   0.00   0.00  -0.68   0.00   0.00   6.00   0.00   0.00  15.00 
+    0.00   0.00  32.30   7.10   0.00   0.68   0.00   7.10   0.68  -7.10   0.00   0.68   0.00  -7.61   0.68 
+    8.50   0.00   2.85   0.00   8.50   2.85  -8.50   0.00   2.85   0.00  -8.50   2.85   2.50   0.00   9.00 
+    0.00   2.50   9.00  -2.50   0.00   9.00   0.00  -2.50   9.00   2.50   0.00  20.20   0.00   2.50  20.20
+   -2.50   0.00  20.20   0.00  -2.50  20.20   3.10   0.00  24.80   0.00   3.10  24.80  -3.10   0.00  24.80 
+    0.00  -3.10  24.80  17.10   0.00 -37.60   0.00  17.10 -37.60 -17.10   0.00 -37.60   0.00 -17.10 -37.60 
+   17.10   0.00 -34.60   0.00  17.10 -34.60 -17.10   0.00 -34.60   0.00 -17.10 -34.60  17.10   0.00 -32.50
+    0.00  17.10 -32.50 -17.10   0.00 -32.50   0.00 -17.10 -32.50  17.10   0.00 -28.60   0.00  17.10 -28.60
+  -17.10   0.00 -28.60   0.00 -17.10 -28.60  17.10   0.00 -25.50   0.00  17.10 -25.50 -17.10   0.00 -25.50 
+    0.00 -17.10 -25.50  17.10   0.00 -22.50   0.00  17.10 -22.50 -17.10   0.00 -22.50   0.00 -17.10 -22.50 
+   19.70   0.00 -19.50   0.00  19.70 -19.50 -19.70   0.00 -19.50   0.00 -19.70 -19.50  19.70   0.00 -16.50 
+    0.00  19.70 -16.50 -19.70   0.00 -16.50   0.00 -19.70 -16.50  19.70   0.00 -13.50   0.00  19.70 -13.50 
+  -19.70   0.00 -13.50   0.00 -19.70 -13.50  19.70   0.00 -10.50   0.00  19.70 -10.50 -19.70   0.00 -10.50 
+    0.00 -19.70 -10.50  19.70   0.00  -7.50   0.00  19.70  -7.50 -19.70   0.00  -7.50   0.00 -19.70  -7.50
+   19.70   0.00  -4.50   0.00  19.70  -4.50 -19.70   0.00  -4.50   0.00 -19.70  -4.50  19.70   0.00  -1.50
+    0.00  19.70  -1.50 -19.70   0.00  -1.50   0.00 -19.70  -1.50  19.70   0.00   1.50   0.00  19.70   1.50 
+  -19.70   0.00   1.50   0.00 -19.70   1.50  14.90   0.00   4.50   0.00  14.90   4.50 -14.90   0.00   4.50 
+    0.00 -14.90   4.50  14.90   0.00   7.50   0.00  14.90   7.50 -14.90   0.00   7.50   0.00 -14.90   7.50 
+   14.90   0.00  10.50   0.00  14.90  10.50 -14.90   0.00  10.50   0.00 -14.90  10.50  14.90   0.00  13.50 
+    0.00  14.90  13.50 -14.90   0.00  13.50   0.00 -14.90  13.50  14.90   0.00  16.50   0.00  14.90  16.50
+  -14.90   0.00  16.50   0.00 -14.90  16.50
+  alpha eigenvalue
+mix nlib=MCNP.71nc ptlib=PT.MCNP.71nc
+  mat=1 bunches u234 4.9814-4 u235 4.5034-2 u236 1.3236-4 u238 2.6056-3 $ Highly Enriched Uranium (93 wt.%)
+  mat=2 bunches u234 2.4761-5 u235 4.8461-3 u236 4.3348-5 u238 4.2695-2 $ Intermediate Enriched Uranium (10 wt.%)
+  mat=3 bunches u234 2.6518-6 u235 3.4701-4               u238 4.7846-2 $ Natural Uranium
+  mat=4 bunches u234 2.8672-7 u235 1.0058-4 u236 1.1468-6 u238 4.7677-2 $ Depleted Uranium
+  mat=5 bunches u234 2.6458-6 u235 3.4623-4               u238 4.7738-2 $ Natural Uranium (P66)
+  mat=6 bunches   fe 5.7798-2   cr 1.6678-2   ni 9.0296-3   mn 1.7539-3 $ Steel 347
+                  si 1.7154-3   nb 5.1855-4
+  mat=7 bunches   fe 5.9308-2   cr 1.7604-2   ni 7.5930-3   mn 1.7539-3 $ Steel 304
+                  si 1.7154-3    
+assign-mc
+  1 red 2 sky 3 yellow 4 lime 5 yellow 6 gray 7 black
+geometry
+  sector 3 NatU   103 -108   4  -3  $ p1 nat
+  sector 1 HEU    103 -108   5  -4  $ p2 (93)
+  sector 3 NatU   103 -108   6  -5  $ p3 nat
+  sector 1 HEU    103 -108   7  -6  $ p4 (93)
+  sector 3 NatU   103 -108   8  -7  $ p5 nat
+  sector 1 HEU    103 -108   9  -8  $ p6 (93)
+  sector 3 NatU   103 -108  10  -9  $ p7 nat
+  sector 1 HEU    103 -108  11 -10  $ p8 (93)
+  sector 3 NatU   103 -108  12 -11  $ p9 nat
+  sector 1 HEU    103 -108  13 -12  $ p10 (93)
+  sector 3 NatU   107 -108  15 -13  $ p9 nat
+  sector 1 HEU    107 -108  16 -15  $ p10 (93)
+  sector 4 D38    106 -108  18 -16  $ p14 dep
+  sector 1 HEU    107 -108  20 -19  $ p16 (93)
+  sector 3 NatU   107 -108  21 -20  $ p17 nat
+  sector 3 NatU   107 -108  23 -22  $ p19 nat
+  sector 1 HEU    107 -108  24 -23  $ p20 (93)
+  sector 3 NatU   107 -108  25 -24  $ p21 nat
+  sector 3 NatU   107 -108  27 -26  $ p23 nat
+  sector 1 HEU    107 -108  28 -27  $ p24 (93)
+  sector 3 NatU   107 -108  29 -28  $ p25 nat
+  sector 3 NatU   107 -108  31 -30  $ p27 nat
+  sector 1 HEU    107 -108  32 -31  $ p28 (93)
+  sector 3 NatU   107 -108  33 -32  $ p29 nat
+  sector 3 NatU   107 -108  35 -34  $ p31 nat
+  sector 1 HEU    107 -108  36 -35  $ p32 (93)
+  sector 3 NatU   107 -108  37 -36  $ p33 nat
+  sector 3 NatU   107 -108  39 -38  $ p35 nat
+  sector 1 HEU    107 -108  40 -39  $ p36 (93)
+  sector 3 NatU   107 -108  41 -40  $ p37 nat
+  sector 3 NatU   107 -108  43 -42  $ p39 nat
+  sector 1 HEU    107 -108  44 -43  $ p40 (93)
+  sector 3 NatU   107 -108  45 -44  $ p41 nat
+  sector 3 NatU   107 -108  47 -46  $ p43 nat
+  sector 1 HEU    105 -108  49 -48  $ p45 (93)
+  sector 3 NatU   105 -108  50 -49  $ p46 nat
+  sector 3 NatU   105 -108  52 -51  $ p48 nat
+  sector 1 HEU    105 -108  53 -52  $ p49 (93)
+  sector 3 NatU   105 -108  54 -53  $ p50 nat
+  sector 3 NatU   105 -108  56 -55  $ p52 nat
+  sector 1 HEU    105 -108  57 -56  $ p53 (93)
+  sector 3 NatU   105 -108  58 -57  $ p54 nat
+  sector 3 NatU   105 -108  60 -59  $ p56 nat
+  sector 1 HEU    105 -108  61 -60  $ p57 (93)
+  sector 3 NatU   105 -108  62 -61  $ p58 nat
+  sector 3 NatU   105 -108  64 -63  $ p60 nat
+  sector 1 HEU    105 -108  65 -64  $ p61 (93)
+  sector 3 NatU   105 -108  66 -65  $ p62 nat
+  sector 3 NatU   105 -108  68 -67  $ p64 nat
+  sector 1 HEU    105 -108  69 -68  $ p65 (93)
+  sector 5 NatUp6 105 -108  71 -69  $ p66 nat
+  sector 7 SS304  101 -102  17  -1  $ CL ss304
+  sector 2 U10   -105   70 -48      $ C1 (10)
+  sector 2 U10   -107   48 -18      $ C2 (10)
+  sector 2 U10   -106   18 -17      $ C3 (10)
+  sector 2 U10    103 -106  17 -16  $ C4 (10)
+  sector 2 U10    103 -107  16 -14  $ C5 (10)
+  sector 2 U10   -100   17  -1      $ C6 (10)
+  sector 2 U10    102 -103  17  -3  $ C7 (10)
+  sector 2 U10    102 -104   3  -2  $ C8 (10)
+  sector 4 D38   -105   72 -70      $ R1 dep
+  sector 4 D38    105 -108  72 -71  $ R2 dep
+  sector 4 D38    108 -109  72  -1 112 115 118 121 124 127  $ R3 dep
+  sector 4 D38    105 -108   3  -1  $ R4 dep
+  sector 4 D38    102 -105   2  -1  $ R5 dep
+  sector 4 D38    104 -105   3  -2  $ R6 dep
+  sector 4 D38   -110   72  -1      $ rrod1 dep
+  sector 6 SS347  111 -112  72  -1  $ rl1 ss347
+  sector 4 D38   -113   72  -1      $ rrod2 dep
+  sector 6 SS347  114 -115  72  -1  $rl2 ss347
+  sector 4 D38   -116   72  -1      $rrod3 dep
+  sector 6 SS347  117 -118  72  -1  $rl3 ss347
+  sector 4 D38   -119   72  -1      $rrod4 dep
+  sector 6 SS347  120 -121  72  -1  $rl4 ss347
+  sector 4 D38   -122   72  -1      $rrod5 dep
+  sector 6 SS347  123 -124  72  -1  $rl5 ss347
+  sector 4 D38   -125   72  -1      $rrod4 dep
+  sector 6 SS347  126 -127  72  -1  $rl4 ss347
+picture cs material color
+  -42   0  40 -42   0 -58  42   0 -58
+picture cs material color
+  -42  42   0 -42 -42   0  42 -42   0
+volume material
+  -42 -42 -58  42 -42 -58 -42 42 -58
+   84  84  98
+surfaces $ Geometry per Figure 9
+   1 p z  39.05250 $ top of C6, CV, CL, R5, R4, R3
+   2 p z  25.71750 $ top of C8, R6
+   3 p z  23.81250 $ top of P1, C7
+   4 p z  16.66240 $ top of P2
+   5 p z  16.36268 $ top of P3
+   6 p z  13.66012 $ top of P4
+   7 p z  13.36040 $ top of P5
+   8 p z  10.65784 $ top of P6
+   9 p z  10.35812 $ top of P7
+  10 p z   7.65556 $ top of P8
+  11 p z   7.35584 $ top of P9
+  12 p z   4.65328 $ top of P10
+  13 p z   4.35356 $ top of P11 and P12
+  14 p z   4.35102 $ top of C5
+  15 p z   1.65100 $ top of P13
+  16 p z   1.35128 $ top of P14 and C4
+  17 p z   0.0     $ top of C3
+  18 p z  -1.35128 $ top of P15 and C2
+  19 p z  -1.35382 $ top of P16
+  20 p z  -1.65354 $ top of P17
+  21 p z  -3.15468 $ top of P18
+  22 p z  -3.15722 $ top of P19
+  23 p z  -4.35864 $ top of P20
+  24 p z  -4.65836 $ top of P21
+  25 p z  -6.15950 $ top of P22
+  26 p z  -6.16204 $ top of P23
+  27 p z  -7.36346 $ top of P24
+  28 p z  -7.66318 $ top of P25
+  29 p z  -9.16432 $ top of P26
+  30 p z  -9.16686 $ top of P27
+  31 p z -10.36828 $ top of P28
+  32 p z -10.66800 $ top of P29
+  33 p z -12.16914 $ top of P30
+  34 p z -12.17168 $ top of P31
+  35 p z -13.37310 $ top of P32
+  36 p z -13.67282 $ top of P33
+  37 p z -15.17396 $ top of P34
+  38 p z -15.17650 $ top of P35
+  39 p z -16.37792 $ top of P36
+  40 p z -16.67764 $ top of P37
+  41 p z -18.17878 $ top of P38
+  42 p z -18.18132 $ top of P39
+  43 p z -19.38274 $ top of P40
+  44 p z -19.68246 $ top of P41
+  45 p z -21.18360 $ top of P42
+  46 p z -21.18614 $ top of P43
+  47 p z -22.38756 $ top of P44
+  48 p z -22.39010 $ top of P45 and C1
+  49 p z -22.68982 $ top of P46
+  50 p z -24.19096 $ top of P47
+  51 p z -24.19350 $ top of P48
+  52 p z -25.39492 $ top of P49
+  53 p z -25.69464 $ top of P50
+  54 p z -27.19578 $ top of P51
+  55 p z -27.19832 $ top of P52
+  56 p z -28.39974 $ top of P53
+  57 p z -28.69946 $ top of P54
+  58 p z -30.20060 $ top of P55
+  59 p z -30.20314 $ top of P56
+  60 p z -31.40456 $ top of P57
+  61 p z -31.70428 $ top of P58
+  62 p z -33.20542 $ top of P59
+  63 p z -33.20796 $ top of P60
+  64 p z -34.40938 $ top of P61
+  65 p z -34.70910 $ top of P62
+  66 p z -36.21024 $ top of P63
+  67 p z -36.21278 $ top of P64
+  68 p z -37.41420 $ top of P65
+  69 p z -37.71392 $ top of P66
+  70 p z -41.73361 $ top of PR1
+  71 p z -42.22750 $ bot of P66 and R2
+  72 p z -57.46750 $ bot of R1, R2, and R3
+ 100 c z   1.79451 $ or of C6, ir of CV
+ 101 c z   1.81610 $ or of CV, ir of CL
+ 102 c z   1.90500 $ or of C1, ir of C7, C8, and R5
+ 103 c z   3.17500 $ or of C7, ir of C4, C5, P1-P11
+ 104 c z   4.28625 $ or of C*, ir of R6
+ 105 c z   7.62000 $ or of C1,R1,R5,R6, ir of P45-P66, R2, R4
+ 106 c z  11.11250 $ or of C3 and C4, ir of P14
+ 107 c z  12.70000 $ or of C2, C5,P11, ir of P12, P13, P15-P44
+ 108 c z  26.67000 $ or of R2, R4,and P1-P66 ir of R3
+ 109 c z  41.91000 $ or of R3
+ 110 c z   4.43865 tr   0.00000 -33.49752 0.0 $ o.r. rrod1
+ 111 c z   4.52501 tr   0.00000 -33.49752 0.0 $ o.r. rv1
+ 112 c z   4.60375 tr   0.00000 -33.49752 0.0 $ o.r. rl1
+ 113 c z   4.43865 tr -29.00970 -16.74876 0.0 $ o.r. rrod2
+ 114 c z   4.52501 tr -29.00970 -16.74876 0.0 $ o.r. rv2
+ 115 c z   4.60375 tr -29.00970 -16.74876 0.0 $ o.r. rl2
+ 116 c z   4.43865 tr  29.00970 -16.74876 0.0 $ o.r. rrod3
+ 117 c z   4.52501 tr  29.00970 -16.74876 0.0 $ o.r. rv3
+ 118 c z   4.60375 tr  29.00970 -16.74876 0.0 $ o.r. rl3
+ 119 c z   4.43865 tr -29.00970  16.74876 0.0 $ o.r. rrod4
+ 120 c z   4.52501 tr -29.00970  16.74876 0.0 $ o.r. rv4
+ 121 c z   4.60375 tr -29.00970  16.74876 0.0 $ o.r. rl4
+ 122 c z   4.43865 tr  29.00970  16.74876 0.0 $ o.r. rrod5
+ 123 c z   4.52501 tr  29.00970  16.74876 0.0 $ o.r. rv5
+ 124 c z   4.60375 tr  29.00970  16.74876 0.0 $ o.r. rl5
+ 125 c z   4.43865 tr   0.00000  33.49752 0.0 $ o.r. rrod6
+ 126 c z   4.52501 tr   0.00000  33.49752 0.0 $ o.r. rv6
+ 127 c z   4.60375 tr   0.00000  33.49752 0.0 $ o.r. rl6
+end

@@ -1,0 +1,63 @@
+HMF073-1: ZEUS - Unmoderated
+basic
+  neutron delayedn CM URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1. nsource=9
+   0 0 58.5  
+  -8 0 57.6  0 -8 57.6
+   8 0 57.6  0  8 57.6
+  -5 0 56.9  0 -5 56.9  
+   5 0 56.9  0  5 56.9
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+  mat=1 bunches u234 4.8707-4 u235 4.4574-2 u236 2.0675-4 u238 2.5424-3 $ HEU outer rigns
+  mat=2 bunches u234 5.0377-4 u235 4.5384-2 u236 1.1337-4 u238 2.6211-3 $ HEU inner discs
+  mat=3 bunches   si 3.4295-4   fe 1.0061-4   cu 6.9471-5   mn 2.1915-5 mg 6.6049-4 cr 7.7185-5 $ Al-6061
+                  zn 3.0687-5   ti 2.5146-5   al 5.7816-2                                       $  do.
+  mat=4 bunches    c 2.0637-4    n 1.7029-4   si 1.0158-3    p 4.2278-5  s 5.8332-6 cr 1.6442-2 $ SS304
+                  mn 1.4557-3   fe 5.9554-2   ni 6.4546-3   cu 1.5455-5 mo 1.3649-5             $  do.
+  mat=5 bunches   cu 8.3394-2 $ Copper top    reflector
+  mat=6 bunches   cu 8.3315-2 $ Copper bottom reflector
+  mat=7 bunches   cu 8.2953-2 $ Copper corner reflector
+  mat=8 bunches   cu 8.2784-2 $ Copper side   reflector
+assign-mc
+  1 lime 2 green 3 sky 4 black 5 yellow 6 pink 7 purple 8 orange
+geometry
+  sector 5 Cu     -1                 $ Cu top    reflector
+  sector 6 Cu      2  -3             $ Cu bottom reflector
+  sector 7 Cu      1   4  -5       8 $ Cu corner reflector
+  sector 8 Cu      1   5   6  -7   8 $ Cu side   reflector
+  sector 4 SS304  -8                 $ SS304 diaphragm
+  sector 1 HEU     8  11 -21         $ HEU outer disc
+  sector 1 HEU     8  10  12 -22  23 $ HEU outer disc
+  sector 1 HEU     2   3  12  13 -23 $ HEU outer disc
+  sector 2 HEU     8 -11             $ HEU inner disc
+  sector 2 HEU     8  10 -12         $ HEU inner disc
+  sector 2 HEU     2   3  12 -13     $ HEU inner disc
+  sector 3 Al6061  8  31 -32         $ Al-6061 alignment tube
+  sector 3 Al6061  3  33 -34         $ Al-6061 platen
+picture cs material color
+  -46   0 105 -46   0 -8  46  0 -8 title="axial x-z view"
+volume material
+  -45 -45  -6  45 -45 -6 -45 45 -6 
+   90  90 110
+surfaces 
+  1 box 55.88    55.88     14.4272  tr 0 0 66.45656 $ Cu top    reflector
+  2 c z  3.175                                      $  inner contour
+  3 c z  26.67   42.08272  56.59882                 $ Cu bottom reflector, outer
+  4 c z 26.797                                      $ Cu corner reflector, inner
+  5 box 55.88    55.88     59.24296 tr 0 0 29.62148 $ Cu corner reflector, outer
+  6 box 55.88    55.88    103.2510  tr 0 0 51.6255  $ Cu side   reflector, inner
+  7 box 88.2904  88.2904  103.2510  tr 0 0 51.6255  $ Cu side   reflector, outer
+  8 box 55.88    55.88      0.26416 tr 0 0 57.84088 $ SS304 diaphragm
+ 10 c z  7.62635                                    $  inner contour
+ 11 c z 19.05    57.97296  59.17184                 $ HEU inner disc
+ 12 c z 19.05    57.40908  57.70880                 $ HEU inner disc
+ 13 c z 19.05    56.50992  57.40908                 $ HEU inner disc
+ 21 c z 26.67    57.97296  59.17184                 $ HEU outer disc
+ 22 c z 26.67    57.40908  57.70880                 $ HEU outer disc
+ 23 c z 26.67    56.50992  57.40908                 $ HEU outer disc
+ 31 c z  2.54                                       $ Al-6061 alignment tube, inner
+ 32 c z  3.1496   -5.7921  57.7088                  $ Al-6061 alignment tube, inner
+ 33 c z  4.7625                                     $ Al-6061 platen, inner
+ 34 c z  26.67    35.73272 42.08272                 $ Al-6061 platen, outer
+end

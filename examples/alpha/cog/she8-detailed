@@ -1,0 +1,177 @@
+SHE-8
+
+basic
+  neutron centimeters urrpt freya
+
+criticality
+  npart=20000 nbatch=1000 sdt=0.0001 nfirst=50 norm=1.0 nsource=1 0 0 0
+
+assign-mc
+  alpha eigenvalue
+  1 yellow 2 slate 3 lime 4 gray
+
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+  mat=1  bunches  $ fuel disk
+    u235  8.4461-5
+    u238  3.3671-4
+    b10   2.9494-9
+    b11   1.2823-8
+    c12   9.4777-2
+    o16   8.9479-4
+    si    2.0248-7
+    al    6.3228-8
+    fe    6.1094-8
+    cr    2.1873-8
+    mn    2.0701-8
+    ni    1.9371-8
+    mo    2.3709-8
+    w     3.0932-8
+    cd    2.0237-10
+    h     7.9655-5
+  mat=2  bunches  $ graphite sleeve
+    b10   1.6752-9
+    b11   7.5165-9
+    c12   8.0719-2
+    o16   3.2888-5
+    n     2.0439-6
+    h     6.4677-5
+  mat=3  bunches  $ absorber (boron)
+    b10   8.0971-5
+    b11   3.5203-4
+    c12   8.7437-2
+    o16   3.4997-5
+    h     6.9989-5
+  mat=4  a-f 2.7  $ aluminum
+    al    1
+
+geometry
+  use unit 6 array -99  $ hex lattice
+
+define unit 1  $ fuel element
+  sector 1 fuel      -1  13 -14  or  -1  16 -17
+  sector 2 graphite  -3  10 -11  or  -3  19 -20  $ graphite caps
+  sector 2 graphite  -2  11 -12  or  -1  18 -19  $ graphite plugs
+  sector 2 graphite  -1  14 -16                  $ graphite disks (inner)
+  sector 2 graphite  -1  12 -13  or  -1  17 -18  $ graphite disks (outer)
+  sector 2 graphite   2  -3  11 -19              $ graphite sleeve
+  sector 2 graphite   4  -5  11 -19              $ matrix tube
+
+define unit 2  $ replacement reflector element
+  sector 2 graphite  -6  10 -20
+  sector 2 graphite   4  -5  11 -19              $ matrix tube
+
+define unit 3  $ permanent reflector element
+  sector 2 graphite  -8  10 -20
+
+define unit 4  $ control rod - black - 50/30
+  sector 3 boron      21 -22  10 -20
+  sector 4 aluminum   23 -24  10 -20
+  sector 2 graphite   25 -26  11 -19             $ matrix tube
+
+define unit 5  $ control rod - gray - 42-1
+  sector 3 boron     -27  10 -20
+  sector 4 aluminum   28 -29  10 -20
+  sector 2 graphite   30 -31  11 -19             $ matrix tube
+
+define unit 6
+  {tri-x
+    -71.5  121.48
+   -208   -121.48
+     71.5 -121.48
+   -120 120
+    101 102 103 104
+   fill
+                                          3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                         3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                        3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                       3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                     3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                    3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                   3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                  3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9 9
+                                 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9 9
+                                3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9 9
+                               3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9 9
+                              3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9 9
+                             3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9 9
+                            3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9 9
+                           3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9 9
+                          3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9 9 9
+                         3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 1 1 1 1 1 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9 9
+                        3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 1 1 1 1 1 1 1 1 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9 9
+                       3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9 9
+                      3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 9
+                     3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+                    9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+                   9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+                  9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 1 1 1 1 1 1 1 1 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+                 9 9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 1 1 1 1 1 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+                9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+               9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+              9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+             9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+            9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+           9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+          9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+         9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+        9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+       9 9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+     9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+    9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+   9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+  9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+ 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 9 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3}
+
+define unit 9  $ lattice void
+  sector 0 void  -8  10 -20
+
+boundary vacuum  99
+
+picture cs material color res 1000  xy  60  -120 120  -120 120  title="top view"
+picture cs material color res 1000  yz   0  -120 120  -120 120  title="axial view"
+
+surfaces
+$ -- fuel element
+  1 cylinder z  2.225  $ fuel disk
+  2 cylinder z  2.260  $ gap
+  3 cylinder z  2.735  $ fuel sleeve
+  4 cylinder z  2.760  $ gap
+  5 cylinder z  3.250  $ matrix tube
+$ -- replaceable reflector element
+  6 cylinder z  2.750  $ replaceable reflector
+  7 cylinder z  2.760  $ gap
+  8 cylinder z  3.250  $ matrix tube
+$ -- permanent reflector element
+  9 cylinder z  3.250  $ permanent reflector
+$ -- planes
+ 10 plane z  -120
+ 11 plane z  -118
+ 12 plane z  -117.5
+ 13 plane z  -116.5
+ 14 plane z    -0.5
+ 15 plane z     0
+ 16 plane z     0.5
+ 17 plane z   116.5
+ 18 plane z   117.5
+ 19 plane z   118
+ 20 plane z   120
+$ -- control rod - black - 50/30
+ 21 cylinder z  1.5   $ void
+ 22 cylinder z  2.5   $ absorber
+ 23 cylinder z  2.55  $ gap
+ 24 cylinder z  2.65  $ aluminum tube (approximated due to drawing typo)
+ 25 cylinder z  2.76  $ gap
+ 26 cylinder z  3.25  $ matrix tube
+$ -- control rod - gray - 42-1
+ 27 cylinder z  2.1   $ absorber
+ 28 cylinder z  2.24  $ gap
+ 29 cylinder z  2.5   $ aluminum tube
+ 30 cylinder z  2.76  $ gap
+ 31 cylinder z  3.25  $ matrix tube
+$ -- bounding box
+ 99 box  416  242.96  240
+
+end

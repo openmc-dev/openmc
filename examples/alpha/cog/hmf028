@@ -1,0 +1,24 @@
+HEU-MET-FAST-028-1:  17.840 kg Oy(93.24) sphere in 7.09" Nat-U (Flattop)
+basic
+  neutron delayedn CENTIMETERS URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1.
+  nsource=1  0. 0. 0.
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0 $ Atom Densities per Section 3.3, Table 2
+  mat=1 bunches u234 4.8869-4 u235 4.4482-2 u238 2.7038-3 $ Oy(93.24) @ 18.62 g/cc
+  mat=2 bunches u234 2.6438-6 u235 3.4610-4 u238 4.7721-2 $ Natural-U @ 19.00 g/cc
+assign-mc
+  1 orange 2 black
+geometry 
+  sector 1 Oy       -1
+  sector 2 Tu     1 -2
+  boundary vacuum 2
+picture cs material color
+  -25   0  25 -25   0 -25   25   0 -25
+volume material
+  -25 -25 -25  25 -25 -25  -25  25 -25
+   50  50  50
+surfaces $ per Section 3.2
+  1 sphere  6.1156 
+  2 sphere 24.1242 
+end

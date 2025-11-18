@@ -1,0 +1,30 @@
+LST021-1: Unreflected 80-cm diameter cylindrical tank with 10% enriched uranyl nitrate solution @ H/X=971 (Run 215)
+basic
+  neutron  CM URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1. nsource=1  0 0 21.99
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+  mat=1 bunches u234 5.0042-7 u235 6.2098-5 u236 6.2021-8 u238 5.5312-4 (h.h2o) 6.0297-2  n 1.8157-3 o16 3.6535-2             $ Solution: Run 215
+  mat=2 bunches    c 4.3736-5   si 1.0627-3   mn 1.1561-3    p 4.3170-5       s 2.9782-6 ni 8.3403-3  cr 1.6775-2 fe 5.9421-2 $ Stainless Steel
+  mat=3 bunches    n 3.9014-5  o16 1.0410-5                                                                                   $ Air
+assign-mc
+  1 orange 2 gray 3 yellow
+geometry
+  sector 1 Soln   -1 -6        $ Solution
+  sector 2 SST     1 -2        $ Tank
+  sector 2 SST    -3  4        $ Base plate
+  fill   3                     $ Air
+  boundary vacuum  5           $ Boundary condition
+picture cs material color -80   0 175 -80   0 -40  80   0 -40 title="x-z axial view"
+picture cs material color   0 -80 175   0 -80 -40   0  80 -40 title="y-z axial view"
+picture cs material color -80  80  22 -80 -80  22  80 -80  22 title="x-y plane view through the fuel"
+picture cs material color -80  80 -18 -80 -80 -18  80 -80 -18 title="x-y plane view through the base plate"
+surfaces 
+  1 c z  39.505   0.0  149.71                    $ Tank/inner
+  2 c z  39.815  -2.06 152.64                    $ Tank/outer
+  3 box 100.0   100.0    3.0  tr -10.2  0  -17.5 $ Base plate
+  4 c z   7.76                tr  24.8 17.0  0.0 $ Hole in base plate
+  5 c z  79.815 -34.5  169.71                    $ boundary condition
+  6 p z  43.98                                   $ Hc
+end

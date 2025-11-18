@@ -1,0 +1,296 @@
+ICT014-1: RA-6
+basic
+  neutron  CM URRPT
+criticality
+  npart=1000 nbatch=5050 sdt=0.0001 nfirst=51 norm=1. nsource=1 0 0 0
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+  mat=1 bunches u234 1.7680-5 u235 2.4170-3 u236 1.3635-5 u238 9.6538-3 si 8.3622-3 al 3.0451-2  b 1.9296-6 $ Al-U3Si2
+  mat=2 bunches   al 5.8811-2   cu 6.6527-5   cr 3.4398-5   mg 6.6229-4 si 3.8789-4 zn 2.4866-7 fe 7.8610-5 $ Al6061
+                  mn 2.6637-5   ti 3.3959-6    b 1.5040-6   cd 7.2323-8 co 1.6554-6 li 2.3426-7             $
+  mat=3 bunches (h.h2o) 6.6675-2 o16 3.3338-2                                                               $ H2O
+  mat=4 bunches   cd 4.6340-2                                                                               $ Cd 
+  mat=5 bunches   al 6.0262-2                                                                               $ Al
+  mat=6 bunches   ag 4.5365-2   in 7.9765-3   cd 2.8331-3                                                   $ Ag-In-Cd 
+  mat=7 bunches   fe 5.9899-2   ni 8.1984-3   cr 1.7582-2   si 6.4246-4 mn 8.7583-4  c 6.0091-5  s 2.2505-5 $ Stainless steel
+                   p 3.4953-5    n 1.7176-4                                                                 $  AISI 304L
+  mat=8 bunches   al 4.6778-2  o16 7.0166-2                                                                 $ Al2O3
+assign-mc 1 orange 2 yellow 3 sky 4 red 5 gray 6 lime 7 black 8 brown
+geometry
+  use unit 16 Core  -999 -901  90     $ Array of NFEs and CFEs
+  use unit  9 GP    -999      -90  60 $ Pure Al grid plate with primary and secondary holes
+  sector    5 Al    -999 -60   61     $ BNCT: Al
+  sector    4 Cd    -999 -60  -61  62 $ BNCT: Cd
+  sector    5 Al    -999 -60  -62  63 $ BNCT: Al
+  sector    4 Cd    -999 -60  -63  64 $ BNCT: Cd
+  sector    8 Al2O3 -999 -60  -64     $ BNCT: Cd
+  sector    3 H2O   -999  901  90  60 $ Water
+  boundary  vacuum   999
+define unit 1 $ Inner fuel plate and slot
+  sector    1 Al-U3Si2 -21
+  sector    2 Al6061    21 -22
+  sector    3 H2O       22 -23
+define unit 2 $ Outer fuel plate and slot
+  sector    1 Al-U3Si2 -21
+  sector    2 Al6061    21 -24
+  sector    3 H2O       24 -25
+define unit 3 $ Cd wire and slot
+  sector    4 Cd       -26
+  fill      3 $ H2O
+define unit 4 $ Normal fuel element
+  use unit  2 OFP   -101 tr  0     3.78 0 $  1st (outer) fuel plate and slot
+  use unit  1 IFP   -102 tr  0     3.36 0 $  2nd (inner) fuel plate and slot
+  use unit  1 IFP   -103 tr  0     2.94 0 $  3rd (inner) fuel plate and slot
+  use unit  1 IFP   -104 tr  0     2.52 0 $  4th (inner) fuel plate and slot
+  use unit  1 IFP   -105 tr  0     2.10 0 $  5th (inner) fuel plate and slot
+  use unit  1 IFP   -106 tr  0     1.68 0 $  6th (inner) fuel plate and slot
+  use unit  1 IFP   -107 tr  0     1.26 0 $  7th (inner) fuel plate and slot
+  use unit  1 IFP   -108 tr  0     0.84 0 $  8th (inner) fuel plate and slot
+  use unit  1 IFP   -109 tr  0     0.42 0 $  9th (inner) fuel plate and slot
+  use unit  1 IFP    -23                  $ 10th (inner) fuel plate and slot
+  use unit  1 IFP   -111 tr  0    -0.42 0 $ 11th (inner) fuel plate and slot
+  use unit  1 IFP   -112 tr  0    -0.84 0 $ 12th (inner) fuel plate and slot
+  use unit  1 IFP   -113 tr  0    -1.26 0 $ 13th (inner) fuel plate and slot
+  use unit  1 IFP   -114 tr  0    -1.68 0 $ 14th (inner) fuel plate and slot
+  use unit  1 IFP   -115 tr  0    -2.10 0 $ 15th (inner) fuel plate and slot
+  use unit  1 IFP   -116 tr  0    -2.52 0 $ 16th (inner) fuel plate and slot
+  use unit  1 IFP   -117 tr  0    -2.94 0 $ 17th (inner) fuel plate and slot
+  use unit  1 IFP   -118 tr  0    -3.36 0 $ 18th (inner) fuel plate and slot
+  use unit  2 OFP   -119 tr  0    -3.78 0 $ 19th (outer) fuel plate and slot
+  use unit  3 Wire  -121 tr -3.58  3.78 0  use unit 3 Wire  -122 tr  3.58  3.78 0 $ Cd wire and slot: external plate 
+  use unit  3 Wire  -123 tr -3.58  2.94 0  use unit 3 Wire  -124 tr  3.58  2.94 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire  -125 tr -3.58  2.10 0  use unit 3 Wire  -126 tr  3.58  2.10 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire  -127 tr -3.58  1.26 0  use unit 3 Wire  -128 tr  3.58  1.26 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire  -129 tr -3.58  0.42 0  use unit 3 Wire  -130 tr  3.58  0.42 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire  -131 tr -3.58 -0.42 0  use unit 3 Wire  -132 tr  3.58 -0.42 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire  -133 tr -3.58 -1.26 0  use unit 3 Wire  -134 tr  3.58 -1.26 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire  -135 tr -3.58 -2.10 0  use unit 3 Wire  -136 tr  3.58 -2.10 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire  -137 tr -3.58 -2.94 0  use unit 3 Wire  -138 tr  3.58 -2.94 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire  -139 tr -3.58 -3.78 0  use unit 3 Wire  -140 tr  3.58 -3.78 0 $ Cd wire and slot: internal plate 
+  sector    2 Al6061  41 -42  23 101 102 103 104 105 106 107 108 109     $ Side plates
+                                 111 112 113 114 115 116 117 118 119     $  with slots for fuel plates
+                                 121 122 123 124 125 126 127 128 129     $  and slots for wires
+                             130 131 132 133 134 135 136 137 138 139 140 $
+  sector    2 Al6061  41  42  30 -31                                     $ Nozzle
+  fill      3                                                            $ H2O         
+define unit 5 $ Control fuel element
+  use unit  1 IFP  -301 tr 0  2.665 0 $  1st (inner) fuel plate and slot
+  use unit  1 IFP  -302 tr 0  2.225 0 $  2nd (inner) fuel plate and slot
+  use unit  1 IFP  -303 tr 0  1.845 0 $  3rd (inner) fuel plate and slot
+  use unit  1 IFP  -304 tr 0  1.435 0 $  4th (inner) fuel plate and slot
+  use unit  1 IFP  -305 tr 0  1.025 0 $  5th (inner) fuel plate and slot
+  use unit  1 IFP  -306 tr 0  0.615 0 $  6th (inner) fuel plate and slot
+  use unit  1 IFP  -307 tr 0  0.205 0 $  7th (inner) fuel plate and slot
+  use unit  1 IFP  -308 tr 0 -0.205 0 $  8th (inner) fuel plate and slot
+  use unit  1 IFP  -309 tr 0 -0.615 0 $  9th (inner) fuel plate and slot
+  use unit  1 IFP  -310 tr 0 -1.025 0 $ 10th (inner) fuel plate and slot
+  use unit  1 IFP  -311 tr 0 -1.435 0 $ 11th (inner) fuel plate and slot
+  use unit  1 IFP  -312 tr 0 -1.845 0 $ 12th (inner) fuel plate and slot
+  use unit  1 IFP  -313 tr 0 -2.225 0 $ 13th (inner) fuel plate and slot
+  use unit  1 IFP  -314 tr 0 -2.665 0 $ 14th (inner) fuel plate and slot
+  use unit  3 Wire -321 tr -3.58  2.665 0  use unit 3 Wire  -322 tr  3.58  2.665 0 $ Cd wire and slot: external plate 
+  use unit  3 Wire -323 tr -3.58  1.845 0  use unit 3 Wire  -324 tr  3.58  1.845 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire -325 tr -3.58  1.025 0  use unit 3 Wire  -326 tr  3.58  1.025 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire -327 tr -3.58  0.205 0  use unit 3 Wire  -328 tr  3.58  0.205 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire -329 tr -3.58 -0.205 0  use unit 3 Wire  -330 tr  3.58 -0.205 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire -331 tr -3.58 -1.025 0  use unit 3 Wire  -332 tr  3.58 -1.025 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire -333 tr -3.58 -1.845 0  use unit 3 Wire  -334 tr  3.58 -1.845 0 $ Cd wire and slot: internal plate 
+  use unit  3 Wire -335 tr -3.58 -2.665 0  use unit 3 Wire  -336 tr  3.58 -2.665 0 $ Cd wire and slot: internal plate 
+  sector    2 Al6061 41 -42  301 302 303 304 305 306 307 308 309 310 $ Side plates
+                             311 312 313 314 321 322 323 324 325 326 $  with slots for fuel plates,
+                             327 328 329 330 331 332 333 334 335 336 $  slots for Cd wires, and
+                             341 342 343 344                         $  slots for guide plates
+  use unit 11 EGP -341 tr 0  3.8150 0 $ Al6061 external guide plate and water gap
+  use unit 10 IGP -342 tr 0  3.0750 0 $ Al6061 internal guide plate and water gap
+  use unit 10 IGP -343 tr 0 -3.0750 0 $ Al6061 internal guide plate and water gap
+  use unit 11 EGP -344 tr 0 -3.8150 0 $ Al6061 external guide plate and water gap
+  sector    2 Al6061 41  42  30 -31   $ Nozzle
+  fill      3                         $ H2O         
+define unit 6 $ Grid plate unit cell with no nozzle
+  sector    5 Al     -90  91 $ Pure Al grid plate
+  sector    3 H2O    -90 -91 $ H2O in primary hole 
+define unit 7 $ Grid plate unit cell with a nozzle
+  use unit  4 NFE    -90 -91 $ Nozzle and water inside primary hole
+  sector    5 Al     -90  91 $ Pure Al grid plate outside primary hole
+define unit 8 $ Grid plate
+  { x 1001  9 [-30.8 30.8]
+    y 1021 11 [-40.5 40.5]
+    z 1041 -99 99
+    fill 6 6 6 6 6 6 6 6
+         6 6 6 6 6 6 6 6
+         6 6 6 6 6 6 6 6
+         6 6 6 7 7 6 6 6
+         6 6 7 7 7 7 7 6
+         6 6 7 7 7 7 7 6
+         6 6 7 7 7 7 7 6
+         6 6 6 7 7 7 6 6
+         6 6 6 6 6 6 6 6
+         6 6 6 6 6 6 6 6 }
+define unit 9 $ Grid plate with primary and secondary holes
+  use unit  8 GP -90 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 $ Pure Al grid plate
+                     221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 $ with primary holes
+                     241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259     $ outside secondary holes
+  fill      3                                                                                        $ H2O fills secondary holes
+define unit 10 $ Al6061 internal guide plate in water
+  sector 2 Al6061 -43 $ Internal guide plate
+  fill   3            $ H2O
+define unit 11 $ Al6061 External guide plate in water
+  sector 2 Al6061 -44 $ External guide plate
+  fill   3            $ H2O
+define unit 12 $ Control element, fully withdrawn
+  sector 6 AgInCd -50  51 -52  55 -56 $ Absorber plate body with indentation 
+  sector 6 AgInCd -50 -51 -53     -56 $ Absorber plate rounded edge: LHS 
+  sector 6 AgInCd -50  52 -54     -56 $ Absorber plate rounded edge: RHS 
+  sector 7 SS304L  56 -57             $ Clad
+  sector 3 H2O     57 -999            $ Water
+define unit 13 $ Control fuel elements 1, 2 and 3: fully extracted
+  use unit  5 CFE -999  401 402                              $ Control fuel element 
+  use unit 12 CE  -999 -401 tr 0  3.445 0                    $ Control element, fully withdrawn
+  use unit 12 CE  -999 -402 tr 0 -3.445 0 -9 -3.445 0 0 -9 0 $ Control element, fully withdrawn
+  fill      3                                                $ H2O
+define unit 14 $ Control fuel element 4: partially extracted
+  use unit  5 CFE -999  403 404                                                $ Control fuel element 
+  use unit 12 CE  -999 -403 tr 0  3.445 -25.515                                $ Control element, partially withdrawn
+  use unit 12 CE  -999 -404 tr 0 -3.445 -25.515 -9 -3.445 -25.515 0 -9 -25.515 $ Control element, partially withdrawn
+  fill      3                                                $ H2O
+define unit 15 $ Water
+  sector    3 H2O -999
+define unit 16 $ Core: array of NFEs and CFEs
+  { x 2001  6 [-15.4 23.1]
+    y 2021  6 [-24.3 16.2]
+    z 2041 -180 180
+    fill 15  4 4 15 15
+          4 13 4 14  4
+          4  4 4  4  4
+          4 13 4 13  4
+         15  4 4  4 15}
+picture cs material color res=1500 -120 120   0  -120 -120   0 120 -120   0   title="plane view of entire geometry at z=0"
+picture cs material color res=1500 -120 4.05 120 -120 4.05 -75 120 4.05 -75   title="x-z axial view of the entire geometry"
+picture cs material color res=1500 3.85 -120 120 3.85 -120 -75 3.85 120 -75   title="y-z axial view of the entire geometry"
+picture cs material color res=1500 -16  17    0   -16  -25   0  24 -25    0   title="plane view of core at z=0"
+picture cs material color res=1500   0  8.1   0     0    0   0  7.7  0    0   title="plane view of an NFE at z=0"
+picture cs material color res=1500 -7.7 8.1  33   -7.7   0  33   0   0   33   title="plane view of a CFE at z=33"
+picture cs material color res=2000 -7.7 8.1 63.25 -7.7   0 63.25 0   0 63.25 title="plane view of control elements at z=63.25"
+picture cs material color res=1500 -31  41  -50   -31  -41 -50  31 -41  -50   title="plane view of grid plate"
+picture cs material color res=1500  -2   1    0    -2   -1   0   2  -1    0   title="plane detail of fuel and side plates"
+picture cs material color res=1500 -16 4.05  40   -16 4.05 -55 24 4.05  -55   title="x-z axial view of a fuel plate"
+picture cs material color res=1500 -16 7.50 120   -16 7.50 -55 24 7.50  -55   title="x-z axial view of a control element"
+volume material -9 -9 -9  9 -9 -9 -9  9 -9  18 18 18
+surfaces
+$ .... Normal fuel element
+  11 rpp -3.3   3.3   -4       4       -38.35 38.35 $ Al6061 side plates: inner
+  12 rpp -3.8   3.8   -4       4       -38.35 38.35 $ Al6061 side plates: outer
+  21 rpp -3     3     -0.02533 0.02533 -31.15 31.15 $ Al-U3Si2 fuel
+  22 rpp -3.525 3.525 -0.0745  0.0745  -33.55 33.55 $ Al6061 clad: inner fuel plates
+  23 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 $ Water slot:  inner fuel plates
+  24 rpp -3.525 3.525 -0.0745  0.0745  -38.35 35.15 $ Al6061 clad: outer fuel plates
+  25 rpp -3.55  3.55  -0.08    0.08    -38.35 35.15 $ Water slot:  outer fuel plates
+  26 c z  0.02425                      -25    25    $ Cd wire
+  29 c x  0.625 -3.3 3.3 tr 0 0 37.65               $ Al6061 crossbar
+  30 c z  2.4895 -51.85 -38.35                      $ Al6061 nozzle: inner
+  31 c z  3.0895 -51.85 -38.35                      $ Al6061 nozzle: outer
+$ .... Control fuel element
+  41 rpp -3.3   3.3   -4       4       -38.35 39.65 $ Al6061 side plates: inner
+  42 rpp -3.8   3.8   -4       4       -38.35 39.65 $ Al6061 side plates: outer
+  43 rpp -3.525 3.525 -0.065   0.065   -33.55 33.55 $ Al6061 internal guide plate
+  44 rpp -3.525 3.525 -0.065   0.065   -38.35 39.65 $ Al6061 external guide plate
+$ .... Control element, fully-extracted
+  50 rpp -3.09  3.09  -0.11    0.11    31.55 94.95  $ In-Ag-Cd
+  51 p x -2.98                                      $  edge
+  52 p x  2.98                                      $  edge
+  53 c z  0.11   tr -2.98 0 0                       $  edge
+  54 c z  0.11   tr  2.98 0 0                       $  edge
+  55 s    0.1625 tr  0 0.1725 63.25                 $  indentation
+  56 rpp -3.175 3.175 -0.145   0.145   31.55  94.95 $ SS304L cladding: inner 
+  57 rpp -3.245 3.245 -0.215   0.215   30.45 117.15 $ SS304L cladding: outer
+$ .... BNCT
+  60 rpp -38.55 38.55 -199.0 -32.40 -40.75 41.60 $ BNCT
+  61 p y -49.50 $ Al/Cd
+  62 p y -49.55 $ Cd/Al
+  63 p y -59.55 $ Al/Cd
+  64 p y -59.70 $ Cd/Al2O3
+$ .... Grid plate
+  90 rpp -30.8 30.8 -40.5 40.5 -60.75 -40.75 $ Pure aluminum grid plate
+  91 c z 3.0895                              $ Primary water hole
+$ .... Normal fuel element: Fuel plates and slots
+ 101 rpp -3.55  3.55  -0.08    0.08    -38.35 35.15 tr 0  3.78 0 $  1st (outer) plate and slot
+ 102 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0  3.36 0 $  2nd (inner) plate and slot
+ 103 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0  2.94 0 $  3rd (inner) plate and slot
+ 104 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0  2.52 0 $  4th (inner) plate and slot
+ 105 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0  2.10 0 $  5th (inner) plate and slot
+ 106 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0  1.68 0 $  6th (inner) plate and slot
+ 107 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0  1.26 0 $  7th (inner) plate and slot
+ 108 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0  0.84 0 $  8th (inner) plate and slot
+ 109 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0  0.42 0 $  9th (inner) plate and slot
+ 111 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0 -0.42 0 $ 11th (inner) plate and slot
+ 112 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0 -0.84 0 $ 12th (inner) plate and slot
+ 113 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0 -1.26 0 $ 13th (inner) plate and slot
+ 114 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0 -1.68 0 $ 14th (inner) plate and slot
+ 115 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0 -2.10 0 $ 15th (inner) plate and slot
+ 116 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0 -2.52 0 $ 16th (inner) plate and slot
+ 117 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0 -2.94 0 $ 17th (inner) plate and slot
+ 118 rpp -3.55  3.55  -0.08    0.08    -33.85 35.15 tr 0 -3.36 0 $ 18th (inner) plate and slot
+ 119 rpp -3.55  3.55  -0.08    0.08    -38.35 35.15 tr 0 -3.78 0 $ 19th (outer) plate and slot
+$ ... Normal fuel element: Cd wire and slots
+ 121 rpp -0.03 0.03 -0.025 0.025 -38.35 31.65 tr -3.58  3.78 0 122 rpp -0.03 0.03 -0.025 0.025 -38.35 31.65 tr  3.58  3.78 0 $ Slot for Cd wire: outer fuel plate
+ 123 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr -3.58  2.94 0 124 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr  3.58  2.94 0 $ Slot for Cd wire: inner fuel plate
+ 125 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr -3.58  2.10 0 126 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr  3.58  2.10 0 $ Slot for Cd wire: inner fuel plate
+ 127 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr -3.58  1.26 0 128 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr  3.58  1.26 0 $ Slot for Cd wire: inner fuel plate
+ 129 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr -3.58  0.42 0 130 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr  3.58  0.42 0 $ Slot for Cd wire: inner fuel plate
+ 131 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr -3.58 -0.42 0 132 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr  3.58 -0.42 0 $ Slot for Cd wire: inner fuel plate
+ 133 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr -3.58 -1.26 0 134 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr  3.58 -1.26 0 $ Slot for Cd wire: inner fuel plate
+ 135 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr -3.58 -2.10 0 136 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr  3.58 -2.10 0 $ Slot for Cd wire: inner fuel plate
+ 137 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr -3.58 -2.94 0 138 rpp -0.03 0.03 -0.025 0.025 -33.85 31.65 tr  3.58 -2.94 0 $ Slot for Cd wire: inner fuel plate
+ 139 rpp -0.03 0.03 -0.025 0.025 -38.35 31.65 tr -3.58 -3.78 0 140 rpp -0.03 0.03 -0.025 0.025 -38.35 31.65 tr  3.58 -3.78 0 $ Slot for Cd wire: outer fuel plate
+$ ... Secondary holes in grid plate
+ 201 c z 1.1125 tr -15.4  32.4 0 202 c z 1.1125 tr  -7.7  32.4 0 203 c z 1.1125 tr   0.0  32.4 0 204 c z 1.1125 tr   7.7  32.4 0 205 c z 1.1125 tr  15.4  32.4 0
+ 206 c z 1.1125 tr -23.1  24.3 0 207 c z 1.1125 tr -15.4  24.3 0 208 c z 1.1125 tr  -7.7  24.3 0 209 c z 1.1125 tr   0.0  24.3 0 210 c z 1.1125 tr   7.7  24.3 0
+ 211 c z 1.1125 tr  15.4  24.3 0 212 c z 1.1125 tr  23.1  24.3 0 213 c z 1.1125 tr -23.1  16.2 0 214 c z 1.1125 tr -15.4  16.2 0 215 c z 1.1125 tr  -7.7  16.2 0
+ 216 c z 1.1125 tr   0.0  16.2 0 217 c z 1.1125 tr   7.7  16.2 0 218 c z 1.1125 tr  15.4  16.2 0 219 c z 1.1125 tr  23.1  16.2 0 220 c z 1.1125 tr -23.1   8.1 0
+ 221 c z 1.1125 tr -15.4   8.1 0 222 c z 1.1125 tr  -7.7   8.1 0 223 c z 1.1125 tr   0.0   8.1 0 224 c z 1.1125 tr   7.7   8.1 0 225 c z 1.1125 tr  15.4   8.1 0 
+ 226 c z 1.1125 tr  23.1   8.1 0 227 c z 1.1125 tr -23.1   0.0 0 228 c z 1.1125 tr -15.4   0.0 0 229 c z 1.1125 tr  -7.7   0.0 0 230 c z 1.1125 tr   0.0   0.0 0
+ 231 c z 1.1125 tr   7.7   0.0 0 232 c z 1.1125 tr  15.4   0.0 0 233 c z 1.1125 tr  23.1   0.0 0 234 c z 1.1125 tr -23.1  -8.1 0 235 c z 1.1125 tr -15.4  -8.1 0
+ 236 c z 1.1125 tr  -7.7  -8.1 0 237 c z 1.1125 tr   0.0  -8.1 0 238 c z 1.1125 tr   7.7  -8.1 0 239 c z 1.1125 tr  15.4  -8.1 0 240 c z 1.1125 tr  23.1  -8.1 0
+ 241 c z 1.1125 tr -23.1 -16.2 0 242 c z 1.1125 tr -15.4 -16.2 0 243 c z 1.1125 tr  -7.7 -16.2 0 244 c z 1.1125 tr   0.0 -16.2 0 245 c z 1.1125 tr   7.7 -16.2 0
+ 246 c z 1.1125 tr  15.4 -16.2 0 247 c z 1.1125 tr  23.1 -16.2 0 248 c z 1.1125 tr -23.1 -24.3 0 249 c z 1.1125 tr -15.4 -24.3 0 250 c z 1.1125 tr  -7.7 -24.3 0 
+ 251 c z 1.1125 tr   0.0 -24.3 0 252 c z 1.1125 tr   7.7 -24.3 0 253 c z 1.1125 tr  15.4 -24.3 0 254 c z 1.1125 tr  23.1 -24.3 0 255 c z 1.1125 tr -15.4 -32.4 0
+ 256 c z 1.1125 tr  -7.7 -32.4 0 257 c z 1.1125 tr   0.0 -32.4 0 258 c z 1.1125 tr   7.7 -32.4 0 259 c z 1.1125 tr  15.4 -32.4 0 
+$ .... Control fuel element: Fuel plates and slots
+ 301 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0  2.665 0 $  1st (inner) plate and slot
+ 302 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0  2.225 0 $  2nd (inner) plate and slot
+ 303 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0  1.845 0 $  3rd (inner) plate and slot
+ 304 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0  1.435 0 $  4th (inner) plate and slot
+ 305 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0  1.025 0 $  5th (inner) plate and slot
+ 306 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0  0.615 0 $  6th (inner) plate and slot
+ 307 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0  0.205 0 $  7th (inner) plate and slot
+ 308 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0 -0.205 0 $  8th (inner) plate and slot
+ 309 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0 -0.615 0 $  9th (inner) plate and slot
+ 310 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0 -1.025 0 $ 10th (inner) plate and slot
+ 311 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0 -1.435 0 $ 11th (inner) plate and slot
+ 312 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0 -1.845 0 $ 12th (inner) plate and slot
+ 313 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0 -2.225 0 $ 13th (inner) plate and slot
+ 314 rpp -3.55  3.55  -0.08    0.08    -33.85 39.65 tr 0 -2.665 0 $ 14th (inner) plate and slot
+$ ... Control fuel element: Cd wire and slots
+ 321 rpp -0.03 0.03 -0.025 0.025 -38.35 39.65 tr -3.58  2.665 0 322 rpp -0.03 0.03 -0.025 0.025 -38.35 39.65 tr  3.58  2.665 0 $ Slot for Cd wire: outer fuel plate
+ 323 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr -3.58  1.845 0 324 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr  3.58  1.845 0 $ Slot for Cd wire: inner fuel plate
+ 325 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr -3.58  1.025 0 326 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr  3.58  1.025 0 $ Slot for Cd wire: inner fuel plate
+ 327 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr -3.58  0.205 0 328 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr  3.58  0.205 0 $ Slot for Cd wire: inner fuel plate
+ 329 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr -3.58 -0.205 0 330 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr  3.58 -0.205 0 $ Slot for Cd wire: inner fuel plate
+ 331 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr -3.58 -1.025 0 332 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr  3.58 -1.025 0 $ Slot for Cd wire: inner fuel plate
+ 333 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr -3.58 -1.845 0 334 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr  3.58 -1.845 0 $ Slot for Cd wire: inner fuel plate
+ 335 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr -3.58 -2.665 0 336 rpp -0.03 0.03 -0.025 0.025 -33.85 39.65 tr  3.58 -2.665 0 $ Slot for Cd wire: inner fuel plate
+$ ... Guide plates and slots
+ 341 rpp -3.555 3.555 -0.065   0.065  -38.35  39.65 tr 0  3.8150 0 $ Al6061 external guide plate slot
+ 342 rpp -3.555 3.555 -0.065   0.065  -33.85  39.65 tr 0  3.0750 0 $ Al6061 internal guide plate slot
+ 343 rpp -3.555 3.555 -0.065   0.065  -33.85  39.65 tr 0 -3.0750 0 $ Al6061 internal guide plate slot
+ 344 rpp -3.555 3.555 -0.065   0.065  -38.35  39.65 tr 0 -3.8150 0 $ Al6061 external guide plate slot
+$ ... Control elements
+ 401 rpp -3.245 3.245 -0.215   0.215   30.45 117.15 tr 0  3.445  0 $ Control element, fully extracted: upper
+ 402 rpp -3.245 3.245 -0.215   0.215   30.45 117.15 tr 0 -3.445  0 $ Control element, fully extracted: lower
+ 403 rpp -3.245 3.245 -0.215   0.215   30.45 117.15 tr 0  3.445 -25.515 $ Control element 4: upper
+ 404 rpp -3.245 3.245 -0.215   0.215   30.45 117.15 tr 0 -3.445 -25.515 $ Control element 4: lower
+$ ... Core boundary
+ 901 rpp -15.4 23.1 -24.3 16.2 -180 800
+$ .... Water tank
+ 999 c z 120 -180 180
+end

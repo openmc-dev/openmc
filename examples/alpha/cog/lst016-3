@@ -1,0 +1,29 @@
+LST016-3: Water reflected 28-cm-thick slab tank with 10% enriched uranyl nitrate solution @ H/X=608 (Run 125)
+basic
+  neutron  CM URRPT
+criticality
+  npart=15000 nbatch=4400 sdt=0.0001 nfirst=100 norm=1. nsource=1  0 0 25.685
+  alpha eigenvalue
+mix nlib=ENDFB8R0 ptlib=PT.ENDFB8R0.ACE sablib=T.ENDFB8R0
+  mat=1 bunches u234 7.6555-7 u235 9.4999-5 u236 9.4881-8 u238 8.4617-4 (h.h2o) 5.7800-2  n 2.3658-3 o16 3.7641-2             $ Solution: Run 125
+  mat=2 bunches    c 7.1567-5   si 7.1415-4   mn 9.9095-4    p 5.0879-5       s 1.0424-5 ni 8.5600-3  cr 1.6725-2 fe 5.9560-2 $ Stainless Steel
+  mat=3 bunches (h.h2o) 6.6658-2 o16 3.3329-2                                                                                 $ Water
+  mat=4 bunches    n 3.9016-5  o16 1.0409-5                                                                                   $ Air
+assign-mc
+  1 orange 2 gray 3 sky 4 yellow
+geometry
+  sector 1 Soln   -1 -4 $ Solution
+  sector 4 Air    -1  4 $ Air
+  sector 2 SST     1 -2 $ Tank
+  sector 3 Water   2 -3 $ Reflector
+  boundary vacuum  3    $ Boundary condition
+picture cs material color -70   0 175 -70   0 -35  70   0 -35 title="x-z axial view"
+picture cs material color   0 -70 175   0 -70 -35   0  70 -35 title="y-z axial view"
+picture cs material color -70  70  20 -70 -70  20  70 -70  20 title="x-y plane view"
+volume material           -47 -68 -33  47 -68 -33 -47  68 -33  98 136 206
+surfaces 
+  1 box  28.08  69.03 149.75 tr 0 0 74.875 $ Slab tank/inner
+  2 box  33.14  74.09 154.67 tr 0 0 75.295 $ Slab tank/outer
+  3 box  93.14 134.09 204.67 tr 0 0 70.295 $ Water reflector
+  4 p z  51.37                             $ Hc
+end

@@ -676,20 +676,16 @@ class TemporarySession:
         if self.cwd is None:
             # Set up temporary directory on rank 0
             if self.comm.rank == 0:
-                self.tmp_dir = TemporaryDirectory()
-                path_str = self.tmp_dir.name
-            else:
-                path_str = None
+                self._tmp_dir = TemporaryDirectory()
+                self.cwd = self._tmp_dir.name
 
             # Broadcast the path so that all ranks use the same directory
-            path_str = self.comm.bcast(path_str)
-            working_dir = Path(path_str)
-        else:
-            working_dir = Path(self.cwd)
+            self.cwd = self.comm.bcast(self.cwd)
 
         # Create and change to specified directory
-        working_dir.mkdir(parents=True, exist_ok=True)
-        os.chdir(working_dir)
+        self.cwd = Path(self.cwd)
+        self.cwd.mkdir(parents=True, exist_ok=True)
+        os.chdir(self.cwd)
 
         # Export model on first rank and initialize OpenMC
         if self.comm.rank == 0:
@@ -711,8 +707,8 @@ class TemporarySession:
 
             # Make sure all ranks have finalized before deleting temporary dir
             self.comm.barrier()
-            if hasattr(self, 'tmp_dir'):
-                self.tmp_dir.cleanup()
+            if hasattr(self, '_tmp_dir'):
+                self._tmp_dir.cleanup()
 
 
 class _DLLGlobal:

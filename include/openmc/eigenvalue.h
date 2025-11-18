@@ -37,8 +37,8 @@ extern double alpha_k_based;          //!< Alpha eigenvalue (k-based method)
 extern double alpha_k_based_std;      //!< Standard deviation of alpha (k-based)
 extern double alpha_static;           //!< Alpha eigenvalue (COG Static method)
 extern double alpha_static_std;    //!< Standard deviation of alpha (COG Static)
-extern double prompt_gen_time;     //!< Prompt neutron generation time
-extern double prompt_gen_time_std; //!< Standard deviation of gen time
+extern double prompt_gen_time;     //!< Prompt neutron lifetime (l_prompt)
+extern double prompt_gen_time_std; //!< Standard deviation of lifetime
 extern int kinetics_tally_index;   //!< Index of internal kinetics tally
 
 // Alpha eigenvalue calculation - state variables (mostly unused now)

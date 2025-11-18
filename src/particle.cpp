@@ -234,9 +234,8 @@ void Particle::event_calculate_xs()
     macro_xs().nu_fission = 0.0;
   }
 
-  // Alpha eigenvalue: pseudo-absorption REMOVED
-  // Now using generation-based alpha estimation without modifying cross sections
-  // This prevents negative cross sections in deeply subcritical systems
+  // Alpha eigenvalue calculation uses generation k_eff measurements
+  // Cross sections are not modified during alpha calculations
 }
 
 void Particle::event_advance()

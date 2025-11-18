@@ -41,11 +41,11 @@ extern double prompt_gen_time;     //!< Prompt neutron generation time
 extern double prompt_gen_time_std; //!< Standard deviation of gen time
 extern int kinetics_tally_index;   //!< Index of internal kinetics tally
 
-// Alpha eigenvalue calculation (COG Static method) - iteration state
-extern double alpha_previous;          //!< Previous iteration's alpha value
-extern double pseudo_absorption_sigma; //!< Pseudo-absorption cross section
-extern int alpha_iteration;            //!< Current alpha iteration number
-extern bool alpha_converged;           //!< Alpha convergence flag
+// Alpha eigenvalue calculation (generation-based method) - state variables
+extern double alpha_previous;          //!< Previous generation's alpha value
+extern double pseudo_absorption_sigma; //!< Unused (kept for compatibility)
+extern int alpha_iteration;            //!< Current generation number in alpha calc
+extern bool alpha_converged;           //!< Unused (kept for compatibility)
 
 } // namespace simulation
 
@@ -77,12 +77,12 @@ void calculate_kinetics_parameters();
 //! Creates tallies with prompt chain scores needed for alpha calculations
 void setup_kinetics_tallies();
 
-//! Run alpha eigenvalue calculation (COG Static method)
+//! Run alpha eigenvalue calculation (generation-based method)
 //!
 //! This function runs additional batches after normal eigenvalue calculation
-//! to determine alpha through iterative refinement with pseudo-absorption.
-//! The method seeks alpha such that K'(alpha) = 1.0, based on the alpha
-//! static method implemented in the COG Monte Carlo code.
+//! to determine alpha from the measured k_eff values. Each generation provides
+//! an alpha estimate via α = ln(k_eff) / Λ_prompt, which are averaged for
+//! statistical precision.
 void run_alpha_iterations();
 
 //! Calculates a minimum variance estimate of k-effective

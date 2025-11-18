@@ -184,8 +184,30 @@ cell3.region = -surf5 & -surf6
 cell4 = openmc.Cell(cell_id=4, fill=mat6, name="Conc")
 cell4.region = -surf6 & -surf18
 
+# ==============================================================================
+# Boundary Conditions
+# ==============================================================================
+
+# Create outer bounding box with vacuum boundary
+# TODO: Adjust dimensions to encompass your entire geometry
+boundary_box = openmc.model.RectangularParallelepiped(
+    -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
+    boundary_type="vacuum")
+
+# Create outer void cell (everything outside geometry but inside boundary)
+# Particles are killed at the vacuum boundary
+outer_region = -boundary_box
+outer_region = outer_region & ~cell0.region
+outer_region = outer_region & ~cell1.region
+outer_region = outer_region & ~cell2.region
+outer_region = outer_region & ~cell3.region
+outer_region = outer_region & ~cell4.region
+outer_cell = openmc.Cell(cell_id=5, name="outer_void")
+outer_cell.region = outer_region
+outer_cell.fill = None  # Void
+
 # Create root universe and geometry
-root_universe = openmc.Universe(cells=[cell0, cell1, cell2, cell3, cell4])
+root_universe = openmc.Universe(cells=[cell0, cell1, cell2, cell3, cell4, outer_cell])
 geometry = openmc.Geometry(root_universe)
 geometry.export_to_xml()
 

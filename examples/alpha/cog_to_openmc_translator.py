@@ -895,7 +895,7 @@ class OpenMCGenerator:
         return lines
     
     def _generate_geometry(self):
-        """Generate final geometry with universes and lattices"""
+        """Generate final geometry with universes, lattices, and boundary conditions"""
         lines = []
         
         # Generate root-level cells
@@ -949,6 +949,32 @@ class OpenMCGenerator:
                 root_cells.append(f'cell{cell_counter}')
                 lines.append('')
                 cell_counter += 1
+        
+        # Add outer boundary condition
+        lines.append('# ' + '='*78)
+        lines.append('# Boundary Conditions')
+        lines.append('# ' + '='*78)
+        lines.append('')
+        lines.append('# Create outer bounding box with vacuum boundary')
+        lines.append('# TODO: Adjust dimensions to encompass your entire geometry')
+        lines.append('boundary_box = openmc.model.RectangularParallelepiped(')
+        lines.append('    -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax')
+        lines.append('    boundary_type="vacuum")')
+        lines.append('')
+        lines.append('# Create outer void cell (everything outside geometry but inside boundary)')
+        lines.append('# Particles are killed at the vacuum boundary')
+        
+        # Build the outer void region
+        lines.append('outer_region = -boundary_box')
+        for cell in root_cells:
+            lines.append(f'outer_region = outer_region & ~{cell}.region')
+        
+        lines.append(f'outer_cell = openmc.Cell(cell_id={cell_counter}, name="outer_void")')
+        lines.append('outer_cell.region = outer_region')
+        lines.append('outer_cell.fill = None  # Void')
+        lines.append('')
+        
+        root_cells.append('outer_cell')
         
         # Create root universe and geometry
         lines.append('# Create root universe and geometry')

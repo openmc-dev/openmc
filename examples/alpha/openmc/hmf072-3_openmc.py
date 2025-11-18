@@ -659,8 +659,68 @@ cell41.region = -surf54 & +surf53 & -surf5 & +surf3
 cell42 = openmc.Cell(cell_id=42, fill=mat64, name="MAT64")
 cell42.region = +surf12 & -surf13 & +surf17 & -surf18 & -surf24 & +surf23
 
+# ==============================================================================
+# Boundary Conditions
+# ==============================================================================
+
+# Create outer bounding box with vacuum boundary
+# TODO: Adjust dimensions to encompass your entire geometry
+boundary_box = openmc.model.RectangularParallelepiped(
+    -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
+    boundary_type="vacuum")
+
+# Create outer void cell (everything outside geometry but inside boundary)
+# Particles are killed at the vacuum boundary
+outer_region = -boundary_box
+outer_region = outer_region & ~cell0.region
+outer_region = outer_region & ~cell1.region
+outer_region = outer_region & ~cell2.region
+outer_region = outer_region & ~cell3.region
+outer_region = outer_region & ~cell4.region
+outer_region = outer_region & ~cell5.region
+outer_region = outer_region & ~cell6.region
+outer_region = outer_region & ~cell7.region
+outer_region = outer_region & ~cell8.region
+outer_region = outer_region & ~cell9.region
+outer_region = outer_region & ~cell10.region
+outer_region = outer_region & ~cell11.region
+outer_region = outer_region & ~cell12.region
+outer_region = outer_region & ~cell13.region
+outer_region = outer_region & ~cell14.region
+outer_region = outer_region & ~cell15.region
+outer_region = outer_region & ~cell16.region
+outer_region = outer_region & ~cell17.region
+outer_region = outer_region & ~cell18.region
+outer_region = outer_region & ~cell19.region
+outer_region = outer_region & ~cell20.region
+outer_region = outer_region & ~cell21.region
+outer_region = outer_region & ~cell22.region
+outer_region = outer_region & ~cell23.region
+outer_region = outer_region & ~cell24.region
+outer_region = outer_region & ~cell25.region
+outer_region = outer_region & ~cell26.region
+outer_region = outer_region & ~cell27.region
+outer_region = outer_region & ~cell28.region
+outer_region = outer_region & ~cell29.region
+outer_region = outer_region & ~cell30.region
+outer_region = outer_region & ~cell31.region
+outer_region = outer_region & ~cell32.region
+outer_region = outer_region & ~cell33.region
+outer_region = outer_region & ~cell34.region
+outer_region = outer_region & ~cell35.region
+outer_region = outer_region & ~cell36.region
+outer_region = outer_region & ~cell37.region
+outer_region = outer_region & ~cell38.region
+outer_region = outer_region & ~cell39.region
+outer_region = outer_region & ~cell40.region
+outer_region = outer_region & ~cell41.region
+outer_region = outer_region & ~cell42.region
+outer_cell = openmc.Cell(cell_id=43, name="outer_void")
+outer_cell.region = outer_region
+outer_cell.fill = None  # Void
+
 # Create root universe and geometry
-root_universe = openmc.Universe(cells=[cell0, cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9, cell10, cell11, cell12, cell13, cell14, cell15, cell16, cell17, cell18, cell19, cell20, cell21, cell22, cell23, cell24, cell25, cell26, cell27, cell28, cell29, cell30, cell31, cell32, cell33, cell34, cell35, cell36, cell37, cell38, cell39, cell40, cell41, cell42])
+root_universe = openmc.Universe(cells=[cell0, cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9, cell10, cell11, cell12, cell13, cell14, cell15, cell16, cell17, cell18, cell19, cell20, cell21, cell22, cell23, cell24, cell25, cell26, cell27, cell28, cell29, cell30, cell31, cell32, cell33, cell34, cell35, cell36, cell37, cell38, cell39, cell40, cell41, cell42, outer_cell])
 geometry = openmc.Geometry(root_universe)
 geometry.export_to_xml()
 

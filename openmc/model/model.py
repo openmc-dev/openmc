@@ -1791,7 +1791,7 @@ class Model:
             mgxs_lib.build_library()
 
             # Create a "tallies.xml" file for the MGXS Library
-            mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+            mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
             # Run
             statepoint_filename = model.run(cwd=directory)
@@ -1980,7 +1980,7 @@ class Model:
         mgxs_lib.build_library()
 
         # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
         # Run
         statepoint_filename = model.run(cwd=directory)
@@ -2075,7 +2075,7 @@ class Model:
         mgxs_lib.build_library()
 
         # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
         # Run
         statepoint_filename = model.run(cwd=directory)

@@ -765,7 +765,7 @@ energy decomposition::
 
   # Create a "tallies.xml" file for the MGXS Library
   tallies = openmc.Tallies()
-  mgxs_lib.add_to_tallies_file(tallies, merge=True)
+  mgxs_lib.add_to_tallies(tallies, merge=True)
 
   # Export
   tallies.export_to_xml()

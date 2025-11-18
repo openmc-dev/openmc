@@ -1111,15 +1111,16 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
-      // Score lifetime * weight for prompt neutrons (numerator for Λ_prompt)
-      if (!p.is_delayed() && p.fission()) {
+      // Score lifetime * weight for prompt neutrons at absorption (numerator for l_prompt)
+      // Prompt neutron lifetime = time from birth to ANY absorption (capture or fission)
+      if (!p.is_delayed() && p.event() == TallyEvent::ABSORB) {
         score = p.lifetime() * p.wgt_last();
       }
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
-      // Score weight for prompt neutrons (denominator for Λ_prompt)
-      if (!p.is_delayed() && p.fission()) {
+      // Score weight for prompt neutrons at absorption (denominator for l_prompt)
+      if (!p.is_delayed() && p.event() == TallyEvent::ABSORB) {
         score = p.wgt_last();
       }
       break;
@@ -1660,15 +1661,16 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
-      // Score lifetime * weight for prompt neutrons (numerator for Λ_prompt)
-      if (!p.is_delayed() && p.fission()) {
+      // Score lifetime * weight for prompt neutrons at absorption (numerator for l_prompt)
+      // Prompt neutron lifetime = time from birth to ANY absorption (capture or fission)
+      if (!p.is_delayed() && p.event() == TallyEvent::ABSORB) {
         score = p.lifetime() * p.wgt_last();
       }
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
-      // Score weight for prompt neutrons (denominator for Λ_prompt)
-      if (!p.is_delayed() && p.fission()) {
+      // Score weight for prompt neutrons at absorption (denominator for l_prompt)
+      if (!p.is_delayed() && p.event() == TallyEvent::ABSORB) {
         score = p.wgt_last();
       }
       break;
@@ -2521,15 +2523,16 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
-      // Score lifetime * weight for prompt neutrons (numerator for Λ_prompt)
-      if (!p.is_delayed() && p.fission()) {
+      // Score lifetime * weight for prompt neutrons at absorption (numerator for l_prompt)
+      // Prompt neutron lifetime = time from birth to ANY absorption (capture or fission)
+      if (!p.is_delayed() && p.event() == TallyEvent::ABSORB) {
         score = p.lifetime() * p.wgt_last();
       }
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
-      // Score weight for prompt neutrons (denominator for Λ_prompt)
-      if (!p.is_delayed() && p.fission()) {
+      // Score weight for prompt neutrons at absorption (denominator for l_prompt)
+      if (!p.is_delayed() && p.event() == TallyEvent::ABSORB) {
         score = p.wgt_last();
       }
       break;

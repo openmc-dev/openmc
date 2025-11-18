@@ -584,51 +584,43 @@ void calculate_kinetics_parameters()
         population_std = calc_std(5);
       }
 
-      // Calculate prompt generation time: Λ_prompt = num / (k_prompt × denom)
-      if (gen_time_denom > 0.0 && simulation::keff_prompt > 0.0) {
-        simulation::prompt_gen_time =
-          gen_time_num / (simulation::keff_prompt * gen_time_denom);
+      // Calculate prompt neutron lifetime: l_prompt = num / denom
+      // This is the average time from birth to ANY absorption (capture or fission)
+      if (gen_time_denom > 0.0) {
+        simulation::prompt_gen_time = gen_time_num / gen_time_denom;
 
-        // Error propagation for prompt generation time
-        // For Λ = num / (k_p × denom):
-        // σ_Λ² ≈ (∂Λ/∂num)² σ_num² + (∂Λ/∂denom)² σ_denom² + (∂Λ/∂k_p)² σ_kp²
+        // Error propagation for prompt neutron lifetime
+        // For l = num / denom:
+        // σ_l² ≈ (∂l/∂num)² σ_num² + (∂l/∂denom)² σ_denom²
         if (n > 1 && simulation::prompt_gen_time > 0.0) {
-          double dLambda_dnum =
-            1.0 / (simulation::keff_prompt * gen_time_denom);
-          double dLambda_ddenom =
-            -gen_time_num /
-            (simulation::keff_prompt * gen_time_denom * gen_time_denom);
-          double dLambda_dkp =
-            -gen_time_num / (simulation::keff_prompt * simulation::keff_prompt *
-                              gen_time_denom);
+          double dl_dnum = 1.0 / gen_time_denom;
+          double dl_ddenom = -gen_time_num / (gen_time_denom * gen_time_denom);
 
-          double var_Lambda =
-            dLambda_dnum * dLambda_dnum * gen_time_num_std * gen_time_num_std +
-            dLambda_ddenom * dLambda_ddenom * gen_time_denom_std *
-              gen_time_denom_std +
-            dLambda_dkp * dLambda_dkp * simulation::keff_prompt_std *
-              simulation::keff_prompt_std;
+          double var_l = dl_dnum * dl_dnum * gen_time_num_std * gen_time_num_std +
+                         dl_ddenom * dl_ddenom * gen_time_denom_std *
+                           gen_time_denom_std;
 
-          simulation::prompt_gen_time_std = std::sqrt(var_Lambda);
+          simulation::prompt_gen_time_std = std::sqrt(var_l);
         }
 
-        // Calculate alpha (k-based): α = (k_prompt - 1) / Λ_prompt
+        // Calculate alpha (k-based): α = (k_prompt - 1) / l_prompt
+        // where l_prompt is the prompt neutron lifetime
         if (simulation::prompt_gen_time > 0.0) {
           simulation::alpha_k_based =
             (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 
           // Error propagation for alpha_k_based
-          // For α = (k_p - 1) / Λ: σ_α² ≈ (1/Λ)² σ_kp² + ((k_p-1)/Λ²)² σ_Λ²
+          // For α = (k_p - 1) / l: σ_α² ≈ (1/l)² σ_kp² + ((k_p-1)/l²)² σ_l²
           if (n > 1 && simulation::prompt_gen_time > 0.0) {
             double dAlpha_dkp = 1.0 / simulation::prompt_gen_time;
-            double dAlpha_dLambda =
+            double dAlpha_dl =
               -(simulation::keff_prompt - 1.0) /
               (simulation::prompt_gen_time * simulation::prompt_gen_time);
 
             double var_alpha = dAlpha_dkp * dAlpha_dkp *
                                  simulation::keff_prompt_std *
                                  simulation::keff_prompt_std +
-                               dAlpha_dLambda * dAlpha_dLambda *
+                               dAlpha_dl * dAlpha_dl *
                                  simulation::prompt_gen_time_std *
                                  simulation::prompt_gen_time_std;
 

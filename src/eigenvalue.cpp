@@ -55,8 +55,10 @@ double alpha_k_based {0.0};
 double alpha_k_based_std {0.0};
 double alpha_static {0.0};
 double alpha_static_std {0.0};
-double prompt_gen_time {0.0};
-double prompt_gen_time_std {0.0};
+// Note: Despite the name, prompt_gen_time is the prompt neutron LIFETIME (l_prompt),
+// not the generation time. It represents time from birth to ANY absorption.
+double prompt_gen_time {0.0};      // Prompt neutron lifetime (l_prompt)
+double prompt_gen_time_std {0.0};  // Standard deviation of l_prompt
 
 // Index of internal kinetics tally (for alpha calculations)
 int kinetics_tally_index {-1};
@@ -580,8 +582,9 @@ void calculate_kinetics_parameters()
 
       // Calculate prompt neutron lifetime: l_prompt = num / denom
       // This is the average time from birth to ANY absorption (capture or fission)
+      // NOTE: Variable is named prompt_gen_time but it's actually the LIFETIME
       if (gen_time_denom > 0.0) {
-        simulation::prompt_gen_time = gen_time_num / gen_time_denom;
+        simulation::prompt_gen_time = gen_time_num / gen_time_denom;  // l_prompt
 
         // Error propagation for prompt neutron lifetime
         // For l = num / denom:
@@ -598,10 +601,10 @@ void calculate_kinetics_parameters()
         }
 
         // Calculate alpha (k-based): α = (k_prompt - 1) / l_prompt
-        // where l_prompt is the prompt neutron lifetime
+        // where l_prompt is the prompt neutron lifetime (stored in prompt_gen_time)
         if (simulation::prompt_gen_time > 0.0) {
           simulation::alpha_k_based =
-            (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
+            (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;  // l_prompt
 
           // Error propagation for alpha_k_based
           // For α = (k_p - 1) / l: σ_α² ≈ (1/l)² σ_kp² + ((k_p-1)/l²)² σ_l²
@@ -622,7 +625,8 @@ void calculate_kinetics_parameters()
           }
 
           // Set alpha_static to the same value as alpha_k_based
-          // (both methods give the same result: α = (k_prompt - 1) / Λ_prompt)
+          // (both methods give the same result: α = (k_prompt - 1) / l_prompt)
+          // where l_prompt is the prompt neutron lifetime
           simulation::alpha_static = simulation::alpha_k_based;
           simulation::alpha_static_std = simulation::alpha_k_based_std;
         }
@@ -980,9 +984,10 @@ void setup_kinetics_tallies()
   // Set scores for alpha eigenvalue calculations
   vector<std::string> scores;
 
-  // Scores for k-based alpha: α = (k_prompt - 1) / Λ_prompt
-  scores.push_back("prompt-chain-gen-time-num");
-  scores.push_back("prompt-chain-gen-time-denom");
+  // Scores for k-based alpha: α = (k_prompt - 1) / l_prompt
+  // where l_prompt is the prompt neutron lifetime
+  scores.push_back("prompt-chain-gen-time-num");   // Numerator: Σ(lifetime × weight)
+  scores.push_back("prompt-chain-gen-time-denom"); // Denominator: Σ(weight)
 
   // Scores for rate-based alpha: α = (R_prod - R_removal) / N_prompt
   scores.push_back("prompt-chain-nu-fission-rate");
@@ -999,7 +1004,8 @@ void setup_kinetics_tallies()
 void run_alpha_iterations()
 {
   // Alpha is now calculated during normal eigenvalue batches in
-  // calculate_kinetics_parameters() using α = (k_prompt - 1) / Λ_prompt
+  // calculate_kinetics_parameters() using α = (k_prompt - 1) / l_prompt
+  // where l_prompt is the prompt neutron lifetime (time from birth to absorption).
   // No separate iterations are needed.
 }
 

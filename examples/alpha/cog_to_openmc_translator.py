@@ -1085,9 +1085,6 @@ class OpenMCGenerator:
         """Generate final geometry with universes, lattices, and boundary conditions"""
         lines = []
 
-        # Allocate unique surface ID for boundary box
-        boundary_surf_id = self._allocate_surface_id()
-
         # Generate root-level cells
         cell_counter = 0
         root_cells = []
@@ -1164,9 +1161,9 @@ class OpenMCGenerator:
         lines.append('')
         lines.append('# Create outer bounding box with vacuum boundary')
         lines.append('# TODO: Adjust dimensions to encompass your entire geometry')
+        lines.append('# Note: RectangularParallelepiped is a composite surface that auto-assigns internal surface IDs')
         lines.append('boundary_box = openmc.model.RectangularParallelepiped(')
         lines.append('    -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax')
-        lines.append(f'    surface_id={boundary_surf_id},')
         lines.append('    boundary_type="vacuum")')
         lines.append('')
         lines.append('# Create outer void cell (everything outside geometry but inside boundary)')

@@ -59,9 +59,9 @@ cell1.region = +surf1 & -surf2 & +surf2_zmin & -surf2_zmax
 
 # Create outer bounding box with vacuum boundary
 # TODO: Adjust dimensions to encompass your entire geometry
+# Note: RectangularParallelepiped is a composite surface that auto-assigns internal surface IDs
 boundary_box = openmc.model.RectangularParallelepiped(
     -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
-    surface_id=10002,
     boundary_type="vacuum")
 
 # Create outer void cell (everything outside geometry but inside boundary)

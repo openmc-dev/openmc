@@ -116,7 +116,7 @@ surf30 = openmc.ZCylinder(surface_id=30, r=2.76)
 surf31 = openmc.ZCylinder(surface_id=31, r=3.25)
 
 surf99 = openmc.model.RectangularParallelepiped(
-    -208.0, 208.0, -121.48, 121.48, -120.0, 120.0, surface_id=99)
+    -208.0, 208.0, -121.48, 121.48, -120.0, 120.0)
 
 
 # ==============================================================================
@@ -170,13 +170,10 @@ u5_cell2 = openmc.Cell(fill=mat2, name="graphite")
 u5_cell2.region = +surf30 & -surf31 & +surf11 & -surf19
 universe5 = openmc.Universe(universe_id=5, cells=[u5_cell0, u5_cell1, u5_cell2])
 
-# Unit 6: placeholder universe (TODO: Incomplete lattice data)
-u6_cell0 = openmc.Cell(fill=None, name="placeholder")
-u6_cell0.region = -surf99
-universe6 = openmc.Universe(universe_id=6, cells=[u6_cell0])
+# TODO: Incomplete lattice data for unit 6
 
 # Unit 9: lattice void
-u9_cell0 = openmc.Cell(fill=None, name="void")
+u9_cell0 = openmc.Cell(fill=None, name="void")  # mat0 undefined, using void
 u9_cell0.region = -surf8 & +surf10 & -surf20
 universe9 = openmc.Universe(universe_id=9, cells=[u9_cell0])
 
@@ -190,9 +187,9 @@ cell0.region = -surf99
 
 # Create outer bounding box with vacuum boundary
 # TODO: Adjust dimensions to encompass your entire geometry
+# Note: RectangularParallelepiped is a composite surface that auto-assigns internal surface IDs
 boundary_box = openmc.model.RectangularParallelepiped(
     -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
-    surface_id=200,
     boundary_type="vacuum")
 
 # Create outer void cell (everything outside geometry but inside boundary)

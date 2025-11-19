@@ -403,7 +403,6 @@ class OpenMCGenerator:
         lines.append('"""')
         lines.append('')
         lines.append('import openmc')
-        lines.append('import numpy as np')
         lines.append('')
         
         # Materials
@@ -482,7 +481,7 @@ class OpenMCGenerator:
         # Calculate total atom density from nuclides (excluding thermal scattering markers)
         total_density = 0.0
         for nuclide, density in mat_data['nuclides']:
-            openmc_name, is_element = self._convert_nuclide_name(nuclide)
+            openmc_name, is_element, needs_sab = self._convert_nuclide_name(nuclide)
             if openmc_name is not None:
                 # Convert density string to float
                 density_str = density.replace('-', 'e-').replace('+', 'e+')
@@ -509,15 +508,16 @@ class OpenMCGenerator:
 
         for nuclide, density in mat_data['nuclides']:
             # Convert COG nuclide notation to OpenMC format
-            openmc_name, is_element = self._convert_nuclide_name(nuclide)
+            openmc_name, is_element, needs_sab = self._convert_nuclide_name(nuclide)
 
             if openmc_name is None:
-                # Check what thermal scattering to add
-                if 'h.h2o' in nuclide.lower() or 'h2o' in nuclide.lower():
-                    has_water_sab = True
-                elif 'c30p' in nuclide.lower() or (nuclide.lower() in ['(c)', 'c.graphite']):
-                    has_graphite_sab = True
                 continue
+
+            # Track which thermal scattering tables are needed
+            if needs_sab == 'water':
+                has_water_sab = True
+            elif needs_sab == 'graphite':
+                has_graphite_sab = True
 
             # Convert density (COG uses scientific notation like 4.9184-4 for 4.9184e-4)
             density_str = density.replace('-', 'e-').replace('+', 'e+')
@@ -546,24 +546,34 @@ class OpenMCGenerator:
         Convert COG nuclide name to OpenMC format
 
         Returns:
-            tuple: (name, is_element) where is_element is True for natural elements,
-                   False for specific isotopes, or None for thermal scattering markers
+            tuple: (name, is_element, needs_sab) where:
+                   - name: element/nuclide name or None
+                   - is_element: True for natural elements, False for specific isotopes
+                   - needs_sab: 'water' for H2O, 'graphite' for graphite, None otherwise
         """
         # Handle special thermal scattering cases
         cog_lower = cog_name.lower()
 
+        # Hydrogen in water: add H element + water S(α,β)
         if 'h.h2o' in cog_lower or 'h2o' in cog_lower:
-            return (None, None)  # Mark for S(α,β) addition
+            return ('H', True, 'water')
 
-        if cog_lower in ['c', 'c30p', 'c.graphite']:
-            # Graphite - return as natural carbon
-            return ('C', True)  # Natural carbon element
+        # Graphite carbon: add C element + graphite S(α,β)
+        if cog_lower in ['c', 'c30p', 'c.graphite', '(c)', '(c30p)']:
+            return ('C', True, 'graphite')
 
         if cog_lower.startswith('(') or cog_lower.endswith(')'):
             # Remove parentheses from notation like (c) or (h.h2o)
             cleaned = cog_lower.strip('()')
-            if '.' in cleaned or cleaned in ['c30p']:
-                return (None, None)  # Thermal scattering marker
+
+            # Check if it's a thermal scattering case we already handled
+            if 'h.h2o' in cleaned or 'h2o' in cleaned:
+                return ('H', True, 'water')
+            if cleaned in ['c', 'c30p', 'c.graphite']:
+                return ('C', True, 'graphite')
+
+            # Other parenthesized notations - just strip parentheses
+            cog_name = cleaned
 
         # Convert element names to proper format
         # COG: u235 -> OpenMC: U235 (nuclide)
@@ -577,12 +587,12 @@ class OpenMCGenerator:
 
             if mass:
                 # Specific isotope
-                return (f'{element}{mass}', False)
+                return (f'{element}{mass}', False, None)
             else:
                 # Natural element - use add_element() in OpenMC
-                return (element, True)
+                return (element, True, None)
 
-        return (cog_name, False)
+        return (cog_name, False, None)
     
     def _generate_surface(self, surf_id, surf_data):
         """Generate OpenMC surface definition"""

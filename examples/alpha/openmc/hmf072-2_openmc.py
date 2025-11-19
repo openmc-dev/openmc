@@ -4,7 +4,6 @@ Translated from COG to OpenMC
 """
 
 import openmc
-import numpy as np
 
 # ==============================================================================
 # Materials

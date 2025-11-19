@@ -4,7 +4,6 @@ Translated from COG to OpenMC
 """
 
 import openmc
-import numpy as np
 
 # ==============================================================================
 # Materials
@@ -12,19 +11,23 @@ import numpy as np
 
 # Core
 mat1 = openmc.Material(material_id=1, name="Core")
-mat1.set_density("atom/b-cm", 7.966875e-02)
+mat1.set_density("atom/b-cm", 7.974066e-02)
 mat1.add_nuclide("U235", 0.3415e-4)
 mat1.add_nuclide("U238", 1.379e-4)
 mat1.add_element("C", 0.7911e-1)
+mat1.add_element("H", 0.7191e-4)
 mat1.add_nuclide("O16", 0.3867e-3)
 mat1.add_s_alpha_beta("c_H_in_H2O")
+mat1.add_s_alpha_beta("c_Graphite")
 
 # Reflector
 mat2 = openmc.Material(material_id=2, name="Reflector")
-mat2.set_density("atom/b-cm", 7.735673e-02)
+mat2.set_density("atom/b-cm", 7.742810e-02)
 mat2.add_element("C", 0.7732e-1)
+mat2.add_element("H", 0.7137e-4)
 mat2.add_nuclide("O16", 0.3673e-4)
 mat2.add_s_alpha_beta("c_H_in_H2O")
+mat2.add_s_alpha_beta("c_Graphite")
 
 materials = openmc.Materials([mat1, mat2])
 materials.export_to_xml()

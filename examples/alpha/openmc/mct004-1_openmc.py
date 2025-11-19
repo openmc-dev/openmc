@@ -4,7 +4,6 @@ Translated from COG to OpenMC
 """
 
 import openmc
-import numpy as np
 
 # ==============================================================================
 # Materials
@@ -31,7 +30,8 @@ mat2.add_element("Ni", 3.5864e-5)
 
 # Water
 mat3 = openmc.Material(material_id=3, name="Water")
-mat3.set_density("atom/b-cm", 3.336800e-02)
+mat3.set_density("atom/b-cm", 1.001030e-01)
+mat3.add_element("H", 6.6735e-2)
 mat3.add_nuclide("O16", 3.3368e-2)
 mat3.add_s_alpha_beta("c_H_in_H2O")
 
@@ -49,16 +49,19 @@ mat5.add_element("Mn", 1.7385e-3)
 mat5.add_element("P", 6.9381e-5)
 mat5.add_element("S", 4.4673e-5)
 mat5.add_element("Ni", 8.9506e-3)
+mat5.add_s_alpha_beta("c_Graphite")
 
 # Ordinary
 mat6 = openmc.Material(material_id=6, name="Ordinary")
-mat6.set_density("atom/b-cm", 4.886305e-02)
+mat6.set_density("atom/b-cm", 6.260505e-02)
+mat6.add_element("H", 1.3742e-2)
 mat6.add_nuclide("O16", 4.5919e-2)
 mat6.add_element("C", 1.1532e-4)
 mat6.add_element("Na", 9.6395e-4)
 mat6.add_element("Mg", 1.2388e-4)
 mat6.add_element("Al", 1.7409e-3)
 mat6.add_s_alpha_beta("c_H_in_H2O")
+mat6.add_s_alpha_beta("c_Graphite")
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4, mat5, mat6])
 materials.export_to_xml()

@@ -1212,16 +1212,9 @@ class OpenMCGenerator:
 
         region_str = ' & '.join(region_parts)
 
-        # Determine most common fill universe
-        if fill_pattern:
-            from collections import Counter
-            most_common = Counter(fill_pattern).most_common(1)[0][0]
-            lines.append(f'# Hexagonal lattice filled with universe{most_common} (most common from fill pattern)')
-            lines.append(f'# TODO: Implement proper hexagonal lattice array structure')
-            lines.append(f'hex{unit_id}_cell = openmc.Cell(fill=universe{most_common}, name="hexagonal_lattice")')
-        else:
-            lines.append(f'# Empty hexagonal region')
-            lines.append(f'hex{unit_id}_cell = openmc.Cell(fill=None, name="hexagonal_lattice")')
+        # Empty hexagonal region (proper lattice array not yet implemented)
+        lines.append(f'# TODO: Implement proper hexagonal lattice array structure')
+        lines.append(f'hex{unit_id}_cell = openmc.Cell(fill=None, name="hexagonal_lattice")')
 
         lines.append(f'hex{unit_id}_cell.region = {region_str}')
         lines.append(f'universe{unit_id} = openmc.Universe(universe_id={unit_id}, cells=[hex{unit_id}_cell])')
@@ -1308,16 +1301,9 @@ class OpenMCGenerator:
 
         region_str = ' & '.join(region_parts)
 
-        # Determine most common fill universe
-        if fill_pattern:
-            from collections import Counter
-            most_common = Counter(fill_pattern).most_common(1)[0][0]
-            lines.append(f'# Triangular lattice filled with universe{most_common} (most common from fill pattern)')
-            lines.append(f'# TODO: Implement proper triangular lattice array structure')
-            lines.append(f'tri{unit_id}_cell = openmc.Cell(fill=universe{most_common}, name="triangular_lattice")')
-        else:
-            lines.append(f'# Empty triangular region')
-            lines.append(f'tri{unit_id}_cell = openmc.Cell(fill=None, name="triangular_lattice")')
+        # Empty triangular region (proper lattice array not yet implemented)
+        lines.append(f'# TODO: Implement proper triangular lattice array structure')
+        lines.append(f'tri{unit_id}_cell = openmc.Cell(fill=None, name="triangular_lattice")')
 
         lines.append(f'tri{unit_id}_cell.region = {region_str}')
         lines.append(f'universe{unit_id} = openmc.Universe(universe_id={unit_id}, cells=[tri{unit_id}_cell])')

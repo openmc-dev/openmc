@@ -529,6 +529,9 @@ class OpenMCGenerator:
 
         # Check materials in cells
         for mat_id in self.parser.cells.keys():
+            # Skip if all entries are unit instances (unit ID, not material ID)
+            if all(cell.get('is_unit_instance', False) for cell in self.parser.cells[mat_id]):
+                continue
             if mat_id not in defined_materials and mat_id != 0:  # 0 is void
                 undefined_materials.add(mat_id)
 

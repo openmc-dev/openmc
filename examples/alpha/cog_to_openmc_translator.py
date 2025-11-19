@@ -363,26 +363,31 @@ class COGParser:
         """Parse material definitions"""
         # Match material definition: mat=N bunches ...
         if 'mat=' in line.lower():
+            # Strip comment before parsing to avoid false matches
+            comment = self._extract_comment(line)
+            if '$' in line:
+                line = line.split('$')[0].strip()
+
             mat_match = re.search(r'mat=(\d+)', line, re.IGNORECASE)
             if mat_match:
                 mat_id = int(mat_match.group(1))
-                
+
                 # Extract nuclides and densities
                 # Handle special cases: (h.h2o), (c), (c30p), etc.
                 # Pattern: element/isotope (with optional parentheses) followed by scientific notation number
                 nuclide_pattern = r'\(?([\w.]+)\)?[\s]+([\d.eE+-]+)'
                 matches = re.findall(nuclide_pattern, line, re.IGNORECASE)
-                
+
                 # Filter out non-nuclide entries (keywords)
                 nuclides = []
                 for nuclide, density in matches:
                     # Skip if it's a keyword like 'mat', 'bunches'
                     if nuclide.lower() not in ['mat', 'bunches']:
                         nuclides.append((nuclide, density))
-                
+
                 self.materials[mat_id] = {
                     'nuclides': nuclides,
-                    'comment': self._extract_comment(line)
+                    'comment': comment
                 }
     
     def _extract_comment(self, line):

@@ -41,8 +41,8 @@ surf1 = openmc.ZCylinder(surface_id=1, r=28.73)
 # Hexagonal prism (COG "pri 6" surface with edge_length=150.0, z from -120.0 to 120.0)
 surf2 = openmc.model.HexagonalPrism(edge_length=150.0,
                                      origin=(0.0, 0.0), orientation="x")
-surf2_zmin = openmc.ZPlane(surface_id=1002, z0=-120.0)
-surf2_zmax = openmc.ZPlane(surface_id=1003, z0=120.0)
+surf2_zmin = openmc.ZPlane(surface_id=10000, z0=-120.0)
+surf2_zmax = openmc.ZPlane(surface_id=10001, z0=120.0)
 
 
 # Cell: Core
@@ -61,7 +61,7 @@ cell1.region = +surf1 & -surf2 & +surf2_zmin & -surf2_zmax
 # TODO: Adjust dimensions to encompass your entire geometry
 boundary_box = openmc.model.RectangularParallelepiped(
     -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
-    surface_id=102,
+    surface_id=10002,
     boundary_type="vacuum")
 
 # Create outer void cell (everything outside geometry but inside boundary)

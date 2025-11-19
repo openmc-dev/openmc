@@ -11,6 +11,9 @@ from . import IndependentOperator, PredictorIntegrator
 from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
 from .results import Results
 from ..checkvalue import PathLike
+from ..mpi import comm
+from openmc.lib import TemporarySession
+from openmc.utility_funcs import change_directory
 
 
 def get_activation_materials(
@@ -199,8 +202,10 @@ class R2SManager:
         """
 
         if output_dir is None:
+            # Create timestamped output directory and broadcast to all ranks for
+            # consistency (different ranks may have slightly different times)
             stamp = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
-            output_dir = Path(f'r2s_{stamp}')
+            output_dir = Path(comm.bcast(f'r2s_{stamp}'))
 
         # Set run_kwargs for the neutron transport step
         if micro_kwargs is None:
@@ -257,18 +262,19 @@ class R2SManager:
 
         """
 
-        output_dir = Path(output_dir)
+        output_dir = Path(output_dir).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 
         if self.method == 'mesh-based':
             # Compute material volume fractions on the mesh
             if mat_vol_kwargs is None:
                 mat_vol_kwargs = {}
-            self.results['mesh_material_volumes'] = mmv = \
-                self.domains.material_volumes(self.neutron_model, **mat_vol_kwargs)
+            self.results['mesh_material_volumes'] = mmv = comm.bcast(
+                self.domains.material_volumes(self.neutron_model, **mat_vol_kwargs))
 
             # Save results to file
-            mmv.save(output_dir / 'mesh_material_volumes.npz')
+            if comm.rank == 0:
+                mmv.save(output_dir / 'mesh_material_volumes.npz')
 
             # Create mesh-material filter based on what combos were found
             domains = openmc.MeshMaterialFilter.from_volumes(self.domains, mmv)
@@ -299,13 +305,16 @@ class R2SManager:
         micro_kwargs.setdefault('path_statepoint', output_dir / 'statepoint.h5')
         micro_kwargs.setdefault('path_input', output_dir / 'model.xml')
 
-        # Run neutron transport and get fluxes and micros
-        self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
-            self.neutron_model, domains, **micro_kwargs)
+        # Run neutron transport and get fluxes and micros. Run via openmc.lib to
+        # maintain a consistent parallelism strategy with the activation step.
+        with TemporarySession():
+            self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
+                self.neutron_model, domains, **micro_kwargs)
 
         # Save flux and micros to file
-        np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
-        write_microxs_hdf5(self.results['micros'], output_dir / 'micros.h5')
+        if comm.rank == 0:
+            np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
+            write_microxs_hdf5(self.results['micros'], output_dir / 'micros.h5')
 
     def step2_activation(
         self,
@@ -457,15 +466,17 @@ class R2SManager:
         # photon model if it is different from the neutron model to account for
         # potential material changes
         if self.method == 'mesh-based' and different_photon_model:
-            self.results['mesh_material_volumes_photon'] = photon_mmv = \
-                self.domains.material_volumes(self.photon_model, **mat_vol_kwargs)
+            self.results['mesh_material_volumes_photon'] = photon_mmv = comm.bcast(
+                self.domains.material_volumes(self.photon_model, **mat_vol_kwargs))
 
             # Save photon MMV results to file
-            photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
+            if comm.rank == 0:
+                photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
 
-        tally_ids = [tally.id for tally in self.photon_model.tallies]
-        with open(output_dir / 'tally_ids.json', 'w') as f:
-            json.dump(tally_ids, f)
+        if comm.rank == 0:
+            tally_ids = [tally.id for tally in self.photon_model.tallies]
+            with open(output_dir / 'tally_ids.json', 'w') as f:
+                json.dump(tally_ids, f)
 
         self.results['photon_tallies'] = {}
 
@@ -514,8 +525,9 @@ class R2SManager:
                 time_index = len(self.results['depletion_results']) + time_index
 
             # Run photon transport calculation
-            run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
-            statepoint_path = self.photon_model.run(**run_kwargs)
+            photon_dir = Path(output_dir) / f'time_{time_index}'
+            with TemporarySession(self.photon_model, cwd=photon_dir):
+                statepoint_path = self.photon_model.run(**run_kwargs)
 
             # Store tally results
             with openmc.StatePoint(statepoint_path) as sp:

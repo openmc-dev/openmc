@@ -47,11 +47,11 @@ surf3 = openmc.ZPlane(surface_id=3, z0=90.75)
 
 # DX=DY=15*2.293        = 34.395 (core planar bdy)
 surf4 = openmc.model.RectangularParallelepiped(
-    -17.1975, 17.1975, -17.1975, 17.1975, -30.0, 144.15, surface_id=4)
+    -17.1975, 17.1975, -17.1975, 17.1975, -30.0, 144.15)
 
 # DX=DY=15*2.293 + 2*30 = 94.395 (refl planar bdy)
 surf5 = openmc.model.RectangularParallelepiped(
-    -47.1975, 47.1975, -47.1975, 47.1975, -30.0, 144.15, surface_id=5)
+    -47.1975, 47.1975, -47.1975, 47.1975, -30.0, 144.15)
 
 
 # ==============================================================================
@@ -144,6 +144,12 @@ settings.export_to_xml()
 # ==============================================================================
 
 tallies = openmc.Tallies()
+
+# Add a simple flux tally to avoid warning
+tally = openmc.Tally(tally_id=1, name='flux')
+tally.scores = ['flux']
+tallies.append(tally)
+
 tallies.export_to_xml()
 
 # ==============================================================================

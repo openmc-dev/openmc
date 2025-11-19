@@ -392,6 +392,7 @@ class OpenMCGenerator:
     def __init__(self, parser):
         self.parser = parser
         self.prism_surfaces = {}  # Track surfaces that need z-bounds: {surf_id: (zmin_name, zmax_name)}
+        self.box_surfaces = set()  # Track box/rpp surfaces that expand to 6 planes
         self.allocated_surface_ids = set()  # Track all allocated surface IDs to prevent duplicates
         self.next_available_id = 10000  # Start auxiliary surfaces at a high ID to avoid conflicts
         self._initialize_surface_tracking()
@@ -416,6 +417,39 @@ class OpenMCGenerator:
         self.allocated_surface_ids.add(new_id)
         self.next_available_id += 1
         return new_id
+
+    def _parse_surface_region(self, surf_expr):
+        """
+        Parse COG surface expression and convert to OpenMC region
+        Handles box surfaces (expand to 6 planes) and prism surfaces (add z-bounds)
+        """
+        region_parts = []
+        for surf_token in surf_expr.split():
+            if surf_token.lstrip('-+').isdigit():
+                surf_num = int(surf_token.lstrip('-+'))
+
+                # Handle box surfaces (expand to 6 planes)
+                if surf_num in self.box_surfaces:
+                    if surf_token.startswith('-'):
+                        # Inside box: +xmin & -xmax & +ymin & -ymax & +zmin & -zmax
+                        region_parts.append(f'(+surf{surf_num}_xmin & -surf{surf_num}_xmax & +surf{surf_num}_ymin & -surf{surf_num}_ymax & +surf{surf_num}_zmin & -surf{surf_num}_zmax)')
+                    else:
+                        # Outside box: complement
+                        region_parts.append(f'(-surf{surf_num}_xmin | +surf{surf_num}_xmax | -surf{surf_num}_ymin | +surf{surf_num}_ymax | -surf{surf_num}_zmin | +surf{surf_num}_zmax)')
+                else:
+                    # Regular surface
+                    if surf_token.startswith('-'):
+                        region_parts.append(f'-surf{surf_num}')
+                    else:
+                        region_parts.append(f'+surf{surf_num}')
+
+                    # Auto-add z-bounds for prism surfaces
+                    if surf_num in self.prism_surfaces:
+                        zmin_name, zmax_name = self.prism_surfaces[surf_num]
+                        region_parts.append(f'+{zmin_name}')
+                        region_parts.append(f'-{zmax_name}')
+
+        return ' & '.join(region_parts) if region_parts else ''
 
     def _validate_material_references(self):
         """Validate that all material references in cells exist"""
@@ -773,19 +807,50 @@ class OpenMCGenerator:
                 zmin = z0 - dz/2
                 zmax = z0 + dz/2
 
-                # Note: RectangularParallelepiped is composite, don't assign surface_id
-                lines.append(f'surf{surf_id} = openmc.model.RectangularParallelepiped(')
-                lines.append(f'    {xmin}, {xmax}, {ymin}, {ymax}, {zmin}, {zmax})')
-        
+                # Create 6 explicit planes for the box
+                xmin_id = self._allocate_surface_id()
+                xmax_id = self._allocate_surface_id()
+                ymin_id = self._allocate_surface_id()
+                ymax_id = self._allocate_surface_id()
+                zmin_id = self._allocate_surface_id()
+                zmax_id = self._allocate_surface_id()
+
+                # Track this as a box surface
+                self.box_surfaces.add(surf_id)
+
+                lines.append(f'# Box (6 planes): xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}, zmin={zmin}, zmax={zmax}')
+                lines.append(f'surf{surf_id}_xmin = openmc.XPlane(surface_id={xmin_id}, x0={xmin})')
+                lines.append(f'surf{surf_id}_xmax = openmc.XPlane(surface_id={xmax_id}, x0={xmax})')
+                lines.append(f'surf{surf_id}_ymin = openmc.YPlane(surface_id={ymin_id}, y0={ymin})')
+                lines.append(f'surf{surf_id}_ymax = openmc.YPlane(surface_id={ymax_id}, y0={ymax})')
+                lines.append(f'surf{surf_id}_zmin = openmc.ZPlane(surface_id={zmin_id}, z0={zmin})')
+                lines.append(f'surf{surf_id}_zmax = openmc.ZPlane(surface_id={zmax_id}, z0={zmax})')
+
         elif surf_type in ['rpp']:
             # COG: RPP x1 x2 y1 y2 z1 z2 (rectangular parallelepiped)
             if len(params) >= 6:
                 xmin, xmax = params[0], params[1]
                 ymin, ymax = params[2], params[3]
                 zmin, zmax = params[4], params[5]
-                # Note: RectangularParallelepiped is composite, don't assign surface_id
-                lines.append(f'surf{surf_id} = openmc.model.RectangularParallelepiped(')
-                lines.append(f'    {xmin}, {xmax}, {ymin}, {ymax}, {zmin}, {zmax})')
+
+                # Create 6 explicit planes for the box
+                xmin_id = self._allocate_surface_id()
+                xmax_id = self._allocate_surface_id()
+                ymin_id = self._allocate_surface_id()
+                ymax_id = self._allocate_surface_id()
+                zmin_id = self._allocate_surface_id()
+                zmax_id = self._allocate_surface_id()
+
+                # Track this as a box surface
+                self.box_surfaces.add(surf_id)
+
+                lines.append(f'# Rectangular parallelepiped (6 planes)')
+                lines.append(f'surf{surf_id}_xmin = openmc.XPlane(surface_id={xmin_id}, x0={xmin})')
+                lines.append(f'surf{surf_id}_xmax = openmc.XPlane(surface_id={xmax_id}, x0={xmax})')
+                lines.append(f'surf{surf_id}_ymin = openmc.YPlane(surface_id={ymin_id}, y0={ymin})')
+                lines.append(f'surf{surf_id}_ymax = openmc.YPlane(surface_id={ymax_id}, y0={ymax})')
+                lines.append(f'surf{surf_id}_zmin = openmc.ZPlane(surface_id={zmin_id}, z0={zmin})')
+                lines.append(f'surf{surf_id}_zmax = openmc.ZPlane(surface_id={zmax_id}, z0={zmax})')
         
         elif surf_type in ['cone', 'c/x', 'c/y', 'c/z']:
             # COG cone surfaces
@@ -905,25 +970,9 @@ class OpenMCGenerator:
                 surf_expr = cell_data['surfaces']
                 
                 lines.append(f'# Cell: {name}')
-                
+
                 # Parse surface expression
-                # COG uses: -1 means inside surface 1, +1 means outside
-                region_parts = []
-                for surf_token in surf_expr.split():
-                    if surf_token.lstrip('-+').isdigit():
-                        surf_num = int(surf_token.lstrip('-+'))
-                        if surf_token.startswith('-'):
-                            region_parts.append(f'-surf{surf_num}')
-                        else:
-                            region_parts.append(f'+surf{surf_num}')
-
-                        # Auto-add z-bounds for prism surfaces
-                        if surf_num in self.prism_surfaces:
-                            zmin_name, zmax_name = self.prism_surfaces[surf_num]
-                            region_parts.append(f'+{zmin_name}')
-                            region_parts.append(f'-{zmax_name}')
-
-                region_str = ' & '.join(region_parts) if region_parts else ''
+                region_str = self._parse_surface_region(surf_expr)
                 
                 lines.append(f'cell{cell_counter} = openmc.Cell(cell_id={cell_counter}, fill=mat{mat_id}, name="{name}")')
                 if region_str:
@@ -989,24 +1038,9 @@ class OpenMCGenerator:
             surf_expr = cell_info['surfaces']
             
             cell_var = f'u{unit_id}_cell{i}'
-            
+
             # Parse surface expression
-            region_parts = []
-            for surf_token in surf_expr.split():
-                if surf_token.lstrip('-+').isdigit():
-                    surf_num = int(surf_token.lstrip('-+'))
-                    if surf_token.startswith('-'):
-                        region_parts.append(f'-surf{surf_num}')
-                    else:
-                        region_parts.append(f'+surf{surf_num}')
-
-                    # Auto-add z-bounds for prism surfaces
-                    if surf_num in self.prism_surfaces:
-                        zmin_name, zmax_name = self.prism_surfaces[surf_num]
-                        region_parts.append(f'+{zmin_name}')
-                        region_parts.append(f'-{zmax_name}')
-
-            region_str = ' & '.join(region_parts) if region_parts else ''
+            region_str = self._parse_surface_region(surf_expr)
 
             # Check if material exists, otherwise use None (void)
             if mat_id in self.parser.materials:
@@ -1085,9 +1119,6 @@ class OpenMCGenerator:
         """Generate final geometry with universes, lattices, and boundary conditions"""
         lines = []
 
-        # Allocate unique surface ID for boundary box
-        boundary_surf_id = self._allocate_surface_id()
-
         # Generate root-level cells
         cell_counter = 0
         root_cells = []
@@ -1101,24 +1132,9 @@ class OpenMCGenerator:
                 if cell_data.get('is_unit_instance'):
                     unit_id = cell_data['unit_id']
                     lines.append(f'# Cell using unit {unit_id}: {name}')
-                    
+
                     # Parse surface expression
-                    region_parts = []
-                    for surf_token in surf_expr.split():
-                        if surf_token.lstrip('-+').isdigit():
-                            surf_num = int(surf_token.lstrip('-+'))
-                            if surf_token.startswith('-'):
-                                region_parts.append(f'-surf{surf_num}')
-                            else:
-                                region_parts.append(f'+surf{surf_num}')
-
-                            # Auto-add z-bounds for prism surfaces
-                            if surf_num in self.prism_surfaces:
-                                zmin_name, zmax_name = self.prism_surfaces[surf_num]
-                                region_parts.append(f'+{zmin_name}')
-                                region_parts.append(f'-{zmax_name}')
-
-                    region_str = ' & '.join(region_parts) if region_parts else ''
+                    region_str = self._parse_surface_region(surf_expr)
 
                     lines.append(f'cell{cell_counter} = openmc.Cell(cell_id={cell_counter}, fill=universe{unit_id}, name="{name}")')
                     if region_str:
@@ -1127,22 +1143,7 @@ class OpenMCGenerator:
                     lines.append(f'# Cell: {name}')
 
                     # Parse surface expression
-                    region_parts = []
-                    for surf_token in surf_expr.split():
-                        if surf_token.lstrip('-+').isdigit():
-                            surf_num = int(surf_token.lstrip('-+'))
-                            if surf_token.startswith('-'):
-                                region_parts.append(f'-surf{surf_num}')
-                            else:
-                                region_parts.append(f'+surf{surf_num}')
-
-                            # Auto-add z-bounds for prism surfaces
-                            if surf_num in self.prism_surfaces:
-                                zmin_name, zmax_name = self.prism_surfaces[surf_num]
-                                region_parts.append(f'+{zmin_name}')
-                                region_parts.append(f'-{zmax_name}')
-
-                    region_str = ' & '.join(region_parts) if region_parts else ''
+                    region_str = self._parse_surface_region(surf_expr)
 
                     # Check if material exists, otherwise use None (void)
                     if mat_id in self.parser.materials:
@@ -1162,18 +1163,29 @@ class OpenMCGenerator:
         lines.append('# Boundary Conditions')
         lines.append('# ' + '='*78)
         lines.append('')
-        lines.append('# Create outer bounding box with vacuum boundary')
+        lines.append('# Create outer bounding box with vacuum boundary (6 planes)')
         lines.append('# TODO: Adjust dimensions to encompass your entire geometry')
-        lines.append('boundary_box = openmc.model.RectangularParallelepiped(')
-        lines.append('    -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax')
-        lines.append(f'    surface_id={boundary_surf_id},')
-        lines.append('    boundary_type="vacuum")')
+
+        # Allocate surface IDs for boundary planes
+        boundary_xmin_id = self._allocate_surface_id()
+        boundary_xmax_id = self._allocate_surface_id()
+        boundary_ymin_id = self._allocate_surface_id()
+        boundary_ymax_id = self._allocate_surface_id()
+        boundary_zmin_id = self._allocate_surface_id()
+        boundary_zmax_id = self._allocate_surface_id()
+
+        lines.append(f'boundary_xmin = openmc.XPlane(surface_id={boundary_xmin_id}, x0=-200, boundary_type="vacuum")')
+        lines.append(f'boundary_xmax = openmc.XPlane(surface_id={boundary_xmax_id}, x0=200, boundary_type="vacuum")')
+        lines.append(f'boundary_ymin = openmc.YPlane(surface_id={boundary_ymin_id}, y0=-200, boundary_type="vacuum")')
+        lines.append(f'boundary_ymax = openmc.YPlane(surface_id={boundary_ymax_id}, y0=200, boundary_type="vacuum")')
+        lines.append(f'boundary_zmin = openmc.ZPlane(surface_id={boundary_zmin_id}, z0=-200, boundary_type="vacuum")')
+        lines.append(f'boundary_zmax = openmc.ZPlane(surface_id={boundary_zmax_id}, z0=200, boundary_type="vacuum")')
         lines.append('')
         lines.append('# Create outer void cell (everything outside geometry but inside boundary)')
         lines.append('# Particles are killed at the vacuum boundary')
-        
+
         # Build the outer void region
-        lines.append('outer_region = -boundary_box')
+        lines.append('outer_region = +boundary_xmin & -boundary_xmax & +boundary_ymin & -boundary_ymax & +boundary_zmin & -boundary_zmax')
         for cell in root_cells:
             lines.append(f'outer_region = outer_region & ~{cell}.region')
         

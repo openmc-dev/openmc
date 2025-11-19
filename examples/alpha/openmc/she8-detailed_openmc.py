@@ -115,8 +115,13 @@ surf30 = openmc.ZCylinder(surface_id=30, r=2.76)
 # matrix tube
 surf31 = openmc.ZCylinder(surface_id=31, r=3.25)
 
-surf99 = openmc.model.RectangularParallelepiped(
-    -208.0, 208.0, -121.48, 121.48, -120.0, 120.0, surface_id=99)
+# Box (6 planes): xmin=-208.0, xmax=208.0, ymin=-121.48, ymax=121.48, zmin=-120.0, zmax=120.0
+surf99_xmin = openmc.XPlane(surface_id=10000, x0=-208.0)
+surf99_xmax = openmc.XPlane(surface_id=10001, x0=208.0)
+surf99_ymin = openmc.YPlane(surface_id=10002, y0=-121.48)
+surf99_ymax = openmc.YPlane(surface_id=10003, y0=121.48)
+surf99_zmin = openmc.ZPlane(surface_id=10004, z0=-120.0)
+surf99_zmax = openmc.ZPlane(surface_id=10005, z0=120.0)
 
 
 # ==============================================================================
@@ -170,34 +175,33 @@ u5_cell2 = openmc.Cell(fill=mat2, name="graphite")
 u5_cell2.region = +surf30 & -surf31 & +surf11 & -surf19
 universe5 = openmc.Universe(universe_id=5, cells=[u5_cell0, u5_cell1, u5_cell2])
 
-# Unit 6: placeholder universe (TODO: Incomplete lattice data)
-u6_cell0 = openmc.Cell(fill=None, name="placeholder")
-u6_cell0.region = -surf99
-universe6 = openmc.Universe(universe_id=6, cells=[u6_cell0])
+# TODO: Incomplete lattice data for unit 6
 
 # Unit 9: lattice void
-u9_cell0 = openmc.Cell(fill=None, name="void")
+u9_cell0 = openmc.Cell(fill=None, name="void")  # mat0 undefined, using void
 u9_cell0.region = -surf8 & +surf10 & -surf20
 universe9 = openmc.Universe(universe_id=9, cells=[u9_cell0])
 
 # Cell using unit 6: array
 cell0 = openmc.Cell(cell_id=0, fill=universe6, name="array")
-cell0.region = -surf99
+cell0.region = (+surf99_xmin & -surf99_xmax & +surf99_ymin & -surf99_ymax & +surf99_zmin & -surf99_zmax)
 
 # ==============================================================================
 # Boundary Conditions
 # ==============================================================================
 
-# Create outer bounding box with vacuum boundary
+# Create outer bounding box with vacuum boundary (6 planes)
 # TODO: Adjust dimensions to encompass your entire geometry
-boundary_box = openmc.model.RectangularParallelepiped(
-    -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
-    surface_id=200,
-    boundary_type="vacuum")
+boundary_xmin = openmc.XPlane(surface_id=10006, x0=-200, boundary_type="vacuum")
+boundary_xmax = openmc.XPlane(surface_id=10007, x0=200, boundary_type="vacuum")
+boundary_ymin = openmc.YPlane(surface_id=10008, y0=-200, boundary_type="vacuum")
+boundary_ymax = openmc.YPlane(surface_id=10009, y0=200, boundary_type="vacuum")
+boundary_zmin = openmc.ZPlane(surface_id=10010, z0=-200, boundary_type="vacuum")
+boundary_zmax = openmc.ZPlane(surface_id=10011, z0=200, boundary_type="vacuum")
 
 # Create outer void cell (everything outside geometry but inside boundary)
 # Particles are killed at the vacuum boundary
-outer_region = -boundary_box
+outer_region = +boundary_xmin & -boundary_xmax & +boundary_ymin & -boundary_ymax & +boundary_zmin & -boundary_zmax
 outer_region = outer_region & ~cell0.region
 outer_cell = openmc.Cell(cell_id=1, name="outer_void")
 outer_cell.region = outer_region

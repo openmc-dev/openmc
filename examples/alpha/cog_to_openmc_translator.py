@@ -392,11 +392,60 @@ class OpenMCGenerator:
     def __init__(self, parser):
         self.parser = parser
         self.prism_surfaces = {}  # Track surfaces that need z-bounds: {surf_id: (zmin_name, zmax_name)}
-        
+        self.allocated_surface_ids = set()  # Track all allocated surface IDs to prevent duplicates
+        self.next_available_id = 10000  # Start auxiliary surfaces at a high ID to avoid conflicts
+        self._initialize_surface_tracking()
+
+    def _initialize_surface_tracking(self):
+        """Track all primary surface IDs and find safe starting point for auxiliary surfaces"""
+        # Add all explicitly defined surface IDs
+        for surf_id in self.parser.surfaces.keys():
+            self.allocated_surface_ids.add(surf_id)
+
+        # Find a safe starting ID for auxiliary surfaces (at least 10000, but higher if needed)
+        if self.allocated_surface_ids:
+            max_primary_id = max(self.allocated_surface_ids)
+            self.next_available_id = max(10000, max_primary_id + 1000)
+
+    def _allocate_surface_id(self):
+        """Allocate a new unique surface ID for auxiliary surfaces"""
+        while self.next_available_id in self.allocated_surface_ids:
+            self.next_available_id += 1
+
+        new_id = self.next_available_id
+        self.allocated_surface_ids.add(new_id)
+        self.next_available_id += 1
+        return new_id
+
+    def _validate_material_references(self):
+        """Validate that all material references in cells exist"""
+        defined_materials = set(self.parser.materials.keys())
+        undefined_materials = set()
+
+        # Check materials in cells
+        for mat_id in self.parser.cells.keys():
+            if mat_id not in defined_materials and mat_id != 0:  # 0 is void
+                undefined_materials.add(mat_id)
+
+        # Check materials in universes
+        for unit_id, unit_data in self.parser.universes.items():
+            for cell_info in unit_data.get('cells', []):
+                mat_id = cell_info.get('mat_id')
+                if mat_id is not None and mat_id not in defined_materials and mat_id != 0:
+                    undefined_materials.add(mat_id)
+
+        return undefined_materials
+
     def generate(self):
         """Generate OpenMC Python script"""
         lines = []
-        
+
+        # Validate material references before generating
+        undefined_materials = self._validate_material_references()
+        if undefined_materials:
+            print(f"WARNING: Found undefined materials referenced in cells: {sorted(undefined_materials)}")
+            print("         These will be replaced with void (fill=None)")
+
         # Header
         lines.append('"""')
         lines.append(f'{self.parser.title}')
@@ -552,6 +601,20 @@ class OpenMCGenerator:
                    - is_element: True for natural elements, False for specific isotopes
                    - needs_sab: 'water' for H2O, 'graphite' for graphite, None otherwise
         """
+        # Valid element symbols for validation
+        valid_elements = {
+            'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
+            'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca',
+            'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
+            'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y', 'Zr',
+            'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn',
+            'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd',
+            'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb',
+            'Lu', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg',
+            'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th',
+            'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm'
+        }
+
         # Map common element name variations and typos to correct symbols
         element_name_map = {
             'table': 'Ta',  # Common typo for Tantalum
@@ -608,6 +671,11 @@ class OpenMCGenerator:
         if match:
             element = match.group(1).capitalize()
             mass = match.group(2)
+
+            # Validate element symbol
+            if element not in valid_elements:
+                print(f"WARNING: Unrecognized element symbol '{element}' from COG input '{cog_name}'")
+                print(f"         This may cause errors. Check if this is a typo.")
 
             if mass:
                 # Specific isotope
@@ -797,6 +865,9 @@ class OpenMCGenerator:
                     zmax = float(params[z_idx + 1])
 
                     # Track this prism surface and its z-bounds for automatic region generation
+                    # Allocate unique surface IDs to avoid conflicts
+                    zmin_id = self._allocate_surface_id()
+                    zmax_id = self._allocate_surface_id()
                     self.prism_surfaces[surf_id] = (f'surf{surf_id}_zmin', f'surf{surf_id}_zmax')
 
                     # Create hexagonal prism and bounding planes
@@ -804,8 +875,8 @@ class OpenMCGenerator:
                     lines.append(f'# Hexagonal prism (COG "pri 6" surface with edge_length={edge_length}, z from {zmin} to {zmax})')
                     lines.append(f'surf{surf_id} = openmc.model.HexagonalPrism(edge_length={edge_length},')
                     lines.append(f'                                     origin=(0.0, 0.0), orientation="x")')
-                    lines.append(f'surf{surf_id}_zmin = openmc.ZPlane(z0={zmin})')
-                    lines.append(f'surf{surf_id}_zmax = openmc.ZPlane(z0={zmax})')
+                    lines.append(f'surf{surf_id}_zmin = openmc.ZPlane(surface_id={zmin_id}, z0={zmin})')
+                    lines.append(f'surf{surf_id}_zmax = openmc.ZPlane(surface_id={zmax_id}, z0={zmax})')
                 else:
                     # Other prism types not yet supported
                     lines.append(f'# COG surface type "pri" with {nsides} sides - requires manual translation')
@@ -936,11 +1007,16 @@ class OpenMCGenerator:
                         region_parts.append(f'-{zmax_name}')
 
             region_str = ' & '.join(region_parts) if region_parts else ''
-            
-            lines.append(f'{cell_var} = openmc.Cell(fill=mat{mat_id}, name="{name}")')
+
+            # Check if material exists, otherwise use None (void)
+            if mat_id in self.parser.materials:
+                lines.append(f'{cell_var} = openmc.Cell(fill=mat{mat_id}, name="{name}")')
+            else:
+                lines.append(f'{cell_var} = openmc.Cell(fill=None, name="{name}")  # mat{mat_id} undefined, using void')
+
             if region_str:
                 lines.append(f'{cell_var}.region = {region_str}')
-            
+
             cells_in_universe.append(cell_var)
         
         # Create universe
@@ -1009,12 +1085,8 @@ class OpenMCGenerator:
         """Generate final geometry with universes, lattices, and boundary conditions"""
         lines = []
 
-        # Find the maximum surface ID to avoid conflicts with boundary_box
-        max_surf_id = max(self.parser.surfaces.keys()) if self.parser.surfaces else 0
-        # Also check prism surfaces which create additional surface IDs
-        for surf_id in self.prism_surfaces.keys():
-            max_surf_id = max(max_surf_id, surf_id)
-        boundary_surf_id = max_surf_id + 100  # Use a safe offset
+        # Allocate unique surface ID for boundary box
+        boundary_surf_id = self._allocate_surface_id()
 
         # Generate root-level cells
         cell_counter = 0
@@ -1071,8 +1143,13 @@ class OpenMCGenerator:
                                 region_parts.append(f'-{zmax_name}')
 
                     region_str = ' & '.join(region_parts) if region_parts else ''
-                    
-                    lines.append(f'cell{cell_counter} = openmc.Cell(cell_id={cell_counter}, fill=mat{mat_id}, name="{name}")')
+
+                    # Check if material exists, otherwise use None (void)
+                    if mat_id in self.parser.materials:
+                        lines.append(f'cell{cell_counter} = openmc.Cell(cell_id={cell_counter}, fill=mat{mat_id}, name="{name}")')
+                    else:
+                        lines.append(f'cell{cell_counter} = openmc.Cell(cell_id={cell_counter}, fill=None, name="{name}")  # mat{mat_id} undefined, using void')
+
                     if region_str:
                         lines.append(f'cell{cell_counter}.region = {region_str}')
                 

@@ -195,6 +195,40 @@ class COGParser:
                 while i < len(tokens) and tokens[i].lower() != 'fill':
                     i += 1
 
+        # Check for hexagonal lattice type
+        elif i < len(tokens) and tokens[i].lower() in ['hex-x', 'hex-y', 'hex-z']:
+            lattice_data['type'] = tokens[i].lower()
+            i += 1
+
+            # Parse 6 vertices (x,y pairs) for hexagon
+            vertices = []
+            for _ in range(6):
+                if i + 1 < len(tokens):
+                    try:
+                        x = float(tokens[i])
+                        y = float(tokens[i+1])
+                        vertices.append((x, y))
+                        i += 2
+                    except ValueError:
+                        break
+
+            if len(vertices) == 6:
+                lattice_data['vertices'] = vertices
+
+                # Parse z-bounds (next 2 tokens)
+                if i + 1 < len(tokens):
+                    try:
+                        zmin = float(tokens[i])
+                        zmax = float(tokens[i+1])
+                        lattice_data['z'] = {'range': [zmin, zmax]}
+                        i += 2
+                    except ValueError:
+                        pass
+
+                # Skip any IDs or other tokens until 'fill'
+                while i < len(tokens) and tokens[i].lower() != 'fill':
+                    i += 1
+
         while i < len(tokens):
             token = tokens[i].lower()
             
@@ -329,26 +363,31 @@ class COGParser:
         """Parse material definitions"""
         # Match material definition: mat=N bunches ...
         if 'mat=' in line.lower():
+            # Strip comment before parsing to avoid false matches
+            comment = self._extract_comment(line)
+            if '$' in line:
+                line = line.split('$')[0].strip()
+
             mat_match = re.search(r'mat=(\d+)', line, re.IGNORECASE)
             if mat_match:
                 mat_id = int(mat_match.group(1))
-                
+
                 # Extract nuclides and densities
                 # Handle special cases: (h.h2o), (c), (c30p), etc.
                 # Pattern: element/isotope (with optional parentheses) followed by scientific notation number
                 nuclide_pattern = r'\(?([\w.]+)\)?[\s]+([\d.eE+-]+)'
                 matches = re.findall(nuclide_pattern, line, re.IGNORECASE)
-                
+
                 # Filter out non-nuclide entries (keywords)
                 nuclides = []
                 for nuclide, density in matches:
                     # Skip if it's a keyword like 'mat', 'bunches'
                     if nuclide.lower() not in ['mat', 'bunches']:
                         nuclides.append((nuclide, density))
-                
+
                 self.materials[mat_id] = {
                     'nuclides': nuclides,
-                    'comment': self._extract_comment(line)
+                    'comment': comment
                 }
     
     def _extract_comment(self, line):
@@ -495,6 +534,9 @@ class OpenMCGenerator:
 
         # Check materials in cells
         for mat_id in self.parser.cells.keys():
+            # Skip if all entries are unit instances (unit ID, not material ID)
+            if all(cell.get('is_unit_instance', False) for cell in self.parser.cells[mat_id]):
+                continue
             if mat_id not in defined_materials and mat_id != 0:  # 0 is void
                 undefined_materials.add(mat_id)
 
@@ -1096,6 +1138,98 @@ class OpenMCGenerator:
         
         return lines
     
+    def _generate_hexagonal_lattice(self, unit_id, lattice_info):
+        """Generate hexagonal lattice with explicit boundary planes"""
+        lines = []
+
+        vertices = lattice_info.get('vertices')
+        z_data = lattice_info.get('z')
+        fill_pattern = lattice_info.get('fill', [])
+
+        if not vertices or len(vertices) != 6:
+            lines.append(f'# Unit {unit_id}: Invalid hexagonal lattice data')
+            lines.append(f'u{unit_id}_cell0 = openmc.Cell(fill=None, name="placeholder")')
+            lines.append(f'universe{unit_id} = openmc.Universe(universe_id={unit_id}, cells=[u{unit_id}_cell0])')
+            lines.append('')
+            return lines
+
+        # Extract vertices
+        (x1, y1), (x2, y2), (x3, y3), (x4, y4), (x5, y5), (x6, y6) = vertices
+        zmin, zmax = z_data['range'] if z_data else (-120, 120)
+
+        lines.append(f'# Hexagonal lattice for unit {unit_id}')
+        lines.append(f'# Vertices: ({x1}, {y1}), ({x2}, {y2}), ({x3}, {y3}), ({x4}, {y4}), ({x5}, {y5}), ({x6}, {y6})')
+        lines.append(f'# Z bounds: {zmin} to {zmax}')
+        lines.append('')
+
+        # Create 6 side planes for the hexagon edges + 2 z-planes
+        # For each edge, calculate plane equation: ax + by + d = 0
+        edges = [
+            ((x1, y1), (x2, y2), 'edge1'),
+            ((x2, y2), (x3, y3), 'edge2'),
+            ((x3, y3), (x4, y4), 'edge3'),
+            ((x4, y4), (x5, y5), 'edge4'),
+            ((x5, y5), (x6, y6), 'edge5'),
+            ((x6, y6), (x1, y1), 'edge6')
+        ]
+
+        edge_plane_ids = []
+        for (xa, ya), (xb, yb), edge_name in edges:
+            # Calculate plane coefficients
+            # Line from (xa,ya) to (xb,yb): (yb-ya)*x + (xa-xb)*y + (xb*ya - xa*yb) = 0
+            a = yb - ya
+            b = xa - xb
+            d = xb * ya - xa * yb
+
+            # Allocate surface ID
+            plane_id = self._allocate_surface_id()
+            edge_plane_ids.append(plane_id)
+
+            lines.append(f'# Hexagon {edge_name}: from ({xa}, {ya}) to ({xb}, {yb})')
+            lines.append(f'hex{unit_id}_{edge_name} = openmc.Plane(surface_id={plane_id}, a={a}, b={b}, c=0, d={d})')
+
+        # Z-bound planes
+        zmin_id = self._allocate_surface_id()
+        zmax_id = self._allocate_surface_id()
+        lines.append(f'hex{unit_id}_zmin = openmc.ZPlane(surface_id={zmin_id}, z0={zmin})')
+        lines.append(f'hex{unit_id}_zmax = openmc.ZPlane(surface_id={zmax_id}, z0={zmax})')
+        lines.append('')
+
+        # Determine which side of each plane is "inside" the hexagon
+        # Calculate centroid to determine orientation
+        cx = (x1 + x2 + x3 + x4 + x5 + x6) / 6.0
+        cy = (y1 + y2 + y3 + y4 + y5 + y6) / 6.0
+
+        region_parts = []
+        for idx, ((xa, ya), (xb, yb), edge_name) in enumerate(edges):
+            a = yb - ya
+            b = xa - xb
+            d = xb * ya - xa * yb
+
+            # Test centroid: a*cx + b*cy + d
+            test_value = a * cx + b * cy + d
+
+            # If positive, centroid is on +side, so inside is +
+            if test_value > 0:
+                region_parts.append(f'+hex{unit_id}_{edge_name}')
+            else:
+                region_parts.append(f'-hex{unit_id}_{edge_name}')
+
+        region_parts.append(f'+hex{unit_id}_zmin')
+        region_parts.append(f'-hex{unit_id}_zmax')
+
+        region_str = ' & '.join(region_parts)
+
+        # Empty hexagonal region (proper lattice array not yet implemented)
+        lines.append(f'# TODO: Implement proper hexagonal lattice array structure')
+        lines.append(f'hex{unit_id}_cell = openmc.Cell(fill=None, name="hexagonal_lattice")')
+
+        lines.append(f'hex{unit_id}_cell.region = {region_str}')
+        lines.append(f'universe{unit_id} = openmc.Universe(universe_id={unit_id}, cells=[hex{unit_id}_cell])')
+        lines.append('')
+
+        return lines
+
     def _generate_triangular_lattice(self, unit_id, lattice_info):
         """Generate triangular lattice with explicit boundary planes"""
         lines = []
@@ -1175,16 +1309,9 @@ class OpenMCGenerator:
 
         region_str = ' & '.join(region_parts)
 
-        # Determine most common fill universe
-        if fill_pattern:
-            from collections import Counter
-            most_common = Counter(fill_pattern).most_common(1)[0][0]
-            lines.append(f'# Triangular lattice filled with universe{most_common} (most common from fill pattern)')
-            lines.append(f'# TODO: Implement proper triangular lattice array structure')
-            lines.append(f'tri{unit_id}_cell = openmc.Cell(fill=universe{most_common}, name="triangular_lattice")')
-        else:
-            lines.append(f'# Empty triangular region')
-            lines.append(f'tri{unit_id}_cell = openmc.Cell(fill=None, name="triangular_lattice")')
+        # Empty triangular region (proper lattice array not yet implemented)
+        lines.append(f'# TODO: Implement proper triangular lattice array structure')
+        lines.append(f'tri{unit_id}_cell = openmc.Cell(fill=None, name="triangular_lattice")')
 
         lines.append(f'tri{unit_id}_cell.region = {region_str}')
         lines.append(f'universe{unit_id} = openmc.Universe(universe_id={unit_id}, cells=[tri{unit_id}_cell])')
@@ -1209,6 +1336,10 @@ class OpenMCGenerator:
         # Handle triangular lattices
         if lattice_info.get('type') and 'tri' in lattice_info['type']:
             return self._generate_triangular_lattice(unit_id, lattice_info)
+
+        # Handle hexagonal lattices
+        if lattice_info.get('type') and 'hex' in lattice_info['type']:
+            return self._generate_hexagonal_lattice(unit_id, lattice_info)
 
         if not (x_data and y_data):
             # Unsupported lattice type - create placeholder

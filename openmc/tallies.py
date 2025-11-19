@@ -738,13 +738,9 @@ class Tally(IDManagerMixin):
 
         Notes
         -----
-        This test is based on D'Agostino and Pearson's test [1]_. The test
-        requires at least 8 realizations to produce valid results.
-
-        References
-        ----------
-        .. [1] D'Agostino, R. B. (1971), "An omnibus test of normality for
-               moderate and large sample size", Biometrika, 58, 341-348
+        This test is based on `D'Agostino and Pearson's test
+        <https://doi.org/10.1093/biomet/60.3.613>`_. The test requires at least
+        8 realizations to produce valid results.
 
         """
         n = self.num_realizations
@@ -788,8 +784,8 @@ class Tally(IDManagerMixin):
         Parameters
         ----------
         alternative : {'two-sided', 'less', 'greater'}, optional
-            Defines the alternative hypothesis. Default is 'two-sided'.
-            The following options are available:
+            Defines the alternative hypothesis. Default is 'two-sided'. The
+            following options are available:
 
             * 'two-sided': the kurtosis of the distribution is different from
               that of the normal distribution
@@ -813,14 +809,9 @@ class Tally(IDManagerMixin):
 
         Notes
         -----
-        This test is based on D'Agostino and Pearson's test [1]_. The test
-        is typically recommended for at least 20 realizations to produce
-        valid results.
-
-        References
-        ----------
-        .. [1] D'Agostino, R. B. (1971), "An omnibus test of normality for
-               moderate and large sample size", Biometrika, 58, 341-348
+        This test is based on `D'Agostino and Pearson's test
+        <https://doi.org/10.1093/biomet/60.3.613>`_. The test is typically
+        recommended for at least 20 realizations to produce valid results.
 
         """
         n = self.num_realizations
@@ -855,9 +846,9 @@ class Tally(IDManagerMixin):
     def normaltest(self, alternative: str = "two-sided"):
         """Perform D'Agostino and Pearson's omnibus test for normality.
 
-        This method tests the null hypothesis that a sample comes from a
-        normal distribution. It combines skewness and kurtosis to produce an
-        omnibus test of normality.
+        This method tests the null hypothesis that a sample comes from a normal
+        distribution. It combines skewness and kurtosis to produce an omnibus
+        test of normality.
 
         Parameters
         ----------
@@ -886,22 +877,18 @@ class Tally(IDManagerMixin):
         Notes
         -----
         This test combines a test for skewness and a test for kurtosis to
-        produce an omnibus test [1]_. The test statistic is:
+        produce an `omnibus test <https://doi.org/10.1093/biomet/60.3.613>`_.
+        The test statistic is:
 
         .. math::
 
             K^2 = Z_1^2 + Z_2^2
 
-        where :math:`Z_1` is the z-score from the skewness test and
-        :math:`Z_2` is the z-score from the kurtosis test. This statistic
-        follows a chi-square distribution with 2 degrees of freedom.
+        where :math:`Z_1` is the z-score from the skewness test and :math:`Z_2`
+        is the z-score from the kurtosis test. This statistic follows a
+        chi-square distribution with 2 degrees of freedom.
 
         The test requires at least 20 realizations to produce valid results.
-
-        References
-        ----------
-        .. [1] D'Agostino, R. B. and Pearson, E. S. (1973), "Tests for
-               departure from normality", Biometrika, 60, 613-622
 
         """
         n = self.num_realizations

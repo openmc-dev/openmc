@@ -170,13 +170,14 @@ def get_microxs_and_flux(
         # Reinitialize with tallies
         openmc.lib.init(intracomm=comm)
 
-    # create temporary run
     with TemporaryDirectory() as temp_dir:
-        if run_kwargs is None:
-            run_kwargs = {}
-        else:
-            run_kwargs = dict(run_kwargs)
-        run_kwargs.setdefault('cwd', temp_dir)
+        # Indicate to run in temporary directory unless being executed through
+        # openmc.lib, in which case we don't need to specify the cwd
+        run_kwargs = dict(run_kwargs) if run_kwargs else {}
+        if not openmc.lib.is_initialized:
+            run_kwargs.setdefault('cwd', temp_dir)
+
+        # Run transport simulation
         statepoint_path = model.run(**run_kwargs)
 
         if comm.rank == 0:
@@ -189,15 +190,18 @@ def get_microxs_and_flux(
             if path_input is not None:
                 model.export_to_model_xml(path_input)
 
-            with StatePoint(statepoint_path) as sp:
-                if reaction_rate_mode == 'direct':
-                    rr_tally = sp.tallies[rr_tally.id]
-                    rr_tally._read_results()
-                flux_tally = sp.tallies[flux_tally.id]
-                flux_tally._read_results()
+        # Broadcast updated statepoint path to all ranks
+        statepoint_path = comm.bcast(statepoint_path)
+
+        # Read in tally results (on all ranks)
+        with StatePoint(statepoint_path) as sp:
+            if reaction_rate_mode == 'direct':
+                rr_tally = sp.tallies[rr_tally.id]
+                rr_tally._read_results()
+            flux_tally = sp.tallies[flux_tally.id]
+            flux_tally._read_results()
 
     # Get flux values and make energy groups last dimension
-    flux_tally = comm.bcast(flux_tally)
     flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
     flux = np.moveaxis(flux, 1, -1)  # (domains, 1, 1, groups)
 
@@ -206,7 +210,6 @@ def get_microxs_and_flux(
 
     if reaction_rate_mode == 'direct':
         # Get reaction rates
-        rr_tally = comm.bcast(rr_tally)
         reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
 
         # Make energy groups last dimension

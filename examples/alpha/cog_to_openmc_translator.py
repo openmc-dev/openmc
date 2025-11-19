@@ -552,8 +552,31 @@ class OpenMCGenerator:
                    - is_element: True for natural elements, False for specific isotopes
                    - needs_sab: 'water' for H2O, 'graphite' for graphite, None otherwise
         """
+        # Map common element name variations and typos to correct symbols
+        element_name_map = {
+            'table': 'Ta',  # Common typo for Tantalum
+            'tantalum': 'Ta',
+            'aluminum': 'Al',
+            'aluminium': 'Al',
+            'tungsten': 'W',
+            'wolfram': 'W',
+            'iron': 'Fe',
+            'copper': 'Cu',
+            'lead': 'Pb',
+            'tin': 'Sn',
+            'silver': 'Ag',
+            'gold': 'Au',
+            'mercury': 'Hg',
+            'sodium': 'Na',
+            'potassium': 'K',
+        }
+
         # Handle special thermal scattering cases
         cog_lower = cog_name.lower()
+
+        # Check for common element name typos/variations
+        if cog_lower in element_name_map:
+            return (element_name_map[cog_lower], True, None)
 
         # Hydrogen in water: add H element + water S(α,β)
         if 'h.h2o' in cog_lower or 'h2o' in cog_lower:
@@ -848,21 +871,39 @@ class OpenMCGenerator:
         lines.append('# Universes (from COG define unit blocks)')
         lines.append('# ' + '='*78)
         lines.append('')
-        
+
+        # Find all referenced universes from "use unit" instances
+        referenced_universes = set()
+        for mat_id in self.parser.cells.keys():
+            for cell_data in self.parser.cells[mat_id]:
+                if cell_data.get('is_unit_instance'):
+                    referenced_universes.add(cell_data['unit_id'])
+
+        # Create placeholders for referenced but undefined universes
+        defined_universes = set(self.parser.universes.keys())
+        undefined_universes = referenced_universes - defined_universes
+
+        for unit_id in undefined_universes:
+            lines.append(f'# Unit {unit_id}: placeholder universe (TODO: Incomplete lattice data)')
+            lines.append(f'u{unit_id}_cell0 = openmc.Cell(fill=None, name="placeholder")')
+            lines.append(f'# TODO: Define proper region for this cell')
+            lines.append(f'universe{unit_id} = openmc.Universe(universe_id={unit_id}, cells=[u{unit_id}_cell0])')
+            lines.append('')
+
         for unit_id in sorted(self.parser.universes.keys()):
             unit_data = self.parser.universes[unit_id]
-            
+
             if unit_data.get('comment'):
                 lines.append(f"# Unit {unit_id}: {unit_data['comment']}")
-            
+
             # Check if this unit has a lattice
             if unit_data.get('lattice'):
                 lines.extend(self._generate_lattice_universe(unit_id, unit_data))
             else:
                 lines.extend(self._generate_simple_universe(unit_id, unit_data))
-            
+
             lines.append('')
-        
+
         return lines
     
     def _generate_simple_universe(self, unit_id, unit_data):
@@ -967,7 +1008,14 @@ class OpenMCGenerator:
     def _generate_geometry(self):
         """Generate final geometry with universes, lattices, and boundary conditions"""
         lines = []
-        
+
+        # Find the maximum surface ID to avoid conflicts with boundary_box
+        max_surf_id = max(self.parser.surfaces.keys()) if self.parser.surfaces else 0
+        # Also check prism surfaces which create additional surface IDs
+        for surf_id in self.prism_surfaces.keys():
+            max_surf_id = max(max_surf_id, surf_id)
+        boundary_surf_id = max_surf_id + 100  # Use a safe offset
+
         # Generate root-level cells
         cell_counter = 0
         root_cells = []
@@ -1041,6 +1089,7 @@ class OpenMCGenerator:
         lines.append('# TODO: Adjust dimensions to encompass your entire geometry')
         lines.append('boundary_box = openmc.model.RectangularParallelepiped(')
         lines.append('    -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax')
+        lines.append(f'    surface_id={boundary_surf_id},')
         lines.append('    boundary_type="vacuum")')
         lines.append('')
         lines.append('# Create outer void cell (everything outside geometry but inside boundary)')

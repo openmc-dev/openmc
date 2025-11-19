@@ -797,6 +797,9 @@ class OpenMCGenerator:
                     zmax = float(params[z_idx + 1])
 
                     # Track this prism surface and its z-bounds for automatic region generation
+                    # Assign safe surface IDs to avoid conflicts with composite surface internals
+                    zmin_id = surf_id + 1000  # Use large offset to avoid conflicts
+                    zmax_id = surf_id + 1001
                     self.prism_surfaces[surf_id] = (f'surf{surf_id}_zmin', f'surf{surf_id}_zmax')
 
                     # Create hexagonal prism and bounding planes
@@ -804,8 +807,8 @@ class OpenMCGenerator:
                     lines.append(f'# Hexagonal prism (COG "pri 6" surface with edge_length={edge_length}, z from {zmin} to {zmax})')
                     lines.append(f'surf{surf_id} = openmc.model.HexagonalPrism(edge_length={edge_length},')
                     lines.append(f'                                     origin=(0.0, 0.0), orientation="x")')
-                    lines.append(f'surf{surf_id}_zmin = openmc.ZPlane(z0={zmin})')
-                    lines.append(f'surf{surf_id}_zmax = openmc.ZPlane(z0={zmax})')
+                    lines.append(f'surf{surf_id}_zmin = openmc.ZPlane(surface_id={zmin_id}, z0={zmin})')
+                    lines.append(f'surf{surf_id}_zmax = openmc.ZPlane(surface_id={zmax_id}, z0={zmax})')
                 else:
                     # Other prism types not yet supported
                     lines.append(f'# COG surface type "pri" with {nsides} sides - requires manual translation')

@@ -38,20 +38,20 @@ materials.export_to_xml()
 
 surf1 = openmc.ZCylinder(surface_id=1, r=28.73)
 
-# Hexagonal prism (COG "pri 6" surface with edge_length=150, z from -120 to 120)
+# Hexagonal prism (COG "pri 6" surface with edge_length=150.0, z from -120.0 to 120.0)
 surf2 = openmc.model.HexagonalPrism(edge_length=150.0,
-                                     origin=(0.0, 0.0), orientation='x')
-surf_zmin = openmc.ZPlane(surface_id=3, z0=-120.0)
-surf_zmax = openmc.ZPlane(surface_id=4, z0=120.0)
+                                     origin=(0.0, 0.0), orientation="x")
+surf2_zmin = openmc.ZPlane(surface_id=1002, z0=-120.0)
+surf2_zmax = openmc.ZPlane(surface_id=1003, z0=120.0)
 
 
 # Cell: Core
 cell0 = openmc.Cell(cell_id=0, fill=mat1, name="Core")
-cell0.region = -surf1 & -surf2 & +surf_zmin & -surf_zmax
+cell0.region = -surf1 & -surf2 & +surf2_zmin & -surf2_zmax
 
 # Cell: Refl
 cell1 = openmc.Cell(cell_id=1, fill=mat2, name="Refl")
-cell1.region = +surf1 & -surf2 & +surf_zmin & -surf_zmax
+cell1.region = +surf1 & -surf2 & +surf2_zmin & -surf2_zmax
 
 # ==============================================================================
 # Boundary Conditions
@@ -61,6 +61,7 @@ cell1.region = +surf1 & -surf2 & +surf_zmin & -surf_zmax
 # TODO: Adjust dimensions to encompass your entire geometry
 boundary_box = openmc.model.RectangularParallelepiped(
     -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
+    surface_id=102,
     boundary_type="vacuum")
 
 # Create outer void cell (everything outside geometry but inside boundary)
@@ -105,12 +106,6 @@ settings.export_to_xml()
 # ==============================================================================
 
 tallies = openmc.Tallies()
-
-# Add a simple flux tally to avoid warning
-tally = openmc.Tally(tally_id=1, name='flux')
-tally.scores = ['flux']
-tallies.append(tally)
-
 tallies.export_to_xml()
 
 # ==============================================================================

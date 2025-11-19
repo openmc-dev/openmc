@@ -38,18 +38,20 @@ materials.export_to_xml()
 
 surf1 = openmc.ZCylinder(surface_id=1, r=28.73)
 
-# COG surface type "pri" with parameters: 6 150 0 75 129.9038 -75 129.9038 -150 0 -75 -129.9038 75 -129.9038 -120 120 tr 0 0 0 0 0 1 0 1 0
-# This surface type requires manual translation to OpenMC
-surf2 = openmc.Sphere(surface_id=2, r=1.0)  # PLACEHOLDER - REPLACE THIS
+# Hexagonal prism (COG "pri 6" surface with edge_length=150, z from -120 to 120)
+surf2 = openmc.model.HexagonalPrism(edge_length=150.0, surface_id=2,
+                                     origin=(0.0, 0.0), orientation='x')
+surf_zmin = openmc.ZPlane(surface_id=3, z0=-120.0)
+surf_zmax = openmc.ZPlane(surface_id=4, z0=120.0)
 
 
 # Cell: Core
 cell0 = openmc.Cell(cell_id=0, fill=mat1, name="Core")
-cell0.region = -surf1 & -surf2
+cell0.region = -surf1 & -surf2 & +surf_zmin & -surf_zmax
 
 # Cell: Refl
 cell1 = openmc.Cell(cell_id=1, fill=mat2, name="Refl")
-cell1.region = +surf1 & -surf2
+cell1.region = +surf1 & -surf2 & +surf_zmin & -surf_zmax
 
 # ==============================================================================
 # Boundary Conditions
@@ -103,6 +105,12 @@ settings.export_to_xml()
 # ==============================================================================
 
 tallies = openmc.Tallies()
+
+# Add a simple flux tally to avoid warning
+tally = openmc.Tally(tally_id=1, name='flux')
+tally.scores = ['flux']
+tallies.append(tally)
+
 tallies.export_to_xml()
 
 # ==============================================================================

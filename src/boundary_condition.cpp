@@ -207,8 +207,14 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       surf2.id_));
   }
 
-  angle_ = compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
-    norm2[axis_2_idx_], norm2[axis_1_idx_]);
+  // reverse the angle computed if there is y-periodicity to account for
+  // reversal of axes cross product direction
+  angle_ =
+    (zero_axis_idx_ != 1)
+      ? compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
+          norm2[axis_2_idx_], norm2[axis_1_idx_])
+      : -1 * compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
+               norm2[axis_2_idx_], norm2[axis_1_idx_]);
 
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));

@@ -175,7 +175,25 @@ u5_cell2 = openmc.Cell(fill=mat2, name="graphite")
 u5_cell2.region = +surf30 & -surf31 & +surf11 & -surf19
 universe5 = openmc.Universe(universe_id=5, cells=[u5_cell0, u5_cell1, u5_cell2])
 
-# TODO: Incomplete lattice data for unit 6
+# Triangular lattice for unit 6
+# Vertices: (-71.5, 121.48), (-208.0, -121.48), (71.5, -121.48)
+# Z bounds: -120.0 to 120.0
+
+# Triangle edge1: from (-71.5, 121.48) to (-208.0, -121.48)
+tri6_edge1 = openmc.Plane(surface_id=10006, a=-242.96, b=136.5, c=0, d=-33953.66)
+# Triangle edge2: from (-208.0, -121.48) to (71.5, -121.48)
+tri6_edge2 = openmc.Plane(surface_id=10007, a=0.0, b=-279.5, c=0, d=-33953.66)
+# Triangle edge3: from (71.5, -121.48) to (-71.5, 121.48)
+tri6_edge3 = openmc.Plane(surface_id=10008, a=242.96, b=143.0, c=0, d=0.0)
+tri6_zmin = openmc.ZPlane(surface_id=10009, z0=-120.0)
+tri6_zmax = openmc.ZPlane(surface_id=10010, z0=120.0)
+
+# Triangular lattice filled with universe3 (most common from fill pattern)
+# TODO: Implement proper triangular lattice array structure
+tri6_cell = openmc.Cell(fill=universe3, name="triangular_lattice")
+tri6_cell.region = -tri6_edge1 & -tri6_edge2 & -tri6_edge3 & +tri6_zmin & -tri6_zmax
+universe6 = openmc.Universe(universe_id=6, cells=[tri6_cell])
+
 
 # Unit 9: lattice void
 u9_cell0 = openmc.Cell(fill=None, name="void")  # mat0 undefined, using void
@@ -192,12 +210,12 @@ cell0.region = (+surf99_xmin & -surf99_xmax & +surf99_ymin & -surf99_ymax & +sur
 
 # Create outer bounding box with vacuum boundary (6 planes)
 # TODO: Adjust dimensions to encompass your entire geometry
-boundary_xmin = openmc.XPlane(surface_id=10006, x0=-200, boundary_type="vacuum")
-boundary_xmax = openmc.XPlane(surface_id=10007, x0=200, boundary_type="vacuum")
-boundary_ymin = openmc.YPlane(surface_id=10008, y0=-200, boundary_type="vacuum")
-boundary_ymax = openmc.YPlane(surface_id=10009, y0=200, boundary_type="vacuum")
-boundary_zmin = openmc.ZPlane(surface_id=10010, z0=-200, boundary_type="vacuum")
-boundary_zmax = openmc.ZPlane(surface_id=10011, z0=200, boundary_type="vacuum")
+boundary_xmin = openmc.XPlane(surface_id=10011, x0=-200, boundary_type="vacuum")
+boundary_xmax = openmc.XPlane(surface_id=10012, x0=200, boundary_type="vacuum")
+boundary_ymin = openmc.YPlane(surface_id=10013, y0=-200, boundary_type="vacuum")
+boundary_ymax = openmc.YPlane(surface_id=10014, y0=200, boundary_type="vacuum")
+boundary_zmin = openmc.ZPlane(surface_id=10015, z0=-200, boundary_type="vacuum")
+boundary_zmax = openmc.ZPlane(surface_id=10016, z0=200, boundary_type="vacuum")
 
 # Create outer void cell (everything outside geometry but inside boundary)
 # Particles are killed at the vacuum boundary

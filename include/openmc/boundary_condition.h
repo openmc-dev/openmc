@@ -144,7 +144,7 @@ protected:
 class RotationalPeriodicBC : public PeriodicBC {
 public:
   enum PeriodicAxis { x, y, z };
-  RotationalPeriodicBC(int i_surf, int j_surf, PeriodicAxis axis = z);
+  RotationalPeriodicBC(int i_surf, int j_surf, PeriodicAxis axis);
   double compute_periodic_rotation(
     double rise_1, double run_1, double rise_2, double run_2) const;
   void handle_particle(Particle& p, const Surface& surf) const override;

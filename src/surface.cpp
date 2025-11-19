@@ -1334,8 +1334,37 @@ void read_surfaces(pugi::xml_node node)
       surf1.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
       surf2.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
     } else {
-      surf1.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf);
+      // check that both normals have at least one 0 component
+      if (norm1.x != 0.0 && norm1.y != 0.0 && norm1.z != 0.0) {
+        fatal_error(fmt::format(
+          "The normal ({}) of the periodic surface ({}) does not contain any "
+          "component with a zero value. A RotationalPeriodicBC requires one "
+          "component which is zero for both plane normals.",
+          norm1, i_surf));
+      }
+      if (norm2.x != 0.0 && norm2.y != 0.0 && norm2.z != 0.0) {
+        fatal_error(fmt::format(
+          "The normal ({}) of the periodic surface ({}) does not contain any "
+          "component with a zero value. A RotationalPeriodicBC requires one "
+          "component which is zero for both plane normals.",
+          norm2, j_surf));
+      }
+      // find common zero component, which indicates the periodic axis
+      RotationalPeriodicBC::PeriodicAxis axis;
+      if (norm1.x == 0.0 && norm2.x == 0.0) {
+        axis = RotationalPeriodicBC::PeriodicAxis::x;
+      } else if (norm1.y == 0.0 && norm2.y == 0.0) {
+        axis = RotationalPeriodicBC::PeriodicAxis::y;
+      } else if (norm1.z == 0.0 && norm2.z == 0.0) {
+        axis = RotationalPeriodicBC::PeriodicAxis::z;
+      } else {
+        fatal_error(fmt::format(
+          "There is no component which is 0.0 in both normal vectors. This "
+          "indicates that the two planes are not periodic about the X, Y, or Z "
+          "axis, which is not supported."));
+      }
+      surf1.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf, axis);
+      surf2.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf, axis);
     }
 
     // If albedo data is present in albedo map, set the boundary albedo.

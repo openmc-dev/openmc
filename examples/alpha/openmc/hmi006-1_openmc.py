@@ -21,22 +21,22 @@ mat1.add_nuclide("U238", 2.5740e-3)
 # Graphite
 mat2 = openmc.Material(material_id=2, name="Graphite")
 mat2.set_density("atom/b-cm", 1.702900e+00)
-mat2.add_nuclide("C0", 1.7029)
+mat2.add_element("C", 1.7029)
 
 # Copper
 mat3 = openmc.Material(material_id=3, name="Copper")
 mat3.set_density("atom/b-cm", 8.735100e+00)
-mat3.add_nuclide("Cu", 8.7351)
+mat3.add_element("Cu", 8.7351)
 
 # Al-6061
 mat4 = openmc.Material(material_id=4, name="Al-6061")
 mat4.set_density("atom/b-cm", 1.020657e+02)
-mat4.add_nuclide("P", 2.6657)
-mat4.add_nuclide("Al", 97.175)
-mat4.add_nuclide("Mg", 1.00)
-mat4.add_nuclide("Si", 0.60)
-mat4.add_nuclide("Fe", 0.35)
-mat4.add_nuclide("Cu", 0.275)
+mat4.add_element("P", 2.6657)
+mat4.add_element("Al", 97.175)
+mat4.add_element("Mg", 1.00)
+mat4.add_element("Si", 0.60)
+mat4.add_element("Fe", 0.35)
+mat4.add_element("Cu", 0.275)
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4])
 materials.export_to_xml()

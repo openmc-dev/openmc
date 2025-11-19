@@ -25,7 +25,7 @@ mat3.set_density("atom/b-cm", 1.0)  # TODO: Verify density
 # aluminum
 mat4 = openmc.Material(material_id=4, name="aluminum")
 mat4.set_density("atom/b-cm", 2.700000e+00)
-mat4.add_nuclide("F", 2.7)
+mat4.add_element("F", 2.7)
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4])
 materials.export_to_xml()

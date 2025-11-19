@@ -15,14 +15,14 @@ mat1 = openmc.Material(material_id=1, name="Core")
 mat1.set_density("atom/b-cm", 7.966875e-02)
 mat1.add_nuclide("U235", 0.3415e-4)
 mat1.add_nuclide("U238", 1.379e-4)
-mat1.add_nuclide("C0", 0.7911e-1)
+mat1.add_element("C", 0.7911e-1)
 mat1.add_nuclide("O16", 0.3867e-3)
 mat1.add_s_alpha_beta("c_H_in_H2O")
 
 # Reflector
 mat2 = openmc.Material(material_id=2, name="Reflector")
 mat2.set_density("atom/b-cm", 7.735673e-02)
-mat2.add_nuclide("C0", 0.7732e-1)
+mat2.add_element("C", 0.7732e-1)
 mat2.add_nuclide("O16", 0.3673e-4)
 mat2.add_s_alpha_beta("c_H_in_H2O")
 

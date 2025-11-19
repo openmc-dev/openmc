@@ -13,12 +13,12 @@ import numpy as np
 # per Table 1
 mat1 = openmc.Material(material_id=1, name="per Table 1")
 mat1.set_density("atom/b-cm", 1.194240e+02)
-mat1.add_nuclide("F", 18.424)
+mat1.add_element("F", 18.424)
 mat1.add_nuclide("U233", 98.13)
 mat1.add_nuclide("U234", 1.24)
 mat1.add_nuclide("U235", 0.03)
 mat1.add_nuclide("U238", 0.60)
-mat1.add_nuclide("Table", 1)
+mat1.add_element("Table", 1)
 
 materials = openmc.Materials([mat1])
 materials.export_to_xml()

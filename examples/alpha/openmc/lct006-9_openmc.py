@@ -21,7 +21,7 @@ mat1.add_nuclide("O16", 4.7214e-2)
 # Aluminum clad
 mat2 = openmc.Material(material_id=2, name="Aluminum clad")
 mat2.set_density("atom/b-cm", 5.513700e-02)
-mat2.add_nuclide("Al", 5.5137e-2)
+mat2.add_element("Al", 5.5137e-2)
 
 # Water
 mat3 = openmc.Material(material_id=3, name="Water")

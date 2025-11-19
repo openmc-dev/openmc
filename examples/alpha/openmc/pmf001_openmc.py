@@ -12,7 +12,7 @@ import numpy as np
 
 mat1 = openmc.Material(material_id=1, name="")
 mat1.set_density("atom/b-cm", 4.029014e-02)
-mat1.add_nuclide("Ga", 1.3752e-3)
+mat1.add_element("Ga", 1.3752e-3)
 mat1.add_nuclide("Pu239", 3.7047e-2)
 mat1.add_nuclide("Pu240", 1.7512e-3)
 mat1.add_nuclide("Pu241", 1.1674e-4)

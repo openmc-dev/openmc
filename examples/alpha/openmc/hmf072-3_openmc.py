@@ -23,7 +23,7 @@ mat2.set_density("atom/b-cm", 2.767110e+05)
 mat2.add_nuclide("4", 92235)
 mat2.add_nuclide("2", 92236)
 mat2.add_nuclide("4", 92238)
-mat2.add_nuclide("Case", 2)
+mat2.add_element("Case", 2)
 
 # HEU: U3
 mat3 = openmc.Material(material_id=3, name="HEU: U3")
@@ -245,8 +245,8 @@ mat50.add_nuclide("3", 26058)
 # CH2
 mat60 = openmc.Material(material_id=60, name="CH2")
 mat60.set_density("atom/b-cm", 1.210706e-01)
-mat60.add_nuclide("H", 8.07137e-2)
-mat60.add_nuclide("C0", 4.03569e-2)
+mat60.add_element("H", 8.07137e-2)
+mat60.add_element("C", 4.03569e-2)
 
 # Cu
 mat61 = openmc.Material(material_id=61, name="Cu")

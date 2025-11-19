@@ -13,17 +13,17 @@ import numpy as np
 # U-233 per Table 2
 mat1 = openmc.Material(material_id=1, name="U-233 per Table 2")
 mat1.set_density("atom/b-cm", 1.204200e+02)
-mat1.add_nuclide("P", 18.42)
+mat1.add_element("P", 18.42)
 mat1.add_nuclide("U233", 98.13)
 mat1.add_nuclide("U234", 1.24)
 mat1.add_nuclide("U235", 0.03)
 mat1.add_nuclide("U238", 0.60)
-mat1.add_nuclide("Table", 2)
+mat1.add_element("Table", 2)
 
 # Nat-U
 mat2 = openmc.Material(material_id=2, name="Nat-U")
 mat2.set_density("atom/b-cm", 1.190000e+02)
-mat2.add_nuclide("F", 19.00)
+mat2.add_element("F", 19.00)
 mat2.add_nuclide("U234", 0.005)
 mat2.add_nuclide("U235", 0.72)
 mat2.add_nuclide("U238", 99.275)

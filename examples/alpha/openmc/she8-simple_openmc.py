@@ -39,7 +39,7 @@ materials.export_to_xml()
 surf1 = openmc.ZCylinder(surface_id=1, r=28.73)
 
 # Hexagonal prism (COG "pri 6" surface with edge_length=150, z from -120 to 120)
-surf2 = openmc.model.HexagonalPrism(edge_length=150.0, surface_id=2,
+surf2 = openmc.model.HexagonalPrism(edge_length=150.0,
                                      origin=(0.0, 0.0), orientation='x')
 surf_zmin = openmc.ZPlane(surface_id=3, z0=-120.0)
 surf_zmax = openmc.ZPlane(surface_id=4, z0=120.0)

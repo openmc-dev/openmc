@@ -17,7 +17,7 @@ mat1.add_nuclide("U233", 98.13)
 mat1.add_nuclide("U234", 1.24)
 mat1.add_nuclide("U235", 0.03)
 mat1.add_nuclide("U238", 0.60)
-mat1.add_element("Table", 1)
+mat1.add_element("Ta", 1)
 
 materials = openmc.Materials([mat1])
 materials.export_to_xml()

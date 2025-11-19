@@ -170,10 +170,13 @@ u5_cell2 = openmc.Cell(fill=mat2, name="graphite")
 u5_cell2.region = +surf30 & -surf31 & +surf11 & -surf19
 universe5 = openmc.Universe(universe_id=5, cells=[u5_cell0, u5_cell1, u5_cell2])
 
-# TODO: Incomplete lattice data for unit 6
+# Unit 6: placeholder universe (TODO: Incomplete lattice data)
+u6_cell0 = openmc.Cell(fill=None, name="placeholder")
+u6_cell0.region = -surf99
+universe6 = openmc.Universe(universe_id=6, cells=[u6_cell0])
 
 # Unit 9: lattice void
-u9_cell0 = openmc.Cell(fill=mat0, name="void")
+u9_cell0 = openmc.Cell(fill=None, name="void")
 u9_cell0.region = -surf8 & +surf10 & -surf20
 universe9 = openmc.Universe(universe_id=9, cells=[u9_cell0])
 
@@ -189,6 +192,7 @@ cell0.region = -surf99
 # TODO: Adjust dimensions to encompass your entire geometry
 boundary_box = openmc.model.RectangularParallelepiped(
     -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
+    surface_id=200,
     boundary_type="vacuum")
 
 # Create outer void cell (everything outside geometry but inside boundary)

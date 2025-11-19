@@ -57,16 +57,18 @@ cell1.region = +surf1 & -surf2 & +surf2_zmin & -surf2_zmax
 # Boundary Conditions
 # ==============================================================================
 
-# Create outer bounding box with vacuum boundary
+# Create outer bounding box with vacuum boundary (6 planes)
 # TODO: Adjust dimensions to encompass your entire geometry
-# Note: RectangularParallelepiped is a composite surface that auto-assigns internal surface IDs
-boundary_box = openmc.model.RectangularParallelepiped(
-    -200, 200, -200, 200, -200, 200,  # xmin, xmax, ymin, ymax, zmin, zmax
-    boundary_type="vacuum")
+boundary_xmin = openmc.XPlane(surface_id=10002, x0=-200, boundary_type="vacuum")
+boundary_xmax = openmc.XPlane(surface_id=10003, x0=200, boundary_type="vacuum")
+boundary_ymin = openmc.YPlane(surface_id=10004, y0=-200, boundary_type="vacuum")
+boundary_ymax = openmc.YPlane(surface_id=10005, y0=200, boundary_type="vacuum")
+boundary_zmin = openmc.ZPlane(surface_id=10006, z0=-200, boundary_type="vacuum")
+boundary_zmax = openmc.ZPlane(surface_id=10007, z0=200, boundary_type="vacuum")
 
 # Create outer void cell (everything outside geometry but inside boundary)
 # Particles are killed at the vacuum boundary
-outer_region = -boundary_box
+outer_region = +boundary_xmin & -boundary_xmax & +boundary_ymin & -boundary_ymax & +boundary_zmin & -boundary_zmax
 outer_region = outer_region & ~cell0.region
 outer_region = outer_region & ~cell1.region
 outer_cell = openmc.Cell(cell_id=2, name="outer_void")

@@ -1074,7 +1074,13 @@ class OpenMCGenerator:
         fill_pattern = lattice_info.get('fill', [])
         
         if not (x_data and y_data):
-            lines.append(f'# TODO: Incomplete lattice data for unit {unit_id}')
+            # Unsupported lattice type (e.g., triangular) - create placeholder
+            lines.append(f'# Unit {unit_id}: Unsupported lattice type (TODO: manual translation required)')
+            lines.append(f'# COG lattice data: {lattice_info}')
+            lines.append(f'u{unit_id}_cell0 = openmc.Cell(fill=None, name="placeholder")')
+            lines.append(f'# TODO: Define proper lattice structure')
+            lines.append(f'universe{unit_id} = openmc.Universe(universe_id={unit_id}, cells=[u{unit_id}_cell0])')
+            lines.append('')
             return lines
         
         # Calculate dimensions

@@ -4,7 +4,6 @@ Translated from COG to OpenMC
 """
 
 import openmc
-import numpy as np
 
 # ==============================================================================
 # Materials
@@ -45,6 +44,7 @@ mat4.add_element("Si", 1.0158e-3)
 mat4.add_element("P", 4.2278e-5)
 mat4.add_element("S", 5.8332e-6)
 mat4.add_element("Cr", 1.6442e-2)
+mat4.add_s_alpha_beta("c_Graphite")
 
 # Copper top    reflector
 mat5 = openmc.Material(material_id=5, name="Copper top    reflector")

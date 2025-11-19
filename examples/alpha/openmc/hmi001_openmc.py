@@ -4,7 +4,6 @@ Translated from COG to OpenMC
 """
 
 import openmc
-import numpy as np
 
 # ==============================================================================
 # Materials
@@ -54,6 +53,7 @@ mat5.add_element("Fe", 5.32325e-2)
 mat5.add_element("Al", 1.15377e-3)
 mat5.add_element("C", 7.23704e-5)
 mat5.add_element("Mo", 8.51061e-6)
+mat5.add_s_alpha_beta("c_Graphite")
 
 mat6 = openmc.Material(material_id=6, name="")
 mat6.set_density("atom/b-cm", 7.666411e-02)
@@ -63,6 +63,7 @@ mat6.add_element("Fe", 5.27897e-2)
 mat6.add_element("Al", 2.35245e-3)
 mat6.add_element("C", 8.21637e-5)
 mat6.add_element("Mo", 4.98640e-5)
+mat6.add_s_alpha_beta("c_Graphite")
 
 mat7 = openmc.Material(material_id=7, name="")
 mat7.set_density("atom/b-cm", 4.814991e-02)
@@ -72,6 +73,7 @@ mat7.add_element("Cr", 1.86022e-3)
 mat7.add_element("Ni", 8.08917e-4)
 mat7.add_element("Fe", 6.86642e-3)
 mat7.add_element("C", 2.96046e-5)
+mat7.add_s_alpha_beta("c_Graphite")
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4, mat5, mat6, mat7])
 materials.export_to_xml()

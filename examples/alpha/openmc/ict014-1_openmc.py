@@ -4,7 +4,6 @@ Translated from COG to OpenMC
 """
 
 import openmc
-import numpy as np
 
 # ==============================================================================
 # Materials
@@ -34,7 +33,8 @@ mat2.add_element("Fe", 7.8610e-5)
 
 # H2O
 mat3 = openmc.Material(material_id=3, name="H2O")
-mat3.set_density("atom/b-cm", 3.333800e-02)
+mat3.set_density("atom/b-cm", 1.000130e-01)
+mat3.add_element("H", 6.6675e-2)
 mat3.add_nuclide("O16", 3.3338e-2)
 mat3.add_s_alpha_beta("c_H_in_H2O")
 
@@ -65,6 +65,7 @@ mat7.add_element("Si", 6.4246e-4)
 mat7.add_element("Mn", 8.7583e-4)
 mat7.add_element("C", 6.0091e-5)
 mat7.add_element("S", 2.2505e-5)
+mat7.add_s_alpha_beta("c_Graphite")
 
 # Al2O3
 mat8 = openmc.Material(material_id=8, name="Al2O3")

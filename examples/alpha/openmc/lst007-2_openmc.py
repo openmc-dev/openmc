@@ -4,7 +4,6 @@ Translated from COG to OpenMC
 """
 
 import openmc
-import numpy as np
 
 # ==============================================================================
 # Materials
@@ -12,11 +11,12 @@ import numpy as np
 
 # Solution: Run 30
 mat1 = openmc.Material(material_id=1, name="Solution: Run 30")
-mat1.set_density("atom/b-cm", 3.004139e+01)
+mat1.set_density("atom/b-cm", 3.009856e+01)
 mat1.add_nuclide("U234", 5.9840e-7)
 mat1.add_nuclide("U235", 7.4257e-5)
 mat1.add_nuclide("U236", 7.4165e-8)
 mat1.add_nuclide("U238", 6.6142e-4)
+mat1.add_element("H", 5.7176e-2)
 mat1.add_element("N", 2.8156e-3)
 mat1.add_nuclide("O16", 3.7836e-2)
 mat1.add_element("Run", 30)
@@ -33,6 +33,7 @@ mat2.add_element("S", 2.9782e-6)
 mat2.add_element("Ni", 8.3403e-3)
 mat2.add_element("Cr", 1.6775e-2)
 mat2.add_element("Fe", 5.9421e-2)
+mat2.add_s_alpha_beta("c_Graphite")
 
 # Air
 mat3 = openmc.Material(material_id=3, name="Air")

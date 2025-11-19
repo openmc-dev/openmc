@@ -4,7 +4,6 @@ Translated from COG to OpenMC
 """
 
 import openmc
-import numpy as np
 
 # ==============================================================================
 # Materials
@@ -22,6 +21,7 @@ mat1.add_nuclide("U238", 2.5740e-3)
 mat2 = openmc.Material(material_id=2, name="Graphite")
 mat2.set_density("atom/b-cm", 1.702900e+00)
 mat2.add_element("C", 1.7029)
+mat2.add_s_alpha_beta("c_Graphite")
 
 # Copper
 mat3 = openmc.Material(material_id=3, name="Copper")

@@ -38,8 +38,8 @@ New Features
 
 - A new collision tracking feature enables detailed tracking of particle
   interactions (`#3417 <https://github.com/openmc-dev/openmc/pull/3417>`_)
-- Added :meth:`openmc.Model.criticality_search` method for automated
-  criticality searches (`#3569 <https://github.com/openmc-dev/openmc/pull/3569>`_)
+- Added :meth:`~openmc.model.Model.keff_search` method for automated criticality
+  searches (`#3569 <https://github.com/openmc-dev/openmc/pull/3569>`_)
 - Introduced automated workflow for mesh- or cell-based R2S calculations
   (`#3508 <https://github.com/openmc-dev/openmc/pull/3508>`_)
 - Ability to source electron/positrons directly for charged particle
@@ -81,9 +81,9 @@ New Features
 - Optionally collect higher moments for tallies (`#3363
   <https://github.com/openmc-dev/openmc/pull/3363>`_)
 - Several random ray solver enhancements:
+
   - Random Ray AutoMagic Setup for automatic configuration (`#3351 <https://github.com/openmc-dev/openmc/pull/3351>`_)
   - Point source locator for random ray mode (`#3360 <https://github.com/openmc-dev/openmc/pull/3360>`_)
-  - Explicit void treatment (`#3299 <https://github.com/openmc-dev/openmc/pull/3299>`_ referenced in 0.15.1.rst)
   - Support for DAGMC geometries (`#3374 <https://github.com/openmc-dev/openmc/pull/3374>`_)
   - Optimized mapping of source regions to tallies (`#3465 <https://github.com/openmc-dev/openmc/pull/3465>`_)
   - Base source region refactor (`#3576 <https://github.com/openmc-dev/openmc/pull/3576>`_)
@@ -92,8 +92,10 @@ New Features
 Bug Fixes and Small Changes
 ---------------------------
 
+- Fix a few warnings, rename add_to_tallies_file (`#3639 <https://github.com/openmc-dev/openmc/pull/3639>`_)
 - Fix typo in DAGMC lost particle test (`#3634 <https://github.com/openmc-dev/openmc/pull/3634>`_)
 - Avoid multiprocessing Pool when running depletion tests with MPI (`#3633 <https://github.com/openmc-dev/openmc/pull/3633>`_)
+- Support MPI parallelism in R2SManager (`#3632 <https://github.com/openmc-dev/openmc/pull/3632>`_)
 - Update documentation for particle tracks (`#3627 <https://github.com/openmc-dev/openmc/pull/3627>`_)
 - Adding variance of variance and normality tests for tally statistics (`#3454 <https://github.com/openmc-dev/openmc/pull/3454>`_)
 - Avoid divide-by-zero in ``from_multigroup_flux`` when flux is zero (`#3624 <https://github.com/openmc-dev/openmc/pull/3624>`_)
@@ -106,6 +108,7 @@ Bug Fixes and Small Changes
 - Speed up ``apply_time_correction`` by reducing file I/O and deepcopies (`#3617 <https://github.com/openmc-dev/openmc/pull/3617>`_)
 - FW-CADIS Disregard Max Realizations Setting (`#3616 <https://github.com/openmc-dev/openmc/pull/3616>`_)
 - Random Ray Geometry Debug Mode Fix (`#3615 <https://github.com/openmc-dev/openmc/pull/3615>`_)
+- Don't write reaction rates in depletion results by default (`#3609 <https://github.com/openmc-dev/openmc/pull/3609>`_)
 - Allow Path objects in MGXSLibrary.export_to_hdf5 (`#3608 <https://github.com/openmc-dev/openmc/pull/3608>`_)
 - Clip mixture distributions based on mean times integral (`#3603 <https://github.com/openmc-dev/openmc/pull/3603>`_)
 - Allow V0 in atomic_mass function (for ENDF/B-VII.0 data) (`#3607 <https://github.com/openmc-dev/openmc/pull/3607>`_)
@@ -124,7 +127,7 @@ Bug Fixes and Small Changes
 - Remove several TODOs related to C++17 support (`#3574 <https://github.com/openmc-dev/openmc/pull/3574>`_)
 - Fix performance regression in libMesh unstructured mesh tallies (`#3577 <https://github.com/openmc-dev/openmc/pull/3577>`_)
 - Update find_package calls in OpenMCConfig.cmake (`#3572 <https://github.com/openmc-dev/openmc/pull/3572>`_)
-- Ensure n_dimension_ attribute is set for unstructured meshes (`#3575 <https://github.com/openmc-dev/openmc/pull/3575>`_)
+- Ensure ``n_dimension_`` attribute is set for unstructured meshes (`#3575 <https://github.com/openmc-dev/openmc/pull/3575>`_)
 - Allow newer Sphinx version and fix docbuild warnings (`#3571 <https://github.com/openmc-dev/openmc/pull/3571>`_)
 - Fixed a bug when combining TimeFilter, MeshFilter, and tracklength estimator (`#3525 <https://github.com/openmc-dev/openmc/pull/3525>`_)
 - PowerLaw raises an error if sampling interval contains negative values (`#3542 <https://github.com/openmc-dev/openmc/pull/3542>`_)

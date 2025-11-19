@@ -92,6 +92,7 @@ New Features
 Bug Fixes and Small Changes
 ---------------------------
 
+- Add two MPI barriers in R2S workflow (`#3646 <https://github.com/openmc-dev/openmc/pull/3646>`_)
 - Fix a few warnings, rename add_to_tallies_file (`#3639 <https://github.com/openmc-dev/openmc/pull/3639>`_)
 - Fix typo in DAGMC lost particle test (`#3634 <https://github.com/openmc-dev/openmc/pull/3634>`_)
 - Avoid multiprocessing Pool when running depletion tests with MPI (`#3633 <https://github.com/openmc-dev/openmc/pull/3633>`_)

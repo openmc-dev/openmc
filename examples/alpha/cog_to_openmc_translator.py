@@ -388,9 +388,10 @@ class COGParser:
 
 class OpenMCGenerator:
     """Generate OpenMC input deck from parsed COG data"""
-    
+
     def __init__(self, parser):
         self.parser = parser
+        self.prism_surfaces = {}  # Track surfaces that need z-bounds: {surf_id: (zmin_name, zmax_name)}
         
     def generate(self):
         """Generate OpenMC Python script"""
@@ -663,7 +664,7 @@ class OpenMCGenerator:
                 dx = float(params[0])
                 dy = float(params[1])
                 dz = float(params[2])
-                
+
                 # Check for translation (TR keyword)
                 x0, y0, z0 = 0.0, 0.0, 0.0
                 for i, p in enumerate(params):
@@ -672,7 +673,7 @@ class OpenMCGenerator:
                         y0 = float(params[i + 2])
                         z0 = float(params[i + 3])
                         break
-                
+
                 # COG box is centered, convert to corners for OpenMC
                 xmin = x0 - dx/2
                 xmax = x0 + dx/2
@@ -680,9 +681,10 @@ class OpenMCGenerator:
                 ymax = y0 + dy/2
                 zmin = z0 - dz/2
                 zmax = z0 + dz/2
-                
+
+                # Note: RectangularParallelepiped is composite, don't assign surface_id
                 lines.append(f'surf{surf_id} = openmc.model.RectangularParallelepiped(')
-                lines.append(f'    {xmin}, {xmax}, {ymin}, {ymax}, {zmin}, {zmax}, surface_id={surf_id})')
+                lines.append(f'    {xmin}, {xmax}, {ymin}, {ymax}, {zmin}, {zmax})')
         
         elif surf_type in ['rpp']:
             # COG: RPP x1 x2 y1 y2 z1 z2 (rectangular parallelepiped)
@@ -690,8 +692,9 @@ class OpenMCGenerator:
                 xmin, xmax = params[0], params[1]
                 ymin, ymax = params[2], params[3]
                 zmin, zmax = params[4], params[5]
+                # Note: RectangularParallelepiped is composite, don't assign surface_id
                 lines.append(f'surf{surf_id} = openmc.model.RectangularParallelepiped(')
-                lines.append(f'    {xmin}, {xmax}, {ymin}, {ymax}, {zmin}, {zmax}, surface_id={surf_id})')
+                lines.append(f'    {xmin}, {xmax}, {ymin}, {ymax}, {zmin}, {zmax})')
         
         elif surf_type in ['cone', 'c/x', 'c/y', 'c/z']:
             # COG cone surfaces
@@ -719,8 +722,9 @@ class OpenMCGenerator:
             # Hexagonal prism
             if len(params) >= 1:
                 edge_length = params[0]
+                # Note: HexagonalPrism is composite, don't assign surface_id
                 lines.append(f'surf{surf_id} = openmc.model.HexagonalPrism(')
-                lines.append(f'    edge_length={edge_length}, surface_id={surf_id})')
+                lines.append(f'    edge_length={edge_length}, origin=(0.0, 0.0), orientation="x")')
         
         elif surf_type in ['gq', 'quadric']:
             # General quadric surface: Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Iz + J = 0
@@ -746,7 +750,45 @@ class OpenMCGenerator:
             if len(params) >= 1:
                 z0 = params[0]
                 lines.append(f'surf{surf_id} = openmc.ZPlane(surface_id={surf_id}, z0={z0})')
-        
+
+        elif surf_type in ['pri', 'prism']:
+            # COG prism surface: pri nsides edge_length x1 y1 x2 y2 ... zmin zmax [tr ...]
+            if len(params) >= 3:
+                nsides = int(params[0])
+                if nsides == 6:
+                    # Hexagonal prism
+                    edge_length = float(params[1])
+
+                    # Find zmin and zmax (typically second-to-last and last before 'tr')
+                    # Look for 'tr' keyword to find where z-bounds end
+                    z_idx = -2  # Default: second-to-last and last params
+                    for i, p in enumerate(params):
+                        if str(p).lower() == 'tr':
+                            z_idx = i - 2
+                            break
+
+                    if z_idx < 0:
+                        z_idx = len(params) - 2
+
+                    zmin = float(params[z_idx])
+                    zmax = float(params[z_idx + 1])
+
+                    # Track this prism surface and its z-bounds for automatic region generation
+                    self.prism_surfaces[surf_id] = (f'surf{surf_id}_zmin', f'surf{surf_id}_zmax')
+
+                    # Create hexagonal prism and bounding planes
+                    # Note: HexagonalPrism is composite, don't assign surface_id
+                    lines.append(f'# Hexagonal prism (COG "pri 6" surface with edge_length={edge_length}, z from {zmin} to {zmax})')
+                    lines.append(f'surf{surf_id} = openmc.model.HexagonalPrism(edge_length={edge_length},')
+                    lines.append(f'                                     origin=(0.0, 0.0), orientation="x")')
+                    lines.append(f'surf{surf_id}_zmin = openmc.ZPlane(z0={zmin})')
+                    lines.append(f'surf{surf_id}_zmax = openmc.ZPlane(z0={zmax})')
+                else:
+                    # Other prism types not yet supported
+                    lines.append(f'# COG surface type "pri" with {nsides} sides - requires manual translation')
+                    lines.append(f'# Parameters: {" ".join(str(p) for p in params)}')
+                    lines.append(f'surf{surf_id} = openmc.Sphere(surface_id={surf_id}, r=1.0)  # PLACEHOLDER - REPLACE THIS')
+
         else:
             # For any unrecognized surface, provide a clear translation note
             lines.append(f'# COG surface type "{surf_type}" with parameters: {" ".join(str(p) for p in params)}')
@@ -780,7 +822,13 @@ class OpenMCGenerator:
                             region_parts.append(f'-surf{surf_num}')
                         else:
                             region_parts.append(f'+surf{surf_num}')
-                
+
+                        # Auto-add z-bounds for prism surfaces
+                        if surf_num in self.prism_surfaces:
+                            zmin_name, zmax_name = self.prism_surfaces[surf_num]
+                            region_parts.append(f'+{zmin_name}')
+                            region_parts.append(f'-{zmax_name}')
+
                 region_str = ' & '.join(region_parts) if region_parts else ''
                 
                 lines.append(f'cell{cell_counter} = openmc.Cell(cell_id={cell_counter}, fill=mat{mat_id}, name="{name}")')
@@ -839,7 +887,13 @@ class OpenMCGenerator:
                         region_parts.append(f'-surf{surf_num}')
                     else:
                         region_parts.append(f'+surf{surf_num}')
-            
+
+                    # Auto-add z-bounds for prism surfaces
+                    if surf_num in self.prism_surfaces:
+                        zmin_name, zmax_name = self.prism_surfaces[surf_num]
+                        region_parts.append(f'+{zmin_name}')
+                        region_parts.append(f'-{zmax_name}')
+
             region_str = ' & '.join(region_parts) if region_parts else ''
             
             lines.append(f'{cell_var} = openmc.Cell(fill=mat{mat_id}, name="{name}")')
@@ -937,15 +991,21 @@ class OpenMCGenerator:
                                 region_parts.append(f'-surf{surf_num}')
                             else:
                                 region_parts.append(f'+surf{surf_num}')
-                    
+
+                            # Auto-add z-bounds for prism surfaces
+                            if surf_num in self.prism_surfaces:
+                                zmin_name, zmax_name = self.prism_surfaces[surf_num]
+                                region_parts.append(f'+{zmin_name}')
+                                region_parts.append(f'-{zmax_name}')
+
                     region_str = ' & '.join(region_parts) if region_parts else ''
-                    
+
                     lines.append(f'cell{cell_counter} = openmc.Cell(cell_id={cell_counter}, fill=universe{unit_id}, name="{name}")')
                     if region_str:
                         lines.append(f'cell{cell_counter}.region = {region_str}')
                 else:
                     lines.append(f'# Cell: {name}')
-                    
+
                     # Parse surface expression
                     region_parts = []
                     for surf_token in surf_expr.split():
@@ -955,7 +1015,13 @@ class OpenMCGenerator:
                                 region_parts.append(f'-surf{surf_num}')
                             else:
                                 region_parts.append(f'+surf{surf_num}')
-                    
+
+                            # Auto-add z-bounds for prism surfaces
+                            if surf_num in self.prism_surfaces:
+                                zmin_name, zmax_name = self.prism_surfaces[surf_num]
+                                region_parts.append(f'+{zmin_name}')
+                                region_parts.append(f'-{zmax_name}')
+
                     region_str = ' & '.join(region_parts) if region_parts else ''
                     
                     lines.append(f'cell{cell_counter} = openmc.Cell(cell_id={cell_counter}, fill=mat{mat_id}, name="{name}")')

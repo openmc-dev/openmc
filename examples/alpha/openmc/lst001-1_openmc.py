@@ -21,16 +21,16 @@ mat1.add_nuclide("U238", 2.3508e-3)
 # Air
 mat2 = openmc.Material(material_id=2, name="Air")
 mat2.set_density("atom/b-cm", 5.030600e-05)
-mat2.add_nuclide("N", 3.5214e-5)
+mat2.add_element("N", 3.5214e-5)
 mat2.add_nuclide("O16", 1.5092e-5)
 
 # SS304L
 mat3 = openmc.Material(material_id=3, name="SS304L")
 mat3.set_density("atom/b-cm", 8.534700e-02)
-mat3.add_nuclide("Cr", 1.6348e-2)
-mat3.add_nuclide("Mn", 1.7192e-3)
-mat3.add_nuclide("Fe", 6.0038e-2)
-mat3.add_nuclide("Ni", 7.2418e-3)
+mat3.add_element("Cr", 1.6348e-2)
+mat3.add_element("Mn", 1.7192e-3)
+mat3.add_element("Fe", 6.0038e-2)
+mat3.add_element("Ni", 7.2418e-3)
 
 materials = openmc.Materials([mat1, mat2, mat3])
 materials.export_to_xml()
@@ -113,6 +113,10 @@ source.space = openmc.stats.Point((-5.0, 0.0, 22.4))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

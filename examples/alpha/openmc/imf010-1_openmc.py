@@ -42,36 +42,36 @@ mat5 = openmc.Material(material_id=5, name="")
 mat5.set_density("atom/b-cm", 3.974255e-02)
 mat5.add_nuclide("U235", 8.31425e-5)
 mat5.add_nuclide("U238", 3.72293e-2)
-mat5.add_nuclide("Cr", 1.72627e-3)
-mat5.add_nuclide("Ni", 7.03836e-4)
+mat5.add_element("Cr", 1.72627e-3)
+mat5.add_element("Ni", 7.03836e-4)
 
 mat6 = openmc.Material(material_id=6, name="")
 mat6.set_density("atom/b-cm", 3.942384e-02)
 mat6.add_nuclide("U235", 8.24312e-5)
 mat6.add_nuclide("U238", 3.69113e-2)
-mat6.add_nuclide("Cr", 1.72627e-3)
-mat6.add_nuclide("Ni", 7.03836e-4)
+mat6.add_element("Cr", 1.72627e-3)
+mat6.add_element("Ni", 7.03836e-4)
 
 mat7 = openmc.Material(material_id=7, name="")
 mat7.set_density("atom/b-cm", 4.084171e-02)
 mat7.add_nuclide("U235", 8.56868e-5)
 mat7.add_nuclide("U238", 3.83747e-2)
-mat7.add_nuclide("Cr", 1.69502e-3)
-mat7.add_nuclide("Ni", 6.86302e-4)
+mat7.add_element("Cr", 1.69502e-3)
+mat7.add_element("Ni", 6.86302e-4)
 
 mat8 = openmc.Material(material_id=8, name="")
 mat8.set_density("atom/b-cm", 5.967147e-03)
-mat8.add_nuclide("Cr", 1.18909e-3)
-mat8.add_nuclide("Ni", 4.80175e-4)
-mat8.add_nuclide("Fe", 4.27914e-3)
-mat8.add_nuclide("C0", 1.87415e-5)
+mat8.add_element("Cr", 1.18909e-3)
+mat8.add_element("Ni", 4.80175e-4)
+mat8.add_element("Fe", 4.27914e-3)
+mat8.add_element("C", 1.87415e-5)
 
 mat9 = openmc.Material(material_id=9, name="")
 mat9.set_density("atom/b-cm", 5.919372e-03)
-mat9.add_nuclide("Cr", 1.17957e-3)
-mat9.add_nuclide("Ni", 4.76329e-4)
-mat9.add_nuclide("Fe", 4.24488e-3)
-mat9.add_nuclide("C0", 1.85933e-5)
+mat9.add_element("Cr", 1.17957e-3)
+mat9.add_element("Ni", 4.76329e-4)
+mat9.add_element("Fe", 4.24488e-3)
+mat9.add_element("C", 1.85933e-5)
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4, mat5, mat6, mat7, mat8, mat9])
 materials.export_to_xml()
@@ -179,6 +179,10 @@ source.space = openmc.stats.Point((0.0, 0.0, 0.0))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

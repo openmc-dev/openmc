@@ -21,7 +21,7 @@ mat1.add_nuclide("O16", 4.7214e-2)
 # Aluminum clad
 mat2 = openmc.Material(material_id=2, name="Aluminum clad")
 mat2.set_density("atom/b-cm", 5.513700e-02)
-mat2.add_nuclide("Al", 5.5137e-2)
+mat2.add_element("Al", 5.5137e-2)
 
 # Water
 mat3 = openmc.Material(material_id=3, name="Water")
@@ -132,6 +132,10 @@ source.space = openmc.stats.Point((0.0, 0.0, 45.375))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

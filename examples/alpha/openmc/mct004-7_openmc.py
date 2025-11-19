@@ -23,11 +23,11 @@ mat1.add_nuclide("Am241", 1.1498e-6)
 # Cladding (with air gap)
 mat2 = openmc.Material(material_id=2, name="Cladding (with air gap)")
 mat2.set_density("atom/b-cm", 3.839992e-02)
-mat2.add_nuclide("Zr", 3.7772e-2)
-mat2.add_nuclide("Sn", 4.3737e-4)
-mat2.add_nuclide("Fe", 8.8570e-5)
-mat2.add_nuclide("Cr", 6.6119e-5)
-mat2.add_nuclide("Ni", 3.5864e-5)
+mat2.add_element("Zr", 3.7772e-2)
+mat2.add_element("Sn", 4.3737e-4)
+mat2.add_element("Fe", 8.8570e-5)
+mat2.add_element("Cr", 6.6119e-5)
+mat2.add_element("Ni", 3.5864e-5)
 
 # Water
 mat3 = openmc.Material(material_id=3, name="Water")
@@ -38,26 +38,26 @@ mat3.add_s_alpha_beta("c_H_in_H2O")
 # Aluminum
 mat4 = openmc.Material(material_id=4, name="Aluminum")
 mat4.set_density("atom/b-cm", 6.022400e-02)
-mat4.add_nuclide("Al", 6.0224e-2)
+mat4.add_element("Al", 6.0224e-2)
 
 # SS304L
 mat5 = openmc.Material(material_id=5, name="SS304L")
 mat5.set_density("atom/b-cm", 1.262273e-02)
-mat5.add_nuclide("C0", 1.1928e-4)
-mat5.add_nuclide("Si", 1.7003e-3)
-mat5.add_nuclide("Mn", 1.7385e-3)
-mat5.add_nuclide("P", 6.9381e-5)
-mat5.add_nuclide("S", 4.4673e-5)
-mat5.add_nuclide("Ni", 8.9506e-3)
+mat5.add_element("C", 1.1928e-4)
+mat5.add_element("Si", 1.7003e-3)
+mat5.add_element("Mn", 1.7385e-3)
+mat5.add_element("P", 6.9381e-5)
+mat5.add_element("S", 4.4673e-5)
+mat5.add_element("Ni", 8.9506e-3)
 
 # Ordinary
 mat6 = openmc.Material(material_id=6, name="Ordinary")
 mat6.set_density("atom/b-cm", 4.886305e-02)
 mat6.add_nuclide("O16", 4.5919e-2)
-mat6.add_nuclide("C0", 1.1532e-4)
-mat6.add_nuclide("Na", 9.6395e-4)
-mat6.add_nuclide("Mg", 1.2388e-4)
-mat6.add_nuclide("Al", 1.7409e-3)
+mat6.add_element("C", 1.1532e-4)
+mat6.add_element("Na", 9.6395e-4)
+mat6.add_element("Mg", 1.2388e-4)
+mat6.add_element("Al", 1.7409e-3)
 mat6.add_s_alpha_beta("c_H_in_H2O")
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4, mat5, mat6])
@@ -227,6 +227,10 @@ source.space = openmc.stats.Point((0.0, 0.0, 0.0))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

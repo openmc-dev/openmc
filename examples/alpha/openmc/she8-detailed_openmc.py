@@ -25,7 +25,7 @@ mat3.set_density("atom/b-cm", 1.0)  # TODO: Verify density
 # aluminum
 mat4 = openmc.Material(material_id=4, name="aluminum")
 mat4.set_density("atom/b-cm", 2.700000e+00)
-mat4.add_nuclide("F", 2.7)
+mat4.add_element("F", 2.7)
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4])
 materials.export_to_xml()
@@ -221,6 +221,10 @@ source.space = openmc.stats.Point((0.0, 0.0, 0.0))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

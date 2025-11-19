@@ -17,7 +17,7 @@ mat1.add_nuclide("U234", 4.9814e-4)
 mat1.add_nuclide("U235", 4.5034e-2)
 mat1.add_nuclide("U236", 1.3236e-4)
 mat1.add_nuclide("U238", 2.6056e-3)
-mat1.add_nuclide("Highly", E)
+mat1.add_element("Highly", E)
 
 # Intermediate Enriched Uranium (10 wt.%)
 mat2 = openmc.Material(material_id=2, name="Intermediate Enriched Uranium (10 wt.%)")
@@ -26,7 +26,7 @@ mat2.add_nuclide("U234", 2.4761e-5)
 mat2.add_nuclide("U235", 4.8461e-3)
 mat2.add_nuclide("U236", 4.3348e-5)
 mat2.add_nuclide("U238", 4.2695e-2)
-mat2.add_nuclide("Intermediate", E)
+mat2.add_element("Intermediate", E)
 
 # Natural Uranium
 mat3 = openmc.Material(material_id=3, name="Natural Uranium")
@@ -53,20 +53,20 @@ mat5.add_nuclide("U238", 4.7738e-2)
 # Steel 347
 mat6 = openmc.Material(material_id=6, name="Steel 347")
 mat6.set_density("atom/b-cm", 3.470853e+02)
-mat6.add_nuclide("Fe", 5.7798e-2)
-mat6.add_nuclide("Cr", 1.6678e-2)
-mat6.add_nuclide("Ni", 9.0296e-3)
-mat6.add_nuclide("Mn", 1.7539e-3)
-mat6.add_nuclide("Steel", 347)
+mat6.add_element("Fe", 5.7798e-2)
+mat6.add_element("Cr", 1.6678e-2)
+mat6.add_element("Ni", 9.0296e-3)
+mat6.add_element("Mn", 1.7539e-3)
+mat6.add_element("Steel", 347)
 
 # Steel 304
 mat7 = openmc.Material(material_id=7, name="Steel 304")
 mat7.set_density("atom/b-cm", 3.040863e+02)
-mat7.add_nuclide("Fe", 5.9308e-2)
-mat7.add_nuclide("Cr", 1.7604e-2)
-mat7.add_nuclide("Ni", 7.5930e-3)
-mat7.add_nuclide("Mn", 1.7539e-3)
-mat7.add_nuclide("Steel", 304)
+mat7.add_element("Fe", 5.9308e-2)
+mat7.add_element("Cr", 1.7604e-2)
+mat7.add_element("Ni", 7.5930e-3)
+mat7.add_element("Mn", 1.7539e-3)
+mat7.add_element("Steel", 304)
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4, mat5, mat6, mat7])
 materials.export_to_xml()
@@ -504,6 +504,10 @@ source.space = openmc.stats.Point((0.0, 0.0, 0.0))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

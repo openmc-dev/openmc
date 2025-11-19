@@ -6,7 +6,6 @@ Author: William Zywiec
 """
 
 import re
-import numpy as np
 from pathlib import Path
 
 
@@ -483,8 +482,8 @@ class OpenMCGenerator:
         # Calculate total atom density from nuclides (excluding thermal scattering markers)
         total_density = 0.0
         for nuclide, density in mat_data['nuclides']:
-            openmc_nuclide = self._convert_nuclide_name(nuclide)
-            if openmc_nuclide is not None:
+            openmc_name, is_element = self._convert_nuclide_name(nuclide)
+            if openmc_name is not None:
                 # Convert density string to float
                 density_str = density.replace('-', 'e-').replace('+', 'e+')
                 if 'e' not in density_str.lower():
@@ -504,28 +503,32 @@ class OpenMCGenerator:
         else:
             lines.append(f'mat{mat_id}.set_density("atom/b-cm", 1.0)  # TODO: Verify density')
         
-        # Add nuclides
+        # Add nuclides and elements
         has_water_sab = False
         has_graphite_sab = False
-        
+
         for nuclide, density in mat_data['nuclides']:
             # Convert COG nuclide notation to OpenMC format
-            openmc_nuclide = self._convert_nuclide_name(nuclide)
-            
-            if openmc_nuclide is None:
+            openmc_name, is_element = self._convert_nuclide_name(nuclide)
+
+            if openmc_name is None:
                 # Check what thermal scattering to add
                 if 'h.h2o' in nuclide.lower() or 'h2o' in nuclide.lower():
                     has_water_sab = True
                 elif 'c30p' in nuclide.lower() or (nuclide.lower() in ['(c)', 'c.graphite']):
                     has_graphite_sab = True
                 continue
-            
+
             # Convert density (COG uses scientific notation like 4.9184-4 for 4.9184e-4)
             density_str = density.replace('-', 'e-').replace('+', 'e+')
             if 'e' not in density_str.lower():
                 density_str = density_str
-            
-            lines.append(f'mat{mat_id}.add_nuclide("{openmc_nuclide}", {density_str})')
+
+            # Use add_element() for natural elements, add_nuclide() for specific isotopes
+            if is_element:
+                lines.append(f'mat{mat_id}.add_element("{openmc_name}", {density_str})')
+            else:
+                lines.append(f'mat{mat_id}.add_nuclide("{openmc_name}", {density_str})')
         
         # Add thermal scattering if water is present
         if has_water_sab:
@@ -539,44 +542,47 @@ class OpenMCGenerator:
         return lines
     
     def _convert_nuclide_name(self, cog_name):
-        """Convert COG nuclide name to OpenMC format"""
+        """
+        Convert COG nuclide name to OpenMC format
+
+        Returns:
+            tuple: (name, is_element) where is_element is True for natural elements,
+                   False for specific isotopes, or None for thermal scattering markers
+        """
         # Handle special thermal scattering cases
         cog_lower = cog_name.lower()
-        
+
         if 'h.h2o' in cog_lower or 'h2o' in cog_lower:
-            return None  # Mark for S(α,β) addition
-        
+            return (None, None)  # Mark for S(α,β) addition
+
         if cog_lower in ['c', 'c30p', 'c.graphite']:
-            # Graphite - return as carbon but mark for potential S(α,β)
-            return 'C0'  # Natural carbon
-        
+            # Graphite - return as natural carbon
+            return ('C', True)  # Natural carbon element
+
         if cog_lower.startswith('(') or cog_lower.endswith(')'):
             # Remove parentheses from notation like (c) or (h.h2o)
             cleaned = cog_lower.strip('()')
             if '.' in cleaned or cleaned in ['c30p']:
-                return None  # Thermal scattering marker
-        
+                return (None, None)  # Thermal scattering marker
+
         # Convert element names to proper format
-        # COG: u235 -> OpenMC: U235
-        # COG: fe -> OpenMC: Fe (natural)
-        
+        # COG: u235 -> OpenMC: U235 (nuclide)
+        # COG: fe -> OpenMC: Fe (natural element)
+
         # Extract element and mass number
         match = re.match(r'([a-z]+)(\d*)', cog_name, re.IGNORECASE)
         if match:
             element = match.group(1).capitalize()
             mass = match.group(2)
-            
+
             if mass:
-                return f'{element}{mass}'
+                # Specific isotope
+                return (f'{element}{mass}', False)
             else:
-                # Natural element - OpenMC typically needs mass number
-                # For now, return the element for natural composition
-                # Special case for carbon
-                if element.lower() == 'c':
-                    return 'C0'
-                return element
-        
-        return cog_name
+                # Natural element - use add_element() in OpenMC
+                return (element, True)
+
+        return (cog_name, False)
     
     def _generate_surface(self, surf_id, surf_data):
         """Generate OpenMC surface definition"""
@@ -989,14 +995,14 @@ class OpenMCGenerator:
     def _generate_settings(self):
         """Generate OpenMC settings"""
         lines = []
-        
+
         lines.append('settings = openmc.Settings()')
         lines.append(f'settings.particles = {self.parser.npart}')
         lines.append(f'settings.batches = {self.parser.nbatch}')
         lines.append(f'settings.inactive = {self.parser.nfirst}')
         lines.append('settings.run_mode = "eigenvalue"')
         lines.append('')
-        
+
         # Source
         x, y, z = self.parser.source['x'], self.parser.source['y'], self.parser.source['z']
         lines.append('# Source definition')
@@ -1006,9 +1012,16 @@ class OpenMCGenerator:
         lines.append('source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)')
         lines.append('settings.source = source')
         lines.append('')
+
+        # Enable delayed neutron kinetics and alpha eigenvalue calculations
+        lines.append('# Enable delayed neutron kinetics and alpha eigenvalue calculations')
+        lines.append('settings.calculate_prompt_k = True')
+        lines.append('settings.calculate_alpha = True')
+        lines.append('')
+
         lines.append('settings.export_to_xml()')
         lines.append('')
-        
+
         return lines
 
 

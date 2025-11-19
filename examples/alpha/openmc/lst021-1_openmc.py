@@ -17,27 +17,27 @@ mat1.add_nuclide("U234", 5.0042e-7)
 mat1.add_nuclide("U235", 6.2098e-5)
 mat1.add_nuclide("U236", 6.2021e-8)
 mat1.add_nuclide("U238", 5.5312e-4)
-mat1.add_nuclide("N", 1.8157e-3)
+mat1.add_element("N", 1.8157e-3)
 mat1.add_nuclide("O16", 3.6535e-2)
-mat1.add_nuclide("Run", 215)
+mat1.add_element("Run", 215)
 mat1.add_s_alpha_beta("c_H_in_H2O")
 
 # Stainless Steel
 mat2 = openmc.Material(material_id=2, name="Stainless Steel")
 mat2.set_density("atom/b-cm", 8.684498e-02)
-mat2.add_nuclide("C0", 4.3736e-5)
-mat2.add_nuclide("Si", 1.0627e-3)
-mat2.add_nuclide("Mn", 1.1561e-3)
-mat2.add_nuclide("P", 4.3170e-5)
-mat2.add_nuclide("S", 2.9782e-6)
-mat2.add_nuclide("Ni", 8.3403e-3)
-mat2.add_nuclide("Cr", 1.6775e-2)
-mat2.add_nuclide("Fe", 5.9421e-2)
+mat2.add_element("C", 4.3736e-5)
+mat2.add_element("Si", 1.0627e-3)
+mat2.add_element("Mn", 1.1561e-3)
+mat2.add_element("P", 4.3170e-5)
+mat2.add_element("S", 2.9782e-6)
+mat2.add_element("Ni", 8.3403e-3)
+mat2.add_element("Cr", 1.6775e-2)
+mat2.add_element("Fe", 5.9421e-2)
 
 # Air
 mat3 = openmc.Material(material_id=3, name="Air")
 mat3.set_density("atom/b-cm", 4.942400e-05)
-mat3.add_nuclide("N", 3.9014e-5)
+mat3.add_element("N", 3.9014e-5)
 mat3.add_nuclide("O16", 1.0410e-5)
 
 materials = openmc.Materials([mat1, mat2, mat3])
@@ -120,6 +120,10 @@ source.space = openmc.stats.Point((0.0, 0.0, 21.99))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

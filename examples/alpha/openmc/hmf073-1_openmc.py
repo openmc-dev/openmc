@@ -29,42 +29,42 @@ mat2.add_nuclide("U238", 2.6211e-3)
 # Al-6061
 mat3 = openmc.Material(material_id=3, name="Al-6061")
 mat3.set_density("atom/b-cm", 1.272621e-03)
-mat3.add_nuclide("Si", 3.4295e-4)
-mat3.add_nuclide("Fe", 1.0061e-4)
-mat3.add_nuclide("Cu", 6.9471e-5)
-mat3.add_nuclide("Mn", 2.1915e-5)
-mat3.add_nuclide("Mg", 6.6049e-4)
-mat3.add_nuclide("Cr", 7.7185e-5)
+mat3.add_element("Si", 3.4295e-4)
+mat3.add_element("Fe", 1.0061e-4)
+mat3.add_element("Cu", 6.9471e-5)
+mat3.add_element("Mn", 2.1915e-5)
+mat3.add_element("Mg", 6.6049e-4)
+mat3.add_element("Cr", 7.7185e-5)
 
 # SS304
 mat4 = openmc.Material(material_id=4, name="SS304")
 mat4.set_density("atom/b-cm", 1.788257e-02)
-mat4.add_nuclide("C0", 2.0637e-4)
-mat4.add_nuclide("N", 1.7029e-4)
-mat4.add_nuclide("Si", 1.0158e-3)
-mat4.add_nuclide("P", 4.2278e-5)
-mat4.add_nuclide("S", 5.8332e-6)
-mat4.add_nuclide("Cr", 1.6442e-2)
+mat4.add_element("C", 2.0637e-4)
+mat4.add_element("N", 1.7029e-4)
+mat4.add_element("Si", 1.0158e-3)
+mat4.add_element("P", 4.2278e-5)
+mat4.add_element("S", 5.8332e-6)
+mat4.add_element("Cr", 1.6442e-2)
 
 # Copper top    reflector
 mat5 = openmc.Material(material_id=5, name="Copper top    reflector")
 mat5.set_density("atom/b-cm", 8.339400e-02)
-mat5.add_nuclide("Cu", 8.3394e-2)
+mat5.add_element("Cu", 8.3394e-2)
 
 # Copper bottom reflector
 mat6 = openmc.Material(material_id=6, name="Copper bottom reflector")
 mat6.set_density("atom/b-cm", 8.331500e-02)
-mat6.add_nuclide("Cu", 8.3315e-2)
+mat6.add_element("Cu", 8.3315e-2)
 
 # Copper corner reflector
 mat7 = openmc.Material(material_id=7, name="Copper corner reflector")
 mat7.set_density("atom/b-cm", 8.295300e-02)
-mat7.add_nuclide("Cu", 8.2953e-2)
+mat7.add_element("Cu", 8.2953e-2)
 
 # Copper side   reflector
 mat8 = openmc.Material(material_id=8, name="Copper side   reflector")
 mat8.set_density("atom/b-cm", 8.278400e-02)
-mat8.add_nuclide("Cu", 8.2784e-2)
+mat8.add_element("Cu", 8.2784e-2)
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4, mat5, mat6, mat7, mat8])
 materials.export_to_xml()
@@ -239,6 +239,10 @@ source.space = openmc.stats.Point((0.0, 0.0, 58.5))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

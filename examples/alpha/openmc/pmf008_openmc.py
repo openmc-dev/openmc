@@ -15,7 +15,7 @@ mat1.set_density("atom/b-cm", 3.945359e-02)
 mat1.add_nuclide("Pu239", 3.6049e-2)
 mat1.add_nuclide("Pu240", 1.9562e-3)
 mat1.add_nuclide("Pu241", 1.1459e-4)
-mat1.add_nuclide("Ga", 1.3338e-3)
+mat1.add_element("Ga", 1.3338e-3)
 
 mat2 = openmc.Material(material_id=2, name="")
 mat2.set_density("atom/b-cm", 3.005400e-02)
@@ -83,6 +83,10 @@ source.space = openmc.stats.Point((0.0, 0.0, 0.0))
 source.angle = openmc.stats.Isotropic()
 source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
+
+# Enable delayed neutron kinetics and alpha eigenvalue calculations
+settings.calculate_prompt_k = True
+settings.calculate_alpha = True
 
 settings.export_to_xml()
 

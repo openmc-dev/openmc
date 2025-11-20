@@ -370,7 +370,11 @@ class Material(IDManagerMixin):
         return combined
 
 
-    def get_decay_photon_dose(self, n_samples: int = 10000, distance: float | None = None) -> float:
+    def get_decay_photon_dose(
+            self,
+            n_samples: int = 10000,
+            distance: float | None = None
+    ) -> float:
         """Return decay photon dose rate from unstable nuclides.
 
         .. versionadded:: 0.14.1
@@ -406,7 +410,7 @@ class Material(IDManagerMixin):
             return 0.0
 
         # Sample energies from the distribution
-        energies = dist.sample(n_samples)
+        energies = dist.sample(n_samples=n_samples, seed=1)
 
         # Get dose coefficients for isotropic geometry
         energy_bins, dose_coeffs = openmc.data.dose_coefficients(
@@ -434,6 +438,7 @@ class Material(IDManagerMixin):
 
         # If distance not specified, use surface of equivalent sphere
         if distance is None:
+            print('volume for dose calculation:', self.volume)
             if self.volume is None:
                 raise ValueError(
                     "Either distance must be specified or material volume "
@@ -443,7 +448,7 @@ class Material(IDManagerMixin):
             # r = (3V/4π)^(1/3)
             radius = (3.0 * self.volume / (4.0 * np.pi)) ** (1.0 / 3.0)
             distance = radius
-
+        print('Distance for dose calculation:', distance)
         # Dose rate at specified distance in pSv/s
         # dose_rate = (coeff * activity) / (4π·r²)
         dose_rate_pSv_per_s = mean_dose_coeff * total_activity / (4 * np.pi * distance**2)

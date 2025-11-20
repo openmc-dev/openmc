@@ -767,3 +767,51 @@ def test_mean_free_path():
     mat2.add_nuclide('Pb208', 1.0)
     mat2.set_density('g/cm3', 11.34)
     assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)
+
+
+def test_get_decay_photon_dose():
+    """Test decay photon dose rate calculation"""
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+    
+    # Test with stable nuclides - should return zero
+    stable = openmc.Material()
+    stable.add_element('Fe56', 1.0)
+    stable.set_density('g/cm3', 7.87)
+    stable.volume = 1.0
+    assert stable.get_decay_photon_dose() == 0.0
+    
+    # Test with unstable nuclide - should return positive dose
+    mat = openmc.Material()
+    mat.add_nuclide('I135', 1.0)
+    mat.set_density('g/cm3', 1.0)
+    mat.volume = 1.0
+    dose = mat.get_decay_photon_dose(n_samples=10)
+    assert dose > 0.0
+    assert isinstance(dose, float)
+    
+    # Test distance dependence (1/r² law)
+    dose_10cm = mat.get_decay_photon_dose(distance=10.0)
+    dose_20cm = mat.get_decay_photon_dose(distance=20.0)
+    ratio = dose_10cm / dose_20cm
+    assert 3.5 < ratio < 4.5  # Should be ~4 due to 1/r²
+    
+    # Test sphere radius calculation from volume
+    mat_sphere = openmc.Material()
+    mat_sphere.add_nuclide('I135', 1.0)
+    mat_sphere.set_density('g/cm3', 1.0)
+    mat_sphere.volume = 100.0  # cm³
+    expected_radius = (3.0 * 100.0 / (4.0 * np.pi)) ** (1.0 / 3.0)
+    dose_default = mat_sphere.get_decay_photon_dose()
+    dose_at_radius = mat_sphere.get_decay_photon_dose(distance=expected_radius)
+    assert abs(dose_default - dose_at_radius) / dose_default < 1e-10
+    
+    # Test invalid inputs
+    with pytest.raises(ValueError):
+        mat.get_decay_photon_dose(n_samples=-100)
+    with pytest.raises(ValueError):
+        mat.get_decay_photon_dose(n_samples=0)
+    with pytest.raises(ValueError):
+        mat.get_decay_photon_dose(distance=-10.0)
+    with pytest.raises(ValueError):
+        mat.get_decay_photon_dose(distance=0.0)

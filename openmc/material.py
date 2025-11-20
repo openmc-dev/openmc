@@ -377,7 +377,7 @@ class Material(IDManagerMixin):
     ) -> float:
         """Return decay photon dose rate from unstable nuclides.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.3
 
         Parameters
         ----------
@@ -409,7 +409,7 @@ class Material(IDManagerMixin):
         if dist is None:
             return 0.0
 
-        # Sample energies from the distribution
+        # Sample energies from the distribution with fixed seed for reproducibility
         energies = dist.sample(n_samples=n_samples, seed=1)
 
         # Get dose coefficients for isotropic geometry

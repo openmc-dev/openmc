@@ -371,9 +371,9 @@ class Material(IDManagerMixin):
 
 
     def get_decay_photon_dose(
-            self,
-            n_samples: int = 10000,
-            distance: float | None = None
+        self,
+        n_samples: int = 10000,
+        distance: float | None = None
     ) -> float:
         """Return decay photon dose rate from unstable nuclides.
 
@@ -438,7 +438,6 @@ class Material(IDManagerMixin):
 
         # If distance not specified, use surface of equivalent sphere
         if distance is None:
-            print('volume for dose calculation:', self.volume)
             if self.volume is None:
                 raise ValueError(
                     "Either distance must be specified or material volume "
@@ -446,9 +445,7 @@ class Material(IDManagerMixin):
                 )
             # Calculate radius of equivalent sphere: V = (4/3)πr³
             # r = (3V/4π)^(1/3)
-            radius = (3.0 * self.volume / (4.0 * np.pi)) ** (1.0 / 3.0)
-            distance = radius
-        print('Distance for dose calculation:', distance)
+            distance = (3.0 * self.volume / (4.0 * np.pi)) ** (1.0 / 3.0)
         # Dose rate at specified distance in pSv/s
         # dose_rate = (coeff * activity) / (4π·r²)
         dose_rate_pSv_per_s = mean_dose_coeff * total_activity / (4 * np.pi * distance**2)

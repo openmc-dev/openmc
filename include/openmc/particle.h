@@ -39,6 +39,13 @@ public:
 
   double speed() const;
 
+  //! apply gravitational acceleration to particle
+  //
+  //! updates particle position and energy based on gravitational acceleration
+  //! \param dt Time step in seconds
+  //! \param distance Distance traveled in straight line (cm)
+  void apply_gravity(double dt, double distance);
+
   //! create a secondary particle
   //
   //! stores the current phase space attributes of the particle in the

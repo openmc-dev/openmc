@@ -74,6 +74,91 @@ double Particle::speed() const
   }
 }
 
+void Particle::apply_gravity(double dt, double distance)
+{
+  // Only apply gravity if enabled
+  if (!settings::gravity_enabled || dt <= 0.0)
+    return;
+
+  // Get particle mass in eV/c^2
+  double mass;
+  switch (this->type()) {
+  case ParticleType::neutron:
+    mass = MASS_NEUTRON_EV;
+    break;
+  case ParticleType::photon:
+    mass = 0.0; // Photons have no mass, no gravitational acceleration
+    return;
+  case ParticleType::electron:
+  case ParticleType::positron:
+    mass = MASS_ELECTRON_EV;
+    break;
+  }
+
+  // Skip if particle has no mass
+  if (mass == 0.0)
+    return;
+
+  // Store initial position for energy calculation
+  Position r_initial = r();
+
+  // Apply gravitational position correction
+  // The particle has already moved in a straight line by distance
+  // Now add the gravitational deflection: r_correction = 0.5 * g * dt^2
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r().x += 0.5 * settings::gravity_accel[0] * dt * dt;
+    coord(j).r().y += 0.5 * settings::gravity_accel[1] * dt * dt;
+    coord(j).r().z += 0.5 * settings::gravity_accel[2] * dt * dt;
+  }
+
+  // Update velocity direction for next step
+  // v_final = v_initial + g * dt
+  double initial_speed = this->speed();
+  Direction v_initial = u() * initial_speed;
+
+  // Add gravity contribution to velocity
+  v_initial.x += settings::gravity_accel[0] * dt;
+  v_initial.y += settings::gravity_accel[1] * dt;
+  v_initial.z += settings::gravity_accel[2] * dt;
+
+  // Calculate new speed and direction
+  double new_speed = v_initial.norm();
+  if (new_speed > 0.0) {
+    // Update direction
+    for (int j = 0; j < n_coord(); ++j) {
+      coord(j).u() = v_initial / new_speed;
+    }
+
+    // Calculate change in gravitational potential energy
+    // dE_potential = m * g_vector · dr
+    Position dr = r() - r_initial;
+    double g_dot_dr = settings::gravity_accel[0] * dr.x +
+                      settings::gravity_accel[1] * dr.y +
+                      settings::gravity_accel[2] * dr.z;
+
+    // Convert mass from eV/c^2 to kg
+    const double EV_TO_JOULE = 1.602176634e-19;
+    const double C_SQUARED = C_LIGHT * C_LIGHT; // cm^2/s^2
+    double mass_kg = (mass * EV_TO_JOULE) / (C_SQUARED / 1e4); // Convert c in cm/s to m/s
+
+    // Potential energy change in Joules
+    double dE_potential_J = mass_kg * g_dot_dr / 100.0; // Convert cm to m
+
+    // Convert to eV and update particle energy
+    double dE_potential_eV = dE_potential_J / EV_TO_JOULE;
+
+    // Energy conservation: E_kinetic_new = E_kinetic_old - dE_potential
+    // (losing kinetic energy when moving against gravity)
+    E() -= dE_potential_eV;
+
+    // Check if particle energy became negative or too low
+    if (E() < settings::energy_cutoff[static_cast<int>(type())]) {
+      // Particle has insufficient energy, mark for termination
+      wgt() = 0.0;
+    }
+  }
+}
+
 bool Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {
@@ -266,6 +351,9 @@ void Particle::event_advance()
   double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
+
+  // Apply gravitational acceleration
+  this->apply_gravity(dt, distance);
 
   // Score timed track-length tallies
   if (!model::active_timed_tracklength_tallies.empty()) {

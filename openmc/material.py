@@ -415,7 +415,7 @@ class Material(IDManagerMixin):
         # Get dose coefficients for isotropic geometry
         energy_bins, dose_coeffs = openmc.data.dose_coefficients(
             particle="photon",
-            geometry="ISO"
+            geometry="AP"
         )
 
         # Check if maximum sampled energy exceeds the dose coefficient range

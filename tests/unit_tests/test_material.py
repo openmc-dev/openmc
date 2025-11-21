@@ -767,3 +767,35 @@ def test_mean_free_path():
     mat2.add_nuclide('Pb208', 1.0)
     mat2.set_density('g/cm3', 11.34)
     assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)
+
+
+def test_material_from_constructor():
+
+    mat1 = openmc.Material(
+        **{
+            "material_id": 1,
+            "name": "neutron_star",
+            "density": 1e17,
+            "density_units": "kg/m3",
+        }
+    )
+    assert mat1.id == 1
+    assert mat1.name == "neutron_star"
+    assert mat1._density == 1e17
+    assert mat1._density_units == "kg/m3"
+    assert mat1.nuclides == []
+
+    mat2 = openmc.Material(
+        material_id=42,
+        name="plasma",
+        temperature=None,
+        density=1e-7,
+        density_units="g/cm3",
+        nuclides=[("H1", 0.1, "ao"), ("H2", 0.2, "wo"), ("H3", 0.3)],
+    )
+    assert mat2.id == 42
+    assert mat2.name == "plasma"
+    assert mat2.temperature is None
+    assert mat2.density == 1e-7
+    assert mat2.density_units == "g/cm3"
+    assert mat2.nuclides == [("H1", 0.1, "ao"), ("H2", 0.2, "wo"), ("H3", 0.3, "ao")]

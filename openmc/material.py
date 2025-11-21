@@ -60,6 +60,18 @@ class Material(IDManagerMixin):
     temperature : float, optional
         Temperature of the material in Kelvin. If not specified, the material
         inherits the default temperature applied to the model.
+    density : float, optional
+        Density of the material. If not specified, the density can be set later
+        using :meth:`Material.set_density()`.
+    density_units : {'g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro'}, optional
+        Units for the density. Defaults to 'g/cm3' if density is provided but
+        units are not specified.
+    depletable : bool, optional
+        Indicate whether the material is depletable. Defaults to False.
+    volume : float, optional
+        Volume of the material in cm^3. If not specified, the volume can be set later using :meth:`Material.add_volume_information()` or by assigning to the volume attribute.
+    nuclides : list of tuple, optional
+        List of tuples, each containing (nuclide: str, percent: float, percent_type: str = 'ao'). If provided, nuclides are added to the material at construction.
 
     Attributes
     ----------
@@ -111,17 +123,27 @@ class Material(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, material_id=None, name='', temperature=None):
+    def __init__(
+        self,
+        material_id: int | None = None,
+        name: str = "",
+        temperature: float | None = None,
+        density: float | None = None,
+        density_units: str | None = None,
+        depletable: bool | None = False,
+        volume: float | None = None,
+        nuclides: list[tuple[str, float, str]] | None = None,
+    ):
         # Initialize class attributes
         self.id = material_id
         self.name = name
         self.temperature = temperature
         self._density = None
         self._density_units = 'sum'
-        self._depletable = False
+        self._depletable = depletable
         self._paths = None
         self._num_instances = None
-        self._volume = None
+        self._volume = volume
         self._atoms = {}
         self._isotropic = []
         self._ncrystal_cfg = None
@@ -135,6 +157,30 @@ class Material(IDManagerMixin):
 
         # If specified, a list of table names
         self._sab = []
+
+        # Set density if provided
+        if (density is not None and density_units is None) or (
+            density is None and density_units is not None
+        ):
+            raise ValueError(
+                "Both density and density_units must be provided together."
+            )
+        elif density is not None and density_units is not None:
+            self.set_density(density_units, density)
+
+        # Add nuclides if provided
+        if nuclides is not None:
+            for entry in nuclides:
+                if len(entry) == 2:
+                    nuclide, percent = entry
+                    percent_type = "ao"
+                elif len(entry) == 3:
+                    nuclide, percent, percent_type = entry
+                else:
+                    raise ValueError(
+                        "Each nuclide tuple must have 2 or 3 elements: (nuclide, percent, [percent_type])"
+                    )
+                self.add_nuclide(nuclide, percent, percent_type)
 
     def __repr__(self) -> str:
         string = 'Material\n'

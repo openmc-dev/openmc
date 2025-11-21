@@ -58,20 +58,23 @@ class Material(IDManagerMixin):
         Name of the material. If not specified, the name will be the empty
         string.
     temperature : float, optional
-        Temperature of the material in Kelvin. If not specified, the material
-        inherits the default temperature applied to the model.
+        Temperature of the material in Kelvin.
     density : float, optional
-        Density of the material. If not specified, the density can be set later
-        using :meth:`Material.set_density()`.
-    density_units : {'g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro'}, optional
-        Units for the density. Defaults to 'g/cm3' if density is provided but
-        units are not specified.
+        Density of the material (units defined separately)
+    density_units : str
+        Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/m3',
+        'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
+        applies in the case of a multi-group calculation.
     depletable : bool, optional
         Indicate whether the material is depletable. Defaults to False.
-    volume : float, optional
-        Volume of the material in cm^3. If not specified, the volume can be set later using :meth:`Material.add_volume_information()` or by assigning to the volume attribute.
     nuclides : list of tuple, optional
-        List of tuples, each containing (nuclide: str, percent: float, percent_type: str = 'ao'). If provided, nuclides are added to the material at construction.
+        List in which each item is a namedtuple consisting of a nuclide string,
+        the percent density, and the percent type ('ao' or 'wo'). The namedtuple
+        has field names ``name``, ``percent``, and ``percent_type``.
+    volume : float, optional
+        Volume of the material in cm^3. This can either be set manually or
+        calculated in a stochastic volume calculation and added via the
+        :meth:`Material.add_volume_information` method.
 
     Attributes
     ----------
@@ -131,8 +134,8 @@ class Material(IDManagerMixin):
         density: float | None = None,
         density_units: str | None = None,
         depletable: bool | None = False,
-        volume: float | None = None,
         nuclides: list[tuple[str, float, str]] | None = None,
+        volume: float | None = None,
     ):
         # Initialize class attributes
         self.id = material_id

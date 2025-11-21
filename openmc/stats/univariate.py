@@ -439,6 +439,18 @@ class Uniform(Univariate):
         """
         return 0.5 * (self.a + self.b)
 
+    def integral(self) -> float:
+        """Return integral of the uniform distribution
+
+        .. versionadded:: 0.15.3
+
+        Returns
+        -------
+        float
+            Integral of uniform distribution (width of interval)
+        """
+        return self.b - self.a
+
     def to_xml_element(self, element_name: str):
         """Return XML representation of the uniform distribution
 

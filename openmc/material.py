@@ -22,7 +22,7 @@ from .mixin import IDManagerMixin
 from .utility_funcs import input_path
 from . import waste
 from openmc.checkvalue import PathLike
-from openmc.stats import Univariate, Discrete, Mixture, Uniform, Tabular
+from openmc.stats import Univariate, Discrete, Mixture
 from openmc.data.data import _get_element_symbol
 
 

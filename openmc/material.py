@@ -58,7 +58,8 @@ class Material(IDManagerMixin):
         Name of the material. If not specified, the name will be the empty
         string.
     temperature : float, optional
-        Temperature of the material in Kelvin.
+        Temperature of the material in Kelvin. If not specified, the material
+        inherits the default temperature applied to the model.
     density : float, optional
         Density of the material (units defined separately)
     density_units : str

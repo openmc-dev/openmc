@@ -383,10 +383,8 @@ class Material(IDManagerMixin):
         ----------
         n_samples : int, optional
             Number of energy samples to use for Monte Carlo integration.
-            Only used for Mixture distributions or other distributions without
-            analytic integration. For Discrete, Uniform, and Tabular distributions,
-            exact or numerical integration is used instead of sampling.
-            Defaults to 10000.
+            For Discrete distributions, exact calculation is used instead of
+            sampling. Defaults to 10000.
         distance : float, optional
             Distance from the source in cm at which to calculate dose rate.
             If not specified, the dose is calculated at the surface of an
@@ -434,49 +432,6 @@ class Material(IDManagerMixin):
 
             # Calculate weighted mean dose coefficient
             mean_dose_coeff = np.sum(interpolated_coeffs * dist.p) / dist.integral()
-
-        elif isinstance(dist, Uniform):
-            # For uniform distributions, use numerical integration
-            # Check bounds
-            if dist.b > energy_bins[-1]:
-                raise ValueError(
-                    f"Maximum photon energy {dist.b:.2e} eV exceeds "
-                    f"dose coefficient upper limit of {energy_bins[-1]:.2e} eV"
-                )
-
-            # Use trapezoidal integration with sufficient points
-            n_integration = 100
-            energies = np.linspace(dist.a, dist.b, n_integration)
-            interpolated_coeffs = np.interp(energies, energy_bins, dose_coeffs)
-            mean_dose_coeff = np.trapz(interpolated_coeffs, energies) / (dist.b - dist.a)
-
-        elif isinstance(dist, Tabular):
-            # For tabular distributions, integrate using the tabulated points
-            max_energy = np.max(dist.x)
-            if max_energy > energy_bins[-1]:
-                raise ValueError(
-                    f"Maximum photon energy {max_energy:.2e} eV exceeds "
-                    f"dose coefficient upper limit of {energy_bins[-1]:.2e} eV"
-                )
-
-            # Interpolate dose coefficients at tabulated energy points
-            interpolated_coeffs = np.interp(dist.x, energy_bins, dose_coeffs)
-
-            # Integrate dose_coeff(E) * p(E) dE using trapezoidal rule
-            # For histogram interpolation, p is piecewise constant
-            if dist.interpolation == 'histogram':
-                integral = 0.0
-                for i in range(len(dist.x) - 1):
-                    # Average dose coefficient in this bin
-                    avg_coeff = 0.5 * (interpolated_coeffs[i] + interpolated_coeffs[i+1])
-                    # Contribution: p * (E_max - E_min) * avg_dose_coeff
-                    integral += dist.p[i] * (dist.x[i+1] - dist.x[i]) * avg_coeff
-            else:
-                # For other interpolation schemes, use trapz on the product
-                integrand = interpolated_coeffs * dist.p
-                integral = np.trapz(integrand, dist.x)
-
-            mean_dose_coeff = integral / dist.integral()
 
         else:
             # For other distributions (Mixture, etc.), use Monte Carlo sampling

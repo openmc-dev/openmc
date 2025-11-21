@@ -447,7 +447,7 @@ class Uniform(Univariate):
         Returns
         -------
         float
-            Integral of uniform distribution (width of interval)
+            Integral of uniform distribution
         """
         return self.b - self.a
 
@@ -1175,7 +1175,7 @@ class Tabular(Univariate):
         Returns
         -------
         float
-            Integral of tabular distrbution
+            Integral of tabular distribution
         """
         if self.interpolation == 'histogram':
             return np.sum(np.diff(self.x) * self.p[:self.x.size-1])

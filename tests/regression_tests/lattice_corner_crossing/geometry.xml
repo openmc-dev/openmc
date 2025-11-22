@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<geometry>
+  <cell id="1" name="outside_lattice" material="1" region="-5 (-1 | 2 | -3 | 4)" universe="1"/>
+  <cell id="2" name="inside_lattice" fill="4" region="1 -2 3 -4" universe="1"/>
+  <cell id="3" material="2" region="-6" universe="2"/>
+  <cell id="4" material="1" region="-7" universe="3"/>
+  <lattice id="4">
+    <pitch>10.0 10.0</pitch>
+    <dimension>2 2</dimension>
+    <lower_left>-10.0 -10.0</lower_left>
+    <universes>
+2 3 
+3 2 </universes>
+  </lattice>
+  <surface id="1" name="left" type="x-plane" coeffs="-10.0"/>
+  <surface id="2" name="right" type="x-plane" coeffs="10.0"/>
+  <surface id="3" name="bottom" type="y-plane" coeffs="-10.0"/>
+  <surface id="4" name="top" type="y-plane" coeffs="10.0"/>
+  <surface id="5" type="z-cylinder" boundary="vacuum" coeffs="0 0 20.0"/>
+  <surface id="6" type="sphere" coeffs="0.0 0.0 0.0 1e+90"/>
+  <surface id="7" type="sphere" coeffs="0.0 0.0 0.0 1e+90"/>
+</geometry>

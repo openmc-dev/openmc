@@ -145,6 +145,11 @@ extern array<double, 4>
   energy_cutoff; //!< Energy cutoff in [eV] for each particle type
 extern array<double, 4>
   time_cutoff; //!< Time cutoff in [s] for each particle type
+
+// Gravity settings
+extern bool gravity_enabled;           //!< Enable gravity physics
+extern array<double, 3> gravity_accel; //!< Gravity acceleration vector [cm/s^2]
+
 extern int
   ifp_n_generation; //!< Number of generation for Iterated Fission Probability
 extern IFPParameter

@@ -79,6 +79,12 @@ class Settings:
         'survival_normalization' is a bool indicating whether or not the weight
         cutoff parameters will be applied relative to the particle's starting
         weight or to its current weight.
+    gravity : dict
+        Dictionary defining gravitational acceleration settings. The dictionary
+        may have the following keys: 'enabled' (bool) to enable/disable gravity,
+        and 'acceleration' (list of 3 floats) to set the gravity vector in
+        cm/s^2. For example: {'enabled': True, 'acceleration': [0.0, 0.0, -980.0]}
+        applies Earth's gravity in the -z direction.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -437,6 +443,9 @@ class Settings:
 
         # Cutoff subelement
         self._cutoff = None
+
+        # Gravity subelement
+        self._gravity = None
 
         # Uniform fission source subelement
         self._ufs_mesh = None
@@ -1074,6 +1083,30 @@ class Settings:
         self._cutoff = cutoff
 
     @property
+    def gravity(self) -> dict:
+        return self._gravity
+
+    @gravity.setter
+    def gravity(self, gravity: dict):
+        if not isinstance(gravity, Mapping):
+            msg = f'Unable to set gravity from "{gravity}" which is not a '\
+                'Python dictionary'
+            raise ValueError(msg)
+
+        # Validate gravity dictionary
+        if 'enabled' in gravity:
+            cv.check_type('gravity enabled', gravity['enabled'], bool)
+        if 'acceleration' in gravity:
+            cv.check_type('gravity acceleration', gravity['acceleration'], Iterable)
+            accel = list(gravity['acceleration'])
+            if len(accel) != 3:
+                raise ValueError('Gravity acceleration must have 3 components (x, y, z)')
+            for i, val in enumerate(accel):
+                cv.check_type(f'gravity acceleration[{i}]', val, Real)
+
+        self._gravity = gravity
+
+    @property
     def ufs_mesh(self) -> RegularMesh:
         return self._ufs_mesh
 
@@ -1647,6 +1680,17 @@ class Settings:
                 subelement.text = str(value) if key != 'survival_normalization' \
                     else str(value).lower()
 
+    def _create_gravity_subelement(self, root):
+        if self._gravity is not None:
+            element = ET.SubElement(root, "gravity")
+            if 'enabled' in self._gravity:
+                subelement = ET.SubElement(element, "enabled")
+                subelement.text = str(self._gravity['enabled']).lower()
+            if 'acceleration' in self._gravity:
+                subelement = ET.SubElement(element, "acceleration")
+                accel = self._gravity['acceleration']
+                subelement.text = ' '.join(str(x) for x in accel)
+
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
             return
@@ -2163,6 +2207,17 @@ class Settings:
                     else:
                         self.cutoff[key] = float(value)
 
+    def _gravity_from_xml_element(self, root):
+        elem = root.find('gravity')
+        if elem is not None:
+            self.gravity = {}
+            enabled_text = get_text(elem, 'enabled')
+            if enabled_text is not None:
+                self.gravity['enabled'] = enabled_text in ('true', '1')
+            accel_text = get_text(elem, 'acceleration')
+            if accel_text is not None:
+                self.gravity['acceleration'] = [float(x) for x in accel_text.split()]
+
     def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
         if text is None:
@@ -2449,6 +2504,7 @@ class Settings:
         self._create_stride_subelement(element)
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
+        self._create_gravity_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
@@ -2564,6 +2620,7 @@ class Settings:
         settings._stride_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
+        settings._gravity_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)

@@ -114,6 +114,11 @@ int max_particle_events {1000000};
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
+
+// Gravity settings
+bool gravity_enabled {false};
+array<double, 3> gravity_accel {0.0, 0.0, -980.0}; // Default: Earth gravity in -z
+
 int ifp_n_generation {-1};
 IFPParameter ifp_parameter {IFPParameter::None};
 int legendre_to_tabular_points {C_NONE};
@@ -718,6 +723,19 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "time_positron")) {
       time_cutoff[3] = std::stod(get_node_value(node_cutoff, "time_positron"));
+    }
+  }
+
+  // Gravity settings
+  if (check_for_node(root, "gravity")) {
+    auto node_gravity = root.child("gravity");
+    gravity_enabled = get_node_value_bool(node_gravity, "enabled");
+    if (check_for_node(node_gravity, "acceleration")) {
+      auto accel = get_node_array<double>(node_gravity, "acceleration");
+      if (accel.size() != 3) {
+        fatal_error("Gravity acceleration must have 3 components (x, y, z).");
+      }
+      gravity_accel = {accel[0], accel[1], accel[2]};
     }
   }
 

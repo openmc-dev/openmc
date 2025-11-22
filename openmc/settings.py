@@ -1278,9 +1278,12 @@ class Settings:
         return self._weight_windows_file
 
     @weight_windows_file.setter
-    def weight_windows_file(self, value: PathLike):
-        cv.check_type('weight windows file', value, PathLike)
-        self._weight_windows_file = input_path(value)
+    def weight_windows_file(self, value: PathLike | None):
+        if value is None:
+            self._weight_windows_file = None
+        else:
+            cv.check_type('weight windows file', value, PathLike)
+            self._weight_windows_file = input_path(value)
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:

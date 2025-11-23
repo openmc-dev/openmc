@@ -463,6 +463,11 @@ class Surface(IDManagerMixin, ABC):
             kwargs['albedo'] = float(get_text(elem, "albedo", 1.0))
         kwargs['name'] = get_text(elem, "name")
         coeffs = get_elem_list(elem, "coeffs", float)
+
+        # Handle special case for SolidOfRevolution which has dynamic coefficients
+        if surf_type == 'solid-of-revolution':
+            return cls.from_coefficients(coeffs, **kwargs)
+
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
 
         return cls(**kwargs)
@@ -502,6 +507,10 @@ class Surface(IDManagerMixin, ABC):
 
         surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
+
+        # Handle special case for SolidOfRevolution which has dynamic coefficients
+        if surf_type == 'solid-of-revolution':
+            return cls.from_coefficients(coeffs, **kwargs)
 
         return cls(*coeffs, **kwargs)
 
@@ -2579,6 +2588,390 @@ class ZTorus(TorusMixin, Surface):
             )
         elif side == '+':
             return BoundingBox.infinite()
+
+
+class SolidOfRevolution(Surface):
+    r"""A surface of revolution created by rotating a 2D profile around an axis.
+
+    The profile is defined as a series of (r, z) coordinate pairs where r is the
+    radial distance from the axis of revolution and z is the position along the
+    axis. Adjacent points are connected by straight line segments, which when
+    revolved around the axis create conical frustums (or cylinders if r values
+    are equal).
+
+    .. versionadded:: 0.15.4
+
+    Parameters
+    ----------
+    rz : iterable of 2-tuple
+        A sequence of (r, z) coordinate pairs defining the profile to be
+        revolved. The r values must be non-negative (radial distance from axis),
+        and z values represent position along the axis of revolution.
+        At least 2 points are required. Points should be ordered by z-coordinate.
+    axis : {'x', 'y', 'z'}
+        The axis of revolution. Defaults to 'z'.
+    origin : 3-tuple of float, optional
+        The (x, y, z) coordinates of the origin point on the axis of revolution.
+        Defaults to (0., 0., 0.).
+    kwargs : dict
+        Keyword arguments passed to the :class:`Surface` constructor
+
+    Attributes
+    ----------
+    rz : list of 2-tuple
+        The (r, z) coordinate pairs defining the profile
+    axis : str
+        The axis of revolution ('x', 'y', or 'z')
+    origin : tuple
+        The origin point (x0, y0, z0) on the axis of revolution
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
+
+    Examples
+    --------
+    Create a cone frustum by revolving a slanted line segment around the z-axis:
+
+    >>> cone = openmc.SolidOfRevolution(rz=[(0.5, 0.0), (1.0, 2.0)], axis='z')
+
+    Create a cylinder with hemispherical end caps (approximated):
+
+    >>> import math
+    >>> # Create profile points for cylinder with rounded cap
+    >>> rz = [(1.0, 0.0), (1.0, 5.0)]  # Cylinder portion
+    >>> solid = openmc.SolidOfRevolution(rz=rz, axis='z')
+
+    Create a vase-like shape:
+
+    >>> rz = [(0.5, 0.0), (1.0, 1.0), (0.8, 2.0), (1.2, 3.0), (0.3, 4.0)]
+    >>> vase = openmc.SolidOfRevolution(rz=rz, axis='z', origin=(0., 0., 0.))
+
+    """
+    _type = 'solid-of-revolution'
+    _coeff_keys = ()  # Dynamic coefficients handled specially
+
+    def __init__(self, rz=None, axis='z', origin=(0., 0., 0.), **kwargs):
+        super().__init__(**kwargs)
+
+        # Validate and store profile points
+        if rz is None:
+            rz = [(0., 0.), (1., 1.)]
+        self.rz = rz
+
+        # Validate and store axis
+        check_value('axis', axis, ('x', 'y', 'z'))
+        self._axis = axis
+
+        # Validate and store origin
+        check_type('origin', origin, Iterable, Real)
+        check_length('origin', origin, 3)
+        self._origin = tuple(float(v) for v in origin)
+
+    @property
+    def rz(self):
+        """list of 2-tuple: The (r, z) coordinate pairs defining the profile."""
+        return self._rz
+
+    @rz.setter
+    def rz(self, value):
+        check_type('rz', value, Iterable)
+        rz_list = []
+        for i, point in enumerate(value):
+            check_type(f'rz[{i}]', point, Iterable, Real)
+            check_length(f'rz[{i}]', point, 2)
+            r, z = float(point[0]), float(point[1])
+            if r < 0:
+                raise ValueError(f'Radial coordinate rz[{i}][0]={r} must be '
+                                 'non-negative')
+            rz_list.append((r, z))
+
+        if len(rz_list) < 2:
+            raise ValueError('At least 2 profile points are required for '
+                             'SolidOfRevolution')
+        self._rz = rz_list
+
+    @property
+    def axis(self):
+        """str: The axis of revolution ('x', 'y', or 'z')."""
+        return self._axis
+
+    @property
+    def origin(self):
+        """tuple: The origin point (x0, y0, z0) on the axis of revolution."""
+        return self._origin
+
+    @origin.setter
+    def origin(self, value):
+        check_type('origin', value, Iterable, Real)
+        check_length('origin', value, 3)
+        self._origin = tuple(float(v) for v in value)
+
+    @property
+    def x0(self):
+        """float: x-coordinate of the origin."""
+        return self._origin[0]
+
+    @property
+    def y0(self):
+        """float: y-coordinate of the origin."""
+        return self._origin[1]
+
+    @property
+    def z0(self):
+        """float: z-coordinate of the origin."""
+        return self._origin[2]
+
+    def _get_base_coeffs(self):
+        """Return coefficients for XML serialization."""
+        # Format: x0, y0, z0, axis_code, n_points, r1, z1, r2, z2, ...
+        axis_code = {'x': 0, 'y': 1, 'z': 2}[self._axis]
+        coeffs = [self._origin[0], self._origin[1], self._origin[2],
+                  float(axis_code), float(len(self._rz))]
+        for r, z in self._rz:
+            coeffs.extend([r, z])
+        return tuple(coeffs)
+
+    def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
+        element = ET.Element("surface")
+        element.set("id", str(self._id))
+
+        if len(self._name) > 0:
+            element.set("name", str(self._name))
+
+        element.set("type", self._type)
+        if self.boundary_type != 'transmission':
+            element.set("boundary", self.boundary_type)
+            if (self.boundary_type in _ALBEDO_BOUNDARIES and
+                not math.isclose(self.albedo, 1.0)):
+                element.set("albedo", str(self.albedo))
+
+        # Serialize coefficients: x0, y0, z0, axis_code, n_points, r1, z1, ...
+        coeffs = self._get_base_coeffs()
+        element.set("coeffs", ' '.join(str(c) for c in coeffs))
+
+        return element
+
+    @classmethod
+    def from_coefficients(cls, coeffs, **kwargs):
+        """Create SolidOfRevolution from coefficient list.
+
+        Parameters
+        ----------
+        coeffs : list
+            List of coefficients: [x0, y0, z0, axis_code, n_points, r1, z1, ...]
+        kwargs : dict
+            Additional keyword arguments for the constructor
+
+        Returns
+        -------
+        SolidOfRevolution
+            New instance of SolidOfRevolution
+
+        """
+        x0, y0, z0 = coeffs[0], coeffs[1], coeffs[2]
+        axis_code = int(coeffs[3])
+        n_points = int(coeffs[4])
+        axis = {0: 'x', 1: 'y', 2: 'z'}[axis_code]
+
+        rz = []
+        for i in range(n_points):
+            r = coeffs[5 + 2*i]
+            z = coeffs[5 + 2*i + 1]
+            rz.append((r, z))
+
+        return cls(rz=rz, axis=axis, origin=(x0, y0, z0), **kwargs)
+
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        For a solid of revolution, returns negative if inside, positive if
+        outside, and zero if on the surface.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates (x, y, z)
+
+        Returns
+        -------
+        float
+            Value of the surface equation
+
+        """
+        x, y, z = point[0], point[1], point[2]
+
+        # Transform to local coordinates centered at origin
+        x_loc = x - self._origin[0]
+        y_loc = y - self._origin[1]
+        z_loc = z - self._origin[2]
+
+        # Get radial distance and axial position based on axis
+        if self._axis == 'z':
+            r_point = math.sqrt(x_loc*x_loc + y_loc*y_loc)
+            z_point = z_loc
+        elif self._axis == 'y':
+            r_point = math.sqrt(x_loc*x_loc + z_loc*z_loc)
+            z_point = y_loc
+        else:  # axis == 'x'
+            r_point = math.sqrt(y_loc*y_loc + z_loc*z_loc)
+            z_point = x_loc
+
+        # Find which segment the point's z-coordinate falls in
+        # and compute the signed distance to the profile
+        rz = self._rz
+        n = len(rz)
+
+        # Check if z is before the first point or after the last
+        if z_point <= rz[0][1]:
+            # Before or at first point - use first segment direction
+            r1, z1 = rz[0]
+            if n > 1:
+                r2, z2 = rz[1]
+            else:
+                r2, z2 = r1, z1 + 1  # Vertical line
+            # Distance to first point along radial direction
+            return r_point - r1
+
+        if z_point >= rz[-1][1]:
+            # After or at last point - use last segment direction
+            r1, z1 = rz[-1]
+            return r_point - r1
+
+        # Find the segment containing z_point
+        for i in range(n - 1):
+            r1, z1 = rz[i]
+            r2, z2 = rz[i + 1]
+
+            if z1 <= z_point <= z2:
+                # Linear interpolation to find r at z_point
+                if abs(z2 - z1) < 1e-14:
+                    # Degenerate segment (same z)
+                    r_surface = min(r1, r2)
+                else:
+                    t = (z_point - z1) / (z2 - z1)
+                    r_surface = r1 + t * (r2 - r1)
+
+                # Return signed distance (negative inside, positive outside)
+                return r_point - r_surface
+
+        # Should not reach here
+        return r_point - rz[-1][0]
+
+    def translate(self, vector, inplace=False):
+        """Translate the surface.
+
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which surface should be translated
+
+        inplace : bool
+            Whether to modify the surface in place or return a new one
+
+        Returns
+        -------
+        SolidOfRevolution
+            Translated surface
+
+        """
+        check_type('vector', vector, Iterable, Real)
+        check_length('vector', vector, 3)
+        vector = tuple(float(v) for v in vector)
+
+        surf = self if inplace else deepcopy(self)
+        surf._origin = (self._origin[0] + vector[0],
+                        self._origin[1] + vector[1],
+                        self._origin[2] + vector[2])
+        return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        """Rotate the surface (limited support).
+
+        Currently only supports rotation that keeps the axis of revolution
+        aligned with a coordinate axis. For arbitrary rotations, the surface
+        would need to be converted to a more general representation.
+
+        Parameters
+        ----------
+        rotation : 3-tuple of float
+            Rotation angles in degrees around x, y, z axes
+        pivot : 3-tuple of float, optional
+            Point around which to rotate
+        order : str, optional
+            Order of rotations
+        inplace : bool, optional
+            Whether to modify in place
+
+        Returns
+        -------
+        SolidOfRevolution
+            Rotated surface
+
+        """
+        # For now, just translate the origin if rotation is zero
+        rotation = np.asarray(rotation)
+        if np.allclose(rotation, 0.):
+            return self if inplace else deepcopy(self)
+
+        raise NotImplementedError(
+            'Arbitrary rotation of SolidOfRevolution is not yet supported. '
+            'Consider using DAGMC or CAD-based geometry for complex rotations.')
+
+    def bounding_box(self, side):
+        """Return axis-aligned bounding box of the surface.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the positive or negative side of the surface
+
+        Returns
+        -------
+        openmc.BoundingBox
+            Axis-aligned bounding box
+
+        """
+        if side == '+':
+            return BoundingBox.infinite()
+
+        # Find maximum r and z extents from the profile
+        r_max = max(r for r, z in self._rz)
+        z_min = min(z for r, z in self._rz)
+        z_max = max(z for r, z in self._rz)
+
+        x0, y0, z0 = self._origin
+
+        if self._axis == 'z':
+            return BoundingBox(
+                np.array([x0 - r_max, y0 - r_max, z0 + z_min]),
+                np.array([x0 + r_max, y0 + r_max, z0 + z_max])
+            )
+        elif self._axis == 'y':
+            return BoundingBox(
+                np.array([x0 - r_max, y0 + z_min, z0 - r_max]),
+                np.array([x0 + r_max, y0 + z_max, z0 + r_max])
+            )
+        else:  # axis == 'x'
+            return BoundingBox(
+                np.array([x0 + z_min, y0 - r_max, z0 - r_max]),
+                np.array([x0 + z_max, y0 + r_max, z0 + r_max])
+            )
 
 
 class Halfspace(Region):

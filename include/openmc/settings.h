@@ -150,6 +150,10 @@ extern array<double, 4>
 extern bool gravity_enabled;           //!< Enable gravity physics
 extern array<double, 3> gravity_accel; //!< Gravity acceleration vector [cm/s^2]
 
+// Bloch-Airy quantum gravitational bound state settings
+extern bool bloch_airy_enabled;        //!< Enable Bloch-Airy quantum model for UCN
+extern double bloch_airy_energy_threshold; //!< Max energy [eV] for quantum effects
+
 extern int
   ifp_n_generation; //!< Number of generation for Iterated Fission Probability
 extern IFPParameter

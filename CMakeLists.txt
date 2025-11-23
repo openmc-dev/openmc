@@ -333,6 +333,7 @@ endif()
 
 list(APPEND libopenmc_SOURCES
   src/bank.cpp
+  src/bloch_airy.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/cell.cpp

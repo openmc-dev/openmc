@@ -11,23 +11,6 @@ The Bloch-Airy model describes neutrons bouncing on a horizontal mirror under
 gravity, where the height distribution follows quantum probability densities
 |ψ_n(z)|² based on Airy functions, rather than classical parabolic trajectories.
 
-References
-----------
-Nesvizhevsky, Valery V., Hans G. Börner, Alexander K. Petukhov, Hartmut Abele,
-    Stefan Baeßler, Frank J. Rueß, Thilo Stöferle, Alexander Westphal, Alexei M.
-    Gagarski, Guennady A. Petrov, and Alexander V. Strelkov. "Quantum States of
-    Neutrons in the Earth's Gravitational Field." Nature 415, no. 6869 (2002):
-    297-299.
-
-Jenke, Tobias, Peter Geltenbort, Hartmut Lemmel, and Hartmut Abele. "Realization
-    of a Gravity-Resonance-Spectroscopy Technique." Nature Physics 7, no. 6
-    (2011): 468-472.
-
-Cronenberg, Gunther, Philippe Brax, Hanno Filter, Peter Geltenbort, Tobias Jenke,
-    Guillaume Pignol, Mario Pitschmann, Martin Thalhammer, and Hartmut Abele.
-    "Acoustic Rabi Oscillations between Gravitational Quantum States and Impact
-    on Symmetron Dark Energy." Nature Physics 14, no. 10 (2018): 1022-1026.
-
 Author: William Zywiec
 """
 

@@ -384,9 +384,9 @@ public:
 //! are equal).
 //==============================================================================
 
-class SurfaceSolidOfRevolution : public Surface {
+class SurfaceRevolution : public Surface {
 public:
-  explicit SurfaceSolidOfRevolution(pugi::xml_node surf_node);
+  explicit SurfaceRevolution(pugi::xml_node surf_node);
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;

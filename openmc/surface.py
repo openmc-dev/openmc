@@ -464,8 +464,8 @@ class Surface(IDManagerMixin, ABC):
         kwargs['name'] = get_text(elem, "name")
         coeffs = get_elem_list(elem, "coeffs", float)
 
-        # Handle special case for SolidOfRevolution which has dynamic coefficients
-        if surf_type == 'solid-of-revolution':
+        # Handle special case for Revolution which has dynamic coefficients
+        if surf_type == 'revolution':
             return cls.from_coefficients(coeffs, **kwargs)
 
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
@@ -508,8 +508,8 @@ class Surface(IDManagerMixin, ABC):
         surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
 
-        # Handle special case for SolidOfRevolution which has dynamic coefficients
-        if surf_type == 'solid-of-revolution':
+        # Handle special case for Revolution which has dynamic coefficients
+        if surf_type == 'revolution':
             return cls.from_coefficients(coeffs, **kwargs)
 
         return cls(*coeffs, **kwargs)
@@ -2590,7 +2590,7 @@ class ZTorus(TorusMixin, Surface):
             return BoundingBox.infinite()
 
 
-class SolidOfRevolution(Surface):
+class Revolution(Surface):
     r"""A surface of revolution created by rotating a 2D profile around an axis.
 
     The profile is defined as a series of (r, z) coordinate pairs where r is the
@@ -2640,22 +2640,22 @@ class SolidOfRevolution(Surface):
     --------
     Create a cone frustum by revolving a slanted line segment around the z-axis:
 
-    >>> cone = openmc.SolidOfRevolution(rz=[(0.5, 0.0), (1.0, 2.0)], axis='z')
+    >>> cone = openmc.Revolution(rz=[(0.5, 0.0), (1.0, 2.0)], axis='z')
 
     Create a cylinder with hemispherical end caps (approximated):
 
     >>> import math
     >>> # Create profile points for cylinder with rounded cap
     >>> rz = [(1.0, 0.0), (1.0, 5.0)]  # Cylinder portion
-    >>> solid = openmc.SolidOfRevolution(rz=rz, axis='z')
+    >>> solid = openmc.Revolution(rz=rz, axis='z')
 
     Create a vase-like shape:
 
     >>> rz = [(0.5, 0.0), (1.0, 1.0), (0.8, 2.0), (1.2, 3.0), (0.3, 4.0)]
-    >>> vase = openmc.SolidOfRevolution(rz=rz, axis='z', origin=(0., 0., 0.))
+    >>> vase = openmc.Revolution(rz=rz, axis='z', origin=(0., 0., 0.))
 
     """
-    _type = 'solid-of-revolution'
+    _type = 'revolution'
     _coeff_keys = ()  # Dynamic coefficients handled specially
 
     def __init__(self, rz=None, axis='z', origin=(0., 0., 0.), **kwargs):
@@ -2695,7 +2695,7 @@ class SolidOfRevolution(Surface):
 
         if len(rz_list) < 2:
             raise ValueError('At least 2 profile points are required for '
-                             'SolidOfRevolution')
+                             'Revolution')
         self._rz = rz_list
 
     @property
@@ -2769,7 +2769,7 @@ class SolidOfRevolution(Surface):
 
     @classmethod
     def from_coefficients(cls, coeffs, **kwargs):
-        """Create SolidOfRevolution from coefficient list.
+        """Create Revolution from coefficient list.
 
         Parameters
         ----------
@@ -2780,8 +2780,8 @@ class SolidOfRevolution(Surface):
 
         Returns
         -------
-        SolidOfRevolution
-            New instance of SolidOfRevolution
+        Revolution
+            New instance of Revolution
 
         """
         x0, y0, z0 = coeffs[0], coeffs[1], coeffs[2]
@@ -2886,7 +2886,7 @@ class SolidOfRevolution(Surface):
 
         Returns
         -------
-        SolidOfRevolution
+        Revolution
             Translated surface
 
         """
@@ -2920,7 +2920,7 @@ class SolidOfRevolution(Surface):
 
         Returns
         -------
-        SolidOfRevolution
+        Revolution
             Rotated surface
 
         """
@@ -2930,7 +2930,7 @@ class SolidOfRevolution(Surface):
             return self if inplace else deepcopy(self)
 
         raise NotImplementedError(
-            'Arbitrary rotation of SolidOfRevolution is not yet supported. '
+            'Arbitrary rotation of Revolution is not yet supported. '
             'Consider using DAGMC or CAD-based geometry for complex rotations.')
 
     def bounding_box(self, side):

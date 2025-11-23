@@ -1168,17 +1168,17 @@ Direction SurfaceZTorus::normal(Position r) const
 }
 
 //==============================================================================
-// SurfaceSolidOfRevolution implementation
+// SurfaceRevolution implementation
 //==============================================================================
 
-SurfaceSolidOfRevolution::SurfaceSolidOfRevolution(pugi::xml_node surf_node)
+SurfaceRevolution::SurfaceRevolution(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
   // Read all coefficients: x0, y0, z0, axis_code, n_points, r1, z1, r2, z2, ...
   auto coeffs = get_node_array<double>(surf_node, "coeffs");
   if (coeffs.size() < 7) {
     fatal_error(fmt::format(
-      "Surface {} (solid-of-revolution) requires at least 7 coefficients "
+      "Surface {} (revolution) requires at least 7 coefficients "
       "(origin, axis, n_points, and at least 2 profile points)",
       id_));
   }
@@ -1222,9 +1222,9 @@ SurfaceSolidOfRevolution::SurfaceSolidOfRevolution(pugi::xml_node surf_node)
   }
 }
 
-void SurfaceSolidOfRevolution::to_hdf5_inner(hid_t group_id) const
+void SurfaceRevolution::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "solid-of-revolution", false);
+  write_string(group_id, "type", "revolution", false);
 
   // Write coefficients: x0, y0, z0, axis, n_points, r1, z1, r2, z2, ...
   vector<double> coeffs;
@@ -1240,7 +1240,7 @@ void SurfaceSolidOfRevolution::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-void SurfaceSolidOfRevolution::get_radial_and_axial(
+void SurfaceRevolution::get_radial_and_axial(
   Position r, double& r_point, double& z_point) const
 {
   double x = r.x - x0_;
@@ -1264,7 +1264,7 @@ void SurfaceSolidOfRevolution::get_radial_and_axial(
   }
 }
 
-double SurfaceSolidOfRevolution::find_segment_radius(double z_point) const
+double SurfaceRevolution::find_segment_radius(double z_point) const
 {
   int n = static_cast<int>(rz_.size());
 
@@ -1298,7 +1298,7 @@ double SurfaceSolidOfRevolution::find_segment_radius(double z_point) const
   return rz_[n - 1].first;
 }
 
-double SurfaceSolidOfRevolution::evaluate(Position r) const
+double SurfaceRevolution::evaluate(Position r) const
 {
   double r_point, z_point;
   get_radial_and_axial(r, r_point, z_point);
@@ -1310,7 +1310,7 @@ double SurfaceSolidOfRevolution::evaluate(Position r) const
 // Helper function to compute intersection with a conical frustum segment
 // This solves for the intersection of a ray with a cone frustum defined by
 // (r1, z1) to (r2, z2) revolved around the specified axis.
-double SurfaceSolidOfRevolution::cone_distance(
+double SurfaceRevolution::cone_distance(
   Position r, Direction u, bool coincident,
   double r1, double z1, double r2, double z2) const
 {
@@ -1439,7 +1439,7 @@ double SurfaceSolidOfRevolution::cone_distance(
   return distance;
 }
 
-double SurfaceSolidOfRevolution::distance(
+double SurfaceRevolution::distance(
   Position r, Direction u, bool coincident) const
 {
   double min_distance = INFTY;
@@ -1461,7 +1461,7 @@ double SurfaceSolidOfRevolution::distance(
   return min_distance;
 }
 
-Direction SurfaceSolidOfRevolution::normal(Position r) const
+Direction SurfaceRevolution::normal(Position r) const
 {
   double r_point, z_point;
   get_radial_and_axial(r, r_point, z_point);
@@ -1569,7 +1569,7 @@ Direction SurfaceSolidOfRevolution::normal(Position r) const
   return n / norm;
 }
 
-BoundingBox SurfaceSolidOfRevolution::bounding_box(bool pos_side) const
+BoundingBox SurfaceRevolution::bounding_box(bool pos_side) const
 {
   if (pos_side) {
     return {};
@@ -1676,9 +1676,9 @@ void read_surfaces(pugi::xml_node node)
       } else if (surf_type == "z-torus") {
         model::surfaces.push_back(std::make_unique<SurfaceZTorus>(surf_node));
 
-      } else if (surf_type == "solid-of-revolution") {
+      } else if (surf_type == "revolution") {
         model::surfaces.push_back(
-          std::make_unique<SurfaceSolidOfRevolution>(surf_node));
+          std::make_unique<SurfaceRevolution>(surf_node));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));

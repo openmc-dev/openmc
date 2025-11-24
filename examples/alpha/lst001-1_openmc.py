@@ -1,6 +1,6 @@
 """
 LST001-1: SHEBA-II
-Translated from COG to OpenMC
+Converted from COG to OpenMC
 """
 
 import openmc
@@ -10,94 +10,69 @@ import openmc
 # ==============================================================================
 
 # Fuel
-mat1 = openmc.Material(material_id=1, name="Fuel")
-mat1.set_density("atom/b-cm", 2.476457e-03)
-mat1.add_nuclide("U234", 6.7855e-7)
-mat1.add_nuclide("U235", 1.2377e-4)
-mat1.add_nuclide("U236", 1.2085e-6)
-mat1.add_nuclide("U238", 2.3508e-3)
+mat1 = openmc.Material(material_id=1)
+mat1.set_density("sum")
+mat1.add_nuclide("U234", 6.785500e-07)
+mat1.add_nuclide("U235", 1.237700e-04)
+mat1.add_nuclide("U236", 1.208500e-06)
+mat1.add_nuclide("U238", 2.350800e-03)
+mat1.add_nuclide("H1", 5.617900e-02)
+mat1.add_nuclide("O16", 3.296700e-02)
+mat1.add_element("F", 5.103500e-03)
+mat1.add_s_alpha_beta("c_H_in_H2O")
 
 # Air
-mat2 = openmc.Material(material_id=2, name="Air")
-mat2.set_density("atom/b-cm", 5.030600e-05)
-mat2.add_element("N", 3.5214e-5)
-mat2.add_nuclide("O16", 1.5092e-5)
+mat2 = openmc.Material(material_id=2)
+mat2.set_density("sum")
+mat2.add_element("N", 3.521400e-05)
+mat2.add_nuclide("O16", 1.509200e-05)
 
 # SS304L
-mat3 = openmc.Material(material_id=3, name="SS304L")
-mat3.set_density("atom/b-cm", 8.534700e-02)
-mat3.add_element("Cr", 1.6348e-2)
-mat3.add_element("Mn", 1.7192e-3)
-mat3.add_element("Fe", 6.0038e-2)
-mat3.add_element("Ni", 7.2418e-3)
+mat3 = openmc.Material(material_id=3)
+mat3.set_density("sum")
+mat3.add_element("Cr", 1.634800e-02)
+mat3.add_element("Mn", 1.719200e-03)
+mat3.add_element("Fe", 6.003800e-02)
+mat3.add_element("Ni", 7.241800e-03)
 
 materials = openmc.Materials([mat1, mat2, mat3])
-materials.export_to_xml()
 
 # ==============================================================================
 # Geometry
 # ==============================================================================
 
 surf1 = openmc.ZCylinder(surface_id=1, r=2.54)
-
 surf2 = openmc.ZCylinder(surface_id=2, r=3.175)
-
 surf3 = openmc.ZCylinder(surface_id=3, r=24.4475)
-
-surf4 = openmc.ZCylinder(surface_id=4, r=25.4)
-
+surf4 = openmc.ZCylinder(surface_id=4, r=25.4, boundary_type="vacuum")
 surf5 = openmc.ZPlane(surface_id=5, z0=44.8)
 
+# ------------------------------------------------------------------------------
+# Root Cells
+# ------------------------------------------------------------------------------
 
-# Cell: Soln
-cell0 = openmc.Cell(cell_id=0, fill=mat1, name="Soln")
-cell0.region = +surf2 & -surf3 & -surf5
+# Soln
+cell1 = openmc.Cell(cell_id=1, fill=mat1)
+cell1.region = +surf2 & -surf3 & -surf5
 
-# Cell: Air
-cell1 = openmc.Cell(cell_id=1, fill=mat2, name="Air")
-cell1.region = +surf2 & -surf3 & +surf5
+# Air
+cell2 = openmc.Cell(cell_id=2, fill=mat2)
+cell2.region = +surf2 & -surf3 & +surf5
 
-# Cell: Air
-cell2 = openmc.Cell(cell_id=2, fill=mat2, name="Air")
-cell2.region = -surf1 & -surf4
+# Air
+cell3 = openmc.Cell(cell_id=3, fill=mat2)
+cell3.region = -surf1 & -surf4
 
-# Cell: SS304L
-cell3 = openmc.Cell(cell_id=3, fill=mat3, name="SS304L")
-cell3.region = +surf1 & +surf3 & -surf4
+# SS304L
+cell4 = openmc.Cell(cell_id=4, fill=mat3)
+cell4.region = +surf1 & +surf3 & -surf4
 
-# Cell: SS304L
-cell4 = openmc.Cell(cell_id=4, fill=mat3, name="SS304L")
-cell4.region = +surf1 & -surf2 & -surf3
+# SS304L
+cell5 = openmc.Cell(cell_id=5, fill=mat3)
+cell5.region = +surf1 & -surf2 & -surf3
 
-# ==============================================================================
-# Boundary Conditions
-# ==============================================================================
-
-# Create outer bounding box with vacuum boundary (6 planes)
-# TODO: Adjust dimensions to encompass your entire geometry
-boundary_xmin = openmc.XPlane(surface_id=10000, x0=-200, boundary_type="vacuum")
-boundary_xmax = openmc.XPlane(surface_id=10001, x0=200, boundary_type="vacuum")
-boundary_ymin = openmc.YPlane(surface_id=10002, y0=-200, boundary_type="vacuum")
-boundary_ymax = openmc.YPlane(surface_id=10003, y0=200, boundary_type="vacuum")
-boundary_zmin = openmc.ZPlane(surface_id=10004, z0=-200, boundary_type="vacuum")
-boundary_zmax = openmc.ZPlane(surface_id=10005, z0=200, boundary_type="vacuum")
-
-# Create outer void cell (everything outside geometry but inside boundary)
-# Particles are killed at the vacuum boundary
-outer_region = +boundary_xmin & -boundary_xmax & +boundary_ymin & -boundary_ymax & +boundary_zmin & -boundary_zmax
-outer_region = outer_region & ~cell0.region
-outer_region = outer_region & ~cell1.region
-outer_region = outer_region & ~cell2.region
-outer_region = outer_region & ~cell3.region
-outer_region = outer_region & ~cell4.region
-outer_cell = openmc.Cell(cell_id=5, name="outer_void")
-outer_cell.region = outer_region
-outer_cell.fill = None  # Void
-
-# Create root universe and geometry
-root_universe = openmc.Universe(cells=[cell0, cell1, cell2, cell3, cell4, outer_cell])
+root_universe = openmc.Universe(cells=[cell1, cell2, cell3, cell4, cell5])
 geometry = openmc.Geometry(root_universe)
-geometry.export_to_xml()
 
 # ==============================================================================
 # Settings
@@ -109,28 +84,14 @@ settings.batches = 4400
 settings.inactive = 100
 settings.run_mode = "eigenvalue"
 
-# Source definition
 source = openmc.IndependentSource()
-source.space = openmc.stats.Point((-5.0, 0.0, 22.4))
-source.angle = openmc.stats.Isotropic()
-source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
+source.space = openmc.stats.Box((-6.0, -6.0, 21.4), (6.0, 6.0, 23.4))
 settings.source = source
 
-# Enable delayed neutron kinetics and alpha eigenvalue calculations
-settings.calculate_prompt_k = True
-settings.calculate_alpha = True
+# ==============================================================================
+# Export and Run
+# ==============================================================================
 
+materials.export_to_xml()
+geometry.export_to_xml()
 settings.export_to_xml()
-
-# ==============================================================================
-# Tallies
-# ==============================================================================
-
-tallies = openmc.Tallies()
-tallies.export_to_xml()
-
-# ==============================================================================
-# Run OpenMC
-# ==============================================================================
-
-openmc.run()

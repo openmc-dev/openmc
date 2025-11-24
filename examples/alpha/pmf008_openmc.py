@@ -1,6 +1,6 @@
 """
 PU-MET-FAST-008: THOR (9.587 kg Pu(5.10)-1.01Ga 9 15.29 g/cc in 24.57 cm Th @ 11.58 g/cc)
-Translated from COG to OpenMC
+Converted from COG to OpenMC
 """
 
 import openmc
@@ -9,19 +9,18 @@ import openmc
 # Materials
 # ==============================================================================
 
-mat1 = openmc.Material(material_id=1, name="")
-mat1.set_density("atom/b-cm", 3.945359e-02)
-mat1.add_nuclide("Pu239", 3.6049e-2)
-mat1.add_nuclide("Pu240", 1.9562e-3)
-mat1.add_nuclide("Pu241", 1.1459e-4)
-mat1.add_element("Ga", 1.3338e-3)
+mat1 = openmc.Material(material_id=1)
+mat1.set_density("sum")
+mat1.add_nuclide("Pu239", 3.604900e-02)
+mat1.add_nuclide("Pu240", 1.956200e-03)
+mat1.add_nuclide("Pu241", 1.145900e-04)
+mat1.add_element("Ga", 1.333800e-03)
 
-mat2 = openmc.Material(material_id=2, name="")
-mat2.set_density("atom/b-cm", 3.005400e-02)
-mat2.add_nuclide("Th232", 3.0054e-2)
+mat2 = openmc.Material(material_id=2)
+mat2.set_density("sum")
+mat2.add_nuclide("Th232", 3.005400e-02)
 
 materials = openmc.Materials([mat1, mat2])
-materials.export_to_xml()
 
 # ==============================================================================
 # Geometry
@@ -29,45 +28,23 @@ materials.export_to_xml()
 
 # per Section 3.2
 surf1 = openmc.Sphere(surface_id=1, r=5.310)
-
 # THK = 24.57 cm
-surf2 = openmc.Sphere(surface_id=2, r=29.880)
+surf2 = openmc.Sphere(surface_id=2, r=29.880, boundary_type="vacuum")
 
+# ------------------------------------------------------------------------------
+# Root Cells
+# ------------------------------------------------------------------------------
 
-# Cell: core
-cell0 = openmc.Cell(cell_id=0, fill=mat1, name="core")
-cell0.region = -surf1
+# core
+cell1 = openmc.Cell(cell_id=1, fill=mat1)
+cell1.region = -surf1
 
-# Cell: refl
-cell1 = openmc.Cell(cell_id=1, fill=mat2, name="refl")
-cell1.region = +surf1 & -surf2
+# refl
+cell2 = openmc.Cell(cell_id=2, fill=mat2)
+cell2.region = +surf1 & -surf2
 
-# ==============================================================================
-# Boundary Conditions
-# ==============================================================================
-
-# Create outer bounding box with vacuum boundary (6 planes)
-# TODO: Adjust dimensions to encompass your entire geometry
-boundary_xmin = openmc.XPlane(surface_id=10000, x0=-200, boundary_type="vacuum")
-boundary_xmax = openmc.XPlane(surface_id=10001, x0=200, boundary_type="vacuum")
-boundary_ymin = openmc.YPlane(surface_id=10002, y0=-200, boundary_type="vacuum")
-boundary_ymax = openmc.YPlane(surface_id=10003, y0=200, boundary_type="vacuum")
-boundary_zmin = openmc.ZPlane(surface_id=10004, z0=-200, boundary_type="vacuum")
-boundary_zmax = openmc.ZPlane(surface_id=10005, z0=200, boundary_type="vacuum")
-
-# Create outer void cell (everything outside geometry but inside boundary)
-# Particles are killed at the vacuum boundary
-outer_region = +boundary_xmin & -boundary_xmax & +boundary_ymin & -boundary_ymax & +boundary_zmin & -boundary_zmax
-outer_region = outer_region & ~cell0.region
-outer_region = outer_region & ~cell1.region
-outer_cell = openmc.Cell(cell_id=2, name="outer_void")
-outer_cell.region = outer_region
-outer_cell.fill = None  # Void
-
-# Create root universe and geometry
-root_universe = openmc.Universe(cells=[cell0, cell1, outer_cell])
+root_universe = openmc.Universe(cells=[cell1, cell2])
 geometry = openmc.Geometry(root_universe)
-geometry.export_to_xml()
 
 # ==============================================================================
 # Settings
@@ -79,28 +56,14 @@ settings.batches = 4400
 settings.inactive = 100
 settings.run_mode = "eigenvalue"
 
-# Source definition
 source = openmc.IndependentSource()
 source.space = openmc.stats.Point((0.0, 0.0, 0.0))
-source.angle = openmc.stats.Isotropic()
-source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
 
-# Enable delayed neutron kinetics and alpha eigenvalue calculations
-settings.calculate_prompt_k = True
-settings.calculate_alpha = True
+# ==============================================================================
+# Export and Run
+# ==============================================================================
 
+materials.export_to_xml()
+geometry.export_to_xml()
 settings.export_to_xml()
-
-# ==============================================================================
-# Tallies
-# ==============================================================================
-
-tallies = openmc.Tallies()
-tallies.export_to_xml()
-
-# ==============================================================================
-# Run OpenMC
-# ==============================================================================
-
-openmc.run()

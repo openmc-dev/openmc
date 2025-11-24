@@ -1,6 +1,6 @@
 """
 IEU-MET-FAST-010: ZPR-6/9 Loading 11; U9 Benchmark Model
-Translated from COG to OpenMC
+Converted from COG to OpenMC
 """
 
 import openmc
@@ -9,163 +9,213 @@ import openmc
 # Materials
 # ==============================================================================
 
-mat1 = openmc.Material(material_id=1, name="")
-mat1.set_density("atom/b-cm", 3.879827e-02)
-mat1.add_nuclide("U235", 3.48543e-3)
-mat1.add_nuclide("U238", 3.52634e-2)
-mat1.add_nuclide("U234", 3.34211e-5)
-mat1.add_nuclide("U236", 1.60227e-5)
+mat1 = openmc.Material(material_id=1)
+mat1.set_density("sum")
+mat1.add_nuclide("U235", 3.485430e-03)
+mat1.add_nuclide("U238", 3.526340e-02)
+mat1.add_nuclide("U234", 3.342110e-05)
+mat1.add_nuclide("U236", 1.602270e-05)
+mat1.add_element("Cr", 1.860670e-03)
+mat1.add_element("Ni", 7.490530e-04)
+mat1.add_element("Fe", 6.656880e-03)
+mat1.add_element("C", 9.629900e-05)
+mat1.add_element("Mo", 1.183270e-05)
+mat1.add_element("Mn", 1.635090e-04)
+mat1.add_element("Cu", 2.388330e-05)
+mat1.add_element("H", 1.945800e-05)
+mat1.add_element("Si", 7.160010e-05)
+mat1.add_element("Cl", 3.335060e-05)
+mat1.add_element("F", 9.912200e-05)
 
-mat2 = openmc.Material(material_id=2, name="")
-mat2.set_density("atom/b-cm", 3.891287e-02)
-mat2.add_nuclide("U235", 3.47666e-3)
-mat2.add_nuclide("U238", 3.53869e-2)
-mat2.add_nuclide("U234", 3.33328e-5)
-mat2.add_nuclide("U236", 1.59801e-5)
+mat2 = openmc.Material(material_id=2)
+mat2.set_density("sum")
+mat2.add_nuclide("U235", 3.476660e-03)
+mat2.add_nuclide("U238", 3.538690e-02)
+mat2.add_nuclide("U234", 3.333280e-05)
+mat2.add_nuclide("U236", 1.598010e-05)
+mat2.add_element("Cr", 1.874180e-03)
+mat2.add_element("Ni", 7.546540e-04)
+mat2.add_element("Fe", 6.707520e-03)
+mat2.add_element("C", 9.641660e-05)
+mat2.add_element("Mo", 1.197990e-05)
+mat2.add_element("Mn", 1.648230e-04)
+mat2.add_element("Cu", 2.423290e-05)
+mat2.add_element("H", 1.944980e-05)
+mat2.add_element("Si", 7.420380e-05)
+mat2.add_element("Cl", 3.346860e-05)
+mat2.add_element("F", 9.947260e-05)
 
-mat3 = openmc.Material(material_id=3, name="")
-mat3.set_density("atom/b-cm", 3.879827e-02)
-mat3.add_nuclide("U235", 3.48543e-3)
-mat3.add_nuclide("U238", 3.52634e-2)
-mat3.add_nuclide("U234", 3.34211e-5)
-mat3.add_nuclide("U236", 1.60227e-5)
+mat3 = openmc.Material(material_id=3)
+mat3.set_density("sum")
+mat3.add_nuclide("U235", 3.485430e-03)
+mat3.add_nuclide("U238", 3.526340e-02)
+mat3.add_nuclide("U234", 3.342110e-05)
+mat3.add_nuclide("U236", 1.602270e-05)
+mat3.add_element("Cr", 1.860670e-03)
+mat3.add_element("Ni", 7.490530e-04)
+mat3.add_element("Fe", 6.656880e-03)
+mat3.add_element("C", 9.626060e-05)
+mat3.add_element("Mo", 1.183270e-05)
+mat3.add_element("Mn", 1.635090e-04)
+mat3.add_element("Cu", 2.388330e-05)
+mat3.add_element("H", 1.944710e-05)
+mat3.add_element("Si", 7.160010e-05)
+mat3.add_element("Cl", 3.333140e-05)
+mat3.add_element("F", 9.906500e-05)
 
-mat4 = openmc.Material(material_id=4, name="")
-mat4.set_density("atom/b-cm", 3.891287e-02)
-mat4.add_nuclide("U235", 3.47666e-3)
-mat4.add_nuclide("U238", 3.53869e-2)
-mat4.add_nuclide("U234", 3.33328e-5)
-mat4.add_nuclide("U236", 1.59801e-5)
+mat4 = openmc.Material(material_id=4)
+mat4.set_density("sum")
+mat4.add_nuclide("U235", 3.476660e-03)
+mat4.add_nuclide("U238", 3.538690e-02)
+mat4.add_nuclide("U234", 3.333280e-05)
+mat4.add_nuclide("U236", 1.598010e-05)
+mat4.add_element("Cr", 1.874180e-03)
+mat4.add_element("Ni", 7.546540e-04)
+mat4.add_element("Fe", 6.707520e-03)
+mat4.add_element("C", 9.637810e-05)
+mat4.add_element("Mo", 1.197990e-05)
+mat4.add_element("Mn", 1.648230e-04)
+mat4.add_element("Cu", 2.423290e-05)
+mat4.add_element("H", 1.943880e-05)
+mat4.add_element("Si", 7.420380e-05)
+mat4.add_element("Cl", 3.344930e-05)
+mat4.add_element("F", 9.941540e-05)
 
-mat5 = openmc.Material(material_id=5, name="")
-mat5.set_density("atom/b-cm", 3.974255e-02)
-mat5.add_nuclide("U235", 8.31425e-5)
-mat5.add_nuclide("U238", 3.72293e-2)
-mat5.add_element("Cr", 1.72627e-3)
-mat5.add_element("Ni", 7.03836e-4)
+mat5 = openmc.Material(material_id=5)
+mat5.set_density("sum")
+mat5.add_nuclide("U235", 8.314250e-05)
+mat5.add_nuclide("U238", 3.722930e-02)
+mat5.add_element("Cr", 1.726270e-03)
+mat5.add_element("Ni", 7.038360e-04)
+mat5.add_element("Fe", 6.266560e-03)
+mat5.add_element("Al", 4.167470e-04)
+mat5.add_element("C", 3.991490e-05)
+mat5.add_element("Mo", 1.122060e-05)
+mat5.add_element("Mn", 1.468590e-04)
+mat5.add_element("Cu", 2.135370e-05)
+mat5.add_element("H", 2.854270e-06)
+mat5.add_element("Si", 8.312370e-05)
+mat5.add_element("Cl", 4.933940e-06)
+mat5.add_element("F", 1.461070e-05)
 
-mat6 = openmc.Material(material_id=6, name="")
-mat6.set_density("atom/b-cm", 3.942384e-02)
-mat6.add_nuclide("U235", 8.24312e-5)
-mat6.add_nuclide("U238", 3.69113e-2)
-mat6.add_element("Cr", 1.72627e-3)
-mat6.add_element("Ni", 7.03836e-4)
+mat6 = openmc.Material(material_id=6)
+mat6.set_density("sum")
+mat6.add_nuclide("U235", 8.243120e-05)
+mat6.add_nuclide("U238", 3.691130e-02)
+mat6.add_element("Cr", 1.726270e-03)
+mat6.add_element("Ni", 7.038360e-04)
+mat6.add_element("Fe", 6.266070e-03)
+mat6.add_element("Al", 4.167470e-04)
+mat6.add_element("C", 3.976750e-05)
+mat6.add_element("Mo", 1.122060e-05)
+mat6.add_element("Mn", 1.468590e-04)
+mat6.add_element("Cu", 2.135370e-05)
+mat6.add_element("H", 2.817770e-06)
+mat6.add_element("Si", 8.312370e-05)
+mat6.add_element("Cl", 4.871180e-06)
+mat6.add_element("F", 1.442490e-05)
 
-mat7 = openmc.Material(material_id=7, name="")
-mat7.set_density("atom/b-cm", 4.084171e-02)
-mat7.add_nuclide("U235", 8.56868e-5)
-mat7.add_nuclide("U238", 3.83747e-2)
-mat7.add_element("Cr", 1.69502e-3)
-mat7.add_element("Ni", 6.86302e-4)
+mat7 = openmc.Material(material_id=7)
+mat7.set_density("sum")
+mat7.add_nuclide("U235", 8.568680e-05)
+mat7.add_nuclide("U238", 3.837470e-02)
+mat7.add_element("Cr", 1.695020e-03)
+mat7.add_element("Ni", 6.863020e-04)
+mat7.add_element("Fe", 6.132440e-03)
+mat7.add_element("C", 3.779350e-05)
+mat7.add_element("Mo", 1.076710e-05)
+mat7.add_element("Mn", 1.468030e-04)
+mat7.add_element("Cu", 2.168200e-05)
+mat7.add_element("H", 2.538030e-06)
+mat7.add_element("Si", 7.696760e-05)
+mat7.add_element("Cl", 4.394540e-06)
+mat7.add_element("F", 1.301320e-05)
 
-mat8 = openmc.Material(material_id=8, name="")
-mat8.set_density("atom/b-cm", 5.967147e-03)
-mat8.add_element("Cr", 1.18909e-3)
-mat8.add_element("Ni", 4.80175e-4)
-mat8.add_element("Fe", 4.27914e-3)
-mat8.add_element("C", 1.87415e-5)
-mat8.add_s_alpha_beta("c_Graphite")
+mat8 = openmc.Material(material_id=8)
+mat8.set_density("sum")
+mat8.add_element("Cr", 1.189090e-03)
+mat8.add_element("Ni", 4.801750e-04)
+mat8.add_element("Fe", 4.279140e-03)
+mat8.add_element("C", 1.874150e-05)
+mat8.add_element("Mo", 8.256530e-06)
+mat8.add_element("Mn", 1.059050e-04)
+mat8.add_element("Cu", 1.723190e-05)
+mat8.add_element("Si", 6.831050e-05)
+mat8.add_element("F", 1.301320e-05)
 
-mat9 = openmc.Material(material_id=9, name="")
-mat9.set_density("atom/b-cm", 5.919372e-03)
-mat9.add_element("Cr", 1.17957e-3)
-mat9.add_element("Ni", 4.76329e-4)
-mat9.add_element("Fe", 4.24488e-3)
-mat9.add_element("C", 1.85933e-5)
-mat9.add_s_alpha_beta("c_Graphite")
+mat9 = openmc.Material(material_id=9)
+mat9.set_density("sum")
+mat9.add_element("Cr", 1.179570e-03)
+mat9.add_element("Ni", 4.763290e-04)
+mat9.add_element("Fe", 4.244880e-03)
+mat9.add_element("C", 1.859330e-05)
+mat9.add_element("Mo", 8.190760e-06)
+mat9.add_element("Mn", 1.050570e-04)
+mat9.add_element("Cu", 1.709440e-05)
+mat9.add_element("Si", 6.776300e-05)
+mat9.add_element("F", 1.301320e-05)
 
 materials = openmc.Materials([mat1, mat2, mat3, mat4, mat5, mat6, mat7, mat8, mat9])
-materials.export_to_xml()
 
 # ==============================================================================
 # Geometry
 # ==============================================================================
 
 
-# Cell: CORE1
-cell0 = openmc.Cell(cell_id=0, fill=mat1, name="CORE1")
-cell0.region = +surf6 & -surf7 & -surf12
+# ------------------------------------------------------------------------------
+# Root Cells
+# ------------------------------------------------------------------------------
 
-# Cell: CORE2
-cell1 = openmc.Cell(cell_id=1, fill=mat2, name="CORE2")
-cell1.region = +surf7 & -surf8 & -surf12
+# CORE1
+cell1 = openmc.Cell(cell_id=1, fill=mat1)
+cell1.region = +surf6 & -surf7 & -surf12
 
-# Cell: CORE3
-cell2 = openmc.Cell(cell_id=2, fill=mat3, name="CORE3")
-cell2.region = +surf5 & -surf6 & -surf12
+# CORE2
+cell2 = openmc.Cell(cell_id=2, fill=mat2)
+cell2.region = +surf7 & -surf8 & -surf12
 
-# Cell: CORE4
-cell3 = openmc.Cell(cell_id=3, fill=mat4, name="CORE4")
-cell3.region = +surf4 & -surf5 & -surf12
+# CORE3
+cell3 = openmc.Cell(cell_id=3, fill=mat3)
+cell3.region = +surf5 & -surf6 & -surf12
 
-# Cell: DUUAX
-cell4 = openmc.Cell(cell_id=4, fill=mat5, name="DUUAX")
-cell4.region = +surf8 & -surf9 & -surf12
+# CORE4
+cell4 = openmc.Cell(cell_id=4, fill=mat4)
+cell4.region = +surf4 & -surf5 & -surf12
 
-# Cell: LDLAX
-cell5 = openmc.Cell(cell_id=5, fill=mat6, name="LDLAX")
-cell5.region = +surf3 & -surf4 & -surf12
+# DUUAX
+cell5 = openmc.Cell(cell_id=5, fill=mat5)
+cell5.region = +surf8 & -surf9 & -surf12
 
-# Cell: DURAD
-cell6 = openmc.Cell(cell_id=6, fill=mat7, name="DURAD")
-cell6.region = +surf2 & -surf10 & +surf12 & -surf13
+# LDLAX
+cell6 = openmc.Cell(cell_id=6, fill=mat6)
+cell6.region = +surf3 & -surf4 & -surf12
 
-# Cell: MATRX
-cell7 = openmc.Cell(cell_id=7, fill=mat8, name="MATRX")
+# MATRX
+cell7 = openmc.Cell(cell_id=7, fill=mat8)
 cell7.region = +surf1 & -surf3 & -surf12
 
-# Cell: MATRX
-cell8 = openmc.Cell(cell_id=8, fill=mat8, name="MATRX")
+# MATRX
+cell8 = openmc.Cell(cell_id=8, fill=mat8)
 cell8.region = +surf9 & -surf11 & -surf12
 
-# Cell: MATRX
-cell9 = openmc.Cell(cell_id=9, fill=mat8, name="MATRX")
-cell9.region = +surf1 & -surf2 & +surf12 & -surf13
+# DURAD
+cell9 = openmc.Cell(cell_id=9, fill=mat7)
+cell9.region = +surf2 & -surf10 & +surf12 & -surf13
 
-# Cell: MATRX
-cell10 = openmc.Cell(cell_id=10, fill=mat8, name="MATRX")
-cell10.region = +surf10 & -surf11 & +surf12 & -surf13
+# MATRX
+cell10 = openmc.Cell(cell_id=10, fill=mat8)
+cell10.region = +surf1 & -surf2 & +surf12 & -surf13
 
-# Cell: MTRIX
-cell11 = openmc.Cell(cell_id=11, fill=mat9, name="MTRIX")
-cell11.region = +surf1 & -surf11 & +surf13 & -surf14
+# MATRX
+cell11 = openmc.Cell(cell_id=11, fill=mat8)
+cell11.region = +surf10 & -surf11 & +surf12 & -surf13
 
-# ==============================================================================
-# Boundary Conditions
-# ==============================================================================
+# MTRIX
+cell12 = openmc.Cell(cell_id=12, fill=mat9)
+cell12.region = +surf1 & -surf11 & +surf13 & -surf14
 
-# Create outer bounding box with vacuum boundary (6 planes)
-# TODO: Adjust dimensions to encompass your entire geometry
-boundary_xmin = openmc.XPlane(surface_id=10000, x0=-200, boundary_type="vacuum")
-boundary_xmax = openmc.XPlane(surface_id=10001, x0=200, boundary_type="vacuum")
-boundary_ymin = openmc.YPlane(surface_id=10002, y0=-200, boundary_type="vacuum")
-boundary_ymax = openmc.YPlane(surface_id=10003, y0=200, boundary_type="vacuum")
-boundary_zmin = openmc.ZPlane(surface_id=10004, z0=-200, boundary_type="vacuum")
-boundary_zmax = openmc.ZPlane(surface_id=10005, z0=200, boundary_type="vacuum")
-
-# Create outer void cell (everything outside geometry but inside boundary)
-# Particles are killed at the vacuum boundary
-outer_region = +boundary_xmin & -boundary_xmax & +boundary_ymin & -boundary_ymax & +boundary_zmin & -boundary_zmax
-outer_region = outer_region & ~cell0.region
-outer_region = outer_region & ~cell1.region
-outer_region = outer_region & ~cell2.region
-outer_region = outer_region & ~cell3.region
-outer_region = outer_region & ~cell4.region
-outer_region = outer_region & ~cell5.region
-outer_region = outer_region & ~cell6.region
-outer_region = outer_region & ~cell7.region
-outer_region = outer_region & ~cell8.region
-outer_region = outer_region & ~cell9.region
-outer_region = outer_region & ~cell10.region
-outer_region = outer_region & ~cell11.region
-outer_cell = openmc.Cell(cell_id=12, name="outer_void")
-outer_cell.region = outer_region
-outer_cell.fill = None  # Void
-
-# Create root universe and geometry
-root_universe = openmc.Universe(cells=[cell0, cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9, cell10, cell11, outer_cell])
+root_universe = openmc.Universe(cells=[cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9, cell10, cell11, cell12])
 geometry = openmc.Geometry(root_universe)
-geometry.export_to_xml()
 
 # ==============================================================================
 # Settings
@@ -177,28 +227,14 @@ settings.batches = 4400
 settings.inactive = 100
 settings.run_mode = "eigenvalue"
 
-# Source definition
 source = openmc.IndependentSource()
 source.space = openmc.stats.Point((0.0, 0.0, 0.0))
-source.angle = openmc.stats.Isotropic()
-source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
 
-# Enable delayed neutron kinetics and alpha eigenvalue calculations
-settings.calculate_prompt_k = True
-settings.calculate_alpha = True
+# ==============================================================================
+# Export and Run
+# ==============================================================================
 
+materials.export_to_xml()
+geometry.export_to_xml()
 settings.export_to_xml()
-
-# ==============================================================================
-# Tallies
-# ==============================================================================
-
-tallies = openmc.Tallies()
-tallies.export_to_xml()
-
-# ==============================================================================
-# Run OpenMC
-# ==============================================================================
-
-openmc.run()

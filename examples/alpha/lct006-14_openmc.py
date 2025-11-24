@@ -1,6 +1,6 @@
 """
 LCT006-14: Tank-Type Critical Assembly (TCA) 15x15 rods with 2.293 cm pitch; Hc=90.75 cm
-Translated from COG to OpenMC
+Converted from COG to OpenMC
 """
 
 import openmc
@@ -10,27 +10,26 @@ import openmc
 # ==============================================================================
 
 # U(2.596)O2
-mat1 = openmc.Material(material_id=1, name="U(2.596)O2")
-mat1.set_density("atom/b-cm", 7.035819e-02)
-mat1.add_nuclide("U234", 4.8872e-6)
-mat1.add_nuclide("U235", 6.0830e-4)
-mat1.add_nuclide("U238", 2.2531e-2)
-mat1.add_nuclide("O16", 4.7214e-2)
+mat1 = openmc.Material(material_id=1)
+mat1.set_density("sum")
+mat1.add_nuclide("U234", 4.887200e-06)
+mat1.add_nuclide("U235", 6.083000e-04)
+mat1.add_nuclide("U238", 2.253100e-02)
+mat1.add_nuclide("O16", 4.721400e-02)
 
 # Aluminum clad
-mat2 = openmc.Material(material_id=2, name="Aluminum clad")
-mat2.set_density("atom/b-cm", 5.513700e-02)
-mat2.add_element("Al", 5.5137e-2)
+mat2 = openmc.Material(material_id=2)
+mat2.set_density("sum")
+mat2.add_element("Al", 5.513700e-02)
 
 # Water
-mat3 = openmc.Material(material_id=3, name="Water")
-mat3.set_density("atom/b-cm", 1.001030e-01)
-mat3.add_element("H", 6.6735e-2)
-mat3.add_nuclide("O16", 3.3368e-2)
+mat3 = openmc.Material(material_id=3)
+mat3.set_density("sum")
+mat3.add_nuclide("H1", 6.673500e-02)
+mat3.add_nuclide("O16", 3.336800e-02)
 mat3.add_s_alpha_beta("c_H_in_H2O")
 
 materials = openmc.Materials([mat1, mat2, mat3])
-materials.export_to_xml()
 
 # ==============================================================================
 # Geometry
@@ -38,96 +37,69 @@ materials.export_to_xml()
 
 # Fuel
 surf1 = openmc.ZCylinder(surface_id=1, r=0.625)
-
 # Clad
 surf2 = openmc.ZCylinder(surface_id=2, r=0.7085)
-
 # Water critical height, Hc
 surf3 = openmc.ZPlane(surface_id=3, z0=90.75)
-
 # DX=DY=15*2.293        = 34.395 (core planar bdy)
-# Box (6 planes): xmin=-17.1975, xmax=17.1975, ymin=-17.1975, ymax=17.1975, zmin=-30.0, zmax=144.15
-surf4_xmin = openmc.XPlane(surface_id=10000, x0=-17.1975)
-surf4_xmax = openmc.XPlane(surface_id=10001, x0=17.1975)
-surf4_ymin = openmc.YPlane(surface_id=10002, y0=-17.1975)
-surf4_ymax = openmc.YPlane(surface_id=10003, y0=17.1975)
-surf4_zmin = openmc.ZPlane(surface_id=10004, z0=-30.0)
-surf4_zmax = openmc.ZPlane(surface_id=10005, z0=144.15)
-
+surf4 = openmc.model.RectangularParallelepiped(-17.1975, 17.1975, -17.1975, 17.1975, -30.0, 144.15)
 # DX=DY=15*2.293 + 2*30 = 94.395 (refl planar bdy)
-# Box (6 planes): xmin=-47.1975, xmax=47.1975, ymin=-47.1975, ymax=47.1975, zmin=-30.0, zmax=144.15
-surf5_xmin = openmc.XPlane(surface_id=10006, x0=-47.1975)
-surf5_xmax = openmc.XPlane(surface_id=10007, x0=47.1975)
-surf5_ymin = openmc.YPlane(surface_id=10008, y0=-47.1975)
-surf5_ymax = openmc.YPlane(surface_id=10009, y0=47.1975)
-surf5_zmin = openmc.ZPlane(surface_id=10010, z0=-30.0)
-surf5_zmax = openmc.ZPlane(surface_id=10011, z0=144.15)
+surf5 = openmc.model.RectangularParallelepiped(-47.1975, 47.1975, -47.1975, 47.1975, -30.0, 144.15, boundary_type="vacuum")
 
+# ------------------------------------------------------------------------------
+# Universes
+# ------------------------------------------------------------------------------
 
-# ==============================================================================
-# Universes (from COG define unit blocks)
-# ==============================================================================
-
-# Unit 1: Unit cell with one fuel rod
-u1_cell0 = openmc.Cell(fill=mat1, name="UO2")
+u1_cell0 = openmc.Cell(fill=mat1)
 u1_cell0.region = -surf1 & -surf2
-u1_cell1 = openmc.Cell(fill=mat2, name="Al")
+u1_cell1 = openmc.Cell(fill=mat2)
 u1_cell1.region = +surf1 & -surf2
-u1_cell2 = openmc.Cell(fill=mat3, name="H2O")
-u1_cell2.region = +surf2 & -surf3 & (+surf5_xmin & -surf5_xmax & +surf5_ymin & -surf5_ymax & +surf5_zmin & -surf5_zmax)
+u1_cell2 = openmc.Cell(fill=mat3)
+u1_cell2.region = +surf2 & -surf3 & -surf5
 universe1 = openmc.Universe(universe_id=1, cells=[u1_cell0, u1_cell1, u1_cell2])
 
-# Unit 2: Array of 15x15 fuel rods with 2.293 cm pitch
-# Lattice for unit 2: 15x15 array
-# Pitch: (2.293000, 2.293000) cm
-# Lower left: (-17.1975, -17.1975)
-
-# Lattice filled with universe1
+# Lattice 2: 15x15 array
 lattice2 = openmc.RectLattice(lattice_id=2)
 lattice2.lower_left = [-17.1975, -17.1975]
 lattice2.pitch = [2.293000, 2.293000]
-lattice2.universes = [[universe1]*15]*15
-universe2 = lattice2  # Lattice can be used as universe
+lattice2.universes = [
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+    [universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1, universe1],
+]
+universe2 = openmc.Universe(universe_id=2)
+universe2.add_cell(openmc.Cell(fill=lattice2))
 
-# Cell using unit 2: core
-cell0 = openmc.Cell(cell_id=0, fill=universe2, name="core")
-cell0.region = (+surf4_xmin & -surf4_xmax & +surf4_ymin & -surf4_ymax & +surf4_zmin & -surf4_zmax) & (+surf5_xmin & -surf5_xmax & +surf5_ymin & -surf5_ymax & +surf5_zmin & -surf5_zmax)
+# ------------------------------------------------------------------------------
+# Root Cells
+# ------------------------------------------------------------------------------
 
-# Cell: refl
-cell1 = openmc.Cell(cell_id=1, fill=mat3, name="refl")
-cell1.region = -surf3 & (-surf4_xmin | +surf4_xmax | -surf4_ymin | +surf4_ymax | -surf4_zmin | +surf4_zmax) & (+surf5_xmin & -surf5_xmax & +surf5_ymin & -surf5_ymax & +surf5_zmin & -surf5_zmax)
+# core
+cell1 = openmc.Cell(cell_id=1, fill=universe2)
+cell1.region = -surf4 & -surf5
 
-# Cell: H2O
-cell2 = openmc.Cell(cell_id=2, fill=mat3, name="H2O")
-cell2.region = +surf2 & -surf3 & (+surf5_xmin & -surf5_xmax & +surf5_ymin & -surf5_ymax & +surf5_zmin & -surf5_zmax)
+# refl
+cell2 = openmc.Cell(cell_id=2, fill=mat3)
+cell2.region = -surf3 & +surf4 & -surf5
 
-# ==============================================================================
-# Boundary Conditions
-# ==============================================================================
+# H2O
+cell6 = openmc.Cell(cell_id=6, fill=mat3)
+cell6.region = +surf2 & -surf3 & -surf5
 
-# Create outer bounding box with vacuum boundary (6 planes)
-# TODO: Adjust dimensions to encompass your entire geometry
-boundary_xmin = openmc.XPlane(surface_id=10012, x0=-200, boundary_type="vacuum")
-boundary_xmax = openmc.XPlane(surface_id=10013, x0=200, boundary_type="vacuum")
-boundary_ymin = openmc.YPlane(surface_id=10014, y0=-200, boundary_type="vacuum")
-boundary_ymax = openmc.YPlane(surface_id=10015, y0=200, boundary_type="vacuum")
-boundary_zmin = openmc.ZPlane(surface_id=10016, z0=-200, boundary_type="vacuum")
-boundary_zmax = openmc.ZPlane(surface_id=10017, z0=200, boundary_type="vacuum")
-
-# Create outer void cell (everything outside geometry but inside boundary)
-# Particles are killed at the vacuum boundary
-outer_region = +boundary_xmin & -boundary_xmax & +boundary_ymin & -boundary_ymax & +boundary_zmin & -boundary_zmax
-outer_region = outer_region & ~cell0.region
-outer_region = outer_region & ~cell1.region
-outer_region = outer_region & ~cell2.region
-outer_cell = openmc.Cell(cell_id=3, name="outer_void")
-outer_cell.region = outer_region
-outer_cell.fill = None  # Void
-
-# Create root universe and geometry
-root_universe = openmc.Universe(cells=[cell0, cell1, cell2, outer_cell])
+root_universe = openmc.Universe(cells=[cell1, cell2, cell6])
 geometry = openmc.Geometry(root_universe)
-geometry.export_to_xml()
 
 # ==============================================================================
 # Settings
@@ -139,28 +111,14 @@ settings.batches = 4400
 settings.inactive = 100
 settings.run_mode = "eigenvalue"
 
-# Source definition
 source = openmc.IndependentSource()
 source.space = openmc.stats.Point((0.0, 0.0, 45.375))
-source.angle = openmc.stats.Isotropic()
-source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
 
-# Enable delayed neutron kinetics and alpha eigenvalue calculations
-settings.calculate_prompt_k = True
-settings.calculate_alpha = True
+# ==============================================================================
+# Export and Run
+# ==============================================================================
 
+materials.export_to_xml()
+geometry.export_to_xml()
 settings.export_to_xml()
-
-# ==============================================================================
-# Tallies
-# ==============================================================================
-
-tallies = openmc.Tallies()
-tallies.export_to_xml()
-
-# ==============================================================================
-# Run OpenMC
-# ==============================================================================
-
-openmc.run()

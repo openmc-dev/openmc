@@ -1,6 +1,6 @@
 """
 PU-MET-FAST-001: JEZEBEL (17.020 kg Pu(95.48)-1.02Ga @ 15.61 g/cc)
-Translated from COG to OpenMC
+Converted from COG to OpenMC
 """
 
 import openmc
@@ -9,53 +9,32 @@ import openmc
 # Materials
 # ==============================================================================
 
-mat1 = openmc.Material(material_id=1, name="")
-mat1.set_density("atom/b-cm", 4.029014e-02)
-mat1.add_element("Ga", 1.3752e-3)
-mat1.add_nuclide("Pu239", 3.7047e-2)
-mat1.add_nuclide("Pu240", 1.7512e-3)
-mat1.add_nuclide("Pu241", 1.1674e-4)
+mat1 = openmc.Material(material_id=1)
+mat1.set_density("sum")
+mat1.add_element("Ga", 1.375200e-03)
+mat1.add_nuclide("Pu239", 3.704700e-02)
+mat1.add_nuclide("Pu240", 1.751200e-03)
+mat1.add_nuclide("Pu241", 1.167400e-04)
 
 materials = openmc.Materials([mat1])
-materials.export_to_xml()
 
 # ==============================================================================
 # Geometry
 # ==============================================================================
 
 # per Section 3.2
-surf1 = openmc.Sphere(surface_id=1, r=6.3849)
+surf1 = openmc.Sphere(surface_id=1, r=6.3849, boundary_type="vacuum")
 
+# ------------------------------------------------------------------------------
+# Root Cells
+# ------------------------------------------------------------------------------
 
-# Cell: alloy
-cell0 = openmc.Cell(cell_id=0, fill=mat1, name="alloy")
-cell0.region = -surf1
+# alloy
+cell1 = openmc.Cell(cell_id=1, fill=mat1)
+cell1.region = -surf1
 
-# ==============================================================================
-# Boundary Conditions
-# ==============================================================================
-
-# Create outer bounding box with vacuum boundary (6 planes)
-# TODO: Adjust dimensions to encompass your entire geometry
-boundary_xmin = openmc.XPlane(surface_id=10000, x0=-200, boundary_type="vacuum")
-boundary_xmax = openmc.XPlane(surface_id=10001, x0=200, boundary_type="vacuum")
-boundary_ymin = openmc.YPlane(surface_id=10002, y0=-200, boundary_type="vacuum")
-boundary_ymax = openmc.YPlane(surface_id=10003, y0=200, boundary_type="vacuum")
-boundary_zmin = openmc.ZPlane(surface_id=10004, z0=-200, boundary_type="vacuum")
-boundary_zmax = openmc.ZPlane(surface_id=10005, z0=200, boundary_type="vacuum")
-
-# Create outer void cell (everything outside geometry but inside boundary)
-# Particles are killed at the vacuum boundary
-outer_region = +boundary_xmin & -boundary_xmax & +boundary_ymin & -boundary_ymax & +boundary_zmin & -boundary_zmax
-outer_region = outer_region & ~cell0.region
-outer_cell = openmc.Cell(cell_id=1, name="outer_void")
-outer_cell.region = outer_region
-outer_cell.fill = None  # Void
-
-# Create root universe and geometry
-root_universe = openmc.Universe(cells=[cell0, outer_cell])
+root_universe = openmc.Universe(cells=[cell1])
 geometry = openmc.Geometry(root_universe)
-geometry.export_to_xml()
 
 # ==============================================================================
 # Settings
@@ -67,28 +46,14 @@ settings.batches = 4400
 settings.inactive = 100
 settings.run_mode = "eigenvalue"
 
-# Source definition
 source = openmc.IndependentSource()
 source.space = openmc.stats.Point((0.0, 0.0, 0.0))
-source.angle = openmc.stats.Isotropic()
-source.energy = openmc.stats.Watt(a=0.988e6, b=2.249e-6)
 settings.source = source
 
-# Enable delayed neutron kinetics and alpha eigenvalue calculations
-settings.calculate_prompt_k = True
-settings.calculate_alpha = True
+# ==============================================================================
+# Export and Run
+# ==============================================================================
 
+materials.export_to_xml()
+geometry.export_to_xml()
 settings.export_to_xml()
-
-# ==============================================================================
-# Tallies
-# ==============================================================================
-
-tallies = openmc.Tallies()
-tallies.export_to_xml()
-
-# ==============================================================================
-# Run OpenMC
-# ==============================================================================
-
-openmc.run()

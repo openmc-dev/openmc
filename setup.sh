@@ -3,13 +3,14 @@
 # OpenMC Installation and Setup Script
 ################################################################################
 # This script automates the installation and configuration of OpenMC,
-# including copying cross section data, building the code, setting up
+# including setting up cross section data paths, building the code, setting up
 # a Python virtual environment, and installing the Python API.
 #
 # Usage: ./setup.sh [OPTIONS]
 #
 # Options:
-#   --skip-xs         Skip cross section data copy
+#   --xs-dir PATH     Path to cross section data directory (default: ../endfb80-hdf5)
+#   --skip-xs         Skip cross section data setup
 #   --with-mpi        Build with MPI support
 #   --build-type      Set build type (Debug|Release|RelWithDebInfo)
 #   --help            Show this help message
@@ -29,9 +30,13 @@ SKIP_XS=false
 WITH_MPI=false
 BUILD_TYPE="RelWithDebInfo"
 INSTALL_PREFIX="${HOME}/.local"
+XS_DIR=""  # Will be set to default after SCRIPT_DIR is determined
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Default cross section directory (sibling to openmc directory)
+DEFAULT_XS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)/endfb80-hdf5"
 
 ################################################################################
 # Helper functions
@@ -63,6 +68,10 @@ print_usage() {
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --xs-dir)
+            XS_DIR="$2"
+            shift 2
+            ;;
         --skip-xs)
             SKIP_XS=true
             shift
@@ -119,31 +128,35 @@ log_info "Found Python ${PYTHON_VERSION}"
 if [[ "$SKIP_XS" == false ]]; then
     log_info "Setting up cross section data..."
 
-    # Define source and destination directories
-    XS_SOURCE_DIR="/home/zywiec1/endfb80-hdf5"
-    XS_DATA_DIR="${HOME}/openmc/endfb80-hdf5"
+    # Use specified XS_DIR or default to sibling directory
+    if [[ -z "${XS_DIR}" ]]; then
+        XS_DATA_DIR="${DEFAULT_XS_DIR}"
+    else
+        # Resolve to absolute path
+        XS_DATA_DIR="$(cd "$(dirname "${XS_DIR}")" && pwd)/$(basename "${XS_DIR}")"
+    fi
 
-    # Copy endfb80-hdf5 data if not already present
-    if [[ ! -d "${XS_DATA_DIR}" ]]; then
-        log_info "Copying cross section data from ${XS_SOURCE_DIR}..."
-
-        if [[ -d "${XS_SOURCE_DIR}" ]]; then
-            mkdir -p "$(dirname "${XS_DATA_DIR}")"
-            cp -r "${XS_SOURCE_DIR}" "${XS_DATA_DIR}"
-            log_success "Cross section data copied to ${XS_DATA_DIR}"
+    # Verify cross section data exists
+    if [[ -d "${XS_DATA_DIR}" ]]; then
+        if [[ -f "${XS_DATA_DIR}/cross_sections.xml" ]]; then
+            log_success "Cross section data found at ${XS_DATA_DIR}"
         else
-            log_error "Source directory ${XS_SOURCE_DIR} not found!"
-            log_error "Please ensure the endfb80-hdf5 data is available at ${XS_SOURCE_DIR}"
+            log_error "cross_sections.xml not found in ${XS_DATA_DIR}"
             exit 1
         fi
     else
-        log_info "Cross section data already exists at ${XS_DATA_DIR}, skipping copy"
+        log_error "Cross section directory not found: ${XS_DATA_DIR}"
+        log_error "Please ensure the endfb80-hdf5 data is available, or specify with --xs-dir"
+        exit 1
     fi
-
-    log_success "Cross section data ready at ${XS_DATA_DIR}"
 else
     log_info "Skipping cross section data setup"
-    XS_DATA_DIR="${HOME}/openmc/endfb80-hdf5"
+    # Still need XS_DATA_DIR for environment script
+    if [[ -z "${XS_DIR}" ]]; then
+        XS_DATA_DIR="${DEFAULT_XS_DIR}"
+    else
+        XS_DATA_DIR="$(cd "$(dirname "${XS_DIR}")" && pwd)/$(basename "${XS_DIR}")"
+    fi
 fi
 
 ################################################################################
@@ -225,35 +238,35 @@ log_success "OpenMC Python bindings installed"
 
 log_info "Configuring environment..."
 
-# Create environment setup script
+# Create environment setup script with absolute paths
 ENV_SCRIPT="${SCRIPT_DIR}/openmc_env.sh"
-cat > "${ENV_SCRIPT}" << 'EOF'
+cat > "${ENV_SCRIPT}" << EOF
 #!/bin/bash
 # OpenMC environment setup script
 # Source this file to set up the OpenMC environment:
 #   source openmc_env.sh
 
 # Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 
 # Activate Python virtual environment
-if [[ -d "${SCRIPT_DIR}/.env" ]]; then
-    source "${SCRIPT_DIR}/.env/bin/activate"
+if [[ -d "\${SCRIPT_DIR}/.env" ]]; then
+    source "\${SCRIPT_DIR}/.env/bin/activate"
     echo "Python virtual environment activated"
 else
-    echo "Warning: Virtual environment not found at ${SCRIPT_DIR}/.env"
+    echo "Warning: Virtual environment not found at \${SCRIPT_DIR}/.env"
 fi
 
-# Add OpenMC binary to PATH
-export PATH="${HOME}/.local/bin:${PATH}"
+# Add OpenMC binary to PATH (using absolute path)
+export PATH="${INSTALL_PREFIX}/bin:\${PATH}"
 
-# Set cross section data path
-export OPENMC_CROSS_SECTIONS="${HOME}/openmc/endfb80-hdf5/cross_sections.xml"
+# Set cross section data path (using absolute path)
+export OPENMC_CROSS_SECTIONS="${XS_DATA_DIR}/cross_sections.xml"
 
 echo "OpenMC environment configured:"
-echo "  OpenMC executable: $(which openmc 2>/dev/null || echo 'not found in PATH')"
-echo "  Cross sections: ${OPENMC_CROSS_SECTIONS}"
-echo "  Python: $(which python)"
+echo "  OpenMC executable: \$(which openmc 2>/dev/null || echo 'not found in PATH')"
+echo "  Cross sections: \${OPENMC_CROSS_SECTIONS}"
+echo "  Python: \$(which python)"
 EOF
 
 chmod +x "${ENV_SCRIPT}"

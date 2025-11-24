@@ -766,3 +766,245 @@ def test_normalize():
 
     p2 = openmc.YPlane(1.0)
     assert p1.normalize() == p2.normalize()
+
+
+def test_solid_of_revolution_basic():
+    """Test basic Revolution functionality"""
+    # Create a simple cylinder (r=1.0 from z=0 to z=5)
+    rz = [(1.0, 0.0), (1.0, 5.0)]
+    s = openmc.Revolution(rz=rz, axis='z', name='cylinder')
+
+    assert s.rz == [(1.0, 0.0), (1.0, 5.0)]
+    assert s.axis == 'z'
+    assert s.origin == (0., 0., 0.)
+    assert s.name == 'cylinder'
+    assert s.type == 'solid-of-revolution'
+    assert s.boundary_type == 'transmission'
+
+    # Make sure repr works
+    repr(s)
+
+
+def test_solid_of_revolution_properties():
+    """Test Revolution property accessors"""
+    rz = [(0.5, 0.0), (1.0, 2.0)]
+    s = openmc.Revolution(rz=rz, axis='y', origin=(1., 2., 3.))
+
+    assert s.x0 == 1.
+    assert s.y0 == 2.
+    assert s.z0 == 3.
+    assert s.axis == 'y'
+
+
+def test_solid_of_revolution_cylinder_evaluate():
+    """Test evaluate method for cylindrical surface of revolution"""
+    # Cylinder of radius 2.0 along z-axis
+    rz = [(2.0, 0.0), (2.0, 10.0)]
+    s = openmc.Revolution(rz=rz, axis='z')
+
+    # Points inside cylinder (r < 2)
+    assert s.evaluate((0., 0., 5.)) < 0.  # On axis
+    assert s.evaluate((1., 0., 5.)) < 0.  # r = 1
+    assert s.evaluate((1., 1., 5.)) < 0.  # r = sqrt(2) ≈ 1.41
+
+    # Points on cylinder surface (r = 2)
+    assert s.evaluate((2., 0., 5.)) == pytest.approx(0.)
+    assert s.evaluate((0., 2., 5.)) == pytest.approx(0.)
+    assert s.evaluate((math.sqrt(2), math.sqrt(2), 5.)) == pytest.approx(0.)
+
+    # Points outside cylinder (r > 2)
+    assert s.evaluate((3., 0., 5.)) > 0.
+    assert s.evaluate((0., 3., 5.)) > 0.
+    assert s.evaluate((2., 2., 5.)) > 0.  # r = sqrt(8) ≈ 2.83
+
+
+def test_solid_of_revolution_cone_evaluate():
+    """Test evaluate method for conical surface of revolution"""
+    # Cone from r=1 at z=0 to r=2 at z=2 (slope = 0.5)
+    rz = [(1.0, 0.0), (2.0, 2.0)]
+    s = openmc.Revolution(rz=rz, axis='z')
+
+    # At z=0, radius should be 1.0
+    assert s.evaluate((1., 0., 0.)) == pytest.approx(0.)
+    assert s.evaluate((0.5, 0., 0.)) < 0.  # inside
+    assert s.evaluate((1.5, 0., 0.)) > 0.  # outside
+
+    # At z=1, radius should be 1.5
+    assert s.evaluate((1.5, 0., 1.)) == pytest.approx(0.)
+    assert s.evaluate((1., 0., 1.)) < 0.  # inside
+    assert s.evaluate((2., 0., 1.)) > 0.  # outside
+
+    # At z=2, radius should be 2.0
+    assert s.evaluate((2., 0., 2.)) == pytest.approx(0.)
+    assert s.evaluate((1.5, 0., 2.)) < 0.  # inside
+    assert s.evaluate((2.5, 0., 2.)) > 0.  # outside
+
+
+def test_solid_of_revolution_different_axes():
+    """Test Revolution with different axes"""
+    rz = [(1.0, 0.0), (1.0, 5.0)]
+
+    # Z-axis
+    sz = openmc.Revolution(rz=rz, axis='z')
+    assert sz.evaluate((1., 0., 2.5)) == pytest.approx(0.)
+
+    # Y-axis
+    sy = openmc.Revolution(rz=rz, axis='y')
+    assert sy.evaluate((0., 2.5, 1.)) == pytest.approx(0.)
+
+    # X-axis
+    sx = openmc.Revolution(rz=rz, axis='x')
+    assert sx.evaluate((2.5, 1., 0.)) == pytest.approx(0.)
+
+
+def test_solid_of_revolution_with_origin():
+    """Test Revolution with non-zero origin"""
+    rz = [(1.0, 0.0), (1.0, 5.0)]
+    origin = (2., 3., 4.)
+    s = openmc.Revolution(rz=rz, axis='z', origin=origin)
+
+    # Point on surface at center of axis shifted by origin
+    assert s.evaluate((3., 3., 6.)) == pytest.approx(0.)  # (2+1, 3, 4+2)
+    assert s.evaluate((2., 4., 6.)) == pytest.approx(0.)  # (2, 3+1, 4+2)
+
+    # Inside
+    assert s.evaluate((2., 3., 6.)) < 0.  # on axis
+
+    # Outside
+    assert s.evaluate((4., 3., 6.)) > 0.  # r = 2
+
+
+def test_solid_of_revolution_halfspace():
+    """Test halfspace operations"""
+    rz = [(1.0, 0.0), (1.0, 5.0)]
+    s = openmc.Revolution(rz=rz, axis='z')
+
+    # Test __contains__ on halfspaces
+    assert (0., 0., 2.5) in -s  # inside cylinder
+    assert (2., 0., 2.5) not in -s  # outside cylinder
+    assert (2., 0., 2.5) in +s  # outside cylinder
+    assert (0., 0., 2.5) not in +s  # inside cylinder
+
+
+def test_solid_of_revolution_translate():
+    """Test translation of Revolution"""
+    rz = [(1.0, 0.0), (1.0, 5.0)]
+    s = openmc.Revolution(rz=rz, axis='z')
+
+    # Translate
+    st = s.translate((1., 2., 3.))
+    assert st.origin == (1., 2., 3.)
+    assert st.rz == s.rz  # Profile unchanged
+
+    # Original unchanged
+    assert s.origin == (0., 0., 0.)
+
+    # Test inplace
+    s2 = openmc.Revolution(rz=rz, axis='z')
+    s2_result = s2.translate((1., 2., 3.), inplace=True)
+    assert s2.origin == (1., 2., 3.)
+    assert s2_result is s2
+
+
+def test_solid_of_revolution_bounding_box():
+    """Test bounding box calculation"""
+    rz = [(1.0, 0.0), (2.0, 5.0)]  # Cone
+    s = openmc.Revolution(rz=rz, axis='z', origin=(1., 2., 3.))
+
+    # Negative side (inside) should have finite bounds
+    ll, ur = (-s).bounding_box
+    assert ll == pytest.approx((1. - 2., 2. - 2., 3. + 0.))  # (-1, 0, 3)
+    assert ur == pytest.approx((1. + 2., 2. + 2., 3. + 5.))  # (3, 4, 8)
+
+    # Positive side (outside) should be infinite
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+
+
+def test_solid_of_revolution_xml_roundtrip():
+    """Test XML serialization and deserialization"""
+    rz = [(0.5, 0.0), (1.0, 1.0), (0.8, 2.0), (1.2, 3.0)]
+    s = openmc.Revolution(
+        rz=rz,
+        axis='y',
+        origin=(1., 2., 3.),
+        boundary_type='vacuum',
+        name='test_solid'
+    )
+
+    # Serialize to XML
+    elem = s.to_xml_element()
+
+    # Deserialize from XML
+    s2 = openmc.Surface.from_xml_element(elem)
+
+    assert isinstance(s2, openmc.Revolution)
+    assert s2.rz == s.rz
+    assert s2.axis == s.axis
+    assert s2.origin == s.origin
+    assert s2.boundary_type == s.boundary_type
+    assert s2.name == s.name
+
+
+def test_solid_of_revolution_multi_segment():
+    """Test Revolution with multiple segments"""
+    # Vase-like shape
+    rz = [
+        (0.5, 0.0),   # narrow bottom
+        (1.0, 1.0),   # wider
+        (0.8, 2.0),   # narrower
+        (1.2, 3.0),   # widest
+        (0.3, 4.0)    # narrow top
+    ]
+    s = openmc.Revolution(rz=rz, axis='z')
+
+    # Test points at each segment
+    # At z=0, r=0.5
+    assert s.evaluate((0.5, 0., 0.)) == pytest.approx(0.)
+
+    # At z=1, r=1.0
+    assert s.evaluate((1.0, 0., 1.)) == pytest.approx(0.)
+
+    # At z=2, r=0.8
+    assert s.evaluate((0.8, 0., 2.)) == pytest.approx(0.)
+
+    # At z=3, r=1.2
+    assert s.evaluate((1.2, 0., 3.)) == pytest.approx(0.)
+
+    # At z=4, r=0.3
+    assert s.evaluate((0.3, 0., 4.)) == pytest.approx(0.)
+
+    # Interpolated point at z=0.5, r should be 0.75
+    assert s.evaluate((0.75, 0., 0.5)) == pytest.approx(0.)
+
+
+def test_solid_of_revolution_validation():
+    """Test input validation"""
+    # Test minimum points requirement
+    with pytest.raises(ValueError):
+        openmc.Revolution(rz=[(1., 0.)])
+
+    # Test negative radius
+    with pytest.raises(ValueError):
+        openmc.Revolution(rz=[(-1., 0.), (1., 1.)])
+
+    # Test invalid axis
+    with pytest.raises(ValueError):
+        openmc.Revolution(rz=[(1., 0.), (1., 1.)], axis='w')
+
+    # Test invalid origin length
+    with pytest.raises(TypeError):
+        openmc.Revolution(rz=[(1., 0.), (1., 1.)], origin=(1., 2.))
+
+
+def test_solid_of_revolution_from_coefficients():
+    """Test creating Revolution from coefficient list"""
+    # Coefficients format: x0, y0, z0, axis_code, n_points, r1, z1, r2, z2, ...
+    coeffs = [1., 2., 3., 2., 3., 0.5, 0., 1.0, 1., 0.5, 2.]
+
+    s = openmc.Revolution.from_coefficients(coeffs)
+
+    assert s.origin == (1., 2., 3.)
+    assert s.axis == 'z'  # axis_code 2 = z
+    assert s.rz == [(0.5, 0.), (1.0, 1.), (0.5, 2.)]

@@ -375,6 +375,40 @@ public:
 };
 
 //==============================================================================
+//! A solid of revolution created by rotating a 2D profile around an axis.
+//
+//! The profile is defined as a series of (r, z) coordinate pairs where r is the
+//! radial distance from the axis of revolution and z is the position along the
+//! axis. Adjacent points are connected by straight line segments, which when
+//! revolved around the axis create conical frustums (or cylinders if r values
+//! are equal).
+//==============================================================================
+
+class SurfaceRevolution : public Surface {
+public:
+  explicit SurfaceRevolution(pugi::xml_node surf_node);
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
+
+  // Axis of revolution: 0=x, 1=y, 2=z
+  int axis_;
+  // Origin point on the axis
+  double x0_, y0_, z0_;
+  // Profile points as (r, z) pairs
+  vector<std::pair<double, double>> rz_;
+
+private:
+  // Helper functions
+  void get_radial_and_axial(Position r, double& r_point, double& z_point) const;
+  double find_segment_radius(double z_point) const;
+  double cone_distance(Position r, Direction u, bool coincident,
+                       double r1, double z1, double r2, double z2) const;
+};
+
+//==============================================================================
 // Non-member functions
 //==============================================================================
 

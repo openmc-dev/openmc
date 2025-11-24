@@ -1168,6 +1168,446 @@ Direction SurfaceZTorus::normal(Position r) const
 }
 
 //==============================================================================
+// SurfaceRevolution implementation
+//==============================================================================
+
+SurfaceRevolution::SurfaceRevolution(pugi::xml_node surf_node)
+  : Surface(surf_node)
+{
+  // Read all coefficients: x0, y0, z0, axis_code, n_points, r1, z1, r2, z2, ...
+  auto coeffs = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs.size() < 7) {
+    fatal_error(fmt::format(
+      "Surface {} (revolution) requires at least 7 coefficients "
+      "(origin, axis, n_points, and at least 2 profile points)",
+      id_));
+  }
+
+  x0_ = coeffs[0];
+  y0_ = coeffs[1];
+  z0_ = coeffs[2];
+  axis_ = static_cast<int>(coeffs[3]);
+  int n_points = static_cast<int>(coeffs[4]);
+
+  if (axis_ < 0 || axis_ > 2) {
+    fatal_error(fmt::format(
+      "Surface {} has invalid axis code {}. Must be 0 (x), 1 (y), or 2 (z).",
+      id_, axis_));
+  }
+
+  if (n_points < 2) {
+    fatal_error(fmt::format(
+      "Surface {} requires at least 2 profile points, got {}.",
+      id_, n_points));
+  }
+
+  size_t expected_size = 5 + 2 * n_points;
+  if (coeffs.size() != expected_size) {
+    fatal_error(fmt::format(
+      "Surface {} expects {} coefficients for {} profile points, got {}.",
+      id_, expected_size, n_points, coeffs.size()));
+  }
+
+  // Read profile points
+  rz_.reserve(n_points);
+  for (int i = 0; i < n_points; ++i) {
+    double r = coeffs[5 + 2 * i];
+    double z = coeffs[5 + 2 * i + 1];
+    if (r < 0.0) {
+      fatal_error(fmt::format(
+        "Surface {} profile point {} has negative radius {}.",
+        id_, i, r));
+    }
+    rz_.emplace_back(r, z);
+  }
+}
+
+void SurfaceRevolution::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "revolution", false);
+
+  // Write coefficients: x0, y0, z0, axis, n_points, r1, z1, r2, z2, ...
+  vector<double> coeffs;
+  coeffs.push_back(x0_);
+  coeffs.push_back(y0_);
+  coeffs.push_back(z0_);
+  coeffs.push_back(static_cast<double>(axis_));
+  coeffs.push_back(static_cast<double>(rz_.size()));
+  for (const auto& point : rz_) {
+    coeffs.push_back(point.first);
+    coeffs.push_back(point.second);
+  }
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+void SurfaceRevolution::get_radial_and_axial(
+  Position r, double& r_point, double& z_point) const
+{
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+
+  switch (axis_) {
+  case 0: // x-axis
+    r_point = std::sqrt(y * y + z * z);
+    z_point = x;
+    break;
+  case 1: // y-axis
+    r_point = std::sqrt(x * x + z * z);
+    z_point = y;
+    break;
+  case 2: // z-axis
+  default:
+    r_point = std::sqrt(x * x + y * y);
+    z_point = z;
+    break;
+  }
+}
+
+double SurfaceRevolution::find_segment_radius(double z_point) const
+{
+  int n = static_cast<int>(rz_.size());
+
+  // Check if z is before the first point
+  if (z_point <= rz_[0].second) {
+    return rz_[0].first;
+  }
+
+  // Check if z is after the last point
+  if (z_point >= rz_[n - 1].second) {
+    return rz_[n - 1].first;
+  }
+
+  // Find the segment containing z_point
+  for (int i = 0; i < n - 1; ++i) {
+    double r1 = rz_[i].first;
+    double z1 = rz_[i].second;
+    double r2 = rz_[i + 1].first;
+    double z2 = rz_[i + 1].second;
+
+    if (z1 <= z_point && z_point <= z2) {
+      // Linear interpolation
+      if (std::abs(z2 - z1) < FP_COINCIDENT) {
+        return std::min(r1, r2);
+      }
+      double t = (z_point - z1) / (z2 - z1);
+      return r1 + t * (r2 - r1);
+    }
+  }
+
+  return rz_[n - 1].first;
+}
+
+double SurfaceRevolution::evaluate(Position r) const
+{
+  double r_point, z_point;
+  get_radial_and_axial(r, r_point, z_point);
+
+  double r_surface = find_segment_radius(z_point);
+  return r_point - r_surface;
+}
+
+// Helper function to compute intersection with a conical frustum segment
+// This solves for the intersection of a ray with a cone frustum defined by
+// (r1, z1) to (r2, z2) revolved around the specified axis.
+double SurfaceRevolution::cone_distance(
+  Position r, Direction u, bool coincident,
+  double r1, double z1, double r2, double z2) const
+{
+  // Transform position to local coordinates
+  double px = r.x - x0_;
+  double py = r.y - y0_;
+  double pz = r.z - z0_;
+
+  // Get the radial and axial components based on axis
+  double p_radial_sq, p_axial, u_radial_x, u_radial_y, u_axial;
+  double p_radial_x, p_radial_y;
+
+  switch (axis_) {
+  case 0: // x-axis: radial is (y,z), axial is x
+    p_radial_x = py;
+    p_radial_y = pz;
+    p_axial = px;
+    u_radial_x = u.y;
+    u_radial_y = u.z;
+    u_axial = u.x;
+    break;
+  case 1: // y-axis: radial is (x,z), axial is y
+    p_radial_x = px;
+    p_radial_y = pz;
+    p_axial = py;
+    u_radial_x = u.x;
+    u_radial_y = u.z;
+    u_axial = u.y;
+    break;
+  case 2: // z-axis: radial is (x,y), axial is z
+  default:
+    p_radial_x = px;
+    p_radial_y = py;
+    p_axial = pz;
+    u_radial_x = u.x;
+    u_radial_y = u.y;
+    u_axial = u.z;
+    break;
+  }
+
+  p_radial_sq = p_radial_x * p_radial_x + p_radial_y * p_radial_y;
+
+  // Check for degenerate segment (same z)
+  double dz = z2 - z1;
+  double dr = r2 - r1;
+
+  if (std::abs(dz) < FP_COINCIDENT) {
+    // This is essentially a disk or annulus - no surface intersection for cone
+    return INFTY;
+  }
+
+  // For a cone frustum: sqrt(radial^2) = r1 + (axial - z1) * (r2 - r1) / (z2 - z1)
+  // Squaring: radial^2 = (r1 + (axial - z1) * slope)^2 where slope = dr/dz
+  // Expanding for ray (p + t*u):
+  // (p_radial_x + t*u_radial_x)^2 + (p_radial_y + t*u_radial_y)^2 =
+  //    (r1 + (p_axial + t*u_axial - z1) * slope)^2
+
+  double slope = dr / dz;
+  double base_r = r1 + (p_axial - z1) * slope;
+
+  // Left side: |p_radial + t*u_radial|^2 = |p_radial|^2 + 2*t*(p_radial·u_radial) + t^2*|u_radial|^2
+  double u_radial_sq = u_radial_x * u_radial_x + u_radial_y * u_radial_y;
+  double p_dot_u_radial = p_radial_x * u_radial_x + p_radial_y * u_radial_y;
+
+  // Right side: (base_r + t*u_axial*slope)^2 = base_r^2 + 2*base_r*t*u_axial*slope + t^2*(u_axial*slope)^2
+  double u_axial_slope = u_axial * slope;
+
+  // Quadratic: At^2 + Bt + C = 0
+  double A = u_radial_sq - u_axial_slope * u_axial_slope;
+  double B = 2.0 * (p_dot_u_radial - base_r * u_axial_slope);
+  double C = p_radial_sq - base_r * base_r;
+
+  if (coincident) {
+    C = 0.0;
+  }
+
+  // Solve quadratic
+  double quad = B * B - 4.0 * A * C;
+
+  if (quad < 0.0) {
+    return INFTY;
+  }
+
+  // Handle special case where A ≈ 0 (ray parallel to cone surface)
+  if (std::abs(A) < FP_COINCIDENT) {
+    if (std::abs(B) < FP_COINCIDENT) {
+      return INFTY;
+    }
+    double t = -C / B;
+    if (t > (coincident ? FP_COINCIDENT : 0.0)) {
+      // Check if intersection is within segment bounds
+      double z_hit = p_axial + t * u_axial;
+      if (z_hit >= z1 && z_hit <= z2) {
+        // Check we're on the positive side of the cone (not inside-out)
+        double r_hit = base_r + t * u_axial_slope;
+        if (r_hit >= 0.0) {
+          return t;
+        }
+      }
+    }
+    return INFTY;
+  }
+
+  double sqrt_quad = std::sqrt(quad);
+  double t1 = (-B - sqrt_quad) / (2.0 * A);
+  double t2 = (-B + sqrt_quad) / (2.0 * A);
+
+  double cutoff = coincident ? FP_COINCIDENT : 0.0;
+  double distance = INFTY;
+
+  // Check both roots
+  for (double t : {t1, t2}) {
+    if (t > cutoff && t < distance) {
+      // Check if intersection is within segment bounds
+      double z_hit = p_axial + t * u_axial;
+      if (z_hit >= z1 - FP_COINCIDENT && z_hit <= z2 + FP_COINCIDENT) {
+        // Check we're on the positive side of the cone
+        double r_hit = base_r + t * u_axial_slope;
+        if (r_hit >= -FP_COINCIDENT) {
+          distance = t;
+        }
+      }
+    }
+  }
+
+  return distance;
+}
+
+double SurfaceRevolution::distance(
+  Position r, Direction u, bool coincident) const
+{
+  double min_distance = INFTY;
+  int n = static_cast<int>(rz_.size());
+
+  // Check intersection with each segment
+  for (int i = 0; i < n - 1; ++i) {
+    double r1 = rz_[i].first;
+    double z1 = rz_[i].second;
+    double r2 = rz_[i + 1].first;
+    double z2 = rz_[i + 1].second;
+
+    double d = cone_distance(r, u, coincident, r1, z1, r2, z2);
+    if (d < min_distance) {
+      min_distance = d;
+    }
+  }
+
+  return min_distance;
+}
+
+Direction SurfaceRevolution::normal(Position r) const
+{
+  double r_point, z_point;
+  get_radial_and_axial(r, r_point, z_point);
+
+  // Find the segment containing this z position
+  int n = static_cast<int>(rz_.size());
+  int seg_idx = 0;
+
+  if (z_point <= rz_[0].second) {
+    seg_idx = 0;
+  } else if (z_point >= rz_[n - 1].second) {
+    seg_idx = n - 2;
+  } else {
+    for (int i = 0; i < n - 1; ++i) {
+      if (z_point >= rz_[i].second && z_point <= rz_[i + 1].second) {
+        seg_idx = i;
+        break;
+      }
+    }
+  }
+
+  double r1 = rz_[seg_idx].first;
+  double z1 = rz_[seg_idx].second;
+  double r2 = rz_[seg_idx + 1].first;
+  double z2 = rz_[seg_idx + 1].second;
+
+  // For a cone: f = sqrt(radial^2) - (r1 + (axial - z1) * dr/dz) = 0
+  // The gradient is:
+  // ∂f/∂radial = radial / sqrt(radial^2) = radial / r_point (unit radial direction)
+  // ∂f/∂axial = -dr/dz
+
+  double dz = z2 - z1;
+  double dr = r2 - r1;
+  double slope = (std::abs(dz) > FP_COINCIDENT) ? (dr / dz) : 0.0;
+
+  // Get position relative to origin
+  double px = r.x - x0_;
+  double py = r.y - y0_;
+  double pz = r.z - z0_;
+
+  // Compute the normal components
+  double nx, ny, nz;
+
+  if (r_point < FP_COINCIDENT) {
+    // On the axis - normal points outward radially (arbitrary direction)
+    // Use the axial gradient
+    switch (axis_) {
+    case 0:
+      return Direction(-slope, 0.0, 0.0).normalize();
+    case 1:
+      return Direction(0.0, -slope, 0.0).normalize();
+    case 2:
+    default:
+      return Direction(0.0, 0.0, -slope).normalize();
+    }
+  }
+
+  // Radial unit vector components
+  double radial_x, radial_y;
+
+  switch (axis_) {
+  case 0: // x-axis
+    radial_x = py / r_point;
+    radial_y = pz / r_point;
+    // Normal = (radial_x, radial_y, 0) in (y, z, x) space
+    // Mapping back: ny = radial_x, nz = radial_y, nx = -slope
+    nx = -slope;
+    ny = radial_x;
+    nz = radial_y;
+    break;
+  case 1: // y-axis
+    radial_x = px / r_point;
+    radial_y = pz / r_point;
+    // Normal in (x, z, y) space
+    nx = radial_x;
+    ny = -slope;
+    nz = radial_y;
+    break;
+  case 2: // z-axis
+  default:
+    radial_x = px / r_point;
+    radial_y = py / r_point;
+    // Normal in (x, y, z) space
+    nx = radial_x;
+    ny = radial_y;
+    nz = -slope;
+    break;
+  }
+
+  Direction n(nx, ny, nz);
+  double norm = n.norm();
+  if (norm < FP_COINCIDENT) {
+    // Degenerate case - return axial normal
+    switch (axis_) {
+    case 0:
+      return Direction(1.0, 0.0, 0.0);
+    case 1:
+      return Direction(0.0, 1.0, 0.0);
+    case 2:
+    default:
+      return Direction(0.0, 0.0, 1.0);
+    }
+  }
+
+  return n / norm;
+}
+
+BoundingBox SurfaceRevolution::bounding_box(bool pos_side) const
+{
+  if (pos_side) {
+    return {};
+  }
+
+  // Find the max radius and z extents
+  double r_max = 0.0;
+  double z_min = INFTY;
+  double z_max = -INFTY;
+
+  for (const auto& point : rz_) {
+    r_max = std::max(r_max, point.first);
+    z_min = std::min(z_min, point.second);
+    z_max = std::max(z_max, point.second);
+  }
+
+  Position lower, upper;
+
+  switch (axis_) {
+  case 0: // x-axis
+    lower = {x0_ + z_min, y0_ - r_max, z0_ - r_max};
+    upper = {x0_ + z_max, y0_ + r_max, z0_ + r_max};
+    break;
+  case 1: // y-axis
+    lower = {x0_ - r_max, y0_ + z_min, z0_ - r_max};
+    upper = {x0_ + r_max, y0_ + z_max, z0_ + r_max};
+    break;
+  case 2: // z-axis
+  default:
+    lower = {x0_ - r_max, y0_ - r_max, z0_ + z_min};
+    upper = {x0_ + r_max, y0_ + r_max, z0_ + z_max};
+    break;
+  }
+
+  return {lower, upper};
+}
+
+//==============================================================================
 
 void read_surfaces(pugi::xml_node node)
 {
@@ -1235,6 +1675,10 @@ void read_surfaces(pugi::xml_node node)
 
       } else if (surf_type == "z-torus") {
         model::surfaces.push_back(std::make_unique<SurfaceZTorus>(surf_node));
+
+      } else if (surf_type == "revolution") {
+        model::surfaces.push_back(
+          std::make_unique<SurfaceRevolution>(surf_node));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));

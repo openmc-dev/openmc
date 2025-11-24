@@ -1,9 +1,7 @@
 @PACKAGE_INIT@
 
 include("${CMAKE_CURRENT_LIST_DIR}/OpenMCConfigVersion.cmake")
-if(NOT TARGET OpenMC::libopenmc)
-  include("${CMAKE_CURRENT_LIST_DIR}/OpenMCTargets.cmake")
-endif()
+include("${CMAKE_CURRENT_LIST_DIR}/OpenMCTargets.cmake")
 
 include(CMakeFindDependencyMacro)
 

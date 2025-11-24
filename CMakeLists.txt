@@ -596,19 +596,19 @@ install(EXPORT openmc-targets
 
 configure_package_config_file(
     "cmake/OpenMCConfig.cmake.in"
-    "${CMAKE_BINARY_DIR}/OpenMCConfig.cmake"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
     INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 write_basic_package_version_file(
-    "${CMAKE_BINARY_DIR}/OpenMCConfigVersion.cmake"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
     VERSION ${OPENMC_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
 
 install(FILES
-    "${CMAKE_BINARY_DIR}/OpenMCConfig.cmake"
-    "${CMAKE_BINARY_DIR}/OpenMCConfigVersion.cmake"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
     DESTINATION "${INSTALL_CONFIGDIR}"
 )
 

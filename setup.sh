@@ -6,6 +6,8 @@
 # including setting up cross section data paths, building the code, setting up
 # a Python virtual environment, and installing the Python API.
 #
+# Author: William Zywiec (willzywiec@gmail.com)
+#
 # Usage: ./setup.sh [OPTIONS]
 #
 # Options:

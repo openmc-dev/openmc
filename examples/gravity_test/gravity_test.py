@@ -67,13 +67,5 @@ tally.scores = ['flux']
 tallies = openmc.Tallies([tally])
 tallies.export_to_xml()
 
-print("Gravity test setup complete!")
-print("Run with: openmc")
-print("")
-print("Expected behavior:")
-print("- Neutrons start at z=50, traveling in +x direction")
-print("- With gravity in -z direction, particles should curve downward")
-print("- The flux mesh will show the curved trajectory")
-print("")
-print("To compare, run once with gravity enabled and once with:")
-print("  settings.gravity['enabled'] = False")
+# Run the simulation
+openmc.run()

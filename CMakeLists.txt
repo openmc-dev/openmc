@@ -500,12 +500,10 @@ endif()
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
                       xtensor fmt::fmt ${CMAKE_DL_LIBS})
 
-# Mark vendored xtl/xtensor include directories as SYSTEM to suppress warnings
-# from third-party headers (e.g., -Wstringop-overflow in xsequence.hpp)
-if(OPENMC_USE_VENDORED_XTENSOR)
-  target_include_directories(libopenmc SYSTEM PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/xtl/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/xtensor/include)
+# Suppress false positive -Wstringop-overflow warning from xtl/xsequence.hpp
+# This occurs with GCC 13+ due to static analyzer limitations with xtensor templates
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_compile_options(libopenmc PRIVATE -Wno-stringop-overflow)
 endif()
 
 if(TARGET pugixml::pugixml)

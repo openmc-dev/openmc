@@ -791,11 +791,10 @@ def test_material_from_constructor():
         temperature=None,
         density=1e-7,
         density_units="g/cm3",
-        nuclides=[("H1", 0.1, "ao"), ("H2", 0.2, "wo"), ("H3", 0.3)],
     )
     assert mat2.id == 42
     assert mat2.name == "plasma"
     assert mat2.temperature is None
     assert mat2.density == 1e-7
     assert mat2.density_units == "g/cm3"
-    assert mat2.nuclides == [("H1", 0.1, "ao"), ("H2", 0.2, "wo"), ("H3", 0.3, "ao")]
+    assert mat2.nuclides == []

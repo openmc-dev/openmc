@@ -68,10 +68,6 @@ class Material(IDManagerMixin):
         applies in the case of a multi-group calculation.
     depletable : bool, optional
         Indicate whether the material is depletable. Defaults to False.
-    nuclides : list of tuple, optional
-        List in which each item is a namedtuple consisting of a nuclide string,
-        the percent density, and the percent type ('ao' or 'wo'). The namedtuple
-        has field names ``name``, ``percent``, and ``percent_type``.
     volume : float, optional
         Volume of the material in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
@@ -135,7 +131,6 @@ class Material(IDManagerMixin):
         density: float | None = None,
         density_units: str | None = None,
         depletable: bool | None = False,
-        nuclides: list[tuple[str, float, str]] | None = None,
         volume: float | None = None,
     ):
         # Initialize class attributes
@@ -172,19 +167,6 @@ class Material(IDManagerMixin):
         elif density is not None and density_units is not None:
             self.set_density(density_units, density)
 
-        # Add nuclides if provided
-        if nuclides is not None:
-            for entry in nuclides:
-                if len(entry) == 2:
-                    nuclide, percent = entry
-                    percent_type = "ao"
-                elif len(entry) == 3:
-                    nuclide, percent, percent_type = entry
-                else:
-                    raise ValueError(
-                        "Each nuclide tuple must have 2 or 3 elements: (nuclide, percent, [percent_type])"
-                    )
-                self.add_nuclide(nuclide, percent, percent_type)
 
     def __repr__(self) -> str:
         string = 'Material\n'

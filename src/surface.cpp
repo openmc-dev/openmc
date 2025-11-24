@@ -1508,14 +1508,32 @@ Direction SurfaceRevolution::normal(Position r) const
   if (r_point < FP_COINCIDENT) {
     // On the axis - normal points outward radially (arbitrary direction)
     // Use the axial gradient
+    Direction d;
     switch (axis_) {
     case 0:
-      return Direction(-slope, 0.0, 0.0).normalize();
+      d = Direction(-slope, 0.0, 0.0);
+      break;
     case 1:
-      return Direction(0.0, -slope, 0.0).normalize();
+      d = Direction(0.0, -slope, 0.0);
+      break;
     case 2:
     default:
-      return Direction(0.0, 0.0, -slope).normalize();
+      d = Direction(0.0, 0.0, -slope);
+      break;
+    }
+    double d_norm = d.norm();
+    if (d_norm > FP_COINCIDENT) {
+      return d / d_norm;
+    }
+    // Fallback for zero slope
+    switch (axis_) {
+    case 0:
+      return Direction(1.0, 0.0, 0.0);
+    case 1:
+      return Direction(0.0, 1.0, 0.0);
+    case 2:
+    default:
+      return Direction(0.0, 0.0, 1.0);
     }
   }
 
@@ -1551,9 +1569,9 @@ Direction SurfaceRevolution::normal(Position r) const
     break;
   }
 
-  Direction n(nx, ny, nz);
-  double norm = n.norm();
-  if (norm < FP_COINCIDENT) {
+  Direction normal_vec(nx, ny, nz);
+  double normal_norm = normal_vec.norm();
+  if (normal_norm < FP_COINCIDENT) {
     // Degenerate case - return axial normal
     switch (axis_) {
     case 0:
@@ -1566,7 +1584,7 @@ Direction SurfaceRevolution::normal(Position r) const
     }
   }
 
-  return n / norm;
+  return normal_vec / normal_norm;
 }
 
 BoundingBox SurfaceRevolution::bounding_box(bool pos_side) const
@@ -1604,7 +1622,7 @@ BoundingBox SurfaceRevolution::bounding_box(bool pos_side) const
     break;
   }
 
-  return {lower, upper};
+  return {lower.x, upper.x, lower.y, upper.y, lower.z, upper.z};
 }
 
 //==============================================================================

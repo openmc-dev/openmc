@@ -28,69 +28,75 @@ void openmc_run_random_ray()
   // Run forward simulation
   //////////////////////////////////////////////////////////
 
-  // Check if adjoint calculation is needed. If it is, we will run the forward
-  // calculation first and then the adjoint calculation later.
+  // Check if adjoint calculation is needed, and if local adjoint source(s) 
+  // are present. If an adjoint calculation is needed and no sources are 
+  // specified, we will run a forward calculation first to calculate adjoint 
+  // sources for global variance reduction, then perform an adjoint 
+  // calculation later.
   bool adjoint_needed = FlatSourceDomain::adjoint_;
+  bool global_adjoint = model::adjoint_sources.empty();
 
-  // Configure the domain for forward simulation
-  FlatSourceDomain::adjoint_ = false;
+  // If we're going to do an adjoint simulation with global adjoint sources 
+  // afterwards, report that this is the initial forward flux solve.
+  if (!adjoint_needed || global_adjoint) {
+    // Configure the domain for forward simulation
+    FlatSourceDomain::adjoint_ = false;
 
-  // If we're going to do an adjoint simulation afterwards, report that this is
-  // the initial forward flux solve.
-  if (adjoint_needed && mpi::master)
-    header("FORWARD FLUX SOLVE", 3);
+    if (mpi::master) 
+      header("FORWARD FLUX SOLVE", 3);
 
-  // Initialize OpenMC general data structures
-  openmc_simulation_init();
+    // Initialize OpenMC general data structures
+    openmc_simulation_init();
 
-  // Validate that inputs meet requirements for random ray mode
-  if (mpi::master)
-    validate_random_ray_inputs();
+    // Validate that inputs meet requirements for random ray mode
+    if (mpi::master)
+      validate_random_ray_inputs();
 
-  // Declare forward flux so that it can be saved for later adjoint simulation
-  vector<double> forward_flux;
-  SourceRegionContainer forward_source_regions;
-  SourceRegionContainer forward_base_source_regions;
-  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
-    forward_source_region_map;
+    // Declare forward flux so that it can be saved for later adjoint simulation
+    vector<double> forward_flux;
+    SourceRegionContainer forward_source_regions;
+    SourceRegionContainer forward_base_source_regions;
+    std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+      forward_source_region_map;
 
-  {
-    // Initialize Random Ray Simulation Object
-    RandomRaySimulation sim;
+    {
+      // Initialize Random Ray Simulation Object
+      RandomRaySimulation sim;
 
-    // Initialize fixed sources, if present
-    sim.apply_fixed_sources_and_mesh_domains();
+      // Initialize fixed sources, if present
+      sim.apply_fixed_sources_and_mesh_domains();
 
-    // Begin main simulation timer
-    simulation::time_total.start();
+      // Begin main simulation timer
+      simulation::time_total.start();
 
-    // Execute random ray simulation
-    sim.simulate();
+      // Execute random ray simulation
+      sim.simulate();
 
-    // End main simulation timer
-    simulation::time_total.stop();
+      // End main simulation timer
+      simulation::time_total.stop();
 
-    // Normalize and save the final forward flux
-    sim.domain()->serialize_final_fluxes(forward_flux);
+      // Normalize and save the final forward flux
+      sim.domain()->serialize_final_fluxes(forward_flux);
 
-    double source_normalization_factor =
-      sim.domain()->compute_fixed_source_normalization_factor() /
-      (settings::n_batches - settings::n_inactive);
+      double source_normalization_factor =
+        sim.domain()->compute_fixed_source_normalization_factor() /
+        (settings::n_batches - settings::n_inactive);
 
 #pragma omp parallel for
-    for (uint64_t i = 0; i < forward_flux.size(); i++) {
-      forward_flux[i] *= source_normalization_factor;
+      for (uint64_t i = 0; i < forward_flux.size(); i++) {
+        forward_flux[i] *= source_normalization_factor;
+      }
+
+      forward_source_regions = sim.domain()->source_regions_;
+      forward_source_region_map = sim.domain()->source_region_map_;
+      forward_base_source_regions = sim.domain()->base_source_regions_;
+
+      // Finalize OpenMC
+      openmc_simulation_finalize();
+
+      // Output all simulation results
+      sim.output_simulation_results();
     }
-
-    forward_source_regions = sim.domain()->source_regions_;
-    forward_source_region_map = sim.domain()->source_region_map_;
-    forward_base_source_regions = sim.domain()->base_source_regions_;
-
-    // Finalize OpenMC
-    openmc_simulation_finalize();
-
-    // Output all simulation results
-    sim.output_simulation_results();
   }
 
   //////////////////////////////////////////////////////////
@@ -113,9 +119,14 @@ void openmc_run_random_ray()
     RandomRaySimulation adjoint_sim;
 
     // Initialize adjoint fixed sources, if present
-    adjoint_sim.prepare_fixed_sources_adjoint(forward_flux,
-      forward_source_regions, forward_base_source_regions,
-      forward_source_region_map);
+    if (global_adjoint) {
+      adjoint_sim.prepare_global_fixed_sources_adjoint(forward_flux,
+        forward_source_regions, forward_base_source_regions,
+        forward_source_region_map);
+    } else {
+      adjoint_sim.prepare_local_fixed_sources_adjoint(forward_source_regions, 
+        forward_base_source_regions,forward_source_region_map);
+    }
 
     // Transpose scattering matrix
     adjoint_sim.domain()->transpose_scattering_matrix();
@@ -412,7 +423,7 @@ void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
   }
 }
 
-void RandomRaySimulation::prepare_fixed_sources_adjoint(
+void RandomRaySimulation::prepare_global_fixed_sources_adjoint(
   vector<double>& forward_flux, SourceRegionContainer& forward_source_regions,
   SourceRegionContainer& forward_base_source_regions,
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
@@ -425,7 +436,24 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
       domain_->base_source_regions_ = forward_base_source_regions;
       domain_->source_regions_.adjoint_reset();
     }
-    domain_->set_adjoint_sources(forward_flux);
+    domain_->set_global_adjoint_sources(forward_flux);
+  }
+}
+
+void RandomRaySimulation::prepare_local_fixed_sources_adjoint(
+  SourceRegionContainer& forward_source_regions,
+  SourceRegionContainer& forward_base_source_regions,
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
+    forward_source_region_map)
+{
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    if (RandomRay::mesh_subdivision_enabled_) {
+      domain_->source_regions_ = forward_source_regions;
+      domain_->source_region_map_ = forward_source_region_map;
+      domain_->base_source_regions_ = forward_base_source_regions;
+      domain_->source_regions_.adjoint_reset();
+    }
+    domain_->set_local_adjoint_sources();
   }
 }
 

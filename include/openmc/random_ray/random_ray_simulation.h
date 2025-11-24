@@ -21,7 +21,12 @@ public:
   // Methods
   void compute_segment_correction_factors();
   void apply_fixed_sources_and_mesh_domains();
-  void prepare_fixed_sources_adjoint(vector<double>& forward_flux,
+  void prepare_global_fixed_sources_adjoint(vector<double>& forward_flux,
+    SourceRegionContainer& forward_source_regions,
+    SourceRegionContainer& forward_base_source_regions,
+    std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
+      forward_source_region_map);
+  void prepare_local_fixed_sources_adjoint(
     SourceRegionContainer& forward_source_regions,
     SourceRegionContainer& forward_base_source_regions,
     std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&

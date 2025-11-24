@@ -198,6 +198,9 @@ class Settings:
             stabilization, which may be desirable as stronger diagonal stabilization
             also tends to dampen the convergence rate of the solver, thus requiring
             more iterations to converge.
+        :adjoint_source:
+            Source object used to define localized adjoint source/detector response 
+            function.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1192,6 +1195,8 @@ class Settings:
                 cv.check_type('diagonal stabilization rho', value, Real)
                 cv.check_greater_than('diagonal stabilization rho',
                                       value, 0.0, True)
+            elif key == 'adjoint_source':
+                cv.check_type('adjoint source', value, SourceBase)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1656,6 +1661,9 @@ class Settings:
                         if mesh_memo is not None and mesh.id not in mesh_memo:
                             root.append(mesh.to_xml_element())
                             mesh_memo.add(mesh.id)
+                elif key == 'adjoint_source' and isinstance(value, SourceBase):
+                    adj_source_element = value.to_xml_element()
+                    element.append(adj_source_element)
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)

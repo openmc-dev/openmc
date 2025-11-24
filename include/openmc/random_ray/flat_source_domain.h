@@ -39,9 +39,10 @@ public:
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
-  void convert_external_sources();
+  void convert_external_sources(bool use_adjoint_sources);
   void count_external_source_regions();
-  void set_adjoint_sources(const vector<double>& forward_flux);
+  void set_global_adjoint_sources(const vector<double>& forward_flux);
+  void set_local_adjoint_sources();
   void flux_swap();
   virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;

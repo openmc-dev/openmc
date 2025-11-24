@@ -266,8 +266,9 @@ void get_run_parameters(pugi::xml_node node_base)
     } else {
       fatal_error("Specify random ray inactive distance in settings XML");
     }
-    if (check_for_node(random_ray_node, "source")) {
-      xml_node source_node = random_ray_node.child("source");
+    if (check_for_node(random_ray_node, "ray_source")) {
+      xml_node ray_source_node = random_ray_node.child("ray_source");
+      xml_node source_node = ray_source_node.child("source");
       // Get point to list of <source> elements and make sure there is at least
       // one
       RandomRay::ray_source_ = Source::create(source_node);
@@ -353,6 +354,12 @@ void get_run_parameters(pugi::xml_node node_base)
         fatal_error("Random ray diagonal stabilization rho factor must be "
                     "between 0 and 1");
       }
+    }
+
+    for (pugi::xml_node adj_source_node : random_ray_node.children("adjoint_source")) {
+      // Find any local adjoint sources
+      xml_node source_node = adj_source_node.child("source");
+      model::adjoint_sources.push_back(Source::create(source_node));
     }
   }
 }

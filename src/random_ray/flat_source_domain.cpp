@@ -1019,13 +1019,17 @@ void FlatSourceDomain::count_external_source_regions()
   }
 }
 
-void FlatSourceDomain::convert_external_sources()
+void FlatSourceDomain::convert_external_sources(bool use_adjoint_sources)
 {
+  // Determine whether forward or (local) adjoint sources are desired
+  const auto& sources = use_adjoint_sources ? 
+    model::adjoint_sources : model::external_sources;
+    
   // Loop over external sources
-  for (int es = 0; es < model::external_sources.size(); es++) {
+  for (int es = 0; es < sources.size(); es++) {
 
     // Extract source information
-    Source* s = model::external_sources[es].get();
+    Source* s = sources[es].get();
     IndependentSource* is = dynamic_cast<IndependentSource*>(s);
     Discrete* energy = dynamic_cast<Discrete*>(is->energy());
     const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
@@ -1180,7 +1184,7 @@ void FlatSourceDomain::flatten_xs()
   }
 }
 
-void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
+void FlatSourceDomain::set_global_adjoint_sources(const vector<double>& forward_flux)
 {
   // Set the external source to 1/forward_flux. If the forward flux is negative
   // or zero, set the adjoint source to zero, as this is likely a very small
@@ -1217,6 +1221,11 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
     }
   }
 }
+
+void FlatSourceDomain::set_local_adjoint_sources()
+{
+  // Set the external source to user-specified adjoint sources.
+  convert_external_sources(true);
 
 void FlatSourceDomain::transpose_scattering_matrix()
 {

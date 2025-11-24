@@ -45,6 +45,8 @@ namespace model {
 
 vector<unique_ptr<Source>> external_sources;
 
+vector<unique_ptr<Source>> adjoint_sources;
+
 DiscreteIndex external_sources_probability;
 
 } // namespace model

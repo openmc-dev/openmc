@@ -14,11 +14,16 @@ mat.set_density('g/cm3', 0.001)  # Very low density for long free paths
 materials = openmc.Materials([mat])
 materials.export_to_xml()
 
-# Create geometry - simple box
+# Create geometry - simple box with vacuum boundary conditions
+xmin = openmc.XPlane(-100, boundary_type='vacuum')
+xmax = openmc.XPlane(100, boundary_type='vacuum')
+ymin = openmc.YPlane(-100, boundary_type='vacuum')
+ymax = openmc.YPlane(100, boundary_type='vacuum')
+zmin = openmc.ZPlane(-100, boundary_type='vacuum')
+zmax = openmc.ZPlane(100, boundary_type='vacuum')
+
 box = openmc.Cell()
-box.region = -openmc.XPlane(100) & +openmc.XPlane(-100) & \
-             -openmc.YPlane(100) & +openmc.YPlane(-100) & \
-             -openmc.ZPlane(100) & +openmc.ZPlane(-100)
+box.region = -xmax & +xmin & -ymax & +ymin & -zmax & +zmin
 box.fill = mat
 
 root = openmc.Universe(cells=[box])

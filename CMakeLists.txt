@@ -580,9 +580,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================
-
-configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
-configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
+include(CMakePackageConfigHelpers)
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 install(TARGETS openmc libopenmc
@@ -596,10 +594,24 @@ install(EXPORT openmc-targets
   NAMESPACE OpenMC::
   DESTINATION ${INSTALL_CONFIGDIR})
 
+configure_package_config_file(
+    "cmake/OpenMCConfig.cmake.in"
+    "${CMAKE_BINARY_DIR}/OpenMCConfig.cmake"
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+)
+
+write_basic_package_version_file(
+    "${CMAKE_BINARY_DIR}/OpenMCConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
 install(FILES
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
-  DESTINATION ${INSTALL_CONFIGDIR})
+    "${CMAKE_BINARY_DIR}/OpenMCConfig.cmake"
+    "${CMAKE_BINARY_DIR}/OpenMCConfigVersion.cmake"
+    DESTINATION "${INSTALL_CONFIGDIR}"
+)
+
 install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

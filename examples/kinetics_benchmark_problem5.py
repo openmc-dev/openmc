@@ -99,8 +99,6 @@ print(f"  Particles per batch: {settings.particles}")
 print(f"  Total batches: {settings.batches}")
 print(f"  Inactive batches: {settings.inactive}")
 print(f"  Kinetics calculations: ENABLED")
-print(f"")
-print(f"Note: For sub-critical systems, convergence may require more particles")
 
 # =============================================================================
 # Run Simulation

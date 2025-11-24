@@ -24,8 +24,6 @@ Author: William Zywiec (willzywiec@gmail.com)
 import openmc
 import numpy as np
 
-openmc.config['cross_sections'] = '/home/zywiec1/openmc/endfb80-hdf5/cross_sections.xml'
-
 print("=" * 70)
 print("Problem 1: Godiva (Near Critical, Fast Neutron System)")
 print("=" * 70)

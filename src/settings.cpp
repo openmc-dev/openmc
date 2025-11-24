@@ -119,6 +119,10 @@ array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
 bool gravity_enabled {false};
 array<double, 3> gravity_accel {0.0, 0.0, -980.0}; // Default: Earth gravity in -z
 
+// Bloch-Airy quantum gravitational bound state settings
+bool bloch_airy_enabled {false};
+double bloch_airy_energy_threshold {300.0e-9}; // Default: 300 neV
+
 int ifp_n_generation {-1};
 IFPParameter ifp_parameter {IFPParameter::None};
 int legendre_to_tabular_points {C_NONE};
@@ -736,6 +740,16 @@ void read_settings_xml(pugi::xml_node root)
         fatal_error("Gravity acceleration must have 3 components (x, y, z).");
       }
       gravity_accel = {accel[0], accel[1], accel[2]};
+    }
+  }
+
+  // Bloch-Airy quantum gravitational bound state settings
+  if (check_for_node(root, "bloch_airy")) {
+    auto node_bloch_airy = root.child("bloch_airy");
+    bloch_airy_enabled = get_node_value_bool(node_bloch_airy, "enabled");
+    if (check_for_node(node_bloch_airy, "energy_threshold")) {
+      bloch_airy_energy_threshold =
+        std::stod(get_node_value(node_bloch_airy, "energy_threshold"));
     }
   }
 

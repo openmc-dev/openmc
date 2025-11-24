@@ -6,6 +6,7 @@
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
+#include "openmc/bloch_airy.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/collision_track.h"
@@ -102,13 +103,63 @@ void Particle::apply_gravity(double dt, double distance)
   // Store initial position for energy calculation
   Position r_initial = r();
 
-  // Apply gravitational position correction
-  // The particle has already moved in a straight line by distance
-  // Now add the gravitational deflection: r_correction = 0.5 * g * dt^2
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r().x += 0.5 * settings::gravity_accel[0] * dt * dt;
-    coord(j).r().y += 0.5 * settings::gravity_accel[1] * dt * dt;
-    coord(j).r().z += 0.5 * settings::gravity_accel[2] * dt * dt;
+  // Check if Bloch-Airy quantum effects should be applied
+  bool use_bloch_airy = should_apply_bloch_airy(
+    static_cast<int>(this->type()), this->E());
+
+  if (use_bloch_airy) {
+    // Apply Bloch-Airy quantum gravitational model for ultracold neutrons
+    // The height distribution follows |ψ_n(z)|² instead of classical trajectory
+
+    // Calculate gravity magnitude
+    double g_mag = std::sqrt(
+      settings::gravity_accel[0] * settings::gravity_accel[0] +
+      settings::gravity_accel[1] * settings::gravity_accel[1] +
+      settings::gravity_accel[2] * settings::gravity_accel[2]);
+
+    // Calculate gravitational length scale z₀
+    double z0 = gravitational_length_scale(mass, g_mag);
+
+    // Determine quantum state from current energy
+    int n = determine_quantum_state(this->E(), mass, g_mag);
+
+    // Sample height from quantum probability distribution |ψ_n(z)|²
+    uint64_t seed = current_seed();
+    double z_quantum = sample_quantum_height(n, z0, &seed);
+
+    // Determine gravity direction (normalized)
+    Direction g_dir;
+    if (g_mag > 0.0) {
+      g_dir.x = settings::gravity_accel[0] / g_mag;
+      g_dir.y = settings::gravity_accel[1] / g_mag;
+      g_dir.z = settings::gravity_accel[2] / g_mag;
+    } else {
+      g_dir = {0.0, 0.0, -1.0};
+    }
+
+    // Apply quantum height offset perpendicular to gravity
+    // The quantum sampling gives height above the mirror surface
+    // We modify the position component along the gravity direction
+    for (int j = 0; j < n_coord(); ++j) {
+      // Add the quantum height perturbation (opposite to gravity direction)
+      coord(j).r().x -= g_dir.x * z_quantum;
+      coord(j).r().y -= g_dir.y * z_quantum;
+      coord(j).r().z -= g_dir.z * z_quantum;
+    }
+
+    // Quantize energy to the nearest quantum level
+    double E_quantum = quantum_energy_level(n, mass, g_mag);
+    E() = E_quantum;
+
+  } else {
+    // Apply classical gravitational position correction
+    // The particle has already moved in a straight line by distance
+    // Now add the gravitational deflection: r_correction = 0.5 * g * dt^2
+    for (int j = 0; j < n_coord(); ++j) {
+      coord(j).r().x += 0.5 * settings::gravity_accel[0] * dt * dt;
+      coord(j).r().y += 0.5 * settings::gravity_accel[1] * dt * dt;
+      coord(j).r().z += 0.5 * settings::gravity_accel[2] * dt * dt;
+    }
   }
 
   // Update velocity direction for next step
@@ -149,7 +200,10 @@ void Particle::apply_gravity(double dt, double distance)
 
     // Energy conservation: E_kinetic_new = E_kinetic_old - dE_potential
     // (losing kinetic energy when moving against gravity)
-    E() -= dE_potential_eV;
+    // Skip energy update if using Bloch-Airy (energy already quantized)
+    if (!use_bloch_airy) {
+      E() -= dE_potential_eV;
+    }
 
     // Check if particle energy became negative or too low
     if (E() < settings::energy_cutoff[static_cast<int>(type())]) {

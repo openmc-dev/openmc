@@ -85,6 +85,16 @@ class Settings:
         and 'acceleration' (list of 3 floats) to set the gravity vector in
         cm/s^2. For example: {'enabled': True, 'acceleration': [0.0, 0.0, -980.0]}
         applies Earth's gravity in the -z direction.
+    bloch_airy : dict
+        Dictionary defining Bloch-Airy quantum gravitational bound state settings
+        for ultracold neutron (UCN) simulations. The dictionary may have the
+        following keys: 'enabled' (bool) to enable/disable the Bloch-Airy model,
+        and 'energy_threshold' (float) to set the maximum neutron energy in eV
+        below which quantum effects are applied (default: 300e-9 eV = 300 neV).
+        When enabled, neutrons below the energy threshold will have their
+        trajectories modified to follow quantum probability distributions based
+        on Airy functions, and surface reflections will enforce quantized states.
+        Requires gravity to also be enabled.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -446,6 +456,9 @@ class Settings:
 
         # Gravity subelement
         self._gravity = None
+
+        # Bloch-Airy quantum gravitational states subelement
+        self._bloch_airy = None
 
         # Uniform fission source subelement
         self._ufs_mesh = None
@@ -1107,6 +1120,27 @@ class Settings:
         self._gravity = gravity
 
     @property
+    def bloch_airy(self) -> dict:
+        return self._bloch_airy
+
+    @bloch_airy.setter
+    def bloch_airy(self, bloch_airy: dict):
+        if not isinstance(bloch_airy, Mapping):
+            msg = f'Unable to set bloch_airy from "{bloch_airy}" which is not a '\
+                'Python dictionary'
+            raise ValueError(msg)
+
+        # Validate bloch_airy dictionary
+        if 'enabled' in bloch_airy:
+            cv.check_type('bloch_airy enabled', bloch_airy['enabled'], bool)
+        if 'energy_threshold' in bloch_airy:
+            cv.check_type('bloch_airy energy_threshold', bloch_airy['energy_threshold'], Real)
+            if bloch_airy['energy_threshold'] <= 0:
+                raise ValueError('Bloch-Airy energy threshold must be positive')
+
+        self._bloch_airy = bloch_airy
+
+    @property
     def ufs_mesh(self) -> RegularMesh:
         return self._ufs_mesh
 
@@ -1694,6 +1728,16 @@ class Settings:
                 accel = self._gravity['acceleration']
                 subelement.text = ' '.join(str(x) for x in accel)
 
+    def _create_bloch_airy_subelement(self, root):
+        if self._bloch_airy is not None:
+            element = ET.SubElement(root, "bloch_airy")
+            if 'enabled' in self._bloch_airy:
+                subelement = ET.SubElement(element, "enabled")
+                subelement.text = str(self._bloch_airy['enabled']).lower()
+            if 'energy_threshold' in self._bloch_airy:
+                subelement = ET.SubElement(element, "energy_threshold")
+                subelement.text = str(self._bloch_airy['energy_threshold'])
+
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
             return
@@ -2221,6 +2265,17 @@ class Settings:
             if accel_text is not None:
                 self.gravity['acceleration'] = [float(x) for x in accel_text.split()]
 
+    def _bloch_airy_from_xml_element(self, root):
+        elem = root.find('bloch_airy')
+        if elem is not None:
+            self.bloch_airy = {}
+            enabled_text = get_text(elem, 'enabled')
+            if enabled_text is not None:
+                self.bloch_airy['enabled'] = enabled_text in ('true', '1')
+            threshold_text = get_text(elem, 'energy_threshold')
+            if threshold_text is not None:
+                self.bloch_airy['energy_threshold'] = float(threshold_text)
+
     def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
         if text is None:
@@ -2508,6 +2563,7 @@ class Settings:
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
         self._create_gravity_subelement(element)
+        self._create_bloch_airy_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
@@ -2624,6 +2680,7 @@ class Settings:
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
         settings._gravity_from_xml_element(elem)
+        settings._bloch_airy_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)

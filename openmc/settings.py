@@ -786,12 +786,24 @@ class Settings:
             sp['batches'] = [int(x) for x in batches]
         if 'overwrite_latest' in statepoint:
             val = statepoint['overwrite_latest']
+            # Accept bool, int, or string representations (e.g., "true", "false", "2")
             if isinstance(val, bool):
                 sp['overwrite_latest'] = 1 if val else 0
             elif isinstance(val, Integral):
                 sp['overwrite_latest'] = int(val)
+            elif isinstance(val, str):
+                sval = val.strip().lower()
+                if sval in ('true', 't'):
+                    sp['overwrite_latest'] = 1
+                elif sval in ('false', 'f'):
+                    sp['overwrite_latest'] = 0
+                else:
+                    try:
+                        sp['overwrite_latest'] = int(sval)
+                    except ValueError:
+                        raise ValueError("statepoint['overwrite_latest'] must be bool, int, or numeric string")
             else:
-                raise ValueError("statepoint['overwrite_latest'] must be bool or int")
+                raise ValueError("statepoint['overwrite_latest'] must be bool, int, or numeric string")
         self._statepoint = sp
 
     @property
@@ -819,22 +831,9 @@ class Settings:
                                  "setting sourcepoint options.")
         self._sourcepoint = sourcepoint
 
-    @property
-    def statepoint(self) -> dict:
-        return self._statepoint
-
-    @statepoint.setter
-    def statepoint(self, statepoint: dict):
-        cv.check_type('statepoint options', statepoint, Mapping)
-        for key, value in statepoint.items():
-            if key == 'batches':
-                cv.check_type('statepoint batches', value, Iterable, Integral)
-                for batch in value:
-                    cv.check_greater_than('statepoint batch', batch, 0)
-            else:
-                raise ValueError(f"Unknown key '{key}' encountered when "
-                                 "setting statepoint options.")
-        self._statepoint = statepoint
+    # The `statepoint` property (defined earlier) handles 'batches' and
+    # 'overwrite_latest' and normalizes values. This duplicate definition
+    # was removed to avoid shadowing the full implementation above.
 
     @property
     def surf_source_read(self) -> dict:

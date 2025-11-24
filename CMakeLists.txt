@@ -602,7 +602,7 @@ configure_package_config_file(
 
 write_basic_package_version_file(
     "${CMAKE_BINARY_DIR}/OpenMCConfigVersion.cmake"
-    VERSION ${PROJECT_VERSION}
+    VERSION ${OPENMC_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
 

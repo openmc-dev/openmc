@@ -225,35 +225,35 @@ log_success "OpenMC Python bindings installed"
 
 log_info "Configuring environment..."
 
-# Create environment setup script
+# Create environment setup script with absolute paths
 ENV_SCRIPT="${SCRIPT_DIR}/openmc_env.sh"
-cat > "${ENV_SCRIPT}" << 'EOF'
+cat > "${ENV_SCRIPT}" << EOF
 #!/bin/bash
 # OpenMC environment setup script
 # Source this file to set up the OpenMC environment:
 #   source openmc_env.sh
 
 # Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 
 # Activate Python virtual environment
-if [[ -d "${SCRIPT_DIR}/.env" ]]; then
-    source "${SCRIPT_DIR}/.env/bin/activate"
+if [[ -d "\${SCRIPT_DIR}/.env" ]]; then
+    source "\${SCRIPT_DIR}/.env/bin/activate"
     echo "Python virtual environment activated"
 else
-    echo "Warning: Virtual environment not found at ${SCRIPT_DIR}/.env"
+    echo "Warning: Virtual environment not found at \${SCRIPT_DIR}/.env"
 fi
 
-# Add OpenMC binary to PATH
-export PATH="${HOME}/.local/bin:${PATH}"
+# Add OpenMC binary to PATH (using absolute path)
+export PATH="${INSTALL_PREFIX}/bin:\${PATH}"
 
-# Set cross section data path
-export OPENMC_CROSS_SECTIONS="${HOME}/openmc/endfb80-hdf5/cross_sections.xml"
+# Set cross section data path (using absolute path)
+export OPENMC_CROSS_SECTIONS="${XS_DATA_DIR}/cross_sections.xml"
 
 echo "OpenMC environment configured:"
-echo "  OpenMC executable: $(which openmc 2>/dev/null || echo 'not found in PATH')"
-echo "  Cross sections: ${OPENMC_CROSS_SECTIONS}"
-echo "  Python: $(which python)"
+echo "  OpenMC executable: \$(which openmc 2>/dev/null || echo 'not found in PATH')"
+echo "  Cross sections: \${OPENMC_CROSS_SECTIONS}"
+echo "  Python: \$(which python)"
 EOF
 
 chmod +x "${ENV_SCRIPT}"

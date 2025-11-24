@@ -551,25 +551,25 @@ void print_results()
       if (n > 3) {
         double k_combined[2];
         openmc_get_keff(k_combined);
-        fmt::print(" Combined k-effective        = {:.5f} +/- {:.5f}\n",
+        fmt::print(" Combined k-effective       = {:.5f} +/- {:.5f}\n",
           k_combined[0], k_combined[1]);
       }
     }
     std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::LEAKAGE, 0), n);
     fmt::print(
-      " Leakage Fraction            = {:.5f} +/- {:.5f}\n", mean, t_n1 * stdev);
+      " Leakage Fraction           = {:.5f} +/- {:.5f}\n", mean, t_n1 * stdev);
 
     // Print delayed neutron kinetics parameters if calculated
     if (settings::run_mode == RunMode::EIGENVALUE &&
         settings::calculate_prompt_k) {
-      fmt::print(" k-prompt                    = {:.5f} +/- {:.5f}\n",
+      fmt::print(" k-prompt                   = {:.5f} +/- {:.5f}\n",
         simulation::keff_prompt, t_n1 * simulation::keff_prompt_std);
-      fmt::print(" Beta-effective              = {:.5f} +/- {:.5f}\n",
+      fmt::print(" Beta-effective             = {:.5f} +/- {:.5f}\n",
         simulation::beta_eff, t_n1 * simulation::beta_eff_std);
       if (settings::calculate_alpha) {
-        fmt::print(" Prompt Neutron Lifetime     = {:.5e} +/- {:.5e} seconds\n",
+        fmt::print(" Prompt Neutron Lifetime    = {:.5e} +/- {:.5e} seconds\n",
           simulation::prompt_gen_time, t_n1 * simulation::prompt_gen_time_std);
-        fmt::print(" Alpha Eigenvalue            = {:.5e} +/- {:.5e} 1/seconds\n",
+        fmt::print(" Alpha Eigenvalue           = {:.5e} +/- {:.5e} 1/seconds\n",
           simulation::alpha_k_based, t_n1 * simulation::alpha_k_based_std);
       }
     }

@@ -586,12 +586,15 @@ class Material(IDManagerMixin):
         ----------
         components : dict of str to float or dict
             Dictionary mapping element or nuclide names to their atom or weight
-            percent. To specify enrichment of an element, the entry of
-            ``components`` for that element must instead be a dictionary
-            containing the keyword arguments as well as a value for
-            ``'percent'``
+            percent. To specify additional customization the dictionary value
+            can be a dictionary with keys that are passed to add_element or
+            add_nuclide. This allows percent_type to be specified for components,
+            and also enrichment, enrichment_target, and percent to be specified
+            for elements.
         percent_type : {'ao', 'wo'}
-            'ao' for atom percent and 'wo' for weight percent
+            'ao' for atom percent and 'wo' for weight percent applied to all
+            elements / nuclides in the components dictionary which don't have
+            a specified percent_type. Defaults to 'ao'
 
         Examples
         --------
@@ -599,7 +602,8 @@ class Material(IDManagerMixin):
         >>> components  = {'Li': {'percent': 1.0,
         >>>                       'enrichment': 60.0,
         >>>                       'enrichment_target': 'Li7'},
-        >>>                'Fl': 1.0,
+        >>>                'Fl': {'percent': 1.0,
+        >>>                       'percent_type': 'wo'},
         >>>                'Be6': 0.5}
         >>> mat.add_components(components)
 
@@ -616,7 +620,8 @@ class Material(IDManagerMixin):
                     raise ValueError("An entry in the dictionary does not have "
                                      "a required key: 'percent'")
 
-            params['percent_type'] = percent_type
+            if 'percent_type' not in params.keys():
+                params['percent_type'] = percent_type
 
             # check if nuclide
             if not component.isalpha():

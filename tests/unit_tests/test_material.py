@@ -42,12 +42,20 @@ def test_add_components():
                         'enrichment': 4.5},
                   'Li': {'percent': 1.0,
                          'enrichment': 60.0,
-                         'enrichment_target': 'Li7'},
+                         'enrichment_target': 'Li7',
+                         'percent_type': 'wo'},
                   'H': {'percent': 1.0,
                         'enrichment': 50.0,
                         'enrichment_target': 'H2',
                         'enrichment_type': 'wo'}}
     m.add_components(components)
+
+    for nuc in m.nuclides:
+        if nuc.name in ['Li6', 'Li7']:
+            assert nuc.percent_type == 'wo'
+        else:
+            assert nuc.percent_type == 'ao'
+
     with pytest.raises(ValueError):
         m.add_components({'U': {'percent': 1.0,
                                 'enrichment': 100.0}})

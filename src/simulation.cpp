@@ -443,6 +443,24 @@ void finalize_batch()
     }
   }
 
+  // Write a continuously-overwritten running state point(s) if requested.
+  if (settings::state_latest > 0 && !settings::cmfd_run) {
+    bool b = false;
+    if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
+        settings::source_write && !settings::source_separate) {
+      b = (settings::run_mode == RunMode::EIGENVALUE);
+    }
+    int n = settings::state_latest;
+    std::string filename;
+    if (n == 1) {
+      filename = settings::path_output + "statepoint.running.h5";
+    } else {
+      int idx = ((simulation::current_batch - 1) % n) + 1;
+      filename = fmt::format("{}statepoint.running.{}.h5", settings::path_output, idx);
+    }
+    openmc_statepoint_write(filename.c_str(), &b);
+  }
+
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // Write out a separate source point if it's been specified for this batch
     if (contains(settings::sourcepoint_batch, simulation::current_batch) &&

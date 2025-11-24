@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<materials>
+  <material id="1" density="1.0">
+    <nuclide name="H1" />
+  </material>
+</materials>

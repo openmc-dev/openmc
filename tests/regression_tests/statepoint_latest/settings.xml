@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<settings>
+
+  <state_point batches="0" overwrite_latest="2"/>
+
+  <run_mode>eigenvalue</run_mode>
+  <batches>4</batches>
+  <inactive>0</inactive>
+  <particles>100</particles>
+
+  <source>
+    <space type="box">
+      <parameters>-1 -1 -1  1  1  1</parameters>
+    </space>
+  </source>
+
+</settings>

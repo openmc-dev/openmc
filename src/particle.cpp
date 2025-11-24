@@ -124,8 +124,8 @@ void Particle::apply_gravity(double dt, double distance)
     int n = determine_quantum_state(this->E(), mass, g_mag);
 
     // Sample height from quantum probability distribution |ψ_n(z)|²
-    uint64_t seed = current_seed();
-    double z_quantum = sample_quantum_height(n, z0, &seed);
+    uint64_t* seed = current_seed();
+    double z_quantum = sample_quantum_height(n, z0, seed);
 
     // Determine gravity direction (normalized)
     Direction g_dir;

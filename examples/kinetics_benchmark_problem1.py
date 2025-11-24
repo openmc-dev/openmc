@@ -104,6 +104,7 @@ print(f"  Kinetics calculations: ENABLED")
 print("\n" + "=" * 70)
 print("Running simulation...")
 print("=" * 70)
+print("")
 
 # Uncomment to run the simulation
 openmc.run()

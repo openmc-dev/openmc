@@ -274,12 +274,14 @@ if(OPENMC_FORCE_VENDORED_LIBS)
   add_subdirectory(vendor/xtl)
   set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
   add_subdirectory(vendor/xtensor)
+  set(OPENMC_USE_VENDORED_XTENSOR TRUE)
 else()
   find_package_write_status(xtensor)
   if (NOT xtensor_FOUND)
     add_subdirectory(vendor/xtl)
     set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
     add_subdirectory(vendor/xtensor)
+    set(OPENMC_USE_VENDORED_XTENSOR TRUE)
   endif()
 endif()
 
@@ -497,6 +499,14 @@ endif()
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
                       xtensor fmt::fmt ${CMAKE_DL_LIBS})
+
+# Mark vendored xtl/xtensor include directories as SYSTEM to suppress warnings
+# from third-party headers (e.g., -Wstringop-overflow in xsequence.hpp)
+if(OPENMC_USE_VENDORED_XTENSOR)
+  target_include_directories(libopenmc SYSTEM PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/xtl/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/xtensor/include)
+endif()
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)

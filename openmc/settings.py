@@ -262,11 +262,8 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write statepoint files
-        :overwrite_latest: bool or int
-            If present and true, write a continuously-overwritten running
-            statepoint file after every batch. If an integer N &gt; 1 is
-            provided, keep N rotating running statepoint files named
-            ``statepoint.running.1.h5`` ... ``statepoint.running.N.h5``.
+            Positive integers write statepoints at specified batches.
+            Negative integer -N keeps running statepoints for the last N batches.
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 
@@ -1496,15 +1493,6 @@ class Settings:
                 subelement = ET.SubElement(element, "batches")
                 subelement.text = ' '.join(
                     str(x) for x in self._statepoint['batches'])
-            # Overwrite latest / running statepoints
-            if 'overwrite_latest' in self._statepoint:
-                val = self._statepoint['overwrite_latest']
-                subelement = ET.SubElement(element, "overwrite_latest")
-                # If boolean, write lowercase true/false, else write integer
-                if isinstance(val, bool):
-                    subelement.text = str(val).lower()
-                else:
-                    subelement.text = str(val)
 
     def _create_uniform_source_sampling_subelement(self, root):
         if self._uniform_source_sampling is not None:
@@ -1527,11 +1515,6 @@ class Settings:
             if 'write' in self._sourcepoint:
                 subelement = ET.SubElement(element, "write")
                 subelement.text = str(self._sourcepoint['write']).lower()
-
-            # Overwrite latest subelement
-            if 'overwrite' in self._sourcepoint:
-                subelement = ET.SubElement(element, "overwrite_latest")
-                subelement.text = str(self._sourcepoint['overwrite']).lower()
 
             if 'mcpl' in self._sourcepoint:
                 subelement = ET.SubElement(element, "mcpl")
@@ -2025,29 +2008,13 @@ class Settings:
             batches = get_elem_list(elem, "batches", int)
             if batches is not None:
                 self.statepoint['batches'] = batches
-            # Read overwrite_latest which may be boolean or integer
-            val = get_text(elem, 'overwrite_latest')
-            if val is not None:
-                if val in ('true', '1'):
-                    self.statepoint['overwrite_latest'] = 1
-                elif val in ('false', '0'):
-                    self.statepoint['overwrite_latest'] = 0
-                else:
-                    try:
-                        self.statepoint['overwrite_latest'] = int(val)
-                    except ValueError:
-                        raise ValueError(
-                            "Invalid value for <state_point><overwrite_latest>: '" + val +
-                            "'. Provide true/false or an integer.")
 
     def _sourcepoint_from_xml_element(self, root):
         elem = root.find('source_point')
         if elem is not None:
-            for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
-                if key in ('separate', 'write', 'mcpl', 'overwrite_latest'):
+            for key in ('separate', 'write', 'batches', 'mcpl'):
+                if key in ('separate', 'write', 'mcpl'):
                     value = get_text(elem, key) in ('true', '1')
-                    if key == 'overwrite_latest':
-                        key = 'overwrite'
                 else:
                     value = get_elem_list(elem, key, int)
                 if value is not None:

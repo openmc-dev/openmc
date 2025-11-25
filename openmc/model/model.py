@@ -1687,24 +1687,41 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
-    @staticmethod
-    def _create_uniform_energy_source(
+    def _create_mgxs_sources(
+        self,
         groups: openmc.mgxs.EnergyGroups,
-    ) -> openmc.stats.Discrete:
-        """Create a discrete energy distribution source that is uniform over the
-        energy groups provided.
+        spatial_dist: openmc.stats.Spatial,
+        source_energy: openmc.stats.Univariate | None = None,
+    ) -> list[openmc.IndependentSource]:
+        """Create a list of independent sources to use with MGXS generation. There
+        may be multiple types of sources depending on user settings.
 
         Parameters
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
+        spatial_dist : openmc.stats.Spatial
+            Spatial distribution to use for all sources.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data. In all cases,
+            a discrete source that is uniform over all energy groups is created
+            (strength = 0.01) to ensure that total cross sections are generated
+            for all energy groups. In the case that the user has provided a
+            source_energy distribution as an argument, an additional source
+            (strength = 0.99) is created using that energy distribution. If the
+            user has not provided a source_energy distribution, but the model
+            has sources defined, and all of those sources are of
+            IndependentSource type, then additional sources are created based on
+            the model's existing sources, keeping their energy distributions but
+            replacing their spatial/angular distributions, with their combined
+            strength being 0.99.
         
         Returns
         -------
-        openmc.stats.Discrete
-            A discrete energy distribution source that is uniform over the
-            energy groups provided.
+        list[openmc.IndependentSource]
+            A list of independent sources to use for MGXS generation.
         """
+        # Make a discrete source that is uniform over the bins of the group structure
         midpoints = []
         strengths = []
         for i in range(groups.num_groups):
@@ -1712,7 +1729,40 @@ class Model:
             midpoints.append((bounds[0] + bounds[1]) / 2.0)
             strengths.append(1.0)
 
-        return openmc.stats.Discrete(x=midpoints, p=strengths)
+        uniform_energy = openmc.stats.Discrete(x=midpoints, p=strengths)
+        uniform_distribution = openmc.IndependentSource(spatial_dist, energy=uniform_energy, strength=0.01)
+        sources = [uniform_distribution]
+
+        # If the user provided an energy distribution, use that
+        if source_energy is not None:
+            user_energy = openmc.IndependentSource(
+                space=spatial_dist, energy=source_energy, strength=0.99)
+            sources.append(user_energy)
+
+        # If the user did not provide an energy distribution, create sources based on what is
+        # in their model, keeping the energy spectrum but replacing the spatial/angular distributions.
+        # We only do this if ALL sources are of IndependentSource type, as we can't pull the energy
+        # distribution from e.g. CompiledSource or FileSource types.
+        else:
+            if self.source is not None:
+                all_independent = True
+                for src in self.source:
+                    if not isinstance(src, openmc.IndependentSource):
+                        all_independent = False
+                        break
+                
+                if all_independent:
+                    n_user_sources = len(self.source)
+                    for src in self.source:
+                        # Create a new IndependentSource with adjusted strength, space, and angle
+                        user_source = openmc.IndependentSource(
+                            space=spatial_dist,
+                            energy=src.energy,
+                            strength=0.99 / n_user_sources
+                        )
+                        sources.append(user_source)
+
+        return sources
 
     def _generate_infinite_medium_mgxs(
         self,
@@ -1744,12 +1794,18 @@ class Model:
         directory : str
             Directory to run the simulation in, so as to contain XML files.
         source_energy : openmc.stats.Univariate, optional
-            Energy distribution to use when generating MGXS data. If None, a
-            uniform distribution over all energy groups is used. If provided
-            and used, it will be used 99% of the time to sample source particle
-            energies, with the remaining 1% uniformly distributed over all energy
-            groups, to ensure total cross sections are generated for all energy
-            groups.
+            Energy distribution to use when generating MGXS data. In all cases,
+            a discrete source that is uniform over all energy groups is created
+            (strength = 0.01) to ensure that total cross sections are generated
+            for all energy groups. In the case that the user has provided a
+            source_energy distribution as an argument, an additional source
+            (strength = 0.99) is created using that energy distribution. If the
+            user has not provided a source_energy distribution, but the model
+            has sources defined, and all of those sources are of
+            IndependentSource type, then additional sources are created based on
+            the model's existing sources, keeping their energy distributions but
+            replacing their spatial/angular distributions, with their combined
+            strength being 0.99.
         """
         mgxs_sets = []
         for material in self.materials:
@@ -1764,20 +1820,11 @@ class Model:
             model.settings.run_mode = 'fixed source'
             model.settings.create_fission_neutrons = False
 
-            # Make a discrete source that is uniform over the bins of the group structure
-            energy_distribution = self._create_uniform_energy_source(groups)
-            uniform_distribution = openmc.IndependentSource(
-                space=openmc.stats.Point(), energy=energy_distribution, strength=0.01)
-            
-            sources = [uniform_distribution]
-
-            # If the user also provided an energy distribution, add that as well
-            if source_energy is not None:
-                user_energy = openmc.IndependentSource(
-                    space=openmc.stats.Point(), energy=source_energy, strength=0.99)
-                sources.append(user_energy)
-            
-            model.settings.source = sources
+            model.settings.source = self._create_mgxs_sources(
+                groups,
+                spatial_dist=openmc.stats.Point(),
+                source_energy=source_energy
+            )
 
             model.settings.output = {'summary': True, 'tallies': False}
 
@@ -1954,12 +2001,18 @@ class Model:
         directory : str
             Directory to run the simulation in, so as to contain XML files.
         source_energy : openmc.stats.Univariate, optional
-            Energy distribution to use when generating MGXS data. If None, a
-            uniform distribution over all energy groups is used. If provided
-            and used, it will be used 99% of the time to sample source particle
-            energies, with the remaining 1% uniformly distributed over all energy
-            groups, to ensure total cross sections are generated for all energy
-            groups.
+            Energy distribution to use when generating MGXS data. In all cases,
+            a discrete source that is uniform over all energy groups is created
+            (strength = 0.01) to ensure that total cross sections are generated
+            for all energy groups. In the case that the user has provided a
+            source_energy distribution as an argument, an additional source
+            (strength = 0.99) is created using that energy distribution. If the
+            user has not provided a source_energy distribution, but the model
+            has sources defined, and all of those sources are of
+            IndependentSource type, then additional sources are created based on
+            the model's existing sources, keeping their energy distributions but
+            replacing their spatial/angular distributions, with their combined
+            strength being 0.99.
         """
         model = openmc.Model()
         model.materials = self.materials
@@ -1975,20 +2028,13 @@ class Model:
         # Stochastic slab geometry
         model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
             model.materials)
-
-        # Make a discrete source that is uniform over the bins of the group structure
-        uniform_energy = self._create_uniform_energy_source(groups)
-        uniform_distribution = openmc.IndependentSource(
-            space=spatial_distribution, energy=uniform_energy, strength=0.01)
-        sources = [uniform_distribution]
-
-        # If the user also provided an energy distribution, add that as well
-        if source_energy is not None:
-            user_energy = openmc.IndependentSource(
-                space=spatial_distribution, energy=source_energy, strength=0.99)
-            sources.append(user_energy)
-            
-        model.settings.source = sources
+        
+        # Define the sources
+        model.settings.source = self._create_mgxs_sources(
+            groups,
+            spatial_dist=spatial_distribution,
+            source_energy=source_energy
+        )
 
         model.settings.output = {'summary': True, 'tallies': False}
 
@@ -2170,13 +2216,18 @@ class Model:
             Transport correction to apply to the MGXS. Options are None and
             "P0".
         source_energy : openmc.stats.Univariate, optional
-            Energy distribution to use when generating MGXS data. If None, a
-            uniform distribution over all energy groups is used. If provided,
-            this parameter is only used when the MGXS generation method is
-            "infinite_medium" or "stochastic_slab". If provided and used,
-            it will be used 99% of the time to sample source particle energies,
-            with the remaining 1% uniformly distributed over all energy groups,
-            to ensure total cross sections are generated for all energy groups.
+            Energy distribution to use when generating MGXS data. In all cases,
+            a discrete source that is uniform over all energy groups is created
+            (strength = 0.01) to ensure that total cross sections are generated
+            for all energy groups. In the case that the user has provided a
+            source_energy distribution as an argument, an additional source
+            (strength = 0.99) is created using that energy distribution. If the
+            user has not provided a source_energy distribution, but the model
+            has sources defined, and all of those sources are of
+            IndependentSource type, then additional sources are created based on
+            the model's existing sources, keeping their energy distributions but
+            replacing their spatial/angular distributions, with their combined
+            strength being 0.99.
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)

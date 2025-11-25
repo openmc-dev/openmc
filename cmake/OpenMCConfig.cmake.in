@@ -1,15 +1,12 @@
 @PACKAGE_INIT@
 
 include("${CMAKE_CURRENT_LIST_DIR}/OpenMCConfigVersion.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/OpenMCTargets.cmake")
-
 include(CMakeFindDependencyMacro)
 
-get_filename_component(_OPENMC_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
-find_dependency(fmt CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
-find_dependency(pugixml CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
-find_dependency(xtl CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
-find_dependency(xtensor CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+find_dependency(fmt CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
+find_dependency(pugixml CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
+find_dependency(xtl CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
+find_dependency(xtensor CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
 if(@OPENMC_USE_DAGMC@)
   find_dependency(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()
@@ -35,6 +32,8 @@ if(@OPENMC_USE_UWUW@ AND NOT ${DAGMC_BUILD_UWUW})
   message(FATAL_ERROR "UWUW is enabled in OpenMC but the DAGMC installation discovered was not configured with UWUW.")
 endif()
 
+include("${CMAKE_CURRENT_LIST_DIR}/OpenMCTargets.cmake")
+
 if(NOT OpenMC_FIND_QUIETLY)
-    message(STATUS "Found OpenMC: ${PACKAGE_VERSION} (found in ${_OPENMC_PREFIX})")
+    message(STATUS "Found OpenMC: ${PACKAGE_VERSION} (found in ${PACKAGE_PREFIX_DIR})")
 endif()

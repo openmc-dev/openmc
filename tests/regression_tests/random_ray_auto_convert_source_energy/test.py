@@ -17,17 +17,23 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
             os.remove(f)
 
 
+@pytest.mark.parametrize("source_type", ["model", "user"])
 @pytest.mark.parametrize("method", ["stochastic_slab", "infinite_medium"])
-def test_random_ray_auto_convert_source_energy(method):
-    with change_directory(method):
+def test_random_ray_auto_convert_source_energy(method, source_type):
+    dirname = f"{method}/{source_type}"
+    with change_directory(dirname):
         openmc.reset_auto_ids()
 
         # Start with a normal continuous energy model
         model = pwr_pin_cell()
 
-        # Define the source energy distribution. Since this is a PWR pin
-        # cell, we use the default Watt fission spectrum.
-        source_energy = openmc.stats.Watt()
+        # Define the source energy distribution, using different methods
+        source_energy = None
+        if source_type == "model":
+            model.settings.source = openmc.IndependentSource(
+                energy=openmc.stats.Discrete([7.0e6], [1.0]))
+        elif source_type == "user":
+            source_energy = openmc.stats.Discrete([1.0e4], [1.0])
 
         # Convert to a multi-group model
         model.convert_to_multigroup(

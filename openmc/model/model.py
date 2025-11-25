@@ -1748,16 +1748,16 @@ class Model:
         # We only do this if ALL sources are of IndependentSource type, as we can't pull the energy
         # distribution from e.g. CompiledSource or FileSource types.
         else:
-            if self.source is not None:
+            if self.settings.source is not None:
                 all_independent = True
-                for src in self.source:
+                for src in self.settings.source:
                     if not isinstance(src, openmc.IndependentSource):
                         all_independent = False
                         break
                 
                 if all_independent:
-                    n_user_sources = len(self.source)
-                    for src in self.source:
+                    n_user_sources = len(self.settings.source)
+                    for src in self.settings.source:
                         # Create a new IndependentSource with adjusted strength, space, and angle
                         user_source = openmc.IndependentSource(
                             space=spatial_dist,
@@ -1772,7 +1772,7 @@ class Model:
                     watt_source = openmc.IndependentSource(
                         space=spatial_dist, energy=watt_energy, strength=0.99)
                     sources.append(watt_source)
-
+                    
         return sources
 
     def _generate_infinite_medium_mgxs(

@@ -2,41 +2,34 @@ import os
 import glob
 
 import openmc
-
-from tests.testing_harness import PyAPITestHarness
-
-
-class StatepointLatestPyAPITestHarness(PyAPITestHarness):
-    def _test_output_created(self):
-        """Make sure running statepoint files have been created/rotated."""
-        # Call parent checks (writes inputs, etc.)
-        super()._test_output_created()
-        # Expect two running files (batches 3 and 4 when -2 is specified)
-        running = glob.glob(os.path.join(os.getcwd(), 'statepoint.running.*.h5'))
-        assert len(running) == 2, 'Expected 2 running statepoint files to exist.'
+import openmc.examples
 
 
 def test_statepoint_latest_pyapi():
-    # Build a minimal model programmatically
-    model = openmc.Model()
-
-    mat = openmc.Material()
-    mat.set_density('g/cm3', 1.0)
-    mat.add_nuclide('H1', 1.0)
-    model.materials.append(mat)
-
-    # Simple box cell
-    box = openmc.model.RectangularParallelepiped(-10, 10, -10, 10, -10, 10)
-    cell = openmc.Cell(fill=mat, region=box)
-    model.geometry = openmc.Geometry([cell])
-
-    # Settings: small run to exercise feature
-    model.settings.batches = 4
-    model.settings.inactive = 0
-    model.settings.particles = 100
-
-    # Use Python API to keep running statepoints for last 2 batches (using negative batch number)
+    """Test that negative batch numbers keep running statepoints for last N batches."""
+    # Use the PWR pin cell example model which is known to work
+    model = openmc.examples.pwr_pin_cell()
+    
+    # Set batches: need at least 1 inactive + 1 active
+    model.settings.inactive = 1
+    model.settings.batches = 5
+    model.settings.particles = 1000
+    
+    # Enable running statepoints: keep last 2 batches
     model.settings.statepoint = {'batches': -2}
-
-    harness = StatepointLatestPyAPITestHarness('statepoint.4.h5', model)
-    harness.main()
+    
+    # Run the model
+    sp_path = model.run(output=False)
+    
+    # Check that exactly 2 running statepoint files exist
+    running = sorted(glob.glob('statepoint.running.*.h5'))
+    assert len(running) == 2, f'Expected 2 running statepoint files, found {len(running)}: {running}'
+    
+    # Verify the batch numbers are 4 and 5 (last 2 of 5 batches)
+    batch_nums = sorted([int(f.split('.')[2]) for f in running])
+    assert batch_nums == [4, 5], f'Expected batches [4, 5], found {batch_nums}'
+    
+    # Clean up the running statepoint files
+    for f in running:
+        if os.path.exists(f):
+            os.remove(f)

@@ -1687,6 +1687,33 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
+    @staticmethod
+    def _create_uniform_energy_source(
+        groups: openmc.mgxs.EnergyGroups,
+    ) -> openmc.stats.Discrete:
+        """Create a discrete energy distribution source that is uniform over the
+        energy groups provided.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        
+        Returns
+        -------
+        openmc.stats.Discrete
+            A discrete energy distribution source that is uniform over the
+            energy groups provided.
+        """
+        midpoints = []
+        strengths = []
+        for i in range(groups.num_groups):
+            bounds = groups.get_group_bounds(i+1)
+            midpoints.append((bounds[0] + bounds[1]) / 2.0)
+            strengths.append(1.0)
+
+        return openmc.stats.Discrete(x=midpoints, p=strengths)
+
     def _generate_infinite_medium_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
@@ -1694,6 +1721,7 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        source_energy: openmc.stats.Univariate | None = None,
     ):
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
@@ -1715,9 +1743,14 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data. If None, a
+            uniform distribution over all energy groups is used. If provided
+            and used, it will be used 99% of the time to sample source particle
+            energies, with the remaining 1% uniformly distributed over all energy
+            groups, to ensure total cross sections are generated for all energy
+            groups.
         """
-        warnings.warn("The infinite medium method of generating MGXS may hang "
-                      "if a material has a k-infinity > 1.0.")
         mgxs_sets = []
         for material in self.materials:
             model = openmc.Model()
@@ -1729,19 +1762,23 @@ class Model:
             model.settings.batches = 100
             model.settings.particles = nparticles
             model.settings.run_mode = 'fixed source'
+            model.settings.create_fission_neutrons = False
 
             # Make a discrete source that is uniform over the bins of the group structure
-            n_groups = groups.num_groups
-            midpoints = []
-            strengths = []
-            for i in range(n_groups):
-                bounds = groups.get_group_bounds(i+1)
-                midpoints.append((bounds[0] + bounds[1]) / 2.0)
-                strengths.append(1.0)
+            energy_distribution = self._create_uniform_energy_source(groups)
+            uniform_distribution = openmc.IndependentSource(
+                space=openmc.stats.Point(), energy=energy_distribution, strength=0.01)
+            
+            sources = [uniform_distribution]
 
-            energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-            model.settings.source = openmc.IndependentSource(
-                space=openmc.stats.Point(), energy=energy_distribution)
+            # If the user also provided an energy distribution, add that as well
+            if source_energy is not None:
+                user_energy = openmc.IndependentSource(
+                    space=openmc.stats.Point(), energy=source_energy, strength=0.99)
+                sources.append(user_energy)
+            
+            model.settings.source = sources
+
             model.settings.output = {'summary': True, 'tallies': False}
 
             # Geometry
@@ -1891,6 +1928,7 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        source_energy: openmc.stats.Univariate | None = None,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -1915,6 +1953,13 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data. If None, a
+            uniform distribution over all energy groups is used. If provided
+            and used, it will be used 99% of the time to sample source particle
+            energies, with the remaining 1% uniformly distributed over all energy
+            groups, to ensure total cross sections are generated for all energy
+            groups.
         """
         model = openmc.Model()
         model.materials = self.materials
@@ -1924,24 +1969,26 @@ class Model:
         model.settings.inactive = 100
         model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
-        model.settings.run_mode = self.settings.run_mode
+        model.settings.run_mode = 'fixed source'
+        model.settings.create_fission_neutrons = False
 
         # Stochastic slab geometry
         model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
             model.materials)
 
         # Make a discrete source that is uniform over the bins of the group structure
-        n_groups = groups.num_groups
-        midpoints = []
-        strengths = []
-        for i in range(n_groups):
-            bounds = groups.get_group_bounds(i+1)
-            midpoints.append((bounds[0] + bounds[1]) / 2.0)
-            strengths.append(1.0)
+        uniform_energy = self._create_uniform_energy_source(groups)
+        uniform_distribution = openmc.IndependentSource(
+            space=spatial_distribution, energy=uniform_energy, strength=0.01)
+        sources = [uniform_distribution]
 
-        energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-        model.settings.source = [openmc.IndependentSource(
-            space=spatial_distribution, energy=energy_distribution, strength=1.0)]
+        # If the user also provided an energy distribution, add that as well
+        if source_energy is not None:
+            user_energy = openmc.IndependentSource(
+                space=spatial_distribution, energy=source_energy, strength=0.99)
+            sources.append(user_energy)
+            
+        model.settings.source = sources
 
         model.settings.output = {'summary': True, 'tallies': False}
 
@@ -2099,6 +2146,7 @@ class Model:
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
+        source_energy: openmc.stats.Univariate | None = None,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2121,6 +2169,14 @@ class Model:
         correction : str, optional
             Transport correction to apply to the MGXS. Options are None and
             "P0".
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data. If None, a
+            uniform distribution over all energy groups is used. If provided,
+            this parameter is only used when the MGXS generation method is
+            "infinite_medium" or "stochastic_slab". If provided and used,
+            it will be used 99% of the time to sample source particle energies,
+            with the remaining 1% uniformly distributed over all energy groups,
+            to ensure total cross sections are generated for all energy groups.
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
@@ -2150,13 +2206,13 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')

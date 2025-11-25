@@ -644,7 +644,8 @@ model to use these multigroup cross sections. An example is given below::
       nparticles=2000,
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
-      correction=None
+      correction=None,
+      source_energy=None
   )
 
 The most important parameter to set is the ``method`` parameter, which can be
@@ -705,6 +706,22 @@ generation and use an existing library file.
     `diagonal stabilization <https://doi.org/10.1016/j.anucene.2018.10.036>`_
     with a :math:`\rho` default value of 1.0, which can be adjusted with the
     ``settings.random_ray['diagonal_stabilization_rho']`` parameter.
+
+When generating MGXS data with either the ``stochastic_slab`` or
+``infinite_medium`` methods, by default the simulation will use a uniform
+source distribution spread evenly over all energy groups. This ensures
+that all energy groups receive tallies and therefore produce non-zero total
+multigroup cross sections. However, the user may wish to specify a more
+realistic source energy spectrum so as to improve the quality of the generated
+MGXS data. This can be done by providing a :class:`openmc.stats.Univariate`
+distribution as the ``source_energy`` parameter of the
+:meth:`openmc.Model.convert_to_multigroup` method. If provided, it will be used
+99% of the time to sample source energies during MGXS generation. The other 1%
+of the time, energies will be sampled uniformly over all energy groups to ensure
+that all groups receive some tallies. For instance, in D-D fusion simulations,
+the user may wish to provide a discrete 2.45 MeV energy source distribution as::
+
+  source_energy = openmc.stats.Discrete([2.45e6], [1.0])
 
 Ultimately, the methods described above are all just approximations.
 Approximations in the generated MGXS data will fundamentally limit the potential

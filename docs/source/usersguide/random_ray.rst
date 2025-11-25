@@ -708,18 +708,27 @@ generation and use an existing library file.
     ``settings.random_ray['diagonal_stabilization_rho']`` parameter.
 
 When generating MGXS data with either the ``stochastic_slab`` or
-``infinite_medium`` methods, by default the simulation will use a uniform
-source distribution spread evenly over all energy groups. This ensures
-that all energy groups receive tallies and therefore produce non-zero total
-multigroup cross sections. However, the user may wish to specify a more
-realistic source energy spectrum so as to improve the quality of the generated
-MGXS data. This can be done by providing a :class:`openmc.stats.Univariate`
-distribution as the ``source_energy`` parameter of the
-:meth:`openmc.Model.convert_to_multigroup` method. If provided, it will be used
-99% of the time to sample source energies during MGXS generation. The other 1%
-of the time, energies will be sampled uniformly over all energy groups to ensure
-that all groups receive some tallies. For instance, in D-D fusion simulations,
-the user may wish to provide a discrete 2.45 MeV energy source distribution as::
+``infinite_medium`` methods, by default the simulation will use a uniform source
+distribution spread evenly over all energy groups. This ensures that all energy
+groups receive tallies and therefore produce non-zero total multigroup cross
+sections. Additionally, the function will convert any sources in the model into
+simplified spatial sources that retain the original energy distributions.  If
+sources are present, they will be used 99% of the time to sample source energies
+during MGXS generation. The other 1% of the time, energies will be sampled
+uniformly over all energy groups to ensure that all groups receive some tallies.
+However, the user may wish to specify a different source energy spectrum (for
+instance, if they are using a FileSource, such that the energy distribution
+cannot be extracted from the python source object). This can be done by
+providing a :class:`openmc.stats.Univariate` distribution as the
+``source_energy`` parameter of the :meth:`openmc.Model.convert_to_multigroup`
+method. If provided, it will override any sources present in the model and will
+be used 99% of the time to sample source energies during MGXS generation. The
+other 1% of the time, energies will be sampled uniformly over all energy groups
+to ensure that all groups receive some tallies.
+
+For instance, a D-D fusion simulation may involve a complex file source. In this
+case, the user may wish to provide a discrete 2.45 MeV energy source
+distribution for MGXS generation as::
 
   source_energy = openmc.stats.Discrete([2.45e6], [1.0])
 

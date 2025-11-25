@@ -445,9 +445,10 @@ void finalize_batch()
     }
   }
 
-  // Write running statepoints if user specified negative batch(es) in statepoint_batch.
-  // A negative value -N means "keep the last N completed batches as running statepoints".
-  // Check if there's a negative batch number in statepoint_batch.
+  // Write running statepoints if user specified negative batch(es) in
+  // statepoint_batch. A negative value -N means "keep the last N completed
+  // batches as running statepoints". Check if there's a negative batch number
+  // in statepoint_batch.
   int keep_last_n = 0;
   for (int b : settings::statepoint_batch) {
     if (b < 0) {
@@ -476,8 +477,8 @@ void finalize_batch()
     std::string filename = sp_path.string();
     openmc_statepoint_write(filename.c_str(), &b);
 
-    // Prune older running statepoint files so that at most `keep_last_n` remain.
-    // Match files like `statepoint.running.<batch>.h5`.
+    // Prune older running statepoint files so that at most `keep_last_n`
+    // remain. Match files like `statepoint.running.<batch>.h5`.
     try {
       std::vector<std::pair<int, fs::path>> files; // pair(batchnum, path)
       static const std::regex re(R"(^statepoint\.running\.(\d+)\.h5$)");
@@ -505,7 +506,8 @@ void finalize_batch()
         fs::remove(files[i].second, ec);
       }
     } catch (...) {
-      // On any filesystem/regex error, ignore pruning so simulation can continue
+      // On any filesystem/regex error, ignore pruning so simulation can
+      // continue
     }
   }
 

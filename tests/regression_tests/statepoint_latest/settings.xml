@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <settings>
 
-  <state_point batches="0" overwrite_latest="2"/>
+  <state_point>
+    <batches>-2</batches>
+  </state_point>
 
   <run_mode>eigenvalue</run_mode>
   <batches>4</batches>

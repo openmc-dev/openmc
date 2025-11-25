@@ -74,7 +74,6 @@ bool source_write {true};
 bool source_mcpl_write {false};
 bool surf_source_write {false};
 bool surf_mcpl_write {false};
-int state_latest {0};
 bool surf_source_read {false};
 bool survival_biasing {false};
 bool survival_normalization {false};
@@ -823,27 +822,6 @@ void read_settings_xml(pugi::xml_node root)
     } else {
       // If neither were specified, write state point at last batch
       statepoint_batch.insert(n_batches);
-    }
-    if (check_for_node(node_sp, "overwrite_latest")) {
-      // Support boolean or integer values for overwrite_latest. If boolean
-      // true -> keep 1 running statepoint; if integer -> keep that many.
-      std::string tmp = get_node_value(node_sp, "overwrite_latest");
-      // lowercase
-      std::transform(tmp.begin(), tmp.end(), tmp.begin(), [](unsigned char c) {
-        return std::tolower(c);
-      });
-      if (tmp == "true") {
-        state_latest = 1;
-      } else if (tmp == "false") {
-        state_latest = 0;
-      } else {
-        try {
-          state_latest = std::stoi(tmp);
-        } catch (...) {
-          fatal_error("Invalid value for <state_point><overwrite_latest>: '" + tmp + "'. Provide true/false or an integer.");
-        }
-      }
-      if (state_latest < 0) state_latest = 0;
     }
   } else {
     // If no <state_point> tag was present, by default write state point at

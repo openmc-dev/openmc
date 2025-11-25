@@ -11,7 +11,7 @@ class StatepointLatestPyAPITestHarness(PyAPITestHarness):
         """Make sure running statepoint files have been created/rotated."""
         # Call parent checks (writes inputs, etc.)
         super()._test_output_created()
-        # Expect two rotating running files
+        # Expect two running files (batches 3 and 4 when -2 is specified)
         running = glob.glob(os.path.join(os.getcwd(), 'statepoint.running.*.h5'))
         assert len(running) == 2, 'Expected 2 running statepoint files to exist.'
 
@@ -35,8 +35,8 @@ def test_statepoint_latest_pyapi():
     model.settings.inactive = 0
     model.settings.particles = 100
 
-    # Use Python API to enable rotating running statepoints (keep 2)
-    model.settings.statepoint = {'overwrite_latest': 2}
+    # Use Python API to keep running statepoints for last 2 batches (using negative batch number)
+    model.settings.statepoint = {'batches': -2}
 
     harness = StatepointLatestPyAPITestHarness('statepoint.4.h5', model)
     harness.main()

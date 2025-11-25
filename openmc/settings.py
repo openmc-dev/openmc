@@ -770,8 +770,9 @@ class Settings:
         """Dictionary of statepoint options.
 
         Acceptable keys:
-        - 'batches': list of batch integers
-        - 'overwrite_latest': bool or int (see docs)
+        - 'batches': list of batch integers or single integer.
+          Positive integers: write statepoints at specified batches.
+          Negative integer -N: keep running statepoints for the last N batches.
         """
         return self._statepoint
 
@@ -781,29 +782,14 @@ class Settings:
         sp = {}
         if 'batches' in statepoint:
             batches = statepoint['batches']
-            if not isinstance(batches, Sequence):
-                raise ValueError("statepoint['batches'] must be a sequence of ints")
-            sp['batches'] = [int(x) for x in batches]
-        if 'overwrite_latest' in statepoint:
-            val = statepoint['overwrite_latest']
-            # Accept bool, int, or string representations (e.g., "true", "false", "2")
-            if isinstance(val, bool):
-                sp['overwrite_latest'] = 1 if val else 0
-            elif isinstance(val, Integral):
-                sp['overwrite_latest'] = int(val)
-            elif isinstance(val, str):
-                sval = val.strip().lower()
-                if sval in ('true', 't'):
-                    sp['overwrite_latest'] = 1
-                elif sval in ('false', 'f'):
-                    sp['overwrite_latest'] = 0
-                else:
-                    try:
-                        sp['overwrite_latest'] = int(sval)
-                    except ValueError:
-                        raise ValueError("statepoint['overwrite_latest'] must be bool, int, or numeric string")
+            if isinstance(batches, Integral):
+                # Single integer: positive (single batch) or negative (keep last N)
+                sp['batches'] = [int(batches)]
+            elif isinstance(batches, Sequence):
+                # Sequence of integers
+                sp['batches'] = [int(x) for x in batches]
             else:
-                raise ValueError("statepoint['overwrite_latest'] must be bool, int, or numeric string")
+                raise ValueError("statepoint['batches'] must be a sequence or single integer")
         self._statepoint = sp
 
     @property
@@ -830,10 +816,6 @@ class Settings:
                 raise ValueError(f"Unknown key '{key}' encountered when "
                                  "setting sourcepoint options.")
         self._sourcepoint = sourcepoint
-
-    # The `statepoint` property (defined earlier) handles 'batches' and
-    # 'overwrite_latest' and normalizes values. This duplicate definition
-    # was removed to avoid shadowing the full implementation above.
 
     @property
     def surf_source_read(self) -> dict:

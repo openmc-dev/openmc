@@ -92,15 +92,21 @@ bool Particle::create_secondary(
   return true;
 }
 
-void Particle::split(double wgt)
+void Particle::replicate(int n_repl)
 {
+  // Check for valid number of replicas
+  if (n_repl < 1)
+    return;
+
   auto& bank = secondary_bank().emplace_back();
   bank.particle = type();
-  bank.wgt = wgt;
+  bank.wgt = wgt();
   bank.r = r();
   bank.u = u();
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
+
+  bank.n_repl = n_repl;
 
   // Convert signed index to a signed surface ID
   if (surface() == SURFACE_NONE) {
@@ -155,6 +161,17 @@ void Particle::from_source(const SourceSite* src)
     int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
+}
+
+void Particle::from_spendable_source(SourceSite* src, bool& empty_bank)
+{
+  // Pass data from source
+  from_source(src);
+
+  // Reduce the number of remaining particle replicas and determine if all the
+  // replicas are spent
+  src->n_repl--;
+  empty_bank = (src->n_repl == 0);
 }
 
 void Particle::event_calculate_xs()
@@ -435,8 +452,10 @@ void Particle::event_revive_from_secondary()
     if (secondary_bank().empty())
       return;
 
-    from_source(&secondary_bank().back());
-    secondary_bank().pop_back();
+    bool spent;
+    from_spendable_source(&secondary_bank().back(), spent);
+    if (spent)
+      secondary_bank().pop_back();
     n_event() = 0;
     bank_second_E() = 0.0;
 

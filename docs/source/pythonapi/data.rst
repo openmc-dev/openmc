@@ -59,13 +59,14 @@ Core Functions
     :nosignatures:
     :template: myfunction.rst
 
+    ambient_dose_coefficients
     atomic_mass
     atomic_weight
     combine_distributions
     decay_constant
     decay_energy
     decay_photon_energy
-    dose_coefficients
+    effective_dose_coefficients
     gnds_name
     half_life
     isotopes

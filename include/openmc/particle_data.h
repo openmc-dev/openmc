@@ -47,7 +47,7 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
-  int ancestor_event_nuclide {0};
+  int ancestor_nuclide {0};
   int surf_id {SURFACE_NONE};
   ParticleType particle;
 
@@ -529,7 +529,7 @@ private:
   // Iterated Fission Probability
   double lifetime_ {0.0}; //!< neutron lifetime [s]
 
-  int ancestor_event_nuclide_ {0};
+  int ancestor_nuclide_ {0};
 
   int n_collision_ {0};
 
@@ -646,8 +646,8 @@ public:
   const double& lifetime() const { return lifetime_; }
 
   // Particle event nuclide
-  int& ancestor_event_nuclide() { return ancestor_event_nuclide_; }
-  const int& ancestor_event_nuclide() const { return ancestor_event_nuclide_; }
+  int& ancestor_nuclide() { return ancestor_nuclide_; }
+  const int& ancestor_nuclide() const { return ancestor_nuclide_; }
 
   // What event took place, described in greater detail below
   TallyEvent& event() { return event_; }

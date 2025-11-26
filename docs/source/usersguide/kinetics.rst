@@ -84,6 +84,11 @@ total :math:`\beta_{\text{eff}}` specified by providing a 6-group
     # Add DelayedGroupFilter to enable group-wise tallies
     beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, 7)))]
 
+A breakdown on isotopes of the :math:`\beta_{\text{eff}}` can be estimated,
+e.g., for :math:`^{U235}U` and :math:`^{U238}U`, by defining::
+
+    beta_tally.nuclides = ['U235', 'U238']
+
 Here is an example showing how to declare the three available IFP scores in a
 single tally::
 

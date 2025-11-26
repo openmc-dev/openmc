@@ -40,9 +40,6 @@ def test_dose_coefficients():
     with raises(ValueError):
         effective_dose_coefficients('neutron', 'ZZ')
     with raises(ValueError):
-<<<<<<< HEAD:tests/unit_tests/test_data_effective_dose.py
-        effective_dose_coefficients('neutron', data_source='icrp7000')
-=======
         dose_coefficients('neutron', data_source='icrp7000')
     with raises(ValueError) as excinfo:
         dose_coefficients("photons", data_source="icrp116")
@@ -64,4 +61,3 @@ def test_dose_coefficients():
         f"Available particles for icrp116 are: {expected_particles}"
     )
     assert str(excinfo.value) == expected_msg
->>>>>>> upstream/develop:tests/unit_tests/test_data_dose.py

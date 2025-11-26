@@ -40,17 +40,11 @@ else:
 def _dagmc_enabled():
     return c_bool.in_dll(_dll, "DAGMC_ENABLED").value
 
-def _ncrystal_enabled():
-    return c_bool.in_dll(_dll, "NCRYSTAL_ENABLED").value
-
 def _coord_levels():
     return c_int.in_dll(_dll, "n_coord_levels").value
 
 def _libmesh_enabled():
     return c_bool.in_dll(_dll, "LIBMESH_ENABLED").value
-
-def _mcpl_enabled():
-    return c_bool.in_dll(_dll, "MCPL_ENABLED").value
 
 def _uwuw_enabled():
     return c_bool.in_dll(_dll, "UWUW_ENABLED").value

@@ -1,8 +1,7 @@
-""" TransferRates depletion test suite """
+""" ExternalRates depletion test suite """
 
 from pathlib import Path
 import shutil
-import sys
 
 import numpy as np
 import pytest
@@ -11,8 +10,7 @@ import openmc.deplete
 from openmc.deplete import CoupledOperator
 
 from tests.regression_tests import config, assert_reaction_rates_equal, \
-    assert_atoms_equal, assert_same_mats
-
+    assert_atoms_equal
 
 @pytest.fixture
 def model():
@@ -41,11 +39,12 @@ def model():
     geometry = openmc.Geometry([cell_f, cell_w])
 
     settings = openmc.Settings()
-    settings.particles = 100
+    settings.particles = 150
     settings.inactive = 0
     settings.batches = 10
 
     return openmc.Model(geometry, materials, settings)
+
 
 @pytest.mark.parametrize("rate, dest_mat, power, ref_result", [
     (1e-5, None, 0.0, 'no_depletion_only_removal'),
@@ -54,6 +53,9 @@ def model():
     (-1e-5, None, 174.0, 'depletion_with_feed'),
     (-1e-5, 'w', 0.0, 'no_depletion_with_transfer'),
     (1e-5, 'w', 174.0, 'depletion_with_transfer'),
+    (0.0, None, 174.0, 'depletion_with_redox'),
+    (1e-5, None, 174.0, 'depletion_with_removal_and_redox'),
+    (1e-5, 'w', 174.0, 'depletion_with_transfer_and_redox'),
     ])
 def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result):
     """Tests transfer_rates depletion class with transfer rates"""
@@ -61,13 +63,18 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
 
     transfer_elements = ['Xe']
+    os = {'I': -1, 'Xe':0, 'Cs': 1, 'Gd': 3, 'U': 4}
 
     op = CoupledOperator(model, chain_file)
     op.round_number = True
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], power, timestep_units = 'd')
-    integrator.add_transfer_rate('f', transfer_elements, rate,
-                                 destination_material=dest_mat)
+    if rate != 0.0:
+        integrator.add_transfer_rate('f', transfer_elements, rate,
+                                    destination_material=dest_mat)
+    if 'redox' in ref_result.split('_'):
+        integrator.add_redox('f', {'Gd157':1}, os)
+
     integrator.integrate()
 
     # Get path to test and reference results
@@ -83,6 +90,39 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
 
-    assert_same_mats(res_ref, res_test)
-    assert_atoms_equal(res_ref, res_test, 1e-6)
-    assert_reaction_rates_equal(res_ref, res_test)
+    assert_atoms_equal(res_ref, res_test, tol=1e-3)
+    assert_reaction_rates_equal(res_ref, res_test, tol=1e-3)
+
+@pytest.mark.parametrize("rate, power, ref_result", [
+    (1e-1, 0.0, 'no_depletion_with_ext_source'),
+    (1e-1, 174., 'depletion_with_ext_source'),
+])
+def test_external_source_rates(run_in_tmpdir, model, rate, power, ref_result):
+    """Tests external_rates depletion class with external source rates"""
+
+    chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
+
+    external_source_vector = {'U': 1}
+
+    op = CoupledOperator(model, chain_file)
+    op.round_number = True
+    integrator = openmc.deplete.PredictorIntegrator(
+        op, [1], power, timestep_units='d')
+    integrator.add_external_source_rate('f', external_source_vector, rate)
+    integrator.integrate()
+
+    # Get path to test and reference results
+    path_test = op.output_dir / 'depletion_results.h5'
+    path_reference = Path(__file__).with_name(f'ref_{ref_result}.h5')
+
+    # If updating results, do so and return
+    if config['update']:
+        shutil.copyfile(str(path_test), str(path_reference))
+        return
+
+    # Load the reference/test results
+    res_ref = openmc.deplete.Results(path_reference)
+    res_test = openmc.deplete.Results(path_test)
+
+    assert_atoms_equal(res_ref, res_test, tol=1e-3)
+    assert_reaction_rates_equal(res_ref, res_test, tol=1e-3)

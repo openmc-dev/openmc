@@ -12,6 +12,7 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/error.h"
@@ -37,7 +38,7 @@
 #include "openmc/vector.h"
 #include "openmc/weight_windows.h"
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/libmesh.h"
 #endif
 
@@ -63,7 +64,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (err)
     return err;
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   const int n_threads = num_threads();
   // initialize libMesh if it hasn't been initialized already
   // (if initialized externally, the libmesh_init object needs to be provided
@@ -98,9 +99,10 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   }
 #endif
 
-  // Initialize random number generator -- if the user specifies a seed, it
-  // will be re-initialized later
+  // Initialize random number generator -- if the user specifies a seed and/or
+  // stride, it will be re-initialized later
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
 
   // Copy previous locale and set locale to C. This is a workaround for an issue
   // whereby when openmc_init is called from the plotter, the Qt application
@@ -155,7 +157,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[10];
+  MPI_Aint disp[11];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -164,17 +166,49 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.delayed_group, &disp[5]);
   MPI_Get_address(&b.surf_id, &disp[6]);
   MPI_Get_address(&b.particle, &disp[7]);
-  MPI_Get_address(&b.parent_id, &disp[8]);
-  MPI_Get_address(&b.progeny_id, &disp[9]);
-  for (int i = 9; i >= 0; --i) {
+  MPI_Get_address(&b.parent_nuclide, &disp[8]);
+  MPI_Get_address(&b.parent_id, &disp[9]);
+  MPI_Get_address(&b.progeny_id, &disp[10]);
+  for (int i = 10; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1};
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
+    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+  MPI_Type_create_struct(11, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
+
+  CollisionTrackSite bc;
+  MPI_Aint dispc[16];
+  MPI_Get_address(&bc.r, &dispc[0]);             // double
+  MPI_Get_address(&bc.u, &dispc[1]);             // double
+  MPI_Get_address(&bc.E, &dispc[2]);             // double
+  MPI_Get_address(&bc.dE, &dispc[3]);            // double
+  MPI_Get_address(&bc.time, &dispc[4]);          // double
+  MPI_Get_address(&bc.wgt, &dispc[5]);           // double
+  MPI_Get_address(&bc.event_mt, &dispc[6]);      // int
+  MPI_Get_address(&bc.delayed_group, &dispc[7]); // int
+  MPI_Get_address(&bc.cell_id, &dispc[8]);       // int
+  MPI_Get_address(&bc.nuclide_id, &dispc[9]);    // int
+  MPI_Get_address(&bc.material_id, &dispc[10]);  // int
+  MPI_Get_address(&bc.universe_id, &dispc[11]);  // int
+  MPI_Get_address(&bc.n_collision, &dispc[12]);  // int
+  MPI_Get_address(&bc.particle, &dispc[13]);     // int
+  MPI_Get_address(&bc.parent_id, &dispc[14]);    // int64_t
+  MPI_Get_address(&bc.progeny_id, &dispc[15]);   // int64_t
+  for (int i = 15; i >= 0; --i) {
+    dispc[i] -= dispc[0];
+  }
+
+  int blocksc[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  MPI_Datatype typesc[] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
+    MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT,
+    MPI_INT, MPI_INT, MPI_INT, MPI_INT64_T, MPI_INT64_T};
+
+  MPI_Type_create_struct(
+    16, blocksc, dispc, typesc, &mpi::collision_track_site);
+  MPI_Type_commit(&mpi::collision_track_site);
 }
 #endif // OPENMC_MPI
 
@@ -371,6 +405,9 @@ bool read_model_xml()
     }
   }
 
+  // Read data from chain file
+  read_chain_file_xml();
+
   // Read materials and cross sections
   if (!check_for_node(root, "materials")) {
     fatal_error(fmt::format(
@@ -394,6 +431,10 @@ bool read_model_xml()
 
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
+
+  // Compute cell density multipliers now that material densities
+  // have been finalized (from geometry_aux.h)
+  finalize_cell_densities();
 
   if (check_for_node(root, "tallies"))
     read_tallies_xml(root.child("tallies"));
@@ -423,6 +464,10 @@ void read_separate_xml_files()
   if (settings::run_mode != RunMode::PLOTTING) {
     read_cross_sections_xml();
   }
+
+  // Read data from chain file
+  read_chain_file_xml();
+
   read_materials_xml();
   read_geometry_xml();
 
@@ -431,6 +476,11 @@ void read_separate_xml_files()
 
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
+
+  // Compute cell density multipliers now that material densities
+  // have been finalized (from geometry_aux.h)
+  finalize_cell_densities();
+
   read_tallies_xml();
 
   // Initialize distribcell_filters

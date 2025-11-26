@@ -27,10 +27,12 @@
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshborn.h"
+#include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_time.h"
 #include "openmc/xml_interface.h"
 
 #include "xtensor/xadapt.hpp"
@@ -38,8 +40,10 @@
 #include "xtensor/xview.hpp"
 #include <fmt/core.h>
 
-#include <algorithm> // for max
-#include <cstddef>   // for size_t
+#include <algorithm> // for max, set_union
+#include <cassert>
+#include <cstddef>  // for size_t
+#include <iterator> // for back_inserter
 #include <string>
 
 namespace openmc {
@@ -55,11 +59,13 @@ vector<unique_ptr<Tally>> tallies;
 vector<int> active_tallies;
 vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
+vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int> pulse_height_cells;
+vector<double> time_grid;
 } // namespace model
 
 namespace simulation {
@@ -101,6 +107,9 @@ Tally::Tally(pugi::xml_node node)
     multiply_density_ = get_node_value_bool(node, "multiply_density");
   }
 
+  if (check_for_node(node, "higher_moments")) {
+    higher_moments_ = get_node_value_bool(node, "higher_moments");
+  }
   // =======================================================================
   // READ DATA FOR FILTERS
 
@@ -140,7 +149,7 @@ Tally::Tally(pugi::xml_node node)
   // Check for the presence of certain filter types
   bool has_energyout = energyout_filter_ >= 0;
   int particle_filter_index = C_NONE;
-  for (gsl::index j = 0; j < filters_.size(); ++j) {
+  for (int64_t j = 0; j < filters_.size(); ++j) {
     int i_filter = filters_[j];
     const auto& f = model::tally_filters[i_filter].get();
 
@@ -179,13 +188,71 @@ Tally::Tally(pugi::xml_node node)
     fatal_error(fmt::format("No scores specified on tally {}.", id_));
   }
 
+  // Set IFP if needed
+  if (!settings::ifp_on) {
+    // Determine if this tally has an IFP score
+    bool has_ifp_score = false;
+    for (int score : scores_) {
+      if (score == SCORE_IFP_TIME_NUM || score == SCORE_IFP_BETA_NUM ||
+          score == SCORE_IFP_DENOM) {
+        has_ifp_score = true;
+        break;
+      }
+    }
+
+    // Check for errors
+    if (has_ifp_score) {
+      if (settings::run_mode == RunMode::EIGENVALUE) {
+        if (settings::ifp_n_generation < 0) {
+          settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
+          warning(fmt::format(
+            "{} generations will be used for IFP (default value). It can be "
+            "changed using the 'ifp_n_generation' settings.",
+            settings::ifp_n_generation));
+        }
+        if (settings::ifp_n_generation > settings::n_inactive) {
+          fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                      "number of inactive cycles.");
+        }
+        settings::ifp_on = true;
+      } else {
+        fatal_error(
+          "Iterated Fission Probability can only be used in an eigenvalue "
+          "calculation.");
+      }
+    }
+  }
+
+  // Set IFP parameters if needed
+  if (settings::ifp_on) {
+    for (int score : scores_) {
+      switch (score) {
+      case SCORE_IFP_TIME_NUM:
+        if (settings::ifp_parameter == IFPParameter::None) {
+          settings::ifp_parameter = IFPParameter::GenerationTime;
+        } else if (settings::ifp_parameter == IFPParameter::BetaEffective) {
+          settings::ifp_parameter = IFPParameter::Both;
+        }
+        break;
+      case SCORE_IFP_BETA_NUM:
+      case SCORE_IFP_DENOM:
+        if (settings::ifp_parameter == IFPParameter::None) {
+          settings::ifp_parameter = IFPParameter::BetaEffective;
+        } else if (settings::ifp_parameter == IFPParameter::GenerationTime) {
+          settings::ifp_parameter = IFPParameter::Both;
+        }
+        break;
+      }
+    }
+  }
+
   // Check if tally is compatible with particle type
   if (!settings::photon_transport) {
     for (int score : scores_) {
       switch (score) {
       case SCORE_PULSE_HEIGHT:
-        fatal_error(
-          "For pulse-height tallies, photon transport needs to be activated.");
+        fatal_error("For pulse-height tallies, photon transport needs to be "
+                    "activated.");
         break;
       }
     }
@@ -259,7 +326,8 @@ Tally::Tally(pugi::xml_node node)
         if (has_energyout && i_nuc == -1) {
           fatal_error(fmt::format(
             "Error on tally {}: Cannot use a "
-            "'nuclide_density' or 'temperature' derivative on a tally with an "
+            "'nuclide_density' or 'temperature' derivative on a tally with "
+            "an "
             "outgoing energy filter and 'total' nuclide rate. Instead, tally "
             "each nuclide in the material individually.",
             id_));
@@ -317,7 +385,7 @@ Tally::Tally(pugi::xml_node node)
     }
   }
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   // ensure a tracklength tally isn't used with a libMesh filter
   for (auto i : this->filters_) {
     auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());
@@ -345,7 +413,7 @@ Tally* Tally::create(int32_t id)
 
 void Tally::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in tally map if an ID was already assigned before
   if (id_ != C_NONE) {
@@ -401,7 +469,7 @@ bool Tally::has_filter(FilterType filter_type) const
   return false;
 }
 
-void Tally::set_filters(gsl::span<Filter*> filters)
+void Tally::set_filters(span<Filter*> filters)
 {
   // Clear old data.
   filters_.clear();
@@ -428,19 +496,15 @@ void Tally::add_filter(Filter* filter)
     energyout_filter_ = filters_.size();
   } else if (filter->type() == FilterType::DELAYED_GROUP) {
     delayedgroup_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::CELL) {
-    cell_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::ENERGY) {
-    energy_filter_ = filters_.size();
   }
   filters_.push_back(filter_idx);
 }
 
 void Tally::set_strides()
 {
-  // Set the strides.  Filters are traversed in reverse so that the last filter
-  // has the shortest stride in memory and the first filter has the longest
-  // stride.
+  // Set the strides.  Filters are traversed in reverse so that the last
+  // filter has the shortest stride in memory and the first filter has the
+  // longest stride.
   auto n = filters_.size();
   strides_.resize(n, 0);
   int stride = 1;
@@ -496,9 +560,11 @@ void Tally::set_scores(const vector<std::string>& scores)
 
   // Iterate over the given scores.
   for (auto score_str : scores) {
-    // Make sure a delayed group filter wasn't used with an incompatible score.
+    // Make sure a delayed group filter wasn't used with an incompatible
+    // score.
     if (delayedgroup_filter_ != C_NONE) {
-      if (score_str != "delayed-nu-fission" && score_str != "decay-rate")
+      if (score_str != "delayed-nu-fission" && score_str != "decay-rate" &&
+          score_str != "ifp-beta-numerator")
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
     }
 
@@ -584,7 +650,12 @@ void Tally::set_scores(const vector<std::string>& scores)
           }
         }
       }
+      break;
 
+    case SCORE_IFP_TIME_NUM:
+    case SCORE_IFP_BETA_NUM:
+    case SCORE_IFP_DENOM:
+      estimator_ = TallyEstimator::COLLISION;
       break;
     }
 
@@ -732,7 +803,11 @@ void Tally::init_triggers(pugi::xml_node node)
 void Tally::init_results()
 {
   int n_scores = scores_.size() * nuclides_.size();
-  results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+  if (higher_moments_) {
+    results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
+  } else {
+    results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+  }
 }
 
 void Tally::reset()
@@ -751,31 +826,52 @@ void Tally::accumulate()
   if (mpi::master || !settings::reduce_tallies) {
     // Calculate total source strength for normalization
     double total_source = 0.0;
-    if (settings::run_mode == RunMode::FIXED_SOURCE &&
-        !settings::uniform_source_sampling) {
-      for (const auto& s : model::external_sources) {
-        total_source += s->strength();
-      }
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      total_source = model::external_sources_probability.integral();
     } else {
       total_source = 1.0;
     }
 
+    // Determine number of particles contributing to tally
+    double contributing_particles = settings::reduce_tallies
+                                      ? settings::n_particles
+                                      : simulation::work_per_rank;
+
     // Account for number of source particles in normalization
     double norm =
-      total_source / (settings::n_particles * settings::gen_per_batch);
+      total_source / (contributing_particles * settings::gen_per_batch);
 
     if (settings::solver_type == SolverType::RANDOM_RAY) {
       norm = 1.0;
     }
 
-// Accumulate each result
+    // Accumulate each result
+    if (higher_moments_) {
 #pragma omp parallel for
-    for (int i = 0; i < results_.shape()[0]; ++i) {
-      for (int j = 0; j < results_.shape()[1]; ++j) {
-        double val = results_(i, j, TallyResult::VALUE) * norm;
-        results_(i, j, TallyResult::VALUE) = 0.0;
-        results_(i, j, TallyResult::SUM) += val;
-        results_(i, j, TallyResult::SUM_SQ) += val * val;
+      // filter bins (specific cell, energy bins)
+      for (int i = 0; i < results_.shape()[0]; ++i) {
+        // score bins (flux, total reaction rate, fission reaction rate, etc.)
+        for (int j = 0; j < results_.shape()[1]; ++j) {
+          double val = results_(i, j, TallyResult::VALUE) * norm;
+          double val2 = val * val;
+          results_(i, j, TallyResult::VALUE) = 0.0;
+          results_(i, j, TallyResult::SUM) += val;
+          results_(i, j, TallyResult::SUM_SQ) += val2;
+          results_(i, j, TallyResult::SUM_THIRD) += val2 * val;
+          results_(i, j, TallyResult::SUM_FOURTH) += val2 * val2;
+        }
+      }
+    } else {
+#pragma omp parallel for
+      // filter bins (specific cell, energy bins)
+      for (int i = 0; i < results_.shape()[0]; ++i) {
+        // score bins (flux, total reaction rate, fission reaction rate, etc.)
+        for (int j = 0; j < results_.shape()[1]; ++j) {
+          double val = results_(i, j, TallyResult::VALUE) * norm;
+          results_(i, j, TallyResult::VALUE) = 0.0;
+          results_(i, j, TallyResult::SUM) += val;
+          results_(i, j, TallyResult::SUM_SQ) += val * val;
+        }
       }
     }
   }
@@ -927,8 +1023,8 @@ void reduce_tally_results()
     }
   }
 
-  // Note that global tallies are *always* reduced even when no_reduce option is
-  // on.
+  // Note that global tallies are *always* reduced even when no_reduce option
+  // is on.
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
@@ -1007,21 +1103,59 @@ void accumulate_tallies()
   }
 }
 
+double distance_to_time_boundary(double time, double speed)
+{
+  if (model::time_grid.empty()) {
+    return INFTY;
+  } else if (time >= model::time_grid.back()) {
+    return INFTY;
+  } else {
+    double next_time =
+      *std::upper_bound(model::time_grid.begin(), model::time_grid.end(), time);
+    return (next_time - time) * speed;
+  }
+}
+
+//! Add new points to the global time grid
+//
+//! \param grid Vector of new time points to add
+void add_to_time_grid(vector<double> grid)
+{
+  if (grid.empty())
+    return;
+
+  // Create new vector with enough space to hold old and new grid points
+  vector<double> merged;
+  merged.reserve(model::time_grid.size() + grid.size());
+
+  // Merge and remove duplicates
+  std::set_union(model::time_grid.begin(), model::time_grid.end(), grid.begin(),
+    grid.end(), std::back_inserter(merged));
+
+  // Swap in the new grid
+  model::time_grid.swap(merged);
+}
+
 void setup_active_tallies()
 {
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
+  model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::time_grid.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
 
     if (tally.active_) {
       model::active_tallies.push_back(i);
+      bool mesh_present = (tally.get_filter<MeshFilter>() ||
+                           tally.get_filter<MeshMaterialFilter>());
+      auto time_filter = tally.get_filter<TimeFilter>();
       switch (tally.type_) {
 
       case TallyType::VOLUME:
@@ -1030,7 +1164,12 @@ void setup_active_tallies()
           model::active_analog_tallies.push_back(i);
           break;
         case TallyEstimator::TRACKLENGTH:
-          model::active_tracklength_tallies.push_back(i);
+          if (time_filter && mesh_present) {
+            model::active_timed_tracklength_tallies.push_back(i);
+            add_to_time_grid(time_filter->bins());
+          } else {
+            model::active_tracklength_tallies.push_back(i);
+          }
           break;
         case TallyEstimator::COLLISION:
           model::active_collision_tallies.push_back(i);
@@ -1066,10 +1205,12 @@ void free_memory_tally()
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
+  model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::time_grid.clear();
 
   model::tally_map.clear();
 }
@@ -1370,7 +1511,7 @@ extern "C" int openmc_tally_set_filters(
   try {
     // Convert indices to filter pointers
     vector<Filter*> filters;
-    for (gsl::index i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       int32_t i_filt = indices[i];
       filters.push_back(model::tally_filters.at(i_filt).get());
     }
@@ -1408,8 +1549,8 @@ extern "C" int openmc_tally_get_n_realizations(int32_t index, int32_t* n)
   return 0;
 }
 
-//! \brief Returns a pointer to a tally results array along with its shape. This
-//! allows a user to obtain in-memory tally results from Python directly.
+//! \brief Returns a pointer to a tally results array along with its shape.
+//! This allows a user to obtain in-memory tally results from Python directly.
 extern "C" int openmc_tally_results(
   int32_t index, double** results, size_t* shape)
 {

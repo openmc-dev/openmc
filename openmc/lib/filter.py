@@ -21,9 +21,10 @@ __all__ = [
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
-    'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter', 'ParticleFilter', 'PolarFilter',
-    'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter', 'UniverseFilter',
-    'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
+    'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
+    'ParentNuclideFilter', 'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
+    'SpatialLegendreFilter', 'SurfaceFilter', 'TimeFilter', 'UniverseFilter',
+    'WeightFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
 
 # Tally functions
@@ -479,6 +480,10 @@ class MeshBornFilter(Filter):
         _dll.openmc_meshborn_filter_set_translation(self._index, (c_double*3)(*translation))
 
 
+class MeshMaterialFilter(Filter):
+    filter_type = 'meshmaterial'
+
+
 class MeshSurfaceFilter(Filter):
     """MeshSurface filter stored internally.
 
@@ -544,6 +549,10 @@ class MuSurfaceFilter(Filter):
     filter_type = 'musurface'
 
 
+class ParentNuclideFilter(Filter):
+    filter_type = 'parentnuclide'
+
+
 class ParticleFilter(Filter):
     filter_type = 'particle'
 
@@ -601,8 +610,16 @@ class SurfaceFilter(Filter):
     filter_type = 'surface'
 
 
+class TimeFilter(Filter):
+    filter_type = 'time'
+
+
 class UniverseFilter(Filter):
     filter_type = 'universe'
+
+
+class WeightFilter(Filter):
+    filter_type = 'weight'
 
 
 class ZernikeFilter(Filter):
@@ -634,6 +651,7 @@ _FILTER_TYPE_MAP = {
     'cellborn': CellbornFilter,
     'cellfrom': CellfromFilter,
     'cellinstance': CellInstanceFilter,
+    'collision': CollisionFilter,
     'delayedgroup': DelayedGroupFilter,
     'distribcell': DistribcellFilter,
     'energy': EnergyFilter,
@@ -644,15 +662,19 @@ _FILTER_TYPE_MAP = {
     'materialfrom': MaterialFromFilter,
     'mesh': MeshFilter,
     'meshborn': MeshBornFilter,
+    'meshmaterial': MeshMaterialFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
     'musurface': MuSurfaceFilter,
+    'parentnuclide': ParentNuclideFilter,
     'particle': ParticleFilter,
     'polar': PolarFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
+    'time': TimeFilter,
     'universe': UniverseFilter,
+    'weight': WeightFilter,
     'zernike': ZernikeFilter,
     'zernikeradial': ZernikeRadialFilter
 }

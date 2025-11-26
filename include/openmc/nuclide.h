@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include <utility> // for pair
 
-#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include "openmc/array.h"
@@ -17,6 +16,7 @@
 #include "openmc/particle.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
+#include "openmc/span.h"
 #include "openmc/urr.h"
 #include "openmc/vector.h"
 #include "openmc/wmp.h"
@@ -81,8 +81,8 @@ public:
   //! \param[in] energy Energy group boundaries in [eV]
   //! \param[in] flux Flux in each energy group (not normalized per eV)
   //! \return Reaction rate
-  double collapse_rate(int MT, double temperature,
-    gsl::span<const double> energy, gsl::span<const double> flux) const;
+  double collapse_rate(int MT, double temperature, span<const double> energy,
+    span<const double> flux) const;
 
   //============================================================================
   // Data members
@@ -91,7 +91,7 @@ public:
   int A_;            //!< Mass number
   int metastable_;   //!< Metastable state
   double awr_;       //!< Atomic weight ratio
-  gsl::index index_; //!< Index in the nuclides array
+  int64_t index_;    //!< Index in the nuclides array
 
   // Temperature dependent cross section data
   vector<double> kTs_;                //!< temperatures in eV (k*T)
@@ -138,7 +138,7 @@ private:
   //
   //! \param[in] T Temperature in [K]
   //! \return Temperature index and interpolation factor
-  std::pair<gsl::index, double> find_temperature(double T) const;
+  std::pair<int64_t, double> find_temperature(double T) const;
 
   static int XS_TOTAL;
   static int XS_ABSORPTION;
@@ -164,8 +164,8 @@ namespace data {
 
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
-extern array<double, 2> energy_min;
-extern array<double, 2> energy_max;
+extern array<double, 4> energy_min;
+extern array<double, 4> energy_max;
 
 //! Minimum temperature in [K] that nuclide data is available at
 extern double temperature_min;

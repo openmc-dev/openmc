@@ -962,16 +962,33 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
             const auto& delayed_groups =
               simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
             if (delayed_groups.size() == settings::ifp_n_generation) {
-              if (delayed_groups[0] > 0) {
-                score = p.wgt_last();
-                if (tally.delayedgroup_filter_ != C_NONE) {
-                  auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-                  const DelayedGroupFilter& filt {
-                    *dynamic_cast<DelayedGroupFilter*>(
-                      model::tally_filters[i_dg_filt].get())};
-                  score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
-                    score, score_index, p.filter_matches());
-                  continue;
+              if (delayed_groups[1] > 0) {
+                if (tally.nuclides_[0] == -1) {
+                  score = p.wgt_last();
+                  if (tally.delayedgroup_filter_ != C_NONE) {
+                    auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
+                    const DelayedGroupFilter& filt {
+                      *dynamic_cast<DelayedGroupFilter*>(
+                        model::tally_filters[i_dg_filt].get())};
+                    score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
+                      score, score_index, p.filter_matches());
+                    continue;
+                  }
+                } else {
+                  const auto& ancestor_event_nuclide =
+                    simulation::ifp_source_ancestor_nuclide_bank[p.current_work() - 1];
+                  if (ancestor_event_nuclide[0] == i_nuclide) {
+                    score = p.wgt_last();
+                    if (tally.delayedgroup_filter_ != C_NONE) {
+                      auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
+                      const DelayedGroupFilter& filt {
+                        *dynamic_cast<DelayedGroupFilter*>(
+                          model::tally_filters[i_dg_filt].get())};
+                      score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
+                        score, score_index, p.filter_matches());
+                      continue;
+                    }
+                  }
                 }
               }
             }

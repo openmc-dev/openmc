@@ -375,7 +375,9 @@ class Material(IDManagerMixin):
         n_samples: int = 10000,
         distance: float | None = None
     ) -> float:
-        """Return decay photon dose rate from unstable nuclides.
+        """Return an approximation of decay photon dose rate from unstable nuclides.
+
+        Assumes a point source in a vacuum with no attenuation.
 
         .. versionadded:: 0.15.3
 

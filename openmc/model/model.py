@@ -2112,8 +2112,12 @@ class Model:
         groups : openmc.mgxs.EnergyGroups or str, optional
             Energy group structure for the MGXS or the name of the group
             structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        nparticles : int, optional
+            Number of particles to simulate per batch when generating MGXS.
+        overwrite_mgxs_library : bool, optional
+            Whether to overwrite an existing MGXS library file.
         mgxs_path : str, optional
-            Filename of the mgxs.h5 library file.
+            Path to the mgxs.h5 library file.
         correction : str, optional
             Transport correction to apply to the MGXS. Options are None and
             "P0".

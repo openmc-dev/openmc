@@ -164,19 +164,20 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.time, &disp[3]);
   MPI_Get_address(&b.wgt, &disp[4]);
   MPI_Get_address(&b.delayed_group, &disp[5]);
-  MPI_Get_address(&b.surf_id, &disp[6]);
-  MPI_Get_address(&b.particle, &disp[7]);
-  MPI_Get_address(&b.parent_nuclide, &disp[8]);
-  MPI_Get_address(&b.parent_id, &disp[9]);
-  MPI_Get_address(&b.progeny_id, &disp[10]);
-  for (int i = 10; i >= 0; --i) {
+  MPI_Get_address(&b.ancestor_nuclide, &disp[6]);
+  MPI_Get_address(&b.surf_id, &disp[7]);
+  MPI_Get_address(&b.particle, &disp[8]);
+  MPI_Get_address(&b.parent_nuclide, &disp[9]);
+  MPI_Get_address(&b.parent_id, &disp[10]);
+  MPI_Get_address(&b.progeny_id, &disp[11]);
+  for (int i = 11; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(11, blocks, disp, types, &mpi::source_site);
+    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+  MPI_Type_create_struct(12, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 
   CollisionTrackSite bc;
@@ -189,25 +190,26 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&bc.wgt, &dispc[5]);           // double
   MPI_Get_address(&bc.event_mt, &dispc[6]);      // int
   MPI_Get_address(&bc.delayed_group, &dispc[7]); // int
-  MPI_Get_address(&bc.cell_id, &dispc[8]);       // int
-  MPI_Get_address(&bc.nuclide_id, &dispc[9]);    // int
-  MPI_Get_address(&bc.material_id, &dispc[10]);  // int
-  MPI_Get_address(&bc.universe_id, &dispc[11]);  // int
-  MPI_Get_address(&bc.n_collision, &dispc[12]);  // int
-  MPI_Get_address(&bc.particle, &dispc[13]);     // int
-  MPI_Get_address(&bc.parent_id, &dispc[14]);    // int64_t
-  MPI_Get_address(&bc.progeny_id, &dispc[15]);   // int64_t
-  for (int i = 15; i >= 0; --i) {
+  MPI_Get_address(&bc.ancestor_nuclide, &dispc[8]); // int
+  MPI_Get_address(&bc.cell_id, &dispc[9]);       // int
+  MPI_Get_address(&bc.nuclide_id, &dispc[10]);    // int
+  MPI_Get_address(&bc.material_id, &dispc[11]);  // int
+  MPI_Get_address(&bc.universe_id, &dispc[12]);  // int
+  MPI_Get_address(&bc.n_collision, &dispc[13]);  // int
+  MPI_Get_address(&bc.particle, &dispc[14]);     // int
+  MPI_Get_address(&bc.parent_id, &dispc[15]);    // int64_t
+  MPI_Get_address(&bc.progeny_id, &dispc[16]);   // int64_t
+  for (int i = 16; i >= 0; --i) {
     dispc[i] -= dispc[0];
   }
 
-  int blocksc[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  int blocksc[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype typesc[] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT,
+    MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT,
     MPI_INT, MPI_INT, MPI_INT, MPI_INT64_T, MPI_INT64_T};
 
   MPI_Type_create_struct(
-    16, blocksc, dispc, typesc, &mpi::collision_track_site);
+    17, blocksc, dispc, typesc, &mpi::collision_track_site);
   MPI_Type_commit(&mpi::collision_track_site);
 }
 #endif // OPENMC_MPI

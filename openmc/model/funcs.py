@@ -39,8 +39,8 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     press_unit : {'MPa', 'psi'}
         The units used for the `pressure` argument.
     density : float
-        Water density in [g / cm^3].  If specified, this value overrides the
-        temperature and pressure arguments.
+        Water density in [g / cm^3].  If specified, this value overrides 
+        the value that is computed from the temperature and pressure arguments.
     **kwargs
         All keyword arguments are passed to the created Material object.
 

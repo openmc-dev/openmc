@@ -140,8 +140,8 @@ void synchronize_bank()
   vector<vector<int>> temp_ancestors;
   vector<vector<double>> temp_lifetimes;
   if (settings::ifp_on) {
-    resize_ifp_data(
-      temp_delayed_groups, temp_ancestors, temp_lifetimes, 3 * simulation::work_per_rank);
+    resize_ifp_data(temp_delayed_groups, temp_ancestors, temp_lifetimes,
+      3 * simulation::work_per_rank);
   }
 
   // ==========================================================================
@@ -169,9 +169,8 @@ void synchronize_bank()
     int64_t idx = std::floor(tooth) - start;
     temp_sites[index_temp] = simulation::fission_bank[idx];
     if (settings::ifp_on) {
-      copy_ifp_data_from_fission_banks(
-        idx, temp_delayed_groups[index_temp], temp_ancestors[index_temp],
-        temp_lifetimes[index_temp]);
+      copy_ifp_data_from_fission_banks(idx, temp_delayed_groups[index_temp],
+        temp_ancestors[index_temp], temp_lifetimes[index_temp]);
     }
     ++index_temp;
 
@@ -252,7 +251,7 @@ void synchronize_bank()
         if (settings::ifp_on) {
           // Send IFP data
           send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
-            temp_delayed_groups, send_delayed_groups, temp_ancestors, 
+            temp_delayed_groups, send_delayed_groups, temp_ancestors,
             send_ancestors, temp_lifetimes, send_lifetimes);
         }
       }
@@ -321,7 +320,8 @@ void synchronize_bank()
       if (settings::ifp_on) {
         // Receive IFP data
         receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
-          recv_delayed_groups, recv_ancestors, recv_lifetimes, deserialization_info);
+          recv_delayed_groups, recv_ancestors, recv_lifetimes,
+          deserialization_info);
       }
 
     } else {
@@ -360,8 +360,8 @@ void synchronize_bank()
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
     simulation::source_bank.begin());
   if (settings::ifp_on) {
-    copy_complete_ifp_data_to_source_banks(temp_delayed_groups,
-      temp_ancestors, temp_lifetimes);
+    copy_complete_ifp_data_to_source_banks(
+      temp_delayed_groups, temp_ancestors, temp_lifetimes);
   }
 #endif
 

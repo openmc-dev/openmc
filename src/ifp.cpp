@@ -36,11 +36,11 @@ void ifp(const Particle& p, int64_t idx)
         simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
       simulation::ifp_fission_delayed_group_bank[idx] =
         _ifp(p.delayed_group(), delayed_groups);
-      const auto& ancestor_nuclides = 
+      const auto& ancestor_nuclides =
         simulation::ifp_source_ancestor_nuclide_bank[p.current_work() - 1];
-      simulation::ifp_fission_ancestor_nuclide_bank[idx] = 
+      simulation::ifp_fission_ancestor_nuclide_bank[idx] =
         _ifp(p.event_nuclide(), ancestor_nuclides);
-    }else{
+    } else {
       const auto& delayed_groups =
         simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
       simulation::ifp_fission_delayed_group_bank[idx] =
@@ -64,9 +64,8 @@ void resize_simulation_ifp_banks()
     simulation::ifp_fission_lifetime_bank, 3 * simulation::work_per_rank);
 }
 
-void copy_ifp_data_from_fission_banks(
-  int i_bank, vector<int>& delayed_groups, vector<int>& ancestors, 
-  vector<double>& lifetimes)
+void copy_ifp_data_from_fission_banks(int i_bank, vector<int>& delayed_groups,
+  vector<int>& ancestors, vector<double>& lifetimes)
 {
   if (is_beta_effective_or_both()) {
     delayed_groups = simulation::ifp_fission_delayed_group_bank[i_bank];
@@ -81,8 +80,7 @@ void copy_ifp_data_from_fission_banks(
 
 void broadcast_ifp_n_generation(int& n_generation,
   const vector<vector<int>>& delayed_groups,
-  const vector<vector<int>>& ancestors,
-  const vector<vector<double>>& lifetimes)
+  const vector<vector<int>>& ancestors, const vector<vector<double>>& lifetimes)
 {
   if (mpi::rank == 0) {
     if (is_beta_effective_or_both()) {
@@ -135,7 +133,8 @@ void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
 
 void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
   vector<MPI_Request>& requests, vector<int>& delayed_groups,
-  vector<int>& ancestors, vector<double>& lifetimes, vector<DeserializationInfo>& deserialization)
+  vector<int>& ancestors, vector<double>& lifetimes,
+  vector<DeserializationInfo>& deserialization)
 {
   // Receive delayed groups
   if (is_beta_effective_or_both()) {
@@ -150,7 +149,7 @@ void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
     MPI_Irecv(&lifetimes[n_generation * idx],
       n_generation * static_cast<int>(n), MPI_DOUBLE, neighbor, neighbor,
       mpi::intracomm, &requests.back());
-     // Is it needed also for the ancestor nuclide
+    // Is it needed also for the ancestor nuclide
     MPI_Irecv(&ancestors[n_generation * idx],
       n_generation * static_cast<int>(n), MPI_INT, neighbor, neighbor,
       mpi::intracomm, &requests.back());
@@ -162,8 +161,7 @@ void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
 
 void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
   const vector<vector<int>>& delayed_groups,
-  const vector<vector<int>>& ancestors,
-  const vector<vector<double>>& lifetimes)
+  const vector<vector<int>>& ancestors, const vector<vector<double>>& lifetimes)
 {
   if (is_beta_effective_or_both()) {
     std::copy(&delayed_groups[idx], &delayed_groups[idx + n],
@@ -192,8 +190,7 @@ void deserialize_ifp_info(int n_generation,
           delayed_groups.begin() + n_generation * i,
           delayed_groups.begin() + n_generation * (i + 1));
         simulation::ifp_source_delayed_group_bank[i] = delayed_groups_received;
-        vector<int> ancestors_received(
-          ancestors.begin() + n_generation * i,
+        vector<int> ancestors_received(ancestors.begin() + n_generation * i,
           ancestors.begin() + n_generation * (i + 1));
         simulation::ifp_source_ancestor_nuclide_bank[i] = ancestors_received;
       }
@@ -210,15 +207,13 @@ void deserialize_ifp_info(int n_generation,
 
 void copy_complete_ifp_data_to_source_banks(
   const vector<vector<int>>& delayed_groups,
-  const vector<vector<int>>& ancestors,
-  const vector<vector<double>>& lifetimes)
+  const vector<vector<int>>& ancestors, const vector<vector<double>>& lifetimes)
 {
   if (is_beta_effective_or_both()) {
     std::copy(delayed_groups.data(),
       delayed_groups.data() + settings::n_particles,
       simulation::ifp_source_delayed_group_bank.begin());
-    std::copy(ancestors.data(),
-      ancestors.data() + settings::n_particles,
+    std::copy(ancestors.data(), ancestors.data() + settings::n_particles,
       simulation::ifp_source_ancestor_nuclide_bank.begin());
   }
   if (is_generation_time_or_both()) {
@@ -227,10 +222,8 @@ void copy_complete_ifp_data_to_source_banks(
   }
 }
 
-void allocate_temporary_vector_ifp(
-  vector<vector<int>>& delayed_groups,
-  vector<vector<int>>& ancestors,
-  vector<vector<double>>& lifetimes)
+void allocate_temporary_vector_ifp(vector<vector<int>>& delayed_groups,
+  vector<vector<int>>& ancestors, vector<vector<double>>& lifetimes)
 {
   if (is_beta_effective_or_both()) {
     delayed_groups.resize(simulation::fission_bank.size());
@@ -248,8 +241,7 @@ void copy_ifp_data_to_fission_banks(const vector<int>* const delayed_groups_ptr,
     std::copy(delayed_groups_ptr,
       delayed_groups_ptr + simulation::fission_bank.size(),
       simulation::ifp_fission_delayed_group_bank.data());
-    std::copy(ancestors_ptr,
-      ancestors_ptr + simulation::fission_bank.size(),
+    std::copy(ancestors_ptr, ancestors_ptr + simulation::fission_bank.size(),
       simulation::ifp_fission_ancestor_nuclide_bank.data());
   }
   if (is_generation_time_or_both()) {

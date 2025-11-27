@@ -95,10 +95,7 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     frac_B = boron_ppm * 1e-6 / M_B
 
     # Build the material.
-    if density is None:
-        out = openmc.Material(temperature=T, **kwargs)
-    else:
-        out = openmc.Material(**kwargs)
+    out = openmc.Material(temperature=T, **kwargs)
     out.add_element('H', frac_H, 'ao')
     out.add_element('O', frac_O, 'ao')
     out.add_element('B', frac_B, 'ao')

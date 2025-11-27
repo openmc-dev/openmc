@@ -40,7 +40,9 @@ _FILES = {
 _DOSE_TABLES = {}
 
 
-def _load_dose_icrp(data_source: str, particle: str, type: str = 'effective'):
+def _load_dose_icrp(data_source: str, 
+                    particle: str, 
+                    dose_type: str = 'effective'):
     """Load effective dose tables from text files.
 
     Parameters
@@ -53,10 +55,10 @@ def _load_dose_icrp(data_source: str, particle: str, type: str = 'effective'):
         Type of dose to coefficients to be loaded
 
     """
-    path = Path(__file__).parent / _FILES[data_source, particle, type]
+    path = Path(__file__).parent / _FILES[data_source, particle, dose_type]
     data = np.loadtxt(path, skiprows=3, encoding='utf-8')
     data[:, 0] *= 1e6   # Change energies to eV
-    _DOSE_TABLES[data_source, particle, type] = data
+    _DOSE_TABLES[data_source, particle, dose_type] = data
 
 
 def dose_coefficients(particle, 
@@ -108,14 +110,15 @@ def dose_coefficients(particle,
                    geometry, 
                    {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'})
     cv.check_value('data_source', data_source, {'icrp74', 'icrp116'})
-    cv.check_value('dose_type', data_source, {'effective', 'ambient'})
+    cv.check_value('dose_type', dose_type, {'effective', 'ambient'})
 
     if (data_source, particle, dose_type) not in _FILES:
         available_particles = sorted({p for (ds, p, dt) in _FILES 
                                       if ds == data_source and 
                                       dt == dose_type})
         msg = (
-            f"'{particle}' has no dose data in data source {data_source}. "
+            f"{particle}' has no {dose_type} dose "
+            f"data in data source {data_source}."
             f"Available particles for {data_source} are: {available_particles}"
         )
         raise ValueError(msg)
@@ -124,7 +127,7 @@ def dose_coefficients(particle,
         _load_dose_icrp(data_source, particle, dose_type)
 
     # Get all data for selected particle
-    data = _DOSE_TABLES[data_source, particle]
+    data = _DOSE_TABLES[data_source, particle, dose_type]
 
     # Determine index for selected geometry
     if dose_type == 'effective':
@@ -134,7 +137,7 @@ def dose_coefficients(particle,
             
         else:
             columns = ('AP', 'PA', 'ISO')
-            index = columns.index(geometry)
+        index = columns.index(geometry)
             
         # Pull out energy and dose from table
         energy = data[:, 0].copy()
@@ -144,7 +147,7 @@ def dose_coefficients(particle,
     elif dose_type == 'ambient':
         # Pull out energy and dose from table
         energy = data[:, 0].copy()
-        dose_coeffs = data[:, index + 1].copy()
+        dose_coeffs = data[:, 1].copy()
         return energy, dose_coeffs
 
 

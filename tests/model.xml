@@ -1,38 +1,42 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material id="25">
-      <density value="10.0" units="g/cm3"/>
-      <nuclide name="Li6" ao="0.07589"/>
-      <nuclide name="Li7" ao="0.92411"/>
+    <material id="1" name="water">
+      <density value="1.0" units="g/cc"/>
+      <nuclide name="H1" ao="1.99968852"/>
+      <nuclide name="H2" ao="0.00031148"/>
+      <nuclide name="O16" ao="0.999621"/>
+      <nuclide name="O17" ao="0.000379"/>
     </material>
   </materials>
   <geometry>
-    <cell id="400" material="25" region="-426" universe="51"/>
-    <surface id="426" type="sphere" boundary="reflective" coeffs="0.0 0.0 0.0 100.0"/>
+    <cell id="1" material="1" region="-2 1 -4 3 -6 5" universe="1"/>
+    <surface id="1" type="x-plane" boundary="vacuum" coeffs="-5"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="5"/>
+    <surface id="3" type="y-plane" boundary="vacuum" coeffs="-5"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="5"/>
+    <surface id="5" type="z-plane" boundary="vacuum" coeffs="-5"/>
+    <surface id="6" type="z-plane" boundary="vacuum" coeffs="5"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>7</particles>
-    <batches>1</batches>
-    <source type="independent" strength="1.0" particle="photon">
-      <space type="point">
-        <parameters>0.0 0.0 0.0</parameters>
-      </space>
-      <energy type="discrete">
-        <parameters>5000000.0 1.0</parameters>
-      </energy>
-    </source>
-    <electron_treatment>led</electron_treatment>
-    <seed>513836</seed>
+    <particles>2000</particles>
+    <batches>10</batches>
   </settings>
   <tallies>
-    <filter id="9" type="particle">
-      <bins>photon electron positron</bins>
+    <mesh id="1" type="cylindrical">
+      <r_grid>0.0 1.25 2.5 3.75 5.0</r_grid>
+      <phi_grid>0.0 0.3141592653589793 0.6283185307179586 0.9424777960769379 1.2566370614359172 1.5707963267948966 1.8849555921538759 2.199114857512855 2.5132741228718345 2.827433388230814 3.141592653589793 3.4557519189487724 3.7699111843077517 4.084070449666731 4.39822971502571 4.71238898038469 5.026548245743669 5.340707511102648 5.654866776461628 5.969026041820607 6.283185307179586</phi_grid>
+      <z_grid>-5.0 -4.0 -3.0 -2.0 -1.0 0.0 1.0 2.0 3.0 4.0 5.0</z_grid>
+      <origin>0.0 5.001 0.0</origin>
+    </mesh>
+    <filter id="1" type="mesh">
+      <bins>1</bins>
     </filter>
-    <tally id="7">
-      <filters>9</filters>
-      <scores>heating</scores>
+    <tally id="1">
+      <filters>1</filters>
+      <scores>flux</scores>
+      <estimator>collision</estimator>
     </tally>
   </tallies>
 </model>

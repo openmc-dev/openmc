@@ -83,7 +83,7 @@ def test_dose_coefficients():
         "proton",
     ]
     expected_msg = (
-        "'photons' has no dose data in data source icrp116. "
-        f"Available particles for icrp116 are: {expected_particles}"
+        "'photons' has no effective dose data in data source icrp116."
+        f" Available particles for icrp116 are: {expected_particles}"
     )
     assert str(excinfo.value) == expected_msg

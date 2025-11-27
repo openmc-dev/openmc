@@ -117,8 +117,8 @@ def dose_coefficients(particle,
                                       if ds == data_source and 
                                       dt == dose_type})
         msg = (
-            f"{particle}' has no {dose_type} dose "
-            f"data in data source {data_source}."
+            f"'{particle}' has no {dose_type} dose "
+            f"data in data source {data_source}. "
             f"Available particles for {data_source} are: {available_particles}"
         )
         raise ValueError(msg)

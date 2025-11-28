@@ -105,7 +105,7 @@ struct DeserializationInfo {
 //!
 //! \param[in] n_generation Number of generations
 //! \param[in] delayed_groups List of delayed group numbers lists
-//! \param[in,out] ancestors List of Ancestor nuclide
+//! \param[in] ancestors List of Ancestor nuclide
 //! \param[in] lifetimes List of lifetimes lists
 void broadcast_ifp_n_generation(int& n_generation,
   const vector<vector<int>>& delayed_groups,

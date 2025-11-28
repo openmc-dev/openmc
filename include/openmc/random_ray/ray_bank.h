@@ -24,27 +24,17 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
-  void add_ray_to_bank(RandomRay& ray);
   void buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain);
   void update(FlatSourceDomain* domain);
   int ray_bank_size();
-  void reset_my_ray_list();
   void communicate_rays();
   void communicate_message_metadata();
   void update_my_ray_list(FlatSourceDomain* domain);
   bool is_any_ray_alive(); 
 
   //----------------------------------------------------------------------------
-  // Static data members
-
-
-  //----------------------------------------------------------------------------
   // Public data members
   vector<RandomRay> my_ray_list_;
-
-  // // Number of ray communications between ranks
-  // uint64_t num_comms_total_ {0};
-  // uint64_t num_comms_batch_ {0};
 
 private:
   //----------------------------------------------------------------------------
@@ -52,14 +42,13 @@ private:
   int total_sending_rays_;
   int total_receiving_rays_;
   int negroups_;
-  // FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source //TODO: maybe include domain in constructor
-  //                                      // data needed for ray transport
 
   // Map that contains the rank to which rays are buffered to be sent
   std::unordered_map<int, vector<RayBufferContainer>> ray_send_buffer_;
 
   // Vector that contains the number of rays to be received from each rank
   vector<int> num_messages_receiving_;
+  vector<int> num_messages_sending_;
 
   // vectors that received ray data
   vector<RayExchangeData> received_ray_data_;

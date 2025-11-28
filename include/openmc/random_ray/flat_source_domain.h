@@ -9,7 +9,6 @@
 #include "openmc/source.h"
 #include <unordered_map>
 #include <unordered_set>
-// #include "openmc/random_ray/ray_bank.h"
 
 namespace openmc {
 
@@ -42,7 +41,6 @@ public:
   virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
   void output_to_vtk_decomp() const;
-  // void communicate_plotting_data();
   void convert_external_sources();
   void count_external_source_regions();
   void set_adjoint_sources(const vector<double>& forward_flux);
@@ -65,26 +63,12 @@ public:
   void apply_transport_stabilization();
   int64_t n_source_regions() const
   {
-    // int64_t n_source_regions = source_regions_.n_source_regions(); //TODO: is this base source regions or does this include msh_bins?
-    // if (mpi::n_procs > 1){
-    //   n_source_regions = mpi::decomp_map.n_source_regions();
-    // }     
-    
-    // return n_source_regions;
     return source_regions_.n_source_regions();
   }
   int64_t n_source_elements() const
   {
     return source_regions_.n_source_regions() * negroups_;
-
-    // int64_t n_source_regions = source_regions_.n_source_regions(); //TODO: is this base source regions or does this include msh_bins?
-    // if (mpi::n_procs > 1){
-    //   n_source_regions = mpi::decomp_map.n_source_regions();
-    // }     
-    
-    // return n_source_regions * negroups_;
   }
-  // void initialize_ray_bank();
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -161,8 +145,6 @@ public:
   // technique.
   bool is_transport_stabilization_needed_ {false};
 
-  // RayBank RB_; // Ray bank to store rays for each MPI rank
-
 protected:
   //----------------------------------------------------------------------------
   // Methods
@@ -192,9 +174,6 @@ protected:
   // results tensor in the Tally class, though without the third dimension, as
   // SUM and SUM_SQ do not need to be tracked.
   vector<xt::xtensor<double, 2>> tally_volumes_;
-
-  // Vector that contains the results to be plotted for MPI ranks
-  // vector<float> vector_out_;
 
 }; // class FlatSourceDomain
 

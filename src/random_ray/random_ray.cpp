@@ -262,20 +262,11 @@ RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
   initialize_ray(ray_id, domain);
 }
 
-// RandomRay::RandomRay(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux) : RandomRay() //TODO: obsolete, delete
-RandomRay::RandomRay(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux) : RandomRay()
-{
-  restart_ray(domain, data, angular_flux);
-}
-
 // Transports ray until termination criteria are met
 uint64_t RandomRay::transport_history_based_single_ray()
 {
   using namespace openmc;
   while (alive()) {
-    // if (id() == 37849){
-        // printf("Batch %d, RANK %d: Ray %ld, position: %f, %f, %f, angular flux: %f, distance travelled: %f, owner: %d, surface: %d \n", simulation::current_batch, mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, owner_rank_, surface());
-    // }
     event_advance_ray();
     if (!alive())
       break;
@@ -298,16 +289,16 @@ void RandomRay::event_advance_ray()
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance();
 
-  //TODO: Is that good location?
   if (mpi::n_procs > 1) {
-    // Determine source region index etc.   //TODO: This is repeated in attenuate_flux
+    // If domain decomposition is being used, update counter for 
+    // ray trace operations in source region for load estimation
+    //TODO: This is repeated in attenuate_flux, maybe pass in sr index as argument?
     int i_cell = lowest_coord().cell();
     // The base source region is the spatial region index
     int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
     for (int i = 0; i < n_coord(); i++) {
-      // const auto& coord {coord(i)};
       Cell& c {*model::cells[coord(i).cell()]};
-      mpi::decomp_map.num_base_source_region_RT_batch_[sr] += c.n_surfaces(); //TODO: Is this correct value for "surfaces"
+      mpi::decomp_map.num_base_source_region_RT_batch_[sr] += c.n_surfaces();
     }
   }
 
@@ -336,29 +327,14 @@ void RandomRay::event_advance_ray()
     // first part of the active length) and attenuate each. Otherwise, if the
     // full length of the segment is within the dead zone, attenuate as normal.
     if (distance_travelled_ + distance >= distance_inactive_) {
-      // is_active_ = true;
       double distance_dead = distance_inactive_ - distance_travelled_;
       attenuate_flux(distance_dead);
       is_active_ = true;
-
-      distance_travelled_ = 0.0; //TODO: This is probably not very nice here.
-
-      // if (id() == 1083){
-      //   printf("RANK %d: Stop between inactive and active \n",  mpi::rank);
-      // }
+      distance_travelled_ = 0.0;
 
       if (has_left_subdomain()) {
-        // exchange_data_.distance_travelled = 0.0; //TODO: maybe additional flag is better?
-        // if (simulation::current_batch == 25) {
-        //   printf("RANK %d: distance travelled: %f \n", mpi::rank, exchange_data_.distance_travelled);
-        //   printf("RANK %d: Ray %ld, position: %f, %f, %f, angular flux: %f, distance travelled: %f, owner: %d \n", mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, owner_rank_);
-        // }
         return;
       }
-
-      // if (simulation::current_batch == 25){
-      //   printf("RANK %d: Ray %ld, position: %f, %f, %f, angular flux: %f, distance travelled: %f, owner: %d \n", mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, owner_rank_);
-      // }
 
       double distance_alive = distance - distance_dead;
 
@@ -390,9 +366,8 @@ void RandomRay::attenuate_flux(double distance, double offset)
   // The base source region is the spatial region index
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
-  // Initialise values for ray buffering
+  // Initialize values needed to buffer ray for domain decomposition
   double mesh_partial_length = 0.0;
-  int mesh_bin = 0;
   double tiny_multiplier = 0.0;
 
   // Perform ray tracing across mesh
@@ -424,13 +399,6 @@ void RandomRay::attenuate_flux(double distance, double offset)
       mesh_fractional_lengths_.resize(0);
       mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
 
-      // if (simulation::current_batch == 25) {
-      //   printf("Start: %f, %f, %f \n", start.x, start.y, start.z);
-      //   printf("End: %f, %f, %f \n", end.x, end.y, end.z);
-      //   printf("Distance: %f \n", reduced_distance);
-      //   printf("Mesh bin size: %ld \n", mesh_bins_.size());
-      // }
-
       // Loop over all mesh bins and attenuate flux
       for (int b = 0; b < mesh_bins_.size(); b++) {
         if (mpi::n_procs > 1) {
@@ -440,34 +408,25 @@ void RandomRay::attenuate_flux(double distance, double offset)
         attenuate_flux_inner(
           physical_length, sr, mesh_bins_[b], start);
 
-        // if (sr == 134 && mesh_bins_[b] == 64056){
-        //   printf("RANK %d: Start (%f, %f, %f) \n", mpi::rank, start.x, start.y, start.z);
-        //   Position test = start - u() * TINY_BIT;
-        //   printf("RANK %d: Corrected start (%f, %f, %f) \n", mpi::rank, test.x, test.y, test.z);
-        // }
         start += physical_length * u();
 
-        // if (id() == 6543){
-          // printf("RANK %d: Source region %ld, mesh bin %d, physical length %f\n", mpi::rank, sr, mesh_bins_[b], physical_length);
-        // }
-
-        // If ray has left my subdomain, stop transport
-        // and correct position
+        // If ray has left MPI subdomain, stop transport
+        // and calculate position
         if(has_left_subdomain()){
-          // for (int i = 0; i <= b; i++) {
           for (int i = 0; i <= b - 1; i++) {
             mesh_partial_length += mesh_fractional_lengths_[i];
-            // tiny_multiplier = 1.0;
           }
 
           if (b > 0) {
+            // If ray is stopped within mesh of base source region,
+            // need to add TINY_BIT to account for deleted length
             tiny_multiplier = 1.0;
-            surface() = 0; // Reset last surface crossed to none if ray is stopped within mesh of base source region
+            // Reset last surface crossed to none if ray is stopped 
+            // within mesh of base source region
+            surface() = 0; 
           }
 
-          // Add TINY_BIT to account for deleted length in first mesh_bin in each base source region
           mesh_partial_length = tiny_multiplier * TINY_BIT + reduced_distance * mesh_partial_length;
-          mesh_bin = mesh_bins_[b];
           break;
         }
       }
@@ -475,54 +434,33 @@ void RandomRay::attenuate_flux(double distance, double offset)
   } else {
     attenuate_flux_inner(distance, sr, C_NONE, r());
   }
+
   // If ray has left my subdomain, buffer ray state
-  // if(has_left_subdomain() && !is_buffered_) {
   if(has_left_subdomain()) {
-    // if (id() == 1083){
-      // if (simulation::current_batch == 130) printf("RANK %d: buffering, new owner %d \n", mpi::rank, owner_rank_);
-    //   printf("RANK %d: distance travelled old: %f, offset: %f, mesh_partial_length: %f \n", mpi::rank, distance_travelled_, offset, mesh_partial_length);
-    // }
     Position position_buffer =  r() + (offset + mesh_partial_length) * u();
     double distance_buffer = distance_travelled_ + mesh_partial_length;
-    // double distance_buffer = distance_travelled_ + offset + mesh_partial_length;
-    pack_ray_for_buffer(distance_buffer, position_buffer); //, SourceRegionKey(sr, mesh_bin), sr);
+    pack_ray_for_buffer(distance_buffer, position_buffer);
     wgt() = 0.0;
-    // if (id() == 6543){
-      // printf("Batch %d, RANK %d: Buffered (%f, %f, %f) at source region %ld, mesh bin %d, mesh_crossed: %f, surface: %d, new owner: %d \n", simulation::current_batch, mpi::rank, position_buffer.x, position_buffer.y, position_buffer.z, sr, mesh_bin, tiny_multiplier, surface(), owner_rank_);
-    //   printf("RANK %d: material %d \n", mpi::rank, this->material());
-    // }
-
-    // if (simulation::current_batch == 25) {
-    //   printf("RANK %d: distance travelled new: %f %f \n", mpi::rank, distance_buffer, exchange_data_.distance_travelled);
-    // }
   }
 }
 
 void RandomRay::attenuate_flux_inner(
   double distance, int64_t sr, int mesh_bin, Position r)
 {
-  int owner = mpi::rank;
 
-  if (mpi::n_procs > 1){  //TODO: is this if condition necessary?
+  if (mpi::n_procs > 1){
     // Check which rank owns the source region at the current position
-    // simulation::time_find_owner_rank.start();
     Position midpoint = r + u() * (distance / 2.0);
-    owner = mpi::decomp_map.find_owner(SourceRegionKey(sr, mesh_bin), midpoint, 
+    int owner = mpi::decomp_map.find_owner(SourceRegionKey(sr, mesh_bin), midpoint, 
       domain_->discovered_source_regions_);
-    // simulation::time_find_owner_rank.stop();
-  }
 
-  // If current rank is not the owner return and mark as not local.
-  if (owner != mpi::rank) {
-      // if (id() == 6543){
-      //   printf("RANK %d: Ray %ld leaving subdomain, owner is %d \n", mpi::rank, id(), owner);
-      // }
-   is_local_ = false;
-   owner_rank_ = owner;
-   return;
+    // If current rank is not the owner return and mark as not local.
+    if (owner != mpi::rank) {
+    is_local_ = false;
+    owner_rank_ = owner;
+    return;
+    }
   }
-
-  // If ray is in subdomain continue as normal
 
   SourceRegionHandle srh;
   if (mesh_subdivision_enabled_) {
@@ -1088,17 +1026,12 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
         }
         pack_ray_for_buffer(0.0, r());
         is_local_ = false;
-          // printf("Batch: %d, RANK %d: Initialized ray %ld, position: %f, %f, %f, surface: %d, owner: %d\n", simulation::current_batch, mpi::rank, id(), r().x, r().y, r().z, surface(), owner_rank_);
         return;
       }
     }
 
     srh =
       domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), u());
-    // if (simulation::current_batch == 130){
-      // printf("RANK %d: Ray %ld in source region %ld, mesh bin %d \n", mpi::rank, id(), sr, mesh_bin);
-      // printf("RANK %d: Source = %f \n", mpi::rank, srh.source(0));
-    // }
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }
@@ -1109,7 +1042,6 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     }
   }
 
-  // printf("Batch: %d, RANK %d: Initialized ray %ld, position: %f, %f, %f, surface: %d, owner: %d\n", simulation::current_batch, mpi::rank, id(), r().x, r().y, r().z, surface(), owner_rank_);
 }
 
 SourceSite RandomRay::sample_prng()
@@ -1172,16 +1104,8 @@ void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_bu
  exchange_data_.angular_flux = angular_flux_;
  exchange_data_.distance_travelled = distance_buffer;
  exchange_data_.surface = surface();
-  // if (id() == 6543){
-  // printf("RANK: %d: Surface crossed: %d \n", mpi::rank, surface());
-  // }
-//  exchange_data_.sr_key = sr_key;
-//  exchange_data_.sr = sr;
  exchange_data_.is_active = is_active_;
  exchange_data_.ray_id = id();
-//  exchange_data_.receiving_rank = owner_rank_;
-
-//  is_buffered_ = true; 
 }
 
 int RandomRay::get_energy_groups() {

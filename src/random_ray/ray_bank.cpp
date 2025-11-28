@@ -13,11 +13,7 @@ namespace openmc {
 RayBank::RayBank() {
   negroups_ = data::mg.num_energy_groups_;
   num_messages_receiving_.resize(mpi::n_procs, 0);
-}
-
-// Initialize list of ray bank that each MPI rank will handle //TODO: this does not need to be separate function
-void RayBank::add_ray_to_bank(RandomRay& ray){
-    my_ray_list_.push_back(ray);
+  num_messages_sending_.resize(mpi::n_procs, 0);
 }
 
 // Buffer ray that has left my subdomain
@@ -41,33 +37,16 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain){
 void RayBank::update(FlatSourceDomain* domain){
 
     // Empty ray list because rays have either died or are in buffer to be sent to other ranks
-    reset_my_ray_list();   
+    my_ray_list_.resize(0);
 
-    simulation::time_mpi_imbalance.start();
-    MPI_Barrier(mpi::intracomm);
-    simulation::time_mpi_imbalance.stop();
-
-    simulation::time_comms_metadata.start();
+    // Communicate number of rays to be sent/received between ranks
     communicate_message_metadata();
-    simulation::time_comms_metadata.stop();
 
-    // Send and receive rays between MPI ranks
-    simulation::time_ray_comms.start();
+    // Send and receive ray data between MPI ranks
     communicate_rays();
-    MPI_Barrier(mpi::intracomm); //TODO: Should this barrier stay here?
-    simulation::time_ray_comms.stop();
 
-    simulation::time_unpack_data.start();
     // Add received rays to ray list of that rank
     update_my_ray_list(domain);
-    MPI_Barrier(mpi::intracomm); //TODO: Should this barrier stay here?
-    simulation::time_unpack_data.stop();
-
-}
-
-// Clears my_ray_list, but keeps memory allocation in place //TODO: Does this need to be separate function?
-void RayBank::reset_my_ray_list(){
-  my_ray_list_.resize(0);
 }
 
 int RayBank::ray_bank_size(){
@@ -78,39 +57,22 @@ int RayBank::ray_bank_size(){
 // Tells each rank how many rays to receive from whom
 void RayBank::communicate_message_metadata() {  
 
-  // mpi::decomp_map.my_neighbors.resize(0); //TODO: Should this be reset here in each iteration? Maybe only if weight has changed? Maybe it does not need to be reset ever
-  vector<int> num_messages_sending(mpi::n_procs, 0);
-
-  // Ensure all values are zero
+  // Ensure all values are zero in vector for receiving counts
   fill(num_messages_receiving_.begin(), num_messages_receiving_.end(), 0);
+  fill(num_messages_sending_.begin(), num_messages_sending_.end(), 0);
 
-  total_sending_rays_ = 0;
-
-  // Fill the sending counts //TODO: OMP?
+  // Fill the sending counts
   for (auto& [rank, rays] : ray_send_buffer_) {
-    num_messages_sending[rank] = rays.size();
-    total_sending_rays_ += num_messages_sending[rank];
-
-    // if (mpi::rank == 5 || mpi::rank == 47){
-    //   for (auto& rays : ray_send_buffer_[rank]){
-    //     printf("Rank %d: Sending ray %ld to rank %d\n", mpi::rank, rays.ray_id, rank);
-    //   }
-    // }
+    num_messages_sending_[rank] = rays.size();
   }
 
-  // printf("Rank %d: Sending a total of %d rays to %lu ranks\n", mpi::rank, total_sending_rays_, ray_send_buffer_.size());
-  // if (total_sending_rays_==1){
-  //   for (auto& [rank, rays] : ray_send_buffer_) {
-  //     for (auto& ray : rays){
-  //       printf("Rank %d: Sending ray %ld to rank %d\n", mpi::rank, ray.ray_id, rank);
-  //     }
-  //   }
-  // }
-
   // Exchange message counts with all ranks
-  MPI_Alltoall(num_messages_sending.data(), 1, MPI_INT,
+  MPI_Alltoall(num_messages_sending_.data(), 1, MPI_INT,
                num_messages_receiving_.data(), 1, MPI_INT,
                mpi::intracomm);
+
+  total_sending_rays_ = accumulate(num_messages_sending_.begin(), 
+                                     num_messages_sending_.end(), 0);
 
   total_receiving_rays_ = accumulate(num_messages_receiving_.begin(), 
                                      num_messages_receiving_.end(), 0);
@@ -121,8 +83,7 @@ void RayBank::communicate_rays(){
 
     // Each ray requires 2 sends (data + angular flux)
     int num_requests = ray_send_buffer_.size() * 2;
-    vector<MPI_Request> requests(num_requests); // heap
-    // MPI_Request requests[num_requests]; // stack
+    vector<MPI_Request> requests(num_requests);
     int req_idx = 0;
 
     // Define one-dimensional arrays to be sent and received and allocate size
@@ -143,9 +104,11 @@ void RayBank::communicate_rays(){
     // Send ray data to neighbouring ranks
     for (auto [receiving_rank, rays] : ray_send_buffer_) {
 
-      int num_rays_sending = rays.size();
+      int num_rays_sending = num_messages_sending_[receiving_rank];
 
-      for (int i = 0; i < num_rays_sending; i++) { //TODO: get rid of this! Entire rayExchangeData should be buffered
+      for (int i = 0; i < num_rays_sending; i++) { 
+        //TODO: get rid of this! Entire rayExchangeData should be buffered
+        //TODO: OMP?
         // Pack slimmed down data container for MPI send
         RayExchangeData exchange_data;
         exchange_data.position = rays[i].position;
@@ -159,15 +122,13 @@ void RayBank::communicate_rays(){
         for (int g = 0; g < negroups_; g++){
           angular_flux_data[(vector_send_idx + i) * negroups_ + g] = rays[i].angular_flux[g];
         }
-
-        // Check neighbor list and add if not already known (insert does this check automatically). Filter out rays that are sampled elsewhere TODO: Positioning here might be inefficient
-        // simulation::time_test.start(); //TODO: Remove
+        // Check neighbor list and add if not already known (insert does this check automatically). 
+        // Only check active rays to filter out rays that are sampled in wrong subdomain.
+        // TODO: Maybe this is not efficient here. If load balancing constrained to first 
+        // 5 batches, maybe this should be moved elsewhere
         if (rays[i].distance_travelled > 0.0 || rays[i].is_active) {
-          // if (mpi::decomp_map.my_neighbors.count(receiving_rank) == 0) {
             mpi::decomp_map.my_neighbors.insert(receiving_rank);
-          // }
         }
-        // simulation::time_test.stop();
       }
 
       MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx]);
@@ -178,7 +139,8 @@ void RayBank::communicate_rays(){
       }
 
     //TODO: Post Irecv before Isend?
-    // Receive ray data from neighbouring ranks //TODO: OMP?
+    //TODO: OMP?
+    // Receive ray data from neighbouring ranks 
     for (int sending_rank = 0; sending_rank < mpi::n_procs; sending_rank++) {
       int num_rays_receiving = num_messages_receiving_[sending_rank];
       if (num_rays_receiving == 0) continue;
@@ -199,38 +161,18 @@ void RayBank::update_my_ray_list(FlatSourceDomain* domain){
 
   my_ray_list_.resize(received_ray_data_.size());
 
-  // Add re-initialized random ray objects to my_ray_list
-  // #pragma omp parallel
-  // {
-    // Temporary vector containing angular flux data for re-initialization of random rays
-    // vector<float> angular_flux_vec(negroups_);
-
-    // #pragma omp for
+  // Add rays to ray list by restarting them from received data
   #pragma omp parallel for
     for (int i = 0; i < received_ray_data_.size(); i++) {
-
-      // for (int g = 0; g < negroups_; g++) {
-      //   angular_flux_vec[g] = received_angular_flux_data_[i * negroups_ + g];
-      // }
-
-      // Re-initialize rays with received data
-      // my_ray_list_.emplace_back(domain, received_ray_data_[i], &received_angular_flux_data_[i * negroups_]);
-      // my_ray_list_[i] = RandomRay(domain, received_ray_data_[i], angular_flux_vec);
-      // my_ray_list_[i] = RandomRay(domain, received_ray_data_[i], &received_angular_flux_data_[i * negroups_]);
-      
       my_ray_list_[i].restart_ray(domain, received_ray_data_[i], &received_angular_flux_data_[i * negroups_]);
     }
-  // }
 
-  // clear received data vectors
+  // Clear received data vectors
   received_ray_data_.resize(0);
   received_angular_flux_data_.resize(0);
-
 }
 
 bool RayBank::is_any_ray_alive(){
-
-  simulation::time_check_status.start();
 
   int local_rays_alive = ray_bank_size();
   int flag = 0;
@@ -239,8 +181,6 @@ bool RayBank::is_any_ray_alive(){
   }
   
   MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_MAX, mpi::intracomm);
-
-  simulation::time_check_status.stop();
   
   return flag > 0;
 }

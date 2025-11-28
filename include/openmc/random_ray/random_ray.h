@@ -6,7 +6,6 @@
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/random_ray/moment_matrix.h"
 #include "openmc/source.h"
-// #include "openmc/random_ray/ray_bank.h"
 
 namespace openmc {
 
@@ -17,9 +16,6 @@ struct RayBufferContainer {
   double distance_travelled;
   vector<float> angular_flux;
   int surface;
-  // SourceRegionKey sr_key;
-  // int sr;
-  // int receiving_rank;
   bool is_active;
   uint64_t ray_id; 
 };
@@ -49,9 +45,6 @@ public:
   // Constructors
   RandomRay();
   RandomRay(uint64_t ray_id, FlatSourceDomain* domain);
-  RandomRay(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux); //TODO: obsolete
-  // RandomRay(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux);
-  // RandomRay(uint64_t ray_id, FlatSourceDomain* domain, RayBank RB);
 
   //----------------------------------------------------------------------------
   // Methods
@@ -70,15 +63,12 @@ public:
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   void restart_ray(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux);
-  // void restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float>& angular_flux);
-  // void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain, RayBank RB);
   uint64_t transport_history_based_single_ray();
   SourceSite sample_prng();
   SourceSite sample_halton();
 
   bool has_left_subdomain();
-  // RayBufferContainer pack_ray();
-  void pack_ray_for_buffer(double distance_buffer, Position position_buffer); //, SourceRegionKey sr_key, int sr);
+  void pack_ray_for_buffer(double distance_buffer, Position position_buffer);
   int get_energy_groups();
 
   //----------------------------------------------------------------------------
@@ -106,7 +96,6 @@ private:
   vector<MomentArray> delta_moments_;
   vector<int> mesh_bins_;
   vector<double> mesh_fractional_lengths_;
-  // RayBank RB_;
 
   int negroups_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
@@ -115,8 +104,6 @@ private:
   bool is_active_ {false};
   bool is_alive_ {true};
   bool is_local_ {true};
-  // bool discovered_new_SRK_ {false};
-  // bool is_buffered_ {false};
 }; // class RandomRay
 
 } // namespace openmc

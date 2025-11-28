@@ -130,8 +130,6 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
 // combine two source regions from different ranks together
 void SourceRegion::merge(SourceRegion& sr_add, bool is_linear) {
 
-  // printf("RANK %d:  Test 1\n", mpi::rank);
-
   // scalar fields
   scalars_.volume_ += sr_add.scalars_.volume_;
   scalars_.volume_sq_ += sr_add.scalars_.volume_sq_;
@@ -140,35 +138,21 @@ void SourceRegion::merge(SourceRegion& sr_add, bool is_linear) {
   scalars_.external_source_present_ = std::max(scalars_.external_source_present_, sr_add.scalars_.external_source_present_);
   scalars_.centroid_iteration_ += sr_add.scalars_.centroid_iteration_;
   if (is_linear) {
-    // scalars_.centroid_iteration_ += sr_add.scalars_.centroid_iteration_;
     scalars_.mom_matrix_ += sr_add.scalars_.mom_matrix_;
   }
 
-  // printf("RANK %d:  Test 2\n", mpi::rank);
-  // printf("Size scalar flux new %lu \n", scalar_flux_new_.size());
-
   // vector fields
-  // #pragma omp simd //TODO: check if this is safe
+  #pragma omp simd
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
-    // printf("RANK %d:  Test 2.1\n", mpi::rank);   
-    // printf("1 Size scalar flux new %lu \n", sr_add.scalar_flux_new_.size());
     scalar_flux_new_[g] += sr_add.scalar_flux_new_[g];
-    // printf("0 Size scalar flux new %lu \n", scalar_flux_new_.size());
-    // printf("1 Size scalar flux new %lu \n", sr_add.scalar_flux_new_.size());
     scalar_flux_final_[g] += sr_add.scalar_flux_final_[g];
-    // printf("2 Size scalar flux new %lu \n", sr_add.scalar_flux_final_.size());
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       external_source_[g] += sr_add.external_source_[g];
-      // printf("3 Size scalar flux new %lu \n", sr_add.external_source_.size());
     }
-    // printf("is linear %d \n", is_linear);
     if (is_linear) {
       flux_moments_new_[g] += sr_add.flux_moments_new_[g];
     }
   }
-
-  // printf("RANK %d:  Test 3\n", mpi::rank);
-
 }
 
 //==============================================================================

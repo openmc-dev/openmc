@@ -387,10 +387,6 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
     simulation::time_decomposition_handling.stop();
   }
 
-  // if (mpi::master) {
-  //   printf("Batch %d, RANK %d: keff_old: %f, Fission Rate Old: %f, Fission Rate New: %f \n", simulation::current_batch, mpi::rank, k_eff_old, fission_rate_old, fission_rate_new);
-  // }
-
   double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
 
   double H = 0.0;
@@ -410,7 +406,6 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 
   if (mpi::n_procs > 1) {
     simulation::time_decomposition_handling.start();
-    // MPI_Allreduce(MPI_IN_PLACE, &H, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
     if (mpi::master) {
       MPI_Reduce(MPI_IN_PLACE, &H, 1, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
     } else {
@@ -1013,8 +1008,6 @@ void FlatSourceDomain::output_to_vtk() const
 // is checked and flipped if necessary.
 void FlatSourceDomain::output_to_vtk_decomp() const
 {
-  // printf("-2 RANK %d: Starting VTK output in random ray mode...\n", mpi::rank);
-  // MPI_Barrier(mpi::intracomm);
 
   if (mpi::master){
     // Rename .h5 plot filename(s) to .vtk filenames
@@ -1075,7 +1068,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
     // Relate voxel spatial locations to random ray source regions
     vector<int> voxel_indices(Nx * Ny * Nz);
-    // vector<SourceRegionKey> voxel_indices_key(Nx * Ny * Nz);
     vector<Position> voxel_positions(Nx * Ny * Nz);
     vector<double> weight_windows(Nx * Ny * Nz);
     vector<int> my_voxel_ids;
@@ -1097,7 +1089,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
           bool found = exhaustive_find_cell(p);
           if (!found) {
-            // voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1,-1};
             voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
             voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
             weight_windows[z * Ny * Nx + y * Nx + x] = 0.0;
@@ -1124,7 +1115,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
             }
           }
 
-          // voxel_indices_key[z * Ny * Nx + y * Nx + x] = sr_key;
           voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
 
@@ -1173,9 +1163,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       std::fprintf(plot, "POINT_DATA %d\n", Nx * Ny * Nz);
     }
 
-    // printf("-1 RANK: %d start plotting\n", mpi::rank);
-    // MPI_Barrier(mpi::intracomm);
-
     int vector_size = Nx * Ny * Nz;
     vector<float> vector_out_float(vector_size, 0.0);
     vector<int> vector_out_int(vector_size, 0);
@@ -1184,9 +1171,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
     int64_t num_samples = 0;
     float min_flux = 0.0;
     float max_flux = -1.0e20;
-
-    // printf("0 RANK: %d start plotting\n", mpi::rank);
-    // MPI_Barrier(mpi::intracomm);
 
     // Plot multigroup flux data
     for (int g = 0; g < negroups_; g++) {
@@ -1214,8 +1198,12 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
       if (mpi::master){
         MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(MPI_IN_PLACE, &num_neg, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(MPI_IN_PLACE, &num_samples, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
       } else {
         MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(&num_neg, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+        MPI_Reduce(&num_samples, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
       }
 
       if (mpi::master){
@@ -1230,13 +1218,10 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
     }
 
-    // printf("1 RANK: %d finished flux plotting\n", mpi::rank);
-    // MPI_Barrier(mpi::intracomm);
-
     // Slightly negative fluxes can be normal when sampling corners of linear
     // source regions. However, very common and high magnitude negative fluxes
-    // may indicate numerical instability. //TODO: needs changing for MPI ranks
-    if (num_neg > 0) {
+    // may indicate numerical instability.
+    if (mpi::master && num_neg > 0) {
       warning(fmt::format("{} plot samples ({:.4f}%) contained negative fluxes "
                           "(minumum found = {:.2e} maximum_found = {:.2e})",
         num_neg, (100.0 * num_neg) / num_samples, min_flux, max_flux));
@@ -1266,9 +1251,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
     fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
 
-    // printf("2 RANK: %d Completed FSR plotting\n", mpi::rank);
-    // MPI_Barrier(mpi::intracomm);
-
     // Plot Materials
     for (int voxel_id : my_voxel_ids) {
       int mat = -1;
@@ -1297,9 +1279,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
     fill(vector_out_int.begin(), vector_out_int.end(), 0);
 
-    // printf("3 RANK: %d finished material plotting\n", mpi::rank);
-    // MPI_Barrier(mpi::intracomm);
-
     // Plot rank subdomains
     for (int voxel_id : my_voxel_ids) {
       int rank_id = mpi::rank;
@@ -1325,40 +1304,9 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
     fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
 
-    // Plot calculated load
+    // Plot measured load based on transport sweep timers
     for (int voxel_id : my_voxel_ids) {
-      float value = mpi::decomp_map.rank_load_[mpi::rank];
-      vector_out_float[voxel_id] = value;
-    }
-
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-    } else {
-      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-    }
-
-    if (mpi::master){
-      std::fprintf(plot, "SCALARS calculated_load float\n");
-      std::fprintf(plot, "LOOKUP_TABLE default\n");
-
-      for (float value : vector_out_float) {
-        float print_value = convert_to_big_endian<float>(value);
-        std::fwrite(&print_value, sizeof(float), 1, plot);
-      }
-    }
-
-    fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
-
-    // Plot actual load
-    float transport_time = (simulation::time_transport.elapsed() - simulation::time_ray_buffering.elapsed());
-    float total_transport_time = 0.0;
-
-    MPI_Allreduce(&transport_time, &total_transport_time, 1, MPI_FLOAT, MPI_SUM, mpi::intracomm);
-
-    // printf("RANK %d: transport_time = %f %f\n", mpi::rank, transport_time, total_transport_time);
-
-    for (int voxel_id : my_voxel_ids) {
-      float value = transport_time/total_transport_time;
+      float value = mpi::decomp_map.measured_rank_load_fractions_[mpi::rank];
       vector_out_float[voxel_id] = value;
     }
 
@@ -1379,114 +1327,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
     }
 
     fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
-
-    // Plot expensive ray tracing
-    double sum_bsr_RT = 0;
-
-    for (int i = 0; i < mpi::decomp_map.n_base_sr_; i++) {
-      sum_bsr_RT += static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[i])/mpi::decomp_map.mesh_bins_per_base_sr_[i];
-    }
-
-    // uint64_t sum_bsr_RT = std::accumulate(mpi::decomp_map.num_base_source_region_RT_tot_.begin(), mpi::decomp_map.num_base_source_region_RT_tot_.end(), uint64_t{0});
-
-    for (int voxel_id : my_voxel_ids) {
-      int fsr = voxel_indices[voxel_id];
-      float value = 0;
-      if (fsr >= 0) {
-        SourceRegionKey sr_key = source_regions_.key(fsr);
-        // value = static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[sr_key.base_source_region_id])/(sum_bsr_RT * mpi::decomp_map.mesh_bins_per_base_sr_[sr_key.base_source_region_id]);
-        value = static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[sr_key.base_source_region_id])/(mpi::decomp_map.mesh_bins_per_base_sr_[sr_key.base_source_region_id]);
-        // value = static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[sr_key.base_source_region_id])/(sum_bsr_RT);
-        // if (mpi::master) printf("num_base_source_region_RT_tot_[1] = %lu\n", mpi::decomp_map.num_base_source_region_RT_tot_[1]);
-        // if (mpi::master) printf("num_base_source_region_RT_tot_[%lu] = %lu, sum_bsr_RT = %lu, value = %f\n", sr_key.base_source_region_id, mpi::decomp_map.num_base_source_region_RT_tot_[sr_key.base_source_region_id], sum_bsr_RT, value);
-      }
-      vector_out_float[voxel_id] = value; // To avoid -1 for void (MPI_SUM)
-    }
-
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-    } else {
-      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-    }
-
-    if (mpi::master){
-      std::fprintf(plot, "SCALARS ExpensiveRT float\n");
-      std::fprintf(plot, "LOOKUP_TABLE default\n");
-
-      for (float value : vector_out_float) {
-        float print_value = convert_to_big_endian<float>(value);
-        std::fwrite(&print_value, sizeof(float), 1, plot);
-      }
-    }
-
-    fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
-
-    // Plot cheap ray tracing
-    double sum_mb_RT = 0.0;
-
-    for (int i = 0; i < mpi::decomp_map.n_base_sr_; i++) {
-      sum_mb_RT += static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[i])/mpi::decomp_map.mesh_bins_per_base_sr_[i];
-    }
-
-    // uint64_t sum_mb_RT = std::accumulate(mpi::decomp_map.num_mesh_bin_RT_tot_.begin(), mpi::decomp_map.num_mesh_bin_RT_tot_.end(), uint64_t{0});
-
-    for (int voxel_id : my_voxel_ids) {
-      int fsr = voxel_indices[voxel_id];
-      float cheapRT = 0;
-      if (fsr >= 0) {
-        SourceRegionKey sr_key = source_regions_.key(fsr);
-        // cheapRT = static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[sr_key.base_source_region_id])/(sum_mb_RT * mpi::decomp_map.mesh_bins_per_base_sr_[sr_key.base_source_region_id]);
-        cheapRT = static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[sr_key.base_source_region_id])/(mpi::decomp_map.mesh_bins_per_base_sr_[sr_key.base_source_region_id]);
-        // cheapRT = static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[sr_key.base_source_region_id])/sum_mb_RT;
-      }
-      vector_out_float[voxel_id] = cheapRT; // To avoid -1 for void (MPI_SUM)
-    }
-
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-    } else {
-      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
-    }
-
-    if (mpi::master){
-      std::fprintf(plot, "SCALARS CheapRT float\n");
-      std::fprintf(plot, "LOOKUP_TABLE default\n");
-
-      for (float value : vector_out_float) {
-        float print_value = convert_to_big_endian<float>(value);
-        std::fwrite(&print_value, sizeof(float), 1, plot);
-      }
-    }
-
-    fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
-
-    // Plot number of hits
-    for (int voxel_id : my_voxel_ids) {
-      int fsr = voxel_indices[voxel_id];
-      int n_hits = 0;
-      if (fsr >= 0) {
-        n_hits = source_regions_.n_hits(fsr);
-      }
-      vector_out_int[voxel_id] = n_hits;
-    }
-
-    if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, vector_out_int.data(), vector_size, MPI_INT, MPI_SUM, 0, mpi::intracomm);
-    } else {
-      MPI_Reduce(vector_out_int.data(), nullptr, vector_size, MPI_INT, MPI_SUM, 0, mpi::intracomm);
-    }
-
-    if (mpi::master){
-      std::fprintf(plot, "SCALARS n_hits int\n");
-      std::fprintf(plot, "LOOKUP_TABLE default\n");
-
-      for (int value : vector_out_int) {
-        int print_value = convert_to_big_endian<int>(value);
-        std::fwrite(&print_value, sizeof(int), 1, plot);
-      }
-    }
-
-    fill(vector_out_int.begin(), vector_out_int.end(), 0);
 
     // Plot fission source
     if (settings::run_mode == RunMode::EIGENVALUE) {
@@ -1546,9 +1386,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
     fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
 
-    // printf("4 RANK: %d finished fisison plotting\n", mpi::rank);
-    //     MPI_Barrier(mpi::intracomm);
-
     // Plot weight window data
     if (variance_reduction::weight_windows.size() == 1) {
       for (int voxel_id : my_voxel_ids) {
@@ -1574,9 +1411,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       }
     }
     }
-
-    // printf("5 RANK: %d finished  plotting\n", mpi::rank);
-    //     MPI_Barrier(mpi::intracomm);
 
     if (mpi::master){
       std::fclose(plot);
@@ -2244,38 +2078,25 @@ bool FlatSourceDomain::is_geometry_3D()
   // Get spatial box of ray_source_
   SpatialBox* sb = dynamic_cast<SpatialBox*>(
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
-
-  // printf("Test1\n");
   
-  Position shift {FP_COINCIDENT, FP_COINCIDENT, FP_COINCIDENT}; //TODO: necessary? Adopted from halton sampling
-
   double x_length = sb->upper_right().x - sb->lower_left().x;
   double y_length = sb->upper_right().y - sb->lower_left().y;
   double z_length = sb->upper_right().z - sb->lower_left().z;
 
-    // printf("Test2\n");
-
   int num_xy_points = 100;
   int num_z_points = 100;
   uint64_t seed = openmc_get_seed();
-
-    // printf("Test3\n");
 
   for (int i = 0; i < num_xy_points; i++) {
     Position sample;
     sample.x = sb->lower_left().x + x_length * prn(&seed);
     sample.y = sb->lower_left().y + y_length * prn(&seed);
     
-    // z_point_samples = rhalton(num_z_points, current_seed(), skip = 0);
     SourceRegionKey sr_key_prev {-1, -1};
     bool check_key = false;
 
-    // printf("Checking x,y = %1.6f, %1.6f\n", sample.x, sample.y);
-
-    for (int j = 0; j < num_z_points; j++){ //TODO: include uppermost and lowermost position?
+    for (int j = 0; j < num_z_points; j++){ //TODO: Should uppermost and lowermost position always be checked?
       sample.z = sb->lower_left().z + z_length * prn(&seed);
-
-      // printf("  Checking z = %1.6f\n", sample.z);
 
       Particle p;
       p.r() = sample;
@@ -2289,22 +2110,12 @@ bool FlatSourceDomain::is_geometry_3D()
         continue;
       }
 
-        // printf("Test5\n");
-
       int i_cell = p.lowest_coord().cell();
       int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
       SourceRegionKey sr_key {sr, 0};
 
-      // printf("Test6\n");
-
-
       if (RandomRay::mesh_subdivision_enabled_) {
-
-              // printf("Test6.1\n");
-
         int mesh_idx = base_source_regions_.mesh(sr);
-
-      // printf("Test6.2\n");
 
         int mesh_bin;
         if (mesh_idx == C_NONE) {
@@ -2313,31 +2124,17 @@ bool FlatSourceDomain::is_geometry_3D()
           mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
         }
         sr_key = {sr, mesh_bin};
-
-              // printf("Test6.3\n");
-
-        // printf("    Found source region key = (%ld, %ld)\n", sr_key.base_source_region_id, sr_key.mesh_bin);
-
-        if (check_key && (sr_key.base_source_region_id != sr_key_prev.base_source_region_id ||
-                         sr_key.mesh_bin != sr_key_prev.mesh_bin)) {
-          return true;
-        }
-
-              // printf("Test6.4\n");
-
-        sr_key_prev = sr_key;
-        check_key = true;
-        //TODO: why is this code checking sr when it is already known?
-        // auto it = source_region_map_.find(sr_key);
-        // if (it != source_region_map_.end()) {
-        //   sr = it->second;
-        // } else {
-        //   sr = -1;
-        // }
       }
 
-        // printf("Test7\n");
+      // Check if sr_key has changed in z-direction
+      if (check_key && (sr_key.base_source_region_id != sr_key_prev.base_source_region_id ||
+                        sr_key.mesh_bin != sr_key_prev.mesh_bin)) {
+        return true;
+      }
 
+      // Set check_key to true after first sr_key has been loaded
+      sr_key_prev = sr_key;
+      check_key = true;
     }
   }
 

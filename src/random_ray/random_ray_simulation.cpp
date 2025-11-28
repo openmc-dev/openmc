@@ -65,9 +65,6 @@ void openmc_run_random_ray()
     // Initialize fixed sources, if present
     sim.apply_fixed_sources_and_mesh_domains();
 
-    // // Check if problem is 3D or 2D
-    // sim.check_geometry_dimensions();
-
     // Begin main simulation timer
     simulation::time_total.start();
 
@@ -95,35 +92,6 @@ void openmc_run_random_ray()
 
     // Finalize OpenMC
     openmc_simulation_finalize();
-
-    // //expensive ray tracing
-    // double sum_bsr_RT = 0;
-    // for (int64_t sr = 0; sr < sim.domain()->n_source_regions(); sr++) {
-    //   SourceRegionKey sr_key = sim.domain()->source_regions_.key(sr);
-    //   uint64_t base_sr = sr_key.base_source_region_id;
-    //   sum_bsr_RT += static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[base_sr])/mpi::decomp_map.mesh_bins_per_base_sr_[base_sr];
-    // }
-
-    // // cheap ray tracing
-    // double sum_mb_RT = 0;
-    // for (int64_t sr = 0; sr < sim.domain()->n_source_regions(); sr++) {
-    //   SourceRegionKey sr_key = sim.domain()->source_regions_.key(sr);
-    //   uint64_t base_sr = sr_key.base_source_region_id;
-    //   sum_mb_RT += static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[base_sr])/mpi::decomp_map.mesh_bins_per_base_sr_[base_sr];
-    // }
-
-    // // number of hits
-    // uint64_t sum_hits = 0;
-    // for (int64_t sr = 0; sr < sim.domain()->n_source_regions(); sr++) {
-    //   sum_hits += sim.domain()->source_regions_.n_hits(sr) * mpi::decomp_map.negroups_;
-    // }
-
-    double time_transport_total =
-      (simulation::time_transport.elapsed() - simulation::time_ray_buffering.elapsed());
-    double time_sum = time_transport_total + simulation::time_mpi_imbalance.elapsed();
-
-    // printf("RANK%d %f %f %f %f %f %lu\n", mpi::rank, time_transport_total, simulation::time_mpi_imbalance.elapsed(), time_sum, sum_bsr_RT, sum_mb_RT, sum_hits);
-    printf("RANK%d %f %f %f\n", mpi::rank, time_transport_total, simulation::time_mpi_imbalance.elapsed(), time_sum);
 
     // Output all simulation results
     sim.output_simulation_results();
@@ -392,6 +360,7 @@ void openmc_reset_random_ray()
   FlatSourceDomain::mesh_domain_map_.clear();
   RandomRay::ray_source_.reset();
   RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
+  RandomRay::geom_dim_ = RandomRayGeomDim::THREE_DIM; 
   RandomRay::mesh_subdivision_enabled_ = false;
   RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
 }
@@ -427,15 +396,6 @@ RandomRaySimulation::RandomRaySimulation()
   // internal to the random ray solver
   domain_->flatten_xs();
 }
-
-// void RandomRaySimulation::check_geometry_dimensions(){
-//   // Check if problem is 3D
-//   if (!domain_->is_geometry_3D()){
-//     RandomRay::geom_dim_ = RandomRayGeomDim::TWO_DIM;
-//   }
-
-//   printf("Geometry is %s\n", (RandomRay::geom_dim_ == RandomRayGeomDim::THREE_DIM) ? "3D" : "2D");
-// }
 
 void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 {
@@ -499,20 +459,17 @@ void RandomRaySimulation::simulate()
         simulation::current_batch == 1 && !FlatSourceDomain::adjoint_) {
       domain_->prepare_base_source_regions();
 
-      // printf("Geometry is %s\n", (RandomRay::geom_dim_ == RandomRayGeomDim::THREE_DIM) ? "3D" : "2D");
-
       // Check if problem is 3D
       if (!domain_->is_geometry_3D()){
         RandomRay::geom_dim_ = RandomRayGeomDim::TWO_DIM;
       }
 
-      printf("Geometry is %s\n", (RandomRay::geom_dim_ == RandomRayGeomDim::THREE_DIM) ? "3D" : "2D");
-
       // Generate Voronoi cells, each of which corresponds to a rank subdomain
-      simulation::time_generate_voronoi_centers.start();
-      mpi::decomp_map.generate_rank_centers();
-      simulation::time_generate_voronoi_centers.stop();
-
+      if (mpi::n_procs > 1){
+        simulation::time_generate_voronoi_centers.start();
+        mpi::decomp_map.generate_rank_centers();
+        simulation::time_generate_voronoi_centers.stop();
+      }
     }
 
     // Transport sweep over all random rays for the iteration
@@ -539,19 +496,8 @@ void RandomRaySimulation::simulate()
     domain_->normalize_scalar_flux_and_volumes(
       settings::n_particles * RandomRay::distance_active_);
 
-    // if (mpi::master) {
-      // printf("Rank %d has %ld neighbors: ", mpi::rank, mpi::decomp_map.my_neighbors.size());
-      // for (int rank : mpi::decomp_map.my_neighbors){
-      //   printf("%d ", rank);
-      // }
-      // printf("\n");
-    // }
-
-    // Balance load between ranks by changing weights of Voronoi cells
-    // if (mpi::master){printf("Max imbalance %f", mpi::decomp_map.max_imbalance_);}
-
-    // TODO: limit load calulateion to first 5 batches as well
-    if (mpi::n_procs > 1 && simulation::current_batch <= 5) {// && mpi::decomp_map.load_balanced() == false){
+    if (mpi::n_procs > 1 && simulation::current_batch <= 5) {
+      // Balance load between MPI ranks by exchanging source regions
       simulation::time_load_balance.start();
       mpi::decomp_map.balance_load(domain_.get());
       simulation::time_load_balance.stop();
@@ -609,40 +555,62 @@ void RandomRaySimulation::output_simulation_results()
   // Compute values for diagnostics
   int64_t total_n_source_regions = domain_->n_source_regions();
   int64_t total_n_external_source_regions = domain_->n_external_source_regions_;
+  double max_load_imbalance = 0.0;
 
   if (mpi::n_procs > 1){
 
     // Average number of ray communications between ranks per batch
-    avg_num_comms_ = avg_num_comms_/settings::n_batches; //TODO: should this be double?
+    avg_num_communication_rounds_ = static_cast<uint64_t>(std::round(avg_num_communication_rounds_/settings::n_batches));
 
     // Exchange intersection data
     if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, &total_geometric_intersections_, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(MPI_IN_PLACE, &total_geometric_intersections_, 1, MPI_UINT64_T, MPI_SUM, 0, mpi::intracomm);
     } else {
-      MPI_Reduce(&total_geometric_intersections_, nullptr, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(&total_geometric_intersections_, nullptr, 1, MPI_UINT64_T, MPI_SUM, 0, mpi::intracomm);
     }
 
     // Exchange source region data
     if (mpi::master){
-      MPI_Reduce(MPI_IN_PLACE, &total_n_source_regions, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
-      MPI_Reduce(MPI_IN_PLACE, &total_n_external_source_regions, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(MPI_IN_PLACE, &total_n_source_regions, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(MPI_IN_PLACE, &total_n_external_source_regions, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
     } else {
-      MPI_Reduce(&total_n_source_regions, nullptr, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
-      MPI_Reduce(&total_n_external_source_regions, nullptr, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(&total_n_source_regions, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(&total_n_external_source_regions, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
     }
+
+    // Determine load imbalance
+    double time_transport_total = simulation::time_transport.elapsed() - simulation::time_ray_buffering.elapsed();
+    MPI_Allgather(&time_transport_total, 1, MPI_DOUBLE, mpi::decomp_map.measured_rank_load_fractions_.data(), 1, MPI_DOUBLE, mpi::intracomm);
+    double measured_load_sum = std::accumulate(mpi::decomp_map.measured_rank_load_fractions_.begin(), mpi::decomp_map.measured_rank_load_fractions_.end(), 0.0);
+    for (int rank = 0; rank < mpi::n_procs; rank++) {
+      mpi::decomp_map.measured_rank_load_fractions_[rank] = mpi::decomp_map.measured_rank_load_fractions_[rank] / measured_load_sum;
+    }
+    if (mpi::master) {
+      double max_load_measured = *std::max_element(mpi::decomp_map.measured_rank_load_fractions_.begin(), mpi::decomp_map.measured_rank_load_fractions_.end());
+      max_load_imbalance = (max_load_measured - mpi::decomp_map.target_load_) / mpi::decomp_map.target_load_;
+    }
+    // if (mpi::master) {
+    //   MPI_Gather(&time_transport_total, 1, MPI_DOUBLE, measured_rank_load_fractions_.data(), 1, MPI_DOUBLE, 0, mpi::intracomm);
+    //   double measured_load_sum = std::accumulate(measured_rank_load_fractions_.begin(), measured_rank_load_fractions_.end(), 0.0);
+    //   for (int rank = 0; rank < mpi::n_procs; rank++) {
+    //     measured_rank_load_fractions_[rank] = measured_rank_load_fractions_[rank] / measured_load_sum;
+    //   }
+    //   double max_load_measured = *std::max_element(measured_rank_load_fractions_.begin(), measured_rank_load_fractions_.end());
+    //   max_load_imbalance = (max_load_measured - mpi::decomp_map.target_load_) / mpi::decomp_map.target_load_;
+    // } else {
+    //   MPI_Gather(&time_transport_total, 1, MPI_DOUBLE, nullptr, 1, MPI_DOUBLE, 0, mpi::intracomm);
+    // }
   }
 
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,
       avg_miss_rate_ / settings::n_batches, negroups_,
-      total_n_source_regions, total_n_external_source_regions, avg_num_comms_);
+      total_n_source_regions, total_n_external_source_regions, avg_num_communication_rounds_, max_load_imbalance);
   }
   
   if (model::plots.size() > 0) {
       if (mpi::n_procs > 1){
-        // printf("RANK: %d start vtk decomp output\n", mpi:Co:rank);
-        // MPI_Barrier(mpi::intracomm);
         domain_->output_to_vtk_decomp();
       } else {
         domain_->output_to_vtk();
@@ -662,30 +630,22 @@ void RandomRaySimulation::instability_check(
   if (mpi::n_procs > 1){
     // Reduce n_hits and n_source_regions on master rank to compute
     // global miss rate
-    simulation::time_all_reduce.start();
+    simulation::time_decomposition_handling.start();
     if (mpi::master) {
-      MPI_Reduce(MPI_IN_PLACE, &n_hits, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
-      MPI_Reduce(MPI_IN_PLACE, &n_source_regions, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(MPI_IN_PLACE, &n_hits, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(MPI_IN_PLACE, &n_source_regions, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
     } else {
-      MPI_Reduce(&n_hits, nullptr, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
-      MPI_Reduce(&n_source_regions, nullptr, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(&n_hits, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(&n_source_regions, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
     }
-    simulation::time_all_reduce.stop();
+    simulation::time_decomposition_handling.stop();
   }
-
-  // if (mpi::master) {
-  //   printf("BATCH %d: n_hits = %ld, n_source_regions = %ld, k_eff = %f\n",
-  //     simulation::current_batch, n_hits, n_source_regions, k_eff);
-  // }
 
   if (mpi::master) {
     double percent_missed = ((n_source_regions - n_hits) /
                             static_cast<double>(n_source_regions)) *
                           100.0;
     avg_miss_rate += percent_missed;
-
-    printf("Batch %d: FSR Miss Rate = %.3f%%\n", simulation::current_batch,
-      percent_missed);
 
     if (percent_missed > 10.0) {
       warning(fmt::format(
@@ -700,12 +660,7 @@ void RandomRaySimulation::instability_check(
           percent_missed));
     }
 
-    // if (simulation::current_batch==56){
-    //   printf("RANK %d: k_eff = %f\n", mpi::rank, k_eff);
-    // }
-
     if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
-      // printf("RANK %d: k_eff = %f\n", mpi::rank, k_eff);
       fatal_error("Instability detected");
     }
   }
@@ -714,7 +669,7 @@ void RandomRaySimulation::instability_check(
 // Print random ray simulation results
 void RandomRaySimulation::print_results_random_ray(
   uint64_t total_geometric_intersections, double avg_miss_rate, int negroups,
-  int64_t n_source_regions, int64_t n_external_source_regions, uint64_t avg_num_comms) const
+  int64_t n_source_regions, int64_t n_external_source_regions, uint64_t avg_num_communication_rounds, double max_load_imbalance) const
 {
   using namespace simulation;
 
@@ -723,7 +678,7 @@ void RandomRaySimulation::print_results_random_ray(
     double time_transport_total = time_transport.elapsed() - time_ray_buffering.elapsed();
     double time_per_integration = time_transport_total / total_integrations;
     double time_domain_decomposition = time_decomposition_handling.elapsed()
-      + time_generate_voronoi_centers.elapsed() + time_load_balance.elapsed() - time_transport_total + time_all_reduce.elapsed();
+      + time_generate_voronoi_centers.elapsed() + time_load_balance.elapsed() - time_transport_total;
     double misc_time = time_total.elapsed() - time_update_src.elapsed() -
                        time_transport_total - time_tallies.elapsed() -
                        time_bank_sendrecv.elapsed() - time_domain_decomposition;
@@ -756,14 +711,10 @@ void RandomRaySimulation::print_results_random_ray(
 
     if (mpi::n_procs > 1){
       fmt::print(" MPI Ranks                         = {}\n", mpi::n_procs);
-      fmt::print(" Avg Number of Subdomain Crossings = {}\n", avg_num_comms);
-      fmt::print(" Number of load optimization calls  = {}\n", mpi::decomp_map.cnt_optimizations_total_);
+      fmt::print(" Avg Ray Subdomain Crossings       = {}\n", avg_num_communication_rounds);
+      fmt::print(" Number of load optimization calls = {}\n", mpi::decomp_map.cnt_optimizations_total_); //TODO: can be removed if fixed to 5
       fmt::print("    unconverged optimizations      = {}\n", mpi::decomp_map.cnt_unconverged_optimizations_total_);
-      fmt::print(" Load per MPI Rank                 = Rank {}: {:.2f}%\n", 0, mpi::decomp_map.rank_load_[0]*100.0); //TODO: show actual load not aclualted?
-      for (int i = 1; i < mpi::n_procs; i++) {
-        fmt::print("                                     Rank {}: {:.2f}%\n", i, mpi::decomp_map.rank_load_[i]*100.0);
-      }
-      // fmt::print("Maximum Load Imbalance             = {:.2f}%\n", mpi::decomp_map.max_imbalance_*100.0); //TODO: This needs updating!
+      fmt::print(" Maximum Load Imbalance            = {:.2f}%\n", max_load_imbalance*100.0);
     }
 
     std::string estimator;
@@ -821,28 +772,14 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
     if (mpi::n_procs > 1){
       double time_decomp_misc = time_domain_decomposition - time_source_region_exchange.elapsed() - time_generate_voronoi_centers.elapsed() 
-        - time_ray_comms.elapsed() - time_comms_metadata.elapsed() - time_unpack_data.elapsed() - time_mpi_imbalance.elapsed() - time_load_balance.elapsed() -  time_ray_buffering.elapsed() - time_all_reduce.elapsed() - time_calculate_rank_load.elapsed() - time_check_status.elapsed() - time_check_new_sr.elapsed()
-        - time_test1.elapsed(); //  - time_add_ray_to_bank.elapsed()
-
+        - time_ray_comms.elapsed() - time_unpack_data.elapsed() - time_load_balance.elapsed();
       show_time("Decomposition handling", time_domain_decomposition, 1);
       show_time("Ray communication", time_ray_comms.elapsed(), 2);
-      show_time("Source region exchange", time_source_region_exchange.elapsed(), 2);
+      show_time("Exchanging contested SRs", time_source_region_exchange.elapsed(), 2);
       show_time("Load balancing", time_load_balance.elapsed(), 2);
-      show_time("Optimization", time_load_balance.elapsed() - time_load_balance_sr_transfer.elapsed(), 3);
-      show_time("Source region transfer", time_load_balance_sr_transfer.elapsed(), 3);
-      show_time("Waiting for other ranks", time_mpi_imbalance.elapsed(), 2);
       show_time("Generating Voronoi centers", time_generate_voronoi_centers.elapsed(), 2);
-      show_time("Sending ray metadata", time_comms_metadata.elapsed(), 2);
-      show_time("Unpacking ray data", time_unpack_data.elapsed(), 2);
-      show_time("Buffering rays", time_ray_buffering.elapsed(), 2);     
-      show_time("All reduce", time_all_reduce.elapsed(), 2);     
-      show_time("Adding rays to bank", time_add_ray_to_bank.elapsed(), 2);
-      show_time("Calculate rank load", time_calculate_rank_load.elapsed(), 2);
-      show_time("Check if rays alive", time_check_status.elapsed(), 2);
-      show_time("Check if new sr discovered", time_check_new_sr.elapsed(), 2);
-      show_time("Block", time_test1.elapsed(), 2);
+      show_time("Reinitialising received rays", time_unpack_data.elapsed(), 2);
       show_time("Other decomposition routines", time_decomp_misc, 2);
-      // show_time("Testing: ", time_test.elapsed(), 2); //TODO: remove
     }
     show_time("Other iteration routines", misc_time, 1);
 
@@ -884,87 +821,36 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
   double start_time_transport = simulation::time_transport.elapsed();
   double start_time_ray_buffering = simulation::time_ray_buffering.elapsed();
 
-
-
-  //     Position sample;
-  //     sample.x = 700.533084;
-  //     sample.y = -365.175846;
-  //     sample.z = -417.239206;
-  //     Particle p;
-  //     p.r() = sample;
-  //     p.r_last() = sample;
-  //     p.E() = 1.0;
-  //     p.E_last() = 1.0;
-  //     p.u() = {1.0, 0.0, 0.0};
-
-  //     int i_cell = p.lowest_coord().cell();
-  //     int64_t sr = domain_.get()->source_region_offsets_[i_cell] + p.cell_instance();
-  //     SourceRegionKey sr_key {sr, 0};
-  //     if (RandomRay::mesh_subdivision_enabled_) {
-  //       int mesh_idx = domain_.get()->base_source_regions_.mesh(sr);
-  //       int mesh_bin;
-  //       if (mesh_idx == C_NONE) {
-  //         mesh_bin = 0;
-  //       } else {
-  //         mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
-  //       }
-  //       sr_key = {sr, mesh_bin};
-  //       auto it = domain_.get()->source_region_map_.find(sr_key);
-  //       if (it != domain_.get()->source_region_map_.end()) {
-  //         sr = it->second;
-  //       } else {
-  //         sr = -1;
-  //       }
-  //     }
-
-  // printf("Rank %d: Sampled source region %ld, meshbin %ld\n", mpi::rank, 
-  //        sr_key.base_source_region_id, sr_key.mesh_bin);  // Assuming these are the correct member names
-
   simulation::time_decomposition_handling.start();
-
-  // int ray_cnt = 0;
-
-  simulation::time_test1.start();
 
   // Create rays and add them to ray bank
   #pragma omp parallel for schedule(static)
     for (int i = 0; i < simulation::work_per_rank; i++) {
       uint64_t id = simulation::work_index[mpi::rank] + i;
       RandomRay ray(id, domain_.get());
-      // ray_cnt ++;
 
       // Add ray to ray bank if it starts in my subdomain
       if (!ray.has_left_subdomain()){
         #pragma omp critical (raybank)
         {
-          simulation::time_add_ray_to_bank.start();
-          RB.add_ray_to_bank(ray);
-          simulation::time_add_ray_to_bank.stop();
+          RB.my_ray_list_.push_back(ray);
         }
       } 
-      // Put ray if straight into buffer it starts outside my subdomain
+      // Put ray straight into buffer if it starts outside my subdomain
       else {
         #pragma omp critical (raybuffer)
         {
-          // simulation::time_ray_buffering2.start();
           RB.buffer_ray_data_to_send(ray, domain_.get());
-          // simulation::time_ray_buffering2.stop();
         }
       }
     }
-
-    simulation::time_test1.stop();
 
     // If no ray is alive at this stage, it means that all of them have been buffered because they were sampled in foregin subdomain. This requires a ray bank update here.
     if (!RB.is_any_ray_alive()) {
       RB.update(domain_.get());
     }
 
-    // MPI_Barrier(mpi::intracomm);
-    // printf("Batch: %d Rank %d: ray cnt %d, RB size %d\n", simulation::current_batch, mpi::rank, ray_cnt, RB.ray_bank_size());
-    int num_comms = 0;
-
-    // printf("Rank %d: Starting transport sweep with %d rays\n", mpi::rank, RB.ray_bank_size());
+    int num_communication_rounds = 0;
 
     // Move rays across ranks until they are terminated 
     while (RB.is_any_ray_alive()) {
@@ -983,7 +869,6 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
               #pragma omp critical (raybuffer)
               {
                 simulation::time_ray_buffering.start();
-                num_ray_crossings_ ++;
                 RB.buffer_ray_data_to_send(ray, domain_.get());
                 simulation::time_ray_buffering.stop();
               }
@@ -992,47 +877,26 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       simulation::time_transport.stop();
 
       // Update ray bank by communicating rays in buffer to new owner ranks and removing terminated ranks
-      // if (RB.ray_bank_size() != 0) printf("Rank %d: Communicating %d rays\n", mpi::rank, RB.ray_bank_size());
+      simulation::time_ray_comms.start();
       RB.update(domain_.get());
+      simulation::time_ray_comms.stop();
 
-      // if (mpi::master){
-      //   printf("Communication round %d\n", num_comms);
-      // }
-
-      num_comms ++;
+      num_communication_rounds ++;
     }
-
-    //TODO: temporary
-    if (mpi::master) {
-      printf("Max subdomain crossings: %d\n", num_comms);
-      printf("Number of ray crossings: %ld\n", num_ray_crossings_);
-    }
-
-    // // Reset neighbors after first batch because first load balance operation will change layout strongly //TODO: However, we want to make sure we capture all possible neighbours, and if ray density is too low, it might actually be good to accumulate niehgbours over whole simulation
-    // if (simulation::current_batch == 1) {
-    //   mpi::decomp_map.my_neighbors.clear();
-    // }
 
     // Calculate load per rank based on number of hits in each source region that a rank owns
     double batch_ray_buffering_time = simulation::time_ray_buffering.elapsed() - start_time_ray_buffering;
     double batch_transport_time = simulation::time_transport.elapsed() - start_time_transport - batch_ray_buffering_time;
-    // printf("Batch %d, Rank %d: transport time: %f s\n", simulation::current_batch, mpi::rank, batch_transport_time);
-    simulation::time_calculate_rank_load.start();
-    mpi::decomp_map.calculate_rank_load(domain_.get(), batch_transport_time);
-    simulation::time_calculate_rank_load.stop();
 
-    avg_num_comms_ += num_comms;
+    //TODO: only calculate load for first 5 batches
+    mpi::decomp_map.calculate_rank_load(domain_.get(), batch_transport_time);
+
+    avg_num_communication_rounds_ += num_communication_rounds;
 
     // Reset ray bank list for next batch
-    RB.reset_my_ray_list();
+    RB.my_ray_list_.resize(0);
 
     simulation::time_decomposition_handling.stop();
-
-    // std::this_thread::sleep_for(std::chrono::seconds(1));
-    // if (simulation::current_batch == 10){
-    //     fatal_error(
-    // "STOP.");
-    // }
 }
 
 } // namespace openmc

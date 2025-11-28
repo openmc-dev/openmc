@@ -35,7 +35,7 @@ public:
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions,
-    int64_t n_external_source_regions, uint64_t avg_num_comms) const;
+    int64_t n_external_source_regions, uint64_t avg_num_comms, double max_load_imbalance) const;
   void transport_sweep();
   void transport_sweep_decomp(RayBank& RB);
 
@@ -64,8 +64,7 @@ private:
   int negroups_;
 
   // Average number of ray communications between rank per batch
-  uint64_t avg_num_comms_ {0};
-  uint64_t num_ray_crossings_ {0};  //TODO: temporary
+  uint64_t avg_num_communication_rounds_ {0};
 
 }; // class RandomRaySimulation
 

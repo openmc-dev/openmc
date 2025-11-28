@@ -66,6 +66,7 @@ struct CollisionTrackSite {
   double wgt {1.0};
   int event_mt {0};
   int delayed_group {0};
+  int ancestor_nuclide {0};
   int cell_id {0};
   int nuclide_id;
   int material_id {0};

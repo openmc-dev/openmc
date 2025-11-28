@@ -333,8 +333,8 @@ void synchronize_bank()
         &simulation::source_bank[index_local]);
 
       if (settings::ifp_on) {
-        copy_partial_ifp_data_to_source_banks(
-          index_temp, n, index_local, temp_delayed_groups, temp_ancestors, temp_lifetimes);
+        copy_partial_ifp_data_to_source_banks(index_temp, n, index_local,
+          temp_delayed_groups, temp_ancestors, temp_lifetimes);
       }
     }
 

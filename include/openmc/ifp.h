@@ -128,7 +128,7 @@ void broadcast_ifp_n_generation(int& n_generation,
 void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
   vector<MPI_Request>& requests, const vector<vector<int>>& delayed_groups,
   vector<int>& send_delayed_groups, const vector<vector<int>>& ancestors,
-  vector<int>& ancestors, const vector<vector<double>>& lifetimes,
+  vector<int>& send_ancestors, const vector<vector<double>>& lifetimes,
   vector<double>& send_lifetimes);
 
 //! Receive IFP data using MPI.

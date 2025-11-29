@@ -393,6 +393,11 @@ class Tally(IDManagerMixin):
             group = f[f'tallies/tally {self.id}']
             self._num_realizations = int(group['n_realizations'][()])
 
+            for filt in self.filters:
+                if isinstance(filt, openmc.DistribcellFilter):
+                    filter_group = f[f'tallies/filters/filter {filt.id}']
+                    filt._num_bins = int(filter_group['n_bins'][()])
+
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
@@ -3709,8 +3714,6 @@ class Tallies(cv.CheckedList):
             raise TypeError(msg)
 
         if merge:
-            merged = False
-
             # Look for a tally to merge with this one
             for i, tally2 in enumerate(self):
 
@@ -3719,28 +3722,14 @@ class Tallies(cv.CheckedList):
                     # Replace tally2 with the merged tally
                     merged_tally = tally2.merge(tally)
                     self[i] = merged_tally
-                    merged = True
                     break
 
             # If no mergeable tally was found, simply add this tally
-            if not merged:
+            else:
                 super().append(tally)
 
         else:
             super().append(tally)
-
-    def insert(self, index, item):
-        """Insert tally before index
-
-        Parameters
-        ----------
-        index : int
-            Index in list
-        item : openmc.Tally
-            Tally to insert
-
-        """
-        super().insert(index, item)
 
     def merge_tallies(self):
         """Merge any mergeable tallies together. Note that n-way merges are

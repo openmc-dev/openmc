@@ -65,7 +65,7 @@ class Material(IDManagerMixin):
     density_units : str
         Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/m3',
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
-        applies in the case of a multi-group calculation.
+        applies in the case of a multi-group calculation. Defaults to 'g/cm3'.
     depletable : bool, optional
         Indicate whether the material is depletable. Defaults to False.
     volume : float, optional
@@ -129,7 +129,7 @@ class Material(IDManagerMixin):
         name: str = "",
         temperature: float | None = None,
         density: float | None = None,
-        density_units: str | None = None,
+        density_units: str = "g/cm3",
         depletable: bool | None = False,
         volume: float | None = None,
     ):
@@ -138,7 +138,7 @@ class Material(IDManagerMixin):
         self.name = name
         self.temperature = temperature
         self._density = None
-        self._density_units = 'sum'
+        self._density_units = density_units
         self._depletable = depletable
         self._paths = None
         self._num_instances = None
@@ -158,13 +158,7 @@ class Material(IDManagerMixin):
         self._sab = []
 
         # Set density if provided
-        if (density is not None and density_units is None) or (
-            density is None and density_units is not None
-        ):
-            raise ValueError(
-                "Both density and density_units must be provided together."
-            )
-        elif density is not None and density_units is not None:
+        if density is not None:
             self.set_density(density_units, density)
 
 

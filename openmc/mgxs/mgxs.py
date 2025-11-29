@@ -2127,8 +2127,8 @@ class MGXS:
             df['std. dev.'] /= np.tile(densities, tile_factor)
 
             # Replace NaNs by zeros (happens if nuclide density is zero)
-            df['mean'].replace(np.nan, 0.0, inplace=True)
-            df['std. dev.'].replace(np.nan, 0.0, inplace=True)
+            df['mean'] = df['mean'].replace(np.nan, 0.0)
+            df['std. dev.'] = df['std. dev.'].replace(np.nan, 0.0)
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal

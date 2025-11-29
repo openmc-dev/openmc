@@ -290,7 +290,7 @@ class Tally(IDManagerMixin):
 
     @property
     def num_nuclides(self):
-        return len(self._nuclides)
+        return max(len(self._nuclides), 1)
 
     @property
     def scores(self):

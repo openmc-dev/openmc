@@ -367,6 +367,7 @@ list(APPEND libopenmc_SOURCES
   src/chain.cpp
   src/cmfd_solver.cpp
   src/collision_track.cpp
+  src/config.cpp
   src/cross_sections.cpp
   src/dagmc.cpp
   src/distribution.cpp
@@ -579,6 +580,9 @@ endif()
 #===============================================================================
 # Log build info that this executable can report later
 #===============================================================================
+target_compile_definitions(libopenmc PRIVATE "CMAKE_INSTALL_PREFIX=\"${CMAKE_INSTALL_PREFIX}\"")
+target_compile_definitions(libopenmc PRIVATE "CMAKE_INSTALL_INCLUDEDIR=\"${CMAKE_INSTALL_INCLUDEDIR}\"")
+target_compile_definitions(libopenmc PRIVATE "CMAKE_INSTALL_LIBDIR=\"${CMAKE_INSTALL_LIBDIR}\"")
 target_compile_definitions(libopenmc PRIVATE BUILD_TYPE=${CMAKE_BUILD_TYPE})
 target_compile_definitions(libopenmc PRIVATE COMPILER_ID=${CMAKE_CXX_COMPILER_ID})
 target_compile_definitions(libopenmc PRIVATE COMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION})
@@ -587,6 +591,9 @@ if (OPENMC_ENABLE_PROFILE)
 endif()
 if (OPENMC_ENABLE_COVERAGE)
   target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
+endif()
+if(SKBUILD)
+  target_compile_definitions(libopenmc PRIVATE SKBUILD)
 endif()
 
 #===============================================================================

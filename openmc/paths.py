@@ -52,10 +52,22 @@ def get_extra_libraries():
     libs_path = os.path.join(__path__[0], ".dylibs") if sys.platform == "darwin" else os.path.normpath(os.path.join(__path__[0], "..", "openmc.libs"))
     return (glob.glob(os.path.join(libs_path, "*")), libs_path) if os.path.exists(libs_path) else ([], [])
 
+def get_cmake_path():
+    """Return the path to the OpenMC CMake configuration files."""
+    cmake_path_lib = os.path.join(sys.prefix, 'lib', 'cmake', 'OpenMC')
+    cmake_path_lib64 = os.path.join(sys.prefix, 'lib64', 'cmake', 'OpenMC')
+    if os.path.exists(cmake_path_lib):
+        return cmake_path_lib
+    elif os.path.exists(cmake_path_lib64):
+        return cmake_path_lib64
+    else:
+        return ""
+
 # Setup variables
 include, include_path = get_include_path()
 lib, lib_path = get_core_libraries()
 extra_lib, extra_lib_path = get_extra_libraries()
+cmake_path = get_cmake_path()
 
 # Export variables for easy access
-__all__ = ["include", "include_path", "lib", "lib_path", "extra_lib", "extra_lib_path"]
+__all__ = ["include", "include_path", "lib", "lib_path", "extra_lib", "extra_lib_path", "cmake_path"]

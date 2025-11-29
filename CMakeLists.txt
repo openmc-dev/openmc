@@ -629,7 +629,7 @@ configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIR
 configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
 
 if(SKBUILD)
-  set(INSTALL_CONFIGDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+  set(INSTALL_CONFIGDIR ${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 else()
   set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 endif()

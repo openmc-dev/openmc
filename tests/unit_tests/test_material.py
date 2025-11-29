@@ -770,6 +770,26 @@ def test_mean_free_path():
 
 
 def test_material_from_constructor():
+    # Test that components and percent_type work in the constructor
+    components = {
+        'Li': {'percent': 0.5, 'enrichment': 60.0, 'enrichment_target': 'Li7'},
+        'O16': 1.0,
+        'Be': 0.5
+    }
+    mat = openmc.Material(
+        material_id=123,
+        name="test-mat",
+        components=components,
+        percent_type="ao"
+    )
+    # Check that nuclides were added
+    nuclide_names = [nuc.name for nuc in mat.nuclides]
+    assert 'O16' in nuclide_names
+    assert 'Be9' in nuclide_names
+    assert 'Li7' in nuclide_names
+    assert 'Li6' in nuclide_names
+    assert mat.id == 123
+    assert mat.name == "test-mat"
 
     mat1 = openmc.Material(
         **{

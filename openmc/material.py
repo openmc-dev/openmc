@@ -132,6 +132,8 @@ class Material(IDManagerMixin):
         density_units: str = "g/cm3",
         depletable: bool | None = False,
         volume: float | None = None,
+        components: dict | None = None,
+        percent_type: str = "ao",
     ):
         # Initialize class attributes
         self.id = material_id
@@ -160,6 +162,10 @@ class Material(IDManagerMixin):
         # Set density if provided
         if density is not None:
             self.set_density(density_units, density)
+
+        # Add components if provided
+        if components is not None:
+            self.add_components(components, percent_type=percent_type)
 
 
     def __repr__(self) -> str:

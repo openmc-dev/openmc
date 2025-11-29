@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
   if (err)
     fatal_error(openmc_err_msg);
 
-    // If MPI is in use and enabled, terminate it
+  // If MPI is in use and enabled, terminate it
 #ifdef OPENMC_MPI
   MPI_Finalize();
 #endif

@@ -271,7 +271,8 @@ void print_usage()
     fmt::print(
       "Usage: openmc <command> [options] [path]\n\n"
       "Commands:\n"
-      "  config                 Display installation configuration information\n\n"
+      "  config                 Display installation configuration "
+      "information\n\n"
       "Options:\n"
       "  -c, --volume           Run in stochastic volume calculation mode\n"
       "  -g, --geometry-debug   Run with geometry debugging on\n"

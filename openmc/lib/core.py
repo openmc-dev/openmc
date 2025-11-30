@@ -512,8 +512,7 @@ def sample_external_source(
     # Convert to list of SourceParticle and return
     return openmc.ParticleList([openmc.SourceParticle(
             r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
-            delayed_group=site.delayed_group, ancestor_nuclide=site.ancestor_nuclide,
-            surf_id=site.surf_id,
+            delayed_group=site.delayed_group, surf_id=site.surf_id,
             particle=openmc.ParticleType(site.particle)
         )
         for site in sites_array

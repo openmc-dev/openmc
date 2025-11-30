@@ -1005,7 +1005,6 @@ class SourceParticle:
         time: float = 0.0,
         wgt: float = 1.0,
         delayed_group: int = 0,
-        ancestor_nuclide: int = 0,
         surf_id: int = 0,
         particle: ParticleType = ParticleType.NEUTRON
     ):
@@ -1016,7 +1015,6 @@ class SourceParticle:
         self.time = float(time)
         self.wgt = float(wgt)
         self.delayed_group = delayed_group
-        self.ancestor_nuclide = ancestor_nuclide
         self.surf_id = surf_id
         self.particle = particle
 
@@ -1034,8 +1032,7 @@ class SourceParticle:
 
         """
         return (self.r, self.u, self.E, self.time, self.wgt,
-                self.delayed_group, self.ancestor_nuclide,
-                self.surf_id, self.particle.value)
+                self.delayed_group, self.surf_id, self.particle.value)
 
 
 def write_source_file(
@@ -1181,12 +1178,12 @@ class ParticleList(list):
         """
         # Extract the attributes of the source particles into a list of tuples
         data = [(sp.r[0], sp.r[1], sp.r[2], sp.u[0], sp.u[1], sp.u[2],
-                 sp.E, sp.time, sp.wgt, sp.delayed_group, sp.ancestor_nuclide,
-                 sp.surf_id, sp.particle.name.lower()) for sp in self]
+                 sp.E, sp.time, sp.wgt, sp.delayed_group, sp.surf_id,
+                 sp.particle.name.lower()) for sp in self]
 
         # Define the column names for the DataFrame
         columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt',
-                   'delayed_group', 'ancestor_nuclide', 'surf_id', 'particle']
+                   'delayed_group', 'surf_id', 'particle']
 
         # Create the pandas DataFrame from the data
         return pd.DataFrame(data, columns=columns)
@@ -1218,7 +1215,6 @@ class ParticleList(list):
             ('time', '<f8'),
             ('wgt', '<f8'),
             ('delayed_group', '<i4'),
-            ('ancestor_nuclide', '<i4'),
             ('surf_id', '<i4'),
             ('particle', '<i4'),
         ])

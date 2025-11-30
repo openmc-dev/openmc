@@ -54,8 +54,8 @@ def get_extra_libraries():
 
 def get_cmake_path():
     """Return the path to the OpenMC CMake configuration files."""
-    cmake_path_lib = os.path.join(CORE_BASE_PATH, 'lib', 'cmake', 'OpenMC')
-    cmake_path_lib64 = os.path.join(CORE_BASE_PATH, 'lib64', 'cmake', 'OpenMC')
+    cmake_path_lib = os.path.join(OPENMC_CORE_BASE_PATH, 'lib', 'cmake', 'OpenMC')
+    cmake_path_lib64 = os.path.join(OPENMC_CORE_BASE_PATH, 'lib64', 'cmake', 'OpenMC')
     if os.path.exists(cmake_path_lib):
         return cmake_path_lib
     elif os.path.exists(cmake_path_lib64):

@@ -530,6 +530,170 @@ UWUW and OpenMC material ID space will cause an error. To automatically resolve
 these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
 material IDs to the OpenMC material ID space.
 
+Material Overrides and Differentiation
+---------------------------------------
+
+One of the most powerful features for working with DAGMC models is the ability
+to override and customize material assignments after the geometry has been
+created. This capability solves several important workflow challenges:
+
+1. **Flexibility in material definitions**: You can override materials defined
+   in the DAGMC geometry with OpenMC materials that have specific nuclear data
+   requirements.
+
+2. **Depletion studies**: You can differentiate materials to enable independent
+   depletion of different instances of the same material throughout the geometry.
+
+3. **Parametric studies**: You can easily swap material definitions without
+   regenerating the DAGMC geometry file.
+
+Replacing Materials by Name
+****************************
+
+If your DAGMC model was created with material names (e.g., "Fuel", "Cladding"),
+you can replace all cells containing a specific material name with a new OpenMC
+material using the :meth:`~openmc.DAGMCUniverse.replace_material_assignment`
+method::
+
+  import openmc
+
+  # Create the DAGMC universe
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  # Create a new material definition
+  fuel = openmc.Material(name="fuel")
+  fuel.add_nuclide("U235", 0.05)
+  fuel.add_nuclide("U238", 0.95)
+  fuel.set_density("g/cm3", 10.5)
+
+  # Replace all cells with the original material name "Fuel" with the new material
+  dag_univ.replace_material_assignment("Fuel", fuel)
+
+  geometry = openmc.Geometry(dag_univ)
+
+This method is useful when you want to use the material definitions from your
+CAD tool but need to replace them with OpenMC materials that have specific
+nuclear data libraries or density values.
+
+Adding Material Overrides by Cell ID
+*************************************
+
+For more granular control, you can override materials on a per-cell basis using
+the :meth:`~openmc.DAGMCUniverse.add_material_override` method. This method
+accepts either a cell ID (integer) or a :class:`~openmc.DAGMCCell` object::
+
+  import openmc
+
+  # Create the DAGMC universe
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  # Create multiple material definitions
+  fuel_enriched = openmc.Material(name="fuel_enriched")
+  fuel_enriched.add_nuclide("U235", 0.10)
+  fuel_enriched.add_nuclide("U238", 0.90)
+  fuel_enriched.set_density("g/cm3", 10.5)
+
+  fuel_depleted = openmc.Material(name="fuel_depleted")
+  fuel_depleted.add_nuclide("U235", 0.03)
+  fuel_depleted.add_nuclide("U238", 0.97)
+  fuel_depleted.set_density("g/cm3", 10.5)
+
+  # Override specific cells with different materials
+  dag_univ.add_material_override(1, fuel_enriched)  # Cell ID 1 gets enriched fuel
+  dag_univ.add_material_override(2, fuel_depleted)  # Cell ID 2 gets depleted fuel
+
+  geometry = openmc.Geometry(dag_univ)
+
+Material Differentiation for Depletion
+***************************************
+
+A particularly powerful application of material overrides is differentiating
+materials to enable independent tracking during depletion calculations. By
+creating separate material instances for each DAGMC cell, you can deplete them
+independently::
+
+  import openmc
+  import openmc.deplete
+
+  # Create the DAGMC universe
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  # Create a material template
+  def create_fuel():
+      fuel = openmc.Material()
+      fuel.add_nuclide("U235", 0.05)
+      fuel.add_nuclide("U238", 0.95)
+      fuel.set_density("g/cm3", 10.5)
+      return fuel
+
+  # Override each fuel cell with its own material instance
+  # This allows each cell to be depleted independently
+  dag_univ.add_material_override(1, create_fuel())
+  dag_univ.add_material_override(2, create_fuel())
+  dag_univ.add_material_override(3, create_fuel())
+
+  # Create model and depletion operator
+  model = openmc.Model()
+  model.geometry = openmc.Geometry(dag_univ)
+  # ... add other model settings ...
+
+  operator = openmc.deplete.CoupledOperator(model, "chain_endf.json")
+
+  # Each fuel cell will now be tracked and depleted independently
+  times = [1, 2, 3]
+  operator.integrate(times)
+
+Combining with CSG Geometry
+****************************
+
+Material overrides work seamlessly when DAGMC universes are embedded within
+CSG geometry. This allows you to leverage both geometry paradigms::
+
+  import openmc
+
+  # Create a DAGMC universe with material overrides
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+  fuel = openmc.Material(name="fuel")
+  fuel.add_nuclide("U235", 0.05)
+  fuel.add_nuclide("U238", 0.95)
+  fuel.set_density("g/cm3", 10.5)
+  dag_univ.replace_material_assignment("Fuel", fuel)
+
+  # Create a bounding region for the DAGMC geometry
+  bounding_region = dag_univ.bounding_region(bounded_type='box')
+
+  # Create a CSG cell to contain the DAGMC universe
+  bounding_cell = openmc.Cell(fill=dag_univ, region=bounding_region)
+
+  # Create CSG cells around the DAGMC geometry
+  outer_sphere = openmc.Sphere(r=200, boundary_type='vacuum')
+  outer_cell = openmc.Cell(region=-outer_sphere)
+
+  # Create root universe with both
+  root_univ = openmc.Universe(cells=[bounding_cell, outer_cell])
+  geometry = openmc.Geometry(root_univ)
+
+Retrieving Material Information
+*******************************
+
+After initializing a model with a DAGMC universe, you can retrieve information
+about the materials in the geometry::
+
+  import openmc
+
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  # Get list of material names defined in the DAGMC file
+  material_names = dag_univ.material_names
+  print(f"Materials in DAGMC file: {material_names}")
+
+  # Get the number of cells in the DAGMC model
+  n_cells = dag_univ.n_cells
+  print(f"Number of cells: {n_cells}")
+
+This information can be useful for iterating over cells and applying materials
+programmatically or understanding the structure of your DAGMC geometry.
+
 .. _Direct Accelerated Geometry Monte Carlo: https://svalinn.github.io/DAGMC/
 .. _University of Wisconsin Unified Workflow: https://svalinn.github.io/DAGMC/usersguide/uw2.html
 

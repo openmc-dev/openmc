@@ -302,6 +302,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         dagmc_element = ET.Element('dagmc_universe')
         dagmc_element.set('id', str(self.id))
 
+        if self.name:
+            dagmc_element.set('name', self.name)
         if self.auto_geom_ids:
             dagmc_element.set('auto_geom_ids', 'true')
         if self.auto_mat_ids:

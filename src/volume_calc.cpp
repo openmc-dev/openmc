@@ -142,13 +142,6 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 void VolumeCalculation::execute(CalcResults& master_results) const
 {
-#ifdef OPENMC_MPI
-  // MPI types are commited in the beginning of calculation and freed on the
-  // return, remaining a MPI type after the return produces a MPICH warning for
-  // memory leak
-  this->initialize_MPI_struct();
-#endif
-
   // Check to make sure domain IDs are valid
   for (auto uid : domain_ids_) {
     switch (domain_type_) {
@@ -335,13 +328,6 @@ void VolumeCalculation::execute(CalcResults& master_results) const
         }
       } // end domains loop
     }
-
-#ifdef OPENMC_MPI
-    // MPI types are commited in the beginning of calculation and freed on
-    // return, lefting MPI types after return produces MPICH warnings about
-    // memory leak
-    this->delete_MPI_struct();
-#endif
 
     return;
 
@@ -977,12 +963,21 @@ int openmc_calculate_volumes()
     // Run volume calculation
     const auto& vol_calc {model::volume_calcs[i]};
     VolumeCalculation::CalcResults results(vol_calc);
+
+#ifdef OPENMC_MPI
+    vol_calc.initialize_MPI_struct();
+#endif
+
     try {
       vol_calc.execute(results);
     } catch (const std::exception& e) {
       set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
     }
+
+#ifdef OPENMC_MPI
+    vol_calc.delete_MPI_struct();
+#endif
 
     if (mpi::master) {
 

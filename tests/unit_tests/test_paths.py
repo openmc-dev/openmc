@@ -29,7 +29,7 @@ def test_openmc_core_base_path_warning(monkeypatch):
     monkeypatch.setitem(sys.modules["openmc.paths"].__dict__, '__path__', ["/mock/source/openmc"])
     monkeypatch.delenv("OPENMC_DEV_MODE", raising=False)
 
-    with mock.patch("os.path.exists", side_effect=[False, True, True]), \
+    with mock.patch("os.path.exists", side_effect=[False, True, True, True]), \
          mock.patch("sysconfig.get_path", return_value="/mock/source"), \
          pytest.warns(RuntimeWarning, match="It seems OpenMC is being run from its source directory"):
         importlib.reload(paths)

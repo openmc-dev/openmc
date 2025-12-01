@@ -65,7 +65,7 @@ class Material(IDManagerMixin):
     density_units : str
         Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/m3',
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
-        applies in the case of a multi-group calculation. Defaults to 'g/cm3'.
+        applies in the case of a multi-group calculation. Defaults to 'sum'.
     depletable : bool, optional
         Indicate whether the material is depletable. Defaults to False.
     volume : float, optional
@@ -129,7 +129,7 @@ class Material(IDManagerMixin):
         name: str = "",
         temperature: float | None = None,
         density: float | None = None,
-        density_units: str = "g/cm3",
+        density_units: str = "sum",
         depletable: bool | None = False,
         volume: float | None = None,
         components: dict | None = None,

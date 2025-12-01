@@ -222,6 +222,18 @@ int32_t HexagonalMesh::get_bin_from_hexindices(const HexMeshIndex& ijkl) const
   return bin_no;
 }
 
+int HexagonalMesh::get_bin(Position r) const
+{
+  // Determine indices
+  bool in_mesh;
+  HexMeshIndex ijkl = get_hexindices(r, in_mesh);
+  if (!in_mesh)
+    return -1;
+
+  // Convert indices to bin
+  return get_bin_from_hexindices(ijkl);
+}
+
 int32_t HexagonalMesh::offset_in_ring(const HexMeshIndex& ijkl, int32_t r) const
 {
   // find the offset within a ring

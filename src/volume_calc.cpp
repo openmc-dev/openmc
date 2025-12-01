@@ -83,19 +83,27 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
         threshold_));
     }
 
+    // Prior calculation of the trigger volume fractions-related values t'
+    // deriviated from the given volumes-related values t to prevent excessive
+    // repeated computations during Monte Carlo execution. The values of t' are
+    // computed via the sample mean \bar{x} and the adjusted sample variance
+    // s^2.
     std::string tmp = get_node_value(threshold_node, "type");
     if (tmp == "variance") {
       trigger_type_ = TriggerMetric::variance;
-      // t' = Var{\xi}/(N-1), in sq. volume fraction units
+      // Condition: s^2 < t' / N
+      // t' = s^2 = t / (V_b)^2, in sq. volume fraction units
       threshold_cnd_ = threshold_ / std::pow(volume_sample_, 2);
       ;
     } else if (tmp == "std_dev") {
       trigger_type_ = TriggerMetric::standard_deviation;
-      // t' = Var{\xi}/(N-1), in sq. volume fraction units
+      // Condition: s^2 < t' / N
+      // t' = s^2 = (t / V_b)^2, in sq. volume fraction units
       threshold_cnd_ = std::pow(threshold_ / volume_sample_, 2);
     } else if (tmp == "rel_err") {
       trigger_type_ = TriggerMetric::relative_error;
-      // t' = (Var{\xi}/(N-1)) / (E{\xi})^2 < t^2, in relative units
+      // Condition: s^2 / \bar{x}^2 < t' / N
+      // t' = s^2 / \bar{x}^2 = t^2, in relative units
       threshold_cnd_ = threshold_ * threshold_;
     } else {
       fatal_error(fmt::format(
@@ -225,10 +233,10 @@ void VolumeCalculation::execute(CalcResults& master_results) const
         }
         }
 
-        // This passing by all tallies after each sample can be
-        // inefficient for case of large number of domains and small
+        // This passing across all tallies after each sample can be
+        // inefficient for the case of large number of domains and small
         // size of batch, but the batch size is currently assigned to 1
-        // for keep the input format unchanged
+        // for keep the input format being unchanged
         const double batch_size_1 = 1. / static_cast<double>(1);
         for (auto& vt : results.vol_tallies) {
           for (auto& vol_tally : vt) {
@@ -252,14 +260,14 @@ void VolumeCalculation::execute(CalcResults& master_results) const
 #ifdef OPENMC_MPI
     master_results.collect_MPI(); // collect results to master process
 #endif
-    // Process volume estimation results in master process for trigger state
+    // Process volume estimation results in master process for the trigger state
     // determination
     bool stop_calc =
       mpi::master && (trigger_type_ == TriggerMetric::not_active ||
                        master_results.iterations == max_iterations_);
 
     if (!stop_calc) {
-      // Compute current trigger state among totals (0th elements) only
+      // Compute current trigger state across totals (0th elements) only
       for (const auto& vt : master_results.vol_tallies) {
         stop_calc = vt[0].trigger_state(
           trigger_type_, threshold_cnd_, master_results.n_samples);
@@ -280,7 +288,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
     // done
 
     if (mpi::master) {
-      // Normalize all results on bounding primitive volume and compute
+      // Normalize all results on the bounding primitive volume and compute
       // stddev
       for (auto& vt : master_results.vol_tallies) {
         for (auto& vol_tally : vt) {
@@ -291,7 +299,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
 
       // Compute nuclides
       for (int i_domain = 0; i_domain < n_domains; ++i_domain) {
-        // Create 2D array to store atoms/uncertainty for each nuclide. Later
+        // Create 2D array to store atoms/uncertainty for each nuclide. Later,
         // this is compressed into vectors storing only those nuclides that are
         // non-zero
         auto n_nuc =
@@ -330,7 +338,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
 
 #ifdef OPENMC_MPI
     // MPI types are commited in the beginning of calculation and freed on
-    // return, lefting MPI types after return produce MPICH warnings about
+    // return, lefting MPI types after return produces MPICH warnings about
     // memory leak
     this->delete_MPI_struct();
 #endif
@@ -781,21 +789,26 @@ inline bool VolumeCalculation::VolTally::trigger_state(
   const TriggerMetric trigger_type, const double threshold,
   const size_t& n_samples) const
 {
-  // For sample contribution to volume fraction limited by 1, maximal allowed
-  // n_samples value is around 1.e102 but this is still much larger than the
-  // size_t limit equal to ~1.8e19
+  // For sample contribution to volume fraction limited by 1, the maximal
+  // allowed n_samples value is around 1.e102, but this is still much larger
+  // than the size_t limit equal to ~1.8e19
   const double ns1 = static_cast<double>(n_samples - 1);
   const double ns = static_cast<double>(n_samples);
   const double mean_xi_sq = score_acc[0] * score_acc[0];
 
-  // score_acc[0] = N * E[\xi], score_acc[1] = N * E[\xi^2]
+  // Adjusted sample variance: s^2 = (\bar{x^2} - \bar{x}^2) / (N-1)
+  // \bar{x}^2 = mean_xi_sq / N^2, \bar{\x^2} = score_acc[1] / N, N = ns
   switch (trigger_type) {
   case TriggerMetric::variance:
   case TriggerMetric::standard_deviation:
-    // N^2 * Var[\xi] < t' * (N-1) * N^2
+    // Condition: s^2 / N < t'
+    // Equivalent implementation:
+    // N^2 * (\bar{x^2} - \bar{x}^2) < t' * (N-1) * N^2
     return score_acc[1] * ns - mean_xi_sq < threshold * ns1 * ns * ns;
   case TriggerMetric::relative_error:
-    // N^2 * Var[\xi] < t' * (N-1) * (N * E[\xi])^2
+    // Condition: (s^2 / \mu^2) / N < t'
+    // Equivalent implementation:
+    // N^2 * (\bar{x^2} - \bar{x}^2) < t' * (N-1) * (N * \bar{x})^2
     return score_acc[1] * ns - mean_xi_sq < threshold * ns1 * mean_xi_sq;
   default:
     return true;
@@ -827,9 +840,9 @@ std::pair<double, double> VolumeCalculation::get_box_chord(
   xi = (upper_right_ - r) * u_1;
   const array<double, 3> dist2 = {xi.x, xi.y, xi.z};
 
-  // Find minimal forward (positive values) and backward (negative values)
-  // distances among the computed ones (probably there is some STL
-  // alternative)
+  // Find the minimal forward (positive values) and backward (negative values)
+  // distances across the computed ones (probably there is some STL
+  // alternatives)
   std::pair<double, double> chord_lengths {std::minmax(dist1[0], dist2[0])};
   for (int i = 1; i < 3; i++) {
     const std::pair<double, double> dist_mm = std::minmax(dist1[i], dist2[i]);
@@ -851,7 +864,7 @@ void VolEstRay::on_intersection()
   }
 
   // At this point, current GeometryState parameters represent the cell behind
-  // crossed surface but the segment length is known for the previous
+  // crossed surface, but the segment length is known for the previous
   // cell only, therefore we use below the last cell keept in GeometryState
   const auto score = (std::min(traversal_distance_, traversal_distance_max_) -
                        traversal_distance_last_) *
@@ -870,10 +883,10 @@ void VolEstRay::on_intersection()
   }
 
   // In a case of single-segment ray (leakage after 1st surface crossing),
-  // current segment material ID seems to be contained in material() but in
+  // current segment material ID seems to be contained in material(), but in
   // other cases it is in material_last(). Due to this unclear behavior, it is
-  // used below more fundamental way for material definition -- via the stable
-  // last cell record.
+  // used below a more fundamental way for material determination -- via the
+  // stable last cell record.
   vol_scoring(VolumeCalculation::EstMode::RAYTRACE, score,
     (current_cell(VolumeCalculation::EstMode::RAYTRACE, n_coord_last() - 1)
         ->material(n_coord_last() - 1)));

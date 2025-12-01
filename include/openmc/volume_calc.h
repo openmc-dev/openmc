@@ -70,13 +70,12 @@ public:
     //! \param[in] threshold    Value for trigger condition (either volume
     //! fraction variance or squared rel. err. dependent on the trigger type)
     //! \param[in] n_samples    Statistics size
-    //! \return                 True if trigger condition is satisfied
+    //! \return                 True if the trigger condition is satisfied
     inline bool trigger_state(const TriggerMetric trigger_type,
       const double threshold, const size_t& n_samples) const;
   };
 
-  //! \brief Online calculation results specific for each thread
-  //! \comment It is coupled with the related MPI structure
+  //! \brief Online results of calculation specific for each thread
   struct CalcResults {
     uint64_t n_samples; //!< Number of samples
     uint64_t n_rays;    //!< Number of traced rays

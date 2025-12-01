@@ -182,7 +182,7 @@ class Settings:
         Options for configuring the random ray solver. Acceptable keys are:
 
         :distance_inactive:
-            Indicates the total active distance in [cm] a ray should travel
+            Indicates the total inactive distance in [cm] a ray should travel
         :distance_active:
             Indicates the total active distance in [cm] a ray should travel
         :ray_source:

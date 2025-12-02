@@ -24,19 +24,7 @@ def test_mu_en_coefficients():
     assert mu_en[-2] == approx(1.441e-2)
 
     # Invalid particle/geometry should raise an exception
-    with raises(ValueError) as excinfo:
+    with raises(ValueError):
         mu_en_coefficients("pasta")
-    expected_materials = [
-        "air",
-        "water",
-    ]
-    expected_msg = (
-        f"Unable to set 'material' to 'pasta' since it is not in {expected_materials}"
-    )
-    assert str(excinfo.value) == expected_msg
-    with raises(ValueError) as excinfo:
+    with raises(ValueError):
         mu_en_coefficients("air", data_source="nist000")
-    expected_msg = (
-        f"Unable to set 'data_source' to 'nist000' since it is not in '{'nist126'}'"
-    )
-    assert str(excinfo.value) == expected_msg

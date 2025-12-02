@@ -212,17 +212,5 @@ double exprel(double x);
 //! \return log(1+x)/x without loss of precision near 0
 double log1prel(double x);
 
-//! Evaluate principal branch of lambert_w function
-//!
-//! \param x Real argument
-//! \return principal branch of lambert_w function
-double lambert_w0(double x);
-
-//! Evaluate secondary branch of lambert_w function
-//!
-//! \param x Real argument
-//! \return secondary branch of lambert_w function
-double lambert_wm1(double x);
-
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

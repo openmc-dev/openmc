@@ -355,32 +355,3 @@ TEST_CASE("Test broaden_wmp_polynomials")
     REQUIRE_THAT(ref_val, Catch::Matchers::Approx(test_val));
   }
 }
-
-TEST_CASE("Test lambert_w0")
-{
-  std::vector<double> ref_inp;
-  std::vector<double> ref_val {-1.0, -1e-2, -1e-4, -1e-6, -1e-8, -1e-16, 0.0,
-    1e-16, 1e-8, 1e-4, 1e-2, 1.0, 1e2};
-  for (double x : ref_val) {
-    ref_inp.push_back(x * std::exp(x));
-  }
-
-  for (int i = 0; i < ref_inp.size(); i++) {
-    REQUIRE_THAT(openmc::lambert_w0(ref_inp[i]),
-      Catch::Matchers::WithinAbs(ref_val[i], 1e-10));
-  }
-}
-
-TEST_CASE("Test lambert_wm1")
-{
-  std::vector<double> ref_inp;
-  std::vector<double> ref_val {-1e2, -1e1, -1e0};
-  for (double x : ref_val) {
-    ref_inp.push_back(x * std::exp(x));
-  }
-
-  for (int i = 0; i < ref_inp.size(); i++) {
-    REQUIRE_THAT(openmc::lambert_wm1(ref_inp[i]),
-      Catch::Matchers::WithinAbs(ref_val[i], 1e-10));
-  }
-}

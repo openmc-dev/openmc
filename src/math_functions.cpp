@@ -1,7 +1,6 @@
 #include "openmc/math_functions.h"
 
 #include "openmc/external/Faddeeva.hh"
-#include "openmc/external/LambertW.hpp"
 
 #include "openmc/constants.h"
 #include "openmc/random_lcg.h"
@@ -936,16 +935,6 @@ double log1prel(double x)
   else {
     return std::log1p(x) / x;
   }
-}
-
-double lambert_w0(double x)
-{
-  return LambertW::lambert_w0(x);
-}
-
-double lambert_wm1(double x)
-{
-  return LambertW::lambert_wm1(x);
 }
 
 } // namespace openmc

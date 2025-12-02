@@ -338,6 +338,7 @@ list(APPEND libopenmc_SOURCES
   src/cell.cpp
   src/chain.cpp
   src/cmfd_solver.cpp
+  src/collision_track.cpp
   src/cross_sections.cpp
   src/dagmc.cpp
   src/distribution.cpp
@@ -449,8 +450,7 @@ list(APPEND libopenmc_SOURCES
 # Add bundled external dependencies
 list(APPEND libopenmc_SOURCES
   src/external/quartic_solver.cpp
-  src/external/Faddeeva.cc
-  src/external/LambertW.cpp)
+  src/external/Faddeeva.cc)
 
 # For Visual Studio compilers
 if(MSVC)

@@ -250,8 +250,6 @@ Tabular::Tabular(pugi::xml_node node)
       interp_ = Interpolation::lin_lin;
     } else if (temp == "log-linear") {
       interp_ = Interpolation::log_lin;
-    } else if (temp == "linear-log") {
-      interp_ = Interpolation::lin_log;
     } else if (temp == "log-log") {
       interp_ = Interpolation::log_log;
     } else {
@@ -299,10 +297,6 @@ void Tabular::init(
         c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]);
       } else if (interp_ == Interpolation::lin_lin) {
         c_[i] = c_[i - 1] + 0.5 * (p_[i - 1] + p_[i]) * (x_[i] - x_[i - 1]);
-      } else if (interp_ == Interpolation::lin_log) {
-        double m = (p_[i] - p_[i - 1]) / std::log(x_[i] / x_[i - 1]);
-        c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]) +
-                m * (x_[i] * (std::log(x_[i] / x_[i - 1]) - 1.0) + x_[i - 1]);
       } else if (interp_ == Interpolation::log_lin) {
         double m = std::log(p_[i] / p_[i - 1]) / (x_[i] - x_[i - 1]);
         c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]) *
@@ -367,22 +361,6 @@ double Tabular::sample(uint64_t* seed) const
       return x_i +
              (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
                m;
-    }
-  } else if (interp_ == Interpolation::lin_log) {
-    // Linear-Log interpolation
-    double x_i1 = x_[i + 1];
-    double p_i1 = p_[i + 1];
-
-    double m = (p_i1 - p_i) / std::log(x_i1 / x_i);
-    double a = p_i / m - 1;
-    if (m > 0.0) {
-      return x_i * ((c - c_i) / (m * x_i) + a) /
-             lambert_w0(((c - c_i) / (m * x_i) + a) * std::exp(a));
-    } else if (m < 0.0) {
-      return x_i * ((c - c_i) / (m * x_i) + a) /
-             lambert_wm1(((c - c_i) / (m * x_i) + a) * std::exp(a));
-    } else {
-      return x_i + (c - c_i) / p_i;
     }
   } else if (interp_ == Interpolation::log_lin) {
     // Log-linear interpolation

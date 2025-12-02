@@ -31,8 +31,7 @@ def test_mu_en_coefficients():
         "water",
     ]
     expected_msg = (
-        f"'pasta' has no mass energy-absorption coefficients in data source nist126. "
-        f"Available materials for nist126 are: {expected_materials}"
+        f"Unable to set 'material' to 'pasta' since it is not in {expected_materials}"
     )
     assert str(excinfo.value) == expected_msg
     with raises(ValueError) as excinfo:

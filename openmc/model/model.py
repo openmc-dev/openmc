@@ -1687,6 +1687,91 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
+    def _create_mgxs_sources(
+        self,
+        groups: openmc.mgxs.EnergyGroups,
+        spatial_dist: openmc.stats.Spatial,
+        source_energy: openmc.stats.Univariate | None = None,
+    ) -> list[openmc.IndependentSource]:
+        """Create a list of independent sources to use with MGXS generation.
+
+        Note that in all cases, a discrete source that is uniform over all
+        energy groups is created (strength = 0.01) to ensure that total cross
+        sections are generated for all energy groups. In the case that the user
+        has provided a source_energy distribution as an argument, an additional
+        source (strength = 0.99) is created using that energy distribution. If
+        the user has not provided a source_energy distribution, but the model
+        has sources defined, and all of those sources are of IndependentSource
+        type, then additional sources are created based on the model's existing
+        sources, keeping their energy distributions but replacing their
+        spatial/angular distributions, with their combined strength being 0.99.
+        If the user has not provided a source_energy distribution and no sources
+        are defined on the model and the run mode is 'eigenvalue', then a
+        default Watt spectrum source (strength = 0.99) is added.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        spatial_dist : openmc.stats.Spatial
+            Spatial distribution to use for all sources.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model.
+
+        Returns
+        -------
+        list[openmc.IndependentSource]
+            A list of independent sources to use for MGXS generation.
+        """
+        # Make a discrete source that is uniform over the bins of the group structure
+        midpoints = []
+        strengths = []
+        for i in range(groups.num_groups):
+            bounds = groups.get_group_bounds(i+1)
+            midpoints.append((bounds[0] + bounds[1]) / 2.0)
+            strengths.append(1.0)
+
+        uniform_energy = openmc.stats.Discrete(x=midpoints, p=strengths)
+        uniform_distribution = openmc.IndependentSource(spatial_dist, energy=uniform_energy, strength=0.01)
+        sources = [uniform_distribution]
+
+        # If the user provided an energy distribution, use that
+        if source_energy is not None:
+            user_energy = openmc.IndependentSource(
+                space=spatial_dist, energy=source_energy, strength=0.99)
+            sources.append(user_energy)
+
+        # If the user did not provide an energy distribution, create sources
+        # based on what is in their model, keeping the energy spectrum but
+        # replacing the spatial/angular distributions. We only do this if ALL
+        # sources are of IndependentSource type, as we can't pull the energy
+        # distribution from e.g. CompiledSource or FileSource types.
+        else:
+            if self.settings.source is not None:
+                for src in self.settings.source:
+                    if not isinstance(src, openmc.IndependentSource):
+                        break
+                else:
+                    n_user_sources = len(self.settings.source)
+                    for src in self.settings.source:
+                        # Create a new IndependentSource with adjusted strength, space, and angle
+                        user_source = openmc.IndependentSource(
+                            space=spatial_dist,
+                            energy=src.energy,
+                            strength=0.99 / n_user_sources
+                        )
+                        sources.append(user_source)
+            else:
+                # No user sources defined. If we are in eigenvalue mode, then use the default Watt spectrum.
+                if self.settings.run_mode == 'eigenvalue':
+                    watt_energy = openmc.stats.Watt()
+                    watt_source = openmc.IndependentSource(
+                        space=spatial_dist, energy=watt_energy, strength=0.99)
+                    sources.append(watt_source)
+
+        return sources
+
     def _generate_infinite_medium_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
@@ -1694,6 +1779,7 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        source_energy: openmc.stats.Univariate | None = None,
     ):
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
@@ -1701,6 +1787,20 @@ class Model:
         strength spread across each of the energy groups. This is a highly naive
         method that ignores all spatial self shielding effects and all resonance
         shielding effects between materials.
+
+        Note that in all cases, a discrete source that is uniform over all
+        energy groups is created (strength = 0.01) to ensure that total cross
+        sections are generated for all energy groups. In the case that the user
+        has provided a source_energy distribution as an argument, an additional
+        source (strength = 0.99) is created using that energy distribution. If
+        the user has not provided a source_energy distribution, but the model
+        has sources defined, and all of those sources are of IndependentSource
+        type, then additional sources are created based on the model's existing
+        sources, keeping their energy distributions but replacing their
+        spatial/angular distributions, with their combined strength being 0.99.
+        If the user has not provided a source_energy distribution and no sources
+        are defined on the model and the run mode is 'eigenvalue', then a
+        default Watt spectrum source (strength = 0.99) is added.
 
         Parameters
         ----------
@@ -1715,9 +1815,10 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model.
         """
-        warnings.warn("The infinite medium method of generating MGXS may hang "
-                      "if a material has a k-infinity > 1.0.")
         mgxs_sets = []
         for material in self.materials:
             model = openmc.Model()
@@ -1728,20 +1829,16 @@ class Model:
             # Settings
             model.settings.batches = 100
             model.settings.particles = nparticles
+
+            model.settings.source = self._create_mgxs_sources(
+                groups,
+                spatial_dist=openmc.stats.Point(),
+                source_energy=source_energy
+            )
+
             model.settings.run_mode = 'fixed source'
+            model.settings.create_fission_neutrons = False
 
-            # Make a discrete source that is uniform over the bins of the group structure
-            n_groups = groups.num_groups
-            midpoints = []
-            strengths = []
-            for i in range(n_groups):
-                bounds = groups.get_group_bounds(i+1)
-                midpoints.append((bounds[0] + bounds[1]) / 2.0)
-                strengths.append(1.0)
-
-            energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-            model.settings.source = openmc.IndependentSource(
-                space=openmc.stats.Point(), energy=energy_distribution)
             model.settings.output = {'summary': True, 'tallies': False}
 
             # Geometry
@@ -1791,7 +1888,7 @@ class Model:
             mgxs_lib.build_library()
 
             # Create a "tallies.xml" file for the MGXS Library
-            mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+            mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
             # Run
             statepoint_filename = model.run(cwd=directory)
@@ -1891,6 +1988,7 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        source_energy: openmc.stats.Univariate | None = None,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -1915,6 +2013,23 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model. In all cases, a discrete source that
+            is uniform over all energy groups is created (strength = 0.01) to
+            ensure that total cross sections are generated for all energy
+            groups. In the case that the user has provided a source_energy
+            distribution as an argument, an additional source (strength = 0.99)
+            is created using that energy distribution. If the user has not
+            provided a source_energy distribution, but the model has sources
+            defined, and all of those sources are of IndependentSource type,
+            then additional sources are created based on the model's existing
+            sources, keeping their energy distributions but replacing their
+            spatial/angular distributions, with their combined strength being
+            0.99. If the user has not provided a source_energy distribution and
+            no sources are defined on the model and the run mode is
+            'eigenvalue', then a default Watt spectrum source (strength = 0.99)
+            is added.
         """
         model = openmc.Model()
         model.materials = self.materials
@@ -1924,24 +2039,20 @@ class Model:
         model.settings.inactive = 100
         model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
-        model.settings.run_mode = self.settings.run_mode
 
         # Stochastic slab geometry
         model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
             model.materials)
 
-        # Make a discrete source that is uniform over the bins of the group structure
-        n_groups = groups.num_groups
-        midpoints = []
-        strengths = []
-        for i in range(n_groups):
-            bounds = groups.get_group_bounds(i+1)
-            midpoints.append((bounds[0] + bounds[1]) / 2.0)
-            strengths.append(1.0)
+        # Define the sources
+        model.settings.source = self._create_mgxs_sources(
+            groups,
+            spatial_dist=spatial_distribution,
+            source_energy=source_energy
+        )
 
-        energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-        model.settings.source = [openmc.IndependentSource(
-            space=spatial_distribution, energy=energy_distribution, strength=1.0)]
+        model.settings.run_mode = 'fixed source'
+        model.settings.create_fission_neutrons = False
 
         model.settings.output = {'summary': True, 'tallies': False}
 
@@ -1980,7 +2091,7 @@ class Model:
         mgxs_lib.build_library()
 
         # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
         # Run
         statepoint_filename = model.run(cwd=directory)
@@ -2075,7 +2186,7 @@ class Model:
         mgxs_lib.build_library()
 
         # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
         # Run
         statepoint_filename = model.run(cwd=directory)
@@ -2099,6 +2210,7 @@ class Model:
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
+        source_energy: openmc.stats.Univariate | None = None,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2112,11 +2224,33 @@ class Model:
         groups : openmc.mgxs.EnergyGroups or str, optional
             Energy group structure for the MGXS or the name of the group
             structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        nparticles : int, optional
+            Number of particles to simulate per batch when generating MGXS.
+        overwrite_mgxs_library : bool, optional
+            Whether to overwrite an existing MGXS library file.
         mgxs_path : str, optional
-            Filename of the mgxs.h5 library file.
+            Path to the mgxs.h5 library file.
         correction : str, optional
             Transport correction to apply to the MGXS. Options are None and
             "P0".
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model. In all cases, a discrete source that
+            is uniform over all energy groups is created (strength = 0.01) to
+            ensure that total cross sections are generated for all energy
+            groups. In the case that the user has provided a source_energy
+            distribution as an argument, an additional source (strength = 0.99)
+            is created using that energy distribution. If the user has not
+            provided a source_energy distribution, but the model has sources
+            defined, and all of those sources are of IndependentSource type,
+            then additional sources are created based on the model's existing
+            sources, keeping their energy distributions but replacing their
+            spatial/angular distributions, with their combined strength being
+            0.99. If the user has not provided a source_energy distribution and
+            no sources are defined on the model and the run mode is
+            'eigenvalue', then a default Watt spectrum source (strength = 0.99)
+            is added. Note that this argument is only used when using the
+            "stochastic_slab" or "infinite_medium" MGXS generation methods.
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
@@ -2146,13 +2280,13 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')

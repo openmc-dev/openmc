@@ -28,7 +28,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file
-        self.mgxs_lib.add_to_tallies_file(self._model.tallies, merge=False)
+        self.mgxs_lib.add_to_tallies(self._model.tallies, merge=False)
 
     def _run_openmc(self):
         # Initial run

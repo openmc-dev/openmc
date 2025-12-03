@@ -730,7 +730,7 @@ For instance, a D-D fusion simulation may involve a complex file source. In this
 case, the user may wish to provide a discrete 2.45 MeV energy source
 distribution for MGXS generation as::
 
-  source_energy = openmc.stats.Discrete([2.45e6], [1.0])
+  source_energy = openmc.stats.delta_function(2.45e6)
 
 Ultimately, the methods described above are all just approximations.
 Approximations in the generated MGXS data will fundamentally limit the potential

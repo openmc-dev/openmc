@@ -31,9 +31,10 @@ def test_random_ray_auto_convert_source_energy(method, source_type):
         source_energy = None
         if source_type == "model":
             model.settings.source = openmc.IndependentSource(
-                energy=openmc.stats.Discrete([7.0e6], [1.0]))
+                energy=openmc.stats.delta_function(7.0e6)
+            )
         elif source_type == "user":
-            source_energy = openmc.stats.Discrete([1.0e4], [1.0])
+            source_energy = openmc.stats.delta_function(1.0e4)
 
         # Convert to a multi-group model
         model.convert_to_multigroup(

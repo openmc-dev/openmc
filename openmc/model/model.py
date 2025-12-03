@@ -1693,8 +1693,21 @@ class Model:
         spatial_dist: openmc.stats.Spatial,
         source_energy: openmc.stats.Univariate | None = None,
     ) -> list[openmc.IndependentSource]:
-        """Create a list of independent sources to use with MGXS generation. There
-        may be multiple types of sources depending on user settings.
+        """Create a list of independent sources to use with MGXS generation.
+
+        Note that in all cases, a discrete source that is uniform over all
+        energy groups is created (strength = 0.01) to ensure that total cross
+        sections are generated for all energy groups. In the case that the user
+        has provided a source_energy distribution as an argument, an additional
+        source (strength = 0.99) is created using that energy distribution. If
+        the user has not provided a source_energy distribution, but the model
+        has sources defined, and all of those sources are of IndependentSource
+        type, then additional sources are created based on the model's existing
+        sources, keeping their energy distributions but replacing their
+        spatial/angular distributions, with their combined strength being 0.99.
+        If the user has not provided a source_energy distribution and no sources
+        are defined on the model and the run mode is 'eigenvalue', then a
+        default Watt spectrum source (strength = 0.99) is added.
 
         Parameters
         ----------
@@ -1704,22 +1717,8 @@ class Model:
             Spatial distribution to use for all sources.
         source_energy : openmc.stats.Univariate, optional
             Energy distribution to use when generating MGXS data, replacing any
-            existing sources in the model. In all cases, a discrete source that
-            is uniform over all energy groups is created (strength = 0.01) to
-            ensure that total cross sections are generated for all energy
-            groups. In the case that the user has provided a source_energy
-            distribution as an argument, an additional source (strength = 0.99)
-            is created using that energy distribution. If the user has not
-            provided a source_energy distribution, but the model has sources
-            defined, and all of those sources are of IndependentSource type,
-            then additional sources are created based on the model's existing
-            sources, keeping their energy distributions but replacing their
-            spatial/angular distributions, with their combined strength being
-            0.99. If the user has not provided a source_energy distribution and
-            no sources are defined on the model and the run mode is
-            'eigenvalue', then a default Watt spectrum source (strength = 0.99)
-            is added.
-        
+            existing sources in the model.
+
         Returns
         -------
         list[openmc.IndependentSource]
@@ -1743,19 +1742,17 @@ class Model:
                 space=spatial_dist, energy=source_energy, strength=0.99)
             sources.append(user_energy)
 
-        # If the user did not provide an energy distribution, create sources based on what is
-        # in their model, keeping the energy spectrum but replacing the spatial/angular distributions.
-        # We only do this if ALL sources are of IndependentSource type, as we can't pull the energy
+        # If the user did not provide an energy distribution, create sources
+        # based on what is in their model, keeping the energy spectrum but
+        # replacing the spatial/angular distributions. We only do this if ALL
+        # sources are of IndependentSource type, as we can't pull the energy
         # distribution from e.g. CompiledSource or FileSource types.
         else:
             if self.settings.source is not None:
-                all_independent = True
                 for src in self.settings.source:
                     if not isinstance(src, openmc.IndependentSource):
-                        all_independent = False
                         break
-                
-                if all_independent:
+                else:
                     n_user_sources = len(self.settings.source)
                     for src in self.settings.source:
                         # Create a new IndependentSource with adjusted strength, space, and angle
@@ -1772,7 +1769,7 @@ class Model:
                     watt_source = openmc.IndependentSource(
                         space=spatial_dist, energy=watt_energy, strength=0.99)
                     sources.append(watt_source)
-                    
+
         return sources
 
     def _generate_infinite_medium_mgxs(
@@ -1791,6 +1788,20 @@ class Model:
         method that ignores all spatial self shielding effects and all resonance
         shielding effects between materials.
 
+        Note that in all cases, a discrete source that is uniform over all
+        energy groups is created (strength = 0.01) to ensure that total cross
+        sections are generated for all energy groups. In the case that the user
+        has provided a source_energy distribution as an argument, an additional
+        source (strength = 0.99) is created using that energy distribution. If
+        the user has not provided a source_energy distribution, but the model
+        has sources defined, and all of those sources are of IndependentSource
+        type, then additional sources are created based on the model's existing
+        sources, keeping their energy distributions but replacing their
+        spatial/angular distributions, with their combined strength being 0.99.
+        If the user has not provided a source_energy distribution and no sources
+        are defined on the model and the run mode is 'eigenvalue', then a
+        default Watt spectrum source (strength = 0.99) is added.
+
         Parameters
         ----------
         groups : openmc.mgxs.EnergyGroups
@@ -1806,21 +1817,7 @@ class Model:
             Directory to run the simulation in, so as to contain XML files.
         source_energy : openmc.stats.Univariate, optional
             Energy distribution to use when generating MGXS data, replacing any
-            existing sources in the model. In all cases, a discrete source that
-            is uniform over all energy groups is created (strength = 0.01) to
-            ensure that total cross sections are generated for all energy
-            groups. In the case that the user has provided a source_energy
-            distribution as an argument, an additional source (strength = 0.99)
-            is created using that energy distribution. If the user has not
-            provided a source_energy distribution, but the model has sources
-            defined, and all of those sources are of IndependentSource type,
-            then additional sources are created based on the model's existing
-            sources, keeping their energy distributions but replacing their
-            spatial/angular distributions, with their combined strength being
-            0.99. If the user has not provided a source_energy distribution and
-            no sources are defined on the model and the run mode is
-            'eigenvalue', then a default Watt spectrum source (strength = 0.99)
-            is added.
+            existing sources in the model.
         """
         mgxs_sets = []
         for material in self.materials:
@@ -2046,7 +2043,7 @@ class Model:
         # Stochastic slab geometry
         model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
             model.materials)
-        
+
         # Define the sources
         model.settings.source = self._create_mgxs_sources(
             groups,

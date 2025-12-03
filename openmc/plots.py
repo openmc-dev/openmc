@@ -439,7 +439,7 @@ class PlotBase(IDManagerMixin):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         self._filename = filename
 
     @property

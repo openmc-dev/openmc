@@ -31,7 +31,7 @@ def model(request):
 
     p = Path(request.fspath).parent / "dagmc.h5m"
 
-    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True)
+    daguniv = openmc.DAGMCUniverse(p, name='simple-dagmc', auto_geom_ids=True)
 
     lattice = openmc.RectLattice()
     lattice.dimension = [2, 2]
@@ -232,6 +232,7 @@ def test_dagmc_xml(model):
     dagmc_ele = root.find('dagmc_universe')
 
     assert dagmc_ele.get('id') == str(dag_univ.id)
+    assert dagmc_ele.get('name') == str(dag_univ.name)
     assert dagmc_ele.get('filename') == str(dag_univ.filename)
     assert dagmc_ele.get('auto_geom_ids') == str(dag_univ.auto_geom_ids).lower()
 

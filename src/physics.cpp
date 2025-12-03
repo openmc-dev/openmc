@@ -123,6 +123,7 @@ void sample_neutron_reaction(Particle& p)
           "with k-effective close to or greater than one.");
       }
     }
+    p.event_mt() = rx.mt_;
   }
 
   // Create secondary photons
@@ -664,7 +665,9 @@ void absorption(Particle& p, int i_nuclide)
 
       p.wgt() = 0.0;
       p.event() = TallyEvent::ABSORB;
-      p.event_mt() = N_DISAPPEAR;
+      if (!p.fission()) {
+        p.event_mt() = N_DISAPPEAR;
+      }
     }
   }
 }

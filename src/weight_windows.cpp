@@ -26,6 +26,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"
@@ -546,8 +547,10 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // build a shape for a view of the tally results, this will always be
   // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
-  std::array<int, 5> shape = {
-    1, 1, 1, tally->n_scores(), static_cast<int>(TallyResult::SIZE)};
+  // Look for the size of the last dimension of the results array
+  const auto& results_arr = tally->results();
+  const int results_dim = static_cast<int>(results_arr.shape()[2]);
+  std::array<int, 5> shape = {1, 1, 1, tally->n_scores(), results_dim};
 
   // set the shape for the filters applied on the tally
   for (int i = 0; i < tally->filters().size(); i++) {
@@ -585,7 +588,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // get a fully reshaped view of the tally according to tally ordering of
   // filters
-  auto tally_values = xt::reshape_view(tally->results(), shape);
+  auto tally_values = xt::reshape_view(results_arr, shape);
 
   // get a that is (particle, energy, mesh, scores, values)
   auto transposed_view = xt::transpose(tally_values, transpose);
@@ -966,11 +969,17 @@ void WeightWindowsGenerator::update() const
 
   Tally* tally = model::tallies[tally_idx_].get();
 
-  // if we're beyond the number of max realizations or not at the corrrect
-  // update interval, skip the update
-  if (max_realizations_ < tally->n_realizations_ ||
-      tally->n_realizations_ % update_interval_ != 0)
+  // If in random ray mode, only update on the last batch
+  if (settings::solver_type == SolverType::RANDOM_RAY) {
+    if (simulation::current_batch != settings::n_batches) {
+      return;
+    }
+    // If in Monte Carlo mode and beyond the number of max realizations or
+    // not at the correct update interval, skip the update
+  } else if (max_realizations_ < tally->n_realizations_ ||
+             tally->n_realizations_ % update_interval_ != 0) {
     return;
+  }
 
   wws->update_weights(tally, tally_value_, threshold_, ratio_, method_);
 
@@ -1327,6 +1336,10 @@ extern "C" int openmc_weight_windows_import(const char* filename)
   }
 
   hid_t weight_windows_group = open_group(ww_file, "weight_windows");
+
+  hid_t mesh_group = open_group(ww_file, "meshes");
+
+  read_meshes(mesh_group);
 
   std::vector<std::string> names = group_names(weight_windows_group);
 

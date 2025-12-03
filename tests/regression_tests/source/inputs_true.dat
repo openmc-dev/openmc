@@ -25,7 +25,7 @@
           <parameters>-2.0 0.0 2.0 0.2 0.3 0.2</parameters>
         </z>
       </space>
-      <angle type="mu-phi" reference_uvw="0.0 0.0 1.0">
+      <angle type="mu-phi" reference_uvw="0.0 0.0 1.0" reference_vwu="1.0 0.0 0.0">
         <mu type="discrete">
           <parameters>-1.0 0.0 1.0 0.5 0.25 0.25</parameters>
         </mu>

@@ -132,7 +132,13 @@ public:
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
+  Mesh(hid_t group);
   virtual ~Mesh() = default;
+
+  // Factory method for creating meshes from either an XML node or HDF5 group
+  template<typename T>
+  static const std::unique_ptr<Mesh>& create(
+    T dataset, const std::string& mesh_type, const std::string& mesh_library);
 
   // Methods
   //! Perform any preparation needed to support point location within the mesh
@@ -258,6 +264,7 @@ class StructuredMesh : public Mesh {
 public:
   StructuredMesh() = default;
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
+  StructuredMesh(hid_t group) : Mesh {group} {};
   virtual ~StructuredMesh() = default;
 
   using MeshIndex = std::array<int, 3>;
@@ -423,6 +430,7 @@ class PeriodicStructuredMesh : public StructuredMesh {
 public:
   PeriodicStructuredMesh() = default;
   PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
+  PeriodicStructuredMesh(hid_t group) : StructuredMesh {group} {};
 
   Position local_coords(const Position& r) const override
   {
@@ -442,6 +450,7 @@ public:
   // Constructors
   RegularMesh() = default;
   RegularMesh(pugi::xml_node node);
+  RegularMesh(hid_t group);
 
   // Overridden methods
   int get_index_in_direction(double r, int i) const override;
@@ -481,6 +490,8 @@ public:
   //! Return the volume for a given mesh index
   double volume(const MeshIndex& ijk) const override;
 
+  int set_grid();
+
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element
   double element_volume_;        //!< Volume of each mesh element
@@ -492,6 +503,7 @@ public:
   // Constructors
   RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
+  RectilinearMesh(hid_t group);
 
   // Overridden methods
   int get_index_in_direction(double r, int i) const override;
@@ -534,6 +546,7 @@ public:
   // Constructors
   CylindricalMesh() = default;
   CylindricalMesh(pugi::xml_node node);
+  CylindricalMesh(hid_t group);
 
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
@@ -598,6 +611,7 @@ public:
   // Constructors
   SphericalMesh() = default;
   SphericalMesh(pugi::xml_node node);
+  SphericalMesh(hid_t group);
 
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
@@ -668,6 +682,7 @@ public:
   // Constructors
   UnstructuredMesh() { n_dimension_ = 3; };
   UnstructuredMesh(pugi::xml_node node);
+  UnstructuredMesh(hid_t group);
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;
@@ -774,6 +789,7 @@ public:
   // Constructors
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
+  MOABMesh(hid_t group);
   MOABMesh(const std::string& filename, double length_multiplier = 1.0);
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 
@@ -943,6 +959,7 @@ class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
+  LibMesh(hid_t group);
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
   LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
@@ -1068,6 +1085,11 @@ private:
 //
 //! \param[in] root XML node
 void read_meshes(pugi::xml_node root);
+
+//! Read meshes from an HDF5 file
+//
+//! \param[in] group HDF5 group ("meshes" group)
+void read_meshes(hid_t group);
 
 //! Write mesh data to an HDF5 group
 //

@@ -111,3 +111,16 @@ def test_multigroup_flux_same():
         energies=energies, multigroup_flux=flux, chain_file=chain_file)
 
     assert microxs_4g.data == pytest.approx(microxs_2g.data)
+
+
+def test_microxs_zero_flux():
+    chain_file = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # Generate micro XS based on zero flux
+    energies = [0., 6.25e-1, 5.53e3, 8.21e5, 2.e7]
+    flux = [0.0, 0.0, 0.0, 0.0]
+    microxs = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=flux, chain_file=chain_file)
+
+    # All microscopic cross sections should be zero
+    assert np.all(microxs.data == 0.0)

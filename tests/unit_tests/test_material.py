@@ -481,6 +481,7 @@ def test_borated_water():
     # Test the density override
     m = openmc.model.borated_water(975, 566.5, 15.51, density=0.9)
     assert m.density == pytest.approx(0.9, 1e-3)
+    assert m.temperature == pytest.approx(566.5)
 
 
 def test_from_xml(run_in_tmpdir):

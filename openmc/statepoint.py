@@ -434,6 +434,10 @@ class StatePoint:
                     if "multiply_density" in group.attrs:
                         tally.multiply_density = group.attrs["multiply_density"].item() > 0
 
+                    # Check if tally has higher_moments attribute
+                    if 'higher_moments' in group.attrs:
+                        tally.higher_moments = bool(group.attrs['higher_moments'][()])
+
                     # Read the number of realizations
                     n_realizations = group['n_realizations'][()]
 

@@ -76,6 +76,8 @@ def test_against_self(run_in_tmpdir,
     dt = [360]  # single step
 
     # Perform simulation using the predictor algorithm
+    if config['mpi'] and multiproc:
+        pytest.skip("Multiprocessing depletion is disabled when MPI is enabled.")
     openmc.deplete.pool.USE_MULTIPROCESSING = multiproc
     openmc.deplete.PredictorIntegrator(op,
                                        dt,
@@ -135,6 +137,8 @@ def test_against_coupled(run_in_tmpdir,
     dt = [dt]  # single step
 
     # Perform simulation using the predictor algorithm
+    if config['mpi'] and multiproc:
+        pytest.skip("Multiprocessing depletion is disabled when MPI is enabled.")
     openmc.deplete.pool.USE_MULTIPROCESSING = multiproc
     openmc.deplete.PredictorIntegrator(
         op, dt, power=174, timestep_units=time_units).integrate()

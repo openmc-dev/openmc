@@ -1840,18 +1840,17 @@ class DistribcellFilter(Filter):
     @property
     def paths(self):
         if self._paths is None:
-            if not hasattr(self, '_tally'):
+            if not hasattr(self, '_geometry'):
                 raise ValueError(
                     "Model must be exported before the 'paths' attribute is" \
                     "available for a DistribcellFilter.")
 
             # Determine paths for cell instances
-            geometry = self._tally._model.geometry
-            geometry.determine_paths()
+            self._geometry.determine_paths()
 
             # Get paths for the corresponding cell
             cell_id = self.bins[0]
-            cell = geometry.get_all_cells()[cell_id]
+            cell = self._geometry.get_all_cells()[cell_id]
             self._paths = cell.paths
 
         return self._paths

@@ -68,9 +68,11 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 
         // Compute source terms for flat and linear components of the flux
         scatter_flat += sigma_s * flux_flat;
-        fission_flat += nu_sigma_f * flux_flat * chi;
         scatter_linear += sigma_s * flux_linear;
-        fission_linear += nu_sigma_f * flux_linear * chi;
+        if (settings::create_fission_neutrons) {
+          fission_flat += nu_sigma_f * flux_flat * chi;
+          fission_linear += nu_sigma_f * flux_linear * chi;
+        }
       }
 
       // Compute the flat source term

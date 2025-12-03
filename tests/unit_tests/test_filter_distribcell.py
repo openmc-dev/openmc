@@ -3,6 +3,9 @@ import pandas as pd
 
 
 def test_distribcell_filter_apply_tally_results(run_in_tmpdir):
+    # Reset IDs to ensure consistent paths
+    openmc.reset_auto_ids()
+
     mat = openmc.Material()
     mat.add_nuclide("U235", 1.0)
     mat.set_density("g/cm3", 1.0)

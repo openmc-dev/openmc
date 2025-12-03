@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include "openmc/position.h"
+#include "openmc/search.h"
 
 namespace openmc {
 
@@ -199,6 +200,16 @@ std::complex<double> faddeeva(std::complex<double> z);
 //! \param order Order of the derivative
 //! \return Derivative of Faddeeva function evaluated at z
 std::complex<double> w_derivative(std::complex<double> z, int order);
+
+//! Helper function to get index and interpolation function on an incident
+//! energy grid
+//!
+//! \param energies energy grid
+//! \param E incident energy
+//! \param i grid index
+//! \param f interpolation factor
+void get_energy_index(
+  const vector<double>& energies, double E, int& i, double& f);
 
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

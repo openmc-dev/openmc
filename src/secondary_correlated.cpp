@@ -10,6 +10,7 @@
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
@@ -152,25 +153,13 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
     distribution_.push_back(std::move(d));
   } // incoming energies
 }
-
-void CorrelatedAngleEnergy::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+Distribution& CorrelatedAngleEnergy::sample_dist(
+  double E_in, double& E_out, uint64_t* seed) const
 {
-  // Find energy bin and calculate interpolation factor -- if the energy is
-  // outside the range of the tabulated energies, choose the first or last bins
-  auto n_energy_in = energy_.size();
+  // Find energy bin and calculate interpolation factor
   int i;
   double r;
-  if (E_in < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E_in > energy_[n_energy_in - 1]) {
-    i = n_energy_in - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E_in);
-    r = (E_in - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
+  get_energy_index(energy_, E_in, i, r);
 
   // Sample between the ith and [i+1]th bin
   int l = r > prn(seed) ? i + 1 : i;
@@ -257,122 +246,22 @@ void CorrelatedAngleEnergy::sample(
   // Find correlated angular distribution for closest outgoing energy bin
   if (r1 - c_k < c_k1 - r1 ||
       distribution_[l].interpolation == Interpolation::histogram) {
-    mu = distribution_[l].angle[k]->sample(seed);
+    return *distribution_[l].angle[k];
   } else {
-    mu = distribution_[l].angle[k + 1]->sample(seed);
+    return *distribution_[l].angle[k + 1];
   }
+}
+
+void CorrelatedAngleEnergy::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  mu = sample_dist(E_in, E_out, seed).sample(seed);
 }
 
 double CorrelatedAngleEnergy::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
-  // Find energy bin and calculate interpolation factor -- if the energy is
-  // outside the range of the tabulated energies, choose the first or last bins
-  auto n_energy_in = energy_.size();
-  int i;
-  double r;
-  if (E_in < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E_in > energy_[n_energy_in - 1]) {
-    i = n_energy_in - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E_in);
-    r = (E_in - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
-
-  // Sample between the ith and [i+1]th bin
-  int l = r > prn(seed) ? i + 1 : i;
-
-  // Interpolation for energy E1 and EK
-  int n_energy_out = distribution_[i].e_out.size();
-  int n_discrete = distribution_[i].n_discrete;
-  double E_i_1 = distribution_[i].e_out[n_discrete];
-  double E_i_K = distribution_[i].e_out[n_energy_out - 1];
-
-  n_energy_out = distribution_[i + 1].e_out.size();
-  n_discrete = distribution_[i + 1].n_discrete;
-  double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
-  double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
-
-  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
-  double E_K = E_i_K + r * (E_i1_K - E_i_K);
-
-  // Determine outgoing energy bin
-  n_energy_out = distribution_[l].e_out.size();
-  n_discrete = distribution_[l].n_discrete;
-  double r1 = prn(seed);
-  double c_k = distribution_[l].c[0];
-  int k = 0;
-  int end = n_energy_out - 2;
-
-  // Discrete portion
-  for (int j = 0; j < n_discrete; ++j) {
-    k = j;
-    c_k = distribution_[l].c[k];
-    if (r1 < c_k) {
-      end = j;
-      break;
-    }
-  }
-
-  // Continuous portion
-  double c_k1;
-  for (int j = n_discrete; j < end; ++j) {
-    k = j;
-    c_k1 = distribution_[l].c[k + 1];
-    if (r1 < c_k1)
-      break;
-    k = j + 1;
-    c_k = c_k1;
-  }
-
-  double E_l_k = distribution_[l].e_out[k];
-  double p_l_k = distribution_[l].p[k];
-  if (distribution_[l].interpolation == Interpolation::histogram) {
-    // Histogram interpolation
-    if (p_l_k > 0.0 && k >= n_discrete) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
-    } else {
-      E_out = E_l_k;
-    }
-
-  } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
-    // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k + 1];
-    double p_l_k1 = distribution_[l].p[k + 1];
-
-    double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
-    if (frac == 0.0) {
-      E_out = E_l_k + (r1 - c_k) / p_l_k;
-    } else {
-      E_out =
-        E_l_k +
-        (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
-          p_l_k) /
-          frac;
-    }
-  }
-
-  // Now interpolate between incident energy bins i and i + 1
-  if (k >= n_discrete) {
-    if (l == i) {
-      E_out = E_1 + (E_out - E_i_1) * (E_K - E_1) / (E_i_K - E_i_1);
-    } else {
-      E_out = E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
-    }
-  }
-
-  double pdf; // assuming the data in lab frame!
-  if (r1 - c_k < c_k1 - r1 ||
-      distribution_[l].interpolation == Interpolation::histogram) {
-    pdf = distribution_[l].angle[k]->evaluate(mu);
-  } else {
-    pdf = distribution_[l].angle[k + 1]->evaluate(mu);
-  }
-
-  return pdf;
+  return sample_dist(E_in, E_out, seed).evaluate(mu);
 }
 
 } // namespace openmc

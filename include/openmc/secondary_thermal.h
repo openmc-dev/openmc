@@ -112,6 +112,7 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+  void sample_params(double E_in, double& E_out, int& j, uint64_t* seed) const;
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
@@ -142,6 +143,8 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+  void sample_params(double E_in, double& E_out, double& f, int& l, int& j,
+    uint64_t* seed) const;
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
@@ -179,6 +182,7 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+  const AngleEnergy& sample_dist(double E_in, uint64_t* seed) const;
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 

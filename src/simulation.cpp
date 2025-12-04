@@ -255,7 +255,11 @@ int openmc_next_batch(int* status)
     if (settings::event_based) {
       transport_event_based();
     } else {
-      transport_history_based();
+      if (settings::use_shared_secondary_bank) {
+        transport_history_based_shared_secondary();
+      } else {
+        transport_history_based();
+      }
     }
 
     // Accumulate time for transport
@@ -869,6 +873,10 @@ void transport_history_based_shared_secondary()
       }
     }
   }
+  fmt::print("Primary transport complete. First generation "
+             "shared secondary bank size: {}\n",
+    alive_secondary);
+  fflush(stdout);
 
   // Phase 2: Now that the secondary bank has been populated, enter loop over
   // all secondary generations
@@ -907,6 +915,10 @@ void transport_history_based_shared_secondary()
       //  p.id();
       // init_particle_seeds(particle_seed, p.seeds());
       Particle p;
+      initialize_history(p, i);
+
+      // PROBLEM: Need to initialize the particle. We can't just call
+      // revive_from_secondary (from_source)
       p.event_revive_from_secondary(site);
       if (p.alive()) {
         transport_history_based_single_particle(p);
@@ -919,6 +931,8 @@ void transport_history_based_shared_secondary()
         }
       }
     } // End of transport loop over particles in shared secondary bank
+    n_generation_depth++;
+    
   } // End of loop over secondary generations
 }
 

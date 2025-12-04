@@ -448,49 +448,46 @@ void Particle::event_collide()
 
 void Particle::event_revive_from_secondary(SourceSite& site)
 {
-  // Check for secondary particles if this particle is dead
-  if (!alive()) {
-    // Write final position for this particle
-    if (write_track()) {
-      write_particle_track(*this);
-    }
-
-    from_source(&site);
-
-    n_event() = 0;
-    n_split() = site.n_split;
-    bank_second_E() = 0.0;
-
-    // Subtract secondary particle energy from interim pulse-height results
-    if (!model::active_pulse_height_tallies.empty() &&
-        this->type() == ParticleType::photon) {
-      // Since the birth cell of the particle has not been set we
-      // have to determine it before the energy of the secondary particle can be
-      // removed from the pulse-height of this cell.
-      if (lowest_coord().cell() == C_NONE) {
-        bool verbose = settings::verbosity >= 10 || trace();
-        if (!exhaustive_find_cell(*this, verbose)) {
-          mark_as_lost("Could not find the cell containing particle " +
-                       std::to_string(id()));
-          return;
-        }
-        // Set birth cell attribute
-        if (cell_born() == C_NONE)
-          cell_born() = lowest_coord().cell();
-
-        // Initialize last cells from current cell
-        for (int j = 0; j < n_coord(); ++j) {
-          cell_last(j) = coord(j).cell();
-        }
-        n_coord_last() = n_coord();
-      }
-      pht_secondary_particles();
-    }
-
-    // Enter new particle in particle track file
-    if (write_track())
-      add_particle_track(*this);
+  // Write final position for this particle
+  if (write_track()) {
+    write_particle_track(*this);
   }
+
+  from_source(&site);
+
+  n_event() = 0;
+  n_split() = site.n_split;
+  bank_second_E() = 0.0;
+
+  // Subtract secondary particle energy from interim pulse-height results
+  if (!model::active_pulse_height_tallies.empty() &&
+      this->type() == ParticleType::photon) {
+    // Since the birth cell of the particle has not been set we
+    // have to determine it before the energy of the secondary particle can be
+    // removed from the pulse-height of this cell.
+    if (lowest_coord().cell() == C_NONE) {
+      bool verbose = settings::verbosity >= 10 || trace();
+      if (!exhaustive_find_cell(*this, verbose)) {
+        mark_as_lost("Could not find the cell containing particle " +
+                     std::to_string(id()));
+        return;
+      }
+      // Set birth cell attribute
+      if (cell_born() == C_NONE)
+        cell_born() = lowest_coord().cell();
+
+      // Initialize last cells from current cell
+      for (int j = 0; j < n_coord(); ++j) {
+        cell_last(j) = coord(j).cell();
+      }
+      n_coord_last() = n_coord();
+    }
+    pht_secondary_particles();
+  }
+
+  // Enter new particle in particle track file
+  if (write_track())
+    add_particle_track(*this);
 }
 
 void Particle::event_death()

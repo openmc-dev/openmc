@@ -41,6 +41,16 @@
     <filter id="2" type="particle">
       <bins>neutron photon electron positron</bins>
     </filter>
+    <filter id="5" type="particle">
+      <bins>neutron</bins>
+    </filter>
+    <filter id="3" type="energy">
+      <bins>0.0 20000000.0</bins>
+    </filter>
+    <filter id="4" type="secondaryenergy">
+      <bins>0.0 100000.0 300000.0 500000.0 2000000.0 20000000.0</bins>
+      <particle>photon</particle>
+    </filter>
     <tally id="1">
       <filters>1 2</filters>
       <scores>current</scores>
@@ -61,6 +71,11 @@
       <filters>2</filters>
       <nuclides>Al27 total</nuclides>
       <scores>total heating (n,gamma)</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="5">
+      <filters>5 3 4</filters>
+      <scores>total</scores>
       <estimator>analog</estimator>
     </tally>
   </tallies>

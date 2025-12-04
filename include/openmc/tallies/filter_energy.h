@@ -1,6 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_ENERGY_H
 #define OPENMC_TALLIES_FILTER_ENERGY_H
 
+#include "openmc/particle.h"
 #include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
@@ -70,6 +71,39 @@ public:
     FilterMatch& match) const override;
 
   std::string text_label(int bin) const override;
+};
+
+//==============================================================================
+//! Bins the outgoing energy of secondary particles
+//!
+//! This is used to get the photon production matrix for multigroup photon
+//! transport. It could also be used to find the energy distribution of
+//! neutron secondaries or others, for example.
+//!
+//! Using anything other than analog estimators here would be complicated
+//==============================================================================
+
+class SecondaryEnergyFilter : public EnergyFilter {
+public:
+  //----------------------------------------------------------------------------
+  // Methods
+
+  std::string type_str() const override { return "secondaryenergy"; }
+  FilterType type() const override { return FilterType::SECONDARY_ENERGY; }
+
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
+
+  std::string text_label(int bin) const override;
+
+  void from_xml(pugi::xml_node node) override;
+
+protected:
+  // This filter could simultaneously use different particle types, for
+  // example creating one set of energy bins for photons and another for
+  // electrons. However, for typical use only photons are of interest.
+  // Covering multiple particles can be done by defining separate tallies.
+  ParticleType secondary_type_ {ParticleType::photon};
 };
 
 } // namespace openmc

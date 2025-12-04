@@ -124,6 +124,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<CollisionFilter>(id);
   } else if (type == "energyout") {
     return Filter::create<EnergyoutFilter>(id);
+  } else if (type == "secondaryenergy") {
+    return Filter::create<SecondaryEnergyFilter>(id);
   } else if (type == "legendre") {
     return Filter::create<LegendreFilter>(id);
   } else if (type == "material") {

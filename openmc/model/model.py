@@ -547,10 +547,11 @@ class Model:
                 depletion_operator.finalize()
 
     def _link_geometry_to_filters(self):
-        """Establishes a link between Tally objects and the Model object"""
+        """Establishes a link between distribcell filters and the geometry"""
         for tally in self.tallies:
             for f in tally.filters:
-                f._geometry = self.geometry
+                if isinstance(f, openmc.DistribcellFilter):
+                    f._geometry = self.geometry
 
     def export_to_xml(self, directory: PathLike = '.', remove_surfs: bool = False,
                       nuclides_to_ignore: Iterable[str] | None = None):

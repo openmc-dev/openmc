@@ -3709,27 +3709,17 @@ class Tallies(cv.CheckedList):
             if possible. Defaults to False.
 
         """
-        if not isinstance(tally, Tally):
-            msg = f'Unable to add a non-Tally "{tally}" to the Tallies instance'
-            raise TypeError(msg)
-
         if merge:
             # Look for a tally to merge with this one
             for i, tally2 in enumerate(self):
-
                 # If a mergeable tally is found
                 if tally2.can_merge(tally):
                     # Replace tally2 with the merged tally
                     merged_tally = tally2.merge(tally)
                     self[i] = merged_tally
-                    break
+                    return
 
-            # If no mergeable tally was found, simply add this tally
-            else:
-                super().append(tally)
-
-        else:
-            super().append(tally)
+        super().append(tally)
 
     def merge_tallies(self):
         """Merge any mergeable tallies together. Note that n-way merges are

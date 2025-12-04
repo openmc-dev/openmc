@@ -54,6 +54,10 @@ struct SourceSite {
   int parent_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;
+  double wgt_born {1.0};
+  double wgt_ww_born {-1.0};
+  int64_t n_split {0};
+  int64_t primogenitor_id {-1};
 };
 
 struct CollisionTrackSite {
@@ -535,7 +539,7 @@ private:
   uint64_t seeds_[N_STREAMS];
   int stream_;
 
-  vector<SourceSite> secondary_bank_;
+  vector<SourceSite> local_secondary_bank_;
 
   int64_t current_work_;
 
@@ -564,6 +568,7 @@ private:
   double ww_factor_ {0.0};
 
   int64_t n_progeny_ {0};
+  int64_t primogenitor_id_ {-1};
 
 public:
   //----------------------------------------------------------------------------
@@ -690,8 +695,8 @@ public:
   int& stream() { return stream_; }
 
   // secondary particle bank
-  SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }
-  decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
+  SourceSite& local_secondary_bank(int i) { return local_secondary_bank_[i]; }
+  decltype(local_secondary_bank_)& local_secondary_bank() { return local_secondary_bank_; }
 
   // Current simulation work index
   int64_t& current_work() { return current_work_; }
@@ -768,6 +773,10 @@ public:
       d = 0;
     }
   }
+
+  //! ID of the primogenitor particle (for use with the shared secondary bank)
+  int64_t& primogenitor_id() { return primogenitor_id_; }
+  const int64_t& primogenitor_id() const { return primogenitor_id_; }
 };
 
 } // namespace openmc

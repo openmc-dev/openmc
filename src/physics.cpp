@@ -115,7 +115,7 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= settings::max_secondaries) {
+      if (p.local_secondary_bank().size() >= settings::max_secondaries && !settings::use_shared_secondary_bank) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "
@@ -250,7 +250,8 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         ifp(p, idx);
       }
     } else {
-      p.secondary_bank().push_back(site);
+      // TODO: THIS NEEDS TO BE FIXED AS THE FISSION SITES DON'T HAVE PROPER PARENT IDS ETC?
+      p.local_secondary_bank().push_back(site);
     }
 
     // Increment the number of neutrons born delayed
@@ -1218,7 +1219,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
 
     // Tag secondary particle with parent nuclide
     if (created_photon && settings::use_decay_photons) {
-      p.secondary_bank().back().parent_nuclide =
+      p.local_secondary_bank().back().parent_nuclide =
         rx->products_[i_product].parent_nuclide_;
     }
   }

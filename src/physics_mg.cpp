@@ -199,7 +199,7 @@ void create_fission_sites(Particle& p)
         break;
       }
     } else {
-      p.secondary_bank().push_back(site);
+      p.local_secondary_bank().push_back(site);
     }
 
     // Set the delayed group on the particle as well

@@ -81,7 +81,7 @@ bool Particle::create_secondary(
     return false;
   }
 
-  auto& bank = secondary_bank().emplace_back();
+  SourceSite bank;
   bank.particle = type;
   bank.wgt = wgt;
   bank.r = r();
@@ -89,12 +89,25 @@ bool Particle::create_secondary(
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
+  bank.parent_id = id();
+  bank.progeny_id = n_progeny()++;
+  bank.wgt_born = wgt_born();
+  bank.wgt_ww_born = wgt_ww_born();
+
+  // If this particle has no primogenitor, it is the primogenitor
+  if (primogenitor_id() == -1) {
+    bank.primogenitor_id = id();
+  } else {
+    bank.primogenitor_id = primogenitor_id();
+  }
+
+  local_secondary_bank().emplace_back(bank);
   return true;
 }
 
 void Particle::split(double wgt)
 {
-  auto& bank = secondary_bank().emplace_back();
+  SourceSite bank;
   bank.particle = type();
   bank.wgt = wgt;
   bank.r = r();
@@ -109,6 +122,20 @@ void Particle::split(double wgt)
     int surf_id = model::surfaces[surface_index()]->id_;
     bank.surf_id = (surface() > 0) ? surf_id : -surf_id;
   }
+
+  bank.wgt_born = wgt_born();
+  bank.wgt_ww_born = wgt_ww_born();
+  bank.parent_id = id();
+  bank.progeny_id = n_progeny()++;
+
+  // If this particle has no primogenitor, it is the primogenitor
+  if (primogenitor_id() == -1) {
+    bank.primogenitor_id = id();
+  } else {
+    bank.primogenitor_id = primogenitor_id();
+  }
+
+  local_secondary_bank().emplace_back(bank);
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -155,6 +182,11 @@ void Particle::from_source(const SourceSite* src)
     int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
+
+  wgt_born() = src->wgt_born;
+  wgt_ww_born() = src->wgt_ww_born;
+  n_split() = src->n_split;
+  primogenitor_id() = src->primogenitor_id;
 }
 
 void Particle::event_calculate_xs()
@@ -414,16 +446,8 @@ void Particle::event_collide()
 #endif
 }
 
-void Particle::event_revive_from_secondary()
+void Particle::event_revive_from_secondary(SourceSite& site)
 {
-  // If particle has too many events, display warning and kill it
-  ++n_event();
-  if (n_event() == settings::max_particle_events) {
-    warning("Particle " + std::to_string(id()) +
-            " underwent maximum number of events.");
-    wgt() = 0.0;
-  }
-
   // Check for secondary particles if this particle is dead
   if (!alive()) {
     // Write final position for this particle
@@ -431,13 +455,10 @@ void Particle::event_revive_from_secondary()
       write_particle_track(*this);
     }
 
-    // If no secondary particles, break out of event loop
-    if (secondary_bank().empty())
-      return;
+    from_source(&site);
 
-    from_source(&secondary_bank().back());
-    secondary_bank().pop_back();
     n_event() = 0;
+    n_split() = site.n_split;
     bank_second_E() = 0.0;
 
     // Subtract secondary particle energy from interim pulse-height results

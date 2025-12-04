@@ -136,7 +136,11 @@ void process_surface_crossing_events()
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_cross_surface();
-    p.event_revive_from_secondary();
+    if (!p.local_secondary_bank().empty()) {
+      SourceSite& site = p.local_secondary_bank().back();
+      p.event_revive_from_secondary(site);
+      p.local_secondary_bank().pop_back();
+    }
     if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
@@ -155,7 +159,11 @@ void process_collision_events()
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_collide();
-    p.event_revive_from_secondary();
+    if (!p.local_secondary_bank().empty()) {
+      SourceSite& site = p.local_secondary_bank().back();
+      p.event_revive_from_secondary(site);
+      p.local_secondary_bank().pop_back();
+    }
     if (p.alive())
       dispatch_xs_event(buffer_idx);
   }

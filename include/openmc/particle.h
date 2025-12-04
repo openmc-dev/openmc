@@ -69,7 +69,7 @@ public:
   void event_advance();
   void event_cross_surface();
   void event_collide();
-  void event_revive_from_secondary();
+  void event_revive_from_secondary(SourceSite& site);
   void event_death();
 
   //! pulse-height recording

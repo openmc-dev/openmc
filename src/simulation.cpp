@@ -815,7 +815,19 @@ void transport_history_based_single_particle(Particle& p)
         p.event_collide();
       }
     }
-    p.event_revive_from_secondary();
+    // If particle has too many events, display warning and kill it
+    p.n_event()++;
+    if (p.n_event() == settings::max_particle_events) {
+      warning("Particle " + std::to_string(p.id()) +
+              " underwent maximum number of events.");
+      p.wgt() = 0.0;
+    }
+    if (!settings::use_shared_secondary_bank &&
+        !p.local_secondary_bank().empty()) {
+      SourceSite& site = p.local_secondary_bank().back();
+      p.event_revive_from_secondary(site);
+      p.local_secondary_bank().pop_back();
+    }
   }
   p.event_death();
 }
@@ -828,6 +840,86 @@ void transport_history_based()
     initialize_history(p, i_work);
     transport_history_based_single_particle(p);
   }
+}
+
+void transport_history_based_shared_secondary()
+{
+  // Free any memory in the shared secondary bank from previous generations
+  std::vector<SourceSite> shared_secondary_bank_read =
+    std::vector<SourceSite>();
+  std::vector<SourceSite> shared_secondary_bank_write =
+    std::vector<SourceSite>();
+
+  int64_t alive_secondary = 0;
+
+  // Phase 1: Transport primary particles and deposit first generation of
+  // secondaries in the shared secondary bank
+#pragma omp parallel for schedule(runtime) reduction(+ : alive_secondary)
+  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+    Particle p;
+    initialize_history(p, i_work);
+    transport_history_based_single_particle(p);
+    alive_secondary += p.local_secondary_bank().size();
+
+    // Transfer all secondary particles to the shared secondary bank
+#pragma omp critical(shared_secondary_bank)
+    {
+      for (auto& site : p.local_secondary_bank()) {
+        shared_secondary_bank_write.push_back(site);
+      }
+    }
+  }
+
+  // Phase 2: Now that the secondary bank has been populated, enter loop over
+  // all secondary generations
+  int n_generation_depth = 1;
+  while (alive_secondary) {
+    // Step 1: Synchronize the shared secondary bank amongst all MPI ranks, such
+    // that each MPI rank has an approximately equal number of secondary
+    // particles.
+    alive_secondary =
+      synchronize_global_secondary_bank(shared_secondary_bank_write);
+
+    if (mpi::master) {
+      fmt::print(
+        "Secondary generation {} has global shared secondary bank size: {}\n",
+        n_generation_depth, alive_secondary);
+    }
+    fflush(stdout);
+
+    shared_secondary_bank_read = std::move(shared_secondary_bank_write);
+    shared_secondary_bank_write = std::vector<SourceSite>();
+
+    // TODO: Step 2: Order the shared secondary bank by parent ID then progeny
+    // ID to ensure reproducibility.
+
+    // Step 3: Transport all secondary particles from the shared secondary bank
+    int64_t next_alive_secondary = 0;
+#pragma omp parallel for schedule(runtime) reduction(+ : next_alive_secondary)
+    for (int64_t i = 0; i < shared_secondary_bank_read.size(); i++) {
+      SourceSite& site = shared_secondary_bank_read[i];
+      // TODO: Control the seed so as to be reproducible
+      // set random number seed
+      // p.id() = ... + i
+      // int64_t particle_seed =
+      //  (simulation::total_gen + overall_generation() - 1) *
+      //    settings::n_particles +
+      //  p.id();
+      // init_particle_seeds(particle_seed, p.seeds());
+      Particle p;
+      p.event_revive_from_secondary(site);
+      if (p.alive()) {
+        transport_history_based_single_particle(p);
+      }
+      next_alive_secondary += p.local_secondary_bank().size();
+#pragma omp critical(shared_secondary_bank)
+      {
+        for (auto& site : p.local_secondary_bank()) {
+          shared_secondary_bank_write.push_back(site);
+        }
+      }
+    } // End of transport loop over particles in shared secondary bank
+  } // End of loop over secondary generations
 }
 
 void transport_event_based()

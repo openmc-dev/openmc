@@ -136,6 +136,70 @@ void sort_fission_bank()
   }
 }
 
+//==============================================================================
+// Synchronize and load-balance a shared secondary bank across MPI ranks
+//==============================================================================
+//
+// This function redistributes SourceSite particles across MPI ranks to achieve
+// load balancing while preserving the global ordering of particles.
+//
+// GUARANTEES:
+// -----------
+// 1. Global Order Preservation: After redistribution, each rank holds a
+//    contiguous slice of the original global ordering. For example, if the
+//    input across 3 ranks was:
+//      - Rank 0: IDs 0-4
+//      - Rank 1: IDs 5-6
+//      - Rank 2: IDs 7-200
+//    Then after redistribution (assuming ~67 particles per rank):
+//      - Rank 0: IDs 0-66   (contiguous)
+//      - Rank 1: IDs 67-133 (contiguous)
+//      - Rank 2: IDs 134-200 (contiguous)
+//    The global ordering is always preserved - no rank will ever hold
+//    non-contiguous ID ranges like "0-4 and 100-200".
+//
+// 2. Even Load Balancing: Particles are distributed as evenly as possible.
+//    If total % n_procs != 0, the first 'remainder' ranks each get one extra
+//    particle (i.e., floor division with remainder distributed to lower ranks).
+//
+// HOW IT WORKS:
+// -------------
+// The algorithm uses overlap-based redistribution:
+// 1. Each rank's current data occupies a range [cumulative_before[rank],
+//    cumulative_before[rank+1]) in the global index space.
+// 2. Each rank's target data should occupy [cumulative_target[rank],
+//    cumulative_target[rank+1]) in the same global index space.
+// 3. For each pair of (source_rank, dest_rank), we calculate the overlap
+//    between what source_rank currently has and what dest_rank needs.
+// 4. MPI_Alltoallv transfers exactly these overlapping regions, with
+//    displacements ensuring data lands at the correct position in the
+//    receiving buffer.
+//
+// EDGE CASES HANDLED:
+// -------------------
+// - Single rank (n_procs == 1): Returns immediately with local size, no MPI.
+// - Empty total (all ranks have 0 particles): Returns 0 immediately.
+// - Imbalanced input (e.g., one rank has all particles): Works correctly;
+//   that rank will send portions to all other ranks based on target ranges.
+// - Non-divisible totals: First 'remainder' ranks get one extra particle.
+//
+// PARAMETERS:
+// -----------
+// shared_secondary_bank: Input/output vector of SourceSite particles.
+//                        On input, contains this rank's current particles.
+//                        On output, contains this rank's redistributed share.
+//
+// RETURNS:
+// --------
+// The total number of particles across all ranks.
+//
+// SIDE EFFECTS:
+// -------------
+// - Calls calculate_work(total) to update work distribution arrays.
+// - Modifies shared_secondary_bank in place.
+//
+//==============================================================================
+
 int64_t synchronize_global_secondary_bank(vector<SourceSite>& shared_secondary_bank)
 {
   // Get current size of local bank
@@ -233,19 +297,10 @@ int64_t synchronize_global_secondary_bank(vector<SourceSite>& shared_secondary_b
   // Prepare receive buffer with target size
   vector<SourceSite> new_bank(target_sizes[mpi::rank]);
 
-  // Handle empty vector edge cases for MPI_Alltoallv
-  // Create dummy data to avoid nullptr issues
-  SourceSite dummy;
-  void* send_ptr = local_size > 0 ? static_cast<void*>(
-                                      shared_secondary_bank.data())
-                                  : static_cast<void*>(&dummy);
-  void* recv_ptr = target_sizes[mpi::rank] > 0
-                     ? static_cast<void*>(new_bank.data())
-                     : static_cast<void*>(&dummy);
   // Perform all-to-all redistribution using the custom MPI type
-  MPI_Alltoallv(send_ptr, send_counts.data(), send_displs.data(),
-    mpi::source_site, recv_ptr, recv_counts.data(), recv_displs.data(),
-    mpi::source_site, mpi::intracomm);
+  MPI_Alltoallv(shared_secondary_bank.data(), send_counts.data(),
+    send_displs.data(), mpi::source_site, new_bank.data(), recv_counts.data(),
+    recv_displs.data(), mpi::source_site, mpi::intracomm);
 
   // Replace old bank with redistributed data
   shared_secondary_bank = std::move(new_bank);

@@ -17,18 +17,30 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
             os.remove(f)
 
 
-@pytest.mark.parametrize("method", ["material_wise", "stochastic_slab", "infinite_medium"])
-def test_random_ray_auto_convert(method):
-    with change_directory(method):
+@pytest.mark.parametrize("source_type", ["model", "user"])
+@pytest.mark.parametrize("method", ["stochastic_slab", "infinite_medium"])
+def test_random_ray_auto_convert_source_energy(method, source_type):
+    dirname = f"{method}/{source_type}"
+    with change_directory(dirname):
         openmc.reset_auto_ids()
 
         # Start with a normal continuous energy model
         model = pwr_pin_cell()
 
+        # Define the source energy distribution, using different methods
+        source_energy = None
+        if source_type == "model":
+            model.settings.source = openmc.IndependentSource(
+                energy=openmc.stats.delta_function(7.0e6)
+            )
+        elif source_type == "user":
+            source_energy = openmc.stats.delta_function(1.0e4)
+
         # Convert to a multi-group model
         model.convert_to_multigroup(
-            method=method, groups='CASMO-2', nparticles=100,
-            overwrite_mgxs_library=False, mgxs_path="mgxs.h5"
+            method=method, groups='CASMO-8', nparticles=100,
+            overwrite_mgxs_library=False, mgxs_path="mgxs.h5",
+            source_energy=source_energy
         )
 
         # Convert to a random ray model

@@ -51,20 +51,19 @@ def test_exceptions(options, error, run_in_tmpdir, geometry):
 
 
 @pytest.mark.parametrize(
-    "num_groups, use_auto_tallies, nuclides", 
+    "num_groups, nuclides, use_auto_tallies", 
     [
-        (None, True, None),
-        (None, False, None),
-        (6, True, None),
-        (6, False, None),
-        (None, True, ["U235", "Pu239"]),
-        (None, False, ["U235", "Pu239"]),
-        (6, True, ["U235", "Pu239"]),
-        (6, False, ["U235", "Pu239"]),
-
+        (None, None, True),
+        (None, None, False),
+        (6, None, True),
+        (6, None, False),
+        (None, ["U235", "Pu239"], True),
+        (None, ["U235", "Pu239"], False),
+        (6, ["U235", "Pu239"], True),
+        (6, ["U235", "Pu239"], False),
     ],
 )
-def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, use_auto_tallies, nuclides):
+def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, nuclides, use_auto_tallies):
     # Create basic model
     model = openmc.Model(geometry=geometry)
     model.settings.particles = 1000
@@ -93,7 +92,10 @@ def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, use_auto_t
     assert isinstance(params, openmc.KineticsParameters)
     assert params.generation_time is not None
     assert params.beta_effective is not None
-    if num_groups is not None and not nuclides:
-        assert len(params.beta_effective) == num_groups
-    if num_groups is not None and nuclides:    
-        assert params.beta_effective.shape == (num_groups, len(nuclides))
+    if num_groups is not None:
+        if nuclides:
+            assert params.beta_effective.shape == (num_groups, len(nuclides))
+        else:
+            assert len(params.beta_effective) == num_groups
+    elif nuclides:
+        assert len(params.beta_effective) == len(nuclides)

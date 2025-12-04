@@ -252,6 +252,7 @@ class Model:
         nuclides : int, optional 
             Nuclides to calculate separate kinetic parameters for.
             If None, do not separate kinetic parameters per nuclide.
+
         """
         if not any('ifp-time-numerator' in t.scores for t in self.tallies):
             gen_time_tally = openmc.Tally(name='IFP time numerator')
@@ -262,7 +263,7 @@ class Model:
             beta_tally.scores = ['ifp-beta-numerator']
             if num_groups is not None:
                 beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
-            if nuclides is not None:
+            if nuclides:
                 beta_tally.nuclides = list(nuclides)
             self.tallies.append(beta_tally)
         if not any('ifp-denominator' in t.scores for t in self.tallies):

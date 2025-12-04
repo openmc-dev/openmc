@@ -900,6 +900,14 @@ void transport_history_based_shared_secondary()
 
     // TODO: Step 2: Order the shared secondary bank by parent ID then progeny
     // ID to ensure reproducibility.
+    std::sort(shared_secondary_bank_read.begin(), shared_secondary_bank_read.end(),
+      [](const SourceSite& a, const SourceSite& b) {
+        if (a.parent_id != b.parent_id) {
+          return a.parent_id < b.parent_id;
+        } else {
+          return a.progeny_id < b.progeny_id;
+        }
+      });
 
     // Step 3: Transport all secondary particles from the shared secondary bank
     int64_t next_alive_secondary = 0;
@@ -932,7 +940,7 @@ void transport_history_based_shared_secondary()
       }
     } // End of transport loop over particles in shared secondary bank
     n_generation_depth++;
-    
+
   } // End of loop over secondary generations
 }
 

@@ -118,7 +118,7 @@ for ``ifp-denominator``:
     \beta_{\text{eff}} = \frac{S_{\text{ifp-beta-numerator}}}{S_{\text{ifp-denominator}}}
 
 The kinetics parameters can be retrieved directly from a statepoint file using
-the :meth:`openmc.StatePoint.ifp_results` method::
+the :meth:`openmc.StatePoint.get_kinetics_parameters` method::
 
     with openmc.StatePoint(output_path) as sp:
         generation_time, beta_eff = sp.get_kinetics_parameters()

@@ -822,7 +822,7 @@ void transport_history_based_single_particle(Particle& p)
               " underwent maximum number of events.");
       p.wgt() = 0.0;
     }
-    if (!settings::use_shared_secondary_bank &&
+    if (!p.alive() && !settings::use_shared_secondary_bank &&
         !p.local_secondary_bank().empty()) {
       SourceSite& site = p.local_secondary_bank().back();
       p.event_revive_from_secondary(site);

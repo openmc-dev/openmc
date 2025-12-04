@@ -249,7 +249,8 @@ int64_t synchronize_global_secondary_bank(vector<SourceSite>& shared_secondary_b
 
   // Replace old bank with redistributed data
   shared_secondary_bank = std::move(new_bank);
-  
+
+  calculate_work(total);
   return total;
 #endif
 }

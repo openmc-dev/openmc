@@ -86,7 +86,7 @@ int openmc_simulation_init()
   }
 
   // Determine how much work each process should do
-  calculate_work();
+  calculate_work(settings::n_particles);
 
   // Allocate source, fission and surface source banks.
   allocate_banks();
@@ -326,6 +326,8 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
 vector<int64_t> work_index;
+
+int64_t simulation_particles_completed {0};
 
 } // namespace simulation
 
@@ -582,9 +584,15 @@ void initialize_history(Particle& p, int64_t index_source)
     p.from_source(&simulation::source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
-    int64_t id = (simulation::total_gen + overall_generation() - 1) *
-                   settings::n_particles +
-                 simulation::work_index[mpi::rank] + index_source;
+    int64_t id;
+    if (settings::use_shared_secondary_bank) {
+      id = simulation::work_index[mpi::rank] + index_source +
+           simulation::simulation_particles_completed;
+    } else {
+      id = (simulation::total_gen + overall_generation() - 1) *
+             settings::n_particles +
+           simulation::work_index[mpi::rank] + index_source;
+    }
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
@@ -593,7 +601,12 @@ void initialize_history(Particle& p, int64_t index_source)
   p.current_work() = index_source;
 
   // set identifier for particle
-  p.id() = simulation::work_index[mpi::rank] + index_source;
+  if (settings::use_shared_secondary_bank) {
+    p.id() = simulation::work_index[mpi::rank] + index_source +
+             simulation::simulation_particles_completed;
+  } else {
+    p.id() = simulation::work_index[mpi::rank] + index_source;
+  }
 
   // set progeny count to zero
   p.n_progeny() = 0;
@@ -614,9 +627,14 @@ void initialize_history(Particle& p, int64_t index_source)
   std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
 
   // set random number seed
-  int64_t particle_seed =
-    (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
-    p.id();
+  int64_t particle_seed;
+  if (settings::use_shared_secondary_bank) {
+    particle_seed = p.id();
+  } else {
+    particle_seed = (simulation::total_gen + overall_generation() - 1) *
+                      settings::n_particles +
+                    p.id();
+  }
   init_particle_seeds(particle_seed, p.seeds());
 
   // set particle trace
@@ -658,13 +676,13 @@ int overall_generation()
   return settings::gen_per_batch * (current_batch - 1) + current_gen;
 }
 
-void calculate_work()
+void calculate_work(int64_t n_particles)
 {
   // Determine minimum amount of particles to simulate on each processor
-  int64_t min_work = settings::n_particles / mpi::n_procs;
+  int64_t min_work = n_particles / mpi::n_procs;
 
   // Determine number of processors that have one extra particle
-  int64_t remainder = settings::n_particles % mpi::n_procs;
+  int64_t remainder = n_particles % mpi::n_procs;
 
   int64_t i_bank = 0;
   simulation::work_index.resize(mpi::n_procs + 1);
@@ -873,6 +891,9 @@ void transport_history_based_shared_secondary()
       }
     }
   }
+
+  simulation::simulation_particles_completed += simulation::work_per_rank;
+
   fmt::print("Primary transport complete. First generation "
              "shared secondary bank size: {}\n",
     alive_secondary);
@@ -900,7 +921,8 @@ void transport_history_based_shared_secondary()
 
     // TODO: Step 2: Order the shared secondary bank by parent ID then progeny
     // ID to ensure reproducibility.
-    std::sort(shared_secondary_bank_read.begin(), shared_secondary_bank_read.end(),
+    std::sort(shared_secondary_bank_read.begin(),
+      shared_secondary_bank_read.end(),
       [](const SourceSite& a, const SourceSite& b) {
         if (a.parent_id != b.parent_id) {
           return a.parent_id < b.parent_id;
@@ -940,6 +962,7 @@ void transport_history_based_shared_secondary()
       }
     } // End of transport loop over particles in shared secondary bank
     n_generation_depth++;
+    simulation::simulation_particles_completed += alive_secondary;
 
   } // End of loop over secondary generations
 }

@@ -49,6 +49,8 @@ extern const RegularMesh* ufs_mesh;
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;
 
+extern int64_t simulation_particles_completed; //!< Number of particles completed on this rank
+
 } // namespace simulation
 
 //==============================================================================
@@ -59,7 +61,7 @@ extern vector<int64_t> work_index;
 void allocate_banks();
 
 //! Determine number of particles to transport per process
-void calculate_work();
+void calculate_work(int64_t n_particles);
 
 //! Initialize nuclear data before a simulation
 void initialize_data();

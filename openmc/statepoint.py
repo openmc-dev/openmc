@@ -757,7 +757,7 @@ class StatePoint:
                     cell = cells[cell_id]
                     if not cell._paths:
                         summary.geometry.determine_paths()
-                    tally_filter.paths = cell.paths
+                    tally_filter._paths = cell.paths
 
         self._summary = summary
 

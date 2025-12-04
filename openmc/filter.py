@@ -2029,12 +2029,21 @@ class DistribcellFilter(Filter):
 
     @property
     def paths(self):
-        return self._paths
+        if self._paths is None:
+            if not hasattr(self, '_geometry'):
+                raise ValueError(
+                    "Model must be exported before the 'paths' attribute is" \
+                    "available for a DistribcellFilter.")
 
-    @paths.setter
-    def paths(self, paths):
-        cv.check_iterable_type('paths', paths, str)
-        self._paths = paths
+            # Determine paths for cell instances
+            self._geometry.determine_paths()
+
+            # Get paths for the corresponding cell
+            cell_id = self.bins[0]
+            cell = self._geometry.get_all_cells()[cell_id]
+            self._paths = cell.paths
+
+        return self._paths
 
     @Filter.bins.setter
     def bins(self, bins):

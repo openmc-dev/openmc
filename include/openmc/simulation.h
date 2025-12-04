@@ -73,7 +73,7 @@ void initialize_batch();
 void initialize_generation();
 
 //! Full initialization of a particle history
-void initialize_history(Particle& p, int64_t index_source);
+void initialize_history(Particle& p, int64_t index_source, bool is_secondary);
 
 //! Finalize a batch
 //!

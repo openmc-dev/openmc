@@ -576,11 +576,10 @@ void finalize_generation()
   }
 }
 
-void initialize_history(Particle& p, int64_t index_source)
+void sample_particle(Particle& p, int64_t index_source)
 {
-  // set defaults
+  // Sample a particle from the source bank
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    // set defaults for eigenvalue simulations from primary bank
     p.from_source(&simulation::source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
@@ -598,6 +597,15 @@ void initialize_history(Particle& p, int64_t index_source)
     auto site = sample_external_source(&seed);
     p.from_source(&site);
   }
+}
+
+void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
+{
+  // set defaults
+  if (!is_secondary) {
+    sample_particle(p, index_source);
+  }
+
   p.current_work() = index_source;
 
   // set identifier for particle
@@ -648,17 +656,21 @@ void initialize_history(Particle& p, int64_t index_source)
   p.write_track() = check_track_criteria(p);
 
   // Set the particle's initial weight window value.
-  p.wgt_ww_born() = -1.0;
-  apply_weight_windows(p);
+  if (!is_secondary) {
+    p.wgt_ww_born() = -1.0;
+    apply_weight_windows(p);
+  }
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {
     write_message("Simulating Particle {}", p.id());
   }
 
-// Add particle's starting weight to count for normalizing tallies later
+  // Add particle's starting weight to count for normalizing tallies later
+  if (!is_secondary) {
 #pragma omp atomic
-  simulation::total_weight += p.wgt();
+    simulation::total_weight += p.wgt();
+  }
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
@@ -859,7 +871,7 @@ void transport_history_based()
 #pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
-    initialize_history(p, i_work);
+    initialize_history(p, i_work, false);
     transport_history_based_single_particle(p);
   }
 }
@@ -879,7 +891,7 @@ void transport_history_based_shared_secondary()
 #pragma omp parallel for schedule(runtime) reduction(+ : alive_secondary)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
-    initialize_history(p, i_work);
+    initialize_history(p, i_work, false);
     transport_history_based_single_particle(p);
     alive_secondary += p.local_secondary_bank().size();
 
@@ -945,7 +957,7 @@ void transport_history_based_shared_secondary()
       //  p.id();
       // init_particle_seeds(particle_seed, p.seeds());
       Particle p;
-      initialize_history(p, i);
+      initialize_history(p, i, true);
 
       // PROBLEM: Need to initialize the particle. We can't just call
       // revive_from_secondary (from_source)

@@ -172,7 +172,7 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.wgt_born, &disp[11]);
   MPI_Get_address(&b.wgt_ww_born, &disp[12]);
   MPI_Get_address(&b.n_split, &disp[13]);
-  MPI_Get_address(&b.primogenitor_id, &disp[14]);
+  MPI_Get_address(&b.current_work, &disp[14]);
   for (int i = 14; i >= 0; --i) {
     disp[i] -= disp[0];
   }
@@ -196,7 +196,7 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_DOUBLE,  // wgt_born
     MPI_DOUBLE,  // wgt_ww_born
     MPI_INT64_T, // n_split
-    MPI_INT64_T  // primogenitor_id
+    MPI_INT64_T  // current_work
   };
 
   MPI_Type_create_struct(15, blocks, disp, types, &mpi::source_site);

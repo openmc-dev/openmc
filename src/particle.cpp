@@ -93,13 +93,7 @@ bool Particle::create_secondary(
   bank.progeny_id = n_progeny()++;
   bank.wgt_born = wgt_born();
   bank.wgt_ww_born = wgt_ww_born();
-
-  // If this particle has no primogenitor, it is the primogenitor
-  if (primogenitor_id() == -1) {
-    bank.primogenitor_id = id();
-  } else {
-    bank.primogenitor_id = primogenitor_id();
-  }
+  bank.current_work = current_work();
 
   local_secondary_bank().emplace_back(bank);
   return true;
@@ -127,13 +121,7 @@ void Particle::split(double wgt)
   bank.wgt_ww_born = wgt_ww_born();
   bank.parent_id = id();
   bank.progeny_id = n_progeny()++;
-
-  // If this particle has no primogenitor, it is the primogenitor
-  if (primogenitor_id() == -1) {
-    bank.primogenitor_id = id();
-  } else {
-    bank.primogenitor_id = primogenitor_id();
-  }
+  bank.current_work = current_work();
 
   local_secondary_bank().emplace_back(bank);
 }
@@ -186,7 +174,7 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
-  primogenitor_id() = src->primogenitor_id;
+  current_work() = src->current_work;
 }
 
 void Particle::event_calculate_xs()

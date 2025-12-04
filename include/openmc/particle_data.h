@@ -57,7 +57,7 @@ struct SourceSite {
   double wgt_born {1.0};
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
-  int64_t primogenitor_id {-1};
+  int64_t current_work;
 };
 
 struct CollisionTrackSite {

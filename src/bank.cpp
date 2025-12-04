@@ -199,9 +199,20 @@ void sort_fission_bank()
 // - Modifies shared_secondary_bank in place.
 //
 //==============================================================================
-
-int64_t synchronize_global_secondary_bank(vector<SourceSite>& shared_secondary_bank)
+int64_t synchronize_global_secondary_bank(
+  vector<SourceSite>& shared_secondary_bank)
 {
+  // Order the shared secondary bank by parent ID then progeny
+  // ID to ensure reproducibility.
+  std::sort(shared_secondary_bank.begin(), shared_secondary_bank.end(),
+    [](const SourceSite& a, const SourceSite& b) {
+      if (a.parent_id != b.parent_id) {
+        return a.parent_id < b.parent_id;
+      } else {
+        return a.progeny_id < b.progeny_id;
+      }
+    });
+
   // Get current size of local bank
   int64_t local_size = shared_secondary_bank.size();
 

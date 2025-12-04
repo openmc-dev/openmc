@@ -878,22 +878,22 @@ void transport_history_based()
 
 void transport_history_based_shared_secondary()
 {
+  // Recalculate work as this may have changed in previous secondary sub-iterations
+  calculate_work(settings::n_particles);
+
   // Free any memory in the shared secondary bank from previous generations
   std::vector<SourceSite> shared_secondary_bank_read =
     std::vector<SourceSite>();
   std::vector<SourceSite> shared_secondary_bank_write =
     std::vector<SourceSite>();
 
-  int64_t alive_secondary = 0;
-
   // Phase 1: Transport primary particles and deposit first generation of
   // secondaries in the shared secondary bank
-#pragma omp parallel for schedule(runtime) reduction(+ : alive_secondary)
+#pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     initialize_history(p, i_work, false);
     transport_history_based_single_particle(p);
-    alive_secondary += p.local_secondary_bank().size();
 
     // Transfer all secondary particles to the shared secondary bank
 #pragma omp critical(shared_secondary_bank)
@@ -904,16 +904,13 @@ void transport_history_based_shared_secondary()
     }
   }
 
-  simulation::simulation_particles_completed += simulation::work_per_rank;
-
-  fmt::print("Primary transport complete. First generation "
-             "shared secondary bank size: {}\n",
-    alive_secondary);
-  fflush(stdout);
+  simulation::simulation_particles_completed += settings::n_particles;
 
   // Phase 2: Now that the secondary bank has been populated, enter loop over
   // all secondary generations
   int n_generation_depth = 1;
+  int64_t alive_secondary = 1;
+
   while (alive_secondary) {
     // Step 1: Synchronize the shared secondary bank amongst all MPI ranks, such
     // that each MPI rank has an approximately equal number of secondary
@@ -931,17 +928,7 @@ void transport_history_based_shared_secondary()
     shared_secondary_bank_read = std::move(shared_secondary_bank_write);
     shared_secondary_bank_write = std::vector<SourceSite>();
 
-    // TODO: Step 2: Order the shared secondary bank by parent ID then progeny
-    // ID to ensure reproducibility.
-    std::sort(shared_secondary_bank_read.begin(),
-      shared_secondary_bank_read.end(),
-      [](const SourceSite& a, const SourceSite& b) {
-        if (a.parent_id != b.parent_id) {
-          return a.parent_id < b.parent_id;
-        } else {
-          return a.progeny_id < b.progeny_id;
-        }
-      });
+
 
     // Step 3: Transport all secondary particles from the shared secondary bank
     int64_t next_alive_secondary = 0;

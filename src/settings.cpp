@@ -1267,6 +1267,11 @@ void read_settings_xml(pugi::xml_node root)
     settings::use_decay_photons =
       get_node_value_bool(root, "use_decay_photons");
   }
+
+  // If weight windows are on, also enable shared secondary bank
+  if (settings::weight_windows_on) {
+    settings::use_shared_secondary_bank = true;
+  }
 }
 
 void free_memory_settings()

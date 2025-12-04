@@ -192,7 +192,7 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_INT,     // particle (enum)
     MPI_INT,     // parent_nuclide
     MPI_INT64_T, // parent_id
-    MPI_INT64_T  // progeny_id
+    MPI_INT64_T, // progeny_id
     MPI_DOUBLE,  // wgt_born
     MPI_DOUBLE,  // wgt_ww_born
     MPI_INT64_T, // n_split

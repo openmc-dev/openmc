@@ -627,11 +627,11 @@ class PlotBase(IDManagerMixin):
 class SlicePlot(PlotBase):
     """Definition of a 2D slice plot of the geometry.
 
-    Colors that are used in plots can be given as RGB tuples, e.g. 
+    Colors that are used in plots can be given as RGB tuples, e.g.
     (255, 255, 255) would be white, or by a string indicating a
     valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
-    .. versionadded:: 0.15.1
+    .. versionadded:: 0.15.4
 
     Parameters
     ----------
@@ -1035,7 +1035,7 @@ class SlicePlot(PlotBase):
 class VoxelPlot(PlotBase):
     """Definition of a 3D voxel plot of the geometry.
 
-    Colors that are used in plots can be given as RGB tuples, e.g. 
+    Colors that are used in plots can be given as RGB tuples, e.g.
     (255, 255, 255) would be white, or by a string indicating a
     valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
@@ -1236,37 +1236,6 @@ class VoxelPlot(PlotBase):
 
         return plot
 
-    def to_ipython_image(self, openmc_exec='openmc', cwd='.'):
-        """Render plot as an image
-
-        This method runs OpenMC in plotting mode to produce a .png file.
-
-        .. versionchanged:: 0.13.0
-            The *convert_exec* argument was removed since OpenMC now produces
-            .png images directly.
-
-        Parameters
-        ----------
-        openmc_exec : str
-            Path to OpenMC executable
-        cwd : str, optional
-            Path to working directory to run in
-
-        Returns
-        -------
-        IPython.display.Image
-            Image generated
-
-        """
-        # Create plots.xml
-        Plots([self]).export_to_xml(cwd)
-
-        # Run OpenMC in geometry plotting mode
-        openmc.plot_geometry(False, openmc_exec, cwd)
-
-        # Return produced image
-        return _get_plot_image(self, cwd)
-
     def to_vtk(self, output: PathLike | None = None,
                openmc_exec: str = 'openmc', cwd: str = '.'):
         """Render plot as a voxel image
@@ -1413,21 +1382,21 @@ class Plot(SlicePlot):
             if "filename" in elem.keys():
                 plot.filename = get_text(elem, "filename")
             plot.color_by = get_text(elem, "color_by")
-            
+
             plot.origin = tuple(get_elem_list(elem, "origin", float))
             plot.width = tuple(get_elem_list(elem, "width", float))
             plot.pixels = tuple(get_elem_list(elem, "pixels"))
             background = get_elem_list(elem, "background")
             if background is not None:
                 plot._background = tuple(background)
-            
+
             # Set plot colors
             colors = {}
             for color_elem in elem.findall("color"):
                 uid = int(get_text(color_elem, "id"))
                 colors[uid] = tuple(get_elem_list(color_elem, "rgb", int))
             plot.colors = colors
-            
+
             # Set masking information
             mask_elem = elem.find("mask")
             if mask_elem is not None:
@@ -1435,7 +1404,7 @@ class Plot(SlicePlot):
                 background = get_elem_list(mask_elem, "background", int)
                 if background is not None:
                     plot.mask_background = tuple(background)
-            
+
             # show overlaps
             overlap = get_text(elem, "show_overlaps")
             if overlap is not None:
@@ -1443,12 +1412,12 @@ class Plot(SlicePlot):
             overlap_color = get_elem_list(elem, "overlap_color", int)
             if overlap_color is not None:
                 plot.overlap_color = tuple(overlap_color)
-            
+
             # Set universe level
             level = get_text(elem, "level")
             if level is not None:
                 plot.level = int(level)
-            
+
             return plot
         else:
             # Use SlicePlot.from_xml_element but return as Plot
@@ -1459,21 +1428,21 @@ class Plot(SlicePlot):
                 plot.filename = get_text(elem, "filename")
             plot.color_by = get_text(elem, "color_by")
             plot.basis = get_text(elem, "basis")
-            
+
             plot.origin = tuple(get_elem_list(elem, "origin", float))
             plot.width = tuple(get_elem_list(elem, "width", float))
             plot.pixels = tuple(get_elem_list(elem, "pixels"))
             background = get_elem_list(elem, "background")
             if background is not None:
                 plot._background = tuple(background)
-            
+
             # Set plot colors
             colors = {}
             for color_elem in elem.findall("color"):
                 uid = int(get_text(color_elem, "id"))
                 colors[uid] = tuple(get_elem_list(color_elem, "rgb", int))
             plot.colors = colors
-            
+
             # Set masking information
             mask_elem = elem.find("mask")
             if mask_elem is not None:
@@ -1481,7 +1450,7 @@ class Plot(SlicePlot):
                 background = get_elem_list(mask_elem, "background", int)
                 if background is not None:
                     plot.mask_background = tuple(background)
-            
+
             # show overlaps
             overlap = get_text(elem, "show_overlaps")
             if overlap is not None:
@@ -1489,12 +1458,12 @@ class Plot(SlicePlot):
             overlap_color = get_elem_list(elem, "overlap_color", int)
             if overlap_color is not None:
                 plot.overlap_color = tuple(overlap_color)
-            
+
             # Set universe level
             level = get_text(elem, "level")
             if level is not None:
                 plot.level = int(level)
-            
+
             # Set meshlines
             mesh_elem = elem.find("meshlines")
             if mesh_elem is not None:
@@ -1509,15 +1478,15 @@ class Plot(SlicePlot):
                 if color is not None:
                     meshlines['color'] = tuple(color)
                 plot.meshlines = meshlines
-            
+
             return plot
 
-    @classmethod 
+    @classmethod
     def from_geometry(cls, geometry,
                       basis: str = 'xy',
                       slice_coord: float = 0.):
         """Generate plot from a geometry object
-        
+
         Parameters
         ----------
         geometry : openmc.Geometry
@@ -1526,12 +1495,12 @@ class Plot(SlicePlot):
             The basis directions
         slice_coord : float
             The position of the slice
-            
+
         Returns
         -------
         openmc.Plot
             Plot object
-            
+
         """
         import warnings
         # Suppress deprecation warning when called as class method
@@ -1570,7 +1539,7 @@ class Plot(SlicePlot):
         if self.type != 'voxel':
             raise ValueError(
                 'Generating a VTK file only works for voxel plots')
-        
+
         # Convert to VoxelPlot and call its to_vtk method
         voxel_plot = VoxelPlot(self.id, self.name)
         voxel_plot._width = self._width
@@ -1585,7 +1554,7 @@ class Plot(SlicePlot):
         voxel_plot._overlap_color = self._overlap_color
         voxel_plot._colors = self._colors
         voxel_plot._level = self._level
-        
+
         return voxel_plot.to_vtk(output, openmc_exec, cwd)
 
 

@@ -876,24 +876,35 @@ void transport_history_based()
   }
 }
 
+// The shared secondary bank transport algorithm works in two phases. In the
+// first phase, all primary particles are sampled then transported, and their
+// secondary particles are deposited into a shared secondary bank. The second
+// phase occurs in a loop, where all secondary particles in the shared secondary
+// bank are transported. Any secondary particles generated during this phase are
+// deposited back into the shared secondary bank. The shared secondary bank is
+// sorted for consistent ordering and load balanced across MPI ranks. This loop
+// continues until there are no more secondary particles left to transport.
 void transport_history_based_shared_secondary()
 {
-  // Recalculate work as this may have changed in previous secondary
-  // sub-iterations
+  // Recalculate work as this is updated in each secondary generation
   calculate_work(settings::n_particles);
 
-  // Free any memory in the shared secondary bank from previous generations
-  std::vector<SourceSite> shared_secondary_bank_read =
-    std::vector<SourceSite>();
-  std::vector<SourceSite> shared_secondary_bank_write =
-    std::vector<SourceSite>();
+  // Shared secondary banks for reading and writing
+  std::vector<SourceSite> shared_secondary_bank_read;
+  std::vector<SourceSite> shared_secondary_bank_write;
+
+  if (mpi::master) {
+    write_message(fmt::format(" Primogenitor            particles: {}",
+                    simulation::work_per_rank),
+      6);
+  }
 
   // Phase 1: Transport primary particles and deposit first generation of
   // secondaries in the shared secondary bank
 #pragma omp parallel for schedule(runtime)
-  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+  for (int64_t i = 0; i < simulation::work_per_rank; i++) {
     Particle p;
-    initialize_history(p, i_work, false);
+    initialize_history(p, i, false);
     transport_history_based_single_particle(p);
 
     // Transfer all secondary particles to the shared secondary bank
@@ -919,6 +930,14 @@ void transport_history_based_shared_secondary()
     alive_secondary =
       synchronize_global_secondary_bank(shared_secondary_bank_write);
 
+    // Recalculate work for each MPI rank based on number of alive secondary
+    // particles
+    calculate_work(alive_secondary);
+
+    // Display the number of secondary particles in this generation. This
+    // is useful for user monitoring so as to see if the secondary population is
+    // exploding and to determine how many generations of secondaries are being
+    // transported.
     if (mpi::master) {
       write_message(fmt::format(" Secondary generation {:<2} particles: {}",
                       n_generation_depth, alive_secondary),

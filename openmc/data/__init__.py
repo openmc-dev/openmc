@@ -12,6 +12,7 @@ WMP_VERSION = (WMP_VERSION_MAJOR, WMP_VERSION_MINOR)
 from .data import *
 from .neutron import *
 from .photon import *
+from .photonuclear import *
 from .decay import *
 from .reaction import *
 from . import ace

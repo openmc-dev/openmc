@@ -103,16 +103,14 @@ def test_kalbach_slope():
     energy_projectile = 10.2  # [eV]
     energy_emitted = 5.4  # [eV]
 
-    # Check that NotImplementedError is raised if the projectile is not
-    # a neutron
-    with pytest.raises(NotImplementedError):
-        kalbach_slope(
-            energy_projectile=energy_projectile,
-            energy_emitted=energy_emitted,
-            za_projectile=1000,
-            za_emitted=1,
-            za_target=6012
-        )
+
+    kalbach_slope(
+        energy_projectile=energy_projectile,
+        energy_emitted=energy_emitted,
+        za_projectile=0,
+        za_emitted=1,
+        za_target=6012
+    )
 
     assert kalbach_slope(
         energy_projectile=energy_projectile,

@@ -43,9 +43,6 @@ results_test.dat
 # Test
 .pytest_cache/
 
-# HDF5 files
-*.h5
-
 # Build files
 src/CMakeCache.txt
 src/CMakeFiles/

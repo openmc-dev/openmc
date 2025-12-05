@@ -14,6 +14,9 @@ if [[ $EVENT == 'y' ]]; then
   args="${args} --event "
 fi
 
+# Skip source directory warning
+export OPENMC_DEV_MODE=1
+
 # Run unit tests and then regression tests
 pytest -v $args \
   tests/test_matplotlib_import.py \

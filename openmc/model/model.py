@@ -1287,8 +1287,8 @@ class Model:
             tol = plane_tolerance
             for particle in particles:
                 if (slice_value - tol < particle.r[z] < slice_value + tol):
-                    xs.append(particle.r[x])
-                    ys.append(particle.r[y])
+                    xs.append(particle.r[x] * axis_scaling_factor[axis_units])
+                    ys.append(particle.r[y] * axis_scaling_factor[axis_units])
             axes.scatter(xs, ys, **source_kwargs)
 
         return axes

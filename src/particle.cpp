@@ -90,7 +90,9 @@ bool Particle::create_secondary(
   bank.time = time();
   bank_second_E() += bank.E;
   bank.parent_id = current_work();
-  bank.progeny_id = n_progeny()++;
+  if (settings::use_shared_secondary_bank) {
+    bank.progeny_id = n_progeny()++;
+  }
   bank.wgt_born = wgt_born();
   bank.wgt_ww_born = wgt_ww_born();
   bank.current_work = current_work();
@@ -120,7 +122,9 @@ void Particle::split(double wgt)
   bank.wgt_born = wgt_born();
   bank.wgt_ww_born = wgt_ww_born();
   bank.parent_id = current_work();
-  bank.progeny_id = n_progeny()++;
+  if (settings::use_shared_secondary_bank) {
+    bank.progeny_id = n_progeny()++;
+  }
   bank.current_work = current_work();
 
   local_secondary_bank().emplace_back(bank);

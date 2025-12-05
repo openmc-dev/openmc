@@ -295,7 +295,8 @@ bool openmc_is_statepoint_batch()
 }
 
 namespace openmc {
-
+void debug_validate_local_bank_ordering(
+  const SharedArray<SourceSite>& local_bank);
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -553,6 +554,7 @@ void finalize_generation()
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
     sort_bank(simulation::fission_bank, true);
+    debug_validate_local_bank_ordering(simulation::fission_bank);
 
     // Distribute fission bank across processors evenly
     synchronize_bank();

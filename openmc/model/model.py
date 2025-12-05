@@ -1037,6 +1037,7 @@ class Model:
         width: Sequence[float] | None = None,
         pixels: int | Sequence[int] = 40000,
         basis: str = 'xy',
+        color_overlaps: bool = False,
         **init_kwargs
     ) -> np.ndarray:
         """Generate an ID map for domains based on the plot parameters
@@ -1065,6 +1066,10 @@ class Model:
             total and the image aspect ratio based on the width argument.
         basis : {'xy', 'yz', 'xz'}, optional
             Basis of the plot.
+        color_overlaps : bool, optional
+            Whether to assign unique IDs (-3) to overlapping regions. If False,
+            overlapping regions will be assigned the ID of the lowest-numbered
+            cell that occupies that region. Defaults to False.
         **init_kwargs
             Keyword arguments passed to :meth:`Model.init_lib`.
 
@@ -1089,6 +1094,7 @@ class Model:
         plot_obj.h_res = pixels[0]
         plot_obj.v_res = pixels[1]
         plot_obj.basis = basis
+        plot_obj.color_overlaps = color_overlaps
 
         # Silence output by default. Also set arguments to start in volume
         # calculation mode to avoid loading cross sections

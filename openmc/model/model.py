@@ -546,6 +546,13 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
+    def _link_geometry_to_filters(self):
+        """Establishes a link between distribcell filters and the geometry"""
+        for tally in self.tallies:
+            for f in tally.filters:
+                if isinstance(f, openmc.DistribcellFilter):
+                    f._geometry = self.geometry
+
     def export_to_xml(self, directory: PathLike = '.', remove_surfs: bool = False,
                       nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to separate XML files.
@@ -586,6 +593,8 @@ class Model:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
+
+        self._link_geometry_to_filters()
 
     def export_to_model_xml(self, path: PathLike = 'model.xml', remove_surfs: bool = False,
                             nuclides_to_ignore: Iterable[str] | None = None):
@@ -665,6 +674,8 @@ class Model:
                     plots_element, level=1, trailing_indent=False)
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
+
+        self._link_geometry_to_filters()
 
     def import_properties(self, filename: PathLike):
         """Import physical properties

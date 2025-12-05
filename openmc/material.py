@@ -22,7 +22,7 @@ from .mixin import IDManagerMixin
 from .utility_funcs import input_path
 from . import waste
 from openmc.checkvalue import PathLike
-from openmc.stats import Univariate, Discrete, Mixture
+from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol
 
 
@@ -1299,6 +1299,223 @@ class Material(IDManagerMixin):
             decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
 
         return decayheat if by_nuclide else sum(decayheat.values())
+    
+
+    def get_photon_mass_attenuation(self, energy: float) -> float:
+        """Return photon mass attenuation coefficient at a given energy.
+
+        The mass attenuation coefficient :math:`\\mu/\\rho` is computed as
+
+        .. math::
+
+            \\frac{\\mu(E)}{\\rho} = \\frac{1}{\\rho} \\sum_i N_i
+            \\sigma_i^{\\text{tot}}(E)
+
+        where :math:`N_i` is the atomic density of nuclide *i* in the material
+        [atom/b-cm], :math:`\\rho` is the mass density [g/cm^3], and
+        :math:`\\sigma_i^{\\text{tot}}` is the photon total cross section for
+        that nuclide, taken as the sum of the following reaction channels:
+
+        * photoelectric
+        * Compton (incoherent) scattering
+        * Rayleigh (coherent) scattering
+        * pair production in the nuclear field
+        * pair production in the electron field
+
+        Photon cross sections are obtained from the photon HDF5 libraries
+        referenced in ``cross_sections.xml`` via :class:`openmc.data.DataLibrary`
+        and interpolated using the existing :mod:`openmc.data` machinery.
+
+        Parameters
+        ----------
+        energy : float
+            Photon energy in [eV].
+
+        Returns
+        -------
+        float
+            Photon mass attenuation coefficient :math:`\\mu/\\rho` in [cm^2/g].
+
+        """
+
+        cv.check_type("energy", energy, Real)
+        cv.check_greater_than("energy", energy, 0.0, equality=False)
+
+        # Mass density of the material [g/cm^3]
+        mass_density = self.get_mass_density()
+        if mass_density <= 0.0:
+            raise ValueError(
+                f'Material ID="{self.id}" has non-positive mass density; '
+                "cannot compute mass attenuation coefficient."
+            )
+
+        # Nuclide atomic densities [atom/b-cm]
+        nuclide_densities = self.get_nuclide_atom_densities()
+        if not nuclide_densities:
+            raise ValueError(
+                f'For Material ID="{self.id}" no nuclide densities are defined;'
+                "cannot compute mass attenuation coefficient."
+            )
+
+        # Load cross section library (uses OPENMC_CROSS_SECTIONS / config)
+        library = openmc.data.DataLibrary.from_xml()
+
+        # Temperature to use if photon data is temperature-resolved
+        if self.temperature is not None:
+            T = float(self.temperature)
+        else:
+            T = 294.0  # consistent with other API defaults
+        strT = f"{int(round(T))}K"
+
+        # ENDF photon MT numbers corresponding to the requested processes
+        #   502: coherent (Rayleigh) scattering
+        #   504: incoherent (Compton) scattering
+        #   515: pair production in nucleus field
+        #   516: pair production in electron field
+        #   522: photoelectric effect
+        photon_mts = {502, 504, 515, 516, 522}
+
+        total_macro_xs = 0.0  # ä(E) in units compatible with 1/cm
+
+        for nuc_name, atoms_per_bcm in nuclide_densities.items():
+            # Find photon data library entry for this nuclide
+            lib = library.get_by_material(nuc_name, data_type="photon")
+            if lib is None:
+                # No photon data for this nuclide; skip it
+                continue
+
+            # Load incident photon data
+            photon_data = openmc.data.IncidentPhoton.from_hdf5(lib["path"])
+
+            # Sum the desired reaction channels to obtain a "total" photon xs
+            sigma_n = 0.0
+
+            for reaction in photon_data.reactions.values():
+                mt = getattr(reaction, "mt", None)
+                if mt not in photon_mts:
+                    continue
+
+                xs_obj = reaction.xs
+
+                # resolve xs for the temperature
+                if isinstance(xs_obj, dict):
+                    # Try exact temperature match first
+                    if strT in xs_obj:
+                        xs_T = xs_obj[strT]
+                    else:
+                        # Fall back to nearest temperature if kTs/temperatures exist
+                        xs_T = None
+                        kTs = getattr(photon_data, "kTs", None)
+                        temps = getattr(photon_data, "temperatures", None)
+                        if (
+                            kTs is not None
+                            and temps is not None
+                            and len(kTs) == len(temps)
+                        ):
+                            delta_T = np.array(kTs) - T * openmc.data.K_BOLTZMANN
+                            idx = int(np.argmin(np.abs(delta_T)))
+                            xs_T = xs_obj[temps[idx]]
+                        # If we still don't have a match, just take the first
+                        # available dataset as a last resort.
+                        if xs_T is None:
+                            xs_T = next(iter(xs_obj.values()))
+                    xs = xs_T
+                else:
+                    xs = xs_obj
+
+                # Evaluate microscopic cross section at the requested energy
+                sigma_n += float(xs(energy))
+
+            if sigma_n <= 0.0:
+                continue
+
+            total_macro_xs += atoms_per_bcm * sigma_n
+
+        return total_macro_xs / mass_density
+
+    def get_photon_contact_dose_rate(
+        self, bremsstrahlung_correction: bool = True, by_nuclide: bool = False
+    ) -> float | dict[str, float]:
+        """awesome docstring
+
+        Parameters
+        ----------
+        bremsstrahlung_correction : bool, optional
+            This parameter specifies whether to apply a bremsstrahlung correction
+            in the computation of the contact dose rate. Default is True.
+        by_nuclide : bool, optional
+            Specifies if the cdr should be returned for the material as a
+            whole or per nuclide. Default is False.
+
+        Returns
+        -------
+        cdr : float or dict[str, float]
+            Photon Contact Dose Rate due to material decay in [Sv/hr].
+        """
+
+        cv.check_type('by_nuclide', by_nuclide, bool)
+        cv.check_type('bremsstrahlung_correction', bremsstrahlung_correction, bool)
+
+
+        cdr = {}
+
+        # build up factor
+        B = 2 
+
+        multiplier = B/2
+
+        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
+
+            cdr_nuc = 0.0
+
+            photon_source_per_atom = openmc.data.decay_photon_energy(nuc)
+
+            approx_photon_source_per_atom = openmc.data.approx_decay_photon_energy_spectrum(nuc)
+
+            if photon_source_per_atom is not None and atoms_per_bcm > 0.0:
+
+                if isinstance(photon_source_per_atom, Discrete) ir isinstance(photon_source_per_atom, Tabular):
+                    e_vals = photon_source_per_atom.x
+                    p_vals = photon_source_per_atom.y
+
+                if isinstance(photon_source_per_atom, Discrete):
+
+                    for (e,p) in zip(e_vals, p_vals):
+
+                        # missing the air part
+                        cdr_nuc += multiplier *  atoms_per_bcm * p * e / self.get_photon_mass_attenuation(e)
+
+                elif isinstance(photon_source_per_atom, Tabular):
+                    for i in range(len(p_vals)):
+
+                        e_low = 0.0 if i == 0 else e_vals[i - 1]
+                        e_high = e_vals[i]
+                        de = e_high - e_low
+
+                        mass_attenuation_dist = self.get_photon_mass_attenuation([e_low, e_high])
+
+                        # air_mass_absoprtion_dist = xxx
+
+                        # combine air mass energy-absorption material attenuation and energy
+
+                        cdr_nuc += multiplier *  atoms_per_bcm * p * de
+                else:
+                    raise ValueError(f"Unknown decay photon energy data type for nuclide {nuc}"
+                                     f"value returned: {type(photon_source_per_atom)}")
+
+            if bremsstrahlung_correction:
+
+                b_correction_per_atom = "placeholder"
+
+                if b_correction_per_atom is not None:
+                    continue 
+                    # tabular treatmnet?
+
+
+            cdr[nuc] = cdr_nuc
+
+
+        return cdr if by_nuclide else sum(cdr.values())
 
     def get_nuclide_atoms(self, volume: float | None = None) -> dict[str, float]:
         """Return number of atoms of each nuclide in the material

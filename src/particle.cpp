@@ -759,6 +759,62 @@ void Particle::cross_periodic_bc(
   }
 }
 
+void Particle::cross_transformation_bc(
+  const Surface& surf, Position new_r, Direction new_u)
+{
+  // Do not handle transformation boundary conditions on lower universes
+  if (n_coord() != 1) {
+    mark_as_lost("Cannot transform particle " + std::to_string(id()) +
+                 " off surface in a lower universe.");
+    return;
+  }
+
+  // Score surface currents since transformation causes the direction of the
+  // particle to change. For surface filters, we need to score the tallies
+  // twice, once before the particle's surface attribute has changed and
+  // once after. For mesh surface filters, we need to artificially move
+  // the particle slightly back in case the surface crossing is coincident
+  // with a mesh boundary
+  if (!model::active_surface_tallies.empty()) {
+    score_surface_tally(*this, model::active_surface_tallies);
+  }
+
+  if (!model::active_meshsurf_tallies.empty()) {
+    Position r {this->r()};
+    this->r() -= TINY_BIT * u();
+    score_surface_tally(*this, model::active_meshsurf_tallies);
+    this->r() = r;
+  }
+
+  // Adjust the particle's location and direction.
+  r() = new_r;
+  u() = new_u;
+
+  // Clear the surface assignment after transformation so as not to confuse the
+  // cell finding routine
+  surface() = SURFACE_NONE;
+
+  // Figure out what cell particle is in now
+  // If a transformation surface is coincident with a lattice or universe
+  // boundary, it is necessary to redetermine the particle's coordinates in
+  // the lower universes.
+  // (unless we're using a dagmc model, which has exactly one universe)
+  n_coord() = 1;
+  if (surf.geom_type() != GeometryType::DAG && !exhaustive_find_cell(*this)) {
+    mark_as_lost("Couldn't find particle after transforming from surface " +
+                 std::to_string(surf.id_) + ".");
+    return;
+  }
+
+  // Set previous coordinate going slightly past surface crossing
+  r_last_current() = r() + TINY_BIT * u();
+
+  // Diagnostic message
+  if (settings::verbosity >= 10 || trace()) {
+    write_message(1, "    Transformed from surface {}", surf.id_);
+  }
+}
+
 void Particle::mark_as_lost(const char* message)
 {
   // Print warning and write lost particle file

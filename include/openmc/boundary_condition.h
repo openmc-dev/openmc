@@ -152,5 +152,24 @@ protected:
   double angle_;
 };
 
+//==============================================================================
+//! A BC that transforms particle direction and position by matrices.
+//==============================================================================
+
+class TransformationBC : public BoundaryCondition {
+public:
+  TransformationBC(vector<double> dir_trans, vector<double> pos_trans);
+
+  void handle_particle(Particle& p, const Surface& surf) const override;
+
+  std::string type() const override { return "transformation"; }
+
+protected:
+  //! Matrix by which particle directions are transformed
+  vector<double> dir_trans_;
+  //! Matrix by which particle positions are transformed
+  vector<double> pos_trans_;
+};
+
 } // namespace openmc
 #endif // OPENMC_BOUNDARY_CONDITION_H

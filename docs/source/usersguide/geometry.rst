@@ -182,147 +182,6 @@ boundary condition.
 
 Periodic boundary conditions can be applied to pairs of planar surfaces.
 If there are only two periodic surfaces they will be matched automatically.
-Otherwise it is necessary to specify pairs explicitly using the
-:attr:`Surface.periodic_surface` attribute as in the following example::
-
-  p1 = openmc.Plane(a=0.3, b=5.0, d=1.0, boundary_type='periodic')
-  p2 = openmc.Plane(a=0.3, b=5.0, d=-1.0, boundary_type='periodic')
-  p1.periodic_surface = p2
-
-Both rotational and translational periodic boundary conditions are specified in
-the same fashion. If both planes have the same normal vector, a translational
-periodicity is assumed; rotational periodicity is assumed otherwise. Currently,
-only rotations about the :math:`z`-axis are supported.
-
-For a rotational periodic BC, the normal vectors of each surface must point
-inwards---towards the valid geometry. For example, a :class:`XPlane` and
-:class:`YPlane` would be valid for a 90-degree periodic rotation if the geometry
-lies in the first quadrant of the Cartesian grid. If the geometry instead lies
-in the fourth quadrant, the :class:`YPlane` must be replaced by a
-:class:`Plane` with the normal vector pointing in the :math:`-y` direction.
-
-Additionally, 'reflective', 'periodic', and 'white' boundary conditions have
-an albedo parameter that can be used to modify the importance of particles
-that encounter the boundary. The albedo value specifies the ratio between
-the particle's importance after interaction with the boundary to its initial
-importance. The following example creates a reflective planar surface which
-reduces the reflected particles' importance by 33.3%::
-
-   x1 = openmc.XPlane(1.0, boundary_type='reflective', albedo=0.667)
-
-   # This is equivalent
-   x1 = openmc.XPlane(1.0)
-   x1.boundary_type = 'reflective'
-   x1.albedo = 0.667
-
-.. _usersguide_cells:
-
------
-Cells
------
-
-Once you have a material created and a region of space defined, you need to
-define a *cell* that assigns the material to the region. Cells are created using
-the :class:`openmc.Cell` class::
-
-  fuel = openmc.Cell(fill=uo2, region=pellet)
-
-  # This is equivalent
-  fuel = openmc.Cell()
-  fuel.fill = uo2
-  fuel.region = pellet
-
-In this example, an instance of :class:`openmc.Material` is assigned to the
-:attr:`Cell.fill` attribute. One can also fill a cell with a :ref:`universe
-<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If you provide
-no fill to a cell or assign a value of `None`, it will be treated as a "void"
-cell with no material within. Particles are allowed to stream through the cell but
-will undergo no collisions::
-
-  # This cell will be filled with void on export to XML
-  gap = openmc.Cell(region=pellet_gap)
-
-The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
-:class:`Complement` and all instances of :class:`openmc.Region` and can be
-assigned to the :attr:`Cell.region` attribute.
-
-.. _usersguide_universes:
-
----------
-Universes
----------
-
-Similar to MCNP and Serpent, OpenMC is capable of using *universes*, collections
-of cells that can be used as repeatable units of geometry. At a minimum, there
-must be one "root" universe present in the model. To define a universe, an
-instance of :class:`openmc.Universe` is created and then cells can be added
-using the :meth:`Universe.add_cells` or :meth:`Universe.add_cell`
-methods. Alternatively, a list of cells can be specified in the constructor::
-
-   universe = openmc.Universe(cells=[cell1, cell2, cell3])
-
-   # This is equivalent
-   universe = openmc.Universe()
-   universe.add_cells([cell1, cell2])
-   universe.add_cell(cell3)
-
-Universes are generally used in three ways:
-
-1. To be assigned to a :class:`Geometry` object (see
-   :ref:`usersguide_geom_export`),
-2. To be assigned as the fill for a cell via the :attr:`Cell.fill` attribute,
-   and
-3. To be used in a regular arrangement of universes in a :ref:`lattice
-   <usersguide_lattices>`.
-
-Once a universe is constructed, it can actually be used to determine what cell
-or material is found at a given location by using the :meth:`Universe.find`
-method, which returns a list of universes, cells, and lattices which are
-traversed to find a given point. The last element of that list would contain the
-lowest-level cell at that location::
-
-  >>> universe.find((0., 0., 0.))[-1]
-  Cell
-          ID             =    10000
-          Name           =    cell 1
-          Fill           =    Material 10000
-          Region         =    -10000
-          Rotation       =    None
-          Temperature    =    None
-          Translation    =    None
-
-As you are building a geometry, it is also possible to display a plot of single
-universe using the :meth:`Universe.plot` method. This method requires that you
-have `matplotlib <https://matplotlib.org/>`_ installed.
-
-.. _usersguide_lattices:
-
---------
-Lattices
---------
-
-Many particle transport models involve repeated structures that occur in a
-regular pattern such as a rectangular or hexagonal lattice. In such a case, it
-would be cumbersome to have to define the boundaries of each of the cells to be
-filled with a universe. OpenMC provides a means to define lattice structures
-through the :class:`openmc.RectLattice` and :class:`openmc.HexLattice` classes.
-
-Rectangular Lattices
---------------------
-
-A rectangular lattice defines a two-dimensional or three-dimensional array of
-universes that are filled into rectangular prisms (lattice elements) each of
-which has the same width, length, and height. To completely define a rectangular
-lattice, one needs to specify
-
-- The coordinates of the lower-left corner of the lattice
-  (:attr:`RectLattice.lower_left`),
-- The pitch of the lattice, i.e., the distance between the center of adjacent
-  lattice elements (:attr:`RectLattice.pitch`),
-- What universes should fill each lattice element
-  (:attr:`RectLattice.universes`), and
-- A universe that is used to fill any lattice position outside the well-defined
-  portion of the lattice (:attr:`RectLattice.outer`).
 
 For example, to create a 3x3 lattice centered at the origin in which each
 lattice element is 5cm by 5cm and is filled by a universe ``u``, one could run::
@@ -530,148 +389,119 @@ UWUW and OpenMC material ID space will cause an error. To automatically resolve
 these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
 material IDs to the OpenMC material ID space.
 
-Material Overrides and Differentiation
----------------------------------------
+Material overrides and differentiation
+--------------------------------------
 
-One of the most powerful features for working with DAGMC models is the ability
-to override and customize material assignments after the geometry has been
-created. This capability solves several important workflow challenges:
+OpenMC supports overriding material assignments defined inside a DAGMC HDF5
+model so that CAD-assigned materials can be replaced by :class:`openmc.Material`
+objects. This is useful when the CAD geometry provides the shape but OpenMC
+materials (specific nuclide content, densities, or depletion behavior) are
+required.
 
-1. **Flexibility in material definitions**: You can override materials defined
-   in the DAGMC geometry with OpenMC materials that have specific nuclear data
-   requirements.
+Note on synchronization
+^^^^^^^^^^^^^^^^^^^^^^^
 
-2. **Depletion studies**: You can differentiate materials to enable independent
-   depletion of different instances of the same material throughout the geometry.
+Programmatic access to DAGMC cell information and application of overrides
+requires initializing the C API and synchronizing the DAGMC universes. These
+operations are explicit (not automatic) because they have measurable cost::
 
-3. **Parametric studies**: You can easily swap material definitions without
-   regenerating the DAGMC geometry file.
+  model.init_lib()
+  model.sync_dagmc_universes()
 
-Replacing Materials by Name
-****************************
+- **Initialization cost**: :meth:`Model.init_lib` creates the C-side data
+  structures and loads cross sections needed for transport.
+- **Data transfer**: :meth:`Model.sync_dagmc_universes` queries the C/C++ core
+  to obtain DAGMC cell IDs and material assignments; for large models this can
+  involve significant cross-language data movement.
+- **Python memory**: After synchronization, DAGMC cells are represented by
+  :class:`openmc.DAGMCCell` objects in Python, which increases Python-side
+  memory usage when many cells are present.
 
-If your DAGMC model was created with material names (e.g., "Fuel", "Cladding"),
-you can replace all cells containing a specific material name with a new OpenMC
-material using the :meth:`~openmc.DAGMCUniverse.replace_material_assignment`
-method::
+If you do not need to inspect or change cell assignments programmatically
+(for example, you only want to run transport with the materials recorded in the
+HDF5 file), you can skip synchronization and export/run the model directly.
 
-  import openmc
+Replacing materials by name
+***************************
 
-  # Create the DAGMC universe
-  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
-
-  # Create a new material definition
-  fuel = openmc.Material(name="fuel")
-  fuel.add_nuclide("U235", 0.05)
-  fuel.add_nuclide("U238", 0.95)
-  fuel.set_density("g/cm3", 10.5)
-
-  # Replace all cells with the original material name "Fuel" with the new material
-  dag_univ.replace_material_assignment("Fuel", fuel)
-
-  geometry = openmc.Geometry(dag_univ)
-
-This method is useful when you want to use the material definitions from your
-CAD tool but need to replace them with OpenMC materials that have specific
-nuclear data libraries or density values.
-
-Adding Material Overrides by Cell ID
-*************************************
-
-For more granular control, you can override materials on a per-cell basis using
-the :meth:`~openmc.DAGMCUniverse.add_material_override` method. This method
-accepts either a cell ID (integer) or a :class:`~openmc.DAGMCCell` object::
+If a DAGMC file includes material name tags, you can replace all cells that
+reference a particular name with an :class:`openmc.Material` using
+:meth:`~openmc.DAGMCUniverse.replace_material_assignment`::
 
   import openmc
 
-  # Create the DAGMC universe
   dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
 
-  # Create multiple material definitions
-  fuel_enriched = openmc.Material(name="fuel_enriched")
-  fuel_enriched.add_nuclide("U235", 0.10)
-  fuel_enriched.add_nuclide("U238", 0.90)
-  fuel_enriched.set_density("g/cm3", 10.5)
+  fuel = openmc.Material(name='fuel')
+  fuel.add_nuclide('U235', 0.05)
+  fuel.add_nuclide('U238', 0.95)
+  fuel.set_density('g/cm3', 10.5)
 
-  fuel_depleted = openmc.Material(name="fuel_depleted")
-  fuel_depleted.add_nuclide("U235", 0.03)
-  fuel_depleted.add_nuclide("U238", 0.97)
-  fuel_depleted.set_density("g/cm3", 10.5)
+  dag_univ.replace_material_assignment('Fuel', fuel)
 
-  # Override specific cells with different materials
-  dag_univ.add_material_override(1, fuel_enriched)  # Cell ID 1 gets enriched fuel
-  dag_univ.add_material_override(2, fuel_depleted)  # Cell ID 2 gets depleted fuel
+This lets you keep CAD geometry while adopting OpenMC material definitions.
 
-  geometry = openmc.Geometry(dag_univ)
+Per-cell material overrides
+***************************
 
-Material Differentiation for Depletion
-***************************************
+For more control, use :meth:`~openmc.DAGMCUniverse.add_material_override` to
+assign materials to particular DAGMC cells. The method accepts either an
+integer cell ID or a :class:`~openmc.DAGMCCell` object::
 
-A particularly powerful application of material overrides is differentiating
-materials to enable independent tracking during depletion calculations. By
-creating separate material instances for each DAGMC cell, you can deplete them
-independently::
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  enriched = openmc.Material(name='fuel_enriched')
+  enriched.add_nuclide('U235', 0.10)
+  enriched.add_nuclide('U238', 0.90)
+  enriched.set_density('g/cm3', 10.5)
+
+  dag_univ.add_material_override(1, enriched)
+
+Overrides are written to the `<material_overrides>` element of the
+`<dagmc_universe>` XML so the C++ core can apply them on initialization.
+
+Material differentiation (depletion)
+***********************************
+
+To track depletion independently in different instances that share an initial
+material identifier, create separate :class:`openmc.Material` objects and
+assign them to each cell (for example, using :meth:`add_material_override`).
+This pattern is commonly used with :mod:`openmc.deplete`::
 
   import openmc
   import openmc.deplete
 
-  # Create the DAGMC universe
   dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
 
-  # Create a material template
-  def create_fuel():
-      fuel = openmc.Material()
-      fuel.add_nuclide("U235", 0.05)
-      fuel.add_nuclide("U238", 0.95)
-      fuel.set_density("g/cm3", 10.5)
-      return fuel
+  def make_fuel():
+      m = openmc.Material()
+      m.add_nuclide('U235', 0.05)
+      m.add_nuclide('U238', 0.95)
+      m.set_density('g/cm3', 10.5)
+      return m
 
-  # Override each fuel cell with its own material instance
-  # This allows each cell to be depleted independently
-  dag_univ.add_material_override(1, create_fuel())
-  dag_univ.add_material_override(2, create_fuel())
-  dag_univ.add_material_override(3, create_fuel())
+  dag_univ.add_material_override(1, make_fuel())
+  dag_univ.add_material_override(2, make_fuel())
 
-  # Create model and depletion operator
   model = openmc.Model()
   model.geometry = openmc.Geometry(dag_univ)
-  # ... add other model settings ...
 
-  operator = openmc.deplete.CoupledOperator(model, "chain_endf.json")
+  operator = openmc.deplete.CoupledOperator(model, 'chain_endf.json')
+  operator.integrate([1, 2, 3])
 
-  # Each fuel cell will now be tracked and depleted independently
-  times = [1, 2, 3]
-  operator.integrate(times)
+Combining DAGMC and CSG
+***********************
 
-Combining with CSG Geometry
-****************************
+DAGMC universes can be placed inside CSG cells or lattices. Material
+overrides and replacements behave the same when a DAGMC universe is used as a
+fill for a :class:`openmc.Cell`::
 
-Material overrides work seamlessly when DAGMC universes are embedded within
-CSG geometry. This allows you to leverage both geometry paradigms::
-
-  import openmc
-
-  # Create a DAGMC universe with material overrides
   dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
-  fuel = openmc.Material(name="fuel")
-  fuel.add_nuclide("U235", 0.05)
-  fuel.add_nuclide("U238", 0.95)
-  fuel.set_density("g/cm3", 10.5)
-  dag_univ.replace_material_assignment("Fuel", fuel)
+  dag_univ.replace_material_assignment('Fuel', fuel)
 
-  # Create a bounding region for the DAGMC geometry
-  bounding_region = dag_univ.bounding_region(bounded_type='box')
-
-  # Create a CSG cell to contain the DAGMC universe
-  bounding_cell = openmc.Cell(fill=dag_univ, region=bounding_region)
-
-  # Create CSG cells around the DAGMC geometry
-  outer_sphere = openmc.Sphere(r=200, boundary_type='vacuum')
-  outer_cell = openmc.Cell(region=-outer_sphere)
-
-  # Create root universe with both
-  root_univ = openmc.Universe(cells=[bounding_cell, outer_cell])
-  geometry = openmc.Geometry(root_univ)
+  bbox = dag_univ.bounding_region(bounded_type='box')
+  bounding_cell = openmc.Cell(fill=dag_univ, region=bbox)
+  geometry = openmc.Geometry(openmc.Universe(cells=[bounding_cell]))
 
 Retrieving Material Information
 *******************************

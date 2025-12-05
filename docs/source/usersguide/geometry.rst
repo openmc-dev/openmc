@@ -463,28 +463,58 @@ Overrides are written to the `<material_overrides>` element of the
 Material differentiation (depletion)
 ***********************************
 
-To track depletion independently in different instances that share an initial
-material identifier, create separate :class:`openmc.Material` objects and
-assign them to each cell (for example, using :meth:`add_material_override`).
-This pattern is commonly used with :mod:`openmc.deplete`::
+OpenMC provides a convenience method on :class:`openmc.Model` to "differentiate"
+materials so that instances of the same material in the geometry become
+separate material objects that can be tracked and depleted independently.
+
+API behavior
+^^^^^^^^^^^^
+
+- Call :meth:`openmc.Model.differentiate_mats` (or
+  :meth:`openmc.Model.differentiate_depletable_mats`) to perform differentiation
+  across the model. By default differentiation only applies to materials for
+  which ``mat.num_instances > 1`` and ``mat.depletable`` (see
+  ``depletable_only`` argument).
+- For each material selected for differentiation, the method iterates over all
+  cells that use that material and *replaces* the cell's ``fill`` with clones
+  of the original material:
+  - If ``cell.num_instances > 1`` the cell's ``fill`` becomes a list of cloned
+    materials (one clone per instance).
+  - Otherwise the cell's ``fill`` is set to a single cloned material.
+- Volume handling is controlled by the ``diff_volume_method`` argument:
+  - ``None`` (default): do not set volumes for the newly-created materials.
+  - ``'divide equally'``: the original material's ``volume`` is divided by
+    ``mat.num_instances`` (the code modifies ``mat.volume`` in-place); this
+    requires that the original material already has a volume set.
+  - ``'match cell'``: each cloned material receives the volume of the cell it
+    fills; this requires that the corresponding cell volumes are set prior to
+    calling the method.
+- If ``self.materials`` is present on the model, the method rebuilds the
+  model's material list from the geometry after differentiation so that the
+  newly-created material objects are included.
+
+Preconditions and errors
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+- If ``'divide equally'`` is requested but a selected material has no
+  ``volume`` set, a ``RuntimeError`` is raised.
+- If ``'match cell'`` is requested but a cell lacks a defined ``volume``, a
+  ``ValueError`` is raised and the operation is aborted. Set cell volumes prior
+  to calling differentiation when using this mode.
+
+Usage example
+^^^^^^^^^^^^^
 
   import openmc
   import openmc.deplete
 
-  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
-
-  def make_fuel():
-      m = openmc.Material()
-      m.add_nuclide('U235', 0.05)
-      m.add_nuclide('U238', 0.95)
-      m.set_density('g/cm3', 10.5)
-      return m
-
-  dag_univ.add_material_override(1, make_fuel())
-  dag_univ.add_material_override(2, make_fuel())
-
   model = openmc.Model()
   model.geometry = openmc.Geometry(dag_univ)
+
+  # Differentiate only depletable materials (default). Optionally pass
+  # diff_volume_method='match cell' or 'divide equally' depending on how you
+  # want volumes assigned to the cloned materials.
+  model.differentiate_mats(diff_volume_method=None, depletable_only=True)
 
   operator = openmc.deplete.CoupledOperator(model, 'chain_endf.json')
   operator.integrate([1, 2, 3])

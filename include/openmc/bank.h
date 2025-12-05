@@ -26,9 +26,13 @@ extern SharedArray<SourceSite> fission_bank;
 
 extern vector<vector<int>> ifp_source_delayed_group_bank;
 
+extern vector<vector<int>> ifp_source_ancestor_nuclide_bank;
+
 extern vector<vector<double>> ifp_source_lifetime_bank;
 
 extern vector<vector<int>> ifp_fission_delayed_group_bank;
+
+extern vector<vector<int>> ifp_fission_ancestor_nuclide_bank;
 
 extern vector<vector<double>> ifp_fission_lifetime_bank;
 

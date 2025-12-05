@@ -251,10 +251,11 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     model = openmc.examples.pwr_pin_cell()
     model.init_lib(output=False, intracomm=mpi_intracomm)
 
-    # Change fuel temperature and density and export properties
+    # Change cell fuel temperature, density, material density and export properties
     cell = openmc.lib.cells[1]
     cell.set_temperature(600.0)
     cell.fill.set_density(5.0, 'g/cm3')
+    cell.set_density(10.0)
     openmc.lib.export_properties(output=False)
 
     # Import properties to existing model
@@ -264,9 +265,11 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # First python
     cell = model.geometry.get_all_cells()[1]
     assert cell.temperature == [600.0]
+    assert cell.density == [pytest.approx(10.0, 1e-5)]
     assert cell.fill.get_mass_density() == pytest.approx(5.0)
     # Now C
     assert openmc.lib.cells[1].get_temperature() == 600.
+    assert openmc.lib.cells[1].get_density() == pytest.approx(10.0, 1e-5)
     assert openmc.lib.materials[1].get_density('g/cm3') == pytest.approx(5.0)
 
     # Clear the C API
@@ -283,6 +286,7 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     )
     cell = model_with_properties.geometry.get_all_cells()[1]
     assert cell.temperature == [600.0]
+    assert cell.density == [pytest.approx(10.0, 1e-5)]
     assert cell.fill.get_mass_density() == pytest.approx(5.0)
 
 
@@ -650,6 +654,10 @@ def test_model_plot():
     test_mask = (image_data == white) | (image_data == red)
     assert np.all(test_mask), "Colors other than white or red found in overlap plot image"
 
+    # Close plots to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close('all')
+
 
 def test_model_id_map_initialization(run_in_tmpdir):
     model = openmc.examples.pwr_assembly()
@@ -893,6 +901,7 @@ def test_id_map_aligned_model():
     assert tr_instance == 3, f"Expected cell instance 3 at top-right corner, got {tr_instance}"
     assert tr_material == 5, f"Expected material ID 5 at top-right corner, got {tr_material}"
 
+
 def test_setter_from_list():
     mat = openmc.Material()
     model = openmc.Model(materials=[mat])
@@ -905,3 +914,59 @@ def test_setter_from_list():
     plot = openmc.SlicePlot()
     model = openmc.Model(plots=[plot])
     assert isinstance(model.plots, openmc.Plots)
+
+
+def test_keff_search(run_in_tmpdir):
+    """Test the Model.keff_search method"""
+
+    # Create model of a sphere of U235
+    mat = openmc.Material()
+    mat.set_density('g/cm3', 18.9)
+    mat.add_nuclide('U235', 1.0)
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sphere)
+    geometry = openmc.Geometry([cell])
+    settings = openmc.Settings(particles=1000, inactive=10, batches=30)
+    model = openmc.Model(geometry=geometry, settings=settings)
+
+    # Define function to modify sphere radius
+    def modify_radius(radius):
+        sphere.r = radius
+
+    # Perform keff search
+    k_tol = 4e-3
+    sigma_final = 2e-3
+    result = model.keff_search(
+        func=modify_radius,
+        x0=6.0,
+        x1=9.0,
+        k_tol=k_tol,
+        sigma_final=sigma_final,
+        output=True,
+    )
+
+    final_keff = result.means[-1] + 1.0  # Add back target since means are (keff - target)
+    final_sigma = result.stdevs[-1]
+
+    # Check for convergence and that tolerances are met
+    assert result.converged, "keff_search did not converge"
+    assert abs(final_keff - 1.0) <= k_tol, \
+        f"Final keff {final_keff:.5f} not within k_tol {k_tol}"
+    assert final_sigma <= sigma_final, \
+        f"Final uncertainty {final_sigma:.5f} exceeds sigma_final {sigma_final}"
+
+    # Check type of result
+    assert isinstance(result, openmc.model.SearchResult)
+
+    # Check that we have function evaluation history
+    assert len(result.parameters) >= 2
+    assert len(result.means) == len(result.parameters)
+    assert len(result.stdevs) == len(result.parameters)
+    assert len(result.batches) == len(result.parameters)
+
+    # Check that function_calls property works
+    assert result.function_calls == len(result.parameters)
+
+    # Check that total_batches property works
+    assert result.total_batches == sum(result.batches)
+    assert result.total_batches > 0

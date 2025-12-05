@@ -16,7 +16,7 @@ from openmc.mpi import comm, MPI
 from openmc.checkvalue import PathLike
 from .reaction_rates import ReactionRates
 
-VERSION_RESULTS = (1, 1)
+VERSION_RESULTS = (1, 2)
 
 
 __all__ = ["StepResult"]
@@ -30,8 +30,8 @@ class StepResult:
 
     Attributes
     ----------
-    k : list of (float, float)
-        Eigenvalue and uncertainty for each substep.
+    k : tuple of (float, float)
+        Eigenvalue and uncertainty at end of step.
     time : list of float
         Time at beginning, end of step, in seconds.
     source_rate : float
@@ -40,8 +40,8 @@ class StepResult:
         Number of mats.
     n_nuc : int
         Number of nuclides.
-    rates : list of ReactionRates
-        The reaction rates for each substep.
+    rates : ReactionRates
+        The reaction rates at end of step.
     volume : dict of str to float
         Dictionary mapping mat id to volume.
     index_mat : dict of str to int
@@ -52,10 +52,8 @@ class StepResult:
         A dictionary mapping mat ID as string to global index.
     n_hdf5_mats : int
         Number of materials in entire geometry.
-    n_stages : int
-        Number of stages in simulation.
     data : numpy.ndarray
-        Atom quantity, stored by stage, mat, then by nuclide.
+        Atom quantity, stored by mat, then by nuclide.
     proc_time : int
         Average time spent depleting a material across all
         materials and processes
@@ -86,17 +84,17 @@ class StepResult:
         Parameters
         ----------
         pos : tuple
-            A three-length tuple containing a stage index, mat index and a nuc
-            index.  All can be integers or slices.  The second two can be
+            A two-length tuple containing a mat index and a nuc
+            index.  Both can be integers or slices, or can be
             strings corresponding to their respective dictionary.
 
         Returns
         -------
         float
-            The atoms for stage, mat, nuc
+            The atoms for mat, nuc
 
         """
-        stage, mat, nuc = pos
+        mat, nuc = pos
         if isinstance(mat, openmc.Material):
             mat = str(mat.id)
         if isinstance(mat, str):
@@ -104,7 +102,7 @@ class StepResult:
         if isinstance(nuc, str):
             nuc = self.index_nuc[nuc]
 
-        return self.data[stage, mat, nuc]
+        return self.data[mat, nuc]
 
     def __setitem__(self, pos, val):
         """Sets an item from results.
@@ -112,21 +110,21 @@ class StepResult:
         Parameters
         ----------
         pos : tuple
-            A three-length tuple containing a stage index, mat index and a nuc
-            index.  All can be integers or slices.  The second two can be
+            A two-length tuple containing a mat index and a nuc
+            index.  Both can be integers or slices, or can be
             strings corresponding to their respective dictionary.
 
         val : float
             The value to set data to.
 
         """
-        stage, mat, nuc = pos
+        mat, nuc = pos
         if isinstance(mat, str):
             mat = self.index_mat[mat]
         if isinstance(nuc, str):
             nuc = self.index_nuc[nuc]
 
-        self.data[stage, mat, nuc] = val
+        self.data[mat, nuc] = val
 
     @property
     def n_mat(self):
@@ -140,11 +138,7 @@ class StepResult:
     def n_hdf5_mats(self):
         return len(self.mat_to_hdf5_ind)
 
-    @property
-    def n_stages(self):
-        return self.data.shape[0]
-
-    def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages):
+    def allocate(self, volume, nuc_list, burn_list, full_burn_list):
         """Allocate memory for depletion step data
 
         Parameters
@@ -157,8 +151,6 @@ class StepResult:
             A list of all mat IDs to be burned.  Used for sorting the simulation.
         full_burn_list : list of str
             List of all burnable material IDs
-        stages : int
-            Number of stages in simulation.
 
         """
         self.volume = copy.deepcopy(volume)
@@ -167,7 +159,7 @@ class StepResult:
         self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
 
         # Create storage array
-        self.data = np.zeros((stages, self.n_mat, self.n_nuc))
+        self.data = np.zeros((self.n_mat, self.n_nuc))
 
     def distribute(self, local_materials, ranges):
         """Create a new object containing data for distributed materials
@@ -196,8 +188,8 @@ class StepResult:
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
         # Get applicable slice of data
-        new.data = self.data[:, ranges]
-        new.rates = [r[ranges] for r in self.rates]
+        new.data = self.data[ranges]
+        new.rates = self.rates[ranges]
         return new
 
     def get_material(self, mat_id):
@@ -232,15 +224,15 @@ class StepResult:
                 f'values are {list(self.volume.keys())}'
             ) from e
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
-            atoms = self[0, mat_id, nuc]
-            if atoms < 0.0:
+            atoms = self[mat_id, nuc]
+            if atoms <= 0.0:
                 continue
             atom_per_bcm = atoms / vol * 1e-24
             material.add_nuclide(nuc, atom_per_bcm)
         material.volume = vol
         return material
 
-    def export_to_hdf5(self, filename, step):
+    def export_to_hdf5(self, filename, step, write_rates: bool = False):
         """Export results to an HDF5 file
 
         Parameters
@@ -249,6 +241,8 @@ class StepResult:
             The filename to write to
         step : int
             What step is this?
+        write_rates : bool, optional
+            Whether to include reaction rate datasets in the results file.
 
         """
         # Write new file if first time step, else add to existing file
@@ -259,7 +253,8 @@ class StepResult:
             kwargs['driver'] = 'mpio'
             kwargs['comm'] = comm
             with h5py.File(filename, **kwargs) as handle:
-                self._to_hdf5(handle, step, parallel=True)
+                self._to_hdf5(handle, step, parallel=True,
+                              write_rates=write_rates)
         else:
             # Gather results at root process
             all_results = comm.gather(self)
@@ -268,15 +263,18 @@ class StepResult:
             if comm.rank == 0:
                 with h5py.File(filename, **kwargs) as handle:
                     for res in all_results:
-                        res._to_hdf5(handle, step, parallel=False)
+                        res._to_hdf5(handle, step, parallel=False,
+                                     write_rates=write_rates)
 
-    def _write_hdf5_metadata(self, handle):
+    def _write_hdf5_metadata(self, handle, write_rates):
         """Writes result metadata in HDF5 file
 
         Parameters
         ----------
         handle : h5py.File or h5py.Group
             An hdf5 file or group type to store this in.
+        write_rates : bool
+            Whether reaction rate datasets are being written.
 
         """
         # Create and save the 5 dictionaries:
@@ -284,8 +282,8 @@ class StepResult:
         #   self.index_mat -> self.volume (TODO: support for changing volumes)
         #   self.index_nuc
         # reactions
-        #   self.rates[0].index_nuc (can be different from above, above is superset)
-        #   self.rates[0].index_rx
+        #   self.rates.index_nuc (can be different from above, above is superset)
+        #   self.rates.index_rx
         # these are shared by every step of the simulation, and should be deduplicated.
 
         # Store concentration mat and nuclide dictionaries (along with volumes)
@@ -295,13 +293,19 @@ class StepResult:
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
         nuc_list = sorted(self.index_nuc)
-        rxn_list = sorted(self.rates[0].index_rx)
+
+        include_rates = (
+            write_rates
+            and self.rates is not None
+            and bool(self.rates.index_nuc)
+            and bool(self.rates.index_rx)
+        )
+        rxn_list = sorted(self.rates.index_rx) if include_rates else []
 
         n_mats = self.n_hdf5_mats
         n_nuc_number = len(nuc_list)
-        n_nuc_rxn = len(self.rates[0].index_nuc)
+        n_nuc_rxn = len(self.rates.index_nuc) if include_rates else 0
         n_rxn = len(rxn_list)
-        n_stages = self.n_stages
 
         mat_group = handle.create_group("materials")
 
@@ -315,41 +319,44 @@ class StepResult:
         for nuc in nuc_list:
             nuc_single_group = nuc_group.create_group(nuc)
             nuc_single_group.attrs["atom number index"] = self.index_nuc[nuc]
-            if nuc in self.rates[0].index_nuc:
-                nuc_single_group.attrs["reaction rate index"] = self.rates[0].index_nuc[nuc]
+            if include_rates and nuc in self.rates.index_nuc:
+                nuc_single_group.attrs["reaction rate index"] = (
+                    self.rates.index_nuc[nuc])
 
-        rxn_group = handle.create_group("reactions")
+        if include_rates:
+            rxn_group = handle.create_group("reactions")
 
-        for rxn in rxn_list:
-            rxn_single_group = rxn_group.create_group(rxn)
-            rxn_single_group.attrs["index"] = self.rates[0].index_rx[rxn]
+            for rxn in rxn_list:
+                rxn_single_group = rxn_group.create_group(rxn)
+                rxn_single_group.attrs["index"] = (
+                    self.rates.index_rx[rxn])
 
         # Construct array storage
 
-        handle.create_dataset("number", (1, n_stages, n_mats, n_nuc_number),
-                              maxshape=(None, n_stages, n_mats, n_nuc_number),
+        handle.create_dataset("number", (1, n_mats, n_nuc_number),
+                              maxshape=(None, n_mats, n_nuc_number),
                               chunks=True,
                               dtype='float64')
 
-        if n_nuc_rxn > 0 and n_rxn > 0:
-            handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                                maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                                chunks=True,
-                                dtype='float64')
+        if include_rates and n_nuc_rxn > 0 and n_rxn > 0:
+            handle.create_dataset(
+                "reaction rates", (1, n_mats, n_nuc_rxn, n_rxn),
+                maxshape=(None, n_mats, n_nuc_rxn, n_rxn),
+                chunks=True, dtype='float64')
 
-        handle.create_dataset("eigenvalues", (1, n_stages, 2),
-                              maxshape=(None, n_stages, 2), dtype='float64')
+        handle.create_dataset("eigenvalues", (1, 2),
+                              maxshape=(None, 2), dtype='float64')
 
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 
-        handle.create_dataset("source_rate", (1, n_stages), maxshape=(None, n_stages),
+        handle.create_dataset("source_rate", (1,), maxshape=(None,),
                               dtype='float64')
 
         handle.create_dataset(
             "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
-    def _to_hdf5(self, handle, index, parallel=False):
+    def _to_hdf5(self, handle, index, parallel=False, write_rates: bool = False):
         """Converts results object into an hdf5 object.
 
         Parameters
@@ -360,12 +367,14 @@ class StepResult:
             What step is this?
         parallel : bool
             Being called with parallel HDF5?
+        write_rates : bool, optional
+            Whether reaction rate datasets are being written.
 
         """
         if "/number" not in handle:
             if parallel:
                 comm.barrier()
-            self._write_hdf5_metadata(handle)
+            self._write_hdf5_metadata(handle, write_rates)
 
         if parallel:
             comm.barrier()
@@ -417,18 +426,14 @@ class StepResult:
             return
 
         # Add data
-        # Note, for the last step, self.n_stages = 1, even if n_stages != 1.
-        n_stages = self.n_stages
         inds = [self.mat_to_hdf5_ind[mat] for mat in self.index_mat]
         low = min(inds)
         high = max(inds)
-        for i in range(n_stages):
-            number_dset[index, i, low:high+1] = self.data[i]
-            if has_reactions:
-                rxn_dset[index, i, low:high+1] = self.rates[i]
-            if comm.rank == 0:
-                eigenvalues_dset[index, i] = self.k[i]
+        number_dset[index, low:high+1] = self.data
+        if has_reactions:
+            rxn_dset[index, low:high+1] = self.rates
         if comm.rank == 0:
+            eigenvalues_dset[index] = self.k
             time_dset[index] = self.time
             source_rate_dset[index] = self.source_rate
             if self.proc_time is not None:
@@ -459,10 +464,24 @@ class StepResult:
             # Older versions used "power" instead of "source_rate"
             source_rate_dset = handle["/power"]
 
-        results.data = number_dset[step, :, :, :]
-        results.k = eigenvalues_dset[step, :]
+        # Check if this is an old format file (with stages dimension) or new format
+        # Old format: number has shape (n_steps, n_stages, n_mats, n_nucs)
+        # New format: number has shape (n_steps, n_mats, n_nucs)
+        has_stages = len(number_dset.shape) == 4
+
+        if has_stages:
+            # Old format - extract data from first stage (index 0)
+            results.data = number_dset[step, 0, :, :]
+            results.k = eigenvalues_dset[step, 0, :]
+            # source_rate had shape (n_steps, n_stages) in old format
+            results.source_rate = source_rate_dset[step, 0]
+        else:
+            # New format - no stages dimension
+            results.data = number_dset[step, :, :]
+            results.k = eigenvalues_dset[step, :]
+            results.source_rate = source_rate_dset[step]
+
         results.time = time_dset[step, :]
-        results.source_rate = source_rate_dset[step, 0]
 
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]
@@ -493,33 +512,45 @@ class StepResult:
             if "reaction rate index" in nuc_handle.attrs:
                 rxn_nuc_to_ind[nuc] = nuc_handle.attrs["reaction rate index"]
 
-        for rxn, rxn_handle in handle["/reactions"].items():
-            rxn_to_ind[rxn] = rxn_handle.attrs["index"]
+        if "reactions" in handle:
+            for rxn, rxn_handle in handle["/reactions"].items():
+                rxn_to_ind[rxn] = rxn_handle.attrs["index"]
 
-        results.rates = []
-        # Reconstruct reactions
-        for i in range(results.n_stages):
-            rate = ReactionRates(results.index_mat, rxn_nuc_to_ind, rxn_to_ind, True)
-
-            if "reaction rates" in handle:
-                rate[:] = handle["/reaction rates"][step, i, :, :, :]
-            results.rates.append(rate)
+        # Reconstruct reaction rates
+        rate = ReactionRates(results.index_mat, rxn_nuc_to_ind, rxn_to_ind, True)
+        if "reaction rates" in handle:
+            if has_stages:
+                # Old format: (n_steps, n_stages, n_mats, n_nucs, n_rxns)
+                rate[:] = handle["/reaction rates"][step, 0, :, :, :]
+            else:
+                # New format: (n_steps, n_mats, n_nucs, n_rxns)
+                rate[:] = handle["/reaction rates"][step, :, :, :]
+        results.rates = rate
 
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None,
-             path: PathLike = "depletion_results.h5"):
+    def save(
+        op,
+        x,
+        op_results,
+        t,
+        source_rate,
+        step_ind,
+        proc_time=None,
+        write_rates: bool = False,
+        path: PathLike = "depletion_results.h5"
+    ):
         """Creates and writes depletion results to disk
 
         Parameters
         ----------
         op : openmc.deplete.abc.TransportOperator
             The operator used to generate these results.
-        x : list of list of numpy.array
-            The prior x vectors.  Indexed [i][cell] using the above equation.
-        op_results : list of openmc.deplete.OperatorResult
-            Results of applying transport operator
+        x : numpy.array
+            End-of-step concentrations for each material
+        op_results : openmc.deplete.OperatorResult
+            Result of applying transport operator at end of step
         t : list of float
             Time indices.
         source_rate : float
@@ -530,7 +561,8 @@ class StepResult:
             Total process time spent depleting materials. This may
             be process-dependent and will be reduced across MPI
             processes.
-
+        write_rates : bool, optional
+            Whether reaction rates should be written to the results file.
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
@@ -539,26 +571,20 @@ class StepResult:
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
 
-        stages = len(x)
-
         # Create results
         results = StepResult()
-        results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
+        results.allocate(vol_dict, nuc_list, burn_list, full_burn_list)
 
         n_mat = len(burn_list)
 
-        for i in range(stages):
-            for mat_i in range(n_mat):
-                results[i, mat_i, :] = x[i][mat_i]
+        for mat_i in range(n_mat):
+            results[mat_i, :] = x[mat_i]
 
-        ks = []
-        for r in op_results:
-            if isinstance(r.k, type(None)):
-                ks += [(None, None)]
-            else:
-                ks += [(r.k.nominal_value, r.k.std_dev)]
-        results.k = ks
-        results.rates = [r.rates for r in op_results]
+        if isinstance(op_results.k, type(None)):
+            results.k = (None, None)
+        else:
+            results.k = (op_results.k.nominal_value, op_results.k.std_dev)
+        results.rates = op_results.rates
         results.time = t
         results.source_rate = source_rate
         results.proc_time = proc_time
@@ -567,7 +593,7 @@ class StepResult:
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)
-        results.export_to_hdf5(path, step_ind)
+        results.export_to_hdf5(path, step_ind, write_rates)
 
     def transfer_volumes(self, model):
         """Transfers volumes from depletion results to geometry

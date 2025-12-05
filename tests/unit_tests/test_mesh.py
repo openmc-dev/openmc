@@ -2,11 +2,14 @@ from math import pi
 from tempfile import TemporaryDirectory
 from pathlib import Path
 
+import h5py
 import numpy as np
+from scipy.stats import chi2
 import pytest
 import openmc
 import openmc.lib
 from openmc.utility_funcs import change_directory
+from uncertainties.unumpy import uarray, nominal_values, std_devs
 
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
@@ -481,8 +484,76 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     np.testing.assert_almost_equal(mean, ref_data)
 
     # attempt to apply a dataset with an improper size to a VTK write
-    with pytest.raises(ValueError, match='Cannot apply dataset "mean"') as e:
+    with pytest.raises(ValueError, match='Cannot apply dataset "mean"'):
         simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
+
+
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
+def test_write_vtkhdf(request, run_in_tmpdir):
+    """Performs a minimal UnstructuredMesh simulation, reads in the resulting
+    statepoint file and writes the mesh data to vtk and vtkhdf files. It is
+    necessary to read in the unstructured mesh from a statepoint file to ensure
+    it has all the required attributes
+    """
+    model = openmc.Model()
+
+    surf1 = openmc.Sphere(r=1000.0, boundary_type="vacuum")
+    cell1 = openmc.Cell(region=-surf1)
+    model.geometry = openmc.Geometry([cell1])
+
+    umesh = openmc.UnstructuredMesh(
+        request.path.parent / "test_mesh_dagmc_tets.vtk",
+        "moab",
+        mesh_id = 1
+    )
+    mesh_filter = openmc.MeshFilter(umesh)
+
+    # Create flux mesh tally to score alpha production
+    mesh_tally = openmc.Tally(name="test_tally")
+    mesh_tally.filters = [mesh_filter]
+    mesh_tally.scores = ["flux"]
+
+    model.tallies = [mesh_tally]
+
+    model.settings.run_mode = "fixed source"
+    model.settings.batches = 2
+    model.settings.particles = 10
+
+    statepoint_file = model.run()
+
+    with openmc.StatePoint(statepoint_file) as statepoint:
+        my_tally = statepoint.get_tally(name="test_tally")
+
+    umesh_from_sp = statepoint.meshes[umesh.id]
+
+    datasets={
+        "mean": my_tally.mean.flatten(),
+        "std_dev": my_tally.std_dev.flatten()
+    }
+
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtkhdf")
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtk")
+
+    with pytest.raises(ValueError, match="Unsupported file extension"):
+        # Supported file extensions are vtk or vtkhdf, not hdf5, so this should raise an error
+        umesh_from_sp.write_data_to_vtk(
+            datasets=datasets,
+            filename="test_mesh.hdf5",
+        )
+    with pytest.raises(ValueError, match="Cannot apply dataset"):
+        # The shape of the data should match the shape of the mesh, so this should raise an error
+        umesh_from_sp.write_data_to_vtk(
+            datasets={'incorrectly_shaped_data': np.array(([1,2,3]))},
+            filename="test_mesh_incorrect_shape.vtkhdf",
+        )
+
+    assert Path("test_mesh.vtk").exists()
+    assert Path("test_mesh.vtkhdf").exists()
+
+    # just ensure we can open the file without error
+    with h5py.File("test_mesh.vtkhdf", "r"):
+        ...
+
 
 def test_mesh_get_homogenized_materials():
     """Test the get_homogenized_materials method"""
@@ -620,7 +691,34 @@ def test_mesh_material_volumes_serialize():
     assert new_volumes.by_element(3) == [(2, 1.0)]
 
 
-def test_raytrace_mesh_infinite_loop():
+def test_mesh_material_volumes_boundary_conditions(sphere_model):
+    """Test the material volumes method using a regular mesh
+    that overlaps with a vacuum boundary condition."""
+
+    mesh = openmc.SphericalMesh.from_domain(sphere_model.geometry, dimension=(1, 1, 1))
+    # extend mesh beyond the outer sphere surface to test rays crossing the boundary condition
+    mesh.r_grid[-1] += 5.0
+
+    # add a new cell to the modelthat occupies the outside of the sphere
+    sphere_surfaces = list(filter(lambda s: isinstance(s, openmc.Sphere),
+                            sphere_model.geometry.get_all_surfaces().values()))
+    outer_cell = openmc.Cell(region=+sphere_surfaces[0])
+    sphere_model.geometry.root_universe.add_cell(outer_cell)
+
+    volumes = mesh.material_volumes(sphere_model, (0, 100, 100))
+    sphere_volume = 4/3*np.pi*25**3
+    mats = sphere_model.materials
+    expected_volumes = [(mats[0].id, 0.25*sphere_volume),
+                        (mats[1].id, 0.25*sphere_volume),
+                        (mats[2].id, 0.5*sphere_volume),
+                        (None, 4/3*np.pi*mesh.r_grid[-1]**3 - sphere_volume)]
+
+    for evaluated, expected in zip(volumes.by_element(0), expected_volumes):
+        assert evaluated[0] == expected[0]
+        assert evaluated[1] == pytest.approx(expected[1], rel=1e-2)
+
+
+def test_raytrace_mesh_infinite_loop(run_in_tmpdir):
     # Create a model with one large spherical cell
     sphere = openmc.Sphere(r=100, boundary_type='vacuum')
     cell = openmc.Cell(region=-sphere)
@@ -651,3 +749,82 @@ def test_raytrace_mesh_infinite_loop():
 
     # Run the model; this should not cause an infinite loop
     model.run()
+
+
+def test_filter_time_mesh(run_in_tmpdir):
+    """Test combination of TimeFilter and MeshFilter"""
+
+    # Define material
+    mat = openmc.Material()
+    mat.add_nuclide('Fe56', 1.0)
+    mat.set_density('g/cm3', 7.8)
+
+    # Define geometry
+    surf_Z1 = openmc.XPlane(x0=-1e10, boundary_type="reflective")
+    surf_Z2 = openmc.XPlane(x0=1e10, boundary_type="reflective")
+    cell_F = openmc.Cell(fill=mat, region=+surf_Z1 & -surf_Z2)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell_F])
+
+    # Define settings
+    model.settings.run_mode = "fixed source"
+    model.settings.particles = 1000
+    model.settings.batches = 20
+    model.settings.output = {"tallies": False}
+    model.settings.cutoff = {"time_neutron": 1e-7}
+
+    # Define tallies
+
+    # Create a mesh filter that can be used in a tally
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (21, 1, 1)
+    mesh.lower_left = (-20.5, -1e10, -1e10)
+    mesh.upper_right = (20.5, 1e10, 1e10)
+    time_grid = np.linspace(0.0, 1e-7, 21)
+
+    mesh_filter = openmc.MeshFilter(mesh)
+    time_filter = openmc.TimeFilter(time_grid)
+
+    # Now use the mesh filter in a tally and indicate what scores are desired
+    tally1 = openmc.Tally(name="collision")
+    tally1.estimator = "collision"
+    tally1.filters = [time_filter, mesh_filter]
+    tally1.scores = ["flux"]
+    tally2 = openmc.Tally(name="tracklength")
+    tally2.estimator = "tracklength"
+    tally2.filters = [time_filter, mesh_filter]
+    tally2.scores = ["flux"]
+    model.tallies = openmc.Tallies([tally1, tally2])
+
+    # Run and post-process
+    model.run(apply_tally_results=True)
+
+    # Get radial flux distribution
+    flux_collision = tally1.mean.ravel()
+    flux_collision_unc = tally1.std_dev.ravel()
+    flux_tracklength = tally2.mean.ravel()
+    flux_tracklength_unc = tally2.std_dev.ravel()
+
+    # Construct arrays with uncertainties
+    collision = uarray(flux_collision, flux_collision_unc)
+    tracklength = uarray(flux_tracklength, flux_tracklength_unc)
+    delta = collision - tracklength
+
+    # Compute differences and standard deviations
+    diff = nominal_values(delta)
+    std_dev = std_devs(delta)
+
+    # Exclude zero-uncertainty bins
+    mask = std_dev > 0.0
+    dof = int(np.sum(mask))
+
+    # Global chi-square consistency test between collision and tracklength
+    # estimators. Target false positive rate ~1e-4 (1 in 10,000)
+    z = diff[mask] / std_dev[mask]
+    chi2_stat = np.sum(z * z)
+    alpha = 1.0e-4
+    crit = chi2.ppf(1 - alpha, dof)
+    assert chi2_stat < crit, (
+        f"Collision vs tracklength tallies disagree: chi2={chi2_stat:.2f} "
+        f">= {crit=:.2f} ({dof=}, {alpha=})"
+    )

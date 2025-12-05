@@ -219,6 +219,30 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :triso_particle:
+    If the cell is filled with a TRISO particle,  use this element to mark it.
+
+    .. note:: Only cells with spherical area can be marked.
+
+    *Default*: false
+
+  :virtual_lattice:
+    If the cell is filled with a matrix containing the TRISO particle,  use this
+    element to mark it. This can accelerate the search speed of neutrons in the 
+    region containing a large number of TRISO particles.
+
+    *Default*: false
+  
+  :shape:
+    If the virtual_lattice is True. This element specifies the shape of the
+    lattice.
+
+    .. note:: The shape of the lattice must be specified if the virtual_lattice
+              is True. Related methods can be referred to Liang, J., Li, R., Liu, Z., 
+              2024. Virtual lattice method for efficient Monte Carlo transport simulation
+              of dispersion nuclear fuels. Computer Physics Communications 295, 108985. 
+              https://doi.org/10.1016/j.cpc.2023.108985
+
 
 ---------------------
 ``<lattice>`` Element

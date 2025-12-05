@@ -902,6 +902,32 @@ def test_id_map_aligned_model():
     assert tr_material == 5, f"Expected material ID 5 at top-right corner, got {tr_material}"
 
 
+def test_id_map_model_with_overlaps():
+    """Test id_map with a model that has overlaps and color_overlaps option"""
+    surface1 = openmc.Sphere(r=50, boundary_type="vacuum")
+    surface2 = openmc.Sphere(r=30)
+    cell1 = openmc.Cell(region=-surface1)
+    cell2 = openmc.Cell(region=-surface2)
+    geometry = openmc.Geometry([cell1, cell2])
+    settings = openmc.Settings()
+    model = openmc.Model(geometry=geometry, settings=settings)
+    id_slice = model.id_map(
+        pixels=(10, 10),
+        basis='xy',
+        origin=(0, 0, 0),
+        width=(100, 100),
+    )
+    assert -3 not in id_slice  # -3 indicates overlap region
+    id_slice = model.id_map(
+        pixels=(10, 10),
+        basis='xy',
+        origin=(0, 0, 0),
+        width=(100, 100),
+        color_overlaps=True,  # enables id_map to return -3 for overlaps
+    )
+    assert -3 in id_slice
+
+
 def test_setter_from_list():
     mat = openmc.Material()
     model = openmc.Model(materials=[mat])

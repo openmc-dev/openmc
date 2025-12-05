@@ -128,6 +128,12 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
     copy_ifp_data_to_fission_banks(
       sorted_ifp_delayed_group_bank.data(), sorted_ifp_lifetime_bank.data());
   }
+
+  // Set the parent_id fields to something larger per rank
+  // TODO: DELETE THIS AFTER DEBUGGING
+  for (int64_t i = 0; i < bank.size(); i++) {
+    bank[i].parent_id += mpi::rank * 10000000;
+  }
 }
 
 // This function redistributes SourceSite particles across MPI ranks to

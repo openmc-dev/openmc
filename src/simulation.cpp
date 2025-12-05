@@ -884,10 +884,81 @@ void debug_validate_local_bank_ordering(
     const SourceSite& b = local_bank[i];
     if (a.parent_id > b.parent_id ||
         (a.parent_id == b.parent_id && a.progeny_id > b.progeny_id)) {
+          fmt::print("Error at local_bank[{}]: ({}, {}) > ({}, {})\n", i,
+            a.parent_id, a.progeny_id, b.parent_id, b.progeny_id);
       fatal_error("Local secondary bank is not properly ordered by parent and "
                   "progeny IDs.");
     }
   }
+}
+
+// Another helpfer function that validates if the bank is GLOBALLY sorted across
+// all MPI ranks. This is an expensive check and should only be used for
+// debugging purposes.
+void debug_validate_global_bank_ordering(
+  const SharedArray<SourceSite>& local_bank)
+{
+#ifdef OPENMC_MPI
+  // Each rank (except rank 0) receives the last entry from the previous rank
+  // and compares it to its first entry to ensure global ordering.
+
+  // Data to send/receive: parent_id and progeny_id
+  int64_t last_entry[2] = {0, 0};  // parent_id, progeny_id
+  int64_t recv_entry[2] = {0, 0};
+
+  // If this rank has entries, get the last one
+  if (local_bank.size() > 0) {
+    const SourceSite& last = local_bank[local_bank.size() - 1];
+    last_entry[0] = last.parent_id;
+    last_entry[1] = last.progeny_id;
+  }
+
+  // Send last entry to next rank, receive from previous rank
+  MPI_Request send_request, recv_request;
+  MPI_Status status;
+
+  // Rank n sends its last entry to rank n+1
+  if (mpi::rank < mpi::n_procs - 1) {
+    MPI_Isend(last_entry, 2, MPI_INT64_T, mpi::rank + 1, 0, mpi::intracomm,
+      &send_request);
+  }
+
+  // Rank n receives from rank n-1
+  if (mpi::rank > 0) {
+    MPI_Irecv(recv_entry, 2, MPI_INT64_T, mpi::rank - 1, 0, mpi::intracomm,
+      &recv_request);
+  }
+
+  // Wait for communication to complete
+  if (mpi::rank < mpi::n_procs - 1) {
+    MPI_Wait(&send_request, &status);
+  }
+  if (mpi::rank > 0) {
+    MPI_Wait(&recv_request, &status);
+  }
+
+  // Now validate: if this rank has entries and received data from previous rank,
+  // check that our first entry is >= the last entry from previous rank
+  if (mpi::rank > 0 && local_bank.size() > 0) {
+    const SourceSite& first = local_bank[0];
+    int64_t prev_parent_id = recv_entry[0];
+    int64_t prev_progeny_id = recv_entry[1];
+
+    // Check ordering: previous rank's last entry should be <= this rank's first
+    if (prev_parent_id > first.parent_id ||
+        (prev_parent_id == first.parent_id &&
+         prev_progeny_id > first.progeny_id)) {
+      fatal_error(fmt::format(
+        "Global secondary bank ordering violated between rank {} and {}: "
+        "prev_last=({}, {}), curr_first=({}, {})",
+        mpi::rank - 1, mpi::rank, prev_parent_id, prev_progeny_id,
+        first.parent_id, first.progeny_id));
+    }
+  }
+
+  // Synchronize all ranks before continuing
+  MPI_Barrier(mpi::intracomm);
+#endif
 }
 
 // The shared secondary bank transport algorithm works in two phases. In the
@@ -962,6 +1033,9 @@ void transport_history_based_shared_secondary()
     // all MPI ranks.
     alive_secondary =
       synchronize_global_secondary_bank(shared_secondary_bank_write);
+    
+    debug_validate_local_bank_ordering(shared_secondary_bank_write);
+    debug_validate_global_bank_ordering(shared_secondary_bank_write);
 
     // Recalculate work for each MPI rank based on number of alive secondary
     // particles

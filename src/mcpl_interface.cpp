@@ -63,15 +63,13 @@ using mcpl_read_fpt = const mcpl_particle_repr_t* (*)(mcpl_file_t* file_handle);
 using mcpl_close_file_fpt = void (*)(mcpl_file_t* file_handle);
 
 using mcpl_hdr_add_data_fpt = void (*)(mcpl_outfile_t* file_handle,
-  const char* key, int32_t ldata, const char* data);
+  const char* key, uint32_t datalength, const char* data);
 using mcpl_create_outfile_fpt = mcpl_outfile_t* (*)(const char* filename);
 using mcpl_hdr_set_srcname_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const char* srcname);
 using mcpl_add_particle_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const mcpl_particle_repr_t* particle);
 using mcpl_close_outfile_fpt = void (*)(mcpl_outfile_t* outfile_handle);
-using mcpl_hdr_add_data_fpt = void (*)(mcpl_outfile_t* outfile_handle,
-  const char* key, uint32_t datalength, const char* data);
 using mcpl_hdr_add_stat_sum_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const char* key, double value);
 
@@ -118,7 +116,6 @@ struct McplApi {
   mcpl_hdr_add_data_fpt hdr_add_data;
   mcpl_add_particle_fpt add_particle;
   mcpl_close_outfile_fpt close_outfile;
-  mcpl_hdr_add_data_fpt hdr_add_data;
   mcpl_hdr_add_stat_sum_fpt hdr_add_stat_sum;
 
   explicit McplApi(LibraryHandleType lib_handle)
@@ -153,8 +150,6 @@ struct McplApi {
       load_symbol_platform("mcpl_create_outfile"));
     hdr_set_srcname = reinterpret_cast<mcpl_hdr_set_srcname_fpt>(
       load_symbol_platform("mcpl_hdr_set_srcname"));
-    hdr_add_data = reinterpret_cast<mcpl_hdr_add_data_fpt>(
-      load_symbol_platform("mcpl_hdr_add_data"));
     add_particle = reinterpret_cast<mcpl_add_particle_fpt>(
       load_symbol_platform("mcpl_add_particle"));
     close_outfile = reinterpret_cast<mcpl_close_outfile_fpt>(

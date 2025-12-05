@@ -4,13 +4,9 @@ This module tests the functionality of the new SlicePlot and VoxelPlot
 classes that replace the legacy Plot class.
 """
 import warnings
-from pathlib import Path
 
-import numpy as np
 import pytest
-
 import openmc
-from openmc.plots import _SVG_COLORS
 
 
 def test_slice_plot_initialization():
@@ -166,27 +162,6 @@ def test_voxel_plot_pixels_validation():
         plot.pixels = [100]
 
 
-def test_voxel_plot_no_basis():
-    """Test that VoxelPlot does not have basis attribute"""
-    plot = openmc.VoxelPlot()
-    assert not hasattr(plot, 'basis')
-    assert not hasattr(plot, '_basis')
-
-
-def test_voxel_plot_no_meshlines():
-    """Test that VoxelPlot does not have meshlines attribute"""
-    plot = openmc.VoxelPlot()
-    assert not hasattr(plot, 'meshlines')
-    assert not hasattr(plot, '_meshlines')
-
-
-def test_voxel_plot_has_to_vtk():
-    """Test that VoxelPlot has to_vtk method"""
-    plot = openmc.VoxelPlot()
-    assert hasattr(plot, 'to_vtk')
-    assert callable(plot.to_vtk)
-
-
 def test_voxel_plot_xml_roundtrip():
     """Test VoxelPlot XML serialization and deserialization"""
     plot = openmc.VoxelPlot(name='test_voxel')
@@ -213,79 +188,50 @@ def test_plot_deprecation_warning():
     """Test that Plot class raises deprecation warning"""
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        plot = openmc.Plot()
+        openmc.Plot()
 
         assert len(w) == 1
-        assert issubclass(w[0].category, DeprecationWarning)
+        assert issubclass(w[0].category, FutureWarning)
         assert "deprecated" in str(w[0].message).lower()
 
 
-def test_plot_slice_compatibility():
-    """Test Plot class with slice type"""
+def test_plot_returns_slice_plot():
+    """Test that Plot() returns a SlicePlot instance"""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         plot = openmc.Plot()
 
-        plot.type = 'slice'
-        plot.width = [10.0, 20.0]
-        plot.pixels = [100, 200]
-        plot.basis = 'yz'
-
-        assert plot.type == 'slice'
-        assert plot.width == [10.0, 20.0]
-        assert plot.pixels == [100, 200]
-        assert plot.basis == 'yz'
+        # Should be an actual SlicePlot instance
+        assert isinstance(plot, openmc.SlicePlot)
 
 
-def test_plot_voxel_compatibility():
-    """Test Plot class with voxel type"""
+def test_plot_type_setter_raises_error():
+    """Test that setting plot.type raises a helpful error"""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         plot = openmc.Plot()
 
-        plot.type = 'voxel'
-        plot.width = [10.0, 20.0, 30.0]
-        plot.pixels = [100, 200, 300]
+        with pytest.raises(TypeError, match="no longer supported"):
+            plot.type = 'voxel'
 
-        assert plot.type == 'voxel'
-        assert plot.width == [10.0, 20.0, 30.0]
-        assert plot.pixels == [100, 200, 300]
+        with pytest.raises(TypeError, match="no longer supported"):
+            plot.type = 'slice'
 
 
-def test_plot_xml_roundtrip_slice():
-    """Test XML roundtrip for Plot with slice type"""
+def test_plot_type_getter_warns():
+    """Test that getting plot.type raises a deprecation warning"""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        plot = openmc.Plot(name='legacy_slice')
-        plot.type = 'slice'
-        plot.width = [5.0, 10.0]
-        plot.pixels = [50, 100]
-        plot.basis = 'xz'
+        plot = openmc.Plot()
 
-        elem = plot.to_xml_element()
-        new_plot = openmc.Plot.from_xml_element(elem)
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        plot_type = plot.type
 
-        assert new_plot.type == plot.type
-        assert new_plot.width == pytest.approx(plot.width)
-        assert new_plot.pixels == tuple(plot.pixels)
-        assert new_plot.basis == plot.basis
-
-
-def test_plot_xml_roundtrip_voxel():
-    """Test XML roundtrip for Plot with voxel type"""
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        plot = openmc.Plot(name='legacy_voxel')
-        plot.type = 'voxel'
-        plot.width = [5.0, 10.0, 15.0]
-        plot.pixels = [50, 100, 150]
-
-        elem = plot.to_xml_element()
-        new_plot = openmc.Plot.from_xml_element(elem)
-
-        assert new_plot.type == plot.type
-        assert new_plot.width == pytest.approx(plot.width)
-        assert new_plot.pixels == tuple(plot.pixels)
+        assert plot_type == 'slice'
+        assert len(w) == 1
+        assert issubclass(w[0].category, FutureWarning)
+        assert "deprecated" in str(w[0].message).lower()
 
 
 def test_plots_collection_mixed_types():

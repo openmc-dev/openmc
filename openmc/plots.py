@@ -1964,16 +1964,16 @@ class SolidRayTracePlot(RayTracePlot):
 
 
 class Plots(cv.CheckedList):
-    """Collection of Plots used for an OpenMC simulation.
+    """Collection of plots used for an OpenMC simulation.
 
     This class corresponds directly to the plots.xml input file. It can be
     thought of as a normal Python list where each member is inherits from
     :class:`PlotBase`. It behaves like a list as the following example
     demonstrates:
 
-    >>> xz_plot = openmc.Plot()
-    >>> big_plot = openmc.Plot()
-    >>> small_plot = openmc.Plot()
+    >>> xz_plot = openmc.SlicePlot()
+    >>> big_plot = openmc.VoxelPlot()
+    >>> small_plot = openmc.SlicePlot()
     >>> p = openmc.Plots((xz_plot, big_plot))
     >>> p.append(small_plot)
     >>> small_plot = p.pop()
@@ -2009,7 +2009,7 @@ class Plots(cv.CheckedList):
         ----------
         index : int
             Index in list
-        plot : openmc.Plot
+        plot : openmc.PlotBase
             Plot to insert
 
         """

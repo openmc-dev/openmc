@@ -1082,7 +1082,7 @@ class Model:
                 self.settings.plot_seed = seed
 
             # Create plot object matching passed arguments
-            plot = openmc.Plot()
+            plot = openmc.SlicePlot()
             plot.origin = origin
             plot.width = width
             plot.pixels = pixels

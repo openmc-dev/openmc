@@ -73,13 +73,13 @@ def pin_model_attributes():
     tal.scores = ['flux', 'fission']
     tals.append(tal)
 
-    plot1 = openmc.Plot(plot_id=1)
+    plot1 = openmc.SlicePlot(plot_id=1)
     plot1.origin = (0., 0., 0.)
     plot1.width = (pitch, pitch)
     plot1.pixels = (300, 300)
     plot1.color_by = 'material'
     plot1.filename = 'test'
-    plot2 = openmc.Plot(plot_id=2)
+    plot2 = openmc.SlicePlot(plot_id=2)
     plot2.origin = (0., 0., 0.)
     plot2.width = (pitch, pitch)
     plot2.pixels = (300, 300)
@@ -902,6 +902,6 @@ def test_setter_from_list():
     model = openmc.Model(tallies=[tally])
     assert isinstance(model.tallies, openmc.Tallies)
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     model = openmc.Model(plots=[plot])
     assert isinstance(model.plots, openmc.Plots)

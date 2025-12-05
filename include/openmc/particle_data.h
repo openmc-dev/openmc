@@ -568,7 +568,6 @@ private:
   double ww_factor_ {0.0};
 
   int64_t n_progeny_ {0};
-  int64_t primogenitor_id_ {-1};
 
 public:
   //----------------------------------------------------------------------------
@@ -773,10 +772,6 @@ public:
       d = 0;
     }
   }
-
-  //! ID of the primogenitor particle (for use with the shared secondary bank)
-  int64_t& primogenitor_id() { return primogenitor_id_; }
-  const int64_t& primogenitor_id() const { return primogenitor_id_; }
 };
 
 } // namespace openmc

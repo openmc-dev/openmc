@@ -878,7 +878,8 @@ void transport_history_based()
 
 void transport_history_based_shared_secondary()
 {
-  // Recalculate work as this may have changed in previous secondary sub-iterations
+  // Recalculate work as this may have changed in previous secondary
+  // sub-iterations
   calculate_work(settings::n_particles);
 
   // Free any memory in the shared secondary bank from previous generations
@@ -910,49 +911,33 @@ void transport_history_based_shared_secondary()
   // all secondary generations
   int n_generation_depth = 1;
   int64_t alive_secondary = 1;
-
   while (alive_secondary) {
-    // Step 1: Synchronize the shared secondary bank amongst all MPI ranks, such
+    // Synchronize the shared secondary bank amongst all MPI ranks, such
     // that each MPI rank has an approximately equal number of secondary
-    // particles.
+    // particles. Also reports the total number of secondaries alive across
+    // all MPI ranks.
     alive_secondary =
       synchronize_global_secondary_bank(shared_secondary_bank_write);
 
     if (mpi::master) {
-      fmt::print(
-        "Secondary generation {} has global shared secondary bank size: {}\n",
-        n_generation_depth, alive_secondary);
+      write_message(fmt::format(" Secondary generation {:<2} particles: {}",
+                      n_generation_depth, alive_secondary),
+        6);
     }
-    fflush(stdout);
 
     shared_secondary_bank_read = std::move(shared_secondary_bank_write);
     shared_secondary_bank_write = std::vector<SourceSite>();
 
-
-
-    // Step 3: Transport all secondary particles from the shared secondary bank
-    int64_t next_alive_secondary = 0;
-#pragma omp parallel for schedule(runtime) reduction(+ : next_alive_secondary)
+    // Transport all secondary particles from the shared secondary bank
+#pragma omp parallel for schedule(runtime)
     for (int64_t i = 0; i < shared_secondary_bank_read.size(); i++) {
-      SourceSite& site = shared_secondary_bank_read[i];
-      // TODO: Control the seed so as to be reproducible
-      // set random number seed
-      // p.id() = ... + i
-      // int64_t particle_seed =
-      //  (simulation::total_gen + overall_generation() - 1) *
-      //    settings::n_particles +
-      //  p.id();
-      // init_particle_seeds(particle_seed, p.seeds());
       Particle p;
       initialize_history(p, i, true);
-
-      // PROBLEM: Need to initialize the particle. We can't just call
-      // revive_from_secondary (from_source)
+      SourceSite& site = shared_secondary_bank_read[i];
       p.event_revive_from_secondary(site);
       if (p.alive()) {
         transport_history_based_single_particle(p);
       }
-      next_alive_secondary += p.local_secondary_bank().size();
 #pragma omp critical(shared_secondary_bank)
       {
         for (auto& site : p.local_secondary_bank()) {
@@ -962,7 +947,6 @@ void transport_history_based_shared_secondary()
     } // End of transport loop over particles in shared secondary bank
     n_generation_depth++;
     simulation::simulation_particles_completed += alive_secondary;
-
   } // End of loop over secondary generations
 }
 

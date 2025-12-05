@@ -40,6 +40,9 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+  Distribution& sample_dist(double E_in, double& E_out, uint64_t* seed) const;
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
   // energy property
   vector<double>& energy() { return energy_; }

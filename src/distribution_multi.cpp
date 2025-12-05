@@ -44,6 +44,7 @@ UnitSphereDistribution::UnitSphereDistribution(pugi::xml_node node)
       fatal_error("Angular distribution reference direction must have "
                   "three parameters specified.");
     u_ref_ = Direction(u_ref.data());
+    u_ref_ /= u_ref_.norm();
   }
 }
 
@@ -65,6 +66,7 @@ PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
       fatal_error("Angular distribution reference v direction must have "
                   "three parameters specified.");
     v_ref_ = Direction(v_ref.data());
+    v_ref_ /= v_ref_.norm();
   }
   w_ref_ = u_ref_.cross(v_ref_);
   if (check_for_node(node, "mu")) {
@@ -99,6 +101,13 @@ Direction PolarAzimuthal::sample(uint64_t* seed) const
   return mu * u_ref_ + f * std::cos(phi) * v_ref_ + f * std::sin(phi) * w_ref_;
 }
 
+double PolarAzimuthal::evaluate(Direction u) const
+{
+  double mu = u.dot(u_ref_);
+  double phi = std::acos(u.dot(v_ref_) / std::sqrt(1 - mu * mu));
+  return mu_->evaluate(mu) * phi_->evaluate(phi);
+}
+
 //==============================================================================
 // Isotropic implementation
 //==============================================================================
@@ -114,6 +123,11 @@ Direction isotropic_direction(uint64_t* seed)
 Direction Isotropic::sample(uint64_t* seed) const
 {
   return isotropic_direction(seed);
+}
+
+double Isotropic::evaluate(Direction u) const
+{
+  return 1.0 / (4.0 * PI);
 }
 
 //==============================================================================

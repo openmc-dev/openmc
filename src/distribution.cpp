@@ -12,6 +12,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
+#include "openmc/search.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -156,6 +157,14 @@ double Uniform::sample(uint64_t* seed) const
   return a_ + prn(seed) * (b_ - a_);
 }
 
+double Uniform::evaluate(double x) const
+{
+  if (x <= b_ && x >= a_)
+    return 1 / (b_ - a_);
+  else
+    return 0;
+}
+
 //==============================================================================
 // PowerLaw implementation
 //==============================================================================
@@ -180,6 +189,21 @@ PowerLaw::PowerLaw(pugi::xml_node node)
 double PowerLaw::sample(uint64_t* seed) const
 {
   return std::pow(offset_ + prn(seed) * span_, ninv_);
+}
+
+double PowerLaw::evaluate(double x) const
+{
+  // Use accessors
+  double a_val = this->a();
+  double b_val = this->b();
+  double n_val = this->n();
+
+  if (x < a_val || x > b_val) {
+    return 0.0; // outside support
+  }
+
+  return (n_val + 1.0) * std::pow(x, n_val) /
+         (std::pow(b_val, n_val + 1.0) - std::pow(a_val, n_val + 1.0));
 }
 
 //==============================================================================
@@ -234,6 +258,13 @@ Normal::Normal(pugi::xml_node node)
 double Normal::sample(uint64_t* seed) const
 {
   return normal_variate(mean_value_, std_dev_, seed);
+}
+
+double Normal::evaluate(double x) const
+{
+  double exponent = -0.5 * std::pow((x - mean_value_) / std_dev_, 2);
+  double coefficient = 1 / (std_dev_ * std::sqrt(2 * PI));
+  return coefficient * std::exp(exponent);
 }
 
 //==============================================================================
@@ -353,6 +384,43 @@ double Tabular::sample(uint64_t* seed) const
              (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
                m;
     }
+  }
+}
+
+double Tabular::evaluate(double x) const
+{
+  // get PDF value at x
+
+  int i;
+  std::size_t n = x_.size();
+  if (x < x_[0]) {
+    return 0;
+  } else if (x > x_[n - 1]) {
+    return 0;
+  } else {
+    i = lower_bound_index(x_.begin(), x_.end(), x);
+  }
+
+  // Determine bounding PDF values
+  double x_i = x_[i];
+  double p_i = p_[i];
+
+  switch (interp_) {
+  case Interpolation::histogram:
+    // Histogram interpolation
+    return p_i;
+
+  case Interpolation::lin_lin: {
+    // Linear-linear interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    double m = (p_i1 - p_i) / (x_i1 - x_i);
+    return (m == 0.0) ? p_i : p_i + (x - x_i) * m;
+  }
+
+  default:
+    fatal_error("Unsupported interpolation type in PDF evaluation.");
   }
 }
 

@@ -74,6 +74,13 @@ void DecayPhotonAngleEnergy::sample(
   mu = Uniform(-1., 1.).sample(seed);
 }
 
+double DecayPhotonAngleEnergy::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  E_out = photon_energy_->sample(seed);
+  return 0.5;
+}
+
 //==============================================================================
 // Global variables
 //==============================================================================

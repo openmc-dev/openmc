@@ -532,6 +532,7 @@ void Tally::set_scores(const vector<std::string>& scores)
 
   // Check for the presence of certain restrictive filters.
   bool energyout_present = energyout_filter_ != C_NONE;
+  bool fission_yields_present = false;
   bool legendre_present = false;
   bool cell_present = false;
   bool cellfrom_present = false;
@@ -555,6 +556,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       surface_present = true;
     } else if (filt->type() == FilterType::MESH_SURFACE) {
       meshsurface_present = true;
+    } else if (filt->type() == FilterType::FISSION_YIELDS) {
+      fission_yields_present = true;
     }
   }
 
@@ -582,11 +585,18 @@ void Tally::set_scores(const vector<std::string>& scores)
 
     case SCORE_TOTAL:
     case SCORE_ABSORPTION:
+      if (energyout_present)
+        fatal_error("Cannot tally " + score_str +
+                    " reaction rate with an "
+                    "outgoing energy filter");
+      break;
     case SCORE_FISSION:
       if (energyout_present)
         fatal_error("Cannot tally " + score_str +
                     " reaction rate with an "
                     "outgoing energy filter");
+      if (fission_yields_present && estimator_ == TallyEstimator::TRACKLENGTH)
+        estimator_ = TallyEstimator::COLLISION;
       break;
 
     case SCORE_SCATTER:

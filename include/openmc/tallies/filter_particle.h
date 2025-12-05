@@ -48,5 +48,45 @@ private:
   vector<ParticleType> particles_;
 };
 
+//==============================================================================
+//! Bins by type of outgoing particle (e.g. neutron, photon).
+//==============================================================================
+
+class ParticleOutFilter : public Filter {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
+  ~ParticleOutFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
+
+  std::string type_str() const override { return "particleout"; }
+  FilterType type() const override { return FilterType::PARTICLE_OUT; }
+
+  void from_xml(pugi::xml_node node) override;
+
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
+
+  void to_statepoint(hid_t filter_group) const override;
+
+  std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  const vector<ParticleType>& particles() const { return particles_; }
+
+  void set_particles(span<ParticleType> particles);
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
+
+  vector<ParticleType> particles_;
+};
+
 } // namespace openmc
 #endif // OPENMC_TALLIES_FILTER_PARTICLE_H

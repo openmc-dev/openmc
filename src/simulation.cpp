@@ -884,15 +884,10 @@ void debug_validate_local_bank_ordering(
     const SourceSite& b = local_bank[i];
     if (a.parent_id > b.parent_id ||
         (a.parent_id == b.parent_id && a.progeny_id > b.progeny_id)) {
-      fmt::print("Rank {} Error at index i {} of size {}: i-1 parent_id {} progeny_id {} > "
-                 "i parent_id {} progeny_id {}\n",
-        mpi::rank, i, local_bank.size(), a.parent_id, a.progeny_id, b.parent_id, b.progeny_id);
       fatal_error("Local secondary bank is not properly ordered by parent and "
                   "progeny IDs.");
     }
   }
-  fmt::print("Rank {}: Local secondary bank ordering validated for size {}\n",
-    mpi::rank, local_bank.size());
 }
 
 // The shared secondary bank transport algorithm works in two phases. In the

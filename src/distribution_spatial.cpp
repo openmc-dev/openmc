@@ -137,16 +137,49 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     // If no coordinates were specified, default to (0, 0, 0)
     origin_ = {0.0, 0.0, 0.0};
   }
+
+  // Read cylinder z_dir
+  if (check_for_node(node, "z_dir")) {
+    auto z_dir = get_node_array<double>(node, "z_dir");
+    if (z_dir.size() == 3) {
+      z_dir_ = z_dir;
+      z_dir_ /= z_dir_.norm();
+    } else {
+      fatal_error("z_dir for cylindrical source distribution must be length 3");
+    }
+  } else {
+    // If no z_dir was specified, default to (0, 0, 1)
+    z_dir_ = {0.0, 0.0, 1.0};
+  }
+
+  // Read cylinder r_dir
+  if (check_for_node(node, "r_dir")) {
+    auto r_dir = get_node_array<double>(node, "r_dir");
+    if (r_dir.size() == 3) {
+      r_dir_ = r_dir;
+      r_dir_ /= r_dir_.norm();
+    } else {
+      fatal_error("r_dir for cylindrical source distribution must be length 3");
+    }
+  } else {
+    // If no r_dir was specified, default to (1, 0, 0)
+    r_dir_ = {1.0, 0.0, 0.0};
+  }
+
+  if (r_dir_.dot(z_dir_) > 1e-12)
+    fatal_error("r_dir must be perpendicular to z_dir");
+
+  auto phi_dir = z_dir_.cross(r_dir_);
+  phi_dir /= phi_dir.norm();
+  phi_dir_ = phi_dir;
 }
 
 Position CylindricalIndependent::sample(uint64_t* seed) const
 {
   double r = r_->sample(seed);
   double phi = phi_->sample(seed);
-  double x = r * cos(phi) + origin_.x;
-  double y = r * sin(phi) + origin_.y;
-  double z = z_->sample(seed) + origin_.z;
-  return {x, y, z};
+  double z = z_->sample(seed);
+  return r * (cos(phi) * r_dir_ + sin(phi) * phi_dir_) + z * z_dir_ + origin_;
 }
 
 //==============================================================================

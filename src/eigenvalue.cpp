@@ -192,9 +192,9 @@ void synchronize_bank()
   // TODO: protect for MPI_Exscan at rank 0
 
   // Allocate space for bank_position if this hasn't been done yet
-  int64_t bank_position[mpi::n_procs];
-  MPI_Allgather(
-    &start, 1, MPI_INT64_T, bank_position, 1, MPI_INT64_T, mpi::intracomm);
+  vector<int64_t> bank_position(mpi::n_procs);
+  MPI_Allgather(&start, 1, MPI_INT64_T, bank_position.data(), 1, MPI_INT64_T,
+    mpi::intracomm);
 #else
   start = 0;
   finish = index_temp;
@@ -285,8 +285,8 @@ void synchronize_bank()
   if (start >= bank_position[mpi::n_procs - 1]) {
     neighbor = mpi::n_procs - 1;
   } else {
-    neighbor =
-      upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
+    neighbor = upper_bound_index(
+      bank_position.begin(), bank_position.end(), start);
   }
 
   // Resize IFP receive buffers

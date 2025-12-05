@@ -225,7 +225,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Set parent and progeny IDs
-    site.parent_id = p.id();
+    site.parent_id = p.current_work();
     site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank

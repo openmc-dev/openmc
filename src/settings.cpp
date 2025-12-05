@@ -1268,9 +1268,15 @@ void read_settings_xml(pugi::xml_node root)
       get_node_value_bool(root, "use_decay_photons");
   }
 
-  // If weight windows are on, also enable shared secondary bank
+  // If weight windows are on, also enable shared secondary bank.
   if (settings::weight_windows_on) {
-    settings::use_shared_secondary_bank = true;
+    if (run_mode == RunMode::EIGENVALUE) {
+      warning(
+        "Shared secondary bank is not supported in eigenvalue calculations. "
+        "Particle local secondary banks will be used instead.");
+    } else if (run_mode == RunMode::FIXED_SOURCE) {
+      settings::use_shared_secondary_bank = true;
+    }
   }
 }
 

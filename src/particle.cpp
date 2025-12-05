@@ -89,7 +89,7 @@ bool Particle::create_secondary(
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
-  bank.parent_id = id();
+  bank.parent_id = current_work();
   bank.progeny_id = n_progeny()++;
   bank.wgt_born = wgt_born();
   bank.wgt_ww_born = wgt_ww_born();
@@ -119,7 +119,7 @@ void Particle::split(double wgt)
 
   bank.wgt_born = wgt_born();
   bank.wgt_ww_born = wgt_ww_born();
-  bank.parent_id = id();
+  bank.parent_id = current_work();
   bank.progeny_id = n_progeny()++;
   bank.current_work = current_work();
 
@@ -174,7 +174,7 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
-  current_work() = src->current_work;
+  //current_work() = src->current_work;
 }
 
 void Particle::event_calculate_xs()
@@ -511,9 +511,8 @@ void Particle::event_death()
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    int64_t offset = id() - 1 - simulation::work_index[mpi::rank];
-    simulation::progeny_per_particle[offset] = n_progeny();
+  if (settings::run_mode == RunMode::EIGENVALUE || settings::use_shared_secondary_bank) {
+    simulation::progeny_per_particle[current_work()] = n_progeny();
   }
 }
 
@@ -837,11 +836,11 @@ void Particle::write_restart() const
     int64_t i = current_work();
     if (settings::run_mode == RunMode::EIGENVALUE) {
       // take source data from primary bank for eigenvalue simulation
-      write_dataset(file_id, "weight", simulation::source_bank[i - 1].wgt);
-      write_dataset(file_id, "energy", simulation::source_bank[i - 1].E);
-      write_dataset(file_id, "xyz", simulation::source_bank[i - 1].r);
-      write_dataset(file_id, "uvw", simulation::source_bank[i - 1].u);
-      write_dataset(file_id, "time", simulation::source_bank[i - 1].time);
+      write_dataset(file_id, "weight", simulation::source_bank[i].wgt);
+      write_dataset(file_id, "energy", simulation::source_bank[i].E);
+      write_dataset(file_id, "xyz", simulation::source_bank[i].r);
+      write_dataset(file_id, "uvw", simulation::source_bank[i].u);
+      write_dataset(file_id, "time", simulation::source_bank[i].time);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
       // re-sample using rng random number seed used to generate source particle
       int64_t id = (simulation::total_gen + overall_generation() - 1) *

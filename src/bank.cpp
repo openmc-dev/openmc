@@ -70,13 +70,13 @@ void init_fission_bank(int64_t max)
   simulation::progeny_per_particle.resize(simulation::work_per_rank);
 }
 
-// Performs an O(n) sort on the fission bank, by leveraging
+// Performs an O(n) sort on a fission or secondary bank, by leveraging
 // the parent_id and progeny_id fields of banked particles. See the following
 // paper for more details:
 // "Reproducibility and Monte Carlo Eigenvalue Calculations," F.B. Brown and
 // T.M. Sutton, 1992 ANS Annual Meeting, Transactions of the American Nuclear
 // Society, Volume 65, Page 235.
-void sort_fission_bank()
+void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
 {
   // Ensure we don't read off the end of the array if we ran with 0 particles
   if (simulation::progeny_per_particle.size() == 0) {
@@ -98,50 +98,40 @@ void sort_fission_bank()
   vector<vector<double>> sorted_ifp_lifetime_bank;
 
   // If there is not enough space, allocate a temporary vector and point to it
-  if (simulation::fission_bank.size() >
-      simulation::fission_bank.capacity() / 2) {
-    sorted_bank_holder.resize(simulation::fission_bank.size());
+  if (bank.size() > bank.capacity() / 2) {
+    sorted_bank_holder.resize(bank.size());
     sorted_bank = sorted_bank_holder.data();
   } else { // otherwise, point sorted_bank to unused portion of the fission bank
-    sorted_bank = &simulation::fission_bank[simulation::fission_bank.size()];
+    sorted_bank = &bank[bank.size()];
   }
 
-  if (settings::ifp_on) {
+  if (settings::ifp_on && is_fission_bank) {
     allocate_temporary_vector_ifp(
       sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
   }
 
   // Use parent and progeny indices to sort fission bank
-  for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
-    const auto& site = simulation::fission_bank[i];
-    int64_t offset = site.parent_id - 1 - simulation::work_index[mpi::rank];
-    int64_t idx = simulation::progeny_per_particle[offset] + site.progeny_id;
-    if (idx >= simulation::fission_bank.size()) {
-      fatal_error("Mismatch detected between sum of all particle progeny and "
-                  "shared fission bank size.");
-    }
+  for (int64_t i = 0; i < bank.size(); i++) {
+    const auto& site = bank[i];
+    int64_t idx =
+      simulation::progeny_per_particle[site.parent_id] + site.progeny_id;
     sorted_bank[idx] = site;
-    if (settings::ifp_on) {
+    if (settings::ifp_on && is_fission_bank) {
       copy_ifp_data_from_fission_banks(
         i, sorted_ifp_delayed_group_bank[idx], sorted_ifp_lifetime_bank[idx]);
     }
   }
 
   // Copy sorted bank into the fission bank
-  std::copy(sorted_bank, sorted_bank + simulation::fission_bank.size(),
-    simulation::fission_bank.data());
-  if (settings::ifp_on) {
+  std::copy(sorted_bank, sorted_bank + bank.size(), bank.data());
+  if (settings::ifp_on && is_fission_bank) {
     copy_ifp_data_to_fission_banks(
       sorted_ifp_delayed_group_bank.data(), sorted_ifp_lifetime_bank.data());
   }
 }
 
-//==============================================================================
-// Synchronize and load-balance a shared secondary bank across MPI ranks
-//==============================================================================
-//
-// This function redistributes SourceSite particles across MPI ranks to achieve
-// load balancing while preserving the global ordering of particles.
+// This function redistributes SourceSite particles across MPI ranks to
+// achieve load balancing while preserving the global ordering of particles.
 //
 // GUARANTEES:
 // -----------
@@ -160,7 +150,8 @@ void sort_fission_bank()
 //
 // 2. Even Load Balancing: Particles are distributed as evenly as possible.
 //    If total % n_procs != 0, the first 'remainder' ranks each get one extra
-//    particle (i.e., floor division with remainder distributed to lower ranks).
+//    particle (i.e., floor division with remainder distributed to lower
+//    ranks). This follows the same logic as calculate_work().
 //
 // HOW IT WORKS:
 // -------------
@@ -182,37 +173,9 @@ void sort_fission_bank()
 // - Imbalanced input (e.g., one rank has all particles): Works correctly;
 //   that rank will send portions to all other ranks based on target ranges.
 // - Non-divisible totals: First 'remainder' ranks get one extra particle.
-//
-// PARAMETERS:
-// -----------
-// shared_secondary_bank: Input/output vector of SourceSite particles.
-//                        On input, contains this rank's current particles.
-//                        On output, contains this rank's redistributed share.
-//
-// RETURNS:
-// --------
-// The total number of particles across all ranks.
-//
-// SIDE EFFECTS:
-// -------------
-// - Calls calculate_work(total) to update work distribution arrays.
-// - Modifies shared_secondary_bank in place.
-//
-//==============================================================================
 int64_t synchronize_global_secondary_bank(
-  vector<SourceSite>& shared_secondary_bank)
+  SharedArray<SourceSite>& shared_secondary_bank)
 {
-  // Order the shared secondary bank by parent ID then progeny
-  // ID to ensure reproducibility.
-  std::sort(shared_secondary_bank.begin(), shared_secondary_bank.end(),
-    [](const SourceSite& a, const SourceSite& b) {
-      if (a.parent_id != b.parent_id) {
-        return a.parent_id < b.parent_id;
-      } else {
-        return a.progeny_id < b.progeny_id;
-      }
-    });
-
   // Get current size of local bank
   int64_t local_size = shared_secondary_bank.size();
 
@@ -242,7 +205,7 @@ int64_t synchronize_global_secondary_bank(
 
   // Calculate target size for each rank
   // First 'remainder' ranks get base_count + 1, rest get base_count
-  vector<int64_t> target_sizes(mpi::n_procs);
+  SharedArray<int64_t> target_sizes(mpi::n_procs);
   for (int i = 0; i < mpi::n_procs; ++i) {
     target_sizes[i] = base_count + (i < remainder ? 1 : 0);
   }
@@ -306,7 +269,7 @@ int64_t synchronize_global_secondary_bank(
   }
 
   // Prepare receive buffer with target size
-  vector<SourceSite> new_bank(target_sizes[mpi::rank]);
+  SharedArray<SourceSite> new_bank(target_sizes[mpi::rank]);
 
   // Perform all-to-all redistribution using the custom MPI type
   MPI_Alltoallv(shared_secondary_bank.data(), send_counts.data(),

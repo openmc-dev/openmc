@@ -946,7 +946,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         if ((p.type() == Type::neutron) && (p.fission())) {
           if (is_generation_time_or_both()) {
             const auto& lifetimes =
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1];
+              simulation::ifp_source_lifetime_bank[p.current_work()];
             if (lifetimes.size() == settings::ifp_n_generation) {
               score = lifetimes[0] * p.wgt_last();
             }
@@ -960,7 +960,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         if ((p.type() == Type::neutron) && (p.fission())) {
           if (is_beta_effective_or_both()) {
             const auto& delayed_groups =
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
+              simulation::ifp_source_delayed_group_bank[p.current_work()];
             if (delayed_groups.size() == settings::ifp_n_generation) {
               if (delayed_groups[0] > 0) {
                 score = p.wgt_last();
@@ -986,11 +986,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           int ifp_data_size;
           if (is_beta_effective_or_both()) {
             ifp_data_size = static_cast<int>(
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1]
+              simulation::ifp_source_delayed_group_bank[p.current_work()]
                 .size());
           } else {
             ifp_data_size = static_cast<int>(
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1]
+              simulation::ifp_source_lifetime_bank[p.current_work()]
                 .size());
           }
           if (ifp_data_size == settings::ifp_n_generation) {

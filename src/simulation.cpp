@@ -552,7 +552,7 @@ void finalize_generation()
     // If using shared memory, stable sort the fission bank (by parent IDs)
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
-    sort_fission_bank();
+    sort_bank(simulation::fission_bank, true);
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
@@ -606,7 +606,7 @@ void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
     sample_particle(p, index_source);
   }
 
-  p.current_work() = index_source;
+  p.current_work() = index_source - 1;
 
   // set identifier for particle
   if (settings::use_shared_secondary_bank) {
@@ -637,7 +637,7 @@ void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
   // set random number seed
   int64_t particle_seed;
   if (settings::use_shared_secondary_bank) {
-    particle_seed = p.id();
+    particle_seed = p.id() - 1;
   } else {
     particle_seed = (simulation::total_gen + overall_generation() - 1) *
                       settings::n_particles +
@@ -876,6 +876,25 @@ void transport_history_based()
   }
 }
 
+void debug_validate_local_bank_ordering(
+  const SharedArray<SourceSite>& local_bank)
+{
+  for (int64_t i = 1; i < local_bank.size(); i++) {
+    const SourceSite& a = local_bank[i - 1];
+    const SourceSite& b = local_bank[i];
+    if (a.parent_id > b.parent_id ||
+        (a.parent_id == b.parent_id && a.progeny_id > b.progeny_id)) {
+      fmt::print("Rank {} Error at index i {} of size {}: i-1 parent_id {} progeny_id {} > "
+                 "i parent_id {} progeny_id {}\n",
+        mpi::rank, i, local_bank.size(), a.parent_id, a.progeny_id, b.parent_id, b.progeny_id);
+      fatal_error("Local secondary bank is not properly ordered by parent and "
+                  "progeny IDs.");
+    }
+  }
+  fmt::print("Rank {}: Local secondary bank ordering validated for size {}\n",
+    mpi::rank, local_bank.size());
+}
+
 // The shared secondary bank transport algorithm works in two phases. In the
 // first phase, all primary particles are sampled then transported, and their
 // secondary particles are deposited into a shared secondary bank. The second
@@ -886,23 +905,22 @@ void transport_history_based()
 // continues until there are no more secondary particles left to transport.
 void transport_history_based_shared_secondary()
 {
-  // Recalculate work as this is updated in each secondary generation
-  calculate_work(settings::n_particles);
-
   // Shared secondary banks for reading and writing
-  std::vector<SourceSite> shared_secondary_bank_read;
-  std::vector<SourceSite> shared_secondary_bank_write;
+  SharedArray<SourceSite> shared_secondary_bank_read;
+  SharedArray<SourceSite> shared_secondary_bank_write;
 
   if (mpi::master) {
     write_message(fmt::format(" Primogenitor            particles: {}",
-                    simulation::work_per_rank),
+                    settings::n_particles),
       6);
   }
+
+  simulation::progeny_per_particle.resize(simulation::work_per_rank);
 
   // Phase 1: Transport primary particles and deposit first generation of
   // secondaries in the shared secondary bank
 #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < simulation::work_per_rank; i++) {
+  for (int64_t i = 1; i <= simulation::work_per_rank; i++) {
     Particle p;
     initialize_history(p, i, false);
     transport_history_based_single_particle(p);
@@ -911,7 +929,7 @@ void transport_history_based_shared_secondary()
 #pragma omp critical(shared_secondary_bank)
     {
       for (auto& site : p.local_secondary_bank()) {
-        shared_secondary_bank_write.push_back(site);
+        shared_secondary_bank_write.thread_unsafe_append(site);
       }
     }
   }
@@ -923,6 +941,26 @@ void transport_history_based_shared_secondary()
   int n_generation_depth = 1;
   int64_t alive_secondary = 1;
   while (alive_secondary) {
+
+    // Naive serial O(nlogn) sort of the shared secondary bank:
+    // Order the shared secondary bank by parent ID then progeny
+    // ID to ensure reproducibility.
+    /*
+    std::sort(shared_secondary_bank_write.begin(),
+      shared_secondary_bank_write.end(),
+      [](const SourceSite& a, const SourceSite& b) {
+        if (a.parent_id != b.parent_id) {
+          return a.parent_id < b.parent_id;
+        } else {
+          return a.progeny_id < b.progeny_id;
+        }
+      });
+    */
+    sort_bank(shared_secondary_bank_write, false);
+
+    // Debugging: Validate that the bank is sorted:
+    debug_validate_local_bank_ordering(shared_secondary_bank_write);
+
     // Synchronize the shared secondary bank amongst all MPI ranks, such
     // that each MPI rank has an approximately equal number of secondary
     // particles. Also reports the total number of secondaries alive across
@@ -945,14 +983,15 @@ void transport_history_based_shared_secondary()
     }
 
     shared_secondary_bank_read = std::move(shared_secondary_bank_write);
-    shared_secondary_bank_write = std::vector<SourceSite>();
+    shared_secondary_bank_write = SharedArray<SourceSite>();
+    simulation::progeny_per_particle.resize(shared_secondary_bank_read.size());
 
     // Transport all secondary particles from the shared secondary bank
 #pragma omp parallel for schedule(runtime)
-    for (int64_t i = 0; i < shared_secondary_bank_read.size(); i++) {
+    for (int64_t i = 1; i <= shared_secondary_bank_read.size(); i++) {
       Particle p;
       initialize_history(p, i, true);
-      SourceSite& site = shared_secondary_bank_read[i];
+      SourceSite& site = shared_secondary_bank_read[i-1];
       p.event_revive_from_secondary(site);
       if (p.alive()) {
         transport_history_based_single_particle(p);
@@ -960,13 +999,16 @@ void transport_history_based_shared_secondary()
 #pragma omp critical(shared_secondary_bank)
       {
         for (auto& site : p.local_secondary_bank()) {
-          shared_secondary_bank_write.push_back(site);
+          shared_secondary_bank_write.thread_unsafe_append(site);
         }
       }
     } // End of transport loop over particles in shared secondary bank
     n_generation_depth++;
     simulation::simulation_particles_completed += alive_secondary;
   } // End of loop over secondary generations
+  
+  // Reset work so that fission bank etc works correctly
+  calculate_work(settings::n_particles);
 }
 
 void transport_event_based()

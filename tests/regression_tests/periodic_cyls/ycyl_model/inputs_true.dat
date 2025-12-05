@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="2" depletable="true">
+      <density value="19.1" units="g/cc"/>
+      <nuclide name="U235" ao="0.2"/>
+      <nuclide name="U238" ao="0.8"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="2" region="6 -7 -8 9 10" universe="2"/>
+    <surface id="6" type="y-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="7" type="y-plane" boundary="reflective" coeffs="20.0"/>
+    <surface id="8" type="y-cylinder" boundary="vacuum" coeffs="0.0 0.0 20.0"/>
+    <surface id="9" type="x-plane" boundary="periodic" coeffs="0" periodic_surface_id="10"/>
+    <surface id="10" type="plane" boundary="periodic" coeffs="-0.5773502691896257 0.0 1 0.0" periodic_surface_id="9"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>4</batches>
+    <inactive>0</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>0 0 0 20 20 20</parameters>
+      </space>
+    </source>
+  </settings>
+  </model>

@@ -296,6 +296,98 @@ bool exhaustive_find_cell(GeometryState& p, bool verbose)
   return find_cell_inner(p, nullptr, verbose);
 }
 
+bool find_cell_in_virtual_lattice(GeometryState& p, bool verbose)
+{
+  int i_surface = std::abs(p.surface());
+  if (p.surface() > 0) {
+    for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
+      p.coord(i).reset();
+    }
+    p.coord(p.n_coord() - 1).cell() =
+      model::cell_map[model::surfaces[i_surface - 1]->triso_base_index_];
+  } else if (p.surface() < 0) {
+    for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
+      p.coord(i).reset();
+    }
+    if (model::surfaces[i_surface - 1]->triso_particle_index_ == -1) {
+      fatal_error(fmt::format("Particle cell of surface {} is not defined",
+        model::surfaces[i_surface - 1]->id_));
+    }
+    p.lowest_coord().cell() =
+      model::cell_map[model::surfaces[i_surface - 1]->triso_particle_index_];
+  }
+
+  // find material
+  bool found = true;
+  int i_cell = p.lowest_coord().cell();
+  for (;; ++p.n_coord()) {
+    if (i_cell == C_NONE) {
+      int i_universe = p.lowest_coord().universe();
+      const auto& univ {model::universes[i_universe]};
+
+      if (univ->filled_with_triso_base_ != -1) {
+        p.lowest_coord().cell() =
+          model::cell_map[univ->filled_with_triso_base_];
+        found = true;
+      } else {
+        found = univ->find_cell(p);
+      }
+      if (!found) {
+        return found;
+      }
+    }
+
+    i_cell = p.lowest_coord().cell();
+
+    Cell& c {*model::cells[i_cell]};
+    if (c.type_ == Fill::MATERIAL) {
+      // Found a material cell which means this is the lowest coord level.
+
+      p.cell_instance() = 0;
+      // Find the distribcell instance number.
+      if (c.distribcell_index_ >= 0) {
+        p.cell_instance() = cell_instance_at_level(p, p.n_coord() - 1);
+      }
+
+      // Set the material and temperature.
+      p.material_last() = p.material();
+      if (c.material_.size() > 1) {
+        p.material() = c.material_[p.cell_instance()];
+      } else {
+        p.material() = c.material_[0];
+      }
+      p.sqrtkT_last() = p.sqrtkT();
+      if (c.sqrtkT_.size() > 1) {
+        p.sqrtkT() = c.sqrtkT_[p.cell_instance()];
+      } else {
+        p.sqrtkT() = c.sqrtkT_[0];
+      }
+      return found;
+
+    } else if (c.type_ == Fill::UNIVERSE) {
+      //========================================================================
+      //! Found a lower universe, update this coord level then search the
+      //! next.
+
+      // Set the lower coordinate level universe.
+      auto& coor {p.coord(p.n_coord())};
+      coor.universe() = c.fill_;
+
+      // Set the position and direction.
+      coor.r() = p.r_local();
+      coor.u() = p.u_local();
+
+      // Apply translation.
+      coor.r() -= c.translation_;
+
+      // Apply rotation.
+      if (!c.rotation_.empty()) {
+        coor.rotate(c.rotation_);
+      }
+      i_cell = C_NONE;
+    }
+  }
+}
 //==============================================================================
 
 void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)

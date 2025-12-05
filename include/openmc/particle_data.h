@@ -517,6 +517,7 @@ private:
   int event_mt_;
   int delayed_group_ {0};
   int parent_nuclide_ {-1};
+  Direction v_t_;
 
   int n_bank_ {0};
   double bank_second_E_ {0.0};
@@ -654,6 +655,8 @@ public:
   const int& delayed_group() const { return delayed_group_; }
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
+  Position& v_t() { return v_t_; } // target velocity
+  const Position& v_t() const { return v_t_; }
 
   // Post-collision data
   double& bank_second_E()

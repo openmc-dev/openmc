@@ -83,7 +83,7 @@ def pwr_pin_cell() -> openmc.Model:
         constraints={'fissionable': True}
     )
 
-    plot = openmc.Plot.from_geometry(model.geometry)
+    plot = openmc.SlicePlot.from_geometry(model.geometry)
     plot.pixels = (300, 300)
     plot.color_by = 'material'
     model.plots.append(plot)
@@ -429,7 +429,7 @@ def pwr_core() -> openmc.Model:
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-160, -160, -183], [160, 160, 183]))
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     plot.origin = (125, 125, 0)
     plot.width = (250, 250)
     plot.pixels = (3000, 3000)
@@ -544,7 +544,7 @@ def pwr_assembly() -> openmc.Model:
         constraints={'fissionable': True}
     )
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     plot.origin = (0.0, 0.0, 0)
     plot.width = (21.42, 21.42)
     plot.pixels = (300, 300)

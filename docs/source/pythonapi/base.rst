@@ -179,7 +179,8 @@ Geometry Plotting
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Plot
+   openmc.SlicePlot
+   openmc.VoxelPlot
    openmc.WireframeRayTracePlot
    openmc.SolidRayTracePlot
    openmc.Plots

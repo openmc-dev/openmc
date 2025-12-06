@@ -25,9 +25,10 @@ class Tally {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors, factory functions
+  Tally(); //<-Empty constructor
   explicit Tally(int32_t id);
   explicit Tally(pugi::xml_node node);
-  ~Tally();
+  virtual ~Tally();
   static Tally* create(int32_t id = -1);
 
   //----------------------------------------------------------------------------
@@ -93,7 +94,7 @@ public:
   //! \brief Check if this tally has a specified type of filter
   bool has_filter(FilterType filter_type) const;
 
-  void set_filters(span<Filter*> filters);
+  virtual void set_filters(span<Filter*> filters);
 
   //! Given already-set filters, set the stride lengths
   void set_strides();
@@ -111,15 +112,15 @@ public:
   //----------------------------------------------------------------------------
   // Other methods.
 
-  void add_filter(Filter* filter);
+  virtual void add_filter(Filter* filter) { set_filters({&filter, 1}); }
 
   void init_triggers(pugi::xml_node node);
 
-  void init_results();
+  virtual void init_results();
 
-  void reset();
+  virtual void reset();
 
-  void accumulate();
+  virtual void accumulate();
 
   //! return the index of a score specified by name
   int score_index(const std::string& score) const;
@@ -177,6 +178,39 @@ public:
   vector<Trigger> triggers_;
 
   int deriv_ {C_NONE}; //!< Index of a TallyDerivative object for diff tallies.
+  
+  int sens_ {C_NONE}; //!< Index of a Sensitivity object for sensitivity tallies.
+  
+  void clearFiltersStrides()
+  {
+    filters_.clear();
+    strides_.clear();
+    }
+    
+  void reserveFilters(int nfilter)
+  {
+    filters_.reserve(nfilter);
+  }
+    
+  void resize_strides(int newSize)
+  {
+    strides_.resize(newSize, 0);
+  }
+
+  void set_n_filter_bins(int32_t newValue) { n_filter_bins_ = newValue; }
+    
+  void set_index(int32_t newValue) { index_ = newValue; }
+  
+  void setStrides(int indx, int32_t value) {
+    strides_[indx] = value;
+  }
+  
+  int updateStrides(int indx, int stride) {
+    stride *= model::tally_filters[filters_[indx]]->n_bins();
+    return stride;
+  }
+  
+  void addFilter(int32_t filtr) {filters_.push_back(filtr); }
 
 private:
   //----------------------------------------------------------------------------

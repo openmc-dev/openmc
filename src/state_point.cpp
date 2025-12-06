@@ -25,6 +25,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
+#include "openmc/tallies/sensitivity.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/tally.h"
@@ -150,6 +151,35 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       close_group(derivs_group);
     }
 
+    // Write information for sensitivities
+    if (!model::tally_sens.empty()) {
+      hid_t senss_group = create_group(tallies_group, "sensitivities");
+      for (const auto& sens : model::tally_sens) {
+        hid_t sens_group = create_group(senss_group,
+          "sensitivity " + std::to_string(sens.id));
+        if (sens.variable == SensitivityVariable::CROSS_SECTION) {
+          write_dataset(sens_group, "independent variable", "cross_section");
+          write_dataset(sens_group, "nuclide",
+            data::nuclides[sens.sens_nuclide]->name_);
+          write_dataset(sens_group, "reaction",
+            reaction_name(sens.sens_reaction));
+        } else if (sens.variable == SensitivityVariable::MULTIPOLE) {
+          write_dataset(sens_group, "independent variable", "multipole");
+          write_dataset(sens_group, "nuclide",
+            data::nuclides[sens.sens_nuclide]->name_);
+        } else if (sens.variable == SensitivityVariable::CURVE_FIT) {
+          write_dataset(sens_group, "independent variable", "curve_fit");
+          write_dataset(sens_group, "nuclide",
+            data::nuclides[sens.sens_nuclide]->name_);
+        } else {
+          fatal_error("Independent variable for sensitivity "
+            + std::to_string(sens.id) + " not defined in state_point.cpp");
+        }
+        close_group(sens_group);
+      }
+      close_group(senss_group);
+    }
+    
     // Write information for filters
     hid_t filters_group = create_group(tallies_group, "filters");
     write_attribute(filters_group, "n_filters", model::tally_filters.size());
@@ -247,6 +277,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           write_dataset(
             tally_group, "derivative", model::tally_derivs[tally->deriv_].id);
 
+        if (tally->sens_ != C_NONE) write_dataset(tally_group, "sensitivity",
+          model::tally_sens[tally->sens_].id);
+        
         // Write the tally score bins
         vector<std::string> scores;
         for (auto sc : tally->scores_)

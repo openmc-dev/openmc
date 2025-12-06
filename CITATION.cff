@@ -1,9 +1,43 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: OpenMC
+authors:
+- family-names: Romano
+  given-names: Paul K.
+  orcid: "https://orcid.org/0000-0002-1147-045X"
+- family-names: Shriwise
+  given-names: Patrick C.
+  orcid: "https://orcid.org/0000-0002-3979-7665"
+- family-names: Shimwell
+  given-names: Jonathan
+  orcid: "https://orcid.org/0000-0001-6909-0946"
+- family-names: Harper
+  given-names: Sterling
+- family-names: Boyd
+  given-names: Will
+- family-names: Nelson
+  given-names: Adam G.
+  orcid: "https://orcid.org/0000-0002-3614-0676"
+- family-names: Tramm
+  given-names: John R.
+  orcid: "https://orcid.org/0000-0002-5397-4402"
+- family-names: Ridley
+  given-names: Gavin
+  orcid: "https://orcid.org/0000-0003-1635-8042"
+- family-names: Johnson
+  given-names: Andrew
+  orcid: "https://orcid.org/0000-0003-2125-8775"
+- family-names: Peterson
+  given-names: Ethan E.
+  orcid: "https://orcid.org/0000-0002-5694-7194"
+- family-names: Herman
+  given-names: Bryan R.
 preferred-citation:
   authors:
   - family-names: Romano
     given-names: Paul K.
     orcid: "https://orcid.org/0000-0002-1147-045X"
-  - final-names: Horelik
+  - family-names: Horelik
     given-names: Nicholas E.
   - family-names: Herman
     given-names: Bryan R.

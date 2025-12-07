@@ -545,6 +545,20 @@ void read_settings_xml(pugi::xml_node root)
     } else if (rel_max_lost_particles <= 0.0 || rel_max_lost_particles >= 1.0) {
       fatal_error("Relative max lost particles must be between zero and one.");
     }
+
+    // Check for user value for the number of generation of the Iterated Fission
+    // Probability (IFP) method
+    if (check_for_node(root, "ifp_n_generation")) {
+      ifp_n_generation = std::stoi(get_node_value(root, "ifp_n_generation"));
+      if (ifp_n_generation <= 0) {
+        fatal_error("'ifp_n_generation' must be greater than 0.");
+      }
+      // Avoid tallying 0 if IFP logs are not complete when active cycles start
+      if (ifp_n_generation > n_inactive) {
+        fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                    "number of inactive cycles.");
+      }
+    }
   }
 
   // Copy plotting random number seed if specified
@@ -1128,20 +1142,6 @@ void read_settings_xml(pugi::xml_node root)
     auto range = get_node_array<double>(root, "temperature_range");
     temperature_range[0] = range.at(0);
     temperature_range[1] = range.at(1);
-  }
-
-  // Check for user value for the number of generation of the Iterated Fission
-  // Probability (IFP) method
-  if (check_for_node(root, "ifp_n_generation")) {
-    ifp_n_generation = std::stoi(get_node_value(root, "ifp_n_generation"));
-    if (ifp_n_generation <= 0) {
-      fatal_error("'ifp_n_generation' must be greater than 0.");
-    }
-    // Avoid tallying 0 if IFP logs are not complete when active cycles start
-    if (ifp_n_generation > n_inactive) {
-      fatal_error("'ifp_n_generation' must be lower than or equal to the "
-                  "number of inactive cycles.");
-    }
   }
 
   // Check for tabular_legendre options

@@ -9,7 +9,7 @@ authors = [
 ]
 description = "OpenMC"
 dynamic = ["version"]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {file = "LICENSE"}
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -21,9 +21,9 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "numpy",

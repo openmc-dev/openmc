@@ -32,6 +32,24 @@ enum class IFPParameter {
   GenerationTime,
 };
 
+struct CollisionTrackConfig {
+  bool mcpl_write {false}; //!< Write collision tracks using MCPL?
+  std::unordered_set<int>
+    cell_ids; //!< Cell ids where collisions will be written
+  std::unordered_set<int>
+    mt_numbers; //!< MT Numbers where collisions will be written
+  std::unordered_set<int>
+    universe_ids; //!< Universe IDs where collisions will be written
+  std::unordered_set<int>
+    material_ids; //!< Material IDs where collisions will be written
+  std::unordered_set<std::string>
+    nuclides; //!< Nuclides where collisions will be written
+  double deposited_energy_threshold {0.0}; //!< Minimum deposited energy [eV]
+  int64_t max_collisions {
+    1000};               //!< Maximum events recorded per collision track file
+  int64_t max_files {1}; //!< Maximum number of collision track files
+};
+
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -41,6 +59,7 @@ namespace settings {
 // Boolean flags
 extern bool assume_separate;      //!< assume tallies are spatially separate?
 extern bool check_overlaps;       //!< check overlaps in geometry?
+extern bool collision_track;      //!< flag to use collision track feature?
 extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
   create_fission_neutrons; //!< create fission neutrons (fixed source)?
@@ -145,8 +164,11 @@ extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
+extern CollisionTrackConfig collision_track_config;
 extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
+extern double free_gas_threshold;        //!< Threshold multiplier for free gas
+                                         //!< scattering treatment
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows

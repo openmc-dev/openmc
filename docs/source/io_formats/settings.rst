@@ -20,6 +20,85 @@ source neutrons.
 
   *Default*: None
 
+-----------------------------
+``<collision_track>`` Element
+-----------------------------
+
+The ``<collision_track>`` element indicates to track information about particle
+collisions based on a set of criteria and store these events in a file named
+``collision_track.h5``. This file records details such as the position of the
+interaction, direction of the incoming particle, incident energy and deposited
+energy, weight, time of the interaction, and the delayed neutron group (0 for
+prompt neutrons). Additional information such as the cell ID, material ID,
+universe ID, nuclide ZAID, particle type, and event MT number are also stored.
+Users can specify one or more criterion to filter collisions. If no criteria are
+specified, it defaults to tracking all collisions across the model.
+
+.. warning::
+    Storing all collisions can be very memory intensive. For more targeted
+    tracking, users can employ a variety of parameters such as ``cell_ids``,
+    ``reactions``, ``universe_ids``, ``material_ids``, ``nuclides``, and
+    ``deposited_E_threshold`` to refine the selection of particle interactions
+    to be banked.
+
+This element can contain one or more of the following attributes or
+sub-elements:
+
+  :max_collisions:
+    An integer indicating the maximum number of collisions to be banked per file.
+
+    *Default*: 1000
+
+  :max_collision_track_files:
+    An integer indicating the number of collision_track files to be used.
+
+    *Default*: 1
+
+  :mcpl:
+    An optional boolean to enable MCPL_-format instead of the native HDF5-based
+    format. If activated, the output file name and type is changed to
+    ``collision_track.mcpl``.
+
+    *Default*: false
+
+    .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
+
+  :cell_ids:
+    A list of integers representing cell IDs to define specific cells in which
+    collisions are to be banked.
+
+    *Default*: None
+
+  :universe_ids:
+    A list of integers representing the universe IDs to define specific
+    universes in which collisions are to be banked.
+
+    *Default*: None
+
+  :material_ids:
+    A list of integers representing the material IDs to define specific
+    materials in which collisions are to be banked.
+
+    *Default*: None
+
+  :nuclides:
+    A list of strings representing the nuclide, to define specific
+    define specific target nuclide collisions to be banked.
+
+    *Default*: None
+
+  :reactions:
+    A list of integers representing the ENDF-6 format MT numbers or strings
+    (e.g. (n,fission)) to define specific reaction types to be banked.
+
+    *Default*: None
+
+  :deposited_E_threshold:
+    A float defining the minimum deposited energy per collision (in eV) to
+    trigger banking.
+
+    *Default*: 0.0
+
 ----------------------------------
 ``<confidence_intervals>`` Element
 ----------------------------------
@@ -177,6 +256,16 @@ Determines whether to use event-based parallelism instead of the default
 history-based parallelism.
 
   *Default*: false
+
+--------------------------------
+``<free_gas_threshold>`` Element
+--------------------------------
+
+The ``<free_gas_threshold>`` element specifies the energy multiplier, expressed
+in units of :math:`kT`, that determines when the free gas scattering approach is
+used for elastic scattering. Values must be positive.
+
+  *Default*: 400.0
 
 -----------------------------------
 ``<generations_per_batch>`` Element

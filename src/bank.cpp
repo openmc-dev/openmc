@@ -20,6 +20,8 @@ vector<SourceSite> source_bank;
 
 SharedArray<SourceSite> surf_source_bank;
 
+SharedArray<CollisionTrackSite> collision_track_bank;
+
 // The fission bank is allocated as a SharedArray, rather than a vector, as it
 // will be shared by all threads in the simulation. It will be allocated to a
 // fixed maximum capacity in the init_fission_bank() function. Then, Elements
@@ -50,6 +52,7 @@ void free_memory_bank()
 {
   simulation::source_bank.clear();
   simulation::surf_source_bank.clear();
+  simulation::collision_track_bank.clear();
   simulation::fission_bank.clear();
   simulation::progeny_per_particle.clear();
   simulation::ifp_source_delayed_group_bank.clear();

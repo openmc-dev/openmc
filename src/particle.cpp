@@ -8,6 +8,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
@@ -121,6 +122,9 @@ void Particle::from_source(const SourceSite* src)
   fission() = false;
   zero_flux_derivs();
   lifetime() = 0.0;
+#ifdef OPENMC_DAGMC_ENABLED
+  history().reset();
+#endif
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -232,7 +236,7 @@ void Particle::event_advance()
 
   // Sample a distance to collision
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
-    collision_distance() = 0.0;
+    collision_distance() = material() == MATERIAL_VOID ? INFINITY : 0.0;
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;
   } else {
@@ -346,6 +350,11 @@ void Particle::event_collide()
     collision(*this);
   } else {
     collision_mg(*this);
+  }
+
+  // Collision track feature to recording particle interaction
+  if (settings::collision_track) {
+    collision_track_record(*this);
   }
 
   // Score collision estimator tallies -- this is done after a collision
@@ -855,10 +864,12 @@ void Particle::update_neutron_xs(
 
   // If the cache doesn't match, recalculate micro xs
   if (this->E() != micro.last_E || this->sqrtkT() != micro.last_sqrtkT ||
-      i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
+      i_sab != micro.index_sab || sab_frac != micro.sab_frac ||
+      ncrystal_xs != micro.ncrystal_xs) {
     data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, *this);
 
     // If NCrystal is being used, update micro cross section cache
+    micro.ncrystal_xs = ncrystal_xs;
     if (ncrystal_xs >= 0.0) {
       data::nuclides[i_nuclide]->calculate_elastic_xs(*this);
       ncrystal_update_micro(ncrystal_xs, micro);

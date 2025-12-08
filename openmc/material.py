@@ -2,6 +2,7 @@ from __future__ import annotations
 from collections import defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
+from functools import reduce
 from numbers import Real
 from pathlib import Path
 import re
@@ -22,8 +23,10 @@ from .mixin import IDManagerMixin
 from .utility_funcs import input_path
 from . import waste
 from openmc.checkvalue import PathLike
+from openmc.data.function import Tabulated1D, Combination
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol
+
 
 
 # Units for density supported by OpenMC
@@ -1483,22 +1486,45 @@ class Material(IDManagerMixin):
                     for (e,p) in zip(e_vals, p_vals):
 
                         # missing the air part
-                        cdr_nuc += multiplier *  atoms_per_bcm * p * e / self.get_photon_mass_attenuation(e)
+                        cdr_nuc += p * e / self.get_photon_mass_attenuation(e)
 
                 elif isinstance(photon_source_per_atom, Tabular):
-                    for i in range(len(p_vals)):
 
-                        e_low = 0.0 if i == 0 else e_vals[i - 1]
-                        e_high = e_vals[i]
-                        de = e_high - e_low
+                    e_p_vals = np.array(e_vals*p_vals, dtype=float)
 
-                        mass_attenuation_dist = self.get_photon_mass_attenuation([e_low, e_high])
+                    e_p_dist = Tabulated1D( e_vals, e_p_vals, breakpoints=None, interpolation=[2])
 
-                        # air_mass_absoprtion_dist = xxx
+                    # dummy function to scaffold the function
+                    e_vals_dummy = np.logspace(1.2e3, 18e6, num=87)
+                    e_vals_dummy_2 = np.logspace(1.3e4, 15e6, num=99)
 
-                        # combine air mass energy-absorption material attenuation and energy
 
-                        cdr_nuc += multiplier *  atoms_per_bcm * p * de
+                    att_dist_dummy_num = Tabulated1D( e_vals_dummy, np.ones_like(e_vals_dummy), breakpoints=None,
+                                                 interpolation=[2])
+
+
+                    att_dist_dummy_den = Tabulated1D( e_vals_dummy_2, np.ones_like(e_vals_dummy), breakpoints=None,
+                                                 interpolation=[2])
+
+                    # abscissae union
+
+                    x_union = reduce(np.union1d, [e_vals, e_vals_dummy, e_vals_dummy_2])
+
+                    integrand_operator = Combination(functions=[att_dist_dummy_num,
+                                                       e_p_dist,
+                                                       att_dist_dummy_den],
+                                                operations=[np.multiply, np.divide])
+
+                    y_evaluated = integrand_operator(x_union)
+
+                    integrand_function = Tabulated1D( x_union, y_evaluated, breakpoints=None,
+                                                     interpolation=[2])
+
+                    
+
+                    cdr_nuc += integrand_function.integral()[-1]
+
+
                 else:
                     raise ValueError(f"Unknown decay photon energy data type for nuclide {nuc}"
                                      f"value returned: {type(photon_source_per_atom)}")
@@ -1511,6 +1537,8 @@ class Material(IDManagerMixin):
                     continue 
                     # tabular treatmnet?
 
+
+            cdr_nuc *= multiplier * 1e24 * atoms_per_bcm
 
             cdr[nuc] = cdr_nuc
 

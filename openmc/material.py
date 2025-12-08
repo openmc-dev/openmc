@@ -369,6 +369,112 @@ class Material(IDManagerMixin):
 
         return combined
 
+
+    def get_decay_photon_dose(
+        self,
+        n_samples: int = 10000,
+        distance: float | None = None
+    ) -> float:
+        """Return an approximation of decay photon dose rate from unstable nuclides.
+
+        Assumes a point source in a vacuum with no attenuation.
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        n_samples : int, optional
+            Number of energy samples to use for Monte Carlo integration.
+            For Discrete distributions, exact calculation is used instead of
+            sampling. Defaults to 10000.
+        distance : float, optional
+            Distance from the source in cm at which to calculate dose rate.
+            If not specified, the dose is calculated at the surface of an
+            equivalent sphere based on the material's volume.
+
+        Returns
+        -------
+        float
+            Dose rate in pSv/s at the specified distance or at the surface
+            of an equivalent sphere
+
+        """
+        cv.check_type('n_samples', n_samples, int)
+        cv.check_greater_than('n_samples', n_samples, 0)
+        if distance is not None:
+            cv.check_type('distance', distance, Real)
+            cv.check_greater_than('distance', distance, 0.0)
+
+        # Get the decay photon energy distribution
+        dist = self.get_decay_photon_energy(units='Bq')
+
+        # If no photon sources, return zero dose
+        if dist is None:
+            return 0.0
+
+        # Get dose coefficients for isotropic geometry
+        energy_bins, dose_coeffs = openmc.data.dose_coefficients(
+            particle="photon",
+            geometry="AP"
+        )
+
+        # For pure Discrete distributions, compute mean dose coefficient exactly
+        # without sampling to improve performance
+        if isinstance(dist, Discrete):
+            # Check if maximum energy exceeds the dose coefficient range
+            max_energy = np.max(dist.x)
+            if max_energy > energy_bins[-1]:
+                raise ValueError(
+                    f"Maximum photon energy {max_energy:.2e} eV exceeds "
+                    f"dose coefficient upper limit of {energy_bins[-1]:.2e} eV"
+                )
+
+            # Interpolate dose coefficients at discrete energy points
+            interpolated_coeffs = np.interp(dist.x, energy_bins, dose_coeffs)
+
+            # Calculate weighted mean dose coefficient
+            mean_dose_coeff = np.sum(interpolated_coeffs * dist.p) / dist.integral()
+
+        else:
+            # For other distributions (Mixture, etc.), use Monte Carlo sampling
+            # Sample energies from the distribution with fixed seed for reproducibility
+            energies = dist.sample(n_samples=n_samples, seed=1)
+
+            # Check if maximum sampled energy exceeds the dose coefficient range
+            max_energy = np.max(energies)
+            if max_energy > energy_bins[-1]:
+                raise ValueError(
+                    f"Maximum sampled photon energy {max_energy:.2e} eV exceeds "
+                    f"dose coefficient upper limit of {energy_bins[-1]:.2e} eV"
+                )
+
+            # Interpolate dose coefficients at sampled energies
+            # dose_coeffs are in pSv·cm²
+            interpolated_coeffs = np.interp(energies, energy_bins, dose_coeffs)
+
+            # Calculate mean dose coefficient
+            mean_dose_coeff = np.mean(interpolated_coeffs)
+
+        # Total activity in Bq (photons/s)
+        total_activity = dist.integral()
+
+        # If distance not specified, use surface of equivalent sphere
+        if distance is None:
+            if self.volume is None:
+                raise ValueError(
+                    "Either distance must be specified or material volume "
+                    "must be set to calculate dose rate."
+                )
+            # Calculate radius of equivalent sphere: V = (4/3)πr³
+            # r = (3V/4π)^(1/3)
+            distance = (3.0 * self.volume / (4.0 * np.pi)) ** (1.0 / 3.0)
+        # Dose rate at specified distance in pSv/s
+        # dose_rate = (coeff * activity) / (4π·r²)
+        dose_rate_pSv_per_s = mean_dose_coeff * total_activity / (4 * np.pi * distance**2)
+
+        return dose_rate_pSv_per_s
+
+
     @classmethod
     def from_hdf5(cls, group: h5py.Group) -> Material:
         """Create material from HDF5 group

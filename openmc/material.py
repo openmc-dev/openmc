@@ -72,6 +72,14 @@ class Material(IDManagerMixin):
         Volume of the material in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Material.add_volume_information` method.
+    components : dict of str to float or dict
+        Dictionary mapping element or nuclide names to their atom or weight
+        percent. To specify enrichment of an element, the entry of
+        ``components`` for that element must instead be a dictionary containing
+        the keyword arguments as well as a value for ``'percent'``
+    percent_type : {'ao', 'wo'}
+        Whether the values in `components` should be interpreted as atom percent
+        ('ao') or weight percent ('wo').
 
     Attributes
     ----------

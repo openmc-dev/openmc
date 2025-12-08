@@ -71,10 +71,14 @@ pytest tests/unit_tests/           # Fast unit tests
 pytest tests/regression_tests/     # Full regression suite (requires nuclear data)
 ```
 
-### Nuclear Data Setup (CRITICAL for Testing)
+### Nuclear Data Setup (CRITICAL for Running OpenMC)
 Most tests require the NNDC HDF5 nuclear cross-section library.
 
-**Important**: Check if `OPENMC_CROSS_SECTIONS` is already set in the user's environment before downloading, as many users already have nuclear data installed.
+**Important**: Check if `OPENMC_CROSS_SECTIONS` is already set in the user's
+environment before downloading, as many users already have nuclear data
+installed. Though do note that if this variable is present that it may point to
+different cross section data and that the NNDC data is required for tests to
+pass.
 
 **If not already configured, download and setup:**
 ```bash
@@ -90,11 +94,114 @@ export OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml
 bash tools/ci/download-xs.sh  # Downloads both NNDC HDF5 and ENDF/B-VII.1 data
 ```
 
-Without this data, regression tests will fail with "No cross_sections.xml file found" errors. The `cross_sections.xml` file is an index listing paths to individual HDF5 nuclear data files for each nuclide.
+Without this data, regression tests will fail with "No cross_sections.xml file
+found" errors, or, in the case that alternative cross section data is configured
+the tests will execute but will not pass. The `cross_sections.xml` file is an
+index listing paths to individual HDF5 nuclear data files for each nuclide.
+
+## Testing Expectations
+
+### Environment Requirements
+
+  - **Data**: As described above, OpenMC's test suite requires OpenMC to be configured with NNDC data.
+  - **OpenMP Settings**: OpenMC's tests may fail is more than two OpenMP threads are used. The environment variable `OMP_NUM_THREADS=2` should be set to avoid sporadic test failures.
+  - **Executable configuration**: The OpenMC executable should compiled with debug symbols enabled.
+
+### C++ Tests
+Located in `tests/cpp_unit_tests/`, use Catch2 framework. Run via `ctest` after building with `-DOPENMC_BUILD_TESTS=ON`.
+
+### Python Unit Tests
+Located in `tests/unit_tests/`, these are fast, standalone tests that verify Python API functionality without running full simulations. Use standard pytest patterns:
+
+**Categories**:
+- **API validation**: Test object creation, property setters/getters, XML serialization (e.g., `test_material.py`, `test_cell.py`, `test_source.py`)
+- **Data processing**: Test nuclear data handling, cross sections, depletion chains (e.g., `test_data_neutron.py`, `test_deplete_chain.py`)
+- **Library bindings**: Test `openmc.lib` ctypes interface with `model.init_lib()`/`model.finalize_lib()` (e.g., `test_lib.py`)
+- **Geometry operations**: Test bounding boxes, containment, lattice generation (e.g., `test_bounding_box.py`, `test_lattice.py`)
+
+**Common patterns**:
+- Use fixtures from `tests/unit_tests/conftest.py` (e.g., `uo2`, `water`, `sphere_model`)
+- Test invalid inputs with `pytest.raises(ValueError)` or `pytest.raises(TypeError)`
+- Use `run_in_tmpdir` fixture for tests that create files
+- Tests with `openmc.lib` require calling `model.init_lib()` in try/finally with `model.finalize_lib()`
+
+**Example**:
+```python
+def test_material_properties():
+    m = openmc.Material()
+    m.add_nuclide('U235', 1.0)
+    assert 'U235' in m.nuclides
+
+    with pytest.raises(TypeError):
+        m.add_nuclide('H1', '1.0')  # Invalid type
+```
+
+Unit tests should be fast. For tests requiring simulation output, use regression tests instead.
+
+### Python Regression Tests
+Regression tests compare OpenMC output against reference data. **Prefer using existing models from `openmc.examples` or those found in tests/unit_tests/conftest.py** (like `pwr_pin_cell()`, `pwr_assembly()`, `slab_mg()`) rather than building from scratch.
+
+**Test Harness Types** (in `tests/testing_harness.py`):
+- **PyAPITestHarness**: Standard harness for Python API tests. Compares `inputs_true.dat` (XML hash) and `results_true.dat` (statepoint k-eff and tally values). Requires `model.xml` generation.
+- **HashedPyAPITestHarness**: Like PyAPITestHarness but hashes the results for compact comparison
+- **TolerantPyAPITestHarness**: For tests with floating-point non-associativity (e.g., random ray solver with single precision). Uses relative tolerance comparisons.
+- **WeightWindowPyAPITestHarness**: Compares weight window bounds from `weight_windows.h5`
+- **CollisionTrackTestHarness**: Compares collision track data from `collision_track.h5` against `collision_track_true.h5`
+- **TestHarness**: Base harness for XML-based tests (no Python model building)
+- **PlotTestHarness**: Compares plot output files (PNG or voxel HDF5)
+- **CMFDTestHarness**: Specialized for CMFD acceleration tests
+- **ParticleRestartTestHarness**: Tests particle restart functionality
+
+Almost all cases use either `PyAPITestHarness` or `HashedPyAPITestHarness`
+
+**Example Test**:
+```python
+from openmc.examples import pwr_pin_cell
+from tests.testing_harness import PyAPITestHarness
+
+def test_my_feature():
+    model = pwr_pin_cell()
+    model.settings.particles = 1000  # Modify to exercise feature
+    harness = PyAPITestHarness('statepoint.10.h5', model)
+    harness.main()
+```
+
+**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Test results should be generated with a debug build (`-DCMAKE_BUILD_TYPE=Debug`)
+
+**Critical**: When modifying OpenMC code, regenerate affected test references with `pytest --update` and commit updated reference files.
+
+### Test Configuration
+
+`pytest.ini` sets: `python_files = test*.py`, `python_classes = NoThanks` (disables class-based test collection).
+
+### Testing Options
+
+For builds of OpenMC with MPI enabled, the `--mpi` flag should be passed to the test suite to ensure that appropriate tests are executed using two MPI processes.
+
+The entire test suite can be executed with OpenMC running in event-based mode (instead of the default history-based mode) by providing the `--event` flag to the `pytest` command.
+
+## Cross-Language Boundaries
+
+The C API (defined in `include/openmc/capi.h`) exposes C++ functionality to Python via ctypes bindings in `openmc/lib/`. Example:
+```cpp
+// C++ API in capi.h
+extern "C" int openmc_run();
+
+// Python binding in openmc/lib/core.py
+_dll.openmc_run.restype = c_int
+def run():
+    _dll.openmc_run()
+```
+
+When modifying C++ public APIs, update corresponding ctypes signatures in `openmc/lib/*.py`.
 
 ## Code Style & Conventions
 
 ### C++ Style (enforced by .clang-format)
+  OpenMC generally tries to follow C++ core guidelines where possible
+  (https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines) and follow
+  modern C++ practices (e.g. RAII) whenever possible.
+
 - **Naming**:
   - Classes: `CamelCase` (e.g., `HexLattice`)
   - Functions/methods: `snake_case` (e.g., `get_indices`)
@@ -157,89 +264,6 @@ Check for optional features:
   // DAGMC-specific code
 #endif
 ```
-
-## Testing Expectations
-
-### C++ Tests
-Located in `tests/cpp_unit_tests/`, use Catch2 framework. Run via `ctest` after building with `-DOPENMC_BUILD_TESTS=ON`.
-
-### Python Unit Tests
-Located in `tests/unit_tests/`, these are fast, standalone tests that verify Python API functionality without running full simulations. Use standard pytest patterns:
-
-**Categories**:
-- **API validation**: Test object creation, property setters/getters, XML serialization (e.g., `test_material.py`, `test_cell.py`, `test_source.py`)
-- **Data processing**: Test nuclear data handling, cross sections, depletion chains (e.g., `test_data_neutron.py`, `test_deplete_chain.py`)
-- **Library bindings**: Test `openmc.lib` ctypes interface with `model.init_lib()`/`model.finalize_lib()` (e.g., `test_lib.py`)
-- **Geometry operations**: Test bounding boxes, containment, lattice generation (e.g., `test_bounding_box.py`, `test_lattice.py`)
-
-**Common patterns**:
-- Use fixtures from `tests/unit_tests/conftest.py` (e.g., `uo2`, `water`, `sphere_model`)
-- Test invalid inputs with `pytest.raises(ValueError)` or `pytest.raises(TypeError)`
-- Use `run_in_tmpdir` fixture for tests that create files
-- Tests with `openmc.lib` require calling `model.init_lib()` in try/finally with `model.finalize_lib()`
-
-**Example**:
-```python
-def test_material_properties():
-    m = openmc.Material()
-    m.add_nuclide('U235', 1.0)
-    assert 'U235' in m.nuclides
-
-    with pytest.raises(TypeError):
-        m.add_nuclide('H1', '1.0')  # Invalid type
-```
-
-Unit tests should be fast. For tests requiring simulation output, use regression tests instead.
-
-### Python Regression Tests
-Regression tests compare OpenMC output against reference data. **Prefer using existing models from `openmc.examples` or those found in tests/unit_tests/conftest.py** (like `pwr_pin_cell()`, `pwr_assembly()`, `slab_mg()`) rather than building from scratch.
-
-**Test Harness Types** (in `tests/testing_harness.py`):
-- **PyAPITestHarness**: Standard harness for Python API tests. Compares `inputs_true.dat` (XML hash) and `results_true.dat` (statepoint k-eff and tally values). Requires `model.xml` generation.
-- **HashedPyAPITestHarness**: Like PyAPITestHarness but hashes the results for compact comparison
-- **TolerantPyAPITestHarness**: For tests with floating-point non-associativity (e.g., random ray solver with single precision). Uses relative tolerance comparisons.
-- **WeightWindowPyAPITestHarness**: Compares weight window bounds from `weight_windows.h5`
-- **CollisionTrackTestHarness**: Compares collision track data from `collision_track.h5` against `collision_track_true.h5`
-- **TestHarness**: Base harness for XML-based tests (no Python model building)
-- **PlotTestHarness**: Compares plot output files (PNG or voxel HDF5)
-- **CMFDTestHarness**: Specialized for CMFD acceleration tests
-- **ParticleRestartTestHarness**: Tests particle restart functionality
-
-Almost all cases use either `PyAPITestHarness` or `HashedPyAPITestHarness`
-
-**Example Test**:
-```python
-from openmc.examples import pwr_pin_cell
-from tests.testing_harness import PyAPITestHarness
-
-def test_my_feature():
-    model = pwr_pin_cell()
-    model.settings.particles = 1000  # Modify to exercise feature
-    harness = PyAPITestHarness('statepoint.10.h5', model)
-    harness.main()
-```
-
-**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Tests should be generated with a debug build (`-DCMAKE_BUILD_TYPE=Debug`)
-
-**Critical**: When modifying OpenMC code, regenerate affected test references with `pytest --update` and commit updated reference files.
-
-### Test Configuration
-`pytest.ini` sets: `python_files = test*.py`, `python_classes = NoThanks` (disables class-based test collection).
-
-## Cross-Language Boundaries
-
-The C API (defined in `include/openmc/capi.h`) exposes C++ functionality to Python via ctypes bindings in `openmc/lib/`. Example:
-```cpp
-// C++ API in capi.h
-extern "C" int openmc_run();
-
-// Python binding in openmc/lib/core.py
-_dll.openmc_run.restype = c_int
-def run():
-    _dll.openmc_run()
-```
-
-When modifying C++ public APIs, update corresponding ctypes signatures in `openmc/lib/*.py`.
 
 ## Documentation
 

@@ -540,7 +540,10 @@ class Material(IDManagerMixin):
             self._density = density
 
     def add_nuclide(self, nuclide: str, percent: float, percent_type: str = 'ao'):
-        """Add a nuclide to the material
+        """Add a nuclide to the material.
+
+        If nuclide with the same name and percent_type already exists in the
+        material, its percentage will be updated.
 
         Parameters
         ----------
@@ -575,7 +578,24 @@ class Material(IDManagerMixin):
             if Z >= 89:
                 self.depletable = True
 
-        self._nuclides.append(NuclideTuple(nuclide, percent, percent_type))
+        # Flag to mark if we squashed the nuclide with an existing one
+        squashed = False
+
+        for i, nt in enumerate(self._nuclides):
+            if nt.name == nuclide and nt.percent_type == percent_type:
+                # add the percentage the two matching nuclides
+                self._nuclides[i] = NuclideTuple(nuclide, nt.percent + percent, percent_type)
+                squashed = True
+                break
+            elif nt.name == nuclide and nt.percent_type != percent_type:
+                warnings.warn(
+                    f"Nuclide '{nuclide}' already present with percent_type "
+                    f"'{nt.percent_type}'. Keeping separate entry for "
+                    f"new percent_type '{percent_type}'."
+                )
+
+        if not squashed:
+            self._nuclides.append(NuclideTuple(nuclide, percent, percent_type))
 
     def add_components(self, components: dict, percent_type: str = 'ao'):
         """ Add multiple elements or nuclides to a material

@@ -183,6 +183,149 @@ boundary condition.
 Periodic boundary conditions can be applied to pairs of planar surfaces.
 If there are only two periodic surfaces they will be matched automatically.
 
+
+Otherwise it is necessary to specify pairs explicitly using the
+:attr:`Surface.periodic_surface` attribute as in the following example::
+
+  p1 = openmc.Plane(a=0.3, b=5.0, d=1.0, boundary_type='periodic')
+  p2 = openmc.Plane(a=0.3, b=5.0, d=-1.0, boundary_type='periodic')
+  p1.periodic_surface = p2
+
+Both rotational and translational periodic boundary conditions are specified in
+the same fashion. If both planes have the same normal vector, a translational
+periodicity is assumed; rotational periodicity is assumed otherwise. Currently,
+only rotations about the :math:`z`-axis are supported.
+
+For a rotational periodic BC, the normal vectors of each surface must point
+inwards---towards the valid geometry. For example, a :class:`XPlane` and
+:class:`YPlane` would be valid for a 90-degree periodic rotation if the geometry
+lies in the first quadrant of the Cartesian grid. If the geometry instead lies
+in the fourth quadrant, the :class:`YPlane` must be replaced by a
+:class:`Plane` with the normal vector pointing in the :math:`-y` direction.
+
+Additionally, 'reflective', 'periodic', and 'white' boundary conditions have
+an albedo parameter that can be used to modify the importance of particles
+that encounter the boundary. The albedo value specifies the ratio between
+the particle's importance after interaction with the boundary to its initial
+importance. The following example creates a reflective planar surface which
+reduces the reflected particles' importance by 33.3%::
+
+   x1 = openmc.XPlane(1.0, boundary_type='reflective', albedo=0.667)
+
+   # This is equivalent
+   x1 = openmc.XPlane(1.0)
+   x1.boundary_type = 'reflective'
+   x1.albedo = 0.667
+
+.. _usersguide_cells:
+
+-----
+Cells
+-----
+
+Once you have a material created and a region of space defined, you need to
+define a *cell* that assigns the material to the region. Cells are created using
+the :class:`openmc.Cell` class::
+
+  fuel = openmc.Cell(fill=uo2, region=pellet)
+
+  # This is equivalent
+  fuel = openmc.Cell()
+  fuel.fill = uo2
+  fuel.region = pellet
+
+In this example, an instance of :class:`openmc.Material` is assigned to the
+:attr:`Cell.fill` attribute. One can also fill a cell with a :ref:`universe
+<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If you provide
+no fill to a cell or assign a value of `None`, it will be treated as a "void"
+cell with no material within. Particles are allowed to stream through the cell but
+will undergo no collisions::
+
+  # This cell will be filled with void on export to XML
+  gap = openmc.Cell(region=pellet_gap)
+
+The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
+:class:`Complement` and all instances of :class:`openmc.Region` and can be
+assigned to the :attr:`Cell.region` attribute.
+
+.. _usersguide_universes:
+
+---------
+Universes
+---------
+
+Similar to MCNP and Serpent, OpenMC is capable of using *universes*, collections
+of cells that can be used as repeatable units of geometry. At a minimum, there
+must be one "root" universe present in the model. To define a universe, an
+instance of :class:`openmc.Universe` is created and then cells can be added
+using the :meth:`Universe.add_cells` or :meth:`Universe.add_cell`
+methods. Alternatively, a list of cells can be specified in the constructor::
+
+   universe = openmc.Universe(cells=[cell1, cell2, cell3])
+
+   # This is equivalent
+   universe = openmc.Universe()
+   universe.add_cells([cell1, cell2])
+   universe.add_cell(cell3)
+
+Universes are generally used in three ways:
+
+1. To be assigned to a :class:`Geometry` object (see
+   :ref:`usersguide_geom_export`),
+2. To be assigned as the fill for a cell via the :attr:`Cell.fill` attribute,
+   and
+3. To be used in a regular arrangement of universes in a :ref:`lattice
+   <usersguide_lattices>`.
+
+Once a universe is constructed, it can actually be used to determine what cell
+or material is found at a given location by using the :meth:`Universe.find`
+method, which returns a list of universes, cells, and lattices which are
+traversed to find a given point. The last element of that list would contain the
+lowest-level cell at that location::
+
+  >>> universe.find((0., 0., 0.))[-1]
+  Cell
+          ID             =    10000
+          Name           =    cell 1
+          Fill           =    Material 10000
+          Region         =    -10000
+          Rotation       =    None
+          Temperature    =    None
+          Translation    =    None
+
+As you are building a geometry, it is also possible to display a plot of single
+universe using the :meth:`Universe.plot` method. This method requires that you
+have `matplotlib <https://matplotlib.org/>`_ installed.
+
+.. _usersguide_lattices:
+
+--------
+Lattices
+--------
+
+Many particle transport models involve repeated structures that occur in a
+regular pattern such as a rectangular or hexagonal lattice. In such a case, it
+would be cumbersome to have to define the boundaries of each of the cells to be
+filled with a universe. OpenMC provides a means to define lattice structures
+through the :class:`openmc.RectLattice` and :class:`openmc.HexLattice` classes.
+
+Rectangular Lattices
+--------------------
+
+A rectangular lattice defines a two-dimensional or three-dimensional array of
+universes that are filled into rectangular prisms (lattice elements) each of
+which has the same width, length, and height. To completely define a rectangular
+lattice, one needs to specify
+
+- The coordinates of the lower-left corner of the lattice
+  (:attr:`RectLattice.lower_left`),
+- The pitch of the lattice, i.e., the distance between the center of adjacent
+  lattice elements (:attr:`RectLattice.pitch`),
+- What universes should fill each lattice element
+  (:attr:`RectLattice.universes`), and
+- A universe that is used to fill any lattice position outside the well-defined
+  portion of the lattice (:attr:`RectLattice.outer`).
+
 For example, to create a 3x3 lattice centered at the origin in which each
 lattice element is 5cm by 5cm and is filled by a universe ``u``, one could run::
 

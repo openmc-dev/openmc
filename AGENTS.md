@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-OpenMC is a Monte Carlo particle transport code for nuclear reactor physics simulations. It's a hybrid C++17/Python codebase where:
+OpenMC is a Monte Carlo particle transport code for simulating nuclear reactors,
+fusion devices, or other systems with neutron/photon radiation. It's a hybrid
+C++17/Python codebase where:
 - **C++ core** (`src/`, `include/openmc/`) handles the computationally intensive transport simulation
 - **Python API** (`openmc/`) provides user-facing model building, post-processing, and depletion capabilities
 - **C API bindings** (`openmc/lib/`) wrap the C++ library via ctypes for runtime control
@@ -12,8 +14,8 @@ OpenMC is a Monte Carlo particle transport code for nuclear reactor physics simu
 ### C++ Component Structure
 - **Global vectors of unique_ptrs**: Core objects like `model::cells`, `model::universes`, `nuclides` are stored as `vector<unique_ptr<T>>` in nested namespaces (`openmc::model`, `openmc::simulation`, `openmc::settings`, `openmc::data`)
 - **Custom container types**: OpenMC provides its own `vector`, `array`, `unique_ptr`, and `make_unique` in the `openmc::` namespace (defined in `vector.h`, `array.h`, `memory.h`). These are currently typedefs to `std::` equivalents but may become custom implementations for accelerator support. Always use `openmc::vector`, not `std::vector`.
-- **Geometry systems**: 
-  - **CSG (default)**: Arbitrarily complex Constructive Solid Geometry using `Cell`, `Surface`, `Universe`, `Lattice`
+- **Geometry systems**:
+  - **CSG (default)**: Arbitrarily complex Constructive Solid Geometry using `Surface`, `Region`, `Cell`, `Universe`, `Lattice`
   - **DAGMC**: CAD-based geometry via Direct Accelerated Geometry Monte Carlo (optional, requires `OPENMC_USE_DAGMC`)
   - **Unstructured mesh**: libMesh-based geometry (optional, requires `OPENMC_USE_LIBMESH`)
 - **Particle tracking**: `Particle` class with `GeometryState` manages particle transport through geometry
@@ -27,13 +29,15 @@ OpenMC is a Monte Carlo particle transport code for nuclear reactor physics simu
 - **XML I/O**: Most classes implement `to_xml_element()` and `from_xml_element()` for serialization to OpenMC's XML input format
 - **HDF5 output**: Post-simulation data in statepoint files read via `openmc.StatePoint`
 - **Depletion**: `openmc.deplete` implements burnup via operator-splitting with various integrators (Predictor, CECM, etc.)
+- **Nuclear Data**: `openmc.data` provides programmatic access to nuclear data files (ENDF, ACE, HDF5)
 
 ## Critical Build & Test Workflows
 
 ### Build Dependencies
+- **C++17 compiler**: GCC, Clang, or Intel
 - **CMake** (3.16+): Required for configuring and building the C++ library
 - **HDF5**: Required for cross section data and output file formats
-- **C++17 compiler**: GCC, Clang, or Intel
+- **libpng**: Used for generating visualization when OpenMC is run in plotting mode
 
 Without CMake and HDF5, OpenMC cannot be compiled.
 
@@ -91,7 +95,7 @@ Without this data, regression tests will fail with "No cross_sections.xml file f
 ## Code Style & Conventions
 
 ### C++ Style (enforced by .clang-format)
-- **Naming**: 
+- **Naming**:
   - Classes: `CamelCase` (e.g., `HexLattice`)
   - Functions/methods: `snake_case` (e.g., `get_indices`)
   - Variables: `snake_case` with trailing underscore for class members (e.g., `n_particles_`, `energy_`)
@@ -180,15 +184,15 @@ def test_material_properties():
     m = openmc.Material()
     m.add_nuclide('U235', 1.0)
     assert 'U235' in m.nuclides
-    
+
     with pytest.raises(TypeError):
         m.add_nuclide('H1', '1.0')  # Invalid type
 ```
 
-Unit tests should be fast and not require nuclear data or full OpenMC runs. For tests requiring simulation output, use regression tests instead.
+Unit tests should be fast. For tests requiring simulation output, use regression tests instead.
 
 ### Python Regression Tests
-Regression tests compare OpenMC output against reference data. **Prefer using existing models from `openmc.examples`** (like `pwr_pin_cell()`, `pwr_assembly()`, `slab_mg()`) rather than building from scratch.
+Regression tests compare OpenMC output against reference data. **Prefer using existing models from `openmc.examples` or those found in tests/unit_tests/conftest.py** (like `pwr_pin_cell()`, `pwr_assembly()`, `slab_mg()`) rather than building from scratch.
 
 **Test Harness Types** (in `tests/testing_harness.py`):
 - **PyAPITestHarness**: Standard harness for Python API tests. Compares `inputs_true.dat` (XML hash) and `results_true.dat` (statepoint k-eff and tally values). Requires `model.xml` generation.
@@ -200,6 +204,8 @@ Regression tests compare OpenMC output against reference data. **Prefer using ex
 - **PlotTestHarness**: Compares plot output files (PNG or voxel HDF5)
 - **CMFDTestHarness**: Specialized for CMFD acceleration tests
 - **ParticleRestartTestHarness**: Tests particle restart functionality
+
+Almost all cases use either `PyAPITestHarness` or `HashedPyAPITestHarness`
 
 **Example Test**:
 ```python
@@ -213,7 +219,7 @@ def test_my_feature():
     harness.main()
 ```
 
-**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`.
+**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Tests should be generated with a debug build (`-DCMAKE_BUILD_TYPE=Debug`)
 
 **Critical**: When modifying OpenMC code, regenerate affected test references with `pytest --update` and commit updated reference files.
 
@@ -237,7 +243,7 @@ When modifying C++ public APIs, update corresponding ctypes signatures in `openm
 
 ## Documentation
 
-- **User docs**: Sphinx documentation in `docs/source/` hosted at docs.openmc.org
+- **User docs**: Sphinx documentation in `docs/source/` hosted at https://docs.openmc.org
 - **C++ docs**: Doxygen-style comments with `\brief`, `\param` tags
 - **Python docs**: numpydoc format docstrings
 

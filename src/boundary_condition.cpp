@@ -173,9 +173,14 @@ RotationalPeriodicBC::RotationalPeriodicBC(
     axis_2_idx_ = 2;    // z component dependent
     break;
   case y:
+    // for a right handed coordinate system, z should be the independent axis
+    // but this would cause the y-rotation case to be different than the other
+    // two. using a left handed coordinate system and a negative rotation the
+    // compute angle and rotation matrix behavior mimics that of the x and z
+    // cases
     zero_axis_idx_ = 1; // y component of plane must be zero
-    axis_1_idx_ = 2;    // z component independent
-    axis_2_idx_ = 0;    // x component dependent
+    axis_1_idx_ = 0;    // x component independent
+    axis_2_idx_ = 2;    // z component dependent
     break;
   case z:
     zero_axis_idx_ = 2; // z component of plane must be zero
@@ -209,12 +214,8 @@ RotationalPeriodicBC::RotationalPeriodicBC(
 
   // reverse the angle computed if there is y-periodicity to account for
   // reversal of axes cross product direction
-  angle_ =
-    (zero_axis_idx_ != 1)
-      ? compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
-          norm2[axis_2_idx_], norm2[axis_1_idx_])
-      : -1 * compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
-               norm2[axis_2_idx_], norm2[axis_1_idx_]);
+  angle_ = compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
+    norm2[axis_2_idx_], norm2[axis_1_idx_]);
 
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));
@@ -268,27 +269,15 @@ void RotationalPeriodicBC::handle_particle(
   double cos_theta = std::cos(theta);
   double sin_theta = std::sin(theta);
 
-  // rotations around the y-axis have sign flipped for the sin_theta terms
-  int flip;
-  if (zero_axis_idx_ == 1) {
-    flip = -1;
-  } else {
-    flip = 1;
-  }
-
   Position new_r;
   new_r[zero_axis_idx_] = r[zero_axis_idx_];
-  new_r[axis_1_idx_] =
-    cos_theta * r[axis_1_idx_] - flip * sin_theta * r[axis_2_idx_];
-  new_r[axis_2_idx_] =
-    flip * sin_theta * r[axis_1_idx_] + cos_theta * r[axis_2_idx_];
+  new_r[axis_1_idx_] = cos_theta * r[axis_1_idx_] - sin_theta * r[axis_2_idx_];
+  new_r[axis_2_idx_] = sin_theta * r[axis_1_idx_] + cos_theta * r[axis_2_idx_];
 
   Direction new_u;
   new_u[zero_axis_idx_] = u[zero_axis_idx_];
-  new_u[axis_1_idx_] =
-    cos_theta * u[axis_1_idx_] - flip * sin_theta * u[axis_2_idx_];
-  new_u[axis_2_idx_] =
-    flip * sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_];
+  new_u[axis_1_idx_] = cos_theta * u[axis_1_idx_] - sin_theta * u[axis_2_idx_];
+  new_u[axis_2_idx_] = sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_];
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);

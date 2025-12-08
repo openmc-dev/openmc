@@ -389,8 +389,20 @@ UWUW and OpenMC material ID space will cause an error. To automatically resolve
 these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
 material IDs to the OpenMC material ID space.
 
-Material overrides and differentiation
+
+Material overrides and differentiation 
 --------------------------------------
+
+Programmatic access to DAGMC cell information for material overrides 
+and differentiation requires synchronization of the DAGMC universe
+representation across Python and C-API::
+
+  model.init_lib()
+  model.sync_dagmc_universes()
+  model.finalize_lib()
+
+Material overrides 
+~~~~~~~~~~~~~~~~~~
 
 OpenMC supports overriding material assignments defined inside a DAGMC HDF5
 model so that CAD-assigned materials can be replaced by :class:`openmc.Material`
@@ -398,31 +410,9 @@ objects. This is useful when the CAD geometry provides the shape but OpenMC
 materials (specific nuclide content, densities, or depletion behavior) are
 required.
 
-Note on synchronization
-^^^^^^^^^^^^^^^^^^^^^^^
-
-Programmatic access to DAGMC cell information and application of overrides
-requires initializing the C API and synchronizing the DAGMC universes. These
-operations are explicit (not automatic) because they have measurable cost::
-
-  model.init_lib()
-  model.sync_dagmc_universes()
-
-- **Initialization cost**: :meth:`Model.init_lib` creates the C-side data
-  structures and loads cross sections needed for transport.
-- **Data transfer**: :meth:`Model.sync_dagmc_universes` queries the C/C++ core
-  to obtain DAGMC cell IDs and material assignments; for large models this can
-  involve significant cross-language data movement.
-- **Python memory**: After synchronization, DAGMC cells are represented by
-  :class:`openmc.DAGMCCell` objects in Python, which increases Python-side
-  memory usage when many cells are present.
-
-If you do not need to inspect or change cell assignments programmatically
-(for example, you only want to run transport with the materials recorded in the
-HDF5 file), you can skip synchronization and export/run the model directly.
 
 Replacing materials by name
-***************************
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a DAGMC file includes material name tags, you can replace all cells that
 reference a particular name with an :class:`openmc.Material` using
@@ -442,7 +432,7 @@ reference a particular name with an :class:`openmc.Material` using
 This lets you keep CAD geometry while adopting OpenMC material definitions.
 
 Per-cell material overrides
-***************************
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For more control, use :meth:`~openmc.DAGMCUniverse.add_material_override` to
 assign materials to particular DAGMC cells. The method accepts either an
@@ -460,99 +450,6 @@ integer cell ID or a :class:`~openmc.DAGMCCell` object::
 Overrides are written to the `<material_overrides>` element of the
 `<dagmc_universe>` XML so the C++ core can apply them on initialization.
 
-Material differentiation (depletion)
-***********************************
-
-OpenMC provides a convenience method on :class:`openmc.Model` to "differentiate"
-materials so that instances of the same material in the geometry become
-separate material objects that can be tracked and depleted independently.
-
-API behavior
-^^^^^^^^^^^^
-
-- Call :meth:`openmc.Model.differentiate_mats` (or
-  :meth:`openmc.Model.differentiate_depletable_mats`) to perform differentiation
-  across the model. By default differentiation only applies to materials for
-  which ``mat.num_instances > 1`` and ``mat.depletable`` (see
-  ``depletable_only`` argument).
-- For each material selected for differentiation, the method iterates over all
-  cells that use that material and *replaces* the cell's ``fill`` with clones
-  of the original material:
-  - If ``cell.num_instances > 1`` the cell's ``fill`` becomes a list of cloned
-    materials (one clone per instance).
-  - Otherwise the cell's ``fill`` is set to a single cloned material.
-- Volume handling is controlled by the ``diff_volume_method`` argument:
-  - ``None`` (default): do not set volumes for the newly-created materials.
-  - ``'divide equally'``: the original material's ``volume`` is divided by
-    ``mat.num_instances`` (the code modifies ``mat.volume`` in-place); this
-    requires that the original material already has a volume set.
-  - ``'match cell'``: each cloned material receives the volume of the cell it
-    fills; this requires that the corresponding cell volumes are set prior to
-    calling the method.
-- If ``self.materials`` is present on the model, the method rebuilds the
-  model's material list from the geometry after differentiation so that the
-  newly-created material objects are included.
-
-Preconditions and errors
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-- If ``'divide equally'`` is requested but a selected material has no
-  ``volume`` set, a ``RuntimeError`` is raised.
-- If ``'match cell'`` is requested but a cell lacks a defined ``volume``, a
-  ``ValueError`` is raised and the operation is aborted. Set cell volumes prior
-  to calling differentiation when using this mode.
-
-Usage example
-^^^^^^^^^^^^^
-
-  import openmc
-  import openmc.deplete
-
-  model = openmc.Model()
-  model.geometry = openmc.Geometry(dag_univ)
-
-  # Differentiate only depletable materials (default). Optionally pass
-  # diff_volume_method='match cell' or 'divide equally' depending on how you
-  # want volumes assigned to the cloned materials.
-  model.differentiate_mats(diff_volume_method=None, depletable_only=True)
-
-  operator = openmc.deplete.CoupledOperator(model, 'chain_endf.json')
-  operator.integrate([1, 2, 3])
-
-Combining DAGMC and CSG
-***********************
-
-DAGMC universes can be placed inside CSG cells or lattices. Material
-overrides and replacements behave the same when a DAGMC universe is used as a
-fill for a :class:`openmc.Cell`::
-
-  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
-  dag_univ.replace_material_assignment('Fuel', fuel)
-
-  bbox = dag_univ.bounding_region(bounded_type='box')
-  bounding_cell = openmc.Cell(fill=dag_univ, region=bbox)
-  geometry = openmc.Geometry(openmc.Universe(cells=[bounding_cell]))
-
-Retrieving Material Information
-*******************************
-
-After initializing a model with a DAGMC universe, you can retrieve information
-about the materials in the geometry::
-
-  import openmc
-
-  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
-
-  # Get list of material names defined in the DAGMC file
-  material_names = dag_univ.material_names
-  print(f"Materials in DAGMC file: {material_names}")
-
-  # Get the number of cells in the DAGMC model
-  n_cells = dag_univ.n_cells
-  print(f"Number of cells: {n_cells}")
-
-This information can be useful for iterating over cells and applying materials
-programmatically or understanding the structure of your DAGMC geometry.
 
 .. _Direct Accelerated Geometry Monte Carlo: https://svalinn.github.io/DAGMC/
 .. _University of Wisconsin Unified Workflow: https://svalinn.github.io/DAGMC/usersguide/uw2.html

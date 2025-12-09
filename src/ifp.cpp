@@ -141,7 +141,6 @@ void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
     MPI_Irecv(&delayed_groups[n_generation * idx],
       n_generation * static_cast<int>(n), MPI_INT, neighbor, neighbor,
       mpi::intracomm, &requests.back());
-    // Is it needed also for the ancestor nuclide
     MPI_Irecv(&ancestors[n_generation * idx],
       n_generation * static_cast<int>(n), MPI_INT, neighbor, neighbor,
       mpi::intracomm, &requests.back());

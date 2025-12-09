@@ -65,7 +65,7 @@ LevelInelastic::LevelInelastic(hid_t group)
       b_ = -Q;
       c_ = 1.0 / (2.0 * MASS_NEUTRON_EV * A);
     } else {
-      fatal_error("Unrecognized particle: " + particle);
+      fatal_error("Unrecognized particle: " + temp);
     }
   }
 }

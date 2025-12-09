@@ -22,7 +22,7 @@ def ifp_model():
 
     # Settings
     settings = openmc.Settings()
-    settings.particles = 1000
+    settings.particles = 100000
     settings.batches = 20
     settings.inactive = 5
     settings.ifp_n_generation = 5

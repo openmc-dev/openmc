@@ -554,7 +554,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
   return 0;
 }
 
-hid_t h5banktype()
+hid_t h5banktype(bool memory)
 {
   // Create compound type for position
   hid_t postype = H5Tcreate(H5T_COMPOUND, sizeof(struct Position));
@@ -569,7 +569,9 @@ hid_t h5banktype()
   // - openmc/statepoint.py
   // - docs/source/io_formats/statepoint.rst
   // - docs/source/io_formats/source.rst
-  auto n = 2 * sizeof(struct Position) + 3 * sizeof(double) + 3 * sizeof(int);
+  auto n = sizeof(SourceSite);
+  if (!memory)
+    n = 2 * sizeof(struct Position) + 3 * sizeof(double) + 3 * sizeof(int);
   hid_t banktype = H5Tcreate(H5T_COMPOUND, n);
   H5Tinsert(banktype, "r", HOFFSET(SourceSite, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(SourceSite, u), postype);
@@ -642,17 +644,19 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
 void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index)
 {
-  hid_t banktype = h5banktype();
+  hid_t membanktype = h5banktype(true);
+  hid_t filebanktype = h5banktype(false);
 
 #ifdef OPENMC_MPI
-  write_bank_dataset("source_bank", group_id, source_bank, bank_index, banktype,
-    mpi::source_site);
+  write_bank_dataset("source_bank", group_id, source_bank, bank_index,
+    membanktype, filebanktype, mpi::source_site);
 #else
-  write_bank_dataset(
-    "source_bank", group_id, source_bank, bank_index, banktype);
+  write_bank_dataset("source_bank", group_id, source_bank, bank_index,
+    membanktype, filebanktype);
 #endif
 
-  H5Tclose(banktype);
+  H5Tclose(membanktype);
+  H5Tclose(filebanktype);
 }
 
 // Determine member names of a compound HDF5 datatype
@@ -673,7 +677,7 @@ std::string dtype_member_names(hid_t dtype_id)
 void read_source_bank(
   hid_t group_id, vector<SourceSite>& sites, bool distribute)
 {
-  hid_t banktype = h5banktype();
+  hid_t banktype = h5banktype(true);
 
   // Open the dataset
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);

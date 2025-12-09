@@ -16,8 +16,9 @@
 namespace openmc {
 
 template<typename SiteType>
-void write_bank_dataset(const char* dataset_name, hid_t group_id,
-  span<SiteType> bank, const vector<int64_t>& bank_index, hid_t banktype
+void write_bank_dataset(
+  const char* dataset_name, hid_t group_id, span<SiteType> bank,
+  const vector<int64_t>& bank_index, hid_t membanktype, hid_t filebanktype
 #ifdef OPENMC_MPI
   ,
   MPI_Datatype mpi_dtype
@@ -30,8 +31,8 @@ void write_bank_dataset(const char* dataset_name, hid_t group_id,
 #ifdef PHDF5
   hsize_t dims[] {static_cast<hsize_t>(dims_size)};
   hid_t dspace = H5Screate_simple(1, dims, nullptr);
-  hid_t dset = H5Dcreate(group_id, dataset_name, banktype, dspace, H5P_DEFAULT,
-    H5P_DEFAULT, H5P_DEFAULT);
+  hid_t dset = H5Dcreate(group_id, dataset_name, filebanktype, dspace,
+    H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   hsize_t count[] {static_cast<hsize_t>(count_size)};
   hid_t memspace = H5Screate_simple(1, count, nullptr);
@@ -42,7 +43,7 @@ void write_bank_dataset(const char* dataset_name, hid_t group_id,
   hid_t plist = H5Pcreate(H5P_DATASET_XFER);
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
 
-  H5Dwrite(dset, banktype, memspace, dspace, plist, bank.data());
+  H5Dwrite(dset, membanktype, memspace, dspace, plist, bank.data());
 
   H5Sclose(dspace);
   H5Sclose(memspace);
@@ -52,7 +53,7 @@ void write_bank_dataset(const char* dataset_name, hid_t group_id,
   if (mpi::master) {
     hsize_t dims[] {static_cast<hsize_t>(dims_size)};
     hid_t dspace = H5Screate_simple(1, dims, nullptr);
-    hid_t dset = H5Dcreate(group_id, dataset_name, banktype, dspace,
+    hid_t dset = H5Dcreate(group_id, dataset_name, filebanktype, dspace,
       H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 #ifdef OPENMC_MPI
@@ -75,7 +76,8 @@ void write_bank_dataset(const char* dataset_name, hid_t group_id,
       H5Sselect_hyperslab(
         dspace_rank, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
-      H5Dwrite(dset, banktype, memspace, dspace_rank, H5P_DEFAULT, bank.data());
+      H5Dwrite(
+        dset, membanktype, memspace, dspace_rank, H5P_DEFAULT, bank.data());
 
       H5Sclose(memspace);
       H5Sclose(dspace_rank);

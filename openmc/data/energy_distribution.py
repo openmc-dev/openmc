@@ -988,7 +988,7 @@ class LevelInelastic(EnergyDistribution):
             
         q_value = group.attrs['q_value']
         mass = group.attrs['mass']
-        particle = group.attrs['particle']
+        particle = group.attrs['particle'].decode()
         return cls(q_value, mass, particle)
 
     @classmethod

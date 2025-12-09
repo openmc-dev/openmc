@@ -821,8 +821,7 @@ class XPlane(PlaneMixin, Surface):
     boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface. Only axis-aligned periodicity is
-        supported, i.e., x-planes can only be paired with x-planes.
+        freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only
@@ -886,8 +885,7 @@ class YPlane(PlaneMixin, Surface):
     boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface. Only axis-aligned periodicity is
-        supported, i.e., y-planes can only be paired with y-planes.
+        freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only
@@ -951,8 +949,7 @@ class ZPlane(PlaneMixin, Surface):
     boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface. Only axis-aligned periodicity is
-        supported, i.e., z-planes can only be paired with z-planes.
+        freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only

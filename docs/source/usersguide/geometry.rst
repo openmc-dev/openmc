@@ -192,7 +192,7 @@ Otherwise it is necessary to specify pairs explicitly using the
 Both rotational and translational periodic boundary conditions are specified in
 the same fashion. If both planes have the same normal vector, a translational
 periodicity is assumed; rotational periodicity is assumed otherwise. Currently,
-only rotations about the :math:`z`-axis are supported.
+rotations must be about the :math:`x`-, :math:`y`-, or :math:`z`-axis.
 
 For a rotational periodic BC, the normal vectors of each surface must point
 inwards---towards the valid geometry. For example, a :class:`XPlane` and

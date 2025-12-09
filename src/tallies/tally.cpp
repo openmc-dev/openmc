@@ -238,8 +238,6 @@ Tally::Tally(pugi::xml_node node)
         // This bool indicates if the ancestor_nuclide vector has to be filled
         if (nuclides_[0] > -1) {
           settings::ifp_beta_nuclide = true;
-        } else {
-          continue;
         }
       case SCORE_IFP_DENOM:
         if (settings::ifp_parameter == IFPParameter::None) {

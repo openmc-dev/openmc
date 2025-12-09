@@ -63,7 +63,7 @@ LevelInelastic::LevelInelastic(hid_t group)
     } else if (particle == ParticleType::photon) {
       a_ = (A - 1.0) / A;
       b_ = -Q;
-      c_ = 1.0 / (2.0 * NEUTRON_MASS_EV * A);
+      c_ = 1.0 / (2.0 * MASS_NEUTRON_EV * A);
     } else {
       fatal_error("Unrecognized particle: " + particle);
     }

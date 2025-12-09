@@ -569,6 +569,8 @@ hid_t h5banktype()
   // - openmc/statepoint.py
   // - docs/source/io_formats/statepoint.rst
   // - docs/source/io_formats/source.rst
+  auto n = 2 * sizeof(struct Position) + 3 * sizeof(double) + 3 * sizeof(int);
+  hid_t banktype = H5Tcreate(H5T_COMPOUND, n);
   hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct SourceSite));
   H5Tinsert(banktype, "r", HOFFSET(SourceSite, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(SourceSite, u), postype);

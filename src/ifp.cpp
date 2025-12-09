@@ -117,7 +117,6 @@ void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
     MPI_Isend(&send_delayed_groups[n_generation * idx],
       n_generation * static_cast<int>(n), MPI_INT, neighbor, mpi::rank,
       mpi::intracomm, &requests.back());
-    // Is it needed also for the ancestor nuclide
     MPI_Isend(&send_ancestors[n_generation * idx],
       n_generation * static_cast<int>(n), MPI_INT, neighbor, mpi::rank,
       mpi::intracomm, &requests.back());

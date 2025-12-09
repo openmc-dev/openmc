@@ -103,6 +103,15 @@ public:
   void cross_periodic_bc(
     const Surface& surf, Position new_r, Direction new_u, int new_surface);
 
+  //! Cross a transformation boundary condition.
+  //
+  //! \param surf The surface (with the transformation boundary condition) that
+  //! the particle struck.
+  //! \param new_r The position of the particle after transformation.
+  //! \param new_u The direction of the particle after transformation.
+  void cross_transformation_bc(
+    const Surface& surf, Position new_r, Direction new_u);
+
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
   virtual void mark_as_lost(const char* message) override;

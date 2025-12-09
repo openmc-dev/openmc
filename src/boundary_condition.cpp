@@ -212,8 +212,6 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       surf2.id_));
   }
 
-  // reverse the angle computed if there is y-periodicity to account for
-  // reversal of axes cross product direction
   angle_ = compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
     norm2[axis_2_idx_], norm2[axis_1_idx_]);
 

@@ -1335,14 +1335,18 @@ void read_surfaces(pugi::xml_node node)
       surf2.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
     } else {
       // check that both normals have at least one 0 component
-      if (norm1.x != 0.0 && norm1.y != 0.0 && norm1.z != 0.0) {
+      if (std::abs(norm1.x) > FP_PRECISION &&
+          std::abs(norm1.y) > FP_PRECISION &&
+          std::abs(norm1.z) > FP_PRECISION) {
         fatal_error(fmt::format(
           "The normal ({}) of the periodic surface ({}) does not contain any "
           "component with a zero value. A RotationalPeriodicBC requires one "
           "component which is zero for both plane normals.",
           norm1, i_surf));
       }
-      if (norm2.x != 0.0 && norm2.y != 0.0 && norm2.z != 0.0) {
+      if (std::abs(norm2.x) > FP_PRECISION &&
+          std::abs(norm2.y) > FP_PRECISION &&
+          std::abs(norm2.z) > FP_PRECISION) {
         fatal_error(fmt::format(
           "The normal ({}) of the periodic surface ({}) does not contain any "
           "component with a zero value. A RotationalPeriodicBC requires one "
@@ -1351,11 +1355,14 @@ void read_surfaces(pugi::xml_node node)
       }
       // find common zero component, which indicates the periodic axis
       RotationalPeriodicBC::PeriodicAxis axis;
-      if (norm1.x == 0.0 && norm2.x == 0.0) {
+      if (std::abs(norm1.x) <= FP_PRECISION &&
+          std::abs(norm2.x) <= FP_PRECISION) {
         axis = RotationalPeriodicBC::PeriodicAxis::x;
-      } else if (norm1.y == 0.0 && norm2.y == 0.0) {
+      } else if (std::abs(norm1.y) <= FP_PRECISION &&
+                 std::abs(norm2.y) <= FP_PRECISION) {
         axis = RotationalPeriodicBC::PeriodicAxis::y;
-      } else if (norm1.z == 0.0 && norm2.z == 0.0) {
+      } else if (std::abs(norm1.z) <= FP_PRECISION &&
+                 std::abs(norm2.z) <= FP_PRECISION) {
         axis = RotationalPeriodicBC::PeriodicAxis::z;
       } else {
         fatal_error(fmt::format(

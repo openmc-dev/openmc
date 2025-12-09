@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from math import sqrt
 from numbers import Integral, Real
 from warnings import warn
 
@@ -897,42 +898,54 @@ class LevelInelastic(EnergyDistribution):
 
     Parameters
     ----------
-    threshold : float
-        Energy threshold in the laboratory system, :math:`(A + 1)/A * |Q|`
-    mass_ratio : float
-        :math:`(A/(A + 1))^2`
+    q_value : float
+        Q-value of the reaction.
+    mass : float
+        mass of the nucleus in units of neutron mass.
+    particle : ParticleType
+        incident particle type, defaults to neutron
 
     Attributes
     ----------
-    threshold : float
-        Energy threshold in the laboratory system, :math:`(A + 1)/A * |Q|`
-    mass_ratio : float
-        :math:`(A/(A + 1))^2`
-
+    q_value : float
+        Q-value of the reaction.
+    mass : float
+        mass of the nucleus in units of neutron mass.
+    particle : ParticleType
+        incident particle type.
     """
 
-    def __init__(self, threshold, mass_ratio):
+    def __init__(self, q_value, mass, particle = 'neutron'):
         super().__init__()
-        self.threshold = threshold
-        self.mass_ratio = mass_ratio
+        self.q_value = q_value
+        self.mass = mass
+        self.particle = particle
 
     @property
-    def threshold(self):
-        return self._threshold
+    def q_value(self):
+        return self._q_value
 
-    @threshold.setter
-    def threshold(self, threshold):
-        cv.check_type('level inelastic threhsold', threshold, Real)
-        self._threshold = threshold
+    @q_value.setter
+    def q_value(self, q_value):
+        cv.check_type('level inelastic q_value', q_value, Real)
+        self._q_value = q_value
 
     @property
-    def mass_ratio(self):
-        return self._mass_ratio
+    def mass(self):
+        return self._mass
 
-    @mass_ratio.setter
-    def mass_ratio(self, mass_ratio):
-        cv.check_type('level inelastic mass ratio', mass_ratio, Real)
-        self._mass_ratio = mass_ratio
+    @mass.setter
+    def mass(self, mass):
+        cv.check_type('level inelastic mass', mass, Real)
+        self._mass = mass
+        
+    def particle(self):
+        return self._particle
+    
+    @particle.setter
+    def particle(self, particle):
+        cv.check_type('product particle type', particle, str)
+        self._particle = particle
 
     def to_hdf5(self, group):
         """Write distribution to an HDF5 group
@@ -945,8 +958,9 @@ class LevelInelastic(EnergyDistribution):
         """
 
         group.attrs['type'] = np.bytes_('level')
-        group.attrs['threshold'] = self.threshold
-        group.attrs['mass_ratio'] = self.mass_ratio
+        group.attrs['q_value'] = self.q_value
+        group.attrs['mass'] = self.mass
+        group.attrs['particle'] = np.bytes_(self.particle)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -963,9 +977,18 @@ class LevelInelastic(EnergyDistribution):
             Level inelastic scattering distribution
 
         """
-        threshold = group.attrs['threshold']
-        mass_ratio = group.attrs['mass_ratio']
-        return cls(threshold, mass_ratio)
+        #backwards compatible read:
+        if 'threshold' in group.attrs:    
+            threshold = group.attrs['threshold']
+            mass_ratio = group.attrs['mass_ratio']
+            mass = 1.0/(1.0/sqrt(mass_ratio)-1.0)
+            q_value = -threshold * sqrt(mass_ratio)
+            return cls(q_value, mass)
+            
+        q_value = group.attrs['q_value']
+        mass = group.attrs['mass']
+        particle = group.attrs['particle']
+        return cls(q_value, mass, particle)
 
     @classmethod
     def from_ace(cls, ace, idx):
@@ -984,9 +1007,12 @@ class LevelInelastic(EnergyDistribution):
             Level inelastic scattering distribution
 
         """
+        particle = {'u':'photon', 'c': 'neutron'}[ace.data_type.value]
         threshold = ace.xss[idx]*EV_PER_MEV
         mass_ratio = ace.xss[idx + 1]
-        return cls(threshold, mass_ratio)
+        mass = 1.0/(1.0/sqrt(mass_ratio)-1.0) if particle == 'neutron' else 1.0-1.0/mass_ratio
+        q_value = -threshold * sqrt(mass_ratio) if particle == 'neutron' else -threshold
+        return cls(threshold, mass_ratio, particle = particle)
 
 
 class ContinuousTabular(EnergyDistribution):

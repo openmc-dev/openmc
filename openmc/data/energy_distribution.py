@@ -938,7 +938,8 @@ class LevelInelastic(EnergyDistribution):
     def mass(self, mass):
         cv.check_type('level inelastic mass', mass, Real)
         self._mass = mass
-        
+    
+    @property    
     def particle(self):
         return self._particle
     

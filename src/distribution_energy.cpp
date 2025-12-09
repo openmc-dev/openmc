@@ -7,6 +7,7 @@
 
 #include "xtensor/xview.hpp"
 
+#include "openmc/constants.h"
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"

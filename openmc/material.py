@@ -26,6 +26,7 @@ from openmc.checkvalue import PathLike
 from openmc.data.function import Tabulated1D, Combination
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol
+from openmc.data.photon_attenuation import linear_attenuation_xs
 
 
 
@@ -1304,49 +1305,40 @@ class Material(IDManagerMixin):
         return decayheat if by_nuclide else sum(decayheat.values())
     
 
-    def get_photon_mass_attenuation(self, energy: float) -> float:
-        """Return photon mass attenuation coefficient at a given energy.
+    def get_photon_mass_attenuation(self, photon_energy: float | Discrete | Mixture | Tabular) -> float:
+        """Return photon mass attenuation coefficient for a given photon distribution.
 
-        The mass attenuation coefficient :math:`\\mu/\\rho` is computed as
-
-        .. math::
-
-            \\frac{\\mu(E)}{\\rho} = \\frac{1}{\\rho} \\sum_i N_i
-            \\sigma_i^{\\text{tot}}(E)
-
-        where :math:`N_i` is the atomic density of nuclide *i* in the material
-        [atom/b-cm], :math:`\\rho` is the mass density [g/cm^3], and
-        :math:`\\sigma_i^{\\text{tot}}` is the photon total cross section for
-        that nuclide, taken as the sum of the following reaction channels:
-
-        * photoelectric
-        * Compton (incoherent) scattering
-        * Rayleigh (coherent) scattering
-        * pair production in the nuclear field
-        * pair production in the electron field
-
-        Photon cross sections are obtained from the photon HDF5 libraries
-        referenced in ``cross_sections.xml`` via :class:`openmc.data.DataLibrary`
-        and interpolated using the existing :mod:`openmc.data` machinery.
 
         Parameters
         ----------
-        energy : float
-            Photon energy in [eV].
 
         Returns
         -------
-        float
-            Photon mass attenuation coefficient :math:`\\mu/\\rho` in [cm^2/g].
-
         """
 
-        cv.check_type("energy", energy, Real)
-        cv.check_greater_than("energy", energy, 0.0, equality=False)
+        cv.check_type("photon_energy", photon_energy, [Real, Discrete, Mixture, Tabular])
+
+        if isinstance(photon_energy, Real):
+            cv.check_greater_than("energy", photon_energy, 0.0, equality=False)
+
+        distributions = []
+        distribution_weights = []
+
+
+        if isinstance(photon_energy, Discrete) or isinstance(photon_energy, Tabular):
+            distributions.append(photon_energy)
+            distribution_weights.append(1.0)
+
+        elif isinstance(photon_energy, Mixture):
+            photon_energy.normalize()
+            for w,d in zip(photon_energy.probability, photon_energy.distribution):
+                distributions.append(d)
+                distribution_weights.append(w)
+
+
 
         # Mass density of the material [g/cm^3]
-        mass_density = self.get_mass_density()
-        if mass_density <= 0.0:
+        if self.get_mass_density() <= 0.0:
             raise ValueError(
                 f'Material ID="{self.id}" has non-positive mass density; '
                 "cannot compute mass attenuation coefficient."
@@ -1360,81 +1352,73 @@ class Material(IDManagerMixin):
                 "cannot compute mass attenuation coefficient."
             )
 
-        # Load cross section library (uses OPENMC_CROSS_SECTIONS / config)
-        library = openmc.data.DataLibrary.from_xml()
-
         # Temperature to use if photon data is temperature-resolved
         if self.temperature is not None:
             T = float(self.temperature)
         else:
             T = 294.0  # consistent with other API defaults
-        strT = f"{int(round(T))}K"
 
-        # ENDF photon MT numbers corresponding to the requested processes
-        #   502: coherent (Rayleigh) scattering
-        #   504: incoherent (Compton) scattering
-        #   515: pair production in nucleus field
-        #   516: pair production in electron field
-        #   522: photoelectric effect
-        photon_mts = {502, 504, 515, 516, 522}
-
-        total_macro_xs = 0.0  # sigma(E) in units compatible with 1/cm
+        photon_attenuation = 0.0  
 
         for nuc_name, atoms_per_bcm in nuclide_densities.items():
-            # Find photon data library entry for this nuclide
-            lib = library.get_by_material(nuc_name, data_type="photon")
-            if lib is None:
-                # No photon data for this nuclide; skip it
+
+            mu_nuc = 0.0
+
+            nuc_linear_attenuation = linear_attenuation_xs(nuc_name,  T)
+
+            if nuc_linear_attenuation is None:
                 continue
 
-            # Load incident photon data
-            photon_data = openmc.data.IncidentPhoton.from_hdf5(lib["path"])
+            if isinstance(photon_energy, Real):
+                mu_nuc += atoms_per_bcm * nuc_linear_attenuation(photon_energy)
 
-            # Sum the desired reaction channels to obtain a "total" photon xs
-            sigma_n = 0.0
+            for dist_weight, dist in zip(distribution_weights, distributions):
 
-            for reaction in photon_data.reactions.values():
-                mt = getattr(reaction, "mt", None)
-                if mt not in photon_mts:
-                    continue
+                dist.normalize()
 
-                xs_obj = reaction.xs
+                e_vals = dist.x
+                p_vals = dist.p
 
-                # resolve xs for the temperature
-                if isinstance(xs_obj, dict):
-                    # Try exact temperature match first
-                    if strT in xs_obj:
-                        xs_T = xs_obj[strT]
-                    else:
-                        # Fall back to nearest temperature if kTs/temperatures exist
-                        xs_T = None
-                        kTs = getattr(photon_data, "kTs", None)
-                        temps = getattr(photon_data, "temperatures", None)
-                        if (
-                            kTs is not None
-                            and temps is not None
-                            and len(kTs) == len(temps)
-                        ):
-                            delta_T = np.array(kTs) - T * openmc.data.K_BOLTZMANN
-                            idx = int(np.argmin(np.abs(delta_T)))
-                            xs_T = xs_obj[temps[idx]]
-                        # If we still don't have a match, just take the first
-                        # available dataset as a last resort.
-                        if xs_T is None:
-                            xs_T = next(iter(xs_obj.values()))
-                    xs = xs_T
-                else:
-                    xs = xs_obj
+                if isinstance(dist, Discrete):
+                    for (p,e) in zip(p_vals, e_vals):
 
-                # Evaluate microscopic cross section at the requested energy
-                sigma_n += float(xs(energy))
+                        mu_nuc += dist_weight * p * nuc_linear_attenuation(e)
 
-            if sigma_n <= 0.0:
+                if isinstance(dist, Tabular):
+
+                    # cast tabular distribution to a Tabulated1D object
+                    pe_dist = Tabulated1D( e_vals, p_vals, breakpoints=None, interpolation=[1])
+
+                    # generate a uninon of abscissae
+                    e_lists = [e_vals]
+                    for photon_xs in nuc_linear_attenuation.functions:
+                        e_lists.append(photon_xs.x)
+                    e_union = reduce(np.union1d, e_lists)
+
+                    # generate a callable combination of normalized photon probability x linear
+                    # attenuation
+                    integrand_operator = Combination(functions=[pe_dist,
+                                                       nuc_linear_attenuation],
+                                                operations=[np.multiply])
+
+                    # compute y-values of the callable combination
+                    mu_evaluated = integrand_operator(e_union)
+
+                    # instantiate the combined Tabulated1D function 
+                    integrand_function = Tabulated1D( e_union, mu_evaluated, breakpoints=None,
+                                                     interpolation=[2])
+
+                    
+                    # sum the distribution contribution to the linear attenuation
+                    # of the nuclide
+                    mu_nuc += dist_weight * integrand_function.integral()[-1]
+
+            if mu_nuc <= 0.0:
                 continue
 
-            total_macro_xs += atoms_per_bcm * sigma_n
+            photon_attenuation += atoms_per_bcm * mu_nuc # cm-1
 
-        return total_macro_xs / mass_density
+        return photon_attenuation / self.get_mass_density()  # cm2/g
 
     def get_photon_contact_dose_rate(
         self, bremsstrahlung_correction: bool = True, by_nuclide: bool = False

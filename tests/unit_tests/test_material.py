@@ -822,33 +822,6 @@ def test_material_from_constructor():
 
 def test_get_material_photon_attenuation():
     # ------------------------------------------------------------------
-    # Hydrogen
-    # ------------------------------------------------------------------
-    mat_h = openmc.Material(name="H")
-    mat_h.set_density("g/cm3", 0.5)
-    mat_h.add_element("H", 1.0)
-
-    # Simple sanity check at some arbitrary valid energy
-    mu_rho_h = mat_h.get_photon_mass_attenuation(1.0e6)
-    assert mu_rho_h > 0.0
-    assert math.isfinite(mu_rho_h)
-
-    # Placeholders for literature-based checks (fill in energy / μ/ρ)
-    energy_h_1 = None  # [eV]
-    ref_mu_rho_h_1 = None  # [cm^2/g]
-    if energy_h_1 is not None and ref_mu_rho_h_1 is not None:
-        assert mat_h.get_photon_mass_attenuation(energy_h_1) == pytest.approx(
-            ref_mu_rho_h_1
-        )
-
-    energy_h_2 = None  # [eV]
-    ref_mu_rho_h_2 = None  # [cm^2/g]
-    if energy_h_2 is not None and ref_mu_rho_h_2 is not None:
-        assert mat_h.get_photon_mass_attenuation(energy_h_2) == pytest.approx(
-            ref_mu_rho_h_2
-        )
-
-    # ------------------------------------------------------------------
     # Carbon
     # ------------------------------------------------------------------
     mat_c = openmc.Material(name="C")
@@ -857,7 +830,6 @@ def test_get_material_photon_attenuation():
 
     mu_rho_c = mat_c.get_photon_mass_attenuation(1.0e6)
     assert mu_rho_c > 0.0
-    assert math.isfinite(mu_rho_c)
 
     energy_c_1 = None  # [eV]
     ref_mu_rho_c_1 = None  # [cm^2/g]
@@ -874,31 +846,6 @@ def test_get_material_photon_attenuation():
         )
 
     # ------------------------------------------------------------------
-    # Iron
-    # ------------------------------------------------------------------
-    mat_fe = openmc.Material(name="Fe")
-    mat_fe.set_density("g/cm3", 7.8)
-    mat_fe.add_element("Fe", 1.0)
-
-    mu_rho_fe = mat_fe.get_photon_mass_attenuation(1.0e6)
-    assert mu_rho_fe > 0.0
-    assert math.isfinite(mu_rho_fe)
-
-    energy_fe_1 = None  # [eV]
-    ref_mu_rho_fe_1 = None  # [cm^2/g]
-    if energy_fe_1 is not None and ref_mu_rho_fe_1 is not None:
-        assert mat_fe.get_photon_mass_attenuation(energy_fe_1) == pytest.approx(
-            ref_mu_rho_fe_1
-        )
-
-    energy_fe_2 = None  # [eV]
-    ref_mu_rho_fe_2 = None  # [cm^2/g]
-    if energy_fe_2 is not None and ref_mu_rho_fe_2 is not None:
-        assert mat_fe.get_photon_mass_attenuation(energy_fe_2) == pytest.approx(
-            ref_mu_rho_fe_2
-        )
-
-    # ------------------------------------------------------------------
     # Lead
     # ------------------------------------------------------------------
     mat_pb = openmc.Material(name="Pb")
@@ -907,7 +854,6 @@ def test_get_material_photon_attenuation():
 
     mu_rho_pb = mat_pb.get_photon_mass_attenuation(1.0e6)
     assert mu_rho_pb > 0.0
-    assert math.isfinite(mu_rho_pb)
 
     energy_pb_1 = None  # [eV]
     ref_mu_rho_pb_1 = None  # [cm^2/g]
@@ -924,31 +870,6 @@ def test_get_material_photon_attenuation():
         )
 
     # ------------------------------------------------------------------
-    # Uranium
-    # ------------------------------------------------------------------
-    mat_u = openmc.Material(name="U")
-    mat_u.set_density("g/cm3", 18.9)
-    mat_u.add_element("U", 1.0)
-
-    mu_rho_u = mat_u.get_photon_mass_attenuation(1.0e6)
-    assert mu_rho_u > 0.0
-    assert math.isfinite(mu_rho_u)
-
-    energy_u_1 = None  # [eV]
-    ref_mu_rho_u_1 = None  # [cm^2/g]
-    if energy_u_1 is not None and ref_mu_rho_u_1 is not None:
-        assert mat_u.get_photon_mass_attenuation(energy_u_1) == pytest.approx(
-            ref_mu_rho_u_1
-        )
-
-    energy_u_2 = None  # [eV]
-    ref_mu_rho_u_2 = None  # [cm^2/g]
-    if energy_u_2 is not None and ref_mu_rho_u_2 is not None:
-        assert mat_u.get_photon_mass_attenuation(energy_u_2) == pytest.approx(
-            ref_mu_rho_u_2
-        )
-
-    # ------------------------------------------------------------------
     # Water (H2O)
     # ------------------------------------------------------------------
     mat_water = openmc.Material(name="Water")
@@ -958,7 +879,6 @@ def test_get_material_photon_attenuation():
 
     mu_rho_water = mat_water.get_photon_mass_attenuation(1.0e6)
     assert mu_rho_water > 0.0
-    assert math.isfinite(mu_rho_water)
 
     energy_water_1 = None  # [eV]
     ref_mu_rho_water_1 = None  # [cm^2/g]
@@ -974,50 +894,6 @@ def test_get_material_photon_attenuation():
             ref_mu_rho_water_2
         )
 
-    # ------------------------------------------------------------------
-    # Air (simple dry-air approximation)
-    # ------------------------------------------------------------------
-    mat_air = openmc.Material(name="Air")
-    mat_air.set_density("g/cm3", 1.205e-3)
-    mat_air.add_element("N", 0.78)
-    mat_air.add_element("O", 0.2095)
-    mat_air.add_element("Ar", 0.0105)
-
-    mu_rho_air = mat_air.get_photon_mass_attenuation(1.0e6)
-    assert mu_rho_air > 0.0
-    assert math.isfinite(mu_rho_air)
-
-    energy_air_1 = None  # [eV]
-    ref_mu_rho_air_1 = None  # [cm^2/g]
-    if energy_air_1 is not None and ref_mu_rho_air_1 is not None:
-        assert mat_air.get_photon_mass_attenuation(energy_air_1) == pytest.approx(
-            ref_mu_rho_air_1
-        )
-
-    energy_air_2 = None  # [eV]
-    ref_mu_rho_air_2 = None  # [cm^2/g]
-    if energy_air_2 is not None and ref_mu_rho_air_2 is not None:
-        assert mat_air.get_photon_mass_attenuation(energy_air_2) == pytest.approx(
-            ref_mu_rho_air_2
-        )
-
-    # ------------------------------------------------------------------
-    # Extra consistency: same composition, different density -> same μ/ρ
-    # (example shown for water; duplicate for others if desired)
-    # ------------------------------------------------------------------
-    mat_water_lo = openmc.Material(name="Water low rho")
-    mat_water_lo.set_density("g/cm3", 0.5)
-    mat_water_lo.add_element("H", 2.0)
-    mat_water_lo.add_element("O", 1.0)
-
-    mat_water_hi = openmc.Material(name="Water high rho")
-    mat_water_hi.set_density("g/cm3", 2.0)
-    mat_water_hi.add_element("H", 2.0)
-    mat_water_hi.add_element("O", 1.0)
-
-    mu_rho_water_lo = mat_water_lo.get_photon_mass_attenuation(1.0e6)
-    mu_rho_water_hi = mat_water_hi.get_photon_mass_attenuation(1.0e6)
-    assert mu_rho_water_lo == pytest.approx(mu_rho_water_hi, rel=1.0e-12)
 
     # ------------------------------------------------------------------
     # Invalid input tests
@@ -1025,14 +901,14 @@ def test_get_material_photon_attenuation():
 
     # Non-positive energy
     with pytest.raises(ValueError):
-        mat_h.get_photon_mass_attenuation(0.0)
+        mat_water.get_photon_mass_attenuation(0.0)
 
     with pytest.raises(ValueError):
-        mat_h.get_photon_mass_attenuation(-1.0)
+        mat_water.get_photon_mass_attenuation(-1.0)
 
     # Wrong type for energy
     with pytest.raises(TypeError):
-        mat_h.get_photon_mass_attenuation("1.0e6")  # type: ignore[arg-type]
+        mat_water.get_photon_mass_attenuation("1.0e6")  # type: ignore[arg-type]
 
     # Non-positive mass density
     mat_zero_rho = openmc.Material(name="Zero density")

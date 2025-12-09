@@ -1378,7 +1378,7 @@ class Material(IDManagerMixin):
         #   522: photoelectric effect
         photon_mts = {502, 504, 515, 516, 522}
 
-        total_macro_xs = 0.0  # ä(E) in units compatible with 1/cm
+        total_macro_xs = 0.0  # sigma(E) in units compatible with 1/cm
 
         for nuc_name, atoms_per_bcm in nuclide_densities.items():
             # Find photon data library entry for this nuclide

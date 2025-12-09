@@ -1308,7 +1308,7 @@ def read_collision_track_mcpl(file_path):
         'r': [],  # for position (x, y, z)
         'u': [],  # for direction (ux, uy, uz)
         'E': [], 'dE': [], 'time': [],
-        'wgt': [], 'event_mt': [], 'delayed_group': [], 'ancestor_nuclide' : [],
+        'wgt': [], 'event_mt': [], 'delayed_group': [],
         'cell_id': [], 'nuclide_id': [], 'material_id': [],
         'universe_id': [], 'n_collision': [], 'particle': [],
         'parent_id': [], 'progeny_id': []
@@ -1332,8 +1332,6 @@ def read_collision_track_mcpl(file_path):
             data['event_mt'].append(int(values_dict.get('event_mt', 0)))
             data['delayed_group'].append(
                 int(values_dict.get('delayed_group', 0)))
-            data['ancestor_nuclide'].append(
-                int(values_dict.get('ancestor_nuclide', 0)))
             data['cell_id'].append(int(values_dict.get('cell_id', 0)))
             data['nuclide_id'].append(int(values_dict.get('nuclide_id', 0)))
             data['material_id'].append(int(values_dict.get('material_id', 0)))
@@ -1347,8 +1345,8 @@ def read_collision_track_mcpl(file_path):
         ('r', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
         ('u', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
         ('E', 'f8'), ('dE', 'f8'), ('time', 'f8'), ('wgt', 'f8'),
-        ('event_mt', 'f8'), ('delayed_group', 'i4'), ('ancestor_nuclide', 'i4'),
-        ('cell_id', 'i4'), ('nuclide_id', 'i4'), ('material_id', 'i4'), ('universe_id', 'i4'),
+        ('event_mt', 'f8'), ('delayed_group', 'i4'), ('cell_id', 'i4'),
+        ('nuclide_id', 'i4'), ('material_id', 'i4'), ('universe_id', 'i4'),
         ('n_collision', 'i4'), ('particle', 'i4'),
         ('parent_id', 'i8'), ('progeny_id', 'i8')
     ]

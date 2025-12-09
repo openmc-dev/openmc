@@ -47,12 +47,12 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
-  int ancestor_nuclide {0};
   int surf_id {SURFACE_NONE};
   ParticleType particle;
 
   // Extra attributes that don't show up in source written to file
   int parent_nuclide {-1};
+  int ancestor_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;
 };
@@ -518,6 +518,7 @@ private:
   int event_mt_;
   int delayed_group_ {0};
   int parent_nuclide_ {-1};
+  int ancestor_nuclide_ {-1};
 
   int n_bank_ {0};
   double bank_second_E_ {0.0};
@@ -528,8 +529,6 @@ private:
 
   // Iterated Fission Probability
   double lifetime_ {0.0}; //!< neutron lifetime [s]
-
-  int ancestor_nuclide_ {0};
 
   int n_collision_ {0};
 
@@ -645,10 +644,6 @@ public:
   double& lifetime() { return lifetime_; }
   const double& lifetime() const { return lifetime_; }
 
-  // Particle event nuclide
-  int& ancestor_nuclide() { return ancestor_nuclide_; }
-  const int& ancestor_nuclide() const { return ancestor_nuclide_; }
-
   // What event took place, described in greater detail below
   TallyEvent& event() { return event_; }
   const TallyEvent& event() const { return event_; }
@@ -659,8 +654,10 @@ public:
   const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
   const int& delayed_group() const { return delayed_group_; }
-  const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
+  const int& parent_nuclide() const { return parent_nuclide_; }
+  int& ancestor_nuclide() { return ancestor_nuclide_; } // Ancestor nuclide
+  const int& ancestor_nuclide() const { return ancestor_nuclide_; }
 
   // Post-collision data
   double& bank_second_E()

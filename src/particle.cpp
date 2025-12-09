@@ -148,8 +148,8 @@ void Particle::from_source(const SourceSite* src)
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
-  delayed_group() = src->delayed_group;
   ancestor_nuclide() = src->ancestor_nuclide;
+  delayed_group() = src->delayed_group;
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
@@ -991,7 +991,6 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   site.time = p.time();
   site.wgt = p.wgt();
   site.delayed_group = p.delayed_group();
-  site.ancestor_nuclide = p.ancestor_nuclide();
   site.surf_id = surf.id_;
   site.particle = p.type();
   site.parent_id = p.id();

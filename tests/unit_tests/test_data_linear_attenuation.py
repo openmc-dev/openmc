@@ -94,8 +94,8 @@ def test_get_photon_data_valid(xs_filename):
 
     photon_nuclides = [
         mat
-        for mat in lib["materials"]
-        if lib.get_by_material(mat, data_type="photon") is not None
+        for mat in lib
+        if 'photon' in mat['type']
     ]
     if not photon_nuclides:
         pytest.skip("No photon data entries available in cross section library.")

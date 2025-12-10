@@ -2398,6 +2398,8 @@ class Model:
         b_max: int | None = None,
         maxiter: int = 50,
         output: bool = False,
+        use_derivative_tallies: bool = False,
+        deriv_constraint_offsets: list[float] | None = None,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
@@ -2460,6 +2462,15 @@ class Model:
             Maximum number of iterations to perform.
         output : bool, optional
             Whether or not to display output showing iteration progress.
+        use_derivative_tallies : bool, optional
+            If True, extract derivative tallies from StatePoints and use them
+            to create synthetic constraint points, reducing the number of MC
+            runs needed for convergence. Default is False.
+        deriv_constraint_offsets : list[float], optional
+            Parameter offsets around each MC-evaluated point at which to create
+            synthetic constraints from derivative information. For example,
+            [-0.3, -0.15, 0.15, 0.3] creates 4 virtual points per MC run.
+            Default is [-0.3, -0.15, 0.15, 0.3].
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
@@ -2483,16 +2494,23 @@ class Model:
         func_kwargs = {} if func_kwargs is None else dict(func_kwargs)
         run_kwargs = {} if run_kwargs is None else dict(run_kwargs)
         run_kwargs.setdefault('output', False)
+        
+        # Default derivative constraint offsets
+        if deriv_constraint_offsets is None:
+            deriv_constraint_offsets = [-0.3, -0.15, 0.15, 0.3] if use_derivative_tallies else []
 
         # Create lists to store the history of evaluations
         xs: list[float] = []
         fs: list[float] = []
         ss: list[float] = []
         gs: list[int] = []
-        count = 0
+        dks: list[float] = []      # dk/dx derivatives
+        dks_std: list[float] = []  # uncertainties in derivatives
+        mc_count = 0               # Count of actual MC runs (not synthetic constraints)
+        count = 0                  # Total iteration count
 
         # Helper function to evaluate f and store results
-        def eval_at(x: float, batches: int) -> tuple[float, float]:
+        def eval_at(x: float, batches: int) -> tuple[float, float, float | None, float | None]:
             # Modify the model with the current guess
             func(x, **func_kwargs)
 
@@ -2508,19 +2526,64 @@ class Model:
                 sp_filepath = self.run(**run_kwargs)
 
             # Extract keff and its uncertainty
+            dk_dx = None
+            dk_dx_std = None
             with openmc.StatePoint(sp_filepath) as sp:
                 keff = sp.keff
+                
+                # Extract derivative if requested
+                if use_derivative_tallies:
+                    for tally in sp.tallies:
+                        if tally.derivative is not None:
+                            try:
+                                # Extract derivative value (handle multi-dimensional tallies)
+                                deriv_mean = np.mean(tally.mean)
+                                deriv_std = np.mean(tally.std)
+                                if not np.isnan(deriv_mean) and not np.isinf(deriv_mean):
+                                    dk_dx = float(deriv_mean)
+                                    dk_dx_std = float(deriv_std)
+                                break
+                            except (IndexError, TypeError):
+                                continue
 
             if output:
-                nonlocal count
+                nonlocal count, mc_count
                 count += 1
-                print(f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}')
+                mc_count += 1
+                deriv_str = f', dk/dx={dk_dx:.6g}' if dk_dx is not None else ''
+                print(f'MC Eval {mc_count}: {batches=}, {x=:.6g}, {keff=:.5f}{deriv_str}')
 
             xs.append(float(x))
             fs.append(float(keff.n - target))
             ss.append(float(keff.s))
             gs.append(int(batches))
-            return fs[-1], ss[-1]
+            dks.append(dk_dx if dk_dx is not None else 0.0)
+            dks_std.append(dk_dx_std if dk_dx_std is not None else 0.0)
+            
+            # Add synthetic constraints from derivatives if enabled
+            if use_derivative_tallies and dk_dx is not None:
+                for offset in deriv_constraint_offsets:
+                    x_synth = float(x + offset)
+                    # Linear Taylor expansion: k(x+dx) ≈ k(x) + dk/dx * dx
+                    f_synth = float(fs[-1] + dk_dx * offset)
+                    # Propagate uncertainty
+                    s_synth = float(np.sqrt(ss[-1]**2 + (dk_dx_std * offset)**2))
+                    
+                    xs.append(x_synth)
+                    fs.append(f_synth)
+                    ss.append(s_synth)
+                    gs.append(int(batches))  # Mark synthetic point with same batch count
+                    dks.append(dk_dx)
+                    dks_std.append(dk_dx_std)
+                    
+                    if output:
+                        nonlocal count
+                        count += 1
+                        print(f'Synth Constraint {count}: x={x_synth:.6g} (offset {offset:+.2f}), f(x)≈{f_synth:.6e}')
+            
+            return fs[-1 - len(deriv_constraint_offsets) if use_derivative_tallies and dk_dx else -1], \
+                   ss[-1 - len(deriv_constraint_offsets) if use_derivative_tallies and dk_dx else -1], \
+                   dk_dx, dk_dx_std
 
         # Default b0 to current model settings if not explicitly provided
         if b0 is None:
@@ -2532,10 +2595,10 @@ class Model:
                 run_kwargs.setdefault('cwd', tmpdir)
 
             # ---- Seed with two evaluations
-            f0, s0 = eval_at(x0, b0)
+            f0, s0, dk0, _ = eval_at(x0, b0)
             if abs(f0) <= k_tol and s0 <= sigma_final:
                 return SearchResult(x0, xs, fs, ss, gs, True, "converged")
-            f1, s1 = eval_at(x1, b0)
+            f1, s1, dk1, _ = eval_at(x1, b0)
             if abs(f1) <= k_tol and s1 <= sigma_final:
                 return SearchResult(x1, xs, fs, ss, gs, True, "converged")
 
@@ -2545,10 +2608,34 @@ class Model:
 
                 # Perform a curve fit on f(x) = a + bx accounting for
                 # uncertainties. This is equivalent to minimizing the function
-                # in Equation (A.14)
+                # in Equation (A.14). Only use MC-evaluated points (skip synthetic
+                # constraints which have gs == previous gs value)
+                if use_derivative_tallies and len(gs) > 2:
+                    # Identify MC points vs synthetic constraints
+                    mc_indices = []
+                    for i in range(len(gs)):
+                        # A point is an MC point if it's not a synthetic constraint
+                        # (synthetic constraints are added after each MC point)
+                        is_mc = True
+                        if i > 0 and len(deriv_constraint_offsets) > 0:
+                            # Check if this looks like a synthetic cluster
+                            if (i >= len(deriv_constraint_offsets) and 
+                                all(gs[i-j-1] == gs[i] for j in range(min(len(deriv_constraint_offsets), i)))):
+                                # This is part of a synthetic cluster
+                                is_mc = False
+                        mc_indices.append(i)
+                    
+                    # Use most recent MC points for fitting
+                    fit_indices = mc_indices[-m:]
+                else:
+                    fit_indices = list(range(max(0, len(xs)-m), len(xs)))
+                
                 (a, b), _ = curve_fit(
                     lambda x, a, b: a + b*x,
-                    xs[-m:], fs[-m:], sigma=ss[-m:], absolute_sigma=True
+                    [xs[i] for i in fit_indices], 
+                    [fs[i] for i in fit_indices], 
+                    sigma=[ss[i] for i in fit_indices], 
+                    absolute_sigma=True
                 )
                 x_new = float(-a / b)
 
@@ -2589,7 +2676,7 @@ class Model:
                     b_new = min(b_new, b_max)
 
                 # Evaluate at proposed x with batches determined above
-                f_new, s_new = eval_at(x_new, b_new)
+                f_new, s_new, _, _ = eval_at(x_new, b_new)
 
                 # Termination based on both criteria (|f| and σ)
                 if abs(f_new) <= k_tol and s_new <= sigma_final:

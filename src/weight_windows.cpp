@@ -128,14 +128,10 @@ void apply_weight_windows(Particle& p)
     n_split = std::min(n_split, max_split);
 
     p.n_split() += n_split;
-
-    // Create secondaries and divide weight among all particles
-    int i_split = std::round(n_split);
-    for (int l = 0; l < i_split - 1; l++) {
-      p.split(weight / n_split);
-    }
     // remaining weight is applied to current particle
     p.wgt() = weight / n_split;
+    // Create secondaries from current particle
+    p.replicate(std::round(n_split) - 1);
 
   } else if (weight <= weight_window.lower_weight) {
     // if the particle weight is below the window, play Russian roulette

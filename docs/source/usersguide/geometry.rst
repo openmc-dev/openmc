@@ -533,10 +533,10 @@ these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
 material IDs to the OpenMC material ID space.
 
 
-Material overrides and differentiation 
+Material overrides and differentiation
 --------------------------------------
 
-Programmatic access to DAGMC cell information for material overrides 
+Programmatic access to DAGMC cell information for material overrides
 and differentiation requires synchronization of the DAGMC universe
 representation across Python and C-API::
 
@@ -544,7 +544,23 @@ representation across Python and C-API::
   model.sync_dagmc_universes()
   model.finalize_lib()
 
-Material overrides 
+Upon completion of these steps, the :attr:`DAGMCUniverse.cells` attribute will
+be populated with :class:`DAGMCCell` proxy objects that represent the cells
+defined in the DAGMC model. The :class:`DAGMCCell` objects  will have
+:class:`openmc.Material`'s' applied according to the assignments upon
+initialization of the model. These materials can be replaced in the same manner
+as :class:`openmc.Cell` objects to override material assignments in the DAGMC
+model.
+
+Depletion with DAGMC geometry
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The synchronization of :class:`openmc.DAGMCUniverse`'s is important for
+depletion calculations using DAGMC geometry when materials need to be
+differentiated to perform material burnup independently in each DAGMC cell. See
+:meth:`openmc.model.Model.differentiate_mats`.
+
+Material overrides
 ~~~~~~~~~~~~~~~~~~
 
 OpenMC supports overriding material assignments defined inside a DAGMC HDF5
@@ -577,9 +593,10 @@ This lets you keep CAD geometry while adopting OpenMC material definitions.
 Per-cell material overrides
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more control, use :meth:`~openmc.DAGMCUniverse.add_material_override` to
-assign materials to particular DAGMC cells. The method accepts either an
-integer cell ID or a :class:`~openmc.DAGMCCell` object::
+To assign overrides without initializing :class:`openmc.Model`, the
+:meth:`openmc.DAGMCUniverse.add_material_override` method can be used to assign
+materials to particular DAGMC cells. The method accepts either an integer cell
+ID::
 
   dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
 
@@ -590,8 +607,12 @@ integer cell ID or a :class:`~openmc.DAGMCCell` object::
 
   dag_univ.add_material_override(1, enriched)
 
+In the case that the :class:`openmc.DAGMCUniverse` has already been synchronized,
+a :class:`openmc.DAGMCCell` object can also be provide to assign the material.
+
 Overrides are written to the `<material_overrides>` element of the
-`<dagmc_universe>` XML so the C++ core can apply them on initialization.
+:ref:`<dagmc_universe> <dagmc_element>` XML element so the C++ core can apply
+them on initialization.
 
 
 .. _Direct Accelerated Geometry Monte Carlo: https://svalinn.github.io/DAGMC/

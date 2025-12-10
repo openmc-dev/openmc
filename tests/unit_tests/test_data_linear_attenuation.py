@@ -28,7 +28,7 @@ def elements_photon_xs(xs_filename):
     """Dictionary of IncidentPhoton data indexed by atomic symbol."""
     lib = DataLibrary.from_xml(xs_filename)
 
-    elements = ["H", "O", "Al", "C", "Ag", "U", "Pb"]
+    elements = ["H", "O", "Al", "C", "Ag", "U", "Pb", "V"]
     data = {}
     for symbol in elements:
         entry = lib.get_by_material(symbol, data_type="photon")
@@ -92,15 +92,11 @@ def test_get_photon_data_valid(xs_filename):
     """
     lib = DataLibrary.from_xml(xs_filename)
 
-    photon_nuclides = [
-        mat
-        for mat in lib
-        if 'photon' in mat['type']
-    ]
+    photon_nuclides = [mat for mat in lib if "photon" in mat["type"]]
     if not photon_nuclides:
         pytest.skip("No photon data entries available in cross section library.")
 
-    nuclide = photon_nuclides[0]
+    nuclide = photon_nuclides[0]["materials"][0]
 
     # Clear internal cache
     photon_att._PHOTON_LIB = None
@@ -143,3 +139,74 @@ def test_get_photon_data_no_library(monkeypatch):
 
     with pytest.raises(DataError):
         photon_att._get_photon_data("U235")
+
+
+def test_linear_attenuation_reference_values(elements_photon_xs, monkeypatch):
+    """Check linear_attenuation_xs for Pb and V at two reference energies."""
+    pb_data = elements_photon_xs.get("Pb")
+    v_data = elements_photon_xs.get("V")
+
+    if pb_data is None or v_data is None:
+        pytest.skip("Pb or V photon data not available in cross section library.")
+
+    # Route _get_photon_data to our preloaded IncidentPhoton objects
+    def _fake_get_photon_data(name: str):
+        if name == "Pb":
+            return pb_data
+        if name == "V":
+            return v_data
+        return None
+
+    monkeypatch.setattr(linear_attenuation, "_get_photon_data", _fake_get_photon_data)
+
+
+    # Call the helper at room temperature
+    xs_pb = linear_attenuation_xs("Pb", temperature=293.6)
+    xs_v = linear_attenuation_xs("V", temperature=293.6)
+
+    if xs_pb is None or xs_v is None:
+        pytest.skip("No relevant photon reactions for Pb or V.")
+
+    assert isinstance(xs_pb, Sum)
+    assert isinstance(xs_v, Sum)
+
+    # Test Lead
+    pb_energies = np.array([1.0e5, 1.0e6])
+    pb_vals = xs_pb(pb_energies)
+
+    # data from https://physics.nist.gov/PhysRefData/XrayMassCoef/ElemTab/z82.html
+    expected_pb = np.array(
+        [
+            5.549e00,
+            7.102e-02,
+        ]
+    )
+
+    pb_mat = openmc.Material(temperature=293.6)
+    pb_mat.add_element("Pb", 1.0)
+    pb_mat.set_density("g/cm3", 11.34)
+
+    expected_pb *= pb_mat.get_mass_density()/pb_mat.get_element_atom_densities()["Pb"]
+
+    # Test Vanadium
+    v_energies = np.array([1.0e5, 1.0e6])
+    v_vals = xs_v(v_energies)
+
+    # data from https://physics.nist.gov/PhysRefData/XrayMassCoef/ElemTab/z23.html
+    expected_v = np.array(
+        [
+            2.877e-01,
+            5.794e-02,
+        ]
+    )
+
+    v_mat = openmc.Material(temperature=293.6)
+    v_mat.add_element("V", 1.0)
+    v_mat.set_density("g/cm3", 11.34)
+
+    expected_v *= pb_mat.get_mass_density()/v_mat.get_element_atom_densities()["V"]
+
+
+    # Replace with tighter tolerances once real values are in
+    assert np.allclose(pb_vals, expected_pb)
+    assert np.allclose(v_vals, expected_v)

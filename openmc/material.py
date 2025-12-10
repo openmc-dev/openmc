@@ -1461,7 +1461,7 @@ class Material(IDManagerMixin):
 
             if photon_source_per_atom is not None and atoms_per_bcm > 0.0:
 
-                if isinstance(photon_source_per_atom, Discrete) ir isinstance(photon_source_per_atom, Tabular):
+                if isinstance(photon_source_per_atom, Discrete) or isinstance(photon_source_per_atom, Tabular):
                     e_vals = photon_source_per_atom.x
                     p_vals = photon_source_per_atom.y
 

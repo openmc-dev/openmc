@@ -962,7 +962,12 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
             const auto& delayed_groups =
               simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
             if (delayed_groups.size() == settings::ifp_n_generation) {
-              if (delayed_groups[0] > 0 && tally.nuclides_[0] == -1) {
+              int j = -1;
+              if (delayed_groups[0] > 0 && tally.nuclides_[0] == -1)
+                j = 0;
+              if (delayed_groups[1] > 0 && tally.nuclides_[0] > -1)
+                j = 1;
+              if (j>-1) {
                 score = p.wgt_last();
                 if (tally.delayedgroup_filter_ != C_NONE) {
                   auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];

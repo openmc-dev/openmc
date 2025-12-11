@@ -1305,7 +1305,7 @@ class Material(IDManagerMixin):
         return decayheat if by_nuclide else sum(decayheat.values())
     
 
-    def get_photon_mass_attenuation(self, photon_energy: float | Discrete | Mixture | Tabular) -> float:
+    def get_photon_mass_attenuation_coefficient(self, photon_energy: float | Discrete | Mixture | Tabular) -> float:
         """Return photon mass attenuation coefficient for a given photon distribution.
 
 
@@ -1332,8 +1332,13 @@ class Material(IDManagerMixin):
         elif isinstance(photon_energy, Mixture):
             photon_energy.normalize()
             for w,d in zip(photon_energy.probability, photon_energy.distribution):
+                if not isinstance(d, (Discrete, Tabular)) :
+                    raise ValueError("Mixture distributions can be only a combination of Discrete or Tabular")
                 distributions.append(d)
                 distribution_weights.append(w)
+
+        for dist in distributions:
+            dist.normalize()
 
 
 
@@ -1364,17 +1369,16 @@ class Material(IDManagerMixin):
 
             mu_nuc = 0.0
 
-            nuc_linear_attenuation = linear_attenuation_xs(nuc_name,  T)
+            nuc_linear_attenuation = linear_attenuation_xs(nuc_name,  T) # units of barns/atom
 
             if nuc_linear_attenuation is None:
                 continue
 
-            if isinstance(photon_energy, Real):
-                mu_nuc += atoms_per_bcm * nuc_linear_attenuation(photon_energy)
+            if isinstance(photon_energy, float):
+                mu_nuc +=  nuc_linear_attenuation(photon_energy)
 
             for dist_weight, dist in zip(distribution_weights, distributions):
 
-                dist.normalize()
 
                 e_vals = dist.x
                 p_vals = dist.p

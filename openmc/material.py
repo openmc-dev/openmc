@@ -1338,7 +1338,7 @@ class Material(IDManagerMixin):
             unsupported distribution types.
         """
 
-        cv.check_type("photon_energy", photon_energy, [float, Real, Discrete, Mixture, Tabular])
+        cv.check_type("photon_energy", photon_energy, (float, Real, Discrete, Mixture, Tabular))
 
         if isinstance(photon_energy, float):
             photon_energy = cast(float, photon_energy)

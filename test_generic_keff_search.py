@@ -135,7 +135,8 @@ def add_derivative_tallies(model, deriv_variable, deriv_material, deriv_nuclide=
 
 def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_material,
              deriv_nuclide, x0, x1, target, deriv_nuclide_arg=None, deriv_to_x_func=None,
-             expected_magnitude=None, use_derivative_tallies=True):
+             expected_magnitude=None, use_derivative_tallies=True, deriv_method='least_squares',
+             learning_rate=1e-17):
     """
     Generic test runner.
     
@@ -167,6 +168,10 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
     use_derivative_tallies : bool, optional
         If True, enable derivative tallies and pass derivative args to keff_search.
         If False, run keff_search without derivative tallies (baseline comparison).
+    deriv_method : str, optional
+        'least_squares' or 'gradient_descent'. Only used when use_derivative_tallies=True.
+    learning_rate : float, optional
+        Learning rate for gradient descent. Only used when deriv_method='gradient_descent'.
     """
     print("\n" + "=" * 80)
     print(f"TEST: {test_name}")
@@ -188,6 +193,9 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
         print(f"  Derivative material: {deriv_material}")
         if use_derivative_tallies:
             print(f"  Derivative tallies: ON")
+            print(f"  Derivative method: {deriv_method}")
+            if deriv_method == 'gradient_descent':
+                print(f"  Learning rate: {learning_rate:.2e}")
             if deriv_nuclide_arg:
                 print(f"  Derivative nuclide: {deriv_nuclide_arg}")
             if deriv_to_x_func is not None:
@@ -200,7 +208,10 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
         print(f"  Target k-eff: {target}")
         print(f"  Batches: {model.settings.batches}")
         if deriv_to_x_func is not None and use_derivative_tallies:
-            print(f"  NOTE: Automatic normalization handles large derivatives!")
+            if deriv_method == 'gradient_descent':
+                print(f"  NOTE: Using gradient descent with large derivatives!")
+            else:
+                print(f"  NOTE: Automatic normalization handles large derivatives!")
 
         start_time = time.time()
 
@@ -215,8 +226,8 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
                 'x0': x0,
                 'x1': x1,
                 'target': target,
-                'k_tol': 1e-2,
-                'sigma_final': 3e-2,
+                'k_tol': 1e-4,
+                'sigma_final': 3e-4,
                 'b0': model.settings.batches - model.settings.inactive,
                 'maxiter': 50,
                 'output': True,
@@ -230,7 +241,10 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
                     'deriv_material': deriv_material,
                     'deriv_nuclide': deriv_nuclide_arg,
                     'deriv_weight': 1.0,
+                    'deriv_method': deriv_method,
                 })
+                if deriv_method == 'gradient_descent':
+                    search_kwargs['learning_rate'] = learning_rate
                 if deriv_to_x_func is not None:
                     search_kwargs['deriv_to_x_func'] = deriv_to_x_func
 
@@ -259,12 +273,23 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
 
 if __name__ == '__main__':
     print("\n" + "=" * 80)
-    print("GENERIC DERIVATIVE SUPPORT IN Model.keff_search")
+    print("COMPARISON: GRADIENT DESCENT vs GRSECANT (NO DERIVATIVES)")
     print("=" * 80)
-    print("Demonstrates:")
-    print("  1. Multiple derivative types (density, nuclide_density, temp, enrichment)")
-    print("  2. Automatic normalization of large derivatives (O(10^20))")
-    print("  3. deriv_to_x_func for unit conversion (ppm, %, etc.)")
+    print("This test compares:")
+    print("  1. Gradient Descent with derivative tallies")
+    print("     - Uses dk/dx from tally derivatives")
+    print("     - Requires tuning learning_rate parameter")
+    print("     - Update: x_new = x_old - learning_rate * error * dk/dx")
+    print("")
+    print("  2. GRsecant without derivative tallies (baseline)")
+    print("     - Standard curve fitting approach")
+    print("     - No gradient information used")
+    print("     - Uses memory of past function evaluations")
+    print("")
+    print("  3. Least Squares with derivatives (bonus reference)")
+    print("     - Gradient-augmented curve fitting")
+    print("     - Typically fastest convergence")
+    print("     - Automatic normalization of large derivatives")
     print("=" * 80)
 
     # Physical constants for boron ppm conversion
@@ -282,9 +307,9 @@ if __name__ == '__main__':
     print(f"  Expected dk/dppm magnitude: O(10^16) to O(10^20)")
     print(f"  ✓ Automatic normalization handles this automatically!\n")
 
-    # TEST 1: Boron concentration with deriv_to_x_func (LARGE DERIVATIVES!)
-    print("\n[1/4] Boron concentration search with deriv_to_x_func")
-    print("      (Demonstrates automatic normalization of O(10^16-10^20) derivatives)")
+    # TEST 1: Boron concentration - Gradient Descent vs GRsecant without derivatives
+    print("\n[1/2] COMPARISON: Gradient Descent (with derivatives) vs GRsecant (without derivatives)")
+    print("      (Demonstrates gradient descent with large derivatives O(10^16-10^20))")
     try:
         def modifier_boron(ppm, model):
             """Modify boron concentration in coolant."""
@@ -303,9 +328,9 @@ if __name__ == '__main__':
             """Convert dk/dN to dk/dppm using chain rule."""
             return deriv_dN * BORON_PPM_SCALE
 
-        # With derivative tallies + conversion
-        result_with_deriv = run_test(
-            "Boron concentration search WITH deriv_to_x_func (derivative tallies)",
+        # Method 1: Gradient Descent with derivative tallies
+        result_grad_desc = run_test(
+            "Boron search: GRADIENT DESCENT with derivative tallies",
             lambda: build_model(boron_ppm=1000),
             modifier_boron,
             'nuclide_density', 3, 'B10',
@@ -314,11 +339,13 @@ if __name__ == '__main__':
             deriv_to_x_func=boron_ppm_conversion,
             expected_magnitude="O(10^16-10^20)",
             use_derivative_tallies=True,
+            deriv_method='gradient_descent',
+            learning_rate=1e-17,
         )
 
-        # Baseline: no derivative tallies
-        result_without_deriv = run_test(
-            "Boron concentration search WITHOUT derivative tallies",
+        # Method 2: GRsecant without derivative tallies (baseline)
+        result_grsecant = run_test(
+            "Boron search: GRSECANT without derivative tallies (baseline)",
             lambda: build_model(boron_ppm=1000),
             modifier_boron,
             None, None, None,
@@ -326,12 +353,84 @@ if __name__ == '__main__':
             use_derivative_tallies=False,
         )
 
-        if result_with_deriv and result_without_deriv:
-            print("\nComparison of MC invocations (boron):")
-            print(f"  With derivative tallies (dk/dppm via deriv_to_x_func): {result_with_deriv.function_calls} runs, {result_with_deriv.total_batches} batches")
-            print(f"  Without derivative tallies: {result_without_deriv.function_calls} runs, {result_without_deriv.total_batches} batches")
+        if result_grad_desc and result_grsecant:
+            print("\n" + "=" * 80)
+            print("COMPARISON RESULTS: Gradient Descent vs GRsecant (no derivatives)")
+            print("=" * 80)
+            print(f"\nGradient Descent (with derivatives):")
+            print(f"  Final ppm: {result_grad_desc.root:.1f}")
+            print(f"  MC runs: {result_grad_desc.function_calls}")
+            print(f"  Total batches: {result_grad_desc.total_batches}")
+            print(f"  Converged: {result_grad_desc.converged}")
+            
+            print(f"\nGRsecant (without derivatives):")
+            print(f"  Final ppm: {result_grsecant.root:.1f}")
+            print(f"  MC runs: {result_grsecant.function_calls}")
+            print(f"  Total batches: {result_grsecant.total_batches}")
+            print(f"  Converged: {result_grsecant.converged}")
+            
+            # Calculate efficiency metrics
+            if result_grsecant.function_calls > 0:
+                run_reduction = (1 - result_grad_desc.function_calls / result_grsecant.function_calls) * 100
+                batch_reduction = (1 - result_grad_desc.total_batches / result_grsecant.total_batches) * 100
+                print(f"\nEfficiency Gains:")
+                print(f"  MC run reduction: {run_reduction:+.1f}%")
+                print(f"  Batch reduction: {batch_reduction:+.1f}%")
+            
+            print("=" * 80)
     except Exception as e:
         print(f"  ⚠ Boron comparison test skipped: {e}")
+        import traceback
+        traceback.print_exc()
+
+    # TEST 2: Bonus comparison - Least Squares method for reference
+    print("\n[2/2] BONUS: Least Squares (with derivatives) for reference")
+    print("      (Shows that least squares typically converges faster)")
+    try:
+        def modifier_boron(ppm, model):
+            """Modify boron concentration in coolant."""
+            ppm = max(ppm, 0.0)
+            coolant = model.materials[2]
+            for elem in ('H', 'O', 'B'):
+                coolant.remove_element(elem)
+            coolant.set_density('g/cm3', 0.741)
+            coolant.add_element('H', 2.)
+            coolant.add_element('O', 1.)
+            coolant.add_element('B', ppm * 1e-6)
+            model.export_to_xml()
+
+        def boron_ppm_conversion(deriv_dN):
+            """Convert dk/dN to dk/dppm using chain rule."""
+            return deriv_dN * BORON_PPM_SCALE
+
+        # Method: Least Squares with derivative tallies (for comparison)
+        result_least_squares = run_test(
+            "Boron search: LEAST SQUARES with derivative tallies",
+            lambda: build_model(boron_ppm=1000),
+            modifier_boron,
+            'nuclide_density', 3, 'B10',
+            500, 1500, 0.95,
+            deriv_nuclide_arg='B10',
+            deriv_to_x_func=boron_ppm_conversion,
+            expected_magnitude="O(10^16-10^20)",
+            use_derivative_tallies=True,
+            deriv_method='least_squares',
+        )
+
+        if result_least_squares:
+            print("\n" + "=" * 80)
+            print("REFERENCE: Least Squares Method")
+            print("=" * 80)
+            print(f"  Final ppm: {result_least_squares.root:.1f}")
+            print(f"  MC runs: {result_least_squares.function_calls}")
+            print(f"  Total batches: {result_least_squares.total_batches}")
+            print(f"  Converged: {result_least_squares.converged}")
+            print("=" * 80)
+    except Exception as e:
+        print(f"  ⚠ Least squares reference test skipped: {e}")
+        import traceback
+        traceback.print_exc()
+    
     '''
     # TEST 2: Fuel enrichment
     print("\n[2/4] Fuel enrichment search (enrichment derivative)")

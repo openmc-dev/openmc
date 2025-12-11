@@ -919,7 +919,7 @@ def test_get_material_photon_attenuation():
     xe_spectrum = mat_xe.get_decay_photon_energy(units='Bq/cm3')
 
     # value from doi: https://doi.org/10.2172/6246345
-    mu_xe =  5.015  # [cm-1] for Co-60 in Pb
+    mu_xe =  5.015  # [cm-1] for Xe-135 in Pb
     mass_attenuation_coeff_xe135_pb = mu_xe / mat_pb.density  # [cm^2/g] 
     assert mat_pb.get_photon_mass_attenuation_coefficient(xe_spectrum) == pytest.approx(mass_attenuation_coeff_xe135_pb, rel=1e-1)
 

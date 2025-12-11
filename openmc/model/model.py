@@ -2399,7 +2399,7 @@ class Model:
         maxiter: int = 50,
         output: bool = False,
         use_derivative_tallies: bool = False,
-        deriv_constraint_offsets: list[float] | None = None,
+        deriv_weight: float = 1.0,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
@@ -2464,13 +2464,16 @@ class Model:
             Whether or not to display output showing iteration progress.
         use_derivative_tallies : bool, optional
             If True, extract derivative tallies from StatePoints and use them
-            to create synthetic constraint points, reducing the number of MC
-            runs needed for convergence. Default is False.
-        deriv_constraint_offsets : list[float], optional
-            Parameter offsets around each MC-evaluated point at which to create
-            synthetic constraints from derivative information. For example,
-            [-0.3, -0.15, 0.15, 0.3] creates 4 virtual points per MC run.
-            Default is [-0.3, -0.15, 0.15, 0.3].
+            as gradient constraints in the curve fitting process. The slope of
+            the fitted line at each MC-evaluated point is constrained to match
+            the derivative information, improving the quality of the linear
+            fit without creating synthetic data points. Default is False.
+        deriv_weight : float, optional
+            Weight factor for derivative constraints (0.0 to 1.0+). Controls
+            how strongly derivative information influences the curve fit.
+            - 0.0: Ignore derivatives (same as use_derivative_tallies=False)
+            - 1.0: Derivatives weighted equally with point residuals (default)
+            - >1.0: Prioritize derivative information over point fit
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
@@ -2494,10 +2497,6 @@ class Model:
         func_kwargs = {} if func_kwargs is None else dict(func_kwargs)
         run_kwargs = {} if run_kwargs is None else dict(run_kwargs)
         run_kwargs.setdefault('output', False)
-        
-        # Default derivative constraint offsets
-        if deriv_constraint_offsets is None:
-            deriv_constraint_offsets = [-0.3, -0.15, 0.15, 0.3] if use_derivative_tallies else []
 
         # Create lists to store the history of evaluations
         xs: list[float] = []
@@ -2506,8 +2505,7 @@ class Model:
         gs: list[int] = []
         dks: list[float] = []      # dk/dx derivatives
         dks_std: list[float] = []  # uncertainties in derivatives
-        mc_count = 0               # Count of actual MC runs (not synthetic constraints)
-        count = 0                  # Total iteration count
+        count = 0
 
         # Helper function to evaluate f and store results
         def eval_at(x: float, batches: int) -> tuple[float, float, float | None, float | None]:
@@ -2547,11 +2545,10 @@ class Model:
                                 continue
 
             if output:
-                nonlocal count, mc_count
+                nonlocal count
                 count += 1
-                mc_count += 1
                 deriv_str = f', dk/dx={dk_dx:.6g}' if dk_dx is not None else ''
-                print(f'MC Eval {mc_count}: {batches=}, {x=:.6g}, {keff=:.5f}{deriv_str}')
+                print(f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}{deriv_str}')
 
             xs.append(float(x))
             fs.append(float(keff.n - target))
@@ -2560,30 +2557,7 @@ class Model:
             dks.append(dk_dx if dk_dx is not None else 0.0)
             dks_std.append(dk_dx_std if dk_dx_std is not None else 0.0)
             
-            # Add synthetic constraints from derivatives if enabled
-            if use_derivative_tallies and dk_dx is not None:
-                for offset in deriv_constraint_offsets:
-                    x_synth = float(x + offset)
-                    # Linear Taylor expansion: k(x+dx) ≈ k(x) + dk/dx * dx
-                    f_synth = float(fs[-1] + dk_dx * offset)
-                    # Propagate uncertainty
-                    s_synth = float(np.sqrt(ss[-1]**2 + (dk_dx_std * offset)**2))
-                    
-                    xs.append(x_synth)
-                    fs.append(f_synth)
-                    ss.append(s_synth)
-                    gs.append(int(batches))  # Mark synthetic point with same batch count
-                    dks.append(dk_dx)
-                    dks_std.append(dk_dx_std)
-                    
-                    if output:
-                        nonlocal count
-                        count += 1
-                        print(f'Synth Constraint {count}: x={x_synth:.6g} (offset {offset:+.2f}), f(x)≈{f_synth:.6e}')
-            
-            return fs[-1 - len(deriv_constraint_offsets) if use_derivative_tallies and dk_dx else -1], \
-                   ss[-1 - len(deriv_constraint_offsets) if use_derivative_tallies and dk_dx else -1], \
-                   dk_dx, dk_dx_std
+            return fs[-1], ss[-1], dk_dx, dk_dx_std
 
         # Default b0 to current model settings if not explicitly provided
         if b0 is None:
@@ -2595,48 +2569,76 @@ class Model:
                 run_kwargs.setdefault('cwd', tmpdir)
 
             # ---- Seed with two evaluations
-            f0, s0, dk0, _ = eval_at(x0, b0)
+            f0, s0, dk0, dks0 = eval_at(x0, b0)
             if abs(f0) <= k_tol and s0 <= sigma_final:
                 return SearchResult(x0, xs, fs, ss, gs, True, "converged")
-            f1, s1, dk1, _ = eval_at(x1, b0)
+            f1, s1, dk1, dks1 = eval_at(x1, b0)
             if abs(f1) <= k_tol and s1 <= sigma_final:
                 return SearchResult(x1, xs, fs, ss, gs, True, "converged")
 
             for _ in range(maxiter - 2):
-                # ------ Step 1: propose next x via GRsecant
+                # ------ Step 1: propose next x via GRsecant with gradient constraints
                 m = min(memory, len(xs))
 
-                # Perform a curve fit on f(x) = a + bx accounting for
-                # uncertainties. This is equivalent to minimizing the function
-                # in Equation (A.14). Only use MC-evaluated points (skip synthetic
-                # constraints which have gs == previous gs value)
-                if use_derivative_tallies and len(gs) > 2:
-                    # Identify MC points vs synthetic constraints
-                    mc_indices = []
-                    for i in range(len(gs)):
-                        # A point is an MC point if it's not a synthetic constraint
-                        # (synthetic constraints are added after each MC point)
-                        is_mc = True
-                        if i > 0 and len(deriv_constraint_offsets) > 0:
-                            # Check if this looks like a synthetic cluster
-                            if (i >= len(deriv_constraint_offsets) and 
-                                all(gs[i-j-1] == gs[i] for j in range(min(len(deriv_constraint_offsets), i)))):
-                                # This is part of a synthetic cluster
-                                is_mc = False
-                        mc_indices.append(i)
+                # Perform a curve fit on f(x) = a + bx accounting for uncertainties
+                # If derivatives are available, augment with gradient constraints
+                if use_derivative_tallies and deriv_weight > 0 and any(dks[-m:]):
+                    # Gradient-augmented least squares fit
+                    # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
+                    #         + deriv_weight * sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
                     
-                    # Use most recent MC points for fitting
-                    fit_indices = mc_indices[-m:]
+                    xs_fit = np.array([xs[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    fs_fit = np.array([fs[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    ss_fit = np.array([ss[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    dks_fit = np.array([dks[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    dks_std_fit = np.array([dks_std[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    
+                    # Build augmented system: minimize both point residuals and gradient errors
+                    # Points with valid derivatives contribute dual constraints
+                    valid_derivs = dks_std_fit > 0
+                    n_pts = len(xs_fit)
+                    n_derivs = np.sum(valid_derivs)
+                    
+                    # Construct augmented system matrix
+                    A = np.vstack([
+                        np.ones(n_pts) / ss_fit,
+                        xs_fit / ss_fit,
+                    ]).T
+                    b_vec = fs_fit / ss_fit
+                    
+                    # Add gradient constraints (b should match dk/dx at each point)
+                    if n_derivs > 0:
+                        # Gradient constraints: f(x) = a + bx, so df/dx = b
+                        # Constraint: b ≈ dk/dx_j, weighted by 1/dk_std_j
+                        deriv_rows = np.zeros((n_derivs, 2))
+                        deriv_rows[:, 0] = 0.0  # a coefficient in gradient = 0
+                        deriv_rows[:, 1] = np.sqrt(deriv_weight)  # b coefficient, weighted
+                        
+                        deriv_targets = (dks_fit[valid_derivs] / dks_std_fit[valid_derivs]) * np.sqrt(deriv_weight)
+                        
+                        A = np.vstack([A, deriv_rows])
+                        b_vec = np.hstack([b_vec, deriv_targets])
+                    
+                    # Solve least squares: (A^T A)^{-1} A^T b
+                    try:
+                        coeffs, _ = np.linalg.lstsq(A, b_vec, rcond=None)
+                        a, b = float(coeffs[0]), float(coeffs[1])
+                    except np.linalg.LinAlgError:
+                        # Fall back to standard fit if augmented system is singular
+                        (a, b), _ = curve_fit(
+                            lambda x, a, b: a + b*x,
+                            xs_fit, fs_fit, sigma=ss_fit, absolute_sigma=True
+                        )
                 else:
-                    fit_indices = list(range(max(0, len(xs)-m), len(xs)))
+                    # Standard weighted least squares fit (original GRsecant)
+                    (a, b), _ = curve_fit(
+                        lambda x, a, b: a + b*x,
+                        [xs[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        [fs[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        sigma=[ss[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        absolute_sigma=True
+                    )
                 
-                (a, b), _ = curve_fit(
-                    lambda x, a, b: a + b*x,
-                    [xs[i] for i in fit_indices], 
-                    [fs[i] for i in fit_indices], 
-                    sigma=[ss[i] for i in fit_indices], 
-                    absolute_sigma=True
-                )
                 x_new = float(-a / b)
 
                 # Clamp x_new to the bounds if provided

@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-from typing import Sequence, Dict
+from typing import Sequence, Dict, cast
 import warnings
 
 import lxml.etree as ET
@@ -1305,18 +1305,43 @@ class Material(IDManagerMixin):
         return decayheat if by_nuclide else sum(decayheat.values())
     
 
-    def get_photon_mass_attenuation_coefficient(self, photon_energy: float | Discrete | Mixture | Tabular) -> float:
-        """Return photon mass attenuation coefficient for a given photon distribution.
+    def get_photon_mass_attenuation_coefficient(self, photon_energy: float| Real | Discrete | Mixture | Tabular) -> float:
+        """Compute the photon mass attenuation coefficient for this material.
 
+        The mass attenuation coefficient :math:`\\mu/\\rho` is computed by
+        summing the nuclide-wise linear attenuation coefficients
+        :math:`\\mu(E)` weighted by the photon energy distribution and
+        dividing by the material mass density.
 
         Parameters
         ----------
+        photon_energy : Real or Discrete or Mixture or Tabular
+            Photon energy description. Accepted values:
+            * ``float``: a single photon energy (must be > 0).
+            * ``Discrete``: discrete photon energies with associated probabilities.
+            * ``Tabular``: tabulated photon energy probability density.
+            * ``Mixture``: mixture of ``Discrete`` and/or ``Tabular`` distributions.
 
         Returns
         -------
+        float
+            Photon mass attenuation coefficient in units of cm2/g.
+
+        Raises
+        ------
+        TypeError
+            If ``photon_energy`` is not one of ``Real``, ``Discrete``,
+            ``Mixture``, or ``Tabular``.
+        ValueError
+            If the material has non-positive mass density, if nuclide
+            densities are not defined, or if a ``Mixture`` contains
+            unsupported distribution types.
         """
 
-        cv.check_type("photon_energy", photon_energy, [Real, Discrete, Mixture, Tabular])
+        cv.check_type("photon_energy", photon_energy, [float, Real, Discrete, Mixture, Tabular])
+
+        if isinstance(photon_energy, float):
+            photon_energy = cast(float, photon_energy)
 
         if isinstance(photon_energy, Real):
             cv.check_greater_than("energy", photon_energy, 0.0, equality=False)
@@ -1325,11 +1350,12 @@ class Material(IDManagerMixin):
         distribution_weights = []
 
 
-        if isinstance(photon_energy, Discrete) or isinstance(photon_energy, Tabular):
-            distributions.append(photon_energy)
+        if isinstance(photon_energy, (Tabular,Discrete)) :
+            distributions.append(deepcopy(photon_energy))
             distribution_weights.append(1.0)
 
         elif isinstance(photon_energy, Mixture):
+            photon_energy = deepcopy(photon_energy)
             photon_energy.normalize()
             for w,d in zip(photon_energy.probability, photon_energy.distribution):
                 if not isinstance(d, (Discrete, Tabular)) :
@@ -1374,7 +1400,7 @@ class Material(IDManagerMixin):
             if nuc_linear_attenuation is None:
                 continue
 
-            if isinstance(photon_energy, float):
+            if isinstance(photon_energy, Real):
                 mu_nuc +=  nuc_linear_attenuation(photon_energy)
 
             for dist_weight, dist in zip(distribution_weights, distributions):
@@ -1384,7 +1410,7 @@ class Material(IDManagerMixin):
                 p_vals = dist.p
 
                 if isinstance(dist, Discrete):
-                    for (p,e) in zip(p_vals, e_vals):
+                    for p,e in zip(p_vals, e_vals):
 
                         mu_nuc += dist_weight * p * nuc_linear_attenuation(e)
 
@@ -1422,7 +1448,7 @@ class Material(IDManagerMixin):
 
             photon_attenuation += atoms_per_bcm * mu_nuc # cm-1
 
-        return photon_attenuation / self.get_mass_density()  # cm2/g
+        return float(photon_attenuation / self.get_mass_density())  # cm2/g
 
     def get_photon_contact_dose_rate(
         self, bremsstrahlung_correction: bool = True, by_nuclide: bool = False

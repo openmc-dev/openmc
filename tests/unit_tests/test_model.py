@@ -1032,7 +1032,7 @@ def test_id_map_to_rgb():
     id_data_overlap = id_data.copy()
     id_data_overlap[5:, 5:, 0] = -3  # Mark some pixels as overlaps
     rgb_overlap = model._id_map_to_rgb(
-        id_data_overlap, show_overlaps=True, overlap_color=(0, 255, 0)
+        id_data_overlap, overlap_color=(0, 255, 0)
     )
     # Check that overlap region is green
     assert np.allclose(rgb_overlap[5:, 5:], [0.0, 1.0, 0.0])

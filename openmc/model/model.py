@@ -1106,27 +1106,24 @@ class Model:
 
     def _id_map_to_rgb(
         self,
-        id_data: np.ndarray,
+        id_map: np.ndarray,
         color_by: str = 'cell',
         colors: dict | None = None,
-        show_overlaps: bool = False,
-        overlap_color: Sequence[int] | str | None = None
+        overlap_color: Sequence[int] | str = (255, 0, 0)
     ) -> np.ndarray:
         """Convert ID map array to RGB image array.
 
         Parameters
         ----------
-        id_data : numpy.ndarray
+        id_map : numpy.ndarray
             Array with shape (v_pixels, h_pixels, 3) containing cell IDs,
             cell instances, and material IDs
         color_by : {'cell', 'material'}
             Whether to color by cell or material
         colors : dict, optional
             Dictionary mapping cells/materials to colors
-        show_overlaps : bool
-            Whether overlaps are marked in the ID map
         overlap_color : sequence of int or str, optional
-            Color to use for overlaps
+            Color to use for overlaps. Defaults to red (255, 0, 0).
 
         Returns
         -------
@@ -1135,7 +1132,7 @@ class Model:
             in range [0, 1] for matplotlib
         """
         # Initialize RGB array (values between 0 and 1 for matplotlib)
-        img = np.zeros(id_data.shape, dtype=float)
+        img = np.zeros(id_map.shape, dtype=float)
         
         # Get the appropriate index based on color_by
         if color_by == 'cell':
@@ -1144,7 +1141,7 @@ class Model:
             id_index = 2  # Material IDs are in the third channel
         
         # Get all unique IDs in the plot
-        unique_ids = np.unique(id_data[:, :, id_index])
+        unique_ids = np.unique(id_map[:, :, id_index])
         
         # Generate default colors if not provided
         if colors is None:
@@ -1168,16 +1165,13 @@ class Model:
         for uid in unique_ids:
             if uid == -1:  # Background/void
                 continue
-            elif uid == -3 and show_overlaps:  # Overlap
-                if overlap_color is not None:
-                    if isinstance(overlap_color, str):
-                        from openmc.plots import _SVG_COLORS
-                        rgb = _SVG_COLORS[overlap_color.lower()]
-                    else:
-                        rgb = overlap_color
+            elif uid == -3:  # Overlap (only present if color_overlaps was True)
+                if isinstance(overlap_color, str):
+                    from openmc.plots import _SVG_COLORS
+                    rgb = _SVG_COLORS[overlap_color.lower()]
                 else:
-                    rgb = (255, 0, 0)  # Default red for overlaps
-                mask = id_data[:, :, id_index] == uid
+                    rgb = overlap_color
+                mask = id_map[:, :, id_index] == uid
                 img[mask] = np.array(rgb) / 255.0
             elif uid in color_map:
                 color = color_map[uid]
@@ -1186,7 +1180,7 @@ class Model:
                     rgb = _SVG_COLORS[color.lower()]
                 else:
                     rgb = color
-                mask = id_data[:, :, id_index] == uid
+                mask = id_map[:, :, id_index] == uid
                 img[mask] = np.array(rgb) / 255.0
         
         return img
@@ -1206,7 +1200,7 @@ class Model:
         axis_units: str = 'cm',
         outline: bool | str = False,
         show_overlaps: bool = False,
-        overlap_color: Sequence[int] | str | None = None,
+        overlap_color: Sequence[int] | str = (255, 0, 0),
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,
@@ -1248,7 +1242,7 @@ class Model:
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
         # Get ID map from the C API
-        id_data = self.id_map(
+        id_map = self.id_map(
             origin=origin,
             width=width,
             pixels=pixels,
@@ -1266,10 +1260,9 @@ class Model:
 
         # Convert ID map to RGB image
         img = self._id_map_to_rgb(
-            id_data, 
+            id_map=id_map, 
             color_by=color_by, 
             colors=colors,
-            show_overlaps=show_overlaps,
             overlap_color=overlap_color
         )
 

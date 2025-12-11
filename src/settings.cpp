@@ -398,8 +398,7 @@ void read_settings_xml()
   // Verbosity
   if (check_for_node(root, "verbosity") && verbosity == -1) {
     verbosity = std::stoi(get_node_value(root, "verbosity"));
-  } else if (verbosity == -1)
-  {
+  } else if (verbosity == -1) {
     verbosity = 7;
   }
 

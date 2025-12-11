@@ -230,8 +230,7 @@ int parse_command_line(int argc, char* argv[])
         i += 1;
         settings::verbosity = std::stoi(argv[i]);
         if (settings::verbosity > 10 || settings::verbosity < 1) {
-          auto msg =
-            fmt::format("Invalid verbosity: {}.", settings::verbosity);
+          auto msg = fmt::format("Invalid verbosity: {}.", settings::verbosity);
           strcpy(openmc_err_msg, msg.c_str());
           return OPENMC_E_INVALID_ARGUMENT;
         }

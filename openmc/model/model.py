@@ -1131,8 +1131,8 @@ class Model:
             RGB image array with shape (v_pixels, h_pixels, 3) with values
             in range [0, 1] for matplotlib
         """
-        # Initialize RGB array (values between 0 and 1 for matplotlib)
-        img = np.zeros(id_map.shape, dtype=float)
+        # Initialize RGB array with white background (values between 0 and 1 for matplotlib)
+        img = np.ones(id_map.shape, dtype=float)
         
         # Get the appropriate index based on color_by
         if color_by == 'cell':

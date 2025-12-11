@@ -892,6 +892,7 @@ def test_get_material_photon_attenuation():
     # ------------------------------------------------------------------
     # Test gamma discrete distribution
     # ------------------------------------------------------------------
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_ni.xml'
     mat_pb = openmc.Material(name="Pb")
     mat_pb.set_density("g/cm3", 11.35)
     mat_pb.add_element("Pb", 1.0)
@@ -900,11 +901,27 @@ def test_get_material_photon_attenuation():
     mat_co.add_nuclide("Co60", 1.0)
     co_spectrum = mat_co.get_decay_photon_energy(units='Bq/cm3')
 
-    # value from doi: 10.1097/HP.0b013e318235153a
-    hvl =  15.6  # [mm] for Co-60 in Pb
-    mass_attenuation_coeff_co60_pb = (np.log(2) / (hvl / 10)) / mat_pb.density  # [cm^2/g] 
-    assert mat_pb.get_photon_mass_attenuation_coefficient(co_spectrum) ==  pytest.approx(mass_attenuation_coeff_co60_pb, rel=1e-2)
+    # value from doi: https://doi.org/10.2172/6246345
+    mu_pb =  0.679  # [cm-1]  for Co-60 in Pb
+    mass_attenuation_coeff_co60_pb = mu_pb / mat_pb.density  # [cm^2/g] 
+    assert mat_pb.get_photon_mass_attenuation_coefficient(co_spectrum) ==  pytest.approx(mass_attenuation_coeff_co60_pb, rel=1e-01)
 
+    # ------------------------------------------------------------------
+    # Test gamma tabular distribution
+    # ------------------------------------------------------------------
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple_decay.xml'
+    mat_pb = openmc.Material(name="Pb")
+    mat_pb.set_density("g/cm3", 11.35)
+    mat_pb.add_element("Pb", 1.0)
+
+    mat_xe = openmc.Material(name="I135")
+    mat_xe.add_nuclide("I135", 1.0)
+    xe_spectrum = mat_xe.get_decay_photon_energy(units='Bq/cm3')
+
+    # value from doi: https://doi.org/10.2172/6246345
+    mu_xe =  5.015  # [cm-1] for Co-60 in Pb
+    mass_attenuation_coeff_xe135_pb = mu_xe / mat_pb.density  # [cm^2/g] 
+    assert mat_pb.get_photon_mass_attenuation_coefficient(xe_spectrum) == pytest.approx(mass_attenuation_coeff_xe135_pb, rel=1e-1)
 
     # ------------------------------------------------------------------
     # Invalid input tests

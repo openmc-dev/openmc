@@ -1005,7 +1005,6 @@ class SourceParticle:
         time: float = 0.0,
         wgt: float = 1.0,
         delayed_group: int = 0,
-        ancestor_nuclide: int = 0,
         surf_id: int = 0,
         particle: ParticleType = ParticleType.NEUTRON
     ):
@@ -1016,7 +1015,6 @@ class SourceParticle:
         self.time = float(time)
         self.wgt = float(wgt)
         self.delayed_group = delayed_group
-        self.ancestor_nuclide = ancestor_nuclide
         self.surf_id = surf_id
         self.particle = particle
 
@@ -1034,8 +1032,7 @@ class SourceParticle:
 
         """
         return (self.r, self.u, self.E, self.time, self.wgt,
-                self.delayed_group, self.ancestor_nuclide,
-                self.surf_id, self.particle.value)
+                self.delayed_group, self.surf_id, self.particle.value)
 
 
 def write_source_file(
@@ -1181,12 +1178,12 @@ class ParticleList(list):
         """
         # Extract the attributes of the source particles into a list of tuples
         data = [(sp.r[0], sp.r[1], sp.r[2], sp.u[0], sp.u[1], sp.u[2],
-                 sp.E, sp.time, sp.wgt, sp.delayed_group, sp.ancestor_nuclide,
-                 sp.surf_id, sp.particle.name.lower()) for sp in self]
+                 sp.E, sp.time, sp.wgt, sp.delayed_group, sp.surf_id,
+                 sp.particle.name.lower()) for sp in self]
 
         # Define the column names for the DataFrame
         columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt',
-                   'delayed_group', 'ancestor_nuclide', 'surf_id', 'particle']
+                   'delayed_group', 'surf_id', 'particle']
 
         # Create the pandas DataFrame from the data
         return pd.DataFrame(data, columns=columns)
@@ -1218,7 +1215,6 @@ class ParticleList(list):
             ('time', '<f8'),
             ('wgt', '<f8'),
             ('delayed_group', '<i4'),
-            ('ancestor_nuclide', '<i4'),
             ('surf_id', '<i4'),
             ('particle', '<i4'),
         ])
@@ -1312,7 +1308,7 @@ def read_collision_track_mcpl(file_path):
         'r': [],  # for position (x, y, z)
         'u': [],  # for direction (ux, uy, uz)
         'E': [], 'dE': [], 'time': [],
-        'wgt': [], 'event_mt': [], 'delayed_group': [], 'ancestor_nuclide' : [],
+        'wgt': [], 'event_mt': [], 'delayed_group': [],
         'cell_id': [], 'nuclide_id': [], 'material_id': [],
         'universe_id': [], 'n_collision': [], 'particle': [],
         'parent_id': [], 'progeny_id': []
@@ -1336,8 +1332,6 @@ def read_collision_track_mcpl(file_path):
             data['event_mt'].append(int(values_dict.get('event_mt', 0)))
             data['delayed_group'].append(
                 int(values_dict.get('delayed_group', 0)))
-            data['ancestor_nuclide'].append(
-                int(values_dict.get('ancestor_nuclide', 0)))
             data['cell_id'].append(int(values_dict.get('cell_id', 0)))
             data['nuclide_id'].append(int(values_dict.get('nuclide_id', 0)))
             data['material_id'].append(int(values_dict.get('material_id', 0)))
@@ -1351,8 +1345,8 @@ def read_collision_track_mcpl(file_path):
         ('r', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
         ('u', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
         ('E', 'f8'), ('dE', 'f8'), ('time', 'f8'), ('wgt', 'f8'),
-        ('event_mt', 'f8'), ('delayed_group', 'i4'), ('ancestor_nuclide', 'i4'),
-        ('cell_id', 'i4'), ('nuclide_id', 'i4'), ('material_id', 'i4'), ('universe_id', 'i4'),
+        ('event_mt', 'f8'), ('delayed_group', 'i4'), ('cell_id', 'i4'),
+        ('nuclide_id', 'i4'), ('material_id', 'i4'), ('universe_id', 'i4'),
         ('n_collision', 'i4'), ('particle', 'i4'),
         ('parent_id', 'i8'), ('progeny_id', 'i8')
     ]

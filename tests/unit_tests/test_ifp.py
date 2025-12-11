@@ -21,6 +21,7 @@ def geometry():
     openmc.reset_auto_ids()
     material = openmc.Material()
     material.add_nuclide("U235", 1.0)
+    material.add_nuclide("Pu239", 1.0)
     sphere = openmc.Sphere(r=1.0, boundary_type="vacuum")
     cell = openmc.Cell(region=-sphere, fill=material)
     return openmc.Geometry([cell])
@@ -50,15 +51,19 @@ def test_exceptions(options, error, run_in_tmpdir, geometry):
 
 
 @pytest.mark.parametrize(
-    "num_groups, use_auto_tallies",
+    "num_groups, nuclides, use_auto_tallies", 
     [
-        (None, True),
-        (None, False),
-        (6, True),
-        (6, False),
+        (None, None, True),
+        (None, None, False),
+        (6, None, True),
+        (6, None, False),
+        (None, ["U235", "Pu239"], True),
+        (None, ["U235", "Pu239"], False),
+        (6, ["U235", "Pu239"], True),
+        (6, ["U235", "Pu239"], False),
     ],
 )
-def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, use_auto_tallies):
+def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, nuclides, use_auto_tallies):
     # Create basic model
     model = openmc.Model(geometry=geometry)
     model.settings.particles = 1000
@@ -68,13 +73,16 @@ def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, use_auto_t
 
     # Add IFP tallies either via the convenience method or manually
     if use_auto_tallies:
-        model.add_kinetics_parameters_tallies(num_groups=num_groups)
+        model.add_kinetics_parameters_tallies(num_groups=num_groups, nuclides=nuclides)
     else:
         for score in ["ifp-time-numerator", "ifp-beta-numerator", "ifp-denominator"]:
             tally = openmc.Tally()
             tally.scores = [score]
-            if score == "ifp-beta-numerator" and num_groups is not None:
-                tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
+            if score == "ifp-beta-numerator":
+                if num_groups is not None:
+                    tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
+                if nuclides:
+                    tally.nuclides = nuclides
             model.tallies.append(tally)
 
     # Run and get kinetics parameters
@@ -85,4 +93,9 @@ def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, use_auto_t
     assert params.generation_time is not None
     assert params.beta_effective is not None
     if num_groups is not None:
-        assert len(params.beta_effective) == num_groups
+        if nuclides:
+            assert params.beta_effective.shape == (num_groups, len(nuclides))
+        else:
+            assert len(params.beta_effective) == num_groups
+    elif nuclides:
+        assert len(params.beta_effective) == len(nuclides)

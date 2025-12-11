@@ -577,8 +577,6 @@ hid_t h5banktype()
   H5Tinsert(banktype, "wgt", HOFFSET(SourceSite, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "delayed_group", HOFFSET(SourceSite, delayed_group),
     H5T_NATIVE_INT);
-  H5Tinsert(banktype, "ancestor_nuclide", HOFFSET(SourceSite, ancestor_nuclide),
-    H5T_NATIVE_INT);
   H5Tinsert(banktype, "surf_id", HOFFSET(SourceSite, surf_id), H5T_NATIVE_INT);
   H5Tinsert(
     banktype, "particle", HOFFSET(SourceSite, particle), H5T_NATIVE_INT);

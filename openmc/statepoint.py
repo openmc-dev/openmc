@@ -761,21 +761,17 @@ class StatePoint:
             return uarray(tally.get_values(scores=[score]),
                           tally.get_values(scores=[score], value='std_dev'))
 
-        denom_values = get_ufloat(denom_tally, 'ifp-denominator')
+        denom_value = get_ufloat(denom_tally, 'ifp-denominator').squeeze()
         if gen_time_tally is None:
             generation_time = None
         else:
-            gen_time_values = get_ufloat(gen_time_tally, 'ifp-time-numerator')
-            gen_time_values /= denom_values*self.keff
-            generation_time = gen_time_values.flatten()[0]
+            generation_time = get_ufloat(gen_time_tally, 'ifp-time-numerator').squeeze()
+            generation_time /= denom_value*self.keff
 
         if beta_tally is None:
             beta_effective = None
         else:
-            beta_values = get_ufloat(beta_tally, 'ifp-beta-numerator')
-            beta_values /= denom_values
-            beta_effective = beta_values.flatten()
-            if beta_effective.size == 1:
-                beta_effective = beta_effective[0]
+            beta_effective = get_ufloat(beta_tally, 'ifp-beta-numerator').squeeze()
+            beta_effective /= denom_value
 
         return KineticsParameters(generation_time, beta_effective)

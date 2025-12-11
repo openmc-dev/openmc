@@ -922,4 +922,4 @@ def test_get_material_photon_attenuation():
     mat_empty = openmc.Material(name="Empty")
     mat_empty.set_density("g/cm3", 1.0)
     with pytest.raises(ValueError):
-        mat_empty.get_photon_mass_attenuation(1.0e6)
+        mat_empty.get_photon_mass_attenuation_coefficient(1.0e6)

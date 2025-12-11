@@ -1376,8 +1376,7 @@ class Material(IDManagerMixin):
             )
 
         # Nuclide atomic densities [atom/b-cm]
-        nuclide_densities = self.get_nuclide_atom_densities()
-        if not nuclide_densities:
+        if not self.get_element_atom_densities():
             raise ValueError(
                 f'For Material ID="{self.id}" no nuclide densities are defined;'
                 "cannot compute mass attenuation coefficient."
@@ -1391,11 +1390,11 @@ class Material(IDManagerMixin):
 
         photon_attenuation = 0.0  
 
-        for nuc_name, atoms_per_bcm in nuclide_densities.items():
+        for el_name, atoms_per_bcm in self.get_element_atom_densities().items():
 
             mu_nuc = 0.0
 
-            nuc_linear_attenuation = linear_attenuation_xs(nuc_name,  T) # units of barns/atom
+            nuc_linear_attenuation = linear_attenuation_xs(el_name,  T) # units of barns/atom
 
             if nuc_linear_attenuation is None:
                 continue

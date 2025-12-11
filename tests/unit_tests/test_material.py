@@ -889,6 +889,22 @@ def test_get_material_photon_attenuation():
         ref_mu_rho_water_2 , rel=1e-2
     )
 
+    # ------------------------------------------------------------------
+    # Test gamma discrete distribution
+    # ------------------------------------------------------------------
+    mat_pb = openmc.Material(name="Pb")
+    mat_pb.set_density("g/cm3", 11.35)
+    mat_pb.add_element("Pb", 1.0)
+
+    mat_co = openmc.Material(name="Co60")
+    mat_co.add_nuclide("Co60", 1.0)
+    co_spectrum = mat_co.get_decay_photon_energy()
+
+    # value from doi: 10.1097/HP.0b013e318235153a
+    hvl =  15.6  # [mm] for Co-60 in Pb
+    mass_attenuation_coeff_co60_pb = (np.log(2) / (hvl / 10)) / mat_pb.density  # [cm^2/g] 
+    assert mat_pb.get_photon_mass_attenuation_coefficient(co_spectrum) ==  pytest.approx(mass_attenuation_coeff_co60_pb, rel=1e-2)
+
 
     # ------------------------------------------------------------------
     # Invalid input tests

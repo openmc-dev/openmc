@@ -974,7 +974,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                   const DelayedGroupFilter& filt {
                     *dynamic_cast<DelayedGroupFilter*>(
                       model::tally_filters[i_dg_filt].get())};
-                  score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
+                  score_fission_delayed_dg(i_tally, delayed_groups[j] - 1,
                     score, score_index, p.filter_matches());
                   continue;
                 }

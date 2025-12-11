@@ -967,16 +967,22 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                 j = 0;
               if (delayed_groups[1] > 0 && tally.nuclides_[0] > -1)
                 j = 1;
-              if (j>-1) {
-                score = p.wgt_last();
-                if (tally.delayedgroup_filter_ != C_NONE) {
-                  auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-                  const DelayedGroupFilter& filt {
-                    *dynamic_cast<DelayedGroupFilter*>(
-                      model::tally_filters[i_dg_filt].get())};
-                  score_fission_delayed_dg(i_tally, delayed_groups[j] - 1,
-                    score, score_index, p.filter_matches());
-                  continue;
+              if (j > -1) {
+                const auto& ancestor_event_nuclide = simulation::
+                  ifp_source_ancestor_nuclide_bank[p.current_work() - 1];
+                if ((ancestor_event_nuclide[0] == i_nuclide && j == 1) ||
+                    (j == 0)) {
+                  score = p.wgt_last();
+                  if (tally.delayedgroup_filter_ != C_NONE) {
+                    auto i_dg_filt =
+                      tally.filters()[tally.delayedgroup_filter_];
+                    const DelayedGroupFilter& filt {
+                      *dynamic_cast<DelayedGroupFilter*>(
+                        model::tally_filters[i_dg_filt].get())};
+                    score_fission_delayed_dg(i_tally, delayed_groups[j] - 1,
+                      score, score_index, p.filter_matches());
+                    continue;
+                  }
                 }
               }
             }

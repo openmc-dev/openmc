@@ -69,6 +69,7 @@ Classes
    EnergyFunctionFilter
    EnergyoutFilter
    Filter
+   HexagonalMesh
    LegendreFilter
    Material
    MaterialFilter

@@ -84,7 +84,8 @@ _DOMAINS = (
     openmc.Cell,
     openmc.Universe,
     openmc.Material,
-    openmc.RegularMesh
+    openmc.RegularMesh,
+    openmc.HexagonalMesh
 )
 
 # Supported ScatterMatrixXS angular distribution types. Note that 'histogram' is
@@ -489,7 +490,7 @@ class MGXS:
                 self._domain_type = 'cell'
             elif isinstance(domain, openmc.Universe):
                 self._domain_type = 'universe'
-            elif isinstance(domain, openmc.RegularMesh):
+            elif isinstance(domain, openmc.RegularMesh) or isinstance(domain, openmc.HexagonalMesh):
                 self._domain_type = 'mesh'
 
     @property
@@ -2133,8 +2134,13 @@ class MGXS:
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
+
             mesh_str = f'mesh {self.domain.id}'
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
+            if not isinstance(self.domain,openmc.HexagonalMesh):
+                df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
+                               (mesh_str, 'z')] + columns, inplace=True)
+            else:
+                df.sort_values(by=[(mesh_str, 'r'), (mesh_str, 'phi'),
                                (mesh_str, 'z')] + columns, inplace=True)
         else:
             df.sort_values(by=[self.domain_type] + columns, inplace=True)

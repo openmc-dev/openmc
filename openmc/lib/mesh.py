@@ -18,7 +18,7 @@ from ..mesh import MeshMaterialVolumes
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
-    'SphericalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes'
+    'SphericalMesh', 'UnstructuredMesh', 'HexagonalMesh', 'meshes', 'MeshMaterialVolumes'
 ]
 
 
@@ -107,6 +107,23 @@ _dll.openmc_spherical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
 _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
 
+_dll.openmc_hexagonal_mesh_get_dimension.argtypes = [c_int32,
+    POINTER(POINTER(c_int)), POINTER(c_int)]
+_dll.openmc_hexagonal_mesh_get_dimension.restype = c_int
+_dll.openmc_hexagonal_mesh_get_dimension.errcheck = _error_handler
+_dll.openmc_hexagonal_mesh_get_params.argtypes = [
+    c_int32, POINTER(POINTER(c_double)), POINTER(POINTER(c_double)),
+    POINTER(POINTER(c_double)), POINTER(c_int)]
+_dll.openmc_hexagonal_mesh_get_params.restype = c_int
+_dll.openmc_hexagonal_mesh_get_params.errcheck = _error_handler
+_dll.openmc_hexagonal_mesh_set_dimension.argtypes = [c_int32, c_int,
+                                                   POINTER(c_int)]
+_dll.openmc_hexagonal_mesh_set_dimension.restype = c_int
+_dll.openmc_hexagonal_mesh_set_dimension.errcheck = _error_handler
+_dll.openmc_hexagonal_mesh_set_params.argtypes = [
+    c_int32, c_int, POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+_dll.openmc_hexagonal_mesh_set_params.restype = c_int
+_dll.openmc_hexagonal_mesh_set_params.errcheck = _error_handler
 
 class Mesh(_FortranObjectWithID):
     """Base class to represent mesh objects
@@ -711,12 +728,120 @@ class UnstructuredMesh(Mesh):
     pass
 
 
+class HexagonalMesh(Mesh):
+    """HexagonalMesh stored internally.
+
+    This class exposes a mesh that is stored internally in the OpenMC
+    library. To obtain a view of a mesh with a given ID, use the
+    :data:`openmc.lib.meshes` mapping.
+
+    Parameters
+    ----------
+    index : int
+         Index in the `meshes` array.
+
+    Attributes
+    ----------
+    id : int
+        ID of the mesh
+    dimension : iterable of int
+        The number of mesh cells in each direction.
+    lower_left : numpy.ndarray
+        The lower-left corner of the structured mesh. If only two coordinate are
+        given, it is assumed that the mesh is an x-y mesh.
+    upper_right : numpy.ndarray
+        The upper-right corner of the structrued mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    width : numpy.ndarray
+        The width of mesh cells in each direction.
+    n_elements : int
+        Total number of mesh elements.
+    volumes : numpy.ndarray
+        Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
+
+    """
+    mesh_type = 'hexagonal'
+
+    def __init__(self, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+
+
+    #these might need to go dimension is always 2 for hexagonal mesh
+    @property
+    def dimension(self):
+        dims = POINTER(c_int)()
+        n = c_int()
+        _dll.openmc_hexagonal_mesh_get_dimension(self._index, dims, n)
+        return tuple(as_array(dims, (n.value,)))
+
+    @dimension.setter
+    def dimension(self, dimension):
+        n = len(dimension)
+        dimension = (c_int*n)(*dimension)
+        _dll.openmc_hexagonal_mesh_set_dimension(self._index, n, dimension)
+
+    @property
+    def lower_left(self):
+        return self._get_parameters()[0]
+
+    @property
+    def upper_right(self):
+        return self._get_parameters()[1]
+
+    @property
+    def width(self):
+        return self._get_parameters()[2]
+
+    def _get_parameters(self):
+        ll = POINTER(c_double)()
+        ur = POINTER(c_double)()
+        w = POINTER(c_double)()
+        n = c_int()
+        _dll.openmc_hexagonal_mesh_get_params(self._index, ll, ur, w, n)
+        return (
+            as_array(ll, (n.value,)),
+            as_array(ur, (n.value,)),
+            as_array(w, (n.value,))
+        )
+
+    def set_parameters(self, lower_left=None, upper_right=None, width=None):
+        if lower_left is not None:
+            n = len(lower_left)
+            lower_left = (c_double*n)(*lower_left)
+        if upper_right is not None:
+            n = len(upper_right)
+            upper_right = (c_double*n)(*upper_right)
+        if width is not None:
+            n = len(width)
+            width = (c_double*n)(*width)
+        _dll.openmc_hexagonal_mesh_set_params(self._index, n, lower_left, upper_right, width)
+
+    @property
+    def bounding_box(self) -> BoundingBox:
+        inf = sys.float_info.max
+        ll = np.zeros(3)
+        ur = np.zeros(3)
+        _dll.openmc_mesh_bounding_box(
+            self._index,
+            ll.ctypes.data_as(POINTER(c_double)),
+            ur.ctypes.data_as(POINTER(c_double))
+        )
+        ll[ll == inf] = np.inf
+        ur[ur == inf] = np.inf
+        ll[ll == -inf] = -np.inf
+        ur[ur == -inf] = -np.inf
+        return BoundingBox(ll, ur)
+
+
 _MESH_TYPE_MAP = {
     'regular': RegularMesh,
     'rectilinear': RectilinearMesh,
     'cylindrical': CylindricalMesh,
     'spherical': SphericalMesh,
-    'unstructured': UnstructuredMesh
+    'unstructured': UnstructuredMesh,
+    'hexagonal': HexagonalMesh
 }
 
 

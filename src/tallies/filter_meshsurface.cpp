@@ -26,8 +26,20 @@ void MeshSurfaceFilter::get_all_bins(
 std::string MeshSurfaceFilter::text_label(int bin) const
 {
   auto& mesh = *model::meshes[mesh_];
+
   int n_dim = mesh.n_dimension_;
 
+  if (mesh.get_mesh_type() == "hexagonal") {
+    // Hexagonal mesh with 2 x 4 surfaces
+    return hexbin_label(bin);
+  } else {
+    // The regular behavior for a structured mesh with 2 x ndim surfaces
+    return bin_label(n_dim, bin);
+  }
+}
+
+std::string MeshSurfaceFilter::bin_label(int n_dim, int bin) const
+{
   // Get flattend mesh index and surface index.
   int i_mesh = bin / (4 * n_dim);
   MeshDir surf_dir = static_cast<MeshDir>(bin % (4 * n_dim));
@@ -72,6 +84,70 @@ std::string MeshSurfaceFilter::text_label(int bin) const
     break;
   case MeshDir::IN_TOP:
     out += " Incoming, z-max";
+    break;
+  }
+
+  return out;
+}
+
+std::string MeshSurfaceFilter::hexbin_label(int bin) const
+{
+
+  // Get flattend mesh index and surface index.
+  int i_mesh = bin / (4 * 4);
+  HexMeshDir surf_dir = static_cast<HexMeshDir>(bin % (4 * 4));
+
+  // Get mesh index part of label.
+  std::string out = MeshFilter::text_label(i_mesh);
+
+  switch (surf_dir) {
+  case HexMeshDir::OUT_SE:
+    out += " Outgoing, r_max SE";
+    break;
+  case HexMeshDir::IN_SE:
+    out += " Incoming, r_max SE";
+    break;
+  case HexMeshDir::OUT_NW:
+    out += " OUtgoing, r min NW";
+    break;
+  case HexMeshDir::IN_NW:
+    out += " Incoming, r min NW";
+    break;
+  case HexMeshDir::OUT_E:
+    out += " Outgoing, q max E";
+    break;
+  case HexMeshDir::IN_E:
+    out += " Incoming, q max E";
+    break;
+  case HexMeshDir::OUT_W:
+    out += " Outgoing, q min W";
+    break;
+  case HexMeshDir::IN_W:
+    out += " Incoming, q min W";
+    break;
+  case HexMeshDir::OUT_NE:
+    out += " Outgoing, s max NE";
+    break;
+  case HexMeshDir::IN_NE:
+    out += " Incoming, s max NE";
+    break;
+  case HexMeshDir::OUT_SW:
+    out += " Outgoing, s min SW";
+    break;
+  case HexMeshDir::IN_SW:
+    out += " Incoming, s min SW";
+    break;
+  case HexMeshDir::OUT_BOTTOM:
+    out += " Outgoing, z min";
+    break;
+  case HexMeshDir::IN_BOTTOM:
+    out += " Incoming, z min";
+    break;
+  case HexMeshDir::OUT_TOP:
+    out += " Outgoing, z max";
+    break;
+  case HexMeshDir::IN_TOP:
+    out += " Incoming, z max";
     break;
   }
 

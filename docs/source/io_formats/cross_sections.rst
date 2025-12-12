@@ -50,7 +50,7 @@ attributes:
 
   :type:
     The type of data contained in the file. Accepted values are 'neutron',
-    'thermal', 'photon', and 'wmp'.
+    'thermal', 'photon', 'photonuclear' and 'wmp'.
 
 .. _depletion_element:
 

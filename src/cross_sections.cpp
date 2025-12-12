@@ -53,6 +53,8 @@ Library::Library(pugi::xml_node node, const std::string& directory)
       type_ = Type::thermal;
     } else if (type == "photon") {
       type_ = Type::photon;
+    } else if (type == "photonuclear") {
+      type_ = Type::photonuclear;
     } else if (type == "wmp") {
       type_ = Type::wmp;
     } else {

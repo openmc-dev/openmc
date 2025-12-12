@@ -148,6 +148,7 @@ void Particle::from_source(const SourceSite* src)
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
+  ancestor_nuclide() = src->ancestor_nuclide;
   delayed_group() = src->delayed_group;
 
   // Convert signed surface ID to signed index

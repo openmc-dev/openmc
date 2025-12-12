@@ -23,7 +23,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params, _BASIS_INDICES
+from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
 from openmc.utility_funcs import change_directory
 
 
@@ -1104,86 +1104,6 @@ class Model:
         with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.id_map(plot_obj)
 
-    def _id_map_to_rgb(
-        self,
-        id_map: np.ndarray,
-        color_by: str = 'cell',
-        colors: dict | None = None,
-        overlap_color: Sequence[int] | str = (255, 0, 0)
-    ) -> np.ndarray:
-        """Convert ID map array to RGB image array.
-
-        Parameters
-        ----------
-        id_map : numpy.ndarray
-            Array with shape (v_pixels, h_pixels, 3) containing cell IDs,
-            cell instances, and material IDs
-        color_by : {'cell', 'material'}
-            Whether to color by cell or material
-        colors : dict, optional
-            Dictionary mapping cells/materials to colors
-        overlap_color : sequence of int or str, optional
-            Color to use for overlaps. Defaults to red (255, 0, 0).
-
-        Returns
-        -------
-        numpy.ndarray
-            RGB image array with shape (v_pixels, h_pixels, 3) with values
-            in range [0, 1] for matplotlib
-        """
-        # Initialize RGB array with white background (values between 0 and 1 for matplotlib)
-        img = np.ones(id_map.shape, dtype=float)
-        
-        # Get the appropriate index based on color_by
-        if color_by == 'cell':
-            id_index = 0  # Cell IDs are in the first channel
-        else:  # material
-            id_index = 2  # Material IDs are in the third channel
-        
-        # Get all unique IDs in the plot
-        unique_ids = np.unique(id_map[:, :, id_index])
-        
-        # Generate default colors if not provided
-        if colors is None:
-            colors = {}
-        
-        # Convert colors dict to use IDs as keys
-        color_map = {}
-        for key, color in colors.items():
-            if isinstance(key, (openmc.Cell, openmc.Material)):
-                color_map[key.id] = color
-            else:
-                color_map[key] = color
-        
-        # Generate random colors for IDs not in color_map
-        rng = np.random.RandomState(1)
-        for uid in unique_ids:
-            if uid > 0 and uid not in color_map:
-                color_map[uid] = rng.randint(0, 256, (3,))
-        
-        # Apply colors to each pixel
-        for uid in unique_ids:
-            if uid == -1:  # Background/void
-                continue
-            elif uid == -3:  # Overlap (only present if color_overlaps was True)
-                if isinstance(overlap_color, str):
-                    from openmc.plots import _SVG_COLORS
-                    rgb = _SVG_COLORS[overlap_color.lower()]
-                else:
-                    rgb = overlap_color
-                mask = id_map[:, :, id_index] == uid
-                img[mask] = np.array(rgb) / 255.0
-            elif uid in color_map:
-                color = color_map[uid]
-                if isinstance(color, str):
-                    from openmc.plots import _SVG_COLORS
-                    rgb = _SVG_COLORS[color.lower()]
-                else:
-                    rgb = color
-                mask = id_map[:, :, id_index] == uid
-                img[mask] = np.array(rgb) / 255.0
-        
-        return img
 
     @add_plot_params
     def plot(
@@ -1259,7 +1179,7 @@ class Model:
             colors = plot.colors
 
         # Convert ID map to RGB image
-        img = self._id_map_to_rgb(
+        img = id_map_to_rgb(
             id_map=id_map, 
             color_by=color_by, 
             colors=colors,

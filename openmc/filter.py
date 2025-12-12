@@ -24,9 +24,9 @@ _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time', 'parentnuclide', 'weight', 'meshborn', 'meshsurface',
-    'meshmaterial',
+    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'particleout', 
+    'cellinstance', 'collision', 'time', 'parentnuclide', 'weight', 'meshborn',
+    'meshsurface', 'meshmaterial',
 )
 
 _CURRENT_NAMES = (
@@ -785,6 +785,29 @@ class ParticleFilter(Filter):
         filter_id = int(get_text(elem, "id"))
         bins = get_elem_list(elem, "bins", str) or []
         return cls(bins, filter_id=filter_id)
+        
+        
+class ParticleoutFilter(ParticleFilter):
+    """Bins tally events based on the outgoing particle type.
+
+    Parameters
+    ----------
+    bins : str, or sequence of str
+        The particles to tally represented as strings ('neutron', 'photon',
+        'electron', 'positron').
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : sequence of str
+        The particles to tally
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """        
 
 
 class ParentNuclideFilter(ParticleFilter):

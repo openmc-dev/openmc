@@ -72,14 +72,16 @@ void score_collision_tally(Particle& p);
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
-void score_analog_tally_ce(Particle& p);
+//! \param tallies A vector of the indices of the tallies to score to
+void score_analog_tally_ce(Particle& p, const vector<int>& tallies);
 
 //! Score tallies based on a simple count of events (for multigroup).
 //
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
-void score_analog_tally_mg(Particle& p);
+//! \param tallies A vector of the indices of the tallies to score to
+void score_analog_tally_mg(Particle& p, const vector<int>& tallies);
 
 //! Score tallies using a tracklength estimate of the flux.
 //

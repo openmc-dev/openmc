@@ -146,6 +146,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<ParentNuclideFilter>(id);
   } else if (type == "particle") {
     return Filter::create<ParticleFilter>(id);
+  } else if (type == "particleout") {
+    return Filter::create<ParticleOutFilter>(id);
   } else if (type == "polar") {
     return Filter::create<PolarFilter>(id);
   } else if (type == "surface") {

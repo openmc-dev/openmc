@@ -22,9 +22,9 @@ __all__ = [
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
     'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
-    'ParentNuclideFilter', 'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
-    'SpatialLegendreFilter', 'SurfaceFilter', 'TimeFilter', 'UniverseFilter',
-    'WeightFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
+    'ParentNuclideFilter', 'ParticleFilter', 'ParticleoutFilter', 'PolarFilter',
+    'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter', 'TimeFilter',
+    'UniverseFilter', 'WeightFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
 
 # Tally functions
@@ -562,6 +562,10 @@ class ParticleFilter(Filter):
         _dll.openmc_particle_filter_get_bins(
             self._index, particle_i.ctypes.data_as(POINTER(c_int)))
         return [ParticleType(i) for i in particle_i]
+
+
+class ParticleoutFilter(ParticleFilter):
+    filter_type = 'particleout'
 
 
 class PolarFilter(Filter):

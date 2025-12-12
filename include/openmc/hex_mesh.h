@@ -60,6 +60,8 @@ public:
 
   int32_t get_bin_from_hexindices(const HexMeshIndex& ijkl) const;
 
+  int get_bin(Position r) const;
+
   int n_bins() const override;
 
   int n_surface_bins() const override;

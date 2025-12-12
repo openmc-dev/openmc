@@ -184,7 +184,7 @@ HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
   read_dataset(group, "dimension", shape);
   int n = n_dimension_ = shape.size();
   if (n != 1 && n != 2) {
-    fatal_error("Hexagonal mesh must be one or two, or three dimensions.");
+    fatal_error("Hexagonal mesh must be one or two dimensions.");
   }
   std::copy(shape.begin(), shape.end(), shape_.begin());
 
@@ -195,6 +195,8 @@ HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
   } else {
     fatal_error("Must specify lower_left dataset on a mesh.");
   }
+  // size of hex is defined as the radius of the circumscribed circle
+  size_ = width_[0] / sqrt(3.0);
 
   if (object_exists(group, "upper_right")) {
     read_dataset(group, "upper_right", upper_right_);
@@ -280,6 +282,18 @@ int32_t HexagonalMesh::get_bin_from_hexindices(const HexMeshIndex& ijkl) const
   int32_t bin_no = (ijkl[3] - 1) * hex_count_ + (1 + 3 * r_0 * (r_0 - 1)) +
                    offset_in_ring(ijkl, r_0);
   return bin_no;
+}
+
+int HexagonalMesh::get_bin(Position r) const
+{
+  // Determine indices
+  bool in_mesh;
+  HexMeshIndex ijkl = get_hexindices(r, in_mesh);
+  if (!in_mesh)
+    return -1;
+
+  // Convert indices to bin
+  return get_bin_from_hexindices(ijkl);
 }
 
 int32_t HexagonalMesh::offset_in_ring(const HexMeshIndex& ijkl, int32_t r) const

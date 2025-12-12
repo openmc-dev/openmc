@@ -983,19 +983,17 @@ class MeshFilter(Filter):
                 np.arange(1, nz + 1), nx * ny * stride, data_size)
         else:
             nrphi , nz = self.mesh.dimension
-            radius = self._mesh.hex_radius
-            filter_dict[mesh_key, 'r'] = np.tile(
-                    np.repeat(
-                    np.concatenate([ [r] * self._mesh.hexes_in_ring(r) for r in range(radius+1) ]),stride),
-                    data_size // self._mesh.hex_count)
+            radius = self.mesh.hex_radius
+            #generate multi-index subcolumn for r-axis
+            seq = [[r] * self.mesh.hexes_in_ring(r) for r in range(radius+1) ]
+            filter_dict[mesh_key, 'r'] = _repeat_and_tile(np.concatenate(seq), stride, data_size)
 
-            filter_dict[mesh_key, 'phi'] = np.tile(
-                    np.repeat(
-                    np.concatenate([ range(1,self._mesh_hexes_in_ring(r)+1) for r in range(radius+1) ]),stride),
-                    data_size // self._mesh.hex_count)
+            #generate multi-index subcolumn for phi-axis
+            seq = [range(1,self.mesh.hexes_in_ring(r)+1) for r in range(radius+1) ]
+            filter_dict[mesh_key, 'phi'] = _repeat_and_tile(np.concatenate(seq), stride, data_size)
 
-            filter_dict[mesh_key, 'z'] = np.tile(
-                np.repeat(np.arange(1, nz + 1), nx * ny * stride), data_size // self._mesh.hex_count)
+            # Generate multi-index sub-column for z-axis
+            filter_dict[mesh_key, 'z'] = _repeat_and_tile(np.arange(1,nz + 1), self.mesh.hex_count * stride, data_size)
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         df = pd.concat([df, pd.DataFrame(filter_dict)])
@@ -1355,25 +1353,19 @@ class MeshSurfaceFilter(MeshFilter):
                 _CURRENT_NAMES[:n_surfs], stride, data_size)
 
         else:
-            n_surfs = 6 + 2
-            nxy , nz = self.mesh.dimension
-            radius = self._mesh.hex_radius
+            n_surfs = (6 + 2) * 2
+            nrphi , nz = self.mesh.dimension
+            radius = self.mesh.hex_radius
+            #generate multi-index subcolumn for r-axis
+            seq = [[r] * self.mesh.hexes_in_ring(r) for r in range(radius+1) ]
+            filter_dict[mesh_key, 'r'] = _repeat_and_tile(np.concatenate(seq), n_surfs * stride, data_size)
 
-            # Generate multi-index sub-column for r-axis
-            filter_dict[mesh_key, 'r'] = np.tile(
-                    np.repeat(
-                    np.concatenate([ [r] * self._mesh.hexes_in_ring(r) for r in range(radius+1) ]), stride * n_surfs),
-                    data_size // self._mesh.hex_count)
-
-            # Generate multi-index sub-column for azimuth-axis
-            filter_dict[mesh_key, 'phi'] = np.tile(
-                    np.repeat(
-                    np.concatenate([ range(1,self._mesh_hexes_in_ring(r)+1) for r in range(radius+1) ]),stride * n_surfs),
-                    data_size // self._mesh.hex_count)
+            #generate multi-index subcolumn for phi-axis
+            seq = [range(1,self.mesh.hexes_in_ring(r)+1) for r in range(radius+1) ]
+            filter_dict[mesh_key, 'phi'] = _repeat_and_tile(np.concatenate(seq), n_surfs * stride, data_size)
 
             # Generate multi-index sub-column for z-axis
-            filter_dict[mesh_key, 'z'] = np.tile(
-                np.repeat(np.arange(1, nz + 1), self._mesh.hex_count * stride * n_surfs), data_size // self._mesh.hex_count)
+            filter_dict[mesh_key, 'z'] = _repeat_and_tile(np.arange(1,nz + 1),  n_surfs * self.mesh.hex_count * stride, data_size)
 
             # Generate multi-index sub-column for surface
             filter_dict[mesh_key, 'surf'] = _repeat_and_tile(

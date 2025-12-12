@@ -7,11 +7,17 @@ pip install --upgrade pytest
 pip install --upgrade numpy
 
 # Install NJOY 2016
-./tools/ci/gha-install-njoy.sh
+if [[ ! -d "$HOME/NJOY2016" ]]; then
+    ./tools/ci/gha-install-njoy.sh
+fi
+echo "$HOME/NJOY2016/bin" >> $GITHUB_PATH
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
-    ./tools/ci/gha-install-dagmc.sh
+    if [ ! -d "$HOME/DAGMC" ] || [ ! -d "$HOME/MOAB" ]
+    then
+        ./tools/ci/gha-install-dagmc.sh
+    fi
 fi
 
 # Install NCrystal and verify installation
@@ -20,12 +26,18 @@ nctool --test
 
 # Install vectfit for WMP generation if needed
 if [[ $VECTFIT = 'y' ]]; then
-    ./tools/ci/gha-install-vectfit.sh
+    if [ ! -d "$HOME/vectfit" ]
+    then
+        ./tools/ci/gha-install-vectfit.sh
+    fi
 fi
 
 # Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
-    ./tools/ci/gha-install-libmesh.sh
+    if [ ! -d "$HOME/libmesh" ]
+    then
+        ./tools/ci/gha-install-libmesh.sh
+    fi
 fi
 
 # Install MCPL

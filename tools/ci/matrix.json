@@ -1,0 +1,115 @@
+{
+    "include": [
+        {
+        "job-name": "Python 3.11",
+        "python-version": "3.11",
+        "omp": "n",
+        "mpi": "n",
+        "dagmc": "n",
+        "libmesh": "n",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.11 [omp]",
+        "python-version": "3.11",
+        "omp": "y",
+        "mpi": "n",
+        "dagmc": "n",
+        "libmesh": "n",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.11 [mpi]",
+        "python-version": "3.11",
+        "omp": "n",
+        "mpi": "y",
+        "dagmc": "n",
+        "libmesh": "n",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.11 [omp,mpi]",
+        "python-version": "3.11",
+        "omp": "y",
+        "mpi": "y",
+        "dagmc": "n",
+        "libmesh": "n",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.12",
+        "python-version": "3.12",
+        "omp": "n",
+        "mpi": "n",
+        "dagmc": "n",
+        "libmesh": "n",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.13",
+        "python-version": "3.13",
+        "omp": "n",
+        "mpi": "n",
+        "dagmc": "n",
+        "libmesh": "n",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.11 [omp,mpi,dagmc]",
+        "python-version": "3.11",
+        "omp": "y",
+        "mpi": "y",
+        "dagmc": "y",
+        "libmesh": "n",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.11 [omp,mpi,libmesh]",
+        "python-version": "3.11",
+        "omp": "y",
+        "mpi": "y",
+        "dagmc": "n",
+        "libmesh": "y",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.11 [omp,libmesh]",
+        "python-version": "3.11",
+        "omp": "y",
+        "mpi": "n",
+        "dagmc": "n",
+        "libmesh": "y",
+        "event": "n",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.11 [omp,event]",
+        "python-version": "3.11",
+        "omp": "y",
+        "mpi": "n",
+        "dagmc": "n",
+        "libmesh": "n",
+        "event": "y",
+        "vectfit": "n"
+        },
+        {
+        "job-name": "Python 3.11 [mpi,vectfit]",
+        "python-version": "3.11",
+        "omp": "n",
+        "mpi": "y",
+        "dagmc": "n",
+        "libmesh": "n",
+        "event": "n",
+        "vectfit": "y"
+        }
+    ]
+}
+EOF

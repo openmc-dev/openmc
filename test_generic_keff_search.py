@@ -136,7 +136,8 @@ def add_derivative_tallies(model, deriv_variable, deriv_material, deriv_nuclide=
 def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_material,
              deriv_nuclide, x0, x1, target, deriv_nuclide_arg=None, deriv_to_x_func=None,
              expected_magnitude=None, use_derivative_tallies=True, deriv_method='least_squares',
-             learning_rate=1e-17, x_min=None, x_max=None, use_deriv_uncertainty=True):
+             learning_rate=1e-17, x_min=None, x_max=None, use_deriv_uncertainty=True,
+             use_deriv_constraints=True):
     """
     Generic test runner.
     
@@ -175,6 +176,9 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
     use_deriv_uncertainty : bool, optional
         If True, account for derivative uncertainty in the fit. If False, ignore
         derivative uncertainties. Default is True.
+    use_deriv_constraints : bool, optional
+        If True, include derivative constraints in least-squares fitting when
+        derivative tallies are enabled. Default is True.
     """
     print("\n" + "=" * 80)
     print(f"TEST: {test_name}")
@@ -251,6 +255,7 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
                     'deriv_weight': 1.0,
                     'deriv_method': deriv_method,
                     'use_deriv_uncertainty': use_deriv_uncertainty,
+                    'use_deriv_constraints': use_deriv_constraints,
                 })
                 if deriv_method == 'gradient_descent':
                     search_kwargs['learning_rate'] = learning_rate
@@ -416,9 +421,9 @@ if __name__ == '__main__':
             lambda: build_model(boron_ppm=150),
             modifier_fuel_density,
             None, None, None,
-            9.0, 11.0, 1.17,
+            5.0, 11.0, 1.17,
             use_derivative_tallies=False,
-            x_min=8.0, x_max=12.0
+            x_min=2.0, x_max=12.0
         )
         if result:
             density_results['GRsecant (no deriv)'] = result
@@ -429,11 +434,12 @@ if __name__ == '__main__':
             lambda: build_model(boron_ppm=150),
             modifier_fuel_density,
             'density', 1, None,  # Material ID 1 is fuel
-            9.0, 11.0, 1.17,
+            5.0, 11.0, 1.17,
             use_derivative_tallies=True,
             deriv_method='least_squares',
             use_deriv_uncertainty=False,
-            x_min=8.0, x_max=12.0
+            use_deriv_constraints=True,
+            x_min=2.0, x_max=12.0
         )
         if result:
             density_results['Least Squares (with deriv)'] = result
@@ -444,12 +450,13 @@ if __name__ == '__main__':
             lambda: build_model(boron_ppm=150),
             modifier_fuel_density,
             'density', 1, None,
-            9.0, 11.0, 1.17,
+            5.0, 11.0, 1.17,
             use_derivative_tallies=True,
             deriv_method='gradient_descent',
             learning_rate=0.1,  # Density derivatives are O(1)
             use_deriv_uncertainty=False,
-            x_min=8.0, x_max=12.0
+            use_deriv_constraints=True,
+            x_min=2.0, x_max=12.0
         )
         if result:
             density_results['Gradient Descent (with deriv)'] = result

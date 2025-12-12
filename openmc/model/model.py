@@ -2542,6 +2542,7 @@ class Model:
         deriv_method: str = 'least_squares',
         learning_rate: float = 1e-17,
         use_deriv_uncertainty: bool = True,
+        use_deriv_constraints: bool = True,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
@@ -2647,6 +2648,13 @@ class Model:
             numerical stability. This normalization handles derivatives with
             very large magnitudes (e.g., dk/dppm ∼ 10^20) without requiring
             manual scaling by the user.
+        use_deriv_uncertainty : bool, optional
+            If True, weight derivative constraints by their uncertainties
+            (divide by ``dk_std``). If False, include derivative constraints
+            with unit weights (no uncertainty weighting).
+        use_deriv_constraints : bool, optional
+            If True, include derivative constraints in least-squares fitting
+            when ``use_derivative_tallies`` is enabled and derivatives exist.
             
             Only used when deriv_method='least_squares'.
         deriv_method : str, optional
@@ -2875,7 +2883,7 @@ class Model:
 
                     # Perform a curve fit on f(x) = a + bx accounting for uncertainties
                     # If derivatives are available, augment with gradient constraints
-                    if use_deriv_uncertainty and use_derivative_tallies and deriv_method == 'least_squares' and deriv_weight > 0 and any(dks[-m:]):
+                    if use_deriv_constraints and use_derivative_tallies and deriv_method == 'least_squares' and deriv_weight > 0 and any(dks[-m:]):
                         # Gradient-augmented least squares fit
                         # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
                         #         + deriv_weight * sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
@@ -2925,9 +2933,13 @@ class Model:
                             if output:
                                 print(f'  [DERIV-FIT] Normalization scale factor: {deriv_scale:.6e}')
                             
-                            # Apply scaling to both derivatives and their uncertainties
+                            # Apply scaling to derivatives. Optionally scale uncertainties.
                             scaled_derivs = valid_deriv_values / deriv_scale
-                            scaled_deriv_stds = valid_deriv_stds / deriv_scale
+                            if use_deriv_uncertainty:
+                                scaled_deriv_stds = valid_deriv_stds / deriv_scale
+                            else:
+                                # Use unit-uncertainty weighting for constraints
+                                scaled_deriv_stds = np.ones_like(valid_deriv_values)
                             
                             # Build constraint rows with normalized derivatives
                             deriv_rows = np.zeros((n_derivs, 2))

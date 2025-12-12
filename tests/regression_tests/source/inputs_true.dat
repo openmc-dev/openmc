@@ -63,7 +63,7 @@
       </energy>
     </source>
     <source type="independent" strength="0.1" particle="neutron">
-      <space type="cylindrical" origin="1.0 1.0 0.0">
+      <space type="cylindrical" origin="1.0 1.0 0.0" r_dir="1.0 0.0 0.0" z_dir="0.0 0.0 1.0">
         <r type="uniform" parameters="2.0 3.0"/>
         <phi type="uniform" parameters="0.0 6.283185307179586"/>
         <z type="tabular" interpolation="linear-linear">
@@ -76,7 +76,7 @@
       </energy>
     </source>
     <source type="independent" strength="0.1" particle="neutron">
-      <space type="cylindrical" origin="1.0 1.0 0.0">
+      <space type="cylindrical" origin="1.0 1.0 0.0" r_dir="1.0 0.0 0.0" z_dir="0.0 0.0 1.0">
         <r type="uniform" parameters="2.0 3.0"/>
         <phi type="uniform" parameters="0.0 6.283185307179586"/>
         <z type="tabular" interpolation="linear-linear">
@@ -123,7 +123,7 @@
       <time type="uniform" parameters="2 5"/>
     </source>
     <source type="independent" strength="0.1" particle="neutron">
-      <space type="cylindrical" origin="1.0 1.0 0.0">
+      <space type="cylindrical" origin="1.0 1.0 0.0" r_dir="1.0 0.0 0.0" z_dir="0.0 0.0 1.0">
         <r type="powerlaw" parameters="2.0 3.0 1.0"/>
         <phi type="uniform" parameters="0.0 6.283185307179586"/>
         <z type="tabular" interpolation="linear-linear">

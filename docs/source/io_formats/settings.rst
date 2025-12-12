@@ -784,6 +784,7 @@ attributes/sub-elements:
 
       For a "cylindrical" distribution, no parameters are specified. Instead,
       the ``r``, ``phi``, ``z``, and ``origin`` elements must be specified.
+      Optionally, the ``r_dir`` and ``z_dir`` elements could be specified.
 
       For a "spherical" distribution, no parameters are specified. Instead,
       the ``r``, ``theta``, ``phi``, and ``origin`` elements must be specified.
@@ -815,6 +816,10 @@ attributes/sub-elements:
       of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
+    :r_dir:
+      For "cylindrical" distributions, this element specifies the direction 
+      of the cylinder r-axis at phi=0, it defaults to (1.0, 0.0, 0.0).
+
     :theta:
       For a "spherical" distribution, this element specifies the distribution
       of theta-coordinates. The necessary sub-elements/attributes are those of a
@@ -826,6 +831,10 @@ attributes/sub-elements:
       the distribution of phi-coordinates. The necessary
       sub-elements/attributes are those of a univariate probability
       distribution (see the description in :ref:`univariate`).
+      
+    :phi_dir:
+      For "cylindrical" distributions, this element specifies the direction 
+      of the cylinder phi-axis at phi=0, it defaults to (0.0, 1.0, 0.0).
 
     :origin:
       For "cylindrical and "spherical" distributions, this element specifies

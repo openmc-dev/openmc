@@ -1879,7 +1879,7 @@ class Tally(IDManagerMixin):
         return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True, scores=True,
-                             derivative=True, paths=True, float_format='{:.2e}'):
+                             derivative=True, sensitivity=True, paths=True, float_format='{:.2e}'):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1981,6 +1981,14 @@ class Tally(IDManagerMixin):
             if self.derivative.nuclide is not None:
                 df['d_nuclide'] = self.derivative.nuclide
 
+        # Include columns for sensitivity if user requested it
+        if sensitivity and (self.sensitivity is not None):
+            df['d_variable'] = self.sensitivity.variable
+            if self.sensitivity.nuclide is not None:
+                df['d_nuclide'] = self.sensitivity.nuclide
+            if self.sensitivity.reaction is not None:
+                df['d_reaction'] = self.sensitivity.reaction
+        
         # Append columns with mean, std. dev. for each tally bin
         df['mean'] = self.mean.ravel()
         df['std. dev.'] = self.std_dev.ravel()
@@ -3671,6 +3679,111 @@ class Tally(IDManagerMixin):
         return new_tally
 
 
+class SensitivityTally(Tally):
+
+    def __init__(self, tally_id=None, name=''):
+        # Initialize Tally class attributes
+        Tally.__init__(self,tally_id=tally_id, name = name)
+        self._sensitivity = None
+        self._gpt = False
+
+    def __repr__(self):
+        parts = ['Sensitivity Tally']
+        parts.append('{: <15}=\t{}'.format('ID', self.id))
+        parts.append('{: <15}=\t{}'.format('Name', self.name))
+        parts.append('{: <15}=\t{}'.format('Sensitivity ID', self.sensitivity.id))
+        filters = ', '.join(type(f).__name__ for f in self.filters)
+        parts.append('{: <15}=\t{}'.format('Filters', filters))
+        nuclides = ' '.join(str(nuclide) for nuclide in self.nuclides)
+        parts.append('{: <15}=\t{}'.format('Nuclides', nuclides))
+        parts.append('{: <15}=\t{}'.format('Scores', self.scores))
+        parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
+        parts.append('{: <15}=\t{}'.format('Gen. Pert.', self.gpt))
+        return '\n\t'.join(parts)
+
+    @property
+    def shape(self):
+        length = len(self._sensitivity.energy) - 1
+        return (length, self.num_nuclides, self.num_scores)
+
+    @property
+    def sensitivity(self):
+        return self._sensitivity
+
+    @sensitivity.setter
+    def sensitivity(self, sens):
+        cv.check_type('sensitivity', sens, openmc.Sensitivity,
+                      none_ok=True)
+        self._sensitivity = sens
+
+    @property
+    def gpt(self):
+        return self._gpt
+
+    @gpt.setter
+    def gpt(self, value):
+        cv.check_type('generalized perturbation', value, bool)
+        self._gpt = value
+    
+    def to_xml_element(self):
+        """Return XML representation of the tally
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing tally data
+
+        """
+
+        element = ET.Element("sensitivity_tally")
+
+        # Tally ID
+        element.set("id", str(self.id))
+
+        # Optional Tally name
+        if self.name != '':
+            element.set("name", self.name)
+
+        # Multiply by density
+        if not self.multiply_density:            
+            subelement = ET.SubElement(element, "multiply_density")
+            subelement.text = str(self.multiply_density).lower()
+        
+        # Optional Tally filters
+        if len(self.filters) > 0:
+            subelement = ET.SubElement(element, "filters")
+            subelement.text = ' '.join(str(f.id) for f in self.filters)
+
+        # Optional Nuclides
+        if self.nuclides:
+            subelement = ET.SubElement(element, "nuclides")
+            subelement.text = ' '.join(str(n) for n in self.nuclides)
+        
+        # Scores
+        if len(self.scores) == 0:
+            msg = f'Unable to get XML for Tally ID="{self.id}" since it does ' \
+                  'not contain any scores'
+            raise ValueError(msg)
+
+        subelement = ET.SubElement(element, "scores")
+        subelement.text = ' '.join(str(x) for x in self.scores)
+        
+        # Optional Triggers
+        for trigger in self.triggers:
+            trigger.get_trigger_xml(element)
+
+        # Optional sensitivities
+        subelement = ET.SubElement(element, "sensitivity")
+        subelement.text = str(self.sensitivity.id)
+        
+        # Gen. Pert. 
+        if self.gpt:
+           subelement = ET.SubElement(element, "gpt")
+           subelement.text = str(self.gpt).lower()
+
+        return element
+
+
 class Tallies(cv.CheckedList):
     """Collection of Tallies used for an OpenMC simulation.
 
@@ -3766,7 +3879,7 @@ class Tallies(cv.CheckedList):
         already_written = memo if memo else set()
         for tally in self:
             for f in tally.filters:
-                if isinstance(f, openmc.MeshFilter):
+                if isinstance(f, openmc.MeshFilter) or isinstance(f, openmc.ImportanceFilter):
                     if f.mesh.id in already_written:
                         continue
                     if len(f.mesh.name) > 0:
@@ -3798,6 +3911,19 @@ class Tallies(cv.CheckedList):
         for d in derivs:
             root_element.append(d.to_xml_element())
 
+
+    def _create_sensitivity_subelements(self, root_element):
+        # Get a list of all sensitivity referenced in a tally.
+        senss = []
+        for tally in self:
+            sens = tally.sensitivity
+            if sens is not None and sens not in senss:
+                senss.append(sens)
+
+        # Add the sensitivity to the XML tree.
+        for d in senss:
+            root_element.append(d.to_xml_element())
+
     def to_xml_element(self, memo=None):
         """Creates a 'tallies' element to be written to an XML file.
         """
@@ -3807,6 +3933,10 @@ class Tallies(cv.CheckedList):
         self._create_filter_subelements(element)
         self._create_tally_subelements(element)
         self._create_derivative_subelements(element)
+        try:
+            self._create_sensitivity_subelements(element)
+        except:
+            pass
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -3870,11 +4000,17 @@ class Tallies(cv.CheckedList):
             deriv = openmc.TallyDerivative.from_xml_element(e)
             derivatives[deriv.id] = deriv
 
+        # Read sensitivity elements
+        senss = {}
+        for e in elem.findall('sensitivity'):
+            sens = openmc.Sensitivity.from_xml_element(e)
+            senss[sens.id] = sens
+        
         # Read tally elements
         tallies = []
         for e in elem.findall('tally'):
             tally = openmc.Tally.from_xml_element(
-                e, filters=filters, derivatives=derivatives
+                e, filters=filters, derivatives=derivatives, sensitivity=senss
             )
             tallies.append(tally)
 

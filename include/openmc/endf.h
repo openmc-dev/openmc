@@ -78,6 +78,8 @@ public:
   //! \param[in] dset Dataset containing tabulated data
   explicit Tabulated1D(hid_t dset);
 
+  explicit Tabulated1D(vector<double>& x, vector<double>& y);
+
   //! Evaluate the tabulated function
   //! \param[in] x independent variable
   //! \return Function evaluated at x

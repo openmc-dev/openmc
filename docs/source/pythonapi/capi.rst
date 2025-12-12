@@ -69,6 +69,7 @@ Classes
    EnergyFunctionFilter
    EnergyoutFilter
    Filter
+   FissionYieldsFilter
    LegendreFilter
    Material
    MaterialFilter

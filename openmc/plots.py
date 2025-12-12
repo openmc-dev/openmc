@@ -387,8 +387,10 @@ def id_map_to_rgb(
     # Get the appropriate index based on color_by
     if color_by == 'cell':
         id_index = 0  # Cell IDs are in the first channel
-    else:  # material
+    elif color_by == 'material':
         id_index = 2  # Material IDs are in the third channel
+    else:
+        raise ValueError("color_by must be either 'cell' or 'material'")
     
     # Get all unique IDs in the plot
     unique_ids = np.unique(id_map[:, :, id_index])

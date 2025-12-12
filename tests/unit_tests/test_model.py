@@ -998,7 +998,8 @@ def test_keff_search(run_in_tmpdir):
     assert result.total_batches == sum(result.batches)
     assert result.total_batches > 0
 
-# def test_id_map_to_rgb():
+
+def test_id_map_to_rgb():
     """Test conversion of ID map to RGB image array."""
     # Create a simple model
     mat = openmc.Material()

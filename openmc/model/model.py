@@ -1104,7 +1104,6 @@ class Model:
         with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.id_map(plot_obj)
 
-
     @add_plot_params
     def plot(
         self,

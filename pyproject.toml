@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core", "setuptools-scm"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "openmc"
@@ -65,13 +65,11 @@ Documentation = "https://docs.openmc.org"
 Repository = "https://github.com/openmc-dev/openmc"
 Issues = "https://github.com/openmc-dev/openmc/issues"
 
-[tool.setuptools.packages.find]
-include = ['openmc*']
-exclude = ['tests*']
-
-[tool.setuptools.package-data]
-"openmc.data.effective_dose" = ["**/*.txt"]
-"openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
-"openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
+# Scikit-Build Configuration
+[tool.scikit-build]
+build-dir="build"
+wheel.install-dir = "openmc"
+wheel.packages = ["openmc"]
+sdist.include = ["*.h5"]
 
 [tool.setuptools_scm]

@@ -1,7 +1,11 @@
 #ifdef OPENMC_MPI
 #include <mpi.h>
 #endif
+
+#include <string>
+
 #include "openmc/capi.h"
+#include "openmc/config.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
@@ -13,6 +17,11 @@ int main(int argc, char* argv[])
 {
   using namespace openmc;
   int err;
+
+  // Check for config subcommand
+  if (argc > 1 && std::string(argv[1]) == "config") {
+    return openmc_config_main(argc - 1, argv + 1);
+  }
 
   // Initialize run -- when run with MPI, pass communicator
 #ifdef OPENMC_MPI

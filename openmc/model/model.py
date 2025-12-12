@@ -2800,13 +2800,29 @@ class Model:
                 
                 # Check if using gradient descent method
                 if use_derivative_tallies and deriv_method == 'gradient_descent' and dks[-1] != 0.0:
-                    # GRADIENT DESCENT METHOD
-                    # Update: x_new = x_old - learning_rate * error * dk/dx
+                    # GRADIENT DESCENT METHOD WITH NORMALIZATION
+                    # Incorporates k_eff uncertainty; normalizes gradient by its magnitude.
+                    # Update: step = -lr * error * (dk/dx / grad_scale) * adaptive
                     x_old = xs[-1]
                     error = fs[-1]  # Current error (k_eff - target)
                     dk_dx = dks[-1]
+                    sigma_k = ss[-1]  # k_eff standard deviation
+                    sigma_dk = dks_std[-1]  # dk/dx standard deviation
                     
-                    # Adaptive scaling based on error magnitude
+                    # Auto-normalize gradient magnitude to avoid unit sensitivity.
+                    # Use geometric mean of recent gradient magnitudes (not precision-weighted).
+                    m = min(memory, len(dks))
+                    recent_grads = np.array(dks[-m:])
+                    recent_grads = recent_grads[recent_grads != 0]
+                    if len(recent_grads) > 0:
+                        grad_scale = np.exp(np.mean(np.log(np.abs(recent_grads))))
+                    else:
+                        grad_scale = 1.0
+                    
+                    # Normalized gradient (dimensionless, O(1) magnitude)
+                    grad_normalized = dk_dx / max(grad_scale, 1e-30)
+                    
+                    # Adaptive scaling based on absolute error magnitude
                     error_magnitude = abs(error)
                     adaptive_factor = 1.0
                     if error_magnitude > 0.1:
@@ -2814,16 +2830,27 @@ class Model:
                     elif error_magnitude < 0.01:
                         adaptive_factor = 0.7  # Slow down when near target
                     
+                    # Uncertainty check: if derivatives are too noisy, be conservative
+                    if sigma_dk > 0 and dk_dx != 0:
+                        relative_uncertainty = sigma_dk / abs(dk_dx)
+                        if relative_uncertainty > 0.5:
+                            adaptive_factor *= 0.5  # Halve step if derivative is very noisy
+                            if output:
+                                print(f'  [GRAD-DESC] High derivative uncertainty ({relative_uncertainty:.2f}), reducing step')
+                    
                     # Handle very small gradients with conservative fixed step
-                    if abs(dk_dx) < 1e-10:
-                        step = -100 if error > 0 else 100
+                    if abs(dk_dx) < 1e-30:
+                        step = -10 if error > 0 else 10
                         if output:
                             print(f'  [GRAD-DESC] Very small gradient, using fixed step: {step:.1f}')
                     else:
-                        step = -learning_rate * error * dk_dx * adaptive_factor
+                        # Simple uncertainty-aware step: scaled by normalized gradient
+                        step = -learning_rate * error * grad_normalized * adaptive_factor
                         if output:
                             print(f'  [GRAD-DESC] Gradient descent step: {step:.6e}')
-                            print(f'  [GRAD-DESC] Error={error:.6e}, dk/dx={dk_dx:.6e}, lr={learning_rate:.6e}, adaptive={adaptive_factor:.2f}')
+                            print(f'  [GRAD-DESC] Error={error:.6e} ± {sigma_k:.6e}, dk/dx={dk_dx:.6e} ± {sigma_dk:.6e}')
+                            print(f'  [GRAD-DESC] Grad_normalized={grad_normalized:.6e}, Grad_scale={grad_scale:.6e}')
+                            print(f'  [GRAD-DESC] lr={learning_rate:.6e}, adaptive={adaptive_factor:.2f}')
                     
                     x_new = float(x_old + step)
                     

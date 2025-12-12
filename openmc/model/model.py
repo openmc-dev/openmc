@@ -2541,6 +2541,7 @@ class Model:
         deriv_to_x_func: Callable[[float], float] | None = None,
         deriv_method: str = 'least_squares',
         learning_rate: float = 1e-17,
+        use_deriv_uncertainty: bool = True,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
@@ -2672,6 +2673,16 @@ class Model:
             Adaptive scaling based on error magnitude is automatically applied:
             - Error > 0.1: step *= 1.5 (speed up when far from target)
             - Error < 0.01: step *= 0.7 (slow down when near target)
+        use_deriv_uncertainty : bool, optional
+            If True (default), accounts for derivative uncertainties when applying
+            derivative constraints in both least squares and gradient descent methods.
+            - Least Squares: Weights derivative constraints inversely by sigma_dk²
+            - Gradient Descent: Reduces step size if sigma_dk/|dk/dx| > 0.5
+            
+            Set to False to disable uncertainty weighting on derivatives, treating
+            all derivative estimates equally. Useful for cases where derivative
+            uncertainties are large or unreliable. Only used when
+            use_derivative_tallies=True.
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
@@ -2698,16 +2709,17 @@ class Model:
             if not deriv_variable:
                 raise ValueError(
                     "deriv_variable required when use_derivative_tallies=True. "
-                    "Supported: 'density', 'nuclide_density', 'temperature', 'enrichment'"
+                    "Supported: 'density', 'nuclide_density', 'temperature'"
                 )
             if not deriv_material:
                 raise ValueError("deriv_material (int) required when use_derivative_tallies=True")
             if deriv_variable == 'nuclide_density' and not deriv_nuclide:
                 raise ValueError("deriv_nuclide required when deriv_variable='nuclide_density'")
-            if deriv_variable not in ('density', 'nuclide_density', 'temperature', 'enrichment'):
+            # Validate against C++ backend supported types (see src/tallies/derivative.cpp)
+            if deriv_variable not in ('density', 'nuclide_density', 'temperature'):
                 raise ValueError(
-                    f"Invalid deriv_variable='{deriv_variable}'. "
-                    "Must be one of: 'density', 'nuclide_density', 'temperature', 'enrichment'"
+                    f"Unsupported deriv_variable='{deriv_variable}'. "
+                    "OpenMC C++ backend only supports: 'density', 'nuclide_density', 'temperature'"
                 )
             if deriv_method not in ('least_squares', 'gradient_descent'):
                 raise ValueError(
@@ -2831,7 +2843,7 @@ class Model:
                         adaptive_factor = 0.7  # Slow down when near target
                     
                     # Uncertainty check: if derivatives are too noisy, be conservative
-                    if sigma_dk > 0 and dk_dx != 0:
+                    if use_deriv_uncertainty and sigma_dk > 0 and dk_dx != 0:
                         relative_uncertainty = sigma_dk / abs(dk_dx)
                         if relative_uncertainty > 0.5:
                             adaptive_factor *= 0.5  # Halve step if derivative is very noisy
@@ -2863,7 +2875,7 @@ class Model:
 
                     # Perform a curve fit on f(x) = a + bx accounting for uncertainties
                     # If derivatives are available, augment with gradient constraints
-                    if use_derivative_tallies and deriv_method == 'least_squares' and deriv_weight > 0 and any(dks[-m:]):
+                    if use_deriv_uncertainty and use_derivative_tallies and deriv_method == 'least_squares' and deriv_weight > 0 and any(dks[-m:]):
                         # Gradient-augmented least squares fit
                         # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
                         #         + deriv_weight * sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2

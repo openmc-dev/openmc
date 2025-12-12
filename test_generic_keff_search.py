@@ -136,7 +136,7 @@ def add_derivative_tallies(model, deriv_variable, deriv_material, deriv_nuclide=
 def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_material,
              deriv_nuclide, x0, x1, target, deriv_nuclide_arg=None, deriv_to_x_func=None,
              expected_magnitude=None, use_derivative_tallies=True, deriv_method='least_squares',
-             learning_rate=1e-17):
+             learning_rate=1e-17, x_min=None, x_max=None, use_deriv_uncertainty=True):
     """
     Generic test runner.
     
@@ -172,6 +172,9 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
         'least_squares' or 'gradient_descent'. Only used when use_derivative_tallies=True.
     learning_rate : float, optional
         Learning rate for gradient descent. Only used when deriv_method='gradient_descent'.
+    use_deriv_uncertainty : bool, optional
+        If True, account for derivative uncertainty in the fit. If False, ignore
+        derivative uncertainties. Default is True.
     """
     print("\n" + "=" * 80)
     print(f"TEST: {test_name}")
@@ -234,6 +237,11 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
                 'run_kwargs': {'cwd': tmpdir_path},
                 'use_derivative_tallies': use_derivative_tallies,
             }
+            
+            if x_min is not None:
+                search_kwargs['x_min'] = x_min
+            if x_max is not None:
+                search_kwargs['x_max'] = x_max
 
             if use_derivative_tallies:
                 search_kwargs.update({
@@ -242,6 +250,7 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
                     'deriv_nuclide': deriv_nuclide_arg,
                     'deriv_weight': 1.0,
                     'deriv_method': deriv_method,
+                    'use_deriv_uncertainty': use_deriv_uncertainty,
                 })
                 if deriv_method == 'gradient_descent':
                     search_kwargs['learning_rate'] = learning_rate
@@ -279,8 +288,8 @@ if __name__ == '__main__':
     print("COMPREHENSIVE COMPARISON: GRsecant vs Least Squares vs Gradient Descent")
     print("=" * 80)
     print("This test compares three optimization methods on two test cases:")
-    print("  Test Case 1: Boron concentration search (with ppm conversion)")
-    print("  Test Case 2: Fuel temperature search (direct temperature parameter)")
+    print("  Test Case 1: Boron concentration search (nuclide_density with ppm conversion)")
+    print("  Test Case 2: Fuel density search (density derivative, densification scenario)")
     print("")
     print("Methods:")
     print("  1. GRsecant (baseline):      No derivatives, standard curve-fitting")
@@ -378,93 +387,80 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"  ⚠ Boron test encountered error: {e}")
     '''
-    # TEST 2: Critical sphere radius search (geometry parameter, nonlinear response)
+    # TEST 2: Fuel density search (densification/swelling scenario)
     print("\n" + "=" * 100)
-    print("[TEST 2] CRITICAL SPHERE RADIUS SEARCH")
+    print("[TEST 2] FUEL DENSITY SEARCH")
     print("=" * 100)
-    print("Parameter: Radius of U235 sphere (cm)")
-    print("Physics: Nonlinear k-radius relationship (cubic volume effect)")
-    print("Why Least Squares excels: Curvature in response requires gradient to fit accurately")
-    print("Derivative variable: density (implicit radius effect via material density)")
+    print("Parameter: Fuel density (g/cm³)")
+    print("Physics: Fuel densification or swelling affects neutron moderation and absorption")
+    print("Why Least Squares excels: Derivative provides direct sensitivity for faster convergence")
+    print("Derivative variable: density (fuel material density)")
     
-    sphere_results = {}
+    density_results = {}
     
     try:
-        # Create a simple U235 sphere model
-        def build_sphere_model(radius=10.0):
-            """Build a critical sphere of U235."""
-            mat = openmc.Material(name='U235', material_id=1)
-            mat.set_density('g/cm3', 18.9)
-            mat.add_nuclide('U235', 1.0)
-            
-            sphere = openmc.Sphere(r=radius, boundary_type='vacuum')
-            cell = openmc.Cell(name='sphere', fill=mat, region=-sphere)
-            geometry = openmc.Geometry([cell])
-            
-            settings = openmc.Settings()
-            settings.batches = 50
-            settings.inactive = 5
-            settings.particles = 300
-            settings.run_mode = 'eigenvalue'
-            
-            return openmc.model.Model(geometry, openmc.Materials([mat]), settings)
-        
-        def modifier_radius(radius, model):
-            """Modify sphere radius via geometry export."""
-            radius = max(5.0, min(radius, 15.0))  # Guard against unrealistic values
-            # Get the sphere surface from geometry and update radius
-            for surface in model.geometry.get_all_surfaces().values():
-                if isinstance(surface, openmc.Sphere):
-                    surface.r = radius
-                    break
+        def modifier_fuel_density(density_gcm3, model):
+            """Modify fuel density directly."""
+            fuel = model.materials[0]  # First material is fuel
+            # Remove and re-add elements to update density
+            fuel.remove_element('U')
+            fuel.remove_element('O')
+            fuel.set_density('g/cm3', density_gcm3)
+            fuel.add_element('U', 1., enrichment=1.6)
+            fuel.add_element('O', 2.)
             model.export_to_xml()
         
         # Method 1: GRsecant without derivative tallies
         result = run_test(
-            "Sphere radius search: GRsecant WITHOUT derivatives",
-            lambda: build_sphere_model(radius=10.0),
-            modifier_radius,
+            "Fuel density search: GRsecant WITHOUT derivatives",
+            lambda: build_model(boron_ppm=150),
+            modifier_fuel_density,
             None, None, None,
-            7.5, 11.0, 1.20,
+            9.0, 11.0, 1.17,
             use_derivative_tallies=False,
+            x_min=8.0, x_max=12.0
         )
         if result:
-            sphere_results['GRsecant (no deriv)'] = result
+            density_results['GRsecant (no deriv)'] = result
         
-        # Method 2: Least Squares with derivative tallies  
-        # Use density derivative as proxy for radius (volume effect)
+        # Method 2: Least Squares with derivative tallies
         result = run_test(
-            "Sphere radius search: Least Squares WITH derivatives",
-            lambda: build_sphere_model(radius=10.0),
-            modifier_radius,
-            'density', 1, None,
-            7.5, 11.0, 1.20,
+            "Fuel density search: Least Squares WITH derivatives",
+            lambda: build_model(boron_ppm=150),
+            modifier_fuel_density,
+            'density', 1, None,  # Material ID 1 is fuel
+            9.0, 11.0, 1.17,
             use_derivative_tallies=True,
             deriv_method='least_squares',
+            use_deriv_uncertainty=False,
+            x_min=8.0, x_max=12.0
         )
         if result:
-            sphere_results['Least Squares (with deriv)'] = result
+            density_results['Least Squares (with deriv)'] = result
         
         # Method 3: Gradient Descent with derivative tallies
         result = run_test(
-            "Sphere radius search: Gradient Descent WITH derivatives (lr=1e-17)",
-            lambda: build_sphere_model(radius=10.0),
-            modifier_radius,
+            "Fuel density search: Gradient Descent WITH derivatives (lr=0.1)",
+            lambda: build_model(boron_ppm=150),
+            modifier_fuel_density,
             'density', 1, None,
-            7.5, 11.0, 1.20,
+            9.0, 11.0, 1.17,
             use_derivative_tallies=True,
             deriv_method='gradient_descent',
-            learning_rate=1e-17,
+            learning_rate=0.1,  # Density derivatives are O(1)
+            use_deriv_uncertainty=False,
+            x_min=8.0, x_max=12.0
         )
         if result:
-            sphere_results['Gradient Descent (with deriv)'] = result
+            density_results['Gradient Descent (with deriv)'] = result
             
     except Exception as e:
-        print(f"  ⚠ Sphere search encountered error: {e}")
+        print(f"  ⚠ Fuel density test encountered error: {e}")
         import traceback
         traceback.print_exc()
-    '''
     # Print final comparison tables
+    print("\n" + "=" * 100)
+    '''
     if boron_results:
         print("\n[TABLE 1] BORON CONCENTRATION SEARCH RESULTS")
         print("-" * 100)
@@ -499,24 +495,24 @@ if __name__ == '__main__':
                     print(f"  MC runs:       {run_pct:+7.1f}%  ({result.function_calls:2d} vs {baseline_runs:2d})")
                     print(f"  Total batches: {batch_pct:+7.1f}%  ({result.total_batches:4d} vs {baseline_batches:4d})")
                     print(f"  Elapsed time:  {time_pct:+7.1f}%  ({getattr(result, 'elapsed_time', 0):6.2f}s vs {baseline_time:6.2f}s)")
-    '''
-    # TABLE 2: Critical Sphere Radius Search
-    if sphere_results:
+    
+    # TABLE 2: Fuel Temperature Search
+    if temperature_results:
         print("\n" + "=" * 100)
-        print("[TABLE 2] CRITICAL SPHERE RADIUS SEARCH RESULTS")
+        print("[TABLE 2] FUEL TEMPERATURE SEARCH RESULTS")
         print("-" * 100)
-        print(f"{'Method':<30} {'Final Radius (cm)':<18} {'MC Runs':<12} {'Tot Batches':<14} {'Time (s)':<12} {'Converged':<10}")
+        print(f"{'Method':<30} {'Final Temp (K)':<18} {'MC Runs':<12} {'Tot Batches':<14} {'Time (s)':<12} {'Converged':<10}")
         print("-" * 100)
         
         for method_name in ['GRsecant (no deriv)', 'Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
-            if method_name in sphere_results:
-                result = sphere_results[method_name]
+            if method_name in temperature_results:
+                result = temperature_results[method_name]
                 elapsed = getattr(result, 'elapsed_time', 0)
-                print(f"{method_name:<30} {result.root:>16.2f} {result.function_calls:>11d} {result.total_batches:>13d} {elapsed:>11.2f} {str(result.converged):>9}")
+                print(f"{method_name:<30} {result.root:>16.1f} {result.function_calls:>11d} {result.total_batches:>13d} {elapsed:>11.2f} {str(result.converged):>9}")
         
-        # Efficiency analysis for sphere
-        if 'GRsecant (no deriv)' in sphere_results:
-            baseline = sphere_results['GRsecant (no deriv)']
+        # Efficiency analysis for temperature
+        if 'GRsecant (no deriv)' in temperature_results:
+            baseline = temperature_results['GRsecant (no deriv)']
             baseline_runs = baseline.function_calls
             baseline_batches = baseline.total_batches
             baseline_time = getattr(baseline, 'elapsed_time', 0)
@@ -526,8 +522,45 @@ if __name__ == '__main__':
             print("-" * 100)
             
             for method_name in ['Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
-                if method_name in sphere_results:
-                    result = sphere_results[method_name]
+                if method_name in temperature_results:
+                    result = temperature_results[method_name]
+                    run_pct = ((baseline_runs - result.function_calls) / baseline_runs * 100) if baseline_runs > 0 else 0
+                    batch_pct = ((baseline_batches - result.total_batches) / baseline_batches * 100) if baseline_batches > 0 else 0
+                    time_pct = ((baseline_time - getattr(result, 'elapsed_time', 0)) / baseline_time * 100) if baseline_time > 0 else 0
+                    
+                    print(f"\n{method_name}:")
+                    print(f"  MC runs:       {run_pct:+7.1f}%  ({result.function_calls:2d} vs {baseline_runs:2d})")
+                    print(f"  Total batches: {batch_pct:+7.1f}%  ({result.total_batches:4d} vs {baseline_batches:4d})")
+                    print(f"  Elapsed time:  {time_pct:+7.1f}%  ({getattr(result, 'elapsed_time', 0):6.2f}s vs {baseline_time:6.2f}s)")
+    '''
+    # TABLE 2: Fuel Density Search
+    if density_results:
+        print("\n" + "=" * 100)
+        print("[TABLE 2] FUEL DENSITY SEARCH RESULTS")
+        print("-" * 100)
+        print(f"{'Method':<30} {'Final Density (g/cm³)':<18} {'MC Runs':<12} {'Tot Batches':<14} {'Time (s)':<12} {'Converged':<10}")
+        print("-" * 100)
+        
+        for method_name in ['GRsecant (no deriv)', 'Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
+            if method_name in density_results:
+                result = density_results[method_name]
+                elapsed = getattr(result, 'elapsed_time', 0)
+                print(f"{method_name:<30} {result.root:>16.3f} {result.function_calls:>11d} {result.total_batches:>13d} {elapsed:>11.2f} {str(result.converged):>9}")
+        
+        # Efficiency analysis for density
+        if 'GRsecant (no deriv)' in density_results:
+            baseline = density_results['GRsecant (no deriv)']
+            baseline_runs = baseline.function_calls
+            baseline_batches = baseline.total_batches
+            baseline_time = getattr(baseline, 'elapsed_time', 0)
+            
+            print("\n" + "-" * 100)
+            print("Efficiency Gains (relative to GRsecant baseline):")
+            print("-" * 100)
+            
+            for method_name in ['Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
+                if method_name in density_results:
+                    result = density_results[method_name]
                     run_pct = ((baseline_runs - result.function_calls) / baseline_runs * 100) if baseline_runs > 0 else 0
                     batch_pct = ((baseline_batches - result.total_batches) / baseline_batches * 100) if baseline_batches > 0 else 0
                     time_pct = ((baseline_time - getattr(result, 'elapsed_time', 0)) / baseline_time * 100) if baseline_time > 0 else 0

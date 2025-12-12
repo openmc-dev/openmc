@@ -1366,8 +1366,6 @@ class Material(IDManagerMixin):
         for dist in distributions:
             dist.normalize()
 
-
-
         # Mass density of the material [g/cm^3]
         if self.get_mass_density() <= 0.0:
             raise ValueError(

@@ -710,7 +710,7 @@ _DEFAULT_GAMMA_EBINS_MEV = np.array(
 )
 
 
-def get_approx_decay_photon_spectrum(
+def decay_photon_energy_approx(
     nuclide: str, ebins: list[float] | np.ndarray | None = None
 ) -> Univariate | None:
     """Approximate decay photon spectrum when no photon source is in the chain.
@@ -729,32 +729,25 @@ def get_approx_decay_photon_spectrum(
 
     Returns
     -------
-    openmc.stats.Univariate or None
-        A Discrete spectrum in [eV] representing the approximate
-        photon energies. Returns None if:
+    openmc.stats.Tabular or None
+        Returns None if:
           * the nuclide is not in the chain
           * the nuclide is effectively stable / no decay energy
           * the dominant decay mode gives no continuum gammas (e.g. pure alpha)
           * we cannot infer a reasonable Em.
     """
 
-    chain_file = openmc.config.get("chain_file")
-    if chain_file is None:
-        raise DataError(
-            "A depletion chain file must be specified with "
-            "openmc.config['chain_file'] in order to load decay data."
-        )
+    from openmc.deplete.chain import _get_chain
+    from openmc.data  import decay_constant
 
-    from openmc.deplete import Chain
-
-    chain = Chain.from_xml(chain_file)
+    chain = _get_chain()
 
     if nuclide not in chain:
         return None
 
     nuc = chain[nuclide]
 
-    # If the a source is defined, return None
+    # If the source is defined, return None
     if nuc.sources and "photon" in nuc.sources:
         return None
 
@@ -777,31 +770,34 @@ def get_approx_decay_photon_spectrum(
 
     # --- Get Em (max gamma energy)  -------------------------
     # We do not have explicit average gamma energies here, so we use
-    # nuc.decay_energy (total deposited decay energy) as a proxy.
+    # nuc.decay_energy (total deposited decay energy) as a conservativw proxy.
     g_mean_ev = nuc.decay_energy  # [eV]
 
-    Em_ev: float | None = None
 
-    # FISPACT-II Table 26 recipes (approximate here):
+    # --- Get decay constant  -------------------------
+    nuc_decay_constant = decay_constant(nuclide)
+
+    Emax_ev: float | None = None
+
+    # FISPACT-II Table 26 recipes 
     if "beta-" in mode:
-        beta_mean_ev = None
         if "electron" in nuc.sources:
             beta_mean_ev = nuc.sources["electron"].mean()
-            Em_ev = 2.0 * beta_mean_ev
+            Emax_ev = 2.0 * beta_mean_ev
         else:
-            Em_ev = g_mean_ev
+            Emax_ev = g_mean_ev
     elif "beta+" in mode or "ec" in mode:
-        Em_ev = 5.0e6
+        Emax_ev = 5.0e6
     elif "it" in mode:
-        Em_ev = g_mean_ev
+        Emax_ev = g_mean_ev
     # if the dominant mode included beta+ or beta-, together with alpha, the other channel was
     # selected
     elif "alpha" in mode:
-        Em_ev = None
+        Emax_ev = None
     else:
-        Em_ev = None
+        Emax_ev = None
 
-    if Em_ev is None or Em_ev <= 0.0:
+    if Emax_ev is None or Emax_ev <= 0.0:
         return None
 
     # --- Energy bin boundaries --------------------------------------------
@@ -822,23 +818,30 @@ def get_approx_decay_photon_spectrum(
     # --- FISPACT-II spectrum formula (Eq. 64) -----------------------------
     a = 14.0
     denom = 1.0 - (1.0 + a) * np.exp(-a)
-    if denom == 0.0:
-        raise ZeroDivisionError("Denominator in FISPACT spectrum formula is zero.")
 
-    eta = ebins / Em_ev
+    # cut the list for energy values above Emax
+    ebins = np.array([v for v in ebins if v <= Emax_ev], dtype=float)
+    if ebins[-1] < Emax_ev:
+        ebins = np.append(ebins, Emax_ev)
+
+    eta = ebins / Emax_ev
+
     # exp(-a * eta) -> 0, np.exp handles np.inf correctly
     expo = np.exp(-a * eta)
 
-    # Ii = a *  gamma_en_av / Em * (exp(-a eta_{i-1}) - exp(-a eta_i)) / [1 - (1 + a) e^{-a}]
-    i_vals = ((a * g_mean_ev / Em_ev) / denom) * (expo[:-1] - expo[1:])
+    # Ii = a *  gamma_en_av / Em * (exp(-a eta_{i}) - exp(-a eta_{i+1})) / [1 - (1 + a) e^{-a}]
+    i_vals = ((a * g_mean_ev / Emax_ev) / denom) * (expo[:-1] - expo[1:])
 
     # --- generate a tabular spectrum
     # This function is the probabilty of emission per decay per unit of energy in the various energy bins
     # The values computed with the fispact formula are divided by the e bins to ensure consistency
     # with the Tabular class definition
+    #
+    # In addition the distribution is multiplied by the decay constant to provide the intensity in
+    # consistently with get_decay_photon_spectrum
 
-    i_vals = i_vals[1:] / np.diff(ebins[:-1])
+    i_vals = nuc_decay_constant * i_vals / np.diff(ebins)
 
-    spectrum = Tabular(ebins[1:-1], i_vals, interpolation="histogram")
+    spectrum = Tabular(ebins[:-1], i_vals, interpolation="histogram")
 
     return spectrum

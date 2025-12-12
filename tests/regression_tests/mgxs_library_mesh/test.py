@@ -57,7 +57,7 @@ def model():
     model.mgxs_lib.build_library()
 
     # Add tallies
-    model.mgxs_lib.add_to_tallies_file(model.tallies, merge=False)
+    model.mgxs_lib.add_to_tallies(model.tallies, merge=False)
 
     return model
 

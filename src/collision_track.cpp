@@ -78,10 +78,10 @@ void write_collision_track_bank(hid_t group_id,
   hid_t banktype = h5_collision_track_banktype();
 #ifdef OPENMC_MPI
   write_bank_dataset("collision_track_bank", group_id, collision_track_bank,
-    bank_index, banktype, mpi::collision_track_site);
+    bank_index, banktype, banktype, mpi::collision_track_site);
 #else
   write_bank_dataset("collision_track_bank", group_id, collision_track_bank,
-    bank_index, banktype);
+    bank_index, banktype, banktype);
 #endif
 
   H5Tclose(banktype);

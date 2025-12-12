@@ -408,6 +408,16 @@ void calculate_average_keff()
         t_value *
         std::sqrt(
           (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
+
+      // In some cases (such as an infinite medium problem), random ray
+      // may estimate k exactly and in an unvarying manner between iterations.
+      // In this case, the floating point roundoff between the division and the
+      // power operations may cause an extremely small negative value to occur
+      // inside the sqrt operation, leading to NaN. If this occurs, we check for
+      // it and set the std dev to zero.
+      if (!std::isfinite(simulation::keff_std)) {
+        simulation::keff_std = 0.0;
+      }
     }
   }
 }

@@ -192,11 +192,10 @@ tallies.export_to_xml()
 #                   Exporting to OpenMC plots.xml file
 ###############################################################################
 
-plot = openmc.Plot()
+plot = openmc.VoxelPlot()
 plot.origin = [0, 0, 0]
 plot.width = [pitch, pitch, pitch]
 plot.pixels = [1000, 1000, 1]
-plot.type = 'voxel'
 
 # Instantiate a Plots collection and export to XML
 plots = openmc.Plots([plot])

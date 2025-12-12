@@ -235,15 +235,20 @@ vector<double> rhalton(int dim, uint64_t* seed, int64_t skip = 0)
 // Static Variable Declarations
 double RandomRay::distance_inactive_;
 double RandomRay::distance_active_;
+double RandomRay::avg_miss_rate;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
 RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
+int64_t RandomRay::n_source_regions;
+int64_t RandomRay::n_external_source_regions;
+uint64_t RandomRay::total_geometric_intersections;
+int RandomRay::negroups_;
 
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
-    delta_psi_(data::mg.num_energy_groups_),
-    negroups_(data::mg.num_energy_groups_)
+    delta_psi_(data::mg.num_energy_groups_)
 {
+  negroups_ = data::mg.num_energy_groups_;
   if (source_shape_ == RandomRaySourceShape::LINEAR ||
       source_shape_ == RandomRaySourceShape::LINEAR_XY) {
     delta_moments_.resize(negroups_);

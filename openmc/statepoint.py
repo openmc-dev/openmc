@@ -97,6 +97,36 @@ class StatePoint:
         Working directory for simulation
     photon_transport : bool
         Indicate whether photon transport is active
+    random_ray : dict
+        Dictionary for random ray solver parameters and results.
+        Acceptable keys are:
+
+        :adjoint_mode:
+            Indicate whether random ray solve was in adjoint mode
+        :avg_miss_rate:
+            The random ray average source region miss rate per iteration
+            expressed as a percent
+        :distance_active:
+            Indicates the total active distance in [cm] for each ray
+        :distance_inactive:
+            Indicates the total inactive distance in [cm] for each ray
+        :sample_method:
+            Sampling method for the ray starting location and direction of
+            travel, e.g. `prng` or 'halton`
+        :source_shape:
+            Assumed shape of the source distribution within each source region,
+            e.g. 'flat' (default), 'linear', or 'linear_xy'
+        :n_external_source_regions:
+            Number of external source regions in random ray simulation
+        :n_geometric_intersections:
+            Total number of geometric intersections in random ray simulation
+        :n_integrations:
+            Total number of integrations in random ray simulation
+        :n_source_regions:
+            Number of source regions in random ray simulation
+        :volume_estimator:
+            Choice of volume estimator for the random ray solver, e.g.
+            'naive', 'simulation_averaged', or 'hybrid'
     run_mode : str
         Simulation run mode, e.g. 'eigenvalue'
     runtime : dict
@@ -104,6 +134,8 @@ class StatePoint:
         and whose values are time values in seconds.
     seed : int
         Pseudorandom number generator seed
+    solver_type : str
+        Transport method, e.g. 'monte carlo' or 'random ray'
     stride : int
         Number of random numbers allocated for each particle history
     source : numpy.ndarray of compound datatype
@@ -137,6 +169,7 @@ class StatePoint:
         self._filters = {}
         self._tallies = {}
         self._derivs = {}
+        self._random_ray = {}
 
         # Check filetype and version
         cv.check_filetype_version(self._f, 'statepoint', _VERSION_STATEPOINT)
@@ -149,6 +182,7 @@ class StatePoint:
         self._global_tallies = None
         self._sparse = False
         self._derivs_read = False
+        self._random_ray_read = False
 
         # Automatically link in a summary file if one exists
         if autolink:
@@ -349,6 +383,29 @@ class StatePoint:
     @property
     def photon_transport(self):
         return self._f.attrs['photon_transport'] > 0
+
+    @property
+    def solver_type(self):
+        return self._f['solver_type'][()].decode()
+
+    @property
+    def random_ray(self):
+        if not self._random_ray_read:
+            self._random_ray['adjoint_mode'] = True if self._f['adjoint_mode'][()] else False
+            self._random_ray['avg_miss_rate'] = self._f['avg_miss_rate'][()]
+            self._random_ray['distance_active'] = self._f['distance_active'][()]
+            self._random_ray['distance_inactive'] = self._f['distance_inactive'][()]
+            self._random_ray['sample_method'] = self._f['sample_method'][()].decode()
+            self._random_ray['source_shape'] = self._f['source_shape'][()].decode()
+            self._random_ray['n_external_source_regions'] = self._f['n_external_source_regions'][()]
+            self._random_ray['n_geometric_intersections'] = self._f['n_geometric_intersections'][()]
+            self._random_ray['n_integrations'] = self._f['n_integrations'][()]
+            self._random_ray['n_source_regions'] = self._f['n_source_regions'][()]
+            self._random_ray['volume_estimator'] = self._f['volume_estimator'][()].decode()
+
+            self._random_ray_read = True
+
+        return self._random_ray
 
     @property
     def run_mode(self):

@@ -65,4 +65,17 @@ void UncorrelatedAngleEnergy::sample(
   E_out = energy_->sample(E_in, seed);
 }
 
+double UncorrelatedAngleEnergy::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  // Sample outgoing energy
+  E_out = energy_->sample(E_in, seed);
+  if (!angle_.empty()) {
+    return angle_.evaluate(E_in, mu);
+  } else {
+    // no angle distribution given => assume isotropic for all energies
+    return 0.5;
+  }
+}
+
 } // namespace openmc

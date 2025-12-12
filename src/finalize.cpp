@@ -142,7 +142,7 @@ int openmc_finalize()
   settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
-  settings::verbosity = 7;
+  settings::verbosity = -1;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
   settings::weight_windows_file.clear();

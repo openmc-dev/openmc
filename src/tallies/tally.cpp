@@ -220,7 +220,7 @@ Tally::Tally(pugi::xml_node node)
                       "number of inactive cycles.");
         }
         settings::ifp_on = true;
-      } else {
+      } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
         fatal_error(
           "Iterated Fission Probability can only be used in an eigenvalue "
           "calculation.");

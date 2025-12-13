@@ -594,6 +594,65 @@ def test_get_activity():
     # Test with volume specified as argument
     assert pytest.approx(m4.get_activity(units='Bq', volume=1.0)) == 355978108155965.94*3/2
 
+    # Test activity when a chain file is used and nuclide has no decay
+    m5 = openmc.Material()
+    m5.add_nuclide("U235", 1)
+    m5.set_density("g/cm3", 1)
+    assert pytest.approx(m5.get_activity(units="Bq/g")) == 79960.38150492319
+    assert (
+        pytest.approx(
+            m5.get_activity(
+                units="Bq/g", chain_file=Path(__file__).parents[1] / "chain_simple.xml"
+            )
+        )
+        == 0.0
+    )  # U23 has no decay path in chain_simple.xml
+
+    # Test activity when a chain file is used and nuclide has decay
+    m6 = openmc.Material()
+    m6.add_nuclide("I135", 1)
+    m6.set_density("g/cm3", 1)
+    assert pytest.approx(m6.get_activity(units="Bq/g")) == 1.3081699229530213e17
+    assert (
+        pytest.approx(
+            m6.get_activity(
+                units="Bq/g",
+                chain_file=Path(__file__).parents[1] / "chain_simple.xml",
+                particle="beta",
+            )
+        )
+        == 1.3081699229530213e17
+    )
+    # neutron is not a decay type of I135 so this should return 0.
+    assert (
+        pytest.approx(
+            m6.get_activity(
+                units="Bq/g",
+                chain_file=Path(__file__).parents[1] / "chain_simple.xml",
+                particle="neutron",
+            )
+        )
+        == 0.0
+    )
+    assert (
+        pytest.approx(
+            m6.get_activity(
+                units="Bq/g", chain_file=Path(__file__).parents[1] / "chain_simple.xml"
+            )
+        )
+        == 1.3081699229530213e17
+    )
+    assert (
+        pytest.approx(
+            m6.get_activity(
+                units="Bq/g",
+                by_nuclide=True,
+                particle="beta",
+                chain_file=Path(__file__).parents[1] / "chain_simple.xml",
+            )["I135"]
+        )
+        == 1.3081699229530213e17
+    )
     # Test units based on Ci
     bq = m4.get_activity(units='Bq')
     m3 = m4.volume * 1e-6

@@ -262,6 +262,8 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write statepoint files
+            Positive integers write statepoints at specified batches.
+            Negative integer -N keeps running statepoints for the last N batches.
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 
@@ -761,6 +763,33 @@ class Settings:
         self._output = output
 
     @property
+    def statepoint(self) -> dict:
+        """Dictionary of statepoint options.
+
+        Acceptable keys:
+        - 'batches': list of batch integers or single integer.
+          Positive integers: write statepoints at specified batches.
+          Negative integer -N: keep running statepoints for the last N batches.
+        """
+        return self._statepoint
+
+    @statepoint.setter
+    def statepoint(self, statepoint: dict):
+        cv.check_type('statepoint', statepoint, Mapping)
+        sp = {}
+        if 'batches' in statepoint:
+            batches = statepoint['batches']
+            if isinstance(batches, Integral):
+                # Single integer: positive (single batch) or negative (keep last N)
+                sp['batches'] = [int(batches)]
+            elif isinstance(batches, Sequence):
+                # Sequence of integers
+                sp['batches'] = [int(x) for x in batches]
+            else:
+                raise ValueError("statepoint['batches'] must be a sequence or single integer")
+        self._statepoint = sp
+
+    @property
     def sourcepoint(self) -> dict:
         return self._sourcepoint
 
@@ -784,23 +813,6 @@ class Settings:
                 raise ValueError(f"Unknown key '{key}' encountered when "
                                  "setting sourcepoint options.")
         self._sourcepoint = sourcepoint
-
-    @property
-    def statepoint(self) -> dict:
-        return self._statepoint
-
-    @statepoint.setter
-    def statepoint(self, statepoint: dict):
-        cv.check_type('statepoint options', statepoint, Mapping)
-        for key, value in statepoint.items():
-            if key == 'batches':
-                cv.check_type('statepoint batches', value, Iterable, Integral)
-                for batch in value:
-                    cv.check_greater_than('statepoint batch', batch, 0)
-            else:
-                raise ValueError(f"Unknown key '{key}' encountered when "
-                                 "setting statepoint options.")
-        self._statepoint = statepoint
 
     @property
     def surf_source_read(self) -> dict:
@@ -1504,11 +1516,6 @@ class Settings:
                 subelement = ET.SubElement(element, "write")
                 subelement.text = str(self._sourcepoint['write']).lower()
 
-            # Overwrite latest subelement
-            if 'overwrite' in self._sourcepoint:
-                subelement = ET.SubElement(element, "overwrite_latest")
-                subelement.text = str(self._sourcepoint['overwrite']).lower()
-
             if 'mcpl' in self._sourcepoint:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._sourcepoint['mcpl']).lower()
@@ -2005,11 +2012,9 @@ class Settings:
     def _sourcepoint_from_xml_element(self, root):
         elem = root.find('source_point')
         if elem is not None:
-            for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
-                if key in ('separate', 'write', 'mcpl', 'overwrite_latest'):
+            for key in ('separate', 'write', 'batches', 'mcpl'):
+                if key in ('separate', 'write', 'mcpl'):
                     value = get_text(elem, key) in ('true', '1')
-                    if key == 'overwrite_latest':
-                        key = 'overwrite'
                 else:
                     value = get_elem_list(elem, key, int)
                 if value is not None:

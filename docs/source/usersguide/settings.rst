@@ -651,6 +651,19 @@ As an example, to write a statepoint file every five batches::
   settings.batches = n
   settings.statepoint = {'batches': range(5, n + 5, 5)}
 
+Additionally, you can specify negative batch numbers to keep running statepoints
+for the most recent batches. For example, to keep the last 2 completed batches::
+
+  settings.statepoint = {'batches': -2}
+
+Or to write statepoints at specific batches and also keep the last 3 completed
+batches, you can mix positive and negative values::
+
+  settings.statepoint = {'batches': [10, 20, 30, -3]}
+
+See :ref:`usersguide_statepoint_latest` for detailed information on running
+statepoints, file naming, and automatic pruning behavior.
+
 Particle Track Files
 --------------------
 

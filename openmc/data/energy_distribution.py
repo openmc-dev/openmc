@@ -1026,7 +1026,7 @@ class LevelInelastic(EnergyDistribution):
             warn("Level inelastic distribution mass parameter does not match ace table mass.")
             mass = ace.atomic_weight_ratio
         q_value = -threshold * sqrt(mass_ratio) if particle == 'neutron' else -threshold
-        return cls(threshold, mass_ratio, particle = particle)
+        return cls(q_value, mass, particle = particle)
 
 
 class ContinuousTabular(EnergyDistribution):

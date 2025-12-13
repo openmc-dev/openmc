@@ -16,9 +16,9 @@ de-excitation of these atoms can result in the emission of electrons and
 photons. Electrons themselves also can produce photons by means of
 bremsstrahlung radiation.
 
---------------------------
-Photon Atomic Interactions
---------------------------
+------------------------
+Photoatomic Interactions
+------------------------
 
 Coherent (Rayleigh) Scattering
 ------------------------------

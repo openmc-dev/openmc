@@ -61,9 +61,9 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
-  double a_;
-  double b_;
-  double c_;
+  double a_; //!< a coefficient of the scattering law
+  double b_; //!< a coefficient of the scattering law
+  double c_; //!< a coefficient of the scattering law
 };
 
 //===============================================================================

@@ -911,8 +911,10 @@ class LevelInelastic(EnergyDistribution):
         Q-value of the reaction.
     mass : float
         mass of the nucleus in units of neutron mass.
-    particle : ParticleType
+    particle : {'neutron', 'photon'}
         incident particle type.
+    threshold : float
+        Energy threshold in the laboratory system
     """
 
     def __init__(self, q_value, mass, particle = 'neutron'):
@@ -955,8 +957,8 @@ class LevelInelastic(EnergyDistribution):
         if particle == 'neutron':
             return (A+1.0)/A*abs(Q)
         else:
-            b = 2*NEUTRON_MASS_EV*(A-1)
-            return (b-sqrt(b**2-4.0*b*abs(Q)))/2.0
+            b = NEUTRON_MASS_EV*(A-1)
+            return sqrt(b)*(sqrt(b)-sqrt(b-2*abs(Q)))
 
     def to_hdf5(self, group):
         """Write distribution to an HDF5 group

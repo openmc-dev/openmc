@@ -14,6 +14,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture()
 def model(request):
+    openmc.reset_auto_ids()
     pitch = 1.26
 
     mats = {}
@@ -68,6 +69,24 @@ def model(request):
         finally:
             model.finalize_lib()
             openmc.reset_auto_ids()
+
+
+def test_temperature_read(model):
+    # because the DAGMC unvierse is repeated, all cells will have more than one
+    # instance and in turn more than one temperature
+    for cell in model.geometry.get_all_material_cells().values():
+        cell_temps = cell.temperature
+        for t in cell_temps:
+            if cell.id == 3:
+                assert t == 300.0
+            else:
+                assert t == pytest.approx(293.6)
+
+
+def test_cell_temperature_warning(model):
+    c = list(model.geometry.get_all_material_cells().values())[0]
+    with pytest.warns(UserWarning):
+        c.temperature = 800
 
 
 def test_dagmc_replace_material_assignment(model):

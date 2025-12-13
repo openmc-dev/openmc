@@ -87,6 +87,8 @@ def _get_products(ev, mt):
         is not defined in the 'center-of-mass' system. The breakup logic
         is not implemented which can lead to this error being raised while
         the definition of the product is correct.
+    NotImplementedError
+        When the projectile is not a neutron and not a photon.
 
     Returns
     -------
@@ -163,11 +165,16 @@ def _get_products(ev, mt):
                     )
 
                 zat = ev.target["atomic_number"] * 1000 + ev.target["mass_number"]
-                projectile_mass = ev.projectile["mass"]
+                if ev.projectile['mass'] == 0.0:
+                    za_projectile = 0
+                elif np.isclose(ev.projectile['mass'], 1.0, atol=1.0e-12, rtol=0.):
+                    za_projectile = 1
+                else:
+                    raise NotImplementedError('Unknown projectile')
                 p.distribution = [KalbachMann.from_endf(file_obj,
                                                         za,
                                                         zat,
-                                                        projectile_mass)]
+                                                        za_projectile)]
 
         elif law == 2:
             # Discrete two-body scattering

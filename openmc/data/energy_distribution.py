@@ -945,7 +945,7 @@ class LevelInelastic(EnergyDistribution):
     
     @particle.setter
     def particle(self, particle):
-        cv.check_type('product particle type', particle, ['neutron', 'photon'])
+        cv.check_value('product particle type', particle, ['neutron', 'photon'])
         self._particle = particle
         
     @property

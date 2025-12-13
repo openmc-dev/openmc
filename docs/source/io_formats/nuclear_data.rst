@@ -584,9 +584,9 @@ Level Inelastic
 
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'level'
-             - **q_value** (*double*) -- :math:`Q`-value of the reaction.
-             - **mass** (*double*) -- nucleus mass :math:`A` relative to neutron rest mass.  
-             - **particle** (*char[]*) -- incident particle name
+             - **q_value** (*double*) -- Q value in eV
+             - **mass** (*double*) -- Nucleus mass A relative to neutron rest mass  
+             - **particle** (*char[]*) -- Incident particle name
 
 Continuous Tabular
 ------------------

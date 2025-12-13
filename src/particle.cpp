@@ -81,6 +81,11 @@ bool Particle::create_secondary(
     return false;
   }
 
+  // This is used to count backward in the secondary source bank for tallying
+  // outgoing photon energies from a neutron in the SecondaryPhotonEnergy
+  // filter.
+  secondaries_this_collision()++;
+
   auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
   bank.wgt = wgt;
@@ -330,6 +335,7 @@ void Particle::event_cross_surface()
 
 void Particle::event_collide()
 {
+
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
@@ -379,6 +385,11 @@ void Particle::event_collide()
   n_bank() = 0;
   bank_second_E() = 0.0;
   wgt_bank() = 0.0;
+
+  // Clear number of secondaries in this collision. This is
+  // distinct from the number of created neutrons n_bank() above!
+  secondaries_this_collision() = 0;
+
   zero_delayed_bank();
 
   // Reset fission logical

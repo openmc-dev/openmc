@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import sqrt
+from math import sqrt, isclose
 from numbers import Integral, Real
 from warnings import warn
 
@@ -9,7 +9,7 @@ import numpy as np
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
-from .data import EV_PER_MEV
+from .data import EV_PER_MEV, NEUTRON_MASS_EV
 from .endf import get_tab1_record, get_tab2_record
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 
@@ -902,7 +902,7 @@ class LevelInelastic(EnergyDistribution):
         Q-value of the reaction.
     mass : float
         mass of the nucleus in units of neutron mass.
-    particle : ParticleType
+    particle : {'neutron', 'photon'}
         incident particle type, defaults to neutron
 
     Attributes
@@ -945,8 +945,18 @@ class LevelInelastic(EnergyDistribution):
     
     @particle.setter
     def particle(self, particle):
-        cv.check_type('product particle type', particle, str)
+        cv.check_type('product particle type', particle, ['neutron', 'photon'])
         self._particle = particle
+        
+    @property
+    def threshold(self):
+        A = self.mass
+        Q = self.q_value
+        if particle == 'neutron':
+            return (A+1.0)/A*abs(Q)
+        else:
+            b = 2*NEUTRON_MASS_EV*(A-1)
+            return (b-sqrt(b**2-4.0*b*abs(Q)))/2.0
 
     def to_hdf5(self, group):
         """Write distribution to an HDF5 group
@@ -1012,6 +1022,9 @@ class LevelInelastic(EnergyDistribution):
         threshold = ace.xss[idx]*EV_PER_MEV
         mass_ratio = ace.xss[idx + 1]
         mass = 1.0/(1.0/sqrt(mass_ratio)-1.0) if particle == 'neutron' else 1.0-1.0/mass_ratio
+        if not isclose(ace.atomic_weight_ratio, mass):
+            warn("Level inelastic distribution mass parameter does not match ace table mass.")
+            mass = ace.atomic_weight_ratio
         q_value = -threshold * sqrt(mass_ratio) if particle == 'neutron' else -threshold
         return cls(threshold, mass_ratio, particle = particle)
 

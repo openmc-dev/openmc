@@ -22,6 +22,14 @@ namespace openmc {
 
 KalbachMann::KalbachMann(hid_t group)
 {
+  is_photon_ = false;
+  // Check if projectile is a photon
+  if (attribute_exists(group, "particle")) {
+    std::string temp;
+    read_attribute(group, "particle", temp);
+    if (temp == "photon")
+      is_photon_ = true;
+  }
   // Open incoming energy dataset
   hid_t dset = open_dataset(group, "energy");
 
@@ -229,12 +237,19 @@ void KalbachMann::sample(
   }
 
   // Sampled correlated angle from Kalbach-Mann parameters
-  if (prn(seed) > km_r) {
-    double T = uniform_distribution(-1., 1., seed) * std::sinh(km_a);
-    mu = std::log(T + std::sqrt(T * T + 1.0)) / km_a;
+  if (is_photon_) {
+    double T = uniform_distribution(0., 1., seed);
+    double sinha = std::sinh(km_a);
+    mu = sinha * ((1 + T) - 2 * km_r) /
+         (sinha * T + std::cosh(km_a) - std::exp(km_a * T));
   } else {
-    double r1 = prn(seed);
-    mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
+    if (prn(seed) > km_r) {
+      double T = uniform_distribution(-1., 1., seed) * std::sinh(km_a);
+      mu = std::log(T + std::sqrt(T * T + 1.0)) / km_a;
+    } else {
+      double r1 = prn(seed);
+      mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
+    }
   }
 }
 

@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<tallies>
+  <mesh id="1">
+    <dimension>10 10 1</dimension>
+    <lower_left>-20.0 -20.0 -1000000000.0</lower_left>
+    <upper_right>20.0 20.0 1000000000.0</upper_right>
+  </mesh>
+  <filter id="1" type="mesh">
+    <bins>1</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+</tallies>

@@ -302,6 +302,20 @@ std::pair<double, array<int, 3>> RectLattice::distance(
     }
   }
 
+  // Corner cases.
+  if (std::abs(x + u.x * d - x0) < FP_PRECISION &&
+      std::abs(y + u.y * d - y0) < FP_PRECISION) {
+    lattice_trans[0] = u.x > 0 ? 1 : -1;
+    lattice_trans[1] = u.y > 0 ? 1 : -1;
+
+    if (is_3d_) {
+      double z0 {copysign(0.5 * pitch_[2], u.z)};
+      if (std::abs(z + u.z * d - z0) < FP_PRECISION) {
+        lattice_trans[2] = u.z > 0 ? 1 : -1;
+      }
+    }
+  }
+
   return {d, lattice_trans};
 }
 

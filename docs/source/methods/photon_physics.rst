@@ -16,9 +16,9 @@ de-excitation of these atoms can result in the emission of electrons and
 photons. Electrons themselves also can produce photons by means of
 bremsstrahlung radiation.
 
--------------------
-Photon Interactions
--------------------
+--------------------------
+Photon Atomic Interactions
+--------------------------
 
 Coherent (Rayleigh) Scattering
 ------------------------------
@@ -598,6 +598,29 @@ The inverse transform method is used to sample :math:`\mu_{-}` and
 The azimuthal angles for the electron and positron are sampled independently
 and uniformly on :math:`[0, 2\pi)`.
 
+-------------------------
+Photonuclear Interactions
+-------------------------
+
+Photonuclear reactions occur when a nucleus absorbs a high-energy photon (gamma-ray), leading to a change in the nucleus. 
+The absorption of the photon excites the nucleus, and the energy provided by the photon can result in the emission of particles 
+like neutrons, protons, or other light nuclei. Because photonuclear interactions are determined by nuclear rather than atomic properties, 
+their data libraries must be specific to each isotope.
+
+Inelastic Level Scattering
+--------------------------
+
+It can be shown (see Wattenberg_) that in inelastic level scattering, the outgoing
+energy of the neutron :math:`E'` can be related to the Q-value of the reaction
+and the incoming energy of the photon:
+
+.. math::
+    :label: photonuclear-level-scattering
+
+    E' = \left ( \frac{A-1}{A} \right ) \left ( E - |Q| - \frac{E^2}{2 m_n \left (A-1 \right )} \right )
+
+where :math:`A` is the mass of the target nucleus measured in neutron masses, math:`m_n` is the neutron mass in eV.
+
 -------------------
 Secondary Processes
 -------------------
@@ -734,3 +757,5 @@ emitted photon.
 .. _Kaltiaisenaho: https://aaltodoc.aalto.fi/bitstream/handle/123456789/21004/master_Kaltiaisenaho_Toni_2016.pdf
 
 .. _Salvat: https://doi.org/10.1787/32da5043-en
+
+.. _Wattenberg: https://doi.org/10.1103/PhysRev.71.497

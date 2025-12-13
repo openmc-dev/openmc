@@ -61,8 +61,9 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
-  double threshold_;  //!< Energy threshold in lab, (A + 1)/A * |Q|
-  double mass_ratio_; //!< (A/(A+1))^2
+  double a_;
+  double b_;
+  double c_;
 };
 
 //===============================================================================

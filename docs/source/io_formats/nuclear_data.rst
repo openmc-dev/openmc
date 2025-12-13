@@ -584,9 +584,9 @@ Level Inelastic
 
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'level'
-             - **threshold** (*double*) -- Energy threshold in the laboratory
-               system in eV
-             - **mass_ratio** (*double*) -- :math:`(A/(A + 1))^2`
+             - **q_value** (*double*) -- :math:`Q`-value of the reaction.
+             - **mass** (*double*) -- nucleus mass :math:`A` relative to neutron rest mass.  
+             - **particle** (*char[]*) -- incident particle name
 
 Continuous Tabular
 ------------------

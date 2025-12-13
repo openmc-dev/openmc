@@ -48,6 +48,7 @@ flags:
                        restart file
 -s, --threads N        Run with *N* OpenMP threads
 -t, --track            Write tracks for all particles (up to max_tracks)
+-q, --verbosity V      Set the output verbosity to *V*
 -v, --version          Show version information
 -h, --help             Show help message
 

@@ -61,9 +61,10 @@ public:
   double sample(double E, uint64_t* seed) const override;
 
 private:
+  //! The scattering law is E_out = a*(E_in-b-c*E_in*E_in)
   double a_; //!< a coefficient of the scattering law
-  double b_; //!< a coefficient of the scattering law
-  double c_; //!< a coefficient of the scattering law
+  double b_; //!< b coefficient of the scattering law
+  double c_; //!< c coefficient of the scattering law
 };
 
 //===============================================================================

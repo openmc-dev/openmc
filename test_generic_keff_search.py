@@ -135,8 +135,8 @@ def add_derivative_tallies(model, deriv_variable, deriv_material, deriv_nuclide=
 
 def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_material,
              deriv_nuclide, x0, x1, target, deriv_nuclide_arg=None, deriv_to_x_func=None,
-             expected_magnitude=None, use_derivative_tallies=True, deriv_method='least_squares',
-             learning_rate=1e-17, x_min=None, x_max=None, use_deriv_uncertainty=True,
+             expected_magnitude=None, use_derivative_tallies=True,
+             x_min=None, x_max=None, use_deriv_uncertainty=True,
              use_deriv_constraints=True):
     """
     Generic test runner.
@@ -169,10 +169,6 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
     use_derivative_tallies : bool, optional
         If True, enable derivative tallies and pass derivative args to keff_search.
         If False, run keff_search without derivative tallies (baseline comparison).
-    deriv_method : str, optional
-        'least_squares' or 'gradient_descent'. Only used when use_derivative_tallies=True.
-    learning_rate : float, optional
-        Learning rate for gradient descent. Only used when deriv_method='gradient_descent'.
     use_deriv_uncertainty : bool, optional
         If True, account for derivative uncertainty in the fit. If False, ignore
         derivative uncertainties. Default is True.
@@ -200,9 +196,6 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
         print(f"  Derivative material: {deriv_material}")
         if use_derivative_tallies:
             print(f"  Derivative tallies: ON")
-            print(f"  Derivative method: {deriv_method}")
-            if deriv_method == 'gradient_descent':
-                print(f"  Learning rate: {learning_rate:.2e}")
             if deriv_nuclide_arg:
                 print(f"  Derivative nuclide: {deriv_nuclide_arg}")
             if deriv_to_x_func is not None:
@@ -215,10 +208,7 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
         print(f"  Target k-eff: {target}")
         print(f"  Batches: {model.settings.batches}")
         if deriv_to_x_func is not None and use_derivative_tallies:
-            if deriv_method == 'gradient_descent':
-                print(f"  NOTE: Using gradient descent with large derivatives!")
-            else:
-                print(f"  NOTE: Automatic normalization handles large derivatives!")
+            print(f"  NOTE: Automatic normalization handles large derivatives!")
 
         start_time = time.time()
 
@@ -253,12 +243,9 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
                     'deriv_material': deriv_material,
                     'deriv_nuclide': deriv_nuclide_arg,
                     'deriv_weight': 1.0,
-                    'deriv_method': deriv_method,
                     'use_deriv_uncertainty': use_deriv_uncertainty,
                     'use_deriv_constraints': use_deriv_constraints,
                 })
-                if deriv_method == 'gradient_descent':
-                    search_kwargs['learning_rate'] = learning_rate
                 if deriv_to_x_func is not None:
                     search_kwargs['deriv_to_x_func'] = deriv_to_x_func
 
@@ -290,16 +277,15 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
 
 if __name__ == '__main__':
     print("\n" + "=" * 80)
-    print("COMPREHENSIVE COMPARISON: GRsecant vs Least Squares vs Gradient Descent")
+    print("COMPREHENSIVE COMPARISON: GRsecant vs Least Squares")
     print("=" * 80)
-    print("This test compares three optimization methods on two test cases:")
+    print("This test compares two optimization methods on two test cases:")
     print("  Test Case 1: Boron concentration search (nuclide_density with ppm conversion)")
     print("  Test Case 2: Fuel density search (density derivative, densification scenario)")
     print("")
     print("Methods:")
     print("  1. GRsecant (baseline):      No derivatives, standard curve-fitting")
     print("  2. Least Squares:            GRsecant + gradient constraints + auto-normalization")
-    print("  3. Gradient Descent (GD):    Direct sensitivity-based updates (lr=1e-17, normalized)")
     print("=" * 80)
     '''
     # Physical constants for boron ppm conversion
@@ -367,27 +353,9 @@ if __name__ == '__main__':
             deriv_to_x_func=boron_ppm_conversion,
             expected_magnitude="O(10^16-10^20)",
             use_derivative_tallies=True,
-            deriv_method='least_squares',
         )
         if result:
             boron_results['Least Squares (with deriv)'] = result
-        
-        # Method 3: Gradient Descent with derivative tallies
-        result = run_test(
-            "Boron search: Gradient Descent WITH derivatives (lr=1e-17)",
-            lambda: build_model(boron_ppm=1000),
-            modifier_boron,
-            'nuclide_density', 3, 'B10',
-            500, 1500, 1.20,
-            deriv_nuclide_arg='B10',
-            deriv_to_x_func=boron_ppm_conversion,
-            expected_magnitude="O(10^16-10^20)",
-            use_derivative_tallies=True,
-            deriv_method='gradient_descent',
-            learning_rate=1e-17,
-        )
-        if result:
-            boron_results['Gradient Descent (with deriv)'] = result
             
     except Exception as e:
         print(f"  ⚠ Boron test encountered error: {e}")
@@ -436,30 +404,12 @@ if __name__ == '__main__':
             'density', 1, None,  # Material ID 1 is fuel
             5.0, 11.0, 1.17,
             use_derivative_tallies=True,
-            deriv_method='least_squares',
             use_deriv_uncertainty=False,
             use_deriv_constraints=True,
             x_min=2.0, x_max=12.0
         )
         if result:
             density_results['Least Squares (with deriv)'] = result
-        
-        # Method 3: Gradient Descent with derivative tallies
-        result = run_test(
-            "Fuel density search: Gradient Descent WITH derivatives (lr=0.1)",
-            lambda: build_model(boron_ppm=150),
-            modifier_fuel_density,
-            'density', 1, None,
-            5.0, 11.0, 1.17,
-            use_derivative_tallies=True,
-            deriv_method='gradient_descent',
-            learning_rate=0.1,  # Density derivatives are O(1)
-            use_deriv_uncertainty=False,
-            use_deriv_constraints=True,
-            x_min=2.0, x_max=12.0
-        )
-        if result:
-            density_results['Gradient Descent (with deriv)'] = result
             
     except Exception as e:
         print(f"  ⚠ Fuel density test encountered error: {e}")
@@ -474,7 +424,7 @@ if __name__ == '__main__':
         print(f"{'Method':<30} {'Final Sol (ppm)':<18} {'MC Runs':<12} {'Tot Batches':<14} {'Time (s)':<12} {'Converged':<10}")
         print("-" * 100)
         
-        for method_name in ['GRsecant (no deriv)', 'Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
+        for method_name in ['GRsecant (no deriv)', 'Least Squares (with deriv)']:
             if method_name in boron_results:
                 result = boron_results[method_name]
                 elapsed = getattr(result, 'elapsed_time', 0)
@@ -491,7 +441,7 @@ if __name__ == '__main__':
             print("Efficiency Gains (relative to GRsecant baseline):")
             print("-" * 100)
             
-            for method_name in ['Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
+            for method_name in ['Least Squares (with deriv)']:
                 if method_name in boron_results:
                     result = boron_results[method_name]
                     run_pct = ((baseline_runs - result.function_calls) / baseline_runs * 100) if baseline_runs > 0 else 0
@@ -548,7 +498,7 @@ if __name__ == '__main__':
         print(f"{'Method':<30} {'Final Density (g/cm³)':<18} {'MC Runs':<12} {'Tot Batches':<14} {'Time (s)':<12} {'Converged':<10}")
         print("-" * 100)
         
-        for method_name in ['GRsecant (no deriv)', 'Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
+        for method_name in ['GRsecant (no deriv)', 'Least Squares (with deriv)']:
             if method_name in density_results:
                 result = density_results[method_name]
                 elapsed = getattr(result, 'elapsed_time', 0)
@@ -565,7 +515,7 @@ if __name__ == '__main__':
             print("Efficiency Gains (relative to GRsecant baseline):")
             print("-" * 100)
             
-            for method_name in ['Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
+            for method_name in ['Least Squares (with deriv)']:
                 if method_name in density_results:
                     result = density_results[method_name]
                     run_pct = ((baseline_runs - result.function_calls) / baseline_runs * 100) if baseline_runs > 0 else 0

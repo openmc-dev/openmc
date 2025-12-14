@@ -2539,8 +2539,6 @@ class Model:
         deriv_nuclide: str | None = None,
         deriv_weight: float = 3.0,
         deriv_to_x_func: Callable[[float], float] | None = None,
-        deriv_method: str = 'least_squares',
-        learning_rate: float = 1e-17,
         use_deriv_uncertainty: bool = True,
         use_deriv_constraints: bool = True,
         func_kwargs: dict[str, Any] | None = None,
@@ -2657,40 +2655,11 @@ class Model:
             when ``use_derivative_tallies`` is enabled and derivatives exist.
             
             Only used when deriv_method='least_squares'.
-        deriv_method : str, optional
-            Optimization method when use_derivative_tallies=True:
-            - 'least_squares' (default): GRsecant with gradient-augmented curve fitting.
-              Uses weighted least squares that incorporates both function evaluations
-              and derivative constraints. More robust and converges faster.
-            - 'gradient_descent': Traditional gradient descent using derivatives.
-              Updates parameter using: x_new = x_old - learning_rate * error * dk/dx.
-              Requires careful tuning of learning_rate parameter.
-            
-            Ignored if use_derivative_tallies=False.
-        learning_rate : float, optional
-            Step size for gradient descent updates. Only used when
-            deriv_method='gradient_descent'. Default is 1e-17.
-            
-            For boron ppm searches with derivatives ~O(10^20), typical values:
-            - 1e-17 to 1e-16: Conservative, stable convergence
-            - 1e-15 to 1e-14: Faster but may overshoot
-            
-            The optimal value depends on the magnitude of dk/dx and the
-            problem scaling. If updates are too large/small, adjust accordingly.
-            
-            Adaptive scaling based on error magnitude is automatically applied:
-            - Error > 0.1: step *= 1.5 (speed up when far from target)
-            - Error < 0.01: step *= 0.7 (slow down when near target)
-        use_deriv_uncertainty : bool, optional
-            If True (default), accounts for derivative uncertainties when applying
-            derivative constraints in both least squares and gradient descent methods.
-            - Least Squares: Weights derivative constraints inversely by sigma_dk²
-            - Gradient Descent: Reduces step size if sigma_dk/|dk/dx| > 0.5
-            
-            Set to False to disable uncertainty weighting on derivatives, treating
-            all derivative estimates equally. Useful for cases where derivative
-            uncertainties are large or unreliable. Only used when
-            use_derivative_tallies=True.
+                use_deriv_uncertainty : bool, optional
+                        If True (default), accounts for derivative uncertainties when applying
+                        derivative constraints in least squares: weights derivative constraints
+                        inversely by sigma_dk². Set to False to disable uncertainty weighting
+                        on derivatives, treating all derivative estimates equally.
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
@@ -2728,15 +2697,6 @@ class Model:
                 raise ValueError(
                     f"Unsupported deriv_variable='{deriv_variable}'. "
                     "OpenMC C++ backend only supports: 'density', 'nuclide_density', 'temperature'"
-                )
-            if deriv_method not in ('least_squares', 'gradient_descent'):
-                raise ValueError(
-                    f"Invalid deriv_method='{deriv_method}'. "
-                    "Must be 'least_squares' or 'gradient_descent'"
-                )
-            if deriv_method == 'gradient_descent' and learning_rate <= 0:
-                raise ValueError(
-                    f"learning_rate must be positive, got {learning_rate}"
                 )
         
         func_kwargs = {} if func_kwargs is None else dict(func_kwargs)
@@ -2818,168 +2778,107 @@ class Model:
             for _ in range(maxiter - 2):
                 # ------ Step 1: propose next x
                 
-                # Check if using gradient descent method
-                if use_derivative_tallies and deriv_method == 'gradient_descent' and dks[-1] != 0.0:
-                    # GRADIENT DESCENT METHOD WITH NORMALIZATION
-                    # Incorporates k_eff uncertainty; normalizes gradient by its magnitude.
-                    # Update: step = -lr * error * (dk/dx / grad_scale) * adaptive
-                    x_old = xs[-1]
-                    error = fs[-1]  # Current error (k_eff - target)
-                    dk_dx = dks[-1]
-                    sigma_k = ss[-1]  # k_eff standard deviation
-                    sigma_dk = dks_std[-1]  # dk/dx standard deviation
-                    
-                    # Auto-normalize gradient magnitude to avoid unit sensitivity.
-                    # Use geometric mean of recent gradient magnitudes (not precision-weighted).
-                    m = min(memory, len(dks))
-                    recent_grads = np.array(dks[-m:])
-                    recent_grads = recent_grads[recent_grads != 0]
-                    if len(recent_grads) > 0:
-                        grad_scale = np.exp(np.mean(np.log(np.abs(recent_grads))))
-                    else:
-                        grad_scale = 1.0
-                    
-                    # Normalized gradient (dimensionless, O(1) magnitude)
-                    grad_normalized = dk_dx / max(grad_scale, 1e-30)
-                    
-                    # Adaptive scaling based on absolute error magnitude
-                    error_magnitude = abs(error)
-                    adaptive_factor = 1.0
-                    if error_magnitude > 0.1:
-                        adaptive_factor = 1.5  # Speed up when far from target
-                    elif error_magnitude < 0.01:
-                        adaptive_factor = 0.7  # Slow down when near target
-                    
-                    # Uncertainty check: if derivatives are too noisy, be conservative
-                    if use_deriv_uncertainty and sigma_dk > 0 and dk_dx != 0:
-                        relative_uncertainty = sigma_dk / abs(dk_dx)
-                        if relative_uncertainty > 0.5:
-                            adaptive_factor *= 0.5  # Halve step if derivative is very noisy
-                            if output:
-                                print(f'  [GRAD-DESC] High derivative uncertainty ({relative_uncertainty:.2f}), reducing step')
-                    
-                    # Handle very small gradients with conservative fixed step
-                    if abs(dk_dx) < 1e-30:
-                        step = -10 if error > 0 else 10
-                        if output:
-                            print(f'  [GRAD-DESC] Very small gradient, using fixed step: {step:.1f}')
-                    else:
-                        # Simple uncertainty-aware step: scaled by normalized gradient
-                        step = -learning_rate * error * grad_normalized * adaptive_factor
-                        if output:
-                            print(f'  [GRAD-DESC] Gradient descent step: {step:.6e}')
-                            print(f'  [GRAD-DESC] Error={error:.6e} ± {sigma_k:.6e}, dk/dx={dk_dx:.6e} ± {sigma_dk:.6e}')
-                            print(f'  [GRAD-DESC] Grad_normalized={grad_normalized:.6e}, Grad_scale={grad_scale:.6e}')
-                            print(f'  [GRAD-DESC] lr={learning_rate:.6e}, adaptive={adaptive_factor:.2f}')
-                    
-                    x_new = float(x_old + step)
-                    
-                    if output:
-                        print(f'  [GRAD-DESC] Update: x={x_old:.6g} -> {x_new:.6g} (step={step:.6g})')
-                
-                else:
-                    # LEAST SQUARES METHOD (original GRsecant or augmented with derivatives)
-                    m = min(memory, len(xs))
+                # LEAST SQUARES METHOD (original GRsecant or augmented with derivatives)
+                m = min(memory, len(xs))
 
-                    # Perform a curve fit on f(x) = a + bx accounting for uncertainties
-                    # If derivatives are available, augment with gradient constraints
-                    if use_deriv_constraints and use_derivative_tallies and deriv_method == 'least_squares' and deriv_weight > 0 and any(dks[-m:]):
-                        # Gradient-augmented least squares fit
-                        # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
-                        #         + deriv_weight * sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
+                # Perform a curve fit on f(x) = a + bx accounting for uncertainties
+                # If derivatives are available, augment with gradient constraints
+                if use_deriv_constraints and use_derivative_tallies and deriv_weight > 0 and any(dks[-m:]):
+                    # Gradient-augmented least squares fit
+                    # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
+                    #         + deriv_weight * sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
+                    
+                    xs_fit = np.array([xs[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    fs_fit = np.array([fs[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    ss_fit = np.array([ss[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    dks_fit = np.array([dks[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    dks_std_fit = np.array([dks_std[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    
+                    # Build augmented system: minimize both point residuals and gradient errors
+                    # Points with valid derivatives contribute dual constraints
+                    valid_derivs = dks_std_fit > 0
+                    n_pts = len(xs_fit)
+                    n_derivs = np.sum(valid_derivs)
+                    
+                    # Construct augmented system matrix
+                    A = np.vstack([
+                        np.ones(n_pts) / ss_fit,
+                        xs_fit / ss_fit,
+                    ]).T
+                    b_vec = fs_fit / ss_fit
+                    
+                    # Add gradient constraints (b should match dk/dx at each point)
+                    if n_derivs > 0:
+                        # Gradient constraints: f(x) = a + bx, so df/dx = b
+                        # Constraint: b ≈ dk/dx_j, weighted by 1/dk_std_j
                         
-                        xs_fit = np.array([xs[i] for i in range(max(0, len(xs)-m), len(xs))])
-                        fs_fit = np.array([fs[i] for i in range(max(0, len(xs)-m), len(xs))])
-                        ss_fit = np.array([ss[i] for i in range(max(0, len(xs)-m), len(xs))])
-                        dks_fit = np.array([dks[i] for i in range(max(0, len(xs)-m), len(xs))])
-                        dks_std_fit = np.array([dks_std[i] for i in range(max(0, len(xs)-m), len(xs))])
+                        # AUTO-NORMALIZE DERIVATIVES: When derivatives are very large or very small,
+                        # normalize by their magnitude to avoid ill-conditioned least squares system.
+                        # This is critical for derivatives like dk/dppm which can be O(10^20).
+                        valid_deriv_values = dks_fit[valid_derivs]
+                        valid_deriv_stds = dks_std_fit[valid_derivs]
                         
-                        # Build augmented system: minimize both point residuals and gradient errors
-                        # Points with valid derivatives contribute dual constraints
-                        valid_derivs = dks_std_fit > 0
-                        n_pts = len(xs_fit)
-                        n_derivs = np.sum(valid_derivs)
+                        if output:
+                            print(f'  [DERIV-FIT] Using {n_derivs} derivative constraints in curve fit')
+                            print(f'  [DERIV-FIT] Raw derivatives: {valid_deriv_values}')
                         
-                        # Construct augmented system matrix
-                        A = np.vstack([
-                            np.ones(n_pts) / ss_fit,
-                            xs_fit / ss_fit,
-                        ]).T
-                        b_vec = fs_fit / ss_fit
+                        # Calculate normalization scale: geometric mean of absolute derivative magnitudes
+                        abs_derivs = np.abs(valid_deriv_values)
+                        abs_derivs = abs_derivs[abs_derivs > 0]  # Exclude zeros
+                        if len(abs_derivs) > 0:
+                            deriv_scale = np.exp(np.mean(np.log(abs_derivs)))  # Geometric mean
+                        else:
+                            deriv_scale = 1.0
                         
-                        # Add gradient constraints (b should match dk/dx at each point)
-                        if n_derivs > 0:
-                            # Gradient constraints: f(x) = a + bx, so df/dx = b
-                            # Constraint: b ≈ dk/dx_j, weighted by 1/dk_std_j
-                            
-                            # AUTO-NORMALIZE DERIVATIVES: When derivatives are very large or very small,
-                            # normalize by their magnitude to avoid ill-conditioned least squares system.
-                            # This is critical for derivatives like dk/dppm which can be O(10^20).
-                            valid_deriv_values = dks_fit[valid_derivs]
-                            valid_deriv_stds = dks_std_fit[valid_derivs]
-                            
-                            if output:
-                                print(f'  [DERIV-FIT] Using {n_derivs} derivative constraints in curve fit')
-                                print(f'  [DERIV-FIT] Raw derivatives: {valid_deriv_values}')
-                            
-                            # Calculate normalization scale: geometric mean of absolute derivative magnitudes
-                            abs_derivs = np.abs(valid_deriv_values)
-                            abs_derivs = abs_derivs[abs_derivs > 0]  # Exclude zeros
-                            if len(abs_derivs) > 0:
-                                deriv_scale = np.exp(np.mean(np.log(abs_derivs)))  # Geometric mean
-                            else:
-                                deriv_scale = 1.0
-                            
-                            if output:
-                                print(f'  [DERIV-FIT] Normalization scale factor: {deriv_scale:.6e}')
-                            
-                            # Apply scaling to derivatives. Optionally scale uncertainties.
-                            scaled_derivs = valid_deriv_values / deriv_scale
-                            if use_deriv_uncertainty:
-                                scaled_deriv_stds = valid_deriv_stds / deriv_scale
-                            else:
-                                # Use unit-uncertainty weighting for constraints
-                                scaled_deriv_stds = np.ones_like(valid_deriv_values)
-                            
-                            # Build constraint rows with normalized derivatives
-                            deriv_rows = np.zeros((n_derivs, 2))
-                            deriv_rows[:, 0] = 0.0  # a coefficient in gradient = 0
-                            deriv_rows[:, 1] = np.sqrt(deriv_weight)  # b coefficient, weighted
-                            
-                            # Normalized targets: scale-invariant constraint
-                            deriv_targets = (scaled_derivs / scaled_deriv_stds) * np.sqrt(deriv_weight)
-                            
-                            A = np.vstack([A, deriv_rows])
-                            b_vec = np.hstack([b_vec, deriv_targets])
+                        if output:
+                            print(f'  [DERIV-FIT] Normalization scale factor: {deriv_scale:.6e}')
                         
-                        # Solve least squares: (A^T A)^{-1} A^T b
-                        try:
-                            coeffs, residuals, rank, s = np.linalg.lstsq(A, b_vec, rcond=None)
-                            a, b = float(coeffs[0]), float(coeffs[1])
-                            if output:
-                                print(f'  [DERIV-FIT] Fitted line: f(x) = {a:.6e} + {b:.6e}*x (with derivatives)')
-                        except np.linalg.LinAlgError:
-                            # Fall back to standard fit if augmented system is singular
-                            (a, b), _ = curve_fit(
-                                lambda x, a, b: a + b*x,
-                                xs_fit, fs_fit, sigma=ss_fit, absolute_sigma=True
-                            )
-                            if output:
-                                print(f'  [DERIV-FIT] Fallback fit (singular system): f(x) = {a:.6e} + {b:.6e}*x')
-                    else:
-                        # Standard weighted least squares fit (original GRsecant)
+                        # Apply scaling to derivatives. Optionally scale uncertainties.
+                        scaled_derivs = valid_deriv_values / deriv_scale
+                        if use_deriv_uncertainty:
+                            scaled_deriv_stds = valid_deriv_stds / deriv_scale
+                        else:
+                            # Use unit-uncertainty weighting for constraints
+                            scaled_deriv_stds = np.ones_like(valid_deriv_values)
+                        
+                        # Build constraint rows with normalized derivatives
+                        deriv_rows = np.zeros((n_derivs, 2))
+                        deriv_rows[:, 0] = 0.0  # a coefficient in gradient = 0
+                        deriv_rows[:, 1] = np.sqrt(deriv_weight)  # b coefficient, weighted
+                        
+                        # Normalized targets: scale-invariant constraint
+                        deriv_targets = (scaled_derivs / scaled_deriv_stds) * np.sqrt(deriv_weight)
+                        
+                        A = np.vstack([A, deriv_rows])
+                        b_vec = np.hstack([b_vec, deriv_targets])
+                    
+                    # Solve least squares: (A^T A)^{-1} A^T b
+                    try:
+                        coeffs, residuals, rank, s = np.linalg.lstsq(A, b_vec, rcond=None)
+                        a, b = float(coeffs[0]), float(coeffs[1])
+                        if output:
+                            print(f'  [DERIV-FIT] Fitted line: f(x) = {a:.6e} + {b:.6e}*x (with derivatives)')
+                    except np.linalg.LinAlgError:
+                        # Fall back to standard fit if augmented system is singular
                         (a, b), _ = curve_fit(
                             lambda x, a, b: a + b*x,
-                            [xs[i] for i in range(max(0, len(xs)-m), len(xs))],
-                            [fs[i] for i in range(max(0, len(xs)-m), len(xs))],
-                            sigma=[ss[i] for i in range(max(0, len(xs)-m), len(xs))],
-                            absolute_sigma=True
+                            xs_fit, fs_fit, sigma=ss_fit, absolute_sigma=True
                         )
                         if output:
-                            print(f'  [NO-DERIV-FIT] Standard fit: f(x) = {a:.6e} + {b:.6e}*x (no derivatives)')
-                    
-                    x_new = float(-a / b)
-
+                            print(f'  [DERIV-FIT] Fallback fit (singular system): f(x) = {a:.6e} + {b:.6e}*x')
+                else:
+                    # Standard weighted least squares fit (original GRsecant)
+                    (a, b), _ = curve_fit(
+                        lambda x, a, b: a + b*x,
+                        [xs[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        [fs[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        sigma=[ss[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        absolute_sigma=True
+                    )
+                    if output:
+                        print(f'  [NO-DERIV-FIT] Standard fit: f(x) = {a:.6e} + {b:.6e}*x (no derivatives)')
+                
+                x_new = float(-a / b)
                 # Clamp x_new to the bounds if provided
                 if x_min is not None:
                     x_new = max(x_new, x_min)

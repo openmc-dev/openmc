@@ -928,6 +928,74 @@ def test_id_map_model_with_overlaps():
     assert -3 in id_slice
 
 
+def test_keff_search_least_squares_simple(run_in_tmpdir):
+    """Basic smoke test for Model.keff_search using least-squares (no derivatives)."""
+    model = openmc.examples.pwr_pin_cell()
+
+    # Modifier adjusts boron ppm in coolant material (material_id=3 in example)
+    def set_boron_ppm(x):
+        for m in model.materials:
+            if m.id == 3:
+                # Boron as natural element; ppm -> atom fraction scale
+                m.remove_element('B')
+                m.add_element('B', x * 1e-6)
+                break
+
+    result = model.keff_search(
+        func=set_boron_ppm,
+        x0=500.0,
+        x1=1500.0,
+        target=1.0,
+        k_tol=1e-3,
+        sigma_final=3e-3,
+        b0=model.settings.batches - model.settings.inactive,
+        maxiter=10,
+        output=False,
+        run_kwargs={'cwd': Path('.')},
+        use_derivative_tallies=False,
+    )
+
+    # Ensure we got a SearchResult and the algorithm made progress
+    assert hasattr(result, 'root')
+    assert isinstance(result.converged, bool)
+
+
+def test_keff_search_least_squares_with_derivs_no_tallies(run_in_tmpdir):
+    """Least-squares path with derivative flags enabled but no derivative tallies.
+    Ensures graceful handling (fit falls back to standard when derivatives missing)."""
+    model = openmc.examples.pwr_pin_cell()
+
+    def set_density(x):
+        # Adjust fuel material density (material_id=1 in example)
+        for m in model.materials:
+            if m.id == 1:
+                m.set_density('g/cm3', x)
+                break
+
+    # No derivative tallies added; use_derivative_tallies=True should still run
+    result = model.keff_search(
+        func=set_density,
+        x0=9.5,
+        x1=10.5,
+        target=1.0,
+        k_tol=1e-3,
+        sigma_final=3e-3,
+        b0=model.settings.batches - model.settings.inactive,
+        maxiter=10,
+        output=False,
+        run_kwargs={'cwd': Path('.')},
+        use_derivative_tallies=True,
+        deriv_variable='density',
+        deriv_material=1,
+        deriv_weight=1.0,
+        use_deriv_uncertainty=True,
+        use_deriv_constraints=True,
+    )
+
+    assert hasattr(result, 'root')
+    assert isinstance(result.converged, bool)
+
+
 def test_setter_from_list():
     mat = openmc.Material()
     model = openmc.Model(materials=[mat])

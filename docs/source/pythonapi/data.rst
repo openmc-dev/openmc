@@ -213,3 +213,4 @@ NJOY Interface
     njoy.make_pendf
     njoy.make_ace
     njoy.make_ace_thermal
+    njoy.make_ace_photonuclear

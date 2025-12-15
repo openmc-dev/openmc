@@ -32,8 +32,6 @@ public:
   Position calculate_centroids(const Position position_sum, const int num_points, int rank);
 
   // Methods to create and update subdomain list and exchange source region data
-  void update(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
-    discovered_source_regions);
   void exchange_sr_info(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
     discovered_source_regions);
   bool any_discovered_source_regions(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&

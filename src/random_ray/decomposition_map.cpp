@@ -344,21 +344,10 @@ Position DecompositionMap::calculate_centroids(const Position position_sum, cons
   return centroid;
 }
 
-// Update subdomain list for each decomposition map. //TODO: This function seems obsolete and should be included into main code
-void DecompositionMap::update(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
-    discovered_source_regions){
-
-    // Check if any new regions discovered and if so, exchange discovered cell data between ranks
-    if (any_discovered_source_regions(discovered_source_regions)){
-      simulation::time_source_region_exchange.start();
-      exchange_sr_info(discovered_source_regions);
-      simulation::time_source_region_exchange.stop();
-    }
-
-}
-
 bool DecompositionMap::any_discovered_source_regions(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
     discovered_source_regions){
+
+  simulation::time_decomposition_handling.start();
 
   int flag = 0;
   if(discovered_source_regions.begin() != discovered_source_regions.end()) {
@@ -368,6 +357,8 @@ bool DecompositionMap::any_discovered_source_regions(ParallelMap<SourceRegionKey
   MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_MAX, mpi::intracomm);
 
   return flag > 0;
+  
+  simulation::time_decomposition_handling.start();
 }
 
 void DecompositionMap::exchange_sr_info(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&

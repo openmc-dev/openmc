@@ -266,23 +266,12 @@ uint64_t RandomRay::transport_history_based_single_ray()
 {
   using namespace openmc;
   while (alive()) {
-    // if (id()==204) {
-    //   printf("Rank: %d, 1 Ray in transport at position %f %f %f \n", mpi::rank, r().x,r().y,r().z);
-    // }
     event_advance_ray();
-    // if (id()==204) {
-    //   printf("Rank: %d, 2 Ray in transport at position %f %f %f \n", mpi::rank, r().x,r().y,r().z);
-    // }
+
     if (!alive())
-      // if (id()==204) {
-      //   printf("Rank: %d, leaving \n", mpi::rank);
-      // }
       break;
     event_cross_surface();
-    // if (id()==204) {
-    //   printf("Rank: %d, 3 Ray in transport at position %f %f %f \n", mpi::rank, r().x,r().y,r().z);
-    // }
-    // If ray has too many events, display warning and kill it
+
     if (n_event() >= settings::max_particle_events) {
       warning("Ray " + std::to_string(id()) +
               " underwent maximum number of events, terminating ray.");
@@ -308,9 +297,7 @@ void RandomRay::event_advance_ray()
     // If domain decomposition is being used, update counter for 
     // ray trace operations in source region for load estimation
     //TODO: This is repeated in attenuate_flux, maybe pass in sr index as argument?
-    int i_cell = lowest_coord().cell();
-    // The base source region is the spatial region index
-    int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+    int64_t sr = domain_->lookup_base_source_region_idx(*this);
     for (int i = 0; i < n_coord(); i++) {
       Cell& c {*model::cells[coord(i).cell()]};
       mpi::decomp_map.num_base_source_region_RT_batch_[sr] += c.n_surfaces();
@@ -852,7 +839,6 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 }
 
-// void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float>& angular_flux)
 void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux)
 {
 
@@ -868,22 +854,14 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
 
   wgt() = 1.0;
 
-  // is_local_ = true;
-
   // set identifier for particle
   id() = data.ray_id;
-
-  // printf("restart: %d, %d", mpi::rank, id());
 
   // generate source site using sample method
   SourceSite site;
 
   // Set location and direction as in previous subdomain
   site.r = data.position;
-
-  // if (id() == 2){
-  //   printf("RANK %d: Restart ray, position: %f, %f, %f\n", mpi::rank, site.r.x, site.r.y, site.r.z);
-  // }
 
   // angle
   site.u = data.direction;
@@ -893,7 +871,6 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
 
   // reinitialize last surface that was crossed
   surface() = data.surface;
-  // printf("RANK %d: Restart ray %ld, last surface crossed: %d \n", mpi::rank, id(), surface());
 
   // Locate ray
   if (lowest_coord().cell() == C_NONE) {
@@ -907,28 +884,6 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
       cell_born() = lowest_coord().cell();
   }
 
-  SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
-  SourceRegionHandle srh =
-    domain_->get_subdivided_source_region_handle(sr_key, r(), u());
-
-  // Initialize ray's starting angular flux to starting location's isotropic
-  // source
-  int i_cell = lowest_coord().cell();
-  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
-
-  // if (id() == 6543){
-  //   printf("RANK %d: Restart ray %ld, last surface crossed: %d, %d, cell: %d, source region %ld \n", mpi::rank, id(), exchange_data_.surface, surface(), i_cell, sr);
-  // }
-
-  if (sr == C_NONE || sr < 0){
-    std::string err_msg = "ERROR: Cell " + std::to_string(sr) + 
-                          " not found when restarting ray " + std::to_string(id()) + 
-                          "at position: (" + std::to_string(site.r.x) + ", " +
-                          std::to_string(site.r.y) + ", " +
-                          std::to_string(site.r.z) + ")";
-    fatal_error(err_msg);
- }
-
   // Set ray's angular flux to value before subdomain change
   if (distance_travelled_ > 0.0 || is_active_){
     for (int g = 0; g < negroups_; g++) {
@@ -938,22 +893,9 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   // Initialize ray's starting angular flux to starting location's isotropic
   // source 
   else {
-    // SourceRegionHandle srh;
-    // if (mesh_subdivision_enabled_) {
-    //   int mesh_idx = domain_->base_source_regions_.mesh(sr);
-    //   int mesh_bin;
-    //   if (mesh_idx == C_NONE) {
-    //     mesh_bin = 0;
-    //   } else {
-    //     Mesh* mesh = model::meshes[mesh_idx].get();
-    //     mesh_bin = mesh->get_bin(r());
-    //   }
-
-    //   srh =
-    //     domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), u());
-    // } else {
-    //   srh = domain_->source_regions_.get_source_region_handle(sr);
-    // }
+    SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
+    SourceRegionHandle srh =
+      domain_->get_subdivided_source_region_handle(sr_key, r(), u());
 
     if (!srh.is_numerical_fp_artifact_) {
       for (int g = 0; g < negroups_; g++) {
@@ -961,8 +903,6 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
       }
     }
   }
-
-  // printf("RANK %d: Restart ray %ld, position: %f, %f, %f, angular flux: %f, distance travlled: %f, rank %d\n", mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, mpi::rank);
 
 }
 
@@ -999,7 +939,6 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   this->from_source(&site);
 
   // Locate ray
-  // printf("Initiliase: ray %d, rank %d\n", id(), mpi::rank);
   if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost(
@@ -1015,41 +954,20 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   SourceRegionHandle srh =
     domain_->get_subdivided_source_region_handle(sr_key, r(), u());
 
-  // Initialize ray's starting angular flux to starting location's isotropic
-  // source
-  // int i_cell = lowest_coord().cell();
-  // int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
-
-  // SourceRegionHandle srh;
-  // if (mesh_subdivision_enabled_) {
-    // int mesh_idx = domain_->base_source_regions_.mesh(sr);
-    // int mesh_bin;
-    // if (mesh_idx == C_NONE) {
-    //   mesh_bin = 0;
-    // } else {
-    //   Mesh* mesh = model::meshes[mesh_idx].get();
-    //   mesh_bin = mesh->get_bin(r());
-    // }
-
-    if (mpi::n_procs > 1){
-      // Check if ray sampling site belongs to subdomain
-      owner_rank_ = mpi::decomp_map.find_owner(sr_key, r(), 
-        domain_->discovered_source_regions_);
-      if (owner_rank_ != mpi::rank) {
-        for (int g = 0; g < negroups_; g++) {
-          angular_flux_[g] = 0.0;
-        }
-        pack_ray_for_buffer(0.0, r());
-        is_local_ = false;
-        return;
+  if (mpi::n_procs > 1){
+    // Check if ray sampling site belongs to subdomain
+    owner_rank_ = mpi::decomp_map.find_owner(sr_key, r(), 
+      domain_->discovered_source_regions_);
+      
+    if (owner_rank_ != mpi::rank) {
+      for (int g = 0; g < negroups_; g++) {
+        angular_flux_[g] = 0.0;
       }
+      pack_ray_for_buffer(0.0, r());
+      is_local_ = false;
+      return;
     }
-
-    // srh =
-    //   domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), u());
-  // } else {
-  //   srh = domain_->source_regions_.get_source_region_handle(sr);
-  // }
+  }
 
   if (!srh.is_numerical_fp_artifact_) {
     for (int g = 0; g < negroups_; g++) {

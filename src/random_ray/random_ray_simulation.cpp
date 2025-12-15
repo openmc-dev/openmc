@@ -415,12 +415,12 @@ void RandomRaySimulation::simulate()
     // Reset total starting particle weight used for normalizing tallies
     simulation::total_weight = 1.0;
 
-      // Update source term (scattering + fission)
-      domain_->update_all_neutron_sources();
+    // Update source term (scattering + fission)
+    domain_->update_all_neutron_sources();
 
-      // Reset scalar fluxes, iteration volume tallies, and region hit flags
-      // to zero
-      domain_->batch_reset();
+    // Reset scalar fluxes, iteration volume tallies, and region hit flags
+    // to zero
+    domain_->batch_reset();
 
     // At the beginning of the simulation, if mesh subvivision is in use, we
     // need to swap the main source region container into the base container,
@@ -448,18 +448,20 @@ void RandomRaySimulation::simulate()
 
       transport_sweep_decomp(RB);
 
-      // Update decomposition map with newly discovered source regions
-      simulation::time_decomposition_handling.start();
-      mpi::decomp_map.update(domain_->discovered_source_regions_);
-      simulation::time_decomposition_handling.stop();
+      // Check if any new regions discovered and if so, exchange discovered cell data between ranks
+      if (mpi::decomp_map.any_discovered_source_regions(domain_->discovered_source_regions_)){
+        simulation::time_source_region_exchange.start();
+        mpi::decomp_map.exchange_sr_info(domain_->discovered_source_regions_);
+        simulation::time_source_region_exchange.stop();
+      }
 
     } else {
       transport_sweep();
     }
 
-      // Add any newly discovered source regions to the main source region
-      // container.
-      domain_->finalize_discovered_source_regions();
+    // Add any newly discovered source regions to the main source region
+    // container.
+    domain_->finalize_discovered_source_regions();
 
     // Normalize scalar flux and update volumes
     domain_->normalize_scalar_flux_and_volumes(
@@ -478,20 +480,20 @@ void RandomRaySimulation::simulate()
     // Apply transport stabilization factors
     domain_->apply_transport_stabilization();
 
-      if (settings::run_mode == RunMode::EIGENVALUE) {
-        // Compute random ray k-eff
-        domain_->compute_k_eff();
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      // Compute random ray k-eff
+      domain_->compute_k_eff();
 
-        // Store random ray k-eff into OpenMC's native k-eff variable
-        global_tally_tracklength = domain_->k_eff_;
-      }
+      // Store random ray k-eff into OpenMC's native k-eff variable
+      global_tally_tracklength = domain_->k_eff_;
+    }
 
     // Execute all tallying tasks, if this is an active batch
     if (simulation::current_batch > settings::n_inactive) {
 
-        // Add this iteration's scalar flux estimate to final accumulated
-        // estimate
-        domain_->accumulate_iteration_flux();
+      // Add this iteration's scalar flux estimate to final accumulated
+      // estimate
+      domain_->accumulate_iteration_flux();
 
       // Use above mapping to contribute FSR flux data to appropriate
       // tallies
@@ -541,7 +543,7 @@ void RandomRaySimulation::output_simulation_results()
       MPI_Reduce(&total_n_external_source_regions, nullptr, 1, MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
     }
 
-    // Determine load imbalance
+    // Determine load imbalance based on measured transport times, every rank needs to know about this for plotting purposes
     double time_transport_total = simulation::time_transport.elapsed() - simulation::time_ray_buffering.elapsed();
     MPI_Allgather(&time_transport_total, 1, MPI_DOUBLE, mpi::decomp_map.measured_rank_load_fractions_.data(), 1, MPI_DOUBLE, mpi::intracomm);
     double measured_load_sum = std::accumulate(mpi::decomp_map.measured_rank_load_fractions_.begin(), mpi::decomp_map.measured_rank_load_fractions_.end(), 0.0);
@@ -573,12 +575,12 @@ void RandomRaySimulation::output_simulation_results()
   }
   
   if (model::plots.size() > 0) {
-      if (mpi::n_procs > 1){
-        domain_->output_to_vtk_decomp();
-      } else {
-        domain_->output_to_vtk();
-      }
+    if (mpi::n_procs > 1){
+      domain_->output_to_vtk_decomp();
+    } else {
+      domain_->output_to_vtk();
     }
+  }
   
 }
 
@@ -641,7 +643,8 @@ void RandomRaySimulation::print_results_random_ray(
     double time_transport_total = time_transport.elapsed() - time_ray_buffering.elapsed();
     double time_per_integration = time_transport_total / total_integrations;
     double time_domain_decomposition = time_decomposition_handling.elapsed()
-      + time_generate_voronoi_centers.elapsed() + time_load_balance.elapsed() - time_transport_total;
+      + time_generate_voronoi_centers.elapsed() + time_load_balance.elapsed() 
+      + time_source_region_exchange.elapsed() - time_transport_total ;
     double misc_time = time_total.elapsed() - time_update_src.elapsed() -
                        time_transport_total - time_tallies.elapsed() -
                        time_bank_sendrecv.elapsed() - time_domain_decomposition;
@@ -792,8 +795,6 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       uint64_t id = simulation::work_index[mpi::rank] + i;
       RandomRay ray(id, domain_.get());
 
-// printf("%d, %d\n", mpi::rank, i);
-
       // Add ray to ray bank if it starts in my subdomain
       if (!ray.has_left_subdomain()){
         #pragma omp critical (raybank)
@@ -817,8 +818,6 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
     int num_communication_rounds = 0;
 
-    // printf("test2\n");
-
     // Move rays across ranks until they are terminated 
     while (RB.is_any_ray_alive()) {
 
@@ -828,11 +827,8 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       #pragma omp parallel for schedule(dynamic)                                     \
         reduction(+ : total_geometric_intersections_)
           for (int i = 0; i < RB.ray_bank_size(); i++) {
-            // printf("1 Start ray: %d in rank %d \n", i, mpi::rank);
             RandomRay& ray = RB.my_ray_list_[i];
-            // printf("2 Start ray: %d in rank %d \n", i, mpi::rank);
             total_geometric_intersections_ += ray.transport_history_based_single_ray();
-            // printf("3 Start ray: %d in rank %d \n", i, mpi::rank);
 
             // If ray has left my subdomain, buffer ray state
             if(ray.has_left_subdomain()){
@@ -845,8 +841,6 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
             }
           }
       simulation::time_transport.stop();
-
-      // printf("test3\n");
 
       // Update ray bank by communicating rays in buffer to new owner ranks and removing terminated ranks
       simulation::time_ray_comms.start();

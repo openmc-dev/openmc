@@ -1095,26 +1095,6 @@ void FlatSourceDomain::output_to_vtk_decomp() const
             sr = it_sr->second;
           }
 
-          // int i_cell = p.lowest_coord().cell();
-          // int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
-          // SourceRegionKey sr_key {sr, 0};
-          // if (RandomRay::mesh_subdivision_enabled_) {
-          //   int mesh_idx = base_source_regions_.mesh(sr);
-          //   int mesh_bin;
-          //   if (mesh_idx == C_NONE) {
-          //     mesh_bin = 0;
-          //   } else {
-          //     mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
-          //   }
-          //   sr_key = {sr, mesh_bin};
-          //   auto it = source_region_map_.find(sr_key);
-          //   if (it != source_region_map_.end()) {
-          //     sr = it->second;
-          //   } else {
-          //     sr = -1;
-          //   }
-          // }
-
           voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
 

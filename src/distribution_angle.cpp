@@ -7,6 +7,7 @@
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/vector.h" // for vector
@@ -64,23 +65,10 @@ AngleDistribution::AngleDistribution(hid_t group)
 
 double AngleDistribution::sample(double E, uint64_t* seed) const
 {
-  // Determine number of incoming energies
-  auto n = energy_.size();
-
-  // Find energy bin and calculate interpolation factor -- if the energy is
-  // outside the range of the tabulated energies, choose the first or last bins
+  // Find energy bin and calculate interpolation factor
   int i;
   double r;
-  if (E < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E > energy_[n - 1]) {
-    i = n - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E);
-    r = (E - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
+  get_energy_index(energy_, E, i, r);
 
   // Sample between the ith and (i+1)th bin
   if (r > prn(seed))

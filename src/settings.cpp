@@ -19,6 +19,7 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/field.h"
 #include "openmc/file_utils.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
@@ -75,6 +76,7 @@ bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
 bool survival_normalization {false};
+bool temperature_field_on {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
@@ -779,6 +781,43 @@ void read_settings_xml(pugi::xml_node root)
         "it by specifying its ID in an <entropy_mesh> element.");
     }
   }
+
+  // Temperature field
+  if (check_for_node(root, "temperature_field")) {
+    temperature_field_on = true;
+
+    // Get pointer to temperature_field node
+    auto node_tf = root.child("temperature_field");
+
+    // Mesh parameter
+    Mesh* tf_mesh_ptr;
+    if (check_for_node(node_tf, "mesh")) {
+      int temp = std::stoi(get_node_value(node_tf, "mesh"));
+      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+        fatal_error(fmt::format(
+          "Mesh {} specified for the temperature field does not exist.", temp));
+      }
+      tf_mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
+    } else {
+      fatal_error("A mesh should be given for the temperature field.");
+    }
+
+    // Values parameter
+    vector<double> tf_values;
+    if (check_for_node(node_tf, "values")) {
+      auto temp = get_node_array<double>(node_tf, "values");
+      for (const auto& b : temp) {
+        tf_values.push_back(b);
+      }
+    } else {
+      fatal_error("Temperature values should be given for the temperature field.");
+    }
+
+    // Instantiate the temperature field
+    //TemperatureField tf = TemperatureField(tf_mesh_ptr, tf_values);
+    simulation::temperature_field = TemperatureField(tf_mesh_ptr, tf_values);
+  }
+
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));

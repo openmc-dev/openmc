@@ -720,6 +720,12 @@ UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
   }
 }
 
+double UnstructuredMesh::distance_to_next_boundary(Position r, Position u) const
+{
+  fatal_error("Not implemented");
+  return -1.0;
+}
+
 void UnstructuredMesh::determine_bounds()
 {
   double xmin = INFTY;
@@ -1173,6 +1179,52 @@ void StructuredMesh::surface_bins_crossed(
 
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
+}
+
+double StructuredMesh::distance_to_next_boundary(Position r, Position u) const
+{
+  double distance = -1.0;
+
+  // Algo adapted from mesh.cpp
+  Position global_r = r;
+  Position local_r = local_coords(r);
+
+  const int n = 3;
+
+  bool in_mesh;
+
+  StructuredMesh::MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
+
+  // Calculate initial distances to next surfaces in all three dimensions
+  std::array<StructuredMesh::MeshDistance, 3> distances;
+  for (int k = 0; k < n; ++k) {
+    distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
+  }
+
+  if (in_mesh) {
+
+    // find surface with minimal distance to current position
+    const auto k = std::min_element(distances.begin(), distances.end()) -
+                    distances.begin();
+    
+    distance = distances[k].distance;
+
+  } else { // not inside mesh
+
+    // For all directions outside the mesh, find the distance that we need
+    // to travel to reach the next surface. Use the largest distance, as
+    // only this will cross all outer surfaces.
+    int k_max {-1};
+    for (int k = 0; k < n; ++k) {
+      if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
+          (distances[k].distance > distance)) {
+        distance = distances[k].distance;
+        k_max = k;
+      }
+    }
+  }
+
+  return distance; 
 }
 
 //==============================================================================

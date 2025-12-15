@@ -4,6 +4,7 @@
 #ifndef OPENMC_SIMULATION_H
 #define OPENMC_SIMULATION_H
 
+#include "openmc/field.h"
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
 #include "openmc/vector.h"
@@ -45,6 +46,8 @@ extern int64_t work_per_rank;      //!< number of particles per MPI rank
 
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
+
+extern TemperatureField temperature_field;
 
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;

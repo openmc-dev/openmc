@@ -350,6 +350,7 @@ list(APPEND libopenmc_SOURCES
   src/endf.cpp
   src/error.cpp
   src/event.cpp
+  src/field.cpp
   src/file_utils.cpp
   src/finalize.cpp
   src/geometry.cpp

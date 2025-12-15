@@ -18,6 +18,7 @@
 #include "openmc/material.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_distribcell.h"
@@ -261,6 +262,18 @@ void get_temperatures(
       }
     }
   }
+
+  // Add temperature if temperature field:
+  if (settings::temperature_field_on) {
+    for (auto t: simulation::temperature_field.values) {
+      for (size_t i = 0; i < nuc_temps.size() ; i++){
+        if (!contains(nuc_temps[i], t)) {
+          nuc_temps[i].push_back(t);
+        }
+      }
+    }
+  }
+  // TODO: thermal scattering data
 }
 
 //==============================================================================

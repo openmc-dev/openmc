@@ -173,6 +173,18 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
+  //! Distance to the next boundary
+  //! If the initial position is outside the mesh, the distance
+  //! will be from the initial position to the external boundary
+  //! of the mesh if hit. If the initial position is inside the
+  //! mesh, the distance will be from the initial position to
+  //! the boundary of the next cell.
+  //
+  //! \param[in] r Position of the particle
+  //! \param[in] u Particle direction
+  //! \return Distance to the next boundary
+  virtual double distance_to_next_boundary(Position r, Position u) const = 0;
+
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
@@ -301,6 +313,8 @@ public:
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
+
+  double distance_to_next_boundary(Position r, Position u) const override;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -683,6 +697,8 @@ public:
   UnstructuredMesh() { n_dimension_ = 3; };
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(hid_t group);
+
+  double distance_to_next_boundary(Position r, Position u) const override;
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;

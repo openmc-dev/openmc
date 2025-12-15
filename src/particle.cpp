@@ -193,6 +193,18 @@ void Particle::event_calculate_xs()
       cell_last(j) = coord(j).cell();
     }
     n_coord_last() = n_coord();
+
+    // Update temperature of the particle if temperature field
+    if (settings::temperature_field_on) {
+      double temperature_field_sqrtkT  = simulation::temperature_field.get_sqrtkT(r());
+      // Update temperature if we are inside the mesh
+      if (temperature_field_sqrtkT >= 0.) {
+        sqrtkT() = temperature_field_sqrtkT;
+      } else {
+        //TODO
+        fatal_error("");
+      }
+    }
   }
 
   // Write particle track.
@@ -229,9 +241,11 @@ void Particle::event_calculate_xs()
   }
 }
 
-void Particle::event_advance()
+int Particle::event_advance()
 {
-  // Find the distance to the nearest boundary
+  int stop_condition = 0;
+
+  // Find the distance to the nearest geometry boundary
   boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
@@ -243,14 +257,32 @@ void Particle::event_advance()
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
+  // Find the distance to the nearest temperature mesh cell surface
+  double distance_tmesh = INFTY;
+  if (settings::temperature_field_on) {
+    distance_tmesh = simulation::temperature_field.distance_to_next_cell(r(), u());
+  }
+
+  // Calculate the distance corresponding to the time cutoff
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
-  // Select smaller of the three distances
+  // Select smaller of the four distances
   double distance =
-    std::min({boundary().distance(), collision_distance(), distance_cutoff});
+    std::min({boundary().distance(), collision_distance(), distance_cutoff, distance_tmesh});
+
+  // Prepare the stop condition
+  if (distance == distance_cutoff) {
+    stop_condition = 4;
+  } else if (distance == boundary().distance()) {
+    stop_condition = 1;
+  } else if (distance == distance_tmesh) {
+    stop_condition = 3;
+  } else if (distance == collision_distance()) {
+    stop_condition = 2;
+  }
 
   // Advance particle in space and time
   this->move_distance(distance);
@@ -279,10 +311,44 @@ void Particle::event_advance()
     score_track_derivative(*this, distance);
   }
 
+  //if (p.collision_distance() > p.boundary().distance()) {
+  //        p.event_cross_surface();
+
+  
+  
+  //const int CROSS_SURFACE = 1;
+  //const int COLLIDE = 2;
+  //const int CROSS_TEMPERATURE_MESH = 3;
+  //const int CUTOFF = 4;
+
   // Set particle weight to zero if it hit the time boundary
-  if (distance == distance_cutoff) {
-    wgt() = 0.0;
+  //if (distance == distance_cutoff) {
+  //  wgt() = 0.0;
+  //}
+
+  return stop_condition;
+}
+
+void Particle::event_cross_temperature_mesh()
+{
+  // Update temperature of the particle
+  sqrtkT_last() = sqrtkT();
+
+  // Find the temperture from the mesh
+  double temperature_field_sqrtkT = simulation::temperature_field.get_sqrtkT(r() + u() * TINY_BIT);
+  
+  // Update temperature
+  // If inside the mesh
+  if (temperature_field_sqrtkT >= 0.) {
+    sqrtkT() = temperature_field_sqrtkT;
+  // If outside the mesh
+  } else {
+    //TODO
+    fatal_error("");
   }
+
+  // TODO: what do we do if we are outside the mesh?
+  // Probably need to use the cell instance temperature
 }
 
 void Particle::event_cross_surface()
@@ -322,6 +388,21 @@ void Particle::event_cross_surface()
     }
     event() = TallyEvent::SURFACE;
   }
+
+  // Update temperature of the particle if temperature field
+  // This is important here just on case we both crossed a cell
+  // from the geometry and from the temperature mesh
+  if (settings::temperature_field_on) {
+    double temperature_field_sqrtkT  = simulation::temperature_field.get_sqrtkT(r() + u() * TINY_BIT);
+    // Update temperature if we are inside the mesh
+    if (temperature_field_sqrtkT >= 0.) {
+      sqrtkT() = temperature_field_sqrtkT;
+    } else {
+      //TODO
+      fatal_error("");
+    }
+  }
+
   // Score cell to cell partial currents
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);

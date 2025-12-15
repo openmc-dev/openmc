@@ -66,11 +66,12 @@ public:
 
   // Coarse-grained particle events
   void event_calculate_xs();
-  void event_advance();
+  int event_advance();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary();
   void event_death();
+  void event_cross_temperature_mesh();
 
   //! pulse-height recording
   void pht_collision_energy();

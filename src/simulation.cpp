@@ -7,6 +7,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
+#include "openmc/field.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
@@ -319,6 +320,8 @@ int64_t work_per_rank;
 
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
+
+TemperatureField temperature_field;
 
 vector<double> k_generation;
 vector<int64_t> work_index;
@@ -801,18 +804,55 @@ void free_memory_simulation()
   simulation::entropy.clear();
 }
 
+//void transport_history_based_single_particle(Particle& p)
+//{
+//  while (p.alive()) {
+//    p.event_calculate_xs();
+//    if (p.alive()) {
+//      p.event_advance();
+//    }
+//    if (p.alive()) {
+//      if (p.collision_distance() > p.boundary().distance()) {
+//        p.event_cross_surface();
+//      } else if (p.alive()) {
+//        p.event_collide();
+//      }
+//    }
+//    p.event_revive_from_secondary();
+//  }
+//  p.event_death();
+//}
+
+const int CROSS_SURFACE = 1;
+const int COLLIDE = 2;
+const int CROSS_TEMPERATURE_MESH = 3;
+const int CUTOFF = 4;
+
 void transport_history_based_single_particle(Particle& p)
 {
+  int advance_stop_condition;
   while (p.alive()) {
     p.event_calculate_xs();
     if (p.alive()) {
-      p.event_advance();
+      advance_stop_condition = p.event_advance(); // TODO maybe use a particle attribute instead (next_event)
     }
     if (p.alive()) {
-      if (p.collision_distance() > p.boundary().distance()) {
-        p.event_cross_surface();
-      } else if (p.alive()) {
-        p.event_collide();
+      switch (advance_stop_condition) {
+        case CROSS_SURFACE:
+          p.event_cross_surface();
+          break;
+        case COLLIDE:
+          p.event_collide();
+          break;
+        case CROSS_TEMPERATURE_MESH:
+          p.event_cross_temperature_mesh();
+          break;
+        case CUTOFF:
+          p.wgt() = 0.0;
+          break;
+        default:
+          fatal_error("Unknown case");
+          break;
       }
     }
     p.event_revive_from_secondary();

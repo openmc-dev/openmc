@@ -1,29 +1,57 @@
 #ifndef OPENMC_FIELD_H
 #define OPENMC_FIELD_H
 
-#include "openmc/vector.h"
 #include "openmc/mesh.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
-class TemperatureField{
+class TemperatureField {
 
 public:
-    Mesh* mesh_ptr;
-    vector<double> values;
+  //----------------------------------------------------------------------------
+  // Constructors
+  TemperatureField() {};
+  TemperatureField(Mesh* mesh_ptr, vector<double> values);
 
-    TemperatureField(){};
+  //----------------------------------------------------------------------------
+  // Methods
 
-    TemperatureField(Mesh* mesh_ptr, vector<double> values);
+  //! Returns the distance to the next mesh boundary gien a particle position
+  //! and direction. If the particle is initially outside, the distance will
+  //! correspond to the nearest distance to the outer boundaries of the mesh.
+  //
+  //! \param[in] r Position of the particle
+  //! \param[in] u Direction of the particle
+  //! \return The distance in cm to the next mesh boundary
+  double distance_to_next_boundary(const Position& r, const Direction& d);
 
-    double distance_to_next_cell(Position r, Direction d);
+  //! Returns the temperature in Kelvin corresponding to the given position.
+  //
+  //! \param[in] r Position of the particle
+  //! \return Temperature in Kelvin
+  double get_temperature(const Position& r);
 
-    double get_temperature(Position r);
+  //! Returns the square root of the temperature multiplied by the Boltzmann
+  //! constant in eV for the given position.
+  //
+  //! \param[in] r Position of the particle
+  //! \return Sqrt(k_Boltzmann * temperature) in eV
+  double get_sqrtkT(const Position& r);
 
-    double get_sqrtkT(Position r);
+  //----------------------------------------------------------------------------
+  // Accessors
 
-    // GeometryState, particle attribute: temperature mesh bin
+  // Temperature values
+  double& value(int i) { return values_[i]; }
+  const double& value(int i) const { return values_[i]; }
+  const vector<double>& values() const { return values_; }
 
+private:
+  //----------------------------------------------------------------------------
+  // Data members
+  Mesh* mesh_ptr_;        //!< Pointer to the geometric mesh
+  vector<double> values_; //!< Temperature values
 };
 
 } //  namespace openmc

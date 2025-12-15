@@ -265,7 +265,7 @@ void get_temperatures(
 
   // Add temperature if temperature field:
   if (settings::temperature_field_on) {
-    for (auto t: simulation::temperature_field.values) {
+    for (auto t: simulation::temperature_field.values()) {
       for (size_t i = 0; i < nuc_temps.size() ; i++){
         if (!contains(nuc_temps[i], t)) {
           nuc_temps[i].push_back(t);

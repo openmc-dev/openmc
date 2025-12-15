@@ -1,4 +1,5 @@
 #include "openmc/field.h"
+#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/mesh.h"
 #include "openmc/vector.h"
@@ -52,6 +53,25 @@ double TemperatureField::get_sqrtkT(const Position& r)
     // TODO
     fatal_error("");
     return temperature;
+  }
+}
+
+void TemperatureField::update_particle_temperature(Particle& p) {
+
+  // Save current temperature
+  p.sqrtkT_last() = p.sqrtkT();
+
+  // Determine the temperature based on the temperature field
+  double field_sqrtkT = this->get_sqrtkT(p.r() + p.u() * TINY_BIT);
+  
+  // If particle inside the mesh, we use the temperature field
+  if (field_sqrtkT >= 0.) {
+    p.sqrtkT() = field_sqrtkT;
+
+  // If particle outside the mesh, go back to the cell instance temperature
+  } else {
+    Cell& c {*model::cells[p.lowest_coord().cell()]};
+    p.sqrtkT() = c.sqrtkT(p.cell_instance());
   }
 }
 

@@ -39,6 +39,14 @@ public:
   //! \return Sqrt(k_Boltzmann * temperature) in eV
   double get_sqrtkT(const Position& r);
 
+  //! Update the temperature of a particle based on its position and direction.
+  //! If the particle is inside the temperature field, its temperature is
+  //! updated. If outside, the particle takes the temperature value
+  //! associated with the current cell instance.
+  //
+  //! \param[inout] p Particle
+  void update_particle_temperature(Particle& p);
+
   //----------------------------------------------------------------------------
   // Accessors
 

@@ -196,14 +196,7 @@ void Particle::event_calculate_xs()
 
     // Update temperature of the particle if temperature field
     if (settings::temperature_field_on) {
-      double field_sqrtkT  = simulation::temperature_field.get_sqrtkT(r());
-      // Update temperature if we are inside the mesh
-      if (field_sqrtkT >= 0.) {
-        sqrtkT() = field_sqrtkT;
-      } else {
-        //TODO
-        fatal_error("");
-      }
+      simulation::temperature_field.update_particle_temperature(*this);
     }
   }
 
@@ -258,7 +251,8 @@ void Particle::event_advance()
   // Find the distance to the nearest temperature mesh cell surface
   double distance_tmesh = INFTY;
   if (settings::temperature_field_on) {
-    distance_tmesh = simulation::temperature_field.distance_to_next_boundary(r(), u());
+    distance_tmesh =
+      simulation::temperature_field.distance_to_next_boundary(r(), u());
   }
 
   // Calculate the distance corresponding to the time cutoff
@@ -267,7 +261,7 @@ void Particle::event_advance()
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
-  // Select smaller of the four distances
+  // Select smaller distance
   double distance =
     std::min({boundary().distance(), collision_distance(), distance_cutoff, distance_tmesh});
 
@@ -312,21 +306,8 @@ void Particle::event_advance()
 
 void Particle::event_cross_temperature_mesh()
 {
-  // Save current temperature
-  sqrtkT_last() = sqrtkT();
-
-  // Find the field temperature from the mesh
-  double field_sqrtkT =
-    simulation::temperature_field.get_sqrtkT(r() + u() * TINY_BIT);
-
-  // Update the particle temperature
-  if (field_sqrtkT >= 0.) {
-    sqrtkT() = field_sqrtkT;
-  } else {
-    // TODO: If we leave the temperature mesh, we need to go back to the cell
-    // temperature
-    fatal_error("Not implemented yet");
-  }
+  // Update temperature of the particle
+  simulation::temperature_field.update_particle_temperature(*this);
 }
 
 void Particle::event_cross_surface()
@@ -368,17 +349,8 @@ void Particle::event_cross_surface()
   }
 
   // Update temperature of the particle if temperature field
-  // This is important here just on case we both crossed a cell
-  // from the geometry and from the temperature mesh
   if (settings::temperature_field_on) {
-    double field_sqrtkT  = simulation::temperature_field.get_sqrtkT(r() + u() * TINY_BIT);
-    // Update temperature if we are inside the mesh
-    if (field_sqrtkT >= 0.) {
-      sqrtkT() = field_sqrtkT;
-    } else {
-      //TODO
-      fatal_error("");
-    }
+    simulation::temperature_field.update_particle_temperature(*this);
   }
 
   // Score cell to cell partial currents

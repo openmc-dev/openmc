@@ -10,6 +10,7 @@ bool master {true};
 #ifdef OPENMC_MPI
 MPI_Comm intracomm {MPI_COMM_NULL};
 MPI_Datatype source_site {MPI_DATATYPE_NULL};
+MPI_Datatype collision_track_site {MPI_DATATYPE_NULL};
 #endif
 
 extern "C" bool openmc_master()

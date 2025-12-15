@@ -1,18 +1,21 @@
 from __future__ import annotations
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 import copy
-from functools import lru_cache
+from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 import math
 from numbers import Integral, Real
 import random
 import re
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import Any, Protocol
 import warnings
 
 import h5py
 import lxml.etree as ET
 import numpy as np
+from scipy.optimize import curve_fit
 
 import openmc
 import openmc._xml as xml
@@ -22,6 +25,12 @@ from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 from openmc.plots import add_plot_params, _BASIS_INDICES
 from openmc.utility_funcs import change_directory
+
+
+# Protocol for a function that is passed to search_keff
+class ModelModifier(Protocol):
+    def __call__(self, val: float, **kwargs: Any) -> None:
+        ...
 
 
 class Model:
@@ -160,7 +169,7 @@ class Model:
             return False
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _materials_by_id(self) -> dict:
         """Dictionary mapping material ID --> material"""
         if self.materials:
@@ -170,14 +179,14 @@ class Model:
         return {mat.id: mat for mat in mats}
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _cells_by_id(self) -> dict:
         """Dictionary mapping cell ID --> cell"""
         cells = self.geometry.get_all_cells()
         return {cell.id: cell for cell in cells.values()}
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _cells_by_name(self) -> dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
@@ -190,7 +199,7 @@ class Model:
         return result
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _materials_by_name(self) -> dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
@@ -202,6 +211,60 @@ class Model:
                 result[mat.name] = set()
             result[mat.name].add(mat)
         return result
+
+    # TODO: This should really get incorporated in lower-level calls to
+    # get_all_materials, but right now it requires information from the Model object
+    def _get_all_materials(self) -> dict[int, openmc.Material]:
+        """Get all materials including those in DAGMC universes
+
+        Returns
+        -------
+        dict
+            Dictionary mapping material ID to material instances
+        """
+        # Get all materials from the Geometry object
+        materials = self.geometry.get_all_materials()
+
+        # Account for materials in DAGMC universes
+        for cell in self.geometry.get_all_cells().values():
+            if isinstance(cell.fill, openmc.DAGMCUniverse):
+                names = cell.fill.material_names
+                materials.update({
+                    mat.id: mat for mat in self.materials if mat.name in names
+                })
+
+        return materials
+
+    def add_kinetics_parameters_tallies(self, num_groups: int | None = None):
+        """Add tallies for calculating kinetics parameters using the IFP method.
+
+        This method adds tallies to the model for calculating two kinetics
+        parameters, the generation time and the effective delayed neutron
+        fraction (beta effective). After a model is run, these parameters can be
+        determined through the :meth:`openmc.StatePoint.ifp_results` method.
+
+        Parameters
+        ----------
+        num_groups : int, optional
+            Number of precursor groups to filter the delayed neutron fraction.
+            If None, only the total effective delayed neutron fraction is
+            tallied.
+
+        """
+        if not any('ifp-time-numerator' in t.scores for t in self.tallies):
+            gen_time_tally = openmc.Tally(name='IFP time numerator')
+            gen_time_tally.scores = ['ifp-time-numerator']
+            self.tallies.append(gen_time_tally)
+        if not any('ifp-beta-numerator' in t.scores for t in self.tallies):
+            beta_tally = openmc.Tally(name='IFP beta numerator')
+            beta_tally.scores = ['ifp-beta-numerator']
+            if num_groups is not None:
+                beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
+            self.tallies.append(beta_tally)
+        if not any('ifp-denominator' in t.scores for t in self.tallies):
+            denom_tally = openmc.Tally(name='IFP denominator')
+            denom_tally.scores = ['ifp-denominator']
+            self.tallies.append(denom_tally)
 
     @classmethod
     def from_xml(
@@ -483,6 +546,13 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
+    def _link_geometry_to_filters(self):
+        """Establishes a link between distribcell filters and the geometry"""
+        for tally in self.tallies:
+            for f in tally.filters:
+                if isinstance(f, openmc.DistribcellFilter):
+                    f._geometry = self.geometry
+
     def export_to_xml(self, directory: PathLike = '.', remove_surfs: bool = False,
                       nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to separate XML files.
@@ -523,6 +593,8 @@ class Model:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
+
+        self._link_geometry_to_filters()
 
     def export_to_model_xml(self, path: PathLike = 'model.xml', remove_surfs: bool = False,
                             nuclides_to_ignore: Iterable[str] | None = None):
@@ -603,6 +675,8 @@ class Model:
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
 
+        self._link_geometry_to_filters()
+
     def import_properties(self, filename: PathLike):
         """Import physical properties
 
@@ -633,7 +707,7 @@ class Model:
                 raise ValueError("Number of cells in properties file doesn't "
                                  "match current model.")
 
-            # Update temperatures for cells filled with materials
+            # Update temperatures and densities for cells filled with materials
             for name, group in cells_group.items():
                 cell_id = int(name.split()[1])
                 cell = cells[cell_id]
@@ -647,6 +721,20 @@ class Model:
                                 lib_cell.set_temperature(T, i)
                         else:
                             lib_cell.set_temperature(temperature[0])
+
+                    if group['density']:
+                      density = group['density'][()]
+                      if density.size > 1:
+                          cell.density = [rho for rho in density]
+                      else:
+                          cell.density = density
+                      if self.is_initialized:
+                          lib_cell = openmc.lib.cells[cell_id]
+                          if density.size > 1:
+                              for i, rho in enumerate(density):
+                                  lib_cell.set_density(rho, i)
+                          else:
+                              lib_cell.set_density(density[0])
 
             # Make sure number of materials matches
             mats_group = fh['materials']
@@ -1610,6 +1698,91 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
+    def _create_mgxs_sources(
+        self,
+        groups: openmc.mgxs.EnergyGroups,
+        spatial_dist: openmc.stats.Spatial,
+        source_energy: openmc.stats.Univariate | None = None,
+    ) -> list[openmc.IndependentSource]:
+        """Create a list of independent sources to use with MGXS generation.
+
+        Note that in all cases, a discrete source that is uniform over all
+        energy groups is created (strength = 0.01) to ensure that total cross
+        sections are generated for all energy groups. In the case that the user
+        has provided a source_energy distribution as an argument, an additional
+        source (strength = 0.99) is created using that energy distribution. If
+        the user has not provided a source_energy distribution, but the model
+        has sources defined, and all of those sources are of IndependentSource
+        type, then additional sources are created based on the model's existing
+        sources, keeping their energy distributions but replacing their
+        spatial/angular distributions, with their combined strength being 0.99.
+        If the user has not provided a source_energy distribution and no sources
+        are defined on the model and the run mode is 'eigenvalue', then a
+        default Watt spectrum source (strength = 0.99) is added.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        spatial_dist : openmc.stats.Spatial
+            Spatial distribution to use for all sources.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model.
+
+        Returns
+        -------
+        list[openmc.IndependentSource]
+            A list of independent sources to use for MGXS generation.
+        """
+        # Make a discrete source that is uniform over the bins of the group structure
+        midpoints = []
+        strengths = []
+        for i in range(groups.num_groups):
+            bounds = groups.get_group_bounds(i+1)
+            midpoints.append((bounds[0] + bounds[1]) / 2.0)
+            strengths.append(1.0)
+
+        uniform_energy = openmc.stats.Discrete(x=midpoints, p=strengths)
+        uniform_distribution = openmc.IndependentSource(spatial_dist, energy=uniform_energy, strength=0.01)
+        sources = [uniform_distribution]
+
+        # If the user provided an energy distribution, use that
+        if source_energy is not None:
+            user_energy = openmc.IndependentSource(
+                space=spatial_dist, energy=source_energy, strength=0.99)
+            sources.append(user_energy)
+
+        # If the user did not provide an energy distribution, create sources
+        # based on what is in their model, keeping the energy spectrum but
+        # replacing the spatial/angular distributions. We only do this if ALL
+        # sources are of IndependentSource type, as we can't pull the energy
+        # distribution from e.g. CompiledSource or FileSource types.
+        else:
+            if self.settings.source is not None:
+                for src in self.settings.source:
+                    if not isinstance(src, openmc.IndependentSource):
+                        break
+                else:
+                    n_user_sources = len(self.settings.source)
+                    for src in self.settings.source:
+                        # Create a new IndependentSource with adjusted strength, space, and angle
+                        user_source = openmc.IndependentSource(
+                            space=spatial_dist,
+                            energy=src.energy,
+                            strength=0.99 / n_user_sources
+                        )
+                        sources.append(user_source)
+            else:
+                # No user sources defined. If we are in eigenvalue mode, then use the default Watt spectrum.
+                if self.settings.run_mode == 'eigenvalue':
+                    watt_energy = openmc.stats.Watt()
+                    watt_source = openmc.IndependentSource(
+                        space=spatial_dist, energy=watt_energy, strength=0.99)
+                    sources.append(watt_source)
+
+        return sources
+
     def _generate_infinite_medium_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
@@ -1617,6 +1790,7 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        source_energy: openmc.stats.Univariate | None = None,
     ):
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
@@ -1624,6 +1798,20 @@ class Model:
         strength spread across each of the energy groups. This is a highly naive
         method that ignores all spatial self shielding effects and all resonance
         shielding effects between materials.
+
+        Note that in all cases, a discrete source that is uniform over all
+        energy groups is created (strength = 0.01) to ensure that total cross
+        sections are generated for all energy groups. In the case that the user
+        has provided a source_energy distribution as an argument, an additional
+        source (strength = 0.99) is created using that energy distribution. If
+        the user has not provided a source_energy distribution, but the model
+        has sources defined, and all of those sources are of IndependentSource
+        type, then additional sources are created based on the model's existing
+        sources, keeping their energy distributions but replacing their
+        spatial/angular distributions, with their combined strength being 0.99.
+        If the user has not provided a source_energy distribution and no sources
+        are defined on the model and the run mode is 'eigenvalue', then a
+        default Watt spectrum source (strength = 0.99) is added.
 
         Parameters
         ----------
@@ -1638,9 +1826,10 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model.
         """
-        warnings.warn("The infinite medium method of generating MGXS may hang "
-                      "if a material has a k-infinity > 1.0.")
         mgxs_sets = []
         for material in self.materials:
             model = openmc.Model()
@@ -1651,20 +1840,16 @@ class Model:
             # Settings
             model.settings.batches = 100
             model.settings.particles = nparticles
+
+            model.settings.source = self._create_mgxs_sources(
+                groups,
+                spatial_dist=openmc.stats.Point(),
+                source_energy=source_energy
+            )
+
             model.settings.run_mode = 'fixed source'
+            model.settings.create_fission_neutrons = False
 
-            # Make a discrete source that is uniform over the bins of the group structure
-            n_groups = groups.num_groups
-            midpoints = []
-            strengths = []
-            for i in range(n_groups):
-                bounds = groups.get_group_bounds(i+1)
-                midpoints.append((bounds[0] + bounds[1]) / 2.0)
-                strengths.append(1.0)
-
-            energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-            model.settings.source = openmc.IndependentSource(
-                space=openmc.stats.Point(), energy=energy_distribution)
             model.settings.output = {'summary': True, 'tallies': False}
 
             # Geometry
@@ -1714,7 +1899,7 @@ class Model:
             mgxs_lib.build_library()
 
             # Create a "tallies.xml" file for the MGXS Library
-            mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+            mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
             # Run
             statepoint_filename = model.run(cwd=directory)
@@ -1814,6 +1999,7 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        source_energy: openmc.stats.Univariate | None = None,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -1838,6 +2024,23 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model. In all cases, a discrete source that
+            is uniform over all energy groups is created (strength = 0.01) to
+            ensure that total cross sections are generated for all energy
+            groups. In the case that the user has provided a source_energy
+            distribution as an argument, an additional source (strength = 0.99)
+            is created using that energy distribution. If the user has not
+            provided a source_energy distribution, but the model has sources
+            defined, and all of those sources are of IndependentSource type,
+            then additional sources are created based on the model's existing
+            sources, keeping their energy distributions but replacing their
+            spatial/angular distributions, with their combined strength being
+            0.99. If the user has not provided a source_energy distribution and
+            no sources are defined on the model and the run mode is
+            'eigenvalue', then a default Watt spectrum source (strength = 0.99)
+            is added.
         """
         model = openmc.Model()
         model.materials = self.materials
@@ -1847,24 +2050,20 @@ class Model:
         model.settings.inactive = 100
         model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
-        model.settings.run_mode = self.settings.run_mode
 
         # Stochastic slab geometry
         model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
             model.materials)
 
-        # Make a discrete source that is uniform over the bins of the group structure
-        n_groups = groups.num_groups
-        midpoints = []
-        strengths = []
-        for i in range(n_groups):
-            bounds = groups.get_group_bounds(i+1)
-            midpoints.append((bounds[0] + bounds[1]) / 2.0)
-            strengths.append(1.0)
+        # Define the sources
+        model.settings.source = self._create_mgxs_sources(
+            groups,
+            spatial_dist=spatial_distribution,
+            source_energy=source_energy
+        )
 
-        energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-        model.settings.source = [openmc.IndependentSource(
-            space=spatial_distribution, energy=energy_distribution, strength=1.0)]
+        model.settings.run_mode = 'fixed source'
+        model.settings.create_fission_neutrons = False
 
         model.settings.output = {'summary': True, 'tallies': False}
 
@@ -1903,7 +2102,7 @@ class Model:
         mgxs_lib.build_library()
 
         # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
         # Run
         statepoint_filename = model.run(cwd=directory)
@@ -1998,7 +2197,7 @@ class Model:
         mgxs_lib.build_library()
 
         # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
 
         # Run
         statepoint_filename = model.run(cwd=directory)
@@ -2022,6 +2221,7 @@ class Model:
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
+        source_energy: openmc.stats.Univariate | None = None,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2035,11 +2235,33 @@ class Model:
         groups : openmc.mgxs.EnergyGroups or str, optional
             Energy group structure for the MGXS or the name of the group
             structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        nparticles : int, optional
+            Number of particles to simulate per batch when generating MGXS.
+        overwrite_mgxs_library : bool, optional
+            Whether to overwrite an existing MGXS library file.
         mgxs_path : str, optional
-            Filename of the mgxs.h5 library file.
+            Path to the mgxs.h5 library file.
         correction : str, optional
             Transport correction to apply to the MGXS. Options are None and
             "P0".
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model. In all cases, a discrete source that
+            is uniform over all energy groups is created (strength = 0.01) to
+            ensure that total cross sections are generated for all energy
+            groups. In the case that the user has provided a source_energy
+            distribution as an argument, an additional source (strength = 0.99)
+            is created using that energy distribution. If the user has not
+            provided a source_energy distribution, but the model has sources
+            defined, and all of those sources are of IndependentSource type,
+            then additional sources are created based on the model's existing
+            sources, keeping their energy distributions but replacing their
+            spatial/angular distributions, with their combined strength being
+            0.99. If the user has not provided a source_energy distribution and
+            no sources are defined on the model and the run mode is
+            'eigenvalue', then a default Watt spectrum source (strength = 0.99)
+            is added. Note that this argument is only used when using the
+            "stochastic_slab" or "infinite_medium" MGXS generation methods.
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
@@ -2069,13 +2291,13 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')
@@ -2151,3 +2373,262 @@ class Model:
 
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
+
+    def keff_search(
+        self,
+        func: ModelModifier,
+        x0: float,
+        x1: float,
+        target: float = 1.0,
+        k_tol: float = 1e-4,
+        sigma_final: float = 3e-4,
+        p: float = 0.5,
+        q: float = 0.95,
+        memory: int = 4,
+        x_min: float | None = None,
+        x_max: float | None = None,
+        b0: int | None = None,
+        b_min: int = 20,
+        b_max: int | None = None,
+        maxiter: int = 50,
+        output: bool = False,
+        func_kwargs: dict[str, Any] | None = None,
+        run_kwargs: dict[str, Any] | None = None,
+    ) -> SearchResult:
+        r"""Perform a keff search on a model parametrized by a single variable.
+
+        This method uses the GRsecant method described in a paper by `Price and
+        Roskoff <https://doi.org/10.1016/j.pnucene.2023.104731>`_. The GRsecant
+        method is a modification of the secant method that accounts for
+        uncertainties in the function evaluations. The method uses a weighted
+        linear fit of the most recent function evaluations to predict the next
+        point to evaluate. It also adaptively changes the number of batches to
+        meet the target uncertainty value at each iteration.
+
+        The target uncertainty for iteration :math:`n+1` is determined by the
+        following equation (following Eq. (8) in the paper):
+
+        .. math::
+            \sigma_{i+1} = q \sigma_\text{final} \left ( \frac{ \min \left \{
+            \left\lvert k_i - k_\text{target} \right\rvert : k=0,1,\dots,n
+            \right \} }{k_\text{tol}} \right )^p
+
+        where :math:`q` is a multiplicative factor less than 1, given as the
+        ``sigma_factor`` parameter below.
+
+        Parameters
+        ----------
+        func : ModelModifier
+            Function that takes the parameter to be searched and makes a
+            modification to the model.
+        x0 : float
+            First guess for the parameter passed to `func`
+        x1 : float
+            Second guess for the parameter passed to `func`
+        target : float, optional
+            keff value to search for
+        k_tol : float, optional
+            Stopping criterion on the function value; the absolute value must be
+            within ``k_tol`` of zero to be accepted.
+        sigma_final : float, optional
+            Maximum accepted k-effective uncertainty for the stopping criterion.
+        p : float, optional
+            Exponent used in the stopping criterion.
+        q : float, optional
+            Multiplicative factor used in the stopping criterion.
+        memory : int, optional
+            Number of most-recent points used in the weighted linear fit of
+            ``f(x) = a + b x`` to predict the next point.
+        x_min : float, optional
+            Minimum allowed value for the parameter ``x``.
+        x_max : float, optional
+            Maximum allowed value for the parameter ``x``.
+        b0 : int, optional
+            Number of active batches to use for the initial function
+            evaluations. If None, uses the model's current setting.
+        b_min : int, optional
+            Minimum number of active batches to use in a function evaluation.
+        b_max : int, optional
+            Maximum number of active batches to use in a function evaluation.
+        maxiter : int, optional
+            Maximum number of iterations to perform.
+        output : bool, optional
+            Whether or not to display output showing iteration progress.
+        func_kwargs : dict, optional
+            Keyword-based arguments to pass to the `func` function.
+        run_kwargs : dict, optional
+            Keyword arguments to pass to :meth:`openmc.Model.run` or
+            :meth:`openmc.lib.run`.
+
+        Returns
+        -------
+        SearchResult
+            Result object containing the estimated root (parameter value) and
+            evaluation history (parameters, means, standard deviations, and
+            batches), plus convergence status and termination reason.
+
+        """
+        import openmc.lib
+
+        check_type('model modifier', func, Callable)
+        check_type('target', target, Real)
+        if memory < 2:
+            raise ValueError("memory must be ≥ 2")
+        func_kwargs = {} if func_kwargs is None else dict(func_kwargs)
+        run_kwargs = {} if run_kwargs is None else dict(run_kwargs)
+        run_kwargs.setdefault('output', False)
+
+        # Create lists to store the history of evaluations
+        xs: list[float] = []
+        fs: list[float] = []
+        ss: list[float] = []
+        gs: list[int] = []
+        count = 0
+
+        # Helper function to evaluate f and store results
+        def eval_at(x: float, batches: int) -> tuple[float, float]:
+            # Modify the model with the current guess
+            func(x, **func_kwargs)
+
+            # Change the number of batches and run the model
+            batches += self.settings.inactive
+            if openmc.lib.is_initialized:
+                openmc.lib.settings.set_batches(batches)
+                openmc.lib.reset()
+                openmc.lib.run(**run_kwargs)
+                sp_filepath = f'statepoint.{batches}.h5'
+            else:
+                self.settings.batches = batches
+                sp_filepath = self.run(**run_kwargs)
+
+            # Extract keff and its uncertainty
+            with openmc.StatePoint(sp_filepath) as sp:
+                keff = sp.keff
+
+            if output:
+                nonlocal count
+                count += 1
+                print(f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}')
+
+            xs.append(float(x))
+            fs.append(float(keff.n - target))
+            ss.append(float(keff.s))
+            gs.append(int(batches))
+            return fs[-1], ss[-1]
+
+        # Default b0 to current model settings if not explicitly provided
+        if b0 is None:
+            b0 = self.settings.batches - self.settings.inactive
+
+        # Perform the search (inlined GRsecant) in a temporary directory
+        with TemporaryDirectory() as tmpdir:
+            if not openmc.lib.is_initialized:
+                run_kwargs.setdefault('cwd', tmpdir)
+
+            # ---- Seed with two evaluations
+            f0, s0 = eval_at(x0, b0)
+            if abs(f0) <= k_tol and s0 <= sigma_final:
+                return SearchResult(x0, xs, fs, ss, gs, True, "converged")
+            f1, s1 = eval_at(x1, b0)
+            if abs(f1) <= k_tol and s1 <= sigma_final:
+                return SearchResult(x1, xs, fs, ss, gs, True, "converged")
+
+            for _ in range(maxiter - 2):
+                # ------ Step 1: propose next x via GRsecant
+                m = min(memory, len(xs))
+
+                # Perform a curve fit on f(x) = a + bx accounting for
+                # uncertainties. This is equivalent to minimizing the function
+                # in Equation (A.14)
+                (a, b), _ = curve_fit(
+                    lambda x, a, b: a + b*x,
+                    xs[-m:], fs[-m:], sigma=ss[-m:], absolute_sigma=True
+                )
+                x_new = float(-a / b)
+
+                # Clamp x_new to the bounds if provided
+                if x_min is not None:
+                    x_new = max(x_new, x_min)
+                if x_max is not None:
+                    x_new = min(x_new, x_max)
+
+                # ------ Step 2: choose target σ for next run (Eq. 8 + clamp)
+
+                min_abs_f = float(np.min(np.abs(fs)))
+                base = q * sigma_final
+                ratio = min_abs_f / k_tol if k_tol > 0 else 1.0
+                sig = base * (ratio ** p)
+                sig_target = max(sig, base)
+
+                # ------ Step 3: choose generations to hit σ_target (Appendix C)
+
+                # Use at least two past points for regression
+                if len(gs) >= 2 and np.var(np.log(gs)) > 0.0:
+                    # Perform a curve fit based on Eq. (C.3) to solve for ln(k).
+                    # Note that unlike in the paper, we do not leave r as an
+                    # undetermined parameter and choose r=0.5.
+                    (ln_k,), _ = curve_fit(
+                        lambda ln_b, ln_k: ln_k - 0.5*ln_b,
+                        np.log(gs[-4:]), np.log(ss[-4:]),
+                    )
+                    k = float(np.exp(ln_k))
+                else:
+                    k = float(ss[-1] * math.sqrt(gs[-1]))
+
+                b_new = (k / sig_target) ** 2
+
+                # Clamp and round up to integer
+                b_new = max(b_min, math.ceil(b_new))
+                if b_max is not None:
+                    b_new = min(b_new, b_max)
+
+                # Evaluate at proposed x with batches determined above
+                f_new, s_new = eval_at(x_new, b_new)
+
+                # Termination based on both criteria (|f| and σ)
+                if abs(f_new) <= k_tol and s_new <= sigma_final:
+                    return SearchResult(x_new, xs, fs, ss, gs, True, "converged")
+
+            return SearchResult(xs[-1], xs, fs, ss, gs, False, "maxiter")
+
+
+@dataclass
+class SearchResult:
+    """Result of a GRsecant keff search.
+
+    Attributes
+    ----------
+    root : float
+        Estimated parameter value where f(x) = 0 at termination.
+    parameters : list[float]
+        Parameter values (x) evaluated during the search, in order.
+    keffs : list[float]
+        Estimated keff values for each evaluation.
+    stdevs : list[float]
+        One-sigma uncertainties of keff for each evaluation.
+    batches : list[int]
+        Number of active batches used for each evaluation.
+    converged : bool
+        Whether both |f| <= k_tol and sigma <= sigma_final were met.
+    flag : str
+        Reason for termination (e.g., "converged", "maxiter").
+    """
+    root: float
+    parameters: list[float] = field(repr=False)
+    means: list[float] = field(repr=False)
+    stdevs: list[float] = field(repr=False)
+    batches: list[int] = field(repr=False)
+    converged: bool
+    flag: str
+
+    @property
+    def function_calls(self) -> int:
+        """Number of function evaluations performed."""
+        return len(self.parameters)
+
+    @property
+    def total_batches(self) -> int:
+        """Total number of active batches used across all evaluations."""
+        return sum(self.batches)
+
+

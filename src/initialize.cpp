@@ -178,6 +178,37 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
   MPI_Type_create_struct(11, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
+
+  CollisionTrackSite bc;
+  MPI_Aint dispc[16];
+  MPI_Get_address(&bc.r, &dispc[0]);             // double
+  MPI_Get_address(&bc.u, &dispc[1]);             // double
+  MPI_Get_address(&bc.E, &dispc[2]);             // double
+  MPI_Get_address(&bc.dE, &dispc[3]);            // double
+  MPI_Get_address(&bc.time, &dispc[4]);          // double
+  MPI_Get_address(&bc.wgt, &dispc[5]);           // double
+  MPI_Get_address(&bc.event_mt, &dispc[6]);      // int
+  MPI_Get_address(&bc.delayed_group, &dispc[7]); // int
+  MPI_Get_address(&bc.cell_id, &dispc[8]);       // int
+  MPI_Get_address(&bc.nuclide_id, &dispc[9]);    // int
+  MPI_Get_address(&bc.material_id, &dispc[10]);  // int
+  MPI_Get_address(&bc.universe_id, &dispc[11]);  // int
+  MPI_Get_address(&bc.n_collision, &dispc[12]);  // int
+  MPI_Get_address(&bc.particle, &dispc[13]);     // int
+  MPI_Get_address(&bc.parent_id, &dispc[14]);    // int64_t
+  MPI_Get_address(&bc.progeny_id, &dispc[15]);   // int64_t
+  for (int i = 15; i >= 0; --i) {
+    dispc[i] -= dispc[0];
+  }
+
+  int blocksc[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  MPI_Datatype typesc[] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
+    MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT,
+    MPI_INT, MPI_INT, MPI_INT, MPI_INT64_T, MPI_INT64_T};
+
+  MPI_Type_create_struct(
+    16, blocksc, dispc, typesc, &mpi::collision_track_site);
+  MPI_Type_commit(&mpi::collision_track_site);
 }
 #endif // OPENMC_MPI
 
@@ -401,6 +432,10 @@ bool read_model_xml()
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
 
+  // Compute cell density multipliers now that material densities
+  // have been finalized (from geometry_aux.h)
+  finalize_cell_densities();
+
   if (check_for_node(root, "tallies"))
     read_tallies_xml(root.child("tallies"));
 
@@ -441,6 +476,11 @@ void read_separate_xml_files()
 
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
+
+  // Compute cell density multipliers now that material densities
+  // have been finalized (from geometry_aux.h)
+  finalize_cell_densities();
+
   read_tallies_xml();
 
   // Initialize distribcell_filters

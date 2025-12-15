@@ -11,7 +11,7 @@ import h5py
 
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Library, Table, get_table, get_metadata
-from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
+from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV, gnds_name
 from .endf import (
     Evaluation, SUM_RULES, get_head_record, get_tab1_record, get_evaluations)
 from .fission_energy import FissionEnergyRelease
@@ -678,11 +678,7 @@ class IncidentNeutron(EqualityMixin):
         temperature = ev.target['temperature']
 
         # Determine name
-        element = ATOMIC_SYMBOL[atomic_number]
-        if metastable > 0:
-            name = f'{element}{mass_number}_m{metastable}'
-        else:
-            name = f'{element}{mass_number}'
+        name = gnds_name(atomic_number, mass_number, metastable)
 
         # Instantiate incident neutron data
         data = cls(name, atomic_number, mass_number, metastable,

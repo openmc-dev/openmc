@@ -2,6 +2,7 @@ import copy
 from numbers import Integral
 import os
 import warnings
+from textwrap import dedent
 
 import h5py
 import numpy as np
@@ -9,6 +10,7 @@ import numpy as np
 import openmc
 from openmc.data import REACTION_MT, REACTION_NAME, FISSION_MTS
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from ..tallies import ESTIMATOR_TYPES
 from . import EnergyGroups
 
@@ -164,7 +166,7 @@ class MGXS:
 
     """
 
-    _params = """
+    _params = dedent("""
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -251,7 +253,7 @@ class MGXS:
 
         .. versionadded:: 0.13.1
 
-    """
+    """)
 
     # Store whether or not the number density should be removed for microscopic
     # values of this data
@@ -1981,7 +1983,7 @@ class MGXS:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
@@ -2125,8 +2127,8 @@ class MGXS:
             df['std. dev.'] /= np.tile(densities, tile_factor)
 
             # Replace NaNs by zeros (happens if nuclide density is zero)
-            df['mean'].replace(np.nan, 0.0, inplace=True)
-            df['std. dev.'].replace(np.nan, 0.0, inplace=True)
+            df['mean'] = df['mean'].replace(np.nan, 0.0)
+            df['std. dev.'] = df['std. dev.'].replace(np.nan, 0.0)
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal

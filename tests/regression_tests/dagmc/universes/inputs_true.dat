@@ -48,6 +48,14 @@
     <particles>100</particles>
     <batches>10</batches>
     <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-10.0 -10.0 -24.0 10.0 10.0 24.0</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
     <output>
       <summary>false</summary>
     </output>

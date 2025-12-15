@@ -36,7 +36,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.build_library()
 
         # Add tallies
-        self.mgxs_lib.add_to_tallies_file(self._model.tallies, merge=False)
+        self.mgxs_lib.add_to_tallies(self._model.tallies, merge=False)
         self._model.tallies.export_to_xml()
 
     def _get_results(self, hash_output=False):

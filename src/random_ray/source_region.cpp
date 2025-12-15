@@ -48,7 +48,7 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 
   scalar_flux_new_.assign(negroups, 0.0);
-  source_.resize(negroups);
+  source_.assign(negroups, 0.0);
   scalar_flux_final_.assign(negroups, 0.0);
 
   tally_task_.resize(negroups);
@@ -60,24 +60,25 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 }
 
-SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
-  : SourceRegion(handle.negroups_, handle.is_linear_)
-{
-  scalars_.material_ = handle.material();
-  scalars_.mesh_ = handle.mesh();
-  scalars_.parent_sr_ = parent_sr;
-  for (int g = 0; g < scalar_flux_new_.size(); g++) {
-    scalar_flux_old_[g] = handle.scalar_flux_old(g);
-    source_[g] = handle.source(g);
-  }
+//TODO: Is this used?
+// SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
+//   : SourceRegion(handle.negroups_, handle.is_linear_)
+// {
+//   scalars_.material_ = handle.material();
+//   scalars_.mesh_ = handle.mesh();
+//   scalars_.parent_sr_ = parent_sr;
+//   for (int g = 0; g < scalar_flux_new_.size(); g++) {
+//     scalar_flux_old_[g] = handle.scalar_flux_old(g);
+//     source_[g] = handle.source(g);
+//   }
 
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    scalars_.external_source_present_ = handle.external_source_present();
-    for (int g = 0; g < scalar_flux_new_.size(); g++) {
-      external_source_[g] = handle.external_source(g);
-    }
-  }
-}
+//   if (settings::run_mode == RunMode::FIXED_SOURCE) {
+//     scalars_.external_source_present_ = handle.external_source_present();
+//     for (int g = 0; g < scalar_flux_new_.size(); g++) {
+//       external_source_[g] = handle.external_source(g);
+//     }
+//   }
+// }
 
 SourceRegion::SourceRegion(const SourceRegionHandle& handle)
   : SourceRegion(handle.negroups_, handle.is_linear_)
@@ -130,17 +131,27 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
 // combine two source regions from different ranks together
 void SourceRegion::merge(SourceRegion& sr_add, bool is_linear) {
 
+  // printf("test1\n");
   // scalar fields
+  // printf("SourceRegion_add.volume = %f\n", sr_add.scalars_.volume_);
+  // printf("SourceRegion.volume = %f\n", scalars_.volume_);
   scalars_.volume_ += sr_add.scalars_.volume_;
+  // printf("test1.1\n");
   scalars_.volume_sq_ += sr_add.scalars_.volume_sq_;
+  // printf("test1.2\n");
   scalars_.volume_naive_ += sr_add.scalars_.volume_naive_;
+  // printf("test1.3\n");
   scalars_.n_hits_ += sr_add.scalars_.n_hits_;
+  // printf("test1.4\n");
   scalars_.external_source_present_ = std::max(scalars_.external_source_present_, sr_add.scalars_.external_source_present_);
+  // printf("test1.5\n");
   scalars_.centroid_iteration_ += sr_add.scalars_.centroid_iteration_;
+  // printf("test1.6\n");
   if (is_linear) {
     scalars_.mom_matrix_ += sr_add.scalars_.mom_matrix_;
   }
 
+  // printf("test2\n");
   // vector fields
   #pragma omp simd
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
@@ -153,6 +164,7 @@ void SourceRegion::merge(SourceRegion& sr_add, bool is_linear) {
       flux_moments_new_[g] += sr_add.flux_moments_new_[g];
     }
   }
+  // printf("test3\n");
 }
 
 //==============================================================================
@@ -352,9 +364,12 @@ void SourceRegionContainer::adjoint_reset()
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
+  } else {
+    std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 1.0);
+  }
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
-  std::fill(scalar_flux_final_.begin(), scalar_flux_final_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
   std::fill(external_source_.begin(), external_source_.end(), 0.0f);
   std::fill(source_gradients_.begin(), source_gradients_.end(),

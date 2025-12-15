@@ -3,6 +3,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cmfd_solver.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/dagmc.h"
@@ -76,6 +77,7 @@ int openmc_finalize()
   // Reset global variables
   settings::assume_separate = false;
   settings::check_overlaps = false;
+  settings::collision_track_config = CollisionTrackConfig {};
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::create_delayed_neutrons = true;
@@ -85,6 +87,7 @@ int openmc_finalize()
   settings::time_cutoff = {INFTY, INFTY, INFTY, INFTY};
   settings::entropy_on = false;
   settings::event_based = false;
+  settings::free_gas_threshold = 400.0;
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
@@ -92,6 +95,7 @@ int openmc_finalize()
   settings::max_lost_particles = 10;
   settings::max_order = 0;
   settings::max_particles_in_flight = 100000;
+  settings::max_secondaries = 10000;
   settings::max_particle_events = 1'000'000;
   settings::max_history_splits = 10'000'000;
   settings::max_tracks = 1000;
@@ -154,8 +158,8 @@ int openmc_finalize()
   simulation::entropy_mesh = nullptr;
   simulation::ufs_mesh = nullptr;
 
-  data::energy_max = {INFTY, INFTY};
-  data::energy_min = {0.0, 0.0};
+  data::energy_max = {INFTY, INFTY, INFTY, INFTY};
+  data::energy_min = {0.0, 0.0, 0.0, 0.0};
   data::temperature_min = 0.0;
   data::temperature_max = INFTY;
   model::root_universe = -1;
@@ -174,6 +178,9 @@ int openmc_finalize()
 #ifdef OPENMC_MPI
   if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
+  }
+  if (mpi::collision_track_site != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::collision_track_site);
   }
 #endif
 

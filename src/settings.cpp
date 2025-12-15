@@ -810,11 +810,11 @@ void read_settings_xml(pugi::xml_node root)
         tf_values.push_back(b);
       }
     } else {
-      fatal_error("Temperature values should be given for the temperature field.");
+      fatal_error(
+        "Temperature values should be given for the temperature field.");
     }
 
     // Instantiate the temperature field
-    //TemperatureField tf = TemperatureField(tf_mesh_ptr, tf_values);
     simulation::temperature_field = TemperatureField(tf_mesh_ptr, tf_values);
   }
 

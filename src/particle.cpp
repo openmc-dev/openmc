@@ -275,13 +275,13 @@ int Particle::event_advance()
 
   // Prepare the stop condition
   if (distance == distance_cutoff) {
-    stop_condition = 4;
+    stop_condition = EVENT_TIME_CUTOFF;
   } else if (distance == boundary().distance()) {
-    stop_condition = 1;
+    stop_condition = EVENT_CROSS_SURFACE;
   } else if (distance == distance_tmesh) {
-    stop_condition = 3;
+    stop_condition = EVENT_CROSS_TEMPERATURE_MESH;
   } else if (distance == collision_distance()) {
-    stop_condition = 2;
+    stop_condition = EVENT_COLLIDE;
   }
 
   // Advance particle in space and time
@@ -310,21 +310,6 @@ int Particle::event_advance()
   if (!model::active_tallies.empty()) {
     score_track_derivative(*this, distance);
   }
-
-  //if (p.collision_distance() > p.boundary().distance()) {
-  //        p.event_cross_surface();
-
-  
-  
-  //const int CROSS_SURFACE = 1;
-  //const int COLLIDE = 2;
-  //const int CROSS_TEMPERATURE_MESH = 3;
-  //const int CUTOFF = 4;
-
-  // Set particle weight to zero if it hit the time boundary
-  //if (distance == distance_cutoff) {
-  //  wgt() = 0.0;
-  //}
 
   return stop_condition;
 }

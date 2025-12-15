@@ -804,30 +804,6 @@ void free_memory_simulation()
   simulation::entropy.clear();
 }
 
-//void transport_history_based_single_particle(Particle& p)
-//{
-//  while (p.alive()) {
-//    p.event_calculate_xs();
-//    if (p.alive()) {
-//      p.event_advance();
-//    }
-//    if (p.alive()) {
-//      if (p.collision_distance() > p.boundary().distance()) {
-//        p.event_cross_surface();
-//      } else if (p.alive()) {
-//        p.event_collide();
-//      }
-//    }
-//    p.event_revive_from_secondary();
-//  }
-//  p.event_death();
-//}
-
-const int CROSS_SURFACE = 1;
-const int COLLIDE = 2;
-const int CROSS_TEMPERATURE_MESH = 3;
-const int CUTOFF = 4;
-
 void transport_history_based_single_particle(Particle& p)
 {
   int advance_stop_condition;
@@ -838,20 +814,20 @@ void transport_history_based_single_particle(Particle& p)
     }
     if (p.alive()) {
       switch (advance_stop_condition) {
-        case CROSS_SURFACE:
+        case EVENT_CROSS_SURFACE:
           p.event_cross_surface();
           break;
-        case COLLIDE:
+        case EVENT_COLLIDE:
           p.event_collide();
           break;
-        case CROSS_TEMPERATURE_MESH:
+        case EVENT_CROSS_TEMPERATURE_MESH:
           p.event_cross_temperature_mesh();
           break;
-        case CUTOFF:
+        case EVENT_TIME_CUTOFF:
           p.wgt() = 0.0;
           break;
         default:
-          fatal_error("Unknown case");
+          fatal_error("Unknown event in history-based transport!");
           break;
       }
     }

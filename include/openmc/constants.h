@@ -376,6 +376,14 @@ enum class GeometryType { CSG, DAG };
 // representations. This value represents no surface.
 constexpr int32_t SURFACE_NONE {0};
 
+//==============================================================================
+// EVENT IDENTIFIER IN HISTORY-BASED TRANSPORT
+
+const int EVENT_CROSS_SURFACE = 1;
+const int EVENT_COLLIDE = 2;
+const int EVENT_CROSS_TEMPERATURE_MESH = 3;
+const int EVENT_TIME_CUTOFF = 4;
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

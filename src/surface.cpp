@@ -251,9 +251,9 @@ void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceXPlane::bounding_box(bool pos_side) const
 {
   if (pos_side) {
-    return {x0_, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+    return {{x0_, -INFTY, -INFTY}, {INFTY, INFTY, INFTY}};
   } else {
-    return {-INFTY, x0_, -INFTY, INFTY, -INFTY, INFTY};
+    return {{-INFTY, -INFTY, -INFTY}, {x0_, INFTY, INFTY}};
   }
 }
 
@@ -291,9 +291,9 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
 {
   if (pos_side) {
-    return {-INFTY, INFTY, y0_, INFTY, -INFTY, INFTY};
+    return {{-INFTY, y0_, -INFTY}, {INFTY, INFTY, INFTY}};
   } else {
-    return {-INFTY, INFTY, -INFTY, y0_, -INFTY, INFTY};
+    return {{-INFTY, -INFTY, -INFTY}, {INFTY, y0_, INFTY}};
   }
 }
 
@@ -331,9 +331,9 @@ void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceZPlane::bounding_box(bool pos_side) const
 {
   if (pos_side) {
-    return {-INFTY, INFTY, -INFTY, INFTY, z0_, INFTY};
+    return {{-INFTY, -INFTY, z0_}, {INFTY, INFTY, INFTY}};
   } else {
-    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, z0_};
+    return {{-INFTY, -INFTY, -INFTY}, {INFTY, INFTY, z0_}};
   }
 }
 
@@ -492,8 +492,8 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
 {
   if (!pos_side) {
-    return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_,
-      z0_ + radius_};
+    return {{-INFTY, y0_ - radius_, z0_ - radius_},
+      {INFTY, y0_ + radius_, z0_ + radius_}};
   } else {
     return {};
   }
@@ -535,8 +535,8 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
 {
   if (!pos_side) {
-    return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_,
-      z0_ + radius_};
+    return {{x0_ - radius_, -INFTY, z0_ - radius_},
+      {x0_ + radius_, INFTY, z0_ + radius_}};
   } else {
     return {};
   }
@@ -579,8 +579,8 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const
 {
   if (!pos_side) {
-    return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY,
-      INFTY};
+    return {{x0_ - radius_, y0_ - radius_, -INFTY},
+      {x0_ + radius_, y0_ + radius_, INFTY}};
   } else {
     return {};
   }
@@ -657,8 +657,8 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 BoundingBox SurfaceSphere::bounding_box(bool pos_side) const
 {
   if (!pos_side) {
-    return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_,
-      z0_ - radius_, z0_ + radius_};
+    return {{x0_ - radius_, y0_ - radius_, z0_ - radius_},
+      {x0_ + radius_, y0_ + radius_, z0_ + radius_}};
   } else {
     return {};
   }

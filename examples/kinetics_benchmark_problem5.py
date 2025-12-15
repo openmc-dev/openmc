@@ -112,3 +112,48 @@ print("")
 # Uncomment to run the simulation
 openmc.run()
 
+# =============================================================================
+# Extract and Save Results
+# =============================================================================
+
+# Open statepoint file
+sp = openmc.StatePoint(f'statepoint.{settings.batches}.h5')
+
+# Extract global tallies (k-effective estimators and leakage)
+gt = sp.global_tallies
+
+# Build results string
+results = []
+results.append(f" k-effective (Collision)    = {gt[gt['name'] == b'k-collision']['mean'][0]:.5f} +/- {gt[gt['name'] == b'k-collision']['std_dev'][0]:.5f}")
+results.append(f" k-effective (Track-length) = {gt[gt['name'] == b'k-tracklength']['mean'][0]:.5f} +/- {gt[gt['name'] == b'k-tracklength']['std_dev'][0]:.5f}")
+results.append(f" k-effective (Absorption)   = {gt[gt['name'] == b'k-absorption']['mean'][0]:.5f} +/- {gt[gt['name'] == b'k-absorption']['std_dev'][0]:.5f}")
+results.append(f" Combined k-effective       = {sp.keff.nominal_value:.5f} +/- {sp.keff.std_dev:.5f}")
+results.append(f" Leakage Fraction           = {gt[gt['name'] == b'leakage']['mean'][0]:.5f} +/- {gt[gt['name'] == b'leakage']['std_dev'][0]:.5f}")
+
+# Add kinetics parameters if available
+if sp.k_prompt is not None:
+    results.append(f" k-prompt                   = {sp.k_prompt.nominal_value:.5f} +/- {sp.k_prompt.std_dev:.5f}")
+if sp.beta_eff is not None:
+    results.append(f" Beta-effective             = {sp.beta_eff.nominal_value:.5f} +/- {sp.beta_eff.std_dev:.5f}")
+if sp.prompt_gen_time is not None:
+    results.append(f" Prompt Neutron Lifetime    = {sp.prompt_gen_time.nominal_value:.5e} +/- {sp.prompt_gen_time.std_dev:.5e} seconds")
+if sp.alpha_k_based is not None:
+    results.append(f" Alpha Eigenvalue           = {sp.alpha_k_based.nominal_value:.5e} +/- {sp.alpha_k_based.std_dev:.5e} 1/seconds")
+
+# Print results
+print("\n" + "=" * 70)
+print("Results:")
+print("=" * 70)
+for line in results:
+    print(line)
+
+# Save results to file
+output_file = "kinetics_results_problem5.txt"
+with open(output_file, 'w') as f:
+    f.write("Kinetics Benchmark Problem 5: Sub-critical Fast Neutron System\n")
+    f.write("=" * 70 + "\n")
+    for line in results:
+        f.write(line + "\n")
+
+print(f"\nResults saved to: {output_file}")
+

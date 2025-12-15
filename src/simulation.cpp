@@ -806,14 +806,13 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
-  int advance_stop_condition;
   while (p.alive()) {
     p.event_calculate_xs();
     if (p.alive()) {
-      advance_stop_condition = p.event_advance(); // TODO maybe use a particle attribute instead (next_event)
+      p.event_advance();
     }
     if (p.alive()) {
-      switch (advance_stop_condition) {
+      switch (p.next_event()) {
         case EVENT_CROSS_SURFACE:
           p.event_cross_surface();
           break;
@@ -827,9 +826,10 @@ void transport_history_based_single_particle(Particle& p)
           p.wgt() = 0.0;
           break;
         default:
-          fatal_error("Unknown event in history-based transport!");
+          fatal_error(fmt::format(
+            "Unknown event '{}' in history-based transport!", p.next_event()));
           break;
-      }
+        }
     }
     p.event_revive_from_secondary();
   }

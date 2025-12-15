@@ -241,10 +241,8 @@ void Particle::event_calculate_xs()
   }
 }
 
-int Particle::event_advance()
+void Particle::event_advance()
 {
-  int stop_condition = 0;
-
   // Find the distance to the nearest geometry boundary
   boundary() = distance_to_boundary(*this);
 
@@ -275,13 +273,13 @@ int Particle::event_advance()
 
   // Prepare the stop condition
   if (distance == distance_cutoff) {
-    stop_condition = EVENT_TIME_CUTOFF;
+    next_event() = EVENT_TIME_CUTOFF;
   } else if (distance == boundary().distance()) {
-    stop_condition = EVENT_CROSS_SURFACE;
+    next_event() = EVENT_CROSS_SURFACE;
   } else if (distance == distance_tmesh) {
-    stop_condition = EVENT_CROSS_TEMPERATURE_MESH;
+    next_event() = EVENT_CROSS_TEMPERATURE_MESH;
   } else if (distance == collision_distance()) {
-    stop_condition = EVENT_COLLIDE;
+    next_event() = EVENT_COLLIDE;
   }
 
   // Advance particle in space and time
@@ -310,8 +308,6 @@ int Particle::event_advance()
   if (!model::active_tallies.empty()) {
     score_track_derivative(*this, distance);
   }
-
-  return stop_condition;
 }
 
 void Particle::event_cross_temperature_mesh()

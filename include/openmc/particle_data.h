@@ -565,6 +565,8 @@ private:
 
   int64_t n_progeny_ {0};
 
+  int next_event_ {0};
+
 public:
   //----------------------------------------------------------------------------
   // Constructors
@@ -768,6 +770,11 @@ public:
       d = 0;
     }
   }
+
+  // Next event identifier for history-based transport
+  int next_event() const { return next_event_; }
+  int& next_event() { return next_event_; }
+
 };
 
 } // namespace openmc

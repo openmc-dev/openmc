@@ -2537,10 +2537,7 @@ class Model:
         deriv_variable: str | None = None,
         deriv_material: int | None = None,
         deriv_nuclide: str | None = None,
-        deriv_weight: float = 3.0,
         deriv_to_x_func: Callable[[float], float] | None = None,
-        use_deriv_uncertainty: bool = True,
-        use_deriv_constraints: bool = True,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
@@ -2634,32 +2631,13 @@ class Model:
             
             If not provided, returns dk/dN (not dk/dx) for nuclide_density.
             Ignored for other derivative types.
-        deriv_weight : float, optional
-            Weight factor for derivative constraints (0.0 to 1.0+). Controls
-            how strongly derivative information influences the curve fit.
-            - 0.0: Ignore derivatives (same as use_derivative_tallies=False)
-            - 1.0: Derivatives weighted equally with point residuals (default)
-            - >1.0: Prioritize derivative information over point fit
             
-            NOTE: Derivatives are automatically normalized by their magnitude
-            (geometric mean of absolute values) during curve fitting to ensure
-            numerical stability. This normalization handles derivatives with
-            very large magnitudes (e.g., dk/dppm ∼ 10^20) without requiring
-            manual scaling by the user.
-        use_deriv_uncertainty : bool, optional
-            If True, weight derivative constraints by their uncertainties
-            (divide by ``dk_std``). If False, include derivative constraints
-            with unit weights (no uncertainty weighting).
-        use_deriv_constraints : bool, optional
-            If True, include derivative constraints in least-squares fitting
-            when ``use_derivative_tallies`` is enabled and derivatives exist.
-            
-            Only used when deriv_method='least_squares'.
-                use_deriv_uncertainty : bool, optional
-                        If True (default), accounts for derivative uncertainties when applying
-                        derivative constraints in least squares: weights derivative constraints
-                        inversely by sigma_dk². Set to False to disable uncertainty weighting
-                        on derivatives, treating all derivative estimates equally.
+            NOTE: When derivative tallies are enabled, derivatives are automatically
+            used as gradient constraints in the least-squares fitting with their
+            uncertainties as weights. Derivatives are also normalized by their
+            magnitude (geometric mean of absolute values) to ensure numerical
+            stability, handling large magnitudes (e.g., dk/dppm ∼ 10^20) without
+            requiring manual scaling.
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
@@ -2778,15 +2756,16 @@ class Model:
             for _ in range(maxiter - 2):
                 # ------ Step 1: propose next x
                 
-                # LEAST SQUARES METHOD (original GRsecant or augmented with derivatives)
+                # Perform weighted least squares fit on f(x) = a + bx
+                # If derivative tallies enabled: augment with gradient constraints
                 m = min(memory, len(xs))
 
                 # Perform a curve fit on f(x) = a + bx accounting for uncertainties
                 # If derivatives are available, augment with gradient constraints
-                if use_deriv_constraints and use_derivative_tallies and deriv_weight > 0 and any(dks[-m:]):
+                if use_derivative_tallies and any(dks[-m:]):
                     # Gradient-augmented least squares fit
                     # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
-                    #         + deriv_weight * sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
+                    #         + sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
                     
                     xs_fit = np.array([xs[i] for i in range(max(0, len(xs)-m), len(xs))])
                     fs_fit = np.array([fs[i] for i in range(max(0, len(xs)-m), len(xs))])
@@ -2833,21 +2812,17 @@ class Model:
                         if output:
                             print(f'  [DERIV-FIT] Normalization scale factor: {deriv_scale:.6e}')
                         
-                        # Apply scaling to derivatives. Optionally scale uncertainties.
+                        # Apply scaling to derivatives and their uncertainties
                         scaled_derivs = valid_deriv_values / deriv_scale
-                        if use_deriv_uncertainty:
-                            scaled_deriv_stds = valid_deriv_stds / deriv_scale
-                        else:
-                            # Use unit-uncertainty weighting for constraints
-                            scaled_deriv_stds = np.ones_like(valid_deriv_values)
+                        scaled_deriv_stds = valid_deriv_stds / deriv_scale
                         
                         # Build constraint rows with normalized derivatives
                         deriv_rows = np.zeros((n_derivs, 2))
                         deriv_rows[:, 0] = 0.0  # a coefficient in gradient = 0
-                        deriv_rows[:, 1] = np.sqrt(deriv_weight)  # b coefficient, weighted
+                        deriv_rows[:, 1] = 1.0  # b coefficient
                         
-                        # Normalized targets: scale-invariant constraint
-                        deriv_targets = (scaled_derivs / scaled_deriv_stds) * np.sqrt(deriv_weight)
+                        # Normalized targets: scale-invariant constraint weighted by uncertainty
+                        deriv_targets = scaled_derivs / scaled_deriv_stds
                         
                         A = np.vstack([A, deriv_rows])
                         b_vec = np.hstack([b_vec, deriv_targets])
@@ -2857,7 +2832,7 @@ class Model:
                         coeffs, residuals, rank, s = np.linalg.lstsq(A, b_vec, rcond=None)
                         a, b = float(coeffs[0]), float(coeffs[1])
                         if output:
-                            print(f'  [DERIV-FIT] Fitted line: f(x) = {a:.6e} + {b:.6e}*x (with derivatives)')
+                            print(f'  [DERIV-FIT] Fitted line (with derivative constraints): f(x) = {a:.6e} + {b:.6e}*x')
                     except np.linalg.LinAlgError:
                         # Fall back to standard fit if augmented system is singular
                         (a, b), _ = curve_fit(

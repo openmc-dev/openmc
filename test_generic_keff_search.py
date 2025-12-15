@@ -136,8 +136,7 @@ def add_derivative_tallies(model, deriv_variable, deriv_material, deriv_nuclide=
 def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_material,
              deriv_nuclide, x0, x1, target, deriv_nuclide_arg=None, deriv_to_x_func=None,
              expected_magnitude=None, use_derivative_tallies=True,
-             x_min=None, x_max=None, use_deriv_uncertainty=True,
-             use_deriv_constraints=True):
+             x_min=None, x_max=None):
     """
     Generic test runner.
     
@@ -169,12 +168,6 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
     use_derivative_tallies : bool, optional
         If True, enable derivative tallies and pass derivative args to keff_search.
         If False, run keff_search without derivative tallies (baseline comparison).
-    use_deriv_uncertainty : bool, optional
-        If True, account for derivative uncertainty in the fit. If False, ignore
-        derivative uncertainties. Default is True.
-    use_deriv_constraints : bool, optional
-        If True, include derivative constraints in least-squares fitting when
-        derivative tallies are enabled. Default is True.
     """
     print("\n" + "=" * 80)
     print(f"TEST: {test_name}")
@@ -242,9 +235,6 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
                     'deriv_variable': deriv_variable,
                     'deriv_material': deriv_material,
                     'deriv_nuclide': deriv_nuclide_arg,
-                    'deriv_weight': 1.0,
-                    'use_deriv_uncertainty': use_deriv_uncertainty,
-                    'use_deriv_constraints': use_deriv_constraints,
                 })
                 if deriv_to_x_func is not None:
                     search_kwargs['deriv_to_x_func'] = deriv_to_x_func
@@ -287,7 +277,7 @@ if __name__ == '__main__':
     print("  1. GRsecant (baseline):      No derivatives, standard curve-fitting")
     print("  2. Least Squares:            GRsecant + gradient constraints + auto-normalization")
     print("=" * 80)
-    '''
+    
     # Physical constants for boron ppm conversion
     BORON_DENSITY_WATER = 0.741  # g/cm³ at room temperature
     BORON_ATOMIC_MASS = 10.81    # g/mol (natural boron average)
@@ -359,7 +349,7 @@ if __name__ == '__main__':
             
     except Exception as e:
         print(f"  ⚠ Boron test encountered error: {e}")
-    '''
+    
     # TEST 2: Fuel density search (densification/swelling scenario)
     print("\n" + "=" * 100)
     print("[TEST 2] FUEL DENSITY SEARCH")
@@ -404,8 +394,6 @@ if __name__ == '__main__':
             'density', 1, None,  # Material ID 1 is fuel
             5.0, 11.0, 1.17,
             use_derivative_tallies=True,
-            use_deriv_uncertainty=False,
-            use_deriv_constraints=True,
             x_min=2.0, x_max=12.0
         )
         if result:
@@ -417,7 +405,7 @@ if __name__ == '__main__':
         traceback.print_exc()
     # Print final comparison tables
     print("\n" + "=" * 100)
-    '''
+    
     if boron_results:
         print("\n[TABLE 1] BORON CONCENTRATION SEARCH RESULTS")
         print("-" * 100)
@@ -453,43 +441,7 @@ if __name__ == '__main__':
                     print(f"  Total batches: {batch_pct:+7.1f}%  ({result.total_batches:4d} vs {baseline_batches:4d})")
                     print(f"  Elapsed time:  {time_pct:+7.1f}%  ({getattr(result, 'elapsed_time', 0):6.2f}s vs {baseline_time:6.2f}s)")
     
-    # TABLE 2: Fuel Temperature Search
-    if temperature_results:
-        print("\n" + "=" * 100)
-        print("[TABLE 2] FUEL TEMPERATURE SEARCH RESULTS")
-        print("-" * 100)
-        print(f"{'Method':<30} {'Final Temp (K)':<18} {'MC Runs':<12} {'Tot Batches':<14} {'Time (s)':<12} {'Converged':<10}")
-        print("-" * 100)
-        
-        for method_name in ['GRsecant (no deriv)', 'Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
-            if method_name in temperature_results:
-                result = temperature_results[method_name]
-                elapsed = getattr(result, 'elapsed_time', 0)
-                print(f"{method_name:<30} {result.root:>16.1f} {result.function_calls:>11d} {result.total_batches:>13d} {elapsed:>11.2f} {str(result.converged):>9}")
-        
-        # Efficiency analysis for temperature
-        if 'GRsecant (no deriv)' in temperature_results:
-            baseline = temperature_results['GRsecant (no deriv)']
-            baseline_runs = baseline.function_calls
-            baseline_batches = baseline.total_batches
-            baseline_time = getattr(baseline, 'elapsed_time', 0)
-            
-            print("\n" + "-" * 100)
-            print("Efficiency Gains (relative to GRsecant baseline):")
-            print("-" * 100)
-            
-            for method_name in ['Least Squares (with deriv)', 'Gradient Descent (with deriv)']:
-                if method_name in temperature_results:
-                    result = temperature_results[method_name]
-                    run_pct = ((baseline_runs - result.function_calls) / baseline_runs * 100) if baseline_runs > 0 else 0
-                    batch_pct = ((baseline_batches - result.total_batches) / baseline_batches * 100) if baseline_batches > 0 else 0
-                    time_pct = ((baseline_time - getattr(result, 'elapsed_time', 0)) / baseline_time * 100) if baseline_time > 0 else 0
-                    
-                    print(f"\n{method_name}:")
-                    print(f"  MC runs:       {run_pct:+7.1f}%  ({result.function_calls:2d} vs {baseline_runs:2d})")
-                    print(f"  Total batches: {batch_pct:+7.1f}%  ({result.total_batches:4d} vs {baseline_batches:4d})")
-                    print(f"  Elapsed time:  {time_pct:+7.1f}%  ({getattr(result, 'elapsed_time', 0):6.2f}s vs {baseline_time:6.2f}s)")
-    '''
+    
     # TABLE 2: Fuel Density Search
     if density_results:
         print("\n" + "=" * 100)
@@ -526,6 +478,7 @@ if __name__ == '__main__':
                     print(f"  MC runs:       {run_pct:+7.1f}%  ({result.function_calls:2d} vs {baseline_runs:2d})")
                     print(f"  Total batches: {batch_pct:+7.1f}%  ({result.total_batches:4d} vs {baseline_batches:4d})")
                     print(f"  Elapsed time:  {time_pct:+7.1f}%  ({getattr(result, 'elapsed_time', 0):6.2f}s vs {baseline_time:6.2f}s)")
+    
     
     print("\n" + "=" * 100)
     print("All comparison tests completed!")

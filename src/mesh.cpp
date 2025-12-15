@@ -1183,14 +1183,11 @@ void StructuredMesh::surface_bins_crossed(
 
 double StructuredMesh::distance_to_next_boundary(Position r, Position u) const
 {
-  double distance = -1.0;
-
-  // Algo adapted from mesh.cpp
   Position global_r = r;
   Position local_r = local_coords(r);
 
-  const int n = 3;
-
+  double distance = INFTY;
+  const int n = n_dimension_;
   bool in_mesh;
 
   StructuredMesh::MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
@@ -1203,10 +1200,10 @@ double StructuredMesh::distance_to_next_boundary(Position r, Position u) const
 
   if (in_mesh) {
 
-    // find surface with minimal distance to current position
-    const auto k = std::min_element(distances.begin(), distances.end()) -
-                    distances.begin();
-    
+    // Find surface with minimal distance to current position
+    const auto k =
+      std::min_element(distances.begin(), distances.end()) - distances.begin();
+
     distance = distances[k].distance;
 
   } else { // not inside mesh
@@ -1224,7 +1221,7 @@ double StructuredMesh::distance_to_next_boundary(Position r, Position u) const
     }
   }
 
-  return distance; 
+  return distance;
 }
 
 //==============================================================================

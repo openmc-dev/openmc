@@ -173,12 +173,10 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
-  //! Distance to the next boundary
+  //! Distance to the next boundary.
   //! If the initial position is outside the mesh, the distance
   //! will be from the initial position to the external boundary
-  //! of the mesh if hit. If the initial position is inside the
-  //! mesh, the distance will be from the initial position to
-  //! the boundary of the next cell.
+  //! of the mesh if hit.
   //
   //! \param[in] r Position of the particle
   //! \param[in] u Particle direction

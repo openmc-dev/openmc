@@ -35,6 +35,11 @@ from typing import Tuple
 import numpy as np
 from scipy.linalg import eigvals, lstsq, norm, qr
 
+def wlstsq(a,b):
+    """Apply lstsq with normalization"""
+    scale = np.nan_to_num(1.0/np.linalg.norm(a, axis=0),nan=1.0)
+    sol = lstsq(a*scale, b)
+    return (sol[0]*scale,sol[1:])
 
 def evaluate(
     eval_points: np.ndarray,
@@ -542,12 +547,7 @@ def identify_poles(
         lhs_matrix[i0:i1] = lhs_block
         rhs_vector[i0:i1] = rhs_block
 
-    column_scale = np.linalg.norm(lhs_matrix, axis=0)
-    column_scale[column_scale == 0] = 1.0
-    lhs_matrix /= column_scale
-
-    solution, *_ = lstsq(lhs_matrix, rhs_vector)
-    solution *= column_scale
+    solution, *_ = wlstsq(lhs_matrix, rhs_vector)
     coeffs = solution[:-1]
     denom = solution[-1]
 
@@ -581,11 +581,7 @@ def identify_poles(
             lhs_matrix[i0:i1] = lhs_block
             rhs_vector[i0:i1] = rhs_block
 
-        column_scale = np.linalg.norm(lhs_matrix, axis=0)
-        column_scale[column_scale == 0] = 1.0
-        lhs_matrix /= column_scale
-        coeffs, *_ = lstsq(lhs_matrix, rhs_vector)
-        coeffs *= column_scale
+        coeffs, *_ = wlstsq(lhs_matrix, rhs_vector)
 
     lambda_matrix = np.zeros((num_poles, num_poles))
     scale_vector = np.ones((num_poles, 1))
@@ -660,11 +656,7 @@ def solve_vector_block(
     lhs_matrix = np.vstack((A.real, A.imag))
     rhs_vector = np.concatenate((b.real, b.imag))
 
-    scale_column = np.linalg.norm(lhs_matrix, axis=0)
-    scale_column[scale_column == 0] = 1.0
-    lhs_matrix /= scale_column
-    x = lstsq(lhs_matrix, rhs_vector)[0]
-    x *= scale_column
+    x = wlstsq(lhs_matrix, rhs_vector)[0]
 
     residues = x[:num_poles]
     poly_coeffs = x[num_poles : num_poles + num_polys] if num_polys > 0 else None

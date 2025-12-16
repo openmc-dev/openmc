@@ -1,4 +1,5 @@
 #include "openmc/settings.h"
+#include "openmc/random_ray/flat_source_domain.h"
 
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
@@ -10,6 +11,7 @@
 #endif
 
 #include "openmc/capi.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/distribution.h"
@@ -25,6 +27,7 @@
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/random_ray/random_ray.h"
+#include "openmc/reaction.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
@@ -44,6 +47,7 @@ namespace settings {
 // Default values for boolean flags
 bool assume_separate {false};
 bool check_overlaps {false};
+bool collision_track {false};
 bool cmfd_run {false};
 bool confidence_intervals {false};
 bool create_delayed_neutrons {true};
@@ -51,6 +55,7 @@ bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
+bool ifp_on {false};
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
 bool output_summary {true};
@@ -69,11 +74,14 @@ bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
+bool survival_normalization {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
+bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool use_decay_photons {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -102,11 +110,14 @@ int max_particle_events {1000000};
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
+int ifp_n_generation {-1};
+IFPParameter ifp_parameter {IFPParameter::None};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
 int n_batches;
 int n_max_batches;
+int max_secondaries {10000};
 int max_history_splits {10'000'000};
 int max_tracks {1000};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
@@ -117,7 +128,10 @@ RunMode run_mode {RunMode::UNSET};
 SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
+double source_rejection_fraction {0.05};
+double free_gas_threshold {400.0};
 std::unordered_set<int> source_write_surf_id;
+CollisionTrackConfig collision_track_config {};
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
@@ -131,7 +145,7 @@ int trace_gen;
 int64_t trace_particle;
 vector<array<int, 3>> track_identifiers;
 int trigger_batch_interval {1};
-int verbosity {7};
+int verbosity {-1};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 
@@ -301,6 +315,54 @@ void get_run_parameters(pugi::xml_node node_base)
       FlatSourceDomain::volume_normalized_flux_tallies_ =
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
     }
+    if (check_for_node(random_ray_node, "adjoint")) {
+      FlatSourceDomain::adjoint_ =
+        get_node_value_bool(random_ray_node, "adjoint");
+    }
+    if (check_for_node(random_ray_node, "sample_method")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "sample_method", true, true);
+      if (temp_str == "prng") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+      } else if (temp_str == "halton") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
+      } else {
+        fatal_error("Unrecognized sample method: " + temp_str);
+      }
+    }
+    if (check_for_node(random_ray_node, "source_region_meshes")) {
+      pugi::xml_node node_source_region_meshes =
+        random_ray_node.child("source_region_meshes");
+      for (pugi::xml_node node_mesh :
+        node_source_region_meshes.children("mesh")) {
+        int mesh_id = std::stoi(node_mesh.attribute("id").value());
+        for (pugi::xml_node node_domain : node_mesh.children("domain")) {
+          int domain_id = std::stoi(node_domain.attribute("id").value());
+          std::string domain_type = node_domain.attribute("type").value();
+          Source::DomainType type;
+          if (domain_type == "material") {
+            type = Source::DomainType::MATERIAL;
+          } else if (domain_type == "cell") {
+            type = Source::DomainType::CELL;
+          } else if (domain_type == "universe") {
+            type = Source::DomainType::UNIVERSE;
+          } else {
+            throw std::runtime_error("Unknown domain type: " + domain_type);
+          }
+          FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(
+            type, domain_id);
+        }
+      }
+    }
+    if (check_for_node(random_ray_node, "diagonal_stabilization_rho")) {
+      FlatSourceDomain::diagonal_stabilization_rho_ = std::stod(
+        get_node_value(random_ray_node, "diagonal_stabilization_rho"));
+      if (FlatSourceDomain::diagonal_stabilization_rho_ < 0.0 ||
+          FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
+        fatal_error("Random ray diagonal stabilization rho factor must be "
+                    "between 0 and 1");
+      }
+    }
   }
 }
 
@@ -334,8 +396,10 @@ void read_settings_xml()
   xml_node root = doc.document_element();
 
   // Verbosity
-  if (check_for_node(root, "verbosity")) {
+  if (check_for_node(root, "verbosity") && verbosity == -1) {
     verbosity = std::stoi(get_node_value(root, "verbosity"));
+  } else if (verbosity == -1) {
+    verbosity = 7;
   }
 
   // To this point, we haven't displayed any output since we didn't know what
@@ -483,6 +547,20 @@ void read_settings_xml(pugi::xml_node root)
     } else if (rel_max_lost_particles <= 0.0 || rel_max_lost_particles >= 1.0) {
       fatal_error("Relative max lost particles must be between zero and one.");
     }
+
+    // Check for user value for the number of generation of the Iterated Fission
+    // Probability (IFP) method
+    if (check_for_node(root, "ifp_n_generation")) {
+      ifp_n_generation = std::stoi(get_node_value(root, "ifp_n_generation"));
+      if (ifp_n_generation <= 0) {
+        fatal_error("'ifp_n_generation' must be greater than 0.");
+      }
+      // Avoid tallying 0 if IFP logs are not complete when active cycles start
+      if (ifp_n_generation > n_inactive) {
+        fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                    "number of inactive cycles.");
+      }
+    }
   }
 
   // Copy plotting random number seed if specified
@@ -495,6 +573,12 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "seed")) {
     auto seed = std::stoll(get_node_value(root, "seed"));
     openmc_set_seed(seed);
+  }
+
+  // Copy random number stride if specified
+  if (check_for_node(root, "stride")) {
+    auto stride = std::stoull(get_node_value(root, "stride"));
+    openmc_set_stride(stride);
   }
 
   // Check for electron treatment
@@ -570,9 +654,26 @@ void read_settings_xml(pugi::xml_node root)
       UPtrDist {new Discrete(T, p, 1)}));
   }
 
+  // Build probability mass function for sampling external sources
+  vector<double> source_strengths;
+  for (auto& s : model::external_sources) {
+    source_strengths.push_back(s->strength());
+  }
+  model::external_sources_probability.assign(source_strengths);
+
   // Check if we want to write out source
   if (check_for_node(root, "write_initial_source")) {
     write_initial_source = get_node_value_bool(root, "write_initial_source");
+  }
+
+  // Get relative number of lost particles
+  if (check_for_node(root, "source_rejection_fraction")) {
+    source_rejection_fraction =
+      std::stod(get_node_value(root, "source_rejection_fraction"));
+  }
+
+  if (check_for_node(root, "free_gas_threshold")) {
+    free_gas_threshold = std::stod(get_node_value(root, "free_gas_threshold"));
   }
 
   // Survival biasing
@@ -593,6 +694,10 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "weight_avg")) {
       weight_survive = std::stod(get_node_value(node_cutoff, "weight_avg"));
+    }
+    if (check_for_node(node_cutoff, "survival_normalization")) {
+      survival_normalization =
+        get_node_value_bool(node_cutoff, "survival_normalization");
     }
     if (check_for_node(node_cutoff, "energy_neutron")) {
       energy_cutoff[0] =
@@ -764,12 +869,6 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_sp, "mcpl")) {
       source_mcpl_write = get_node_value_bool(node_sp, "mcpl");
-
-      // Make sure MCPL support is enabled
-      if (source_mcpl_write && !MCPL_ENABLED) {
-        fatal_error(
-          "Your build of OpenMC does not support writing MCPL source files.");
-      }
     }
     if (check_for_node(node_sp, "overwrite_latest")) {
       source_latest = get_node_value_bool(node_sp, "overwrite_latest");
@@ -780,6 +879,12 @@ void read_settings_xml(pugi::xml_node root)
     // statepoint file and write it out at statepoints intervals
     source_separate = false;
     sourcepoint_batch = statepoint_batch;
+  }
+
+  // Check is the user specified to convert strength to statistical weight
+  if (check_for_node(root, "uniform_source_sampling")) {
+    uniform_source_sampling =
+      get_node_value_bool(root, "uniform_source_sampling");
   }
 
   // Check if the user has specified to write surface source
@@ -816,12 +921,6 @@ void read_settings_xml(pugi::xml_node root)
 
     if (check_for_node(node_ssw, "mcpl")) {
       surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
-
-      // Make sure MCPL support is enabled
-      if (surf_mcpl_write && !MCPL_ENABLED) {
-        fatal_error("Your build of OpenMC does not support writing MCPL "
-                    "surface source files.");
-      }
     }
     // Get cell information
     if (check_for_node(node_ssw, "cell")) {
@@ -846,8 +945,72 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  // If source is not separate and is to be written out in the statepoint file,
-  // make sure that the sourcepoint batch numbers are contained in the
+  // Check if the user has specified to write specific collisions
+  if (check_for_node(root, "collision_track")) {
+    settings::collision_track = true;
+    // Get collision track node
+    xml_node node_ct = root.child("collision_track");
+    collision_track_config = CollisionTrackConfig {};
+
+    // Determine cell ids at which crossing particles are to be banked
+    if (check_for_node(node_ct, "cell_ids")) {
+      auto temp = get_node_array<int>(node_ct, "cell_ids");
+      for (const auto& b : temp) {
+        collision_track_config.cell_ids.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "reactions")) {
+      auto temp = get_node_array<std::string>(node_ct, "reactions");
+      for (const auto& b : temp) {
+        int reaction_int = reaction_type(b);
+        if (reaction_int > 0) {
+          collision_track_config.mt_numbers.insert(reaction_int);
+        }
+      }
+    }
+    if (check_for_node(node_ct, "universe_ids")) {
+      auto temp = get_node_array<int>(node_ct, "universe_ids");
+      for (const auto& b : temp) {
+        collision_track_config.universe_ids.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "material_ids")) {
+      auto temp = get_node_array<int>(node_ct, "material_ids");
+      for (const auto& b : temp) {
+        collision_track_config.material_ids.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "nuclides")) {
+      auto temp = get_node_array<std::string>(node_ct, "nuclides");
+      for (const auto& b : temp) {
+        collision_track_config.nuclides.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "deposited_E_threshold")) {
+      collision_track_config.deposited_energy_threshold =
+        std::stod(get_node_value(node_ct, "deposited_E_threshold"));
+    }
+    // Get maximum number of particles to be banked per collision
+    if (check_for_node(node_ct, "max_collisions")) {
+      collision_track_config.max_collisions =
+        std::stoll(get_node_value(node_ct, "max_collisions"));
+    } else {
+      warning("A maximum number of collisions needs to be specified. "
+              "By default the code sets 'max_collisions' parameter equals to "
+              "1000.");
+    }
+    // Get maximum number of collision_track files to be created
+    if (check_for_node(node_ct, "max_collision_track_files")) {
+      collision_track_config.max_files =
+        std::stoll(get_node_value(node_ct, "max_collision_track_files"));
+    }
+    if (check_for_node(node_ct, "mcpl")) {
+      collision_track_config.mcpl_write = get_node_value_bool(node_ct, "mcpl");
+    }
+  }
+
+  // If source is not separate and is to be written out in the statepoint
+  // file, make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
   if (!source_separate) {
     for (const auto& b : sourcepoint_batch) {
@@ -1056,6 +1219,11 @@ void read_settings_xml(pugi::xml_node root)
     weight_windows_on = get_node_value_bool(root, "weight_windows_on");
   }
 
+  if (check_for_node(root, "max_secondaries")) {
+    settings::max_secondaries =
+      std::stoi(get_node_value(root, "max_secondaries"));
+  }
+
   if (check_for_node(root, "max_history_splits")) {
     settings::max_history_splits =
       std::stoi(get_node_value(root, "max_history_splits"));
@@ -1073,8 +1241,8 @@ void read_settings_xml(pugi::xml_node root)
       variance_reduction::weight_windows_generators.emplace_back(
         std::make_unique<WeightWindowsGenerator>(node_wwg));
     }
-    // if any of the weight windows are intended to be generated otf, make sure
-    // they're applied
+    // if any of the weight windows are intended to be generated otf, make
+    // sure they're applied
     for (const auto& wwg : variance_reduction::weight_windows_generators) {
       if (wwg->on_the_fly_) {
         settings::weight_windows_on = true;
@@ -1095,6 +1263,11 @@ void read_settings_xml(pugi::xml_node root)
         get_node_value_bool(ww_checkpoints, "surface");
     }
   }
+
+  if (check_for_node(root, "use_decay_photons")) {
+    settings::use_decay_photons =
+      get_node_value_bool(root, "use_decay_photons");
+  }
 }
 
 void free_memory_settings()
@@ -1114,11 +1287,6 @@ extern "C" int openmc_set_n_batches(
 {
   if (settings::n_inactive >= n_batches) {
     set_errmsg("Number of active batches must be greater than zero.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  if (simulation::current_batch >= n_batches) {
-    set_errmsg("Number of batches must be greater than current batch.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 

@@ -129,8 +129,7 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
 void TranslationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface()) - 1;
+  int i_particle_surf = p.surface_index();
 
   // Figure out which of the two BC surfaces were struck then find the
   // particle's new location and surface.
@@ -159,63 +158,44 @@ void TranslationalPeriodicBC::handle_particle(
 // RotationalPeriodicBC implementation
 //==============================================================================
 
-RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
+RotationalPeriodicBC::RotationalPeriodicBC(
+  int i_surf, int j_surf, PeriodicAxis axis)
   : PeriodicBC(i_surf, j_surf)
 {
   Surface& surf1 {*model::surfaces[i_surf_]};
   Surface& surf2 {*model::surfaces[j_surf_]};
 
-  // Check the type of the first surface
-  bool surf1_is_xyplane;
-  if (const auto* ptr = dynamic_cast<const SurfaceXPlane*>(&surf1)) {
-    surf1_is_xyplane = true;
-  } else if (const auto* ptr = dynamic_cast<const SurfaceYPlane*>(&surf1)) {
-    surf1_is_xyplane = true;
-  } else if (const auto* ptr = dynamic_cast<const SurfacePlane*>(&surf1)) {
-    surf1_is_xyplane = false;
-  } else {
-    throw std::invalid_argument(fmt::format(
-      "Surface {} is an invalid type for "
-      "rotational periodic BCs. Only x-planes, y-planes, or general planes "
-      "(that are perpendicular to z) are supported for these BCs.",
-      surf1.id_));
-  }
-
-  // Check the type of the second surface
-  bool surf2_is_xyplane;
-  if (const auto* ptr = dynamic_cast<const SurfaceXPlane*>(&surf2)) {
-    surf2_is_xyplane = true;
-  } else if (const auto* ptr = dynamic_cast<const SurfaceYPlane*>(&surf2)) {
-    surf2_is_xyplane = true;
-  } else if (const auto* ptr = dynamic_cast<const SurfacePlane*>(&surf2)) {
-    surf2_is_xyplane = false;
-  } else {
-    throw std::invalid_argument(fmt::format(
-      "Surface {} is an invalid type for "
-      "rotational periodic BCs. Only x-planes, y-planes, or general planes "
-      "(that are perpendicular to z) are supported for these BCs.",
-      surf2.id_));
+  // below convention for right handed coordinate system
+  switch (axis) {
+  case x:
+    zero_axis_idx_ = 0; // x component of plane must be zero
+    axis_1_idx_ = 1;    // y component independent
+    axis_2_idx_ = 2;    // z component dependent
+    break;
+  case y:
+    // for a right handed coordinate system, z should be the independent axis
+    // but this would cause the y-rotation case to be different than the other
+    // two. using a left handed coordinate system and a negative rotation the
+    // compute angle and rotation matrix behavior mimics that of the x and z
+    // cases
+    zero_axis_idx_ = 1; // y component of plane must be zero
+    axis_1_idx_ = 0;    // x component independent
+    axis_2_idx_ = 2;    // z component dependent
+    break;
+  case z:
+    zero_axis_idx_ = 2; // z component of plane must be zero
+    axis_1_idx_ = 0;    // x component independent
+    axis_2_idx_ = 1;    // y component dependent
+    break;
+  default:
+    throw std::invalid_argument(
+      fmt::format("You've specified an axis that is not x, y, or z."));
   }
 
   // Compute the surface normal vectors and make sure they are perpendicular
-  // to the z-axis
+  // to the correct axis
   Direction norm1 = surf1.normal({0, 0, 0});
   Direction norm2 = surf2.normal({0, 0, 0});
-  if (std::abs(norm1.z) > FP_PRECISION) {
-    throw std::invalid_argument(fmt::format(
-      "Rotational periodic BCs are only "
-      "supported for rotations about the z-axis, but surface {} is not "
-      "perpendicular to the z-axis.",
-      surf1.id_));
-  }
-  if (std::abs(norm2.z) > FP_PRECISION) {
-    throw std::invalid_argument(fmt::format(
-      "Rotational periodic BCs are only "
-      "supported for rotations about the z-axis, but surface {} is not "
-      "perpendicular to the z-axis.",
-      surf2.id_));
-  }
-
   // Make sure both surfaces intersect the origin
   if (std::abs(surf1.evaluate({0, 0, 0})) > FP_COINCIDENT) {
     throw std::invalid_argument(fmt::format(
@@ -232,15 +212,8 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
       surf2.id_));
   }
 
-  // Compute the BC rotation angle.  Here it is assumed that both surface
-  // normal vectors point inwards---towards the valid geometry region.
-  // Consequently, the rotation angle is not the difference between the two
-  // normals, but is instead the difference between one normal and one
-  // anti-normal.  (An incident ray on one surface must be an outgoing ray on
-  // the other surface after rotation hence the anti-normal.)
-  double theta1 = std::atan2(norm1.y, norm1.x);
-  double theta2 = std::atan2(norm2.y, norm2.x) + PI;
-  angle_ = theta2 - theta1;
+  angle_ = compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
+    norm2[axis_2_idx_], norm2[axis_1_idx_]);
 
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));
@@ -252,11 +225,24 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
   }
 }
 
+double RotationalPeriodicBC::compute_periodic_rotation(
+  double rise_1, double run_1, double rise_2, double run_2) const
+{
+  // Compute the BC rotation angle.  Here it is assumed that both surface
+  // normal vectors point inwards---towards the valid geometry region.
+  // Consequently, the rotation angle is not the difference between the two
+  // normals, but is instead the difference between one normal and one
+  // anti-normal.  (An incident ray on one surface must be an outgoing ray on
+  // the other surface after rotation hence the anti-normal.)
+  double theta1 = std::atan2(rise_1, run_1);
+  double theta2 = std::atan2(rise_2, run_2) + PI;
+  return theta2 - theta1;
+}
+
 void RotationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface()) - 1;
+  int i_particle_surf = p.surface_index();
 
   // Figure out which of the two BC surfaces were struck to figure out if a
   // forward or backward rotation is required.  Specify the other surface as
@@ -280,10 +266,16 @@ void RotationalPeriodicBC::handle_particle(
   Direction u = p.u();
   double cos_theta = std::cos(theta);
   double sin_theta = std::sin(theta);
-  Position new_r = {
-    cos_theta * r.x - sin_theta * r.y, sin_theta * r.x + cos_theta * r.y, r.z};
-  Direction new_u = {
-    cos_theta * u.x - sin_theta * u.y, sin_theta * u.x + cos_theta * u.y, u.z};
+
+  Position new_r;
+  new_r[zero_axis_idx_] = r[zero_axis_idx_];
+  new_r[axis_1_idx_] = cos_theta * r[axis_1_idx_] - sin_theta * r[axis_2_idx_];
+  new_r[axis_2_idx_] = sin_theta * r[axis_1_idx_] + cos_theta * r[axis_2_idx_];
+
+  Direction new_u;
+  new_u[zero_axis_idx_] = u[zero_axis_idx_];
+  new_u[axis_1_idx_] = cos_theta * u[axis_1_idx_] - sin_theta * u[axis_2_idx_];
+  new_u[axis_2_idx_] = sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_];
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);

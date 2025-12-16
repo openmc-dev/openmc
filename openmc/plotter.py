@@ -1,5 +1,7 @@
+from __future__ import annotations
 from itertools import chain
 from numbers import Integral, Real
+from typing import Dict, Iterable, List
 
 import numpy as np
 
@@ -120,18 +122,29 @@ def _get_title(reactions):
         return 'Cross Section Plot'
 
 
-def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
-            sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
-            enrichment=None, plot_CE=True, orders=None, divisor_orders=None,
-            energy_axis_units="eV", **kwargs):
+def plot_xs(
+    reactions: Dict[str | openmc.Material, List[str]],
+    divisor_types: Iterable[str] | None = None,
+    temperature: float = 294.0,
+    axis: "plt.Axes" | None = None,
+    sab_name: str | None = None,
+    ce_cross_sections: str | None = None,
+    mg_cross_sections: str | None = None,
+    enrichment: float | None = None,
+    plot_CE: bool = True,
+    orders: Iterable[int] | None = None,
+    divisor_orders: Iterable[int] | None = None,
+    energy_axis_units: str = "eV",
+    **kwargs,
+) -> "plt.Figure" | None:
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
     ----------
     reactions : dict
         keys can be either a nuclide or element in string form or an
-        openmc.Material object. Values are the type of cross sections to
-        include in the plot.
+        openmc.Material object. Values are a list of the types of
+        cross sections to include in the plot.
     divisor_types : Iterable of values of PLOT_TYPES, optional
         Cross section types which will divide those produced by types
         before plotting. A type of 'unity' can be used to effectively not
@@ -275,7 +288,6 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
     return fig
 
 
-
 def calculate_cexs(this, types, temperature=294., sab_name=None,
                    cross_sections=None, enrichment=None, ncrystal_cfg=None):
     """Calculates continuous-energy cross sections of a requested type.
@@ -401,7 +413,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
 
         # Prep S(a,b) data if needed
         if sab_name:
-            sab = openmc.data.ThermalScattering.from_hdf5(sab_name)
+            sab = openmc.data.ThermalScattering.from_hdf5(
+                library.get_by_material(sab_name, data_type='thermal')['path'])
             # Obtain the nearest temperature
             if strT in sab.temperatures:
                 sabT = strT
@@ -488,7 +501,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     elif ncrystal_cfg:
                         import NCrystal
                         nc_scatter = NCrystal.createScatter(ncrystal_cfg)
-                        nc_func = nc_scatter.crossSectionNonOriented
+                        nc_func = nc_scatter.xsect
                         nc_emax = 5 # eV # this should be obtained from NCRYSTAL_MAX_ENERGY
                         energy_grid = np.union1d(np.geomspace(min(energy_grid),
                                                               1.1*nc_emax,
@@ -628,14 +641,13 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
             sab = openmc.data.ThermalScattering.from_hdf5(
                 library.get_by_material(sab_name, data_type='thermal')['path'])
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name,
-                        data_type='thermal')['path']
+                sabs[nuc] = sab_name
     else:
         if sab_name:
-            sab = openmc.data.ThermalScattering.from_hdf5(sab_name)
+            sab = openmc.data.ThermalScattering.from_hdf5(
+                library.get_by_material(sab_name, data_type='thermal')['path'])
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name,
-                        data_type='thermal')['path']
+                sabs[nuc] = sab_name
 
     # Now we can create the data sets to be plotted
     xs = {}
@@ -643,8 +655,8 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     for nuclide in nuclides.items():
         name = nuclide[0]
         nuc = nuclide[1]
-        sab_tab = sabs[name]
-        temp_E, temp_xs = calculate_cexs(nuc, types, T, sab_tab, cross_sections,
+        sab_name = sabs[name]
+        temp_E, temp_xs = calculate_cexs(nuc, types, T, sab_name, cross_sections,
                                          ncrystal_cfg=ncrystal_cfg
                                          )
         E.append(temp_E)

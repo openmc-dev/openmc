@@ -1,15 +1,16 @@
 #include "openmc/weight_windows.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <set>
 #include <string>
 
+#include "xtensor/xdynamic_view.hpp"
 #include "xtensor/xindex_view.hpp"
 #include "xtensor/xio.hpp"
 #include "xtensor/xmasked_view.hpp"
 #include "xtensor/xnoalias.hpp"
-#include "xtensor/xstrided_view.hpp"
 #include "xtensor/xview.hpp"
 
 #include "openmc/error.h"
@@ -22,8 +23,10 @@
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/physics_common.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"
@@ -31,7 +34,6 @@
 #include "openmc/xml_interface.h"
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 namespace openmc {
 
@@ -72,9 +74,25 @@ void apply_weight_windows(Particle& p)
     if (weight_window.is_valid())
       break;
   }
+
+  // If particle has not yet had its birth weight window value set, set it to
+  // the current weight window (or 1.0 if not born in a weight window).
+  if (p.wgt_ww_born() == -1.0) {
+    if (weight_window.is_valid()) {
+      p.wgt_ww_born() =
+        (weight_window.lower_weight + weight_window.upper_weight) / 2;
+    } else {
+      p.wgt_ww_born() = 1.0;
+    }
+  }
+
   // particle is not in any of the ww domains, do nothing
   if (!weight_window.is_valid())
     return;
+
+  // Normalize weight windows based on particle's starting weight
+  // and the value of the weight window the particle was born in.
+  weight_window.scale(p.wgt_born() / p.wgt_ww_born());
 
   // get the paramters
   double weight = p.wgt();
@@ -114,7 +132,7 @@ void apply_weight_windows(Particle& p)
     // Create secondaries and divide weight among all particles
     int i_split = std::round(n_split);
     for (int l = 0; l < i_split - 1; l++) {
-      p.create_secondary(weight / n_split, p.u(), p.E(), p.type());
+      p.split(weight / n_split);
     }
     // remaining weight is applied to current particle
     p.wgt() = weight / n_split;
@@ -288,7 +306,7 @@ void WeightWindows::allocate_ww_bounds()
 
 void WeightWindows::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in mesh map in case one was already assigned
   if (id_ != C_NONE) {
@@ -316,7 +334,7 @@ void WeightWindows::set_id(int32_t id)
   variance_reduction::ww_map[id] = index_;
 }
 
-void WeightWindows::set_energy_bounds(gsl::span<const double> bounds)
+void WeightWindows::set_energy_bounds(span<const double> bounds)
 {
   energy_bounds_.clear();
   energy_bounds_.insert(energy_bounds_.begin(), bounds.begin(), bounds.end());
@@ -451,7 +469,7 @@ void WeightWindows::set_bounds(
 }
 
 void WeightWindows::set_bounds(
-  gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
+  span<const double> lower_bounds, span<const double> upper_bounds)
 {
   check_bounds(lower_bounds, upper_bounds);
   auto shape = this->bounds_size();
@@ -465,8 +483,7 @@ void WeightWindows::set_bounds(
     xt::adapt(upper_bounds.data(), upper_ww_.shape());
 }
 
-void WeightWindows::set_bounds(
-  gsl::span<const double> lower_bounds, double ratio)
+void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
 {
   this->check_bounds(lower_bounds);
 
@@ -482,16 +499,26 @@ void WeightWindows::set_bounds(
   upper_ww_ *= ratio;
 }
 
-void WeightWindows::update_magic(
-  const Tally* tally, const std::string& value, double threshold, double ratio)
+void WeightWindows::update_weights(const Tally* tally, const std::string& value,
+  double threshold, double ratio, WeightWindowUpdateMethod method)
 {
   ///////////////////////////
   // Setup and checks
   ///////////////////////////
   this->check_tally_update_compatibility(tally);
 
-  lower_ww_.fill(-1);
-  upper_ww_.fill(-1);
+  // Dimensions of weight window arrays
+  int e_bins = lower_ww_.shape()[0];
+  int64_t mesh_bins = lower_ww_.shape()[1];
+
+  // Initialize weight window arrays to -1.0 by default
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      lower_ww_(e, m) = -1.0;
+      upper_ww_(e, m) = -1.0;
+    }
+  }
 
   // determine which value to use
   const std::set<std::string> allowed_values = {"mean", "rel_err"};
@@ -520,8 +547,10 @@ void WeightWindows::update_magic(
 
   // build a shape for a view of the tally results, this will always be
   // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
-  std::array<int, 5> shape = {
-    1, 1, 1, tally->n_scores(), static_cast<int>(TallyResult::SIZE)};
+  // Look for the size of the last dimension of the results array
+  const auto& results_arr = tally->results();
+  const int results_dim = static_cast<int>(results_arr.shape()[2]);
+  std::array<int, 5> shape = {1, 1, 1, tally->n_scores(), results_dim};
 
   // set the shape for the filters applied on the tally
   for (int i = 0; i < tally->filters().size(); i++) {
@@ -559,7 +588,7 @@ void WeightWindows::update_magic(
 
   // get a fully reshaped view of the tally according to tally ordering of
   // filters
-  auto tally_values = xt::reshape_view(tally->results(), shape);
+  auto tally_values = xt::reshape_view(results_arr, shape);
 
   // get a that is (particle, energy, mesh, scores, values)
   auto transposed_view = xt::transpose(tally_values, transpose);
@@ -589,10 +618,12 @@ void WeightWindows::update_magic(
   }
 
   // down-select data based on particle and score
-  auto sum = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
-    score_index, static_cast<int>(TallyResult::SUM));
-  auto sum_sq = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
-    score_index, static_cast<int>(TallyResult::SUM_SQ));
+  auto sum = xt::dynamic_view(
+    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
+                       static_cast<int>(TallyResult::SUM)});
+  auto sum_sq = xt::dynamic_view(
+    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
+                       static_cast<int>(TallyResult::SUM_SQ)});
   int n = tally->n_realizations_;
 
   //////////////////////////////////////////////
@@ -610,47 +641,117 @@ void WeightWindows::update_magic(
   auto& new_bounds = this->lower_ww_;
   auto& rel_err = this->upper_ww_;
 
-  // noalias avoids memory allocation here
-  xt::noalias(new_bounds) = sum / n;
-
-  xt::noalias(rel_err) =
-    xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
-  xt::filter(rel_err, sum <= 0.0).fill(INFTY);
-
-  if (value == "rel_err")
-    xt::noalias(new_bounds) = 1 / rel_err;
-
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
 
-  int e_bins = new_bounds.shape()[0];
+  // Calculate mean (new_bounds) and relative error
+#pragma omp parallel for collapse(2) schedule(static)
   for (int e = 0; e < e_bins; e++) {
-    // select all
-    auto group_view = xt::view(new_bounds, e);
-
-    // divide by volume of mesh elements
-    for (int i = 0; i < group_view.size(); i++) {
-      group_view[i] /= mesh_vols[i];
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      // Calculate mean
+      new_bounds(e, m) = sum(e, m) / n;
+      // Calculate relative error
+      if (sum(e, m) > 0.0) {
+        double mean_val = new_bounds(e, m);
+        double variance = (sum_sq(e, m) / n - mean_val * mean_val) / (n - 1);
+        rel_err(e, m) = std::sqrt(variance) / mean_val;
+      } else {
+        rel_err(e, m) = INFTY;
+      }
+      if (value == "rel_err") {
+        new_bounds(e, m) = 1.0 / rel_err(e, m);
+      }
     }
-
-    double group_max = *std::max_element(group_view.begin(), group_view.end());
-    // normalize values in this energy group by the maximum value for this
-    // group
-    if (group_max > 0.0)
-      group_view /= 2.0 * group_max;
   }
 
-  // make sure that values where the mean is zero are set s.t. the weight window
-  // value will be ignored
-  xt::filter(new_bounds, sum <= 0.0).fill(-1.0);
+  // Divide by volume of mesh elements
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      new_bounds(e, m) /= mesh_vols[m];
+    }
+  }
 
-  // make sure the weight windows are ignored for any locations where the
-  // relative error is higher than the specified relative error threshold
-  xt::filter(new_bounds, rel_err > threshold).fill(-1.0);
+  if (method == WeightWindowUpdateMethod::MAGIC) {
+    // For MAGIC, weight windows are proportional to the forward fluxes.
+    // We normalize weight windows independently for each energy group.
 
-  // update the bounds of this weight window class
-  // noalias avoids additional memory allocation
-  xt::noalias(upper_ww_) = ratio * lower_ww_;
+    // Find group maximum and normalize (per energy group)
+    for (int e = 0; e < e_bins; e++) {
+      double group_max = 0.0;
+
+      // Find maximum value across all elements in this energy group
+#pragma omp parallel for schedule(static) reduction(max : group_max)
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        if (new_bounds(e, m) > group_max) {
+          group_max = new_bounds(e, m);
+        }
+      }
+
+      // Normalize values in this energy group by the maximum value
+      if (group_max > 0.0) {
+        double norm_factor = 1.0 / (2.0 * group_max);
+#pragma omp parallel for schedule(static)
+        for (int64_t m = 0; m < mesh_bins; m++) {
+          new_bounds(e, m) *= norm_factor;
+        }
+      }
+    }
+  } else {
+    // For FW-CADIS, weight windows are inversely proportional to the adjoint
+    // fluxes. We normalize the weight windows across all energy groups.
+#pragma omp parallel for collapse(2) schedule(static)
+    for (int e = 0; e < e_bins; e++) {
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        // Take the inverse, but are careful not to divide by zero
+        if (new_bounds(e, m) != 0.0) {
+          new_bounds(e, m) = 1.0 / new_bounds(e, m);
+        } else {
+          new_bounds(e, m) = 0.0;
+        }
+      }
+    }
+
+    // Find the maximum value across all elements
+    double max_val = 0.0;
+#pragma omp parallel for collapse(2) schedule(static) reduction(max : max_val)
+    for (int e = 0; e < e_bins; e++) {
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        if (new_bounds(e, m) > max_val) {
+          max_val = new_bounds(e, m);
+        }
+      }
+    }
+
+    // Parallel normalization
+    if (max_val > 0.0) {
+      double norm_factor = 1.0 / (2.0 * max_val);
+#pragma omp parallel for collapse(2) schedule(static)
+      for (int e = 0; e < e_bins; e++) {
+        for (int64_t m = 0; m < mesh_bins; m++) {
+          new_bounds(e, m) *= norm_factor;
+        }
+      }
+    }
+  }
+
+  // Final processing
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      // Values where the mean is zero should be ignored
+      if (sum(e, m) <= 0.0) {
+        new_bounds(e, m) = -1.0;
+      }
+      // Values where the relative error is higher than the threshold should be
+      // ignored
+      else if (rel_err(e, m) > threshold) {
+        new_bounds(e, m) = -1.0;
+      }
+      // Set the upper bounds
+      upper_ww_(e, m) = ratio * lower_ww_(e, m);
+    }
+  }
 }
 
 void WeightWindows::check_tally_update_compatibility(const Tally* tally)
@@ -737,7 +838,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   int32_t mesh_idx = model::mesh_map[mesh_id];
   max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
 
-  int active_batches = settings::n_batches - settings::n_inactive;
+  int32_t active_batches = settings::n_batches - settings::n_inactive;
   if (max_realizations_ > active_batches) {
     auto msg =
       fmt::format("The maximum number of specified tally realizations ({}) is "
@@ -760,37 +861,51 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     e_bounds.push_back(data::energy_max[p_type]);
   }
 
-  // set method and parameters for updates
-  method_ = get_node_value(node, "method");
-  if (method_ == "magic") {
-    // parse non-default update parameters if specified
-    if (check_for_node(node, "update_parameters")) {
-      pugi::xml_node params_node = node.child("update_parameters");
-      if (check_for_node(params_node, "value"))
-        tally_value_ = get_node_value(params_node, "value");
-      if (check_for_node(params_node, "threshold"))
-        threshold_ = std::stod(get_node_value(params_node, "threshold"));
-      if (check_for_node(params_node, "ratio")) {
-        ratio_ = std::stod(get_node_value(params_node, "ratio"));
-      }
+  // set method
+  std::string method_string = get_node_value(node, "method");
+  if (method_string == "magic") {
+    method_ = WeightWindowUpdateMethod::MAGIC;
+    if (settings::solver_type == SolverType::RANDOM_RAY &&
+        FlatSourceDomain::adjoint_) {
+      fatal_error("Random ray weight window generation with MAGIC cannot be "
+                  "done in adjoint mode.");
     }
-    // check update parameter values
-    if (tally_value_ != "mean" && tally_value_ != "rel_err") {
-      fatal_error(fmt::format("Unsupported tally value '{}' specified for "
-                              "weight window generation.",
-        tally_value_));
+  } else if (method_string == "fw_cadis") {
+    method_ = WeightWindowUpdateMethod::FW_CADIS;
+    if (settings::solver_type != SolverType::RANDOM_RAY) {
+      fatal_error("FW-CADIS can only be run in random ray solver mode.");
     }
-    if (threshold_ <= 0.0)
-      fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
-                              "specified for weight window generation",
-        ratio_));
-    if (ratio_ <= 1.0)
-      fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
-                              "specified for weight window generation"));
+    FlatSourceDomain::adjoint_ = true;
   } else {
     fatal_error(fmt::format(
-      "Unknown weight window update method '{}' specified", method_));
+      "Unknown weight window update method '{}' specified", method_string));
   }
+
+  // parse non-default update parameters if specified
+  if (check_for_node(node, "update_parameters")) {
+    pugi::xml_node params_node = node.child("update_parameters");
+    if (check_for_node(params_node, "value"))
+      tally_value_ = get_node_value(params_node, "value");
+    if (check_for_node(params_node, "threshold"))
+      threshold_ = std::stod(get_node_value(params_node, "threshold"));
+    if (check_for_node(params_node, "ratio")) {
+      ratio_ = std::stod(get_node_value(params_node, "ratio"));
+    }
+  }
+
+  // check update parameter values
+  if (tally_value_ != "mean" && tally_value_ != "rel_err") {
+    fatal_error(fmt::format("Unsupported tally value '{}' specified for "
+                            "weight window generation.",
+      tally_value_));
+  }
+  if (threshold_ <= 0.0)
+    fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
+                            "specified for weight window generation",
+      ratio_));
+  if (ratio_ <= 1.0)
+    fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
+                            "specified for weight window generation"));
 
   // create a matching weight windows object
   auto wws = WeightWindows::create();
@@ -855,13 +970,19 @@ void WeightWindowsGenerator::update() const
 
   Tally* tally = model::tallies[tally_idx_].get();
 
-  // if we're beyond the number of max realizations or not at the corrrect
-  // update interval, skip the update
-  if (max_realizations_ < tally->n_realizations_ ||
-      tally->n_realizations_ % update_interval_ != 0)
+  // If in random ray mode, only update on the last batch
+  if (settings::solver_type == SolverType::RANDOM_RAY) {
+    if (simulation::current_batch != settings::n_batches) {
+      return;
+    }
+    // If in Monte Carlo mode and beyond the number of max realizations or
+    // not at the correct update interval, skip the update
+  } else if (max_realizations_ < tally->n_realizations_ ||
+             tally->n_realizations_ % update_interval_ != 0) {
     return;
+  }
 
-  wws->update_magic(tally, tally_value_, threshold_, ratio_);
+  wws->update_weights(tally, tally_value_, threshold_, ratio_, method_);
 
   // if we're not doing on the fly generation, reset the tally results once
   // we're done with the update
@@ -945,7 +1066,7 @@ extern "C" int openmc_weight_windows_update_magic(int32_t ww_idx,
   // get the WeightWindows object
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
 
-  wws->update_magic(tally, value, threshold, ratio);
+  wws->update_weights(tally, value, threshold, ratio);
 
   return 0;
 }
@@ -1216,6 +1337,10 @@ extern "C" int openmc_weight_windows_import(const char* filename)
   }
 
   hid_t weight_windows_group = open_group(ww_file, "weight_windows");
+
+  hid_t mesh_group = open_group(ww_file, "meshes");
+
+  read_meshes(mesh_group);
 
   std::vector<std::string> names = group_names(weight_windows_group);
 

@@ -86,8 +86,10 @@ public:
   bool fissionable; // Is this fissionable
   bool is_isotropic {
     true}; // used to skip search for angle indices if isotropic
+  bool exists_in_model {true}; // Is this present in model
 
   Mgxs() = default;
+  Mgxs(bool exists) : exists_in_model(exists) {}
 
   //! \brief Constructor that loads the Mgxs object from the HDF5 file
   //!

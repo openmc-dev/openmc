@@ -20,7 +20,7 @@ void check_dagmc_root_univ();
 
 } // namespace openmc
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 #include "DagMC.hpp"
 #include "dagmcmetadata.hpp"
@@ -29,6 +29,12 @@ void check_dagmc_root_univ();
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
+#include "openmc/vector.h"
+
+#include <memory> // for shared_ptr, unique_ptr
+#include <string>
+#include <unordered_map>
+#include <utility> // for pair
 
 class UWUW;
 
@@ -43,9 +49,12 @@ public:
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
-  Direction reflect(Position r, Direction u, GeometryState* p) const override;
+  Direction reflect(
+    Position r, Direction u, GeometryState* p = nullptr) const override;
 
   inline void to_hdf5_inner(hid_t group_id) const override {};
+
+  virtual GeometryType geom_type() const override { return GeometryType::DAG; }
 
   // Accessor methods
   moab::DagMC* dagmc_ptr() const { return dagmc_ptr_.get(); }
@@ -70,6 +79,8 @@ public:
   BoundingBox bounding_box() const override;
 
   void to_hdf5_inner(hid_t group_id) const override;
+
+  virtual GeometryType geom_type() const override { return GeometryType::DAG; }
 
   // Accessor methods
   moab::DagMC* dagmc_ptr() const { return dagmc_ptr_.get(); }
@@ -133,6 +144,10 @@ public:
   void legacy_assign_material(
     std::string mat_string, std::unique_ptr<DAGCell>& c) const;
 
+  //! Assign a material overriding normal assignement to a cell
+  //! \param[in] c The OpenMC cell to which the material is assigned
+  void override_assign_material(std::unique_ptr<DAGCell>& c) const;
+
   //! Return the index into the model cells vector for a given DAGMC volume
   //! handle in the universe
   //! \param[in] vol MOAB handle to the DAGMC volume set
@@ -153,6 +168,8 @@ public:
   bool find_cell(GeometryState& p) const override;
 
   void to_hdf5(hid_t universes_group) const override;
+
+  virtual GeometryType geom_type() const override { return GeometryType::DAG; }
 
   // Data Members
   std::shared_ptr<moab::DagMC>
@@ -184,6 +201,11 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
+  std::unordered_map<int32_t, vector<int32_t>>
+    material_overrides_; //!< Map of material overrides
+                         //!< keys correspond to the DAGMCCell id
+                         //!< values are a list of material ids used
+                         //!< for the override
 };
 
 //==============================================================================
@@ -194,6 +216,6 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 
-#endif // DAGMC
+#endif // OPENMC_DAGMC_ENABLED
 
 #endif // OPENMC_DAGMC_H

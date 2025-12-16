@@ -46,9 +46,7 @@ def test_from_array():
     data.shape = (12, 2, 1)
 
     MicroXS(data, nuclides, reactions)
-    with pytest.raises(ValueError, match=r'Nuclides list of length \d* and '
-                       r'reactions array of length \d* do not '
-                       r'match dimensions of data array of shape \(\d*\, \d*\)'):
+    with pytest.raises(ValueError, match='Data array must be 3D'):
         MicroXS(data[:, 0], nuclides, reactions)
 
 
@@ -96,8 +94,12 @@ def test_multigroup_flux_same():
     energies = [0., 6.25e-1, 5.53e3, 8.21e5, 2.e7]
     flux_per_ev = [0.3, 0.3, 1.0, 1.0]
     flux = flux_per_ev * np.diff(energies)
+    flux_sum = flux.sum()
     microxs_4g = MicroXS.from_multigroup_flux(
         energies=energies, multigroup_flux=flux, chain_file=chain_file)
+
+    # from_multigroup_flux should not modify the flux
+    assert flux.sum() == flux_sum
 
     # Generate micro XS based on 2-group flux, where the boundaries line up with
     # the 4 group flux and have the same flux per eV across the full energy
@@ -109,3 +111,16 @@ def test_multigroup_flux_same():
         energies=energies, multigroup_flux=flux, chain_file=chain_file)
 
     assert microxs_4g.data == pytest.approx(microxs_2g.data)
+
+
+def test_microxs_zero_flux():
+    chain_file = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # Generate micro XS based on zero flux
+    energies = [0., 6.25e-1, 5.53e3, 8.21e5, 2.e7]
+    flux = [0.0, 0.0, 0.0, 0.0]
+    microxs = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=flux, chain_file=chain_file)
+
+    # All microscopic cross sections should be zero
+    assert np.all(microxs.data == 0.0)

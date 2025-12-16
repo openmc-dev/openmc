@@ -1,3 +1,4 @@
+from collections import Counter
 from math import pi
 
 import openmc
@@ -48,6 +49,61 @@ def test_spherical_uniform():
                                                         origin)
 
     assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+
+def test_point_cloud():
+    positions = [(1, 0, 2), (0, 1, 0), (0, 0, 3), (4, 9, 2)]
+    strengths = [1, 2, 3, 4]
+
+    space = openmc.stats.PointCloud(positions, strengths)
+    np.testing.assert_equal(space.positions, positions)
+    np.testing.assert_equal(space.strengths, strengths)
+
+    src = openmc.IndependentSource(space=space)
+    assert src.space == space
+    np.testing.assert_equal(src.space.positions, positions)
+    np.testing.assert_equal(src.space.strengths, strengths)
+
+    elem = src.to_xml_element()
+    src = openmc.IndependentSource.from_xml_element(elem)
+    np.testing.assert_equal(src.space.positions, positions)
+    np.testing.assert_equal(src.space.strengths, strengths)
+
+
+def test_point_cloud_invalid():
+    with pytest.raises(ValueError, match='2D'):
+        openmc.stats.PointCloud([1, 0, 2, 0, 1, 0])
+
+    with pytest.raises(ValueError, match='3 values'):
+        openmc.stats.PointCloud([(1, 0, 2, 3), (4, 5, 2, 3)])
+
+    with pytest.raises(ValueError, match='1D'):
+        openmc.stats.PointCloud([(1, 0, 2), (4, 5, 2)], [(1, 2), (3, 4)])
+
+    with pytest.raises(ValueError, match='same length'):
+        openmc.stats.PointCloud([(1, 0, 2), (4, 5, 2)], [1, 2, 4])
+
+
+def test_point_cloud_strengths(run_in_tmpdir, sphere_box_model):
+    positions = [(1., 0., 2.), (0., 1., 0.), (0., 0., 3.), (-1., -1., 2.)]
+    strengths = [1, 2, 3, 4]
+    space = openmc.stats.PointCloud(positions, strengths)
+
+    model = sphere_box_model[0]
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(space=space)
+
+    try:
+        model.init_lib()
+        n_samples = 50_000
+        sites = openmc.lib.sample_external_source(n_samples)
+    finally:
+        model.finalize_lib()
+
+    count = Counter(s.r for s in sites)
+    for i, (strength, position) in enumerate(zip(strengths, positions)):
+        sampled_strength = count[position] / n_samples
+        expected_strength = pytest.approx(strength/sum(strengths), abs=0.02)
+        assert sampled_strength == expected_strength, f'Strength incorrect for {positions[i]}'
 
 
 def test_source_file():
@@ -208,20 +264,35 @@ def test_constraints_file(sphere_box_model, run_in_tmpdir):
 
 
 @pytest.mark.skipif(config['mpi'], reason='Not compatible with MPI')
-def test_rejection_limit(sphere_box_model, run_in_tmpdir):
-    model, cell1 = sphere_box_model[:2]
+def test_rejection_fraction(run_in_tmpdir):
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    w = 0.25
+    rpp1 = openmc.model.RectangularParallelepiped(
+        -w/2, w/2, -w/2, w/2, -w/2, w/2)
+    rpp2 = openmc.model.RectangularParallelepiped(
+        -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, boundary_type='vacuum')
+    cell1 = openmc.Cell(fill=mat, region=-rpp1)
+    cell2 = openmc.Cell(region=+rpp1 & -rpp2)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell1, cell2])
 
-    # Define a point source that will get rejected 100% of the time
+    # Create a box source over a 1 cm³ volume that is constrained to the source
+    # cell of volume (0.25 cm)³ = 0.0125 cm³, which means the default rejection
+    # fraction of 0.05 won't work
+    model.settings.particles = 1000
+    model.settings.batches = 1
+    model.settings.run_mode = 'fixed source'
     model.settings.source = openmc.IndependentSource(
-        space=openmc.stats.Point((-3., 0., 0.)),
+        space=openmc.stats.Box(*(-rpp2).bounding_box),
         constraints={'domains': [cell1]}
     )
-
-    # Confirm that OpenMC doesn't run in an infinite loop. Note that this may
-    # work when running with MPI since it won't necessarily capture the error
-    # message correctly
-    with pytest.raises(RuntimeError, match="rejected"):
+    with pytest.raises(RuntimeError, match='Too few source sites'):
         model.run(openmc_exec=config['exe'])
+
+    # With a source rejection fraction below 0.0125, the simulation should run
+    model.settings.source_rejection_fraction = 0.005
+    model.run(openmc_exec=config['exe'])
 
 
 def test_exceptions():

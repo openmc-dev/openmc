@@ -20,7 +20,17 @@ extern vector<SourceSite> source_bank;
 
 extern SharedArray<SourceSite> surf_source_bank;
 
+extern SharedArray<CollisionTrackSite> collision_track_bank;
+
 extern SharedArray<SourceSite> fission_bank;
+
+extern vector<vector<int>> ifp_source_delayed_group_bank;
+
+extern vector<vector<double>> ifp_source_lifetime_bank;
+
+extern vector<vector<int>> ifp_fission_delayed_group_bank;
+
+extern vector<vector<double>> ifp_fission_lifetime_bank;
 
 extern vector<int64_t> progeny_per_particle;
 

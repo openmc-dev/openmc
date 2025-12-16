@@ -52,7 +52,7 @@ class _PlotBase(Structure):
 
     C-Type Attributes
     -----------------
-    origin : openmc.lib.plot._Position
+    origin_ : openmc.lib.plot._Position
         A position defining the origin of the plot.
     width_ : openmc.lib.plot._Position
         The width of the plot along the x, y, and z axes, respectively
@@ -60,6 +60,8 @@ class _PlotBase(Structure):
         The axes basis of the plot view.
     pixels_ : c_size_t[3]
         The resolution of the plot in the horizontal and vertical dimensions
+    color_overlaps_ : c_bool
+        Whether to assign unique IDs (-3) to overlapping regions.
     level_ : c_int
         The universe level for the plot view
 
@@ -90,6 +92,7 @@ class _PlotBase(Structure):
 
     def __init__(self):
         self.level_ = -1
+        self.basis_ = 1
         self.color_overlaps_ = False
 
     @property
@@ -185,14 +188,6 @@ class _PlotBase(Structure):
     @color_overlaps.setter
     def color_overlaps(self, color_overlaps):
         self.color_overlaps_ = color_overlaps
-
-    @property
-    def color_overlaps(self):
-        return self.color_overlaps_
-
-    @color_overlaps.setter
-    def color_overlaps(self, val):
-        self.color_overlaps_ = val
 
     def __repr__(self):
         out_str = ["-----",

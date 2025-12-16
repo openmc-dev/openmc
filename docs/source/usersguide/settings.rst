@@ -183,6 +183,7 @@ source distributions and has four main attributes that one can set:
 :attr:`IndependentSource.energy`, which defines the energy distribution, and
 :attr:`IndependentSource.time`, which defines the time distribution.
 
+
 The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.Spatial`; common choices are :class:`openmc.stats.Point` or
 :class:`openmc.stats.Box`. To independently specify distributions in the
@@ -192,7 +193,9 @@ distributions using spherical or cylindrical coordinates, you can use
 :class:`openmc.stats.SphericalIndependent` or
 :class:`openmc.stats.CylindricalIndependent`, respectively. Meshes can also be
 used to represent spatial distributions with :class:`openmc.stats.MeshSpatial`
-by specifying a mesh and source strengths for each mesh element.
+by specifying a mesh and source strengths for each mesh element. It is also
+possible to define a "cloud" of source points, each with a different relative
+probability, using :class:`openmc.stats.PointCloud`.
 
 The angular distribution can be set equal to a sub-class of
 :class:`openmc.stats.UnitSphere` such as :class:`openmc.stats.Isotropic`,
@@ -223,6 +226,7 @@ distribution. This could be a probability mass function
 (:class:`openmc.stats.Tabular`). By default, if no time distribution is
 specified, particles are started at :math:`t=0`.
 
+
 As an example, to create an isotropic, 10 MeV monoenergetic source uniformly
 distributed over a cube centered at the origin with an edge length of 10 cm, and
 emitting a pulse of particles from 0 to 10 µs, one
@@ -249,6 +253,24 @@ sampled 70% of the time and another that should be sampled 30% of the time::
   ...
 
   settings.source = [src1, src2]
+
+When the relative strengths are several orders of magnitude different, it may
+happen that not enough statistics are obtained from the lower strength source.
+This can be improved by sampling among the sources with equal probability,
+applying the source strength as a weight on the sampled source particles. The
+:attr:`Settings.uniform_source_sampling` attribute can be used to enable this
+option::
+
+  src1 = openmc.IndependentSource()
+  src1.strength = 100.0
+  ...
+
+  src2 = openmc.IndependentSource()
+  src2.strength = 1.0
+  ...
+
+  settings.source = [src1, src2]
+  settings.uniform_source_sampling = True
 
 Finally, the :attr:`IndependentSource.particle` attribute can be used to
 indicate the source should be composed of particles other than neutrons. For
@@ -729,11 +751,66 @@ instance, whereas the :meth:`openmc.Track.filter` method returns a new
           with more than one process, a separate track file will be written for
           each MPI process with the filename ``tracks_p#.h5`` where # is the
           rank of the corresponding process. Multiple track files can be
-          combined with the :ref:`scripts_track_combine` script:
+          combined with the :meth:`openmc.Tracks.combine` method::
 
-          .. code-block:: sh
+            track_files = [f"tracks_p{rank}.h5" for rank in range(32)]
+            openmc.Tracks.combine(track_files, "tracks.h5")
 
-            openmc-track-combine tracks_p*.h5 --out tracks.h5
+Collision Track File
+---------------------
+
+OpenMC can generate a collision track file that contains detailed collision
+information (position, direction, energy, deposited energy, time, weight, cell
+ID, material ID, universe ID, nuclide ZAID, particle type, particle delayed
+group and particle ID) for each particle collision depending on user-defined
+parameters. To invoke this feature, set the
+:attr:`~openmc.Settings.collision_track` attribute as shown in this example::
+
+  settings.collision_track = {
+      "max_collisions": 300,
+      "reactions": ["(n,fission)", "(n,2n)"],
+      "material_ids": [1,2],
+      "nuclides": ["U238", "O16"],
+      "cell_ids": [5, 12]
+  }
+
+In this example, collision track information is written to the
+collision_track.h5 file at the end of the simulation. The file contains
+300 recorded collisions that occurred in materials with IDs 1 or 2, involving
+fission or (n,2n) reactions on the nuclides U-238 or O-16, within cells
+with IDs 5 and 12.
+The file can be read using :func:`openmc.read_collision_track_file`.
+The example below shows how to extract the data from the collision_track
+feature and displays the fields stored in the file:
+
+>>> data = openmc.read_collision_track_file('collision_track.h5')
+>>> data.dtype
+    dtype([('r', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]),
+    ('u', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]), ('E', '<f8'),
+    ('dE', '<f8'), ('time', '<f8'), ('wgt', '<f8'), ('event_mt', '<i4'),
+    ('delayed_group', '<i4'), ('cell_id', '<i4'), ('nuclide_id', '<i4'),
+    ('material_id', '<i4'), ('universe_id', '<i4'), ('n_collision', '<i4'),
+    ('particle', '<i4'), ('parent_id', '<i8'), ('progeny_id', '<i8')])
+
+
+The full list of fields is as follows:
+
+  :r: Position (each direction in [cm])
+  :u: Direction
+  :E: Energy in [eV]
+  :dE: Energy deposited during collision in [eV]
+  :time: Time in [s]
+  :wgt: Weight of the particle
+  :event_mt: Reaction MT number
+  :delayed_group: Delayed group of the particle
+  :cell_id: Cell ID
+  :nuclide_id: Nuclide ID (10000×Z + 10×A + M)
+  :material_id: Material ID
+  :universe_id: Universe ID
+  :n_collision: Number of collision suffered by the particle
+  :particle: Particle type
+  :parent_id: Source particle ID
+  :progeny_id: Progeny ID
 
 -----------------------
 Restarting a Simulation

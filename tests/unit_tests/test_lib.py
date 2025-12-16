@@ -159,6 +159,34 @@ def test_properties_temperature(lib_init):
     assert cell.get_temperature() == pytest.approx(200.0)
 
 
+def test_cell_density(lib_init):
+    cell = openmc.lib.cells[1]
+    print('density', cell.get_density())
+    orig_density = cell.get_density()
+    try:
+        cell.set_density(1.5, 0)
+        assert cell.get_density(0) == pytest.approx(1.5)
+        cell.set_density(2.0)
+        assert cell.get_density() == pytest.approx(2.0)
+    finally:
+        cell.set_density(orig_density)
+
+
+def test_properties_cell_density(lib_init):
+    # Cell density should be 2.0 from above test
+    cell = openmc.lib.cells[1]
+    orig_density = cell.get_density()
+
+    # Export properties and change density
+    openmc.lib.export_properties('properties.h5')
+    cell.set_density(3.0)
+    assert cell.get_density() == pytest.approx(3.0)
+
+    # Import properties and check that density is restored
+    openmc.lib.import_properties('properties.h5')
+    assert cell.get_density() == pytest.approx(orig_density)
+
+
 def test_new_cell(lib_init):
     with pytest.raises(exc.AllocationError):
         openmc.lib.Cell(1)
@@ -468,9 +496,6 @@ def test_set_n_batches(lib_run):
 
     for i in range(7):
         openmc.lib.next_batch()
-    # Setting n_batches less than current_batch should raise error
-    with pytest.raises(exc.InvalidArgumentError):
-        settings.set_batches(6)
     # n_batches should stay the same
     assert settings.get_batches() == 10
 
@@ -608,18 +633,18 @@ def test_regular_mesh(lib_init):
     mesh.set_parameters(lower_left=(-0.63, -0.63, -0.5),
                         upper_right=(0.63, 0.63, 0.5))
     vols = mesh.material_volumes()
-    assert len(vols) == 4
-    for elem_vols in vols:
+    assert vols.num_elements == 4
+    for i in range(vols.num_elements):
+        elem_vols = vols.by_element(i)
         assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26 / 4)
 
-    # If the mesh extends beyond the boundaries of the model, the volumes should
-    # still be reported correctly
+    # If the mesh extends beyond the boundaries of the model, we should get a
+    # GeometryError
     mesh.dimension = (1, 1, 1)
     mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
                         upper_right=(1.0, 1.0, 0.5))
-    vols = mesh.material_volumes(100_000)
-    for elem_vols in vols:
-        assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26, 1e-2)
+    with pytest.raises(exc.GeometryError, match="not fully contained"):
+        vols = mesh.material_volumes()
 
 
 def test_regular_mesh_get_plot_bins(lib_init):
@@ -690,11 +715,11 @@ def test_rectilinear_mesh(lib_init):
     mesh.set_grid([-w/2, -w/4, w/2], [-w/2, -w/4, w/2], [-0.5, 0.5])
 
     vols = mesh.material_volumes()
-    assert len(vols) == 4
-    assert sum(f[1] for f in vols[0]) == pytest.approx(w/4 * w/4)
-    assert sum(f[1] for f in vols[1]) == pytest.approx(w/4 * 3*w/4)
-    assert sum(f[1] for f in vols[2]) == pytest.approx(3*w/4 * w/4)
-    assert sum(f[1] for f in vols[3]) == pytest.approx(3*w/4 * 3*w/4)
+    assert vols.num_elements == 4
+    assert sum(f[1] for f in vols.by_element(0)) == pytest.approx(w/4 * w/4)
+    assert sum(f[1] for f in vols.by_element(1)) == pytest.approx(w/4 * 3*w/4)
+    assert sum(f[1] for f in vols.by_element(2)) == pytest.approx(3*w/4 * w/4)
+    assert sum(f[1] for f in vols.by_element(3)) == pytest.approx(3*w/4 * 3*w/4)
 
 
 def test_cylindrical_mesh(lib_init):
@@ -744,11 +769,11 @@ def test_cylindrical_mesh(lib_init):
     mesh.set_grid(r_grid, phi_grid, z_grid)
 
     vols = mesh.material_volumes()
-    assert len(vols) == 6
+    assert vols.num_elements == 6
     for i in range(0, 6, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * 0.25**2 / 3)
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(pi * 0.25**2 / 3)
     for i in range(1, 6, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * (0.5**2 - 0.25**2) / 3)
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(pi * (0.5**2 - 0.25**2) / 3)
 
 
 def test_spherical_mesh(lib_init):
@@ -802,14 +827,14 @@ def test_spherical_mesh(lib_init):
     mesh.set_grid(r_grid, theta_grid, phi_grid)
 
     vols = mesh.material_volumes()
-    assert len(vols) == 12
+    assert vols.num_elements == 12
     d_theta = theta_grid[1] - theta_grid[0]
     d_phi = phi_grid[1] - phi_grid[0]
     for i in range(0, 12, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(
             0.25**3 / 3 * d_theta * d_phi * 2/pi)
     for i in range(1, 12, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(
             (0.5**3 - 0.25**3) / 3 * d_theta * d_phi * 2/pi)
 
 

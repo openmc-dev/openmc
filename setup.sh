@@ -11,11 +11,12 @@
 # Usage: ./setup.sh [OPTIONS]
 #
 # Options:
-#   --xs-dir PATH     Path to cross section data directory (default: ../endfb80-hdf5)
-#   --skip-xs         Skip cross section data setup
-#   --with-mpi        Build with MPI support
-#   --build-type      Set build type (Debug|Release|RelWithDebInfo)
-#   --help            Show this help message
+#   --xs-dir PATH       Path to cross section data directory (default: ../endfb80-hdf5)
+#   --skip-xs           Skip cross section data setup
+#   --with-mpi          Build with MPI support
+#   --build-type        Set build type (Debug|Release|RelWithDebInfo)
+#   --force-submodules  Force re-download of vendor submodules (fixes corrupted state)
+#   --help              Show this help message
 ################################################################################
 
 set -e  # Exit on error
@@ -33,6 +34,7 @@ WITH_MPI=false
 BUILD_TYPE="RelWithDebInfo"
 INSTALL_PREFIX="${HOME}/.local"
 XS_DIR=""  # Will be set to default after SCRIPT_DIR is determined
+FORCE_SUBMODULES=false
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -89,6 +91,10 @@ while [[ $# -gt 0 ]]; do
         --install-prefix)
             INSTALL_PREFIX="$2"
             shift 2
+            ;;
+        --force-submodules)
+            FORCE_SUBMODULES=true
+            shift
             ;;
         --help)
             print_usage
@@ -159,31 +165,94 @@ if ! command -v git &> /dev/null; then
     exit 1
 fi
 
+# Function to clone a vendor dependency directly (fallback for corrupted submodules)
+clone_vendor_dep() {
+    local name="$1"
+    local url="$2"
+    local tag="$3"
+    local dest="${SCRIPT_DIR}/vendor/${name}"
+
+    log_info "Cloning ${name} from ${url}..."
+    rm -rf "${dest}"
+    if git clone --depth 1 --branch "${tag}" "${url}" "${dest}"; then
+        rm -rf "${dest}/.git"  # Remove .git to avoid submodule conflicts
+        log_success "Successfully cloned ${name} ${tag}"
+        return 0
+    else
+        log_error "Failed to clone ${name}"
+        return 1
+    fi
+}
+
 # Initialize and update git submodules
 cd "${SCRIPT_DIR}"
 if [[ -d ".git" ]]; then
+    # Force re-download if requested
+    if [[ "${FORCE_SUBMODULES}" == true ]]; then
+        log_warning "Force submodule mode: removing and re-downloading vendor dependencies..."
+        for dep in xtl xtensor pugixml fmt Catch2; do
+            rm -rf "${SCRIPT_DIR}/vendor/${dep}"
+        done
+        git submodule deinit -f --all 2>/dev/null || true
+    fi
+
     log_info "Initializing git submodules..."
     if ! git submodule update --init --recursive; then
-        log_error "Failed to initialize git submodules"
-        log_error "Please ensure you have network access or manually initialize submodules:"
-        log_error "  git submodule update --init --recursive"
-        exit 1
+        log_warning "Standard submodule update failed, trying with force..."
+        if ! git submodule update --init --recursive --force; then
+            log_warning "Submodule update failed. Attempting direct clone fallback..."
+            SUBMODULE_FAILED=true
+        fi
     fi
-    log_success "Git submodules initialized"
+
+    # Check if submodules are still empty and use direct clone as fallback
+    NEED_FALLBACK=false
+    for dep in xtl xtensor; do
+        DEP_DIR="${SCRIPT_DIR}/vendor/${dep}"
+        if [[ ! -d "${DEP_DIR}/include" ]]; then
+            NEED_FALLBACK=true
+            break
+        fi
+    done
+
+    if [[ "${NEED_FALLBACK}" == true ]] || [[ "${SUBMODULE_FAILED:-false}" == true ]]; then
+        log_warning "Submodules appear corrupted. Using direct clone fallback..."
+
+        # Clone with specific compatible versions
+        clone_vendor_dep "xtl" "https://github.com/xtensor-stack/xtl.git" "0.8.1" || exit 1
+        clone_vendor_dep "xtensor" "https://github.com/xtensor-stack/xtensor.git" "0.27.1" || exit 1
+        clone_vendor_dep "pugixml" "https://github.com/zeux/pugixml.git" "latest" || \
+            clone_vendor_dep "pugixml" "https://github.com/zeux/pugixml.git" "v1.14" || exit 1
+        clone_vendor_dep "fmt" "https://github.com/fmtlib/fmt.git" "11.0.2" || exit 1
+        clone_vendor_dep "Catch2" "https://github.com/catchorg/Catch2.git" "v3.3.2" || exit 1
+
+        log_success "Vendor dependencies cloned via fallback method"
+    else
+        log_success "Git submodules initialized"
+    fi
 else
     log_warning "Not a git repository, skipping submodule initialization"
 fi
 
-# Verify critical vendor dependencies exist
+# Verify critical vendor dependencies exist and have include directories
 VENDOR_DEPS=("xtl" "xtensor" "pugixml" "fmt" "Catch2")
 for dep in "${VENDOR_DEPS[@]}"; do
     DEP_DIR="${SCRIPT_DIR}/vendor/${dep}"
     # Check if directory exists and has content (more than just . and ..)
     if [[ ! -d "${DEP_DIR}" ]] || [[ -z "$(ls -A "${DEP_DIR}" 2>/dev/null)" ]]; then
         log_error "Vendor dependency '${dep}' not found or empty at ${DEP_DIR}"
-        log_error "Please initialize git submodules:"
-        log_error "  git submodule update --init --recursive"
+        log_error "Try running with --force-submodules to fix:"
+        log_error "  ./setup.sh --force-submodules --skip-xs"
         exit 1
+    fi
+    # Extra check for header-only libraries
+    if [[ "${dep}" == "xtl" ]] || [[ "${dep}" == "xtensor" ]]; then
+        if [[ ! -d "${DEP_DIR}/include" ]]; then
+            log_error "Vendor dependency '${dep}' is missing include directory"
+            log_error "Try running with --force-submodules to fix:"
+            log_error "  ./setup.sh --force-submodules --skip-xs"
+            exit 1
+        fi
     fi
     log_info "Found ${dep} (verified)"
 done

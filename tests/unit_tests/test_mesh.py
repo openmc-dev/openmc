@@ -691,6 +691,54 @@ def test_mesh_material_volumes_serialize():
     assert new_volumes.by_element(3) == [(2, 1.0)]
 
 
+def test_mesh_material_volumes_serialize_with_bboxes():
+    materials = np.array([
+        [1, -1, -2],
+        [-1, -2, -2],
+        [2, 1, -2],
+        [2, -2, -2]
+    ])
+    volumes = np.array([
+        [0.5, 0.5, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [1.0, 0.0, 0.0]
+    ])
+
+    # (xmin, ymin, zmin, xmax, ymax, zmax)
+    bboxes = np.empty((4, 3, 6))
+    bboxes[..., 0:3] = np.inf
+    bboxes[..., 3:6] = -np.inf
+    bboxes[0, 0] = [-1.0, -2.0, -3.0, 1.0, 2.0, 3.0]    # material 1
+    bboxes[0, 1] = [-5.0, -6.0, -7.0, 5.0, 6.0, 7.0]    # void
+    bboxes[1, 0] = [0.0, 0.0, 0.0, 10.0, 1.0, 2.0]      # void
+    bboxes[2, 0] = [-1.0, -1.0, -1.0, 0.0, 0.0, 0.0]    # material 2
+    bboxes[2, 1] = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0]       # material 1
+    bboxes[3, 0] = [-2.0, -2.0, -2.0, 2.0, 2.0, 2.0]    # material 2
+
+    mmv = openmc.MeshMaterialVolumes(materials, volumes, bboxes)
+    with TemporaryDirectory() as tmpdir:
+        path = f'{tmpdir}/volumes_bboxes.npz'
+        mmv.save(path)
+        loaded = openmc.MeshMaterialVolumes.from_npz(path)
+
+    assert loaded.has_bounding_boxes
+    bb = loaded.bounding_box(1, 0)
+    assert isinstance(bb, openmc.BoundingBox)
+    np.testing.assert_array_equal(bb.lower_left, (-1.0, -2.0, -3.0))
+    np.testing.assert_array_equal(bb.upper_right, (1.0, 2.0, 3.0))
+
+    bb_void = loaded.bounding_box(None, 0)
+    assert isinstance(bb_void, openmc.BoundingBox)
+    np.testing.assert_array_equal(bb_void.lower_left, (-5.0, -6.0, -7.0))
+    np.testing.assert_array_equal(bb_void.upper_right, (5.0, 6.0, 7.0))
+
+    first = loaded.by_element(0, include_bboxes=True)[0][2]
+    assert isinstance(first, openmc.BoundingBox)
+    np.testing.assert_array_equal(first.lower_left, (-1.0, -2.0, -3.0))
+    np.testing.assert_array_equal(first.upper_right, (1.0, 2.0, 3.0))
+
+
 def test_mesh_material_volumes_boundary_conditions(sphere_model):
     """Test the material volumes method using a regular mesh
     that overlaps with a vacuum boundary condition."""
@@ -716,6 +764,27 @@ def test_mesh_material_volumes_boundary_conditions(sphere_model):
     for evaluated, expected in zip(volumes.by_element(0), expected_volumes):
         assert evaluated[0] == expected[0]
         assert evaluated[1] == pytest.approx(expected[1], rel=1e-2)
+
+
+def test_mesh_material_volumes_bounding_boxes(sphere_model):
+    # Choose r_max such that the spherical mesh bounding box is fully contained
+    # in the geometry (the sphere_model has an outer sphere boundary at r=25).
+    mesh = openmc.SphericalMesh([0.0, 14.0], origin=(0.0, 0.0, 0.0))
+
+    mmv = mesh.material_volumes(sphere_model, (0, 50, 50), bounding_boxes=True)
+    assert mmv.has_bounding_boxes
+
+    mesh_bb = mesh.bounding_box
+    found = False
+    for _, vol, bb in mmv.by_element(0, include_bboxes=True):
+        if vol > 0.0:
+            assert bb is not None
+            assert np.all(bb.lower_left >= mesh_bb.lower_left - 1e-12)
+            assert np.all(bb.upper_right <= mesh_bb.upper_right + 1e-12)
+            found = True
+            break
+
+    assert found
 
 
 def test_raytrace_mesh_infinite_loop(run_in_tmpdir):

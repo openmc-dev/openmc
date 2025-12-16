@@ -17,6 +17,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.utility_funcs import change_directory
+from .bounding_box import BoundingBox
 from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
@@ -40,6 +41,11 @@ class MeshMaterialVolumes(Mapping):
         Array of shape (elements, max_materials) storing material IDs
     volumes : numpy.ndarray
         Array of shape (elements, max_materials) storing material volumes
+    bboxes : numpy.ndarray, optional
+        Array of shape (elements, max_materials, 6) storing axis-aligned
+        bounding boxes for each (element, material) combination with ordering
+        (xmin, ymin, zmin, xmax, ymax, zmax). Bounding boxes enclose the
+        ray-estimator prisms used to compute volumes.
 
     See Also
     --------
@@ -64,9 +70,30 @@ class MeshMaterialVolumes(Mapping):
     [(2, 31.87963824195591), (1, 6.129949130817542)]
 
     """
-    def __init__(self, materials: np.ndarray, volumes: np.ndarray):
+    def __init__(
+        self,
+        materials: np.ndarray,
+        volumes: np.ndarray,
+        bboxes: np.ndarray | None = None
+    ):
         self._materials = materials
         self._volumes = volumes
+        self._bboxes = bboxes
+
+        if self._bboxes is not None:
+            if self._bboxes.shape[:2] != self._materials.shape:
+                raise ValueError(
+                    'bboxes must have shape (elements, max_materials, 6) '
+                    'matching materials/volumes.'
+                )
+            if self._bboxes.shape[2] != 6:
+                raise ValueError(
+                    'bboxes must have shape (elements, max_materials, 6).'
+                )
+
+    @property
+    def has_bounding_boxes(self) -> bool:
+        return self._bboxes is not None
 
     @property
     def num_elements(self) -> int:
@@ -92,7 +119,11 @@ class MeshMaterialVolumes(Mapping):
             volumes[indices] = self._volumes[indices, i]
         return volumes
 
-    def by_element(self, index_elem: int) -> list[tuple[int | None, float]]:
+    def by_element(
+        self,
+        index_elem: int,
+        include_bboxes: bool = False
+    ) -> list[tuple[int | None, float] | tuple[int | None, float, BoundingBox | None]]:
         """Get a list of volumes for each material within a specific element.
 
         Parameters
@@ -102,15 +133,66 @@ class MeshMaterialVolumes(Mapping):
 
         Returns
         -------
-        list of tuple of (material ID, volume)
+        list of tuple
+            If ``include_bboxes`` is False (default), returns tuples of
+            (material ID, volume). If ``include_bboxes`` is True, returns
+            tuples of (material ID, volume, bounding box).
 
         """
         table_size = self._volumes.shape[1]
-        return [
-            (m if m > -1 else None, self._volumes[index_elem, i])
-            for i in range(table_size)
-            if (m := self._materials[index_elem, i]) != -2
-        ]
+        if include_bboxes and self._bboxes is None:
+            raise ValueError('Bounding boxes were not computed for this object.')
+
+        results = []
+        for i in range(table_size):
+            m = self._materials[index_elem, i]
+            if m == -2:
+                continue
+            mat_id = m if m > -1 else None
+            vol = self._volumes[index_elem, i]
+
+            if include_bboxes:
+                bbox = None
+                vals = self._bboxes[index_elem, i]
+                if (vals[0] <= vals[3]) and (vals[1] <= vals[4]) and (vals[2] <= vals[5]):
+                    bbox = BoundingBox(vals[0:3], vals[3:6])
+                results.append((mat_id, vol, bbox))
+            else:
+                results.append((mat_id, vol))
+
+        return results
+
+    def bounding_box(
+        self,
+        material_id: int | None,
+        index_elem: int
+    ) -> BoundingBox | None:
+        """Get the bounding box for a (material, element) pair.
+
+        Parameters
+        ----------
+        material_id : int or None
+            Material ID. Use None for void.
+        index_elem : int
+            Mesh element index
+
+        Returns
+        -------
+        openmc.BoundingBox or None
+            Bounding box if present; otherwise None.
+
+        """
+        if self._bboxes is None:
+            raise ValueError('Bounding boxes were not computed for this object.')
+
+        mat = -1 if material_id is None else material_id
+        for i in range(self._materials.shape[1]):
+            if self._materials[index_elem, i] == mat:
+                vals = self._bboxes[index_elem, i]
+                if (vals[0] <= vals[3]) and (vals[1] <= vals[4]) and (vals[2] <= vals[5]):
+                    return BoundingBox(vals[0:3], vals[3:6])
+                return None
+        return None
 
     def save(self, filename: PathLike):
         """Save material volumes to a .npz file.
@@ -120,8 +202,10 @@ class MeshMaterialVolumes(Mapping):
         filename : path-like
             Filename where data will be saved
         """
-        np.savez_compressed(
-            filename, materials=self._materials, volumes=self._volumes)
+        kwargs = {'materials': self._materials, 'volumes': self._volumes}
+        if self._bboxes is not None:
+            kwargs['bboxes'] = self._bboxes
+        np.savez_compressed(filename, **kwargs)
 
     @classmethod
     def from_npz(cls, filename: PathLike) -> MeshMaterialVolumes:
@@ -134,7 +218,8 @@ class MeshMaterialVolumes(Mapping):
 
         """
         filedata = np.load(filename)
-        return cls(filedata['materials'], filedata['volumes'])
+        bboxes = filedata['bboxes'] if 'bboxes' in filedata.files else None
+        return cls(filedata['materials'], filedata['volumes'], bboxes)
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -366,6 +451,7 @@ class MeshBase(IDManagerMixin, ABC):
             model: openmc.Model,
             n_samples: int | tuple[int, int, int] = 10_000,
             max_materials: int = 4,
+            bounding_boxes: bool = False,
             **kwargs
     ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
@@ -388,6 +474,11 @@ class MeshBase(IDManagerMixin, ABC):
             the x, y, and z dimensions.
         max_materials : int, optional
             Estimated maximum number of materials in any given mesh element.
+        bounding_boxes : bool, optional
+            Whether to compute an axis-aligned bounding box for each
+            (mesh element, material) combination. When enabled, the bounding
+            box encloses the ray-estimator prisms used for the volume
+            estimation.
         **kwargs : dict
             Keyword arguments passed to :func:`openmc.lib.init`
 
@@ -419,7 +510,8 @@ class MeshBase(IDManagerMixin, ABC):
 
             # Compute material volumes
             volumes = mesh.material_volumes(
-                n_samples, max_materials, output=kwargs['output'])
+                n_samples, max_materials, output=kwargs['output'],
+                bounding_boxes=bounding_boxes)
 
         # Restore original tallies
         model.tallies = original_tallies

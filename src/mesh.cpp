@@ -1,6 +1,8 @@
 #include "openmc/mesh.h"
 #include <algorithm> // for copy, equal, min, min_element
 #include <cassert>
+#include <cstdint>        // for uint64_t
+#include <cstring>        // for memcpy
 #define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>          // for ceil
 #include <cstddef>        // for size_t
@@ -140,6 +142,96 @@ inline bool atomic_cas_int32(int32_t* ptr, int32_t& expected, int32_t desired)
 #endif
 }
 
+inline uint64_t double_to_uint64(double value)
+{
+  uint64_t bits;
+  std::memcpy(&bits, &value, sizeof(value));
+  return bits;
+}
+
+inline double uint64_to_double(uint64_t bits)
+{
+  double value;
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+inline void atomic_min_double(double* ptr, double value)
+{
+#if defined(__GNUC__) || defined(__clang__)
+  using may_alias_uint64_t [[gnu::may_alias]] = uint64_t;
+  auto* bits_ptr = reinterpret_cast<may_alias_uint64_t*>(ptr);
+  uint64_t current_bits = __atomic_load_n(bits_ptr, __ATOMIC_SEQ_CST);
+  double current = uint64_to_double(current_bits);
+  while (value < current) {
+    uint64_t desired_bits = double_to_uint64(value);
+    uint64_t expected_bits = current_bits;
+    if (__atomic_compare_exchange_n(bits_ptr, &expected_bits, desired_bits,
+          false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+      return;
+    }
+    current_bits = expected_bits;
+    current = uint64_to_double(current_bits);
+  }
+
+#elif defined(_MSC_VER)
+  auto* bits_ptr = reinterpret_cast<volatile long long*>(ptr);
+  long long current_bits = *bits_ptr;
+  double current = uint64_to_double(current_bits);
+  while (value < current) {
+    long long desired_bits = double_to_uint64(value);
+    long long old_bits =
+      _InterlockedCompareExchange64(bits_ptr, desired_bits, current_bits);
+    if (old_bits == current_bits) {
+      return;
+    }
+    current_bits = old_bits;
+    current = uint64_to_double(current_bits);
+  }
+
+#else
+#error "No compare-and-swap implementation available for this compiler."
+#endif
+}
+
+inline void atomic_max_double(double* ptr, double value)
+{
+#if defined(__GNUC__) || defined(__clang__)
+  using may_alias_uint64_t [[gnu::may_alias]] = uint64_t;
+  auto* bits_ptr = reinterpret_cast<may_alias_uint64_t*>(ptr);
+  uint64_t current_bits = __atomic_load_n(bits_ptr, __ATOMIC_SEQ_CST);
+  double current = uint64_to_double(current_bits);
+  while (value > current) {
+    uint64_t desired_bits = double_to_uint64(value);
+    uint64_t expected_bits = current_bits;
+    if (__atomic_compare_exchange_n(bits_ptr, &expected_bits, desired_bits,
+          false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+      return;
+    }
+    current_bits = expected_bits;
+    current = uint64_to_double(current_bits);
+  }
+
+#elif defined(_MSC_VER)
+  auto* bits_ptr = reinterpret_cast<volatile long long*>(ptr);
+  long long current_bits = *bits_ptr;
+  double current = uint64_to_double(current_bits);
+  while (value > current) {
+    long long desired_bits = double_to_uint64(value);
+    long long old_bits =
+      _InterlockedCompareExchange64(bits_ptr, desired_bits, current_bits);
+    if (old_bits == current_bits) {
+      return;
+    }
+    current_bits = old_bits;
+    current = uint64_to_double(current_bits);
+  }
+
+#else
+#error "No compare-and-swap implementation available for this compiler."
+#endif
+}
+
 namespace detail {
 
 //==============================================================================
@@ -217,6 +309,123 @@ void MaterialVolumes::add_volume_unsafe(
     if (current_val == EMPTY) {
       this->materials(index_elem, slot) = index_material;
       this->volumes(index_elem, slot) += volume;
+      return;
+    }
+  }
+
+  // If table is full, set a flag that can be checked later
+  table_full_ = true;
+}
+
+void MaterialVolumes::add_volume_bbox(
+  int index_elem, int index_material, double volume, const BoundingBox& bbox)
+{
+  // Loop for linear probing
+  for (int attempt = 0; attempt < table_size_; ++attempt) {
+    // Determine slot to check, making sure it is positive
+    int slot = (index_material + attempt) % table_size_;
+    if (slot < 0)
+      slot += table_size_;
+    int32_t* slot_ptr = &this->materials(index_elem, slot);
+
+    // Non-atomic read of current material
+    int32_t current_val = *slot_ptr;
+
+    // Found the desired material; accumulate volume and bbox
+    if (current_val == index_material) {
+#pragma omp atomic
+      this->volumes(index_elem, slot) += volume;
+      if (bboxes_) {
+        atomic_min_double(&this->bboxes(index_elem, slot, 0), bbox.min.x);
+        atomic_min_double(&this->bboxes(index_elem, slot, 1), bbox.min.y);
+        atomic_min_double(&this->bboxes(index_elem, slot, 2), bbox.min.z);
+        atomic_max_double(&this->bboxes(index_elem, slot, 3), bbox.max.x);
+        atomic_max_double(&this->bboxes(index_elem, slot, 4), bbox.max.y);
+        atomic_max_double(&this->bboxes(index_elem, slot, 5), bbox.max.z);
+      }
+      return;
+    }
+
+    // Slot appears to be empty; attempt to claim
+    if (current_val == EMPTY) {
+      // Attempt compare-and-swap from EMPTY to index_material
+      int32_t expected_val = EMPTY;
+      bool claimed_slot =
+        atomic_cas_int32(slot_ptr, expected_val, index_material);
+
+      // If we claimed the slot or another thread claimed it but the same
+      // material was inserted, proceed to accumulate
+      if (claimed_slot || (expected_val == index_material)) {
+#pragma omp atomic
+        this->volumes(index_elem, slot) += volume;
+        if (bboxes_) {
+          atomic_min_double(&this->bboxes(index_elem, slot, 0), bbox.min.x);
+          atomic_min_double(&this->bboxes(index_elem, slot, 1), bbox.min.y);
+          atomic_min_double(&this->bboxes(index_elem, slot, 2), bbox.min.z);
+          atomic_max_double(&this->bboxes(index_elem, slot, 3), bbox.max.x);
+          atomic_max_double(&this->bboxes(index_elem, slot, 4), bbox.max.y);
+          atomic_max_double(&this->bboxes(index_elem, slot, 5), bbox.max.z);
+        }
+        return;
+      }
+    }
+  }
+
+  // If table is full, set a flag that can be checked later
+  table_full_ = true;
+}
+
+void MaterialVolumes::add_volume_bbox_unsafe(
+  int index_elem, int index_material, double volume, const BoundingBox& bbox)
+{
+  // Linear probe
+  for (int attempt = 0; attempt < table_size_; ++attempt) {
+    // Determine slot to check, making sure it is positive
+    int slot = (index_material + attempt) % table_size_;
+    if (slot < 0)
+      slot += table_size_;
+
+    // Read current material
+    int32_t current_val = this->materials(index_elem, slot);
+
+    // Found the desired material; accumulate volume and bbox
+    if (current_val == index_material) {
+      this->volumes(index_elem, slot) += volume;
+      if (bboxes_) {
+        this->bboxes(index_elem, slot, 0) =
+          std::min(this->bboxes(index_elem, slot, 0), bbox.min.x);
+        this->bboxes(index_elem, slot, 1) =
+          std::min(this->bboxes(index_elem, slot, 1), bbox.min.y);
+        this->bboxes(index_elem, slot, 2) =
+          std::min(this->bboxes(index_elem, slot, 2), bbox.min.z);
+        this->bboxes(index_elem, slot, 3) =
+          std::max(this->bboxes(index_elem, slot, 3), bbox.max.x);
+        this->bboxes(index_elem, slot, 4) =
+          std::max(this->bboxes(index_elem, slot, 4), bbox.max.y);
+        this->bboxes(index_elem, slot, 5) =
+          std::max(this->bboxes(index_elem, slot, 5), bbox.max.z);
+      }
+      return;
+    }
+
+    // Claim empty slot
+    if (current_val == EMPTY) {
+      this->materials(index_elem, slot) = index_material;
+      this->volumes(index_elem, slot) += volume;
+      if (bboxes_) {
+        this->bboxes(index_elem, slot, 0) =
+          std::min(this->bboxes(index_elem, slot, 0), bbox.min.x);
+        this->bboxes(index_elem, slot, 1) =
+          std::min(this->bboxes(index_elem, slot, 1), bbox.min.y);
+        this->bboxes(index_elem, slot, 2) =
+          std::min(this->bboxes(index_elem, slot, 2), bbox.min.z);
+        this->bboxes(index_elem, slot, 3) =
+          std::max(this->bboxes(index_elem, slot, 3), bbox.max.x);
+        this->bboxes(index_elem, slot, 4) =
+          std::max(this->bboxes(index_elem, slot, 4), bbox.max.y);
+        this->bboxes(index_elem, slot, 5) =
+          std::max(this->bboxes(index_elem, slot, 5), bbox.max.z);
+      }
       return;
     }
   }
@@ -334,6 +543,12 @@ vector<double> Mesh::volumes() const
 void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   int32_t* materials, double* volumes) const
 {
+  this->material_volumes(nx, ny, nz, table_size, materials, volumes, nullptr);
+}
+
+void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
+  int32_t* materials, double* volumes, double* bboxes) const
+{
   if (mpi::master) {
     header("MESH MATERIAL VOLUMES CALCULATION", 7);
   }
@@ -351,7 +566,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   timer.start();
 
   // Create object for keeping track of materials/volumes
-  detail::MaterialVolumes result(materials, volumes, table_size);
+  detail::MaterialVolumes result(materials, volumes, bboxes, table_size);
+  bool compute_bboxes = bboxes != nullptr;
 
   // Determine bounding box
   auto bbox = this->bounding_box();
@@ -370,8 +586,9 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 #pragma omp parallel
   {
     // Preallocate vector for mesh indices and length fractions and particle
-    std::vector<int> bins;
-    std::vector<double> length_fractions;
+    vector<int> bins;
+    vector<double> length_fractions;
+    vector<double> start_fractions;
     Particle p;
 
     SourceSite site;
@@ -446,7 +663,13 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             // Determine what mesh elements were crossed by particle
             bins.clear();
             length_fractions.clear();
-            this->bins_crossed(r0, p.r(), p.u(), bins, length_fractions);
+            if (compute_bboxes) {
+              start_fractions.clear();
+              this->bins_crossed_with_start(
+                r0, p.r(), p.u(), bins, length_fractions, start_fractions);
+            } else {
+              this->bins_crossed(r0, p.r(), p.u(), bins, length_fractions);
+            }
 
             // Add volumes to any mesh elements that were crossed
             int i_material = p.material();
@@ -456,9 +679,32 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
               int mesh_index = bins[i_bin];
               double length = distance * length_fractions[i_bin];
+              double volume = length * d1 * d2;
 
-              // Add volume to result
-              result.add_volume(mesh_index, i_material, length * d1 * d2);
+              if (compute_bboxes) {
+                double axis_start =
+                  r0[axis] + distance * start_fractions[i_bin];
+                double axis_end = axis_start + length;
+
+                Position contrib_min = site.r;
+                Position contrib_max = site.r;
+
+                contrib_min[ax1] = site.r[ax1] - 0.5 * d1;
+                contrib_max[ax1] = site.r[ax1] + 0.5 * d1;
+                contrib_min[ax2] = site.r[ax2] - 0.5 * d2;
+                contrib_max[ax2] = site.r[ax2] + 0.5 * d2;
+                contrib_min[axis] = std::min(axis_start, axis_end);
+                contrib_max[axis] = std::max(axis_start, axis_end);
+
+                BoundingBox contrib_bbox {contrib_min, contrib_max};
+                contrib_bbox &= bbox;
+
+                result.add_volume_bbox(
+                  mesh_index, i_material, volume, contrib_bbox);
+              } else {
+                // Add volume to result
+                result.add_volume(mesh_index, i_material, volume);
+              }
             }
 
             if (distance == max_distance)
@@ -505,10 +751,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   // Combine results from multiple MPI processes
   if (mpi::n_procs > 1) {
     int total = this->n_bins() * table_size;
+    int total_bbox = total * 6;
     if (mpi::master) {
       // Allocate temporary buffer for receiving data
-      std::vector<int32_t> mats(total);
-      std::vector<double> vols(total);
+      vector<int32_t> mats(total);
+      vector<double> vols(total);
+      vector<double> recv_bboxes;
+      if (compute_bboxes) {
+        recv_bboxes.resize(total_bbox);
+      }
 
       for (int i = 1; i < mpi::n_procs; ++i) {
         // Receive material indices and volumes from process i
@@ -516,6 +767,10 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           MPI_STATUS_IGNORE);
         MPI_Recv(vols.data(), total, MPI_DOUBLE, i, i, mpi::intracomm,
           MPI_STATUS_IGNORE);
+        if (compute_bboxes) {
+          MPI_Recv(recv_bboxes.data(), total_bbox, MPI_DOUBLE, i, i,
+            mpi::intracomm, MPI_STATUS_IGNORE);
+        }
 
         // Combine with existing results; we can call thread unsafe version of
         // add_volume because each thread is operating on a different element
@@ -524,7 +779,18 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           for (int k = 0; k < table_size; ++k) {
             int index = index_elem * table_size + k;
             if (mats[index] != EMPTY) {
-              result.add_volume_unsafe(index_elem, mats[index], vols[index]);
+              if (compute_bboxes) {
+                int bbox_index = index * 6;
+                BoundingBox slot_bbox {
+                  {recv_bboxes[bbox_index + 0], recv_bboxes[bbox_index + 1],
+                    recv_bboxes[bbox_index + 2]},
+                  {recv_bboxes[bbox_index + 3], recv_bboxes[bbox_index + 4],
+                    recv_bboxes[bbox_index + 5]}};
+                result.add_volume_bbox_unsafe(
+                  index_elem, mats[index], vols[index], slot_bbox);
+              } else {
+                result.add_volume_unsafe(index_elem, mats[index], vols[index]);
+              }
             }
           }
         }
@@ -533,6 +799,9 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
       // Send material indices and volumes to process 0
       MPI_Send(materials, total, MPI_INT32_T, 0, mpi::rank, mpi::intracomm);
       MPI_Send(volumes, total, MPI_DOUBLE, 0, mpi::rank, mpi::intracomm);
+      if (compute_bboxes) {
+        MPI_Send(bboxes, total_bbox, MPI_DOUBLE, 0, mpi::rank, mpi::intracomm);
+      }
     }
   }
 
@@ -1144,6 +1413,116 @@ void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u, TrackAggregator(this, bins, lengths));
+}
+
+void StructuredMesh::bins_crossed_with_start(Position r0, Position r1,
+  const Direction& u, vector<int>& bins, vector<double>& lengths,
+  vector<double>& start) const
+{
+  bins.clear();
+  lengths.clear();
+  start.clear();
+
+  // Compute the length of the entire track.
+  double total_distance = (r1 - r0).norm();
+  if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
+    return;
+
+  // keep a copy of the original global position to pass to get_indices,
+  // which performs its own transformation to local coordinates
+  Position global_r = r0;
+  Position local_r = local_coords(r0);
+
+  const int n = n_dimension_;
+
+  // Flag if position is inside the mesh
+  bool in_mesh;
+
+  // Position is r = r0 + u * traveled_distance, start at r0
+  double traveled_distance {0.0};
+
+  // Calculate index of current cell. Offset the position a tiny bit in
+  // direction of flight
+  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
+
+  // If track is very short, assume that it is completely inside one cell.
+  // Only the current cell will score.
+  if (total_distance < 2 * TINY_BIT) {
+    if (in_mesh) {
+      bins.push_back(get_bin_from_indices(ijk));
+      lengths.push_back(1.0);
+      start.push_back(0.0);
+    }
+    return;
+  }
+
+  // Calculate initial distances to next surfaces in all three dimensions
+  std::array<MeshDistance, 3> distances;
+  for (int k = 0; k < n; ++k) {
+    distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
+  }
+
+  // Loop until r = r1 is eventually reached
+  while (true) {
+    if (in_mesh) {
+      // find surface with minimal distance to current position
+      const auto k = std::min_element(distances.begin(), distances.end()) -
+                     distances.begin();
+
+      // Segment bounds along track
+      double seg_end = std::min(distances[k].distance, total_distance);
+      double seg_len = seg_end - traveled_distance;
+      if (seg_len > 0.0) {
+        bins.push_back(get_bin_from_indices(ijk));
+        start.push_back(traveled_distance / total_distance);
+        lengths.push_back(seg_len / total_distance);
+      }
+
+      // update position and leave, if we have reached end position
+      traveled_distance = distances[k].distance;
+      if (traveled_distance >= total_distance)
+        return;
+
+      // Update cell and calculate distance to next surface in k-direction.
+      // The two other directions are still valid!
+      ijk[k] = distances[k].next_index;
+      distances[k] =
+        distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
+
+      // Check if we have left the interior of the mesh
+      in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
+
+    } else { // not inside mesh
+      // For all directions outside the mesh, find the distance that we need
+      // to travel to reach the next surface. Use the largest distance, as
+      // only this will cross all outer surfaces.
+      int k_max {-1};
+      for (int k = 0; k < n; ++k) {
+        if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
+            (distances[k].distance > traveled_distance)) {
+          traveled_distance = distances[k].distance;
+          k_max = k;
+        }
+      }
+
+      // Assure some distance is traveled
+      if (k_max == -1) {
+        traveled_distance += TINY_BIT;
+      }
+
+      // If r1 is not inside the mesh, exit here
+      if (traveled_distance >= total_distance)
+        return;
+
+      // Calculate the new cell index and update all distances to next
+      // surfaces.
+      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
+      for (int k = 0; k < n; ++k) {
+        distances[k] =
+          distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
+      }
+    }
+  }
 }
 
 void StructuredMesh::surface_bins_crossed(
@@ -2448,6 +2827,27 @@ extern "C" int openmc_mesh_material_volumes(int32_t index, int nx, int ny,
   return 0;
 }
 
+extern "C" int openmc_mesh_material_volumes_bbox(int32_t index, int nx, int ny,
+  int nz, int table_size, int32_t* materials, double* volumes, double* bboxes)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  try {
+    model::meshes[index]->material_volumes(
+      nx, ny, nz, table_size, materials, volumes, bboxes);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    if (starts_with(e.what(), "Mesh")) {
+      return OPENMC_E_GEOMETRY;
+    } else {
+      return OPENMC_E_ALLOCATE;
+    }
+  }
+
+  return 0;
+}
+
 extern "C" int openmc_mesh_get_plot_bins(int32_t index, Position origin,
   Position width, int basis, int* pixels, int32_t* data)
 {
@@ -2976,6 +3376,82 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     }
   }
 };
+
+void MOABMesh::bins_crossed_with_start(Position r0, Position r1,
+  const Direction& u, vector<int>& bins, vector<double>& lengths,
+  vector<double>& start) const
+{
+  moab::CartVect start_vec(r0.x, r0.y, r0.z);
+  moab::CartVect end_vec(r1.x, r1.y, r1.z);
+  moab::CartVect dir(u.x, u.y, u.z);
+  dir.normalize();
+
+  double track_len = (end_vec - start_vec).length();
+  if (track_len == 0.0)
+    return;
+
+  start_vec -= TINY_BIT * dir;
+  end_vec += TINY_BIT * dir;
+
+  vector<double> hits;
+  intersect_track(start_vec, dir, track_len, hits);
+
+  bins.clear();
+  lengths.clear();
+  start.clear();
+
+  // if there are no intersections the track may lie entirely within a single
+  // tet. If this is the case, apply entire score to that tet and return.
+  if (hits.size() == 0) {
+    Position midpoint = r0 + u * (track_len * 0.5);
+    int bin = this->get_bin(midpoint);
+    if (bin != -1) {
+      bins.push_back(bin);
+      start.push_back(0.0);
+      lengths.push_back(1.0);
+    }
+    return;
+  }
+
+  // for each segment in the set of tracks, try to look up a tet at the
+  // midpoint of the segment
+  Position current = r0;
+  double last_dist = 0.0;
+  for (const auto& hit : hits) {
+    double segment_start = last_dist;
+    double segment_length = hit - last_dist;
+    last_dist = hit;
+
+    Position midpoint = current + u * (segment_length * 0.5);
+    int bin = this->get_bin(midpoint);
+
+    // determine the start point for this segment
+    current = r0 + u * hit;
+
+    if (bin == -1) {
+      continue;
+    }
+
+    bins.push_back(bin);
+    start.push_back(segment_start / track_len);
+    lengths.push_back(segment_length / track_len);
+  }
+
+  // tally remaining portion of track after last hit if the last segment of the
+  // track is in the mesh but doesn't reach the other side of the tet
+  if (hits.back() < track_len) {
+    double segment_start = hits.back();
+    double segment_length = track_len - hits.back();
+    Position segment_start_pos = r0 + u * segment_start;
+    Position midpoint = segment_start_pos + u * (segment_length * 0.5);
+    int bin = this->get_bin(midpoint);
+    if (bin != -1) {
+      bins.push_back(bin);
+      start.push_back(segment_start / track_len);
+      lengths.push_back(segment_length / track_len);
+    }
+  }
+}
 
 moab::EntityHandle MOABMesh::get_tet(const Position& r) const
 {

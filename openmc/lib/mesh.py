@@ -24,6 +24,7 @@ __all__ = [
 
 arr_2d_int32 = np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='CONTIGUOUS')
 arr_2d_double = np.ctypeslib.ndpointer(dtype=np.double, ndim=2, flags='CONTIGUOUS')
+arr_3d_double = np.ctypeslib.ndpointer(dtype=np.double, ndim=3, flags='CONTIGUOUS')
 
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
@@ -50,6 +51,11 @@ _dll.openmc_mesh_material_volumes.argtypes = [
     c_int32, c_int, c_int, c_int, c_int, arr_2d_int32, arr_2d_double]
 _dll.openmc_mesh_material_volumes.restype = c_int
 _dll.openmc_mesh_material_volumes.errcheck = _error_handler
+_dll.openmc_mesh_material_volumes_bbox.argtypes = [
+    c_int32, c_int, c_int, c_int, c_int, arr_2d_int32, arr_2d_double,
+    arr_3d_double]
+_dll.openmc_mesh_material_volumes_bbox.restype = c_int
+_dll.openmc_mesh_material_volumes_bbox.errcheck = _error_handler
 _dll.openmc_mesh_get_plot_bins.argtypes = [
     c_int32, _Position, _Position, c_int, POINTER(c_int), POINTER(c_int32)
 ]
@@ -188,6 +194,7 @@ class Mesh(_FortranObjectWithID):
             n_samples: int | tuple[int, int, int] = 10_000,
             max_materials: int = 4,
             output: bool = True,
+            bounding_boxes: bool = False,
     ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
 
@@ -213,6 +220,11 @@ class Mesh(_FortranObjectWithID):
             Estimated maximum number of materials in any given mesh element.
         output : bool, optional
             Whether or not to show output.
+        bounding_boxes : bool, optional
+            Whether or not to compute an axis-aligned bounding box for each
+            (mesh element, material) combination. When enabled, the bounding
+            box encloses the ray-estimator prisms used for the volume
+            estimation.
 
         Returns
         -------
@@ -243,23 +255,37 @@ class Mesh(_FortranObjectWithID):
         table_size = slot_factor*max_materials
         materials = np.full((n, table_size), EMPTY_SLOT, dtype=np.int32)
         volumes = np.zeros((n, table_size), dtype=np.float64)
+        bboxes = None
+        if bounding_boxes:
+            bboxes = np.empty((n, table_size, 6), dtype=np.float64)
+            bboxes[..., 0:3] = np.inf
+            bboxes[..., 3:6] = -np.inf
 
         # Run material volume calculation
         while True:
             try:
                 with quiet_dll(output):
-                    _dll.openmc_mesh_material_volumes(
-                        self._index, nx, ny, nz, table_size, materials, volumes)
+                    if bounding_boxes:
+                        _dll.openmc_mesh_material_volumes_bbox(
+                            self._index, nx, ny, nz, table_size, materials,
+                            volumes, bboxes)
+                    else:
+                        _dll.openmc_mesh_material_volumes(
+                            self._index, nx, ny, nz, table_size, materials, volumes)
             except AllocationError:
                 # Increase size of result array and try again
                 table_size *= 2
                 materials = np.full((n, table_size), EMPTY_SLOT, dtype=np.int32)
                 volumes = np.zeros((n, table_size), dtype=np.float64)
+                if bounding_boxes:
+                    bboxes = np.empty((n, table_size, 6), dtype=np.float64)
+                    bboxes[..., 0:3] = np.inf
+                    bboxes[..., 3:6] = -np.inf
             else:
                 # If no error, break out of loop
                 break
 
-        return MeshMaterialVolumes(materials, volumes)
+        return MeshMaterialVolumes(materials, volumes, bboxes)
 
     def get_plot_bins(
             self,

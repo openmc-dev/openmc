@@ -1,10 +1,10 @@
    energyfunction nuclide                    score     mean  std. dev.
-0  448ee8dfd19c4f   Am241  ((n,gamma) / (n,gamma)) 1.74e-01   6.83e-03
+0  448ee8dfd19c4f   Am241  ((n,gamma) / (n,gamma)) 1.74e-01   5.44e-03
    energyfunction nuclide      score     mean  std. dev.
-0  37e006ae6b2e74   Am241  (n,gamma) 8.16e-02   2.24e-03
+0  37e006ae6b2e74   Am241  (n,gamma) 8.35e-02   1.83e-03
    energyfunction nuclide      score     mean  std. dev.
-0  b4e2ac84068d2d   Am241  (n,gamma) 8.19e-02   2.25e-03
+0  b4e2ac84068d2d   Am241  (n,gamma) 8.39e-02   1.84e-03
    energyfunction nuclide      score     mean  std. dev.
-0  dacf88242512ea   Am241  (n,gamma) 7.95e-02   2.19e-03
+0  dacf88242512ea   Am241  (n,gamma) 8.14e-02   1.78e-03
    energyfunction nuclide      score     mean  std. dev.
-0  fe168c70d9e078   Am241  (n,gamma) 1.06e-01   2.96e-03
+0  fe168c70d9e078   Am241  (n,gamma) 1.09e-01   2.41e-03

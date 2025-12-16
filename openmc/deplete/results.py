@@ -17,6 +17,11 @@ from openmc.checkvalue import PathLike
 
 __all__ = ["Results", "ResultsList"]
 
+_SECONDS_PER_MINUTE = 60
+_SECONDS_PER_HOUR = 60*60
+_SECONDS_PER_DAY = 24*60*60
+_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60  # 365.25 due to the leap year
+
 
 def _get_time_as(seconds: float, units: str) -> float:
     """Converts the time in seconds to time in different units
@@ -31,13 +36,13 @@ def _get_time_as(seconds: float, units: str) -> float:
 
     """
     if units == "a":
-        return seconds / (60 * 60 * 24 * 365.25)  # 365.25 due to the leap year
+        return seconds / _SECONDS_PER_JULIAN_YEAR
     if units == "d":
-        return seconds / (60 * 60 * 24)
+        return seconds / _SECONDS_PER_DAY
     elif units == "h":
-        return seconds / (60 * 60)
+        return seconds / _SECONDS_PER_HOUR
     elif units == "min":
-        return seconds / 60
+        return seconds / _SECONDS_PER_MINUTE
     else:
         return seconds
 
@@ -70,7 +75,6 @@ class Results(list):
                 for i in range(n):
                     data.append(StepResult.from_hdf5(fh, i))
         super().__init__(data)
-
 
     @classmethod
     def from_hdf5(cls, filename: PathLike):
@@ -109,9 +113,9 @@ class Results(list):
         ----------
         mat : openmc.Material, str
             Material object or material id to evaluate
-        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
             Specifies the type of activity to return, options include total
-            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
+            activity [Bq], specific [Bq/g, Bq/kg] or volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -199,7 +203,7 @@ class Results(list):
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            concentrations[i] = result[0, mat_id, nuc]
+            concentrations[i] = result[mat_id, nuc]
 
         # Unit conversions
         times = _get_time_as(times, time_units)
@@ -227,9 +231,9 @@ class Results(list):
         ----------
         mat : openmc.Material, str
             Material object or material id to evaluate.
-        units : {'W', 'W/g', 'W/cm3'}
+        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
             Specifies the units of decay heat to return. Options include total
-            heat [W], specific [W/g] or volumetric heat [W/cm3].
+            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -359,7 +363,7 @@ class Results(list):
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            rates[i] = result.rates[0].get(mat_id, nuc, rx) * result[0, mat, nuc]
+            rates[i] = result.rates.get(mat_id, nuc, rx) * result[mat, nuc]
 
         return times, rates
 
@@ -393,7 +397,7 @@ class Results(list):
         # Get time/eigenvalue at each point
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            eigenvalues[i] = result.k[0]
+            eigenvalues[i] = result.k
 
         # Convert time units if necessary
         times = _get_time_as(times, time_units)
@@ -459,6 +463,26 @@ class Results(list):
         )
 
         return _get_time_as(times, time_units)
+
+    def get_source_rates(self) -> np.ndarray:
+        """
+        .. versionadded:: 0.15.1
+
+        Returns
+        -------
+        numpy.ndarray
+            1-D vector of source rates at each point in the depletion simulation
+            with the units originally defined by the user.
+
+        """
+        # Results duplicate the final source rate at the final simulation time
+        source_rates = np.fromiter(
+            (r.source_rate for r in self),
+            dtype=self[0].source_rate.dtype,
+            count=len(self)-1,
+        )
+
+        return source_rates
 
     def get_step_where(
         self, time, time_units: str = "d", atol: float = 1e-6, rtol: float = 1e-3
@@ -606,7 +630,7 @@ class Results(list):
                 for nuc in result.index_nuc:
                     if nuc not in available_cross_sections:
                         continue
-                    atoms = result[0, mat_id, nuc]
+                    atoms = result[mat_id, nuc]
                     if atoms > 0.0:
                         atoms_per_barn_cm = 1e-24 * atoms / mat.volume
                         mat.remove_nuclide(nuc) # Replace if it's there

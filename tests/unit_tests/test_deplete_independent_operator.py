@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from openmc import Material
-from openmc.deplete import IndependentOperator, MicroXS
+from openmc.deplete import IndependentOperator, MicroXS, Chain
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 ONE_GROUP_XS = Path(__file__).parents[1] / "micro_xs_simple.csv"
@@ -25,8 +25,9 @@ def test_operator_init():
                 'O17': 1.7588724018066158e+19}
     flux = 1.0
     micro_xs = MicroXS.from_csv(ONE_GROUP_XS)
+    chain = Chain.from_xml(CHAIN_PATH)
     IndependentOperator.from_nuclides(
-        volume, nuclides, flux, micro_xs, CHAIN_PATH, nuc_units='atom/cm3')
+        volume, nuclides, flux, micro_xs, chain, nuc_units='atom/cm3')
 
     fuel = Material(name="uo2")
     fuel.add_element("U", 1, percent_type="ao", enrichment=4.25)

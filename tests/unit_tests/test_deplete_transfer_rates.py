@@ -16,6 +16,7 @@ CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
     f = openmc.Material(name="f")
     f.add_element("U", 1, percent_type="ao", enrichment=4.25)
     f.add_element("O", 2)
@@ -54,32 +55,35 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.mark.parametrize("case_name, transfer_rates", [
-    ('elements', {'U': 0.01, 'Xe': 0.1}),
-    ('nuclides', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01}),
+@pytest.mark.parametrize("case_name, transfer_rates, timesteps", [
+    ('elements', {'U': 0.01, 'Xe': 0.1}, None),
+    ('nuclides', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01}, None),
     ('nuclides_elements', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01, 'U': 0.01,
-                           'Xe': 0.1}),
+                           'Xe': 0.1}, None),
     ('elements_nuclides', {'U': 0.01, 'Xe': 0.1, 'I135': 0.01, 'Gd156': 0.1,
-                           'Gd157': 0.01}),
+                           'Gd157': 0.01}, None),
     ('multiple_transfer', {'U': 0.01, 'Xe': 0.1, 'I135': 0.01, 'Gd156': 0.1,
-                           'Gd157': 0.01}),
-    ('rates_invalid_1', {'Gd': 0.01, 'Gd157': 0.01, 'Gd156': 0.01}),
-    ('rates_invalid_2', {'Gd156': 0.01, 'Gd157': 0.01, 'Gd': 0.01}),
-    ('rates_invalid_3', {'Gb156': 0.01}),
-    ('rates_invalid_4', {'Gb': 0.01})
+                           'Gd157': 0.01}, None),
+    ('timesteps', {'U': 0.01, 'Xe': 0.1}, [1]),
+    ('rates_invalid_1', {'Gd': 0.01, 'Gd157': 0.01, 'Gd156': 0.01}, None),
+    ('rates_invalid_2', {'Gd156': 0.01, 'Gd157': 0.01, 'Gd': 0.01}, None),
+    ('rates_invalid_3', {'Gb156': 0.01}, None),
+    ('rates_invalid_4', {'Gb': 0.01}, None)
     ])
-def test_get_set(model, case_name, transfer_rates):
+def test_get_set(model, case_name, transfer_rates, timesteps):
     """Tests the get/set methods"""
-
-    openmc.reset_auto_ids()
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = TransferRates(op, model)
+    number_of_timesteps = 2
+    transfer = TransferRates(op, model.materials, number_of_timesteps)
+
+    if timesteps is None:
+        timesteps = np.arange(number_of_timesteps)
 
     # Test by Openmc material, material name and material id
     material, dest_material, dest_material2 = [m for m in model.materials
                                                if m.depletable]
     for material_input in [material, material.name, material.id]:
-        for dest_material_input in [dest_material, dest_material.name,
+        for dest_material_input in [None, dest_material, dest_material.name,
                                     dest_material.id]:
             if case_name == 'rates_invalid_1':
                 with pytest.raises(ValueError, match='Cannot add transfer '
@@ -117,14 +121,21 @@ def test_get_set(model, case_name, transfer_rates):
                 for component, transfer_rate in transfer_rates.items():
                     transfer.set_transfer_rate(material_input, [component],
                                                transfer_rate,
+                                               timesteps=timesteps,
                                                destination_material=\
                                                dest_material_input)
-                    assert transfer.get_transfer_rate(
-                        material_input, component)[0] == transfer_rate
-                    assert transfer.get_destination_material(
-                        material_input, component)[0] == str(dest_material.id)
-                assert transfer.get_components(material_input) == \
-                    transfer_rates.keys()
+                    assert transfer.get_external_rate(
+                        material_input, component, timesteps,
+                        dest_material_input)[0] == transfer_rate
+                    assert np.all(transfer.external_timesteps == timesteps)
+
+                if timesteps is not None:
+                    for timestep in timesteps:
+                        assert transfer.get_components(material_input, timestep,
+                            dest_material_input) == list(transfer_rates.keys())
+                else:
+                    assert transfer.get_components(material_input, timesteps,
+                            dest_material_input) == list(transfer_rates.keys())
 
             if case_name == 'multiple_transfer':
                 for dest2_material_input in [dest_material2, dest_material2.name,
@@ -135,10 +146,8 @@ def test_get_set(model, case_name, transfer_rates):
                                                destination_material=\
                                                dest2_material_input)
                         for id, dest_mat in zip([0,1],[dest_material,dest_material2]):
-                            assert transfer.get_transfer_rate(
-                                material_input, component)[id] == transfer_rate
-                            assert transfer.get_destination_material(
-                                material_input, component)[id] == str(dest_mat.id)
+                            assert transfer.get_external_rate(
+                                material_input, component, timesteps)[0] == transfer_rate
 
 @pytest.mark.parametrize("transfer_rate_units, unit_conv", [
     ('1/s', 1),
@@ -158,13 +167,15 @@ def test_units(transfer_rate_units, unit_conv, model):
     # create transfer rate Xe
     components = ['Xe', 'U235']
     transfer_rate = 1e-5
+    number_of_timesteps = 2
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = TransferRates(op, model)
+    transfer = TransferRates(op, model.materials, number_of_timesteps)
 
     for component in components:
         transfer.set_transfer_rate('f', [component], transfer_rate * unit_conv,
                                    transfer_rate_units=transfer_rate_units)
-        assert transfer.get_transfer_rate('f', component)[0] == transfer_rate
+        for timestep in range(transfer.number_of_timesteps):
+            assert transfer.get_external_rate('f', component, timestep)[0] == transfer_rate
 
 
 def test_transfer(run_in_tmpdir, model):
@@ -187,3 +198,35 @@ def test_transfer(run_in_tmpdir, model):
     # Ensure number of atoms equal transfer decay
     assert atoms[1] == pytest.approx(atoms[0]*exp(-transfer_rate*3600*24))
     assert atoms[2] == pytest.approx(atoms[1]*exp(-transfer_rate*3600*24))
+
+@pytest.mark.parametrize("case_name, buffer, ox", [
+    ('redox', {'Gd157':1}, {'Gd': 3, 'U': 4}),
+    ('buffer_invalid', {'Gd158':1}, {'Gd': 3, 'U': 4}),
+    ('elm_invalid', {'Gd157':1}, {'Gb': 3, 'U': 4}),
+    ])
+def test_redox(case_name, buffer, ox, model):
+    op = CoupledOperator(model, CHAIN_PATH)
+    number_of_timesteps = 2
+    transfer = TransferRates(op, model.materials, number_of_timesteps)
+
+    # Test by Openmc material, material name and material id
+    material, dest_material, dest_material2 = [m for m in model.materials
+                                               if m.depletable]
+    for material_input in [material, material.name, material.id]:
+        for dest_material_input in [dest_material, dest_material.name,
+                                    dest_material.id]:
+
+            if case_name == 'buffer_invalid':
+                with pytest.raises(ValueError, match='Gd158 is not a valid '
+                                   'nuclide.'):
+                    transfer.set_redox(material_input, buffer, ox)
+
+            elif case_name == 'elm_invalid':
+                with pytest.raises(ValueError, match='Gb is not a valid '
+                                   'element.'):
+                    transfer.set_redox(material_input, buffer, ox)
+            else:
+                transfer.set_redox(material_input, buffer, ox)
+                mat_id = transfer._get_material_id(material_input)
+                assert transfer.redox[mat_id][0] == buffer
+                assert transfer.redox[mat_id][1] == ox

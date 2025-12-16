@@ -1,7 +1,9 @@
+from __future__ import annotations
 from collections.abc import Iterable, MutableSequence
 import copy
-from functools import partial, reduce
+from functools import partial, reduce, wraps
 from itertools import product
+from math import sqrt, log
 from numbers import Integral, Real
 import operator
 from pathlib import Path
@@ -11,10 +13,11 @@ import h5py
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
+from scipy.stats import chi2, norm
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes, get_text
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
 
@@ -33,7 +36,7 @@ _NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
-ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
+ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog'}
 
 
 class Tally(IDManagerMixin):
@@ -65,7 +68,9 @@ class Tally(IDManagerMixin):
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
     estimator : {'analog', 'tracklength', 'collision'}
-        Type of estimator for the tally
+        Type of estimator for the tally. If unset (None), OpenMC will automatically
+        select an appropriate estimator based on the tally filters and scores
+        with a preference for 'tracklength'.
     triggers : list of openmc.Trigger
         List of tally triggers
     num_scores : int
@@ -88,10 +93,24 @@ class Tally(IDManagerMixin):
     sum_sq : numpy.ndarray
         An array containing the sum of each independent realization squared for
         each bin
+    sum_third : numpy.ndarray
+        An array containing the sum of each independent realization to the third power for
+        each bin
+    sum_fourth : numpy.ndarray
+        An array containing the sum of each independent realization to the fourth power for
+        each bin
     mean : numpy.ndarray
         An array containing the sample mean for each bin
     std_dev : numpy.ndarray
         An array containing the sample standard deviation for each bin
+    vov : numpy.ndarray
+        An array containing the variance of the variance for each tally bin
+    higher_moments : bool
+        Whether or not the tally accumulates the sums third and fourth to compute higher-order moments
+    figure_of_merit : numpy.ndarray
+        An array containing the figure of merit for each bin
+
+        .. versionadded:: 0.15.3
     derived : bool
         Whether or not the tally is derived from one or more other tallies
     sparse : bool
@@ -122,14 +141,49 @@ class Tally(IDManagerMixin):
 
         self._sum = None
         self._sum_sq = None
+        self._sum_third = None
+        self._sum_fourth = None
         self._mean = None
         self._std_dev = None
+        self._vov = None
+        self._higher_moments = False
+        self._simulation_time = None
         self._with_batch_statistics = False
         self._derived = False
         self._sparse = False
 
         self._sp_filename = None
         self._results_read = False
+
+    def __eq__(self, other):
+        if other.id != self.id:
+            return False
+        if other.name != self.name:
+            return False
+        # estimators are automatically set based on the tally filters and scores
+        # during OpenMC initialization if this value is None, so it is not
+        # considered a requirement for equivalence if it is unset on either
+        # tally as it implies that the user is allowing OpenMC to select an
+        # appropriate estimator. If the value is explicitly set on both tallies,
+        # then the values must match for the tallies to be considered equivalent.
+        if self.estimator is not None and other.estimator is not None and other.estimator != self.estimator:
+            return False
+        if other.filters != self.filters:
+            return False
+        # for tallies are loaded from statpoint files
+        # an empty nuclide list is equivalent to a list with 'total'
+        other_nuclides = other.nuclides.copy()
+        self_nuclides = self.nuclides.copy()
+        if 'total' in other_nuclides:
+            other_nuclides.remove('total')
+        if 'total' in self_nuclides:
+            self_nuclides.remove('total')
+        if other_nuclides != self_nuclides:
+            return False
+        for attr in {'scores', 'triggers', 'derivative', 'multiply_density'}:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+        return True
 
     def __repr__(self):
         parts = ['Tally']
@@ -145,6 +199,25 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
         return '\n\t'.join(parts)
+
+    @staticmethod
+    def ensure_results(f):
+        """A decorator to be applied to any method that might use tally results.
+           Results will be loaded if appropriate based on the tally properties.
+
+        Args:
+            f function: Tally method to wrap
+
+        Returns:
+            function: Wrapped function that reads tally results before calling
+            the methodif necessary
+        """
+        @wraps(f)
+        def read(self):
+            if self._sp_filename is not None and not self.derived:
+                self._read_results()
+            return f(self)
+        return read
 
     @property
     def name(self):
@@ -163,6 +236,15 @@ class Tally(IDManagerMixin):
     def multiply_density(self, value):
         cv.check_type('multiply density', value, bool)
         self._multiply_density = value
+
+    @property
+    def higher_moments(self) -> bool:
+        return self._higher_moments
+
+    @higher_moments.setter
+    def higher_moments(self, value):
+        cv.check_type("higher_moments", value, bool)
+        self._higher_moments = value
 
     @property
     def filters(self):
@@ -185,6 +267,7 @@ class Tally(IDManagerMixin):
         self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
 
     @property
+    @ensure_results
     def nuclides(self):
         return self._nuclides
 
@@ -207,7 +290,7 @@ class Tally(IDManagerMixin):
 
     @property
     def num_nuclides(self):
-        return len(self._nuclides)
+        return max(len(self._nuclides), 1)
 
     @property
     def scores(self):
@@ -266,7 +349,8 @@ class Tally(IDManagerMixin):
 
     @estimator.setter
     def estimator(self, estimator):
-        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
+        # allow the estimator to be set to None (let OpenMC choose the estimator at runtime)
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES | {None})
         self._estimator = estimator
 
     @property
@@ -280,6 +364,7 @@ class Tally(IDManagerMixin):
                                         triggers)
 
     @property
+    @ensure_results
     def num_realizations(self):
         return self._num_realizations
 
@@ -304,8 +389,26 @@ class Tally(IDManagerMixin):
 
         # Open the HDF5 statepoint file
         with h5py.File(self._sp_filename, 'r') as f:
+            # Set number of realizations
+            group = f[f'tallies/tally {self.id}']
+            self._num_realizations = int(group['n_realizations'][()])
+
+            for filt in self.filters:
+                if isinstance(filt, openmc.DistribcellFilter):
+                    filter_group = f[f'tallies/filters/filter {filt.id}']
+                    filt._num_bins = int(filter_group['n_bins'][()])
+
+            # Update nuclides
+            nuclide_names = group['nuclides'][()]
+            self._nuclides = [name.decode().strip() for name in nuclide_names]
+            # Check for higher_moments attribute
+            if "higher_moments" in group.attrs:
+                self._higher_moments = bool(group.attrs["higher_moments"][()])
+            else:
+                self._higher_moments = False
+
             # Extract Tally data from the file
-            data = f[f'tallies/tally {self.id}/results']
+            data = group['results']
             sum_ = data[:, :, 0]
             sum_sq = data[:, :, 1]
 
@@ -317,21 +420,37 @@ class Tally(IDManagerMixin):
             self._sum = sum_
             self._sum_sq = sum_sq
 
+            if self._higher_moments:
+                # Extract additional Tally data when higher moments enabled
+                sum_third = data[:, :, 2]
+                sum_fourth = data[:, :, 3]
+
+                # Reshape the results arrays
+                sum_third = np.reshape(sum_third, self.shape)
+                sum_fourth = np.reshape(sum_fourth, self.shape)
+
+                # Set the additional data for this Tally
+                self._sum_third = sum_third
+                self._sum_fourth = sum_fourth
+
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
                 self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum_third = sps.lil_matrix(self._sum_third.flatten(), self._sum_third.shape)
+                self._sum_fourth = sps.lil_matrix(self.sum_fourth.flatten(), self._sum_fourth.shape)
+
+            # Read simulation time (needed for figure of merit)
+            self._simulation_time = f["runtime"]["simulation"][()]
 
         # Indicate that Tally results have been read
         self._results_read = True
 
     @property
+    @ensure_results
     def sum(self):
         if not self._sp_filename or self.derived:
             return None
-
-        # Make sure results have been read
-        self._read_results()
 
         if self.sparse:
             return np.reshape(self._sum.toarray(), self.shape)
@@ -344,12 +463,10 @@ class Tally(IDManagerMixin):
         self._sum = sum
 
     @property
+    @ensure_results
     def sum_sq(self):
         if not self._sp_filename or self.derived:
             return None
-
-        # Make sure results have been read
-        self._read_results()
 
         if self.sparse:
             return np.reshape(self._sum_sq.toarray(), self.shape)
@@ -360,6 +477,52 @@ class Tally(IDManagerMixin):
     def sum_sq(self, sum_sq):
         cv.check_type('sum_sq', sum_sq, Iterable)
         self._sum_sq = sum_sq
+
+    @property
+    @ensure_results
+    def sum_third(self):
+        if not self._higher_moments:
+            raise ValueError(
+                "Higher moments have not been enabled for this tally. To make "
+                "higher moments available, set the higher_moments attribute to "
+                "True before running a simulation."
+            )
+
+        if not self._sp_filename or self.derived:
+            return None
+
+        if self.sparse:
+            return np.reshape(self._sum_third.toarray(), self.shape)
+        else:
+            return self._sum_third
+
+    @sum_third.setter
+    def sum_third(self, sum_third):
+        cv.check_type("sum_third", sum_third, Iterable)
+        self._sum_third = sum_third
+
+    @property
+    @ensure_results
+    def sum_fourth(self):
+        if not self._higher_moments:
+            raise ValueError(
+                "Higher moments have not been enabled for this tally. To make "
+                "higher moments available, set the higher_moments attribute to "
+                "True before running a simulation."
+            )
+
+        if not self._sp_filename or self.derived:
+            return None
+
+        if self.sparse:
+            return np.reshape(self._sum_fourth.toarray(), self.shape)
+        else:
+            return self._sum_fourth
+
+    @sum_fourth.setter
+    def sum_fourth(self, sum_fourth):
+        cv.check_type("sum_fourth", sum_fourth, Iterable)
+        self._sum_fourth = sum_fourth
 
     @property
     def mean(self):
@@ -402,6 +565,359 @@ class Tally(IDManagerMixin):
             return np.reshape(self._std_dev.toarray(), self.shape)
         else:
             return self._std_dev
+
+    @property
+    def vov(self):
+        if self._vov is None:
+            n = self.num_realizations
+            sum1 = self.sum
+            sum2 = self.sum_sq
+            sum3 = self.sum_third
+            sum4 = self.sum_fourth
+            self._vov = np.zeros_like(sum1, dtype=float)
+
+            # Calculate the variance of the variance (Eq. 2.232 in
+            # https://doi.org/10.2172/2372634)
+            numerator = (sum4 - (4.0*sum3*sum1)/n
+                        + (6.0*sum2*(sum1**2))/(n**2)
+                        - (3.0*(sum1)**4)/(n**3))
+            denominator = (sum2 - (1.0/n)*(sum1**2))**2
+
+            mask = denominator > 0.0
+
+            self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
+
+            if self.sparse:
+                self._vov = sps.lil_matrix(self._vov.flatten(), self._vov.shape)
+
+        if self.sparse:
+            return np.reshape(self._vov.toarray(), self.shape)
+        else:
+            return self._vov
+
+    @property
+    def m2(self):
+        n = self.num_realizations
+        return self.sum_sq/n - self.mean**2
+
+    @property
+    def m3(self):
+        n = self.num_realizations
+        mean = self.mean
+        sum2 = self.sum_sq/n
+        sum3 = self.sum_third/n
+
+        return sum3 - 3.0*mean*sum2 + 2.0*mean**3
+
+    @property
+    def m4(self):
+        n = self.num_realizations
+        mean = self.mean
+        sum2 = self.sum_sq/n
+        sum3 = self.sum_third/n
+        sum4 = self.sum_fourth/n
+
+        return sum4 - 4.0*mean*sum3 + 6.0*(mean**2)*sum2 - 3.0*mean**4
+
+    def skew(self, bias=False) -> np.ndarray:
+        """Return the sample skewness of each tally bin.
+
+        This method computes and returns the unadjusted or adjusted
+        Fisher-Pearson coefficient of skewness.
+
+        Parameters
+        ----------
+        bias : bool
+            If False, calculations are corrected for bias and the adjusted
+            Fisher-Pearson skewness (:math:`G_1`) is returned. If True,
+            calculations are not corrected for bias and the unadjusted skewness
+            (:math:`g_1`) is returned.
+
+        Returns
+        -------
+        float
+            The skewness of each tally bin
+        """
+        n = self.num_realizations
+        m2 = self.m2
+        m3 = self.m3
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            g1 = np.where(m2 > 0.0, m3/(m2**1.5), 0.0)
+
+        if bias:
+            return g1
+        else:
+            if n <= 2:
+                raise ValueError("Insufficient number of independent realizations"
+                                 f"for bias-corrected skewness: need n >= 3, got {n=}.")
+            else:
+                return sqrt(n*(n - 1))/(n - 2)*g1
+
+    def kurtosis(self, fisher=True, bias=False) -> np.ndarray:
+        r"""Return the sample kurtosis of each tally bin.
+
+        This method computes and returns the sample kurtosis using either
+        Pearson's or Fisher's definition, with or without finite-sample bias
+        correction. The value returned depends on the `bias` and `fisher`
+        arguments as follows:
+
+        - **bias=True, fisher=False**: Returns :math:`b_2` (Pearson's kurtosis)
+          This is the raw fourth standardized moment: :math:`m_4/m_2^2`. For a
+          normal distribution, :math:`b_2\approx 3`.
+
+        - **bias=True, fisher=True**: Returns :math:`g_2` (excess kurtosis) This
+          is :math:`b_2 - 3`, centered at 0 for normal distributions. Positive
+          values indicate heavier tails, negative values lighter tails.
+
+        - **bias=False, fisher=True** (default): Returns :math:`G_2` (adjusted
+          excess kurtosis). This applies finite-sample bias correction to
+          :math:`g_2`. This is the recommended estimator for statistical
+          inference.
+
+        - **bias=False, fisher=False**: Returns bias-corrected Pearson's
+          kurtosis. This is :math:`G_2 + 3`.
+
+        Parameters
+        ----------
+        fisher : bool, optional
+            If True (default), Fisher's definition is used (excess kurtosis). If
+            False, Pearson's definition is used.
+        bias : bool, optional
+            If False (default), calculations are corrected for statistical bias
+            using finite-sample adjustments. If True, calculations use the
+            biased estimator (population formulas).
+
+        Returns
+        -------
+        numpy.ndarray
+            The kurtosis of each tally bin
+
+        """
+        n = self.num_realizations
+        m2 = self.m2
+        m4 = self.m4
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            b2 = np.where(m2 > 0.0, m4/(m2**2), 0.0)
+        g2 = b2 - 3.0
+
+        if bias:
+            # Biased estimator (g2 or b2)
+            return g2 if fisher else b2
+        else:
+            # Unbiased estimator with finite-sample correction
+            if n <= 3:
+                raise ValueError("Insufficient number of independent realizations"
+                                 f"for bias-corrected kurtosis: need n >= 4, got {n=}.")
+            else:
+                G2 = ((n - 1)/((n - 2)*(n - 3)))*((n + 1)*g2 + 6.0)
+                return G2 if fisher else G2 + 3.0
+
+    def skewtest(self, alternative: str = "two-sided"):
+        """Perform D'Agostino and Pearson's test for skewness.
+
+        This method tests the null hypothesis that the skewness of the
+        population that the sample was drawn from is the same as that of a
+        corresponding normal distribution.
+
+        Parameters
+        ----------
+        alternative : {'two-sided', 'less', 'greater'}, optional
+            Defines the alternative hypothesis. The following options are
+            available:
+
+            * 'two-sided': the skewness of the distribution is different from
+              that of the normal distribution (i.e., non-zero)
+            * 'less': the skewness of the distribution is less than that of the
+              normal distribution
+            * 'greater': the skewness of the distribution is greater than that
+              of the normal distribution
+
+        Returns
+        -------
+        statistic : np.ndarray
+            The computed z-score for the skewness test for each tally bin
+        pvalue : np.ndarray
+            The p-value for the hypothesis test for each tally bin
+
+        Notes
+        -----
+        This test is based on `D'Agostino and Pearson's test
+        <https://doi.org/10.1093/biomet/60.3.613>`_. The test requires at least
+        8 realizations to produce valid results.
+
+        """
+        n = self.num_realizations
+        if n < 8:
+            raise ValueError("Skewness test is not well-defined for n < 8.")
+
+        g1 = self.skew(bias=True)
+
+        # --- Z1 (skewness) ---
+        y = g1 * sqrt(((n + 1.0)*(n + 3.0))/(6.0*(n - 2.0)))
+        beta2 = (3.0*(n**2 + 27.0*n - 70.0)*(n + 1.0)*(n + 3.0)
+                )/((n - 2.0)*(n + 5.0)*(n + 7.0)*(n + 9.0))
+        W2 = -1.0 + sqrt(2.0*(beta2 - 1.0))
+        delta = 1.0 / sqrt(log(sqrt(W2)))
+        alpha = sqrt(2.0 / (W2 - 1.0))
+        Zb1 = np.where(
+            y >= 0.0,
+            delta*np.log((y/alpha) + np.sqrt((y/alpha)**2 + 1.0)),
+            -delta*np.log((-y/alpha) + np.sqrt((y/alpha)**2 + 1.0))
+        )
+
+        # p-value
+        if alternative == "two-sided":
+            p = 2.0 * (1.0 - norm.cdf(np.abs(Zb1)))
+        elif alternative == "greater":
+            p = 1.0 - norm.cdf(Zb1)
+        elif alternative == "less":
+            p = norm.cdf(Zb1)
+        else:
+            raise ValueError("alternative must be 'two-sided', 'greater', or 'less'")
+
+        return Zb1, p
+
+    def kurtosistest(self, alternative: str = "two-sided"):
+        """Perform D'Agostino and Pearson's test for kurtosis.
+
+        This method tests the null hypothesis that the kurtosis of the
+        population that the sample was drawn from is the same as that of a
+        corresponding normal distribution.
+
+        Parameters
+        ----------
+        alternative : {'two-sided', 'less', 'greater'}, optional
+            Defines the alternative hypothesis. Default is 'two-sided'. The
+            following options are available:
+
+            * 'two-sided': the kurtosis of the distribution is different from
+              that of the normal distribution
+            * 'less': the kurtosis of the distribution is less than that of the
+              normal distribution
+            * 'greater': the kurtosis of the distribution is greater than that
+              of the normal distribution
+
+        Returns
+        -------
+        statistic : np.ndarray
+            The computed z-score for the kurtosis test for each tally bin
+        pvalue : np.ndarray
+            The p-value for the hypothesis test for each tally bin
+
+        Raises
+        ------
+        ValueError
+            If the number of realizations is less than 20, or if an invalid
+            alternative hypothesis is specified.
+
+        Notes
+        -----
+        This test is based on `D'Agostino and Pearson's test
+        <https://doi.org/10.1093/biomet/60.3.613>`_. The test is typically
+        recommended for at least 20 realizations to produce valid results.
+
+        """
+        n = self.num_realizations
+        if n < 20:
+            raise ValueError("Kurtosis test is typically recommended for n >= 20.")
+
+        b2 = self.kurtosis(bias=True, fisher=False)
+
+        # --- Z2 (kurtosis) ---
+        mean_b2 = 3.0 * (n - 1.0) / (n + 1.0)
+        var_b2 = (24.0*n*(n - 2.0)*(n - 3.0)/(
+                    (n + 1.0)**2*(n + 3.0)*(n + 5.0)))
+        x = (b2 - mean_b2)/np.sqrt(var_b2)
+        moment = ((6.0*(n**2 - 5.0*n + 2.0))/((n + 7.0)*(n + 9.0))
+                    )*sqrt((6.0*(n + 3.0)*(n + 5.0))/(n*(n - 2.0)*(n - 3.0)))
+        A = 6.0 + (8.0/moment)*((2.0/moment) + sqrt(1.0 + 4.0/(moment**2)))
+        Zb2 = (1.0- 2.0/(9.0*A) - ((1.0 - 2.0/A) / (1.0 + (x
+                )*sqrt(2.0/(A - 4.0))))**(1.0/3.0)) / sqrt(2.0/(9.0*A))
+
+        # p-value
+        if alternative == "two-sided":
+            p = 2.0 * (1.0 - norm.cdf(np.abs(Zb2)))
+        elif alternative == "greater":
+            p = 1.0 - norm.cdf(Zb2)
+        elif alternative == "less":
+            p = norm.cdf(Zb2)
+        else:
+            raise ValueError("alternative must be 'two-sided', 'greater', or 'less'")
+
+        return Zb2, p
+
+    def normaltest(self, alternative: str = "two-sided"):
+        """Perform D'Agostino and Pearson's omnibus test for normality.
+
+        This method tests the null hypothesis that a sample comes from a normal
+        distribution. It combines skewness and kurtosis to produce an omnibus
+        test of normality.
+
+        Parameters
+        ----------
+        alternative : {'two-sided', 'less', 'greater'}, optional
+            Defines the alternative hypothesis used for the component skewness
+            and kurtosis tests. Default is 'two-sided'. The following options
+            are available:
+
+            * 'two-sided': the distribution is different from normal
+            * 'less': used for the component tests
+            * 'greater': used for the component tests
+
+        Returns
+        -------
+        statistic : np.ndarray
+            The computed z-score for the normality test for each tally bin
+        pvalue : np.ndarray
+            The p-value for the hypothesis test for each tally bin
+
+        Raises
+        ------
+        ValueError
+            If the number of realizations is less than 20, or if an invalid
+            alternative hypothesis is specified.
+
+        Notes
+        -----
+        This test combines a test for skewness and a test for kurtosis to
+        produce an `omnibus test <https://doi.org/10.1093/biomet/60.3.613>`_.
+        The test statistic is:
+
+        .. math::
+
+            K^2 = Z_1^2 + Z_2^2
+
+        where :math:`Z_1` is the z-score from the skewness test and :math:`Z_2`
+        is the z-score from the kurtosis test. This statistic follows a
+        chi-square distribution with 2 degrees of freedom.
+
+        The test requires at least 20 realizations to produce valid results.
+
+        """
+        n = self.num_realizations
+        if n < 20:
+            raise ValueError("normaltest requires n >= 20 (per D'Agostino-Pearson).")
+
+        # Use the component tests
+        Z1, _ = self.skewtest(alternative)
+        Z2, _ = self.kurtosistest(alternative)
+
+        # Combine as chi-square with df=2 since we have skewness and kurtosis
+        K2 = Z1*Z1 + Z2*Z2
+        p = chi2.sf(K2, df=2)
+        return K2, p
+
+    @property
+    def figure_of_merit(self):
+        mean = self.mean
+        std_dev = self.std_dev
+        fom = np.zeros_like(mean)
+        nonzero = np.abs(mean) > 0
+        rel_err = std_dev[nonzero] / mean[nonzero]
+        fom[nonzero] = 1.0 / (rel_err**2 * self._simulation_time)
+        return fom
 
     @property
     def with_batch_statistics(self):
@@ -451,6 +967,12 @@ class Tally(IDManagerMixin):
             if self._sum_sq is not None:
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
                                               self._sum_sq.shape)
+            if self._sum_third is not None:
+                self._sum_third = sps.lil_matrix(self._sum_third.flatten(),
+                                                 self._sum_third.shape)
+            if self._sum_fourth is not None:
+                self._sum_fourth = sps.lil_matrix(self._sum_fourth.flatten(),
+                                                  self._sum_fourth.shape)
             if self._mean is not None:
                 self._mean = sps.lil_matrix(self._mean.flatten(),
                                             self._mean.shape)
@@ -466,6 +988,10 @@ class Tally(IDManagerMixin):
                 self._sum = np.reshape(self._sum.toarray(), self.shape)
             if self._sum_sq is not None:
                 self._sum_sq = np.reshape(self._sum_sq.toarray(), self.shape)
+            if self._sum_third is not None:
+                self._sum_third = np.reshape(self._sum_third.toarray(), self.shape)
+            if self._sum_fourth is not None:
+                self._sum_fourth = np.reshape(self._sum_fourth.toarray(), self.shape)
             if self._mean is not None:
                 self._mean = np.reshape(self._mean.toarray(), self.shape)
             if self._std_dev is not None:
@@ -511,7 +1037,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        nuclide : openmc.Nuclide
+        nuclide : str
             Nuclide to remove
 
         """
@@ -792,6 +1318,34 @@ class Tally(IDManagerMixin):
 
             merged_tally._sum_sq = np.reshape(merged_sum_sq, merged_tally.shape)
 
+        # Concatenate sum_third arrays if present in both tallies
+        if self._sum_third is not None and other._sum_third is not None:
+            self_sum_third = self.get_reshaped_data(value="sum_third")
+            other_sum_third = other_copy.get_reshaped_data(value="sum_third")
+
+            if join_right:
+                merged_sum_third = np.concatenate((self_sum_third, other_sum_third),
+                                                  axis=merge_axis)
+            else:
+                merged_sum_third = np.concatenate((other_sum_third, self_sum_third),
+                                                  axis=merge_axis)
+
+            merged_tally._sum_third = np.reshape(merged_sum_third, merged_tally.shape)
+
+        # Concatenate sum_fourth arrays if present in both tallies
+        if self._sum_fourth is not None and other._sum_fourth is not None:
+            self_sum_fourth = self.get_reshaped_data(value="sum_fourth")
+            other_sum_fourth = other_copy.get_reshaped_data(value="sum_fourth")
+
+            if join_right:
+                merged_sum_fourth = np.concatenate((self_sum_fourth, other_sum_fourth),
+                                                   axis=merge_axis)
+            else:
+                merged_sum_fourth = np.concatenate((other_sum_fourth, self_sum_fourth),
+                                                   axis=merge_axis)
+
+            merged_tally._sum_fourth = np.reshape(merged_sum_fourth, merged_tally.shape)
+
         # Concatenate mean arrays if present in both tallies
         if self.mean is not None and other.mean is not None:
             self_mean = self.get_reshaped_data(value='mean')
@@ -881,7 +1435,45 @@ class Tally(IDManagerMixin):
             subelement = ET.SubElement(element, "derivative")
             subelement.text = str(self.derivative.id)
 
+        # Optional higher moments accumulation
+        if self.higher_moments:
+            subelement = ET.SubElement(element, "higher_moments")
+            subelement.text = str(self.higher_moments).lower()
+
         return element
+
+    def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):
+        """Add results from the provided statepoint file to this tally instance
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint
+            Statepoint used to update tally results
+        """
+        # derived tallies are populated with data based on combined tallies
+        # and should not be modified
+        if self.derived:
+            return
+
+        if isinstance(statepoint, openmc.StatePoint):
+            self._sp_filename = Path(statepoint._f.filename)
+        else:
+            self._sp_filename = Path(str(statepoint))
+
+        # reset these properties to ensure that any results access after this
+        # point are based on the current statepoint file
+        self._sum = None
+        self._sum_sq = None
+        self._sum_third = None
+        self._sum_fourth = None
+        self._mean = None
+        self._std_dev = None
+        self._vov = None
+        self._higher_moments = False
+        self._num_realizations = 0
+        self._results_read = False
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
@@ -900,8 +1492,8 @@ class Tally(IDManagerMixin):
             Tally object
 
         """
-        tally_id = int(elem.get('id'))
-        name = elem.get('name', '')
+        tally_id = int(get_text(elem, "id"))
+        name = get_text(elem, "name", "")
         tally = cls(tally_id=tally_id, name=name)
 
         text = get_text(elem, 'multiply_density')
@@ -909,25 +1501,24 @@ class Tally(IDManagerMixin):
             tally.multiply_density = text in ('true', '1')
 
         # Read filters
-        filters_elem = elem.find('filters')
-        if filters_elem is not None:
-            filter_ids = [int(x) for x in filters_elem.text.split()]
+        filter_ids = get_elem_list(elem, "filters", int)
+        if filter_ids is not None:
             tally.filters = [kwargs['filters'][uid] for uid in filter_ids]
 
         # Read nuclides
-        nuclides_elem = elem.find('nuclides')
-        if nuclides_elem is not None:
-            tally.nuclides = nuclides_elem.text.split()
+        nuclides = get_elem_list(elem, "nuclides", str)
+        if nuclides is not None:
+            tally.nuclides = nuclides
 
         # Read scores
-        scores_elem = elem.find('scores')
-        if scores_elem is not None:
-            tally.scores = scores_elem.text.split()
+        scores = get_elem_list(elem, "scores", str)
+        if scores is not None:
+            tally.scores = scores
 
         # Set estimator
-        estimator_elem = elem.find('estimator')
-        if estimator_elem is not None:
-            tally.estimator = estimator_elem.text
+        estimator = get_text(elem, "estimator")
+        if estimator is not None:
+            tally.estimator = estimator
 
         # Read triggers
         tally.triggers = [
@@ -936,9 +1527,9 @@ class Tally(IDManagerMixin):
         ]
 
         # Read tally derivative
-        deriv_elem = elem.find('derivative')
-        if deriv_elem is not None:
-            deriv_id = int(deriv_elem.text)
+        deriv = get_text(elem, "derivative")
+        if deriv is not None:
+            deriv_id = int(deriv)
             tally.derivative = kwargs['derivatives'][deriv_id]
 
         return tally
@@ -1020,17 +1611,10 @@ class Tally(IDManagerMixin):
             in the Tally.
 
         """
-        # Look for the user-requested nuclide in all of the Tally's Nuclides
+        # Look for the user-requested nuclide in all of the Tally's nuclides
         for i, test_nuclide in enumerate(self.nuclides):
-            # If the Summary was linked, then values are Nuclide objects
-            if isinstance(test_nuclide, openmc.Nuclide):
-                if test_nuclide.name == nuclide:
-                    return i
-
-            # If the Summary has not been linked, then values are ZAIDs
-            else:
-                if test_nuclide == nuclide:
-                    return i
+            if test_nuclide == nuclide:
+                return i
 
         msg = (f'Unable to get the nuclide index for Tally since "{nuclide}" '
                'is not one of the nuclides')
@@ -1257,7 +1841,9 @@ class Tally(IDManagerMixin):
            (value == 'std_dev' and self.std_dev is None) or \
            (value == 'rel_err' and self.mean is None) or \
            (value == 'sum' and self.sum is None) or \
-           (value == 'sum_sq' and self.sum_sq is None):
+           (value == 'sum_sq' and self.sum_sq is None) or \
+           (value == "sum_third" and self.sum_third is None) or \
+           (value == "sum_fourth" and self.sum_fourth is None):
             msg = f'The Tally ID="{self.id}" has no data to return'
             raise ValueError(msg)
 
@@ -1280,10 +1866,14 @@ class Tally(IDManagerMixin):
             data = self.sum[indices]
         elif value == 'sum_sq':
             data = self.sum_sq[indices]
+        elif value == "sum_third":
+            data = self.sum_third[indices]
+        elif value == "sum_fourth":
+            data = self.sum_fourth[indices]
         else:
             msg = f'Unable to return results from Tally ID="{value}" since ' \
                   f'the requested value "{self.id}" is not \'mean\', ' \
-                  '\'std_dev\', \'rel_err\', \'sum\', or \'sum_sq\''
+                  '\'std_dev\', \'rel_err\', \'sum\', \'sum_sq\', \'sum_third\' or \'sum_fourth\''
             raise LookupError(msg)
 
         return data
@@ -1357,9 +1947,7 @@ class Tally(IDManagerMixin):
             column_name = 'nuclide'
 
             for nuclide in self.nuclides:
-                if isinstance(nuclide, openmc.Nuclide):
-                    nuclides.append(nuclide.name)
-                elif isinstance(nuclide, openmc.AggregateNuclide):
+                if isinstance(nuclide, openmc.AggregateNuclide):
                     nuclides.append(nuclide.name)
                     column_name = f'{nuclide.aggregate_op}(nuclide)'
                 else:
@@ -1423,7 +2011,7 @@ class Tally(IDManagerMixin):
                 df.columns = pd.MultiIndex.from_tuples(columns)
 
         # Modify the df.to_string method so that it prints formatted strings.
-        # Credit to http://stackoverflow.com/users/3657742/chrisb for this trick
+        # Credit to https://stackoverflow.com/users/3657742/chrisb for this trick
         df.to_string = partial(df.to_string, float_format=float_format.format)
 
         return df
@@ -1478,7 +2066,7 @@ class Tally(IDManagerMixin):
         for i, f in enumerate(self.filters):
             if expand_dims:
                 # Mesh filter indices are backwards so we need to flip them
-                if isinstance(f, openmc.MeshFilter):
+                if type(f) in {openmc.MeshFilter, openmc.MeshBornFilter}:
                     fshape = f.shape[::-1]
                     new_shape += fshape
                     idx0, idx1 = i, i + len(fshape) - 1
@@ -2350,7 +2938,8 @@ class Tally(IDManagerMixin):
             new_tally.name = self.name
             new_tally._mean = self.mean / other
             new_tally._std_dev = self.std_dev * np.abs(1. / other)
-            new_tally.estimator = self.estimator
+            if self.estimator is not None:
+                new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realizations = self.num_realizations
 
@@ -2614,6 +3203,16 @@ class Tally(IDManagerMixin):
             new_sum_sq = self.get_values(scores, filters, filter_bins,
                                          nuclides, 'sum_sq')
             new_tally.sum_sq = new_sum_sq
+        if not self.derived and self._sum_third is not None:
+            new_sum_third = self.get_values(
+                scores, filters, filter_bins, nuclides, "sum_third"
+            )
+            new_tally._sum_third = new_sum_third
+        if not self.derived and self._sum_fourth is not None:
+            new_sum_fourth = self.get_values(
+                scores, filters, filter_bins, nuclides, "sum_fourth"
+            )
+            new_tally._sum_fourth = new_sum_fourth
         if self.mean is not None:
             new_mean = self.get_values(scores, filters, filter_bins,
                                        nuclides, 'mean')
@@ -2643,8 +3242,8 @@ class Tally(IDManagerMixin):
 
             # Determine the nuclide indices from any of the requested nuclides
             for nuclide in self.nuclides:
-                if nuclide.name not in nuclides:
-                    nuclide_index = self.get_nuclide_index(nuclide.name)
+                if nuclide not in nuclides:
+                    nuclide_index = self.get_nuclide_index(nuclide)
                     nuclide_indices.append(nuclide_index)
 
             # Loop over indices in reverse to remove excluded Nuclides
@@ -3054,6 +3653,12 @@ class Tally(IDManagerMixin):
         if not self.derived and self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
+        if not self.derived and self._sum_third is not None:
+            new_tally._sum_third = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._sum_third[diag_indices, :, :] = self.sum_third
+        if not self.derived and self._sum_fourth is not None:
+            new_tally._sum_fourth = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._sum_fourth[diag_indices, :, :] = self.sum_fourth
         if self.mean is not None:
             new_tally._mean = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._mean[diag_indices, :, :] = self.mean
@@ -3104,43 +3709,17 @@ class Tallies(cv.CheckedList):
             if possible. Defaults to False.
 
         """
-        if not isinstance(tally, Tally):
-            msg = f'Unable to add a non-Tally "{tally}" to the Tallies instance'
-            raise TypeError(msg)
-
         if merge:
-            merged = False
-
             # Look for a tally to merge with this one
             for i, tally2 in enumerate(self):
-
                 # If a mergeable tally is found
                 if tally2.can_merge(tally):
                     # Replace tally2 with the merged tally
                     merged_tally = tally2.merge(tally)
                     self[i] = merged_tally
-                    merged = True
-                    break
+                    return
 
-            # If no mergeable tally was found, simply add this tally
-            if not merged:
-                super().append(tally)
-
-        else:
-            super().append(tally)
-
-    def insert(self, index, item):
-        """Insert tally before index
-
-        Parameters
-        ----------
-        index : int
-            Index in list
-        item : openmc.Tally
-            Tally to insert
-
-        """
-        super().insert(index, item)
+        super().append(tally)
 
     def merge_tallies(self):
         """Merge any mergeable tallies together. Note that n-way merges are
@@ -3165,6 +3744,19 @@ class Tallies(cv.CheckedList):
 
                     # Continue iterating from the first loop
                     break
+
+    def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):
+        """Add results from the provided statepoint file
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint
+            Statepoint used to update tally results
+        """
+        for tally in self:
+            tally.add_results(statepoint)
 
     def _create_tally_subelements(self, root_element):
         for tally in self:
@@ -3218,7 +3810,6 @@ class Tallies(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
-        reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
         return element
 

@@ -7,13 +7,18 @@ Geometry Plotting Specification -- plots.xml
 Basic plotting capabilities are available in OpenMC by creating a plots.xml file
 and subsequently running with the ``--plot`` command-line flag. The root element
 of the plots.xml is simply ``<plots>`` and any number output plots can be
-defined with ``<plot>`` sub-elements.  Two plot types are currently implemented
+defined with ``<plot>`` sub-elements.  Four plot types are currently implemented
 in openMC:
 
 * ``slice``  2D pixel plot along one of the major axes. Produces a PNG image
   file.
 * ``voxel``  3D voxel data dump. Produces an HDF5 file containing voxel xyz
   position and cell or material id.
+* ``wireframe_raytrace``  2D pixel plot of a three-dimensional view of a
+  geometry using wireframes around cells or materials and coloring by depth
+  through each material.
+* ``solid_raytrace``  2D pixel plot of a three-dimensional view of a geometry
+  with solid colored surfaces of a set of cells or materials.
 
 
 ------------------
@@ -66,21 +71,22 @@ sub-elements:
     *Default*: None - Required entry
 
   :type:
-    Keyword for type of plot to be produced. Currently only "slice" and "voxel"
-    plots are implemented. The "slice" plot type creates 2D pixel maps saved in
-    the PNG file format. The "voxel" plot type produces a binary datafile
-    containing voxel grid positioning and the cell or material (specified by the
-    ``color`` tag) at the center of each voxel. Voxel plot files can be
-    processed into VTK files using the :ref:`scripts_voxel` script provided with
-    OpenMC and subsequently viewed with a 3D viewer such as VISIT or Paraview.
-    See the :ref:`io_voxel` for information about the datafile structure.
+    Keyword for type of plot to be produced. Currently "slice", "voxel",
+    "wireframe_raytrace", and "solid_raytrace" plots are implemented. The
+    "slice" plot type creates 2D pixel maps saved in the PNG file format. The
+    "voxel" plot type produces a binary datafile containing voxel grid
+    positioning and the cell or material (specified by the ``color`` tag) at the
+    center of each voxel. Voxel plot files can be processed into VTK files using
+    the :func:`openmc.voxel_to_vtk` function and subsequently viewed with a 3D
+    viewer such as VISIT or Paraview. See :ref:`io_voxel` for information about
+    the datafile structure.
 
     .. note:: High-resolution voxel files produced by OpenMC can be quite large,
               but the equivalent VTK files will be significantly smaller.
 
     *Default*: "slice"
 
-``<plot>`` elements of ``type`` "slice" and "voxel" must contain the ``pixels``
+All ``<plot>`` elements must contain the ``pixels``
 attribute or sub-element:
 
   :pixels:
@@ -96,7 +102,7 @@ attribute or sub-element:
                  ``width``/``pixels`` along that basis direction may not appear
                  in the plot.
 
-    *Default*: None - Required entry for "slice" and "voxel" plots
+    *Default*: None - Required entry for all plots
 
 ``<plot>`` elements of ``type`` "slice" can also contain the following
 attributes or sub-elements.  These are not used in "voxel" plots:
@@ -125,6 +131,11 @@ attributes or sub-elements.  These are not used in "voxel" plots:
       Specifies the custom color for the cell or material. Should be 3 integers
       separated by spaces.
 
+    :xs:
+      The attenuation coefficient for volume rendering of color in units of
+      inverse centimeters. Zero corresponds to transparency. Only for plot type
+      "wireframe_raytrace".
+
     As an example, if your plot is colored by material and you want material 23
     to be blue, the corresponding ``color`` element would look like:
 
@@ -152,17 +163,17 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     *Default*: 255 255 255 (white)
 
   :show_overlaps:
-    Indicates whether overlapping regions of different cells are shown. 
+    Indicates whether overlapping regions of different cells are shown.
 
     *Default*: None
 
   :overlap_color:
-    Specifies the RGB color of overlapping regions of different cells. Does not 
-    do anything if ``show_overlaps`` is "false" or not specified. Should be 3 
+    Specifies the RGB color of overlapping regions of different cells. Does not
+    do anything if ``show_overlaps`` is "false" or not specified. Should be 3
     integers separated by spaces.
 
     *Default*: 255 0 0 (red)
-  
+
   :meshlines:
     The ``meshlines`` sub-element allows for plotting the boundaries of a
     regular mesh on top of a plot. Only one ``meshlines`` element is allowed per
@@ -189,5 +200,82 @@ attributes or sub-elements.  These are not used in "voxel" plots:
       integers separated by whitespace.  This element is optional.
 
       *Default*: 0 0 0 (black)
+
+    *Default*: None
+
+``<plot>`` elements of ``type`` "wireframe_raytrace" or "solid_raytrace" can contain the
+following attributes or sub-elements.
+
+  :camera_position:
+    Location in 3D Cartesian space the camera is at.
+
+
+    *Default*: None - Required for all ``wireframe_raytrace`` or
+    ``solid_raytrace`` plots
+
+  :look_at:
+    Location in 3D Cartesian space the camera is looking at.
+
+
+    *Default*: None - Required for all ``wireframe_raytrace`` or
+    ``solid_raytrace`` plots
+
+  :field_of_view:
+    The horizontal field of view in degrees. Defaults to roughly the same value
+    as for the human eye.
+
+    *Default*: 70
+
+  :orthographic_width:
+    If set to a nonzero value, an orthographic rather than perspective
+    projection for the camera is employed. An orthographic projection puts out
+    parallel rays from the camera of a width prescribed here in the horizontal
+    direction, with the width in the vertical direction decided by the pixel
+    aspect ratio.
+
+    *Default*: 0
+
+``<plot>`` elements of ``type`` "solid_raytrace" can contain the following attributes or
+sub-elements.
+
+  :opaque_ids:
+    List of integer IDs of cells or materials to be treated as visible in the
+    plot. Whether the integers are interpreted as cell or material IDs depends
+    on ``color_by``.
+
+    *Default*: None - Required for all phong plots
+
+  :light_position:
+    Location in 3D Cartesian space of the light.
+
+
+    *Default*: Same location as ``camera_position``
+
+  :diffuse_fraction:
+    Fraction of light originating from non-directional sources. If set to one,
+    the coloring is not influenced by surface curvature, and no shadows appear.
+    If set to zero, only regions illuminated by the light are not black.
+
+
+    *Default*: 0.1
+
+``<plot>`` elements of ``type`` "wireframe_raytrace" can contain the following
+attributes or sub-elements.
+
+  :wireframe_color:
+    RGB value of the wireframe's color
+
+    *Default*: 0, 0, 0 (black)
+
+  :wireframe_thickness:
+    Integer number of pixels that the wireframe takes up. The value is a radius
+    of the wireframe. Setting to zero removes any wireframing.
+
+    *Default*: 0
+
+  :wireframe_ids:
+    Integer IDs of cells or materials of regions to draw wireframes around.
+    Whether the integers are interpreted as cell or material IDs depends on
+    ``color_by``.
 
     *Default*: None

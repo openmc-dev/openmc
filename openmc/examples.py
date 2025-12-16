@@ -11,8 +11,9 @@ def pwr_pin_cell() -> openmc.Model:
 
     This model is a single fuel pin with 2.4 w/o enriched UO2 corresponding to a
     beginning-of-cycle condition and borated water. The specifications are from
-    the `BEAVRS <http://crpg.mit.edu/research/beavrs>`_ benchmark. Note that the
-    number of particles/batches is initially set very low for testing purposes.
+    the `BEAVRS <https://crpg.mit.edu/research/beavrs>`_ benchmark. Note that
+    the number of particles/batches is initially set very low for testing
+    purposes.
 
     Returns
     -------
@@ -82,7 +83,7 @@ def pwr_pin_cell() -> openmc.Model:
         constraints={'fissionable': True}
     )
 
-    plot = openmc.Plot.from_geometry(model.geometry)
+    plot = openmc.SlicePlot.from_geometry(model.geometry)
     plot.pixels = (300, 300)
     plot.color_by = 'material'
     model.plots.append(plot)
@@ -428,7 +429,7 @@ def pwr_core() -> openmc.Model:
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-160, -160, -183], [160, 160, 183]))
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     plot.origin = (125, 125, 0)
     plot.width = (250, 250)
     plot.pixels = (3000, 3000)
@@ -442,7 +443,7 @@ def pwr_assembly() -> openmc.Model:
     """Create a PWR assembly model.
 
     This model is a reflected 17x17 fuel assembly from the the `BEAVRS
-    <http://crpg.mit.edu/research/beavrs>`_ benchmark. The fuel is 2.4 w/o
+    <https://crpg.mit.edu/research/beavrs>`_ benchmark. The fuel is 2.4 w/o
     enriched UO2 corresponding to a beginning-of-cycle condition. Note that the
     number of particles/batches is initially set very low for testing purposes.
 
@@ -543,7 +544,7 @@ def pwr_assembly() -> openmc.Model:
         constraints={'fissionable': True}
     )
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     plot.origin = (0.0, 0.0, 0)
     plot.width = (21.42, 21.42)
     plot.pixels = (300, 300)

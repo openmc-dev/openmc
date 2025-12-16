@@ -96,7 +96,7 @@ def id_fn(params):
 def test_wwinp_reader(wwinp_data, request):
     wwinp_file, mesh, particle_types, energy_bounds = wwinp_data
 
-    wws = openmc.wwinp_to_wws(request.node.path.parent / wwinp_file)
+    wws = openmc.WeightWindowsList.from_wwinp(request.node.path.parent / wwinp_file)
 
     for i, ww in enumerate(wws):
         e_bounds = energy_bounds[i]
@@ -140,4 +140,4 @@ def test_wwinp_reader_failures(wwinp_data, request):
     filename, expected_failure = wwinp_data
 
     with pytest.raises(expected_failure):
-        _ = openmc.wwinp_to_wws(request.node.path.parent / filename)
+        _ = openmc.WeightWindowsList.from_wwinp(request.node.path.parent / filename)

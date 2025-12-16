@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from functools import cached_property
 from io import StringIO
 from math import log
 import re
@@ -12,7 +13,7 @@ import openmc.checkvalue as cv
 from openmc.exceptions import DataError
 from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
-from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
+from .data import ATOMIC_NUMBER, gnds_name
 from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
 
@@ -125,9 +126,7 @@ class FissionProductYields(EqualityMixin):
                 for j in range(n_products):
                     Z, A = divmod(int(values[4*j]), 1000)
                     isomeric_state = int(values[4*j + 1])
-                    name = ATOMIC_SYMBOL[Z] + str(A)
-                    if isomeric_state > 0:
-                        name += f'_m{isomeric_state}'
+                    name = gnds_name(Z, A, isomeric_state)
                     yield_j = ufloat(values[4*j + 2], values[4*j + 3])
                     yields[name] = yield_j
 
@@ -255,10 +254,7 @@ class DecayMode(EqualityMixin):
                         A += delta_A
                         Z += delta_Z
 
-        if self._daughter_state > 0:
-            return f'{ATOMIC_SYMBOL[Z]}{A}_m{self._daughter_state}'
-        else:
-            return f'{ATOMIC_SYMBOL[Z]}{A}'
+        return gnds_name(Z, A, self._daughter_state)
 
     @property
     def parent(self):
@@ -339,7 +335,6 @@ class Decay(EqualityMixin):
         self.modes = []
         self.spectra = {}
         self.average_energies = {}
-        self._sources = None
 
         # Get head record
         items = get_head_record(file_obj)
@@ -348,10 +343,7 @@ class Decay(EqualityMixin):
         self.nuclide['atomic_number'] = Z
         self.nuclide['mass_number'] = A
         self.nuclide['isomeric_state'] = metastable
-        if metastable > 0:
-            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}_m{metastable}'
-        else:
-            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}'
+        self.nuclide['name'] = gnds_name(Z, A, metastable)
         self.nuclide['mass'] = items[1]  # AWR
         self.nuclide['excited_state'] = items[2]  # State of the original nuclide
         self.nuclide['stable'] = (items[4] == 1)  # Nucleus stability flag
@@ -506,14 +498,9 @@ class Decay(EqualityMixin):
         """
         return cls(ev_or_filename)
 
-    @property
+    @cached_property
     def sources(self):
         """Radioactive decay source distributions"""
-        # If property has been computed already, return it
-        # TODO: Replace with functools.cached_property when support is Python 3.9+
-        if self._sources is not None:
-            return self._sources
-
         sources = {}
         name = self.nuclide['name']
         decay_constant = self.decay_constant.n
@@ -571,8 +558,7 @@ class Decay(EqualityMixin):
             merged_sources[particle_type] = combine_distributions(
                 dist_list, [1.0]*len(dist_list))
 
-        self._sources = merged_sources
-        return self._sources
+        return merged_sources
 
 
 _DECAY_PHOTON_ENERGY = {}
@@ -597,7 +583,7 @@ def decay_photon_energy(nuclide: str) -> Univariate | None:
     openmc.stats.Univariate or None
         Distribution of energies in [eV] of photons emitted from decay, or None
         if no photon source exists. Note that the probabilities represent
-        intensities, given as [Bq].
+        intensities, given as [Bq/atom] (in other words, decay constants).
     """
     if not _DECAY_PHOTON_ENERGY:
         chain_file = openmc.config.get('chain_file')

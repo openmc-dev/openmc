@@ -52,7 +52,7 @@ Compatibility Notes and Deprecations
 New Features
 ------------
 
-- A new :class:`openmc.ProjectionPlot` class enables the generation of orthographic or
+- A new :class:`openmc.WireframeRayTracePlot` class enables the generation of orthographic or
   perspective projection plots. (`#1926
   <https://github.com/openmc-dev/openmc/pull/1926>`_)
 - The :class:`openmc.model.RightCircularCylinder` class now supports optional

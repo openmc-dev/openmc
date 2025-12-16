@@ -6,16 +6,17 @@ from numbers import Integral, Real
 from pathlib import Path
 
 import lxml.etree as ET
-
+import warnings
+import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import MeshSpatial
-from ._xml import clean_indentation, get_text, reorder_attributes
-from .mesh import _read_meshes, RegularMesh
+from ._xml import clean_indentation, get_elem_list, get_text
+from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
 from .volume import VolumeCalculation
-from .weight_windows import WeightWindows, WeightWindowGenerator
+from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
 
 
 class RunMode(Enum):
@@ -46,19 +47,38 @@ class Settings:
         half-width of the 95% two-sided confidence interval. If False,
         uncertainties on tally results will be reported as the sample standard
         deviation.
+    collision_track : dict
+        Options for writing collision information. Acceptable keys are:
+
+        :max_collisions: Maximum number of collisions to be banked per file. (int)
+        :max_collision_track_files: Maximum number of collision_track files. (int)
+        :mcpl: Output in the form of an MCPL-file. (bool)
+        :cell_ids: List of cell IDs to define cells in which collisions should be banked. (list of int)
+        :universe_ids: List of universe IDs to define universes in which collisions should be banked. (list of int)
+        :material_ids: List of material IDs to define materials in which collisions should be banked. (list of int)
+        :nuclides: List of nuclides to define nuclides in which collisions should be banked.
+                    (ex: ["I135m", "U233"] ). (list of str)
+        :reactions: List of reaction to define specific reactions that should be banked
+                    (ex: ["(n,fission)", 2, "(n,2n)"] ). (list of str or int)
+        :deposited_E_threshold: Number to define the minimum deposited energy during
+                     per collision to trigger banking. (float)
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
         Dictionary defining weight cutoff, energy cutoff and time cutoff. The
-        dictionary may have ten keys, 'weight', 'weight_avg', 'energy_neutron',
-        'energy_photon', 'energy_electron', 'energy_positron', 'time_neutron',
-        'time_photon', 'time_electron', and 'time_positron'. Value for 'weight'
-        should be a float indicating weight cutoff below which particle undergo
-        Russian roulette. Value for 'weight_avg' should be a float indicating
-        weight assigned to particles that are not killed after Russian roulette.
-        Value of energy should be a float indicating energy in eV below which
-        particle type will be killed. Value of time should be a float in
-        seconds. Particles will be killed exactly at the specified time.
+        dictionary may have the following keys, 'weight', 'weight_avg',
+        'survival_normalization', 'energy_neutron', 'energy_photon',
+        'energy_electron', 'energy_positron', 'time_neutron', 'time_photon',
+        'time_electron', and 'time_positron'. Value for 'weight' should be a
+        float indicating weight cutoff below which particle undergo Russian
+        roulette. Value for 'weight_avg' should be a float indicating weight
+        assigned to particles that are not killed after Russian roulette. Value
+        of energy should be a float indicating energy in eV below which particle
+        type will be killed. Value of time should be a float in seconds.
+        Particles will be killed exactly at the specified time. Value for
+        'survival_normalization' is a bool indicating whether or not the weight
+        cutoff parameters will be applied relative to the particle's starting
+        weight or to its current weight.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -79,8 +99,15 @@ class Settings:
         history-based parallelism.
 
         .. versionadded:: 0.12
+    free_gas_threshold : float
+        Energy multiplier (in units of :math:`kT`) below which the free gas
+        scattering treatment is applied for elastic scattering. If not
+        specified, a value of 400.0 is used.
     generations_per_batch : int
         Number of generations per batch
+    ifp_n_generation : int
+        Number of generations to consider for the Iterated Fission Probability
+        method.
     max_lost_particles : int
         Maximum number of lost particles
 
@@ -120,6 +147,10 @@ class Settings:
         Maximum number of times a particle can split during a history
 
         .. versionadded:: 0.13
+    max_secondaries : int
+        Maximum secondary bank size
+
+        .. versionadded:: 0.15.3
     max_tracks : int
         Maximum number of tracks written to a track file (per MPI process).
 
@@ -151,7 +182,7 @@ class Settings:
         Options for configuring the random ray solver. Acceptable keys are:
 
         :distance_inactive:
-            Indicates the total active distance in [cm] a ray should travel
+            Indicates the total inactive distance in [cm] a ray should travel
         :distance_active:
             Indicates the total active distance in [cm] a ray should travel
         :ray_source:
@@ -162,17 +193,37 @@ class Settings:
             'naive', 'simulation_averaged', or 'hybrid'.
             The default is 'hybrid'.
         :source_shape:
-            Assumed shape of the source distribution within each source
-            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
+            Assumed shape of the source distribution within each source region.
+            Options are 'flat' (default), 'linear', or 'linear_xy'.
         :volume_normalized_flux_tallies:
-            Whether to normalize flux tallies by volume (bool). The default
-            is 'False'. When enabled, flux tallies will be reported in units of
-            cm/cm^3. When disabled, flux tallies will be reported in units
-            of cm (i.e., total distance traveled by neutrons in the spatial
-            tally region).
+            Whether to normalize flux tallies by volume (bool). The default is
+            'False'. When enabled, flux tallies will be reported in units of
+            cm/cm^3. When disabled, flux tallies will be reported in units of cm
+            (i.e., total distance traveled by neutrons in the spatial tally
+            region).
         :adjoint:
             Whether to run the random ray solver in adjoint mode (bool). The
             default is 'False'.
+        :sample_method:
+            Sampling method for the ray starting location and direction of
+            travel. Options are `prng` (default) or 'halton`.
+        :source_region_meshes:
+            List of tuples where each tuple contains a mesh and a list of
+            domains. Each domain is an instance of openmc.Material, openmc.Cell,
+            or openmc.Universe. The mesh will be applied to the listed domains
+            to subdivide source regions so as to improve accuracy and/or conform
+            with tally meshes.
+        :diagonal_stabilization_rho:
+            The rho factor for use with diagonal stabilization. This technique is
+            applied when negative diagonal (in-group) elements are detected in
+            the scattering matrix of input MGXS data, which is a common feature
+            of transport corrected MGXS data. The default is 1.0, which ensures
+            no negative diagonal elements are present in the iteration matrix and
+            thus stabilizes the simulation. A value of 0.0 will disable diagonal
+            stabilization. Values between 0.0 and 1.0 will apply a degree of
+            stabilization, which may be desirable as stronger diagonal stabilization
+            also tends to dampen the convergence rate of the solver, thus requiring
+            more iterations to converge.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -190,8 +241,14 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
+    stride : int
+        Number of random numbers allocated for each source particle history
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
+    source_rejection_fraction : float
+        Minimum fraction of source sites that must be accepted when applying
+        rejection sampling based on constraints. If not specified, the default
+        value is 0.05.
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
 
@@ -272,12 +329,14 @@ class Settings:
     ufs_mesh : openmc.RegularMesh
         Mesh to be used for redistributing source sites via the uniform fission
         site (UFS) method.
+    use_decay_photons : bool
+        Produce decay photons from neutron reactions instead of prompt
     verbosity : int
         Verbosity during simulation between 1 and 10. Verbosity levels are
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
-    weight_windows : WeightWindows or iterable of WeightWindows
+    weight_windows : WeightWindowsList
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
@@ -325,6 +384,7 @@ class Settings:
 
         # Source subelement
         self._source = cv.CheckedList(SourceBase, 'source distributions')
+        self._source_rejection_fraction = None
 
         self._confidence_intervals = None
         self._electron_treatment = None
@@ -333,7 +393,9 @@ class Settings:
         self._ptables = None
         self._uniform_source_sampling = None
         self._seed = None
+        self._stride = None
         self._survival_biasing = None
+        self._free_gas_threshold = None
 
         # Shannon entropy mesh
         self._entropy_mesh = None
@@ -344,6 +406,12 @@ class Settings:
         self._trigger_batch_interval = None
 
         self._output = None
+
+        # Iterated Fission Probability
+        self._ifp_n_generation = None
+
+        # Collision track feature
+        self._collision_track = {}
 
         # Output options
         self._statepoint = {}
@@ -383,13 +451,16 @@ class Settings:
         self._max_particles_in_flight = None
         self._max_particle_events = None
         self._write_initial_source = None
-        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
-        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
+        self._weight_windows = WeightWindowsList()
+        self._weight_window_generators = cv.CheckedList(
+            WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
         self._max_tracks = None
+        self._max_secondaries = None
+        self._use_decay_photons = None
 
         self._random_ray = {}
 
@@ -423,8 +494,9 @@ class Settings:
 
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch: int):
-        cv.check_type('generations per patch', generations_per_batch, Integral)
-        cv.check_greater_than('generations per batch', generations_per_batch, 0)
+        cv.check_type('generations per batch', generations_per_batch, Integral)
+        cv.check_greater_than('generations per batch',
+                              generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @property
@@ -454,7 +526,8 @@ class Settings:
     @rel_max_lost_particles.setter
     def rel_max_lost_particles(self, rel_max_lost_particles: float):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
-        cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
+        cv.check_greater_than('rel_max_lost_particles',
+                              rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
         self._rel_max_lost_particles = rel_max_lost_particles
 
@@ -464,8 +537,10 @@ class Settings:
 
     @max_write_lost_particles.setter
     def max_write_lost_particles(self, max_write_lost_particles: int):
-        cv.check_type('max_write_lost_particles', max_write_lost_particles, Integral)
-        cv.check_greater_than('max_write_lost_particles', max_write_lost_particles, 0)
+        cv.check_type('max_write_lost_particles',
+                      max_write_lost_particles, Integral)
+        cv.check_greater_than('max_write_lost_particles',
+                              max_write_lost_particles, 0)
         self._max_write_lost_particles = max_write_lost_particles
 
     @property
@@ -486,12 +561,12 @@ class Settings:
     def keff_trigger(self, keff_trigger: dict):
         if not isinstance(keff_trigger, dict):
             msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
-                  'which is not a Python dictionary'
+                'which is not a Python dictionary'
             raise ValueError(msg)
 
         elif 'type' not in keff_trigger:
             msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
-                  'which does not have a "type" key'
+                'which does not have a "type" key'
             raise ValueError(msg)
 
         elif keff_trigger['type'] not in ['variance', 'std_dev', 'rel_err']:
@@ -501,7 +576,7 @@ class Settings:
 
         elif 'threshold' not in keff_trigger:
             msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
-                  'which does not have a "threshold" key'
+                'which does not have a "threshold" key'
             raise ValueError(msg)
 
         elif not isinstance(keff_trigger['threshold'], Real):
@@ -518,7 +593,7 @@ class Settings:
     @energy_mode.setter
     def energy_mode(self, energy_mode: str):
         cv.check_value('energy mode', energy_mode,
-                    ['continuous-energy', 'multi-group'])
+                       ['continuous-energy', 'multi-group'])
         self._energy_mode = energy_mode
 
     @property
@@ -541,7 +616,8 @@ class Settings:
     def source(self, source: SourceBase | Iterable[SourceBase]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList(SourceBase, 'source distributions', source)
+        self._source = cv.CheckedList(
+            SourceBase, 'source distributions', source)
 
     @property
     def confidence_intervals(self) -> bool:
@@ -558,7 +634,8 @@ class Settings:
 
     @electron_treatment.setter
     def electron_treatment(self, electron_treatment: str):
-        cv.check_value('electron treatment', electron_treatment, ['led', 'ttb'])
+        cv.check_value('electron treatment',
+                       electron_treatment, ['led', 'ttb'])
         self._electron_treatment = electron_treatment
 
     @property
@@ -609,6 +686,16 @@ class Settings:
         self._seed = seed
 
     @property
+    def stride(self) -> int:
+        return self._stride
+
+    @stride.setter
+    def stride(self, stride: int):
+        cv.check_type('random number generator stride', stride, Integral)
+        cv.check_greater_than('random number generator stride', stride, 0)
+        self._stride = stride
+
+    @property
     def survival_biasing(self) -> bool:
         return self._survival_biasing
 
@@ -642,7 +729,8 @@ class Settings:
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches: int):
         cv.check_type('trigger maximum batches', trigger_max_batches, Integral)
-        cv.check_greater_than('trigger maximum batches', trigger_max_batches, 0)
+        cv.check_greater_than('trigger maximum batches',
+                              trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @property
@@ -651,8 +739,10 @@ class Settings:
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval: int):
-        cv.check_type('trigger batch interval', trigger_batch_interval, Integral)
-        cv.check_greater_than('trigger batch interval', trigger_batch_interval, 0)
+        cv.check_type('trigger batch interval',
+                      trigger_batch_interval, Integral)
+        cv.check_greater_than('trigger batch interval',
+                              trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @property
@@ -736,19 +826,22 @@ class Settings:
 
     @surf_source_write.setter
     def surf_source_write(self, surf_source_write: dict):
-        cv.check_type("surface source writing options", surf_source_write, Mapping)
+        cv.check_type("surface source writing options",
+                      surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value(
                 "surface source writing key",
                 key,
-                ("surface_ids", "max_particles", "max_source_files", "mcpl", "cell", "cellfrom", "cellto"),
+                ("surface_ids", "max_particles", "max_source_files",
+                 "mcpl", "cell", "cellfrom", "cellto"),
             )
             if key == "surface_ids":
                 cv.check_type(
                     "surface ids for source banking", value, Iterable, Integral
                 )
                 for surf_id in value:
-                    cv.check_greater_than("surface id for source banking", surf_id, 0)
+                    cv.check_greater_than(
+                        "surface id for source banking", surf_id, 0)
 
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
@@ -764,6 +857,79 @@ class Settings:
                 cv.check_greater_than(name, value, 0)
 
         self._surf_source_write = surf_source_write
+
+    @property
+    def collision_track(self) -> dict:
+        return self._collision_track
+
+    @collision_track.setter
+    def collision_track(self, collision_track: dict):
+        cv.check_type('Collision tracking options', collision_track, Mapping)
+        for key, value in collision_track.items():
+            cv.check_value('collision_track key', key,
+                           ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclides',
+                            'deposited_E_threshold', 'max_collisions', 'max_collision_track_files', 'mcpl'))
+            if key == 'cell_ids':
+                cv.check_type('cell ids for collision tracking data banking', value,
+                              Iterable, Integral)
+                for cell_id in value:
+                    cv.check_greater_than('cell id for collision tracking data banking',
+                                          cell_id, 0)
+            elif key == 'reactions':
+                cv.check_type('MT numbers for collision tracking data banking', value,
+                              Iterable)
+                for reaction in value:
+                    if isinstance(reaction, int):
+                        cv.check_greater_than(
+                            'MT number for collision tracking data banking', reaction, 0
+                        )
+                    elif isinstance(reaction, str):
+                        # check against allowed strings? so far let C++ code handle it
+                        pass
+                    else:
+                        raise TypeError(
+                            f"MT number for collision tracking data banking must be a positive int or string, "
+                            f"got {type(reaction).__name__}")
+            elif key == 'universe_ids':
+                cv.check_type('universe ids for collision tracking data banking', value,
+                              Iterable, Integral)
+                for universe_id in value:
+                    cv.check_greater_than('universe id for collision tracking data banking',
+                                          universe_id, 0)
+            elif key == 'material_ids':
+                cv.check_type('material ids for collision tracking data banking', value,
+                              Iterable, Integral)
+                for material_id in value:
+                    cv.check_greater_than('material id for collision tracking data banking',
+                                          material_id, 0)
+            elif key == 'nuclides':
+                cv.check_type('nuclides for collision tracking data banking', value,
+                              Iterable, str)
+                for nuclide in value:
+                    # If nuclide name doesn't look valid, give a warning
+                    try:
+                        openmc.data.zam(nuclide)
+                    except ValueError:
+                        warnings.warn(f"Nuclide {nuclide} is not valid")
+            elif key == 'deposited_E_threshold':
+                cv.check_type('Deposited Energy Threshold for collision tracking data banking',
+                              value, Real)
+                cv.check_greater_than('Deposited Energy Threshold for collision tracking data banking',
+                                      value, 0)
+            elif key == 'max_collisions':
+                cv.check_type('maximum collisions banks per file',
+                              value, Integral)
+                cv.check_greater_than('maximum collisions banks in collision tracking',
+                                      value, 0)
+            elif key == 'max_collision_track_files':
+                cv.check_type('maximum collisions banks',
+                              value, Integral)
+                cv.check_greater_than('maximum number of collision_track files ',
+                                      value, 0)
+            elif key == 'mcpl':
+                cv.check_type('write to an MCPL-format file', value, bool)
+
+        self._collision_track = collision_track
 
     @property
     def no_reduce(self) -> bool:
@@ -784,6 +950,17 @@ class Settings:
         cv.check_greater_than('verbosity', verbosity, 1, True)
         cv.check_less_than('verbosity', verbosity, 10, True)
         self._verbosity = verbosity
+
+    @property
+    def ifp_n_generation(self) -> int:
+        return self._ifp_n_generation
+
+    @ifp_n_generation.setter
+    def ifp_n_generation(self, ifp_n_generation: int):
+        if ifp_n_generation is not None:
+            cv.check_type("number of generations", ifp_n_generation, Integral)
+            cv.check_greater_than("number of generations", ifp_n_generation, 0)
+        self._ifp_n_generation = ifp_n_generation
 
     @property
     def tabular_legendre(self) -> dict:
@@ -870,7 +1047,7 @@ class Settings:
     def cutoff(self, cutoff: dict):
         if not isinstance(cutoff, Mapping):
             msg = f'Unable to set cutoff from "{cutoff}" which is not a '\
-                  'Python dictionary'
+                'Python dictionary'
             raise ValueError(msg)
         for key in cutoff:
             if key == 'weight':
@@ -880,13 +1057,15 @@ class Settings:
                 cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
                                       cutoff[key], 0.0)
+            elif key == 'survival_normalization':
+                cv.check_type('survival normalization', cutoff[key], bool)
             elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
                          'energy_positron']:
                 cv.check_type('energy cutoff', cutoff[key], Real)
                 cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
             else:
                 msg = f'Unable to set cutoff to "{key}" which is unsupported ' \
-                      'by OpenMC'
+                    'by OpenMC'
 
         self._cutoff = cutoff
 
@@ -1030,14 +1209,14 @@ class Settings:
         self._write_initial_source = value
 
     @property
-    def weight_windows(self) -> list[WeightWindows]:
+    def weight_windows(self) -> WeightWindowsList:
         return self._weight_windows
 
     @weight_windows.setter
-    def weight_windows(self, value: WeightWindows | Iterable[WeightWindows]):
-        if not isinstance(value, MutableSequence):
+    def weight_windows(self, value: WeightWindows | Sequence[WeightWindows]):
+        if not isinstance(value, Sequence):
             value = [value]
-        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
+        self._weight_windows = WeightWindowsList(value)
 
     @property
     def weight_windows_on(self) -> bool:
@@ -1055,12 +1234,14 @@ class Settings:
     @weight_window_checkpoints.setter
     def weight_window_checkpoints(self, weight_window_checkpoints: dict):
         for key in weight_window_checkpoints.keys():
-            cv.check_value('weight_window_checkpoints', key, ('collision', 'surface'))
+            cv.check_value('weight_window_checkpoints',
+                           key, ('collision', 'surface'))
         self._weight_window_checkpoints = weight_window_checkpoints
 
     @property
     def max_splits(self):
-        raise AttributeError('max_splits has been deprecated. Please use max_history_splits instead')
+        raise AttributeError(
+            'max_splits has been deprecated. Please use max_history_splits instead')
 
     @property
     def max_history_splits(self) -> int:
@@ -1071,6 +1252,16 @@ class Settings:
         cv.check_type('maximum particle splits', value, Integral)
         cv.check_greater_than('max particle splits', value, 0)
         self._max_history_splits = value
+
+    @property
+    def max_secondaries(self) -> int:
+        return self._max_secondaries
+
+    @max_secondaries.setter
+    def max_secondaries(self, value: int):
+        cv.check_type('maximum secondary bank size', value, Integral)
+        cv.check_greater_than('max secondary bank size', value, 0)
+        self._max_secondaries = value
 
     @property
     def max_tracks(self) -> int:
@@ -1087,9 +1278,12 @@ class Settings:
         return self._weight_windows_file
 
     @weight_windows_file.setter
-    def weight_windows_file(self, value: PathLike):
-        cv.check_type('weight windows file', value, PathLike)
-        self._weight_windows_file = input_path(value)
+    def weight_windows_file(self, value: PathLike | None):
+        if value is None:
+            self._weight_windows_file = None
+        else:
+            cv.check_type('weight windows file', value, PathLike)
+            self._weight_windows_file = input_path(value)
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:
@@ -1099,7 +1293,8 @@ class Settings:
     def weight_window_generators(self, wwgs):
         if not isinstance(wwgs, MutableSequence):
             wwgs = [wwgs]
-        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators', wwgs)
+        self._weight_window_generators = cv.CheckedList(
+            WeightWindowGenerator, 'weight window generators', wwgs)
 
     @property
     def random_ray(self) -> dict:
@@ -1110,32 +1305,85 @@ class Settings:
         if not isinstance(random_ray, Mapping):
             raise ValueError(f'Unable to set random_ray from "{random_ray}" '
                              'which is not a dict.')
-        for key in random_ray:
+        for key, value in random_ray.items():
             if key == 'distance_active':
-                cv.check_type('active ray length', random_ray[key], Real)
-                cv.check_greater_than('active ray length', random_ray[key], 0.0)
+                cv.check_type('active ray length', value, Real)
+                cv.check_greater_than('active ray length', value, 0.0)
             elif key == 'distance_inactive':
-                cv.check_type('inactive ray length', random_ray[key], Real)
+                cv.check_type('inactive ray length', value, Real)
                 cv.check_greater_than('inactive ray length',
-                                      random_ray[key], 0.0, True)
+                                      value, 0.0, True)
             elif key == 'ray_source':
-                cv.check_type('random ray source', random_ray[key], SourceBase)
+                cv.check_type('random ray source', value, SourceBase)
             elif key == 'volume_estimator':
-                cv.check_value('volume estimator', random_ray[key],
+                cv.check_value('volume estimator', value,
                                ('naive', 'simulation_averaged',
                                 'hybrid'))
             elif key == 'source_shape':
-                cv.check_value('source shape', random_ray[key],
+                cv.check_value('source shape', value,
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
-                cv.check_type('volume normalized flux tallies', random_ray[key], bool)
+                cv.check_type('volume normalized flux tallies', value, bool)
             elif key == 'adjoint':
-                cv.check_type('adjoint', random_ray[key], bool)
+                cv.check_type('adjoint', value, bool)
+            elif key == 'source_region_meshes':
+                cv.check_type('source region meshes', value, Iterable)
+                for mesh, domains in value:
+                    cv.check_type('mesh', mesh, MeshBase)
+                    cv.check_type('domains', domains, Iterable)
+                    valid_types = (openmc.Material,
+                                   openmc.Cell, openmc.Universe)
+                    for domain in domains:
+                        if not isinstance(domain, valid_types):
+                            raise ValueError(
+                                f'Invalid domain type: {type(domain)}. Expected '
+                                'openmc.Material, openmc.Cell, or openmc.Universe.')
+            elif key == 'sample_method':
+                cv.check_value('sample method', value,
+                               ('prng', 'halton'))
+            elif key == 'diagonal_stabilization_rho':
+                cv.check_type('diagonal stabilization rho', value, Real)
+                cv.check_greater_than('diagonal stabilization rho',
+                                      value, 0.0, True)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
 
         self._random_ray = random_ray
+
+    @property
+    def use_decay_photons(self) -> bool:
+        return self._use_decay_photons
+
+    @use_decay_photons.setter
+    def use_decay_photons(self, value):
+        cv.check_type('use decay photons', value, bool)
+        self._use_decay_photons = value
+
+    @property
+    def source_rejection_fraction(self) -> float:
+        return self._source_rejection_fraction
+
+    @source_rejection_fraction.setter
+    def source_rejection_fraction(self, source_rejection_fraction: float):
+        cv.check_type('source_rejection_fraction',
+                      source_rejection_fraction, Real)
+        cv.check_greater_than('source_rejection_fraction',
+                              source_rejection_fraction, 0)
+        cv.check_less_than('source_rejection_fraction',
+                           source_rejection_fraction, 1)
+        self._source_rejection_fraction = source_rejection_fraction
+
+    @property
+    def free_gas_threshold(self) -> float | None:
+        return self._free_gas_threshold
+
+    @free_gas_threshold.setter
+    def free_gas_threshold(self, free_gas_threshold: float | None):
+        if free_gas_threshold is not None:
+            cv.check_type('free gas threshold', free_gas_threshold, Real)
+            cv.check_greater_than('free gas threshold', free_gas_threshold, 0.0)
+        self._free_gas_threshold = free_gas_threshold
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1288,6 +1536,45 @@ class Settings:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(self._surf_source_write[key])
 
+    def _create_collision_track_subelement(self, root):
+        if self._collision_track:
+            element = ET.SubElement(root, "collision_track")
+            if 'cell_ids' in self._collision_track:
+                subelement = ET.SubElement(element, "cell_ids")
+                subelement.text = ' '.join(
+                    str(x) for x in self._collision_track['cell_ids'])
+            if 'reactions' in self._collision_track:
+                subelement = ET.SubElement(element, "reactions")
+                subelement.text = ' '.join(
+                    str(x) for x in self._collision_track['reactions'])
+            if 'universe_ids' in self._collision_track:
+                subelement = ET.SubElement(element, "universe_ids")
+                subelement.text = ' '.join(
+                    str(x) for x in self._collision_track['universe_ids'])
+            if 'material_ids' in self._collision_track:
+                subelement = ET.SubElement(element, "material_ids")
+                subelement.text = ' '.join(
+                    str(x) for x in self._collision_track['material_ids'])
+            if 'nuclides' in self._collision_track:
+                subelement = ET.SubElement(element, "nuclides")
+                subelement.text = ' '.join(
+                    str(x) for x in self._collision_track['nuclides'])
+            if 'deposited_E_threshold' in self._collision_track:
+                subelement = ET.SubElement(element, "deposited_E_threshold")
+                subelement.text = str(
+                    self._collision_track['deposited_E_threshold'])
+            if 'max_collisions' in self._collision_track:
+                subelement = ET.SubElement(element, "max_collisions")
+                subelement.text = str(self._collision_track['max_collisions'])
+            if 'max_collision_track_files' in self._collision_track:
+                subelement = ET.SubElement(
+                    element, "max_collision_track_files")
+                subelement.text = str(
+                    self._collision_track['max_collision_track_files'])
+            if 'mcpl' in self._collision_track:
+                subelement = ET.SubElement(element, "mcpl")
+                subelement.text = str(self._collision_track['mcpl']).lower()
+
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
             element = ET.SubElement(root, "confidence_intervals")
@@ -1318,6 +1605,11 @@ class Settings:
             element = ET.SubElement(root, "seed")
             element.text = str(self._seed)
 
+    def _create_stride_subelement(self, root):
+        if self._stride is not None:
+            element = ET.SubElement(root, "stride")
+            element.text = str(self._stride)
+
     def _create_survival_biasing_subelement(self, root):
         if self._survival_biasing is not None:
             element = ET.SubElement(root, "survival_biasing")
@@ -1328,7 +1620,8 @@ class Settings:
             element = ET.SubElement(root, "cutoff")
             for key, value in self._cutoff.items():
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(value)
+                subelement.text = str(value) if key != 'survival_normalization' \
+                    else str(value).lower()
 
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
@@ -1337,8 +1630,8 @@ class Settings:
         # use default heuristic for entropy mesh if not set by user
         if self.entropy_mesh.dimension is None:
             if self.particles is None:
-                raise RuntimeError("Number of particles must be set in order to " \
-                    "use entropy mesh dimension heuristic")
+                raise RuntimeError("Number of particles must be set in order to "
+                                   "use entropy mesh dimension heuristic")
             else:
                 n = ceil((self.particles / 20.0)**(1.0 / 3.0))
                 d = len(self.entropy_mesh.lower_left)
@@ -1378,6 +1671,11 @@ class Settings:
         if self._no_reduce is not None:
             element = ET.SubElement(root, "no_reduce")
             element.text = str(self._no_reduce).lower()
+
+    def _create_ifp_n_generation_subelement(self, root):
+        if self._ifp_n_generation is not None:
+            element = ET.SubElement(root, "ifp_n_generation")
+            element.text = str(self._ifp_n_generation)
 
     def _create_tabular_legendre_subelements(self, root):
         if self.tabular_legendre:
@@ -1423,7 +1721,13 @@ class Settings:
         path = f"./mesh[@id='{self.ufs_mesh.id}']"
         if root.find(path) is None:
             root.append(self.ufs_mesh.to_xml_element())
-            if mesh_memo is not None: mesh_memo.add(self.ufs_mesh.id)
+            if mesh_memo is not None:
+                mesh_memo.add(self.ufs_mesh.id)
+
+    def _create_use_decay_photons_subelement(self, root):
+        if self._use_decay_photons is not None:
+            element = ET.SubElement(root, "use_decay_photons")
+            element.text = str(self._use_decay_photons).lower()
 
     def _create_resonance_scattering_subelement(self, root):
         res = self.resonance_scattering
@@ -1507,6 +1811,7 @@ class Settings:
                 if mesh_memo is not None:
                     mesh_memo.add(ww.mesh.id)
 
+    def _create_weight_windows_on_subelement(self, root):
         if self._weight_windows_on is not None:
             elem = ET.SubElement(root, "weight_windows_on")
             elem.text = str(self._weight_windows_on).lower()
@@ -1523,9 +1828,12 @@ class Settings:
             if mesh_memo is not None and wwg.mesh.id in mesh_memo:
                 continue
 
-            root.append(wwg.mesh.to_xml_element())
-            if mesh_memo is not None:
-                mesh_memo.add(wwg.mesh)
+            # See if a <mesh> element already exists -- if not, add it
+            path = f"./mesh[@id='{wwg.mesh.id}']"
+            if root.find(path) is None:
+                root.append(wwg.mesh.to_xml_element())
+                if mesh_memo is not None:
+                    mesh_memo.add(wwg.mesh.id)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:
@@ -1540,32 +1848,70 @@ class Settings:
 
         if 'collision' in self._weight_window_checkpoints:
             subelement = ET.SubElement(element, "collision")
-            subelement.text = str(self._weight_window_checkpoints['collision']).lower()
+            subelement.text = str(
+                self._weight_window_checkpoints['collision']).lower()
 
         if 'surface' in self._weight_window_checkpoints:
             subelement = ET.SubElement(element, "surface")
-            subelement.text = str(self._weight_window_checkpoints['surface']).lower()
+            subelement.text = str(
+                self._weight_window_checkpoints['surface']).lower()
 
     def _create_max_history_splits_subelement(self, root):
         if self._max_history_splits is not None:
             elem = ET.SubElement(root, "max_history_splits")
             elem.text = str(self._max_history_splits)
 
+    def _create_max_secondaries_subelement(self, root):
+        if self._max_secondaries is not None:
+            elem = ET.SubElement(root, "max_secondaries")
+            elem.text = str(self._max_secondaries)
+
     def _create_max_tracks_subelement(self, root):
         if self._max_tracks is not None:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
 
-    def _create_random_ray_subelement(self, root):
+    def _create_random_ray_subelement(self, root, mesh_memo=None):
         if self._random_ray:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):
                     source_element = value.to_xml_element()
                     element.append(source_element)
+                elif key == 'source_region_meshes':
+                    subelement = ET.SubElement(element, 'source_region_meshes')
+                    for mesh, domains in value:
+                        mesh_elem = ET.SubElement(subelement, 'mesh')
+                        mesh_elem.set('id', str(mesh.id))
+                        for domain in domains:
+                            domain_elem = ET.SubElement(mesh_elem, 'domain')
+                            domain_elem.set('id', str(domain.id))
+                            domain_elem.set(
+                                'type', domain.__class__.__name__.lower())
+                        if mesh_memo is not None and mesh.id not in mesh_memo:
+                            domain_elem.set('type', domain.__class__.__name__.lower())
+                        # See if a <mesh> element already exists -- if not, add it
+                        path = f"./mesh[@id='{mesh.id}']"
+                        if root.find(path) is None:
+                            root.append(mesh.to_xml_element())
+                            if mesh_memo is not None:
+                                mesh_memo.add(mesh.id)
+                elif isinstance(value, bool):
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value).lower()
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
+
+    def _create_source_rejection_fraction_subelement(self, root):
+        if self._source_rejection_fraction is not None:
+            element = ET.SubElement(root, "source_rejection_fraction")
+            element.text = str(self._source_rejection_fraction)
+
+    def _create_free_gas_threshold_subelement(self, root):
+        if self._free_gas_threshold is not None:
+            element = ET.SubElement(root, "free_gas_threshold")
+            element.text = str(self._free_gas_threshold)
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1652,23 +1998,21 @@ class Settings:
     def _statepoint_from_xml_element(self, root):
         elem = root.find('state_point')
         if elem is not None:
-            text = get_text(elem, 'batches')
-            if text is not None:
-                self.statepoint['batches'] = [int(x) for x in text.split()]
+            batches = get_elem_list(elem, "batches", int)
+            if batches is not None:
+                self.statepoint['batches'] = batches
 
     def _sourcepoint_from_xml_element(self, root):
         elem = root.find('source_point')
         if elem is not None:
             for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
-                value = get_text(elem, key)
-                if value is not None:
-                    if key in ('separate', 'write', 'mcpl'):
-                        value = value in ('true', '1')
-                    elif key == 'overwrite_latest':
-                        value = value in ('true', '1')
+                if key in ('separate', 'write', 'mcpl', 'overwrite_latest'):
+                    value = get_text(elem, key) in ('true', '1')
+                    if key == 'overwrite_latest':
                         key = 'overwrite'
-                    else:
-                        value = [int(x) for x in value.split()]
+                else:
+                    value = get_elem_list(elem, key, int)
+                if value is not None:
                     self.sourcepoint[key] = value
 
     def _surf_source_read_from_xml_element(self, root):
@@ -1685,15 +2029,35 @@ class Settings:
         if elem is None:
             return
         for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cell', 'cellto', 'cellfrom'):
-            value = get_text(elem, key)
+            if key == 'surface_ids':
+                value = get_elem_list(elem, key, int)
+            else:
+                value = get_text(elem, key)
             if value is not None:
-                if key == 'surface_ids':
-                    value = [int(x) for x in value.split()]
-                elif key == 'mcpl':
+                if key == 'mcpl':
                     value = value in ('true', '1')
                 elif key in ('max_particles', 'max_source_files', 'cell', 'cellfrom', 'cellto'):
                     value = int(value)
                 self.surf_source_write[key] = value
+
+    def _collision_track_from_xml_element(self, root):
+        elem = root.find('collision_track')
+        if elem is not None:
+            for key in ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclides',
+                        'deposited_E_threshold', 'max_collisions', "max_collision_track_files", 'mcpl'):
+                value = get_text(elem, key)
+                if value is not None:
+                    if key in ('cell_ids', 'universe_ids', 'material_ids'):
+                        value = [int(x) for x in value.split()]
+                    elif key in ('reactions', 'nuclides'):
+                        value = value.split()
+                    elif key in ('max_collisions', 'max_collision_track_files'):
+                        value = int(value)
+                    elif key == 'deposited_E_threshold':
+                        value = float(value)
+                    elif key == 'mcpl':
+                        value = value in ('true', '1')
+                    self.collision_track[key] = value
 
     def _confidence_intervals_from_xml_element(self, root):
         text = get_text(root, 'confidence_intervals')
@@ -1740,6 +2104,11 @@ class Settings:
         if text is not None:
             self.seed = int(text)
 
+    def _stride_from_xml_element(self, root):
+        text = get_text(root, 'stride')
+        if text is not None:
+            self.stride = int(text)
+
     def _survival_biasing_from_xml_element(self, root):
         text = get_text(root, 'survival_biasing')
         if text is not None:
@@ -1751,10 +2120,14 @@ class Settings:
             self.cutoff = {}
             for key in ('energy_neutron', 'energy_photon', 'energy_electron',
                         'energy_positron', 'weight', 'weight_avg', 'time_neutron',
-                        'time_photon', 'time_electron', 'time_positron'):
+                        'time_photon', 'time_electron', 'time_positron',
+                        'survival_normalization'):
                 value = get_text(elem, key)
                 if value is not None:
-                    self.cutoff[key] = float(value)
+                    if key == 'survival_normalization':
+                        self.cutoff[key] = value in ('true', '1')
+                    else:
+                        self.cutoff[key] = float(value)
 
     def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
@@ -1786,6 +2159,11 @@ class Settings:
         if text is not None:
             self.verbosity = int(text)
 
+    def _ifp_n_generation_from_xml_element(self, root):
+        text = get_text(root, 'ifp_n_generation')
+        if text is not None:
+            self.ifp_n_generation = int(text)
+
     def _tabular_legendre_from_xml_element(self, root):
         elem = root.find('tabular_legendre')
         if elem is not None:
@@ -1805,22 +2183,21 @@ class Settings:
         text = get_text(root, 'temperature_method')
         if text is not None:
             self.temperature['method'] = text
-        text = get_text(root, 'temperature_range')
+        text = get_elem_list(root, "temperature_range", float)
         if text is not None:
-            self.temperature['range'] = [float(x) for x in text.split()]
+            self.temperature['range'] = text
         text = get_text(root, 'temperature_multipole')
         if text is not None:
             self.temperature['multipole'] = text in ('true', '1')
 
     def _trace_from_xml_element(self, root):
-        text = get_text(root, 'trace')
+        text = get_elem_list(root, "trace", int)
         if text is not None:
-            self.trace = [int(x) for x in text.split()]
+            self.trace = text
 
     def _track_from_xml_element(self, root):
-        text = get_text(root, 'track')
-        if text is not None:
-            values = [int(x) for x in text.split()]
+        values = get_elem_list(root, "track", int)
+        if values is not None:
             self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
     def _ufs_mesh_from_xml_element(self, root, meshes):
@@ -1837,14 +2214,15 @@ class Settings:
         if elem is not None:
             keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
             for key in keys:
-                value = get_text(elem, key)
+                if key == 'nuclides':
+                    value = get_elem_list(elem, key, str)
+                else:
+                    value = get_text(elem, key)
                 if value is not None:
                     if key == 'enable':
                         value = value in ('true', '1')
                     elif key in ('energy_min', 'energy_max'):
                         value = float(value)
-                    elif key == 'nuclides':
-                        value = value.split()
                     self.resonance_scattering[key] = value
 
     def _create_fission_neutrons_from_xml_element(self, root):
@@ -1902,9 +2280,15 @@ class Settings:
             ww = WeightWindows.from_xml_element(elem, meshes)
             self.weight_windows.append(ww)
 
+    def _weight_windows_on_from_xml_element(self, root):
         text = get_text(root, 'weight_windows_on')
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
+
+    def _weight_windows_file_from_xml_element(self, root):
+        text = get_text(root, 'weight_windows_file')
+        if text is not None:
+            self.weight_windows_file = text
 
     def _weight_window_checkpoints_from_xml_element(self, root):
         elem = root.find('weight_window_checkpoints')
@@ -1921,17 +2305,22 @@ class Settings:
         if text is not None:
             self.max_history_splits = int(text)
 
+    def _max_secondaries_from_xml_element(self, root):
+        text = get_text(root, 'max_secondaries')
+        if text is not None:
+            self.max_secondaries = int(text)
+
     def _max_tracks_from_xml_element(self, root):
         text = get_text(root, 'max_tracks')
         if text is not None:
             self.max_tracks = int(text)
 
-    def _random_ray_from_xml_element(self, root):
+    def _random_ray_from_xml_element(self, root, meshes=None):
         elem = root.find('random_ray')
         if elem is not None:
             self.random_ray = {}
             for child in elem:
-                if child.tag in ('distance_inactive', 'distance_active'):
+                if child.tag in ('distance_inactive', 'distance_active', 'diagonal_stabilization_rho'):
                     self.random_ray[child.tag] = float(child.text)
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
@@ -1948,6 +2337,44 @@ class Settings:
                     self.random_ray['adjoint'] = (
                         child.text in ('true', '1')
                     )
+                elif child.tag == 'sample_method':
+                    self.random_ray['sample_method'] = child.text
+                elif child.tag == 'source_region_meshes':
+                    self.random_ray['source_region_meshes'] = []
+                    for mesh_elem in child.findall('mesh'):
+                        mesh_id = int(get_text(mesh_elem, 'id'))
+                        if meshes and mesh_id in meshes:
+                            mesh = meshes[mesh_id]
+                        else:
+                            mesh = MeshBase.from_xml_element(mesh_elem)
+                        domains = []
+                        for domain_elem in mesh_elem.findall('domain'):
+                            domain_id = int(get_text(domain_elem, "id"))
+                            domain_type = get_text(domain_elem, "type")
+                            if domain_type == 'material':
+                                domain = openmc.Material(domain_id)
+                            elif domain_type == 'cell':
+                                domain = openmc.Cell(domain_id)
+                            elif domain_type == 'universe':
+                                domain = openmc.Universe(domain_id)
+                            domains.append(domain)
+                        self.random_ray['source_region_meshes'].append(
+                            (mesh, domains))
+
+    def _use_decay_photons_from_xml_element(self, root):
+        text = get_text(root, 'use_decay_photons')
+        if text is not None:
+            self.use_decay_photons = text in ('true', '1')
+
+    def _source_rejection_fraction_from_xml_element(self, root):
+        text = get_text(root, 'source_rejection_fraction')
+        if text is not None:
+            self.source_rejection_fraction = float(text)
+
+    def _free_gas_threshold_from_xml_element(self, root):
+        text = get_text(root, 'free_gas_threshold')
+        if text is not None:
+            self.free_gas_threshold = float(text)
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -1975,6 +2402,7 @@ class Settings:
         self._create_sourcepoint_subelement(element)
         self._create_surf_source_read_subelement(element)
         self._create_surf_source_write_subelement(element)
+        self._create_collision_track_subelement(element)
         self._create_confidence_intervals(element)
         self._create_electron_treatment_subelement(element)
         self._create_energy_mode_subelement(element)
@@ -1984,12 +2412,14 @@ class Settings:
         self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
+        self._create_stride_subelement(element)
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
+        self._create_ifp_n_generation_subelement(element)
         self._create_tabular_legendre_subelements(element)
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
@@ -2007,16 +2437,20 @@ class Settings:
         self._create_log_grid_bins_subelement(element)
         self._create_write_initial_source_subelement(element)
         self._create_weight_windows_subelement(element, mesh_memo)
+        self._create_weight_windows_on_subelement(element)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
-        self._create_random_ray_subelement(element)
+        self._create_max_secondaries_subelement(element)
+        self._create_random_ray_subelement(element, mesh_memo)
+        self._create_use_decay_photons_subelement(element)
+        self._create_source_rejection_fraction_subelement(element)
+        self._create_free_gas_threshold_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
-        reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
         return element
 
@@ -2082,6 +2516,7 @@ class Settings:
         settings._sourcepoint_from_xml_element(elem)
         settings._surf_source_read_from_xml_element(elem)
         settings._surf_source_write_from_xml_element(elem)
+        settings._collision_track_from_xml_element(elem)
         settings._confidence_intervals_from_xml_element(elem)
         settings._electron_treatment_from_xml_element(elem)
         settings._energy_mode_from_xml_element(elem)
@@ -2091,12 +2526,14 @@ class Settings:
         settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)
+        settings._stride_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)
+        settings._ifp_n_generation_from_xml_element(elem)
         settings._tabular_legendre_from_xml_element(elem)
         settings._temperature_from_xml_element(elem)
         settings._trace_from_xml_element(elem)
@@ -2113,13 +2550,18 @@ class Settings:
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
+        settings._weight_windows_on_from_xml_element(elem)
+        settings._weight_windows_file_from_xml_element(elem)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_history_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
-        settings._random_ray_from_xml_element(elem)
+        settings._max_secondaries_from_xml_element(elem)
+        settings._random_ray_from_xml_element(elem, meshes)
+        settings._use_decay_photons_from_xml_element(elem)
+        settings._source_rejection_fraction_from_xml_element(elem)
+        settings._free_gas_threshold_from_xml_element(elem)
 
-        # TODO: Get volume calculations
         return settings
 
     @classmethod

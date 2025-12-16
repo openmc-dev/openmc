@@ -114,14 +114,81 @@ if [[ ! -f "${SCRIPT_DIR}/CMakeLists.txt" ]] || [[ ! -d "${SCRIPT_DIR}/src" ]]; 
     exit 1
 fi
 
+# Check for CMake
+if ! command -v cmake &> /dev/null; then
+    log_error "CMake is required but not found"
+    exit 1
+fi
+CMAKE_VERSION=$(cmake --version | head -n1 | awk '{print $3}')
+log_info "Found CMake ${CMAKE_VERSION}"
+
 # Check for Python
 if ! command -v python3 &> /dev/null; then
     log_error "Python 3 is required but not found"
     exit 1
 fi
-
 PYTHON_VERSION=$(python3 --version | awk '{print $2}')
 log_info "Found Python ${PYTHON_VERSION}"
+
+# Check for HDF5 development libraries
+HDF5_FOUND=false
+if pkg-config --exists hdf5 2>/dev/null; then
+    HDF5_FOUND=true
+elif [[ -f "/usr/include/hdf5.h" ]] || [[ -f "/usr/local/include/hdf5.h" ]] || \
+     [[ -d "/usr/include/hdf5" ]] || [[ -d "/usr/local/include/hdf5" ]]; then
+    HDF5_FOUND=true
+elif ldconfig -p 2>/dev/null | grep -q libhdf5; then
+    HDF5_FOUND=true
+fi
+
+if [[ "${HDF5_FOUND}" == true ]]; then
+    log_info "Found HDF5 development libraries"
+else
+    log_warning "HDF5 development libraries not detected (CMake will check during configuration)"
+fi
+
+################################################################################
+# Initialize git submodules
+################################################################################
+
+log_info "Checking vendor dependencies..."
+
+# Check if git is available
+if ! command -v git &> /dev/null; then
+    log_error "Git is required but not found"
+    exit 1
+fi
+
+# Initialize and update git submodules
+cd "${SCRIPT_DIR}"
+if [[ -d ".git" ]]; then
+    log_info "Initializing git submodules..."
+    if ! git submodule update --init --recursive; then
+        log_error "Failed to initialize git submodules"
+        log_error "Please ensure you have network access or manually initialize submodules:"
+        log_error "  git submodule update --init --recursive"
+        exit 1
+    fi
+    log_success "Git submodules initialized"
+else
+    log_warning "Not a git repository, skipping submodule initialization"
+fi
+
+# Verify critical vendor dependencies exist
+VENDOR_DEPS=("xtl" "xtensor" "pugixml" "fmt" "Catch2")
+for dep in "${VENDOR_DEPS[@]}"; do
+    DEP_DIR="${SCRIPT_DIR}/vendor/${dep}"
+    # Check if directory exists and has content (more than just . and ..)
+    if [[ ! -d "${DEP_DIR}" ]] || [[ -z "$(ls -A "${DEP_DIR}" 2>/dev/null)" ]]; then
+        log_error "Vendor dependency '${dep}' not found or empty at ${DEP_DIR}"
+        log_error "Please initialize git submodules:"
+        log_error "  git submodule update --init --recursive"
+        exit 1
+    fi
+    log_info "Found ${dep} (verified)"
+done
+
+log_success "Vendor dependencies ready"
 
 ################################################################################
 # Setup cross section data

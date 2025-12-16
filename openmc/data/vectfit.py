@@ -37,7 +37,7 @@ from scipy.linalg import eigvals, lstsq, norm, qr
 
 def wlstsq(a,b):
     """Apply lstsq with normalization"""
-    scale = np.nan_to_num(1.0/np.linalg.norm(a, axis=0),nan=1.0)
+    scale = np.nan_to_num(1.0/np.linalg.norm(a, axis=0), posinf=1.0, neginf=1.0)
     sol = lstsq(a*scale, b)
     return (sol[0]*scale,sol[1:])
 

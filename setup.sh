@@ -206,14 +206,16 @@ if [[ -d ".git" ]]; then
     fi
 
     # Check if submodules are still empty and use direct clone as fallback
+    # Must check for actual header files, not just directories
     NEED_FALLBACK=false
-    for dep in xtl xtensor; do
-        DEP_DIR="${SCRIPT_DIR}/vendor/${dep}"
-        if [[ ! -d "${DEP_DIR}/include" ]]; then
-            NEED_FALLBACK=true
-            break
-        fi
-    done
+    if [[ ! -f "${SCRIPT_DIR}/vendor/xtl/include/xtl/xbasic_fixed_string.hpp" ]]; then
+        log_warning "xtl headers not found after submodule update"
+        NEED_FALLBACK=true
+    fi
+    if [[ ! -f "${SCRIPT_DIR}/vendor/xtensor/include/xtensor/xtensor.hpp" ]]; then
+        log_warning "xtensor headers not found after submodule update"
+        NEED_FALLBACK=true
+    fi
 
     if [[ "${NEED_FALLBACK}" == true ]] || [[ "${SUBMODULE_FAILED:-false}" == true ]]; then
         log_warning "Submodules appear corrupted. Using direct clone fallback..."
@@ -245,10 +247,18 @@ for dep in "${VENDOR_DEPS[@]}"; do
         log_error "  ./setup.sh --force-submodules --skip-xs"
         exit 1
     fi
-    # Extra check for header-only libraries
-    if [[ "${dep}" == "xtl" ]] || [[ "${dep}" == "xtensor" ]]; then
-        if [[ ! -d "${DEP_DIR}/include" ]]; then
-            log_error "Vendor dependency '${dep}' is missing include directory"
+    # Extra check for header-only libraries - verify actual header files exist
+    if [[ "${dep}" == "xtl" ]]; then
+        if [[ ! -f "${DEP_DIR}/include/xtl/xbasic_fixed_string.hpp" ]]; then
+            log_error "Vendor dependency 'xtl' is missing header files"
+            log_error "Try running with --force-submodules to fix:"
+            log_error "  ./setup.sh --force-submodules --skip-xs"
+            exit 1
+        fi
+    fi
+    if [[ "${dep}" == "xtensor" ]]; then
+        if [[ ! -f "${DEP_DIR}/include/xtensor/xtensor.hpp" ]]; then
+            log_error "Vendor dependency 'xtensor' is missing header files"
             log_error "Try running with --force-submodules to fix:"
             log_error "  ./setup.sh --force-submodules --skip-xs"
             exit 1

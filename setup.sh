@@ -245,8 +245,10 @@ if [[ -d ".git" ]]; then
         log_warning "Submodules appear corrupted. Using direct clone fallback..."
 
         # Clone with specific compatible versions
-        clone_vendor_dep "xtl" "https://github.com/xtensor-stack/xtl.git" "0.8.1" || exit 1
-        clone_vendor_dep "xtensor" "https://github.com/xtensor-stack/xtensor.git" "0.27.1" || exit 1
+        # Note: xtensor 0.25.0 requires xvariant.hpp which was removed in xtl 0.8.0
+        # So we use xtl 0.7.7 (last version with xvariant.hpp) with xtensor 0.25.0
+        clone_vendor_dep "xtl" "https://github.com/xtensor-stack/xtl.git" "0.7.7" || exit 1
+        clone_vendor_dep "xtensor" "https://github.com/xtensor-stack/xtensor.git" "0.25.0" || exit 1
         clone_vendor_dep "pugixml" "https://github.com/zeux/pugixml.git" "latest" || \
             clone_vendor_dep "pugixml" "https://github.com/zeux/pugixml.git" "v1.14" || exit 1
         clone_vendor_dep "fmt" "https://github.com/fmtlib/fmt.git" "11.0.2" || exit 1

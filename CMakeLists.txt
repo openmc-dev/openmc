@@ -500,6 +500,11 @@ endif()
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
                       xtensor fmt::fmt ${CMAKE_DL_LIBS})
 
+# GCC < 9 requires explicit linking to stdc++fs for std::filesystem
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
+  target_link_libraries(libopenmc stdc++fs)
+endif()
+
 # Suppress false positive -Wstringop-overflow warning from xtl/xsequence.hpp
 # This occurs with GCC 13+ due to static analyzer limitations with xtensor templates
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

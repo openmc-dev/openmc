@@ -1478,13 +1478,24 @@ class Material(IDManagerMixin):
 
         multiplier = B/2
 
+
+        # Temperature to use if photon data is temperature-resolved
+        if self.temperature is not None:
+            T = float(self.temperature)
+        else:
+            T = 294.0  # consistent with other API defaults
+
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
 
             cdr_nuc = 0.0
 
+            linear_attenuation = linear_attenuation_xs(el_name,  T) # units of barns/atom
+
+            if linear_attenuation is None:
+                continue
+
             photon_source_per_atom = openmc.data.decay_photon_energy(nuc)
 
-            approx_photon_source_per_atom = openmc.data.approx_decay_photon_energy_spectrum(nuc)
 
             if photon_source_per_atom is not None and atoms_per_bcm > 0.0:
 
@@ -1497,15 +1508,22 @@ class Material(IDManagerMixin):
                     for (e,p) in zip(e_vals, p_vals):
 
                         # missing the air part
-                        cdr_nuc += p * e / self.get_photon_mass_attenuation(e)
+                        cdr_nuc += p * e / self.get_photon_mass_attenuation_coefficient(e)
 
                 elif isinstance(photon_source_per_atom, Tabular):
 
-                    e_p_vals = np.array(e_vals*p_vals, dtype=float)
+                    # generate the tabulated1D function for e*p
 
+                    # to produce a linear-linear distribution from a 
+                    # right-continuous histogram distribution the last 
+                    # histogram bin is assigned to the upper boundary 
+                    # energy value
+                    e_lists = [e_vals]
+                    p_vals[:-1] = p_vals[-2]
+                    e_p_vals = np.array(e_vals*p_vals, dtype=float)
                     e_p_dist = Tabulated1D( e_vals, e_p_vals, breakpoints=None, interpolation=[2])
 
-                    # dummy function to scaffold the function
+                    #
                     e_vals_dummy = np.logspace(1.2e3, 18e6, num=87)
                     e_vals_dummy_2 = np.logspace(1.3e4, 15e6, num=99)
 

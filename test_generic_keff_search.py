@@ -91,48 +91,6 @@ def build_model(boron_ppm=1000, fuel_enrichment=1.6, fuel_temp_K=293):
     return openmc.model.Model(geometry, materials, settings)
 
 
-def add_derivative_tallies(model, deriv_variable, deriv_material, deriv_nuclide=None):
-    """
-    Add base and derivative tallies to model for generic derivative extraction.
-
-    Parameters
-    ----------
-    model : openmc.Model
-    deriv_variable : str
-        'density', 'nuclide_density', 'temperature', or 'enrichment'
-    deriv_material : int
-        Material ID to perturb
-    deriv_nuclide : str, optional
-        Nuclide name for nuclide_density derivatives (e.g., 'B10', 'U235')
-    """
-    # Base tallies
-    t_fission = openmc.Tally(name='base_fission')
-    t_fission.scores = ['nu-fission']
-
-    t_absorption = openmc.Tally(name='base_absorption')
-    t_absorption.scores = ['absorption']
-
-    tallies = [t_fission, t_absorption]
-
-    # Derivative tallies
-    deriv = openmc.TallyDerivative(
-        variable=deriv_variable,
-        material=deriv_material,
-        nuclide=deriv_nuclide
-    )
-
-    t_fission_deriv = openmc.Tally(name=f'fission_deriv_{deriv_variable}')
-    t_fission_deriv.scores = ['nu-fission']
-    t_fission_deriv.derivative = deriv
-
-    t_absorption_deriv = openmc.Tally(name=f'absorption_deriv_{deriv_variable}')
-    t_absorption_deriv.scores = ['absorption']
-    t_absorption_deriv.derivative = deriv
-
-    tallies.extend([t_fission_deriv, t_absorption_deriv])
-    model.tallies = openmc.Tallies(tallies)
-
-
 def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_material,
              deriv_nuclide, x0, x1, target, deriv_nuclide_arg=None, deriv_to_x_func=None,
              expected_magnitude=None, use_derivative_tallies=True,
@@ -178,8 +136,6 @@ def run_test(test_name, model_builder, modifier_func, deriv_variable, deriv_mate
 
         # Build model
         model = model_builder()
-        if use_derivative_tallies:
-            add_derivative_tallies(model, deriv_variable, deriv_material, deriv_nuclide_arg)
         model.settings.batches = 50
         model.settings.inactive = 5
         model.settings.particles = 300

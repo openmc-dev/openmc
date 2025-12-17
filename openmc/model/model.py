@@ -2380,6 +2380,69 @@ class Model:
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
 
+    def add_derivative_tallies(
+        self,
+        deriv_variable: str,
+        deriv_material: int,
+        deriv_nuclide: str | None = None
+    ) -> None:
+        """Add base and derivative tallies to model for keff derivative extraction.
+
+        This is a convenience method that adds the four tallies required for
+        extracting dk/dx during keff_search: base nu-fission, base absorption,
+        derivative nu-fission, and derivative absorption.
+
+        Note: This method is automatically called by keff_search when
+        use_derivative_tallies=True. You only need to call it manually if
+        you want to set up tallies before calling keff_search, or if you're
+        using the tallies for other purposes.
+
+        Parameters
+        ----------
+        deriv_variable : str
+            Type of derivative: 'density', 'nuclide_density', or 'temperature'
+        deriv_material : int
+            Material ID to perturb
+        deriv_nuclide : str, optional
+            Nuclide name for nuclide_density derivatives (e.g., 'B10', 'U235').
+            Required if deriv_variable='nuclide_density'.
+
+        Examples
+        --------
+        >>> model = openmc.examples.pwr_pin_cell()
+        >>> # Add tallies for boron concentration derivative
+        >>> model.add_derivative_tallies('nuclide_density', 3, 'B10')
+        >>> # Add tallies for fuel density derivative
+        >>> model.add_derivative_tallies('density', 1)
+
+        """
+        # Base tallies
+        t_fission = openmc.Tally(name='base_fission')
+        t_fission.scores = ['nu-fission']
+
+        t_absorption = openmc.Tally(name='base_absorption')
+        t_absorption.scores = ['absorption']
+
+        tallies = [t_fission, t_absorption]
+
+        # Derivative tallies
+        deriv = openmc.TallyDerivative(
+            variable=deriv_variable,
+            material=deriv_material,
+            nuclide=deriv_nuclide
+        )
+
+        t_fission_deriv = openmc.Tally(name=f'fission_deriv_{deriv_variable}')
+        t_fission_deriv.scores = ['nu-fission']
+        t_fission_deriv.derivative = deriv
+
+        t_absorption_deriv = openmc.Tally(name=f'absorption_deriv_{deriv_variable}')
+        t_absorption_deriv.scores = ['absorption']
+        t_absorption_deriv.derivative = deriv
+
+        tallies.extend([t_fission_deriv, t_absorption_deriv])
+        self.tallies = openmc.Tallies(tallies)
+
     def _extract_derivative_constraint(
         self,
         sp: 'openmc.StatePoint',
@@ -2604,16 +2667,26 @@ class Model:
             If True, extract derivative tallies from StatePoints and use them
             as gradient constraints in the curve fitting process. Requires
             deriv_variable and deriv_material to be specified. Default is False.
+            Derivative tallies are automatically added to the model.
         deriv_variable : str, optional
             Type of derivative to extract. Supported values: 'density',
-            'nuclide_density', 'temperature', 'enrichment'. Required if
+            'nuclide_density', 'temperature'. Required if
             use_derivative_tallies=True. Example: 'nuclide_density' to
-            perturb a specific nuclide concentration; 'enrichment' for fuel
-            enrichment; 'density' for material mass density.
+            perturb a specific nuclide concentration; 'density' for material
+            mass density; 'temperature' for Doppler feedback.
+            
+            Note: Could be inferred as 'nuclide_density' when deriv_nuclide
+            is provided, but explicit specification is clearer and allows
+            for density/temperature derivatives without nuclide ambiguity.
         deriv_material : int, optional
             Material ID to perturb for derivatives. Required if
             use_derivative_tallies=True. Example: Material ID 3 for boron
             in coolant, Material ID 1 for fuel.
+            
+            Note: Could potentially be inferred by searching all materials
+            for the specified nuclide, but this would be ambiguous when
+            multiple materials contain the same element (e.g., oxygen in
+            both fuel and coolant). Explicit specification avoids ambiguity.
         deriv_nuclide : str, optional
             Nuclide name (e.g., 'B10', 'U235') for nuclide_density derivatives.
             Ignored for other derivative types. Required if
@@ -2651,6 +2724,35 @@ class Model:
             evaluation history (parameters, means, standard deviations, and
             batches), plus convergence status and termination reason.
 
+        Examples
+        --------
+        Basic usage without derivatives:
+
+        >>> model = openmc.examples.pwr_pin_cell()
+        >>> def set_boron_ppm(ppm):
+        ...     coolant = model.materials[2]  # Coolant material
+        ...     coolant.remove_element('B')
+        ...     coolant.add_element('B', ppm * 1e-6)
+        >>> result = model.keff_search(set_boron_ppm, 500, 1500, target=1.0)
+
+        Using derivative tallies for faster convergence:
+
+        >>> model = openmc.examples.pwr_pin_cell()
+        >>> def set_boron_ppm(ppm):
+        ...     coolant = model.materials[2]
+        ...     coolant.remove_element('B')
+        ...     coolant.add_element('B', ppm * 1e-6)
+        >>> # Conversion: ppm -> atoms/cm³ for boron in water
+        >>> scale = 1e-6 * 0.741 * 6.022e23 / 10.81  # ~4.1e16
+        >>> result = model.keff_search(
+        ...     set_boron_ppm, 500, 1500, target=1.0,
+        ...     use_derivative_tallies=True,
+        ...     deriv_variable='nuclide_density',
+        ...     deriv_material=3,
+        ...     deriv_nuclide='B10',
+        ...     deriv_to_x_func=lambda d: d * scale
+        ... )
+
         """
         import openmc.lib
 
@@ -2676,6 +2778,9 @@ class Model:
                     f"Unsupported deriv_variable='{deriv_variable}'. "
                     "OpenMC C++ backend only supports: 'density', 'nuclide_density', 'temperature'"
                 )
+            
+            # Automatically add derivative tallies to the model
+            self.add_derivative_tallies(deriv_variable, deriv_material, deriv_nuclide)
         
         func_kwargs = {} if func_kwargs is None else dict(func_kwargs)
         run_kwargs = {} if run_kwargs is None else dict(run_kwargs)

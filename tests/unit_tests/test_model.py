@@ -980,6 +980,7 @@ def test_keff_search_least_squares_with_derivs_no_tallies(run_in_tmpdir):
         target=1.0,
         k_tol=1e-3,
         sigma_final=3e-3,
+        x_min=5.0,
         b0=model.settings.batches - model.settings.inactive,
         maxiter=10,
         output=False,
@@ -987,9 +988,118 @@ def test_keff_search_least_squares_with_derivs_no_tallies(run_in_tmpdir):
         use_derivative_tallies=True,
         deriv_variable='density',
         deriv_material=1,
-        deriv_weight=1.0,
-        use_deriv_uncertainty=True,
-        use_deriv_constraints=True,
+    )
+
+    assert hasattr(result, 'root')
+    assert isinstance(result.converged, bool)
+
+
+def test_keff_search_with_derivative_tallies(run_in_tmpdir):
+    """Test keff_search with derivative tallies enabled and all derivative arguments."""
+    model = openmc.examples.pwr_pin_cell()
+
+    def set_density(x):
+        # Adjust fuel material density (material_id=1 in example)
+        for m in model.materials:
+            if m.id == 1:
+                m.set_density('g/cm3', x)
+                break
+
+    # Add derivative tallies for density perturbation
+    # Base tallies (no derivative)
+    base_fission = openmc.Tally(name='base_fission')
+    base_fission.scores = ['nu-fission']
+    
+    base_absorption = openmc.Tally(name='base_absorption')  
+    base_absorption.scores = ['absorption']
+    
+    # Derivative tallies
+    deriv = openmc.TallyDerivative(variable='density', material=1)
+    
+    deriv_fission = openmc.Tally(name='deriv_fission')
+    deriv_fission.scores = ['nu-fission']
+    deriv_fission.derivative = deriv
+    
+    deriv_absorption = openmc.Tally(name='deriv_absorption')
+    deriv_absorption.scores = ['absorption']
+    deriv_absorption.derivative = deriv
+    
+    model.tallies = [base_fission, base_absorption, deriv_fission, deriv_absorption]
+
+    # Perform keff search with derivative tallies enabled
+    result = model.keff_search(
+        func=set_density,
+        x0=9.5,
+        x1=10.5,
+        target=1.0,
+        k_tol=1e-3,
+        sigma_final=3e-3,
+        x_min=5.0,
+        b0=model.settings.batches - model.settings.inactive,
+        maxiter=10,
+        output=False,
+        run_kwargs={'cwd': Path('.')},
+        use_derivative_tallies=True,
+        deriv_variable='density',
+        deriv_material=1,
+        deriv_nuclide=None,  # Not needed for density derivatives
+    )
+
+    assert hasattr(result, 'root')
+    assert isinstance(result.converged, bool)
+
+
+def test_keff_search_with_nuclide_density_derivatives(run_in_tmpdir):
+    """Test keff_search with nuclide density derivatives using all derivative arguments."""
+    model = openmc.examples.pwr_pin_cell()
+
+    def set_boron_ppm(x):
+        # Adjust boron concentration in coolant (material_id=3 in example)
+        for m in model.materials:
+            if m.id == 3:
+                # Remove existing boron and add new concentration
+                m.remove_element('B')
+                m.add_element('B', x * 1e-6)  # ppm to atom fraction
+                break
+
+    # Add derivative tallies for nuclide density perturbation
+    # Base tallies (no derivative)
+    base_fission = openmc.Tally(name='base_fission')
+    base_fission.scores = ['nu-fission']
+    
+    base_absorption = openmc.Tally(name='base_absorption')
+    base_absorption.scores = ['absorption']
+    
+    # Derivative tallies
+    deriv = openmc.TallyDerivative(variable='nuclide_density', material=3, nuclide='B10')
+    
+    deriv_fission = openmc.Tally(name='deriv_fission')
+    deriv_fission.scores = ['nu-fission']
+    deriv_fission.derivative = deriv
+    
+    deriv_absorption = openmc.Tally(name='deriv_absorption')
+    deriv_absorption.scores = ['absorption']
+    deriv_absorption.derivative = deriv
+    
+    model.tallies = [base_fission, base_absorption, deriv_fission, deriv_absorption]
+
+    # Perform keff search with nuclide density derivatives
+    result = model.keff_search(
+        func=set_boron_ppm,
+        x0=500.0,
+        x1=1500.0,
+        target=1.0,
+        k_tol=1e-3,
+        sigma_final=3e-3,
+        x_min=0.1,
+        b0=model.settings.batches - model.settings.inactive,
+        maxiter=10,
+        output=False,
+        run_kwargs={'cwd': Path('.')},
+        use_derivative_tallies=True,
+        deriv_variable='nuclide_density',
+        deriv_material=3,
+        deriv_nuclide='B10',
     )
 
     assert hasattr(result, 'root')

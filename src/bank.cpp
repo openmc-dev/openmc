@@ -9,6 +9,23 @@
 #include <cstdint>
 #include <numeric>
 
+// Compatibility shim for std::exclusive_scan (C++17)
+// Some older compilers (e.g., GCC 8.x) don't fully implement it
+namespace {
+template <typename InputIt, typename OutputIt, typename T>
+OutputIt exclusive_scan_compat(InputIt first, InputIt last, OutputIt d_first, T init)
+{
+  while (first != last) {
+    T val = init;
+    init = init + *first;
+    *d_first = val;
+    ++first;
+    ++d_first;
+  }
+  return d_first;
+}
+} // anonymous namespace
+
 namespace openmc {
 
 //==============================================================================
@@ -83,9 +100,9 @@ void sort_fission_bank()
 
   // Perform exclusive scan summation to determine starting indices in fission
   // bank for each parent particle id
-  std::exclusive_scan(simulation::progeny_per_particle.begin(),
+  exclusive_scan_compat(simulation::progeny_per_particle.begin(),
     simulation::progeny_per_particle.end(),
-    simulation::progeny_per_particle.begin(), 0);
+    simulation::progeny_per_particle.begin(), static_cast<int64_t>(0));
 
   // We need a scratch vector to make permutation of the fission bank into
   // sorted order easy. Under normal usage conditions, the fission bank is

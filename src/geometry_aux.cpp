@@ -263,17 +263,27 @@ void get_temperatures(
     }
   }
 
-  // Add temperature if temperature field:
+  // Add temperatures from a temperature field.
+  // We assume that we do not know how geometric cells are impacted by the
+  // temperature field in advance. If we had access to this information, we
+  // could limit the declarations of temperature from the temperature field to
+  // impacted nuclides only.
   if (settings::temperature_field_on) {
     for (auto t: simulation::temperature_field.values()) {
+      // Nuclide temperatures
       for (size_t i = 0; i < nuc_temps.size() ; i++){
         if (!contains(nuc_temps[i], t)) {
           nuc_temps[i].push_back(t);
         }
       }
+      // Thermal scattering temperatures
+      for (size_t i = 0; i < thermal_temps.size() ; i++){
+        if (!contains(thermal_temps[i], t)) {
+          thermal_temps[i].push_back(t);
+        }
+      }
     }
   }
-  // TODO: thermal scattering data
 }
 
 //==============================================================================

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
-Test script demonstrating generic derivative support in Model.keff_search.
+Example: Derivative-accelerated k-effective search with OpenMC
 
-This script demonstrates how keff_search now works with ANY derivative variable
-supported by the C++ OpenMC backend (density, nuclide_density, temperature,
-enrichment), not just boron concentration.
+This script demonstrates how Model.keff_search works with derivative tallies
+to enable faster convergence in criticality searches. It compares the baseline
+GRsecant method against the enhanced least-squares method with gradient constraints.
 
 Key features demonstrated:
 1. Automatic derivative normalization handling large magnitudes (O(10^20))
@@ -12,12 +12,16 @@ Key features demonstrated:
 3. Boron ppm search with physically realistic conversion factors
 4. Generic derivative extraction from derivative tallies
 
-Each test case shows:
-1. Building a model with a configurable parameter
-2. Adding base and derivative tallies for the target variable
-3. Calling keff_search with appropriate parameters
-4. For nuclide_density: using deriv_to_x_func for unit conversion
-5. Automatic normalization handling large derivative magnitudes
+For detailed documentation, see README.md in this directory.
+
+Two test cases are included:
+1. Boron concentration search (nuclide_density derivative, ppm units)
+2. Fuel density search (density derivative, g/cm³ units)
+
+Usage:
+    python test_generic_keff_search.py
+
+Author: OpenMC Development Team
 """
 
 import openmc

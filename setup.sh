@@ -395,15 +395,20 @@ fi
 log_info "Activating virtual environment..."
 source "${VENV_DIR}/bin/activate"
 
-# Upgrade pip in virtual environment
-log_info "Upgrading pip..."
-python -m pip install --upgrade pip --quiet --timeout=120 --retries=5 || {
-    log_warning "Failed to upgrade pip, continuing with existing version..."
+# Upgrade pip and setuptools in virtual environment
+# PEP 660 editable installs require pip >= 21.3 and setuptools >= 64.0
+log_info "Upgrading pip and setuptools..."
+python -m pip install --upgrade pip setuptools wheel --quiet --timeout=120 --retries=5 || {
+    log_warning "Failed to upgrade pip/setuptools, continuing with existing version..."
 }
 
 # Install OpenMC Python API in development mode
 log_info "Installing OpenMC Python package in development mode..."
-python -m pip install -e . --timeout=120 --retries=5
+if ! python -m pip install -e . --timeout=120 --retries=5 2>/dev/null; then
+    log_warning "Editable install failed (requires pip >= 21.3, setuptools >= 64.0)"
+    log_info "Falling back to regular install..."
+    python -m pip install . --timeout=120 --retries=5
+fi
 
 log_success "Python virtual environment setup complete"
 log_success "OpenMC Python bindings installed"

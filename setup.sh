@@ -173,7 +173,31 @@ clone_vendor_dep() {
     local dest="${SCRIPT_DIR}/vendor/${name}"
 
     log_info "Cloning ${name} from ${url}..."
-    rm -rf "${dest}"
+
+    # Remove existing directory with multiple fallback approaches
+    if [[ -d "${dest}" ]]; then
+        # First, try to fix permissions (git submodules often have restrictive perms)
+        chmod -R u+rwX "${dest}" 2>/dev/null || true
+        # Remove any git index lock files
+        rm -f "${dest}/.git/index.lock" 2>/dev/null || true
+        # Try standard removal
+        rm -rf "${dest}" 2>/dev/null
+        # If still exists, try with sudo or more aggressive approach
+        if [[ -d "${dest}" ]]; then
+            log_warning "Standard removal failed for ${dest}, trying alternative methods..."
+            # Try removing contents first, then directory
+            find "${dest}" -type f -exec rm -f {} \; 2>/dev/null || true
+            find "${dest}" -type d -empty -delete 2>/dev/null || true
+            rm -rf "${dest}" 2>/dev/null || true
+        fi
+        # Final check
+        if [[ -d "${dest}" ]]; then
+            log_error "Cannot remove existing directory ${dest}"
+            log_error "Please manually remove it with: sudo rm -rf ${dest}"
+            return 1
+        fi
+    fi
+
     if git clone --depth 1 --branch "${tag}" "${url}" "${dest}"; then
         rm -rf "${dest}/.git"  # Remove .git to avoid submodule conflicts
         log_success "Successfully cloned ${name} ${tag}"

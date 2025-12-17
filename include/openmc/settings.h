@@ -169,6 +169,8 @@ extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
 extern double free_gas_threshold;        //!< Threshold multiplier for free gas
                                          //!< scattering treatment
+extern bool calculate_subcritical_k;     //!< Calculate subcritical k in fixed
+                                         //!< source mode
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows

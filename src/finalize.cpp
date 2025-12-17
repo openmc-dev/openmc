@@ -88,6 +88,7 @@ int openmc_finalize()
   settings::entropy_on = false;
   settings::event_based = false;
   settings::free_gas_threshold = 400.0;
+  settings::calculate_subcritical_k = false;
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;

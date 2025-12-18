@@ -2381,7 +2381,20 @@ class Model:
         Parameters
         ----------
         deriv_variable : str
-            Type of derivative: 'density', 'nuclide_density', or 'temperature'
+            Type of derivative: 'density', 'nuclide_density', or 'temperature'.
+            
+            .. warning::
+               **Temperature derivatives have severe limitations:**
+               
+               - Require Windowed Multipole (WMP) cross section data
+               - Only valid in resolved resonance range (~1 eV to ~10 keV)
+               - Not available for most nuclides in standard data libraries
+               - Not compatible with cross section interpolation
+               
+               Temperature derivatives are **not recommended** for practical
+               k-eff searches. Use derivative-free search instead.
+               See `src/tallies/derivative.cpp` lines 283-500 for implementation details.
+               
         deriv_material : int
             Material ID to perturb
         deriv_nuclide : str, optional
@@ -2595,6 +2608,11 @@ class Model:
         point to evaluate. It also adaptively changes the number of batches to
         meet the target uncertainty value at each iteration.
 
+        When derivative tallies are enabled, the gradient-based least-squares
+        approach is inspired by the methodology developed by Sterling Harper
+        in `"Calculating Reaction Rate Derivatives in Monte Carlo Neutron
+        Transport" <https://dspace.mit.edu/bitstream/handle/1721.1/106690/969775837-MIT.pdf>`_.
+
         The target uncertainty for iteration :math:`n+1` is determined by the
         following equation (following Eq. (8) in the paper):
 
@@ -2677,12 +2695,6 @@ class Model:
             dN/dx where N is the nuclide number density and x is the search parameter.
             Signature: ``deriv_to_x_func(deriv_value) -> float``
             
-            Example for boron ppm:
-            N is atoms/cm³, x is ppm. Water density = 0.741 g/cm³,
-            boron atomic mass ≈ 10.81 g/mol, Avogadro's number = 6.022e23.
-            Then dN/dppm = 1e-6 * 0.741 * 6.022e23 / 10.81 ≈ 4.116e16.
-            So deriv_to_x_func = lambda deriv: deriv * 4.116e16.
-            
             If not provided, returns dk/dN (not dk/dx) for nuclide_density.
             Ignored for other derivative types.
             
@@ -2705,34 +2717,7 @@ class Model:
             evaluation history (parameters, means, standard deviations, and
             batches), plus convergence status and termination reason.
 
-        Examples
-        --------
-        Basic usage without derivatives:
-
-        >>> model = openmc.examples.pwr_pin_cell()
-        >>> def set_boron_ppm(ppm):
-        ...     coolant = model.materials[2]  # Coolant material
-        ...     coolant.remove_element('B')
-        ...     coolant.add_element('B', ppm * 1e-6)
-        >>> result = model.keff_search(set_boron_ppm, 500, 1500, target=1.0)
-
-        Using derivative tallies for faster convergence:
-
-        >>> model = openmc.examples.pwr_pin_cell()
-        >>> def set_boron_ppm(ppm):
-        ...     coolant = model.materials[2]
-        ...     coolant.remove_element('B')
-        ...     coolant.add_element('B', ppm * 1e-6)
-        >>> # Conversion: ppm -> atoms/cm³ for boron in water
-        >>> scale = 1e-6 * 0.741 * 6.022e23 / 10.81  # ~4.1e16
-        >>> result = model.keff_search(
-        ...     set_boron_ppm, 500, 1500, target=1.0,
-        ...     use_derivative_tallies=True,
-        ...     deriv_variable='nuclide_density',
-        ...     deriv_material=3,
-        ...     deriv_nuclide='B10',
-        ...     deriv_to_x_func=lambda d: d * scale
-        ... )
+    
 
         """
         import openmc.lib

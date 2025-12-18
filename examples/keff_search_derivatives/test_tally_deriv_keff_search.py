@@ -12,6 +12,20 @@ Key features demonstrated:
 3. Boron ppm search with physically realistic conversion factors
 4. Generic derivative extraction from derivative tallies
 
+IMPORTANT NOTE ON TEMPERATURE DERIVATIVES:
+==========================================
+Temperature derivatives are NOT included in this example because they have
+severe limitations that make them impractical for k-eff searches:
+
+1. Require Windowed Multipole (WMP) cross section data (not standard HDF5/ACE)
+2. Only valid within resolved resonance range (~1 eV to ~10 keV)
+3. Not available for most nuclides in standard nuclear data libraries
+4. Not compatible with cross section temperature interpolation
+
+For these reasons, temperature-based k-eff searches should use the standard
+derivative-free method (use_derivative_tallies=False) rather than attempting
+to leverage temperature derivatives.
+
 For detailed documentation, see README.md in this directory.
 
 Two test cases are included:
@@ -19,9 +33,7 @@ Two test cases are included:
 2. Fuel density search (density derivative, g/cm³ units)
 
 Usage:
-    python test_generic_keff_search.py
-
-Author: OpenMC Development Team
+    python test_tally_deriv_keff_search.py
 """
 
 import openmc

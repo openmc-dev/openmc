@@ -731,7 +731,7 @@ class Chain:
 
         Parameters
         ----------
-        matrix : scipy.sparse.csc_matrix
+        matrix : scipy.sparse.csc_array
             Sparse matrix representing depletion
         buffer : dict
             Dictionary of buffer nuclides used to maintain anoins net balance.
@@ -743,7 +743,7 @@ class Chain:
             states as integers (e.g., +1, 0).
         Returns
         -------
-        matrix : scipy.sparse.csc_matrix
+        matrix : scipy.sparse.csc_array
             Sparse matrix with redox term added
         """
         # Elements list with the same size as self.nuclides
@@ -769,7 +769,7 @@ class Chain:
         for nuc, idx in buffer_idx.items():
             array[idx] -= redox_change * buffer[nuc] / os[idx]
 
-        return sp.csc_matrix(array)
+        return csc_array(array)
 
     def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.

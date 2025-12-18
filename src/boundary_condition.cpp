@@ -192,6 +192,9 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       fmt::format("You've specified an axis that is not x, y, or z."));
   }
 
+  Direction ax = {0.0,0.0,0.0};
+  ax[zero_axis_idx_] = 1.0;
+
   // Compute the surface normal vectors and make sure they are perpendicular
   // to the correct axis
   Direction norm1 = surf1.normal({0, 0, 0});
@@ -212,9 +215,10 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       surf2.id_));
   }
 
-  angle_ = compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
-    norm2[axis_2_idx_], norm2[axis_1_idx_]);
-
+  auto c = norm1.cross(norm2);
+  angle_ = std::atan2(c.dot(ax),norm1.dot(norm2));
+  if (norm1.dot(norm2)<0.0)
+    angle_ += PI;
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));
   if (rem > FP_REL_PRECISION && rem < 1 - FP_REL_PRECISION) {
@@ -243,6 +247,14 @@ void RotationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
   int new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
+  
+  Surface& surf1 {*model::surfaces[i_surf_]};
+  Surface& surf2 {*model::surfaces[j_surf_]};
+  Direction norm1 = surf1.normal({0, 0, 0});
+  Direction norm2 = surf2.normal({0, 0, 0});
+  
+  if (norm1.dot(norm2)>0.0)
+    new_surface = -new_surface;
 
   // Rotate the particle's position and direction.
   Position r = p.r();

@@ -7,6 +7,7 @@ import pytest
 
 import openmc
 import openmc.lib
+from openmc.plots import id_map_to_rgb
 
 
 @pytest.fixture(scope='function')
@@ -1174,3 +1175,44 @@ def test_keff_search(run_in_tmpdir):
     # Check that total_batches property works
     assert result.total_batches == sum(result.batches)
     assert result.total_batches > 0
+
+
+def test_id_map_to_rgb():
+    """Test conversion of ID map to RGB image array."""
+    # Create a simple model
+    mat = openmc.Material()
+    mat.set_density('g/cm3', 1.0)
+    mat.add_nuclide('Li7', 1.0)
+
+    sphere = openmc.Sphere(r=5.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sphere)
+    geometry = openmc.Geometry([cell])
+    settings = openmc.Settings(
+        batches=10, particles=100, run_mode='fixed source'
+    )
+    model = openmc.Model(geometry, settings=settings)
+
+    id_data = np.zeros((10, 10, 3), dtype=np.int32)
+    id_data[:, :, 0] = cell.id  # Cell IDs
+    id_data[:, :, 2] = mat.id   # Material IDs
+
+    # Test color_by with default colors
+    for color_by in ['cell', 'material']:
+        rgb = id_map_to_rgb(id_data, color_by=color_by)
+        assert rgb.shape == (10, 10, 3)
+        assert rgb.dtype == float
+        assert np.all((rgb >= 0) & (rgb <= 1))  # RGB values in [0, 1]
+
+    # Test with custom colors
+    colors = {cell.id: (255, 0, 0)}  # Red
+    rgb_custom = id_map_to_rgb(id_data, color_by='cell', colors=colors)
+    assert np.allclose(rgb_custom, [1.0, 0.0, 0.0])  # All pixels should be red
+
+    # Test with overlaps
+    id_data_overlap = id_data.copy()
+    id_data_overlap[5:, 5:, 0] = -3  # Mark some pixels as overlaps
+    rgb_overlap = id_map_to_rgb(
+        id_data_overlap, overlap_color=(0, 255, 0)
+    )
+    # Check that overlap region is green
+    assert np.allclose(rgb_overlap[5:, 5:], [0.0, 1.0, 0.0])

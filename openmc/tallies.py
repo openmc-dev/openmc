@@ -11,10 +11,10 @@ import lxml.etree as ET
 import h5py
 import numpy as np
 import pandas as pd
-import scipy.sparse as sps
 
 import openmc
 import openmc.checkvalue as cv
+from ._sparse_compat import lil_array
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
@@ -387,8 +387,8 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
-                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum = lil_array(self._sum.flatten(), self._sum.shape)
+                self._sum_sq = lil_array(self._sum_sq.flatten(), self._sum_sq.shape)
 
             # Read simulation time (needed for figure of merit)
             self._simulation_time = f["runtime"]["simulation"][()]
@@ -438,8 +438,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._mean = sps.lil_matrix(self._mean.flatten(),
-                                            self._mean.shape)
+                self._mean = lil_array(self._mean.flatten(), self._mean.shape)
 
         if self.sparse:
             return np.reshape(self._mean.toarray(), self.shape)
@@ -460,8 +459,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
-                                               self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.flatten(), self._std_dev.shape)
 
             self.with_batch_statistics = True
 
@@ -524,16 +522,13 @@ class Tally(IDManagerMixin):
         # Convert NumPy arrays to SciPy sparse LIL matrices
         if sparse and not self.sparse:
             if self._sum is not None:
-                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
+                self._sum = lil_array(self._sum.flatten(), self._sum.shape)
             if self._sum_sq is not None:
-                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
-                                              self._sum_sq.shape)
+                self._sum_sq = lil_array(self._sum_sq.flatten(), self._sum_sq.shape)
             if self._mean is not None:
-                self._mean = sps.lil_matrix(self._mean.flatten(),
-                                            self._mean.shape)
+                self._mean = lil_array(self._mean.flatten(), self._mean.shape)
             if self._std_dev is not None:
-                self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
-                                               self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.flatten(), self._std_dev.shape)
 
             self._sparse = True
 

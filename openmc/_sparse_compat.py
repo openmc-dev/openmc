@@ -18,20 +18,26 @@ _SCIPY_VERSION = tuple(map(int, scipy.__version__.split('.')[:2]))
 
 if _SCIPY_VERSION >= (1, 15):
     # Use sparse arrays
+    csr_array = sp.csr_array
     csc_array = sp.csc_array
     dok_array = sp.dok_array
+    lil_array = sp.lil_array
     eye_array = sp.eye_array
     block_array = sp.block_array
 else:
     # Fall back to sparse matrices
+    csr_array = sp.csr_matrix
     csc_array = sp.csc_matrix
     dok_array = sp.dok_matrix
+    lil_array = sp.lil_matrix
     eye_array = sp.eye
     block_array = sp.bmat
 
 __all__ = [
+    'csr_array',
     'csc_array',
     'dok_array',
+    'lil_array',
     'eye_array',
     'block_array',
 ]

@@ -10,7 +10,7 @@ import scipy.sparse.linalg as sla
 
 from openmc.checkvalue import check_type, check_length
 from .abc import DepSystemSolver
-from ._sparse_compat import csc_array, eye_array
+from .._sparse_compat import csc_array, eye_array
 
 __all__ = ["CRAM16", "CRAM48", "Cram16Solver", "Cram48Solver", "IPFCramSolver"]
 

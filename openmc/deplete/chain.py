@@ -22,7 +22,7 @@ from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
 from .._xml import get_text
-from ._sparse_compat import csc_array, dok_array
+from .._sparse_compat import csc_array, dok_array
 import openmc.data
 
 

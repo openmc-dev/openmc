@@ -9,7 +9,7 @@ import numpy as np
 from scipy.sparse import hstack
 
 from openmc.mpi import comm
-from ._sparse_compat import block_array
+from .._sparse_compat import block_array
 
 # Configurable switch that enables / disables the use of
 # multiprocessing routines during depletion

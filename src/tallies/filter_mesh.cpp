@@ -52,9 +52,9 @@ void MeshFilter::get_all_bins(
   }
   // apply rotation if present
   if (!rotation_.empty()) {
-    last_r = last_r.inverse_rotate(rotation_);
-    r = r.inverse_rotate(rotation_);
-    u = u.inverse_rotate(rotation_);
+    last_r = last_r.rotate(rotation_);
+    r = r.rotate(rotation_);
+    u = u.rotate(rotation_);
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {

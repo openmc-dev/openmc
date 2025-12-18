@@ -39,8 +39,8 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     press_unit : {'MPa', 'psi'}
         The units used for the `pressure` argument.
     density : float
-        Water density in [g / cm^3].  If specified, this value overrides the
-        temperature and pressure arguments.
+        Water density in [g / cm^3].  If specified, this value overrides 
+        the value that is computed from the temperature and pressure arguments.
     **kwargs
         All keyword arguments are passed to the created Material object.
 
@@ -95,10 +95,7 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     frac_B = boron_ppm * 1e-6 / M_B
 
     # Build the material.
-    if density is None:
-        out = openmc.Material(temperature=T, **kwargs)
-    else:
-        out = openmc.Material(**kwargs)
+    out = openmc.Material(temperature=T, **kwargs)
     out.add_element('H', frac_H, 'ao')
     out.add_element('O', frac_O, 'ao')
     out.add_element('B', frac_B, 'ao')

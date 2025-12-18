@@ -68,17 +68,17 @@ generation, and particle number of the desired particle. For example, to create
 a track file for particle 4 of batch 1 and generation 2::
 
   settings = openmc.Settings()
-  settings.track = (1, 2, 4)
+  settings.track = [(1, 2, 4)]
 
-To specify multiple particles, the length of the iterable should be a multiple
-of three, e.g., if we wanted particles 3 and 4 from batch 1 and generation 2::
+To specify multiple particles, specify a list of tuples, e.g., if we wanted
+particles 3 and 4 from batch 1 and generation 2::
 
-  settings.track = (1, 2, 3, 1, 2, 4)
+  settings.track = [(1, 2, 3), (1, 2, 4)]
 
-After running OpenMC, the working directory will contain a file of the form
-"track_(batch #)_(generation #)_(particle #).h5" for each particle tracked.
-These track files can be converted into VTK poly data files with the
-:class:`openmc.Tracks` class.
+After running OpenMC (now, without the ``-t`` argument), the working directory
+will contain a file named `tracks.h5`, which contains a collection of particle
+tracks. These track files can be converted into VTK poly data files or
+matplotlib plots with the :class:`openmc.Tracks` class.
 
 ----------------------
 Source Site Processing

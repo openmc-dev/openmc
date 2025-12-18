@@ -79,6 +79,9 @@ class PolarAzimuthal(UnitSphere):
     reference_uvw : Iterable of float
         Direction from which polar angle is measured. Defaults to the positive
         z-direction.
+    reference_vwu : Iterable of float
+        Direction from which azimuthal angle is measured. Defaults to the positive
+        x-direction.    
 
     Attributes
     ----------
@@ -89,8 +92,9 @@ class PolarAzimuthal(UnitSphere):
 
     """
 
-    def __init__(self, mu=None, phi=None, reference_uvw=(0., 0., 1.)):
+    def __init__(self, mu=None, phi=None, reference_uvw=(0., 0., 1.), reference_vwu=(1., 0., 0.)):
         super().__init__(reference_uvw)
+        self.reference_vwu = reference_vwu
         if mu is not None:
             self.mu = mu
         else:
@@ -100,6 +104,20 @@ class PolarAzimuthal(UnitSphere):
             self.phi = phi
         else:
             self.phi = Uniform(0., 2*pi)
+            
+    @property
+    def reference_vwu(self):
+        return self._reference_vwu
+
+    @reference_vwu.setter
+    def reference_vwu(self, vwu):
+        cv.check_type('reference v direction', vwu, Iterable, Real)
+        vwu = np.asarray(vwu)
+        uvw = self.reference_uvw
+        cv.check_greater_than('reference v direction must not be parallel to reference u direction', np.linalg.norm(np.cross(vwu,uvw)), 1e-6*np.linalg.norm(vwu))        
+        vwu -= vwu.dot(uvw)*uvw        
+        cv.check_less_than('reference v direction must be orthogonal to reference u direction', np.abs(vwu.dot(uvw)), 1e-6)
+        self._reference_vwu = vwu/np.linalg.norm(vwu)
 
     @property
     def mu(self):
@@ -132,6 +150,8 @@ class PolarAzimuthal(UnitSphere):
         element.set("type", "mu-phi")
         if self.reference_uvw is not None:
             element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
+        if self.reference_vwu is not None:
+            element.set("reference_vwu", ' '.join(map(str, self.reference_vwu)))    
         element.append(self.mu.to_xml_element('mu'))
         element.append(self.phi.to_xml_element('phi'))
         return element
@@ -155,6 +175,9 @@ class PolarAzimuthal(UnitSphere):
         uvw = get_elem_list(elem, "reference_uvw", float)
         if uvw is not None:
             mu_phi.reference_uvw = uvw
+        vwu = get_elem_list(elem, "reference_vwu", float)
+        if vwu is not None:
+            mu_phi.reference_vwu = vwu            
         mu_phi.mu = Univariate.from_xml_element(elem.find('mu'))
         mu_phi.phi = Univariate.from_xml_element(elem.find('phi'))
         return mu_phi

@@ -20,6 +20,8 @@ vector<SourceSite> source_bank;
 
 SharedArray<SourceSite> surf_source_bank;
 
+SharedArray<CollisionTrackSite> collision_track_bank;
+
 // The fission bank is allocated as a SharedArray, rather than a vector, as it
 // will be shared by all threads in the simulation. It will be allocated to a
 // fixed maximum capacity in the init_fission_bank() function. Then, Elements
@@ -50,6 +52,7 @@ void free_memory_bank()
 {
   simulation::source_bank.clear();
   simulation::surf_source_bank.clear();
+  simulation::collision_track_bank.clear();
   simulation::fission_bank.clear();
   simulation::progeny_per_particle.clear();
   simulation::ifp_source_delayed_group_bank.clear();
@@ -79,16 +82,9 @@ void sort_fission_bank()
 
   // Perform exclusive scan summation to determine starting indices in fission
   // bank for each parent particle id
-  int64_t tmp = simulation::progeny_per_particle[0];
-  simulation::progeny_per_particle[0] = 0;
-  for (int64_t i = 1; i < simulation::progeny_per_particle.size(); i++) {
-    int64_t value = simulation::progeny_per_particle[i - 1] + tmp;
-    tmp = simulation::progeny_per_particle[i];
-    simulation::progeny_per_particle[i] = value;
-  }
-
-  // TODO: C++17 introduces the exclusive_scan() function which could be
-  // used to replace everything above this point in this function.
+  std::exclusive_scan(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(),
+    simulation::progeny_per_particle.begin(), 0);
 
   // We need a scratch vector to make permutation of the fission bank into
   // sorted order easy. Under normal usage conditions, the fission bank is

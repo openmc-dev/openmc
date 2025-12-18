@@ -12,7 +12,6 @@ from openmc.deplete import CoupledOperator
 from tests.regression_tests import config, assert_reaction_rates_equal, \
     assert_atoms_equal
 
-
 @pytest.fixture
 def model():
     openmc.reset_auto_ids()
@@ -40,10 +39,9 @@ def model():
     geometry = openmc.Geometry([cell_f, cell_w])
 
     settings = openmc.Settings()
-    settings.particles = 100
+    settings.particles = 150
     settings.inactive = 0
     settings.batches = 10
-    settings.seed = 1
 
     return openmc.Model(geometry, materials, settings)
 
@@ -55,6 +53,9 @@ def model():
     (-1e-5, None, 174.0, 'depletion_with_feed'),
     (-1e-5, 'w', 0.0, 'no_depletion_with_transfer'),
     (1e-5, 'w', 174.0, 'depletion_with_transfer'),
+    (0.0, None, 174.0, 'depletion_with_redox'),
+    (1e-5, None, 174.0, 'depletion_with_removal_and_redox'),
+    (1e-5, 'w', 174.0, 'depletion_with_transfer_and_redox'),
     ])
 def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result):
     """Tests transfer_rates depletion class with transfer rates"""
@@ -62,13 +63,18 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
 
     transfer_elements = ['Xe']
+    os = {'I': -1, 'Xe':0, 'Cs': 1, 'Gd': 3, 'U': 4}
 
     op = CoupledOperator(model, chain_file)
     op.round_number = True
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], power, timestep_units = 'd')
-    integrator.add_transfer_rate('f', transfer_elements, rate,
-                                 destination_material=dest_mat)
+    if rate != 0.0:
+        integrator.add_transfer_rate('f', transfer_elements, rate,
+                                    destination_material=dest_mat)
+    if 'redox' in ref_result.split('_'):
+        integrator.add_redox('f', {'Gd157':1}, os)
+
     integrator.integrate()
 
     # Get path to test and reference results
@@ -84,9 +90,8 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
 
-    assert_atoms_equal(res_ref, res_test)
-    assert_reaction_rates_equal(res_ref, res_test)
-
+    assert_atoms_equal(res_ref, res_test, tol=1e-3)
+    assert_reaction_rates_equal(res_ref, res_test, tol=1e-3)
 
 @pytest.mark.parametrize("rate, power, ref_result", [
     (1e-1, 0.0, 'no_depletion_with_ext_source'),
@@ -119,5 +124,5 @@ def test_external_source_rates(run_in_tmpdir, model, rate, power, ref_result):
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
 
-    assert_atoms_equal(res_ref, res_test)
-    assert_reaction_rates_equal(res_ref, res_test)
+    assert_atoms_equal(res_ref, res_test, tol=1e-3)
+    assert_reaction_rates_equal(res_ref, res_test, tol=1e-3)

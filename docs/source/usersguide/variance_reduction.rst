@@ -51,7 +51,7 @@ With the :class:`~openmc.WeightWindowGenerator` instance added to the
 :attr:`~openmc.Settings`, the rest of the problem can be defined as normal. When
 running, note that the second iteration and beyond may be several orders of
 magnitude slower than the first. As the weight windows are applied in each
-iteration, particles may be agressively split, resulting in a large number of
+iteration, particles may be aggressively split, resulting in a large number of
 secondary (split) particles being generated per initial source particle. This is
 not necessarily a bad thing, as the split particles are much more efficient at
 exploring low flux regions of phase space as compared to initial particles.
@@ -133,8 +133,7 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
        # we used for source region decomposition
        wwg = openmc.WeightWindowGenerator(
            method='fw_cadis',
-           mesh=mesh,
-           max_realizations=settings.batches
+           mesh=mesh
        )
 
        # Add generator to openmc.settings object
@@ -162,7 +161,7 @@ solver, the Python input just needs to load the h5 file::
 
     settings.weight_window_checkpoints = {'collision': True, 'surface': True}
     settings.survival_biasing = False
-    settings.weight_windows = openmc.WeightWindowsList.from_hdf5('weight_windows.h5')
+    settings.weight_windows_file = "weight_windows.h5"
     settings.weight_windows_on = True
 
 The :class:`~openmc.WeightWindowGenerator` instance is not needed to load an

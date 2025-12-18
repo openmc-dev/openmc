@@ -115,13 +115,14 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= 10000) {
+      if (p.secondary_bank().size() >= settings::max_secondaries) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "
           "with k-effective close to or greater than one.");
       }
     }
+    p.event_mt() = rx.mt_;
   }
 
   // Create secondary photons
@@ -210,12 +211,22 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     site.particle = ParticleType::neutron;
     site.time = p.time();
     site.wgt = 1. / weight;
-    site.parent_id = p.id();
-    site.progeny_id = p.n_progeny()++;
     site.surf_id = 0;
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
+
+    // Reject site if it exceeds time cutoff
+    if (site.delayed_group > 0) {
+      double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      if (site.time > t_cutoff) {
+        continue;
+      }
+    }
+
+    // Set parent and progeny IDs
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank
     if (use_fission_bank) {
@@ -236,18 +247,15 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       }
       // Iterated Fission Probability (IFP) method
       if (settings::ifp_on) {
-        ifp(p, site, idx);
+        ifp(p, idx);
       }
     } else {
       p.secondary_bank().push_back(site);
     }
 
-    // Set the delayed group on the particle as well
-    p.delayed_group() = site.delayed_group;
-
     // Increment the number of neutrons born delayed
-    if (p.delayed_group() > 0) {
-      nu_d[p.delayed_group() - 1]++;
+    if (site.delayed_group > 0) {
+      nu_d[site.delayed_group - 1]++;
     }
 
     // Write fission particles to nuBank
@@ -496,7 +504,7 @@ int sample_nuclide(Particle& p)
   for (int i = 0; i < n; ++i) {
     // Get atom density
     int i_nuclide = mat->nuclide_[i];
-    double atom_density = mat->atom_density_[i];
+    double atom_density = mat->atom_density(i, p.density_mult());
 
     // Increment probability to compare to cutoff
     prob += atom_density * p.neutron_xs(i_nuclide).total;
@@ -521,7 +529,7 @@ int sample_element(Particle& p)
   for (int i = 0; i < mat->element_.size(); ++i) {
     // Find atom density
     int i_element = mat->element_[i];
-    double atom_density = mat->atom_density_[i];
+    double atom_density = mat->atom_density(i, p.density_mult());
 
     // Determine microscopic cross section
     double sigma = atom_density * p.photon_xs(i_element).total;
@@ -656,7 +664,9 @@ void absorption(Particle& p, int i_nuclide)
 
       p.wgt() = 0.0;
       p.event() = TallyEvent::ABSORB;
-      p.event_mt() = N_DISAPPEAR;
+      if (!p.fission()) {
+        p.event_mt() = N_DISAPPEAR;
+      }
     }
   }
 }
@@ -844,7 +854,7 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
     // otherwise, use free gas model
   } else {
-    if (E >= FREE_GAS_THRESHOLD * kT && nuc.awr_ > 1.0) {
+    if (E >= settings::free_gas_threshold * kT && nuc.awr_ > 1.0) {
       return {};
     } else {
       sampling_method = ResScatMethod::cxs;
@@ -1068,6 +1078,10 @@ void sample_fission_neutron(
 
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
+
+    // Sample time of emission based on decay constant of precursor
+    double decay_rate = rx.products_[site->delayed_group].decay_rate_;
+    site->time -= std::log(prn(p.current_seed())) / decay_rate;
 
   } else {
     // ====================================================================

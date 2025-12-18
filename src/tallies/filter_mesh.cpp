@@ -111,7 +111,7 @@ void MeshFilter::set_rotation(const vector<double>& rot)
 {
   rotated_ = true;
 
-  // Compute and store the rotation matrix.
+  // Compute and store the inverse rotation matrix for the angles given.
   rotation_.clear();
   rotation_.reserve(rot.size() == 9 ? 9 : 12);
   if (rot.size() == 3) {

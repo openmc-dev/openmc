@@ -65,6 +65,8 @@ def test_full(run_in_tmpdir, problem, multiproc):
     power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
 
     # Perform simulation using the predictor algorithm
+    if config['mpi'] and multiproc:
+        pytest.skip("Multiprocessing depletion is disabled when MPI is enabled.")
     openmc.deplete.pool.USE_MULTIPROCESSING = multiproc
     openmc.deplete.PredictorIntegrator(op, dt, power).integrate()
 

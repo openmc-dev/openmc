@@ -120,6 +120,13 @@ def test_apply_time_correction(run_in_tmpdir):
         tally = sp.tallies[tally.id]
         flux = tally.mean.flatten()
 
+    # Copy attributes from original tally
+    tally_filters = list(tally.filters)
+    tally_sum = tally.sum.copy()
+    tally_sum_sq = tally.sum_sq.copy()
+    tally_mean = tally.mean.copy()
+    tally_std_dev = tally.std_dev.copy()
+
     # Apply TCF and make sure results are consistent
     result = d1s.apply_time_correction(tally, factors, sum_nuclides=False)
     tcf = np.array([factors[nuc][-1] for nuc in nuclides])
@@ -128,6 +135,13 @@ def test_apply_time_correction(run_in_tmpdir):
     # Make sure summed results match a manual sum
     result_summed = d1s.apply_time_correction(tally, factors)
     assert result_summed.mean.flatten()[0] == pytest.approx(result.mean.sum())
+
+    # Make sure original tally is unchanged
+    assert tally.filters == tally_filters
+    assert np.all(tally.sum == tally_sum)
+    assert np.all(tally.sum_sq == tally_sum_sq)
+    assert np.all(tally.mean == tally_mean)
+    assert np.all(tally.std_dev == tally_std_dev)
 
     # Make sure various tally methods work
     result.get_values()

@@ -7,6 +7,7 @@ loaded from an .xml file and all the nuclides are linked together.
 from io import StringIO
 from itertools import chain
 import math
+import numpy as np
 import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
@@ -713,6 +714,62 @@ class Chain:
 
         # Return CSC representation instead of DOK
         return csc_array((vals, (rows, cols)), shape=(n, n))
+
+    def add_redox_term(self, matrix, buffer, oxidation_states):
+        r"""Adds a redox term to the depletion matrix from data contained in
+        the matrix itself and a few user-inputs.
+
+        The redox term to add to the buffer nuclide :math:`N_j` can be written
+        as:
+
+        .. math::
+            \frac{dN_j(t)}{dt} = \cdots - \frac{1}{OS_j}\sum_i N_i a_{ij}
+            \cdot OS_i
+
+        where :math:`OS` is the oxidation states vector and :math:`a_{ij}` the
+        corresponding term in the Bateman matrix.
+
+        Parameters
+        ----------
+        matrix : scipy.sparse.csc_matrix
+            Sparse matrix representing depletion
+        buffer : dict
+            Dictionary of buffer nuclides used to maintain anoins net balance.
+            Keys are nuclide names (strings) and values are their respective
+            fractions (float) that collectively sum to 1.
+        oxidation_states : dict
+            User-defined oxidation states for elements. Keys are element symbols
+            (e.g., 'H', 'He'), and values are their corresponding oxidation
+            states as integers (e.g., +1, 0).
+        Returns
+        -------
+        matrix : scipy.sparse.csc_matrix
+            Sparse matrix with redox term added
+        """
+        # Elements list with the same size as self.nuclides
+        elements = [re.split(r'\d+', nuc.name)[0] for nuc in self.nuclides]
+
+        # Match oxidation states with all elements and add 0 if not data
+        os = np.array([oxidation_states[elm] if elm in oxidation_states else 0
+                       for elm in elements])
+
+        # Buffer idx with nuclide index as value
+        buffer_idx = {nuc: self.nuclide_dict[nuc] for nuc in buffer}
+        array = matrix.toarray()
+        redox_change = np.array([])
+
+        # calculate the redox array
+        for i in range(len(self)):
+            # Net redox impact of reaction: multiply the i-th column of the
+            # depletion matrix by the oxidation states
+            redox_change = np.append(redox_change, sum(array[:, i]*os))
+
+        # Subtract redox vector to the buffer nuclides in the matrix scaling by
+        # their respective oxidation states
+        for nuc, idx in buffer_idx.items():
+            array[idx] -= redox_change * buffer[nuc] / os[idx]
+
+        return sp.csc_matrix(array)
 
     def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.

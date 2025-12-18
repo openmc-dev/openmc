@@ -49,9 +49,10 @@ class ExternalRates:
         self.local_mats = operator.local_mats
         self.number_of_timesteps = number_of_timesteps
 
-        # initialize transfer rates container dict
+        #initialize transfer rates container dict
         self.external_rates = {mat: defaultdict(list) for mat in self.burnable_mats}
         self.external_timesteps = []
+        self.redox = {}
 
     def _get_material_id(self, val):
         """Helper method for getting material id from Material obj or name.
@@ -300,6 +301,46 @@ class TransferRates(ExternalRates):
             self.external_timesteps = np.unique(np.concatenate(
                     [self.external_timesteps, timesteps]))
 
+    def set_redox(self, material, buffer, oxidation_states, timesteps=None):
+        """Add redox control to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        buffer : dict
+            Dictionary of buffer nuclides used to maintain redox balance.
+            Keys are nuclide names (strings) and values are their respective
+            fractions (float) that collectively sum to 1.
+        oxidation_states : dict
+            User-defined oxidation states for elements.
+            Keys are element symbols (e.g., 'H', 'He'), and values are their
+            corresponding oxidation states as integers (e.g., +1, 0).
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates.
+            Defaults to None, which means the external source rate is set for
+            all timesteps.
+
+        """
+        material_id = self._get_material_id(material)
+        if timesteps is not None:
+            for timestep in timesteps:
+                check_value('timestep', timestep, range(self.number_of_timesteps))
+            timesteps = np.array(timesteps)
+        else:
+            timesteps = np.arange(self.number_of_timesteps)
+        #Check nuclides in buffer exist
+        for nuc in buffer:
+            if nuc not in self.chain_nuclides:
+                raise ValueError(f'{nuc} is not a valid nuclide.')
+        # Checks element in oxidation states exist
+        for elm in oxidation_states:
+            if elm not in ELEMENT_SYMBOL.values():
+                raise ValueError(f'{elm} is not a valid element.')
+
+        self.redox[material_id] =  (buffer, oxidation_states)
+        self.external_timesteps = np.unique(np.concatenate(
+                    [self.external_timesteps, timesteps]))
 
 class ExternalSourceRates(ExternalRates):
     """Class for defining external source rates.

@@ -1,12 +1,15 @@
 from pathlib import Path
 
+import os
+import h5py
+import shutil
 import lxml.etree as ET
 import numpy as np
 import pytest
 import openmc
 import openmc.lib
 from openmc.utility_funcs import change_directory
-
+import openmc.lib
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
@@ -256,3 +259,66 @@ def test_dagmc_xml(model):
 
     for xml_mats, model_mats in zip(xml_dagmc_univ._material_overrides.values(), dag_univ._material_overrides.values()):
         assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])
+
+def test_dagmc_vacuum(run_in_tmpdir, request):
+    # Required initial mats
+    mats = {}
+    mats["41"] = openmc.Material(name="41")
+    mats["41"].add_nuclide("H1", 1.0)
+    mats["41"].set_density("g/cm3", 1.0)
+
+    # Not a vacuum material
+    na_vacuum_str = "not_a_vacuum"
+    mats[na_vacuum_str] = openmc.Material(name=na_vacuum_str)
+    mats[na_vacuum_str].add_nuclide("U238", 1.0)
+    mats[na_vacuum_str].set_density("g/cm3", 10.0)
+
+    model = openmc.Model()
+    model.settings = openmc.Settings()
+    model.settings.batches = 10
+    model.settings.particles = 100
+    model.materials = openmc.Materials(mats.values())
+
+    orig_h5m = Path(request.fspath).parent / "dagmc.h5m"
+
+    # Tweaking the h5m file to change the material assignment
+    na_vacuum_h5 = Path(f"dagmc_{na_vacuum_str}.h5m")
+    shutil.copy(orig_h5m, na_vacuum_h5)
+    hf = h5py.File(na_vacuum_h5, 'r+')
+    new_assignment = 'mat:not_a_vacuum'.encode('utf-8')
+    hf['/tstt/tags/NAME']['values'][1] = new_assignment
+    hf.close()
+
+    # Set the Model
+    daguniv = openmc.DAGMCUniverse(na_vacuum_h5.absolute(),
+                                   auto_geom_ids=True).bounded_universe()
+    # Update the model geometry
+    model.geometry = openmc.Geometry(root=daguniv)
+
+    model.export_to_model_xml()
+    with openmc.lib.run_in_memory():
+        material = openmc.lib.find_material((0, 0, 0))
+        assert material is not None
+
+
+    # Vacuum material
+    vacuum_str = "vacuum"
+
+    # Tweaking the h5m file to change the material assignment
+    vacuum_h5 = Path(f"dagmc_{vacuum_str}.h5m")
+    shutil.copy(orig_h5m, vacuum_h5)
+    hf = h5py.File(vacuum_h5, 'r+')
+    new_assignment = 'mat:vacuum'.encode('utf-8')
+    hf['/tstt/tags/NAME']['values'][1] = new_assignment
+    hf.close()
+
+    # Create a new DAGMC unvierse
+    daguniv = openmc.DAGMCUniverse(vacuum_h5.absolute(),
+                                   auto_geom_ids=True).bounded_universe()
+    # Update the model geometry
+    model.geometry = openmc.Geometry(root=daguniv)
+
+    model.export_to_model_xml()
+    with openmc.lib.run_in_memory():
+        material = openmc.lib.find_material((0, 0, 0))
+        assert material is None

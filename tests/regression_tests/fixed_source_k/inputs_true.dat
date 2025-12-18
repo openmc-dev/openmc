@@ -31,5 +31,6 @@
       <angle type="isotropic"/>
       <energy type="maxwell" parameters="293.6"/>
     </source>
+    <calculate_subcritical_k>true</calculate_subcritical_k>
   </settings>
   </model>

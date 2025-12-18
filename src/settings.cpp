@@ -679,6 +679,10 @@ void read_settings_xml(pugi::xml_node root)
 
   if (check_for_node(root, "calculate_subcritical_k")) {
     if (run_mode == RunMode::FIXED_SOURCE) {
+      if (solver_type != SolverType::MONTE_CARLO) {
+        fatal_error("The 'calculate_subcritical_k' setting is only valid in "
+                    "fixed source mode with the Monte Carlo solver.");
+      }
       calculate_subcritical_k =
         get_node_value_bool(root, "calculate_subcritical_k");
     } else {

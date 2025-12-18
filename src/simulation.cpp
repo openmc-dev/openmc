@@ -142,6 +142,9 @@ int openmc_simulation_init()
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       if (settings::solver_type == SolverType::MONTE_CARLO) {
         header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+        if (settings::verbosity >= 7 && settings::calculate_subcritical_k) {
+          print_columns();
+        }
       } else if (settings::solver_type == SolverType::RANDOM_RAY) {
         header("FIXED SOURCE TRANSPORT SIMULATION (RANDOM RAY SOLVER)", 3);
       }
@@ -366,7 +369,9 @@ void initialize_batch()
       write_message(
         6, "Simulating batch {:<4} (inactive)", simulation::current_batch);
     } else {
-      write_message(6, "Simulating batch {}", simulation::current_batch);
+      if (!settings::calculate_subcritical_k) {
+        write_message(6, "Simulating batch {}", simulation::current_batch);
+      }
     }
   }
 
@@ -505,7 +510,9 @@ void finalize_batch()
 
 void initialize_generation()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
     // Clear out the fission bank
     simulation::fission_bank.resize(0);
 
@@ -523,9 +530,9 @@ void finalize_generation()
 {
   auto& gt = simulation::global_tallies;
 
-  // Update global tallies with the accumulation variables
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
     gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
       global_tally_absorption;
     gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
@@ -533,8 +540,73 @@ void finalize_generation()
   }
   gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
-  // reset tallies
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  // Perform MPI Reduction
+  // We must reduce global_tallies and total_weight across all ranks
+  // so that calculate_generation_keff sees the total sum.
+#ifdef OPENMC_MPI
+  // Reduce global tallies
+  xt::xtensor<double, 2> buffer = gt;
+  MPI_Reduce(buffer.data(), gt.data(), gt.size(), MPI_DOUBLE, MPI_SUM, 0,
+    mpi::intracomm);
+
+  // Reduce total weight (Source S)
+  double total_weight_reduced = 0.0;
+  MPI_Reduce(&simulation::total_weight, &total_weight_reduced, 1, MPI_DOUBLE,
+    MPI_SUM, 0, mpi::intracomm);
+
+  // Update local variable on master with the reduced value
+  if (mpi::master)
+    simulation::total_weight = total_weight_reduced;
+#endif
+
+  // Calculate Combined Estimator and k_sq
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    // We need the Global Sum of Production (P) and Source Weight (S).
+    // The variables global_tally_tracklength hold the LOCAL production for this
+    // generation.
+    double local_P = global_tally_tracklength;
+    double local_S = simulation::total_weight;
+
+    double global_P = 0.0;
+    double global_S = 0.0;
+
+#ifdef OPENMC_MPI
+    // Reduce Production and Source across all ranks
+    MPI_Reduce(&local_P, &global_P, 1, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+    MPI_Reduce(&local_S, &global_S, 1, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+#else
+    global_P = local_P;
+    global_S = local_S;
+#endif
+
+    if (mpi::master) {
+      // Calculate k_sq = P / (P + S)
+      // Note: We use unnormalized totals for both P and S, so the ratio is
+      // correct.
+      double k_sq = 0.0;
+      if (global_P + global_S > 0.0) {
+        k_sq = global_P / (global_P + global_S);
+      }
+
+      // Update the history vector
+      simulation::k_generation.push_back(k_sq);
+
+      // Calculate the running Mean/StdDev of the k_sq history
+      calculate_average_keff();
+
+      // Print the standard generation table
+      if (settings::verbosity >= 7) {
+        print_generation();
+      }
+    }
+  }
+
+  // Reset tallies for the next generation
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      settings::run_mode == RunMode::SUBCRITICAL_MULTIPLICATION ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
     global_tally_tracklength = 0.0;

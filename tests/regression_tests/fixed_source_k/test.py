@@ -50,6 +50,7 @@ def model():
     model.geometry = openmc.Geometry(universe)
     model.settings.run_mode = 'fixed source'
     model.settings.source = test_source()
+    model.settings.calculate_subcritical_k = True
 
     model.settings.batches = 10
     model.settings.inactive = 5

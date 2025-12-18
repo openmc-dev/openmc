@@ -396,7 +396,7 @@ void print_generation()
   fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
 
   // write out entropy info
-  if (settings::entropy_on) {
+  if (settings::entropy_on && !settings::calculate_subcritical_k) {
     fmt::print("   {:8.5f}", simulation::entropy[idx]);
   }
 
@@ -534,21 +534,28 @@ void print_results()
   // write global tallies
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
+  std::string eigenvalue_name = " k-effective";
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    eigenvalue_name = " Subcritical k";
+  }
   if (n > 1) {
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) {
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
-      fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
-        t_n1 * stdev);
+      fmt::print(" {} (Collision)     = {:.5f} +/- {:.5f}\n", eigenvalue_name,
+        mean, t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
-      fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n", mean,
-        t_n1 * stdev);
+      fmt::print(" {} (Track-length)  = {:.5f} +/- {:.5f}\n", eigenvalue_name,
+        mean, t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
-      fmt::print(" k-effective (Absorption)    = {:.5f} +/- {:.5f}\n", mean,
-        t_n1 * stdev);
+      fmt::print(" {} (Absorption)    = {:.5f} +/- {:.5f}\n", eigenvalue_name,
+        mean, t_n1 * stdev);
       if (n > 3) {
         double k_combined[2];
         openmc_get_keff(k_combined);
-        fmt::print(" Combined k-effective        = {:.5f} +/- {:.5f}\n",
+        fmt::print(" Combined {}        = {:.5f} +/- {:.5f}\n", eigenvalue_name,
           k_combined[0], k_combined[1]);
       }
     }
@@ -560,12 +567,14 @@ void print_results()
       warning("Could not compute uncertainties -- only one "
               "active batch simulated!");
 
-    if (settings::run_mode == RunMode::EIGENVALUE) {
-      fmt::print(" k-effective (Collision)    = {:.5f}\n",
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) {
+      fmt::print(" {} (Collision)    = {:.5f}\n", eigenvalue_name,
         gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n);
-      fmt::print(" k-effective (Track-length) = {:.5f}\n",
+      fmt::print(" {} (Track-length) = {:.5f}\n", eigenvalue_name,
         gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n);
-      fmt::print(" k-effective (Absorption)   = {:.5f}\n",
+      fmt::print(" {} (Absorption)   = {:.5f}\n", eigenvalue_name,
         gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n);
     }
     fmt::print(" Leakage Fraction           = {:.5f}\n",

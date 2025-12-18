@@ -5,6 +5,7 @@ import openmc
 import pytest
 import h5py
 import numpy as np
+import shutil
 
 from tests.testing_harness import CollisionTrackTestHarness as ctt
 

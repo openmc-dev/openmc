@@ -242,30 +242,13 @@ double RotationalPeriodicBC::compute_periodic_rotation(
 void RotationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  int i_particle_surf = p.surface_index();
+  int new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
 
-  // Figure out which of the two BC surfaces were struck to figure out if a
-  // forward or backward rotation is required.  Specify the other surface as
-  // the particle's new surface.
-  double theta;
-  int new_surface;
-  if (i_particle_surf == i_surf_) {
-    theta = angle_;
-    new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
-  } else if (i_particle_surf == j_surf_) {
-    theta = -angle_;
-    new_surface = p.surface() > 0 ? -(i_surf_ + 1) : i_surf_ + 1;
-  } else {
-    throw std::runtime_error(
-      "Called BoundaryCondition::handle_particle after "
-      "hitting a surface, but that surface is not recognized by the BC.");
-  }
-
-  // Rotate the particle's position and direction about the z-axis.
+  // Rotate the particle's position and direction.
   Position r = p.r();
   Direction u = p.u();
-  double cos_theta = std::cos(theta);
-  double sin_theta = std::sin(theta);
+  double cos_theta = std::cos(angle_);
+  double sin_theta = std::sin(angle_);
 
   Position new_r;
   new_r[zero_axis_idx_] = r[zero_axis_idx_];

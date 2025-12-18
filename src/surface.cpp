@@ -1371,7 +1371,7 @@ void read_surfaces(pugi::xml_node node)
           "axis, which is not supported."));
       }
       surf1.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf, axis);
-      surf2.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf, axis);
+      surf2.bc_ = make_unique<RotationalPeriodicBC>(j_surf, i_surf, axis);
     }
 
     // If albedo data is present in albedo map, set the boundary albedo.

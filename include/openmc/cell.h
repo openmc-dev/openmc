@@ -336,13 +336,14 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t id_;           //!< Unique ID
-  std::string name_;     //!< User-defined name
-  Fill type_;            //!< Material, universe, or lattice
-  int32_t universe_;     //!< Universe # this cell is in
-  int32_t fill_;         //!< Universe # filling this cell
-  bool virtual_lattice_; //!< If the cell is the base of a virtual triso lattice
-  bool triso_particle_;
+  int32_t id_;       //!< Unique ID
+  std::string name_; //!< User-defined name
+  Fill type_;        //!< Material, universe, or lattice
+  int32_t universe_; //!< Universe # this cell is in
+  int32_t fill_;     //!< Universe # filling this cell
+  bool virtual_lattice_ =
+    false; //!< If the cell is the base of a virtual triso lattice
+  bool triso_particle_ = false; //!< If the cell contains a triso particle
 
   //! \brief Specification of the virtual lattice
   vector<double> vl_lower_left_;

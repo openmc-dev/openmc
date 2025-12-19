@@ -214,10 +214,11 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       "intersect the origin.",
       surf2.id_));
   }
+  flip_sense_ = (norm1.dot(norm2)>0.0);
 
   auto c = norm1.cross(norm2);
   angle_ = std::atan2(c.dot(ax),norm1.dot(norm2));
-  if (norm1.dot(norm2)<0.0)
+  if (!flip_sense_)
     angle_ += PI;
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));
@@ -229,31 +230,11 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   }
 }
 
-double RotationalPeriodicBC::compute_periodic_rotation(
-  double rise_1, double run_1, double rise_2, double run_2) const
-{
-  // Compute the BC rotation angle.  Here it is assumed that both surface
-  // normal vectors point inwards---towards the valid geometry region.
-  // Consequently, the rotation angle is not the difference between the two
-  // normals, but is instead the difference between one normal and one
-  // anti-normal.  (An incident ray on one surface must be an outgoing ray on
-  // the other surface after rotation hence the anti-normal.)
-  double theta1 = std::atan2(rise_1, run_1);
-  double theta2 = std::atan2(rise_2, run_2) + PI;
-  return theta2 - theta1;
-}
-
 void RotationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
   int new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
-  
-  Surface& surf1 {*model::surfaces[i_surf_]};
-  Surface& surf2 {*model::surfaces[j_surf_]};
-  Direction norm1 = surf1.normal({0, 0, 0});
-  Direction norm2 = surf2.normal({0, 0, 0});
-  
-  if (norm1.dot(norm2)>0.0)
+  if (flip_sense_)
     new_surface = -new_surface;
 
   // Rotate the particle's position and direction.

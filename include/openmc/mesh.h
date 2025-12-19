@@ -1020,7 +1020,7 @@ protected:
   libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
                          //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
-    pl_; //!< per-thread point locators
+    pl_;                      //!< per-thread point locators
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
 
 private:

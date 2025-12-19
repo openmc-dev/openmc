@@ -3731,7 +3731,8 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 
 double LibMesh::volume(int bin) const
 {
-  return this->get_element_from_bin(bin).volume() * length_multiplier_ * length_multiplier_ * length_multiplier_;
+  return this->get_element_from_bin(bin).volume() * length_multiplier_ *
+         length_multiplier_ * length_multiplier_;
 }
 
 AdaptiveLibMesh::AdaptiveLibMesh(libMesh::MeshBase& input_mesh,
@@ -3755,7 +3756,7 @@ AdaptiveLibMesh::AdaptiveLibMesh(libMesh::MeshBase& input_mesh,
                  : m_->active_elements_begin();
   auto end = block_restrict_ ? m_->active_subdomain_set_elements_end(block_ids_)
                              : m_->active_elements_end();
-  for (const auto & elem : libMesh::as_range(begin, end)) {
+  for (const auto& elem : libMesh::as_range(begin, end)) {
     bin_to_elem_map_.push_back(elem->id());
     elem_to_bin_map_[elem->id()] = bin_to_elem_map_.size() - 1;
   }

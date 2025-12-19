@@ -2,57 +2,66 @@ from abc import ABC, abstractmethod
 
 import openmc
 
-from .mixin import IDManagerMixin
 
+class ScalarField(ABC):
+    """Scalar field defined on a geometric mesh.
 
-class ScalarField(IDManagerMixin, ABC):
-    """
-    """
-    def to_xml_element(self):
-        """Return XML representation of the field
+    Attributes
+    ----------
+    mesh : Mesh
+        Spatial mesh associated with the field
+    values : iterable of float
+        List of values associated with each mesh cell
 
-        Returns
-        -------
-        element : lxml.etree._Element
-            XML element containing mesh data
-
-        """
-        elem = ET.Element("field")
-
-        elem.set("id", str(self._id))
-        if self.name:
-            elem.set("name", self.name)
-
-        return elem
-
-
-class TemperatureField(ScalarField):
-    """
     """
     def __init__(self, mesh, values):
-        """
+        """Initialization.
+
+        Parameters
+        ----------
+        mesh : Mesh
+            Spatial mesh associated with the field
+        values : iterable of float
+            List of values associated with each mesh cell
+
         """
         self.mesh = mesh
         self.values = values
 
     @classmethod
-    def from_mesh_and_values(cls, mesh, values):
-        """
-        """
-        return cls(mesh, values)
+    def from_exodus_file(cls, filepath):
+        """Construct a ScalarField from an Exodus mesh file
 
-    def to_xml_element(self):
-        """Return XML representation of the mesh
-
-        Returns
-        -------
-        element : lxml.etree._Element
-            XML element containing mesh data
+        Parameters
+        ----------
+        filepath : path-like or str
+            Path to the Exodus mesh file
 
         """
-        element = super().to_xml_element()
+        #TODO
+        raise NotImplementedError("Constructor not yet implemented.")
 
-        subelement = ET.SubElement(element, "mesh")
-        subelement.text = self.mesh.to_xml_element()
 
-        return element
+class TemperatureField(ScalarField):
+    """Temperature field.
+
+    Attributes
+    ----------
+    mesh : Mesh
+        Spatial mesh associated with the field
+    values : iterable of float
+        List of values associated with each mesh cell
+
+    """
+    def __init__(self, mesh, values):
+        """Initialization.
+
+        Parameters
+        ----------
+        mesh : Mesh
+            Spatial mesh associated with the field
+        values : iterable of float
+            List of values associated with each mesh cell
+
+        """
+        super().__init__(mesh, values)

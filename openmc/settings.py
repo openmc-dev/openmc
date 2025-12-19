@@ -4,6 +4,7 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
+import textwrap
 
 import lxml.etree as ET
 import warnings
@@ -309,6 +310,10 @@ class Settings:
         sections be loaded at all temperatures within the range. 'multipole' is
         a boolean indicating whether or not the windowed multipole method should
         be used to evaluate resolved resonance cross sections.
+    temperature_field : openmc.TemperatureField
+        Temperature field based on a geometric mesh used to specify temperatures
+        in a model. Temperatures declared from a mesh take precedence over
+        all other temperature definition (cell, material, and global).
     trace : tuple or list
         Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number
@@ -1686,7 +1691,9 @@ class Settings:
 
         # Add temperature values
         subelement = ET.SubElement(element, "values")
-        subelement.text = " ".join([str(i) for i in self.temperature_field.values])
+        subelement.text = "\n        ".join(
+            textwrap.wrap(" ".join(
+                [str(i) for i in self.temperature_field.values]), 80))
 
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:

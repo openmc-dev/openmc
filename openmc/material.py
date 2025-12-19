@@ -1305,7 +1305,7 @@ class Material(IDManagerMixin):
         return decayheat if by_nuclide else sum(decayheat.values())
     
 
-    def get_photon_mass_attenuation(self, photon_energy: float| Real | Univariate | Discrete | Mixture | Tabular) -> float:
+    def get_photon_mass_attenuation_coefficient(self, photon_energy: float| Real | Univariate | Discrete | Mixture | Tabular) -> float:
         """Compute the photon mass attenuation coefficient for this material.
 
         The mass attenuation coefficient :math:`\\mu/\\rho` is computed by
@@ -1417,7 +1417,9 @@ class Material(IDManagerMixin):
                     pe_dist = Tabulated1D( e_vals, p_vals, breakpoints=None, interpolation=[1])
 
                     # generate a uninon of abscissae
-                    e_lists = [e_vals, nuc_linear_attenuation.x]
+                    e_lists = [e_vals]
+                    for photon_xs in nuc_linear_attenuation.functions:
+                        e_lists.append(photon_xs.x)
                     e_union = reduce(np.union1d, e_lists)
 
                     # generate a callable combination of normalized photon probability x linear
@@ -1487,7 +1489,7 @@ class Material(IDManagerMixin):
 
             cdr_nuc = 0.0
 
-            linear_attenuation = linear_attenuation_xs(nuc,  T) # units of barns/atom
+            linear_attenuation = linear_attenuation_xs(el_name,  T) # units of barns/atom
 
             if linear_attenuation is None:
                 continue
@@ -1506,7 +1508,7 @@ class Material(IDManagerMixin):
                     for (e,p) in zip(e_vals, p_vals):
 
                         # missing the air part
-                        cdr_nuc += p * e / self.get_photon_mass_attenuation(e)
+                        cdr_nuc += p * e / self.get_photon_mass_attenuation_coefficient(e)
 
                 elif isinstance(photon_source_per_atom, Tabular):
 

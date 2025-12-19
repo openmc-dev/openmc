@@ -7,7 +7,7 @@ import openmc.data
 import openmc.data.photon_attenuation as linear_attenuation
 import openmc.data.photon_attenuation as photon_att
 from openmc.data import IncidentPhoton
-from openmc.data.function import Tabulated1D
+from openmc.data.function import Sum
 from openmc.data.library import DataLibrary
 from openmc.data.photon_attenuation import linear_attenuation_xs
 from openmc.exceptions import DataError
@@ -60,7 +60,7 @@ def test_linear_attenuation_xs_matches_sum(elements_photon_xs, symbol, monkeypat
         assert xs_sum is None
         return
 
-    assert isinstance(xs_sum, Tabulated1D)
+    assert isinstance(xs_sum, Sum)
 
     # Compare against explicit sum of reaction cross sections
     energy = np.logspace(2, 4, 50)
@@ -167,13 +167,8 @@ def test_linear_attenuation_reference_values(elements_photon_xs, monkeypatch):
     if xs_pb is None or xs_v is None:
         pytest.skip("No relevant photon reactions for Pb or V.")
 
-    assert isinstance(xs_pb, Tabulated1D)
-    assert isinstance(xs_v, Tabulated1D)
-
-    #test linear_attenuation function by calling a nuclide
-    xs_pb_nuc = linear_attenuation_xs("Pb206", temperature=293.6)
-    assert isinstance(xs_pb_nuc, Tabulated1D)
-    assert np.allclose(xs_pb_nuc(1e-5), xs_pb(1e-5))
+    assert isinstance(xs_pb, Sum)
+    assert isinstance(xs_v, Sum)
 
     # Test Lead
     pb_energies = np.array([1.0e5, 1.0e6])

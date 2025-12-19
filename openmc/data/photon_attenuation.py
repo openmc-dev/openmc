@@ -1,6 +1,6 @@
 import numpy as np
 
-from .function import Polynomial, sum_functions, Tabulated1D
+from .function import Sum
 from .library import DataLibrary   
 from .photon import IncidentPhoton
 from .data import ATOMIC_SYMBOL, ELEMENT_SYMBOL, zam
@@ -32,7 +32,7 @@ def _get_photon_data(nuclide: str) ->IncidentPhoton | None:
     return _PHOTON_DATA[nuclide]
 
 
-def linear_attenuation_xs(element_input: str, temperature: float) -> Tabulated1D | None:
+def linear_attenuation_xs(element_input: str, temperature: float) -> Sum | None:
     """Return total photon interaction cross section for a nuclide.
 
     Parameters
@@ -44,18 +44,18 @@ def linear_attenuation_xs(element_input: str, temperature: float) -> Tabulated1D
 
     Returns
     -------
-    Tabulated1D or None
+    openmc.data.Sum or None
         Sum of the relevant photon reaction cross sections as a function of
         photon energy, or None if no photon data exist for *nuclide*.
     """
     try:
         z = zam(element_input)[0]
         element = ATOMIC_SYMBOL[z]
-    except (ValueError, KeyError, TypeError, IndexError) as e:
-        if element_input not in ELEMENT_SYMBOL.values():  
-            raise ValueError(f"Element not found: {element_input!r}") from e
-        element = element_input
-
+    except (ValueError, KeyError, TypeError) as e:
+        if element_input not in ELEMENT_SYMBOL.values():
+            raise ValueError("Element not found")
+        else:
+            element = element_input
         
 
     photon_data = _get_photon_data(element)
@@ -89,9 +89,5 @@ def linear_attenuation_xs(element_input: str, temperature: float) -> Tabulated1D
 
     if not xs_list:
         return None
-    total = sum_functions(xs_list)
 
-    if isinstance(total, Polynomial):
-        raise ValueError("Expected a Tabulated1D functions from xs combination")
-
-    return total
+    return Sum(xs_list)

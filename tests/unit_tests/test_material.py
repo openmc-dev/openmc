@@ -828,19 +828,19 @@ def test_get_material_photon_attenuation():
     mat_c.set_density("g/cm3", 1.7)
     mat_c.add_element("C", 1.0)
 
-    mu_rho_c = mat_c.get_photon_mass_attenuation_coefficient(1.0e6)
+    mu_rho_c = mat_c.get_photon_mass_attenuation(1.0e6)
     assert mu_rho_c > 0.0
 
     energy_c_1 = 1.50000E+03  # [eV]
     ref_mu_rho_c_1 = 7.002E+02  # [cm^2/g]
-    assert mat_c.get_photon_mass_attenuation_coefficient(energy_c_1) == pytest.approx(
+    assert mat_c.get_photon_mass_attenuation(energy_c_1) == pytest.approx(
         ref_mu_rho_c_1, rel=1e-2
     )
 
 
     energy_c_2 = 8.00000E+05  # [eV]
     ref_mu_rho_c_2 = 7.076E-02  # [cm^2/g]
-    assert mat_c.get_photon_mass_attenuation_coefficient(energy_c_2) == pytest.approx(
+    assert mat_c.get_photon_mass_attenuation(energy_c_2) == pytest.approx(
         ref_mu_rho_c_2, rel=1e-2
     )
 
@@ -851,18 +851,18 @@ def test_get_material_photon_attenuation():
     mat_pb.set_density("g/cm3", 11.35)
     mat_pb.add_element("Pb", 1.0)
 
-    mu_rho_pb = mat_pb.get_photon_mass_attenuation_coefficient(1.0e6)
+    mu_rho_pb = mat_pb.get_photon_mass_attenuation(1.0e6)
     assert mu_rho_pb > 0.0
 
     energy_pb_1 = 2.00000E+04  # [eV]
     ref_mu_rho_pb_1 = 8.636E+01  # [cm^2/g]
-    assert mat_pb.get_photon_mass_attenuation_coefficient(energy_pb_1) == pytest.approx(
+    assert mat_pb.get_photon_mass_attenuation(energy_pb_1) == pytest.approx(
         ref_mu_rho_pb_1 , rel=1e-2
     )
 
     energy_pb_2 = 2.00000E+07  # [eV]
     ref_mu_rho_pb_2 = 6.206E-02  # [cm^2/g]
-    assert mat_pb.get_photon_mass_attenuation_coefficient(energy_pb_2) == pytest.approx(
+    assert mat_pb.get_photon_mass_attenuation(energy_pb_2) == pytest.approx(
         ref_mu_rho_pb_2 , rel=1e-2
     )
 
@@ -874,18 +874,18 @@ def test_get_material_photon_attenuation():
     mat_water.add_element("H", 2.0)
     mat_water.add_element("O", 1.0)
 
-    mu_rho_water = mat_water.get_photon_mass_attenuation_coefficient(1.0e6)
+    mu_rho_water = mat_water.get_photon_mass_attenuation(1.0e6)
     assert mu_rho_water > 0.0
 
     energy_water_1 = 2.00000E+04  # [eV]
     ref_mu_rho_water_1 = 8.096E-01  # [cm^2/g]
-    assert mat_water.get_photon_mass_attenuation_coefficient(energy_water_1) == pytest.approx(
+    assert mat_water.get_photon_mass_attenuation(energy_water_1) == pytest.approx(
         ref_mu_rho_water_1 , rel=1e-2
         )
 
     energy_water_2 = 5.00000E+05  # [eV]
     ref_mu_rho_water_2 = 9.687E-02  # [cm^2/g]
-    assert mat_water.get_photon_mass_attenuation_coefficient(energy_water_2) == pytest.approx(
+    assert mat_water.get_photon_mass_attenuation(energy_water_2) == pytest.approx(
         ref_mu_rho_water_2 , rel=1e-2
     )
 
@@ -904,7 +904,7 @@ def test_get_material_photon_attenuation():
     # value from doi: https://doi.org/10.2172/6246345
     mu_pb =  0.679  # [cm-1]  for Co-60 in Pb
     mass_attenuation_coeff_co60_pb = mu_pb / mat_pb.density  # [cm^2/g] 
-    assert mat_pb.get_photon_mass_attenuation_coefficient(co_spectrum) ==  pytest.approx(mass_attenuation_coeff_co60_pb, rel=1e-01)
+    assert mat_pb.get_photon_mass_attenuation(co_spectrum) ==  pytest.approx(mass_attenuation_coeff_co60_pb, rel=1e-01)
 
     # ------------------------------------------------------------------
     # Test gamma tabular distribution
@@ -921,7 +921,7 @@ def test_get_material_photon_attenuation():
     # value from doi: https://doi.org/10.2172/6246345
     mu_xe =  5.015  # [cm-1] for Xe-135 in Pb
     mass_attenuation_coeff_xe135_pb = mu_xe / mat_pb.density  # [cm^2/g] 
-    assert mat_pb.get_photon_mass_attenuation_coefficient(xe_spectrum) == pytest.approx(mass_attenuation_coeff_xe135_pb, rel=1e-1)
+    assert mat_pb.get_photon_mass_attenuation(xe_spectrum) == pytest.approx(mass_attenuation_coeff_xe135_pb, rel=1e-1)
 
     # ------------------------------------------------------------------
     # Invalid input tests
@@ -929,18 +929,18 @@ def test_get_material_photon_attenuation():
 
     # Non-positive energy
     with pytest.raises(ValueError):
-        mat_water.get_photon_mass_attenuation_coefficient(0.0)
+        mat_water.get_photon_mass_attenuation(0.0)
 
     with pytest.raises(ValueError):
-        mat_water.get_photon_mass_attenuation_coefficient(-1.0)
+        mat_water.get_photon_mass_attenuation(-1.0)
 
     # Wrong type for energy
     with pytest.raises(TypeError):
-        mat_water.get_photon_mass_attenuation_coefficient("1.0e6")  # type: ignore[arg-type]
+        mat_water.get_photon_mass_attenuation("1.0e6")  # type: ignore[arg-type]
 
     # zero mass density
     mat_zero_rho = openmc.Material(name="Zero density")
     mat_zero_rho.set_density("g/cm3", 0.0)
     mat_zero_rho.add_element("H", 1.0)
     with pytest.raises(ValueError):
-        mat_zero_rho.get_photon_mass_attenuation_coefficient(1.0e6)
+        mat_zero_rho.get_photon_mass_attenuation(1.0e6)

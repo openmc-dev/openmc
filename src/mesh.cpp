@@ -3484,9 +3484,6 @@ void LibMesh::initialize()
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  if (length_multiplier_ > 0.0) {
-    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
-  }
   // if OpenMC is managing the libMesh::MeshBase instance, prepare the mesh.
   // Otherwise assume that it is prepared by its owning application
   if (unique_m_) {
@@ -3536,7 +3533,11 @@ Position LibMesh::centroid(int bin) const
 {
   const auto& elem = this->get_element_from_bin(bin);
   auto centroid = elem.vertex_average();
-  return {centroid(0), centroid(1), centroid(2)};
+  if (length_multiplier_ > 0.0) {
+    return length_multiplier_ * Position(centroid(0), centroid(1), centroid(2));
+  } else {
+    return {centroid(0), centroid(1), centroid(2)};
+  }
 }
 
 int LibMesh::n_vertices() const
@@ -3547,7 +3548,11 @@ int LibMesh::n_vertices() const
 Position LibMesh::vertex(int vertex_id) const
 {
   const auto node_ref = m_->node_ref(vertex_id);
-  return {node_ref(0), node_ref(1), node_ref(2)};
+  if (length_multiplier_ > 0.0) {
+    return length_multiplier_ * Position(node_ref(0), node_ref(1), node_ref(2));
+  } else {
+    return {node_ref(0), node_ref(1), node_ref(2)};
+  }
 }
 
 std::vector<int> LibMesh::connectivity(int elem_id) const
@@ -3688,6 +3693,11 @@ int LibMesh::get_bin(Position r) const
   // look-up a tet using the point locator
   libMesh::Point p(r.x, r.y, r.z);
 
+  if (length_multiplier_ > 0.0) {
+    // Scale the point down
+    p /= length_multiplier_;
+  }
+
   // quick rejection check
   if (!bbox_.contains_point(p)) {
     return -1;
@@ -3721,7 +3731,7 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 
 double LibMesh::volume(int bin) const
 {
-  return this->get_element_from_bin(bin).volume();
+  return this->get_element_from_bin(bin).volume() * length_multiplier_ * length_multiplier_ * length_multiplier_;
 }
 
 AdaptiveLibMesh::AdaptiveLibMesh(libMesh::MeshBase& input_mesh,
@@ -3745,9 +3755,7 @@ AdaptiveLibMesh::AdaptiveLibMesh(libMesh::MeshBase& input_mesh,
                  : m_->active_elements_begin();
   auto end = block_restrict_ ? m_->active_subdomain_set_elements_end(block_ids_)
                              : m_->active_elements_end();
-  for (auto it = begin; it != end; it++) {
-    auto elem = *it;
-
+  for (const auto & elem : libMesh::as_range(begin, end)) {
     bin_to_elem_map_.push_back(elem->id());
     elem_to_bin_map_[elem->id()] = bin_to_elem_map_.size() - 1;
   }
@@ -3778,6 +3786,27 @@ void AdaptiveLibMesh::write(const std::string& filename) const
   warning(fmt::format(
     "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
     this->id_));
+}
+
+int AdaptiveLibMesh::get_bin(Position r) const
+{
+  // look-up a tet using the point locator
+  libMesh::Point p(r.x, r.y, r.z);
+
+  if (length_multiplier_ > 0.0) {
+    // Scale the point down
+    p /= length_multiplier_;
+  }
+
+  // quick rejection check
+  if (!bbox_.contains_point(p)) {
+    return -1;
+  }
+
+  const auto& point_locator = pl_.at(thread_num());
+
+  const auto elem_ptr = (*point_locator)(p, &block_ids_);
+  return elem_ptr ? get_bin_from_element(elem_ptr) : -1;
 }
 
 int AdaptiveLibMesh::get_bin_from_element(const libMesh::Elem* elem) const

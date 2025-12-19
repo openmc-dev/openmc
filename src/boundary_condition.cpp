@@ -192,7 +192,7 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       fmt::format("You've specified an axis that is not x, y, or z."));
   }
 
-  Direction ax = {0.0,0.0,0.0};
+  Direction ax = {0.0, 0.0, 0.0};
   ax[zero_axis_idx_] = 1.0;
 
   // Compute the surface normal vectors and make sure they are perpendicular
@@ -214,10 +214,10 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       "intersect the origin.",
       surf2.id_));
   }
-  flip_sense_ = (norm1.dot(norm2)>0.0);
+  flip_sense_ = (norm1.dot(norm2) > 0.0);
 
   auto c = norm1.cross(norm2);
-  angle_ = std::atan2(c.dot(ax),norm1.dot(norm2));
+  angle_ = std::atan2(c.dot(ax), norm1.dot(norm2));
   if (!flip_sense_)
     angle_ += PI;
   // Warn the user if the angle does not evenly divide a circle

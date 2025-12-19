@@ -173,14 +173,9 @@ RotationalPeriodicBC::RotationalPeriodicBC(
     axis_2_idx_ = 2;    // z component dependent
     break;
   case y:
-    // for a right handed coordinate system, z should be the independent axis
-    // but this would cause the y-rotation case to be different than the other
-    // two. using a left handed coordinate system and a negative rotation the
-    // compute angle and rotation matrix behavior mimics that of the x and z
-    // cases
     zero_axis_idx_ = 1; // y component of plane must be zero
-    axis_1_idx_ = 0;    // x component independent
-    axis_2_idx_ = 2;    // z component dependent
+    axis_1_idx_ = 2;    // x component independent
+    axis_2_idx_ = 0;    // z component dependent
     break;
   case z:
     zero_axis_idx_ = 2; // z component of plane must be zero

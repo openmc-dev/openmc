@@ -3724,17 +3724,28 @@ double LibMesh::volume(int bin) const
   return this->get_element_from_bin(bin).volume();
 }
 
-AdaptiveLibMesh::AdaptiveLibMesh(
-  libMesh::MeshBase& input_mesh, double length_multiplier)
-  : LibMesh(input_mesh, length_multiplier), num_active_(m_->n_active_elem())
+AdaptiveLibMesh::AdaptiveLibMesh(libMesh::MeshBase& input_mesh,
+  double length_multiplier,
+  const std::set<libMesh::subdomain_id_type>& block_ids)
+  : LibMesh(input_mesh, length_multiplier), block_ids_(block_ids),
+    block_restrict_(!block_ids_.empty()),
+    num_active_(
+      block_restrict_
+        ? std::distance(m_->active_subdomain_set_elements_begin(block_ids_),
+            m_->active_subdomain_set_elements_end(block_ids_))
+        : m_->n_active_elem())
 {
   // if the mesh is adaptive elements aren't guaranteed by libMesh to be
   // contiguous in ID space, so we need to map from bin indices (defined over
   // active elements) to global dof ids
   bin_to_elem_map_.reserve(num_active_);
   elem_to_bin_map_.resize(m_->n_elem(), -1);
-  for (auto it = m_->active_elements_begin(); it != m_->active_elements_end();
-       it++) {
+  auto begin = block_restrict_
+                 ? m_->active_subdomain_set_elements_begin(block_ids_)
+                 : m_->active_elements_begin();
+  auto end = block_restrict_ ? m_->active_subdomain_set_elements_end(block_ids_)
+                             : m_->active_elements_end();
+  for (auto it = begin; it != end; it++) {
     auto elem = *it;
 
     bin_to_elem_map_.push_back(elem->id());

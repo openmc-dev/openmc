@@ -4,6 +4,7 @@
 #ifndef OPENMC_MESH_H
 #define OPENMC_MESH_H
 
+#include <set>
 #include <unordered_map>
 
 #include "hdf5.h"
@@ -1045,8 +1046,9 @@ private:
 class AdaptiveLibMesh : public LibMesh {
 public:
   // Constructor
-  AdaptiveLibMesh(
-    libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
+  AdaptiveLibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0,
+    const std::set<libMesh::subdomain_id_type>& block_ids =
+      std::set<libMesh::subdomain_id_type>());
 
   // Overridden methods
   int n_bins() const override;
@@ -1066,6 +1068,9 @@ protected:
 
 private:
   // Data members
+  const std::set<libMesh::subdomain_id_type>
+    block_ids_;               //!< subdomains of the mesh to tally on
+  const bool block_restrict_; //!< whether a subset of the mesh is being used
   const libMesh::dof_id_type num_active_; //!< cached number of active elements
 
   std::vector<libMesh::dof_id_type>

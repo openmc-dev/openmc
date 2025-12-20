@@ -181,7 +181,7 @@ public:
   //! \param[in] r Position of the particle
   //! \param[in] u Particle direction
   //! \return Distance to the next boundary
-  virtual double distance_to_next_boundary(Position r, Position u) const = 0;
+  virtual double distance_to_next_boundary(Position r, Direction u) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -312,7 +312,7 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  double distance_to_next_boundary(Position r, Position u) const override;
+  double distance_to_next_boundary(Position r, Direction u) const override;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -696,7 +696,7 @@ public:
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(hid_t group);
 
-  double distance_to_next_boundary(Position r, Position u) const override;
+  double distance_to_next_boundary(Position r, Direction u) const override;
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;

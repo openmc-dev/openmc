@@ -720,7 +720,7 @@ UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
   }
 }
 
-double UnstructuredMesh::distance_to_next_boundary(Position r, Position u) const
+double UnstructuredMesh::distance_to_next_boundary(Position r, Direction u) const
 {
   fatal_error("Not implemented");
   return -1.0;
@@ -1181,12 +1181,12 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
-double StructuredMesh::distance_to_next_boundary(Position r, Position u) const
+double StructuredMesh::distance_to_next_boundary(Position r, Direction u) const
 {
   Position global_r = r;
   Position local_r = local_coords(r);
 
-  double distance = INFTY;
+  double distance = 0.0;
   const int n = n_dimension_;
   bool in_mesh;
 

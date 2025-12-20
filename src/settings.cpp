@@ -1228,6 +1228,10 @@ void read_settings_xml(pugi::xml_node root)
   // Check whether to use event-based parallelism
   if (check_for_node(root, "event_based")) {
     event_based = get_node_value_bool(root, "event_based");
+    if (temperature_field_on && event_based) {
+      fatal_error(
+        "Event-based transport is not yet compatible with temperature fields.");
+    }
   }
 
   // Check whether material cell offsets should be generated

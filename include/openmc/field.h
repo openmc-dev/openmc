@@ -11,8 +11,10 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   ScalarField() = default;
-  ScalarField(Mesh* mesh_ptr, vector<double> values, const std::string& field_name);
-  ScalarField(Mesh* mesh_ptr, vector<double> values) : ScalarField(mesh_ptr, values, "ScalarField") {};
+  ScalarField(
+    Mesh* mesh_ptr, vector<double> values, const std::string& field_name);
+  ScalarField(Mesh* mesh_ptr, vector<double> values)
+    : ScalarField(mesh_ptr, values, "ScalarField") {};
 
   //----------------------------------------------------------------------------
   // Methods
@@ -33,7 +35,8 @@ public:
   const std::string& field_type() const { return this->field_type_; }
 
   // Mesh pointer
-  Mesh* mesh_ptr() const {
+  Mesh* mesh_ptr() const
+  {
     if (this->mesh_ptr_ == nullptr) {
       fatal_error(fmt::format("No mesh found for {}!", this->field_type_));
     } else {

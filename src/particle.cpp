@@ -262,8 +262,8 @@ void Particle::event_advance()
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
   // Select smaller distance
-  double distance =
-    std::min({boundary().distance(), collision_distance(), distance_cutoff, distance_tmesh});
+  double distance = std::min({boundary().distance(), collision_distance(),
+    distance_cutoff, distance_tmesh});
 
   // Prepare the stop condition
   if (distance == distance_cutoff) {

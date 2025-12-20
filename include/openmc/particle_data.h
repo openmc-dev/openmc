@@ -774,7 +774,6 @@ public:
   // Next event identifier for history-based transport
   int next_event() const { return next_event_; }
   int& next_event() { return next_event_; }
-
 };
 
 } // namespace openmc

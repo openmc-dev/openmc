@@ -814,23 +814,23 @@ void transport_history_based_single_particle(Particle& p)
     }
     if (p.alive()) {
       switch (p.next_event()) {
-        case EVENT_CROSS_SURFACE:
-          p.event_cross_surface();
-          break;
-        case EVENT_COLLIDE:
-          p.event_collide();
-          break;
-        case EVENT_CROSS_TEMPERATURE_MESH:
-          p.event_cross_temperature_mesh();
-          break;
-        case EVENT_TIME_CUTOFF:
-          p.wgt() = 0.0;
-          break;
-        default:
-          fatal_error(fmt::format(
-            "Unknown event '{}' in history-based transport!", p.next_event()));
-          break;
-        }
+      case EVENT_CROSS_SURFACE:
+        p.event_cross_surface();
+        break;
+      case EVENT_COLLIDE:
+        p.event_collide();
+        break;
+      case EVENT_CROSS_TEMPERATURE_MESH:
+        p.event_cross_temperature_mesh();
+        break;
+      case EVENT_TIME_CUTOFF:
+        p.wgt() = 0.0;
+        break;
+      default:
+        fatal_error(fmt::format(
+          "Unknown event '{}' in history-based transport!", p.next_event()));
+        break;
+      }
     }
     p.event_revive_from_secondary();
   }

@@ -11,7 +11,8 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   ScalarField() = default;
-  ScalarField(Mesh* mesh_ptr, vector<double> values);
+  ScalarField(Mesh* mesh_ptr, vector<double> values, const std::string& field_name);
+  ScalarField(Mesh* mesh_ptr, vector<double> values) : ScalarField(mesh_ptr, values, "ScalarField") {};
 
   //----------------------------------------------------------------------------
   // Methods
@@ -28,8 +29,17 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  // Field type
+  const std::string& field_type() const { return this->field_type_; }
+
   // Mesh pointer
-  Mesh* mesh_ptr() const { return mesh_ptr_; }
+  Mesh* mesh_ptr() const {
+    if (this->mesh_ptr_ == nullptr) {
+      fatal_error(fmt::format("No mesh found for {}!", this->field_type_));
+    } else {
+      return this->mesh_ptr_;
+    }
+  }
 
   // Values
   double& value(int i) { return values_[i]; }
@@ -39,8 +49,9 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Data members
-  Mesh* mesh_ptr_;        //!< Pointer to the geometric mesh
-  vector<double> values_; //!< Values associated with each mesh cell
+  std::string field_type_; //! Name of field type
+  Mesh* mesh_ptr_;         //!< Pointer to the geometric mesh
+  vector<double> values_;  //!< Values associated with each mesh cell
 };
 
 class TemperatureField : public ScalarField {
@@ -48,7 +59,8 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   TemperatureField() = default;
-  TemperatureField(Mesh* mesh_ptr, vector<double> values) : ScalarField(mesh_ptr, values) {};
+  TemperatureField(Mesh* mesh_ptr, vector<double> values)
+    : ScalarField(mesh_ptr, values, "TemperatureField") {};
 
   //----------------------------------------------------------------------------
   // Methods

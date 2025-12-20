@@ -6,13 +6,12 @@
 
 namespace openmc {
 
-class TemperatureField {
-
+class ScalarField {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  TemperatureField() {};
-  TemperatureField(Mesh* mesh_ptr, vector<double> values);
+  ScalarField() = default;
+  ScalarField(Mesh* mesh_ptr, vector<double> values);
 
   //----------------------------------------------------------------------------
   // Methods
@@ -25,6 +24,34 @@ public:
   //! \param[in] u Direction of the particle
   //! \return The distance in cm to the next mesh boundary
   double distance_to_next_boundary(const Position& r, const Direction& d);
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  // Mesh pointer
+  Mesh* mesh_ptr() const { return mesh_ptr_; }
+
+  // Values
+  double& value(int i) { return values_[i]; }
+  const double& value(int i) const { return values_[i]; }
+  const vector<double>& values() const { return values_; }
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
+  Mesh* mesh_ptr_;        //!< Pointer to the geometric mesh
+  vector<double> values_; //!< Values associated with each mesh cell
+};
+
+class TemperatureField : public ScalarField {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors
+  TemperatureField() = default;
+  TemperatureField(Mesh* mesh_ptr, vector<double> values) : ScalarField(mesh_ptr, values) {};
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   //! Returns the temperature in Kelvin corresponding to the given position.
   //
@@ -46,20 +73,6 @@ public:
   //
   //! \param[inout] p Particle
   void update_particle_temperature(Particle& p);
-
-  //----------------------------------------------------------------------------
-  // Accessors
-
-  // Temperature values
-  double& value(int i) { return values_[i]; }
-  const double& value(int i) const { return values_[i]; }
-  const vector<double>& values() const { return values_; }
-
-private:
-  //----------------------------------------------------------------------------
-  // Data members
-  Mesh* mesh_ptr_;        //!< Pointer to the geometric mesh
-  vector<double> values_; //!< Temperature values
 };
 
 } //  namespace openmc

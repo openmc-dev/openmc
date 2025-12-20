@@ -6,7 +6,7 @@
 
 namespace openmc {
 
-TemperatureField::TemperatureField(Mesh* mesh_ptr, vector<double> values)
+ScalarField::ScalarField(Mesh* mesh_ptr, vector<double> values)
 {
   this->mesh_ptr_ = mesh_ptr;
   for (double v : values) {
@@ -14,26 +14,26 @@ TemperatureField::TemperatureField(Mesh* mesh_ptr, vector<double> values)
   }
 }
 
-double TemperatureField::distance_to_next_boundary(
+double ScalarField::distance_to_next_boundary(
   const Position& r, const Direction& u)
 {
   if (this->mesh_ptr_ != nullptr) {
     return this->mesh_ptr_->distance_to_next_boundary(r, u);
   } else {
-    fatal_error("No mesh found for the temperature field!");
+    fatal_error("No mesh found for the scalar field!");
   }
 }
 
 double TemperatureField::get_temperature(const Position& r)
 {
-  if (this->mesh_ptr_ != nullptr) {
+  if (this->mesh_ptr() != nullptr) {
 
     // Get bin from position
-    int i = this->mesh_ptr_->get_bin(r);
+    int i = this->mesh_ptr()->get_bin(r);
 
     // If we have a bin, we use it to locate the value
-    if (i >= 0 && i < this->values_.size()) {
-      return this->values_[i];
+    if (i >= 0 && i < this->values().size()) {
+      return this->value(i);
     }
 
     // No values were found (outside the mesh)

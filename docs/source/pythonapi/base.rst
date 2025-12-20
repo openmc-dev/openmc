@@ -168,6 +168,17 @@ Meshes
    openmc.SphericalMesh
    openmc.UnstructuredMesh
 
+Fields
+------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclassinherit.rst
+
+   openmc.ScalarField
+   openmc.TemperatureField
+
 Geometry Plotting
 -----------------
 

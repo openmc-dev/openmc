@@ -1,16 +1,17 @@
 import numpy as np
 
-from .function import Sum
-from .library import DataLibrary   
-from .photon import IncidentPhoton
-from .data import ATOMIC_SYMBOL, ELEMENT_SYMBOL, zam
 from openmc.exceptions import DataError
+
+from .data import ATOMIC_SYMBOL, ELEMENT_SYMBOL, zam
+from .function import Sum
+from .library import DataLibrary
+from .photon import IncidentPhoton
 
 _PHOTON_LIB: DataLibrary | None = None
 _PHOTON_DATA: dict[str, IncidentPhoton] = {}
 
 
-def _get_photon_data(nuclide: str) ->IncidentPhoton | None:
+def _get_photon_data(nuclide: str) -> IncidentPhoton | None:
     global _PHOTON_LIB
 
     if _PHOTON_LIB is None:
@@ -48,15 +49,14 @@ def linear_attenuation_xs(element_input: str, temperature: float) -> Sum | None:
         Sum of the relevant photon reaction cross sections as a function of
         photon energy, or None if no photon data exist for *nuclide*.
     """
+
     try:
         z = zam(element_input)[0]
         element = ATOMIC_SYMBOL[z]
-    except (ValueError, KeyError, TypeError) as e:
+    except (ValueError, KeyError, TypeError):
         if element_input not in ELEMENT_SYMBOL.values():
-            raise ValueError("Element not found")
-        else:
-            element = element_input
-        
+            raise ValueError(f"Element '{element_input}' not found in ELEMENT_SYMBOL.")
+        element = element_input
 
     photon_data = _get_photon_data(element)
     if photon_data is None:
@@ -77,9 +77,7 @@ def linear_attenuation_xs(element_input: str, temperature: float) -> Sum | None:
                 xs_T = xs_obj[temp_key]
             else:
                 # Fall back to closest available temperature
-                temps = np.array(
-                    [float(t.rstrip("K")) for t in xs_obj.keys()]
-                )
+                temps = np.array([float(t.rstrip("K")) for t in xs_obj.keys()])
                 idx = int(np.argmin(np.abs(temps - temperature)))
                 sel_key = f"{int(round(temps[idx]))}K"
                 xs_T = xs_obj[sel_key]

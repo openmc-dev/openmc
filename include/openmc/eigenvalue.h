@@ -22,7 +22,10 @@ namespace openmc {
 namespace simulation {
 
 extern double keff_generation; //!<  Single-generation k on each processor
+extern double kq_generation_val; //!< Single-generation kq on each processor
+extern double ks_generation_val; //!< Single-generation ks on each processor
 extern array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
+extern array<double, 2> kq_sum;
 extern vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
@@ -33,14 +36,14 @@ extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 //==============================================================================
 
 //! Collect/normalize the tracklength keff from each process
-void calculate_generation_keff();
+void calculate_generation_keff(xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> gt, double& keff_generation, vector<double>& k_generation);
 
 //! Calculate mean/standard deviation of keff during active generations
 //!
 //! This function sets the global variables keff and keff_std which represent
 //! the mean and standard deviation of the mean of k-effective over active
 //! generations. It also broadcasts the value from the master process.
-void calculate_average_keff();
+void calculate_average_keff(double& keff, double& keff_std, const vector<double>& k_generation, std::array<double,2>& k_sum);
 
 //! Calculates a minimum variance estimate of k-effective
 //!

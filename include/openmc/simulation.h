@@ -28,6 +28,10 @@ extern "C" int current_gen;   //!< current fission generation
 extern "C" bool initialized;  //!< has simulation been initialized?
 extern "C" double keff;       //!< average k over batches
 extern "C" double keff_std;   //!< standard deviation of average k
+extern "C" double kq;         //!< average kq over batches
+extern "C" double kq_std;     //!< standard deviation of average kq
+extern "C" double ks;         //!< average ks over batches
+extern "C" double ks_std;     //!< standard deviation of average ks
 extern "C" double k_col_abs; //!< sum over batches of k_collision * k_absorption
 extern "C" double
   k_col_tra; //!< sum over batches of k_collision * k_tracklength
@@ -47,6 +51,8 @@ extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 
 extern vector<double> k_generation;
+extern vector<double> kq_generation;
+extern vector<double> ks_generation;
 extern vector<int64_t> work_index;
 
 } // namespace simulation

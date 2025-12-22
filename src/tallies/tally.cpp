@@ -70,6 +70,7 @@ vector<double> time_grid;
 
 namespace simulation {
 xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies_first_gen;
 int32_t n_realizations {0};
 } // namespace simulation
 
@@ -77,6 +78,10 @@ double global_tally_absorption;
 double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_leakage;
+
+double global_tally_absorption_first_gen;
+double global_tally_collision_first_gen;
+double global_tally_tracklength_first_gen;
 
 //==============================================================================
 // Tally object implementation
@@ -1072,7 +1077,8 @@ void accumulate_tallies()
   if (mpi::master || !settings::reduce_tallies) {
     auto& gt = simulation::global_tallies;
 
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE && settings::calculate_subcritical_k)) {
       if (simulation::current_batch > settings::n_inactive) {
         // Accumulate products of different estimators of k
         double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /

@@ -26,6 +26,7 @@
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
+#include "openmc/subcritical.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -310,6 +311,10 @@ double keff_std;
 double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
+double kq;
+double kq_std;
+double ks;
+double ks_std;
 double log_spacing;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
@@ -324,6 +329,8 @@ const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
+vector<double> kq_generation;
+vector<double> ks_generation;
 vector<int64_t> work_index;
 
 } // namespace simulation
@@ -419,6 +426,7 @@ void finalize_batch()
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
     xt::view(simulation::global_tallies, xt::all()) = 0.0;
+    xt::view(simulation::global_tallies_first_gen, xt::all()) = 0.0;
     simulation::n_realizations = 0;
   }
 
@@ -523,93 +531,60 @@ void initialize_generation()
     // Store current value of tracklength k
     simulation::keff_generation = simulation::global_tallies(
       GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+
+    if (settings::calculate_subcritical_k) {
+        simulation::kq_generation_val = simulation::global_tallies_first_gen(
+            GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    }
   }
 }
 
 void finalize_generation()
 {
   auto& gt = simulation::global_tallies;
+  auto& gt_first_gen = simulation::global_tallies_first_gen;
 
-  if (settings::run_mode == RunMode::EIGENVALUE ||
-      (settings::run_mode == RunMode::FIXED_SOURCE &&
-        settings::calculate_subcritical_k)) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) +=
+      global_tally_collision;
     gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
       global_tally_absorption;
     gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
       global_tally_tracklength;
   }
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+    // Update global tallies
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) +=
+      convert_to_subcritical_k(global_tally_collision);
+    gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
+      convert_to_subcritical_k(global_tally_absorption);
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
+      convert_to_subcritical_k(global_tally_tracklength);
+
+    // Update first generation tallies
+    gt_first_gen(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
+      global_tally_absorption_first_gen;
+    gt_first_gen(GlobalTally::K_COLLISION, TallyResult::VALUE) +=
+      global_tally_collision_first_gen;
+    gt_first_gen(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
+      global_tally_tracklength_first_gen;
+  }
   gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
-  // Perform MPI Reduction
-  // We must reduce global_tallies and total_weight across all ranks
-  // so that calculate_generation_keff sees the total sum.
-#ifdef OPENMC_MPI
-  // Reduce global tallies
-  xt::xtensor<double, 2> buffer = gt;
-  MPI_Reduce(buffer.data(), gt.data(), gt.size(), MPI_DOUBLE, MPI_SUM, 0,
-    mpi::intracomm);
-
-  // Reduce total weight (Source S)
-  double total_weight_reduced = 0.0;
-  MPI_Reduce(&simulation::total_weight, &total_weight_reduced, 1, MPI_DOUBLE,
-    MPI_SUM, 0, mpi::intracomm);
-
-  // Update local variable on master with the reduced value
-  if (mpi::master)
-    simulation::total_weight = total_weight_reduced;
-#endif
-
-  // Calculate Combined Estimator and k_sq
-  if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      settings::calculate_subcritical_k) {
-    // We need the Global Sum of Production (P) and Source Weight (S).
-    // The variables global_tally_tracklength hold the LOCAL production for this
-    // generation.
-    double local_P = global_tally_tracklength;
-    double local_S = simulation::total_weight;
-
-    double global_P = 0.0;
-    double global_S = 0.0;
-
-#ifdef OPENMC_MPI
-    // Reduce Production and Source across all ranks
-    MPI_Reduce(&local_P, &global_P, 1, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
-    MPI_Reduce(&local_S, &global_S, 1, MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
-#else
-    global_P = local_P;
-    global_S = local_S;
-#endif
-
-    if (mpi::master) {
-      // Calculate k_sq = P / (P + S)
-      // Note: We use unnormalized totals for both P and S, so the ratio is
-      // correct.
-      double k_sq = 0.0;
-      if (global_P + global_S > 0.0) {
-        k_sq = global_P / (global_P + global_S);
-      }
-
-      // Update the history vector
-      simulation::k_generation.push_back(k_sq);
-
-      // Calculate the running Mean/StdDev of the k_sq history
-      calculate_average_keff();
-
-      // Print the standard generation table
-      if (settings::verbosity >= 7) {
-        print_generation();
-      }
-    }
-  }
-
-  // Reset tallies for the next generation
+  // Reset tallies
   if (settings::run_mode == RunMode::EIGENVALUE ||
-      settings::run_mode == RunMode::SUBCRITICAL_MULTIPLICATION ||
       (settings::run_mode == RunMode::FIXED_SOURCE &&
         settings::calculate_subcritical_k)) {
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
     global_tally_tracklength = 0.0;
+  }
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+    global_tally_absorption_first_gen = 0.0;
+    global_tally_collision_first_gen = 0.0;
+    global_tally_tracklength_first_gen = 0.0;
   }
   global_tally_leakage = 0.0;
 
@@ -624,16 +599,32 @@ void finalize_generation()
     synchronize_bank();
   }
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
 
     // Calculate shannon entropy
     if (settings::entropy_on &&
-        settings::solver_type == SolverType::MONTE_CARLO)
+        settings::solver_type == SolverType::MONTE_CARLO &&
+        !settings::calculate_subcritical_k) {
       shannon_entropy();
+    }
 
     // Collect results and statistics
-    calculate_generation_keff();
-    calculate_average_keff();
+    calculate_generation_keff(simulation::global_tallies, simulation::keff_generation, simulation::k_generation);
+    calculate_average_keff(simulation::keff, simulation::keff_std, simulation::k_generation, simulation::k_sum);
+
+    if (settings::calculate_subcritical_k) {
+      // Compute kq and average
+      calculate_generation_keff(simulation::global_tallies_first_gen, simulation::kq_generation_val, simulation::kq_generation);
+      calculate_average_keff(simulation::kq, simulation::kq_std, simulation::kq_generation, simulation::kq_sum);
+      
+      // Calculate ks from k = kq/(1 - ks + kq) -> ks = 1 + kq*(k - 1)/k
+      simulation::ks_generation_val = 1 + simulation::kq_generation.back() * (simulation::k_generation.back() - 1) / simulation::k_generation.back();
+      simulation::ks_generation.push_back(simulation::ks_generation_val);
+      simulation::ks = 1 + simulation::kq * (simulation::keff - 1) / simulation::keff;
+      simulation::ks_std = sqrt( pow(simulation::kq_std, 2) + pow(simulation::kq / simulation::keff, 2) * ( pow(simulation::kq_std / simulation::kq,2) + pow(simulation::keff_std / simulation::keff,2) ) );
+    }
 
     // Write generation output
     if (mpi::master && settings::verbosity >= 7) {
@@ -854,6 +845,8 @@ void broadcast_results()
   // Also broadcast global tally results
   auto& gt = simulation::global_tallies;
   MPI_Bcast(gt.data(), gt.size(), MPI_DOUBLE, 0, mpi::intracomm);
+  auto& gt_first_gen = simulation::global_tallies_first_gen;
+  MPI_Bcast(gt_first_gen.data(), gt_first_gen.size(), MPI_DOUBLE, 0, mpi::intracomm);
 
   // These guys are needed so that non-master processes can calculate the
   // combined estimate of k-effective
@@ -875,6 +868,7 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
+  bool tally_first_generation = true;
   while (p.alive()) {
     p.event_calculate_xs();
     if (p.alive()) {
@@ -887,6 +881,16 @@ void transport_history_based_single_particle(Particle& p)
         p.event_collide();
       }
     }
+    // Check for first generation completion
+    if ((!p.alive() || p.n_progeny() > 0) && tally_first_generation) {
+        if (settings::calculate_subcritical_k) {
+            global_tally_absorption_first_gen += p.keff_tally_absorption();
+            global_tally_collision_first_gen += p.keff_tally_collision();
+            global_tally_tracklength_first_gen += p.keff_tally_tracklength();
+        }
+        tally_first_generation = false;
+    }
+
     p.event_revive_from_secondary();
   }
   p.event_death();

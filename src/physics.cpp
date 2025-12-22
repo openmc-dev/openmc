@@ -174,9 +174,19 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt() / simulation::keff * weight *
+  double nu_t;
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    // In fixed source mode, no need to scale by keff
+    nu_t = p.wgt() * weight *
                 p.neutron_xs(i_nuclide).nu_fission /
                 p.neutron_xs(i_nuclide).total;
+  } else {
+    nu_t = p.wgt() / simulation::keff * weight *
+                p.neutron_xs(i_nuclide).nu_fission /
+                p.neutron_xs(i_nuclide).total;
+  }
+  
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);

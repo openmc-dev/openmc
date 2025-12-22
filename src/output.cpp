@@ -373,6 +373,9 @@ void print_columns()
   if (settings::entropy_on) {
     fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
                "  =========   ========   ========   ====================\n");
+  } else if (settings::calculate_subcritical_k) {
+    fmt::print("  Bat./Gen.      k          kq         ks            Average k              Average kq             Average ks    \n"
+               "  =========   ========   ========   ========   ====================   ====================   ====================\n");
   } else {
     fmt::print("  Bat./Gen.      k            Average k\n"
                "  =========   ========   ====================\n");
@@ -394,6 +397,9 @@ void print_generation()
   auto batch_and_gen = std::to_string(simulation::current_batch) + "/" +
                        std::to_string(simulation::current_gen);
   fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
+  if (settings::calculate_subcritical_k) {
+    fmt::print("   {:8.5f}   {:8.5f}", simulation::kq_generation[idx], simulation::ks_generation[idx]);
+  }
 
   // write out entropy info
   if (settings::entropy_on && !settings::calculate_subcritical_k) {
@@ -402,6 +408,9 @@ void print_generation()
 
   if (n > 1) {
     fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
+    if (settings::calculate_subcritical_k) {
+      fmt::print("   {:8.5f} +/-{:8.5f}   {:8.5f} +/-{:8.5f}", simulation::kq, simulation::kq_std, simulation::ks, simulation::ks_std);
+    }
   }
   fmt::print("\n");
   std::fflush(stdout);

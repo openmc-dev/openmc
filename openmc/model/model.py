@@ -2361,6 +2361,217 @@ class Model:
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
 
+    def add_derivative_tallies(
+        self,
+        deriv_variable: str,
+        deriv_material: int,
+        deriv_nuclide: str | None = None
+    ) -> None:
+        """Add base and derivative tallies to model for keff derivative extraction.
+
+        This is a convenience method that adds the four tallies required for
+        extracting dk/dx during keff_search: base nu-fission, base absorption,
+        derivative nu-fission, and derivative absorption.
+
+        Note: This method is automatically called by keff_search when
+        use_derivative_tallies=True. You only need to call it manually if
+        you want to set up tallies before calling keff_search, or if you're
+        using the tallies for other purposes.
+
+        Parameters
+        ----------
+        deriv_variable : str
+            Type of derivative: 'density', 'nuclide_density', or 'temperature'.
+            
+            .. warning::
+               **Temperature derivatives have severe limitations:**
+               
+               - Require Windowed Multipole (WMP) cross section data
+               - Only valid in resolved resonance range (~1 eV to ~10 keV)
+               - Not available for most nuclides in standard data libraries
+               - Not compatible with cross section interpolation
+               
+               Temperature derivatives are **not recommended** for practical
+               k-eff searches. Use derivative-free search instead.
+               See `src/tallies/derivative.cpp` lines 283-500 for implementation details.
+               
+        deriv_material : int
+            Material ID to perturb
+        deriv_nuclide : str, optional
+            Nuclide name for nuclide_density derivatives (e.g., 'B10', 'U235').
+            Required if deriv_variable='nuclide_density'.
+
+        Examples
+        --------
+        >>> model = openmc.examples.pwr_pin_cell()
+        >>> # Add tallies for boron concentration derivative
+        >>> model.add_derivative_tallies('nuclide_density', 3, 'B10')
+        >>> # Add tallies for fuel density derivative
+        >>> model.add_derivative_tallies('density', 1)
+
+        """
+        # Base tallies
+        t_fission = openmc.Tally(name='base_fission')
+        t_fission.scores = ['nu-fission']
+
+        t_absorption = openmc.Tally(name='base_absorption')
+        t_absorption.scores = ['absorption']
+
+        tallies = [t_fission, t_absorption]
+
+        # Derivative tallies
+        deriv = openmc.TallyDerivative(
+            variable=deriv_variable,
+            material=deriv_material,
+            nuclide=deriv_nuclide
+        )
+
+        t_fission_deriv = openmc.Tally(name=f'fission_deriv_{deriv_variable}')
+        t_fission_deriv.scores = ['nu-fission']
+        t_fission_deriv.derivative = deriv
+
+        t_absorption_deriv = openmc.Tally(name=f'absorption_deriv_{deriv_variable}')
+        t_absorption_deriv.scores = ['absorption']
+        t_absorption_deriv.derivative = deriv
+
+        tallies.extend([t_fission_deriv, t_absorption_deriv])
+        self.tallies = openmc.Tallies(tallies)
+
+    def _extract_derivative_constraint(
+        self,
+        sp: 'openmc.StatePoint',
+        deriv_variable: str,
+        deriv_material: int,
+        deriv_nuclide: str | None = None,
+        deriv_to_x_func: Callable[[float], float] | None = None,
+    ) -> tuple[float | None, float | None]:
+        r"""Extract dk_eff/dx from StatePoint using derivative tallies.
+
+        This method implements a generic approach to compute the derivative of
+        k-effective with respect to any perturbation variable (density,
+        nuclide_density, temperature, enrichment) by using base and derivative
+        tallies and the quotient rule:
+
+        .. math::
+            \frac{dk}{dx} = \frac{A \frac{dF}{dx} - F \frac{dA}{dx}}{A^2}
+
+        where :math:`F` is the fission production tally (nu-fission score),
+        :math:`A` is the absorption tally, and :math:`\frac{dF}{dx}`,
+        :math:`\frac{dA}{dx}` are their derivative counterparts.
+
+        For **nuclide_density derivatives**, OpenMC's C++ backend computes derivatives
+        with respect to **number density N** (atoms/cm³). If the search parameter x
+        is a different quantity (e.g., mass parts-per-million for boron), the
+        caller must provide ``deriv_to_x_func`` to convert: dk/dx = (dk/dN) × (dN/dx).
+
+        Uncertainties are propagated using linear error propagation.
+
+        Parameters
+        ----------
+        sp : openmc.StatePoint
+            StatePoint after MC run
+        deriv_variable : str
+            Type of derivative: 'density', 'nuclide_density', 'temperature',
+            or 'enrichment'
+        deriv_material : int
+            Material ID being perturbed
+        deriv_nuclide : str, optional
+            Nuclide name (required for 'nuclide_density', ignored otherwise)
+        deriv_to_x_func : callable, optional
+            For nuclide_density: function to convert dN/dx. Signature:
+            ``deriv_to_x_func(deriv_value_dN) -> float`` returns dk/dx given dk/dN.
+            If not provided, returns dk/dN unchanged.
+            Ignored for other derivative types.
+
+        Returns
+        -------
+        tuple
+            (dk_dx, dk_dx_std) if base and derivative tallies found,
+            else (None, None). For nuclide_density without deriv_to_x_func,
+            returned derivative is dk/dN (where N is number density in atoms/cm³).
+        """
+        try:
+            # Find base tallies (nu-fission and absorption)
+            base_fission = None
+            base_absorption = None
+            deriv_fission = None
+            deriv_absorption = None
+
+            for tally_id, tally in sp.tallies.items():
+                scores = getattr(tally, 'scores', []) or []
+                if tally.derivative is None:
+                    # Base tallies (no derivative)
+                    if 'nu-fission' in scores and base_fission is None:
+                        base_fission = tally
+                    if 'absorption' in scores and base_absorption is None:
+                        base_absorption = tally
+                else:
+                    # Derivative tallies: check if they match the requested variable
+                    deriv = tally.derivative
+                    if (deriv.variable == deriv_variable and
+                            deriv.material == deriv_material and
+                            (deriv_variable != 'nuclide_density' or
+                             deriv.nuclide == deriv_nuclide)):
+                        if 'nu-fission' in scores and deriv_fission is None:
+                            deriv_fission = tally
+                        if 'absorption' in scores and deriv_absorption is None:
+                            deriv_absorption = tally
+
+            # If we found all required tallies, compute dk/dx
+            if (base_fission is not None and base_absorption is not None and
+                    deriv_fission is not None and deriv_absorption is not None):
+                F = float(np.sum(base_fission.mean))
+                A = float(np.sum(base_absorption.mean))
+                dF_dx = float(np.sum(deriv_fission.mean))
+                dA_dx = float(np.sum(deriv_absorption.mean))
+                
+                print(f'  [DERIV-EXTRACT] Found all 4 tallies for {deriv_variable}')
+                print(f'  [DERIV-EXTRACT] F={F:.6e}, A={A:.6e}, dF/dx={dF_dx:.6e}, dA/dx={dA_dx:.6e}')
+
+                # Quotient rule: dk/dx = (A * dF/dx - F * dA/dx) / A^2
+                dk_dx = (A * dF_dx - F * dA_dx) / (A * A)
+                print(f'  [DERIV-EXTRACT] Computed dk/dx = {dk_dx:.6e} (before any conversion)')
+
+                # Uncertainty propagation (linear)
+                sig_F = float(np.sum(base_fission.std_dev))
+                sig_A = float(np.sum(base_absorption.std_dev))
+                sig_dF = float(np.sum(deriv_fission.std_dev))
+                sig_dA = float(np.sum(deriv_absorption.std_dev))
+
+                # Partial derivatives for error propagation:
+                # ∂(dk/dx)/∂(dF) = 1/A
+                # ∂(dk/dx)/∂(dA) = -F/A²
+                sig_dk = math.sqrt(
+                    (sig_dF / A) ** 2 +
+                    (sig_dA * F / (A * A)) ** 2
+                )
+
+                # For nuclide_density: convert dk/dN to dk/dx if conversion provided
+                if deriv_variable == 'nuclide_density' and deriv_to_x_func is not None:
+                    try:
+                        # deriv_to_x_func converts one derivative value
+                        # It should return the scaled derivative (dk/dx = (dk/dN) * (dN/dx))
+                        dk_dx_before = dk_dx
+                        dk_dx = deriv_to_x_func(dk_dx)
+                        sig_dk = deriv_to_x_func(sig_dk)
+                        print(f'  [DERIV-EXTRACT] Applied deriv_to_x_func: dk/dN={dk_dx_before:.6e} -> dk/dx={dk_dx:.6e}')
+                    except Exception as e:
+                        print(f'  [DERIV-EXTRACT] WARNING: deriv_to_x_func failed: {e}')
+                        pass  # Silently ignore conversion errors
+
+                return float(dk_dx), float(sig_dk)
+            else:
+                print(f'  [DERIV-EXTRACT] Missing tallies: base_fission={base_fission is not None}, '
+                      f'base_absorption={base_absorption is not None}, '
+                      f'deriv_fission={deriv_fission is not None}, deriv_absorption={deriv_absorption is not None}')
+
+        except Exception as e:
+            # Silently fail if tallies are missing or extraction fails
+            print(f"  [DERIV-EXTRACT] ERROR: Could not extract derivative: {e}")
+            pass
+
+        return None, None
+
     def keff_search(
         self,
         func: ModelModifier,
@@ -2379,6 +2590,11 @@ class Model:
         b_max: int | None = None,
         maxiter: int = 50,
         output: bool = False,
+        use_derivative_tallies: bool = False,
+        deriv_variable: str | None = None,
+        deriv_material: int | None = None,
+        deriv_nuclide: str | None = None,
+        deriv_to_x_func: Callable[[float], float] | None = None,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
@@ -2391,6 +2607,11 @@ class Model:
         linear fit of the most recent function evaluations to predict the next
         point to evaluate. It also adaptively changes the number of batches to
         meet the target uncertainty value at each iteration.
+
+        When derivative tallies are enabled, the gradient-based least-squares
+        approach is inspired by the methodology developed by Sterling Harper
+        in `"Calculating Reaction Rate Derivatives in Monte Carlo Neutron
+        Transport" <https://dspace.mit.edu/bitstream/handle/1721.1/106690/969775837-MIT.pdf>`_.
 
         The target uncertainty for iteration :math:`n+1` is determined by the
         following equation (following Eq. (8) in the paper):
@@ -2441,6 +2662,48 @@ class Model:
             Maximum number of iterations to perform.
         output : bool, optional
             Whether or not to display output showing iteration progress.
+        use_derivative_tallies : bool, optional
+            If True, extract derivative tallies from StatePoints and use them
+            as gradient constraints in the curve fitting process. Requires
+            deriv_variable and deriv_material to be specified. Default is False.
+            Derivative tallies are automatically added to the model.
+        deriv_variable : str, optional
+            Type of derivative to extract. Supported values: 'density',
+            'nuclide_density', 'temperature'. Required if
+            use_derivative_tallies=True. Example: 'nuclide_density' to
+            perturb a specific nuclide concentration; 'density' for material
+            mass density; 'temperature' for Doppler feedback.
+            
+            Note: Could be inferred as 'nuclide_density' when deriv_nuclide
+            is provided, but explicit specification is clearer and allows
+            for density/temperature derivatives without nuclide ambiguity.
+        deriv_material : int, optional
+            Material ID to perturb for derivatives. Required if
+            use_derivative_tallies=True. Example: Material ID 3 for boron
+            in coolant, Material ID 1 for fuel.
+            
+            Note: Could potentially be inferred by searching all materials
+            for the specified nuclide, but this would be ambiguous when
+            multiple materials contain the same element (e.g., oxygen in
+            both fuel and coolant). Explicit specification avoids ambiguity.
+        deriv_nuclide : str, optional
+            Nuclide name (e.g., 'B10', 'U235') for nuclide_density derivatives.
+            Ignored for other derivative types. Required if
+            deriv_variable='nuclide_density'.
+        deriv_to_x_func : callable, optional
+            For nuclide_density derivatives: a function that computes the conversion
+            dN/dx where N is the nuclide number density and x is the search parameter.
+            Signature: ``deriv_to_x_func(deriv_value) -> float``
+            
+            If not provided, returns dk/dN (not dk/dx) for nuclide_density.
+            Ignored for other derivative types.
+            
+            NOTE: When derivative tallies are enabled, derivatives are automatically
+            used as gradient constraints in the least-squares fitting with their
+            uncertainties as weights. Derivatives are also normalized by their
+            magnitude (geometric mean of absolute values) to ensure numerical
+            stability, handling large magnitudes (e.g., dk/dppm ∼ 10^20) without
+            requiring manual scaling.
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
@@ -2454,6 +2717,8 @@ class Model:
             evaluation history (parameters, means, standard deviations, and
             batches), plus convergence status and termination reason.
 
+    
+
         """
         import openmc.lib
 
@@ -2461,6 +2726,28 @@ class Model:
         check_type('target', target, Real)
         if memory < 2:
             raise ValueError("memory must be ≥ 2")
+        
+        # Validate derivative parameters
+        if use_derivative_tallies:
+            if not deriv_variable:
+                raise ValueError(
+                    "deriv_variable required when use_derivative_tallies=True. "
+                    "Supported: 'density', 'nuclide_density', 'temperature'"
+                )
+            if not deriv_material:
+                raise ValueError("deriv_material (int) required when use_derivative_tallies=True")
+            if deriv_variable == 'nuclide_density' and not deriv_nuclide:
+                raise ValueError("deriv_nuclide required when deriv_variable='nuclide_density'")
+            # Validate against C++ backend supported types (see src/tallies/derivative.cpp)
+            if deriv_variable not in ('density', 'nuclide_density', 'temperature'):
+                raise ValueError(
+                    f"Unsupported deriv_variable='{deriv_variable}'. "
+                    "OpenMC C++ backend only supports: 'density', 'nuclide_density', 'temperature'"
+                )
+            
+            # Automatically add derivative tallies to the model
+            self.add_derivative_tallies(deriv_variable, deriv_material, deriv_nuclide)
+        
         func_kwargs = {} if func_kwargs is None else dict(func_kwargs)
         run_kwargs = {} if run_kwargs is None else dict(run_kwargs)
         run_kwargs.setdefault('output', False)
@@ -2470,10 +2757,12 @@ class Model:
         fs: list[float] = []
         ss: list[float] = []
         gs: list[int] = []
+        dks: list[float] = []      # dk/dx derivatives
+        dks_std: list[float] = []  # uncertainties in derivatives
         count = 0
 
         # Helper function to evaluate f and store results
-        def eval_at(x: float, batches: int) -> tuple[float, float]:
+        def eval_at(x: float, batches: int) -> tuple[float, float, float | None, float | None]:
             # Modify the model with the current guess
             func(x, **func_kwargs)
 
@@ -2489,19 +2778,34 @@ class Model:
                 sp_filepath = self.run(**run_kwargs)
 
             # Extract keff and its uncertainty
+            dk_dx = None
+            dk_dx_std = None
             with openmc.StatePoint(sp_filepath) as sp:
                 keff = sp.keff
+
+                # If requested, extract derivative constraint using generic method
+                if use_derivative_tallies and deriv_variable and deriv_material:
+                    dk_dx, dk_dx_std = self._extract_derivative_constraint(
+                        sp, deriv_variable, deriv_material, deriv_nuclide,
+                        deriv_to_x_func
+                    )
+                    if output and dk_dx is not None:
+                        print(f'  [DERIV] Extracted dk/dx={dk_dx:.6e} ± {dk_dx_std:.6e}')
 
             if output:
                 nonlocal count
                 count += 1
-                print(f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}')
+                deriv_str = f', dk/dx={dk_dx:.6g}' if dk_dx is not None else ''
+                print(f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}{deriv_str}')
 
             xs.append(float(x))
             fs.append(float(keff.n - target))
             ss.append(float(keff.s))
             gs.append(int(batches))
-            return fs[-1], ss[-1]
+            dks.append(dk_dx if dk_dx is not None else 0.0)
+            dks_std.append(dk_dx_std if dk_dx_std is not None else 0.0)
+            
+            return fs[-1], ss[-1], dk_dx, dk_dx_std
 
         # Default b0 to current model settings if not explicitly provided
         if b0 is None:
@@ -2513,26 +2817,114 @@ class Model:
                 run_kwargs.setdefault('cwd', tmpdir)
 
             # ---- Seed with two evaluations
-            f0, s0 = eval_at(x0, b0)
+            f0, s0, dk0, dks0 = eval_at(x0, b0)
             if abs(f0) <= k_tol and s0 <= sigma_final:
                 return SearchResult(x0, xs, fs, ss, gs, True, "converged")
-            f1, s1 = eval_at(x1, b0)
+            f1, s1, dk1, dks1 = eval_at(x1, b0)
             if abs(f1) <= k_tol and s1 <= sigma_final:
                 return SearchResult(x1, xs, fs, ss, gs, True, "converged")
 
             for _ in range(maxiter - 2):
-                # ------ Step 1: propose next x via GRsecant
+                # ------ Step 1: propose next x
+                
+                # Perform weighted least squares fit on f(x) = a + bx
+                # If derivative tallies enabled: augment with gradient constraints
                 m = min(memory, len(xs))
 
-                # Perform a curve fit on f(x) = a + bx accounting for
-                # uncertainties. This is equivalent to minimizing the function
-                # in Equation (A.14)
-                (a, b), _ = curve_fit(
-                    lambda x, a, b: a + b*x,
-                    xs[-m:], fs[-m:], sigma=ss[-m:], absolute_sigma=True
-                )
+                # Perform a curve fit on f(x) = a + bx accounting for uncertainties
+                # If derivatives are available, augment with gradient constraints
+                if use_derivative_tallies and any(dks[-m:]):
+                    # Gradient-augmented least squares fit
+                    # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
+                    #         + sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
+                    
+                    xs_fit = np.array([xs[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    fs_fit = np.array([fs[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    ss_fit = np.array([ss[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    dks_fit = np.array([dks[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    dks_std_fit = np.array([dks_std[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    
+                    # Build augmented system: minimize both point residuals and gradient errors
+                    # Points with valid derivatives contribute dual constraints
+                    valid_derivs = dks_std_fit > 0
+                    n_pts = len(xs_fit)
+                    n_derivs = np.sum(valid_derivs)
+                    
+                    # Construct augmented system matrix
+                    A = np.vstack([
+                        np.ones(n_pts) / ss_fit,
+                        xs_fit / ss_fit,
+                    ]).T
+                    b_vec = fs_fit / ss_fit
+                    
+                    # Add gradient constraints (b should match dk/dx at each point)
+                    if n_derivs > 0:
+                        # Gradient constraints: f(x) = a + bx, so df/dx = b
+                        # Constraint: b ≈ dk/dx_j, weighted by 1/dk_std_j
+                        
+                        # AUTO-NORMALIZE DERIVATIVES: When derivatives are very large or very small,
+                        # normalize by their magnitude to avoid ill-conditioned least squares system.
+                        # This is critical for derivatives like dk/dppm which can be O(10^20).
+                        valid_deriv_values = dks_fit[valid_derivs]
+                        valid_deriv_stds = dks_std_fit[valid_derivs]
+                        
+                        if output:
+                            print(f'  [DERIV-FIT] Using {n_derivs} derivative constraints in curve fit')
+                            print(f'  [DERIV-FIT] Raw derivatives: {valid_deriv_values}')
+                        
+                        # Calculate normalization scale: geometric mean of absolute derivative magnitudes
+                        abs_derivs = np.abs(valid_deriv_values)
+                        abs_derivs = abs_derivs[abs_derivs > 0]  # Exclude zeros
+                        if len(abs_derivs) > 0:
+                            deriv_scale = np.exp(np.mean(np.log(abs_derivs)))  # Geometric mean
+                        else:
+                            deriv_scale = 1.0
+                        
+                        if output:
+                            print(f'  [DERIV-FIT] Normalization scale factor: {deriv_scale:.6e}')
+                        
+                        # Apply scaling to derivatives and their uncertainties
+                        scaled_derivs = valid_deriv_values / deriv_scale
+                        scaled_deriv_stds = valid_deriv_stds / deriv_scale
+                        
+                        # Build constraint rows with normalized derivatives
+                        deriv_rows = np.zeros((n_derivs, 2))
+                        deriv_rows[:, 0] = 0.0  # a coefficient in gradient = 0
+                        deriv_rows[:, 1] = 1.0  # b coefficient
+                        
+                        # Normalized targets: scale-invariant constraint weighted by uncertainty
+                        deriv_targets = scaled_derivs / scaled_deriv_stds
+                        
+                        A = np.vstack([A, deriv_rows])
+                        b_vec = np.hstack([b_vec, deriv_targets])
+                    
+                    # Solve least squares: (A^T A)^{-1} A^T b
+                    try:
+                        coeffs, residuals, rank, s = np.linalg.lstsq(A, b_vec, rcond=None)
+                        a, b = float(coeffs[0]), float(coeffs[1])
+                        if output:
+                            print(f'  [DERIV-FIT] Fitted line (with derivative constraints): f(x) = {a:.6e} + {b:.6e}*x')
+                    except np.linalg.LinAlgError:
+                        # Fall back to standard fit if augmented system is singular
+                        (a, b), _ = curve_fit(
+                            lambda x, a, b: a + b*x,
+                            xs_fit, fs_fit, sigma=ss_fit, absolute_sigma=True
+                        )
+                        if output:
+                            print(f'  [DERIV-FIT] Fallback fit (singular system): f(x) = {a:.6e} + {b:.6e}*x')
+                else:
+                    # Standard weighted least squares fit (original GRsecant)
+                    (a, b), _ = curve_fit(
+                        lambda x, a, b: a + b*x,
+                        [xs[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        [fs[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        sigma=[ss[i] for i in range(max(0, len(xs)-m), len(xs))],
+                        absolute_sigma=True
+                    )
+                    if output:
+                        print(f'  [NO-DERIV-FIT] Standard fit: f(x) = {a:.6e} + {b:.6e}*x (no derivatives)')
+                
                 x_new = float(-a / b)
-
                 # Clamp x_new to the bounds if provided
                 if x_min is not None:
                     x_new = max(x_new, x_min)
@@ -2570,7 +2962,7 @@ class Model:
                     b_new = min(b_new, b_max)
 
                 # Evaluate at proposed x with batches determined above
-                f_new, s_new = eval_at(x_new, b_new)
+                f_new, s_new, _, _ = eval_at(x_new, b_new)
 
                 # Termination based on both criteria (|f| and σ)
                 if abs(f_new) <= k_tol and s_new <= sigma_final:

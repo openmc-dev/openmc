@@ -124,6 +124,7 @@ endmacro()
 
 if(OPENMC_USE_DAGMC)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  set(OPENMC_DAGMC_DIR ${DAGMC_DIR})
   if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}."
       "Please update DAGMC to version 3.2.0 or greater.")
@@ -149,6 +150,7 @@ endif()
 #===============================================================================
 
 find_package(PNG)
+set(OPENMC_USE_PNG ${PNG_FOUND})
 
 #===============================================================================
 # HDF5 for binary output
@@ -243,11 +245,18 @@ endif()
 if(OPENMC_FORCE_VENDORED_LIBS)
   add_subdirectory(vendor/pugixml)
   set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
+  set(OPENMC_USES_VENDORED_PUGIXML TRUE)
+  set(OPENMC_PUGIXML_DIR "")
 else()
   find_package_write_status(pugixml)
   if (NOT pugixml_FOUND)
     add_subdirectory(vendor/pugixml)
     set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
+    set(OPENMC_USES_VENDORED_PUGIXML TRUE)
+    set(OPENMC_PUGIXML_DIR "")
+  else()
+    set(OPENMC_USES_VENDORED_PUGIXML FALSE)
+    set(OPENMC_PUGIXML_DIR "${pugixml_DIR}")
   endif()
 endif()
 
@@ -258,11 +267,18 @@ endif()
 if(OPENMC_FORCE_VENDORED_LIBS)
   set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
   add_subdirectory(vendor/fmt)
+  set(OPENMC_USES_VENDORED_FMT TRUE)
+  set(OPENMC_FMT_DIR "")
 else()
   find_package_write_status(fmt)
   if (NOT fmt_FOUND)
     set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
     add_subdirectory(vendor/fmt)
+    set(OPENMC_USES_VENDORED_FMT TRUE)
+    set(OPENMC_FMT_DIR "")
+  else()
+    set(OPENMC_USES_VENDORED_FMT FALSE)
+    set(OPENMC_FMT_DIR "${fmt_DIR}")
   endif()
 endif()
 
@@ -274,12 +290,29 @@ if(OPENMC_FORCE_VENDORED_LIBS)
   add_subdirectory(vendor/xtl)
   set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
   add_subdirectory(vendor/xtensor)
+  set(OPENMC_USES_VENDORED_XTENSOR TRUE)
+  set(OPENMC_XTENSOR_DIR "")
+  set(OPENMC_XTL_DIR "")
 else()
   find_package_write_status(xtensor)
   if (NOT xtensor_FOUND)
     add_subdirectory(vendor/xtl)
     set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
     add_subdirectory(vendor/xtensor)
+    set(OPENMC_USES_VENDORED_XTENSOR TRUE)
+    set(OPENMC_XTENSOR_DIR "")
+    set(OPENMC_XTL_DIR "")
+  else()
+    set(OPENMC_USES_VENDORED_XTENSOR FALSE)
+    set(OPENMC_XTENSOR_DIR "${xtensor_DIR}")
+    # xtl is a dependency of xtensor, so its DIR should be available too
+    if(DEFINED xtl_DIR)
+      set(OPENMC_XTL_DIR "${xtl_DIR}")
+    else()
+      # If xtl_DIR isn't set, it's likely in the same prefix as xtensor.
+      # We'll rely on the xtensor hint to find it.
+      set(OPENMC_XTL_DIR "${xtensor_DIR}")
+    endif()
   endif()
 endif()
 
@@ -580,9 +613,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================
-
-configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
-configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
+include(CMakePackageConfigHelpers)
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 install(TARGETS openmc libopenmc
@@ -596,10 +627,24 @@ install(EXPORT openmc-targets
   NAMESPACE OpenMC::
   DESTINATION ${INSTALL_CONFIGDIR})
 
+configure_package_config_file(
+    "cmake/OpenMCConfig.cmake.in"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+)
+
+write_basic_package_version_file(
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
+    VERSION ${OPENMC_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
 install(FILES
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
-  DESTINATION ${INSTALL_CONFIGDIR})
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+    "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
+    DESTINATION "${INSTALL_CONFIGDIR}"
+)
+
 install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

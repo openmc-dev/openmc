@@ -115,8 +115,8 @@ KalbachMann::KalbachMann(hid_t group)
   } // incoming energies
 }
 
-void KalbachMann::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+void KalbachMann::sample_params(
+  double E_in, double& E_out, double& km_a, double& km_r, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor
   int i;
@@ -171,7 +171,6 @@ void KalbachMann::sample(
 
   double E_l_k = distribution_[l].e_out[k];
   double p_l_k = distribution_[l].p[k];
-  double km_r, km_a;
   if (distribution_[l].interpolation == Interpolation::histogram) {
     // Histogram interpolation
     if (p_l_k > 0.0 && k >= n_discrete) {
@@ -217,6 +216,13 @@ void KalbachMann::sample(
       E_out = E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
     }
   }
+}
+
+void KalbachMann::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  double km_r, km_a;
+  sample_params(E_in, E_out, km_a, km_r, seed);
 
   // Sampled correlated angle from Kalbach-Mann parameters
   if (prn(seed) > km_r) {
@@ -226,6 +232,16 @@ void KalbachMann::sample(
     double r1 = prn(seed);
     mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
   }
+}
+double KalbachMann::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  double km_r, km_a;
+  sample_params(E_in, E_out, km_a, km_r, seed);
+
+  // https://docs.openmc.org/en/latest/methods/neutron_physics.html#equation-KM-pdf-angle
+  return km_a / (2 * std::sinh(km_a)) *
+         (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
 }
 
 } // namespace openmc

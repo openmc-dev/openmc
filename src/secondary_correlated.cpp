@@ -153,9 +153,8 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
     distribution_.push_back(std::move(d));
   } // incoming energies
 }
-
-void CorrelatedAngleEnergy::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+Distribution& CorrelatedAngleEnergy::sample_dist(
+  double E_in, double& E_out, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor
   int i;
@@ -247,10 +246,22 @@ void CorrelatedAngleEnergy::sample(
   // Find correlated angular distribution for closest outgoing energy bin
   if (r1 - c_k < c_k1 - r1 ||
       distribution_[l].interpolation == Interpolation::histogram) {
-    mu = distribution_[l].angle[k]->sample(seed);
+    return *distribution_[l].angle[k];
   } else {
-    mu = distribution_[l].angle[k + 1]->sample(seed);
+    return *distribution_[l].angle[k + 1];
   }
+}
+
+void CorrelatedAngleEnergy::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  mu = sample_dist(E_in, E_out, seed).sample(seed);
+}
+
+double CorrelatedAngleEnergy::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  return sample_dist(E_in, E_out, seed).evaluate(mu);
 }
 
 } // namespace openmc

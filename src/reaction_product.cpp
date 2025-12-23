@@ -106,8 +106,7 @@ ReactionProduct::ReactionProduct(const ChainNuclide::Product& product)
     make_unique<DecayPhotonAngleEnergy>(chain_nuc->photon_energy()));
 }
 
-void ReactionProduct::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+AngleEnergy& ReactionProduct::sample_dist(double E_in, uint64_t* seed) const
 {
   auto n = applicability_.size();
   if (n > 1) {
@@ -119,14 +118,26 @@ void ReactionProduct::sample(
 
       // If i-th distribution is sampled, sample energy from the distribution
       if (c <= prob) {
-        distribution_[i]->sample(E_in, E_out, mu, seed);
+        return *distribution_[i];
         break;
       }
     }
   } else {
     // If only one distribution is present, go ahead and sample it
-    distribution_[0]->sample(E_in, E_out, mu, seed);
+    return *distribution_[0];
   }
+}
+
+void ReactionProduct::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  sample_dist(E_in, seed).sample(E_in, E_out, mu, seed);
+}
+
+double ReactionProduct::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  return sample_dist(E_in, seed).sample_energy_and_pdf(E_in, mu, E_out, seed);
 }
 
 } // namespace openmc

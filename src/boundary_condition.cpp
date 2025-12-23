@@ -174,8 +174,8 @@ RotationalPeriodicBC::RotationalPeriodicBC(
     break;
   case y:
     zero_axis_idx_ = 1; // y component of plane must be zero
-    axis_1_idx_ = 2;    // x component independent
-    axis_2_idx_ = 0;    // z component dependent
+    axis_1_idx_ = 2;    // z component independent
+    axis_2_idx_ = 0;    // x component dependent
     break;
   case z:
     zero_axis_idx_ = 2; // z component of plane must be zero
@@ -209,12 +209,19 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       "intersect the origin.",
       surf2.id_));
   }
-  flip_sense_ = (norm1.dot(norm2) > 0.0);
 
+  // Compute the signed rotation angle about the periodic axis. Note that
+  // (n1×n2)·a = |n1||n2|sin(θ) and n1·n2 = |n1||n2|cos(θ), where a is the axis
+  // of rotation.
   auto c = norm1.cross(norm2);
   angle_ = std::atan2(c.dot(ax), norm1.dot(norm2));
+
+  // If the normals point in the same general direction, the surface sense
+  // should change when crossing the boundary
+  flip_sense_ = (norm1.dot(norm2) > 0.0);
   if (!flip_sense_)
     angle_ += PI;
+
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));
   if (rem > FP_REL_PRECISION && rem < 1 - FP_REL_PRECISION) {

@@ -845,3 +845,20 @@ the inputs were not modified before the restart run), no particles will be
 transported and OpenMC will exit immediately.
 
 .. note:: A statepoint file must match the input model to be successfully used in a restart simulation.
+
+----------------------------------------------
+Calculating Subcritical Multiplication Factors
+----------------------------------------------
+In addition to the standard effective multiplication factor, :math:`k_{eff}`, calculated using eigenvalue
+mode, OpenMC can also calculate subcritical multiplication factors: :math:`k`, :math:`k_q`, and :math:`k_s`
+in fixed source mode. Please see :ref:`methods_subcritical-multiplication` for theoretical details on
+subcritical multiplication factors. To enable the calculation of subcritical multiplication factors in
+fixed source mode, set
+
+.. code-block:: python
+
+    settings.calculate_subcritical_k = True
+
+this will enable printing of :math:`k`, :math:`k_q`, and :math:`k_s` both generation-wise and cumulative
+averages throughout the simulation analogous to eigenvalue mode. The generation statistics as well as
+combined estimates for :math:`k`, :math:`k_q`, and :math:`k_s` will also be stored in the statepoint file.

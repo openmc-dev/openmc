@@ -37,7 +37,10 @@ namespace openmc {
 namespace simulation {
 
 double keff_generation;
+double kq_generation_val;
+double ks_generation_val;
 array<double, 2> k_sum;
+array<double, 2> kq_sum;
 vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
 

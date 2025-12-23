@@ -28,11 +28,21 @@ extern "C" int current_gen;   //!< current fission generation
 extern "C" bool initialized;  //!< has simulation been initialized?
 extern "C" double keff;       //!< average k over batches
 extern "C" double keff_std;   //!< standard deviation of average k
+extern "C" double kq;         //!< average kq over batches
+extern "C" double kq_std;     //!< standard deviation of average kq
+extern "C" double ks;         //!< average ks over batches
+extern "C" double ks_std;     //!< standard deviation of average ks
 extern "C" double k_col_abs; //!< sum over batches of k_collision * k_absorption
 extern "C" double
   k_col_tra; //!< sum over batches of k_collision * k_tracklength
 extern "C" double
   k_abs_tra;               //!< sum over batches of k_absorption * k_tracklength
+extern "C" double
+  kq_col_abs; //!< sum over batches of kq_collision * kq_absorption
+extern "C" double
+  kq_col_tra; //!< sum over batches of kq_collision * kq_tracklength
+extern "C" double
+  kq_abs_tra; //!< sum over batches of kq_absorption * kq_tracklength
 extern double log_spacing; //!< lethargy spacing for energy grid searches
 extern "C" int n_lost_particles;   //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
@@ -47,6 +57,8 @@ extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 
 extern vector<double> k_generation;
+extern vector<double> kq_generation;
+extern vector<double> ks_generation;
 extern vector<int64_t> work_index;
 
 } // namespace simulation

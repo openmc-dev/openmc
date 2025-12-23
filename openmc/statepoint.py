@@ -77,10 +77,24 @@ class StatePoint:
         Cross-product of collision and tracklength estimates of k-effective
     k_abs_tra : float
         Cross-product of absorption and tracklength estimates of k-effective
+    kq_col_abs : float
+        Cross-product of collision and absorption estimates of kq
+    kq_col_tra : float
+        Cross-product of collision and tracklength estimates of kq
+    kq_abs_tra : float
+        Cross-product of absorption and tracklength estimates of kq
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
+    kq_generation : numpy.ndarray
+        Estimate of kq for each batch/generation
+    ks_generation : numpy.ndarray
+        Estimate of ks for each batch/generation
     keff : uncertainties.UFloat
         Combined estimator for k-effective
+    kq : uncertainties.UFloat
+        Combined estimator for kq
+    ks : uncertainties.UFloat
+        Combined estimator for ks
 
         .. versionadded:: 0.13.1
     meshes : dict
@@ -212,9 +226,9 @@ class StatePoint:
 
     @property
     def entropy(self):
-        if self.run_mode == 'eigenvalue':
+        try:
             return self._f['entropy'][()]
-        else:
+        except KeyError:
             return None
 
     @property
@@ -233,9 +247,9 @@ class StatePoint:
 
     @property
     def generations_per_batch(self):
-        if self.run_mode == 'eigenvalue':
+        try:
             return self._f['generations_per_batch'][()]
-        else:
+        except KeyError:
             return None
 
     @property
@@ -268,16 +282,30 @@ class StatePoint:
 
     @property
     def k_generation(self):
-        if self.run_mode == 'eigenvalue':
+        try:
             return self._f['k_generation'][()]
-        else:
+        except KeyError:
+            return None
+
+    @property
+    def kq_generation(self):
+        try:
+            return self._f['kq_generation'][()]
+        except KeyError:
+            return None
+
+    @property
+    def ks_generation(self):
+        try:
+            return self._f['ks_generation'][()]
+        except KeyError:
             return None
 
     @property
     def keff(self):
-        if self.run_mode == 'eigenvalue':
+        try:
             return ufloat(*self._f['k_combined'][()])
-        else:
+        except KeyError:
             return None
 
     @property
@@ -287,26 +315,61 @@ class StatePoint:
             "removed in a future version of OpenMC.", FutureWarning
         )
         return self.keff
+    
+    @property
+    def kq(self):
+        try:
+            return ufloat(*self._f['kq_combined'][()])
+        except KeyError:
+            return None
+
+    @property
+    def ks(self):
+        try:
+            return ufloat(*self._f['ks_combined'][()])
+        except KeyError:
+            return None
 
     @property
     def k_col_abs(self):
-        if self.run_mode == 'eigenvalue':
+        try:
             return self._f['k_col_abs'][()]
-        else:
+        except KeyError:
             return None
 
     @property
     def k_col_tra(self):
-        if self.run_mode == 'eigenvalue':
+        try:
             return self._f['k_col_tra'][()]
-        else:
+        except KeyError:
             return None
 
     @property
     def k_abs_tra(self):
-        if self.run_mode == 'eigenvalue':
+        try:
             return self._f['k_abs_tra'][()]
-        else:
+        except KeyError:
+            return None
+        
+    @property
+    def kq_col_abs(self):
+        try:
+            return self._f['kq_col_abs'][()]
+        except KeyError:
+            return None
+
+    @property
+    def kq_col_tra(self):
+        try:
+            return self._f['kq_col_tra'][()]
+        except KeyError:
+            return None
+
+    @property
+    def kq_abs_tra(self):
+        try:
+            return self._f['kq_abs_tra'][()]
+        except KeyError:
             return None
 
     @property
@@ -329,9 +392,9 @@ class StatePoint:
 
     @property
     def n_inactive(self):
-        if self.run_mode == 'eigenvalue':
+        try:
             return self._f['n_inactive'][()]
-        else:
+        except KeyError:
             return None
 
     @property

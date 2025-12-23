@@ -400,6 +400,7 @@ list(APPEND libopenmc_SOURCES
   src/source.cpp
   src/state_point.cpp
   src/string_utils.cpp
+  src/subcritical.cpp
   src/summary.cpp
   src/surface.cpp
   src/tallies/derivative.cpp

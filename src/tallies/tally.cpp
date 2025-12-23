@@ -70,6 +70,7 @@ vector<double> time_grid;
 
 namespace simulation {
 xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies_first_gen;
 int32_t n_realizations {0};
 } // namespace simulation
 
@@ -77,6 +78,10 @@ double global_tally_absorption;
 double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_leakage;
+
+double global_tally_absorption_first_gen;
+double global_tally_collision_first_gen;
+double global_tally_tracklength_first_gen;
 
 //==============================================================================
 // Tally object implementation
@@ -1071,8 +1076,10 @@ void accumulate_tallies()
   // Accumulate on master only unless run is not reduced then do it on all
   if (mpi::master || !settings::reduce_tallies) {
     auto& gt = simulation::global_tallies;
+    auto& gt_first_gen = simulation::global_tallies_first_gen;
 
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE && settings::calculate_subcritical_k)) {
       if (simulation::current_batch > settings::n_inactive) {
         // Accumulate products of different estimators of k
         double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /
@@ -1085,6 +1092,21 @@ void accumulate_tallies()
         simulation::k_col_tra += k_col * k_tra;
         simulation::k_abs_tra += k_abs * k_tra;
       }
+      if (settings::calculate_subcritical_k) {
+        // Accumulate products of different estimators of k
+        double k_col =
+          gt_first_gen(GlobalTally::K_COLLISION, TallyResult::VALUE) /
+          simulation::total_weight;
+        double k_abs =
+          gt_first_gen(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
+          simulation::total_weight;
+        double k_tra =
+          gt_first_gen(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
+          simulation::total_weight;
+        simulation::kq_col_abs += k_col * k_abs;
+        simulation::kq_col_tra += k_col * k_tra;
+        simulation::kq_abs_tra += k_abs * k_tra;
+      }
     }
 
     // Accumulate results for global tallies
@@ -1093,6 +1115,12 @@ void accumulate_tallies()
       gt(i, TallyResult::VALUE) = 0.0;
       gt(i, TallyResult::SUM) += val;
       gt(i, TallyResult::SUM_SQ) += val * val;
+
+      double val_first_gen =
+        gt_first_gen(i, TallyResult::VALUE) / simulation::total_weight;
+      gt_first_gen(i, TallyResult::VALUE) = 0.0;
+      gt_first_gen(i, TallyResult::SUM) += val_first_gen;
+      gt_first_gen(i, TallyResult::SUM_SQ) += val_first_gen * val_first_gen;
     }
   }
 

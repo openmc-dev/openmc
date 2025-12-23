@@ -26,6 +26,7 @@
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
+#include "openmc/subcritical.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -142,6 +143,9 @@ int openmc_simulation_init()
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       if (settings::solver_type == SolverType::MONTE_CARLO) {
         header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+        if (settings::verbosity >= 7 && settings::calculate_subcritical_k) {
+          print_columns();
+        }
       } else if (settings::solver_type == SolverType::RANDOM_RAY) {
         header("FIXED SOURCE TRANSPORT SIMULATION (RANDOM RAY SOLVER)", 3);
       }
@@ -307,6 +311,13 @@ double keff_std;
 double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
+double kq_col_abs {0.0};
+double kq_col_tra {0.0};
+double kq_abs_tra {0.0};
+double kq;
+double kq_std;
+double ks;
+double ks_std;
 double log_spacing;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
@@ -321,6 +332,8 @@ const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
+vector<double> kq_generation;
+vector<double> ks_generation;
 vector<int64_t> work_index;
 
 } // namespace simulation
@@ -366,7 +379,9 @@ void initialize_batch()
       write_message(
         6, "Simulating batch {:<4} (inactive)", simulation::current_batch);
     } else {
-      write_message(6, "Simulating batch {}", simulation::current_batch);
+      if (!settings::calculate_subcritical_k) {
+        write_message(6, "Simulating batch {}", simulation::current_batch);
+      }
     }
   }
 
@@ -414,6 +429,7 @@ void finalize_batch()
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
     xt::view(simulation::global_tallies, xt::all()) = 0.0;
+    xt::view(simulation::global_tallies_first_gen, xt::all()) = 0.0;
     simulation::n_realizations = 0;
   }
 
@@ -505,7 +521,9 @@ void finalize_batch()
 
 void initialize_generation()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
     // Clear out the fission bank
     simulation::fission_bank.resize(0);
 
@@ -516,28 +534,60 @@ void initialize_generation()
     // Store current value of tracklength k
     simulation::keff_generation = simulation::global_tallies(
       GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+
+    if (settings::calculate_subcritical_k) {
+        simulation::kq_generation_val = simulation::global_tallies_first_gen(
+            GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    }
   }
 }
 
 void finalize_generation()
 {
   auto& gt = simulation::global_tallies;
+  auto& gt_first_gen = simulation::global_tallies_first_gen;
 
-  // Update global tallies with the accumulation variables
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) +=
+      global_tally_collision;
     gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
       global_tally_absorption;
     gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
       global_tally_tracklength;
   }
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+    // Update global tallies
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) +=
+      convert_to_subcritical_k(global_tally_collision);
+    gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
+      convert_to_subcritical_k(global_tally_absorption);
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
+      convert_to_subcritical_k(global_tally_tracklength);
+
+    // Update first generation tallies
+    gt_first_gen(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
+      global_tally_absorption_first_gen;
+    gt_first_gen(GlobalTally::K_COLLISION, TallyResult::VALUE) +=
+      global_tally_collision_first_gen;
+    gt_first_gen(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
+      global_tally_tracklength_first_gen;
+  }
   gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
-  // reset tallies
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  // Reset tallies
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
     global_tally_tracklength = 0.0;
+  }
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+    global_tally_absorption_first_gen = 0.0;
+    global_tally_collision_first_gen = 0.0;
+    global_tally_tracklength_first_gen = 0.0;
   }
   global_tally_leakage = 0.0;
 
@@ -552,16 +602,34 @@ void finalize_generation()
     synchronize_bank();
   }
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
 
     // Calculate shannon entropy
     if (settings::entropy_on &&
-        settings::solver_type == SolverType::MONTE_CARLO)
+        settings::solver_type == SolverType::MONTE_CARLO &&
+        !settings::calculate_subcritical_k) {
       shannon_entropy();
+    }
 
     // Collect results and statistics
     calculate_generation_keff();
     calculate_average_keff();
+
+    if (settings::calculate_subcritical_k) {
+      // Compute kq and average
+      calculate_generation_kq();
+      calculate_average_kq();
+
+      // Calculate ks from k, kq
+      simulation::ks_generation_val = calculate_ks(
+        simulation::k_generation.back(), simulation::kq_generation.back());
+      simulation::ks_generation.push_back(simulation::ks_generation_val);
+      simulation::ks = calculate_ks(simulation::keff, simulation::kq);
+      simulation::ks_std = calculate_sigma_ks(simulation::keff,
+        simulation::keff_std, simulation::kq, simulation::kq_std);
+    }
 
     // Write generation output
     if (mpi::master && settings::verbosity >= 7) {
@@ -782,6 +850,8 @@ void broadcast_results()
   // Also broadcast global tally results
   auto& gt = simulation::global_tallies;
   MPI_Bcast(gt.data(), gt.size(), MPI_DOUBLE, 0, mpi::intracomm);
+  auto& gt_first_gen = simulation::global_tallies_first_gen;
+  MPI_Bcast(gt_first_gen.data(), gt_first_gen.size(), MPI_DOUBLE, 0, mpi::intracomm);
 
   // These guys are needed so that non-master processes can calculate the
   // combined estimate of k-effective
@@ -791,6 +861,13 @@ void broadcast_results()
   simulation::k_col_abs = temp[0];
   simulation::k_col_tra = temp[1];
   simulation::k_abs_tra = temp[2];
+
+  double temp_kq[] {
+    simulation::kq_col_abs, simulation::kq_col_tra, simulation::kq_abs_tra};
+  MPI_Bcast(temp_kq, 3, MPI_DOUBLE, 0, mpi::intracomm);
+  simulation::kq_col_abs = temp_kq[0];
+  simulation::kq_col_tra = temp_kq[1];
+  simulation::kq_abs_tra = temp_kq[2];
 }
 
 #endif
@@ -803,6 +880,7 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
+  bool tally_first_generation = true;
   while (p.alive()) {
     p.event_calculate_xs();
     if (p.alive()) {
@@ -815,6 +893,20 @@ void transport_history_based_single_particle(Particle& p)
         p.event_collide();
       }
     }
+    // Check for first generation completion
+    if ((!p.alive() || p.n_progeny() > 0) && tally_first_generation) {
+        if (settings::calculate_subcritical_k) {
+// Protect global updates with atomic to prevent data races
+#pragma omp atomic
+        global_tally_absorption_first_gen += p.keff_tally_absorption();
+#pragma omp atomic
+        global_tally_collision_first_gen += p.keff_tally_collision();
+#pragma omp atomic
+        global_tally_tracklength_first_gen += p.keff_tally_tracklength();
+      }
+      tally_first_generation = false;
+    }
+
     p.event_revive_from_secondary();
   }
   p.event_death();

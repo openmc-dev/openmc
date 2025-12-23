@@ -88,6 +88,7 @@ int openmc_finalize()
   settings::entropy_on = false;
   settings::event_based = false;
   settings::free_gas_threshold = 400.0;
+  settings::calculate_subcritical_k = false;
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
@@ -205,6 +206,9 @@ int openmc_reset()
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;
   simulation::k_abs_tra = 0.0;
+  simulation::kq_col_abs = 0.0;
+  simulation::kq_col_tra = 0.0;
+  simulation::kq_abs_tra = 0.0;
   simulation::k_sum = {0.0, 0.0};
   simulation::satisfy_triggers = false;
 

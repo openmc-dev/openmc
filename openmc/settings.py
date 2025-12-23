@@ -365,6 +365,11 @@ class Settings:
         .. versionadded::0.14.0
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
+
+        .. versionadded::0.15.4
+    calculate_subcritical_k : bool
+        Indicate whether to calculate and report the subcritical multiplication
+        factor k in fixed source simulations
     """
 
     def __init__(self, **kwargs):
@@ -377,6 +382,7 @@ class Settings:
         self._max_write_lost_particles = None
         self._particles = None
         self._keff_trigger = None
+        self._calculate_subcritical_k = False
 
         # Energy mode subelement
         self._energy_mode = None
@@ -1385,6 +1391,18 @@ class Settings:
             cv.check_greater_than('free gas threshold', free_gas_threshold, 0.0)
         self._free_gas_threshold = free_gas_threshold
 
+    @property
+    def calculate_subcritical_k(self) -> bool:
+        return self._calculate_subcritical_k
+    
+    @calculate_subcritical_k.setter
+    def calculate_subcritical_k(self, calculate_subcritical_k: bool):
+        cv.check_type('calculate subcritical k', calculate_subcritical_k, bool)
+        if not self._run_mode == RunMode.FIXED_SOURCE:
+            raise ValueError("calculate_subcritical_k can only be set when "
+                             "run_mode is 'fixed source'")
+        self._calculate_subcritical_k = calculate_subcritical_k
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1913,6 +1931,11 @@ class Settings:
             element = ET.SubElement(root, "free_gas_threshold")
             element.text = str(self._free_gas_threshold)
 
+    def _create_calculate_subcritical_k_subelement(self, root):
+        if self._calculate_subcritical_k:
+            elem = ET.SubElement(root, "calculate_subcritical_k")
+            elem.text = str(self._calculate_subcritical_k).lower()
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -2376,6 +2399,11 @@ class Settings:
         if text is not None:
             self.free_gas_threshold = float(text)
 
+    def _calculate_subcritical_k_from_xml_element(self, root):
+        text = get_text(root, 'calculate_subcritical_k')
+        if text is not None:
+            self.calculate_subcritical_k = text in ('true', '1')
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2448,6 +2476,7 @@ class Settings:
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
         self._create_free_gas_threshold_subelement(element)
+        self._create_calculate_subcritical_k_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)

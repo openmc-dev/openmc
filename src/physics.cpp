@@ -174,9 +174,19 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt() / simulation::keff * weight *
+  double nu_t;
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    // In fixed source mode, no need to scale by keff
+    nu_t = p.wgt() * weight *
                 p.neutron_xs(i_nuclide).nu_fission /
                 p.neutron_xs(i_nuclide).total;
+  } else {
+    nu_t = p.wgt() / simulation::keff * weight *
+                p.neutron_xs(i_nuclide).nu_fission /
+                p.neutron_xs(i_nuclide).total;
+  }
+  
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -646,7 +656,9 @@ void absorption(Particle& p, int i_nuclide)
     p.wgt() -= wgt_absorb;
 
     // Score implicit absorption estimate of keff
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) {
       p.keff_tally_absorption() += wgt_absorb *
                                    p.neutron_xs(i_nuclide).nu_fission /
                                    p.neutron_xs(i_nuclide).absorption;
@@ -656,7 +668,9 @@ void absorption(Particle& p, int i_nuclide)
     if (p.neutron_xs(i_nuclide).absorption >
         prn(p.current_seed()) * p.neutron_xs(i_nuclide).total) {
       // Score absorption estimate of keff
-      if (settings::run_mode == RunMode::EIGENVALUE) {
+      if (settings::run_mode == RunMode::EIGENVALUE ||
+          (settings::run_mode == RunMode::FIXED_SOURCE &&
+            settings::calculate_subcritical_k)) {
         p.keff_tally_absorption() += p.wgt() *
                                      p.neutron_xs(i_nuclide).nu_fission /
                                      p.neutron_xs(i_nuclide).absorption;

@@ -17,6 +17,7 @@ Theory and Methodology
     charged_particles_physics
     tallies
     eigenvalue
+    subcritical_multiplication
     depletion
     energy_deposition
     parallelization

@@ -7,11 +7,15 @@ Stochastic Volume Calculations
 .. currentmodule:: openmc
 
 OpenMC has a capability to stochastically determine volumes of cells, materials,
-and universes. The method works by overlaying a bounding box, sampling points
-from within the box, and seeing what fraction of points were found in a desired
-domain. The benefit of doing this stochastically (as opposed to equally-spaced
-points), is that it is possible to give reliable error estimates on each
-stochastic quantity.
+and universes by two methods. The first method works by overlaying a bounding 
+box, sampling points from within the box, and seeing what fraction of points were
+found in a desired domain. The benefit of doing this stochastically (as opposed
+to equally-spaced points), is that it is possible to give reliable error estimates
+on each stochastic quantity. The second method uses ray tracing in random
+directions from sampled via the first method points, and seeing what fraction of
+rays inside the box were found in a desired domain. This method is predominantly
+intended for low-fraction volume calculations and geometry testing. By default,
+volume calculations are provided using the first method.
 
 To specify that a volume calculation be run, you first need to create an
 instance of :class:`openmc.VolumeCalculation`. The constructor takes a list of
@@ -22,10 +26,16 @@ the specified domains::
   lower_left = (-0.62, -0.62, -50.)
   upper_right = (0.62, 0.62, 50.)
   vol_calc = openmc.VolumeCalculation([fuel, clad, moderator], 1000000,
-                                      lower_left, upper_right)
+                                      lower_left, upper_right)     
+
+To specify the same volume calculation but using ray tracing, you need to pass
+an argument::
+
+     vol_calc = openmc.VolumeCalculation([fuel, clad, moderator], 1000000,
+                                      lower_left, upper_right, 'ray')
 
 For domains contained within regions that have simple definitions, OpenMC can
-sometimes automatically determine a bounding box. In this case, the last two
+sometimes automatically determine a bounding box. In this case, the bounding box
 arguments are not necessary. For example,
 
 ::

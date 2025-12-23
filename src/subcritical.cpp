@@ -1,8 +1,10 @@
 #include "openmc/subcritical.h"
-#include "hdf5.h"
 #include "openmc/eigenvalue.h"
+#include "openmc/math_functions.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/tally.h"
+
+#include "hdf5.h"
 #include <cmath>
 #include <utility>
 
@@ -20,6 +22,94 @@ double convert_to_subcritical_k(double k) {
     // into the corresponding estimators for subcritical k
     double k_sub = (k/simulation::total_weight) / (k/simulation::total_weight + 1) * simulation::total_weight;
     return k_sub;
+}
+
+void calculate_generation_kq()
+{
+  const auto& gt = simulation::global_tallies_first_gen;
+
+  // Get keff for this generation by subtracting off the starting value
+  simulation::kq_generation_val =
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+    simulation::kq_generation_val;
+
+  double kq_reduced;
+#ifdef OPENMC_MPI
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
+    // Combine values across all processors
+    MPI_Allreduce(&simulation::kq_generation_val, &kq_reduced, 1, MPI_DOUBLE,
+      MPI_SUM, mpi::intracomm);
+  } else {
+    // If using random ray, MPI parallelism is provided by domain replication.
+    // As such, all fluxes will be reduced at the end of each transport sweep,
+    // such that all ranks have identical scalar flux vectors, and will all
+    // independently compute the same value of k. Thus, there is no need to
+    // perform any additional MPI reduction here.
+    kq_reduced = simulation::kq_generation_val;
+  }
+#else
+  kq_reduced = simulation::kq_generation_val;
+#endif
+
+  // Normalize single batch estimate of k
+  // TODO: This should be normalized by total_weight, not by n_particles
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
+    kq_reduced /= settings::n_particles;
+  }
+
+  simulation::kq_generation.push_back(kq_reduced);
+}
+
+void calculate_average_kq()
+{
+  // Determine overall generation and number of active generations
+  int i = overall_generation() - 1;
+  int n;
+  if (simulation::current_batch > settings::n_inactive) {
+    n = settings::gen_per_batch * simulation::n_realizations +
+        simulation::current_gen;
+  } else {
+    n = 0;
+  }
+
+  if (n <= 0) {
+    // For inactive generations, use current generation k as estimate for next
+    // generation
+    simulation::kq = simulation::kq_generation[i];
+  } else {
+    // Sample mean of keff
+    simulation::kq_sum[0] += simulation::kq_generation[i];
+    simulation::kq_sum[1] += std::pow(simulation::kq_generation[i], 2);
+    // Determine mean
+    simulation::kq = simulation::kq_sum[0] / n;
+
+    if (n > 1) {
+      double t_value;
+      if (settings::confidence_intervals) {
+        // Calculate t-value for confidence intervals
+        double alpha = 1.0 - CONFIDENCE_LEVEL;
+        t_value = t_percentile(1.0 - alpha / 2.0, n - 1);
+      } else {
+        t_value = 1.0;
+      }
+
+      // Standard deviation of the sample mean of k
+      simulation::keff_std =
+        t_value *
+        std::sqrt(
+          (simulation::kq_sum[1] / n - std::pow(simulation::kq, 2)) / (n - 1));
+
+      // In some cases (such as an infinite medium problem), random ray
+      // may estimate k exactly and in an unvarying manner between iterations.
+      // In this case, the floating point roundoff between the division and the
+      // power operations may cause an extremely small negative value to occur
+      // inside the sqrt operation, leading to NaN. If this occurs, we check for
+      // it and set the std dev to zero.
+      if (!std::isfinite(simulation::kq_std)) {
+        simulation::kq_std = 0.0;
+      }
+    }
+  }
 }
 
 int openmc_get_subcritical_kq(double* k_combined)

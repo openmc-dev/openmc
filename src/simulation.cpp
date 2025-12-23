@@ -614,13 +614,13 @@ void finalize_generation()
     }
 
     // Collect results and statistics
-    calculate_generation_keff(simulation::global_tallies, simulation::keff_generation, simulation::k_generation);
-    calculate_average_keff(simulation::keff, simulation::keff_std, simulation::k_generation, simulation::k_sum);
+    calculate_generation_keff();
+    calculate_average_keff();
 
     if (settings::calculate_subcritical_k) {
       // Compute kq and average
-      calculate_generation_keff(simulation::global_tallies_first_gen, simulation::kq_generation_val, simulation::kq_generation);
-      calculate_average_keff(simulation::kq, simulation::kq_std, simulation::kq_generation, simulation::kq_sum);
+      calculate_generation_kq();
+      calculate_average_kq();
 
       // Calculate ks from k, kq
       simulation::ks_generation_val = calculate_ks(

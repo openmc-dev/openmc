@@ -50,18 +50,20 @@ xt::xtensor<double, 1> source_frac;
 // Non-member functions
 //==============================================================================
 
-void calculate_generation_keff(xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> gt, double& keff_generation, vector<double>& k_generation)
+void calculate_generation_keff()
 {
+  const auto& gt = simulation::global_tallies;
+
   // Get keff for this generation by subtracting off the starting value
-  keff_generation =
+  simulation::keff_generation =
     gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
-    keff_generation;
+    simulation::keff_generation;
 
   double keff_reduced;
 #ifdef OPENMC_MPI
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Combine values across all processors
-    MPI_Allreduce(&keff_generation, &keff_reduced, 1, MPI_DOUBLE,
+    MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
       MPI_SUM, mpi::intracomm);
   } else {
     // If using random ray, MPI parallelism is provided by domain replication.
@@ -69,10 +71,10 @@ void calculate_generation_keff(xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TAL
     // such that all ranks have identical scalar flux vectors, and will all
     // independently compute the same value of k. Thus, there is no need to
     // perform any additional MPI reduction here.
-    keff_reduced = keff_generation;
+    keff_reduced = simulation::keff_generation;
   }
 #else
-  keff_reduced = keff_generation;
+  keff_reduced = simulation::keff_generation;
 #endif
 
   // Normalize single batch estimate of k
@@ -81,7 +83,7 @@ void calculate_generation_keff(xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TAL
     keff_reduced /= settings::n_particles;
   }
 
-  k_generation.push_back(keff_reduced);
+  simulation::k_generation.push_back(keff_reduced);
 }
 
 void synchronize_bank()
@@ -365,7 +367,7 @@ void synchronize_bank()
   simulation::time_bank.stop();
 }
 
-void calculate_average_keff(double& keff, double& keff_std, const vector<double>& k_generation, std::array<double, 2>& k_sum)
+void calculate_average_keff()
 {
   // Determine overall generation and number of active generations
   int i = overall_generation() - 1;
@@ -380,14 +382,15 @@ void calculate_average_keff(double& keff, double& keff_std, const vector<double>
   if (n <= 0) {
     // For inactive generations, use current generation k as estimate for next
     // generation
-    keff = k_generation[i];
+    simulation::keff = simulation::k_generation[i];
   } else {
     // Sample mean of keff
-    k_sum[0] += k_generation[i];
-    k_sum[1] += std::pow(k_generation[i], 2);
+    simulation::k_sum[0] += simulation::k_generation[i];
+    simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
 
     // Determine mean
-    keff = k_sum[0] / n;
+    simulation::keff = simulation::k_sum[0] / n;
+
     if (n > 1) {
       double t_value;
       if (settings::confidence_intervals) {
@@ -399,10 +402,10 @@ void calculate_average_keff(double& keff, double& keff_std, const vector<double>
       }
 
       // Standard deviation of the sample mean of k
-      keff_std =
+      simulation::keff_std =
         t_value *
         std::sqrt(
-          (k_sum[1] / n - std::pow(keff, 2)) / (n - 1));
+          (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
 
       // In some cases (such as an infinite medium problem), random ray
       // may estimate k exactly and in an unvarying manner between iterations.
@@ -410,8 +413,8 @@ void calculate_average_keff(double& keff, double& keff_std, const vector<double>
       // power operations may cause an extremely small negative value to occur
       // inside the sqrt operation, leading to NaN. If this occurs, we check for
       // it and set the std dev to zero.
-      if (!std::isfinite(keff_std)) {
-        keff_std = 0.0;
+      if (!std::isfinite(simulation::keff_std)) {
+        simulation::keff_std = 0.0;
       }
     }
   }

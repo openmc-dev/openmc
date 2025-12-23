@@ -13,6 +13,10 @@ void convert_to_subcritical_k(double& k, double& k_std);
 
 double convert_to_subcritical_k(double k);
 
+void calculate_generation_kq();
+
+void calculate_average_kq();
+
 double calculate_ks(double k, double kq);
 
 double calculate_sigma_ks(double k, double k_std, double kq, double kq_std);

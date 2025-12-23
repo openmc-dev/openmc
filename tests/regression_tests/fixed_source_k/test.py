@@ -50,15 +50,47 @@ def model():
     model.geometry = openmc.Geometry(universe)
     model.settings.run_mode = 'fixed source'
     model.settings.source = test_source()
-    model.settings.calculate_subcritical_k = True
 
     model.settings.batches = 10
-    model.settings.inactive = 5
-    model.settings.particles = 1000
+    model.settings.particles = 100
+
+    model.tallies = openmc.Tallies()
+    tally = openmc.Tally(name='νΣf tally')
+    tally.scores = ['nu-fission']
+    model.tallies.append(tally)
 
     return model
 
-def test_fixed_source_run(model):
-    """Test that fixed source run with subcritical k calculation works."""
-    harness = PyAPITestHarness("statepoint.10.h5", model, inputs_true='inputs_true.dat')
+@pytest.fixture
+def model_k():
+    model = openmc.Model()
+
+    universe = create_universe()
+    model.geometry = openmc.Geometry(universe)
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = test_source()
+    model.settings.calculate_subcritical_k = True
+
+    model.settings.batches = 10
+    model.settings.particles = 100
+
+    model.tallies = openmc.Tallies()
+    tally = openmc.Tally(name='νΣf tally')
+    tally.scores = ['nu-fission']
+    model.tallies.append(tally)
+
+    return model
+
+def test_tally_results(model, model_k):
+    """Test that fixed source run with subcritical k calculation gives the same tally results."""
+    harness = PyAPITestHarness("statepoint.10.h5", model, inputs_true='inputs_true_1.dat', results_true='results_true_1.dat')
+    harness.main()
+
+    harness_k = PyAPITestHarness("statepoint.10.h5", model_k, inputs_true='inputs_true_2.dat', results_true='results_true_1.dat')
+    harness_k.main()
+
+def test_subcritical_k(model_k):
+    """Test that subcritical k calculation gives a known result."""
+    harness = PyAPITestHarness("statepoint.10.h5", model_k, inputs_true='inputs_true_3.dat', results_true='results_true_2.dat', 
+                               subcritical_k_results=True)
     harness.main()

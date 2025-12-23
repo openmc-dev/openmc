@@ -896,11 +896,15 @@ void transport_history_based_single_particle(Particle& p)
     // Check for first generation completion
     if ((!p.alive() || p.n_progeny() > 0) && tally_first_generation) {
         if (settings::calculate_subcritical_k) {
-            global_tally_absorption_first_gen += p.keff_tally_absorption();
-            global_tally_collision_first_gen += p.keff_tally_collision();
-            global_tally_tracklength_first_gen += p.keff_tally_tracklength();
-        }
-        tally_first_generation = false;
+// Protect global updates with atomic to prevent data races
+#pragma omp atomic
+        global_tally_absorption_first_gen += p.keff_tally_absorption();
+#pragma omp atomic
+        global_tally_collision_first_gen += p.keff_tally_collision();
+#pragma omp atomic
+        global_tally_tracklength_first_gen += p.keff_tally_tracklength();
+      }
+      tally_first_generation = false;
     }
 
     p.event_revive_from_secondary();

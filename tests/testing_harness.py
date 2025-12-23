@@ -32,8 +32,10 @@ def colorize(diff):
 class TestHarness:
     """General class for running OpenMC regression tests."""
 
-    def __init__(self, statepoint_name):
+    def __init__(self, statepoint_name, subcritical_k_results=False, results_true='results_true.dat'):
         self._sp_name = statepoint_name
+        self.subcritical_k_results = subcritical_k_results
+        self.results_true = results_true
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
@@ -94,6 +96,19 @@ class TestHarness:
                 outstr += 'k-combined:\n'
                 form = '{0:12.6E} {1:12.6E}\n'
                 outstr += form.format(sp.keff.n, sp.keff.s)
+            if self.subcritical_k_results:
+                # Write out subcritical k-combined.
+                outstr += 'k-combined:\n'
+                form = '{0:12.6E} {1:12.6E}\n'
+                outstr += form.format(sp.keff.n, sp.keff.s)
+                outstr += 'kq:\n'
+                form = '{0:12.6E} {1:12.6E}\n'
+                outstr += form.format(sp.kq.n,
+                                      sp.kq.s)
+                outstr += 'ks:\n'
+                form = '{0:12.6E} {1:12.6E}\n'
+                outstr += form.format(sp.ks.n,
+                                      sp.ks.s)
 
             # Write out tally data.
             for i, tally_ind in enumerate(sp.tallies):
@@ -125,15 +140,15 @@ class TestHarness:
 
     def _overwrite_results(self):
         """Overwrite the results_true with the results_test."""
-        shutil.copyfile('results_test.dat', 'results_true.dat')
+        shutil.copyfile('results_test.dat', self.results_true)
 
     def _compare_results(self):
         """Make sure the current results agree with the reference."""
-        compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+        compare = filecmp.cmp('results_test.dat', self.results_true)
         if not compare:
-            expected = open('results_true.dat').readlines()
+            expected = open(self.results_true).readlines()
             actual = open('results_test.dat').readlines()
-            diff = unified_diff(expected, actual, 'results_true.dat',
+            diff = unified_diff(expected, actual, self.results_true,
                                 'results_test.dat')
             print('Result differences:')
             print(''.join(colorize(diff)))
@@ -286,8 +301,8 @@ class ParticleRestartTestHarness(TestHarness):
 
 
 class PyAPITestHarness(TestHarness):
-    def __init__(self, statepoint_name, model=None, inputs_true=None):
-        super().__init__(statepoint_name)
+    def __init__(self, statepoint_name, model=None, inputs_true=None, results_true='results_true.dat', subcritical_k_results=False):
+        super().__init__(statepoint_name, subcritical_k_results=subcritical_k_results, results_true=results_true)
         if model is None:
             self._model = pwr_core()
         else:
@@ -441,11 +456,11 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
     def _compare_results(self):
         """Make sure the current results agree with the reference."""
         compare = self._are_files_equal(
-            'results_test.dat', 'results_true.dat', 1e-6)
+            'results_test.dat', self.results_true, 1e-6)
         if not compare:
-            expected = open('results_true.dat').readlines()
+            expected = open(self.results_true).readlines()
             actual = open('results_test.dat').readlines()
-            diff = unified_diff(expected, actual, 'results_true.dat',
+            diff = unified_diff(expected, actual, self.results_true,
                                 'results_test.dat')
             print('Result differences:')
             print(''.join(colorize(diff)))

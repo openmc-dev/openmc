@@ -24,6 +24,7 @@
 #include "openmc/output.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/subcritical.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_mesh.h"
@@ -119,6 +120,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Write out information for eigenvalue run
     if (settings::run_mode == RunMode::EIGENVALUE)
       write_eigenvalue_hdf5(file_id);
+
+    if (settings::calculate_subcritical_k)
+      write_subcritical_hdf5(file_id);
 
     hid_t tallies_group = create_group(file_id, "tallies");
 

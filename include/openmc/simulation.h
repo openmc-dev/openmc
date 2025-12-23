@@ -37,6 +37,12 @@ extern "C" double
   k_col_tra; //!< sum over batches of k_collision * k_tracklength
 extern "C" double
   k_abs_tra;               //!< sum over batches of k_absorption * k_tracklength
+extern "C" double
+  kq_col_abs; //!< sum over batches of kq_collision * kq_absorption
+extern "C" double
+  kq_col_tra; //!< sum over batches of kq_collision * kq_tracklength
+extern "C" double
+  kq_abs_tra; //!< sum over batches of kq_absorption * kq_tracklength
 extern double log_spacing; //!< lethargy spacing for energy grid searches
 extern "C" int n_lost_particles;   //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?

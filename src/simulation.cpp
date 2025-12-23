@@ -311,6 +311,9 @@ double keff_std;
 double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
+double kq_col_abs {0.0};
+double kq_col_tra {0.0};
+double kq_abs_tra {0.0};
 double kq;
 double kq_std;
 double ks;
@@ -618,12 +621,14 @@ void finalize_generation()
       // Compute kq and average
       calculate_generation_keff(simulation::global_tallies_first_gen, simulation::kq_generation_val, simulation::kq_generation);
       calculate_average_keff(simulation::kq, simulation::kq_std, simulation::kq_generation, simulation::kq_sum);
-      
-      // Calculate ks from k = kq/(1 - ks + kq) -> ks = 1 + kq*(k - 1)/k
-      simulation::ks_generation_val = 1 + simulation::kq_generation.back() * (simulation::k_generation.back() - 1) / simulation::k_generation.back();
+
+      // Calculate ks from k, kq
+      simulation::ks_generation_val = calculate_ks(
+        simulation::k_generation.back(), simulation::kq_generation.back());
       simulation::ks_generation.push_back(simulation::ks_generation_val);
-      simulation::ks = 1 + simulation::kq * (simulation::keff - 1) / simulation::keff;
-      simulation::ks_std = sqrt( pow(simulation::kq_std, 2) + pow(simulation::kq / simulation::keff, 2) * ( pow(simulation::kq_std / simulation::kq,2) + pow(simulation::keff_std / simulation::keff,2) ) );
+      simulation::ks = calculate_ks(simulation::keff, simulation::kq);
+      simulation::ks_std = calculate_sigma_ks(simulation::keff,
+        simulation::keff_std, simulation::kq, simulation::kq_std);
     }
 
     // Write generation output
@@ -856,6 +861,13 @@ void broadcast_results()
   simulation::k_col_abs = temp[0];
   simulation::k_col_tra = temp[1];
   simulation::k_abs_tra = temp[2];
+
+  double temp_kq[] {
+    simulation::kq_col_abs, simulation::kq_col_tra, simulation::kq_abs_tra};
+  MPI_Bcast(temp_kq, 3, MPI_DOUBLE, 0, mpi::intracomm);
+  simulation::kq_col_abs = temp_kq[0];
+  simulation::kq_col_tra = temp_kq[1];
+  simulation::kq_abs_tra = temp_kq[2];
 }
 
 #endif

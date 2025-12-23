@@ -1,6 +1,7 @@
 #include "openmc/secondary_thermal.h"
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
@@ -10,20 +11,6 @@
 #include <cmath> // for log, exp
 
 namespace openmc {
-
-// Helper function to get index on incident energy grid
-void get_energy_index(
-  const vector<double>& energies, double E, int& i, double& f)
-{
-  // Get index and interpolation factor for elastic grid
-  i = 0;
-  f = 0.0;
-  if (E >= energies.front()) {
-    i = lower_bound_index(energies.begin(), energies.end(), E);
-    if (i + 1 < energies.size())
-      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
-  }
-}
 
 //==============================================================================
 // CoherentElasticAE implementation

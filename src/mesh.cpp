@@ -51,6 +51,7 @@
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
+#include "libmesh/replicated_mesh.h"
 #endif
 
 #ifdef OPENMC_DAGMC_ENABLED
@@ -3435,7 +3436,7 @@ LibMesh::LibMesh(hid_t group) : UnstructuredMesh(group)
 // create the mesh from a pointer to a libMesh Mesh
 LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 {
-  if (!dynamic_cast<libMesh::ReplicatedMesh*>(&input_mesh)) {
+  if (!input_mesh.is_replicated()) {
     fatal_error("At present LibMesh tallies require a replicated mesh. Please "
                 "ensure 'input_mesh' is a libMesh::ReplicatedMesh.");
   }

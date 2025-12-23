@@ -23,7 +23,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params, _BASIS_INDICES
+from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
 from openmc.utility_funcs import change_directory
 
 
@@ -546,6 +546,13 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
+    def _link_geometry_to_filters(self):
+        """Establishes a link between distribcell filters and the geometry"""
+        for tally in self.tallies:
+            for f in tally.filters:
+                if isinstance(f, openmc.DistribcellFilter):
+                    f._geometry = self.geometry
+
     def export_to_xml(self, directory: PathLike = '.', remove_surfs: bool = False,
                       nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to separate XML files.
@@ -586,6 +593,8 @@ class Model:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
+
+        self._link_geometry_to_filters()
 
     def export_to_model_xml(self, path: PathLike = 'model.xml', remove_surfs: bool = False,
                             nuclides_to_ignore: Iterable[str] | None = None):
@@ -665,6 +674,8 @@ class Model:
                     plots_element, level=1, trailing_indent=False)
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
+
+        self._link_geometry_to_filters()
 
     def import_properties(self, filename: PathLike):
         """Import physical properties
@@ -1026,6 +1037,7 @@ class Model:
         width: Sequence[float] | None = None,
         pixels: int | Sequence[int] = 40000,
         basis: str = 'xy',
+        color_overlaps: bool = False,
         **init_kwargs
     ) -> np.ndarray:
         """Generate an ID map for domains based on the plot parameters
@@ -1054,6 +1066,10 @@ class Model:
             total and the image aspect ratio based on the width argument.
         basis : {'xy', 'yz', 'xz'}, optional
             Basis of the plot.
+        color_overlaps : bool, optional
+            Whether to assign unique IDs (-3) to overlapping regions. If False,
+            overlapping regions will be assigned the ID of the lowest-numbered
+            cell that occupies that region. Defaults to False.
         **init_kwargs
             Keyword arguments passed to :meth:`Model.init_lib`.
 
@@ -1078,6 +1094,7 @@ class Model:
         plot_obj.h_res = pixels[0]
         plot_obj.v_res = pixels[1]
         plot_obj.basis = basis
+        plot_obj.color_overlaps = color_overlaps
 
         # Silence output by default. Also set arguments to start in volume
         # calculation mode to avoid loading cross sections
@@ -1097,13 +1114,12 @@ class Model:
         color_by: str = 'cell',
         colors: dict | None = None,
         seed: int | None = None,
-        openmc_exec: PathLike = 'openmc',
         axes=None,
         legend: bool = False,
         axis_units: str = 'cm',
         outline: bool | str = False,
         show_overlaps: bool = False,
-        overlap_color: Sequence[int] | str | None = None,
+        overlap_color: Sequence[int] | str = (255, 0, 0),
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,
@@ -1115,7 +1131,6 @@ class Model:
 
         .. versionadded:: 0.15.1
         """
-        import matplotlib.image as mpimg
         import matplotlib.patches as mpatches
         import matplotlib.pyplot as plt
 
@@ -1145,125 +1160,108 @@ class Model:
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
-        # Determine whether any materials contains macroscopic data and if so,
-        # set energy mode accordingly
-        _energy_mode = self.settings._energy_mode
-        for mat in self.geometry.get_all_materials().values():
-            if mat._macroscopic is not None:
-                self.settings.energy_mode = 'multi-group'
-                break
+        # Get ID map from the C API
+        id_map = self.id_map(
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            color_overlaps=show_overlaps
+        )
 
-        with TemporaryDirectory() as tmpdir:
-            _plot_seed = self.settings.plot_seed
-            if seed is not None:
-                self.settings.plot_seed = seed
-
-            # Create plot object matching passed arguments
-            plot = openmc.Plot()
-            plot.origin = origin
-            plot.width = width
-            plot.pixels = pixels
-            plot.basis = basis
+        # Generate colors if not provided
+        if colors is None and seed is not None:
+            # Use the colorize method to generate random colors
+            plot = openmc.SlicePlot()
             plot.color_by = color_by
-            plot.show_overlaps = show_overlaps
-            if overlap_color is not None:
-                plot.overlap_color = overlap_color
-            if colors is not None:
-                plot.colors = colors
-            self.plots.append(plot)
+            plot.colorize(self.geometry, seed=seed)
+            colors = plot.colors
 
-            # Run OpenMC in geometry plotting mode
-            self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+        # Convert ID map to RGB image
+        img = id_map_to_rgb(
+            id_map=id_map, 
+            color_by=color_by, 
+            colors=colors,
+            overlap_color=overlap_color
+        )
 
-            # Undo changes to model
-            self.plots.pop()
-            self.settings._plot_seed = _plot_seed
-            self.settings._energy_mode = _energy_mode
+        # Create a figure sized such that the size of the axes within
+        # exactly matches the number of pixels specified
+        if axes is None:
+            px = 1/plt.rcParams['figure.dpi']
+            fig, axes = plt.subplots()
+            axes.set_xlabel(xlabel)
+            axes.set_ylabel(ylabel)
+            params = fig.subplotpars
+            width_px = pixels[0]*px/(params.right - params.left)
+            height_px = pixels[1]*px/(params.top - params.bottom)
+            fig.set_size_inches(width_px, height_px)
 
-            # Read image from file
-            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
-            if not img_path.is_file():
-                img_path = img_path.with_suffix('.ppm')
-            img = mpimg.imread(str(img_path))
+        if outline:
+            # Combine R, G, B values into a single int for contour detection
+            rgb = (img * 256).astype(int)
+            image_value = (rgb[..., 0] << 16) + \
+                (rgb[..., 1] << 8) + (rgb[..., 2])
 
-            # Create a figure sized such that the size of the axes within
-            # exactly matches the number of pixels specified
-            if axes is None:
-                px = 1/plt.rcParams['figure.dpi']
-                fig, axes = plt.subplots()
-                axes.set_xlabel(xlabel)
-                axes.set_ylabel(ylabel)
-                params = fig.subplotpars
-                width = pixels[0]*px/(params.right - params.left)
-                height = pixels[1]*px/(params.top - params.bottom)
-                fig.set_size_inches(width, height)
+            # Set default arguments for contour()
+            if contour_kwargs is None:
+                contour_kwargs = {}
+            contour_kwargs.setdefault('colors', 'k')
+            contour_kwargs.setdefault('linestyles', 'solid')
+            contour_kwargs.setdefault('algorithm', 'serial')
 
-            if outline:
-                # Combine R, G, B values into a single int
-                rgb = (img * 256).astype(int)
-                image_value = (rgb[..., 0] << 16) + \
-                    (rgb[..., 1] << 8) + (rgb[..., 2])
+            axes.contour(
+                image_value,
+                origin="upper",
+                levels=np.unique(image_value),
+                extent=(x_min, x_max, y_min, y_max),
+                **contour_kwargs
+            )
+            
+            # If only showing outline, set the axis limits and aspect explicitly
+            if outline == 'only':
+                axes.set_xlim(x_min, x_max)
+                axes.set_ylim(y_min, y_max)
+                axes.set_aspect('equal')
 
-                # Set default arguments for contour()
-                if contour_kwargs is None:
-                    contour_kwargs = {}
-                contour_kwargs.setdefault('colors', 'k')
-                contour_kwargs.setdefault('linestyles', 'solid')
-                contour_kwargs.setdefault('algorithm', 'serial')
+        # Add legend showing which colors represent which material or cell
+        if legend:
+            if colors is None or len(colors) == 0:
+                raise ValueError("Must pass 'colors' dictionary if you "
+                                 "are adding a legend via legend=True.")
 
-                axes.contour(
-                    image_value,
-                    origin="upper",
-                    levels=np.unique(image_value),
-                    extent=(x_min, x_max, y_min, y_max),
-                    **contour_kwargs
-                )
+            if color_by == "cell":
+                expected_key_type = openmc.Cell
+            else:
+                expected_key_type = openmc.Material
 
-            # add legend showing which colors represent which material
-            # or cell if that was requested
-            if legend:
-                if plot.colors == {}:
-                    raise ValueError("Must pass 'colors' dictionary if you "
-                                     "are adding a legend via legend=True.")
+            patches = []
+            for key, color in colors.items():
+                if isinstance(key, int):
+                    raise TypeError(
+                        "Cannot use IDs in colors dict for auto legend.")
+                elif not isinstance(key, expected_key_type):
+                    raise TypeError(
+                        "Color dict key type does not match color_by")
 
-                if color_by == "cell":
-                    expected_key_type = openmc.Cell
+                # this works whether we're doing cells or materials
+                label = key.name if key.name != '' else key.id
+
+                # matplotlib takes RGB on 0-1 scale rather than 0-255
+                if len(color) == 3 and not isinstance(color, str):
+                    scaled_color = (
+                        color[0]/255, color[1]/255, color[2]/255)
                 else:
-                    expected_key_type = openmc.Material
+                    scaled_color = color
 
-                patches = []
-                for key, color in plot.colors.items():
+                key_patch = mpatches.Patch(color=scaled_color, label=label)
+                patches.append(key_patch)
 
-                    if isinstance(key, int):
-                        raise TypeError(
-                            "Cannot use IDs in colors dict for auto legend.")
-                    elif not isinstance(key, expected_key_type):
-                        raise TypeError(
-                            "Color dict key type does not match color_by")
+            axes.legend(handles=patches, **legend_kwargs)
 
-                    # this works whether we're doing cells or materials
-                    label = key.name if key.name != '' else key.id
-
-                    # matplotlib takes RGB on 0-1 scale rather than 0-255. at
-                    # this point PlotBase has already checked that 3-tuple
-                    # based colors are already valid, so if the length is three
-                    # then we know it just needs to be converted to the 0-1
-                    # format.
-                    if len(color) == 3 and not isinstance(color, str):
-                        scaled_color = (
-                            color[0]/255, color[1]/255, color[2]/255)
-                    else:
-                        scaled_color = color
-
-                    key_patch = mpatches.Patch(color=scaled_color, label=label)
-                    patches.append(key_patch)
-
-                axes.legend(handles=patches, **legend_kwargs)
-
-            # Plot image and return the axes
-            if outline != 'only':
-                axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
-
+        # Plot image and return the axes
+        if outline != 'only':
+            axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
         if n_samples:
             # Sample external source particles
@@ -1276,8 +1274,8 @@ class Model:
             tol = plane_tolerance
             for particle in particles:
                 if (slice_value - tol < particle.r[z] < slice_value + tol):
-                    xs.append(particle.r[x])
-                    ys.append(particle.r[y])
+                    xs.append(particle.r[x] * axis_scaling_factor[axis_units])
+                    ys.append(particle.r[y] * axis_scaling_factor[axis_units])
             axes.scatter(xs, ys, **source_kwargs)
 
         return axes

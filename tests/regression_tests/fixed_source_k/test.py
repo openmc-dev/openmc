@@ -1,7 +1,11 @@
+from glob import glob
 import openmc
 import pytest
 
 from tests.testing_harness import PyAPITestHarness
+from tests.regression_tests import config
+import os
+import glob
 
 def create_universe():
     # Define materials
@@ -63,6 +67,7 @@ def model():
 
 @pytest.fixture
 def model_k():
+    openmc.reset_auto_ids()
     model = openmc.Model()
 
     universe = create_universe()
@@ -81,6 +86,10 @@ def model_k():
 
     return model
 
+def remove_xml_files():
+    for f in glob.glob("*.xml"):
+        os.remove(f)
+
 def test_tally_results(model, model_k):
     """Test that fixed source run with subcritical k calculation gives the same tally results."""
     harness = PyAPITestHarness("statepoint.10.h5", model, inputs_true='inputs_true_1.dat', results_true='results_true_1.dat')
@@ -88,9 +97,26 @@ def test_tally_results(model, model_k):
 
     harness_k = PyAPITestHarness("statepoint.10.h5", model_k, inputs_true='inputs_true_2.dat', results_true='results_true_1.dat')
     harness_k.main()
+    remove_xml_files()
 
 def test_subcritical_k(model_k):
     """Test that subcritical k calculation gives a known result."""
     harness = PyAPITestHarness("statepoint.10.h5", model_k, inputs_true='inputs_true_3.dat', results_true='results_true_2.dat', 
                                subcritical_k_results=True)
     harness.main()
+    remove_xml_files()
+
+def test_subcritical_k_mpi_specific(model_k):
+    if not config['mpi']:
+        remove_xml_files()
+        pytest.skip("This test is intended for MPI execution only")
+        
+    harness = PyAPITestHarness(
+        "statepoint.10.h5", 
+        model_k, 
+        inputs_true='inputs_true_3.dat', 
+        results_true='results_true_2.dat', 
+        subcritical_k_results=True
+    )
+    harness.main()
+    remove_xml_files()

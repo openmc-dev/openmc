@@ -1,23 +1,23 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material id="3" name="HEU" depletable="true">
+    <material id="1" name="HEU" depletable="true">
       <density value="19.1" units="g/cm3"/>
       <nuclide name="U234" ao="0.008318362645468546"/>
       <nuclide name="U235" ao="0.9306591669709396"/>
       <nuclide name="U238" ao="0.05675960438837378"/>
       <nuclide name="U236" ao="0.004262865995217944"/>
     </material>
-    <material id="4" name="Depleted Uranium" depletable="true">
+    <material id="2" name="Depleted Uranium" depletable="true">
       <density value="19.1" units="g/cm3"/>
       <nuclide name="U238" ao="1.0"/>
     </material>
   </materials>
   <geometry>
-    <cell id="3" name="Fuel" material="3" region="-3" universe="2"/>
-    <cell id="4" name="Depleted Uranium" material="4" region="3 -4" universe="2"/>
-    <surface id="3" type="sphere" coeffs="0.0 0.0 0.0 4.8"/>
-    <surface id="4" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 12.2"/>
+    <cell id="1" name="Fuel" material="1" region="-1" universe="1"/>
+    <cell id="2" name="Depleted Uranium" material="2" region="1 -2" universe="1"/>
+    <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 4.8"/>
+    <surface id="2" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 12.2"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
@@ -33,7 +33,7 @@
     <calculate_subcritical_k>true</calculate_subcritical_k>
   </settings>
   <tallies>
-    <tally id="2" name="νΣf tally">
+    <tally id="1" name="νΣf tally">
       <scores>nu-fission</scores>
     </tally>
   </tallies>

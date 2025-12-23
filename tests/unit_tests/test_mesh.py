@@ -488,13 +488,29 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
         simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
 
 
+vtkhdf_tests = [
+    (
+        Path("test_mesh_dagmc_tets.vtk"),
+        "moab"
+    ),
+    (
+        Path("test_mesh_hexes.exo"),
+        "libmesh"
+    )
+]
 @pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
-def test_write_vtkhdf(request, run_in_tmpdir):
+@pytest.mark.parametrize('mesh_file, mesh_library', vtkhdf_tests)
+def test_write_vtkhdf(mesh_file, mesh_library, request, run_in_tmpdir):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
     statepoint file and writes the mesh data to vtk and vtkhdf files. It is
     necessary to read in the unstructured mesh from a statepoint file to ensure
     it has all the required attributes
     """
+    if mesh_library == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip("DAGMC not enabled.")
+    if mesh_library == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip("LibMesh not enabled.")
+
     model = openmc.Model()
 
     surf1 = openmc.Sphere(r=1000.0, boundary_type="vacuum")
@@ -502,8 +518,8 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     model.geometry = openmc.Geometry([cell1])
 
     umesh = openmc.UnstructuredMesh(
-        request.path.parent / "test_mesh_dagmc_tets.vtk",
-        "moab",
+        request.path.parent / mesh_file,
+        mesh_library,
         mesh_id = 1
     )
     mesh_filter = openmc.MeshFilter(umesh)
@@ -512,6 +528,8 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     mesh_tally = openmc.Tally(name="test_tally")
     mesh_tally.filters = [mesh_filter]
     mesh_tally.scores = ["flux"]
+    if mesh_library == "libmesh":
+        mesh_tally.estimator = "collision"
 
     model.tallies = [mesh_tally]
 
@@ -553,6 +571,26 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     # just ensure we can open the file without error
     with h5py.File("test_mesh.vtkhdf", "r"):
         ...
+
+    import vtk
+    reader = vtk.vtkHDFReader()
+    reader.SetFileName("test_mesh.vtkhdf")
+    reader.Update()
+
+    # Get mean from file and make sure it matches original data
+    num_elements = reader.GetOutput().GetNumberOfCells()
+    assert num_elements == umesh_from_sp.n_elements
+
+    num_vertices = reader.GetOutput().GetNumberOfPoints()
+    assert num_vertices == umesh_from_sp.vertices.shape[0]
+
+    arr = reader.GetOutput().GetCellData().GetArray("mean")
+    mean = np.array([arr.GetTuple1(i) for i in range(my_tally.mean.size)])
+    np.testing.assert_almost_equal(mean, my_tally.mean.flatten()/umesh_from_sp.volumes)
+
+    arr = reader.GetOutput().GetCellData().GetArray("std_dev")
+    std_dev = np.array([arr.GetTuple1(i) for i in range(my_tally.std_dev.size)])
+    np.testing.assert_almost_equal(std_dev, my_tally.std_dev.flatten()/umesh_from_sp.volumes)
 
 
 def test_mesh_get_homogenized_materials():

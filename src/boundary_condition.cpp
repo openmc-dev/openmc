@@ -222,6 +222,9 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   if (!flip_sense_)
     angle_ += PI;
 
+  // Normalize range of angle to [-PI,PI].
+  angle_ = std::remainder(angle_, 2 * PI);
+
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));
   if (rem > FP_REL_PRECISION && rem < 1 - FP_REL_PRECISION) {

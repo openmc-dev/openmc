@@ -9,7 +9,7 @@ from openmc.mixin import EqualityMixin
 from openmc.stats import Tabular, Univariate, Discrete, Mixture
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
-from .data import EV_PER_MEV
+from .data import EV_PER_MEV, NEUTRON_MASS_EV
 from .endf import get_list_record, get_tab2_record
 
 
@@ -204,13 +204,14 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
         Kalbach-Mann slope given with the same format as ACE file.
 
     """
-    # TODO: develop for photons as projectile
-    # TODO: test for other particles than neutron
-    if za_projectile != 1:
-        raise NotImplementedError(
-            "Developed and tested for neutron projectile only."
-        )
 
+    if za_projectile == 0:
+        # Calculate slope for photons using Eq. 3 in doi:10.1080/18811248.1995.9731830
+        # or ENDF-6 Formats Manual section 6.2.3.2
+        slope_n = kalbach_slope(energy_projectile, energy_emitted, 1,
+                  za_emitted, za_target)
+        return slope_n * np.sqrt(0.5*energy_projectile/NEUTRON_MASS_EV)*np.minimum(4,np.maximum(1,9.3/np.sqrt(energy_emitted/EV_PER_MEV))) 
+        
     # Special handling of elemental carbon
     if za_emitted == 6000:
         za_emitted = 6012
@@ -268,6 +269,8 @@ class KalbachMann(AngleEnergy):
     slope : Iterable of openmc.data.Tabulated1D
         Kalbach-Chadwick angular distribution slope value 'a' as a function of
         outgoing energy for each incoming energy
+    is_photon : bool 
+        Whether projectile is a photon, defaults to False
 
     Attributes
     ----------
@@ -285,14 +288,17 @@ class KalbachMann(AngleEnergy):
     slope : Iterable of openmc.data.Tabulated1D
         Kalbach-Chadwick angular distribution slope value 'a' as a function of
         outgoing energy for each incoming energy
+    is_photon : bool 
+        Whether projectile particle is a photon        
 
     """
 
     def __init__(self, breakpoints, interpolation, energy, energy_out,
-                 precompound, slope):
+                 precompound, slope, is_photon=False):
         super().__init__()
         self.breakpoints = breakpoints
         self.interpolation = interpolation
+        self.is_photon = is_photon
         self.energy = energy
         self.energy_out = energy_out
         self.precompound = precompound
@@ -317,6 +323,15 @@ class KalbachMann(AngleEnergy):
         cv.check_type('Kalbach-Mann interpolation', interpolation,
                       Iterable, Integral)
         self._interpolation = interpolation
+        
+    @property
+    def is_photon(self):
+        return self._is_photon
+
+    @is_photon.setter
+    def is_photon(self, is_photon):
+        cv.check_type('Kalbach-Mann is_photon', is_photon, bool)
+        self._is_photon = is_photon     
 
     @property
     def energy(self):
@@ -367,6 +382,7 @@ class KalbachMann(AngleEnergy):
 
         """
         group.attrs['type'] = np.bytes_('kalbach-mann')
+        group.attrs['is_photon'] = self.is_photon
 
         dset = group.create_dataset('energy', data=self.energy)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,
@@ -436,6 +452,7 @@ class KalbachMann(AngleEnergy):
             Kalbach-Mann energy distribution
 
         """
+        is_photon = bool(group.attrs.get("is_photon", False))
         interp_data = group['energy'].attrs['interpolation']
         energy_breakpoints = interp_data[0, :]
         energy_interpolation = interp_data[1, :]
@@ -491,7 +508,7 @@ class KalbachMann(AngleEnergy):
             slope.append(km_a)
 
         return cls(energy_breakpoints, energy_interpolation,
-                   energy, energy_out, precompound, slope)
+                   energy, energy_out, precompound, slope, is_photon=is_photon)
 
     @classmethod
     def from_ace(cls, ace, idx, ldis):
@@ -507,6 +524,8 @@ class KalbachMann(AngleEnergy):
         ldis : int
             Index in XSS array of the start of the energy distribution block
             (e.g. JXS[11])
+        is_photon : bool
+            Whether projectile is photon
 
         Returns
         -------
@@ -514,6 +533,7 @@ class KalbachMann(AngleEnergy):
             Kalbach-Mann energy-angle distribution
 
         """
+        is_photon = bool(ace.data_type.value == 'u')
         # Read number of interpolation regions and incoming energies
         n_regions = int(ace.xss[idx])
         n_energy_in = int(ace.xss[idx + 1 + 2*n_regions])
@@ -586,10 +606,10 @@ class KalbachMann(AngleEnergy):
             km_r.append(Tabulated1D(data[0], data[3]))
             km_a.append(Tabulated1D(data[0], data[4]))
 
-        return cls(breakpoints, interpolation, energy, energy_out, km_r, km_a)
+        return cls(breakpoints, interpolation, energy, energy_out, km_r, km_a, is_photon=is_photon)
 
     @classmethod
-    def from_endf(cls, file_obj, za_emitted, za_target, projectile_mass):
+    def from_endf(cls, file_obj, za_emitted, za_target, za_projectile):
         """Generate Kalbach-Mann distribution from an ENDF evaluation.
 
         If the projectile is a neutron, the slope is calculated when it is
@@ -606,14 +626,8 @@ class KalbachMann(AngleEnergy):
             ZA identifier of the emitted particle
         za_target : int
             ZA identifier of the target
-        projectile_mass : float
-            Mass of the projectile
-
-        Warns
-        -----
-        UserWarning
-            If the mass of the projectile is not equal to 1 (other than
-            a neutron), the slope is not calculated and set to 0 if missing.
+        za_projectile : int
+            ZA identifier of the projectile
 
         Returns
         -------
@@ -621,6 +635,7 @@ class KalbachMann(AngleEnergy):
             Kalbach-Mann energy-angle distribution
 
         """
+        is_photon = bool(za_projectile==0)
         params, tab2 = get_tab2_record(file_obj)
         lep = params[3]
         ne = params[5]
@@ -654,31 +669,19 @@ class KalbachMann(AngleEnergy):
                 a_i = values[:, 3]
                 calculated_slope.append(False)
             else:
-                # Check if the projectile is not a neutron
-                if not np.isclose(projectile_mass, 1.0, atol=1.0e-12, rtol=0.):
-                    warn(
-                        "Kalbach-Mann slope calculation is only available with "
-                        "neutrons as projectile. Slope coefficients are set to 0."
-                    )
-                    a_i = np.zeros_like(r_i)
-                    calculated_slope.append(False)
-
-                else:
-                    # TODO: retrieve ZA of the projectile
-                    za_projectile = 1
-                    a_i = [kalbach_slope(energy_projectile=energy[i],
-                                         energy_emitted=e,
-                                         za_projectile=za_projectile,
-                                         za_emitted=za_emitted,
-                                         za_target=za_target)
-                           for e in eout_i]
-                    calculated_slope.append(True)
+                a_i = [kalbach_slope(energy_projectile=energy[i],
+                                     energy_emitted=e,
+                                     za_projectile=za_projectile,
+                                     za_emitted=za_emitted,
+                                     za_target=za_target)
+                       for e in eout_i]
+                calculated_slope.append(True)
 
             precompound.append(Tabulated1D(eout_i, r_i))
             slope.append(Tabulated1D(eout_i, a_i))
 
         km_distribution = cls(tab2.breakpoints, tab2.interpolation, energy,
-                              energy_out, precompound, slope)
+                              energy_out, precompound, slope, is_photon)
 
         # List of bool to indicate slope calculation by OpenMC
         km_distribution._calculated_slope = calculated_slope

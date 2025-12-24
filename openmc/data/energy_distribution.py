@@ -1253,7 +1253,8 @@ class ContinuousTabular(EnergyDistribution):
             # Create continuous distribution
             eout_continuous = Tabular(data[0][n_discrete_lines:],
                                       data[1][n_discrete_lines:]/EV_PER_MEV,
-                                      INTERPOLATION_SCHEME[intt])
+                                      INTERPOLATION_SCHEME[intt],
+                                      ignore_negative=True)
             eout_continuous.c = data[2][n_discrete_lines:]
 
             # If discrete lines are present, create a mixture distribution

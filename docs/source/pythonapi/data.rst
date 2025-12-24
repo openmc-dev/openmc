@@ -50,6 +50,15 @@ The following classes are used for storing thermal neutron scattering data:
     CoherentElastic
     IncoherentElastic
 
+The following classes are used for storing incident photonuclear interaction data:
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    IncidentPhotonuclear
+    PhotonuclearReaction
 
 Core Functions
 --------------
@@ -213,3 +222,4 @@ NJOY Interface
     njoy.make_pendf
     njoy.make_ace
     njoy.make_ace_thermal
+    njoy.make_ace_photonuclear

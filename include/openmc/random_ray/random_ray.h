@@ -46,9 +46,19 @@ public:
   // Static data members
   static double distance_inactive_;          // Inactive (dead zone) ray length
   static double distance_active_;            // Active ray length
+  static double avg_miss_rate;               // Average ray miss rate per
+                                             // iteration for reporting
   static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
   static RandomRaySourceShape source_shape_; // Flag for linear source
   static RandomRaySampleMethod sample_method_; // Flag for sampling method
+  static int64_t n_source_regions;             // Total number of source regions
+  static int64_t
+    n_external_source_regions; // Total number of source regions with
+                               // non-zero external source terms
+  static uint64_t total_geometric_intersections; // Tracks the total number of
+                                                 // geometric intersections by
+                                                 // all rays for reporting
+  static int negroups_;                          // Number of energy groups
 
   //----------------------------------------------------------------------------
   // Public data members
@@ -64,7 +74,6 @@ private:
   vector<int> mesh_bins_;
   vector<double> mesh_fractional_lengths_;
 
-  int negroups_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
   double distance_travelled_ {0};

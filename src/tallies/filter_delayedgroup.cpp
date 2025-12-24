@@ -27,7 +27,7 @@ void DelayedGroupFilter::set_groups(span<int> groups)
     } else if (group > MAX_DELAYED_GROUPS) {
       throw std::invalid_argument {
         "Encountered delayedgroup bin with index " + std::to_string(group) +
-        " which is greater than MAX_DELATED_GROUPS (" +
+        " which is greater than MAX_DELAYED_GROUPS (" +
         std::to_string(MAX_DELAYED_GROUPS) + ")"};
     }
     groups_.push_back(group);
@@ -39,6 +39,10 @@ void DelayedGroupFilter::set_groups(span<int> groups)
 void DelayedGroupFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
+  // Note that the bin is set to zero here, but bins outside zero are
+  // tallied to regardless. This is because that logic has to be handled
+  // in the scoring code instead where looping over the delayed
+  // group takes place (tally_scoring.cpp).
   match.bins_.push_back(0);
   match.weights_.push_back(1.0);
 }

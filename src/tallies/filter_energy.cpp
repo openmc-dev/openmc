@@ -118,6 +118,47 @@ std::string EnergyoutFilter::text_label(int bin) const
 }
 
 //==============================================================================
+// SecondaryEnergyoutFilter implementation
+//==============================================================================
+
+void SecondaryEnergyFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+{
+  assert(p.secondary_bank().size() >= p.secondaries_this_collision());
+
+  // Loop over secondary bank entries from latest to earliest
+  for (int secondary_idx = 0; secondary_idx < p.secondaries_this_collision();
+       secondary_idx++) {
+
+    int bank_idx = p.secondary_bank().size() - 1 - secondary_idx;
+
+    // Check if this is the correct type of secondary, then
+    // match its energy if it's the right type
+    if (p.secondary_bank(bank_idx).particle == secondary_type_) {
+      const double E = p.secondary_bank(bank_idx).E;
+      if (E >= bins_.front() && E <= bins_.back()) {
+        auto bin = lower_bound_index(bins_.begin(), bins_.end(), E);
+        match.bins_.push_back(bin);
+        match.weights_.push_back(1.0);
+      }
+    }
+  }
+}
+
+std::string SecondaryEnergyFilter::text_label(int bin) const
+{
+  return fmt::format(
+    "Secondary outgoing Energy [{}, {})", bins_.at(bin), bins_.at(bin + 1));
+}
+
+void SecondaryEnergyFilter::from_xml(pugi::xml_node node)
+{
+  EnergyFilter::from_xml(node);
+  std::string p = get_node_value(node, "particle");
+  secondary_type_ = str_to_particle_type(p);
+}
+
+//==============================================================================
 // C-API functions
 //==============================================================================
 

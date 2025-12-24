@@ -2663,6 +2663,214 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
     match.bins_present_ = false;
 }
 
+void boostf(double A[4], double B[4], double X[4])
+{
+  // boostf(A, B, X)
+  // Performs a Lorentz boost of four-vector B from the lab frame 
+  // into the rest frame of four-vector A.
+  // A[μ]: reference four-momentum (defines the rest frame).
+  // B[μ]: four-vector to be boosted.
+  // X[μ]: output four-vector in the A-rest frame.
+  // 
+  // Formula is the standard Lorentz transformation to the rest frame
+  
+  double W;
+  int j;
+
+  if ((A[0] * A[0] - A[1] * A[1] - A[2] * A[2] - A[3] * A[3]) <= 0) {
+  }
+
+  W = sqrt(A[0] * A[0] - A[1] * A[1] - A[2] * A[2] - A[3] * A[3]);
+
+  if (W == 0 || W == (-A[0]))
+
+    X[0] = (B[0] * A[0] - B[3] * A[3] - B[2] * A[2] - B[1] * A[1]) / W;
+  for (j = 1; j <= 3; j++) {
+    X[j] = B[j] - A[j] * (B[0] + X[0]) / (A[0] + W);
+  }
+
+  return;
+}
+
+void rel_scatt(double det_pos[4], Particle& p,double E3k_cm_given)
+{
+// rel_scatt(det_pos, p, E3k_cm_given)
+// Computes relativistic two-body scattering kinematics in the lab ↔ COM frames.
+//
+// Process:
+//  1. Build incoming and target four-momenta in the lab.
+//  2. Boost to the COM frame using boostf().
+//  3. Compute outgoing energy and momentum using two-body kinematic relations:
+//       E3_cm = (M_cm^2 + m3^2 - m4^2) / (2 * M_cm)
+//  4. Determine angles and jacobian factors via back-transformation to lab.
+//
+// Reference for the general method and implementation approach:
+//   Horin, I., Alon, O., Kreisel, A., Hirsh, T. Y., Dayan, T., & Fuks, H. (2025)
+  std::vector<double> mu_cm;
+  std::vector<double> Js;
+  Direction u_lab {det_pos[0] - p.r().x, // towards the detector
+    det_pos[1] - p.r().y, det_pos[2] - p.r().z};
+  Direction u_lab_unit = u_lab / u_lab.norm(); // normalize
+  double beta  = p.speed() / C_LIGHT;
+  double gamma1 = 1.0 / sqrt(1.0 - beta * beta);
+  double m1 = p.E() / ((gamma1 - 1.0) * C_LIGHT * C_LIGHT) /1e6;  // mass of incoming particle in MeV
+  const auto& nuc {data::nuclides[p.event_nuclide()]};
+  double awr = nuc->awr_;
+  double m2 = m1 * awr; // mass of target
+  double m3 = m1;       // mass of outgoing particle to detector
+  double m4 = m2;       // mass of recoil target  system
+
+  double E1_tot =
+    p.E_last() / 1e6 + m1; // total Energy of incoming particle in MeV
+  double p1_tot = std::sqrt(
+    E1_tot * E1_tot - m1 * m1); // total momenta of incoming particle in MeV
+  // without this the get_pdf function turns p.r() into nan
+  Direction p1 = p1_tot * p.u_last();    // 3 momentum of incoming particle
+  Direction p2 = p.v_t() * m2 / C_LIGHT; // 3 momentum of target in lab
+  double E2_tot = std::sqrt(p2.norm() * p2.norm() + m2 * m2);
+  double E_cm = E1_tot + E2_tot;
+  Direction p_cm = p1 + p2;
+  double p_tot_cm = p_cm.norm();
+
+  double cos_lab = u_lab_unit.dot(p_cm) / (p_tot_cm); // between cm and p3
+  if (std::abs(cos_lab) > 1.0) {
+    cos_lab = std::copysign(1.0, cos_lab);
+  }
+
+  double theta = std::acos(cos_lab);
+  double sin_lab_sq = 1 - cos_lab * cos_lab;
+
+  double M_cm = std::sqrt(
+    E_cm * E_cm -
+    p_tot_cm * p_tot_cm); // mass of the center of mass (incoming and target)
+  double gamma = E_cm / M_cm;
+  double p1_cm[4];
+  double A[4] = {E_cm, p_cm.x, p_cm.y, p_cm.z};
+  // double invA[4] = {E_cm, -p_cm.x , -p_cm.y , -p_cm.z};
+  // boostf( invA ,p1_cm,  maybe_p1_lab); boost back to lab
+  double B[4] = {E1_tot, p1.x, p1.y, p1.z};
+  boostf(A, B, p1_cm);
+  double p1_tot_cm =
+    std::sqrt(p1_cm[1] * p1_cm[1] + p1_cm[2] * p1_cm[2] + p1_cm[3] * p1_cm[3]);
+  double E3_cm = (M_cm * M_cm + m3 * m3 - m4 * m4) / (2 * M_cm);
+  if (E3k_cm_given >= 0.0) {
+    E3_cm = E3k_cm_given + m3;
+    m4 = std::sqrt(M_cm * M_cm + m3 * m3 - 2 * M_cm * E3_cm);
+  }
+  double p3_tot_cm = std::sqrt(E3_cm * E3_cm - m3 * m3);
+  double cond = (M_cm / p_tot_cm) * (p3_tot_cm / m3);
+  double insq = (M_cm * M_cm * p3_tot_cm * p3_tot_cm -
+                 m3 * m3 * p_tot_cm * p_tot_cm * sin_lab_sq);
+  double p3_tot_1 = 0;
+  double p3_tot_2 = 0;
+  double E3k_1 = 0;
+  double E3k_2 = 0;
+  Direction p3_1 = {0, 0, 0};
+  Direction p3_2 = {0, 0, 0};
+  double Fp3cm_1[4];
+  double Fp3cm_2[4];
+  const auto& rx {nuc->reactions_[0]};
+  // auto& d = rx->products_[0].distribution_[0];
+  // auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
+
+  double q = (p_tot_cm / E_cm) * (E3_cm / p3_tot_cm);
+  double approx_tol = 0.0001;
+
+  if (insq >= 0) //( (cond > 1) || ( (cond < 1) && (theta < std::asin(cond)) ) )
+  {
+    // first solution
+
+    p3_tot_1 = ((M_cm * M_cm + m3 * m3 - m4 * m4) * p_tot_cm * cos_lab +
+                 2 * E_cm * std::sqrt(insq)) /
+               2 / (M_cm * M_cm + p_tot_cm * p_tot_cm * sin_lab_sq);
+    if (p3_tot_1 <= 0)
+      return;
+    p3_1 = u_lab_unit * p3_tot_1;
+    double E3_tot_1 = std::sqrt(p3_tot_1 * p3_tot_1 + m3 * m3);
+    E3k_1 = (E3_tot_1 - m3) * 1e6; // back to eV
+    double B1[4] = {E3_tot_1, p3_1.x, p3_1.y, p3_1.z};
+    boostf(A, B1, Fp3cm_1);
+
+    double p3cm_tot_1 =
+      std::sqrt(Fp3cm_1[1] * Fp3cm_1[1] + Fp3cm_1[2] * Fp3cm_1[2] +
+                Fp3cm_1[3] * Fp3cm_1[3]);
+    double mucm_1 =
+      (Fp3cm_1[1] * p1_cm[1] + Fp3cm_1[2] * p1_cm[2] + Fp3cm_1[3] * p1_cm[3]) /
+      (p1_tot_cm * p3cm_tot_1); // good until here
+    if (std::abs(mucm_1) > 1.0) {
+      mucm_1 = std::copysign(1.0, mucm_1);
+    }
+    // double pdf1cm = d_->angle().get_pdf(p.E_last(),mucm_1,p.current_seed());
+    // pdfs_cm.push_back(pdf1cm);
+    mu_cm.push_back(mucm_1);
+
+    double mucm03_1 =
+      (Fp3cm_1[1] * p_cm.x + Fp3cm_1[2] * p_cm.y + Fp3cm_1[3] * p_cm.z) /
+      (p_tot_cm * p3cm_tot_1);
+
+    if (std::abs(mucm03_1) > 1.0) {
+      mucm03_1 = std::copysign(1.0, mucm03_1);
+    }
+    double sincm1 = std::sqrt(
+      1 - mucm03_1 * mucm03_1); // if this is zero derivative is inf so pdf is 0
+    double sin_ratio1 = std::sqrt(sin_lab_sq) / sincm1;
+    double derivative1 =
+      gamma * (1 + q * mucm03_1) * (sin_ratio1 * sin_ratio1 * sin_ratio1);
+    if (sin_lab_sq < approx_tol) {
+      derivative1 = ((cos_lab) / (gamma * mucm03_1 * (1 + q * mucm03_1))) *
+                    ((cos_lab) / (gamma * mucm03_1 * (1 + q * mucm03_1)));
+    }
+    Js.push_back(derivative1);
+
+    if (true) //((cond < 1) && (theta < std::asin(cond)))
+    {
+      // second solution
+
+      p3_tot_2 = ((M_cm * M_cm + m3 * m3 - m4 * m4) * p_tot_cm * cos_lab -
+                   2 * E_cm * std::sqrt(insq)) /
+                 2 / (M_cm * M_cm + p_tot_cm * p_tot_cm * sin_lab_sq);
+      if (p3_tot_2 < 0)
+        return;
+      p3_2 = u_lab_unit * p3_tot_2;
+      double E3_tot_2 = std::sqrt(p3_tot_2 * p3_tot_2 + m3 * m3);
+      E3k_2 = (E3_tot_2 - m3) * 1e6;
+      if (p3_tot_2 < 0 || E3k_2 < 0)
+        return;
+      double B2[4] = {E3_tot_2, p3_2.x, p3_2.y, p3_2.z};
+      boostf(A, B2, Fp3cm_2);
+      double p3cm_tot_2 =
+        std::sqrt(Fp3cm_2[1] * Fp3cm_2[1] + Fp3cm_2[2] * Fp3cm_2[2] +
+                  Fp3cm_2[3] * Fp3cm_2[3]);
+      double mucm_2 = (Fp3cm_2[1] * p1_cm[1] + Fp3cm_2[2] * p1_cm[2] +
+                        Fp3cm_2[3] * p1_cm[3]) /
+                      (p1_tot_cm * p3cm_tot_2);
+      if (std::abs(mucm_2) > 1) {
+        mucm_2 = std::copysign(1.0, mucm_2);
+      }
+      // double pdf2cm =
+      // d_->angle().get_pdf(p.E_last(),mucm_2,p.current_seed());
+      // pdfs_cm.push_back(pdf2cm);
+      mu_cm.push_back(mucm_2);
+
+      double mucm03_2 =
+        (Fp3cm_2[1] * p_cm.x + Fp3cm_2[2] * p_cm.y + Fp3cm_2[3] * p_cm.z) /
+        (p_tot_cm * p3cm_tot_1);
+      if (std::abs(mucm03_2) > 1.0) {
+        mucm03_2 = std::copysign(1.0, mucm03_2);
+      }
+      double sincm2 = std::sqrt(1 - mucm03_2 * mucm03_2);
+      double sin_ratio2 = std::sqrt(sin_lab_sq) / sincm2;
+      double derivative2 =
+        gamma * (1 + q * mucm03_2) * (sin_ratio2 * sin_ratio2 * sin_ratio2);
+      if (sin_lab_sq < approx_tol) {
+        derivative2 = ((cos_lab) / (gamma * mucm03_2 * (1 + q * mucm03_2))) *
+                      ((cos_lab) / (gamma * mucm03_2 * (1 + q * mucm03_2)));
+      }
+      Js.push_back(derivative2);
+
+    }
+  }
+}
 void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 {
   // The pulse height tally in OpenMC hijacks the logic of CellFilter and

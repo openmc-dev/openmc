@@ -46,6 +46,7 @@ struct SourceSite {
   double E;
   double time {0.0};
   double wgt {1.0};
+  int n_repl {1};
   int delayed_group {0};
   int surf_id {SURFACE_NONE};
   ParticleType particle;

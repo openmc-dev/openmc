@@ -50,11 +50,11 @@ public:
   //! \return Whether a secondary particle was created
   bool create_secondary(double wgt, Direction u, double E, ParticleType type);
 
-  //! split a particle
+  //! replicate a particle
   //
-  //! creates a new particle with weight wgt
-  //! \param wgt Weight of the new particle
-  void split(double wgt);
+  //! creates replicated particles from this one
+  //! \param n_repl Number of replicas
+  void replicate(int n_repl);
 
   //! initialize from a source site
   //
@@ -63,6 +63,15 @@ public:
   //! simply as a secondary particle.
   //! \param src Source site data
   void from_source(const SourceSite* src);
+
+  //! initialize from a spendable source site
+  //
+  //! takes a particle from source site data and notifies that the site has
+  //! become spent.
+  //! \param src Source site data
+  //! \param empty_bank If false, the site does not contain remianed particle
+  //! replicas anymore
+  void from_spendable_source(SourceSite* src, bool& empty_bank);
 
   // Coarse-grained particle events
   void event_calculate_xs();

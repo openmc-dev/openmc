@@ -21,49 +21,29 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  setup: 
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.read-json.outputs.matrix }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send JSON matrix contents to job output
+        id: read-json
+        shell: bash
+        run: |
+            echo "matrix<<EOF" >> $GITHUB_OUTPUT
+            cat $GITHUB_WORKSPACE/tools/ci/matrix.json >> $GITHUB_OUTPUT
+
   main:
     runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    needs: setup
     strategy:
-      matrix:
-        python-version: ["3.11"]
-        mpi: [n, y]
-        omp: [n, y]
-        dagmc: [n]
-        libmesh: [n]
-        event: [n]
-        vectfit: [n]
+      matrix: "${{ fromJSON( needs.setup.outputs.matrix ) }}"
 
-        include:
-          - python-version: "3.12"
-            omp: n
-            mpi: n
-          - python-version: "3.13"
-            omp: n
-            mpi: n
-          - dagmc: y
-            python-version: "3.11"
-            mpi: y
-            omp: y
-          - libmesh: y
-            python-version: "3.11"
-            mpi: y
-            omp: y
-          - libmesh: y
-            python-version: "3.11"
-            mpi: n
-            omp: y
-          - event: y
-            python-version: "3.11"
-            omp: y
-            mpi: n
-          - vectfit: y
-            python-version: "3.11"
-            omp: n
-            mpi: y
-    name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
-      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
-      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
-      vectfit=${{ matrix.vectfit }})"
+    name: "${{ matrix.job-name }}"
 
     env:
       MPI: ${{ matrix.mpi }}
@@ -137,24 +117,66 @@ jobs:
         if: ${{ matrix.vectfit == 'y' }}
         run: sudo apt install -y libblas-dev liblapack-dev
 
+      - name: Hash dependencies to check caches
+        run: |
+          $GITHUB_WORKSPACE/tools/ci/gha-caches.sh
+          
+      - name: Restore NJOY2016
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/NJOY2016/metaconfigure
+            ~/NJOY2016/src
+            ~/NJOY2016/build/njoy
+            ~/NJOY2016/build/libnjoy.so
+          key: NJOY2016-${{ env.NJOY_HASH }} 
+
+      - name: Restore DAGMC
+        if: ${{ matrix.dagmc == 'y' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/DAGMC
+            ~/MOAB
+          key: DAGMC-${{ env.DAGMC_HASH }}/MOAB-${{ env.MOAB_HASH }}
+
+      - name: Restore vectfit
+        if: ${{ matrix.vectfit == 'y' }} 
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/pybind11
+            ~/xtl
+            ~/xtensor-python
+            ~/xtensor-blas
+            ~/vectfit
+          key: vectfit-${{ env.VF_HASH }}/pybind-${{ env.PYBIND_HASH }}
+
+      - name: Restore libmesh
+        if: ${{ matrix.libmesh == 'y' }} 
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/LIBMESH
+          key: libmesh-mpi-${{matrix.mpi}}-${{ env.LB_HASH }} 
+
       - name: install
         shell: bash
         run: |
-          echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
-
+          
       - name: display-config
         shell: bash
         run: |
           openmc -v
 
-      - name: cache-xs
+      - name: Restore endf-b-vii.1 cache
         uses: actions/cache@v4
         with:
           path: |
             ~/nndc_hdf5
             ~/endf-b-vii.1
-          key: ${{ runner.os }}-build-xs-cache
+          key: endf-b-vii.1-cache
 
       - name: before
         shell: bash

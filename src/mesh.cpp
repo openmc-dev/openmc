@@ -30,6 +30,7 @@
 #include "openmc/file_utils.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/hex_mesh.h"
 #include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
@@ -244,6 +245,8 @@ const std::unique_ptr<Mesh>& Mesh::create(
     model::meshes.push_back(make_unique<CylindricalMesh>(dataset));
   } else if (mesh_type == SphericalMesh::mesh_type) {
     model::meshes.push_back(make_unique<SphericalMesh>(dataset));
+  } else if (mesh_type == HexagonalMesh::mesh_type) {
+    model::meshes.push_back(make_unique<HexagonalMesh>(dataset));
 #ifdef OPENMC_DAGMC_ENABLED
   } else if (mesh_type == UnstructuredMesh::mesh_type &&
              mesh_library == MOABMesh::mesh_lib_type) {
@@ -2309,6 +2312,8 @@ extern "C" int openmc_extend_meshes(
       model::meshes.push_back(make_unique<CylindricalMesh>());
     } else if (SphericalMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<SphericalMesh>());
+    } else if (HexagonalMesh::mesh_type == type) {
+      model::meshes.push_back(make_unique<HexagonalMesh>());
     } else {
       throw std::runtime_error {"Unknown mesh type: " + std::string(type)};
     }

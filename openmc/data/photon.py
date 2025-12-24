@@ -749,7 +749,13 @@ class IncidentPhoton(EqualityMixin):
 
         return data
 
-    def export_to_hdf5(self, path, mode='a', libver='earliest'):
+    def export_to_hdf5(
+        self,
+        path: cv.PathLike,
+        mode: str = 'a',
+        libver: str = 'earliest',
+        metadata: str | None = None
+    ):
         """Export incident photon data to an HDF5 file.
 
         Parameters
@@ -762,6 +768,8 @@ class IncidentPhoton(EqualityMixin):
         libver : {'earliest', 'latest'}
             Compatibility mode for the HDF5 file. 'latest' will produce files
             that are less backwards compatible but have performance benefits.
+        metadata : Optional str
+            A string of metadata to include in the HDF5 file as an attribute.
 
         """
         with h5py.File(str(path), mode, libver=libver) as f:
@@ -769,6 +777,8 @@ class IncidentPhoton(EqualityMixin):
             f.attrs['filetype'] = np.bytes_('data_photon')
             if 'version' not in f.attrs:
                 f.attrs['version'] = np.array(HDF5_VERSION)
+            if metadata is not None:
+                f.attrs['metadata'] = np.bytes_(metadata)
 
             group = f.create_group(self.name)
             group.attrs['Z'] = Z = self.atomic_number

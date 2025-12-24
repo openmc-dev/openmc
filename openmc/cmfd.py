@@ -25,6 +25,7 @@ import openmc.lib
 from .checkvalue import (check_type, check_length, check_value,
                          check_greater_than, check_less_than)
 from .exceptions import OpenMCError
+from ._sparse_compat import csr_array
 
 # See if mpi4py module can be imported, define have_mpi global variable
 try:
@@ -980,8 +981,7 @@ class CMFDRun:
         loss_row = self._loss_row
         loss_col = self._loss_col
         temp_data = np.ones(len(loss_row))
-        temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)),
-                                      shape=(n, n))
+        temp_loss = csr_array((temp_data, (loss_row, loss_col)), shape=(n, n))
         temp_loss.sort_indices()
 
         # Pass coremap as 1-d array of 32-bit integers
@@ -1585,7 +1585,7 @@ class CMFDRun:
         # Create csr matrix
         loss_row = self._loss_row
         loss_col = self._loss_col
-        loss = sparse.csr_matrix((data, (loss_row, loss_col)), shape=(n, n))
+        loss = csr_array((data, (loss_row, loss_col)), shape=(n, n))
         loss.sort_indices()
         return loss
 
@@ -1612,7 +1612,7 @@ class CMFDRun:
         # Create csr matrix
         prod_row = self._prod_row
         prod_col = self._prod_col
-        prod = sparse.csr_matrix((data, (prod_row, prod_col)), shape=(n, n))
+        prod = csr_array((data, (prod_row, prod_col)), shape=(n, n))
         prod.sort_indices()
         return prod
 

@@ -1,14 +1,17 @@
 #include "openmc/distribution_energy.h"
 
 #include <algorithm> // for max, min, copy, move
+#include <cmath>     // for sqrt, abs
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
 #include "xtensor/xview.hpp"
 
+#include "openmc/constants.h"
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
+#include "openmc/particle.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
@@ -41,13 +44,35 @@ double DiscretePhoton::sample(double E, uint64_t* seed) const
 
 LevelInelastic::LevelInelastic(hid_t group)
 {
-  read_attribute(group, "threshold", threshold_);
-  read_attribute(group, "mass_ratio", mass_ratio_);
+  // for backwards compatibility:
+  if (attribute_exists(group, "mass_ratio")) {
+    read_attribute(group, "threshold", b_);
+    read_attribute(group, "mass_ratio", a_);
+    c_ = 0.0;
+  } else {
+    double A, Q;
+    std::string temp;
+    read_attribute(group, "mass", A);
+    read_attribute(group, "q_value", Q);
+    read_attribute(group, "particle", temp);
+    auto particle = str_to_particle_type(temp);
+    if (particle == ParticleType::neutron) {
+      a_ = (A / (A + 1.0)) * (A / (A + 1.0));
+      b_ = (A + 1.0) / A * std::abs(Q);
+      c_ = 0.0;
+    } else if (particle == ParticleType::photon) {
+      a_ = (A - 1.0) / A;
+      b_ = std::abs(Q);
+      c_ = 1.0 / (2.0 * MASS_NEUTRON_EV * (A - 1.0));
+    } else {
+      fatal_error("Unrecognized particle: " + temp);
+    }
+  }
 }
 
 double LevelInelastic::sample(double E, uint64_t* seed) const
 {
-  return mass_ratio_ * (E - threshold_);
+  return a_ * (E - b_ - c_ * (E * E));
 }
 
 //==============================================================================

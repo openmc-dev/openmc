@@ -1200,12 +1200,7 @@ class Reaction(EqualityMixin):
                 # since it can be calculated analytically. Here we determine the
                 # necessary parameters to create a LevelInelastic object
                 dist = UncorrelatedAngleEnergy()
-
-                A = ev.target['mass']
-                threshold = (A + 1.)/A*abs(rx.q_value)
-                mass_ratio = (A/(A + 1.))**2
-                dist.energy = LevelInelastic(threshold, mass_ratio)
-
+                dist.energy = LevelInelastic(rx.q_value, ev.target['mass'])
                 neutron.distribution.append(dist)
 
             if (4, mt) in ev.section:

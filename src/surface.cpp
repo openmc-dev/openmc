@@ -1332,7 +1332,7 @@ void read_surfaces(pugi::xml_node node)
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
       surf1.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = make_unique<TranslationalPeriodicBC>(j_surf, i_surf);
     } else {
       // check that both normals have at least one 0 component
       if (std::abs(norm1.x) > FP_PRECISION &&

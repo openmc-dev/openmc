@@ -64,6 +64,10 @@ bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
 bool neighbor_list_find_cell(
   GeometryState& p, bool verbose = false); // Only usable on surface crossings
 
+bool find_cell_in_virtual_lattice(GeometryState& p,
+  bool verbose =
+    false); // Only usable on triso surface crossings in virtual lattice
+
 //==============================================================================
 //! Move a particle into a new lattice tile.
 //==============================================================================

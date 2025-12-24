@@ -58,6 +58,7 @@ std::unordered_map<int, int> tally_map;
 vector<unique_ptr<Tally>> tallies;
 vector<int> active_tallies;
 vector<int> active_analog_tallies;
+vector<int> active_particleout_analog_tallies;
 vector<int> active_tracklength_tallies;
 vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
@@ -160,7 +161,8 @@ Tally::Tally(pugi::xml_node node)
     // Change the tally estimator if a filter demands it
     FilterType filt_type = f->type();
     if (filt_type == FilterType::ENERGY_OUT ||
-        filt_type == FilterType::LEGENDRE) {
+        filt_type == FilterType::LEGENDRE ||
+        filt_type == FilterType::PARTICLE_OUT) {
       estimator_ = TallyEstimator::ANALOG;
     } else if (filt_type == FilterType::SPHERICAL_HARMONICS) {
       auto sf = dynamic_cast<SphericalHarmonicsFilter*>(f);
@@ -326,8 +328,7 @@ Tally::Tally(pugi::xml_node node)
         if (has_energyout && i_nuc == -1) {
           fatal_error(fmt::format(
             "Error on tally {}: Cannot use a "
-            "'nuclide_density' or 'temperature' derivative on a tally with "
-            "an "
+            "'nuclide_density' or 'temperature' derivative on a tally with an "
             "outgoing energy filter and 'total' nuclide rate. Instead, tally "
             "each nuclide in the material individually.",
             id_));
@@ -580,7 +581,6 @@ void Tally::set_scores(const vector<std::string>& scores)
         fatal_error("Cannot tally flux with an outgoing energy filter.");
       break;
 
-    case SCORE_TOTAL:
     case SCORE_ABSORPTION:
     case SCORE_FISSION:
       if (energyout_present)
@@ -589,6 +589,7 @@ void Tally::set_scores(const vector<std::string>& scores)
                     "outgoing energy filter");
       break;
 
+    case SCORE_TOTAL:
     case SCORE_SCATTER:
       if (legendre_present)
         estimator_ = TallyEstimator::ANALOG;
@@ -1140,6 +1141,7 @@ void setup_active_tallies()
 {
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
+  model::active_particleout_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
   model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
@@ -1156,12 +1158,15 @@ void setup_active_tallies()
       bool mesh_present = (tally.get_filter<MeshFilter>() ||
                            tally.get_filter<MeshMaterialFilter>());
       auto time_filter = tally.get_filter<TimeFilter>();
+      bool particleout_present = tally.has_filter(FilterType::PARTICLE_OUT);
       switch (tally.type_) {
 
       case TallyType::VOLUME:
         switch (tally.estimator_) {
         case TallyEstimator::ANALOG:
           model::active_analog_tallies.push_back(i);
+          if (particleout_present)
+            model::active_particleout_analog_tallies.push_back(i);
           break;
         case TallyEstimator::TRACKLENGTH:
           if (time_filter && mesh_present) {
@@ -1204,6 +1209,7 @@ void free_memory_tally()
 
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
+  model::active_particleout_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
   model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();

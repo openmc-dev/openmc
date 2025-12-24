@@ -39,6 +39,10 @@
 
 namespace openmc {
 
+namespace simulation {
+thread_local Particle tmp_particle;
+}
+
 //==============================================================================
 // Particle implementation
 //==============================================================================
@@ -89,6 +93,24 @@ bool Particle::create_secondary(
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
+
+  // Score tallies affected by secondary particles
+  if (!model::active_particleout_analog_tallies.empty()) {
+    // Create secondary particle for tallying purposes only
+    simulation::tmp_particle.from_source(&bank);
+    simulation::tmp_particle.u_last() = this->u();
+    simulation::tmp_particle.r_last() = this->r();
+    simulation::tmp_particle.E_last() = this->E();
+    simulation::tmp_particle.type_last() = this->type();
+
+    if (settings::run_CE) {
+      score_analog_tally_ce(
+        simulation::tmp_particle, model::active_particleout_analog_tallies);
+    } else {
+      score_analog_tally_mg(
+        simulation::tmp_particle, model::active_particleout_analog_tallies);
+    }
+  }
   return true;
 }
 
@@ -128,6 +150,7 @@ void Particle::from_source(const SourceSite* src)
 
   // Copy attributes from source bank site
   type() = src->particle;
+  type_last() = src->particle;
   wgt() = src->wgt;
   wgt_last() = src->wgt;
   r() = src->r;
@@ -165,6 +188,7 @@ void Particle::event_calculate_xs()
   // Store pre-collision particle properties
   wgt_last() = wgt();
   E_last() = E();
+  type_last() = type();
   u_last() = u();
   r_last() = r();
   time_last() = time();
@@ -364,9 +388,9 @@ void Particle::event_collide()
     score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
     if (settings::run_CE) {
-      score_analog_tally_ce(*this);
+      score_analog_tally_ce(*this, model::active_analog_tallies);
     } else {
-      score_analog_tally_mg(*this);
+      score_analog_tally_mg(*this, model::active_analog_tallies);
     }
   }
 

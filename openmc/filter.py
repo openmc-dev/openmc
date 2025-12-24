@@ -23,7 +23,7 @@ from ._xml import get_elem_list, get_text
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
-    'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
+    'energyfunction', 'fissionyields', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
     'collision', 'time', 'parentnuclide', 'weight', 'meshborn', 'meshsurface',
     'meshmaterial',
@@ -2565,6 +2565,31 @@ class EnergyFunctionFilter(Filter):
 
         return df
 
+class FissionYieldsFilter(ParticleFilter):
+    """Bins tally fission events based on fission yields
+
+    Parameters
+    ----------
+    bins : str, or iterable of str
+        Names of nuclides (e.g., 'Ni65')
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : iterable of str
+        Names of nuclides
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    @Filter.bins.setter
+    def bins(self, bins):
+        bins = np.atleast_1d(bins)
+        cv.check_iterable_type('filter bins', bins, str)
+        self._bins = bins
 
 class WeightFilter(RealFilter):
     """Bins tally events based on the incoming particle weight.

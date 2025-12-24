@@ -327,6 +327,8 @@ class EnergyFunctionFilter(Filter):
         cfunc(self._index, n, array_p)
         return as_array(array_p, (n.value, ))
 
+class FissionYieldsFilter(Filter):
+    filter_type = 'fissionyields'
 
 class LegendreFilter(Filter):
     filter_type = 'legendre'
@@ -697,6 +699,7 @@ _FILTER_TYPE_MAP = {
     'energy': EnergyFilter,
     'energyout': EnergyoutFilter,
     'energyfunction': EnergyFunctionFilter,
+    'fissionyields': FissionYieldsFilter,
     'legendre': LegendreFilter,
     'material': MaterialFilter,
     'materialfrom': MaterialFromFilter,

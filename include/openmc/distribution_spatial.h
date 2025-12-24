@@ -65,12 +65,18 @@ public:
   Distribution* phi() const { return phi_.get(); }
   Distribution* z() const { return z_.get(); }
   Position origin() const { return origin_; }
+  Direction r_dir() const { return r_dir_; }
+  Direction phi_dir() const { return phi_dir_; }
+  Direction z_dir() const { return z_dir_; }
 
 private:
-  UPtrDist r_;      //!< Distribution of r coordinates
-  UPtrDist phi_;    //!< Distribution of phi coordinates
-  UPtrDist z_;      //!< Distribution of z coordinates
-  Position origin_; //!< Cartesian coordinates of the cylinder center
+  UPtrDist r_;        //!< Distribution of r coordinates
+  UPtrDist phi_;      //!< Distribution of phi coordinates
+  UPtrDist z_;        //!< Distribution of z coordinates
+  Position origin_;   //!< Cartesian coordinates of the cylinder center
+  Direction r_dir_;   //!< Direction of r-axis at phi=0
+  Direction phi_dir_; //!< Direction of phi-axis at phi=0
+  Direction z_dir_;   //!< Direction of z-axis
 };
 
 //==============================================================================

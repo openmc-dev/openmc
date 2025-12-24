@@ -248,6 +248,8 @@ Tabular::Tabular(pugi::xml_node node)
       interp_ = Interpolation::histogram;
     } else if (temp == "linear-linear") {
       interp_ = Interpolation::lin_lin;
+    } else if (temp == "log-linear") {
+      interp_ = Interpolation::log_lin;
     } else {
       openmc::fatal_error(
         "Unsupported interpolation type for distribution: " + temp);
@@ -284,9 +286,11 @@ void Tabular::init(
 
   // Check interpolation parameter
   if (interp_ != Interpolation::histogram &&
-      interp_ != Interpolation::lin_lin) {
-    openmc::fatal_error("Only histogram and linear-linear interpolation "
-                        "for tabular distribution is supported.");
+      interp_ != Interpolation::lin_lin && interp_ != Interpolation::lin_log &&
+      interp_ != Interpolation::log_lin && interp_ != Interpolation::log_log) {
+    openmc::fatal_error(
+      "Only histogram, linear-linear, linear-log, log-linear, and log-log"
+      "interpolation for tabular distribution are supported.");
   }
 
   // Calculate cumulative distribution function
@@ -300,6 +304,15 @@ void Tabular::init(
         c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]);
       } else if (interp_ == Interpolation::lin_lin) {
         c_[i] = c_[i - 1] + 0.5 * (p_[i - 1] + p_[i]) * (x_[i] - x_[i - 1]);
+      } else if (interp_ == Interpolation::log_lin) {
+        c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]) /
+                              std::log(p_[i] / p_[i - 1]) *
+                              (p_[i] / p_[i - 1] - 1);
+      } else if (interp_ == Interpolation::log_log) {
+        double m = std::log(p_[i] / p_[i - 1] - x_[i] / x_[i - 1]);
+        c_[i] =
+          c_[i - 1] + p_[i - 1] / (std::pow(x_[i - 1], m) * (m + 1)) *
+                        (std::pow(x_[i], m + 1) - std::pow(x_[i - 1], m + 1));
       }
     }
   }
@@ -340,7 +353,7 @@ double Tabular::sample(uint64_t* seed) const
     } else {
       return x_i;
     }
-  } else {
+  } else if (interp_ == Interpolation::lin_lin) {
     // Linear-linear interpolation
     double x_i1 = x_[i + 1];
     double p_i1 = p_[i + 1];
@@ -352,6 +365,53 @@ double Tabular::sample(uint64_t* seed) const
       return x_i +
              (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
                m;
+    }
+  } else if (interp_ == Interpolation::lin_log) {
+    // Linear-log interpolation
+    // Inverse transform sampling with linear-log interpolation is not possible
+    // so this uses rejection sampling
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    if (p_i1 == p_i) {
+      return x_i + (c - c_i) / p_i;
+    }
+
+    while (true) {
+      double x = x_i + prn(seed) * (x_i1 - x_i);
+      double p_unif = p_i + prn(seed) * (p_i1 - p_i);
+
+      // Sample linear-log PDF
+      double p = p_i + std::log(x / x_i - x_i1 / x_i) * (p_i1 - p_i);
+      if (p_unif < p) {
+        return x;
+      }
+    }
+  } else if (interp_ == Interpolation::log_lin) {
+    // Log-linear interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    if (p_i1 == p_i) {
+      return x_i + (c - c_i) / p_i;
+    } else {
+      return (x_i - x_i1) / std::log(p_i1 / p_i) *
+             std::log((x_i - x_i1) * p_i *
+                      std::pow(p_i1 / p_i, x_i / (x_i - x_i1)) /
+                      ((x_i - x_i1) * p_i + (c_i - c) * std::log(p_i1 / p_i)));
+    }
+  } else {
+    // Log-log interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    if (p_i1 == p_i) {
+      return x_i + (c - c_i) / p_i;
+    } else {
+      double m = std::log(p_i1 / p_i) / std::log(x_i1 / x_i);
+      return std::pow(
+        std::pow(x_i, m) * (x_i * p_i - (c_i - c) * (m + 1)) / p_i,
+        1 / (m + 1));
     }
   }
 }

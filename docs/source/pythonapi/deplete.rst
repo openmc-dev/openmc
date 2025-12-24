@@ -135,6 +135,19 @@ The :class:`Chain` class uses information from the following module variable:
 
    :type: dict
 
+It contains the following switch:
+
+.. data:: chain.INCLUDE_SPONT_FISSION
+
+   Boolean switch to enable or disable the use of spontaneous fission
+   product yields when solving the Bateman equations. The default is to 
+   include spontaneous fission product yields if they are present in
+   the Chain object. 
+
+   :type: bool
+
+
+
 The following classes are used during a depletion simulation and store auxiliary
 data, such as number densities and reaction rates for each material.
 

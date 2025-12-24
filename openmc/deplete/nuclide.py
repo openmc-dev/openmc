@@ -106,6 +106,10 @@ class Nuclide:
     yield_data : FissionYieldDistribution or None
         Fission product yields at tabulated energies for this nuclide. Can be
         treated as a nested dictionary ``{energy: {product: yield}}``
+    spont_yield_data : FissionYieldDistribution or None
+        Spontaneous fission product yields. To keep the same structure as for 
+        yield_data this is treated as a nested dictionary 
+        ``{energy: {product: yield}}`` with one energy value = Inf.
     yield_energies : tuple of float or None
         Energies at which fission product yields exist
     """
@@ -128,6 +132,9 @@ class Nuclide:
         # Neutron fission yields, if present
         self._yield_data = None
 
+        # Spontanteous fission yields, if present
+        self._spont_yield_data = None
+
     def __repr__(self):
         n_modes, n_rx = self.n_decay_modes, self.n_reaction_paths
         return f"<Nuclide: {self.name} ({n_modes} modes, {n_rx} reactions)>"
@@ -146,6 +153,12 @@ class Nuclide:
             return None
         return self._yield_data
 
+    @property
+    def spont_yield_data(self):
+        if self._spont_yield_data is None:
+            return None
+        return self._spont_yield_data
+
     @yield_data.setter
     def yield_data(self, fission_yields):
         if fission_yields is None:
@@ -156,6 +169,17 @@ class Nuclide:
                 self._yield_data = fission_yields
             else:
                 self._yield_data = FissionYieldDistribution(fission_yields)
+
+    @spont_yield_data.setter
+    def spont_yield_data(self, fission_yields):
+        if fission_yields is None:
+            self._spont_yield_data = None
+        else:
+            check_type("fission_yields", fission_yields, Mapping)
+            if isinstance(fission_yields, FissionYieldDistribution):
+                self._spont_yield_data = fission_yields
+            else:
+                self._spont_yield_data = FissionYieldDistribution(fission_yields)
 
     @property
     def yield_energies(self):
@@ -289,6 +313,27 @@ class Nuclide:
 
             nuc.yield_data = FissionYieldDistribution.from_xml_element(fpy_elem)
 
+
+        sfy_elem = element.find('spont_fission_yields')
+        if sfy_elem is not None:
+            # Check for use of SFY from other nuclide
+            parent = sfy_elem.get('parent')
+            if parent is not None:
+                assert root is not None
+                sfy_elem = root.find(
+                    f'.//nuclide[@name="{parent}"]/spont_fission_yields'
+                )
+                if sfy_elem is None:
+                    raise ValueError(
+                        "Spontanteous fission product yields for {0} borrow"
+                        " from {1}, but {1} is not present in the chain file"
+                        " or has no yields.".format(
+                            nuc.name, parent
+                        ))
+                nuc._sfy = parent
+
+            nuc.spont_yield_data = FissionYieldDistribution.from_xml_element(sfy_elem)
+
         return nuc
 
     def to_xml_element(self):
@@ -342,6 +387,15 @@ class Nuclide:
                 energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
                 self.yield_data.to_xml_element(fpy_elem)
 
+        if self.spont_yield_data:
+            sfy_elem = ET.SubElement(elem, 'spont_fission_yields')
+
+            if hasattr(self, '_sfy'):
+                # Check for link to other nuclide data
+                sfy_elem.set('parent', self._sfy)
+            else:
+                self.spont_yield_data.to_xml_element(sfy_elem)
+
         return elem
 
     def validate(self, strict=True, quiet=False, tolerance=1e-4):
@@ -352,6 +406,8 @@ class Nuclide:
             1) for all non-fission reactions and decay modes,
                does the sum of branching ratios equal about one?
             2) for fission reactions, does the sum of fission yield
+               fractions equal about two?
+            3) For spontanous fission, does the sum of fission yield
                fractions equal about two?
 
         Parameters
@@ -439,6 +495,24 @@ class Nuclide:
                     return False
                 warn(msg)
                 valid = False
+
+        if self.spont_yield_data:
+            for _, fission_yield in self.spont_yield_data.items():
+                sum_yield = fission_yield.yields.sum()
+                stat = 2.0 - tolerance <= sum_yield <= 2.0 + tolerance
+                if stat:
+                    continue
+                msg = msg_func(
+                    name=self.name, actual=sum_yield,
+                    expected=2.0, tol=tolerance,
+                    prop=f"spontaneous fission yields")
+                if strict:
+                    raise ValueError(msg)
+                elif quiet:
+                    return False
+                warn(msg)
+                valid = False
+
 
         return valid
 

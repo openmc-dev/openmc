@@ -18,11 +18,6 @@ fi
 pip install 'ncrystal>=4.1.0'
 nctool --test
 
-# Install vectfit for WMP generation if needed
-if [[ $VECTFIT = 'y' ]]; then
-    ./tools/ci/gha-install-vectfit.sh
-fi
-
 # Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
     ./tools/ci/gha-install-libmesh.sh

@@ -3,6 +3,7 @@ set(TEST_NAMES
   test_file_utils
   test_tally
   test_interpolate
+  test_atomic_mass_data
   test_math
   test_mcpl_stat_sum
   test_mesh

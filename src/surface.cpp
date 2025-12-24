@@ -1186,7 +1186,7 @@ void read_surfaces(pugi::xml_node node)
     pugi::xml_node surf_node;
     int i_surf;
     for (surf_node = node.child("surface"), i_surf = 0; surf_node;
-         surf_node = surf_node.next_sibling("surface"), i_surf++) {
+      surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       // Allocate and initialize the new surface
@@ -1332,7 +1332,7 @@ void read_surfaces(pugi::xml_node node)
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
       surf1.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = make_unique<TranslationalPeriodicBC>(j_surf, i_surf);
     } else {
       // check that both normals have at least one 0 component
       if (std::abs(norm1.x) > FP_PRECISION &&

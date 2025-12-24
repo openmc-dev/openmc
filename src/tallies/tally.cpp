@@ -235,6 +235,10 @@ Tally::Tally(pugi::xml_node node)
         }
         break;
       case SCORE_IFP_BETA_NUM:
+        // This bool indicates if the ancestor_nuclide vector has to be filled
+        if (nuclides_[0] > -1) {
+          settings::ifp_beta_nuclide = true;
+        }
       case SCORE_IFP_DENOM:
         if (settings::ifp_parameter == IFPParameter::None) {
           settings::ifp_parameter = IFPParameter::BetaEffective;

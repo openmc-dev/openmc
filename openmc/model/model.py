@@ -235,13 +235,13 @@ class Model:
 
         return materials
 
-    def add_kinetics_parameters_tallies(self, num_groups: int | None = None):
+    def add_kinetics_parameters_tallies(self, num_groups: int | None = None, nuclides: Sequence[str] | None = None):
         """Add tallies for calculating kinetics parameters using the IFP method.
 
         This method adds tallies to the model for calculating two kinetics
         parameters, the generation time and the effective delayed neutron
         fraction (beta effective). After a model is run, these parameters can be
-        determined through the :meth:`openmc.StatePoint.ifp_results` method.
+        determined through the :meth:`openmc.StatePoint.get_kinetics_parameters` method.
 
         Parameters
         ----------
@@ -249,6 +249,9 @@ class Model:
             Number of precursor groups to filter the delayed neutron fraction.
             If None, only the total effective delayed neutron fraction is
             tallied.
+        nuclides : int, optional 
+            Nuclides to calculate separate kinetic parameters for.
+            If None, do not separate kinetic parameters per nuclide.
 
         """
         if not any('ifp-time-numerator' in t.scores for t in self.tallies):
@@ -260,6 +263,8 @@ class Model:
             beta_tally.scores = ['ifp-beta-numerator']
             if num_groups is not None:
                 beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
+            if nuclides:
+                beta_tally.nuclides = list(nuclides)
             self.tallies.append(beta_tally)
         if not any('ifp-denominator' in t.scores for t in self.tallies):
             denom_tally = openmc.Tally(name='IFP denominator')

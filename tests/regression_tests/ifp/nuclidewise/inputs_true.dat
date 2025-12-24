@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="core" depletable="true">
+      <density value="16.0" units="g/cm3"/>
+      <nuclide name="U235" ao="1.0"/>
+      <nuclide name="Pu239" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 10.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100000</particles>
+    <batches>20</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-10.0 -10.0 -10.0 10.0 10.0 10.0</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+    <ifp_n_generation>5</ifp_n_generation>
+  </settings>
+  <tallies>
+    <filter id="1" type="delayedgroup">
+      <bins>1 2 3 4 5 6</bins>
+    </filter>
+    <tally id="1" name="IFP time numerator">
+      <scores>ifp-time-numerator</scores>
+    </tally>
+    <tally id="2" name="IFP beta numerator">
+      <filters>1</filters>
+      <nuclides>U235 Pu239</nuclides>
+      <scores>ifp-beta-numerator</scores>
+    </tally>
+    <tally id="3" name="IFP denominator">
+      <scores>ifp-denominator</scores>
+    </tally>
+  </tallies>
+</model>

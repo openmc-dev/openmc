@@ -152,6 +152,8 @@ public:
 protected:
   //! Angle about the axis by which particle coordinates will be rotated
   double angle_;
+  //! Do we need to flip surfaces senses when applying the transformation?
+  bool flip_sense_;
   //! Ensure that choice of axes is right handed. axis_1_idx_ corresponds to the
   //! independent axis and axis_2_idx_ corresponds to the dependent axis in the
   //! 2D plane  perpendicular to the planes' axis of rotation

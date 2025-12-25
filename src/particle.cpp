@@ -744,9 +744,7 @@ void Particle::cross_periodic_bc(
   if (!neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after hitting periodic "
                  "boundary on surface " +
-                 std::to_string(surf.id_) +
-                 ". The normal vector "
-                 "of one periodic surface may need to be reversed.");
+                 std::to_string(surf.id_) + ".");
     return;
   }
 

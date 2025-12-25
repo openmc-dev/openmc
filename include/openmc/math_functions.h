@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include "openmc/position.h"
+#include "openmc/search.h"
 
 namespace openmc {
 
@@ -211,6 +212,16 @@ double exprel(double x);
 //! \param x Real argument
 //! \return log(1+x)/x without loss of precision near 0
 double log1prel(double x);
+
+//! Helper function to get index and interpolation function on an incident
+//! energy grid
+//!
+//! \param energies energy grid
+//! \param E incident energy
+//! \param i grid index
+//! \param f interpolation factor
+void get_energy_index(
+  const vector<double>& energies, double E, int& i, double& f);
 
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

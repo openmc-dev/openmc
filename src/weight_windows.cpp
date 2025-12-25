@@ -547,8 +547,10 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // build a shape for a view of the tally results, this will always be
   // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
-  std::array<int, 5> shape = {
-    1, 1, 1, tally->n_scores(), static_cast<int>(TallyResult::SIZE)};
+  // Look for the size of the last dimension of the results array
+  const auto& results_arr = tally->results();
+  const int results_dim = static_cast<int>(results_arr.shape()[2]);
+  std::array<int, 5> shape = {1, 1, 1, tally->n_scores(), results_dim};
 
   // set the shape for the filters applied on the tally
   for (int i = 0; i < tally->filters().size(); i++) {
@@ -586,7 +588,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // get a fully reshaped view of the tally according to tally ordering of
   // filters
-  auto tally_values = xt::reshape_view(tally->results(), shape);
+  auto tally_values = xt::reshape_view(results_arr, shape);
 
   // get a that is (particle, energy, mesh, scores, values)
   auto transposed_view = xt::transpose(tally_values, transpose);
@@ -931,7 +933,8 @@ void WeightWindowsGenerator::create_tally()
   for (const auto& f : model::tally_filters) {
     if (f->type() == FilterType::MESH) {
       const auto* mesh_filter = dynamic_cast<MeshFilter*>(f.get());
-      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated()) {
+      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated() &&
+          !mesh_filter->rotated()) {
         ww_tally->add_filter(f.get());
         found_mesh_filter = true;
         break;

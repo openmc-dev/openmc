@@ -937,4 +937,20 @@ double log1prel(double x)
   }
 }
 
+
+// Helper function to get index and interpolation function on an incident energy
+// grid
+void get_energy_index(
+  const vector<double>& energies, double E, int& i, double& f)
+{
+  // Get index and interpolation factor for linear-linear energy grid
+  i = 0;
+  f = 0.0;
+  if (E >= energies.front()) {
+    i = lower_bound_index(energies.begin(), energies.end(), E);
+    if (i + 1 < energies.size())
+      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
+  }
+}
+
 } // namespace openmc

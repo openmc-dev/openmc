@@ -18,6 +18,7 @@
 #include <cstring>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -61,6 +62,8 @@ using mcpl_hdr_nparticles_fpt = uint64_t (*)(mcpl_file_t* file_handle);
 using mcpl_read_fpt = const mcpl_particle_repr_t* (*)(mcpl_file_t* file_handle);
 using mcpl_close_file_fpt = void (*)(mcpl_file_t* file_handle);
 
+using mcpl_hdr_add_data_fpt = void (*)(mcpl_outfile_t* file_handle,
+  const char* key, uint32_t datalength, const char* data);
 using mcpl_create_outfile_fpt = mcpl_outfile_t* (*)(const char* filename);
 using mcpl_hdr_set_srcname_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const char* srcname);
@@ -110,6 +113,7 @@ struct McplApi {
   mcpl_close_file_fpt close_file;
   mcpl_create_outfile_fpt create_outfile;
   mcpl_hdr_set_srcname_fpt hdr_set_srcname;
+  mcpl_hdr_add_data_fpt hdr_add_data;
   mcpl_add_particle_fpt add_particle;
   mcpl_close_outfile_fpt close_outfile;
   mcpl_hdr_add_stat_sum_fpt hdr_add_stat_sum;
@@ -150,6 +154,15 @@ struct McplApi {
       load_symbol_platform("mcpl_add_particle"));
     close_outfile = reinterpret_cast<mcpl_close_outfile_fpt>(
       load_symbol_platform("mcpl_close_outfile"));
+
+    // Try to load mcpl_hdr_add_data (available in MCPL >= 2.1.0)
+    // Set to nullptr if not available for graceful fallback
+    try {
+      hdr_add_data = reinterpret_cast<mcpl_hdr_add_data_fpt>(
+        load_symbol_platform("mcpl_hdr_add_data"));
+    } catch (const std::runtime_error&) {
+      hdr_add_data = nullptr;
+    }
 
     // Try to load mcpl_hdr_add_stat_sum (available in MCPL >= 2.1.0)
     // Set to nullptr if not available for graceful fallback
@@ -540,6 +553,155 @@ void write_mcpl_source_point(const char* filename, span<SourceSite> source_bank,
           file_id, "openmc_np1", static_cast<double>(total_source_particles));
       }
 
+      g_mcpl_api->close_outfile(file_id);
+    }
+  }
+}
+
+// Collision track feature with MCPL
+void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
+  span<CollisionTrackSite> collision_track_bank,
+  const vector<int64_t>& bank_index_all_ranks)
+{
+  if (mpi::master) {
+    if (!file_id) {
+      fatal_error("MCPL: Internal error - master rank called "
+                  "write_mcpl_source_bank_internal with null file_id.");
+    }
+    vector<CollisionTrackSite> receive_buffer;
+    vector<CollisionTrackSite> all_sites;
+    all_sites.reserve(static_cast<size_t>(bank_index_all_ranks.back()));
+    vector<std::string> all_blobs;
+    all_blobs.reserve(static_cast<size_t>(bank_index_all_ranks.back()));
+
+    for (int rank_idx = 0; rank_idx < mpi::n_procs; ++rank_idx) {
+      size_t num_sites_on_rank = static_cast<size_t>(
+        bank_index_all_ranks[rank_idx + 1] - bank_index_all_ranks[rank_idx]);
+      if (num_sites_on_rank == 0)
+        continue;
+
+      span<const CollisionTrackSite> sites_to_process;
+#ifdef OPENMC_MPI
+      if (rank_idx == mpi::rank) {
+        sites_to_process = openmc::span<const CollisionTrackSite>(
+          collision_track_bank.data(), num_sites_on_rank);
+      } else {
+        receive_buffer.resize(num_sites_on_rank);
+        MPI_Recv(receive_buffer.data(), num_sites_on_rank,
+          mpi::collision_track_site, rank_idx, rank_idx, mpi::intracomm,
+          MPI_STATUS_IGNORE);
+        sites_to_process = openmc::span<const CollisionTrackSite>(
+          receive_buffer.data(), num_sites_on_rank);
+      }
+#else
+      sites_to_process = openmc::span<const CollisionTrackSite>(
+        collision_track_bank.data(), num_sites_on_rank);
+#endif
+
+      for (const auto& site : sites_to_process) {
+        std::ostringstream custom_data_stream;
+        custom_data_stream << " dE : " << site.dE
+                           << " ; event_mt : " << site.event_mt
+                           << " ; delayed_group : " << site.delayed_group
+                           << " ; cell_id : " << site.cell_id
+                           << " ; nuclide_id : " << site.nuclide_id
+                           << " ; material_id : " << site.material_id
+                           << " ; universe_id : " << site.universe_id
+                           << " ; n_collision : " << site.n_collision
+                           << " ; parent_id : " << site.parent_id
+                           << " ; progeny_id : " << site.progeny_id;
+
+        all_blobs.push_back(custom_data_stream.str());
+        all_sites.push_back(site);
+      }
+    }
+
+    for (size_t idx = 0; idx < all_blobs.size(); ++idx) {
+      const auto& blob = all_blobs[idx];
+      std::string key = "blob_" + std::to_string(idx);
+      g_mcpl_api->hdr_add_data(file_id, key.c_str(), blob.size(), blob.c_str());
+    }
+
+    for (const auto& site : all_sites) {
+      mcpl_particle_repr_t p_repr {};
+      p_repr.position[0] = site.r.x;
+      p_repr.position[1] = site.r.y;
+      p_repr.position[2] = site.r.z;
+      p_repr.direction[0] = site.u.x;
+      p_repr.direction[1] = site.u.y;
+      p_repr.direction[2] = site.u.z;
+      p_repr.ekin = site.E * 1e-6;
+      p_repr.time = site.time * 1e3;
+      p_repr.weight = site.wgt;
+      switch (site.particle) {
+      case ParticleType::neutron:
+        p_repr.pdgcode = 2112;
+        break;
+      case ParticleType::photon:
+        p_repr.pdgcode = 22;
+        break;
+      case ParticleType::electron:
+        p_repr.pdgcode = 11;
+        break;
+      case ParticleType::positron:
+        p_repr.pdgcode = -11;
+        break;
+      default:
+        continue;
+      }
+      g_mcpl_api->add_particle(file_id, &p_repr);
+    }
+  } else {
+#ifdef OPENMC_MPI
+    if (!collision_track_bank.empty()) {
+      MPI_Send(collision_track_bank.data(), collision_track_bank.size(),
+        mpi::collision_track_site, 0, mpi::rank, mpi::intracomm);
+    }
+#endif
+  }
+}
+
+void write_mcpl_collision_track(const char* filename,
+  span<CollisionTrackSite> collision_track_bank,
+  const vector<int64_t>& bank_index)
+{
+  ensure_mcpl_ready_or_fatal();
+
+  std::string filename_(filename);
+  const auto extension = get_file_extension(filename_);
+  if (extension.empty()) {
+    filename_.append(".mcpl");
+  } else if (extension != "mcpl") {
+    warning(fmt::format("Specified filename '{}' has an extension '.{}', but "
+                        "an MCPL file (.mcpl) will be written using this name.",
+      filename, extension));
+  }
+
+  mcpl_outfile_t* file_id = nullptr;
+
+  if (mpi::master) {
+    file_id = g_mcpl_api->create_outfile(filename_.c_str());
+    if (!file_id) {
+      fatal_error(fmt::format(
+        "MCPL: Failed to create output file '{}'. Check permissions and path.",
+        filename_));
+    }
+    std::string src_line;
+    if (VERSION_DEV) {
+      src_line = fmt::format("OpenMC {}.{}.{}-dev{}", VERSION_MAJOR,
+        VERSION_MINOR, VERSION_RELEASE, VERSION_COMMIT_COUNT);
+    } else {
+      src_line = fmt::format(
+        "OpenMC {}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);
+    }
+
+    g_mcpl_api->hdr_set_srcname(file_id, src_line.c_str());
+  }
+  write_mcpl_collision_track_internal(
+    file_id, collision_track_bank, bank_index);
+
+  if (mpi::master) {
+    if (file_id) {
       g_mcpl_api->close_outfile(file_id);
     }
   }

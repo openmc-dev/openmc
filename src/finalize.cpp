@@ -3,6 +3,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cmfd_solver.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/dagmc.h"
@@ -76,6 +77,7 @@ int openmc_finalize()
   // Reset global variables
   settings::assume_separate = false;
   settings::check_overlaps = false;
+  settings::collision_track_config = CollisionTrackConfig {};
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::create_delayed_neutrons = true;
@@ -140,7 +142,7 @@ int openmc_finalize()
   settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
-  settings::verbosity = 7;
+  settings::verbosity = -1;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
   settings::weight_windows_file.clear();
@@ -176,6 +178,9 @@ int openmc_finalize()
 #ifdef OPENMC_MPI
   if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
+  }
+  if (mpi::collision_track_site != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::collision_track_site);
   }
 #endif
 

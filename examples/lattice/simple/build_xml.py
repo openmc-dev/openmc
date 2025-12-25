@@ -128,7 +128,7 @@ settings_file.export_to_xml()
 #                   Exporting to OpenMC plots.xml file
 ###############################################################################
 
-plot = openmc.Plot(plot_id=1)
+plot = openmc.SlicePlot(plot_id=1)
 plot.origin = [0, 0, 0]
 plot.width = [4, 4]
 plot.pixels = [400, 400]

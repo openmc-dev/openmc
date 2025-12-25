@@ -40,6 +40,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <regex>
 #include <string>
 
 //==============================================================================
@@ -440,6 +442,72 @@ void finalize_batch()
     } else {
       bool b = false;
       openmc_statepoint_write(nullptr, &b);
+    }
+  }
+
+  // Write running statepoints if user specified negative batch(es) in
+  // statepoint_batch. A negative value -N means "keep the last N completed
+  // batches as running statepoints". Check if there's a negative batch number
+  // in statepoint_batch.
+  int keep_last_n = 0;
+  for (int b : settings::statepoint_batch) {
+    if (b < 0) {
+      keep_last_n = -b; // Convert to positive count
+      break;
+    }
+  }
+
+  if (keep_last_n > 0 && !settings::cmfd_run) {
+    bool b = false;
+    if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
+        settings::source_write && !settings::source_separate) {
+      b = (settings::run_mode == RunMode::EIGENVALUE);
+    }
+    namespace fs = std::filesystem;
+
+    // Construct output directory (use current path if none specified)
+    fs::path outdir = settings::path_output.empty()
+                        ? fs::current_path()
+                        : fs::path(settings::path_output);
+
+    // Write running statepoint with batch number in filename.
+    fs::path sp_name =
+      fmt::format("statepoint.running.{}.h5", simulation::current_batch);
+    fs::path sp_path = outdir / sp_name;
+    std::string filename = sp_path.string();
+    openmc_statepoint_write(filename.c_str(), &b);
+
+    // Prune older running statepoint files so that at most `keep_last_n`
+    // remain. Match files like `statepoint.running.<batch>.h5`.
+    try {
+      std::vector<std::pair<int, fs::path>> files; // pair(batchnum, path)
+      static const std::regex re(R"(^statepoint\.running\.(\d+)\.h5$)");
+      if (fs::exists(outdir) && fs::is_directory(outdir)) {
+        for (auto& p : fs::directory_iterator(outdir)) {
+          auto name = p.path().filename().string();
+          std::smatch m;
+          if (std::regex_match(name, m, re)) {
+            int batchnum = std::stoi(m[1].str());
+            files.emplace_back(batchnum, p.path());
+          }
+        }
+      }
+
+      // Sort by batch number descending (newest first)
+      std::sort(files.begin(), files.end(), [](auto& a, auto& b) {
+        if (a.first != b.first)
+          return a.first > b.first;
+        return a.second.string() > b.second.string();
+      });
+
+      // Remove files older than the most recent `keep_last_n`
+      for (size_t i = static_cast<size_t>(keep_last_n); i < files.size(); ++i) {
+        std::error_code ec;
+        fs::remove(files[i].second, ec);
+      }
+    } catch (...) {
+      // On any filesystem/regex error, ignore pruning so simulation can
+      // continue
     }
   }
 

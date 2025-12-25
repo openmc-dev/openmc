@@ -4,6 +4,8 @@
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
 #include <string>
+#include <algorithm>
+#include <cctype>
 
 #include <fmt/core.h>
 #ifdef _OPENMP

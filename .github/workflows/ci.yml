@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
@@ -34,30 +34,34 @@ jobs:
         vectfit: [n]
 
         include:
-          - python-version: "3.12"
-            omp: n
-            mpi: n
           - python-version: "3.13"
             omp: n
             mpi: n
+          - python-version: "3.14"
+            omp: n
+            mpi: n
           - dagmc: y
-            python-version: "3.11"
+          - python-version: "3.14t"
+            omp: n
+            mpi: n
+          - dagmc: y
+            python-version: "3.12"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: n
             omp: y
           - event: y
-            python-version: "3.11"
+            python-version: "3.12"
             omp: y
             mpi: n
           - vectfit: y
-            python-version: "3.11"
+            python-version: "3.12"
             omp: n
             mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},

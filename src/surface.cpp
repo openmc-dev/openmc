@@ -1183,7 +1183,6 @@ void read_surfaces(pugi::xml_node node)
   model::surfaces.reserve(n_surfaces);
   std::set<std::pair<int, int>> periodic_pairs;
   std::unordered_map<int, double> albedo_map;
-  int n_periodic = 0;
   std::unordered_map<int, int> periodic_sense_map;
   {
     pugi::xml_node surf_node;

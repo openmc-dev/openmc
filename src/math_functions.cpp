@@ -937,7 +937,6 @@ double log1prel(double x)
   }
 }
 
-
 // Helper function to get index and interpolation function on an incident energy
 // grid
 void get_energy_index(

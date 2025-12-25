@@ -1183,6 +1183,7 @@ void read_surfaces(pugi::xml_node node)
   model::surfaces.reserve(n_surfaces);
   std::set<std::pair<int, int>> periodic_pairs;
   std::unordered_map<int, double> albedo_map;
+  int n_periodic = 0;
   std::unordered_map<int, int> periodic_sense_map;
   {
     pugi::xml_node surf_node;
@@ -1280,21 +1281,22 @@ void read_surfaces(pugi::xml_node node)
   }
 
   // Fill the senses map for periodic surfaces
-  for (pugi::xml_node cell_node : node.children("cell")) {
-
+  auto v = node.children("cell");
+  auto n_periodic = periodic_sense_map.size();
+  for (auto it = v.begin(); (it != v.end()) && (n_periodic > 0); ++it) {
+    pugi::xml_node cell_node = *it;
     // Read the region specification.
     std::string region_spec;
     if (check_for_node(cell_node, "region")) {
       region_spec = get_node_value(cell_node, "region");
-
-      // Get a tokenized representation of the region specification and apply De
-      // Morgans law
+      // Get a tokenized representation of the region specification and apply
+      // De Morgans law
       Region region(region_spec, 0);
-
       for (auto s : region.surfaces()) {
         auto id = model::surfaces[std::abs(s) - 1]->id_;
         if (periodic_sense_map.find(id) != periodic_sense_map.end()) {
           periodic_sense_map[id] = std::copysign(1, s);
+          --n_periodic;
         }
       }
     }

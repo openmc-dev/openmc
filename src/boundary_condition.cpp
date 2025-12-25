@@ -160,7 +160,7 @@ void TranslationalPeriodicBC::handle_particle(
 
 RotationalPeriodicBC::RotationalPeriodicBC(
   int i_surf, int j_surf, PeriodicAxis axis)
-  : PeriodicBC(i_surf, j_surf)
+  : PeriodicBC(std::abs(i_surf) - 1, std::abs(j_surf) - 1)
 {
   Surface& surf1 {*model::surfaces[i_surf_]};
   Surface& surf2 {*model::surfaces[j_surf_]};
@@ -190,10 +190,13 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   Direction ax = {0.0, 0.0, 0.0};
   ax[zero_axis_idx_] = 1.0;
 
+  auto i_sign = std::copysign(1, i_surf);
+  auto j_sign = -std::copysign(1, j_surf);
+
   // Compute the surface normal vectors and make sure they are perpendicular
   // to the correct axis
-  Direction norm1 = surf1.normal({0, 0, 0});
-  Direction norm2 = surf2.normal({0, 0, 0});
+  Direction norm1 = i_sign * surf1.normal({0, 0, 0});
+  Direction norm2 = j_sign * surf2.normal({0, 0, 0});
   // Make sure both surfaces intersect the origin
   if (std::abs(surf1.evaluate({0, 0, 0})) > FP_COINCIDENT) {
     throw std::invalid_argument(fmt::format(
@@ -218,12 +221,7 @@ RotationalPeriodicBC::RotationalPeriodicBC(
 
   // If the normals point in the same general direction, the surface sense
   // should change when crossing the boundary
-  flip_sense_ = (norm1.dot(norm2) > 0.0);
-  if (!flip_sense_)
-    angle_ += PI;
-
-  // Normalize range of angle to [-PI,PI].
-  angle_ = std::remainder(angle_, 2 * PI);
+  flip_sense_ = (i_sign * j_sign > 0.0);
 
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));

@@ -123,7 +123,18 @@ endmacro()
 #===============================================================================
 
 if(OPENMC_USE_DAGMC)
-  find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  find_package(DAGMC QUIET PATH_SUFFIXES lib/cmake)
+  if(NOT DAGMC_FOUND)
+    message(STATUS "DAGMC not found, fetching from repository")
+    include(FetchContent)
+    FetchContent_Declare(
+      dagmc
+      GIT_REPOSITORY https://github.com/svalinn/DAGMC.git
+      GIT_TAG v3.2.3
+    )
+    FetchContent_MakeAvailable(dagmc)
+    find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  endif()
   if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}."
       "Please update DAGMC to version 3.2.0 or greater.")

@@ -673,6 +673,10 @@ Region::Region(std::string region_spec, int32_t cell_id)
           it--;
         }
       }
+    } else {
+      // Simplify expression by going to rpn and back
+      auto postfix = generate_postfix(cell_id);
+      expression_ = generate_infix(postfix);
     }
     expression_.shrink_to_fit();
 
@@ -877,6 +881,58 @@ vector<int32_t> Region::generate_postfix(int32_t cell_id) const
   }
 
   return rpn;
+}
+
+//==============================================================================
+//! Convert Reverse Polish Notation (RPN) to infix using minimal parentheses.
+//==============================================================================
+
+vector<int32_t> Region::generate_infix(vector<int32_t> rpn) const
+{
+  vector<vector<int32_t>> stack;
+  vector<int32_t> pstack;
+  std::unordered_map<int32_t, int32_t> precedence = {
+    {OP_UNION, 2}, {OP_INTERSECTION, 1}, {OP_COMPLEMENT, 3}};
+
+  for (auto it = rpn.begin(); it != rpn.end(); ++it) {
+    auto token = *it;
+    if (precedence.find(token) != precedence.end()) {
+      auto p_c = precedence[token];
+      auto v_l = stack.back();
+      stack.pop_back();
+      auto p_l = pstack.back();
+      pstack.pop_back();
+      if ((0 < p_l) && (p_l < p_c)) {
+        v_l.emplace(v_l.begin(), OP_RIGHT_PAREN);
+        v_l.emplace_back(OP_LEFT_PAREN);
+      }
+      v_l.emplace_back(token);
+
+      vector<int32_t> merged = v_l;
+
+      if (!stack.empty()) {
+        auto v_r = stack.back();
+        stack.pop_back();
+        auto p_r = pstack.back();
+        pstack.pop_back();
+        if (((0 < p_r) && (p_r < p_c)) ||
+            ((p_r == p_c) && (token == OP_COMPLEMENT))) {
+          v_r.emplace(v_r.begin(), OP_RIGHT_PAREN);
+          v_r.emplace_back(OP_LEFT_PAREN);
+        }
+        merged.reserve(v_l.size() + v_r.size());
+        merged.insert(merged.end(), v_r.begin(), v_r.end());
+      }
+      stack.emplace_back(merged);
+      pstack.emplace_back(p_c);
+    } else {
+      stack.emplace_back(vector<int32_t> {token});
+      pstack.emplace_back(0);
+    }
+  }
+  auto result = stack[0];
+  std::reverse(result.begin(), result.end());
+  return result;
 }
 
 //==============================================================================

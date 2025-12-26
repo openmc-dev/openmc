@@ -106,6 +106,9 @@ private:
   //! Get a vector of the region expression in postfix notation
   vector<int32_t> generate_postfix(int32_t cell_id) const;
 
+  //! Get a vector of the region expression in infix notation
+  vector<int32_t> generate_infix(vector<int32_t> rpn) const;
+
   //! Determine if a particle is inside the cell for a simple cell (only
   //! intersection operators)
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;

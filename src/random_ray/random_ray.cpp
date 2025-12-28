@@ -239,6 +239,10 @@ unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
 RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
 
+// Kinetic simulation variables
+int RandomRay::bd_order_ {3}; // order 3 BD balances accuracy with speed nicely
+RandomRayTimeMethod RandomRay::time_method_ {RandomRayTimeMethod::ISOTROPIC};
+
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
     delta_psi_(data::mg.num_energy_groups_),

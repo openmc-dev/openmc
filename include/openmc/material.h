@@ -204,6 +204,10 @@ public:
 
   unique_ptr<Bremsstrahlung> ttb_;
 
+  // Time dependent data
+  vector<double>
+    density_timeseries_; //!< Total atom density timeseries in [atom/b-cm]
+
 private:
   //----------------------------------------------------------------------------
   // Private methods

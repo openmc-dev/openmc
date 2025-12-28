@@ -57,6 +57,10 @@ class StatePoint:
         Number of batches simulated
     date_and_time : datetime.datetime
         Date and time at which statepoint was written
+    energy_mode : str
+        'continuous-energy', 'multi-group' 
+
+        .. versionadded:: 0.16.0
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
     filters : dict
@@ -85,6 +89,14 @@ class StatePoint:
         .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
+    n_energy_groups : int
+        Number of energy groups used in a multi-group simulation.
+
+        .. versionadded:: 0.16.0
+    n_delay_groups : int
+        Number of delay groups used in a multi-group simulation.
+
+        .. versionadded:: 0.16.0
     n_batches : int
         Number of batches
     n_inactive : int
@@ -97,6 +109,14 @@ class StatePoint:
         Working directory for simulation
     photon_transport : bool
         Indicate whether photon transport is active
+    random_ray : dict
+        Dictionary whose keys are the following strings used to describing
+        various random ray metrics. These include simulation settings (e.g.
+        'source_shape', 'volume_estimator', 'volume_normalized_flux_tallies',
+        etc.) and performance metrics (e.g. 'avg_miss_rate',
+        'n_source_regions', 'n_integrations', etc.)
+
+        .. versionadded:: 0.16.0
     run_mode : str
         Simulation run mode, e.g. 'eigenvalue'
     runtime : dict
@@ -106,6 +126,10 @@ class StatePoint:
         Pseudorandom number generator seed
     stride : int
         Number of random numbers allocated for each particle history
+    solver_type : str
+        'monte carlo', 'random ray' 
+
+        .. versionadded:: 0.16.0
     source : numpy.ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'r', 'u',
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
@@ -211,8 +235,12 @@ class StatePoint:
         return datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
 
     @property
+    def energy_mode(self):
+        return self._f['energy_mode'][()].decode()
+
+    @property
     def entropy(self):
-        if self.run_mode == 'eigenvalue':
+        if self.run_mode == 'eigenvalue' or self.run_mode == 'time dependent':
             return self._f['entropy'][()]
         else:
             return None
@@ -233,7 +261,7 @@ class StatePoint:
 
     @property
     def generations_per_batch(self):
-        if self.run_mode == 'eigenvalue':
+        if self.run_mode == 'eigenvalue' or self.run_mode == 'time dependent':
             return self._f['generations_per_batch'][()]
         else:
             return None
@@ -275,7 +303,7 @@ class StatePoint:
 
     @property
     def keff(self):
-        if self.run_mode == 'eigenvalue':
+        if self.run_mode == 'eigenvalue' or self.run_mode == 'time dependent':
             return ufloat(*self._f['k_combined'][()])
         else:
             return None
@@ -324,12 +352,26 @@ class StatePoint:
         return self._meshes
 
     @property
+    def n_energy_groups(self):
+        if self.energy_mode == 'multi-group':
+            return self._f['n_energy_groups'][()]
+        else:
+            return None
+
+    @property
+    def n_delay_groups(self):
+        if self.energy_mode == 'multi-group':
+            return self._f['n_delay_groups'][()]
+        else:
+            return None
+
+    @property
     def n_batches(self):
         return self._f['n_batches'][()]
 
     @property
     def n_inactive(self):
-        if self.run_mode == 'eigenvalue':
+        if self.run_mode == 'eigenvalue' or self.run_mode == 'time dependent':
             return self._f['n_inactive'][()]
         else:
             return None
@@ -351,6 +393,21 @@ class StatePoint:
         return self._f.attrs['photon_transport'] > 0
 
     @property
+    def random_ray(self):
+        if self.solver_type == 'random ray':
+            rr = {}
+            for name, dataset in self._f['random_ray'].items():
+                data = dataset[()]
+                if type(data) == np.bytes_:
+                    data = data.decode()
+                if name in ['adjoint', 'volume_normalized_flux_tallies']:
+                    data = data > 0
+                rr[name] = data
+            return rr
+        else:
+            return None
+       
+    @property
     def run_mode(self):
         return self._f['run_mode'][()].decode()
 
@@ -366,6 +423,10 @@ class StatePoint:
     @property
     def stride(self):
         return self._f['stride'][()]
+
+    @property
+    def solver_type(self):
+        return self._f['solver_type'][()].decode()
 
     @property
     def source(self):

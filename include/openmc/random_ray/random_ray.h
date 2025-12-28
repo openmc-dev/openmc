@@ -50,6 +50,13 @@ public:
   static RandomRaySourceShape source_shape_; // Flag for linear source
   static RandomRaySampleMethod sample_method_; // Flag for sampling method
 
+  // Kinetic simulation variables
+  static int bd_order_; // Order of backwards difference approximation for
+                        // time-derivatives
+  static RandomRayTimeMethod
+    time_method_; // Method for resolving angular flux time derivative term for
+                  // flux propogation
+
   //----------------------------------------------------------------------------
   // Public data members
   vector<float> angular_flux_;

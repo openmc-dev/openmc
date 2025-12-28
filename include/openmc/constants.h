@@ -285,6 +285,7 @@ enum class MgxsType {
   PROMPT_NU_FISSION,
   DELAYED_NU_FISSION,
   NU_FISSION,
+  CHI,
   CHI_PROMPT,
   CHI_DELAYED
 };
@@ -326,7 +327,10 @@ enum TallyScore {
   SCORE_PULSE_HEIGHT = -17,       // pulse-height
   SCORE_IFP_TIME_NUM = -18,       // IFP lifetime numerator
   SCORE_IFP_BETA_NUM = -19,       // IFP delayed fraction numerator
-  SCORE_IFP_DENOM = -20           // IFP common denominator
+  SCORE_IFP_DENOM = -20,          // IFP common denominator
+  SCORE_PRECURSORS = -21          // delyaed neutron precursor concentration
+  //
+
 };
 
 // Global tally parameters
@@ -366,6 +370,7 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRaySampleMethod { PRNG, HALTON };
+enum class RandomRayTimeMethod { ISOTROPIC, PROPOGATION };
 
 //==============================================================================
 // Geometry Constants

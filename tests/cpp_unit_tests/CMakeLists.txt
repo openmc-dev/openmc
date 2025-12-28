@@ -1,4 +1,5 @@
 set(TEST_NAMES
+  test_bd_utilities
   test_distribution
   test_file_utils
   test_tally

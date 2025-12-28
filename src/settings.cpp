@@ -56,6 +56,7 @@ bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
 bool ifp_on {false};
+bool kinetic_simulation {false};
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
 bool output_summary {true};
@@ -148,6 +149,12 @@ int trigger_batch_interval {1};
 int verbosity {-1};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+
+// Timestep variables for kinetic simulation
+int n_timesteps;
+double dt;
+int current_timestep;
+bool is_initial_condition {false};
 
 } // namespace settings
 
@@ -251,6 +258,42 @@ void get_run_parameters(pugi::xml_node node_base)
       } else {
         fatal_error("Specify keff trigger threshold in settings XML");
       }
+    }
+  }
+
+  // Kinetic variables
+  if (check_for_node(node_base, "kinetic_simulation")) {
+    kinetic_simulation = get_node_value_bool(node_base, "kinetic_simulation");
+  }
+
+  // Get timestep parameters for kinetic simulations
+  if (kinetic_simulation) {
+    xml_node ts_node = node_base.child("timestep_parameters");
+    if (check_for_node(ts_node, "n_timesteps")) {
+      n_timesteps = std::stoi(get_node_value(ts_node, "n_timesteps"));
+    } else {
+      fatal_error("Specify number of timesteps in settings XML");
+    }
+    if (check_for_node(ts_node, "timestep_units")) {
+      std::string units = get_node_value(ts_node, "timestep_units");
+      if (check_for_node(ts_node, "dt")) {
+        dt = std::stod(get_node_value(ts_node, "dt"));
+        double factor_to_seconds;
+        if (units == "ms") {
+          factor_to_seconds = 1e-3;
+        } else if (units == "s") {
+          factor_to_seconds = 1.0;
+        } else if (units == "min") {
+          factor_to_seconds = 1 / 60;
+        } else {
+          fatal_error("Invalid timestep unit, " + units);
+        }
+        dt *= factor_to_seconds;
+      } else {
+        fatal_error("Specify dt in settings XML");
+      }
+    } else {
+      fatal_error("Specify timestep units in settings XML");
     }
   }
 
@@ -361,6 +404,30 @@ void get_run_parameters(pugi::xml_node node_base)
           FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
         fatal_error("Random ray diagonal stabilization rho factor must be "
                     "between 0 and 1");
+      }
+    }
+    if (kinetic_simulation) {
+      if (check_for_node(random_ray_node, "bd_order")) {
+        static int n = std::stod(get_node_value(random_ray_node, "bd_order"));
+        if (n < 1 || n > 6) {
+          fatal_error("Specified BD order of " + std::to_string(n) +
+                      ". BD order must be between 1 and 6");
+        } else {
+          RandomRay::bd_order_ = n;
+        }
+      } else {
+        fatal_error("Specify BD approximation order in settings XML");
+      }
+      if (check_for_node(random_ray_node, "time_derivative_method")) {
+        std::string temp_str =
+          get_node_value(random_ray_node, "time_derivative_method", true, true);
+        if (temp_str == "isotropic") {
+          RandomRay::time_method_ = RandomRayTimeMethod::ISOTROPIC;
+        } else if (temp_str == "propogation") {
+          RandomRay::time_method_ = RandomRayTimeMethod::PROPOGATION;
+        } else {
+          fatal_error("Unrecognized time derivative method: " + temp_str);
+        }
       }
     }
   }

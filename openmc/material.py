@@ -89,6 +89,12 @@ class Material(IDManagerMixin):
         Temperature of the material in Kelvin.
     density : float
         Density of the material (units defined separately)
+    density_timeseries : list of float
+        Density timeseries of the material for time-dependent simulations. Units
+        assumed to be the same as `density_units`. Must be have size equal to
+        :attr:`openmc.Settings.time_dependent['n_timesteps']`.
+
+        .. versionadded:: 0.16.0
     density_units : str
         Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/m3',
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
@@ -137,6 +143,7 @@ class Material(IDManagerMixin):
         name: str = "",
         temperature: float | None = None,
         density: float | None = None,
+        density_timeseries: list[float] | None = None,
         density_units: str = "sum",
         depletable: bool | None = False,
         volume: float | None = None,
@@ -148,6 +155,7 @@ class Material(IDManagerMixin):
         self.name = name
         self.temperature = temperature
         self._density = None
+        self._density_timeseries = None
         self._density_units = density_units
         self._depletable = depletable
         self._paths = None
@@ -184,6 +192,11 @@ class Material(IDManagerMixin):
 
         string += '{: <16}=\t{}'.format('\tDensity', self._density)
         string += f' [{self._density_units}]\n'
+
+        if self._density_timeseries is not None:
+            string += '{: <16}\n'.format('\tDensity Timeseries')
+            dens_ts_string = " ".join(str(x) for x in self._density_timeseries)
+            string += '{: <16}\n'.format(dens_ts_string)
 
         string += '{: <16}=\t{} [cm^3]\n'.format('\tVolume', self._volume)
         string += '{: <16}=\t{}\n'.format('\tDepletable', self._depletable)
@@ -234,6 +247,10 @@ class Material(IDManagerMixin):
     @property
     def density(self) -> float | None:
         return self._density
+
+    @property
+    def density_timeseries(self) -> list[str] | None:
+        return self._density_timeseries
 
     @property
     def density_units(self) -> str:
@@ -447,6 +464,7 @@ class Material(IDManagerMixin):
                 material.add_s_alpha_beta(name)
 
         # Set the Material's density to atom/b-cm as used by OpenMC
+        # TODO: Add support for density_timeseries
         material.set_density(density=density, units='atom/b-cm')
 
         if 'nuclides' in group:
@@ -523,6 +541,7 @@ class Material(IDManagerMixin):
                 else:
                     material.add_element(elemname, frac)
 
+        # TODO: add support for density_timeseries
         material.set_density('g/cm3', nc_mat.getDensity())
         material._ncrystal_cfg = NCrystal.normaliseCfg(cfg)
 
@@ -547,7 +566,8 @@ class Material(IDManagerMixin):
         else:
             raise ValueError(f'No volume information found for material ID={self.id}.')
 
-    def set_density(self, units: str, density: float | None = None):
+    def set_density(self, units: str, density: float | None = None,
+                    density_timeseries: list[float] | None = None):
         """Set the density of the material
 
         Parameters
@@ -557,7 +577,11 @@ class Material(IDManagerMixin):
         density : float, optional
             Value of the density. Must be specified unless units is given as
             'sum'.
+        density_timeseries : list of float, optional
+            Timeseries of density. Can only be specified if units are not given
+            as 'sum'.
 
+            .. versionadded:: 0.16.0
         """
 
         cv.check_value('density units', units, DENSITY_UNITS)
@@ -568,6 +592,10 @@ class Material(IDManagerMixin):
                 msg = 'Density "{}" for Material ID="{}" is ignored ' \
                       'because the unit is "sum"'.format(density, self.id)
                 warnings.warn(msg)
+            if density_timeseries is not None:
+                msg = 'Density timeseries cannot be used when ' \
+                      'using "sum" density units.'
+                raise ValueError(msg)
         else:
             if density is None:
                 msg = 'Unable to set the density for Material ID="{}" ' \
@@ -578,6 +606,12 @@ class Material(IDManagerMixin):
             cv.check_type(f'the density for Material ID="{self.id}"',
                           density, Real)
             self._density = density
+            if density_timeseries is not None:
+                cv.check_type(f'the density timeseries for Material ID="{self.id}"',
+                          density_timeseries, Iterable, Real)
+                self._density_timeseries = density_timeseries
+            else:
+                self._density_timeseries = None
 
     def add_nuclide(self, nuclide: str, percent: float, percent_type: str = 'ao'):
         """Add a nuclide to the material
@@ -1588,6 +1622,10 @@ class Material(IDManagerMixin):
             if self._density_units != 'sum':
                 subelement.set("value", str(self._density))
             subelement.set("units", self._density_units)
+            if self._density_timeseries is not None:
+                timeseries_text = " ".join(str(x) for x in self._density_timeseries)
+                subelement.set("value_timeseries", timeseries_text)
+
         else:
             raise ValueError(f'Density has not been set for material {self.id}!')
 
@@ -1615,6 +1653,7 @@ class Material(IDManagerMixin):
 
         return element
 
+    # TODO: add support for density_timeseries
     @classmethod
     def mix_materials(cls, materials, fracs: Iterable[float],
                       percent_type: str = 'ao', **kwargs) -> Material:
@@ -1771,7 +1810,12 @@ class Material(IDManagerMixin):
             mat.set_density(units)
         else:
             value = float(get_text(density, 'value'))
-            mat.set_density(units, value)
+            text = get_text(density, 'value_timeseries')
+            if text is not None:
+                density_timeseries = [float(x) for x in text.split()]
+            else:
+                density_timeseries = None
+            mat.set_density(units, value, density_timeseries)
 
         # Check for isotropic scattering nuclides
         isotropic = get_elem_list(elem, "isotropic", str)

@@ -26,7 +26,6 @@ class RunMode(Enum):
     VOLUME = 'volume'
     PARTICLE_RESTART = 'particle restart'
 
-
 _RES_SCAT_METHODS = {'dbrc', 'rvs'}
 
 
@@ -125,6 +124,8 @@ class Settings:
         type are 'variance', 'std_dev', and 'rel_err'. The threshold value
         should be a float indicating the variance, standard deviation, or
         relative error used.
+    kinetic_simulation : bool
+        Flag for whether or not to run a kinetic simulation
     log_grid_bins : int
         Number of bins for logarithmic energy grid search
     material_cell_offsets : bool
@@ -224,6 +225,15 @@ class Settings:
             stabilization, which may be desirable as stronger diagonal stabilization
             also tends to dampen the convergence rate of the solver, thus requiring
             more iterations to converge.
+        Additional options are available when running a kinetic simulation:
+
+        :bd_order:
+            Indicates the integer order of backwards difference approximation used to
+            numerically compute time derivatives.
+        :time_derivative_method:
+            Method for resolving :math:`\\frac{\\partial}{\\partial t}
+            \\psi_{r,g}(s,t)` in the time-dependent charactersitic equation.
+            Options are 'isotropic' (default), or 'propogation'.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -308,6 +318,18 @@ class Settings:
         sections be loaded at all temperatures within the range. 'multipole' is
         a boolean indicating whether or not the windowed multipole method should
         be used to evaluate resolved resonance cross sections.
+    timestep_parameters : dict
+        Time step parameters for kinetic simulations. Acceptable keys are:
+        :dt:
+            Fixed timestep size.
+        :n_timesteps:
+            Numeber of timesteps.
+        :timestep_units:
+            `ms`,`s`, `min`. Units for timesteps. `ms` means miliseconds, `s`
+            means seconds, `min` means minutes.
+
+        .. versionadded:: 0.16
+
     trace : tuple or list
         Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number
@@ -377,6 +399,8 @@ class Settings:
         self._max_write_lost_particles = None
         self._particles = None
         self._keff_trigger = None
+        self._kinetic_simulation = None
+        self._timestep_parameters = {}
 
         # Energy mode subelement
         self._energy_mode = None
@@ -585,6 +609,39 @@ class Settings:
             raise ValueError(msg)
 
         self._keff_trigger = keff_trigger
+
+    @property
+    def kinetic_simulation(self) -> bool:
+        return self._kinetic_simulation
+
+    @kinetic_simulation.setter
+    def kinetic_simulation(self, value: bool):
+        cv.check_type('kinetic simulation', value, bool)
+        self._kinetic_simulation = value
+
+    @property
+    def timestep_parameters(self) -> dict:
+        return self._timestep_parameters
+ 
+    @timestep_parameters.setter
+    def timestep_parameters(self, timestep_parameters: dict):
+        if not isinstance(timestep_parameters, Mapping):
+            raise ValueError(f'Unable to set timestep_parameters from "{timestep_parameters}" '
+                             'which is not a dict.')
+        for key, value in timestep_parameters.items():
+            if key == 'dt':
+                cv.check_type('dt', value, Real)
+                cv.check_greater_than('dt', value, 0)
+            elif key == 'n_timesteps':
+                cv.check_type('n_timesteps', value, Integral)
+                cv.check_greater_than('n_timesteps', value, 0)
+            elif key == 'timestep_units':
+                cv.check_value(
+                    'timestep units', value, ('ms', 's', 'min'))
+            else:
+                raise ValueError(f'Unable to set time dependent to "{key}" which is '
+                                 'unsupported by OpenMC')
+        self._timestep_parameters = timestep_parameters
 
     @property
     def energy_mode(self) -> str:
@@ -1006,7 +1063,7 @@ class Settings:
                     cv.check_type('temperature', T, Real)
 
         self._temperature = temperature
-
+    
     @property
     def trace(self) -> Iterable:
         return self._trace
@@ -1345,6 +1402,14 @@ class Settings:
                 cv.check_type('diagonal stabilization rho', value, Real)
                 cv.check_greater_than('diagonal stabilization rho',
                                       value, 0.0, True)
+            elif self.run_mode == 'time dependent':
+                if key == 'bd_order':
+                    cv.check_type('BD order', value, Integer)
+                    cv.check_greater_than('BD order', value, 0)
+                    cv.check_less_than('BD order', value, 7)
+                elif key == 'time_derivative method':
+                    cv.check_value('time derivative method', value,
+                                   ('isotropic', 'propogation'))
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1430,6 +1495,18 @@ class Settings:
             for key, value in sorted(self._keff_trigger.items()):
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(value).lower()
+
+    def _create_kinetic_simulation_subelement(self, root):
+        if self._kinetic_simulation is not None:
+            elem = ET.SubElement(root, "kinetic_simulation")
+            elem.text = str(self._kinetic_simulation).lower()
+
+    def _create_timestep_parameters_subelement(self, root):
+        if self._timestep_parameters:
+            element = ET.SubElement(root, "timestep_parameters")
+            for key, value in self._timestep_parameters.items():
+                subelement = ET.SubElement(element, key)
+                subelement.text = str(value)
 
     def _create_energy_mode_subelement(self, root):
         if self._energy_mode is not None:
@@ -1972,6 +2049,23 @@ class Settings:
             threshold = float(get_text(elem, 'threshold'))
             self.keff_trigger = {'type': trigger, 'threshold': threshold}
 
+    def _kinetic_simulation_from_xml_element(self, root):
+        text = get_text(root, 'kinetic_simulation')
+        if text is not None:
+            self.kinetic_simulation = text in ('true', '1')
+
+    def _timestep_parameters_from_xml_element(self, root):
+        elem = root.find('timestep_parameters')
+        if elem is not None:
+            self.timestep_parameters = {}
+            for child in elem:
+                if child.tag == 'n_timesteps':
+                    self.timestep_parameters[child.tag] = int(child.text)
+                elif child.tag == 'timestep_units':
+                    self.timestep_parameters['timestep_units'] = child.text
+                elif child.tag == 'dt':
+                    self.timestep_parameters['dt'] = float(child.text)
+
     def _source_from_xml_element(self, root, meshes=None):
         for elem in root.findall('source'):
             src = SourceBase.from_xml_element(elem, meshes)
@@ -2360,6 +2454,10 @@ class Settings:
                             domains.append(domain)
                         self.random_ray['source_region_meshes'].append(
                             (mesh, domains))
+                elif child.tag == 'bd_order':
+                    self.random_ray['bd_order'] = int(child.text)
+                elif child.tag == 'time_derivative_method':
+                    self.random_ray['time_derivative_method'] = child.text
 
     def _use_decay_photons_from_xml_element(self, root):
         text = get_text(root, 'use_decay_photons')
@@ -2396,6 +2494,8 @@ class Settings:
         self._create_max_write_lost_particles_subelement(element)
         self._create_generations_per_batch_subelement(element)
         self._create_keff_trigger_subelement(element)
+        self._create_kinetic_simulation_subelement(element)
+        self._create_timestep_parameters_subelement(element)
         self._create_source_subelement(element, mesh_memo)
         self._create_output_subelement(element)
         self._create_statepoint_subelement(element)
@@ -2509,6 +2609,8 @@ class Settings:
         settings._max_write_lost_particles_from_xml_element(elem)
         settings._generations_per_batch_from_xml_element(elem)
         settings._keff_trigger_from_xml_element(elem)
+        settings._kinetic_simulation_from_xml_element(elem)
+        settings._timestep_parameters_from_xml_element(elem)
         settings._source_from_xml_element(elem, meshes)
         settings._volume_calcs_from_xml_element(elem)
         settings._output_from_xml_element(elem)

@@ -1,6 +1,8 @@
 #ifndef OPENMC_RANDOM_RAY_SOURCE_REGION_H
 #define OPENMC_RANDOM_RAY_SOURCE_REGION_H
 
+#include <deque>
+
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/random_ray/moment_matrix.h"
@@ -141,6 +143,7 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
   int negroups_;
+  int ndgroups_;
   bool is_numerical_fp_artifact_ {false};
   bool is_linear_ {false};
 
@@ -175,8 +178,9 @@ public:
   // Energy group-wise 1D arrays
   double* scalar_flux_old_;
   double* scalar_flux_new_;
-  float* source_;
-  float* external_source_;
+  double* source_;
+  double* source_final_;
+  double* external_source_;
   double* scalar_flux_final_;
 
   MomentArray* source_gradients_;
@@ -188,6 +192,47 @@ public:
   // tasks. Each group may have a different number of tally tasks
   // associated with it, necessitating the use of a jagged array.
   vector<TallyTask>* tally_task_;
+
+  //---------------------------------------------------------------------------
+  // Public Data Members for kinetic simulations
+
+  // Energy group-wise 1D time-dependent arrays
+  double* scalar_flux_td_old_;
+  double* scalar_flux_td_new_;
+  double* scalar_flux_td_final_;
+
+  double* source_td_;
+  double* source_td_final_;
+
+  // Energy group-wise 1D time-derivative arrays
+  double* source_time_derivative_;
+  double* scalar_flux_time_derivative_2_;
+
+  // Delay group-wise 1D arrays
+  double* delayed_fission_source_;
+  double* precursors_old_;
+  double* precursors_new_;
+  double* precursors_final_;
+
+  // Energy group-wise 2D BD arrays (g x time step)
+  std::deque<double>* scalar_flux_bd_;
+  std::deque<double>* precursors_bd_;
+
+  // Delay group-wise 2D BD arrays (dg x time step)
+  std::deque<double>* source_bd_;
+
+  // Energy group-wise 1D RHS BD arrays
+  double* scalar_flux_rhs_bd_;
+  double* source_rhs_bd_;
+  double* scalar_flux_rhs_bd_2_;
+
+  // Delay group-wise 1D RHS BD arrays
+  double* precursors_rhs_bd_;
+
+  // 2D array representing values for all delay groups x tally
+  // tasks. Each group may have a different number of tally tasks
+  // associated with it, necessitating the use of a jagged array.
+  vector<TallyTask>* tally_delay_task_;
 
   //----------------------------------------------------------------------------
   // Public Accessors
@@ -271,11 +316,14 @@ public:
   double& scalar_flux_final(int g) { return scalar_flux_final_[g]; }
   const double scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
 
-  float& source(int g) { return source_[g]; }
-  const float source(int g) const { return source_[g]; }
+  double& source(int g) { return source_[g]; }
+  const double source(int g) const { return source_[g]; }
 
-  float& external_source(int g) { return external_source_[g]; }
-  const float external_source(int g) const { return external_source_[g]; }
+  double& source_final(int g) { return source_final_[g]; }
+  const double source_final(int g) const { return source_final_[g]; }
+
+  double& external_source(int g) { return external_source_[g]; }
+  const double external_source(int g) const { return external_source_[g]; }
 
   MomentArray& source_gradients(int g) { return source_gradients_[g]; }
   const MomentArray source_gradients(int g) const
@@ -301,13 +349,111 @@ public:
   vector<TallyTask>& tally_task(int g) { return tally_task_[g]; }
   const vector<TallyTask>& tally_task(int g) const { return tally_task_[g]; }
 
+  //---------------------------------------------------------------------------
+  // Public Accessors for kinetic simulations
+  double& scalar_flux_td_old(int g) { return scalar_flux_td_old_[g]; }
+  const double scalar_flux_td_old(int g) const
+  {
+    return scalar_flux_td_old_[g];
+  }
+
+  double& scalar_flux_td_new(int g) { return scalar_flux_td_new_[g]; }
+  const double scalar_flux_td_new(int g) const
+  {
+    return scalar_flux_td_new_[g];
+  }
+
+  double& scalar_flux_td_final(int g) { return scalar_flux_td_final_[g]; }
+  const double scalar_flux_td_final(int g) const
+  {
+    return scalar_flux_td_final_[g];
+  }
+
+  double& source_td(int g) { return source_td_[g]; }
+  const double source_td(int g) const { return source_td_[g]; }
+
+  double& source_td_final(int g) { return source_td_final_[g]; }
+  const double source_td_final(int g) const { return source_td_final_[g]; }
+
+  double& source_time_derivative(int g) { return source_time_derivative_[g]; }
+  const double source_time_derivative(int g) const
+  {
+    return source_time_derivative_[g];
+  }
+
+  double& scalar_flux_time_derivative_2(int g)
+  {
+    return scalar_flux_time_derivative_2_[g];
+  }
+  const double scalar_flux_time_derivative_2(int g) const
+  {
+    return scalar_flux_time_derivative_2_[g];
+  }
+
+  double& delayed_fission_source(int dg) { return delayed_fission_source_[dg]; }
+  const double delayed_fission_source(int dg) const
+  {
+    return delayed_fission_source_[dg];
+  }
+
+  double& precursors_old(int dg) { return precursors_old_[dg]; }
+  const double precursors_old(int dg) const { return precursors_old_[dg]; }
+
+  double& precursors_new(int dg) { return precursors_new_[dg]; }
+  const double precursors_new(int dg) const { return precursors_new_[dg]; }
+
+  double& precursors_final(int dg) { return precursors_final_[dg]; }
+  const double precursors_final(int dg) const { return precursors_final_[dg]; }
+
+  std::deque<double>& scalar_flux_bd(int g) { return scalar_flux_bd_[g]; }
+  const std::deque<double>& scalar_flux_bd(int g) const
+  {
+    return scalar_flux_bd_[g];
+  }
+
+  std::deque<double>& precursors_bd(int dg) { return precursors_bd_[dg]; }
+  const std::deque<double>& precursors_bd(int dg) const
+  {
+    return precursors_bd_[dg];
+  }
+
+  std::deque<double>& source_bd(int g) { return source_bd_[g]; }
+  const std::deque<double>& source_bd(int g) const { return source_bd_[g]; }
+
+  double& scalar_flux_rhs_bd(int g) { return scalar_flux_rhs_bd_[g]; }
+  const double scalar_flux_rhs_bd(int g) const
+  {
+    return scalar_flux_rhs_bd_[g];
+  }
+
+  double& source_rhs_bd(int g) { return source_rhs_bd_[g]; }
+  const double source_rhs_bd(int g) const { return source_rhs_bd_[g]; }
+
+  double& scalar_flux_rhs_bd_2(int g) { return scalar_flux_rhs_bd_2_[g]; }
+  const double scalar_flux_rhs_bd_2(int g) const
+  {
+    return scalar_flux_rhs_bd_2_[g];
+  }
+
+  double& precursors_rhs_bd(int dg) { return precursors_rhs_bd_[dg]; }
+  const double precursors_rhs_bd(int dg) const
+  {
+    return precursors_rhs_bd_[dg];
+  }
+
+  vector<TallyTask>& tally_delay_task(int dg) { return tally_delay_task_[dg]; }
+  const vector<TallyTask>& tally_delay_task(int dg) const
+  {
+    return tally_delay_task_[dg];
+  }
+
 }; // class SourceRegionHandle
 
 class SourceRegion {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegion(int negroups, bool is_linear);
+  SourceRegion(int negroups, int ndgroups, bool is_linear);
   SourceRegion() = default;
 
   //----------------------------------------------------------------------------
@@ -357,12 +503,14 @@ public:
     scalar_flux_old_; //!< The scalar flux from the previous iteration
   vector<double>
     scalar_flux_new_; //!< The scalar flux from the current iteration
-  vector<float>
+  vector<double>
     source_; //!< The total source term (fission + scattering + external)
-  vector<float> external_source_;    //!< The external source term
+  vector<double> external_source_;   //!< The external source term
   vector<double> scalar_flux_final_; //!< The scalar flux accumulated over all
                                      //!< active iterations (used for plotting,
-                                     //!< or computing adjoint sources)
+                                     //!< computing adjoint sources, or
+                                     //!< computing an initial condition for a
+                                     //!< kinetic simulation)
 
   vector<MomentArray> source_gradients_; //!< The linear source gradients
   vector<MomentArray>
@@ -378,14 +526,100 @@ public:
   // tasks. Each group may have a different number of tally tasks
   // associated with it, necessitating the use of a jagged array.
   vector<vector<TallyTask>> tally_task_;
+
+  //----------------------------------------------------------------------------
+  // Public Data Members for kinetic simulations
+
+  // Energy group-wise 1D time-dependent arrrays
+  vector<double> source_final_;       //!< The total source accumulated over all
+                                      //!< active iterations (used for SDP)
+  vector<double> scalar_flux_td_old_; //!< The time-dependent scalar flux from
+                                      //!< the previous iteration
+  vector<double> scalar_flux_td_new_; //!< The time-dependent scalar flux from
+                                      //!< the current iteration
+  vector<double>
+    scalar_flux_td_final_; //!< The time-dependent scalar flux accumulated over
+                           //!< all active iterations (used as the initial
+                           //!< condition for the next timestep)
+
+  vector<double>
+    source_td_; //!< The total time-dependent source term (prompt
+                //!< prompt fission + scattering + delayed emission)
+  vector<double>
+    source_td_final_; //!< The total time-dependent source accumulated over all
+                      //!< active iterations (used for SDP)
+
+  // Energy group-wise 1D derivative arrays
+  vector<double> source_time_derivative_;        //!< The time derivative of the
+                                                 //!< source (used for SDP)
+  vector<double> scalar_flux_time_derivative_2_; //!< The 2nd order time
+                                                 //!< derivative of the scalar
+                                                 //!< flux (used for SDP)
+  // Delay group-wise 1D arrays
+  vector<double> delayed_fission_source_; //!< The delayed fission source binned
+                                          //!< by delay group
+  vector<double> precursors_old_; //!< The precursor density from the previous
+                                  //!< iteration.
+  vector<double>
+    precursors_new_; //!< The precursor density for the current iteration
+  vector<double>
+    precursors_final_; //!< The precursor density accumulated over all
+                       //!< active iterations (used for computing
+                       //!< the time derivative of precursor population)
+
+  // Energy group-wise 2D BD arrays (g x time step)
+  vector<std::deque<double>>
+    scalar_flux_bd_; //!< The final scalar flux in each energy group from a
+                     //!< finite number of previous time steps (used for
+                     //!< computing the first order (and second order, for SDP)
+                     //!< scalar flux time derivative)
+  vector<std::deque<double>>
+    precursors_bd_; //!< The final scalar flux in each energy group from a
+                    //!< finite number of previous time steps (used for
+                    //!< computing the first order source time derivative for
+                    //!< SDP)
+
+  // Delay group-wise 2D BD arrays (dg x time step)
+  vector<std::deque<double>>
+    source_bd_; //!< The final precursor population in each energy group from a
+                //!< finite number of previous time steps (used for computing
+                //!< the first order precursor time derivative)
+
+  // Energy group-wise 1D RHS BD arrays
+  vector<double>
+    scalar_flux_rhs_bd_; //!< RHS dervative for the scalar flux from previous
+                         //!< timesteps. Used to compute the total scalar flux
+                         //!< time derivative for both TI and SDP time-dependent
+                         //!< simulations
+  vector<double> source_rhs_bd_; //!< RHS derivative for the neutron source from
+                                 //!< previous timesteps Used for compute the
+                                 //!< total neutron source derivative for SDP
+  vector<double>
+    scalar_flux_rhs_bd_2_; //!< 2nd order RHS derivative for the scalar flux
+                           //!< from previous timesteps. Used to compute the
+                           //!< total 2nd order scalar flux time derivative for
+                           //!< SDP.
+
+  // Delay group-wise 1D RHS BD arrays
+  vector<double>
+    precursors_rhs_bd_; //!< RHS derivative for the precursors from previous
+                        //!< timesteps. Used to compute the total precursor time
+                        //!< derivative for solving the precursor equation using
+                        //!< backwards differences.
+
+  // 2D array representing values for all delay groups x tally
+  // tasks. Each group may have a different number of tally tasks
+  // associated with it, necessitating the use of a jagged array.
+  vector<vector<TallyTask>> tally_delay_task_;
+
 }; // class SourceRegion
 
 class SourceRegionContainer {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegionContainer(int negroups, bool is_linear)
-    : negroups_(negroups), is_linear_(is_linear)
+  SourceRegionContainer(int negroups, int ndgroups, bool is_linear)
+    : negroups_(negroups), ndgroups_(ndgroups), is_linear_(is_linear)
   {}
   SourceRegionContainer() = default;
 
@@ -555,21 +789,35 @@ public:
     return scalar_flux_final_[se];
   }
 
-  float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
-  const float source(int64_t sr, int g) const { return source_[index(sr, g)]; }
-  float& source(int64_t se) { return source_[se]; }
-  const float source(int64_t se) const { return source_[se]; }
+  double& source(int64_t sr, int g) { return source_[index(sr, g)]; }
+  const double source(int64_t sr, int g) const { return source_[index(sr, g)]; }
+  double& source(int64_t se) { return source_[se]; }
+  const double source(int64_t se) const { return source_[se]; }
 
-  float& external_source(int64_t sr, int g)
+  double& source_final(int64_t sr, int g)
+  {
+    return source_final_[index(sr, g)];
+  }
+  const double source_final(int64_t sr, int g) const
+  {
+    return source_final_[index(sr, g)];
+  }
+  double& source_final(int64_t se) { return source_final_[se]; }
+  const double source_final(int64_t se) const { return source_final_[se]; }
+
+  double& external_source(int64_t sr, int g)
   {
     return external_source_[index(sr, g)];
   }
-  const float external_source(int64_t sr, int g) const
+  const double external_source(int64_t sr, int g) const
   {
     return external_source_[index(sr, g)];
   }
-  float& external_source(int64_t se) { return external_source_[se]; }
-  const float external_source(int64_t se) const { return external_source_[se]; }
+  double& external_source(int64_t se) { return external_source_[se]; }
+  const double external_source(int64_t se) const
+  {
+    return external_source_[se];
+  }
 
   vector<TallyTask>& tally_task(int64_t sr, int g)
   {
@@ -601,6 +849,272 @@ public:
   int64_t& parent_sr(int64_t sr) { return parent_sr_[sr]; }
   const int64_t parent_sr(int64_t sr) const { return parent_sr_[sr]; }
 
+  //---------------------------------------
+  // For kinetic simulations
+
+  double& scalar_flux_td_old(int64_t sr, int g)
+  {
+    return scalar_flux_td_old_[index(sr, g)];
+  }
+  const double& scalar_flux_td_old(int64_t sr, int g) const
+  {
+    return scalar_flux_td_old_[index(sr, g)];
+  }
+  double& scalar_flux_td_old(int64_t se) { return scalar_flux_td_old_[se]; }
+  const double& scalar_flux_td_old(int64_t se) const
+  {
+    return scalar_flux_td_old_[se];
+  }
+
+  double& scalar_flux_td_new(int64_t sr, int g)
+  {
+    return scalar_flux_td_new_[index(sr, g)];
+  }
+  const double& scalar_flux_td_new(int64_t sr, int g) const
+  {
+    return scalar_flux_td_new_[index(sr, g)];
+  }
+  double& scalar_flux_td_new(int64_t se) { return scalar_flux_td_new_[se]; }
+  const double& scalar_flux_td_new(int64_t se) const
+  {
+    return scalar_flux_td_new_[se];
+  }
+
+  double& scalar_flux_td_final(int64_t sr, int g)
+  {
+    return scalar_flux_td_final_[index(sr, g)];
+  }
+  const double& scalar_flux_td_final(int64_t sr, int g) const
+  {
+    return scalar_flux_td_final_[index(sr, g)];
+  }
+  double& scalar_flux_td_final(int64_t se) { return scalar_flux_td_final_[se]; }
+  const double& scalar_flux_td_final(int64_t se) const
+  {
+    return scalar_flux_td_final_[se];
+  }
+
+  double& source_td(int64_t sr, int g) { return source_td_[index(sr, g)]; }
+  const double& source_td(int64_t sr, int g) const
+  {
+    return source_td_[index(sr, g)];
+  }
+  double& source_td(int64_t se) { return source_td_[se]; }
+  const double& source_td(int64_t se) const { return source_td_[se]; }
+
+  double& source_td_final(int64_t sr, int g)
+  {
+    return source_td_final_[index(sr, g)];
+  }
+  const double& source_td_final(int64_t sr, int g) const
+  {
+    return source_td_final_[index(sr, g)];
+  }
+  double& source_td_final(int64_t se) { return source_td_final_[se]; }
+  const double& source_td_final(int64_t se) const
+  {
+    return source_td_final_[se];
+  }
+
+  double& source_time_derivative(int64_t sr, int g)
+  {
+    return source_time_derivative_[index(sr, g)];
+  }
+  const double& source_time_derivative(int64_t sr, int g) const
+  {
+    return source_time_derivative_[index(sr, g)];
+  }
+  double& source_time_derivative(int64_t se)
+  {
+    return source_time_derivative_[se];
+  }
+  const double& source_time_derivative(int64_t se) const
+  {
+    return source_time_derivative_[se];
+  }
+
+  double& scalar_flux_time_derivative_2(int64_t sr, int g)
+  {
+    return scalar_flux_time_derivative_2_[index(sr, g)];
+  }
+  const double& scalar_flux_time_derivative_2(int64_t sr, int g) const
+  {
+    return scalar_flux_time_derivative_2_[index(sr, g)];
+  }
+  double& scalar_flux_time_derivative_2(int64_t se)
+  {
+    return scalar_flux_time_derivative_2_[se];
+  }
+  const double& scalar_flux_time_derivative_2(int64_t se) const
+  {
+    return scalar_flux_time_derivative_2_[se];
+  }
+
+  double& precursors_old(int64_t sr, int dg)
+  {
+    return precursors_old_[dindex(sr, dg)];
+  }
+  const double& precursors_old(int64_t sr, int dg) const
+  {
+    return precursors_old_[dindex(sr, dg)];
+  }
+  double& precursors_old(int64_t de) { return precursors_old_[de]; }
+  const double& precursors_old(int64_t de) const { return precursors_old_[de]; }
+
+  double& precursors_new(int64_t sr, int dg)
+  {
+    return precursors_new_[dindex(sr, dg)];
+  }
+  const double& precursors_new(int64_t sr, int dg) const
+  {
+    return precursors_new_[dindex(sr, dg)];
+  }
+  double& precursors_new(int64_t de) { return precursors_new_[de]; }
+  const double& precursors_new(int64_t de) const { return precursors_new_[de]; }
+
+  double& precursors_final(int64_t sr, int dg)
+  {
+    return precursors_final_[dindex(sr, dg)];
+  }
+  const double& precursors_final(int64_t sr, int dg) const
+  {
+    return precursors_final_[dindex(sr, dg)];
+  }
+  double& precursors_final(int64_t de) { return precursors_final_[de]; }
+  const double& precursors_final(int64_t de) const
+  {
+    return precursors_final_[de];
+  }
+
+  double& delayed_fission_source(int64_t sr, int dg)
+  {
+    return delayed_fission_source_[dindex(sr, dg)];
+  }
+  const double& delayed_fission_source(int64_t sr, int dg) const
+  {
+    return delayed_fission_source_[dindex(sr, dg)];
+  }
+  double& delayed_fission_source(int64_t de)
+  {
+    return delayed_fission_source_[de];
+  }
+  const double& delayed_fission_source(int64_t de) const
+  {
+    return delayed_fission_source_[de];
+  }
+
+  std::deque<double>& scalar_flux_bd(int64_t sr, int g)
+  {
+    return scalar_flux_bd_[index(sr, g)];
+  }
+  const std::deque<double>& scalar_flux_bd(int64_t sr, int g) const
+  {
+    return scalar_flux_bd_[index(sr, g)];
+  }
+  std::deque<double>& scalar_flux_bd(int64_t se) { return scalar_flux_bd_[se]; }
+  const std::deque<double>& scalar_flux_bd(int64_t se) const
+  {
+    return scalar_flux_bd_[se];
+  }
+
+  std::deque<double>& precursors_bd(int64_t sr, int dg)
+  {
+    return precursors_bd_[dindex(sr, dg)];
+  }
+  const std::deque<double>& precursors_bd(int64_t sr, int dg) const
+  {
+    return precursors_bd_[dindex(sr, dg)];
+  }
+  std::deque<double>& precursors_bd(int64_t de) { return precursors_bd_[de]; }
+  const std::deque<double>& precursors_bd(int64_t de) const
+  {
+    return precursors_bd_[de];
+  }
+
+  std::deque<double>& source_bd(int64_t sr, int g)
+  {
+    return source_bd_[index(sr, g)];
+  }
+  const std::deque<double>& source_bd(int64_t sr, int g) const
+  {
+    return source_bd_[index(sr, g)];
+  }
+  std::deque<double>& source_bd(int64_t se) { return source_bd_[se]; }
+  const std::deque<double>& source_bd(int64_t se) const
+  {
+    return source_bd_[se];
+  }
+
+  double& scalar_flux_rhs_bd(int64_t sr, int g)
+  {
+    return scalar_flux_rhs_bd_[index(sr, g)];
+  }
+  const double& scalar_flux_rhs_bd(int64_t sr, int g) const
+  {
+    return scalar_flux_rhs_bd_[index(sr, g)];
+  }
+  double& scalar_flux_rhs_bd(int64_t se) { return scalar_flux_rhs_bd_[se]; }
+  const double& scalar_flux_rhs_bd(int64_t se) const
+  {
+    return scalar_flux_rhs_bd_[se];
+  }
+
+  double& precursors_rhs_bd(int64_t sr, int dg)
+  {
+    return precursors_rhs_bd_[dindex(sr, dg)];
+  }
+  const double& precursors_rhs_bd(int64_t sr, int dg) const
+  {
+    return precursors_rhs_bd_[dindex(sr, dg)];
+  }
+  double& precursors_rhs_bd(int64_t de) { return precursors_rhs_bd_[de]; }
+  const double& precursors_rhs_bd(int64_t de) const
+  {
+    return precursors_rhs_bd_[de];
+  }
+
+  double& source_rhs_bd(int64_t sr, int g)
+  {
+    return source_rhs_bd_[index(sr, g)];
+  }
+  const double& source_rhs_bd(int64_t sr, int g) const
+  {
+    return source_rhs_bd_[index(sr, g)];
+  }
+  double& source_rhs_bd(int64_t se) { return source_rhs_bd_[se]; }
+  const double& source_rhs_bd(int64_t se) const { return source_rhs_bd_[se]; }
+
+  double& scalar_flux_rhs_bd_2(int64_t sr, int g)
+  {
+    return scalar_flux_rhs_bd_2_[index(sr, g)];
+  }
+  const double& scalar_flux_rhs_bd_2(int64_t sr, int g) const
+  {
+    return scalar_flux_rhs_bd_2_[index(sr, g)];
+  }
+  double& scalar_flux_rhs_bd_2(int64_t se) { return scalar_flux_rhs_bd_2_[se]; }
+  const double& scalar_flux_rhs_bd_2(int64_t se) const
+  {
+    return scalar_flux_rhs_bd_2_[se];
+  }
+
+  vector<TallyTask>& tally_delay_task(int64_t sr, int dg)
+  {
+    return tally_delay_task_[dindex(sr, dg)];
+  }
+  const vector<TallyTask>& tally_delay_task(int64_t sr, int dg) const
+  {
+    return tally_delay_task_[dindex(sr, dg)];
+  }
+  vector<TallyTask>& tally_delay_task(int64_t de)
+  {
+    return tally_delay_task_[de];
+  }
+  const vector<TallyTask>& tally_delay_task(int64_t de) const
+  {
+    return tally_delay_task_[de];
+  }
+
   //----------------------------------------------------------------------------
   // Public Methods
 
@@ -616,11 +1130,23 @@ public:
   SourceRegionHandle get_source_region_handle(int64_t sr);
   void adjoint_reset();
 
+  //---------------------------------------------------------------------------
+  // Public Methods for kinetic simulations
+
+  int64_t n_delay_elements() const { return n_source_regions_ * ndgroups_; }
+  int& ndgroups() { return ndgroups_; }
+  const int ndgroups() const { return ndgroups_; }
+
+  void flux_td_swap();
+  void precursors_swap();
+  void time_step_reset();
+
 private:
   //----------------------------------------------------------------------------
   // Private Data Members
   int64_t n_source_regions_ {0};
   int negroups_ {0};
+  int ndgroups_ {0};
   bool is_linear_ {false};
 
   // SoA storage for scalar fields (one item per source region)
@@ -652,8 +1178,9 @@ private:
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
-  vector<float> source_;
-  vector<float> external_source_;
+  vector<double> source_;
+  vector<double> source_final_;
+  vector<double> external_source_;
 
   vector<MomentArray> source_gradients_;
   vector<MomentArray> flux_moments_old_;
@@ -667,11 +1194,53 @@ private:
   // dimension.
   vector<vector<TallyTask>> tally_task_;
 
+  //---------------------------------------------------------------------------
+  // Private Data Members for kinetic simulations
+
+  // SoA energy group-wise 2D time-dependent arrays flattened to 1D
+  vector<double> scalar_flux_td_old_;
+  vector<double> scalar_flux_td_new_;
+  vector<double> scalar_flux_td_final_;
+
+  vector<double> source_td_;
+  vector<double> source_td_final_;
+
+  // SoA energy group-wise 2D derivative arrays flattened to 1D
+  vector<double> source_time_derivative_;
+  vector<double> scalar_flux_time_derivative_2_;
+
+  // SoA delay group-wise 2D arrays flattened to 1D
+  vector<double> delayed_fission_source_;
+  vector<double> precursors_old_;
+  vector<double> precursors_new_;
+  vector<double> precursors_final_;
+
+  // SoA energy group-wise 3D BD arrays (sr x g/dg X timestep) flattened to 2D
+  vector<std::deque<double>> scalar_flux_bd_;
+  vector<std::deque<double>> precursors_bd_;
+  vector<std::deque<double>> source_bd_;
+
+  // SoA energy group-wise 2D RHS BD arrays flattened to 1D
+  vector<double> scalar_flux_rhs_bd_;
+  vector<double> source_rhs_bd_;
+  vector<double> scalar_flux_rhs_bd_2_;
+
+  // SoA delay group-wise 2D RHS BD arrays flattened to 1D
+  vector<double> precursors_rhs_bd_;
+
+  // SoA 3D array representing values for all source regions x delay groups x
+  // tally tasks. The outer two dimensions (source regions and delay groups)
+  // are flattened to 1D. Each group may have a different number of tally tasks
+  // associated with it, necessitating the use of a jagged array for the inner
+  // dimension.
+  vector<vector<TallyTask>> tally_delay_task_;
+
   //----------------------------------------------------------------------------
   // Private Methods
 
   // Helper function for indexing
   inline int index(int64_t sr, int g) const { return sr * negroups_ + g; }
+  inline int dindex(int64_t sr, int dg) const { return sr * ndgroups_ + dg; }
 };
 
 } // namespace openmc

@@ -1,4 +1,5 @@
 #include "openmc/random_ray/source_region.h"
+#include "openmc/random_ray/random_ray.h"
 
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
@@ -23,19 +24,38 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     volume_task_(&sr.volume_task_), mesh_(&sr.mesh_),
     parent_sr_(&sr.parent_sr_), scalar_flux_old_(sr.scalar_flux_old_.data()),
     scalar_flux_new_(sr.scalar_flux_new_.data()), source_(sr.source_.data()),
+    source_final_(sr.source_.data()),
     external_source_(sr.external_source_.data()),
     scalar_flux_final_(sr.scalar_flux_final_.data()),
     source_gradients_(sr.source_gradients_.data()),
     flux_moments_old_(sr.flux_moments_old_.data()),
     flux_moments_new_(sr.flux_moments_new_.data()),
     flux_moments_t_(sr.flux_moments_t_.data()),
-    tally_task_(sr.tally_task_.data())
+    tally_task_(sr.tally_task_.data()),
+    scalar_flux_td_old_(sr.scalar_flux_td_old_.data()),
+    scalar_flux_td_new_(sr.scalar_flux_td_new_.data()),
+    scalar_flux_td_final_(sr.scalar_flux_td_final_.data()),
+    source_td_(sr.source_td_.data()),
+    source_td_final_(sr.source_td_final_.data()),
+    source_time_derivative_(sr.source_time_derivative_.data()),
+    scalar_flux_time_derivative_2_(sr.scalar_flux_time_derivative_2_.data()),
+    delayed_fission_source_(sr.delayed_fission_source_.data()),
+    precursors_old_(sr.precursors_old_.data()),
+    precursors_new_(sr.precursors_new_.data()),
+    precursors_final_(sr.precursors_final_.data()),
+    scalar_flux_bd_(sr.scalar_flux_bd_.data()),
+    source_bd_(sr.source_bd_.data()), precursors_bd_(sr.precursors_bd_.data()),
+    scalar_flux_rhs_bd_(sr.scalar_flux_rhs_bd_.data()),
+    source_rhs_bd_(sr.source_rhs_bd_.data()),
+    scalar_flux_rhs_bd_2_(sr.scalar_flux_rhs_bd_2_.data()),
+    precursors_rhs_bd_(sr.precursors_rhs_bd_.data()),
+    tally_delay_task_(sr.tally_delay_task_.data())
 {}
 
 //==============================================================================
 // SourceRegion implementation
 //==============================================================================
-SourceRegion::SourceRegion(int negroups, bool is_linear)
+SourceRegion::SourceRegion(int negroups, int ndgroups, bool is_linear)
 {
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // If in eigenvalue mode, set starting flux to guess of 1
@@ -57,6 +77,38 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
     flux_moments_old_.resize(negroups);
     flux_moments_new_.resize(negroups);
     flux_moments_t_.resize(negroups);
+  }
+  if (settings::kinetic_simulation) {
+    scalar_flux_td_old_.assign(negroups, 0.0);
+    scalar_flux_td_new_.assign(negroups, 0.0);
+    source_td_.resize(negroups);
+    scalar_flux_td_final_.assign(negroups, 0.0);
+
+    scalar_flux_bd_.resize(negroups);
+    scalar_flux_rhs_bd_.resize(negroups);
+
+    // Source Derivative Propogation arrays
+    if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      source_final_.assign(negroups, 0.0);
+
+      source_td_final_.assign(negroups, 0.0);
+      source_time_derivative_.assign(negroups, 0.0);
+      scalar_flux_time_derivative_2_.assign(negroups, 0.0);
+
+      source_bd_.resize(negroups);
+      source_rhs_bd_.resize(negroups);
+      scalar_flux_rhs_bd_2_.resize(negroups);
+    }
+
+    delayed_fission_source_.assign(ndgroups, 0.0);
+    precursors_old_.assign(ndgroups, 0.0);
+    precursors_new_.assign(ndgroups, 0.0);
+    precursors_final_.assign(ndgroups, 0.0);
+
+    precursors_bd_.resize(ndgroups);
+    precursors_rhs_bd_.resize(ndgroups);
+
+    tally_delay_task_.resize(ndgroups);
   }
 }
 
@@ -114,6 +166,45 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
     // Tally tasks
     tally_task_.emplace_back(sr.tally_task_[g]);
+
+    // Energy-dependent fields for kinetic simulations
+    if (settings::kinetic_simulation) {
+      scalar_flux_td_old_.push_back(sr.scalar_flux_td_old_[g]);
+      scalar_flux_td_new_.push_back(sr.scalar_flux_td_new_[g]);
+      scalar_flux_td_final_.push_back(sr.scalar_flux_td_final_[g]);
+      source_td_.push_back(sr.source_td_[g]);
+
+      scalar_flux_bd_.push_back(sr.scalar_flux_bd_[g]);
+      scalar_flux_rhs_bd_.push_back(sr.scalar_flux_rhs_bd_[g]);
+
+      // Source Derivative Propogation arrays
+      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+        source_final_.push_back(sr.source_final_[g]);
+
+        source_td_final_.push_back(sr.source_final_[g]);
+        source_time_derivative_.push_back(sr.source_time_derivative_[g]);
+        scalar_flux_time_derivative_2_.push_back(
+          sr.scalar_flux_time_derivative_2_[g]);
+
+        source_bd_.push_back(sr.source_bd_[g]);
+        source_rhs_bd_.push_back(sr.source_rhs_bd_[g]);
+        scalar_flux_rhs_bd_2_.push_back(sr.scalar_flux_rhs_bd_2_[g]);
+      }
+    }
+  }
+  // Delay group-dependent fields for kinetic simulations
+  if (settings::kinetic_simulation) {
+    for (int dg = 0; dg < ndgroups_; dg++) {
+      delayed_fission_source_.push_back(sr.delayed_fission_source_[dg]);
+      precursors_old_.push_back(sr.precursors_old_[dg]);
+      precursors_new_.push_back(sr.precursors_new_[dg]);
+      precursors_final_.push_back(sr.precursors_final_[dg]);
+      tally_delay_task_.emplace_back(sr.tally_delay_task_[dg]);
+
+      // Backward difference arrays
+      precursors_bd_.push_back(sr.precursors_bd_[dg]);
+      precursors_rhs_bd_.push_back(sr.precursors_rhs_bd_[dg]);
+    }
   }
 }
 
@@ -160,6 +251,37 @@ void SourceRegionContainer::assign(
 
   tally_task_.clear();
   volume_task_.clear();
+
+  // Clear existing data for kinetic simulatons
+  if (settings::kinetic_simulation) {
+    scalar_flux_td_old_.clear();
+    scalar_flux_td_new_.clear();
+    scalar_flux_td_final_.clear();
+    source_td_.clear();
+
+    scalar_flux_bd_.clear();
+    scalar_flux_rhs_bd_.clear();
+
+    if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      source_final_.clear();
+
+      source_time_derivative_.clear();
+      scalar_flux_time_derivative_2_.clear();
+
+      source_bd_.clear();
+      source_rhs_bd_.clear();
+      scalar_flux_rhs_bd_2_.clear();
+    }
+
+    precursors_bd_.clear();
+    precursors_rhs_bd_.clear();
+
+    delayed_fission_source_.clear();
+    precursors_old_.clear();
+    precursors_new_.clear();
+    precursors_final_.clear();
+    tally_delay_task_.clear();
+  }
 
   // Fill with copies of source_region
   for (int i = 0; i < n_source_regions; ++i) {
@@ -218,6 +340,39 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
     handle.flux_moments_t_ = &flux_moments_t(sr, 0);
   }
 
+  if (settings::kinetic_simulation) {
+    handle.scalar_flux_td_old_ = &scalar_flux_td_old(sr, 0);
+    handle.scalar_flux_td_new_ = &scalar_flux_td_new(sr, 0);
+    handle.source_td_ = &source_td(sr, 0);
+    handle.scalar_flux_td_final_ = &scalar_flux_td_final(sr, 0);
+
+    handle.scalar_flux_bd_ = &scalar_flux_bd(sr, 0);
+    handle.scalar_flux_rhs_bd_ = &scalar_flux_rhs_bd(sr, 0);
+
+    if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      handle.source_final_ = &source_final(sr, 0);
+
+      handle.source_td_final_ = &source_td_final(sr, 0);
+      handle.source_time_derivative_ = &source_time_derivative(sr, 0);
+      handle.scalar_flux_time_derivative_2_ =
+        &scalar_flux_time_derivative_2(sr, 0);
+
+      handle.source_bd_ = &source_bd(sr, 0);
+      handle.source_rhs_bd_ = &source_rhs_bd(sr, 0);
+      handle.scalar_flux_rhs_bd_2_ = &scalar_flux_rhs_bd_2(sr, 0);
+    }
+
+    handle.delayed_fission_source_ = &delayed_fission_source(sr, 0);
+    handle.precursors_old_ = &precursors_old(sr, 0);
+    handle.precursors_new_ = &precursors_new(sr, 0);
+    handle.precursors_final_ = &precursors_final(sr, 0);
+
+    handle.precursors_bd_ = &precursors_bd(sr, 0);
+    handle.precursors_rhs_bd_ = &precursors_rhs_bd(sr, 0);
+
+    handle.tally_delay_task_ = &tally_delay_task(sr, 0);
+  }
+
   return handle;
 }
 
@@ -256,6 +411,53 @@ void SourceRegionContainer::adjoint_reset()
     MomentArray {0.0, 0.0, 0.0});
   std::fill(flux_moments_t_.begin(), flux_moments_t_.end(),
     MomentArray {0.0, 0.0, 0.0});
+  // Reset arrays for kinetic adjoint simulations
+  if (settings::kinetic_simulation && !settings::is_initial_condition) {
+    std::fill(scalar_flux_td_old_.begin(), scalar_flux_td_old_.end(), 0.0);
+    std::fill(scalar_flux_td_new_.begin(), scalar_flux_td_new_.end(), 0.0);
+    std::fill(
+      delayed_fission_source_.begin(), delayed_fission_source_.end(), 0.0);
+    std::fill(precursors_old_.begin(), precursors_old_.end(), 0.0);
+    std::fill(precursors_new_.begin(), precursors_new_.end(), 0.0);
+
+    // BD Vectors
+    std::fill(scalar_flux_rhs_bd_.begin(), scalar_flux_rhs_bd_.end(), 0.0);
+
+    if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      std::fill(
+        source_time_derivative_.begin(), source_time_derivative_.end(), 0.0);
+      std::fill(scalar_flux_time_derivative_2_.begin(),
+        scalar_flux_time_derivative_2_.end(), 0.0);
+
+      std::fill(source_rhs_bd_.begin(), source_rhs_bd_.end(), 0.0);
+      std::fill(
+        scalar_flux_rhs_bd_2_.begin(), scalar_flux_rhs_bd_2_.end(), 0.0);
+    }
+    std::fill(precursors_rhs_bd_.begin(), precursors_rhs_bd_.end(), 0.0);
+  }
+}
+
+//-----------------------------------------------------------------------------
+// Methods for kinetic simulations
+
+void SourceRegionContainer::flux_td_swap()
+{
+  scalar_flux_td_old_.swap(scalar_flux_td_new_);
+  // TODO: Add support for linear source regions
+}
+
+void SourceRegionContainer::precursors_swap()
+{
+  precursors_old_.swap(precursors_new_);
+}
+
+void SourceRegionContainer::time_step_reset()
+{
+  std::fill(scalar_flux_final_.begin(), scalar_flux_final_.end(), 0.0);
+  std::fill(scalar_flux_td_final_.begin(), scalar_flux_td_final_.end(), 0.0);
+  std::fill(precursors_final_.begin(), precursors_final_.end(), 0.0);
+  if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION)
+    std::fill(source_td_final_.begin(), source_td_final_.end(), 0.0);
 }
 
 } // namespace openmc

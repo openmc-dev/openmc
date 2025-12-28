@@ -28,6 +28,12 @@ Timer time_event_collision;
 Timer time_event_death;
 Timer time_update_src;
 
+// Timers for kinetic simulations
+Timer time_initialize_td;
+Timer time_update_bd_vectors_td;
+Timer time_update_src_td;
+Timer time_compute_precursors;
+
 } // namespace simulation
 
 //==============================================================================
@@ -87,6 +93,11 @@ void reset_timers()
   simulation::time_event_collision.reset();
   simulation::time_event_death.reset();
   simulation::time_update_src.reset();
+
+  simulation::time_initialize_td.reset();
+  simulation::time_update_bd_vectors_td.reset();
+  simulation::time_update_src_td.reset();
+  simulation::time_compute_precursors.reset();
 }
 
 } // namespace openmc

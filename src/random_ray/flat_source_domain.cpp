@@ -1143,8 +1143,7 @@ void FlatSourceDomain::flatten_xs()
           m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a);
         sigma_f_.push_back(sigma_f);
 
-        double chi =
-          m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a);
+        double chi = m.get_xs(MgxsType::CHI, g_out, &g_out, NULL, NULL, t, a);
         if (!std::isfinite(chi)) {
           // MGXS interface may return NaN in some cases, such as when material
           // is fissionable but has very small sigma_f.

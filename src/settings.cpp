@@ -348,8 +348,16 @@ void get_run_parameters(pugi::xml_node node_base)
         RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
       } else if (temp_str == "linear") {
         RandomRay::source_shape_ = RandomRaySourceShape::LINEAR;
+        if (settings::kinetic_simulation) {
+          fatal_error(
+            "linear source shapes unimplemented for kinetic simulations.");
+        }
       } else if (temp_str == "linear_xy") {
         RandomRay::source_shape_ = RandomRaySourceShape::LINEAR_XY;
+        if (settings::kinetic_simulation) {
+          fatal_error(
+            "linear_xy source shapes unimplemented for kinetic simulations.");
+        }
       } else {
         fatal_error("Unrecognized source shape: " + temp_str);
       }
@@ -415,8 +423,6 @@ void get_run_parameters(pugi::xml_node node_base)
         } else {
           RandomRay::bd_order_ = n;
         }
-      } else {
-        fatal_error("Specify BD approximation order in settings XML");
       }
       if (check_for_node(random_ray_node, "time_derivative_method")) {
         std::string temp_str =

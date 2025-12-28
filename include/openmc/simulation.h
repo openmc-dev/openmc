@@ -49,6 +49,10 @@ extern const RegularMesh* ufs_mesh;
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;
 
+//-----------------------------------------------------------------------------
+// Global variables for kinetic simulations
+extern double current_time;
+
 } // namespace simulation
 
 //==============================================================================

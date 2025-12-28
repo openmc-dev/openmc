@@ -87,6 +87,11 @@ class TestHarness:
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(self._sp_name)[0]
+        return self._write_tallies(statepoint, hash_output)
+
+    def _write_tallies(self, statepoint, hash_output):
+        """Get tally sum and sum_sq data from statepoint file
+        as a string"""
         with openmc.StatePoint(statepoint) as sp:
             outstr = ''
             if sp.run_mode == 'eigenvalue':
@@ -283,6 +288,110 @@ class ParticleRestartTestHarness(TestHarness):
         output = glob.glob('particle*.h5')
         for f in output:
             os.remove(f)
+
+
+class KineticTestHarness(TestHarness):
+    """General class for running OpenMC regression tests for kinetic simulations."""
+
+    def __init__(self, n_timesteps):
+        self._sp_base = "openmc_td_simulation"
+        self._n_timesteps = n_timesteps
+
+    def main(self):
+        """Accept commandline arguments and either run or update tests."""
+        if config['update']:
+            self.update_results()
+        else:
+            self.execute_test()
+
+    def execute_test(self):
+        """Run kinetic OpenMC test with the appropriate arguments and check the outputs."""
+        try:
+            self._run_openmc()
+            self._harness_timestep_loop("test")
+        finally:
+            self._cleanup()
+
+    def update_results(self):
+        """Update the results_true for each timestep using the current version of OpenMC."""
+        try:
+            self._run_openmc()
+            self._harness_timestep_loop("update")
+        finally:
+            self._cleanup()
+
+    def _harness_timestep_loop(self, loop_type):
+        """Test the results of each timestep"""
+        statepoint = glob.glob(self._sp_base + "*")
+        assert len(statepoint) == self._n_timesteps, f"Found {len(statepoint)} statepoint files exist" \
+            f" but expected {self._n_timesteps}."
+        for i in range(self._n_timesteps):
+            self._test_output_created(i)
+            results = self._get_results(i)
+            self._write_results(results, i)
+            if loop_type == "test":
+                self._compare_results(i)
+            elif loop_type == "update":
+                self._overwrite_results(i)
+            else:
+                raise ValueError(
+                    f"Invalid loop_type ({loop_type}) passed to _harness_timestep_loop")
+
+    def _test_output_created(self, index):
+        """Make sure statepoint.* and tallies.out have been created for the current timestep."""
+        statepoint = glob.glob(self._sp_base + f"_{index}*")
+        assert statepoint[0].endswith('h5'), \
+            f"Statepoint file {statepoint[0]} is not a HDF5 file."
+        if os.path.exists('tallies.xml'):
+            assert os.path.exists(f"tallies_{index}.out"), \
+                f"Tally output file tallies_{index}.out does not exist."
+
+    def _get_results(self, index, hash_output=False):
+        """Digest info in the statepoints and return as a string."""
+        # Read the statepoint files.
+        statepoint = glob.glob(self._sp_base + f"_{index}*")[0]
+        return self._write_tallies(statepoint, hash_output)
+
+    @property
+    def statepoint_name(self, i):
+        return self._sp_base + f"_{i}.h5"
+
+    def _write_results(self, results_string, index):
+        """Write the results to an ASCII file."""
+        with open(f'results_test_{index}.dat', 'w') as fh:
+            fh.write(results_string)
+
+    def _overwrite_results(self, index):
+        """Overwrite the results_true with the results_test."""
+        shutil.copyfile(f'results_test_{index}.dat',
+                        f'results_true_{index}.dat')
+
+    def _compare_results(self, index):
+        """Make sure the current results agree with the reference."""
+        compare = filecmp.cmp(
+            f'results_test_{index}.dat', 'results_true_{index}.dat')
+        if not compare:
+            expected = open(f'results_true_{index}.dat').readlines()
+            actual = open(f'results_test_{index}.dat').readlines()
+            diff = unified_diff(expected, actual, f'results_true_{index}.dat',
+                                f'results_test_{index}.dat')
+            print(f'Timestep {index} result differences:')
+            print(''.join(colorize(diff)))
+            os.rename(f'results_test_{index}.dat',
+                      f'results_error_{index}.dat')
+        assert compare, 'Results do not agree'
+
+    def _cleanup(self):
+        """Delete statepoints, tally, and test files."""
+        output = glob.glob('statepoint.*.h5')
+        output += ['summary.h5', 'tallies.out']
+        output += glob.glob('tallies_*.out')
+        output += glob.glob('results_test_*.dat')
+        output += glob.glob('volume_*.h5')
+        output += glob.glob(f'{self._sp_base}_*.h5')
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)
 
 
 class PyAPITestHarness(TestHarness):
@@ -485,6 +594,74 @@ class WeightWindowPyAPITestHarness(PyAPITestHarness):
         f = 'weight_windows.h5'
         if os.path.exists(f):
             os.remove(f)
+
+
+class KineticPyAPITestHarness(KineticTestHarness, PyAPITestHarness):
+    def __init__(self, model, n_timesteps, inputs_true=None):
+        super().__init__(n_timesteps)
+        self._model = model
+        self._model.plots = []
+
+        self.inputs_true = "inputs_true.dat" if not inputs_true else inputs_true
+
+    def execute_test(self):
+        """Build input XMLs, run OpenMC, and verify correct results."""
+        try:
+            self._build_inputs()
+            inputs = self._get_inputs()
+            self._write_inputs(inputs)
+            self._compare_inputs()
+            self._run_openmc()
+            self._harness_timestep_loop("test")
+        finally:
+            self._cleanup()
+
+    def update_results(self):
+        """Update results_true.dat and inputs_true.dat"""
+        try:
+            self._build_inputs()
+            inputs = self._get_inputs()
+            self._write_inputs(inputs)
+            self._overwrite_inputs()
+            self._run_openmc()
+            self._harness_timestep_loop("update")
+        finally:
+            self._cleanup()
+
+    def _cleanup(self):
+        """Delete XMLs, statepoints, tally, and test files."""
+        super()._cleanup()
+        output = ['materials.xml', 'geometry.xml', 'settings.xml',
+                  'tallies.xml', 'plots.xml', 'inputs_test.dat', 'model.xml']
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)
+
+
+class KineticTolerantPyAPITestHarness(KineticPyAPITestHarness, TolerantPyAPITestHarness):
+    """Specialized harness for running  kinetic simulation tests in that involve
+    significant levels of floating point non-associativity when using shared
+    memory parallelism due to single precision usage (e.g., as in the random
+    ray solver).
+
+    """
+
+    def _compare_results(self, i):
+        """Make sure the current results agree with the reference."""
+        self._compare_files(
+            f'results_test_{i}.dat', f'results_true_{i}.dat', 1e-6, i)
+
+    def _compare_files(self, file_test, file_true, tol, index):
+        compare = self._are_files_equal(file_test, file_true, 1e-6)
+        if not compare:
+            expected = open(file_true).readlines()
+            actual = open(file_test).readlines()
+            diff = unified_diff(expected, actual, file_true,
+                                file_test)
+            print('Result differences:')
+            print(''.join(colorize(diff)))
+            os.rename(file_test, f'results_error_{i}.dat')
+        assert compare, 'Results do not agree'
 
 
 class PlotTestHarness(TestHarness):

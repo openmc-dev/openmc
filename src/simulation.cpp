@@ -323,6 +323,8 @@ const RegularMesh* ufs_mesh {nullptr};
 vector<double> k_generation;
 vector<int64_t> work_index;
 
+double current_time;
+
 } // namespace simulation
 
 //==============================================================================

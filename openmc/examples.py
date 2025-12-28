@@ -656,14 +656,14 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model
 
     return model
 
-def _generate_c5g7_materials(time_dependent) -> openmc.Materials:
+def _generate_c5g7_materials(kinetic) -> openmc.Materials:
     """Generate materials utilizing multi-group cross sections based on the
     the C5G7 Benchmark.
 
     Parameters
     ----------
-    time_dependent : bool
-        Flag to generate cross sections for a time-dependent model or not.
+    kinetic : bool
+        Flag to generate cross sections for kinetic simulations.
 
     Returns
     -------
@@ -692,7 +692,7 @@ def _generate_c5g7_materials(time_dependent) -> openmc.Materials:
     # come from Hou et al., "OECD/NEA benchmark for time-dependnet neutron
     # transport calculations without homogeniztaion"
     # DOI: 10.1016/j.nucengdes.2017.02.008
-    n_dg = C5G7_N_DG if time_dependent else 0
+    n_dg = C5G7_N_DG if kinetic else 0
 
     # Instantiate the 7-group (C5G7) cross section data
     uo2_xsdata = openmc.XSdata('UO2', groups, num_delayed_groups=n_dg)
@@ -728,7 +728,7 @@ def _generate_c5g7_materials(time_dependent) -> openmc.Materials:
                         0.0000e+00, 0.0000e+00])
 
     # Delayed and prompt cross sections for time-dependent simulation
-    if time_dependent:
+    if kinetic:
 
         # Table A2 in Hou et. al
         beta = np.array([[2.13333e-04, 2.13333e-04, 2.13333e-04, 2.13333e-04, 2.13333e-04, 2.13333e-04, 2.13333e-04],
@@ -804,7 +804,7 @@ def _generate_c5g7_materials(time_dependent) -> openmc.Materials:
     scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
     h2o_xsdata.set_scatter_matrix(scatter_matrix)
 
-    if time_dependent:
+    if kinetic:
         # Table A4 in Hou et al.
         velocities = np.array([2.23517E+09, 4.98880E+08, 3.84974E+07,
                               5.12639E+06, 1.67542E+06, 7.26031E+05, 2.81629E+05])
@@ -822,7 +822,7 @@ def _generate_c5g7_materials(time_dependent) -> openmc.Materials:
     uo2.set_density('macro', 1.0)
     uo2.add_macroscopic('UO2')
 
-    if time_dependent:
+    if kinetic:
         densities = np.linspace(1, 0.95, 100)
     else:
         densities = None
@@ -905,14 +905,14 @@ def _generate_random_ray_pin_cell(uo2, water) -> openmc.Universe:
 
     return pincell
 
-def random_ray_pin_cell(time_dependent=False) -> openmc.Model:
+def random_ray_pin_cell(kinetic=False) -> openmc.Model:
     """Create a PWR pin cell example using C5G7 cross section data.
     cross section data.
 
     Parameters
     ----------
-    time_dependent : bool
-        Flag to generate a time-dependent model or not.
+    kinetic : bool
+        Flag to generate kinetic simulation model or not.
 
     Returns
     -------
@@ -924,7 +924,7 @@ def random_ray_pin_cell(time_dependent=False) -> openmc.Model:
 
     ###########################################################################
     # Create Materials for the problem
-    materials = _generate_c5g7_materials(time_dependent)
+    materials = _generate_c5g7_materials(kinetic)
     uo2 = materials[0]
     water = materials[1]
 
@@ -962,9 +962,10 @@ def random_ray_pin_cell(time_dependent=False) -> openmc.Model:
     settings.random_ray['distance_inactive'] = 20.0
     settings.random_ray['ray_source'] = rr_source
     settings.random_ray['volume_normalized_flux_tallies'] = True
-    if time_dependent:
-        settings.run_mode = "time dependent"
-        settings.time_dependent = {
+    if kinetic:
+        settings.random_ray['bd_order'] = 3
+        settings.kinetic_simulation = True
+        settings.timestep_parameters = {
             "dt": 0.01,
             "n_timesteps": 20,
             "timestep_units": "s",
@@ -980,7 +981,7 @@ def random_ray_pin_cell(time_dependent=False) -> openmc.Model:
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([tally])
 
-    if time_dependent:
+    if kinetic:
         delay_filter = openmc.DelayedGroupFilter(np.arange(1, C5G7_N_DG+1, 1))
         tally = openmc.Tally(name="Delayed tally")
         tally.filters = [delay_filter]
@@ -997,7 +998,7 @@ def random_ray_pin_cell(time_dependent=False) -> openmc.Model:
     model.tallies = tallies
     return model
 
-def random_ray_lattice(time_dependent=False) -> openmc.Model:
+def random_ray_lattice(kinetic=False) -> openmc.Model:
     """Create a 2x2 PWR pin cell asymmetrical lattice example.
 
     This model is a 2x2 reflective lattice of fuel pins with one of the lattice
@@ -1006,8 +1007,8 @@ def random_ray_lattice(time_dependent=False) -> openmc.Model:
 
     Parameters
     ----------
-    time_dependent : bool
-        Flag to generate a time-dependent model or not.
+    kinetic : bool
+        Flag to generate a kinetic simulation model or not.
 
     Returns
     -------
@@ -1019,7 +1020,7 @@ def random_ray_lattice(time_dependent=False) -> openmc.Model:
 
     ###########################################################################
     # Create Materials for the problem
-    materials = _generate_c5g7_materials(time_dependent)
+    materials = _generate_c5g7_materials(kinetic)
     uo2 = materials[0]
     water = materials[1]
 
@@ -1031,7 +1032,7 @@ def random_ray_lattice(time_dependent=False) -> openmc.Model:
     # Define a moderator lattice universe
 
     moderator_infinite = openmc.Cell(name='moderator infinite')
-    if time_dependent:
+    if kinetic:
         water_reflector = water.clone()
         water_reflector.name='Water Reflector'
         water_reflector.set_density('macro', 1.0)
@@ -1094,9 +1095,10 @@ def random_ray_lattice(time_dependent=False) -> openmc.Model:
     settings.random_ray['distance_inactive'] = 20.0
     settings.random_ray['ray_source'] = rr_source
     settings.random_ray['volume_normalized_flux_tallies'] = True
-    if time_dependent:
-        settings.run_mode = "time dependent"
-        settings.time_dependent = {
+    if kinetic:
+        settings.random_ray['bd_order'] = 3
+        settings.kinetic_simulation = True
+        settings.timestep_parameters = {
             "dt": 0.01,
             "n_timesteps": 2,
             "timestep_units": "s",
@@ -1127,7 +1129,7 @@ def random_ray_lattice(time_dependent=False) -> openmc.Model:
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([tally])
 
-    if time_dependent:
+    if kinetic:
         delay_filter = openmc.DelayedGroupFilter(np.arange(1, C5G7_N_DG+1, 1))
         tally = openmc.Tally(name="Mesh delayed tally")
         tally.filters = [mesh_filter, delay_filter]

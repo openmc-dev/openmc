@@ -96,10 +96,12 @@ void FlatSourceDomain::batch_reset()
     source_regions_.scalar_flux_new(se) = 0.0;
   }
 
-  if (settings::kinetic_simulation && !settings::is_initial_condition) {
+  if (settings::kinetic_simulation) {
 #pragma omp parallel for
     for (int64_t se = 0; se < n_source_elements(); se++) {
-      source_regions_.scalar_flux_td_new(se) = 0.0;
+      source_regions_.precursors_new(se) = 0.0;
+      if (!settings::is_initial_condition)
+        source_regions_.scalar_flux_td_new(se) = 0.0;
     }
   }
 }

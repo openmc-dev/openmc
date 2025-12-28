@@ -26,9 +26,7 @@ public:
   void output_simulation_results() const;
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
-  void print_results_random_ray(uint64_t total_geometric_intersections,
-    double avg_miss_rate, int negroups, int64_t n_source_regions,
-    int64_t n_external_source_regions) const;
+  void print_results_random_ray() const;
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -36,7 +34,7 @@ public:
 
 private:
   //----------------------------------------------------------------------------
-  // Data members
+  // Data Members
 
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
@@ -51,6 +49,9 @@ private:
   // Number of energy groups
   int negroups_;
 
+  // Number of delay groups
+  int ndgroups_;
+
 }; // class RandomRaySimulation
 
 //============================================================================
@@ -61,6 +62,15 @@ void openmc_run_random_ray();
 void validate_random_ray_inputs();
 void openmc_reset_random_ray();
 
+//! Write data related to randaom ray to statepoint
+//! \param[in] group HDF5 group
+void write_random_ray_hdf5(hid_t group);
+
+// Functions for kinetic simulations
+void set_time_dependent_settings();
+void rename_statepoint_file(int i);
+void rename_tallies_file(int i);
+
 } // namespace openmc
 
-#endif // OPENMC_RANDOM_RAY_SIMULATION_H
+#endif // OPENMC_RANDOM_RAY_SIMUgATION_H

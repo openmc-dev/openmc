@@ -564,7 +564,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     // score.
     if (delayedgroup_filter_ != C_NONE) {
       if (score_str != "delayed-nu-fission" && score_str != "decay-rate" &&
-          score_str != "ifp-beta-numerator")
+          score_str != "ifp-beta-numerator" && score_str != "precursors")
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
     }
 
@@ -656,6 +656,20 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_IFP_BETA_NUM:
     case SCORE_IFP_DENOM:
       estimator_ = TallyEstimator::COLLISION;
+      break;
+
+    case SCORE_PRECURSORS:
+      if (!settings::kinetic_simulation)
+        fatal_error("Can only tally precursors in kinetic simulations.");
+      if (!nuclides_.empty())
+        if (!(nuclides_.size() == 1 && nuclides_[0] == -1))
+          fatal_error("Cannot tally precursors for an individual nuclide.");
+      if (energyout_present)
+        fatal_error("Cannot tally precursors with an outgoing energy filter.");
+      // TODO: make this more robust: allow for tallying
+      // in eigenvalue and fixed source calculations by detecting
+      // delayed fission, delayed chi, and lambda cross sections (mg and ce)
+      // Also enable support for monte carlo solves
       break;
     }
 

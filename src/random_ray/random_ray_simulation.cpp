@@ -35,10 +35,15 @@ void openmc_run_random_ray()
   // TODO: no initial condition needed fof td fixed source simulations
   // Check if this simulation is to establish an initial condition
   if (settings::kinetic_simulation)
-    settings::is_initial_condition = true;
+    simulation::is_initial_condition = true;
 
   // Configure the domain for forward simulation
   FlatSourceDomain::adjoint_ = false;
+
+  // If we're going to do a kinetic simulation, report that this is
+  // the initial condition.
+  if (settings::kinetic_simulation && mpi::master)
+    header("KINETIC SIMULATION INITIAL CONDITION", 3);
 
   // If we're going to do an adjoint simulation afterwards, report that this is
   // the initial forward flux solve.
@@ -91,15 +96,20 @@ void openmc_run_random_ray()
     // Timestepping loop
     // TODO: Add support for time-dependent restart
     for (int i = 0; i < settings::n_timesteps; i++) {
-      settings::current_timestep = i + 1;
+      simulation::current_timestep = i + 1;
 
       // Print simulation information
       if (mpi::master) {
         std::string message = fmt::format(
-          "KINETIC SIMULATION TIME STEP {0}", settings::current_timestep);
+          "KINETIC SIMULATION TIME STEP {0}", simulation::current_timestep);
         const char* msg = message.c_str();
         header(msg, 3);
       }
+
+      // If we're going to do an adjoint simulation afterwards, report that this
+      // is the initial forward flux solve.
+      if (adjoint_needed && mpi::master)
+        header("FORWARD FLUX SOLVE", 3);
 
       reset_timers();
 
@@ -133,9 +143,9 @@ void openmc_run_random_ray()
       sim.output_simulation_results();
 
       // Rename statepoint and tallies file
-      rename_statepoint_file(settings::current_timestep);
+      rename_statepoint_file(simulation::current_timestep);
       if (settings::output_tallies) {
-        rename_tallies_file(settings::current_timestep);
+        rename_tallies_file(simulation::current_timestep);
       }
 
       // Normalize and store final quantities for next time step
@@ -493,7 +503,7 @@ void write_random_ray_hdf5(hid_t group)
     RandomRay::total_geometric_intersections_ * data::mg.num_energy_groups_;
   write_dataset(random_ray_group, "n_integrations", n_integrations);
 
-  if (settings::kinetic_simulation && !settings::is_initial_condition) {
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
     write_dataset(random_ray_group, "bd_order", RandomRay::bd_order_);
     switch (RandomRay::time_method_) {
     case RandomRayTimeMethod::ISOTROPIC:
@@ -515,7 +525,7 @@ void write_random_ray_hdf5(hid_t group)
 void set_time_dependent_settings()
 {
   // Reset flags
-  settings::is_initial_condition = false;
+  simulation::is_initial_condition = false;
 
   // Set current time
   simulation::current_time = settings::dt;
@@ -619,7 +629,7 @@ void RandomRaySimulation::simulate()
       // domain_->compute_neutron_source()
       // Update source term (scattering + fission)
       domain_->update_all_neutron_sources();
-      if (settings::kinetic_simulation && !settings::is_initial_condition) {
+      if (settings::kinetic_simulation && !simulation::is_initial_condition) {
         domain_->update_all_neutron_sources_td();
       }
 
@@ -688,7 +698,7 @@ void RandomRaySimulation::simulate()
 
       // Set phi_old = phi_new
       domain_->flux_swap();
-      if (settings::kinetic_simulation && !settings::is_initial_condition) {
+      if (settings::kinetic_simulation && !simulation::is_initial_condition) {
         domain_->flux_td_swap();
         domain_->precursors_swap();
       }
@@ -766,7 +776,7 @@ void RandomRaySimulation::print_results_random_ray() const
                        time_transport.elapsed() - time_tallies.elapsed() -
                        time_bank_sendrecv.elapsed();
 
-    if (settings::kinetic_simulation && !settings::is_initial_condition) {
+    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
       misc_time -= time_update_bd_vectors_td.elapsed();
     }
     header("Simulation Statistics", 4);
@@ -846,7 +856,7 @@ void RandomRaySimulation::print_results_random_ray() const
     } else {
       fmt::print(" Transport XS Stabilization Used   = NO\n");
     }
-    if (settings::kinetic_simulation && !settings::is_initial_condition) {
+    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
       std::string time_method =
         (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC)
           ? "ISOTROPIC"
@@ -867,7 +877,7 @@ void RandomRaySimulation::print_results_random_ray() const
         "Precursor computation only", time_compute_precursors.elapsed(), 1);
       misc_time -= time_compute_precursors.elapsed();
 
-      if (!settings::is_initial_condition) {
+      if (!simulation::is_initial_condition) {
         show_time(
           "Time-dependent source update only", time_update_src_td.elapsed(), 1);
         misc_time -= time_update_src_td.elapsed();

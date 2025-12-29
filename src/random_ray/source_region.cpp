@@ -412,7 +412,7 @@ void SourceRegionContainer::adjoint_reset()
   std::fill(flux_moments_t_.begin(), flux_moments_t_.end(),
     MomentArray {0.0, 0.0, 0.0});
   // Reset arrays for kinetic adjoint simulations
-  if (settings::kinetic_simulation && !settings::is_initial_condition) {
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
     std::fill(scalar_flux_td_old_.begin(), scalar_flux_td_old_.end(), 0.0);
     std::fill(scalar_flux_td_new_.begin(), scalar_flux_td_new_.end(), 0.0);
     std::fill(

@@ -100,7 +100,7 @@ void FlatSourceDomain::batch_reset()
 #pragma omp parallel for
     for (int64_t se = 0; se < n_source_elements(); se++) {
       source_regions_.precursors_new(se) = 0.0;
-      if (!settings::is_initial_condition)
+      if (!simulation::is_initial_condition)
         source_regions_.scalar_flux_td_new(se) = 0.0;
     }
   }
@@ -156,7 +156,7 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
     }
   }
   // Set souce_td to source for IC calculation
-  if (settings::is_initial_condition) {
+  if (simulation::is_initial_condition) {
 #pragma omp parallel for
     for (int g = 0; g < negroups_; g++)
       srh.source_td(g) += srh.source(g);
@@ -191,7 +191,7 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_new(se) *= normalization_factor;
-    if (settings::kinetic_simulation && !settings::is_initial_condition)
+    if (settings::kinetic_simulation && !simulation::is_initial_condition)
       source_regions_.scalar_flux_td_new(se) *= normalization_factor;
   }
 
@@ -226,7 +226,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
     double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
-    if (settings::kinetic_simulation && !settings::is_initial_condition) {
+    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
       double sigma_t_td =
         sigma_t_td_[source_regions_.material(sr) * negroups_ + g];
       source_regions_.scalar_flux_td_new(sr, g) /= (sigma_t_td * volume);
@@ -252,7 +252,7 @@ void FlatSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
 {
   source_regions_.scalar_flux_new(sr, g) =
     source_regions_.scalar_flux_old(sr, g);
-  if (settings::kinetic_simulation && !settings::is_initial_condition) {
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
     source_regions_.scalar_flux_td_new(sr, g) =
       source_regions_.scalar_flux_td_old(sr, g);
   }
@@ -261,7 +261,7 @@ void FlatSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
 void FlatSourceDomain::set_flux_to_source(int64_t sr, int g)
 {
   source_regions_.scalar_flux_new(sr, g) = source_regions_.source(sr, g);
-  if (settings::kinetic_simulation && !settings::is_initial_condition) {
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
     source_regions_.scalar_flux_td_new(sr, g) =
       source_regions_.source_td(sr, g);
   }
@@ -344,7 +344,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       }
       // Set time-dependent flux to unperturbed flux during the initial
       // condition calculation
-      if (settings::is_initial_condition) {
+      if (simulation::is_initial_condition) {
         source_regions_.scalar_flux_td_new(sr, g) =
           source_regions_.scalar_flux_new(sr, g);
       }
@@ -751,7 +751,7 @@ void FlatSourceDomain::random_ray_tally()
     double material = source_regions_.material(sr);
     for (int g = 0; g < negroups_; g++) {
       double flux;
-      if (settings::kinetic_simulation && !settings::is_initial_condition) {
+      if (settings::kinetic_simulation && !simulation::is_initial_condition) {
         flux = source_regions_.scalar_flux_td_new(sr, g) *
                source_normalization_factor;
       } else {
@@ -771,7 +771,8 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_TOTAL:
           if (material != MATERIAL_VOID) {
             double sigma_t;
-            if (settings::kinetic_simulation && !settings::is_initial_condition)
+            if (settings::kinetic_simulation &&
+                !simulation::is_initial_condition)
               sigma_t = sigma_t_td_[material * negroups_ + g];
             else
               sigma_t = sigma_t_[material * negroups_ + g];
@@ -782,7 +783,8 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_FISSION:
           if (material != MATERIAL_VOID) {
             double sigma_f;
-            if (settings::kinetic_simulation && !settings::is_initial_condition)
+            if (settings::kinetic_simulation &&
+                !simulation::is_initial_condition)
               sigma_f = sigma_f_td_[material * negroups_ + g];
             else
               sigma_f = sigma_f_[material * negroups_ + g];
@@ -793,7 +795,8 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_NU_FISSION:
           if (material != MATERIAL_VOID) {
             double nu_sigma_f;
-            if (settings::kinetic_simulation && !settings::is_initial_condition)
+            if (settings::kinetic_simulation &&
+                !simulation::is_initial_condition)
               nu_sigma_f = nu_sigma_f_td_[material * negroups_ + g];
             else
               nu_sigma_f = nu_sigma_f_[material * negroups_ + g];
@@ -1804,7 +1807,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 
   // Compute the combined source term
   update_single_neutron_source(handle);
-  if (settings::kinetic_simulation && !settings::is_initial_condition) {
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
     update_single_neutron_source_td(handle);
     if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       compute_single_neutron_source_time_derivative(handle);
@@ -1907,7 +1910,7 @@ void FlatSourceDomain::apply_transport_stabilization()
       }
       // TODO: test this and td with mesh
       // Duplicated stabilization for time-dependent simulations
-      if (settings::kinetic_simulation && !settings::is_initial_condition) {
+      if (settings::kinetic_simulation && !simulation::is_initial_condition) {
         double sigma_s_td =
           sigma_s_td_[material * negroups_ * negroups_ + g * negroups_ + g];
         if (sigma_s_td < 0.0) {
@@ -2110,7 +2113,7 @@ void FlatSourceDomain::compute_single_delayed_fission_source(
       if (lambda != 0.0) {
         for (int g = 0; g < negroups_; g++) {
           double scalar_flux;
-          if (settings::is_initial_condition) {
+          if (simulation::is_initial_condition) {
             scalar_flux = srh.scalar_flux_new(g);
           } else {
             scalar_flux = srh.scalar_flux_td_new(g);
@@ -2138,7 +2141,7 @@ void FlatSourceDomain::compute_single_precursors(SourceRegionHandle& srh)
       double lambda = lambda_[material * ndgroups_ + dg];
       if (lambda != 0.0) {
         double delayed_fission_source = srh.delayed_fission_source(dg);
-        if (settings::is_initial_condition) {
+        if (simulation::is_initial_condition) {
           srh.precursors_new(dg) = delayed_fission_source / lambda;
         } else {
           double precursor_rhs_bd = srh.precursors_rhs_bd(dg);
@@ -2220,7 +2223,7 @@ void FlatSourceDomain::accumulate_iteration_quantities()
         source_regions_.scalar_flux_td_final(sr, g) +=
           source_regions_.scalar_flux_td_new(sr, g);
         if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-          if (settings::is_initial_condition)
+          if (simulation::is_initial_condition)
             source_regions_.source_final(sr, g) +=
               source_regions_.source(sr, g);
           else
@@ -2244,7 +2247,7 @@ void FlatSourceDomain::normalize_final_quantities()
   double source_normalization_factor;
   if (!settings::kinetic_simulation ||
       settings::kinetic_simulation &&
-        settings::current_timestep == settings::n_timesteps)
+        simulation::current_timestep == settings::n_timesteps)
     source_normalization_factor =
       compute_fixed_source_normalization_factor() * normalization_factor;
   else
@@ -2316,7 +2319,7 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         // Multiply out sigma_t to store the base source
         double sigma_t;
-        if (settings::is_initial_condition) {
+        if (simulation::is_initial_condition) {
           sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
         } else {
           sigma_t = sigma_t_td_[source_regions_.material(sr) * negroups_ + g];

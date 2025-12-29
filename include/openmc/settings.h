@@ -203,11 +203,6 @@ extern double weight_survive;      //!< Survival weight after Russian roulette
 // Timestep variables for kinetic simulation
 extern int n_timesteps;      //!< number of timesteps
 extern double dt;            //!< fixed timestep size
-extern int current_timestep; //!< current timestep index
-extern bool
-  is_initial_condition; //!< if eigenvalue/fixed source sim is an initial
-                        // condition for a time-dependent simulation
-
 } // namespace settings
 
 //==============================================================================

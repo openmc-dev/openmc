@@ -153,8 +153,6 @@ double weight_survive {1.0};
 // Timestep variables for kinetic simulation
 int n_timesteps;
 double dt;
-int current_timestep;
-bool is_initial_condition {false};
 
 } // namespace settings
 

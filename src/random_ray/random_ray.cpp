@@ -456,7 +456,7 @@ void RandomRay::attenuate_flux_flat_source(
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
     delta_psi_[g] = new_delta_psi;
     angular_flux_[g] -= new_delta_psi;
-    if (settings::kinetic_simulation && !settings::is_initial_condition) {
+    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
       float sigma_t_td = domain_->sigma_t_td_[material * negroups_ + g];
       float tau_td = sigma_t_td * distance;
       float exponential_td =
@@ -499,7 +499,7 @@ void RandomRay::attenuate_flux_flat_source(
     // this iteration
     for (int g = 0; g < negroups_; g++) {
       srh.scalar_flux_new(g) += delta_psi_[g];
-      if (settings::kinetic_simulation && !settings::is_initial_condition)
+      if (settings::kinetic_simulation && !simulation::is_initial_condition)
         srh.scalar_flux_td_new(g) += delta_psi_td_[g];
     }
 
@@ -860,7 +860,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] = srh.source(g);
     }
-    if (settings::kinetic_simulation && !settings::is_initial_condition) {
+    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
       for (int g = 0; g < negroups_; g++) {
         angular_flux_td_[g] = srh.source_td(g);
       }

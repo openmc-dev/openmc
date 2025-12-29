@@ -132,7 +132,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       hid_t timestep_group = create_group(file_id, "timestep_data");
       write_dataset(timestep_group, "dt", settings::dt);
       write_dataset(
-        timestep_group, "current_timestep", settings::current_timestep);
+        timestep_group, "current_timestep", simulation::current_timestep);
       write_dataset(timestep_group, "current_time", simulation::current_time);
       close_group(timestep_group);
     }

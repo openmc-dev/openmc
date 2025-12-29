@@ -51,7 +51,11 @@ extern vector<int64_t> work_index;
 
 //-----------------------------------------------------------------------------
 // Global variables for kinetic simulations
-extern double current_time;
+extern bool
+  is_initial_condition;      //!< if eigenvalue/fixed source sim is an initial
+                             // condition for a kinetic simulation
+extern int current_timestep; // !< current time step in kinetic simulation
+extern double current_time;  // !< current time in kinetic simulation
 
 } // namespace simulation
 

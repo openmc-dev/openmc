@@ -1,7 +1,7 @@
 import numpy as np
 
 from openmc.exceptions import DataError
-from openmc.material import Material
+# from openmc.material import Material
 
 from .data import ATOMIC_SYMBOL, ELEMENT_SYMBOL, zam
 from .function import Sum, Tabulated1D
@@ -94,7 +94,7 @@ def linear_attenuation_xs(element_input: str, temperature: float) -> Sum | None:
 
 
 
-def material_photon_mass_attenuation_dist(material:Material) -> Sum | None:
+def material_photon_mass_attenuation_dist(material) -> Sum | None:
     """Return material photon mass attenuation coefficient μ/ρ(E) [cm^2/g].
 
     the linear attenuation coefficient of the material is given by:

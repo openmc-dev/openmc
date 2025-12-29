@@ -666,7 +666,14 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
     // such that 1.2 neutrons are generated, so as to be consistent with the
     // bookkeeping in MC which is all done per starting source neutron (not per
     // neutron produced).
-    return k_eff_ / (fission_rate_ * simulation_volume_);
+    double normalization_factor;
+    // For a kinetic simulation, the normalization only needs to be performed
+    // once for the steady state.
+    if (settings::kinetic_simulation && !settings::is_initial_condition)
+      normalization_factor = 1.0;
+    else
+      normalization_factor = k_eff_ / (fission_rate_ * simulation_volume_);
+    return normalization_factor;
     // TODO: check if a delayed fission rate needed to normalize the precursor
     // population... need to run a test problem using mc tallies?
   }
@@ -835,7 +842,7 @@ void FlatSourceDomain::random_ray_tally()
       for (int dg = 0; dg < ndgroups_; dg++) {
         // Determine numerical score value
         for (auto& task : source_regions_.tally_delay_task(sr, dg)) {
-          double score;
+          double score = 0.0;
           switch (task.score_type) {
 
           // Certain scores already tallied
@@ -847,10 +854,6 @@ void FlatSourceDomain::random_ray_tally()
             break;
 
           case SCORE_PRECURSORS:
-            // TODO: This will be slightly off. The source normalization factor
-            // should only be applied to the delayed fission source, but here we
-            // apply it to entire precursor concentration (sum of delayed
-            // fission source and precursor decay terms).
             score = source_regions_.precursors_new(sr, dg) *
                     source_normalization_factor * volume;
             break;

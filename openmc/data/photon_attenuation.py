@@ -1,11 +1,13 @@
 import numpy as np
 
 from openmc.exceptions import DataError
+from openmc.material import Material
 
 from .data import ATOMIC_SYMBOL, ELEMENT_SYMBOL, zam
-from .function import Sum
+from .function import Sum, Tabulated1D
 from .library import DataLibrary
 from .photon import IncidentPhoton
+
 
 _PHOTON_LIB: DataLibrary | None = None
 _PHOTON_DATA: dict[str, IncidentPhoton] = {}
@@ -89,3 +91,72 @@ def linear_attenuation_xs(element_input: str, temperature: float) -> Sum | None:
         return None
 
     return Sum(xs_list)
+
+
+
+def material_photon_mass_attenuation_dist(material:Material) -> Sum | None:
+    """Return material photon mass attenuation coefficient μ/ρ(E) [cm^2/g].
+
+    the linear attenuation coefficient of the material is given by:
+        μ(E) = Σ_el N_el * σ_el(E)
+    with N_el in [atom/b-cm] and σ_el(E) in [barn/atom] => μ in [1/cm].
+
+    The mass attenuation coefficients are given by:
+        μ/ρ(E) = μ(E) / ρ
+    => [1/cm] / [g/cm^3] = [cm^2/g]
+
+    Parameters
+    ----------
+    material : openmc.Material
+
+    Returns
+    -------
+    openmc.data.Sum or None
+        Sum of Tabulated1D terms giving μ/ρ(E) in [cm^2/g], or None if no photon
+        data exist for any constituents.
+    """
+    el_dens = material.get_element_atom_densities()
+    if not el_dens:
+        raise ValueError(
+            f'For Material ID="{material.id}" no element densities are defined.'
+        )
+
+    # Mass density of the material [g/cm^3]
+    rho = material.get_mass_density()  # g/cm^3
+
+    if rho is None or rho <= 0.0:
+        raise ValueError(
+            f'Material ID="{material.id}" has non-positive mass density; '
+            "cannot compute mass attenuation coefficient."
+        )
+
+    # Use material temperature (rounded in linear_attenuation_xs), or a sane default
+    T = float(material.temperature) if material.temperature is not None else 294.0
+
+    inv_rho = 1.0 / rho
+    terms = []
+
+    for el, n_el in el_dens.items():
+        xs_sum = linear_attenuation_xs(el, T)  # barns/atom functions vs E
+        if xs_sum is None or n_el == 0.0:
+            continue
+
+        scale = float(n_el) * inv_rho  # (atom/b-cm) / (g/cm^3) = (atom*cm^2)/(barn*g)
+
+        for f in xs_sum.functions:
+            if not isinstance(f, Tabulated1D):
+                raise TypeError(
+                    f"Expected Tabulated1D photon XS for element {el}, got {type(f)!r}."
+                )
+            # keep x, breakpoints, interpolation; scale y. 
+            terms.append(
+                Tabulated1D(
+                    f.x,
+                    np.asarray(f.y, dtype=float) * scale,
+                    breakpoints=f.breakpoints,
+                    interpolation=f.interpolation,
+                )
+            )
+
+    return Sum(terms) if terms else None
+

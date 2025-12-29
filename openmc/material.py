@@ -27,6 +27,7 @@ from openmc.data.function import Tabulated1D, Combination
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol
 from openmc.data.photon_attenuation import linear_attenuation_xs
+from openmc.data.mass_attenuation.mass_attenuation import mu_en_coefficients
 
 
 
@@ -1367,7 +1368,9 @@ class Material(IDManagerMixin):
             dist.normalize()
 
         # Mass density of the material [g/cm^3]
-        if self.get_mass_density() <= 0.0:
+        rho = self.get_mass_density()  # g/cm^3
+
+        if rho is None or rho <= 0.0:
             raise ValueError(
                 f'Material ID="{self.id}" has non-positive mass density; '
                 "cannot compute mass attenuation coefficient."
@@ -1445,7 +1448,7 @@ class Material(IDManagerMixin):
 
             photon_attenuation += atoms_per_bcm * mu_nuc # cm-1
 
-        return float(photon_attenuation / self.get_mass_density())  # cm2/g
+        return float(photon_attenuation / rho)  # cm2/g
 
     def get_photon_contact_dose_rate(
         self, bremsstrahlung_correction: bool = True, by_nuclide: bool = False
@@ -1471,13 +1474,14 @@ class Material(IDManagerMixin):
         cv.check_type('bremsstrahlung_correction', bremsstrahlung_correction, bool)
 
 
-        cdr = {}
+        # Mass density of the material [g/cm^3]
+        rho = self.get_mass_density()  # g/cm^3
 
-        # build up factor
-        B = 2 
-
-        multiplier = B/2
-
+        if rho is None or rho <= 0.0:
+            raise ValueError(
+                f'Material ID="{self.id}" has non-positive mass density; '
+                "cannot compute mass attenuation coefficient."
+            )
 
         # Temperature to use if photon data is temperature-resolved
         if self.temperature is not None:
@@ -1485,11 +1489,23 @@ class Material(IDManagerMixin):
         else:
             T = 294.0  # consistent with other API defaults
 
+        # nist mu_en/ rho for air distribution, [eV, cm2/g]
+        mu_en_x, mu_en_y = mu_en_coefficients('air')
+        mu_en_air = Tabulated1D(mu_en_x, mu_en_y, breakpoints=None,interpolation='5')
+
+        # CDR computation
+        cdr = {}
+
+        # build up factor
+        B = 2 
+
+        multiplier = B/2
+
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
 
             cdr_nuc = 0.0
 
-            linear_attenuation = linear_attenuation_xs(el_name,  T) # units of barns/atom
+            linear_attenuation = linear_attenuation_xs(nuc,  T) # units of barns/atom
 
             if linear_attenuation is None:
                 continue
@@ -1502,13 +1518,15 @@ class Material(IDManagerMixin):
                 if isinstance(photon_source_per_atom, Discrete) or isinstance(photon_source_per_atom, Tabular):
                     e_vals = photon_source_per_atom.x
                     p_vals = photon_source_per_atom.p
+                else:
+                    raise ValueError(f"Unknown decay photon energy data type for nuclide {nuc}"
+                                     f"value returned: {type(photon_source_per_atom)}")
 
                 if isinstance(photon_source_per_atom, Discrete):
 
                     for (e,p) in zip(e_vals, p_vals):
 
-                        # missing the air part
-                        cdr_nuc += p * e / self.get_photon_mass_attenuation(e)
+                        cdr_nuc += mu_en_air(e) * p * e / linear_attenuation(e)
 
                 elif isinstance(photon_source_per_atom, Tabular):
 
@@ -1554,9 +1572,6 @@ class Material(IDManagerMixin):
                     cdr_nuc += integrand_function.integral()[-1]
 
 
-                else:
-                    raise ValueError(f"Unknown decay photon energy data type for nuclide {nuc}"
-                                     f"value returned: {type(photon_source_per_atom)}")
 
             if bremsstrahlung_correction:
 

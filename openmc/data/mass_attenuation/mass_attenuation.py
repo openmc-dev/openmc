@@ -12,7 +12,7 @@ _FILES = {
 _MU_TABLES = {}
 
 
-def _load_mass_attenuation(data_source: str, material: str):
+def _load_mass_attenuation(data_source: str, material: str) -> None:
     """Load mass energy attenuation and absorption coefficients from 
     the NIST database stored in the text files.
 
@@ -26,14 +26,13 @@ def _load_mass_attenuation(data_source: str, material: str):
     """
     path = Path(__file__).parent / _FILES[data_source, material]
     data = np.loadtxt(path, skiprows=5, encoding='utf-8')
-    data[:, 0] *= 1e6   # Change energies to eV
     _MU_TABLES[data_source, material] = data
 
 
-def mu_en_coefficients(material, data_source='nist126'):
+def mu_en_coefficients(material:str, data_source:str='nist126') -> tuple[np.ndarray, np.ndarray]:
     """Return mass energy-absorption coefficients.
 
-    This function returns the phtono mass energy-absorption coefficients for 
+    This function returns the photon mass energy-absorption coefficients for 
     various tabulated material compounds.
     Available libraries include `NIST Standard Reference Database 126
     <https://dx.doi.org/10.18434/T4D01F>`.
@@ -49,9 +48,9 @@ def mu_en_coefficients(material, data_source='nist126'):
     Returns
     -------
     energy : numpy.ndarray
-        Energies at which mass energy-absorption coefficients are given.
+        Energies at which mass energy-absorption coefficients are given. [eV]
     mu_en_coeffs : numpy.ndarray
-        mass energy absoroption coefficients [cm^2/g] at provided energies.
+        mass energy absorption coefficients at provided energies. [cm^2/g] 
 
     """
 
@@ -75,6 +74,6 @@ def mu_en_coefficients(material, data_source='nist126'):
     mu_en_index = 2
 
     # Pull out energy and dose from table
-    energy = data[:, 0].copy()
+    energy = data[:, 0].copy() * 1e6 # change to electronVolts
     mu_en_coeffs = data[:, mu_en_index].copy()
     return energy, mu_en_coeffs

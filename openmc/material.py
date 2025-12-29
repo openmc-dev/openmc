@@ -26,7 +26,7 @@ from openmc.checkvalue import PathLike
 from openmc.data.function import Tabulated1D, Combination
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol
-from openmc.data.photon_attenuation import linear_attenuation_xs
+from openmc.data.photon_attenuation import linear_attenuation_xs, material_photon_mass_attenuation_dist
 from openmc.data.mass_attenuation.mass_attenuation import mu_en_coefficients
 
 
@@ -1310,9 +1310,10 @@ class Material(IDManagerMixin):
         """Compute the photon mass attenuation coefficient for this material.
 
         The mass attenuation coefficient :math:`\\mu/\\rho` is computed by
-        summing the nuclide-wise linear attenuation coefficients
-        :math:`\\mu(E)` weighted by the photon energy distribution and
-        dividing by the material mass density.
+        evaluating the photon mass attenuation energy distribution at the 
+        requested photon energy. If the energy is given as one or more
+        discrete or tabulated distributions, the mass attenuation is 
+        weighted appropriately.
 
         Parameters
         ----------
@@ -1367,88 +1368,60 @@ class Material(IDManagerMixin):
         for dist in distributions:
             dist.normalize()
 
-        # Mass density of the material [g/cm^3]
-        rho = self.get_mass_density()  # g/cm^3
 
-        if rho is None or rho <= 0.0:
-            raise ValueError(
-                f'Material ID="{self.id}" has non-positive mass density; '
-                "cannot compute mass attenuation coefficient."
-            )
+        # photon mass attenuation distribution as a function of energy
+        mass_attenuation_dist = material_photon_mass_attenuation_dist(self)
 
-        # Nuclide atomic densities [atom/b-cm]
-        if not self.get_element_atom_densities():
-            raise ValueError(
-                f'For Material ID="{self.id}" no nuclide densities are defined;'
-                "cannot compute mass attenuation coefficient."
-            )
-
-        # Temperature to use if photon data is temperature-resolved
-        if self.temperature is not None:
-            T = float(self.temperature)
-        else:
-            T = 294.0  # consistent with other API defaults
+        if mass_attenuation_dist is None:
+            raise ValueError("cannot compute photon mass attenuation for material")
 
         photon_attenuation = 0.0  
 
-        for el_name, atoms_per_bcm in self.get_element_atom_densities().items():
+        if isinstance(photon_energy, Real):
+            return  mass_attenuation_dist(photon_energy)
 
-            mu_nuc = 0.0
-
-            nuc_linear_attenuation = linear_attenuation_xs(el_name,  T) # units of barns/atom
-
-            if nuc_linear_attenuation is None:
-                continue
-
-            if isinstance(photon_energy, Real):
-                mu_nuc +=  nuc_linear_attenuation(photon_energy)
-
-            for dist_weight, dist in zip(distribution_weights, distributions):
+        for dist_weight, dist in zip(distribution_weights, distributions):
 
 
-                e_vals = dist.x
-                p_vals = dist.p
+            e_vals = dist.x
+            p_vals = dist.p
 
-                if isinstance(dist, Discrete):
-                    for p,e in zip(p_vals, e_vals):
+            if isinstance(dist, Discrete):
+                for p,e in zip(p_vals, e_vals):
 
-                        mu_nuc += dist_weight * p * nuc_linear_attenuation(e)
+                    photon_attenuation += dist_weight * p * mass_attenuation_dist(e)
 
-                if isinstance(dist, Tabular):
+            if isinstance(dist, Tabular):
 
-                    # cast tabular distribution to a Tabulated1D object
-                    pe_dist = Tabulated1D( e_vals, p_vals, breakpoints=None, interpolation=[1])
+                # cast tabular distribution to a Tabulated1D object
+                pe_dist = Tabulated1D( e_vals, p_vals, breakpoints=None, interpolation=[1])
 
-                    # generate a uninon of abscissae
-                    e_lists = [e_vals]
-                    for photon_xs in nuc_linear_attenuation.functions:
-                        e_lists.append(photon_xs.x)
-                    e_union = reduce(np.union1d, e_lists)
+                # generate a uninon of abscissae
+                e_lists = [e_vals]
+                for photon_xs in mass_attenuation_dist.functions:
+                    e_lists.append(photon_xs.x)
+                e_union = reduce(np.union1d, e_lists)
 
-                    # generate a callable combination of normalized photon probability x linear
-                    # attenuation
-                    integrand_operator = Combination(functions=[pe_dist,
-                                                       nuc_linear_attenuation],
-                                                operations=[np.multiply])
+                # generate a callable combination of normalized photon probability x linear
+                # attenuation
+                integrand_operator = Combination(functions=[pe_dist,
+                                                    mass_attenuation_dist],
+                                            operations=[np.multiply])
 
-                    # compute y-values of the callable combination
-                    mu_evaluated = integrand_operator(e_union)
+                # compute y-values of the callable combination
+                mu_evaluated = integrand_operator(e_union)
 
-                    # instantiate the combined Tabulated1D function 
-                    integrand_function = Tabulated1D( e_union, mu_evaluated, breakpoints=None,
-                                                     interpolation=[2])
+                # instantiate the combined Tabulated1D function 
+                integrand_function = Tabulated1D( e_union, mu_evaluated, breakpoints=None,
+                                                    interpolation=[2])
 
-                    
-                    # sum the distribution contribution to the linear attenuation
-                    # of the nuclide
-                    mu_nuc += dist_weight * integrand_function.integral()[-1]
+                
+                # sum the distribution contribution to the linear attenuation
+                # of the nuclide
+                photon_attenuation += dist_weight * integrand_function.integral()[-1]
 
-            if mu_nuc <= 0.0:
-                continue
 
-            photon_attenuation += atoms_per_bcm * mu_nuc # cm-1
-
-        return float(photon_attenuation / rho)  # cm2/g
+        return float(photon_attenuation)  # cm2/g
 
     def get_photon_contact_dose_rate(
         self, bremsstrahlung_correction: bool = True, by_nuclide: bool = False

@@ -284,7 +284,12 @@ def test_material_photon_mass_attenuation_dist_single_element_matches_linear_ove
     monkeypatch.setattr(photon_att, "_get_photon_data", lambda name: element if name == symbol else None)
 
     T = 293.6
-    rho = 11.34 if symbol == "Pb" else 2.0  # any positive value is fine for this identity test
+    if symbol == "Pb":
+        rho = 11.34
+    elif symbol == "C":
+        rho = 2.0
+    else:
+        rho = 1.0
 
     mat = openmc.Material(temperature=T)
     mat.add_element(symbol, 1.0)
@@ -298,8 +303,14 @@ def test_material_photon_mass_attenuation_dist_single_element_matches_linear_ove
     assert mu_over_rho is not None
 
     energy = np.logspace(2, 6, 80)
-    expected = xs(energy) / rho
+
+
+    rho = mat.get_mass_density()
+    n_el = mat.get_element_atom_densities()[symbol]
+    expected = xs(energy) * (n_el / rho)
     actual = mu_over_rho(energy)
+
+
 
     assert np.allclose(actual, expected)
 

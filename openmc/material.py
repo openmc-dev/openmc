@@ -1305,7 +1305,7 @@ class Material(IDManagerMixin):
         return decayheat if by_nuclide else sum(decayheat.values())
     
 
-    def get_photon_mass_attenuation_coefficient(self, photon_energy: float| Real | Univariate | Discrete | Mixture | Tabular) -> float:
+    def get_photon_mass_attenuation(self, photon_energy: float| Real | Univariate | Discrete | Mixture | Tabular) -> float:
         """Compute the photon mass attenuation coefficient for this material.
 
         The mass attenuation coefficient :math:`\\mu/\\rho` is computed by
@@ -1508,7 +1508,7 @@ class Material(IDManagerMixin):
                     for (e,p) in zip(e_vals, p_vals):
 
                         # missing the air part
-                        cdr_nuc += p * e / self.get_photon_mass_attenuation_coefficient(e)
+                        cdr_nuc += p * e / self.get_photon_mass_attenuation(e)
 
                 elif isinstance(photon_source_per_atom, Tabular):
 

@@ -95,8 +95,8 @@ void openmc_run_random_ray()
 
       // Print simulation information
       if (mpi::master) {
-        std::string message =
-          fmt::format("TIME DEPENDENT SOLVE {0}", settings::current_timestep);
+        std::string message = fmt::format(
+          "KINETIC SIMULATION TIME STEP {0}", settings::current_timestep);
         const char* msg = message.c_str();
         header(msg, 3);
       }
@@ -499,7 +499,7 @@ void write_random_ray_hdf5(hid_t group)
     case RandomRayTimeMethod::ISOTROPIC:
       write_dataset(random_ray_group, "time_method", "isotropic");
       break;
-    case RandomRayTimeMethod::PROPOGATION:
+    case RandomRayTimeMethod::PROPAGATION:
       write_dataset(random_ray_group, "time_method", "propogation");
       break;
     default:
@@ -850,7 +850,7 @@ void RandomRaySimulation::print_results_random_ray() const
       std::string time_method =
         (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC)
           ? "ISOTROPIC"
-          : "PROPOGATION";
+          : "PROPAGATION";
       fmt::print(" Time Method                       = {}\n", time_method);
       fmt::print(
         " Backwards Difference Order        = {}\n", RandomRay::bd_order_);

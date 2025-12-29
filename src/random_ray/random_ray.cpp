@@ -463,7 +463,7 @@ void RandomRay::attenuate_flux_flat_source(
         cjosey_exponential(tau_td); // exponential = 1 - exp(-tau)
       float new_delta_psi_td =
         (angular_flux_td_[g] - srh.source_td(g)) * exponential_td;
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         float source_derivative = srh.source_time_derivative(g);
         float flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
         float T1 = (source_derivative - flux_derivative_2);
@@ -864,7 +864,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       for (int g = 0; g < negroups_; g++) {
         angular_flux_td_[g] = srh.source_td(g);
       }
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         for (int g = 0; g < negroups_; g++) {
           double sigma_t_td =
             domain_->sigma_t_td_[srh.material() * negroups_ + g];

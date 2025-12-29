@@ -22,6 +22,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -96,6 +97,10 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Write run information
     write_dataset(file_id, "energy_mode",
       settings::run_CE ? "continuous-energy" : "multi-group");
+    if (!settings::run_CE) {
+      write_dataset(file_id, "n_energy_groups", data::mg.num_energy_groups_);
+      write_dataset(file_id, "n_delay_groups", data::mg.num_delayed_groups_);
+    }
     switch (settings::run_mode) {
     case RunMode::FIXED_SOURCE:
       write_dataset(file_id, "run_mode", "fixed source");
@@ -106,9 +111,31 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     default:
       break;
     }
+    switch (settings::solver_type) {
+    case SolverType::MONTE_CARLO:
+      write_dataset(file_id, "solver_type", "monte carlo");
+      break;
+    case SolverType::RANDOM_RAY:
+      write_dataset(file_id, "solver_type", "random ray");
+      write_random_ray_hdf5(file_id);
+      break;
+    default:
+      break;
+    }
     write_attribute(file_id, "photon_transport", settings::photon_transport);
     write_dataset(file_id, "n_particles", settings::n_particles);
     write_dataset(file_id, "n_batches", settings::n_batches);
+
+    write_dataset(file_id, "kinetic_simulation",
+      settings::kinetic_simulation ? true : false);
+    if (settings::kinetic_simulation) {
+      hid_t timestep_group = create_group(file_id, "timestep_data");
+      write_dataset(timestep_group, "dt", settings::dt);
+      write_dataset(
+        timestep_group, "current_timestep", settings::current_timestep);
+      write_dataset(timestep_group, "current_time", simulation::current_time);
+      close_group(timestep_group);
+    }
 
     // Write out current batch number
     write_dataset(file_id, "current_batch", simulation::current_batch);
@@ -315,6 +342,15 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(runtime_group, "inactive batches", time_inactive.elapsed());
     }
     write_dataset(runtime_group, "active batches", time_active.elapsed());
+    if (settings::solver_type == SolverType::RANDOM_RAY) {
+      write_dataset(runtime_group, "source_update", time_update_src.elapsed());
+      if (settings::kinetic_simulation) {
+        write_dataset(
+          runtime_group, "source_td_update", time_update_src_td.elapsed());
+        write_dataset(
+          runtime_group, "precursor_update", time_compute_precursors.elapsed());
+      }
+    }
     if (settings::run_mode == RunMode::EIGENVALUE) {
       write_dataset(
         runtime_group, "synchronizing fission bank", time_bank.elapsed());

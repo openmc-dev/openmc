@@ -87,7 +87,7 @@ def test_export_to_xml(run_in_tmpdir, kinetic_simulation):
     }
     if kinetic_simulation:
         s.random_ray['bd_order'] = 3
-        s.random_ray['time_derivative_method'] = 'propogation'
+        s.random_ray['time_derivative_method'] = 'propagation'
     s.max_particle_events = 100
     s.max_secondaries = 1_000_000
     s.source_rejection_fraction = 0.01
@@ -187,7 +187,7 @@ def test_export_to_xml(run_in_tmpdir, kinetic_simulation):
     assert s.random_ray['sample_method'] == 'halton'
     if kinetic_simulation:
         assert s.random_ray['bd_order'] == 3
-        assert s.random_ray['time_derivative_method'] == 'propogation'
+        assert s.random_ray['time_derivative_method'] == 'propagation'
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01
     assert s.free_gas_threshold == 800.0

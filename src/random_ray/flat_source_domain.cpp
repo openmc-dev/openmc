@@ -232,7 +232,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
       source_regions_.scalar_flux_td_new(sr, g) /= (sigma_t_td * volume);
       source_regions_.scalar_flux_td_new(sr, g) +=
         source_regions_.source_td(sr, g);
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         // TODO: may need to adjust sigma t division here
         double inverse_vbar =
           inverse_vbar_[source_regions_.material(sr) * negroups_ + g];
@@ -1815,7 +1815,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   update_single_neutron_source(handle);
   if (settings::kinetic_simulation && !settings::is_initial_condition) {
     update_single_neutron_source_td(handle);
-    if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+    if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       compute_single_neutron_source_time_derivative(handle);
       compute_single_scalar_flux_time_derivative_2(handle);
     }
@@ -2091,7 +2091,7 @@ void FlatSourceDomain::update_all_neutron_sources_td()
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
     update_single_neutron_source_td(srh);
-    if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+    if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       compute_single_neutron_source_time_derivative(srh);
       compute_single_scalar_flux_time_derivative_2(srh);
     }
@@ -2228,7 +2228,7 @@ void FlatSourceDomain::accumulate_iteration_quantities()
       for (int g = 0; g < negroups_; g++) {
         source_regions_.scalar_flux_td_final(sr, g) +=
           source_regions_.scalar_flux_td_new(sr, g);
-        if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+        if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
           if (settings::is_initial_condition)
             source_regions_.source_final(sr, g) +=
               source_regions_.source(sr, g);
@@ -2260,7 +2260,7 @@ void FlatSourceDomain::normalize_final_quantities()
       if (settings::kinetic_simulation)
         source_regions_.scalar_flux_td_final(sr, g) *=
           source_normalization_factor;
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         source_regions_.source_td_final(sr, g) *= normalization_factor;
       }
     }
@@ -2308,12 +2308,12 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
       int j = 0;
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION)
+      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION)
         j = 1;
       add_value_to_bd_vector(source_regions_.scalar_flux_bd(sr, g),
         source_regions_.scalar_flux_td_final(sr, g), increment_not_initialize,
         RandomRay::bd_order_ + j);
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         // Multiply out sigma_t to store the base source
         double sigma_t;
         if (settings::is_initial_condition) {
@@ -2344,7 +2344,7 @@ void FlatSourceDomain::compute_rhs_bd_quantities()
         rhs_backwards_difference(source_regions_.scalar_flux_bd(sr, g),
           RandomRay::bd_order_, settings::dt);
 
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPOGATION) {
+      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         source_regions_.source_rhs_bd(sr, g) = rhs_backwards_difference(
           source_regions_.source_bd(sr, g), RandomRay::bd_order_, settings::dt);
 

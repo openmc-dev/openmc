@@ -264,6 +264,16 @@ void get_run_parameters(pugi::xml_node node_base)
   // Kinetic variables
   if (check_for_node(node_base, "kinetic_simulation")) {
     kinetic_simulation = get_node_value_bool(node_base, "kinetic_simulation");
+    if (solver_type != SolverType::RANDOM_RAY) {
+      fatal_error("Unsupported solver selected for kinetic simulation. Kinetic "
+                  "simulations currently only support the random ray solver.");
+    }
+    if (run_mode != RunMode::EIGENVALUE) {
+      fatal_error(
+        "Unsupported run mode selected for kinetic simulation. Kinetic "
+        "simulations currently only support run mode based on an eigenvalue "
+        "simulation establishing an initial condition.");
+    }
   }
 
   // Get timestep parameters for kinetic simulations
@@ -429,8 +439,8 @@ void get_run_parameters(pugi::xml_node node_base)
           get_node_value(random_ray_node, "time_derivative_method", true, true);
         if (temp_str == "isotropic") {
           RandomRay::time_method_ = RandomRayTimeMethod::ISOTROPIC;
-        } else if (temp_str == "propogation") {
-          RandomRay::time_method_ = RandomRayTimeMethod::PROPOGATION;
+        } else if (temp_str == "propagation") {
+          RandomRay::time_method_ = RandomRayTimeMethod::PROPAGATION;
         } else {
           fatal_error("Unrecognized time derivative method: " + temp_str);
         }

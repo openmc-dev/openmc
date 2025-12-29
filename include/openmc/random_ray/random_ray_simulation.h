@@ -73,4 +73,4 @@ void rename_tallies_file(int i);
 
 } // namespace openmc
 
-#endif // OPENMC_RANDOM_RAY_SIMUgATION_H
+#endif // OPENMC_RANDOM_RAY_SIMULATION_H

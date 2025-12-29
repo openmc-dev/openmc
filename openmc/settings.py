@@ -233,7 +233,7 @@ class Settings:
         :time_derivative_method:
             Method for resolving :math:`\\frac{\\partial}{\\partial t}
             \\psi_{r,g}(s,t)` in the time-dependent charactersitic equation.
-            Options are 'isotropic' (default), or 'propogation'.
+            Options are 'isotropic' (default), or 'propagation'.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1409,7 +1409,7 @@ class Settings:
                     cv.check_less_than('BD order', value, 7)
                 elif key == 'time_derivative method':
                     cv.check_value('time derivative method', value,
-                                   ('isotropic', 'propogation'))
+                                   ('isotropic', 'propagation'))
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')

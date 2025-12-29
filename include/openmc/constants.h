@@ -370,7 +370,7 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRaySampleMethod { PRNG, HALTON };
-enum class RandomRayTimeMethod { ISOTROPIC, PROPOGATION };
+enum class RandomRayTimeMethod { ISOTROPIC, PROPAGATION };
 
 //==============================================================================
 // Geometry Constants

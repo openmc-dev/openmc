@@ -666,16 +666,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
     // such that 1.2 neutrons are generated, so as to be consistent with the
     // bookkeeping in MC which is all done per starting source neutron (not per
     // neutron produced).
-    double normalization_factor;
-    // For a kinetic simulation, the normalization only needs to be performed
-    // once for the steady state.
-    if (settings::kinetic_simulation && !settings::is_initial_condition)
-      normalization_factor = 1.0;
-    else
-      normalization_factor = k_eff_ / (fission_rate_ * simulation_volume_);
-    return normalization_factor;
-    // TODO: check if a delayed fission rate needed to normalize the precursor
-    // population... need to run a test problem using mc tallies?
+    return k_eff_ / (fission_rate_ * simulation_volume_);
   }
 
   // If we are in adjoint mode of a fixed source problem, the external
@@ -2137,8 +2128,8 @@ void FlatSourceDomain::compute_single_delayed_fission_source(
 void FlatSourceDomain::compute_single_precursors(SourceRegionHandle& srh)
 {
   // Reset all precursors to zero (important for void regions)
-  for (int g = 0; g < negroups_; g++) {
-    srh.precursors_new(g) = 0.0;
+  for (int dg = 0; dg < ndgroups_; dg++) {
+    srh.precursors_new(dg) = 0.0;
   }
 
   int material = srh.material();
@@ -2250,8 +2241,16 @@ void FlatSourceDomain::normalize_final_quantities()
   // TODO: add timer
   double normalization_factor =
     1.0 / (settings::n_batches - settings::n_inactive);
-  double source_normalization_factor =
-    compute_fixed_source_normalization_factor() * normalization_factor;
+  double source_normalization_factor;
+  if (!settings::kinetic_simulation ||
+      settings::kinetic_simulation &&
+        settings::current_timestep == settings::n_timesteps)
+    source_normalization_factor =
+      compute_fixed_source_normalization_factor() * normalization_factor;
+  else
+    // The source normalization should only be applied to internal quantities at
+    // the end of time stepping in preparation for an adjoint solve.
+    source_normalization_factor = 1.0 * normalization_factor;
 
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
@@ -2261,7 +2260,8 @@ void FlatSourceDomain::normalize_final_quantities()
         source_regions_.scalar_flux_td_final(sr, g) *=
           source_normalization_factor;
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-        source_regions_.source_td_final(sr, g) *= normalization_factor;
+        // TODO: double check that this is correct for adjoint SDP
+        source_regions_.source_td_final(sr, g) *= source_normalization_factor;
       }
     }
     for (int dg = 0; dg < ndgroups_; dg++) {

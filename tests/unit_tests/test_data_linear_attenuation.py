@@ -72,14 +72,38 @@ def test_linear_attenuation_xs_matches_sum(elements_photon_xs, symbol, monkeypat
     actual = xs_sum(energy)
     assert np.allclose(actual, expected)
 
+def test_linear_attenuation_xs_element_conversion(elements_photon_xs, monkeypatch):
+    """linear_attenuation_xs should fetch the corresponding element data when
+    given a nuclide symbol.
+    """
+    symbol_el = 'C'
+    symbol_nuc = 'C12'
+    element = elements_photon_xs.get(symbol_el)
+    if element is None:
+        pytest.skip(f"No photon data for {element} in cross section library.")
+
+    # Use preloaded IncidentPhoton instead of reading via DataLibrary in the helper
+    monkeypatch.setattr(linear_attenuation, "_get_photon_data", lambda _: element)
+
+    xs_el = linear_attenuation_xs(symbol_el, temperature=293.6)
+    xs_nuc = linear_attenuation_xs(symbol_nuc, temperature=293.6)
+
+    assert xs_el is xs_nuc
+
 
 def test_linear_attenuation_xs_returns_none_when_no_photon_data(monkeypatch):
     """If _get_photon_data returns None, the helper should return None."""
     monkeypatch.setattr(linear_attenuation, "_get_photon_data", lambda _: None)
 
-    xs_sum = linear_attenuation_xs("NonExistent", temperature=300.0)
+    xs_sum = linear_attenuation_xs("Og", temperature=300.0)
     assert xs_sum is None
 
+def test_linear_attenuation_xs_gives_error_wrong_name(monkeypatch):
+    """Non existant nuclides should raise Value Error"""
+    monkeypatch.setattr(linear_attenuation, "_get_photon_data", lambda _: None)
+
+    with pytest.raises(ValueError):
+        _ = linear_attenuation_xs("NonExisting123", temperature=300.0)
 
 # ================================================================
 # Tests for _get_photon_data (internal helper)
@@ -117,12 +141,22 @@ def test_get_photon_data_missing_nuclide():
     photon_att._PHOTON_LIB = None
     photon_att._PHOTON_DATA = {}
 
+    # Pick a nuclide name guaranteed *not* to have data
+    name_no_data = "Og"
+
+    data = photon_att._get_photon_data(name_no_data)
+    assert data is None
+
+def test_get_photon_data_wrong_name():
+    """_get_photon_data should return None when the nuclide does not exist."""
+    photon_att._PHOTON_LIB = None
+    photon_att._PHOTON_DATA = {}
+
     # Pick a nuclide name guaranteed *not* to exist
-    bad_name = "NonExistentNuclide_XXXX"
+    bad_name = "ThisNuclideDoesNotExist123"
 
     data = photon_att._get_photon_data(bad_name)
     assert data is None
-
 
 def test_get_photon_data_no_library(monkeypatch):
     """If DataLibrary.from_xml() fails, _get_photon_data should raise DataError."""

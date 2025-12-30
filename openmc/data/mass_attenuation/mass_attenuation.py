@@ -4,16 +4,18 @@ import numpy as np
 
 import openmc.checkvalue as cv
 
+from openmc.data import  EV_PER_MEV
+
 _FILES = {
-    ('nist126', 'air'): Path('nist126') / 'air.txt',
-    ('nist126', 'water'): Path('nist126') / 'water.txt',
+    ("nist126", "air"): Path("nist126") / "air.txt",
+    ("nist126", "water"): Path("nist126") / "water.txt",
 }
 
 _MU_TABLES = {}
 
 
 def _load_mass_attenuation(data_source: str, material: str) -> None:
-    """Load mass energy attenuation and absorption coefficients from 
+    """Load mass energy attenuation and absorption coefficients from
     the NIST database stored in the text files.
 
     Parameters
@@ -25,14 +27,16 @@ def _load_mass_attenuation(data_source: str, material: str) -> None:
 
     """
     path = Path(__file__).parent / _FILES[data_source, material]
-    data = np.loadtxt(path, skiprows=5, encoding='utf-8')
+    data = np.loadtxt(path, skiprows=5, encoding="utf-8")
     _MU_TABLES[data_source, material] = data
 
 
-def mu_en_coefficients(material:str, data_source:str='nist126') -> tuple[np.ndarray, np.ndarray]:
+def mu_en_coefficients(
+    material: str, data_source: str = "nist126"
+) -> tuple[np.ndarray, np.ndarray]:
     """Return mass energy-absorption coefficients.
 
-    This function returns the photon mass energy-absorption coefficients for 
+    This function returns the photon mass energy-absorption coefficients for
     various tabulated material compounds.
     Available libraries include `NIST Standard Reference Database 126
     <https://dx.doi.org/10.18434/T4D01F>`.
@@ -50,12 +54,12 @@ def mu_en_coefficients(material:str, data_source:str='nist126') -> tuple[np.ndar
     energy : numpy.ndarray
         Energies at which mass energy-absorption coefficients are given. [eV]
     mu_en_coeffs : numpy.ndarray
-        mass energy absorption coefficients at provided energies. [cm^2/g] 
+        mass energy absorption coefficients at provided energies. [cm^2/g]
 
     """
 
-    cv.check_value('material', material, {'air','water'})
-    cv.check_value('data_source', data_source, {'nist126'})
+    cv.check_value("material", material, {"air", "water"})
+    cv.check_value("data_source", data_source, {"nist126"})
 
     if (data_source, material) not in _FILES:
         available_materials = sorted({m for (ds, m) in _FILES if ds == data_source})
@@ -74,6 +78,6 @@ def mu_en_coefficients(material:str, data_source:str='nist126') -> tuple[np.ndar
     mu_en_index = 2
 
     # Pull out energy and dose from table
-    energy = data[:, 0].copy() * 1e6 # change to electronVolts
+    energy = data[:, 0].copy() * EV_PER_MEV  # change to electronVolts
     mu_en_coeffs = data[:, mu_en_index].copy()
     return energy, mu_en_coeffs

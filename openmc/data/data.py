@@ -274,6 +274,7 @@ K_BOLTZMANN = 8.617333262e-5
 # Unit conversions
 EV_PER_MEV = 1.0e6
 JOULE_PER_EV = 1.602176634e-19
+BARN_PER_CM_SQ = 1.0e24
 
 # Avogadro's constant
 AVOGADRO = 6.02214076e23

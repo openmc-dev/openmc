@@ -56,6 +56,8 @@ extern bool
                              // condition for a kinetic simulation
 extern int current_timestep; // !< current time step in kinetic simulation
 extern double current_time;  // !< current time in kinetic simulation
+extern bool k_eff_correction; // !< flag to indicate if the simulation is meant
+                              // to correct batchwise k_effs
 
 } // namespace simulation
 

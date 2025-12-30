@@ -346,8 +346,6 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(runtime_group, "source_update", time_update_src.elapsed());
       if (settings::kinetic_simulation) {
         write_dataset(
-          runtime_group, "source_td_update", time_update_src_td.elapsed());
-        write_dataset(
           runtime_group, "precursor_update", time_compute_precursors.elapsed());
       }
     }

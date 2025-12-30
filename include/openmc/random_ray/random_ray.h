@@ -74,8 +74,7 @@ public:
 
   //---------------------------------------------------------------------------
   // Public data members for kinetic simulations
-  vector<float> angular_flux_td_;
-  vector<float> angular_flux_td_prime_;
+  vector<float> angular_flux_prime_;
 
 private:
   //----------------------------------------------------------------------------
@@ -94,8 +93,7 @@ private:
 
   //---------------------------------------------------------------------------
   // Private data members for kinetic simulations
-  vector<double> delta_psi_td_;
-  vector<double> delta_psi_td_prime_;
+  vector<double> delta_psi_prime_;
 
 }; // class RandomRay
 

@@ -34,8 +34,9 @@ void openmc_run_random_ray()
 
   // TODO: no initial condition needed fof td fixed source simulations
   // Check if this simulation is to establish an initial condition
-  if (settings::kinetic_simulation)
+  if (settings::kinetic_simulation) {
     simulation::is_initial_condition = true;
+  }
 
   // Configure the domain for forward simulation
   FlatSourceDomain::adjoint_ = false;
@@ -82,6 +83,53 @@ void openmc_run_random_ray()
   sim.output_simulation_results();
 
   if (settings::kinetic_simulation) {
+    rename_statepoint_file(-1);
+    if (settings::output_tallies) {
+      rename_tallies_file(-1);
+    }
+    // Now do a second steady state simulation to correct the batch wise k-eff
+    // estimates
+    simulation::k_eff_correction = true;
+
+    if (settings::kinetic_simulation && mpi::master)
+      header("KINETIC SIMULATION INITIAL CONDITION (K-EFF CORRECTION)", 3);
+
+    // If we're going to do an adjoint simulation afterwards, report that this
+    // is the initial forward flux solve.
+    if (adjoint_needed && mpi::master)
+      header("FORWARD FLUX SOLVE", 3);
+
+    // Initialize OpenMC general data structures
+    openmc_simulation_init();
+
+    double initial_k_eff = simulation::keff;
+
+    sim.domain()->k_eff_ = initial_k_eff;
+    sim.domain()->source_regions_.adjoint_reset();
+    sim.domain()->propagate_final_quantities();
+    sim.domain()->source_regions_.time_step_reset();
+
+    // Begin main simulation timer
+    simulation::time_total.start();
+
+    // Execute random ray simulation
+    sim.simulate();
+
+    // End main simulation timer
+    simulation::time_total.stop();
+
+    // Normalize and save the final forward quantities
+    sim.domain()->normalize_final_quantities();
+
+    // Finalize OpenMC
+    openmc_simulation_finalize();
+
+    // Output all simulation results
+    sim.output_simulation_results();
+
+    //-------------------------------------------------------------------------
+    // KINETIC SIMULATION
+
     warning(
       "Time-dependent explicit void treatment has not yet been "
       "implemented. Use caution when interpreting results from models with "
@@ -116,7 +164,7 @@ void openmc_run_random_ray()
       // Initialize OpenMC general data structures
       openmc_simulation_init();
 
-      sim.domain()->k_eff_ = simulation::keff;
+      sim.domain()->k_eff_ = initial_k_eff;
       sim.domain()->source_regions_.adjoint_reset();
       sim.domain()->propagate_final_quantities();
       sim.domain()->source_regions_.time_step_reset();
@@ -225,7 +273,7 @@ void validate_random_ray_inputs()
 
       // TODO: add support for prompt and delayed fission
       case SCORE_PRECURSORS: {
-        if (settings::kinetic_simulation) {
+        if (settings::kinetic_simulation && settings::create_delayed_neutrons) {
           break;
         } else {
           fatal_error("Invalid score specified in tallies.xml. Precursors can "
@@ -237,7 +285,7 @@ void validate_random_ray_inputs()
           "Invalid score specified. Only flux, total, fission, nu-fission, and "
           "event scores are supported in random ray mode. (precursors are "
           "supported for "
-          "kinetic simulations).");
+          "kinetic simulations when delayed neutrons are turned on).");
       }
     }
 
@@ -526,6 +574,7 @@ void set_time_dependent_settings()
 {
   // Reset flags
   simulation::is_initial_condition = false;
+  simulation::k_eff_correction = false;
 
   // Set current time
   simulation::current_time = settings::dt;
@@ -590,6 +639,12 @@ RandomRaySimulation::RandomRaySimulation()
   // Convert OpenMC native MGXS into a more efficient format
   // internal to the random ray solver
   domain_->flatten_xs();
+
+  // Initialize vectors used for the steady state
+  if (settings::kinetic_simulation) {
+    static_k_eff_;
+    static_fission_rate_;
+  }
 }
 
 void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
@@ -629,9 +684,6 @@ void RandomRaySimulation::simulate()
       // domain_->compute_neutron_source()
       // Update source term (scattering + fission)
       domain_->update_all_neutron_sources();
-      if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-        domain_->update_all_neutron_sources_td();
-      }
 
       // Reset scalar fluxes, iteration volume tallies, and region hit flags
       // to zero
@@ -674,14 +726,25 @@ void RandomRaySimulation::simulate()
 
       if (settings::run_mode == RunMode::EIGENVALUE) {
         // Compute random ray k-eff
-        domain_->compute_k_eff();
+        if (!settings::kinetic_simulation ||
+            settings::kinetic_simulation && simulation::is_initial_condition) {
+          domain_->compute_k_eff();
+          if (simulation::k_eff_correction) {
+            static_fission_rate_.push_back(domain_->fission_rate_);
+            static_k_eff_.push_back(domain_->k_eff_);
+          }
+        } else {
+          domain_->k_eff_ = static_k_eff_[simulation::current_batch - 1];
+          domain_->fission_rate_ =
+            static_fission_rate_[simulation::current_batch - 1];
+        }
 
         // Store random ray k-eff into OpenMC's native k-eff variable
         global_tally_tracklength = domain_->k_eff_;
       }
 
-      // Compute precursors
-      if (settings::kinetic_simulation)
+      // Compute precursors if delayed neutrons are turned on
+      if (settings::kinetic_simulation && settings::create_delayed_neutrons)
         domain_->compute_all_precursors();
 
       // Execute all tallying tasks, if this is an active batch
@@ -698,8 +761,7 @@ void RandomRaySimulation::simulate()
 
       // Set phi_old = phi_new
       domain_->flux_swap();
-      if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-        domain_->flux_td_swap();
+      if (settings::kinetic_simulation && settings::create_delayed_neutrons) {
         domain_->precursors_swap();
       }
 
@@ -777,7 +839,7 @@ void RandomRaySimulation::print_results_random_ray() const
                        time_bank_sendrecv.elapsed();
 
     if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-      misc_time -= time_update_bd_vectors_td.elapsed();
+      misc_time -= time_update_bd_vectors.elapsed();
     }
     header("Simulation Statistics", 4);
     fmt::print(
@@ -872,16 +934,10 @@ void RandomRaySimulation::print_results_random_ray() const
     show_time("Total simulation time", time_total.elapsed());
     show_time("Transport sweep only", time_transport.elapsed(), 1);
     show_time("Source update only", time_update_src.elapsed(), 1);
-    if (settings::kinetic_simulation) {
+    if (settings::kinetic_simulation && settings::create_delayed_neutrons) {
       show_time(
         "Precursor computation only", time_compute_precursors.elapsed(), 1);
       misc_time -= time_compute_precursors.elapsed();
-
-      if (!simulation::is_initial_condition) {
-        show_time(
-          "Time-dependent source update only", time_update_src_td.elapsed(), 1);
-        misc_time -= time_update_src_td.elapsed();
-      }
     }
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
     show_time("MPI source reductions only", time_bank_sendrecv.elapsed(), 1);

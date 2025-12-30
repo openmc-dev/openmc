@@ -76,22 +76,17 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods for kinetic simulations
-  virtual void update_single_neutron_source_td(SourceRegionHandle& srh);
   void compute_single_neutron_source_time_derivative(SourceRegionHandle& srh);
   void compute_single_scalar_flux_time_derivative_2(SourceRegionHandle& srh);
-  virtual void update_all_neutron_sources_td();
 
   void compute_single_delayed_fission_source(SourceRegionHandle& srh);
   void compute_single_precursors(SourceRegionHandle& srh);
   void compute_all_precursors();
 
-  void serialize_final_td_fluxes(vector<double>& flux_td);
-  void serialize_final_td_sources(vector<double>& source_td);
   void serialize_final_precursors(vector<double>& precursors);
   void serialize_final_delayed_fission_source(
     vector<double>& delayed_fission_source);
 
-  void flux_td_swap();
   void precursors_swap();
   void accumulate_iteration_quantities();
   void normalize_final_quantities();
@@ -124,6 +119,9 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
   double k_eff_ {1.0};              // Eigenvalue
+  double
+    fission_rate_; // The system's fission rate (per cm^3), in eigenvalue mode
+
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
@@ -200,13 +198,6 @@ public:
   vector<double> chi_p_;
   vector<double> inverse_vbar_;
 
-  // Time-dependent cross section arrays for use with material density
-  // timeseries
-  vector<double> sigma_t_td_;
-  vector<double> nu_sigma_f_td_;
-  vector<double> sigma_f_td_;
-  vector<double> sigma_s_td_;
-
 protected:
   //----------------------------------------------------------------------------
   // Methods
@@ -228,9 +219,6 @@ protected:
   double
     simulation_volume_; // Total physical volume of the simulation domain, as
                         // defined by the 3D box of the random ray source
-
-  double
-    fission_rate_; // The system's fission rate (per cm^3), in eigenvalue mode
 
   // Volumes for each tally and bin/score combination. This intermediate data
   // structure is used when tallying quantities that must be normalized by

@@ -196,14 +196,6 @@ public:
   //---------------------------------------------------------------------------
   // Public Data Members for kinetic simulations
 
-  // Energy group-wise 1D time-dependent arrays
-  double* scalar_flux_td_old_;
-  double* scalar_flux_td_new_;
-  double* scalar_flux_td_final_;
-
-  double* source_td_;
-  double* source_td_final_;
-
   // Energy group-wise 1D time-derivative arrays
   double* source_time_derivative_;
   double* scalar_flux_time_derivative_2_;
@@ -351,30 +343,6 @@ public:
 
   //---------------------------------------------------------------------------
   // Public Accessors for kinetic simulations
-  double& scalar_flux_td_old(int g) { return scalar_flux_td_old_[g]; }
-  const double scalar_flux_td_old(int g) const
-  {
-    return scalar_flux_td_old_[g];
-  }
-
-  double& scalar_flux_td_new(int g) { return scalar_flux_td_new_[g]; }
-  const double scalar_flux_td_new(int g) const
-  {
-    return scalar_flux_td_new_[g];
-  }
-
-  double& scalar_flux_td_final(int g) { return scalar_flux_td_final_[g]; }
-  const double scalar_flux_td_final(int g) const
-  {
-    return scalar_flux_td_final_[g];
-  }
-
-  double& source_td(int g) { return source_td_[g]; }
-  const double source_td(int g) const { return source_td_[g]; }
-
-  double& source_td_final(int g) { return source_td_final_[g]; }
-  const double source_td_final(int g) const { return source_td_final_[g]; }
-
   double& source_time_derivative(int g) { return source_time_derivative_[g]; }
   const double source_time_derivative(int g) const
   {
@@ -531,23 +499,8 @@ public:
   // Public Data Members for kinetic simulations
 
   // Energy group-wise 1D time-dependent arrrays
-  vector<double> source_final_;       //!< The total source accumulated over all
-                                      //!< active iterations (used for SDP)
-  vector<double> scalar_flux_td_old_; //!< The time-dependent scalar flux from
-                                      //!< the previous iteration
-  vector<double> scalar_flux_td_new_; //!< The time-dependent scalar flux from
-                                      //!< the current iteration
-  vector<double>
-    scalar_flux_td_final_; //!< The time-dependent scalar flux accumulated over
-                           //!< all active iterations (used as the initial
-                           //!< condition for the next timestep)
-
-  vector<double>
-    source_td_; //!< The total time-dependent source term (prompt
-                //!< prompt fission + scattering + delayed emission)
-  vector<double>
-    source_td_final_; //!< The total time-dependent source accumulated over all
-                      //!< active iterations (used for SDP)
+  vector<double> source_final_; //!< The total source accumulated over all
+                                //!< active iterations (used for SDP)
 
   // Energy group-wise 1D derivative arrays
   vector<double> source_time_derivative_;        //!< The time derivative of the
@@ -851,71 +804,6 @@ public:
 
   //---------------------------------------
   // For kinetic simulations
-
-  double& scalar_flux_td_old(int64_t sr, int g)
-  {
-    return scalar_flux_td_old_[index(sr, g)];
-  }
-  const double& scalar_flux_td_old(int64_t sr, int g) const
-  {
-    return scalar_flux_td_old_[index(sr, g)];
-  }
-  double& scalar_flux_td_old(int64_t se) { return scalar_flux_td_old_[se]; }
-  const double& scalar_flux_td_old(int64_t se) const
-  {
-    return scalar_flux_td_old_[se];
-  }
-
-  double& scalar_flux_td_new(int64_t sr, int g)
-  {
-    return scalar_flux_td_new_[index(sr, g)];
-  }
-  const double& scalar_flux_td_new(int64_t sr, int g) const
-  {
-    return scalar_flux_td_new_[index(sr, g)];
-  }
-  double& scalar_flux_td_new(int64_t se) { return scalar_flux_td_new_[se]; }
-  const double& scalar_flux_td_new(int64_t se) const
-  {
-    return scalar_flux_td_new_[se];
-  }
-
-  double& scalar_flux_td_final(int64_t sr, int g)
-  {
-    return scalar_flux_td_final_[index(sr, g)];
-  }
-  const double& scalar_flux_td_final(int64_t sr, int g) const
-  {
-    return scalar_flux_td_final_[index(sr, g)];
-  }
-  double& scalar_flux_td_final(int64_t se) { return scalar_flux_td_final_[se]; }
-  const double& scalar_flux_td_final(int64_t se) const
-  {
-    return scalar_flux_td_final_[se];
-  }
-
-  double& source_td(int64_t sr, int g) { return source_td_[index(sr, g)]; }
-  const double& source_td(int64_t sr, int g) const
-  {
-    return source_td_[index(sr, g)];
-  }
-  double& source_td(int64_t se) { return source_td_[se]; }
-  const double& source_td(int64_t se) const { return source_td_[se]; }
-
-  double& source_td_final(int64_t sr, int g)
-  {
-    return source_td_final_[index(sr, g)];
-  }
-  const double& source_td_final(int64_t sr, int g) const
-  {
-    return source_td_final_[index(sr, g)];
-  }
-  double& source_td_final(int64_t se) { return source_td_final_[se]; }
-  const double& source_td_final(int64_t se) const
-  {
-    return source_td_final_[se];
-  }
-
   double& source_time_derivative(int64_t sr, int g)
   {
     return source_time_derivative_[index(sr, g)];
@@ -1137,7 +1025,6 @@ public:
   int& ndgroups() { return ndgroups_; }
   const int ndgroups() const { return ndgroups_; }
 
-  void flux_td_swap();
   void precursors_swap();
   void time_step_reset();
 
@@ -1196,14 +1083,6 @@ private:
 
   //---------------------------------------------------------------------------
   // Private Data Members for kinetic simulations
-
-  // SoA energy group-wise 2D time-dependent arrays flattened to 1D
-  vector<double> scalar_flux_td_old_;
-  vector<double> scalar_flux_td_new_;
-  vector<double> scalar_flux_td_final_;
-
-  vector<double> source_td_;
-  vector<double> source_td_final_;
 
   // SoA energy group-wise 2D derivative arrays flattened to 1D
   vector<double> source_time_derivative_;

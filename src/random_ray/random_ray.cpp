@@ -252,10 +252,8 @@ RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
     delta_psi_(data::mg.num_energy_groups_),
     negroups_(data::mg.num_energy_groups_),
-    angular_flux_td_(data::mg.num_energy_groups_),
-    delta_psi_td_(data::mg.num_energy_groups_),
-    angular_flux_td_prime_(data::mg.num_energy_groups_),
-    delta_psi_td_prime_(data::mg.num_energy_groups_)
+    angular_flux_prime_(data::mg.num_energy_groups_),
+    delta_psi_prime_(data::mg.num_energy_groups_)
 
 {
   if (source_shape_ == RandomRaySourceShape::LINEAR ||
@@ -454,38 +452,26 @@ void RandomRay::attenuate_flux_flat_source(
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
+    if (settings::kinetic_simulation && !simulation::is_initial_condition &&
+        RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
+      float source_derivative = srh.source_time_derivative(g);
+      float flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
+      float T1 = (source_derivative - flux_derivative_2);
+
+      // Source Derivative Propogation terms for Time Derivative
+      // Characteristic Equation
+      float inverse_vbar = domain_->inverse_vbar_[material * negroups_ + g];
+      new_delta_psi += T1 * inverse_vbar * exponential / sigma_t;
+      new_delta_psi += distance * inverse_vbar * (angular_flux_prime_[g] - T1) *
+                       (1 - exponential);
+
+      // Time Derivative Characteristic Equation
+      float new_delta_psi_prime = (angular_flux_prime_[g] - T1) * exponential;
+      delta_psi_prime_[g] = new_delta_psi_prime;
+      angular_flux_prime_[g] -= new_delta_psi_prime;
+    }
     delta_psi_[g] = new_delta_psi;
     angular_flux_[g] -= new_delta_psi;
-    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-      float sigma_t_td = domain_->sigma_t_td_[material * negroups_ + g];
-      float tau_td = sigma_t_td * distance;
-      float exponential_td =
-        cjosey_exponential(tau_td); // exponential = 1 - exp(-tau)
-      float new_delta_psi_td =
-        (angular_flux_td_[g] - srh.source_td(g)) * exponential_td;
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-        float source_derivative = srh.source_time_derivative(g);
-        float flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
-        float T1 = (source_derivative - flux_derivative_2);
-
-        // Source Derivative Propogation terms for Time Derivative
-        // Characteristic Equation
-        float inverse_vbar = domain_->inverse_vbar_[material * negroups_ + g];
-        new_delta_psi_td += T1 * inverse_vbar * exponential_td / sigma_t_td;
-        new_delta_psi_td += distance * inverse_vbar *
-                            (angular_flux_td_prime_[g] - T1) *
-                            (1 - exponential_td);
-
-        // Time Derivative Characteristic Equation
-        float new_delta_psi_td_prime =
-          (angular_flux_td_prime_[g] - T1) * exponential_td;
-        delta_psi_td_prime_[g] = new_delta_psi_td_prime;
-        angular_flux_td_prime_[g] -= new_delta_psi_td_prime;
-      }
-
-      delta_psi_td_[g] = new_delta_psi_td;
-      angular_flux_td_[g] -= new_delta_psi_td;
-    }
   }
 
   // If ray is in the active phase (not in dead zone), make contributions to
@@ -499,8 +485,6 @@ void RandomRay::attenuate_flux_flat_source(
     // this iteration
     for (int g = 0; g < negroups_; g++) {
       srh.scalar_flux_new(g) += delta_psi_[g];
-      if (settings::kinetic_simulation && !simulation::is_initial_condition)
-        srh.scalar_flux_td_new(g) += delta_psi_td_[g];
     }
 
     // Accomulate volume (ray distance) into this iteration's estimate
@@ -860,19 +844,13 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] = srh.source(g);
     }
-    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
+    if (settings::kinetic_simulation && !simulation::is_initial_condition &&
+        RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       for (int g = 0; g < negroups_; g++) {
-        angular_flux_td_[g] = srh.source_td(g);
-      }
-      if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-        for (int g = 0; g < negroups_; g++) {
-          double sigma_t_td =
-            domain_->sigma_t_td_[srh.material() * negroups_ + g];
-          double source_derivative = srh.source_time_derivative(g);
-          double flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
-          // T1
-          angular_flux_td_prime_[g] = source_derivative - flux_derivative_2;
-        }
+        double source_derivative = srh.source_time_derivative(g);
+        double flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
+        // T1
+        angular_flux_prime_[g] = source_derivative - flux_derivative_2;
       }
     }
   }

@@ -52,6 +52,12 @@ private:
   // Number of delay groups
   int ndgroups_;
 
+  //----------------------------------------------------------------------------
+  // Data Members for kinetic simulations
+
+  vector<double> static_k_eff_;
+  vector<double> static_fission_rate_;
+
 }; // class RandomRaySimulation
 
 //============================================================================

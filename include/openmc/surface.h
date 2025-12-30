@@ -378,7 +378,14 @@ public:
 // Non-member functions
 //==============================================================================
 
-void read_surfaces(pugi::xml_node node);
+void read_surfaces(pugi::xml_node node,
+  std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map);
+
+void prepare_boundary_conditions(std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map);
 
 void free_memory_surfaces();
 

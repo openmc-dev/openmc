@@ -1170,7 +1170,10 @@ Direction SurfaceZTorus::normal(Position r) const
 
 //==============================================================================
 
-void read_surfaces(pugi::xml_node node)
+void read_surfaces(pugi::xml_node node,
+  std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map)
 {
   // Count the number of surfaces
   int n_surfaces = 0;
@@ -1181,9 +1184,6 @@ void read_surfaces(pugi::xml_node node)
   // Loop over XML surface elements and populate the array.  Keep track of
   // periodic surfaces and their albedos.
   model::surfaces.reserve(n_surfaces);
-  std::set<std::pair<int, int>> periodic_pairs;
-  std::unordered_map<int, double> albedo_map;
-  std::unordered_map<int, int> periodic_sense_map;
   {
     pugi::xml_node surf_node;
     int i_surf;
@@ -1278,25 +1278,22 @@ void read_surfaces(pugi::xml_node node)
         fmt::format("Two or more surfaces use the same unique ID: {}", id));
     }
   }
+}
 
+void prepare_boundary_conditions(std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map)
+{
   // Fill the senses map for periodic surfaces
-  auto v = node.children("cell");
   auto n_periodic = periodic_sense_map.size();
-  for (auto it = v.begin(); (it != v.end()) && (n_periodic > 0); ++it) {
-    pugi::xml_node cell_node = *it;
-    // Read the region specification.
-    std::string region_spec;
-    if (check_for_node(cell_node, "region")) {
-      region_spec = get_node_value(cell_node, "region");
-      // Get a tokenized representation of the region specification and apply
-      // De Morgans law
-      Region region(region_spec, 0);
-      for (auto s : region.surfaces()) {
-        auto id = model::surfaces[std::abs(s) - 1]->id_;
-        if (periodic_sense_map.find(id) != periodic_sense_map.end()) {
-          periodic_sense_map[id] = std::copysign(1, s);
-          --n_periodic;
-        }
+  for (auto it = model::cells.begin();
+       (it != model::cells.end()) && (n_periodic > 0); ++it) {
+    auto cell = it*;
+    for (auto s : cell->region_) {
+      auto id = model::surfaces[std::abs(s) - 1]->id_;
+      if (periodic_sense_map.find(id) != periodic_sense_map.end()) {
+        periodic_sense_map[id] = std::copysign(1, s);
+        --n_periodic;
       }
     }
   }

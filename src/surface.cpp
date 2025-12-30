@@ -1288,7 +1288,7 @@ void prepare_boundary_conditions(std::set<std::pair<int, int>>& periodic_pairs,
   auto n_periodic = periodic_sense_map.size();
   for (auto it = model::cells.begin();
        (it != model::cells.end()) && (n_periodic > 0); ++it) {
-    auto cell = it*;
+    auto cell = *it;
     for (auto s : cell->region_) {
       auto id = model::surfaces[std::abs(s) - 1]->id_;
       if (periodic_sense_map.find(id) != periodic_sense_map.end()) {

@@ -2,6 +2,7 @@ from math import pi
 from tempfile import TemporaryDirectory
 from pathlib import Path
 
+import h5py
 import numpy as np
 from scipy.stats import chi2
 import pytest
@@ -485,6 +486,74 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     # attempt to apply a dataset with an improper size to a VTK write
     with pytest.raises(ValueError, match='Cannot apply dataset "mean"'):
         simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
+
+
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
+def test_write_vtkhdf(request, run_in_tmpdir):
+    """Performs a minimal UnstructuredMesh simulation, reads in the resulting
+    statepoint file and writes the mesh data to vtk and vtkhdf files. It is
+    necessary to read in the unstructured mesh from a statepoint file to ensure
+    it has all the required attributes
+    """
+    model = openmc.Model()
+
+    surf1 = openmc.Sphere(r=1000.0, boundary_type="vacuum")
+    cell1 = openmc.Cell(region=-surf1)
+    model.geometry = openmc.Geometry([cell1])
+
+    umesh = openmc.UnstructuredMesh(
+        request.path.parent / "test_mesh_dagmc_tets.vtk",
+        "moab",
+        mesh_id = 1
+    )
+    mesh_filter = openmc.MeshFilter(umesh)
+
+    # Create flux mesh tally to score alpha production
+    mesh_tally = openmc.Tally(name="test_tally")
+    mesh_tally.filters = [mesh_filter]
+    mesh_tally.scores = ["flux"]
+
+    model.tallies = [mesh_tally]
+
+    model.settings.run_mode = "fixed source"
+    model.settings.batches = 2
+    model.settings.particles = 10
+
+    statepoint_file = model.run()
+
+    with openmc.StatePoint(statepoint_file) as statepoint:
+        my_tally = statepoint.get_tally(name="test_tally")
+
+    umesh_from_sp = statepoint.meshes[umesh.id]
+
+    datasets={
+        "mean": my_tally.mean.flatten(),
+        "std_dev": my_tally.std_dev.flatten()
+    }
+
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtkhdf")
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtk")
+
+    with pytest.raises(ValueError, match="Unsupported file extension"):
+        # Supported file extensions are vtk or vtkhdf, not hdf5, so this should raise an error
+        umesh_from_sp.write_data_to_vtk(
+            datasets=datasets,
+            filename="test_mesh.hdf5",
+        )
+    with pytest.raises(ValueError, match="Cannot apply dataset"):
+        # The shape of the data should match the shape of the mesh, so this should raise an error
+        umesh_from_sp.write_data_to_vtk(
+            datasets={'incorrectly_shaped_data': np.array(([1,2,3]))},
+            filename="test_mesh_incorrect_shape.vtkhdf",
+        )
+
+    assert Path("test_mesh.vtk").exists()
+    assert Path("test_mesh.vtkhdf").exists()
+
+    # just ensure we can open the file without error
+    with h5py.File("test_mesh.vtkhdf", "r"):
+        ...
+
 
 def test_mesh_get_homogenized_materials():
     """Test the get_homogenized_materials method"""

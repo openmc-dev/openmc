@@ -57,7 +57,7 @@ void Cell::set_rotation(const vector<double>& rot)
     fatal_error(fmt::format("Non-3D rotation vector applied to cell {}", id_));
   }
 
-  // Compute and store the rotation matrix.
+  // Compute and store the inverse rotation matrix for the angles given.
   rotation_.clear();
   rotation_.reserve(rot.size() == 9 ? 9 : 12);
   if (rot.size() == 3) {

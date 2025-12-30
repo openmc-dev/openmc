@@ -182,6 +182,8 @@ boundary condition.
 
 Periodic boundary conditions can be applied to pairs of planar surfaces.
 If there are only two periodic surfaces they will be matched automatically.
+
+
 Otherwise it is necessary to specify pairs explicitly using the
 :attr:`Surface.periodic_surface` attribute as in the following example::
 
@@ -192,7 +194,7 @@ Otherwise it is necessary to specify pairs explicitly using the
 Both rotational and translational periodic boundary conditions are specified in
 the same fashion. If both planes have the same normal vector, a translational
 periodicity is assumed; rotational periodicity is assumed otherwise. Currently,
-only rotations about the :math:`z`-axis are supported.
+rotations must be about the :math:`x`-, :math:`y`-, or :math:`z`-axis.
 
 For a rotational periodic BC, the normal vectors of each surface must point
 inwards---towards the valid geometry. For example, a :class:`XPlane` and
@@ -529,6 +531,89 @@ may overlap with those used in the CSG geometry. In this case, overlaps in the
 UWUW and OpenMC material ID space will cause an error. To automatically resolve
 these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
 material IDs to the OpenMC material ID space.
+
+
+Material overrides and differentiation
+--------------------------------------
+
+Programmatic access to DAGMC cell information for material overrides
+and differentiation requires synchronization of the DAGMC universe
+representation across Python and C-API::
+
+  model.init_lib()
+  model.sync_dagmc_universes()
+  model.finalize_lib()
+
+Upon completion of these steps, the :attr:`DAGMCUniverse.cells` attribute will
+be populated with :class:`DAGMCCell` proxy objects that represent the cells
+defined in the DAGMC model. The :class:`DAGMCCell` objects  will have
+:class:`openmc.Material`'s' applied according to the assignments upon
+initialization of the model. These materials can be replaced in the same manner
+as :class:`openmc.Cell` objects to override material assignments in the DAGMC
+model.
+
+Depletion with DAGMC geometry
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The synchronization of :class:`openmc.DAGMCUniverse`'s is important for
+depletion calculations using DAGMC geometry when materials need to be
+differentiated to perform material burnup independently in each DAGMC cell. See
+:meth:`openmc.model.Model.differentiate_mats`.
+
+Material overrides
+~~~~~~~~~~~~~~~~~~
+
+OpenMC supports overriding material assignments defined inside a DAGMC HDF5
+model so that CAD-assigned materials can be replaced by :class:`openmc.Material`
+objects. This is useful when the CAD geometry provides the shape but OpenMC
+materials (specific nuclide content, densities, or depletion behavior) are
+required.
+
+
+Replacing materials by name
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If a DAGMC file includes material name tags, you can replace all cells that
+reference a particular name with an :class:`openmc.Material` using
+:meth:`~openmc.DAGMCUniverse.replace_material_assignment`::
+
+  import openmc
+
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  fuel = openmc.Material(name='fuel')
+  fuel.add_nuclide('U235', 0.05)
+  fuel.add_nuclide('U238', 0.95)
+  fuel.set_density('g/cm3', 10.5)
+
+  dag_univ.replace_material_assignment('Fuel', fuel)
+
+This lets you keep CAD geometry while adopting OpenMC material definitions.
+
+Per-cell material overrides
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To assign overrides without initializing :class:`openmc.Model`, the
+:meth:`openmc.DAGMCUniverse.add_material_override` method can be used to assign
+materials to particular DAGMC cells. The method accepts either an integer cell
+ID::
+
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+  enriched = openmc.Material(name='fuel_enriched')
+  enriched.add_nuclide('U235', 0.10)
+  enriched.add_nuclide('U238', 0.90)
+  enriched.set_density('g/cm3', 10.5)
+
+  dag_univ.add_material_override(1, enriched)
+
+In the case that the :class:`openmc.DAGMCUniverse` has already been synchronized,
+a :class:`openmc.DAGMCCell` object can also be provide to assign the material.
+
+Overrides are written to the `<material_overrides>` element of the
+:ref:`<dagmc_universe> <dagmc_element>` XML element so the C++ core can apply
+them on initialization.
+
 
 .. _Direct Accelerated Geometry Monte Carlo: https://svalinn.github.io/DAGMC/
 .. _University of Wisconsin Unified Workflow: https://svalinn.github.io/DAGMC/usersguide/uw2.html

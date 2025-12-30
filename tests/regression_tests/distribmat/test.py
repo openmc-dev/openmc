@@ -73,7 +73,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         # Plots
         ####################
 
-        plot1 = openmc.Plot(plot_id=1)
+        plot1 = openmc.SlicePlot(plot_id=1)
         plot1.basis = 'xy'
         plot1.color_by = 'cell'
         plot1.filename = 'cellplot'
@@ -81,7 +81,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         plot1.width = (7, 7)
         plot1.pixels = (400, 400)
 
-        plot2 = openmc.Plot(plot_id=2)
+        plot2 = openmc.SlicePlot(plot_id=2)
         plot2.basis = 'xy'
         plot2.color_by = 'material'
         plot2.filename = 'matplot'

@@ -34,6 +34,7 @@ constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 1};
 constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
+constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 0};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -67,6 +68,11 @@ constexpr double MIN_HITS_PER_BATCH {1.5};
 // sources. Positive values below this cutoff will be treated as zero, so as to
 // prevent extremely large adjoint source terms from being generated.
 constexpr double ZERO_FLUX_CUTOFF {1e-22};
+
+// The minimum macroscopic cross section value considered non-void for the
+// random ray solver. Materials with any group with a cross section below this
+// value will be converted to pure void.
+constexpr double MINIMUM_MACRO_XS {1e-6};
 
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
@@ -286,7 +292,7 @@ enum class MgxsType {
 // ============================================================================
 // TALLY-RELATED CONSTANTS
 
-enum class TallyResult { VALUE, SUM, SUM_SQ, SIZE };
+enum class TallyResult { VALUE, SUM, SUM_SQ, SUM_THIRD, SUM_FOURTH };
 
 enum class TallyType { VOLUME, MESH_SURFACE, SURFACE, PULSE_HEIGHT };
 

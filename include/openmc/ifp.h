@@ -68,15 +68,14 @@ vector<T> _ifp(const T& value, const vector<T>& data)
 //!
 //! Add the IFP information in the IFP banks using the same index
 //! as the one used to append the fission site to the fission bank.
+//! The information stored are the delayed group number and lifetime
+//! of the neutron that created the fission event.
 //! Multithreading protection is guaranteed by the index returned by the
 //! thread_safe_append call in physics.cpp.
 //!
-//! Needs to be done after the delayed group is found.
-//!
 //! \param[in] p Particle
-//! \param[in] site Fission site
 //! \param[in] idx Bank index from the thread_safe_append call in physics.cpp
-void ifp(const Particle& p, const SourceSite& site, int64_t idx);
+void ifp(const Particle& p, int64_t idx);
 
 //! Resize the IFP banks used in the simulation
 void resize_simulation_ifp_banks();

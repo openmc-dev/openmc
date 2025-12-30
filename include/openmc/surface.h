@@ -2,6 +2,7 @@
 #define OPENMC_SURFACE_H
 
 #include <limits> // For numeric_limits
+#include <set>
 #include <string>
 #include <unordered_map>
 

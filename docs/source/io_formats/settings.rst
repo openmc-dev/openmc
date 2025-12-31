@@ -321,6 +321,18 @@ the estimated eigenvalue. It has the following attributes/sub-elements:
 
   .. note:: See section on the :ref:`trigger` for more information.
 
+-------------------------------------
+``<kinetic_simulation>`` Element
+-------------------------------------
+
+The ``<kinetic_simulation>`` element indicates whether to run a static or
+time-dependent simulation (with no feedbacks). If this element is set to
+"true", a kinetic simulation will be run; otherwise a static simulation is run.
+
+  *Default*: false
+
+.. _kinetic_simulation:
+
 ---------------------------
 ``<log_grid_bins>`` Element
 ---------------------------
@@ -584,6 +596,25 @@ found in the :ref:`random ray user guide <random_ray>`.
     of transport corrected MGXS data.
 
     *Default*: 1.0
+
+If a kinetic simulation is active, two additional settings are available:
+
+  :bd_order:
+    Order for backwards difference approximation used in numerically estimating
+    time derivatives. The backwards difference approximation is stable for
+    orders less than or equal to 6, and is relatively straightforward to
+    implement. The default value of 3 balances higher precision with speed.
+
+    *Default*: 3
+
+  :time_derivative_method:
+    The method used to resolve the angular flux time-derivative in the time-dependent
+    characteristic equation. The ``isotropic`` method utilizes an isotropic approximation
+    to resolve the angular flux time derivative. The ``propagation`` method
+    uses a technique called Time Derivative Propagation to resolve the angular
+    flux time derivative.
+
+    *Default*: ``isotropic``
 
 ----------------------------------
 ``<resonance_scattering>`` Element
@@ -1285,6 +1316,32 @@ despite not being bounded on both sides.
   *Default*: 10 K
 
 .. _trace:
+
+---------------------------------
+``<timestep_parameters>`` Element
+---------------------------------
+
+The ``<timestep_parameters>`` element can be used specify for how long and
+at what resolution to run a kinetic simulation. This element has the
+following attributes/sub-elements:
+
+  :n_timesteps:
+    The number of timesteps. Must be specified by the user.
+
+  :dt:
+    Time step size. Must be specified by the user.
+
+  :timestep_units:
+    Time step units. Available options are  ``ms`` for milliseconds, ``s`` for seconds,
+    and ``min`` for minutes.
+
+    *Default*: ``s``
+
+  .. note:: This element is required if the :ref:`kinetic_simulation` is ``true``.
+
+  *Default*: None
+
+.. _timestep_parameters:
 
 -------------------
 ``<trace>`` Element

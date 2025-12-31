@@ -29,4 +29,5 @@ essential aspects of using OpenMC to perform simulations.
     volume
     variance_reduction
     random_ray
+    kinetic
     troubleshoot

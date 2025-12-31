@@ -28,6 +28,10 @@ The current version of the statepoint file format is 18.1.
              'continuous-energy' or 'multi-group'.
            - **run_mode** (*char[]*) -- Run mode used, either 'eigenvalue' or
              'fixed source'.
+           - **solver_type** (*char[]*) -- Solver used, either 'monte carlo' or
+             'random ray'.
+           - **kinetic_simulation** (*int*) -- Flag indicating whether a kinetic (1)
+             or static (0) simulation was run.
            - **n_particles** (*int8_t*) -- Number of particles used per generation.
            - **n_batches** (*int*) -- Number of batches to simulate.
            - **current_batch** (*int*) -- The number of batches already simulated.
@@ -49,6 +53,10 @@ The current version of the statepoint file format is 18.1.
              combined estimate of k-effective.
            - **n_realizations** (*int*) -- Number of realizations for global
              tallies.
+           - **n_energy_groups** (*int*) -- Number of energy groups used if
+              **energy_mode** is 'multi-group'.
+           - **n_delay_groups** (*int*) -- Number of delay groups used if
+              **energy_mode** is 'multi-group'.
            - **global_tallies** (*double[][2]*) -- Accumulated sum and
              sum-of-squares for each global tally.
            - **source_bank** (Compound type) -- Source bank information for each
@@ -197,3 +205,16 @@ All values are given in seconds and are measured on the master process.
              tally results and evaluating their statistics.
            - **writing statepoints** (*double*) -- Time spent writing statepoint
              files
+
+           If random ray mode is used, the following times are also recorded:
+           - **source_update** (*double*) -- Time spent updating the neutron source. 
+           - **precursor_update** (*double*) -- Time spent updating the precursors
+             (only written for kinetic simulations).
+
+**/timestep_data/**
+
+Time step information for kinetic simulation. All values are given in seconds.
+
+:Datasets: - **dt** (*double*) -- Length of the time step.
+           - **current_timestep** (*int*) -- Numbered time step.
+           - **current_time** (*double*) -- Simulated elapsed time.

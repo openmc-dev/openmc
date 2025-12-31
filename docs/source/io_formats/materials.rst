@@ -49,8 +49,9 @@ Each ``material`` element can have the following attributes or sub-elements:
     <temperature_default>` is used.
 
   :density:
-    An element with attributes/sub-elements called ``value`` and ``units``. The
-    ``value`` attribute is the numeric value of the density while the ``units``
+    An element with attributes/sub-elements called ``value``, ``units``, and
+    (optionally) ``value_timeseries``. The ``value`` attribute is the numeric
+    value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
     indicates that values appearing in ``ao`` or ``wo`` attributes for ``<nuclide>``
     and ``<element>`` sub-elements are to be interpreted as absolute nuclide/element
@@ -59,13 +60,20 @@ Each ``material`` element can have the following attributes or sub-elements:
     a ``macroscopic`` quantity to indicate that the density is already included
     in the library and thus not needed here.  However, if a value is provided
     for the ``value``, then this is treated as a number density multiplier on
-    the macroscopic cross sections in the multi-group data.  This can be used,
-    for example, when perturbing the density slightly.
+    the macroscopic cross sections in the multi-group data. This can be used,
+    for example, when perturbing the density slightly. The ``value_timeseries``
+    element indicates a material density changing in time. This can be used to
+    simulate various benchmark problems in kinetic simulations. The
+    ``value_timeseries`` attribute is assumed to use the same units specified
+    in the ``units`` attribute.
 
     *Default*: None
 
     .. note:: A ``macroscopic`` quantity can not be used in conjunction with a
               ``nuclide``, ``element``, or ``sab`` quantity.
+
+    .. note:: The ``value_timeseries`` attribute cannot be used with ``sum``
+              densities.
 
   :nuclide:
     An element with attributes/sub-elements called ``name``, and ``ao``

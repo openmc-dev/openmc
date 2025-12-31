@@ -87,6 +87,8 @@ derivations are reproduced here verbatim. Several extensions are also made to
 add clarity, particularly on the topic of OpenMC's treatment of cell volumes in
 the random ray solver.
 
+.. _usersguide_moc:
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 Method of Characteristics
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1059,6 +1061,315 @@ random ray and Monte Carlo, however.
   develop the scattering source by way of inactive batches before beginning
   active batches.
 
+.. _usersguide_kinetic_random_ray:
+
+------------------
+Kinetic Random Ray
+------------------
+
+One can derive equations for time-dependent cases by following similar steps
+shown in the derivation for the :ref:`Method of
+Charactersistics<usersguide_moc>`. This process stars with the time-dependent
+form of neutron transport equation,
+
+.. math::
+   :label: transport-td
+
+    \frac{1}{v(E)} \frac{\partial}{\partial t}
+      \psi(\mathbf{r},\mathbf{\Omega},E,t) = -\mathbf{\Omega}\cdot
+      \nabla\psi(\mathbf{r},\mathbf{\Omega},E,t) - \Sigma_{t}(\mathbf{r}, E,
+      t)\psi(\mathbf{r},\mathbf{\Omega},E,t) + Q(\mathbf{r},\mathbf{\Omega},E,t)
+
+The neutron source, :math:`Q(\mathbf{r},\mathbf{\Omega},E,t)`, is composed of several
+neutron producing sources:
+
+.. math::
+   :label: source-td
+
+   Q(\mathbf{r},\mathbf{\Omega},E,t) = F_{p}(\mathbf{r},E,t) +
+     S(\mathbf{r},\mathbf{\Omega},E,t) +D(\mathbf{r},E,t)
+
+where the prompt neutron source (:math:`F_{p}(\mathbf{r},E,t)`), the scattering
+neutron source (:math:`S(\mathbf{r},\mathbf{\Omega},E,t)`), and the delayed
+neutron source (:math:`D(\mathbf{r},E,t)`) are given by:
+
+
+.. math::
+
+   \begin{align}
+    F_{p}(\mathbf{r},E,t) &= \frac{\chi^p(E)}{4\pi} \int_0^\infty \int_{4\pi}
+      \nu_{p}\Sigma_{f}(\mathbf{r},E^\prime,t)
+      \psi(\mathbf{r},\mathbf{\Omega}^\prime,E^\prime,t) \:
+      d\mathbf{\Omega}^\prime \: dE^\prime\nonumber\\
+    S(\mathbf{r},\mathbf{\Omega},E,t) &= \int_0^\infty\int_{4\pi}
+      \Sigma_{s}(\mathbf{r},\mathbf{\Omega}^\prime\rightarrow\mathbf{\Omega},E^\prime\rightarrow
+      E,t)
+      \psi(\mathbf{r},\mathbf{\Omega}^\prime,E^\prime,t) \:
+      d\mathbf{\Omega}^\prime \: dE^\prime\nonumber\\
+    D(\mathbf{r},E,t) &= \sum_m \frac{\chi^d_m(E)}{4\pi} \lambda_m
+      C_m(\mathbf{r}, t)\nonumber
+   \end{align}
+
+The :math:`C_m(\mathbf{r}, t)` term is the number of delayed neutron precursors of delayed
+group :math:`m`, governed by
+
+
+.. math::
+   :label: dnp-eq
+
+   \frac{\partial}{\partial t} C_m(\mathbf{r}, t) = \int_0^\infty\int_{4\pi}
+     \nu_{d,m} \Sigma_{f}(\mathbf{r},E^\prime,t)
+     \psi(\mathbf{r},\mathbf{\Omega}^\prime,E^\prime,t) \:
+     d\mathbf{\Omega}^\prime \: dE^\prime - \lambda_m C_m(\mathbf{r},t)
+
+The new variables in Equations :eq:`transport-td`, :eq:`source-td`, and
+:eq:`dnp-eq` are
+
+
+.. math::
+
+    \begin{align*}
+        v(E) &= \text{ neutron speed at energy $E$ [cm s$^{-1}$]},\\
+        t &= \text{ time [s]},\\
+        \beta &= \sum_m \beta_m = \text{ total delayed neutron fraction [-]},\\
+        \nu_{p} &= (1-\beta) \nu = \text{ prompt neutron yield [-]}, \\
+        \nu_{d,m} &= \beta_{m} \nu = \text{ delayed neutron yield [-]}, \\
+        \chi^p(E) &= \text{ prompt fission neutron spectrum [-]},\\
+        \chi^d_m(E) &= \text{ delayed fission neutron spectrum [-],},\\
+        \lambda_m &= \text{ decay constant for precursor group $m$ [s$^{-1}$]},\\
+        \beta_m &= \text{ delayed neutron fraction for precursor group $m$ [-]}
+    .\end{align*}
+
+Applying the characteristic transform to Equation :eq:`transport-td` yields the
+time-dependent characteristic equation:
+
+
+.. math::
+    :label: char-td
+
+    \frac{1}{v(E)} \frac{\partial}{\partial t} \psi(s,\mathbf{\Omega},E,t) =
+      -\frac{\partial}{\partial s} \psi(s,\mathbf{\Omega},E,t) -
+      \Sigma_{t}(s,E,t)\psi(s,\mathbf{\Omega},E,t) + Q(s,\mathbf{\Omega},E,t)
+
+A similar integrating factor is used to obtain a partial solution of the
+time-dependent characteristic equation:
+
+
+.. math::
+    :label: moc_td_final_sub
+
+    \psi(s,\mathbf{\Omega},E,t) = \psi(\mathbf{r}_0,\mathbf{\Omega},E,t)
+      e^{-\int_0^s ds^{\prime} \Sigma_t(s^{\prime},E,t)} + \mathcal{I}_{Q} -
+      \mathcal{I}_{\frac{\partial}{\partial t} \psi}
+
+where
+
+
+.. math::
+
+    \begin{aligned}
+       \mathcal{I}_{Q} &= \int_0^{s} ds^{\prime\prime}
+         Q(s^{\prime\prime},\mathbf{\Omega},E,t) e^{\int_{s^{\prime\prime}}^{s'}
+         ds^{\prime} \Sigma_{t}(s^{\prime},E,t)}\\
+       \mathcal{I}_{\frac{\partial}{\partial t} \psi} &= -\frac{1}{v(E)}
+         \int_0^{s} ds^{\prime\prime} \frac{\partial}{\partial t}
+         \psi(s^{\prime\prime},\mathbf{\Omega},E,t) e^{\int_{s^{\prime\prime}}^{s}
+         ds^{\prime} \Sigma_{t}(s^{\prime},E,t)}
+    \end{aligned}
+
+Rearranging terms in Equation :eq:`moc_td_final_sub` to solve in terms of
+:math:`\Delta \psi_{r,g}(t) = \psi_{r,g}(0,t) - \psi_{r,g}(\ell_r, t)`, and
+applying the same energy and spatial discretizations used for the static
+case, results in a characteristic equation of the form yields 
+
+
+.. math::
+    :label: moc_td_final
+
+    \Delta \psi_{r,g}(t) = \psi_{r,g}(0,t) e^{-\Sigma_{t,i,g}(t) \ell_r} - \mathcal{I}_{Q} + \mathcal{I}_{\frac{\partial}{\partial t} \psi}
+
+The :math:`\mathcal{I}_Q` term is resolved by the analytic shape assumed for
+the source term (flat, linear, quadratic, etc.). Applying a flat source approximation
+to Equation :eq:`moc_td_final` results in a characteristic equation of the form:
+
+
+.. math::
+   :label: moc_td_final_flat
+
+   \Delta \psi_{r,g}(t) = \left(\psi_{r,g}(0,t) -
+   \frac{Q_{i,g}(t)}{\Sigma_{t,i,g}(t)} \right) (1 - e^{-\Sigma_{t,i,g}(t)
+   \ell_r}) + \mathcal{I}_{\frac{\partial}{\partial t} \psi}
+
+The corresponding flat source term is 
+
+
+.. math::
+   :label: source_td_final_flat
+
+   Q_{i,g}(t) = \frac{1}{4\pi} \left(F_{p,i,g}(t) + S_{i,g}(t) +
+     D_{i,g}(t)\right)
+
+
+where
+
+.. math::
+
+       \begin{align}
+        F_{p,i,g}(t) &= \chi_g^p\sum_{g'=1}^G
+            \nu_{p}\Sigma_{f,g',w}(t)\phi_{i,g'}(t)\nonumber\\
+        S_{i,g}(t) &= \sum_{g'=1}^G
+            \Sigma_{s,i,g'\rightarrow g}(t) \phi_{i,g'}(t)\nonumber\\
+        D_{i,g}(t) &= \sum_m \chi^d_{g,m} \lambda_m C_{i,m}(t)\nonumber
+       \end{align}
+
+
+The same approximations applied to the precursor equation (Eq. :eq:`dnp-eq`) yields
+
+
+.. math::
+   :label: dnp-eq-final-flat
+
+        \frac{\partial}{\partial t} C_{i,m}(t) = \sum_{g=1}^G
+        \nu_{d,m}\Sigma_{f,i,g}(t)\phi_{i,g}(t) - \lambda_m C_{i,m}(t)
+
+The most straightforward approach to resolve the
+:math:`\mathcal{I}_{\frac{\partial}{\partial t} \psi}` term would be to
+numerically estimate the derivative using a finite difference approximation.
+This approach works for the Method of Characteristics and has been shown to
+yield accurate answers (see `Hoffman <Hoffman-2013_>`_), but requires storage of
+angular fluxes which can be very expensive. Additionally, the stochastic
+quadrature used in the random ray method ensures each time step has a different
+spatial domain, making direct finite differencing of angular fluxes impossible.
+Two alternative methods have been implemented into OpenMC:
+
+~~~~~~~~~~~~~~~~~~~~~~~
+Isotropic Approximation
+~~~~~~~~~~~~~~~~~~~~~~~
+A commonly used approach to avoid storage of angular fluxes is to make an
+isotropic approximation on the angular flux time derivative:
+
+
+.. math::
+
+    \frac{\partial}{\partial t} \psi_{r,g}(s,t) \approx \frac{1}{4\pi} \frac{d}{d t} \phi_{g}(s,t)
+
+
+This approximation incurs inaccuracies close to strongly absorbing regions due
+to the strong flux anisotropies introduced by neutron absorption (i.e. no
+neutrons will be emitted from the absorber). This will result in scalar flux
+values higher than they should be near absorbing regions. The benefit is that
+it is fast, requiring minimal new computation to numerically compute the scalar
+flux time derivative. The isotropic approximation resolves the
+:math:`\mathcal{I}_{\frac{\partial}{\partial t} \psi}` term to
+
+
+.. math::
+   :label: ical-isotropic
+
+    \mathcal{I}_{\frac{\partial}{\partial t} \psi} \approx \frac{1}{4\pi v_g}
+    \frac{d}{d t} \phi_{i,g}(t) \frac{1 - e^{-\Sigma_{t,i,g}(t) \ell_r}}{\Sigma_{t,i,g}(t)}
+
+Applying Equation :eq:`ical-isotropic` to Equation :eq:`moc_td_final_flat` yields 
+
+
+.. math::
+   :label: char-td-isotropic
+
+    \Delta \psi(t) = \left(\psi_{r,g}(0, t) - \frac{Q_{i,g}(t)}{\Sigma{t,i,g}(t)} + \frac{1}{4\pi v_g \Sigma_{t,i,g}(t)} \frac{d}{d t} \phi_{i,g}(t)\right) (1 - e^{-\Sigma_t,i,g(t) \ell_r})
+
+
+This approach was first applied to the random ray method by `Kraus
+<Kraus-2025_>`_.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+Source Derivative Propagation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Source Derivative Propagation is a method developed by `Hoffman
+<Hoffman-2013_>`_ to solve the angular flux storage issue while also providing
+a higher fidelity approximation storing angular fluxes. This method works by
+forming a characteristic equation for the *angular flux time-derivative* which
+is solved in the same way as the standard characteristic equation. The
+time-derivative characteristic equation provides an analytical solution for
+:math:`\frac{d}{d t} \psi_{r,i}(s,t)`. The time derivative characteristic
+equation is formed by taking the time derivative of Equation
+:eq:`moc_td_final_flat` and assuming :math:`\frac{d}{d t} \Sigma_{t,i,g}(t)
+\approx 0`. The resulting :math:`\frac{\partial^2}{\partial t^2} \psi_{r,g}(s,t)` term
+can be resolved with a second-order isotropic approximation, yielding:
+
+
+.. math::
+   :label: char-td-derivative-sdp
+
+    \Delta \frac{\partial}{\partial t} \psi_{r,g}(s,t) =
+      \left(\frac{\partial}{\partial t} \psi_{r,g}(0, t) - \frac{T^{1}_{i,g}(t)}{\Sigma_{t,i,g}(t)} \right)
+      (1 - e^{-\Sigma_{t,i,g}(t)s})
+
+where
+
+
+.. math::
+   :label: operator-T1
+
+    T^{1}_{i,g}(t) \equiv \frac{d Q_{i,g}}{d t}
+    -\frac{1}{4\pi v_g}\frac{d^2 \phi_{i,g}}{d t^2}
+
+Equation :eq:`char-td-derivative-sdp` can be rearranged to solve for
+:math:`\frac{\partial}{\partial t} \psi_{r,g}(s,t)` and used to solve
+:math:`\mathcal{I}_{\frac{\partial}{\partial t} \psi}` as:
+
+
+.. math::
+
+     \mathcal{I}_{\frac{\partial}{\partial t} \psi} =
+        \frac{1}{v_g}\frac{T^{1}_{i,g}(t)}{(\Sigma_{t,i,g}(t))^{2}} (1 -
+        e^{-\Sigma_{t,i,g}(t) s}) +
+        \frac{s}{v_g} \left(\frac{\partial}{\partial t} \psi_{r,g}(0, t) - \frac{T^{1}_{i,g}(t)}{\Sigma_{t,i,g}(t)} \right) e^{-\Sigma_{t,i,g}(t)s}
+
+which can be substituted into Equation :eq:`moc_td_final_flat` to get
+
+
+.. math::
+   :label: char-td-sdp
+
+   \begin{aligned}
+   \Delta \psi(t) = \bigg(\psi_{r,g}(0, t) - \frac{Q_{i,g}(t)}{\Sigma{t,i,g}(t)}
+   &+ \frac{1}{v_g} \frac{T^{1}_{i,g}(t)}{(\Sigma_{t,i,g}(t))^{2}}\bigg) (1 -
+   e^{-\Sigma_t,i,g(t) \ell_r})\\ &+ \frac{s}{v_g}
+   \bigg(\frac{\partial}{\partial t} \psi_{r,g}(0, t) -
+   \frac{T^{1}_{i,g}(t)}{\Sigma_{t,i,g}(t)} \bigg) e^{-\Sigma_{t,i,g}(t)s}
+   \end{aligned}
+
+
+Equations :eq:`char-td-derivative-sdp` and :eq:`char-td-sdp` are solved in
+sequence during flux propagation. The avoidance of a first-order isotropic
+approximation may make Source Derivative Propagation more accurate in problems
+with strongly absorbing regions.
+
+
+~~~~~~~~~~~~~~~~~~
+Initial Conditions
+~~~~~~~~~~~~~~~~~~
+An initial condition for a kinetic simulation may be obtained obtained by
+running a static eigenvalue simulation. To bake-in the initial steady
+state, the prompt fission source in the total source term (Eq.
+:eq:`source_td_final_flat`) and the delayed fission source in the precursor
+integration (Eq. :eq:`dnp-eq-final-flat`) are divided by
+:math:`k_\text{eff}`.  `Kraus <Kraus-2025_>`_ found that utilizing a single
+value of :math:`k_\text{eff}` for the initial condition results in a biased
+flux. This bias is due applying :math:`k_\text{eff}` computed on the initial
+quadrature to source terms on a subsequent (different) quadrature. There are
+two approaches to resolving this bias:
+
+1. Recomputing :math:`k_\text{eff}`: This approach recomputed
+   :math:`k_\text{eff}` of the unperturbed system used to scale the fission
+   source on the current quadrature.
+2. Time-consistent seed: This approach resets the PRNG seed at the beginning of
+   each time step so the resulting quadrature is the same in each time step.
+
+The time-consistent seed approach results in lower variance and shorter run
+times than the :math:`k_\text{eff}` recomputation approach, so is the approach
+used in OpenMC's implementation of the time-dependent Random Ray Method.
+        
 .. _adjoint:
 
 ------------------------
@@ -1158,6 +1469,8 @@ in random ray particle transport are:
 .. _Cosgrove-2023: https://doi.org/10.1080/00295639.2023.2270618
 .. _Ferrer-2016: https://doi.org/10.13182/NSE15-6
 .. _Gunow-2018: https://dspace.mit.edu/handle/1721.1/119030
+.. _Hoffman-2013: https://doi.org/10.1016/j.jcp.2015.10.039
+.. _Kraus-2025: https://doi.org/10.1080/00295639.2025.2456413 
 
 .. only:: html
 

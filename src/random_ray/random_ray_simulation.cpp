@@ -83,10 +83,6 @@ void openmc_run_random_ray()
   sim.output_simulation_results();
 
   if (settings::kinetic_simulation) {
-    rename_statepoint_file(-1);
-    if (settings::output_tallies) {
-      rename_tallies_file(-1);
-    }
     // Now do a second steady state simulation to correct the batch wise k-eff
     // estimates
     simulation::k_eff_correction = true;

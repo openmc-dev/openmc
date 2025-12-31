@@ -2807,27 +2807,6 @@ extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
 }
 
 extern "C" int openmc_mesh_material_volumes(int32_t index, int nx, int ny,
-  int nz, int table_size, int32_t* materials, double* volumes)
-{
-  if (int err = check_mesh(index))
-    return err;
-
-  try {
-    model::meshes[index]->material_volumes(
-      nx, ny, nz, table_size, materials, volumes);
-  } catch (const std::exception& e) {
-    set_errmsg(e.what());
-    if (starts_with(e.what(), "Mesh")) {
-      return OPENMC_E_GEOMETRY;
-    } else {
-      return OPENMC_E_ALLOCATE;
-    }
-  }
-
-  return 0;
-}
-
-extern "C" int openmc_mesh_material_volumes_bbox(int32_t index, int nx, int ny,
   int nz, int table_size, int32_t* materials, double* volumes, double* bboxes)
 {
   if (int err = check_mesh(index))

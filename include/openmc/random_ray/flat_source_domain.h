@@ -118,7 +118,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Public Data members
-  double k_eff_ {1.0};              // Eigenvalue
+  double k_eff_ {1.0}; // Eigenvalue
   double
     fission_rate_; // The system's fission rate (per cm^3), in eigenvalue mode
 

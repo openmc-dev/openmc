@@ -201,8 +201,8 @@ extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
 
 // Timestep variables for kinetic simulation
-extern int n_timesteps;      //!< number of timesteps
-extern double dt;            //!< fixed timestep size
+extern int n_timesteps; //!< number of timesteps
+extern double dt;       //!< fixed timestep size
 } // namespace settings
 
 //==============================================================================

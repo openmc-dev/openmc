@@ -7,6 +7,7 @@ import openmc
 C5G7_N_DG = 8
 PINCELL_PITCH = 1.26
 
+
 def pwr_pin_cell() -> openmc.Model:
     """Create a PWR pin-cell model.
 
@@ -656,6 +657,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model
 
     return model
 
+
 def _generate_c5g7_materials(kinetic) -> openmc.Materials:
     """Generate materials utilizing multi-group cross sections based on the
     the C5G7 Benchmark.
@@ -836,6 +838,7 @@ def _generate_c5g7_materials(kinetic) -> openmc.Materials:
     materials.cross_sections = "mgxs.h5"
     return materials
 
+
 def _generate_random_ray_pin_cell(uo2, water) -> openmc.Universe:
     """Create a random ray pin cell universe. Helper function for
     random_ray_pin_cell() and random_ray_lattice()
@@ -904,6 +907,7 @@ def _generate_random_ray_pin_cell(uo2, water) -> openmc.Universe:
     pincell = openmc.Universe(cells=azimuthal_cells, name='pincell')
 
     return pincell
+
 
 def random_ray_pin_cell(kinetic=False) -> openmc.Model:
     """Create a PWR pin cell example using C5G7 cross section data.
@@ -998,6 +1002,7 @@ def random_ray_pin_cell(kinetic=False) -> openmc.Model:
     model.tallies = tallies
     return model
 
+
 def random_ray_lattice(kinetic=False) -> openmc.Model:
     """Create a 2x2 PWR pin cell asymmetrical lattice example.
 
@@ -1034,7 +1039,7 @@ def random_ray_lattice(kinetic=False) -> openmc.Model:
     moderator_infinite = openmc.Cell(name='moderator infinite')
     if kinetic:
         water_reflector = water.clone()
-        water_reflector.name='Water Reflector'
+        water_reflector.name = 'Water Reflector'
         water_reflector.set_density('macro', 1.0)
         materials.append(water_reflector)
         moderator_infinite.fill = water_reflector
@@ -1145,6 +1150,7 @@ def random_ray_lattice(kinetic=False) -> openmc.Model:
     model.settings = settings
     model.tallies = tallies
     return model
+
 
 def random_ray_three_region_cube() -> openmc.Model:
     """Create a three region cube model.

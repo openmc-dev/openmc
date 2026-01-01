@@ -26,6 +26,7 @@ class RunMode(Enum):
     VOLUME = 'volume'
     PARTICLE_RESTART = 'particle restart'
 
+
 _RES_SCAT_METHODS = {'dbrc', 'rvs'}
 
 
@@ -622,7 +623,7 @@ class Settings:
     @property
     def timestep_parameters(self) -> dict:
         return self._timestep_parameters
- 
+
     @timestep_parameters.setter
     def timestep_parameters(self, timestep_parameters: dict):
         if not isinstance(timestep_parameters, Mapping):
@@ -1063,7 +1064,7 @@ class Settings:
                     cv.check_type('temperature', T, Real)
 
         self._temperature = temperature
-    
+
     @property
     def trace(self) -> Iterable:
         return self._trace
@@ -1447,7 +1448,8 @@ class Settings:
     def free_gas_threshold(self, free_gas_threshold: float | None):
         if free_gas_threshold is not None:
             cv.check_type('free gas threshold', free_gas_threshold, Real)
-            cv.check_greater_than('free gas threshold', free_gas_threshold, 0.0)
+            cv.check_greater_than('free gas threshold',
+                                  free_gas_threshold, 0.0)
         self._free_gas_threshold = free_gas_threshold
 
     def _create_run_mode_subelement(self, root):
@@ -1966,7 +1968,8 @@ class Settings:
                             domain_elem.set(
                                 'type', domain.__class__.__name__.lower())
                         if mesh_memo is not None and mesh.id not in mesh_memo:
-                            domain_elem.set('type', domain.__class__.__name__.lower())
+                            domain_elem.set(
+                                'type', domain.__class__.__name__.lower())
                         # See if a <mesh> element already exists -- if not, add it
                         path = f"./mesh[@id='{mesh.id}']"
                         if root.find(path) is None:

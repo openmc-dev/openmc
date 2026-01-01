@@ -17,7 +17,8 @@ import openmc.checkvalue as cv
 _VERSION_STATEPOINT = 18
 
 
-KineticsParameters = namedtuple("KineticsParameters", ["generation_time", "beta_effective"])
+KineticsParameters = namedtuple(
+    "KineticsParameters", ["generation_time", "beta_effective"])
 
 
 class StatePoint:
@@ -176,12 +177,14 @@ class StatePoint:
 
         # Automatically link in a summary file if one exists
         if autolink:
-            path_summary = os.path.join(os.path.dirname(filename), 'summary.h5')
+            path_summary = os.path.join(
+                os.path.dirname(filename), 'summary.h5')
             if os.path.exists(path_summary):
                 su = openmc.Summary(path_summary)
                 self.link_with_summary(su)
 
-            path_volume = os.path.join(os.path.dirname(filename), 'volume_*.h5')
+            path_volume = os.path.join(
+                os.path.dirname(filename), 'volume_*.h5')
             for path_i in glob.glob(path_volume):
                 if re.search(r'volume_\d+\.h5', path_i):
                     vol = openmc.VolumeCalculation.from_hdf5(path_i)
@@ -275,8 +278,8 @@ class StatePoint:
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
-            gt['sum'] = data[:,1]
-            gt['sum_sq'] = data[:,2]
+            gt['sum'] = data[:, 1]
+            gt['sum_sq'] = data[:, 2]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations
@@ -406,7 +409,7 @@ class StatePoint:
             return rr
         else:
             return None
-       
+
     @property
     def run_mode(self):
         return self._f['run_mode'][()].decode()
@@ -489,15 +492,18 @@ class StatePoint:
                     # Create Tally object and assign basic properties
                     tally = openmc.Tally(tally_id)
                     tally._sp_filename = Path(self._f.filename)
-                    tally.name = group['name'][()].decode() if 'name' in group else ''
+                    tally.name = group['name'][()].decode(
+                    ) if 'name' in group else ''
 
                     # Check if tally has multiply_density attribute
                     if "multiply_density" in group.attrs:
-                        tally.multiply_density = group.attrs["multiply_density"].item() > 0
+                        tally.multiply_density = group.attrs["multiply_density"].item(
+                        ) > 0
 
                     # Check if tally has higher_moments attribute
                     if 'higher_moments' in group.attrs:
-                        tally.higher_moments = bool(group.attrs['higher_moments'][()])
+                        tally.higher_moments = bool(
+                            group.attrs['higher_moments'][()])
 
                     # Read the number of realizations
                     n_realizations = group['n_realizations'][()]
@@ -525,7 +531,8 @@ class StatePoint:
                     nuclide_names = group['nuclides'][()]
 
                     # Add all nuclides to the Tally
-                    tally.nuclides = [name.decode().strip() for name in nuclide_names]
+                    tally.nuclides = [name.decode().strip()
+                                      for name in nuclide_names]
 
                     # Add the scores to the Tally
                     scores = group['score_bins'][()]
@@ -770,7 +777,7 @@ class StatePoint:
 
         if not isinstance(summary, openmc.Summary):
             msg = f'Unable to link statepoint with "{summary}" which is not a' \
-                  'Summary object'
+                'Summary object'
             raise ValueError(msg)
 
         cells = summary.geometry.get_all_cells()

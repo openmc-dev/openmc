@@ -259,7 +259,8 @@ class Model:
             beta_tally = openmc.Tally(name='IFP beta numerator')
             beta_tally.scores = ['ifp-beta-numerator']
             if num_groups is not None:
-                beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
+                beta_tally.filters = [openmc.DelayedGroupFilter(
+                    list(range(1, num_groups + 1)))]
             self.tallies.append(beta_tally)
         if not any('ifp-denominator' in t.scores for t in self.tallies):
             denom_tally = openmc.Tally(name='IFP denominator')
@@ -523,7 +524,8 @@ class Model:
             check_value('method', method,
                         dep.integrators.integrator_by_name.keys())
             integrator_class = dep.integrators.integrator_by_name[method]
-            integrator = integrator_class(depletion_operator, **integrator_kwargs)
+            integrator = integrator_class(
+                depletion_operator, **integrator_kwargs)
 
             # Now perform the depletion
             with openmc.lib.quiet_dll(output):
@@ -583,7 +585,8 @@ class Model:
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
+            self.materials.export_to_xml(
+                d, nuclides_to_ignore=nuclides_to_ignore)
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
@@ -622,7 +625,8 @@ class Model:
             if not xml_path.exists():
                 xml_path.mkdir(parents=True, exist_ok=True)
             elif not xml_path.is_dir():
-                raise FileExistsError(f"File exists and is not a directory: '{xml_path}'")
+                raise FileExistsError(
+                    f"File exists and is not a directory: '{xml_path}'")
             xml_path /= 'model.xml'
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing
@@ -723,18 +727,18 @@ class Model:
                             lib_cell.set_temperature(temperature[0])
 
                     if group['density']:
-                      density = group['density'][()]
-                      if density.size > 1:
-                          cell.density = [rho for rho in density]
-                      else:
-                          cell.density = density
-                      if self.is_initialized:
-                          lib_cell = openmc.lib.cells[cell_id]
-                          if density.size > 1:
-                              for i, rho in enumerate(density):
-                                  lib_cell.set_density(rho, i)
-                          else:
-                              lib_cell.set_density(density[0])
+                        density = group['density'][()]
+                        if density.size > 1:
+                            cell.density = [rho for rho in density]
+                        else:
+                            cell.density = density
+                        if self.is_initialized:
+                            lib_cell = openmc.lib.cells[cell_id]
+                            if density.size > 1:
+                                for i, rho in enumerate(density):
+                                    lib_cell.set_density(rho, i)
+                            else:
+                                lib_cell.set_density(density[0])
 
             # Make sure number of materials matches
             mats_group = fh['materials']
@@ -996,7 +1000,6 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
-
     def _set_plot_defaults(
         self,
         origin: Sequence[float] | None,
@@ -1179,8 +1182,8 @@ class Model:
 
         # Convert ID map to RGB image
         img = id_map_to_rgb(
-            id_map=id_map, 
-            color_by=color_by, 
+            id_map=id_map,
+            color_by=color_by,
             colors=colors,
             overlap_color=overlap_color
         )
@@ -1217,7 +1220,7 @@ class Model:
                 extent=(x_min, x_max, y_min, y_max),
                 **contour_kwargs
             )
-            
+
             # If only showing outline, set the axis limits and aspect explicitly
             if outline == 'only':
                 axes.set_xlim(x_min, x_max)
@@ -1620,7 +1623,8 @@ class Model:
             Default is True, only depletable materials will be differentiated. If False, all materials will be
             differentiated.
         """
-        check_value('volume differentiation method', diff_volume_method, ("divide equally", "match cell", None))
+        check_value('volume differentiation method',
+                    diff_volume_method, ("divide equally", "match cell", None))
 
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
@@ -1668,7 +1672,8 @@ class Model:
 
                 # Clone materials
                 if cell.num_instances > 1:
-                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                    cell.fill = [mat.clone()
+                                 for _ in range(cell.num_instances)]
                 else:
                     cell.fill = mat.clone()
 
@@ -1685,10 +1690,9 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
-
     def _auto_generate_mgxs_lib(
         self,
-        model: openmc.model.model, 
+        model: openmc.model.model,
         energy_groups: openmc.mgxs.EnergyGroups,
         correction: str | none,
         directory: pathlike,
@@ -1729,7 +1733,7 @@ class Model:
         # Pick energy group structure
         mgxs_lib.energy_groups = energy_groups
 
-        if (kinetic): 
+        if (kinetic):
             mgxs_lib.num_delayed_groups = num_delayed_groups
 
         # Disable transport correction
@@ -1747,7 +1751,8 @@ class Model:
                 'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
             ]
         if kinetic:
-            mgxs_lib.mgxs_types += ['chi-prompt', 'chi-delayed', 'decay-rate', 'inverse-velocity', 'beta']
+            mgxs_lib.mgxs_types += ['chi-prompt', 'chi-delayed',
+                                    'decay-rate', 'inverse-velocity', 'beta']
 
         # Specify a "cell" domain type for the cross section tally filters
         mgxs_lib.domain_type = "material"
@@ -1775,7 +1780,6 @@ class Model:
             mgxs_lib.load_from_statepoint(sp)
 
         return mgxs_lib
-
 
     def _create_mgxs_sources(
         self,
@@ -1823,7 +1827,8 @@ class Model:
             strengths.append(1.0)
 
         uniform_energy = openmc.stats.Discrete(x=midpoints, p=strengths)
-        uniform_distribution = openmc.IndependentSource(spatial_dist, energy=uniform_energy, strength=0.01)
+        uniform_distribution = openmc.IndependentSource(
+            spatial_dist, energy=uniform_energy, strength=0.01)
         sources = [uniform_distribution]
 
         # If the user provided an energy distribution, use that
@@ -1943,18 +1948,21 @@ class Model:
                 100000.0, 100000.0, boundary_type='reflective')
             name = material.name
             infinite_cell = openmc.Cell(name=name, fill=material, region=-box)
-            infinite_universe = openmc.Universe(name=name, cells=[infinite_cell])
+            infinite_universe = openmc.Universe(
+                name=name, cells=[infinite_cell])
             model.geometry.root_universe = infinite_universe
 
             # Add MGXS Tallies
-            mgxs_lib = self._auto_generate_mgxs_lib(model, energy_groups, correction, directory, kinetic, num_delayed_groups)
+            mgxs_lib = self._auto_generate_mgxs_lib(
+                model, energy_groups, correction, directory, kinetic, num_delayed_groups)
 
             # Create a MGXS File which can then be written to disk
             mgxs_set = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
             mgxs_sets.append(mgxs_set)
 
         # Write the file to disk
-        mgxs_file = openmc.MGXSLibrary(energy_groups=energy_groups, num_delayed_groups=num_delayed_groups)
+        mgxs_file = openmc.MGXSLibrary(
+            energy_groups=energy_groups, num_delayed_groups=num_delayed_groups)
         for mgxs_set in mgxs_sets:
             mgxs_file.add_xsdata(mgxs_set)
         mgxs_file.export_to_hdf5(mgxs_path)
@@ -2116,12 +2124,14 @@ class Model:
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
-        mgxs_lib = self._auto_generate_mgxs_lib(model, energy_groups, correction, directory, kinetic, num_delayed_groups)
+        mgxs_lib = self._auto_generate_mgxs_lib(
+            model, energy_groups, correction, directory, kinetic, num_delayed_groups)
 
         names = [mat.name for mat in mgxs_lib.domains]
 
         # Create a MGXS File which can then be written to disk
-        mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
+        mgxs_file = mgxs_lib.create_mg_library(
+            xs_type='macro', xsdata_names=names)
         mgxs_file.export_to_hdf5(mgxs_path)
 
     def _generate_material_wise_mgxs(
@@ -2173,7 +2183,8 @@ class Model:
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
-        mgxs_lib = self._auto_generate_mgxs_lib(model, energy_groups, correction, directory, kinetic, num_delayed_groups)
+        mgxs_lib = self._auto_generate_mgxs_lib(
+            model, energy_groups, correction, directory, kinetic, num_delayed_groups)
 
         names = [mat.name for mat in mgxs_lib.domains]
 
@@ -2292,13 +2303,13 @@ class Model:
             # If making a set the time step size to 0.01
             if kinetic:
                 self.settings.kinetic_simulation = True
-                warnings.warn("Kinetic model. Currently, only the random ray solver" 
-                          " supports kinetic simulations. The number of time"
-                          " steps to run and material density transient using "
-                          " openmc.Settings.timestep_parameters['n_timesteps'] "
-                          " and openmc.Material.set_density(), respectively.")
-                self.settings.timestep_parameters = {'dt': 0.01, 'timestep_units': 's'}
-
+                warnings.warn("Kinetic model. Currently, only the random ray solver"
+                              " supports kinetic simulations. The number of time"
+                              " steps to run and material density transient using "
+                              " openmc.Settings.timestep_parameters['n_timesteps'] "
+                              " and openmc.Material.set_density(), respectively.")
+                self.settings.timestep_parameters = {
+                    'dt': 0.01, 'timestep_units': 's'}
 
     def convert_to_random_ray(self):
         """Convert a multigroup model to use random ray.
@@ -2616,5 +2627,3 @@ class SearchResult:
     def total_batches(self) -> int:
         """Total number of active batches used across all evaluations."""
         return sum(self.batches)
-
-

@@ -41,7 +41,7 @@ def double_hex_lattice_model():
 
     # create a hexagonal lattice of compacts
     hex_lattice = openmc.HexLattice()
-    hex_lattice.orientation = 'y'
+    hex_lattice.orientation = 'x'
     hex_lattice.pitch = (pin_lattice_pitch,)
     hex_lattice.center = (0., 0.)
     center = [univ]

@@ -25,20 +25,16 @@
     <cell id="6" fill="4" region="-3" translation="-4.0 0.0 0.0" rotation="0.0 0.0 45.0" universe="5"/>
     <cell id="7" fill="3" region="-4" translation="4.0 0.0 0.0" rotation="0.0 0.0 30.0" universe="5"/>
     <cell id="8" material="3" region="-5 3 4" universe="5"/>
-    <hex_lattice id="3" n_rings="3">
+    <hex_lattice id="3" n_rings="3" orientation="x">
       <pitch>1.25</pitch>
       <outer>30</outer>
       <center>0.0 0.0</center>
       <universes>
-  2
- 1 1
-1 2 1
- 1 1
-1 2 1
- 1 1
-1 1 1
- 1 1
-  1</universes>
+  1 1 1
+ 1 1 1 1
+1 1 2 2 2
+ 1 1 1 1
+  1 1 1</universes>
     </hex_lattice>
     <lattice id="4">
       <pitch>1.25 1.25</pitch>

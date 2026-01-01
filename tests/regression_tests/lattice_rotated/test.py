@@ -37,6 +37,7 @@ def rotated_lattice_model():
     pitch = 1.25
     hexlat = openmc.HexLattice()
     hexlat.center = (0., 0.)
+    hexlat.orientation = "x"
     hexlat.pitch = [pitch]
     hexlat.outer = outer_universe
     outer_ring = [big_pin_universe] + [pin_universe]*11

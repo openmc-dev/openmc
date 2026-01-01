@@ -30,11 +30,15 @@
       <outer>30</outer>
       <center>0.0 0.0</center>
       <universes>
-  1 1 1
- 1 1 1 1
-1 1 2 2 2
- 1 1 1 1
-  1 1 1</universes>
+  2
+ 1 1
+1 2 1
+ 1 1
+1 2 1
+ 1 1
+1 1 1
+ 1 1
+  1</universes>
     </hex_lattice>
     <lattice id="4">
       <pitch>1.25 1.25</pitch>

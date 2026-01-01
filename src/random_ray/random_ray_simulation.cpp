@@ -32,7 +32,6 @@ void openmc_run_random_ray()
   // calculation first and then the adjoint calculation later.
   bool adjoint_needed = FlatSourceDomain::adjoint_;
 
-  // TODO: no initial condition needed fof td fixed source simulations
   // Check if this simulation is to establish an initial condition
   if (settings::kinetic_simulation) {
     simulation::is_initial_condition = true;
@@ -676,9 +675,7 @@ void RandomRaySimulation::simulate()
       // Reset total starting particle weight used for normalizing tallies
       simulation::total_weight = 1.0;
 
-      // TODO: add update source convenience function
-      // domain_->compute_neutron_source()
-      // Update source term (scattering + fission)
+      // Update source term (scattering + fission (+ delayed if kinetic))
       domain_->update_all_neutron_sources();
 
       // Reset scalar fluxes, iteration volume tallies, and region hit flags

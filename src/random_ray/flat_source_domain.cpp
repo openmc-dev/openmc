@@ -257,7 +257,6 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
     if (settings::kinetic_simulation && !simulation::is_initial_condition &&
         RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      // TODO: may need to adjust sigma t division here
       double inverse_vbar =
         inverse_vbar_[source_regions_.material(sr) * negroups_ + g];
       double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
@@ -889,7 +888,6 @@ void FlatSourceDomain::random_ray_tally()
   openmc::simulation::time_tallies.stop();
 }
 
-// TODO: Enable support for TD fluxes?
 double FlatSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {
@@ -902,7 +900,6 @@ double FlatSourceDomain::evaluate_flux_at_point(
 // loaded and displayed by Paraview. Note that .vtk binary
 // files require big endian byte ordering, so endianness
 // is checked and flipped if necessary.
-// TODO: Enable support for TD fluxes?
 void FlatSourceDomain::output_to_vtk() const
 {
   // Rename .h5 plot filename(s) to .vtk filenames
@@ -1935,11 +1932,10 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 // timestep's estimate of neutron production and loss. (previous timestep
 // fission vs current timestep fission?)
 // TODO: implement compute_k_dynamic
-// double FlatSourceDomain::compute_k_dynamic() const
 
-// Compute new estimate of scattering + fission + precursor decay sources in
-// each source region based on the flux estimate from the previous iteration.
-// Used for time-dependent simulations
+// Compute new estimate of scattering + fission (+ precursor decay for
+// kinetic simulations) sources in each source region based on the flux
+// estimate from the previous iteration.
 
 void FlatSourceDomain::compute_single_neutron_source_time_derivative(
   SourceRegionHandle& srh)
@@ -1973,7 +1969,6 @@ void FlatSourceDomain::compute_single_scalar_flux_time_derivative_2(
   }
 }
 
-// TODO: eliminate this and source region vars
 void FlatSourceDomain::compute_single_delayed_fission_source(
   SourceRegionHandle& srh)
 {
@@ -2083,7 +2078,6 @@ void FlatSourceDomain::accumulate_iteration_quantities()
 
 void FlatSourceDomain::normalize_final_quantities()
 {
-  // TODO: add timer
   double normalization_factor =
     1.0 / (settings::n_batches - settings::n_inactive);
   double source_normalization_factor;
@@ -2102,7 +2096,6 @@ void FlatSourceDomain::normalize_final_quantities()
     for (int g = 0; g < negroups_; g++) {
       source_regions_.scalar_flux_final(sr, g) *= source_normalization_factor;
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-        // TODO: double check that this is correct for adjoint SDP
         source_regions_.source_final(sr, g) *= source_normalization_factor;
       }
     }
@@ -2116,7 +2109,6 @@ void FlatSourceDomain::normalize_final_quantities()
 
 void FlatSourceDomain::propagate_final_quantities()
 {
-// TODO: add timer
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
@@ -2147,7 +2139,6 @@ void add_value_to_bd_vector(std::deque<double>& bd_vector, double& new_value,
 
 void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
 {
-// TODO: add timer
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
@@ -2178,7 +2169,6 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
 
 void FlatSourceDomain::compute_rhs_bd_quantities()
 {
-// TODO: add timer
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {

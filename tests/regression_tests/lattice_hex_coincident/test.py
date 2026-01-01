@@ -109,10 +109,11 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
                                                boundary_type = 'reflective',
                                                orientation='x')
 
-        pincell_only_lattice = openmc.HexLattice(name="regular fuel assembly", orientation='x')
+        pincell_only_lattice = openmc.HexLattice(name="regular fuel assembly")
         pincell_only_lattice.center = (0., 0.)
         pincell_only_lattice.pitch = (assembly_pitch,)
         pincell_only_lattice.outer = inf_mat_univ
+        pincell_only_lattice.orientation = "x"
 
         # setup hex rings
         ring0 = [fuel_ch_univ]

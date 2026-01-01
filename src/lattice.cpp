@@ -260,46 +260,23 @@ std::pair<double, array<int, 3>> RectLattice::distance(
   // Determine the oncoming edge.
   double x0 {copysign(0.5 * pitch_[0], u.x)};
   double y0 {copysign(0.5 * pitch_[1], u.y)};
+  double z0;
 
-  // Left and right sides
-  double d {INFTY};
-  array<int, 3> lattice_trans;
-  if ((std::abs(x - x0) > FP_PRECISION) && u.x != 0) {
-    d = (x0 - x) / u.x;
-    if (u.x > 0) {
-      lattice_trans = {1, 0, 0};
-    } else {
-      lattice_trans = {-1, 0, 0};
-    }
-  }
-
-  // Front and back sides
-  if ((std::abs(y - y0) > FP_PRECISION) && u.y != 0) {
-    double this_d = (y0 - y) / u.y;
-    if (this_d < d) {
-      d = this_d;
-      if (u.y > 0) {
-        lattice_trans = {0, 1, 0};
-      } else {
-        lattice_trans = {0, -1, 0};
-      }
-    }
-  }
-
-  // Top and bottom sides
+  double d = std::min((x0 - x) / u.x, (y0 - y) / u.y);
   if (is_3d_) {
-    double z0 {copysign(0.5 * pitch_[2], u.z)};
-    if ((std::abs(z - z0) > FP_PRECISION) && u.z != 0) {
-      double this_d = (z0 - z) / u.z;
-      if (this_d < d) {
-        d = this_d;
-        if (u.z > 0) {
-          lattice_trans = {0, 0, 1};
-        } else {
-          lattice_trans = {0, 0, -1};
-        }
-      }
-    }
+    z0 = copysign(0.5 * pitch_[2], u.z);
+    d = std::min(d, (z0 - z) / u.z);
+  }
+
+  array<int, 3> lattice_trans = {0, 0, 0};
+
+  if (std::abs(x + u.x * d - x0) < FP_PRECISION)
+    lattice_trans[0] = copysign(1, u.x);
+  if (std::abs(y + u.y * d - y0) < FP_PRECISION)
+    lattice_trans[1] = copysign(1, u.y);
+  if (is_3d_) {
+    if (std::abs(z + u.z * d - z0) < FP_PRECISION)
+      lattice_trans[2] = copysign(1, u.z);
   }
 
   return {d, lattice_trans};

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import warnings
 
+import lxml.etree as ET
 import numpy as np
 from openmc.mpi import comm
 from openmc.deplete import Chain, reaction_rates, nuclide, cram, pool
@@ -37,7 +38,7 @@ _TEST_CHAIN = """\
       <energies>0.0253</energies>
       <fission_yields energy="0.0253">
         <products>A B</products>
-        <data>0.0292737 0.002566345</data>
+        <data>0.4 1.6</data>
       </fission_yields>
     </neutron_fission_yields>
   </nuclide>
@@ -155,7 +156,7 @@ def test_from_xml(simple_chain):
     assert nuc.yield_energies == (0.0253,)
     assert list(nuc.yield_data) == [0.0253]
     assert nuc.yield_data[0.0253].products == ("A", "B")
-    assert (nuc.yield_data[0.0253].yields == [0.0292737, 0.002566345]).all()
+    assert (nuc.yield_data[0.0253].yields == [0.4, 1.6]).all()
 
 
 def test_export_to_xml(run_in_tmpdir):
@@ -192,7 +193,7 @@ def test_export_to_xml(run_in_tmpdir):
         nuclide.ReactionTuple("(n,gamma)", "B", 0.0, 0.3)
     ]
     C.yield_data = nuclide.FissionYieldDistribution({
-        0.0253: {"A": 0.0292737, "B": 0.002566345}})
+        0.0253: {"A": 0.4, "B": 1.6}})
 
     chain = Chain()
     chain.nuclides = [H1, A, B, C]
@@ -231,8 +232,8 @@ def test_form_matrix(simple_chain):
     mat[2, 2] = -decay_constant - 3.2  # Loss B, decay, (n,gamma), (n,d)
     mat[3, 2] = 3                      # B -> C, (n,gamma)
 
-    mat[1, 3] = 0.0292737 * 1.0 + 4.0 * 0.7     # C -> A fission, (n,gamma)
-    mat[2, 3] = 0.002566345 * 1.0 + 4.0 * 0.3   # C -> B fission, (n,gamma)
+    mat[1, 3] = 0.4 * 1.0 + 4.0 * 0.7     # C -> A fission, (n,gamma)
+    mat[2, 3] = 1.6 * 1.0 + 4.0 * 0.3   # C -> B fission, (n,gamma)
     mat[3, 3] = -1.0 - 4.0                      # Loss C, fission, (n,gamma)
 
     sp_matrix = chain.form_matrix(react[0])
@@ -403,7 +404,7 @@ def test_simple_fission_yields(simple_chain):
     """Check the default fission yields that can be used to form the matrix
     """
     fission_yields = simple_chain.get_default_fission_yields()
-    assert fission_yields == {"C": {"A": 0.0292737, "B": 0.002566345}}
+    assert fission_yields == {"C": {"A":0.4, "B": 1.6}}
 
 
 def test_fission_yield_attribute(simple_chain):
@@ -426,56 +427,66 @@ def test_fission_yield_attribute(simple_chain):
         pool.deplete(cram.CRAM48, empty_chain, dummy_conc, None, 0.5)
 
 
-def test_validate(simple_chain):
+def test_validate():
     """Test the validate method"""
-
+    filename = 'chain_test.xml'
     # current chain is invalid
     # fission yields do not sum to 2.0
-    with pytest.raises(ValueError, match="Nuclide C.*fission yields"):
-        simple_chain.validate(strict=True, tolerance=0.0)
+    assert Chain.validate(filename, strict=True, quiet=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert Chain.validate(filename, strict=False, quiet=False)
+
+    tree = ET.parse(filename)
+    root = tree.getroot()
+    for nuclide in root.findall('nuclide'):
+        if nuclide.attrib.get("name") == "C":
+            data_elem = nuclide.find('.//data')
+            if data_elem is not None:
+                data_elem.text = "0.0292737 0.002566345"
+            break
+    tree.write(filename, encoding="utf-8", xml_declaration=True)
+    
+    with pytest.raises(ValueError, match="Nuclide C .*error:"):
+        Chain.validate(filename, strict=True)
 
     with pytest.warns(UserWarning) as record:
-        assert not simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
-        assert not simple_chain.validate(strict=False, quiet=True, tolerance=0.0)
+        assert not Chain.validate(filename, strict=False, quiet=False)
+        assert not Chain.validate(filename, strict=False, quiet=True)
     assert len(record) == 1
     assert "Nuclide C" in record[0].message.args[0]
 
-    # Fix fission yields but keep to restore later
-    old_yields = simple_chain["C"].yield_data
-    simple_chain["C"].yield_data = {0.0253: {"A": 1.4, "B": 0.6}}
-
-    assert simple_chain.validate(strict=True, tolerance=0.0)
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        assert simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
-
     # Mess up "earlier" nuclide's reactions
-    decay_mode = simple_chain["A"].decay_modes.pop()
-
-    with pytest.raises(ValueError, match="Nuclide A.*decay mode"):
-        simple_chain.validate(strict=True, tolerance=0.0)
-
-    # restore old fission yields
-    simple_chain["C"].yield_data = old_yields
+    for nuclide in root.findall('nuclide'):
+        if nuclide.attrib.get("name") == "A":
+            inner_tag = nuclide.find('decay')
+            if inner_tag is not None:
+                nuclide.remove(inner_tag)
+            break
+    tree.write(filename, encoding="utf-8", xml_declaration=True)
+    
+    with pytest.raises(ValueError, match="Nuclide A .*error"):
+        Chain.validate(filename, strict=True)
 
     with pytest.warns(UserWarning) as record:
-        assert not simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
+        assert not Chain.validate(filename, strict=False, quiet=False)
     assert len(record) == 2
     assert "Nuclide A" in record[0].message.args[0]
     assert "Nuclide C" in record[1].message.args[0]
 
-    # restore decay modes
-    simple_chain["A"].decay_modes.append(decay_mode)
+    # restore chain
+    chain_file = Path("chain_test.xml")
+    chain_file.write_text(_TEST_CHAIN, encoding="utf-8")
 
 
 def test_validate_inputs():
-    c = Chain()
-
+    filename = 'chain_test.xml'
+    
     with pytest.raises(TypeError, match="tolerance"):
-        c.validate(tolerance=None)
+        Chain.validate(filename, tolerance = "Unknown")
 
     with pytest.raises(ValueError, match="tolerance"):
-        c.validate(tolerance=-1)
+         Chain.validate(filename, tolerance = -1)
 
 
 @pytest.fixture

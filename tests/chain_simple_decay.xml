@@ -33,7 +33,7 @@
       <energies>2.53000e-02</energies>
       <fission_yields energy="2.53000e-02">
         <products>Gd157 Gd156 I135 Xe135 Xe136 Cs135</products>
-        <data>1.093250e-04 2.087260e-04 2.780820e-02 6.759540e-03 2.392300e-02 4.356330e-05</data>
+        <data>1.093250e-04 2.087260e-04 2.780820e-02 6.759540e-03 2.392300e-02 1.94119120899</data>
       </fission_yields>
     </neutron_fission_yields>
   </nuclide>
@@ -46,7 +46,7 @@
       <energies>2.53000e-02</energies>
       <fission_yields energy="2.53000e-02">
         <products>Gd157 Gd156 I135 Xe135 Xe136 Cs135</products>
-        <data>6.142710e-5 1.483250e-04 0.0292737 0.002566345 0.0219242 4.9097e-6</data>
+        <data>6.142710e-5 1.483250e-04 0.0292737 0.002566345 0.0219242 1.9458259979</data>
       </fission_yields>
     </neutron_fission_yields>
   </nuclide>
@@ -59,7 +59,7 @@
       <energies>2.53000e-02</energies>
       <fission_yields energy="2.53000e-02">
         <products>Gd157 Gd156 I135 Xe135 Xe136 Cs135</products>
-        <data>4.141120e-04 7.605360e-04 0.0135457 0.00026864 0.0024432 3.7100E-07</data>
+        <data>4.141120e-04 7.605360e-04 0.0135457 0.00026864 0.0024432 1.982567812</data>
       </fission_yields>
     </neutron_fission_yields>
   </nuclide>

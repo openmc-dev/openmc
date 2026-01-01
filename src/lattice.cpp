@@ -545,7 +545,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node) : Lattice {lat_node}
 
 //==============================================================================
 
-void HexLattice::fill_lattice_x(const vector<std::string>& univ_words)
+void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -597,7 +597,7 @@ void HexLattice::fill_lattice_x(const vector<std::string>& univ_words)
 
 //==============================================================================
 
-void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
+void HexLattice::fill_lattice_x(const vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -756,7 +756,7 @@ std::pair<double, array<int, 3>> HexLattice::distance(
   double beta_dir;
   double gamma_dir;
   double delta_dir;
-  if (orientation_ == Orientation::y) {
+  if (orientation_ == Orientation::x) {
     beta_dir = u.x * std::sqrt(3.0) / 2.0 + u.y / 2.0;
     gamma_dir = u.x * std::sqrt(3.0) / 2.0 - u.y / 2.0;
     delta_dir = u.y;
@@ -785,7 +785,7 @@ std::pair<double, array<int, 3>> HexLattice::distance(
     r_t = get_local_position(r, i_xyz_t);
   }
   double beta;
-  if (orientation_ == Orientation::y) {
+  if (orientation_ == Orientation::x) {
     beta = r_t.x * std::sqrt(3.0) / 2.0 + r_t.y / 2.0;
   } else {
     beta = r_t.x;
@@ -809,7 +809,7 @@ std::pair<double, array<int, 3>> HexLattice::distance(
     r_t = get_local_position(r, i_xyz_t);
   }
   double gamma;
-  if (orientation_ == Orientation::y) {
+  if (orientation_ == Orientation::x) {
     gamma = r_t.x * std::sqrt(3.0) / 2.0 - r_t.y / 2.0;
   } else {
     gamma = r_t.x / 2.0 - r_t.y * std::sqrt(3.0) / 2.0;
@@ -836,7 +836,7 @@ std::pair<double, array<int, 3>> HexLattice::distance(
     r_t = get_local_position(r, i_xyz_t);
   }
   double delta;
-  if (orientation_ == Orientation::y) {
+  if (orientation_ == Orientation::x) {
     delta = r_t.y;
   } else {
     delta = r_t.x / 2.0 + r_t.y * std::sqrt(3.0) / 2.0;
@@ -897,7 +897,7 @@ void HexLattice::get_indices(
     }
   }
 
-  if (orientation_ == Orientation::y) {
+  if (orientation_ == Orientation::x) {
     // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
     // find the index of the global coordinates to within 4 cells.
     double alpha = r_o.y - r_o.x / std::sqrt(3.0);
@@ -983,7 +983,7 @@ int HexLattice::get_flat_index(const array<int, 3>& i_xyz) const
 Position HexLattice::get_local_position(
   Position r, const array<int, 3>& i_xyz) const
 {
-  if (orientation_ == Orientation::y) {
+  if (orientation_ == Orientation::x) {
     // x_l = x_g - (center + pitch_x*cos(30)*index_x)
     r.x -=
       center_.x + std::sqrt(3.0) / 2.0 * (i_xyz[0] - n_rings_ + 1) * pitch_[0];

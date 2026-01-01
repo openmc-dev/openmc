@@ -5,11 +5,12 @@ from openmc.examples import pwr_pin_cell
 from openmc import RegularMesh
 from openmc.utility_funcs import change_directory
 import pytest
+import numpy as np
 
-from tests.testing_harness import TolerantPyAPITestHarness
+from tests.testing_harness import KineticTolerantPyAPITestHarness
 
 
-class MGXSTestHarness(TolerantPyAPITestHarness):
+class KineticMGXSTestHarness(KineticTolerantPyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
         f = 'mgxs.h5'
@@ -27,9 +28,14 @@ def test_random_ray_auto_convert(method):
 
         # Convert to a multi-group model
         model.convert_to_multigroup(
-            method=method, energy_groups='CASMO-2', nparticles=100,
-            overwrite_mgxs_library=False, mgxs_path="mgxs.h5"
+            method=method, energy_groups='CASMO-2', nparticles=30,
+            overwrite_mgxs_library=False, mgxs_path="mgxs.h5", kinetic=True,
+            num_delayed_groups=6
         )
+
+        model.settings.timestep_parameters['n_timesteps'] = 5
+        density_timeseries = np.linspace(1, 0.95, 100)
+        model.materials[2].set_density('macro', density=1.0, density_timeseries=density_timeseries)
 
         # Convert to a random ray model
         model.convert_to_random_ray()
@@ -37,8 +43,8 @@ def test_random_ray_auto_convert(method):
         # Set the number of particles
         model.settings.particles = 100
 
-        # Overlay a basic 2x2 mesh
-        n = 2
+        # Overlay an basic 8x8 mesh
+        n = 8
         mesh = RegularMesh()
         mesh.dimension = (n, n)
         bbox = model.geometry.bounding_box
@@ -47,8 +53,5 @@ def test_random_ray_auto_convert(method):
         model.settings.random_ray['source_region_meshes'] = [
             (mesh, [model.geometry.root_universe])]
 
-        # Set the source shape to linear
-        model.settings.random_ray['source_shape'] = 'linear'
-
-        harness = MGXSTestHarness('statepoint.10.h5', model)
+        harness = KineticMGXSTestHarness(model, 6)
         harness.main()

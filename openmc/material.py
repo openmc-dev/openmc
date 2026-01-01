@@ -609,6 +609,8 @@ class Material(IDManagerMixin):
             if density_timeseries is not None:
                 cv.check_type(f'the density timeseries for Material ID="{self.id}"',
                           density_timeseries, Iterable, Real)
+                [cv.check_greater_than(f'an element in density timeseries for Material ID="{self.id}"',
+                                x, 0.0) for x in density_timeseries]
                 self._density_timeseries = density_timeseries
             else:
                 self._density_timeseries = None

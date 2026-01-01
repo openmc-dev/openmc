@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="UO2__2_4__" depletable="true">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="UO2__2_4__"/>
+    </material>
+    <material id="2" name="Zircaloy">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="Zircaloy"/>
+    </material>
+    <material id="3" name="Hot_borated_water">
+      <density value="1.0" units="macro" value_timeseries="1.0 0.9994949494949495 0.998989898989899 0.9984848484848485 0.997979797979798 0.9974747474747475 0.996969696969697 0.9964646464646465 0.9959595959595959 0.9954545454545455 0.9949494949494949 0.9944444444444445 0.9939393939393939 0.9934343434343434 0.9929292929292929 0.9924242424242424 0.9919191919191919 0.9914141414141414 0.9909090909090909 0.9904040404040404 0.9898989898989898 0.9893939393939394 0.9888888888888889 0.9883838383838384 0.9878787878787879 0.9873737373737373 0.9868686868686869 0.9863636363636363 0.9858585858585859 0.9853535353535353 0.9848484848484849 0.9843434343434343 0.9838383838383838 0.9833333333333333 0.9828282828282828 0.9823232323232323 0.9818181818181818 0.9813131313131312 0.9808080808080808 0.9803030303030302 0.9797979797979798 0.9792929292929293 0.9787878787878788 0.9782828282828283 0.9777777777777777 0.9772727272727273 0.9767676767676767 0.9762626262626263 0.9757575757575757 0.9752525252525253 0.9747474747474747 0.9742424242424242 0.9737373737373737 0.9732323232323232 0.9727272727272727 0.9722222222222222 0.9717171717171716 0.9712121212121212 0.9707070707070706 0.9702020202020202 0.9696969696969697 0.9691919191919192 0.9686868686868687 0.9681818181818181 0.9676767676767677 0.9671717171717171 0.9666666666666667 0.9661616161616161 0.9656565656565657 0.9651515151515151 0.9646464646464646 0.9641414141414141 0.9636363636363636 0.9631313131313131 0.9626262626262626 0.962121212121212 0.9616161616161616 0.961111111111111 0.9606060606060606 0.9601010101010101 0.9595959595959596 0.9590909090909091 0.9585858585858585 0.9580808080808081 0.9575757575757575 0.9570707070707071 0.9565656565656565 0.956060606060606 0.9555555555555555 0.955050505050505 0.9545454545454545 0.954040404040404 0.9535353535353535 0.953030303030303 0.9525252525252524 0.952020202020202 0.9515151515151514 0.951010101010101 0.9505050505050505 0.95"/>
+      <macroscopic name="Hot_borated_water"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="Fuel" material="1" region="-1" universe="0"/>
+    <cell id="2" name="Cladding" material="2" region="1 -2" universe="0"/>
+    <cell id="3" name="Water" material="3" region="2 3 -4 5 -6" universe="0"/>
+    <surface id="1" name="Fuel OR" type="z-cylinder" coeffs="0 0 0.39218"/>
+    <surface id="2" name="Clad OR" type="z-cylinder" coeffs="0 0 0.4572"/>
+    <surface id="3" name="left" type="x-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="4" name="right" type="x-plane" boundary="reflective" coeffs="0.63"/>
+    <surface id="5" name="bottom" type="y-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="6" name="top" type="y-plane" boundary="reflective" coeffs="0.63"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <kinetic_simulation>true</kinetic_simulation>
+    <timestep_parameters>
+      <dt>0.01</dt>
+      <timestep_units>s</timestep_units>
+      <n_timesteps>5</n_timesteps>
+    </timestep_parameters>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <random_ray>
+      <source type="independent" strength="1.0" particle="neutron">
+        <space type="box">
+          <parameters>-0.63 -0.63 -1.0 0.63 0.63 1.0</parameters>
+        </space>
+      </source>
+      <distance_inactive>30.0</distance_inactive>
+      <distance_active>150.0</distance_active>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="0" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+    </random_ray>
+    <mesh id="1">
+      <dimension>8 8</dimension>
+      <lower_left>-0.63 -0.63</lower_left>
+      <upper_right>0.63 0.63</upper_right>
+    </mesh>
+  </settings>
+  </model>

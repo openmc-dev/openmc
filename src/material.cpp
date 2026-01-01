@@ -137,8 +137,15 @@ Material::Material(pugi::xml_node node)
       }
       // Scale density_timeseries_ to the same units as density_
       if (density_timeseries_.size() > 0) {
-        for (double& p : density_timeseries_)
+        for (double& p : density_timeseries_) {
+          if (p <= 0) {
+            fatal_error(
+              "Zero or negative value detected in material timeseries. This "
+              "will break any time-dependent simulations. Please fix the "
+              "density timeseries in your input file. Aborting...");
+          }
           p *= scale_factor;
+        }
 
         // Check that all elements are the same sign.
         vector<double> zero_vector;

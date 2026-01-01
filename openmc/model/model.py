@@ -1685,9 +1685,101 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
+
+    def _auto_generate_mgxs_lib(
+        self,
+        model: openmc.model.model, 
+        energy_groups: openmc.mgxs.EnergyGroups,
+        correction: str | none,
+        directory: pathlike,
+        kinetic: bool | None = None,
+        num_delayed_groups: int = 0,
+    ) -> openmc.mgxs.Library:
+        """
+        Automatically generate a multi-group cross section libray from a model
+        with the specified group structure.
+
+        Parameters
+        ----------
+        energy_groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        mgxs_path : str
+            Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        kinetic : bool, optional
+            Flag to indicate if kinetic simulation cross sections are needed.
+        num_delayed_groups : int, optional
+            Number of delayed groups for kinetic simulations.
+
+        Returns
+        -------
+        mgxs_lib : openmc.mgxs.Library
+            OpenMC MGXS Library object
+        """
+
+        # Initialize MGXS library with a finished OpenMC geometry object
+        mgxs_lib = openmc.mgxs.Library(model.geometry)
+
+        # Pick energy group structure
+        mgxs_lib.energy_groups = energy_groups
+
+        if (kinetic): 
+            mgxs_lib.num_delayed_groups = num_delayed_groups
+
+        # Disable transport correction
+        mgxs_lib.correction = correction
+
+        # Specify needed cross sections for random ray
+        if correction == 'P0':
+            mgxs_lib.mgxs_types = [
+                'nu-transport', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
+            ]
+        elif correction is None:
+            mgxs_lib.mgxs_types = [
+                'total', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
+            ]
+        if kinetic:
+            mgxs_lib.mgxs_types += ['chi-prompt', 'chi-delayed', 'decay-rate', 'inverse-velocity', 'beta']
+
+        # Specify a "cell" domain type for the cross section tally filters
+        mgxs_lib.domain_type = "material"
+
+        # Specify the cell domains over which to compute multi-group cross sections
+        mgxs_lib.domains = model.geometry.get_all_materials().values()
+
+        # Do not compute cross sections on a nuclide-by-nuclide basis
+        mgxs_lib.by_nuclide = False
+
+        # Check the library - if no errors are raised, then the library is satisfactory.
+        mgxs_lib.check_library_for_openmc_mgxs()
+
+        # Construct all tallies needed for the multi-group cross section library
+        mgxs_lib.build_library()
+
+        # Create a "tallies.xml" file for the MGXS Library
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
+
+        # Run
+        statepoint_filename = model.run(cwd=directory)
+
+        # Load MGXS
+        with openmc.StatePoint(statepoint_filename) as sp:
+            mgxs_lib.load_from_statepoint(sp)
+
+        return mgxs_lib
+
+
     def _create_mgxs_sources(
         self,
-        groups: openmc.mgxs.EnergyGroups,
+        energy_groups: openmc.mgxs.EnergyGroups,
         spatial_dist: openmc.stats.Spatial,
         source_energy: openmc.stats.Univariate | None = None,
     ) -> list[openmc.IndependentSource]:
@@ -1709,7 +1801,7 @@ class Model:
 
         Parameters
         ----------
-        groups : openmc.mgxs.EnergyGroups
+        energy_groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
         spatial_dist : openmc.stats.Spatial
             Spatial distribution to use for all sources.
@@ -1725,8 +1817,8 @@ class Model:
         # Make a discrete source that is uniform over the bins of the group structure
         midpoints = []
         strengths = []
-        for i in range(groups.num_groups):
-            bounds = groups.get_group_bounds(i+1)
+        for i in range(energy_groups.num_groups):
+            bounds = energy_groups.get_group_bounds(i+1)
             midpoints.append((bounds[0] + bounds[1]) / 2.0)
             strengths.append(1.0)
 
@@ -1772,12 +1864,14 @@ class Model:
 
     def _generate_infinite_medium_mgxs(
         self,
-        groups: openmc.mgxs.EnergyGroups,
+        energy_groups: openmc.mgxs.EnergyGroups,
         nparticles: int,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
+        kinetic: bool | None = None,
+        num_delayed_groups: int = 0,
     ):
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
@@ -1802,7 +1896,7 @@ class Model:
 
         Parameters
         ----------
-        groups : openmc.mgxs.EnergyGroups
+        energy_groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
         nparticles : int
             Number of particles to simulate per batch when generating MGXS.
@@ -1816,6 +1910,11 @@ class Model:
         source_energy : openmc.stats.Univariate, optional
             Energy distribution to use when generating MGXS data, replacing any
             existing sources in the model.
+        kinetic : bool, optional
+            Flag to indicate if kinetic simulation cross sections are needed.
+        num_delayed_groups : int, optional
+            Number of delayed groups for kinetic simulations.
+
         """
         mgxs_sets = []
         for material in self.materials:
@@ -1829,7 +1928,7 @@ class Model:
             model.settings.particles = nparticles
 
             model.settings.source = self._create_mgxs_sources(
-                groups,
+                energy_groups,
                 spatial_dist=openmc.stats.Point(),
                 source_energy=source_energy
             )
@@ -1848,59 +1947,14 @@ class Model:
             model.geometry.root_universe = infinite_universe
 
             # Add MGXS Tallies
-
-            # Initialize MGXS library with a finished OpenMC geometry object
-            mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-            # Pick energy group structure
-            mgxs_lib.energy_groups = groups
-
-            # Disable transport correction
-            mgxs_lib.correction = correction
-
-            # Specify needed cross sections for random ray
-            if correction == 'P0':
-                mgxs_lib.mgxs_types = [
-                    'nu-transport', 'absorption', 'nu-fission', 'fission',
-                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-                ]
-            elif correction is None:
-                mgxs_lib.mgxs_types = [
-                    'total', 'absorption', 'nu-fission', 'fission',
-                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-                ]
-
-            # Specify a "cell" domain type for the cross section tally filters
-            mgxs_lib.domain_type = "material"
-
-            # Specify the cell domains over which to compute multi-group cross sections
-            mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-            # Do not compute cross sections on a nuclide-by-nuclide basis
-            mgxs_lib.by_nuclide = False
-
-            # Check the library - if no errors are raised, then the library is satisfactory.
-            mgxs_lib.check_library_for_openmc_mgxs()
-
-            # Construct all tallies needed for the multi-group cross section library
-            mgxs_lib.build_library()
-
-            # Create a "tallies.xml" file for the MGXS Library
-            mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-            # Run
-            statepoint_filename = model.run(cwd=directory)
-
-            # Load MGXS
-            with openmc.StatePoint(statepoint_filename) as sp:
-                mgxs_lib.load_from_statepoint(sp)
+            mgxs_lib = self._auto_generate_mgxs_lib(model, energy_groups, correction, directory, kinetic, num_delayed_groups)
 
             # Create a MGXS File which can then be written to disk
             mgxs_set = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
             mgxs_sets.append(mgxs_set)
 
         # Write the file to disk
-        mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+        mgxs_file = openmc.MGXSLibrary(energy_groups=energy_groups, num_delayed_groups=num_delayed_groups)
         for mgxs_set in mgxs_sets:
             mgxs_file.add_xsdata(mgxs_set)
         mgxs_file.export_to_hdf5(mgxs_path)
@@ -1981,12 +2035,14 @@ class Model:
 
     def _generate_stochastic_slab_mgxs(
         self,
-        groups: openmc.mgxs.EnergyGroups,
+        energy_groups: openmc.mgxs.EnergyGroups,
         nparticles: int,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
+        kinetic: bool | None = None,
+        num_delayed_groups: int = 0,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -2000,7 +2056,7 @@ class Model:
 
         Parameters
         ----------
-        groups : openmc.mgxs.EnergyGroups
+        energy_groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
         nparticles : int
             Number of particles to simulate per batch when generating MGXS.
@@ -2028,6 +2084,11 @@ class Model:
             no sources are defined on the model and the run mode is
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added.
+        kinetic : bool, optional
+            Flag to indicate if kinetic simulation cross sections are needed.
+        num_delayed_groups : int, optional
+            Number of delayed groups for kinetic simulations.
+
         """
         model = openmc.Model()
         model.materials = self.materials
@@ -2044,7 +2105,7 @@ class Model:
 
         # Define the sources
         model.settings.source = self._create_mgxs_sources(
-            groups,
+            energy_groups,
             spatial_dist=spatial_distribution,
             source_energy=source_energy
         )
@@ -2055,48 +2116,7 @@ class Model:
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
-
-        # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-        # Pick energy group structure
-        mgxs_lib.energy_groups = groups
-
-        # Disable transport correction
-        mgxs_lib.correction = correction
-
-       # Specify needed cross sections for random ray
-        if correction == 'P0':
-            mgxs_lib.mgxs_types = ['nu-transport', 'absorption', 'nu-fission', 'fission',
-                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
-        elif correction is None:
-            mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
-
-        # Specify a "cell" domain type for the cross section tally filters
-        mgxs_lib.domain_type = "material"
-
-        # Specify the cell domains over which to compute multi-group cross sections
-        mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-        # Do not compute cross sections on a nuclide-by-nuclide basis
-        mgxs_lib.by_nuclide = False
-
-        # Check the library - if no errors are raised, then the library is satisfactory.
-        mgxs_lib.check_library_for_openmc_mgxs()
-
-        # Construct all tallies needed for the multi-group cross section library
-        mgxs_lib.build_library()
-
-        # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-        # Run
-        statepoint_filename = model.run(cwd=directory)
-
-        # Load MGXS
-        with openmc.StatePoint(statepoint_filename) as sp:
-            mgxs_lib.load_from_statepoint(sp)
+        mgxs_lib = self._auto_generate_mgxs_lib(model, energy_groups, correction, directory, kinetic, num_delayed_groups)
 
         names = [mat.name for mat in mgxs_lib.domains]
 
@@ -2106,11 +2126,13 @@ class Model:
 
     def _generate_material_wise_mgxs(
         self,
-        groups: openmc.mgxs.EnergyGroups,
+        energy_groups: openmc.mgxs.EnergyGroups,
         nparticles: int,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        kinetic: bool | None = None,
+        num_delayed_groups: int = 0,
     ) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
@@ -2124,7 +2146,7 @@ class Model:
 
         Parameters
         ----------
-        groups : openmc.mgxs.EnergyGroups
+        energy_groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
         nparticles : int
             Number of particles to simulate per batch when generating MGXS.
@@ -2135,6 +2157,11 @@ class Model:
             "P0".
         directory : PathLike
             Directory to run the simulation in, so as to contain XML files.
+        kinetic : bool, optional
+            Flag to indicate if kinetic simulation cross sections are needed.
+        num_delayed_groups : int, optional
+            Number of delayed groups for kinetic simulations.
+
         """
         model = copy.deepcopy(self)
         model.tallies = openmc.Tallies()
@@ -2146,52 +2173,7 @@ class Model:
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
-
-        # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-        # Pick energy group structure
-        mgxs_lib.energy_groups = groups
-
-        # Disable transport correction
-        mgxs_lib.correction = correction
-
-        # Specify needed cross sections for random ray
-        if correction == 'P0':
-            mgxs_lib.mgxs_types = [
-                'nu-transport', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-            ]
-        elif correction is None:
-            mgxs_lib.mgxs_types = [
-                'total', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-            ]
-
-        # Specify a "cell" domain type for the cross section tally filters
-        mgxs_lib.domain_type = "material"
-
-        # Specify the cell domains over which to compute multi-group cross sections
-        mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-        # Do not compute cross sections on a nuclide-by-nuclide basis
-        mgxs_lib.by_nuclide = False
-
-        # Check the library - if no errors are raised, then the library is satisfactory.
-        mgxs_lib.check_library_for_openmc_mgxs()
-
-        # Construct all tallies needed for the multi-group cross section library
-        mgxs_lib.build_library()
-
-        # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-        # Run
-        statepoint_filename = model.run(cwd=directory)
-
-        # Load MGXS
-        with openmc.StatePoint(statepoint_filename) as sp:
-            mgxs_lib.load_from_statepoint(sp)
+        mgxs_lib = self._auto_generate_mgxs_lib(model, energy_groups, correction, directory, kinetic, num_delayed_groups)
 
         names = [mat.name for mat in mgxs_lib.domains]
 
@@ -2203,12 +2185,14 @@ class Model:
     def convert_to_multigroup(
         self,
         method: str = "material_wise",
-        groups: str = "CASMO-2",
+        energy_groups: str = "CASMO-2",
         nparticles: int = 2000,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
         source_energy: openmc.stats.Univariate | None = None,
+        kinetic: bool | None = None,
+        num_delayed_groups: int = 0,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2219,7 +2203,7 @@ class Model:
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
             Method to generate the MGXS.
-        groups : openmc.mgxs.EnergyGroups or str, optional
+        energy_groups : openmc.mgxs.EnergyGroups or str, optional
             Energy group structure for the MGXS or the name of the group
             structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
         nparticles : int, optional
@@ -2249,9 +2233,13 @@ class Model:
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added. Note that this argument is only used when using the
             "stochastic_slab" or "infinite_medium" MGXS generation methods.
+        kinetic : bool, optional
+            Flag to indicate if kinetic simulation cross sections are needed.
+        num_delayed_groups : int, optional
+            Number of delayed groups for kinetic simulations.
         """
-        if isinstance(groups, str):
-            groups = openmc.mgxs.EnergyGroups(groups)
+        if isinstance(energy_groups, str):
+            energy_groups = openmc.mgxs.EnergyGroups(energy_groups)
 
         # Do all work (including MGXS generation) in a temporary directory
         # to avoid polluting the working directory with residual XML files
@@ -2278,13 +2266,13 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
+                        energy_groups, nparticles, mgxs_path, correction, tmpdir, source_energy, kinetic, num_delayed_groups)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        energy_groups, nparticles, mgxs_path, correction, tmpdir, kinetic, num_delayed_groups)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
+                        energy_groups, nparticles, mgxs_path, correction, tmpdir, source_energy, kinetic, num_delayed_groups)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')
@@ -2300,6 +2288,17 @@ class Model:
                 material.add_macroscopic(material.name)
 
             self.settings.energy_mode = 'multi-group'
+
+            # If making a set the time step size to 0.01
+            if kinetic:
+                self.settings.kinetic_simulation = True
+                warnings.warn("Kinetic model. Currently, only the random ray solver" 
+                          " supports kinetic simulations. The number of time"
+                          " steps to run and material density transient using "
+                          " openmc.Settings.timestep_parameters['n_timesteps'] "
+                          " and openmc.Material.set_density(), respectively.")
+                self.settings.timestep_parameters = {'dt': 0.01, 'timestep_units': 's'}
+
 
     def convert_to_random_ray(self):
         """Convert a multigroup model to use random ray.

@@ -640,7 +640,7 @@ model to use these multigroup cross sections. An example is given below::
   # Assume we already have a working continuous energy model
   model.convert_to_multigroup(
       method="material_wise",
-      groups="CASMO-2",
+      energy_groups="CASMO-2",
       nparticles=2000,
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
@@ -706,6 +706,11 @@ generation and use an existing library file.
     `diagonal stabilization <https://doi.org/10.1016/j.anucene.2018.10.036>`_
     with a :math:`\rho` default value of 1.0, which can be adjusted with the
     ``settings.random_ray['diagonal_stabilization_rho']`` parameter.
+
+.. note::
+    Cross sections for kinetic simulations may be generating by passing the
+   ``kinetic`` parameter as ``True``. Delay groups may be specified with an additional
+   parameter, ``num_delayed_group``, which by default is zero.
 
 When generating MGXS data with either the ``stochastic_slab`` or
 ``infinite_medium`` methods, by default the simulation will use a uniform source

@@ -178,9 +178,9 @@ public:
   // Energy group-wise 1D arrays
   double* scalar_flux_old_;
   double* scalar_flux_new_;
-  double* source_;
-  double* source_final_;
-  double* external_source_;
+  float* source_;
+  float* source_final_;
+  float* external_source_;
   double* scalar_flux_final_;
 
   MomentArray* source_gradients_;
@@ -197,7 +197,7 @@ public:
   // Public Data Members for kinetic simulations
 
   // Energy group-wise 1D time-derivative arrays
-  double* source_time_derivative_;
+  float* source_time_derivative_;
   double* scalar_flux_time_derivative_2_;
 
   // Delay group-wise 1D arrays
@@ -215,7 +215,7 @@ public:
 
   // Energy group-wise 1D RHS BD arrays
   double* scalar_flux_rhs_bd_;
-  double* source_rhs_bd_;
+  float* source_rhs_bd_;
   double* scalar_flux_rhs_bd_2_;
 
   // Delay group-wise 1D RHS BD arrays
@@ -308,14 +308,14 @@ public:
   double& scalar_flux_final(int g) { return scalar_flux_final_[g]; }
   const double scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
 
-  double& source(int g) { return source_[g]; }
-  const double source(int g) const { return source_[g]; }
+  float& source(int g) { return source_[g]; }
+  const float source(int g) const { return source_[g]; }
 
-  double& source_final(int g) { return source_final_[g]; }
-  const double source_final(int g) const { return source_final_[g]; }
+  float& source_final(int g) { return source_final_[g]; }
+  const float source_final(int g) const { return source_final_[g]; }
 
-  double& external_source(int g) { return external_source_[g]; }
-  const double external_source(int g) const { return external_source_[g]; }
+  float& external_source(int g) { return external_source_[g]; }
+  const float external_source(int g) const { return external_source_[g]; }
 
   MomentArray& source_gradients(int g) { return source_gradients_[g]; }
   const MomentArray source_gradients(int g) const
@@ -343,8 +343,8 @@ public:
 
   //---------------------------------------------------------------------------
   // Public Accessors for kinetic simulations
-  double& source_time_derivative(int g) { return source_time_derivative_[g]; }
-  const double source_time_derivative(int g) const
+  float& source_time_derivative(int g) { return source_time_derivative_[g]; }
+  const float source_time_derivative(int g) const
   {
     return source_time_derivative_[g];
   }
@@ -394,8 +394,8 @@ public:
     return scalar_flux_rhs_bd_[g];
   }
 
-  double& source_rhs_bd(int g) { return source_rhs_bd_[g]; }
-  const double source_rhs_bd(int g) const { return source_rhs_bd_[g]; }
+  float& source_rhs_bd(int g) { return source_rhs_bd_[g]; }
+  const float source_rhs_bd(int g) const { return source_rhs_bd_[g]; }
 
   double& scalar_flux_rhs_bd_2(int g) { return scalar_flux_rhs_bd_2_[g]; }
   const double scalar_flux_rhs_bd_2(int g) const
@@ -471,9 +471,9 @@ public:
     scalar_flux_old_; //!< The scalar flux from the previous iteration
   vector<double>
     scalar_flux_new_; //!< The scalar flux from the current iteration
-  vector<double>
+  vector<float>
     source_; //!< The total source term (fission + scattering + external)
-  vector<double> external_source_;   //!< The external source term
+  vector<float> external_source_;   //!< The external source term
   vector<double> scalar_flux_final_; //!< The scalar flux accumulated over all
                                      //!< active iterations (used for plotting,
                                      //!< computing adjoint sources, or
@@ -499,11 +499,11 @@ public:
   // Public Data Members for kinetic simulations
 
   // Energy group-wise 1D time-dependent arrrays
-  vector<double> source_final_; //!< The total source accumulated over all
+  vector<float> source_final_; //!< The total source accumulated over all
                                 //!< active iterations (used for SDP)
 
   // Energy group-wise 1D derivative arrays
-  vector<double> source_time_derivative_;        //!< The time derivative of the
+  vector<float> source_time_derivative_;        //!< The time derivative of the
                                                  //!< source (used for SDP)
   vector<double> scalar_flux_time_derivative_2_; //!< The 2nd order time
                                                  //!< derivative of the scalar
@@ -544,9 +544,9 @@ public:
                          //!< timesteps. Used to compute the total scalar flux
                          //!< time derivative for both TI and SDP time-dependent
                          //!< simulations
-  vector<double> source_rhs_bd_; //!< RHS derivative for the neutron source from
-                                 //!< previous timesteps Used for compute the
-                                 //!< total neutron source derivative for SDP
+  vector<float> source_rhs_bd_; //!< RHS derivative for the neutron source from
+                                //!< previous timesteps Used for compute the
+                                //!< total neutron source derivative for SDP
   vector<double>
     scalar_flux_rhs_bd_2_; //!< 2nd order RHS derivative for the scalar flux
                            //!< from previous timesteps. Used to compute the
@@ -742,32 +742,32 @@ public:
     return scalar_flux_final_[se];
   }
 
-  double& source(int64_t sr, int g) { return source_[index(sr, g)]; }
-  const double source(int64_t sr, int g) const { return source_[index(sr, g)]; }
-  double& source(int64_t se) { return source_[se]; }
-  const double source(int64_t se) const { return source_[se]; }
+  float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
+  const float source(int64_t sr, int g) const { return source_[index(sr, g)]; }
+  float& source(int64_t se) { return source_[se]; }
+  const float source(int64_t se) const { return source_[se]; }
 
-  double& source_final(int64_t sr, int g)
+  float& source_final(int64_t sr, int g)
   {
     return source_final_[index(sr, g)];
   }
-  const double source_final(int64_t sr, int g) const
+  const float source_final(int64_t sr, int g) const
   {
     return source_final_[index(sr, g)];
   }
-  double& source_final(int64_t se) { return source_final_[se]; }
-  const double source_final(int64_t se) const { return source_final_[se]; }
+  float& source_final(int64_t se) { return source_final_[se]; }
+  const float source_final(int64_t se) const { return source_final_[se]; }
 
-  double& external_source(int64_t sr, int g)
+  float& external_source(int64_t sr, int g)
   {
     return external_source_[index(sr, g)];
   }
-  const double external_source(int64_t sr, int g) const
+  const float external_source(int64_t sr, int g) const
   {
     return external_source_[index(sr, g)];
   }
-  double& external_source(int64_t se) { return external_source_[se]; }
-  const double external_source(int64_t se) const
+  float& external_source(int64_t se) { return external_source_[se]; }
+  const float external_source(int64_t se) const
   {
     return external_source_[se];
   }
@@ -804,19 +804,19 @@ public:
 
   //---------------------------------------
   // For kinetic simulations
-  double& source_time_derivative(int64_t sr, int g)
+  float& source_time_derivative(int64_t sr, int g)
   {
     return source_time_derivative_[index(sr, g)];
   }
-  const double& source_time_derivative(int64_t sr, int g) const
+  const float& source_time_derivative(int64_t sr, int g) const
   {
     return source_time_derivative_[index(sr, g)];
   }
-  double& source_time_derivative(int64_t se)
+  float& source_time_derivative(int64_t se)
   {
     return source_time_derivative_[se];
   }
-  const double& source_time_derivative(int64_t se) const
+  const float& source_time_derivative(int64_t se) const
   {
     return source_time_derivative_[se];
   }
@@ -961,16 +961,16 @@ public:
     return precursors_rhs_bd_[de];
   }
 
-  double& source_rhs_bd(int64_t sr, int g)
+  float& source_rhs_bd(int64_t sr, int g)
   {
     return source_rhs_bd_[index(sr, g)];
   }
-  const double& source_rhs_bd(int64_t sr, int g) const
+  const float& source_rhs_bd(int64_t sr, int g) const
   {
     return source_rhs_bd_[index(sr, g)];
   }
-  double& source_rhs_bd(int64_t se) { return source_rhs_bd_[se]; }
-  const double& source_rhs_bd(int64_t se) const { return source_rhs_bd_[se]; }
+  float& source_rhs_bd(int64_t se) { return source_rhs_bd_[se]; }
+  const float& source_rhs_bd(int64_t se) const { return source_rhs_bd_[se]; }
 
   double& scalar_flux_rhs_bd_2(int64_t sr, int g)
   {
@@ -1065,9 +1065,9 @@ private:
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
-  vector<double> source_;
-  vector<double> source_final_;
-  vector<double> external_source_;
+  vector<float> source_;
+  vector<float> source_final_;
+  vector<float> external_source_;
 
   vector<MomentArray> source_gradients_;
   vector<MomentArray> flux_moments_old_;
@@ -1085,7 +1085,7 @@ private:
   // Private Data Members for kinetic simulations
 
   // SoA energy group-wise 2D derivative arrays flattened to 1D
-  vector<double> source_time_derivative_;
+  vector<float> source_time_derivative_;
   vector<double> scalar_flux_time_derivative_2_;
 
   // SoA delay group-wise 2D arrays flattened to 1D
@@ -1101,7 +1101,7 @@ private:
 
   // SoA energy group-wise 2D RHS BD arrays flattened to 1D
   vector<double> scalar_flux_rhs_bd_;
-  vector<double> source_rhs_bd_;
+  vector<float> source_rhs_bd_;
   vector<double> scalar_flux_rhs_bd_2_;
 
   // SoA delay group-wise 2D RHS BD arrays flattened to 1D

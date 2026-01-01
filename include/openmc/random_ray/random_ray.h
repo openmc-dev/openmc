@@ -93,7 +93,7 @@ private:
 
   //---------------------------------------------------------------------------
   // Private data members for kinetic simulations
-  vector<double> delta_psi_prime_;
+  vector<float> delta_psi_prime_;
 
 }; // class RandomRay
 

@@ -166,7 +166,7 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         for i, j in channels:
             universes[i][j] = abs_ch_univ
         lattice = openmc.HexLattice(lattice_id=6, name="regular fuel assembly")
-        lattice.orientation = "x"
+        lattice.orientation = "y"
         lattice.center = (0., 0., length/2.0)
         lattice.pitch = (assembly_pitch, length/2.0)
         lattice.universes = 2*[universes]

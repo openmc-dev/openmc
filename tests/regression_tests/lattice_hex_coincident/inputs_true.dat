@@ -39,7 +39,7 @@
     <cell id="6" name="matrix coolant surround" material="2" region="6 2 -3" universe="2"/>
     <cell id="7" material="2" universe="3"/>
     <cell id="8" name="container cell" fill="4" region="-7 8 -9 -12 10 11 2 -3" universe="5"/>
-    <hex_lattice id="4" name="regular fuel assembly" n_rings="2">
+    <hex_lattice id="4" name="regular fuel assembly" n_rings="2" orientation="x">
       <pitch>1.4</pitch>
       <outer>3</outer>
       <center>0.0 0.0</center>

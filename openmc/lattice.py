@@ -1301,7 +1301,7 @@ class HexLattice(Lattice):
         else:
             z = point[2] - self.center[2]
             iz = floor(z/self.pitch[1] + 0.5*self.num_axial)
-        if self._orientation == 'x':
+        if self._orientation == 'y':
             alpha = y - x*sqrt(3.)
             i1 = floor(-alpha/(sqrt(3.0) * self.pitch[0]))
             i2 = floor(y/(sqrt(0.75) * self.pitch[0]))
@@ -1343,7 +1343,7 @@ class HexLattice(Lattice):
             system
 
         """
-        if self._orientation == 'x':
+        if self._orientation == 'y':
             x = point[0] - (self.center[0] + (idx[0] + 0.5*idx[1])*self.pitch[0])
             y = point[1] - (self.center[1] + sqrt(0.75)*self.pitch[0]*idx[1])
         else:
@@ -1395,7 +1395,7 @@ class HexLattice(Lattice):
             else:
                 i_within = 5*g - z
 
-        if self._orientation == 'x' and g > 0:
+        if self._orientation == 'y' and g > 0:
             i_within = (i_within + 5*g) % (6*g)
 
         if self.num_axial is None:
@@ -1556,7 +1556,7 @@ class HexLattice(Lattice):
             # Get list for a single axial level
             axial_level = univs[z] if n_axial > 1 else univs
 
-            if lat.orientation == 'y':
+            if lat.orientation == 'x':
                 # Start iterating from top
                 x, alpha = 0, n_rings - 1
                 while True:
@@ -1615,7 +1615,7 @@ class HexLattice(Lattice):
         each sub-list represents a single ring.  The first list should be the
         outer ring.
         """
-        if self._orientation == 'x':
+        if self._orientation == 'y':
             return self._repr_axial_slice_x(universes)
         else:
             return self._repr_axial_slice_y(universes)
@@ -2051,7 +2051,7 @@ class HexLattice(Lattice):
 
         """
 
-        if orientation == 'x':
+        if orientation == 'y':
             return HexLattice._show_indices_x(num_rings)
         else:
             return HexLattice._show_indices_y(num_rings)
@@ -2095,7 +2095,7 @@ class HexLattice(Lattice):
         # If the Universe specified outer the Lattice is not void
         if outer >= 0:
             lattice.outer = universes[outer]
-        if orientation == "y":
+        if orientation == "x":
             # Build array of Universe pointers for the Lattice.  Note that
             # we need to convert between the HDF5's square array of
             # (x, alpha, z) to the Python API's format of a ragged nested

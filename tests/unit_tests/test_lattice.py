@@ -104,6 +104,7 @@ def hlat2(pincell1, pincell2, uo2, water, zr):
     pitch = 1.2
     u1, u2 = pincell1, pincell2
     lattice = openmc.HexLattice()
+    lattice.orientation = "x"
     lattice.center = (0., 0.)
     lattice.pitch = (pitch,)
     lattice.outer = openmc.Universe(cells=[all_zr])
@@ -135,6 +136,7 @@ def hlat3(pincell1, pincell2, uo2, water, zr):
     pitch = 1.2
     u1, u2 = pincell1, pincell2
     lattice = openmc.HexLattice()
+    lattice.orientation = "x"
     lattice.center = (0., 0., 0.)
     lattice.pitch = (pitch, 10.0)
     lattice.outer = openmc.Universe(cells=[all_zr])
@@ -202,12 +204,12 @@ def test_get_universe(rlat2, rlat3, hlat2, hlat3):
     assert hlat2.get_universe((1, 0)) == u1
     assert hlat2.get_universe((-2, 2)) == u1
 
-    hlat2.orientation = 'x'
+    hlat2.orientation = 'y'
     assert hlat2.get_universe((2, 0)) == u2
     assert hlat2.get_universe((1, 0)) == u2
     assert hlat2.get_universe((1, 1)) == u1
     assert hlat2.get_universe((-1, 1)) == u1
-    hlat2.orientation = 'y'
+    hlat2.orientation = 'x'
 
     u1, u2, u3, outer = hlat3.univs
     assert hlat3.get_universe((0, 0, 0)) == u2
@@ -357,9 +359,9 @@ def test_xml_hex(hlat2, hlat3):
 
 def test_show_indices():
     for i in range(1, 11):
-        lines = openmc.HexLattice.show_indices(i).split('\n')
+        lines = openmc.HexLattice.show_indices(i, 'x').split('\n')
         assert len(lines) == 4*i - 3
-        lines_x = openmc.HexLattice.show_indices(i, 'x').split('\n')
+        lines_x = openmc.HexLattice.show_indices(i, 'y').split('\n')
         assert len(lines_x) == 4*i - 3
 
 
@@ -373,6 +375,7 @@ def test_unset_universes():
         lattice.create_xml_subelement(elem)
 
     hex_lattice = openmc.HexLattice()
+    hex_lattice.orientation = "x"
     hex_lattice.center = (0., 0.)
     hex_lattice.pitch = (1.,)
     with pytest.raises(ValueError):

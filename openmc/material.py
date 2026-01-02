@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-from typing import Sequence, Dict, cast
+from typing import Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -25,9 +25,9 @@ from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, BARN_PER_CM_SQ, JOULE_PER_EV
-from openmc.data.function import Combination, Tabulated1D
+from openmc.data.function import Combination, Tabulated1D, Sum
 from openmc.data import mu_en_coefficients
-from openmc.data.photon_attenuation import material_photon_mass_attenuation_dist
+from openmc.data.photon_attenuation import linear_attenuation_xs
 
 
 # Units for density supported by OpenMC
@@ -413,123 +413,70 @@ class Material(IDManagerMixin):
 
         return combined
 
-    def get_photon_mass_attenuation(
-        self, photon_energy: float | Real | Univariate | Discrete | Mixture | Tabular
-    ) -> float:
-        """Compute the photon mass attenuation coefficient for this material.
+    def get_photon_mass_attenuation(self) -> Sum | None:
+        """Return the photon mass attenuation distribution μ/ρ(E) [cm^2/g].
 
-        The mass attenuation coefficient :math:`\\mu/\\rho` is computed by
-        evaluating the photon mass attenuation energy distribution at the
-        requested photon energy. If the energy is given as one or more
-        discrete or tabulated distributions, the mass attenuation is
-        weighted appropriately.
+        the linear attenuation coefficient of the material is given by:
+            μ(E) = Σ_el N_el * σ_el(E)
+        with N_el in [atom/b-cm] and σ_el(E) in [barn/atom] => μ in [1/cm].
+
+        The mass attenuation coefficients are given by:
+            μ/ρ(E) = μ(E) / ρ
+        => [1/cm] / [g/cm^3] = [cm^2/g]
 
         Parameters
         ----------
-        photon_energy : Real or Discrete or Mixture or Tabular
-            Photon energy description. Accepted values:
-            * ``float``: a single photon energy (must be > 0).
-            * ``Discrete``: discrete photon energies with associated probabilities.
-            * ``Tabular``: tabulated photon energy probability density.
-            * ``Mixture``: mixture of ``Discrete`` and/or ``Tabular`` distributions.
+        self : openmc.Material
 
         Returns
         -------
-        float
-            Photon mass attenuation coefficient in units of cm2/g.
-
-        Raises
-        ------
-        TypeError
-            If ``photon_energy`` is not one of ``Real``, ``Discrete``,
-            ``Mixture``, or ``Tabular``.
-        ValueError
-            If the material has non-positive mass density, if nuclide
-            densities are not defined, or if a ``Mixture`` contains
-            unsupported distribution types.
+        openmc.data.Sum or None
+            Sum of Tabulated1D terms giving μ/ρ(E) in [cm^2/g], or None if no photon
+            data exist for any constituents.
         """
+        el_dens = self.get_element_atom_densities()
+        if not el_dens:
+            raise ValueError(
+                f'For Material ID="{self.id}" no element densities are defined.'
+            )
 
-        cv.check_type(
-            "photon_energy", photon_energy, (float, Real, Discrete, Mixture, Tabular)
-        )
+        # Mass density of the material [g/cm^3]
+        rho = self.get_mass_density()  # g/cm^3
 
-        if isinstance(photon_energy, float):
-            photon_energy = cast(float, photon_energy)
+        if rho is None or rho <= 0.0:
+            raise ValueError(
+                f'Material ID="{self.id}" has non-positive mass density; '
+                "cannot compute mass attenuation coefficient."
+            )
 
-        if isinstance(photon_energy, Real):
-            cv.check_greater_than("energy", photon_energy, 0.0, equality=False)
 
-        distributions = []
-        distribution_weights = []
+        inv_rho = 1.0 / rho
+        terms = []
 
-        if isinstance(photon_energy, (Tabular, Discrete)):
-            distributions.append(deepcopy(photon_energy))
-            distribution_weights.append(1.0)
+        for el, n_el in el_dens.items():
+            xs_sum = linear_attenuation_xs(el)  # barns/atom functions vs E
+            if xs_sum is None or n_el == 0.0:
+                continue
 
-        elif isinstance(photon_energy, Mixture):
-            photon_energy = deepcopy(photon_energy)
-            photon_energy.normalize()
-            for w, d in zip(photon_energy.probability, photon_energy.distribution):
-                if not isinstance(d, (Discrete, Tabular)):
-                    raise ValueError(
-                        "Mixture distributions can be only a combination of Discrete or Tabular"
+            scale = float(n_el) * inv_rho  # (atom/b-cm) / (g/cm^3) = (atom*cm^2)/(barn*g)
+
+            for f in xs_sum.functions:
+                if not isinstance(f, Tabulated1D):
+                    raise TypeError(
+                        f"Expected Tabulated1D photon XS for element {el}, got {type(f)!r}."
                     )
-                distributions.append(d)
-                distribution_weights.append(w)
-
-        for dist in distributions:
-            dist.normalize()
-
-        # photon mass attenuation distribution as a function of energy
-        mass_attenuation_dist = material_photon_mass_attenuation_dist(self)
-
-        if mass_attenuation_dist is None:
-            raise ValueError("cannot compute photon mass attenuation for material")
-
-        photon_attenuation = 0.0
-
-        if isinstance(photon_energy, Real):
-            return mass_attenuation_dist(photon_energy)
-
-        for dist_weight, dist in zip(distribution_weights, distributions):
-            e_vals = dist.x
-            p_vals = dist.p
-
-            if isinstance(dist, Discrete):
-                for p, e in zip(p_vals, e_vals):
-                    photon_attenuation += dist_weight * p * mass_attenuation_dist(e)
-
-            if isinstance(dist, Tabular):
-                # cast tabular distribution to a Tabulated1D object
-                pe_dist = Tabulated1D(
-                    e_vals, p_vals, breakpoints=None, interpolation=[1]
+                # keep x, breakpoints, interpolation; scale y. 
+                terms.append(
+                    Tabulated1D(
+                        f.x,
+                        np.asarray(f.y, dtype=float) * scale,
+                        breakpoints=f.breakpoints,
+                        interpolation=f.interpolation,
+                    )
                 )
 
-                # generate a union of abscissae
-                e_lists = [e_vals]
-                for photon_xs in mass_attenuation_dist.functions:
-                    e_lists.append(photon_xs.x)
-                e_union = reduce(np.union1d, e_lists)
+        return Sum(terms) if terms else None
 
-                # generate a callable combination of normalized photon probability x linear
-                # attenuation
-                integrand_operator = Combination(
-                    functions=[pe_dist, mass_attenuation_dist], operations=[np.multiply]
-                )
-
-                # compute y-values of the callable combination
-                mu_evaluated = integrand_operator(e_union)
-
-                # instantiate the combined Tabulated1D function
-                integrand_function = Tabulated1D(
-                    e_union, mu_evaluated, breakpoints=None, interpolation=[5]
-                )
-
-                # sum the distribution contribution to the linear attenuation
-                # of the nuclide
-                photon_attenuation += dist_weight * integrand_function.integral()[-1]
-
-        return float(photon_attenuation)  # cm2/g
 
     def get_photon_contact_dose_rate(self,  by_nuclide: bool = False) -> float | dict[str, float]:
         """Compute the photon contact dose rate (CDR) produced by radioactive decay
@@ -591,7 +538,7 @@ class Material(IDManagerMixin):
 
         # photon mass attenuation distribution as a function of energy
         # distribution values in [cm2/g]
-        mass_attenuation_dist = material_photon_mass_attenuation_dist(self)
+        mass_attenuation_dist = self.get_photon_mass_attenuation()
         if mass_attenuation_dist is None:
             raise ValueError("Cannot compute photon mass attenuation for material")
 

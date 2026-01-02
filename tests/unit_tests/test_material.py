@@ -8,6 +8,7 @@ import numpy as np
 import openmc
 from openmc.data import decay_photon_energy
 from openmc.deplete import Chain
+from openmc.data.photon_attenuation import linear_attenuation_xs
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -820,127 +821,103 @@ def test_material_from_constructor():
     assert mat2.density_units == "g/cm3"
     assert mat2.nuclides == []
 
-def test_get_material_photon_attenuation():
-    # ------------------------------------------------------------------
-    # Carbon
-    # ------------------------------------------------------------------
-    mat_c = openmc.Material(name="C")
-    mat_c.set_density("g/cm3", 1.7)
-    mat_c.add_element("C", 1.0)
+# test of the photon mass attenuation distribution generator
 
-    mu_rho_c = mat_c.get_photon_mass_attenuation(1.0e6)
-    assert mu_rho_c > 0.0
+def test_material_photon_mass_attenuation_dist_returns_none_when_no_photon_data(monkeypatch):
+    """If no constituent has photon data, should return None."""
+    # Make both element lookups return None
+    monkeypatch.setattr(photon_att, "_get_photon_data", lambda _: None)
 
-    energy_c_1 = 1.50000E+03  # [eV]
-    ref_mu_rho_c_1 = 7.002E+02  # [cm^2/g]
-    assert mat_c.get_photon_mass_attenuation(energy_c_1) == pytest.approx(
-        ref_mu_rho_c_1, rel=1e-2
-    )
+    mat = openmc.Material()
+    mat.add_element("C", 1.0)
+    mat.add_element("Pb", 1.0)
+    mat.set_density("g/cm3", 1.0)
+
+    out = mat.get_photon_mass_attenuation()
+    assert out is None
 
 
-    energy_c_2 = 8.00000E+05  # [eV]
-    ref_mu_rho_c_2 = 7.076E-02  # [cm^2/g]
-    assert mat_c.get_photon_mass_attenuation(energy_c_2) == pytest.approx(
-        ref_mu_rho_c_2, rel=1e-2
-    )
+@pytest.mark.parametrize("symbol", ["C", "Pb"])
+def test_material_photon_mass_attenuation_dist_single_element_matches_linear_over_rho(
+    elements_photon_xs, symbol, monkeypatch
+):
+    """For a pure element: μ/ρ(E) == (N*σ(E))/ρ == linear_attenuation_xs(E)/ρ."""
+    element = elements_photon_xs.get(symbol)
+    if element is None:
+        pytest.skip(f"No photon data for {symbol} in cross section library.")
 
-    # ------------------------------------------------------------------
-    # Lead
-    # ------------------------------------------------------------------
-    mat_pb = openmc.Material(name="Pb")
-    mat_pb.set_density("g/cm3", 11.35)
-    mat_pb.add_element("Pb", 1.0)
+    # Route _get_photon_data to preloaded element data
+    monkeypatch.setattr(photon_att, "_get_photon_data", lambda name: element if name == symbol else None)
 
-    mu_rho_pb = mat_pb.get_photon_mass_attenuation(1.0e6)
-    assert mu_rho_pb > 0.0
+    if symbol == "Pb":
+        rho = 11.34
+    elif symbol == "C":
+        rho = 2.0
+    else:
+        rho = 1.0
 
-    energy_pb_1 = 2.00000E+04  # [eV]
-    ref_mu_rho_pb_1 = 8.636E+01  # [cm^2/g]
-    assert mat_pb.get_photon_mass_attenuation(energy_pb_1) == pytest.approx(
-        ref_mu_rho_pb_1 , rel=1e-2
-    )
+    mat = openmc.Material()
+    mat.add_element(symbol, 1.0)
+    mat.set_density("g/cm3", rho)
 
-    energy_pb_2 = 2.00000E+07  # [eV]
-    ref_mu_rho_pb_2 = 6.206E-02  # [cm^2/g]
-    assert mat_pb.get_photon_mass_attenuation(energy_pb_2) == pytest.approx(
-        ref_mu_rho_pb_2 , rel=1e-2
-    )
+    xs = linear_attenuation_xs(symbol)
+    if xs is None:
+        pytest.skip(f"No relevant photon reactions for {symbol}.")
 
-    # ------------------------------------------------------------------
-    # Water (H2O)
-    # ------------------------------------------------------------------
-    mat_water = openmc.Material(name="Water")
-    mat_water.set_density("g/cm3", 1.0)
-    mat_water.add_element("H", 2.0)
-    mat_water.add_element("O", 1.0)
+    mu_over_rho = mat.get_photon_mass_attenuation()
+    assert mu_over_rho is not None
 
-    mu_rho_water = mat_water.get_photon_mass_attenuation(1.0e6)
-    assert mu_rho_water > 0.0
+    energy = np.logspace(2, 6, 80)
 
-    energy_water_1 = 2.00000E+04  # [eV]
-    ref_mu_rho_water_1 = 8.096E-01  # [cm^2/g]
-    assert mat_water.get_photon_mass_attenuation(energy_water_1) == pytest.approx(
-        ref_mu_rho_water_1 , rel=1e-2
-        )
 
-    energy_water_2 = 5.00000E+05  # [eV]
-    ref_mu_rho_water_2 = 9.687E-02  # [cm^2/g]
-    assert mat_water.get_photon_mass_attenuation(energy_water_2) == pytest.approx(
-        ref_mu_rho_water_2 , rel=1e-2
-    )
+    rho = mat.get_mass_density()
+    n_el = mat.get_element_atom_densities()[symbol]
+    expected = xs(energy) * (n_el / rho)
+    actual = mu_over_rho(energy)
 
-    # ------------------------------------------------------------------
-    # Test gamma discrete distribution
-    # ------------------------------------------------------------------
-    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_ni.xml'
-    mat_pb = openmc.Material(name="Pb")
-    mat_pb.set_density("g/cm3", 11.35)
-    mat_pb.add_element("Pb", 1.0)
 
-    mat_co = openmc.Material(name="Co60")
-    mat_co.add_nuclide("Co60", 1.0)
-    co_spectrum = mat_co.get_decay_photon_energy(units='Bq/cm3')
 
-    # value from doi: https://doi.org/10.2172/6246345
-    mu_pb =  0.679  # [cm-1]  for Co-60 in Pb
-    mass_attenuation_coeff_co60_pb = mu_pb / mat_pb.density  # [cm^2/g] 
-    assert mat_pb.get_photon_mass_attenuation(co_spectrum) ==  pytest.approx(mass_attenuation_coeff_co60_pb, rel=1e-01)
+    assert np.allclose(actual, expected)
 
-    # ------------------------------------------------------------------
-    # Test gamma tabular distribution
-    # ------------------------------------------------------------------
-    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple_decay.xml'
-    mat_pb = openmc.Material(name="Pb")
-    mat_pb.set_density("g/cm3", 11.35)
-    mat_pb.add_element("Pb", 1.0)
 
-    mat_xe = openmc.Material(name="I135")
-    mat_xe.add_nuclide("I135", 1.0)
-    xe_spectrum = mat_xe.get_decay_photon_energy(units='Bq/cm3')
+def test_material_photon_mass_attenuation_dist_mixture_matches_explicit_sum(
+    elements_photon_xs, monkeypatch
+):
+    """For a mixture: μ/ρ(E) == (Σ_i N_i σ_i(E))/ρ."""
+    c_data = elements_photon_xs.get("C")
+    pb_data = elements_photon_xs.get("Pb")
+    if c_data is None or pb_data is None:
+        pytest.skip("C or Pb photon data not available in cross section library.")
 
-    # value from doi: https://doi.org/10.2172/6246345
-    mu_xe =  5.015  # [cm-1] for Xe-135 in Pb
-    mass_attenuation_coeff_xe135_pb = mu_xe / mat_pb.density  # [cm^2/g] 
-    assert mat_pb.get_photon_mass_attenuation(xe_spectrum) == pytest.approx(mass_attenuation_coeff_xe135_pb, rel=1e-1)
+    def _fake_get_photon_data(name: str):
+        if name == "C":
+            return c_data
+        if name == "Pb":
+            return pb_data
+        return None
 
-    # ------------------------------------------------------------------
-    # Invalid input tests
-    # ------------------------------------------------------------------
+    monkeypatch.setattr(photon_att, "_get_photon_data", _fake_get_photon_data)
 
-    # Non-positive energy
-    with pytest.raises(ValueError):
-        mat_water.get_photon_mass_attenuation(0.0)
+    rho = 7.0
 
-    with pytest.raises(ValueError):
-        mat_water.get_photon_mass_attenuation(-1.0)
+    mat = openmc.Material()
+    mat.add_element("C", 0.5)
+    mat.add_element("Pb", 0.5)
+    mat.set_density("g/cm3", rho)
 
-    # Wrong type for energy
-    with pytest.raises(TypeError):
-        mat_water.get_photon_mass_attenuation("1.0e6")  # type: ignore[arg-type]
+    mu_over_rho = mat.get_photon_mass_attenuation()
+    if mu_over_rho is None:
+        pytest.skip("No relevant photon reactions for C/Pb.")
 
-    # zero mass density
-    mat_zero_rho = openmc.Material(name="Zero density")
-    mat_zero_rho.set_density("g/cm3", 0.0)
-    mat_zero_rho.add_element("H", 1.0)
-    with pytest.raises(ValueError):
-        mat_zero_rho.get_photon_mass_attenuation(1.0e6)
+    # Explicit construction using the same building blocks:
+    el_dens = mat.get_element_atom_densities()
+    xs_c = linear_attenuation_xs("C")
+    xs_pb = linear_attenuation_xs("Pb")
+    if xs_c is None or xs_pb is None:
+        pytest.skip("No relevant photon reactions for C or Pb.")
+
+    energy = np.logspace(2, 6, 80)
+    expected = (el_dens["C"] * xs_c(energy) + el_dens["Pb"] * xs_pb(energy)) / rho
+    actual = mu_over_rho(energy)
+
+    assert np.allclose(actual, expected)

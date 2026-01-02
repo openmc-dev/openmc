@@ -1,4 +1,5 @@
 from collections import defaultdict
+import os
 from pathlib import Path
 
 import pytest
@@ -7,7 +8,10 @@ import numpy as np
 
 import openmc
 from openmc.data import decay_photon_energy
+from openmc.data import IncidentPhoton
+from openmc.data.library import DataLibrary
 from openmc.deplete import Chain
+import openmc.data.photon_attenuation as photon_attenuation
 from openmc.data.photon_attenuation import linear_attenuation_xs
 import openmc.examples
 import openmc.model
@@ -823,10 +827,34 @@ def test_material_from_constructor():
 
 # test of the photon mass attenuation distribution generator
 
+@pytest.fixture(scope="module")
+def xs_filename():
+    xs = os.environ.get("OPENMC_CROSS_SECTIONS")
+    if xs is None:
+        pytest.skip("OPENMC_CROSS_SECTIONS not set.")
+    return xs
+
+
+@pytest.fixture(scope="module")
+def elements_photon_xs(xs_filename):
+    """Dictionary of IncidentPhoton data indexed by atomic symbol."""
+    lib = DataLibrary.from_xml(xs_filename)
+
+    elements = ["H", "O", "Al", "C", "Ag", "U", "Pb", "V"]
+    data = {}
+    for symbol in elements:
+        entry = lib.get_by_material(symbol, data_type="photon")
+        if entry is None:
+            continue
+        data[symbol] = IncidentPhoton.from_hdf5(entry["path"])
+    return data
+
+
+
 def test_material_photon_mass_attenuation_dist_returns_none_when_no_photon_data(monkeypatch):
     """If no constituent has photon data, should return None."""
     # Make both element lookups return None
-    monkeypatch.setattr(photon_att, "_get_photon_data", lambda _: None)
+    monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda _: None)
 
     mat = openmc.Material()
     mat.add_element("C", 1.0)
@@ -847,7 +875,7 @@ def test_material_photon_mass_attenuation_dist_single_element_matches_linear_ove
         pytest.skip(f"No photon data for {symbol} in cross section library.")
 
     # Route _get_photon_data to preloaded element data
-    monkeypatch.setattr(photon_att, "_get_photon_data", lambda name: element if name == symbol else None)
+    monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda name: element if name == symbol else None)
 
     if symbol == "Pb":
         rho = 11.34
@@ -896,7 +924,7 @@ def test_material_photon_mass_attenuation_dist_mixture_matches_explicit_sum(
             return pb_data
         return None
 
-    monkeypatch.setattr(photon_att, "_get_photon_data", _fake_get_photon_data)
+    monkeypatch.setattr(photon_attenuation, "_get_photon_data", _fake_get_photon_data)
 
     rho = 7.0
 

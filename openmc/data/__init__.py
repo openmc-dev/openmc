@@ -35,4 +35,4 @@ from .grid import *
 from .function import *
 
 from .effective_dose.dose import dose_coefficients
-from .mass_attenuation.mass_attenuation import mu_en_coefficients
+from .mass_energy_absorption import mu_en_coefficients

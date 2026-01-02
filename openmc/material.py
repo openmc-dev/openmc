@@ -26,7 +26,7 @@ from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, BARN_PER_CM_SQ, JOULE_PER_EV
 from openmc.data.function import Combination, Tabulated1D
-from openmc.data.mass_attenuation.mass_attenuation import mu_en_coefficients
+from openmc.data import mu_en_coefficients
 from openmc.data.photon_attenuation import material_photon_mass_attenuation_dist
 
 

@@ -76,7 +76,6 @@ class IPFCramSolver(DepSystemSolver):
             Final compositions after ``dt``
 
         """
-        A = dt * sp.csc_matrix(A, dtype=np.float64)
         y = n0.copy()
         if use_cache:
             for alpha, splu in zip(self.alpha, self._splu_cache):

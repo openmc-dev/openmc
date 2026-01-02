@@ -1,7 +1,6 @@
 import numpy as np
 
 from openmc.exceptions import DataError
-# from openmc.material import Material
 
 from .data import ATOMIC_SYMBOL, ELEMENT_SYMBOL, zam
 from .function import Sum, Tabulated1D
@@ -35,15 +34,13 @@ def _get_photon_data(nuclide: str) -> IncidentPhoton | None:
     return _PHOTON_DATA[nuclide]
 
 
-def linear_attenuation_xs(element_input: str, temperature: float) -> Sum | None:
+def linear_attenuation_xs(element_input: str) -> Sum | None:
     """Return total photon interaction cross section for a nuclide.
 
     Parameters
     ----------
     element_input : str
         Name of nuclide or element
-    temperature : float
-        Temperature in Kelvin.
 
     Returns
     -------
@@ -64,7 +61,6 @@ def linear_attenuation_xs(element_input: str, temperature: float) -> Sum | None:
     if photon_data is None:
         return None
 
-    temp_key = f"{int(round(temperature))}K"
     photon_mts = (502, 504, 515, 517, 522)
 
     xs_list = []
@@ -73,19 +69,7 @@ def linear_attenuation_xs(element_input: str, temperature: float) -> Sum | None:
         if mt not in photon_mts:
             continue
 
-        xs_obj = reaction.xs
-        if isinstance(xs_obj, dict):
-            if temp_key in xs_obj:
-                xs_T = xs_obj[temp_key]
-            else:
-                # Fall back to closest available temperature
-                temps = np.array([float(t.rstrip("K")) for t in xs_obj.keys()])
-                idx = int(np.argmin(np.abs(temps - temperature)))
-                sel_key = f"{int(round(temps[idx]))}K"
-                xs_T = xs_obj[sel_key]
-            xs_list.append(xs_T)
-        else:
-            xs_list.append(xs_obj)
+        xs_list.append(reaction.xs)
 
     if not xs_list:
         return None
@@ -130,14 +114,12 @@ def material_photon_mass_attenuation_dist(material) -> Sum | None:
             "cannot compute mass attenuation coefficient."
         )
 
-    # Use material temperature (rounded in linear_attenuation_xs), or a sane default
-    T = float(material.temperature) if material.temperature is not None else 294.0
 
     inv_rho = 1.0 / rho
     terms = []
 
     for el, n_el in el_dens.items():
-        xs_sum = linear_attenuation_xs(el, T)  # barns/atom functions vs E
+        xs_sum = linear_attenuation_xs(el)  # barns/atom functions vs E
         if xs_sum is None or n_el == 0.0:
             continue
 

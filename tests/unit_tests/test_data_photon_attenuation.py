@@ -52,7 +52,7 @@ def test_linear_attenuation_xs_matches_sum(elements_photon_xs, symbol, monkeypat
     # Use preloaded IncidentPhoton instead of reading via DataLibrary in the helper
     monkeypatch.setattr(linear_attenuation, "_get_photon_data", lambda _: element)
 
-    xs_sum = linear_attenuation_xs(symbol, temperature=293.6)
+    xs_sum = linear_attenuation_xs(symbol)
 
     # If the element has no relevant reactions, helper should return None
     has_relevant = any(mt in element.reactions for mt in PHOTON_MTS)
@@ -85,8 +85,8 @@ def test_linear_attenuation_xs_element_conversion(elements_photon_xs, monkeypatc
     # Use preloaded IncidentPhoton instead of reading via DataLibrary in the helper
     monkeypatch.setattr(linear_attenuation, "_get_photon_data", lambda _: element)
 
-    xs_el = linear_attenuation_xs(symbol_el, temperature=293.6)
-    xs_nuc = linear_attenuation_xs(symbol_nuc, temperature=293.6)
+    xs_el = linear_attenuation_xs(symbol_el)
+    xs_nuc = linear_attenuation_xs(symbol_nuc)
 
     if xs_el is None or xs_nuc is None:
         pytest.skip("No relevant photon reactions for C or C12.")
@@ -104,7 +104,7 @@ def test_linear_attenuation_xs_returns_none_when_no_photon_data(monkeypatch):
     """If _get_photon_data returns None, the helper should return None."""
     monkeypatch.setattr(linear_attenuation, "_get_photon_data", lambda _: None)
 
-    xs_sum = linear_attenuation_xs("Og", temperature=300.0)
+    xs_sum = linear_attenuation_xs("Og")
     assert xs_sum is None
 
 def test_linear_attenuation_xs_gives_error_wrong_name(monkeypatch):
@@ -112,7 +112,7 @@ def test_linear_attenuation_xs_gives_error_wrong_name(monkeypatch):
     monkeypatch.setattr(linear_attenuation, "_get_photon_data", lambda _: None)
 
     with pytest.raises(ValueError):
-        _ = linear_attenuation_xs("NonExisting123", temperature=300.0)
+        _ = linear_attenuation_xs("NonExisting123")
 
 # ================================================================
 # Tests for _get_photon_data (internal helper)
@@ -203,9 +203,9 @@ def test_linear_attenuation_reference_values(elements_photon_xs, monkeypatch):
     monkeypatch.setattr(linear_attenuation, "_get_photon_data", _fake_get_photon_data)
 
 
-    # Call the helper at room temperature
-    xs_pb = linear_attenuation_xs("Pb", temperature=293.6)
-    xs_v = linear_attenuation_xs("V", temperature=293.6)
+    # Call the helper 
+    xs_pb = linear_attenuation_xs("Pb")
+    xs_v = linear_attenuation_xs("V")
 
     if xs_pb is None or xs_v is None:
         pytest.skip("No relevant photon reactions for Pb or V.")
@@ -225,7 +225,7 @@ def test_linear_attenuation_reference_values(elements_photon_xs, monkeypatch):
         ]
     )
 
-    pb_mat = openmc.Material(temperature=293.6)
+    pb_mat = openmc.Material()
     pb_mat.add_element("Pb", 1.0)
     pb_mat.set_density("g/cm3", 11.34)
 
@@ -243,7 +243,7 @@ def test_linear_attenuation_reference_values(elements_photon_xs, monkeypatch):
         ]
     )
 
-    v_mat = openmc.Material(temperature=293.6)
+    v_mat = openmc.Material()
     v_mat.add_element("V", 1.0)
     v_mat.set_density("g/cm3", 11.34)
 
@@ -262,7 +262,7 @@ def test_material_photon_mass_attenuation_dist_returns_none_when_no_photon_data(
     # Make both element lookups return None
     monkeypatch.setattr(photon_att, "_get_photon_data", lambda _: None)
 
-    mat = openmc.Material(temperature=293.6)
+    mat = openmc.Material()
     mat.add_element("C", 1.0)
     mat.add_element("Pb", 1.0)
     mat.set_density("g/cm3", 1.0)
@@ -283,7 +283,6 @@ def test_material_photon_mass_attenuation_dist_single_element_matches_linear_ove
     # Route _get_photon_data to preloaded element data
     monkeypatch.setattr(photon_att, "_get_photon_data", lambda name: element if name == symbol else None)
 
-    T = 293.6
     if symbol == "Pb":
         rho = 11.34
     elif symbol == "C":
@@ -291,11 +290,11 @@ def test_material_photon_mass_attenuation_dist_single_element_matches_linear_ove
     else:
         rho = 1.0
 
-    mat = openmc.Material(temperature=T)
+    mat = openmc.Material()
     mat.add_element(symbol, 1.0)
     mat.set_density("g/cm3", rho)
 
-    xs = linear_attenuation_xs(symbol, temperature=T)
+    xs = linear_attenuation_xs(symbol)
     if xs is None:
         pytest.skip(f"No relevant photon reactions for {symbol}.")
 
@@ -333,10 +332,9 @@ def test_material_photon_mass_attenuation_dist_mixture_matches_explicit_sum(
 
     monkeypatch.setattr(photon_att, "_get_photon_data", _fake_get_photon_data)
 
-    T = 293.6
     rho = 7.0
 
-    mat = openmc.Material(temperature=T)
+    mat = openmc.Material()
     mat.add_element("C", 0.5)
     mat.add_element("Pb", 0.5)
     mat.set_density("g/cm3", rho)
@@ -347,8 +345,8 @@ def test_material_photon_mass_attenuation_dist_mixture_matches_explicit_sum(
 
     # Explicit construction using the same building blocks:
     el_dens = mat.get_element_atom_densities()
-    xs_c = linear_attenuation_xs("C", T)
-    xs_pb = linear_attenuation_xs("Pb", T)
+    xs_c = linear_attenuation_xs("C")
+    xs_pb = linear_attenuation_xs("Pb")
     if xs_c is None or xs_pb is None:
         pytest.skip("No relevant photon reactions for C or Pb.")
 

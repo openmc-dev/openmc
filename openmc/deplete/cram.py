@@ -6,11 +6,11 @@ Implements two different forms of CRAM for use in openmc.deplete.
 import numbers
 
 import numpy as np
-import scipy.sparse as sp
 import scipy.sparse.linalg as sla
 
 from openmc.checkvalue import check_type, check_length
 from .abc import DepSystemSolver
+from .._sparse_compat import csc_array, eye_array
 
 __all__ = ["CRAM16", "CRAM48", "Cram16Solver", "Cram48Solver", "IPFCramSolver"]
 
@@ -61,7 +61,7 @@ class IPFCramSolver(DepSystemSolver):
 
         Parameters
         ----------
-        A : scipy.sparse.csr_matrix
+        A : scipy.sparse.csc_array
             Sparse transmutation matrix ``A[j, i]`` desribing rates at
             which isotope ``i`` transmutes to isotope ``j``
         n0 : numpy.ndarray
@@ -76,13 +76,14 @@ class IPFCramSolver(DepSystemSolver):
             Final compositions after ``dt``
 
         """
+        A = dt * sp.csc_matrix(A, dtype=np.float64)
         y = n0.copy()
         if use_cache:
             for alpha, splu in zip(self.alpha, self._splu_cache):
                 y += 2*np.real(alpha*splu.solve(y))
         else:
-            A = dt * sp.csc_matrix(A, dtype=np.float64)
-            ident = sp.eye(A.shape[0], format='csc')
+            A = dt * csc_array(A, dtype=np.float64)
+            ident = eye_array(A.shape[0], format='csc')
             self._splu_cache = []
             for alpha, theta in zip(self.alpha, self.theta):
                 splu = sla.splu(A - theta*ident)

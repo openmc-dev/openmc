@@ -14,12 +14,8 @@ if [[ $EVENT == 'y' ]]; then
   args="${args} --event "
 fi
 
-# Check NCrystal installation
-if [[ $NCRYSTAL = 'y' ]]; then
-  # Change environmental variables
-  eval $( "${HOME}/ncrystal_inst/bin/ncrystal-config" --setup )
-  nctool --test
-fi
-
-# Run regression and unit tests
-pytest --cov=openmc -v $args tests
+# Run unit tests and then regression tests
+pytest -v $args \
+  tests/test_matplotlib_import.py \
+  tests/unit_tests \
+  tests/regression_tests

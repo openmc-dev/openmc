@@ -11,7 +11,7 @@ class SourceTestHarness(PyAPITestHarness):
         super().__init__(*args, **kwargs)
         mat1 = openmc.Material(material_id=1, temperature=294)
         mat1.set_density('g/cm3', 4.5)
-        mat1.add_nuclide(openmc.Nuclide('U235'), 1.0)
+        mat1.add_nuclide('U235', 1.0)
         self._model.materials = openmc.Materials([mat1])
 
         sphere = openmc.Sphere(surface_id=1, r=10.0, boundary_type='vacuum')

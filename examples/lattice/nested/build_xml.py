@@ -124,8 +124,9 @@ settings_file.particles = particles
 
 # Create an initial uniform spatial source distribution over fissionable zones
 bounds = [-1, -1, -1, 1, 1, 1]
-uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-settings_file.source = openmc.IndependentSource(space=uniform_dist)
+uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
+settings_file.source = openmc.IndependentSource(
+    space=uniform_dist, constraints={'fissionable': True})
 
 settings_file.export_to_xml()
 
@@ -134,7 +135,7 @@ settings_file.export_to_xml()
 #                   Exporting to OpenMC plots.xml file
 ###############################################################################
 
-plot = openmc.Plot(plot_id=1)
+plot = openmc.SlicePlot(plot_id=1)
 plot.origin = [0, 0, 0]
 plot.width = [4, 4]
 plot.pixels = [400, 400]

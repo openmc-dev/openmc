@@ -10,10 +10,10 @@ from .filter import _FILTER_TYPES
 
 
 # Acceptable tally arithmetic binary operations
-_TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
+_TALLY_ARITHMETIC_OPS = {'+', '-', '*', '/', '^'}
 
 # Acceptable tally aggregation operations
-_TALLY_AGGREGATE_OPS = ['sum', 'avg']
+_TALLY_AGGREGATE_OPS = {'sum', 'avg'}
 
 
 class CrossScore:
@@ -54,8 +54,7 @@ class CrossScore:
         return str(other) == str(self)
 
     def __repr__(self):
-        return '({} {} {})'.format(self.left_score, self.binary_op,
-                                   self.right_score)
+        return f'({self.left_score} {self.binary_op} {self.right_score})'
 
     @property
     def left_score(self):
@@ -94,9 +93,9 @@ class CrossNuclide:
 
     Parameters
     ----------
-    left_nuclide : openmc.Nuclide or CrossNuclide
+    left_nuclide : str or CrossNuclide
         The left nuclide in the outer product
-    right_nuclide : openmc.Nuclide or CrossNuclide
+    right_nuclide : str or CrossNuclide
         The right nuclide in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -104,9 +103,9 @@ class CrossNuclide:
 
     Attributes
     ----------
-    left_nuclide : openmc.Nuclide or CrossNuclide
+    left_nuclide : str or CrossNuclide
         The left nuclide in the outer product
-    right_nuclide : openmc.Nuclide or CrossNuclide
+    right_nuclide : str or CrossNuclide
         The right nuclide in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -135,7 +134,7 @@ class CrossNuclide:
     @left_nuclide.setter
     def left_nuclide(self, left_nuclide):
         cv.check_type('left_nuclide', left_nuclide,
-                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
+                      (str, CrossNuclide, AggregateNuclide))
         self._left_nuclide = left_nuclide
 
     @property
@@ -145,7 +144,7 @@ class CrossNuclide:
     @right_nuclide.setter
     def right_nuclide(self, right_nuclide):
         cv.check_type('right_nuclide', right_nuclide,
-                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
+                      (str, CrossNuclide, AggregateNuclide))
         self._right_nuclide = right_nuclide
 
     @property
@@ -160,26 +159,7 @@ class CrossNuclide:
 
     @property
     def name(self):
-
-        string = ''
-
-        # If the Summary was linked, the left nuclide is a Nuclide object
-        if isinstance(self.left_nuclide, openmc.Nuclide):
-            string += '(' + self.left_nuclide.name
-        # If the Summary was not linked, the left nuclide is the ZAID
-        else:
-            string += '(' + str(self.left_nuclide)
-
-        string += ' ' + self.binary_op + ' '
-
-        # If the Summary was linked, the right nuclide is a Nuclide object
-        if isinstance(self.right_nuclide, openmc.Nuclide):
-            string += self.right_nuclide.name + ')'
-        # If the Summary was not linked, the right nuclide is the ZAID
-        else:
-            string += str(self.right_nuclide) + ')'
-
-        return string
+        return f'({self.left_nuclide} {self.binary_op} {self.right_nuclide})'
 
 
 class CrossFilter:
@@ -188,9 +168,9 @@ class CrossFilter:
 
     Parameters
     ----------
-    left_filter : Filter or CrossFilter
+    left_filter : openmc.Filter or CrossFilter
         The left filter in the outer product
-    right_filter : Filter or CrossFilter
+    right_filter : openmc.Filter or CrossFilter
         The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -200,9 +180,9 @@ class CrossFilter:
     ----------
     type : str
         The type of the crossfilter (e.g., 'energy / energy')
-    left_filter : Filter or CrossFilter
+    left_filter : openmc.Filter or CrossFilter
         The left filter in the outer product
-    right_filter : Filter or CrossFilter
+    right_filter : openmc.Filter or CrossFilter
         The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -271,7 +251,7 @@ class CrossFilter:
     def type(self):
         left_type = self.left_filter.type
         right_type = self.right_filter.type
-        return '({} {} {})'.format(left_type, self.binary_op, right_type)
+        return f'({left_type} {self.binary_op} {right_type})'
 
     @property
     def bins(self):
@@ -441,7 +421,7 @@ class AggregateNuclide:
 
     Parameters
     ----------
-    nuclides : Iterable of str or openmc.Nuclide or CrossNuclide
+    nuclides : Iterable of str or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
@@ -449,7 +429,7 @@ class AggregateNuclide:
 
     Attributes
     ----------
-    nuclides : Iterable of str or openmc.Nuclide or CrossNuclide
+    nuclides : Iterable of str or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
@@ -474,13 +454,7 @@ class AggregateNuclide:
         return str(other) == str(self)
 
     def __repr__(self):
-
-        # Append each nuclide in the aggregate to the string
-        string = f'{self.aggregate_op}('
-        names = [nuclide.name if isinstance(nuclide, openmc.Nuclide)
-                 else str(nuclide) for nuclide in self.nuclides]
-        string += ', '.join(map(str, names)) + ')'
-        return string
+        return f'{self.aggregate_op}{self.name}'
 
     @property
     def nuclides(self):
@@ -503,12 +477,9 @@ class AggregateNuclide:
 
     @property
     def name(self):
-
         # Append each nuclide in the aggregate to the string
-        names = [nuclide.name if isinstance(nuclide, openmc.Nuclide)
-                 else str(nuclide) for nuclide in self.nuclides]
-        string = '(' + ', '.join(map(str, names)) + ')'
-        return string
+        names = [str(nuclide) for nuclide in self.nuclides]
+        return '(' + ', '.join(map(str, names)) + ')'
 
 
 class AggregateFilter:
@@ -517,7 +488,7 @@ class AggregateFilter:
 
     Parameters
     ----------
-    aggregate_filter : Filter or CrossFilter
+    aggregate_filter : openmc.Filter or CrossFilter
         The filter included in the aggregation
     bins : Iterable of tuple
         The filter bins included in the aggregation
@@ -529,7 +500,7 @@ class AggregateFilter:
     ----------
     type : str
         The type of the aggregatefilter (e.g., 'sum(energy)', 'sum(cell)')
-    aggregate_filter : filter
+    aggregate_filter : openmc.Filter
         The filter included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'avg', etc.) used

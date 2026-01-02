@@ -100,4 +100,16 @@ extern "C" int openmc_meshsurface_filter_set_mesh(
   return openmc_mesh_filter_set_mesh(index, index_mesh);
 }
 
+extern "C" int openmc_meshsurface_filter_get_translation(
+  int32_t index, double translation[3])
+{
+  return openmc_mesh_filter_get_translation(index, translation);
+}
+
+extern "C" int openmc_meshsurface_filter_set_translation(
+  int32_t index, double translation[3])
+{
+  return openmc_mesh_filter_set_translation(index, translation);
+}
+
 } // namespace openmc

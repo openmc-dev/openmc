@@ -49,6 +49,7 @@ def model():
 
     return openmc.Model(geometry=geom, settings=settings, tallies=tallies)
 
+
 def test_origin_read_write_to_xml(run_in_tmpdir, model):
     """Tests that the origin attribute can be written and read back to XML
     """
@@ -63,8 +64,9 @@ def test_origin_read_write_to_xml(run_in_tmpdir, model):
     np.testing.assert_equal(new_mesh.origin, mesh.origin)
 
 estimators = ('tracklength', 'collision')
-origins = set(permutations((-geom_size, 0, 0)))
-origins |= set(permutations((geom_size, 0, 0)))
+offset = geom_size + 0.001
+origins = set(permutations((-offset , 0, 0)))
+origins |= set(permutations((offset, 0, 0)))
 
 test_cases = product(estimators, origins)
 
@@ -74,8 +76,9 @@ def label(p):
     if isinstance(p, str):
         return f'estimator:{p}'
 
+
 @pytest.mark.parametrize('estimator,origin', test_cases, ids=label)
-def test_offset_mesh(run_in_tmpdir, model, estimator, origin):
+def test_offset_mesh(model, estimator, origin):
     """Tests that the mesh has been moved based on tally results
     """
     mesh = model.tallies[0].filters[0].mesh
@@ -102,6 +105,7 @@ def test_offset_mesh(run_in_tmpdir, model, estimator, origin):
                 mean[i, j, k] == 0.0
             else:
                 mean[i, j, k] != 0.0
+
 
 @pytest.fixture()
 def void_coincident_geom_model():
@@ -154,6 +158,7 @@ def _check_void_cylindrical_tally(statepoint_filename):
         # for these cases
         d_r = mesh.r_grid[1] - mesh.r_grid[0]
         assert neutron_flux == pytest.approx(d_r)
+
 
 def test_void_geom_pnt_src(run_in_tmpdir, void_coincident_geom_model):
     src = openmc.IndependentSource()

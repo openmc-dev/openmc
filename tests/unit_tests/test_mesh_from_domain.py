@@ -40,7 +40,7 @@ def test_cylindrical_mesh_from_cell():
 
     assert isinstance(mesh, openmc.CylindricalMesh)
     assert np.array_equal(mesh.dimension, (1, 1, 1))
-    assert np.array_equal(mesh.r_grid, [0., 150.])
+    assert np.array_equal(mesh.r_grid, [0., 50.])
     assert np.array_equal(mesh.origin, [100., 0., 10.])
 
     # Cell is not centralized on Z, X or Y axis
@@ -49,7 +49,7 @@ def test_cylindrical_mesh_from_cell():
     mesh = openmc.CylindricalMesh.from_domain(domain=cell, dimension=[1, 1, 1])
 
     assert isinstance(mesh, openmc.CylindricalMesh)
-    assert np.array_equal(mesh.r_grid, [0., 220.])
+    assert np.array_equal(mesh.r_grid, [0., 50.])
     assert np.array_equal(mesh.origin, [100., 170., 10.])
 
 
@@ -87,6 +87,34 @@ def test_cylindrical_mesh_from_region():
     assert np.array_equal(mesh.origin, (0.0, 0.0, -30.))
 
 
+def test_spherical_mesh_from_domain():
+    """Tests a SphericalMesh can be made from a Region and the specified
+    dimensions are propagated through. Cell is not centralized"""
+    sphere = openmc.Sphere(r=5, x0=2, y0=3, z0=4)
+    region = -sphere
+
+    geometry = openmc.Geometry(openmc.Universe(cells=[openmc.Cell(region=region)]))
+
+    region_mesh = openmc.SphericalMesh.from_domain(
+        domain=region, dimension=(4, 3, 4))
+    universe_mesh = openmc.SphericalMesh.from_domain(
+        domain=geometry.root_universe, dimension=(4, 3, 4))
+    geometry_mesh = openmc.SphericalMesh.from_domain(
+        domain=geometry, dimension=(4, 3, 4))
+
+
+    for mesh in (region_mesh, universe_mesh, geometry_mesh):
+        assert isinstance(mesh, openmc.SphericalMesh)
+        assert np.array_equal(mesh.dimension, (4, 3, 4))
+        assert np.array_equal(mesh.r_grid, [0., 1.25, 2.5, 3.75, 5.0])
+        assert np.array_equal(mesh.theta_grid, [0., np.pi/3., 2*np.pi/3., np.pi])
+        assert np.array_equal(mesh.phi_grid, [0., np.pi/2., np.pi, 3*np.pi/2., 2*np.pi])
+        assert np.array_equal(mesh.origin, (2.0, 3.0, 4.0))
+
+        for p in mesh.centroids.reshape(-1, 3):
+            assert p in mesh.bounding_box
+
+
 def test_reg_mesh_from_universe():
     """Tests a RegularMesh can be made from a Universe and the default
     dimensions are propagated through. Universe is centralized"""
@@ -119,3 +147,27 @@ def test_reg_mesh_from_geometry():
 def test_error_from_unsupported_object():
     with pytest.raises(TypeError):
         openmc.RegularMesh.from_domain("vacuum energy")
+
+
+def test_regularmesh_from_domain_error_from_small_dimensions():
+    surface = openmc.Sphere(r=20)
+    cell = openmc.Cell(region=-surface)
+    with pytest.raises(
+        ValueError, match='Unable to set "dimension" to "-2" since it is less than "1"'
+    ):
+        openmc.RegularMesh.from_domain(domain=cell, dimension=-2)
+
+
+def test_dimensions_from_domain_dimensions_from_int():
+    region = openmc.model.RectangularParallelepiped(
+        xmin=-100,
+        xmax=150,
+        ymin=-50,
+        ymax=200,
+        zmin=300,
+        zmax=400,
+        boundary_type="vacuum",
+    )
+    cell = openmc.Cell(region=-region)
+    mesh = openmc.RegularMesh.from_domain(domain=cell, dimension=1000)
+    assert mesh.dimension == (14, 14, 5)

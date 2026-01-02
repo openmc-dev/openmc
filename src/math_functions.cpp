@@ -650,7 +650,7 @@ void calc_zn(int n, double rho, double phi, double zn[])
   // ===========================================================================
   // Determine vector of sin(n*phi) and cos(n*phi). This takes advantage of the
   // following recurrence relations so that only a single sin/cos have to be
-  // evaluated (http://mathworld.wolfram.com/Multiple-AngleFormulas.html)
+  // evaluated (https://mathworld.wolfram.com/Multiple-AngleFormulas.html)
   //
   // sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
   // cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)
@@ -916,6 +916,21 @@ std::complex<double> w_derivative(std::complex<double> z, int order)
   default:
     return -2.0 * z * w_derivative(z, order - 1) -
            2.0 * (order - 1) * w_derivative(z, order - 2);
+  }
+}
+
+// Helper function to get index and interpolation function on an incident energy
+// grid
+void get_energy_index(
+  const vector<double>& energies, double E, int& i, double& f)
+{
+  // Get index and interpolation factor for linear-linear energy grid
+  i = 0;
+  f = 0.0;
+  if (E >= energies.front()) {
+    i = lower_bound_index(energies.begin(), energies.end(), E);
+    if (i + 1 < energies.size())
+      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
   }
 }
 

@@ -114,7 +114,7 @@ The predictor method only requires one evaluation and its error converges as
 twice as expensive as the predictor method, but achieves an error of
 :math:`\mathcal{O}(h^2)`. An exhaustive description of time integration methods
 and their merits can be found in the `thesis of Colin Josey
-<http://dspace.mit.edu/handle/1721.1/7582>`_.
+<https://dspace.mit.edu/handle/1721.1/7582>`_.
 
 OpenMC does not rely on a single time integration method but rather has several
 classes that implement different algorithms. For example, the

@@ -22,7 +22,7 @@ def test_ww_generator(run_in_tmpdir):
     model.settings.particles = 500
     model.settings.batches = 5
     model.settings.run_mode = 'fixed source'
-    model.settings.max_splits = 100
+    model.settings.max_history_splits = 100
 
     mesh = openmc.RegularMesh.from_domain(model.geometry.root_universe)
     energy_bounds = np.linspace(0.0, 1e6, 70)
@@ -46,14 +46,14 @@ def test_ww_generator(run_in_tmpdir):
     # just test that the generation happens successfully here
     assert os.path.exists('weight_windows.h5')
 
-    wws_mean = openmc.hdf5_to_wws()
+    wws_mean = openmc.WeightWindowsList.from_hdf5()
     assert len(wws_mean) == 1
 
     # check that generation using the relative error works too
     wwg.update_parameters['value'] = 'rel_err'
     model.run()
 
-    wws_rel_err = openmc.hdf5_to_wws()
+    wws_rel_err = openmc.WeightWindowsList.from_hdf5()
     assert len(wws_rel_err) == 1
 
     # we should not get the same set of weight windows when switching to use of

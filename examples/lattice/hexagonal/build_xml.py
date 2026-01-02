@@ -114,8 +114,9 @@ settings_file.particles = particles
 
 # Create an initial uniform spatial source distribution over fissionable zones
 bounds = [-1, -1, -1, 1, 1, 1]
-uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-settings_file.source = openmc.IndependentSource(space=uniform_dist)
+uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
+settings_file.source = openmc.IndependentSource(
+    space=uniform_dist, constraints={'fissionable': True})
 
 settings_file.keff_trigger = {'type' : 'std_dev', 'threshold' : 5E-4}
 settings_file.trigger_active = True
@@ -127,14 +128,14 @@ settings_file.export_to_xml()
 #                   Exporting to OpenMC plots.xml file
 ###############################################################################
 
-plot_xy = openmc.Plot(plot_id=1)
+plot_xy = openmc.SlicePlot(plot_id=1)
 plot_xy.filename = 'plot_xy'
 plot_xy.origin = [0, 0, 0]
 plot_xy.width = [6, 6]
 plot_xy.pixels = [400, 400]
 plot_xy.color_by = 'material'
 
-plot_yz = openmc.Plot(plot_id=2)
+plot_yz = openmc.SlicePlot(plot_id=2)
 plot_yz.filename = 'plot_yz'
 plot_yz.basis = 'yz'
 plot_yz.origin = [0, 0, 0]

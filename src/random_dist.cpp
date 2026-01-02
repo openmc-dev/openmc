@@ -12,6 +12,11 @@ double uniform_distribution(double a, double b, uint64_t* seed)
   return a + (b - a) * prn(seed);
 }
 
+int64_t uniform_int_distribution(int64_t a, int64_t b, uint64_t* seed)
+{
+  return a + static_cast<int64_t>(prn(seed) * (b - a + 1));
+}
+
 double maxwell_spectrum(double T, uint64_t* seed)
 {
   // Set the random numbers

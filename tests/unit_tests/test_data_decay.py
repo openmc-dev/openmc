@@ -17,25 +17,22 @@ def ufloat_close(a, b):
 
 
 @pytest.fixture(scope='module')
-def nb90():
+def nb90(endf_data):
     """Nb90 decay data."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'decay', 'dec-041_Nb_090.endf')
     return openmc.data.Decay.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def ba137m():
+def ba137m(endf_data):
     """Ba137_m1 decay data."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'decay', 'dec-056_Ba_137m1.endf')
     return openmc.data.Decay.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def u235_yields():
+def u235_yields(endf_data):
     """U235 fission product yield data."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'nfy', 'nfy-092_U_235.endf')
     return openmc.data.FissionProductYields.from_endf(filename)
 

@@ -10,6 +10,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/span.h"
 #include "openmc/vector.h" // for vector
 
 namespace openmc {
@@ -43,9 +44,9 @@ class DiscreteIndex {
 public:
   DiscreteIndex() {};
   DiscreteIndex(pugi::xml_node node);
-  DiscreteIndex(const double* p, int n);
+  DiscreteIndex(span<const double> p);
 
-  void assign(const double* p, int n);
+  void assign(span<const double> p);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
@@ -77,7 +78,7 @@ private:
 class Discrete : public Distribution {
 public:
   explicit Discrete(pugi::xml_node node);
-  Discrete(const double* x, const double* p, int n);
+  Discrete(const double* x, const double* p, size_t n);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer

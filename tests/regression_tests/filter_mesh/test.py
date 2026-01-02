@@ -61,9 +61,10 @@ def model():
     np.testing.assert_allclose(recti_mesh.volumes, recti_mesh_exp_vols)
 
     cyl_mesh = openmc.CylindricalMesh(
+        origin=(0, 0, -7.5),
         r_grid=np.linspace(0, 7.5, 18),
         phi_grid=np.linspace(0, 2*pi, 19),
-        z_grid=np.linspace(-7.5, 7.5, 17),
+        z_grid=np.linspace(0, 15, 17),
     )
     dr = 0.5 * np.diff(np.linspace(0, 7.5, 18)**2)
     dp = np.full(cyl_mesh.dimension[1], 2*pi / 18)

@@ -92,7 +92,7 @@ class Zernike(Polynomial):
     Parameters
     ----------
     coef : Iterable of float
-        A list of coefficients of each term in radial only Zernike polynomials
+        A list of coefficients of each term in Zernike polynomials
     radius : float
         Domain of Zernike polynomials to be applied on. Default is 1.
 

@@ -72,12 +72,17 @@ class IDManagerMixin:
                 cls.used_ids.add(uid)
             self._id = uid
 
+    @classmethod
+    def reset_ids(cls):
+        """Reset counters"""
+        cls.used_ids.clear()
+        cls.next_id = 1
+
 
 def reset_auto_ids():
     """Reset counters for all auto-generated IDs"""
     for cls in IDManagerMixin.__subclasses__():
-        cls.used_ids.clear()
-        cls.next_id = 1
+        cls.reset_ids()
 
 
 def reserve_ids(ids, cls=None):

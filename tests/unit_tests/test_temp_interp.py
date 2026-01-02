@@ -152,7 +152,7 @@ def model(tmp_path_factory):
     mat = openmc.Material()
     mat.add_nuclide('U235', 1.0)
     model.materials.append(mat)
-    model.materials.cross_sections = str(Path('cross_sections_fake.xml').resolve())
+    model.materials.cross_sections = 'cross_sections_fake.xml'
 
     sph = openmc.Sphere(r=100.0, boundary_type='reflective')
     cell = openmc.Cell(fill=mat, region=-sph)
@@ -257,7 +257,7 @@ def test_temperature_slightly_above(run_in_tmpdir):
     mat2.add_nuclide('U235', 1.0)
     mat2.temperature = 600.0
     model.materials.extend([mat1, mat2])
-    model.materials.cross_sections = str(Path('cross_sections_fake.xml').resolve())
+    model.materials.cross_sections = 'cross_sections_fake.xml'
 
     sph1 = openmc.Sphere(r=1.0)
     sph2 = openmc.Sphere(r=4.0, boundary_type='reflective')

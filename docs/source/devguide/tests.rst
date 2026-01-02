@@ -84,6 +84,30 @@ that, consider the following:
   limit the number of threads that OpenBLAS uses internally; this can be done by
   setting the :envvar:`OPENBLAS_NUM_THREADS` environment variable to 1.
 
+Debugging Tests in CI
+---------------------
+
+Tests can be debugged in CI using a feature called 
+`tmate <https://github.com/mxschmitt/action-tmate?tab=readme-ov-file#debug-your-github-actions-by-using-tmate>`_. 
+CI debugging can be
+enabled by including "[gha-debug]" in the commit message. When the test fails, a
+link similar to the one shown below will be provided in the GitHub Actions
+output after failure occurs. Logging into the provided link will allow you to
+debug the test in the CI environment. The following is an example of the output
+shown in the CI log that provides the link to the tmate session:
+
+.. code-block:: text
+   :linenos:
+
+   Created new session successfully
+   ssh 2VcykjU7vNdvAzEjQcc839GM2@nyc1.tmate.io
+   https://tmate.io/t/2VcykjU7vNdvAzEjQcc839GM2
+   Entering main loop
+   Web shell: https://tmate.io/t/2VcykjU7vNdvAzEjQcc839GM2
+   SSH: ssh 2VcykjU7vNdvAzEjQcc839GM2@nyc1.tmate.io
+   ...
+
+
 Generating XML Inputs
 ---------------------
 
@@ -133,6 +157,12 @@ following files to your new test directory:
       commit. It should be noted that this file should be generated with basic
       compiler options during openmc configuration and build (e.g., no MPI, no
       debug/optimization).
+
+For tests using the Python API, both the **inputs_true.dat** and
+**results_true.dat** files can be generated automatically in the correct format
+via::
+
+    pytest --update <name-of-test>
 
 In addition to this description, please see the various types of tests that are
 already included in the test suite to see how to create them. If all is

@@ -29,7 +29,7 @@ def model():
     settings.inactive = 10
     settings.particles = 400
     # Choose a sufficiently low threshold to enable use of trigger
-    settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.003}
+    settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.002}
     settings.trigger_max_batches = 1000
     settings.trigger_batch_interval = 1
     settings.trigger_active = True
@@ -41,10 +41,10 @@ def model():
     tallies = openmc.Tallies([t])
 
     # Put it all together
-    model = openmc.model.Model(materials=materials,
-                               geometry=geometry,
-                               settings=settings,
-                               tallies=tallies)
+    model = openmc.Model(materials=materials,
+                         geometry=geometry,
+                         settings=settings,
+                         tallies=tallies)
     return model
 
 

@@ -12,6 +12,17 @@ config = {
 }
 
 
+def assert_same_mats(res_ref, res_test):
+    for mat in res_ref[0].index_mat:
+        assert mat in res_test[0].index_mat, f"Material {mat} not in new results."
+    for nuc in res_ref[0].index_nuc:
+        assert nuc in res_test[0].index_nuc, f"Nuclide {nuc} not in new results."
+    for mat in res_test[0].index_mat:
+        assert mat in res_ref[0].index_mat, f"Material {mat} not in old results."
+    for nuc in res_test[0].index_nuc:
+        assert nuc in res_ref[0].index_nuc, f"Nuclide {nuc} not in old results."
+
+
 def assert_atoms_equal(res_ref, res_test, tol=1e-5):
     for mat in res_test[0].index_mat:
         for nuc in res_test[0].index_nuc:

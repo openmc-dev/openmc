@@ -19,6 +19,7 @@
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_thermal.h"
 #include "openmc/settings.h"
+#include "openmc/string_utils.h"
 
 namespace openmc {
 
@@ -59,7 +60,7 @@ ThermalScattering::ThermalScattering(
     // Read temperature value
     double T;
     read_dataset(kT_group, dset_names[i].data(), T);
-    temps_available[i] = T / K_BOLTZMANN;
+    temps_available[i] = std::round(T / K_BOLTZMANN);
   }
   std::sort(temps_available.begin(), temps_available.end());
 
@@ -89,9 +90,12 @@ ThermalScattering::ThermalScattering(
           temps_to_read.push_back(std::round(temp_actual));
         }
       } else {
-        fatal_error(fmt::format("Nuclear data library does not contain cross "
-                                "sections for {} at or near {} K.",
-          name_, std::round(T)));
+        fatal_error(fmt::format(
+          "Nuclear data library does not contain cross sections "
+          "for {}  at or near {} K. Available temperatures "
+          "are {} K. Consider making use of openmc.Settings.temperature "
+          "to specify how intermediate temperatures are treated.",
+          name_, std::round(T), concatenate(temps_available)));
       }
     }
     break;
@@ -103,8 +107,8 @@ ThermalScattering::ThermalScattering(
       bool found = false;
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T && T < temps_available[j + 1]) {
-          int T_j = std::round(temps_available[j]);
-          int T_j1 = std::round(temps_available[j + 1]);
+          int T_j = temps_available[j];
+          int T_j1 = temps_available[j + 1];
           if (std::find(temps_to_read.begin(), temps_to_read.end(), T_j) ==
               temps_to_read.end()) {
             temps_to_read.push_back(T_j);
@@ -122,14 +126,14 @@ ThermalScattering::ThermalScattering(
         if (std::abs(T - temps_available[0]) <=
             settings::temperature_tolerance) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                std::round(temps_available[0])) == temps_to_read.end()) {
-            temps_to_read.push_back(std::round(temps_available[0]));
+                temps_available[0]) == temps_to_read.end()) {
+            temps_to_read.push_back(temps_available[0]);
           }
         } else if (std::abs(T - temps_available[n - 1]) <=
                    settings::temperature_tolerance) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                std::round(temps_available[n - 1])) == temps_to_read.end()) {
-            temps_to_read.push_back(std::round(temps_available[n - 1]));
+                temps_available[n - 1]) == temps_to_read.end()) {
+            temps_to_read.push_back(temps_available[n - 1]);
           }
         } else {
           fatal_error(

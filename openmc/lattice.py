@@ -4,13 +4,13 @@ from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real
 import types
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 
 
@@ -170,11 +170,11 @@ class Lattice(IDManagerMixin, ABC):
         """
         cells = {}
 
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+        elif self in memo:
             return cells
-
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         unique_universes = self.get_unique_universes()
 
@@ -194,6 +194,9 @@ class Lattice(IDManagerMixin, ABC):
 
         """
 
+        if memo is None:
+            memo = set()
+
         materials = {}
 
         # Append all Cells in each Cell in the Universe to the dictionary
@@ -203,7 +206,7 @@ class Lattice(IDManagerMixin, ABC):
 
         return materials
 
-    def get_all_universes(self):
+    def get_all_universes(self, memo=None):
         """Return all universes that are contained within the lattice
 
         Returns
@@ -213,10 +216,15 @@ class Lattice(IDManagerMixin, ABC):
             :class:`Universe` instances
 
         """
-
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
         all_universes = {}
+
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return all_universes
+        memo.add(self)
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -226,7 +234,7 @@ class Lattice(IDManagerMixin, ABC):
 
         # Append all Universes containing each cell to the dictionary
         for universe in unique_universes.values():
-            all_universes.update(universe.get_all_universes())
+            all_universes.update(universe.get_all_universes(memo))
 
         return all_universes
 
@@ -846,10 +854,11 @@ class RectLattice(Lattice):
 
         """
         # If the element already contains the Lattice subelement, then return
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+        elif self in memo:
             return
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         # Make sure universes have been assigned
         if self.universes is None:
@@ -874,6 +883,10 @@ class RectLattice(Lattice):
         # Export Lattice cell dimensions
         dimension = ET.SubElement(lattice_subelement, "dimension")
         dimension.text = ' '.join(map(str, self.shape))
+
+        # Make sure lower_left has been specified
+        if self.lower_left is None:
+            raise ValueError(f"Lattice {self.id} does not have lower_left specified.")
 
         # Export Lattice lower left
         lower_left = ET.SubElement(lattice_subelement, "lower_left")
@@ -946,18 +959,17 @@ class RectLattice(Lattice):
         lat_id = int(get_text(elem, 'id'))
         name = get_text(elem, 'name')
         lat = cls(lat_id, name)
-        lat.lower_left = [float(i)
-                          for i in get_text(elem, 'lower_left').split()]
-        lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
+        lat.lower_left = get_elem_list(elem, "lower_left", float)
+        lat.pitch = get_elem_list(elem, "pitch", float)
         outer = get_text(elem, 'outer')
         if outer is not None:
             lat.outer = get_universe(int(outer))
 
         # Get array of universes
-        dimension = get_text(elem, 'dimension').split()
+        dimension = get_elem_list(elem, 'dimension', int)
         shape = np.array(dimension, dtype=int)[::-1]
-        uarray = np.array([get_universe(int(i)) for i in
-                           get_text(elem, 'universes').split()])
+        universes = get_elem_list(elem, 'universes', int)
+        uarray = np.array([get_universe(u) for u in universes])
         uarray.shape = shape
         lat.universes = uarray
         return lat
@@ -1417,10 +1429,11 @@ class HexLattice(Lattice):
 
     def create_xml_subelement(self, xml_element, memo=None):
         # If this subelement has already been written, return
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+        elif self in memo:
             return
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))
@@ -1516,8 +1529,8 @@ class HexLattice(Lattice):
         lat_id = int(get_text(elem, 'id'))
         name = get_text(elem, 'name')
         lat = cls(lat_id, name)
-        lat.center = [float(i) for i in get_text(elem, 'center').split()]
-        lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
+        lat.center = get_elem_list(elem, "center", float)
+        lat.pitch = get_elem_list(elem, "pitch", float)
         lat.orientation = get_text(elem, 'orientation', 'y')
         outer = get_text(elem, 'outer')
         if outer is not None:
@@ -1534,8 +1547,8 @@ class HexLattice(Lattice):
             univs = [deepcopy(univs) for i in range(n_axial)]
 
         # Get flat array of universes
-        uarray = np.array([get_universe(int(i)) for i in
-                           get_text(elem, 'universes').split()])
+        universes = get_elem_list(elem, "universes", int)
+        uarray = np.array([get_universe(u) for u in universes])
 
         # Fill nested lists
         j = 0
@@ -1564,6 +1577,7 @@ class HexLattice(Lattice):
                             alpha -= 1
                             if not lat.is_valid_index((x, alpha, z)):
                                 # Reached the bottom
+                                j += 1
                                 break
                     j += 1
             else:
@@ -1583,6 +1597,7 @@ class HexLattice(Lattice):
 
                         # Check if we've reached the bottom
                         if y == -n_rings:
+                            j += 1
                             break
 
                         while not lat.is_valid_index((alpha, y, z)):
@@ -1851,7 +1866,7 @@ class HexLattice(Lattice):
         largest_index = 6*(num_rings - 1)
         n_digits_index = len(str(largest_index))
         n_digits_ring = len(str(num_rings - 1))
-        str_form = '({{:{}}},{{:{}}})'.format(n_digits_ring, n_digits_index)
+        str_form = f'({{:{n_digits_ring}}},{{:{n_digits_index}}})'
         pad = ' '*(n_digits_index + n_digits_ring + 3)
 
         # Initialize the list for each row.
@@ -1956,7 +1971,7 @@ class HexLattice(Lattice):
         largest_index = 6*(num_rings - 1)
         n_digits_index = len(str(largest_index))
         n_digits_ring = len(str(num_rings - 1))
-        str_form = '({{:{}}},{{:{}}})'.format(n_digits_ring, n_digits_index)
+        str_form = f'({{:{n_digits_ring}}},{{:{n_digits_index}}})'
         pad = ' '*(n_digits_index + n_digits_ring + 3)
 
         # Initialize the list for each row.

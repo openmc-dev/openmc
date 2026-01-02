@@ -8,8 +8,6 @@
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
-#include <gsl/gsl-lite.hpp>
-
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
@@ -27,17 +25,17 @@ DiscreteIndex::DiscreteIndex(pugi::xml_node node)
   auto params = get_node_array<double>(node, "parameters");
   std::size_t n = params.size() / 2;
 
-  assign(params.data() + n, n);
+  assign({params.data() + n, n});
 }
 
-DiscreteIndex::DiscreteIndex(const double* p, int n)
+DiscreteIndex::DiscreteIndex(span<const double> p)
 {
-  assign(p, n);
+  assign(p);
 }
 
-void DiscreteIndex::assign(const double* p, int n)
+void DiscreteIndex::assign(span<const double> p)
 {
-  prob_.assign(p, p + n);
+  prob_.assign(p.begin(), p.end());
 
   this->init_alias();
 }
@@ -126,7 +124,7 @@ Discrete::Discrete(pugi::xml_node node) : di_(node)
   x_.assign(params.begin(), params.begin() + n);
 }
 
-Discrete::Discrete(const double* x, const double* p, int n) : di_(p, n)
+Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
 {
 
   x_.assign(x, x + n);
@@ -258,8 +256,12 @@ Tabular::Tabular(pugi::xml_node node)
     interp_ = Interpolation::histogram;
   }
 
-  // Read and initialize tabular distribution
+  // Read and initialize tabular distribution. If number of parameters is odd,
+  // add an extra zero for the 'p' array.
   auto params = get_node_array<double>(node, "parameters");
+  if (params.size() % 2 != 0) {
+    params.push_back(0.0);
+  }
   std::size_t n = params.size() / 2;
   const double* x = params.data();
   const double* p = x + n;
@@ -394,6 +396,9 @@ Mixture::Mixture(pugi::xml_node node)
     distribution_.push_back(std::make_pair(cumsum, std::move(dist)));
   }
 
+  // Save integral of distribution
+  integral_ = cumsum;
+
   // Normalize cummulative probabilities to 1
   for (auto& pair : distribution_) {
     pair.first /= cumsum;
@@ -410,7 +415,7 @@ double Mixture::sample(uint64_t* seed) const
     p, [](const DistPair& pair, double p) { return pair.first < p; });
 
   // This should not happen. Catch it
-  Ensures(it != distribution_.cend());
+  assert(it != distribution_.cend());
 
   // Sample the chosen distribution
   return it->second->sample(seed);

@@ -9,9 +9,9 @@ unresolved resonance region, and tabulated data in the fast region. After the
 ENDF data has been reconstructed and Doppler-broadened, the ACER module
 generates ACE-format cross sections.
 
-.. _MCNP: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/
-.. _NJOY: http://t2.lanl.gov/codes.shtml
-.. _ENDF: http://www.nndc.bnl.gov/endf
+.. _MCNP: https://mcnp.lanl.gov/
+.. _NJOY: https://www.njoy21.io/
+.. _ENDF: https://www.nndc.bnl.gov/endf-library/
 
 """
 
@@ -143,7 +143,7 @@ def ascii_to_binary(ascii_file, binary_file):
             # that XSS will start at the second record
             nxs = [int(x) for x in ' '.join(lines[idx + 6:idx + 8]).split()]
             jxs = [int(x) for x in ' '.join(lines[idx + 8:idx + 12]).split()]
-            binary_file.write(struct.pack(str('=16i32i{}x'.format(record_length - 500)),
+            binary_file.write(struct.pack(str(f'=16i32i{record_length - 500}x'),
                                           *(nxs + jxs)))
 
             # Read/write XSS array. Null bytes are added to form a complete record
@@ -152,8 +152,7 @@ def ascii_to_binary(ascii_file, binary_file):
             start = idx + _ACE_HEADER_SIZE
             xss = np.fromstring(' '.join(lines[start:start + n_lines]), sep=' ')
             extra_bytes = record_length - ((len(xss)*8 - 1) % record_length + 1)
-            binary_file.write(struct.pack(str('={}d{}x'.format(
-                nxs[0], extra_bytes)), *xss))
+            binary_file.write(struct.pack(str(f'={nxs[0]}d{extra_bytes}x'), *xss))
 
             # Advance to next table in file
             idx += _ACE_HEADER_SIZE + n_lines
@@ -184,8 +183,7 @@ def get_table(filename, name=None):
         if lib.tables:
             return lib.tables[0]
         else:
-            raise ValueError('Could not find ACE table with name: {}'
-                             .format(name))
+            raise ValueError(f'Could not find ACE table with name: {name}')
 
 
 # The beginning of an ASCII ACE file consists of 12 lines that include the name,
@@ -295,14 +293,14 @@ class Library(EqualityMixin):
 
             if verbose:
                 kelvin = round(temperature * EV_PER_MEV / K_BOLTZMANN)
-                print("Loading nuclide {} at {} K".format(name, kelvin))
+                print(f"Loading nuclide {name} at {kelvin} K")
 
             # Read JXS
             jxs = list(struct.unpack(str('=32i'), ace_file.read(128)))
 
             # Read XSS
             ace_file.seek(start_position + recl_length)
-            xss = list(struct.unpack(str('={}d'.format(length)),
+            xss = list(struct.unpack(str(f'={length}d'),
                                      ace_file.read(length*8)))
 
             # Insert zeros at beginning of NXS, JXS, and XSS arrays so that the
@@ -393,7 +391,7 @@ class Library(EqualityMixin):
 
             if verbose:
                 kelvin = round(temperature * EV_PER_MEV / K_BOLTZMANN)
-                print("Loading nuclide {} at {} K".format(name, kelvin))
+                print(f"Loading nuclide {name} at {kelvin} K")
 
             # Insert zeros at beginning of NXS, JXS, and XSS arrays so that the
             # indexing will be the same as Fortran. This makes it easier to
@@ -455,8 +453,7 @@ class TableType(enum.Enum):
         for member in cls:
             if suffix.endswith(member.value):
                 return member
-        raise ValueError("Suffix '{}' has no corresponding ACE table type."
-                         .format(suffix))
+        raise ValueError(f"Suffix '{suffix}' has no corresponding ACE table type.")
 
 
 class Table(EqualityMixin):
@@ -507,7 +504,7 @@ class Table(EqualityMixin):
         return TableType.from_suffix(xs[-1])
 
     def __repr__(self):
-        return "<ACE Table: {}>".format(self.name)
+        return f"<ACE Table: {self.name}>"
 
 
 def get_libraries_from_xsdir(path):

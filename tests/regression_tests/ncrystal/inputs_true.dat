@@ -1,26 +1,26 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material cfg="Al_sg225.ncmat" id="1" temperature="293.15">
-      <density units="g/cm3" value="2.6986455176922477"/>
-      <nuclide ao="1.0" name="Al27"/>
+    <material id="1" cfg="Al_sg225.ncmat" temperature="293.15">
+      <density value="2.6986455176922477" units="g/cm3"/>
+      <nuclide name="Al27" ao="1.0"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1" universe="1"/>
     <cell id="2" material="void" region="1 -2" universe="1"/>
-    <surface coeffs="0.0 0.0 0.0 0.1" id="1" type="sphere"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100" id="2" type="sphere"/>
+    <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 0.1"/>
+    <surface id="2" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 100"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>100000</particles>
     <batches>10</batches>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="point">
         <parameters>0 0 -20</parameters>
       </space>
-      <angle reference_uvw="0.0 0.0 1.0" type="monodirectional"/>
+      <angle type="monodirectional" reference_uvw="0.0 0.0 1.0"/>
       <energy type="discrete">
         <parameters>0.012 1.0</parameters>
       </energy>

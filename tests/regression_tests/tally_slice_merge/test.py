@@ -149,6 +149,9 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         sum2 = mesh_tally.summation(filter_type=openmc.MeshFilter,
                                     filter_bins=[(2, 1), (2, 2)])
 
+        mesh = mesh_tally.find_filter(openmc.MeshFilter).mesh
+        assert mesh.name == 'mesh'
+
         # Merge the mesh tally slices
         merge_tally = sum1.merge(sum2)
 

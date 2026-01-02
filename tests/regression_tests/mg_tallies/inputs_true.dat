@@ -3,21 +3,21 @@
   <materials>
     <cross_sections>2g.h5</cross_sections>
     <material id="1" name="mat_1">
-      <density units="macro" value="1.0"/>
+      <density value="1.0" units="macro"/>
       <macroscopic name="mat_1"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="1 -2" universe="0"/>
-    <surface boundary="reflective" coeffs="0.0" id="1" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="929.45" id="2" type="x-plane"/>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="929.45"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>1000</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>0.0 -1000.0 -1000.0 929.45 1000.0 1000.0</parameters>
       </space>

@@ -1,19 +1,19 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1">
-      <density units="g/cc" value="4.5"/>
-      <nuclide ao="1.0" name="U235"/>
+    <material id="1" depletable="true">
+      <density value="4.5" units="g/cc"/>
+      <nuclide name="U235" ao="1.0"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1 2 -3 -4 5 6" universe="1"/>
-    <surface boundary="periodic" coeffs="8.660254037844386" id="1" periodic_surface_id="2" type="x-plane"/>
-    <surface boundary="periodic" coeffs="-8.660254037844386" id="2" periodic_surface_id="1" type="x-plane"/>
-    <surface boundary="periodic" coeffs="0.5773502691896257 1.0 0.0 10.0" id="3" periodic_surface_id="6" type="plane"/>
-    <surface boundary="periodic" coeffs="-0.5773502691896257 1.0 0.0 10.0" id="4" periodic_surface_id="5" type="plane"/>
-    <surface boundary="periodic" coeffs="-0.5773502691896257 1.0 0.0 -10.0" id="5" periodic_surface_id="4" type="plane"/>
-    <surface boundary="periodic" coeffs="0.5773502691896257 1.0 0.0 -10.0" id="6" periodic_surface_id="3" type="plane"/>
+    <surface id="1" type="x-plane" boundary="periodic" coeffs="8.660254037844386" periodic_surface_id="2"/>
+    <surface id="2" type="x-plane" boundary="periodic" coeffs="-8.660254037844386" periodic_surface_id="1"/>
+    <surface id="3" type="plane" boundary="periodic" coeffs="0.5773502691896257 1.0 0.0 10.0" periodic_surface_id="6"/>
+    <surface id="4" type="plane" boundary="periodic" coeffs="-0.5773502691896257 1.0 0.0 10.0" periodic_surface_id="5"/>
+    <surface id="5" type="plane" boundary="periodic" coeffs="-0.5773502691896257 1.0 0.0 -10.0" periodic_surface_id="4"/>
+    <surface id="6" type="plane" boundary="periodic" coeffs="0.5773502691896257 1.0 0.0 -10.0" periodic_surface_id="3"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

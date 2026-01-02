@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from collections.abc import Mapping, Callable
 import os
 from pathlib import Path
@@ -11,9 +9,8 @@ import openmc.data
 
 
 @pytest.fixture(scope='module')
-def elements_endf():
+def elements_endf(endf_data):
     """Dictionary of element ENDF data indexed by atomic symbol."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     elements = {'H': 1, 'O': 8, 'Al': 13, 'Cu': 29, 'Ag': 47, 'U': 92, 'Pu': 94}
     data = {}
     for symbol, Z in elements.items():
@@ -146,8 +143,9 @@ def test_export_to_hdf5(tmpdir, element):
     # Export to hdf5 again
     element2.export_to_hdf5(filename, 'w')
 
-def test_photodat_only(run_in_tmpdir):
-    endf_dir = Path(os.environ['OPENMC_ENDF_DATA'])
+
+def test_photodat_only(run_in_tmpdir, endf_data):
+    endf_dir = Path(endf_data)
     photoatomic_file = endf_dir / 'photoat' / 'photoat-001_H_000.endf'
     data = openmc.data.IncidentPhoton.from_endf(photoatomic_file)
     data.export_to_hdf5('tmp.h5', 'w')

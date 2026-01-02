@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import openmc
 import openmc.stats
+from scipy.integrate import trapezoid
 
 
 def assert_sample_mean(samples, expected_mean):
@@ -15,6 +16,7 @@ def assert_sample_mean(samples, expected_mean):
     assert np.abs(expected_mean - samples.mean()) < 4*std_dev
 
 
+@pytest.mark.flaky(reruns=1)
 def test_discrete():
     x = [0.0, 1.0, 10.0]
     p = [0.3, 0.2, 0.5]
@@ -47,6 +49,13 @@ def test_discrete():
     n_samples = 1_000_000
     samples = d3.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+
+
+def test_delta_function():
+    d = openmc.stats.delta_function(14.1e6)
+    assert isinstance(d, openmc.stats.Discrete)
+    np.testing.assert_array_equal(d.x, [14.1e6])
+    np.testing.assert_array_equal(d.p, [1.0])
 
 
 def test_merge_discrete():
@@ -89,7 +98,14 @@ def test_clip_discrete():
     d_same = d.clip(1e-6, inplace=True)
     assert d_same is d
 
+    with pytest.raises(ValueError):
+        d.clip(-1.)
 
+    with pytest.raises(ValueError):
+        d.clip(5)
+
+
+@pytest.mark.flaky(reruns=1)
 def test_uniform():
     a, b = 10.0, 20.0
     d = openmc.stats.Uniform(a, b)
@@ -113,6 +129,7 @@ def test_uniform():
     assert_sample_mean(samples, exp_mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_powerlaw():
     a, b, n = 10.0, 100.0, 2.0
     d = openmc.stats.PowerLaw(a, b, n)
@@ -134,6 +151,7 @@ def test_powerlaw():
     assert_sample_mean(samples, exp_mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_maxwell():
     theta = 1.2895e6
     d = openmc.stats.Maxwell(theta)
@@ -157,6 +175,7 @@ def test_maxwell():
     assert samples_2.mean() != samples.mean()
 
 
+@pytest.mark.flaky(reruns=1)
 def test_watt():
     a, b = 0.965e6, 2.29e-6
     d = openmc.stats.Watt(a, b)
@@ -180,20 +199,12 @@ def test_watt():
     assert_sample_mean(samples, exp_mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_tabular():
-    x = np.array([0.0, 5.0, 7.0])
-    p = np.array([10.0, 20.0, 5.0])
-    d = openmc.stats.Tabular(x, p, 'linear-linear')
-    elem = d.to_xml_element('distribution')
-
-    d = openmc.stats.Tabular.from_xml_element(elem)
-    assert all(d.x == x)
-    assert all(d.p == p)
-    assert d.interpolation == 'linear-linear'
-    assert len(d) == len(x)
-
     # test linear-linear sampling
-    d = openmc.stats.Tabular(x, p)
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0, 6.0])
+    d = openmc.stats.Tabular(x, p, 'linear-linear')
     n_samples = 100_000
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
@@ -210,6 +221,45 @@ def test_tabular():
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 
+    # ensure that passing a set of probabilities shorter than x works
+    # for histogram interpolation
+    d = openmc.stats.Tabular(x, p[:-1], interpolation='histogram')
+    d.cdf()
+    d.mean()
+    assert_sample_mean(d.sample(n_samples), d.mean())
+
+    # passing a shorter probability set should raise an error for linear-linear
+    with pytest.raises(ValueError):
+        d = openmc.stats.Tabular(x, p[:-1], interpolation='linear-linear')
+        d.cdf()
+
+    # Use probabilities of correct length for linear-linear interpolation and
+    # call the CDF method
+    d = openmc.stats.Tabular(x, p, interpolation='linear-linear')
+    d.cdf()
+
+
+def test_tabular_from_xml():
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0, 6.0])
+    d = openmc.stats.Tabular(x, p, 'linear-linear')
+    elem = d.to_xml_element('distribution')
+
+    d = openmc.stats.Tabular.from_xml_element(elem)
+    assert all(d.x == x)
+    assert all(d.p == p)
+    assert d.interpolation == 'linear-linear'
+    assert len(d) == len(x)
+
+    # Make sure XML roundtrip works with len(x) == len(p) + 1
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0])
+    d = openmc.stats.Tabular(x, p, 'histogram')
+    elem = d.to_xml_element('distribution')
+    d = openmc.stats.Tabular.from_xml_element(elem)
+    assert all(d.x == x)
+    assert all(d.p == p)
+
 
 def test_legendre():
     # Pu239 elastic scattering at 100 keV
@@ -220,18 +270,19 @@ def test_legendre():
 
     # Integrating distribution should yield one
     mu = np.linspace(-1., 1., 1000)
-    assert np.trapz(d(mu), mu) == pytest.approx(1.0, rel=1e-4)
+    assert trapezoid(d(mu), mu) == pytest.approx(1.0, rel=1e-4)
 
     with pytest.raises(NotImplementedError):
         d.to_xml_element('distribution')
 
 
+@pytest.mark.flaky(reruns=1)
 def test_mixture():
     d1 = openmc.stats.Uniform(0, 5)
     d2 = openmc.stats.Uniform(3, 7)
     p = [0.5, 0.5]
     mix = openmc.stats.Mixture(p, [d1, d2])
-    assert mix.probability == p
+    np.testing.assert_allclose(mix.probability, p)
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
 
@@ -243,7 +294,7 @@ def test_mixture():
     elem = mix.to_xml_element('distribution')
 
     d = openmc.stats.Mixture.from_xml_element(elem)
-    assert d.probability == p
+    np.testing.assert_allclose(d.probability, p)
     assert d.distribution == [d1, d2]
     assert len(d) == 4
 
@@ -264,6 +315,20 @@ def test_mixture_clip():
     # Make sure inplace returns same object
     mix_same = mix.clip(1e-6, inplace=True)
     assert mix_same is mix
+
+    # Make sure clip removes low probability distributions
+    d_small = openmc.stats.Uniform(0., 1.)
+    d_large = openmc.stats.Uniform(2., 5.)
+    mix = openmc.stats.Mixture([1e-10, 1.0], [d_small, d_large])
+    mix_clip = mix.clip(1e-3)
+    assert mix_clip.distribution == [d_large]
+
+    # Make sure warning is raised if tolerance is exceeded
+    d1 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-6])
+    d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation='histogram')
+    mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
+    with pytest.warns(UserWarning):
+        mix_clip = mix.clip(1e-6)
 
 
 def test_polar_azimuthal():
@@ -352,15 +417,6 @@ def test_box():
     d = openmc.stats.Box.from_xml_element(elem)
     assert d.lower_left == pytest.approx(lower_left)
     assert d.upper_right == pytest.approx(upper_right)
-    assert not d.only_fissionable
-
-    # only fissionable parameter
-    d2 = openmc.stats.Box(lower_left, upper_right, True)
-    assert d2.only_fissionable
-    elem = d2.to_xml_element()
-    assert elem.attrib['type'] == 'fission'
-    d = openmc.stats.Spatial.from_xml_element(elem)
-    assert isinstance(d, openmc.stats.Box)
 
 
 def test_point():
@@ -376,6 +432,7 @@ def test_point():
     assert d.xyz == pytest.approx(p)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_normal():
     mean = 10.0
     std_dev = 2.0
@@ -395,6 +452,7 @@ def test_normal():
     assert_sample_mean(samples, mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_muir():
     mean = 10.0
     mass = 5.0
@@ -414,6 +472,7 @@ def test_muir():
     assert_sample_mean(samples, mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_combine_distributions():
     # Combine two discrete (same data as in test_merge_discrete)
     x1 = [0.0, 1.0, 10.0]
@@ -457,3 +516,33 @@ def test_combine_distributions():
     # uncertainty of the expected value
     samples = combined.sample(10_000)
     assert_sample_mean(samples, 0.25)
+
+def test_reference_vwu_projection():
+    """When a non-orthogonal vector is provided, the setter should project out
+    any component along reference_uvw so the stored vector is orthogonal.
+    """
+    pa = openmc.stats.PolarAzimuthal()  # default reference_uvw == (0, 0, 1)
+
+    # Provide a vector that is not orthogonal to (0,0,1)
+    pa.reference_vwu = (2.0, 0.5, 0.3)
+
+    reference_v = np.asarray(pa.reference_vwu)
+    reference_u = np.asarray(pa.reference_uvw)
+
+    # reference_v should be orthogonal to reference_u
+    assert abs(np.dot(reference_v, reference_u)) < 1e-6
+
+
+def test_reference_vwu_normalization():
+    """When a non-normalized vector is provided, the setter should normalize
+    the projected vector to unit length.
+    """
+    pa = openmc.stats.PolarAzimuthal()  # default reference_uvw == (0, 0, 1)
+
+    # Provide a vector that is neither orthogonal to (0,0,1) nor unit-length
+    pa.reference_vwu = (2.0, 0.5, 0.3)
+
+    reference_v = np.asarray(pa.reference_vwu)
+
+    # reference_v should be unit length
+    assert np.isclose(np.linalg.norm(reference_v), 1.0, atol=1e-12)

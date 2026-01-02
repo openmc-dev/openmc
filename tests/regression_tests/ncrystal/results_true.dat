@@ -106,8 +106,8 @@
 104        1         1.82e+00          1.83e+00         1   total  current 1.10e-05   4.07e-06
 105        1         1.83e+00          1.85e+00         1   total  current 1.50e-05   4.01e-06
 106        1         1.85e+00          1.87e+00         1   total  current 1.90e-05   4.82e-06
-107        1         1.87e+00          1.88e+00         1   total  current 2.20e-05   3.89e-06
-108        1         1.88e+00          1.90e+00         1   total  current 2.10e-05   3.79e-06
+107        1         1.87e+00          1.88e+00         1   total  current 2.30e-05   3.96e-06
+108        1         1.88e+00          1.90e+00         1   total  current 2.00e-05   3.94e-06
 109        1         1.90e+00          1.92e+00         1   total  current 1.50e-05   3.42e-06
 110        1         1.92e+00          1.94e+00         1   total  current 2.20e-05   5.12e-06
 111        1         1.94e+00          1.95e+00         1   total  current 2.10e-05   5.86e-06
@@ -118,12 +118,12 @@
 116        1         2.02e+00          2.04e+00         1   total  current 1.30e-05   3.35e-06
 117        1         2.04e+00          2.06e+00         1   total  current 1.90e-05   4.07e-06
 118        1         2.06e+00          2.08e+00         1   total  current 1.30e-05   3.00e-06
-119        1         2.08e+00          2.09e+00         1   total  current 1.40e-05   4.00e-06
-120        1         2.09e+00          2.11e+00         1   total  current 3.10e-05   5.47e-06
+119        1         2.08e+00          2.09e+00         1   total  current 1.50e-05   4.28e-06
+120        1         2.09e+00          2.11e+00         1   total  current 3.00e-05   4.94e-06
 121        1         2.11e+00          2.13e+00         1   total  current 2.30e-05   5.39e-06
 122        1         2.13e+00          2.15e+00         1   total  current 2.20e-05   4.67e-06
-123        1         2.15e+00          2.16e+00         1   total  current 1.70e-05   4.48e-06
-124        1         2.16e+00          2.18e+00         1   total  current 1.60e-05   4.00e-06
+123        1         2.15e+00          2.16e+00         1   total  current 1.80e-05   4.67e-06
+124        1         2.16e+00          2.18e+00         1   total  current 1.50e-05   4.01e-06
 125        1         2.18e+00          2.20e+00         1   total  current 1.80e-05   4.16e-06
 126        1         2.20e+00          2.22e+00         1   total  current 1.80e-05   4.42e-06
 127        1         2.22e+00          2.23e+00         1   total  current 1.80e-05   5.54e-06
@@ -135,7 +135,7 @@
 133        1         2.32e+00          2.34e+00         1   total  current 2.30e-05   3.96e-06
 134        1         2.34e+00          2.36e+00         1   total  current 1.90e-05   3.48e-06
 135        1         2.36e+00          2.37e+00         1   total  current 1.60e-05   3.71e-06
-136        1         2.37e+00          2.39e+00         1   total  current 1.60e-05   4.27e-06
+136        1         2.37e+00          2.39e+00         1   total  current 1.70e-05   4.48e-06
 137        1         2.39e+00          2.41e+00         1   total  current 2.30e-05   4.48e-06
 138        1         2.41e+00          2.43e+00         1   total  current 2.10e-05   3.48e-06
 139        1         2.43e+00          2.44e+00         1   total  current 1.60e-05   2.21e-06

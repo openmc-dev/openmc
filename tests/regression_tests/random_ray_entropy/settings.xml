@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <energy_mode>multi-group</energy_mode>
+  <random_ray>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="box">
+        <parameters>0.0 0.0 0.0 100.0 100.0 100.0</parameters>
+      </space>
+    </source>
+    <distance_inactive>40.0</distance_inactive>
+    <distance_active>400.0</distance_active>
+  </random_ray>
+</settings>

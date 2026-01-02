@@ -31,8 +31,8 @@ int n_tracks_written; //! Number of tracks written
 
 void add_particle_track(Particle& p)
 {
-  p.tracks().emplace_back();
-  p.tracks().back().particle = p.type();
+  auto& track = p.tracks().emplace_back();
+  track.particle = p.type();
 }
 
 void write_particle_track(Particle& p)

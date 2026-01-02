@@ -1,0 +1,110 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="UO2 fuel">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="UO2"/>
+    </material>
+    <material id="2" name="Water">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="LWTR"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="fuel inner a" material="1" region="-2" universe="1"/>
+    <cell id="2" name="fuel inner b" material="1" region="2 -3" universe="1"/>
+    <cell id="3" name="fuel inner c" material="1" region="3 -1" universe="1"/>
+    <cell id="4" name="moderator inner a" material="2" region="1 -4" universe="1"/>
+    <cell id="5" name="moderator outer b" material="2" region="4 -5" universe="1"/>
+    <cell id="6" name="moderator outer c" material="2" region="5" universe="1"/>
+    <cell id="7" name="azimuthal_cell_0" fill="1" region="6 -7" universe="2"/>
+    <cell id="8" name="azimuthal_cell_1" fill="1" region="7 -8" universe="2"/>
+    <cell id="9" name="azimuthal_cell_2" fill="1" region="8 -9" universe="2"/>
+    <cell id="10" name="azimuthal_cell_3" fill="1" region="9 -10" universe="2"/>
+    <cell id="11" name="azimuthal_cell_4" fill="1" region="10 -11" universe="2"/>
+    <cell id="12" name="azimuthal_cell_5" fill="1" region="11 -12" universe="2"/>
+    <cell id="13" name="azimuthal_cell_6" fill="1" region="12 -13" universe="2"/>
+    <cell id="14" name="azimuthal_cell_7" fill="1" region="13 -6" universe="2"/>
+    <cell id="15" name="moderator infinite" material="2" universe="3"/>
+    <cell id="16" fill="4" universe="5"/>
+    <cell id="17" name="assembly" fill="6" region="14 -15 16 -17" universe="7"/>
+    <lattice id="4">
+      <pitch>0.126 0.126</pitch>
+      <dimension>10 10</dimension>
+      <lower_left>-0.63 -0.63</lower_left>
+      <universes>
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 </universes>
+    </lattice>
+    <lattice id="6">
+      <pitch>1.26 1.26</pitch>
+      <dimension>2 2</dimension>
+      <lower_left>-1.26 -1.26</lower_left>
+      <universes>
+2 2 
+2 5 </universes>
+    </lattice>
+    <surface id="1" name="Fuel OR" type="z-cylinder" coeffs="0.0 0.0 0.54"/>
+    <surface id="2" name="inner ring a" type="z-cylinder" coeffs="0.0 0.0 0.33"/>
+    <surface id="3" name="inner ring b" type="z-cylinder" coeffs="0.0 0.0 0.45"/>
+    <surface id="4" name="outer ring a" type="z-cylinder" coeffs="0.0 0.0 0.6"/>
+    <surface id="5" name="outer ring b" type="z-cylinder" coeffs="0.0 0.0 0.69"/>
+    <surface id="6" type="plane" coeffs="-0.0 1.0 0 0"/>
+    <surface id="7" type="plane" coeffs="-0.7071067811865475 0.7071067811865476 0 0"/>
+    <surface id="8" type="plane" coeffs="-1.0 6.123233995736766e-17 0 0"/>
+    <surface id="9" type="plane" coeffs="-0.7071067811865476 -0.7071067811865475 0 0"/>
+    <surface id="10" type="plane" coeffs="-1.2246467991473532e-16 -1.0 0 0"/>
+    <surface id="11" type="plane" coeffs="0.7071067811865475 -0.7071067811865477 0 0"/>
+    <surface id="12" type="plane" coeffs="1.0 -1.8369701987210297e-16 0 0"/>
+    <surface id="13" type="plane" coeffs="0.7071067811865477 0.7071067811865474 0 0"/>
+    <surface id="14" name="minimum x" type="x-plane" boundary="reflective" coeffs="-1.26"/>
+    <surface id="15" name="maximum x" type="x-plane" boundary="reflective" coeffs="1.26"/>
+    <surface id="16" name="minimum y" type="y-plane" boundary="reflective" coeffs="-1.26"/>
+    <surface id="17" name="maximum y" type="y-plane" boundary="reflective" coeffs="1.26"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <energy_mode>multi-group</energy_mode>
+    <random_ray>
+      <distance_active>100.0</distance_active>
+      <distance_inactive>20.0</distance_inactive>
+      <source type="independent" strength="1.0" particle="neutron">
+        <space type="box">
+          <parameters>-1.26 -1.26 -1 1.26 1.26 1</parameters>
+        </space>
+      </source>
+      <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
+      <adjoint>true</adjoint>
+    </random_ray>
+  </settings>
+  <tallies>
+    <mesh id="1">
+      <dimension>2 2</dimension>
+      <lower_left>-1.26 -1.26</lower_left>
+      <upper_right>1.26 1.26</upper_right>
+    </mesh>
+    <filter id="1" type="mesh">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="energy">
+      <bins>1e-05 0.0635 10.0 100.0 1000.0 500000.0 1000000.0 20000000.0</bins>
+    </filter>
+    <tally id="1" name="Mesh tally">
+      <filters>1 2</filters>
+      <scores>flux fission nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+  </tallies>
+</model>

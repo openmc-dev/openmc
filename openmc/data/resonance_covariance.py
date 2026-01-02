@@ -239,14 +239,14 @@ class ResonanceCovarianceRange:
         samples = []
 
         # Handling MLBW/SLBW sampling
+        rng = np.random.default_rng()
         if formalism == 'mlbw' or formalism == 'slbw':
             params = ['energy', 'neutronWidth', 'captureWidth', 'fissionWidth',
                       'competitiveWidth']
             param_list = params[:mpar]
             mean_array = parameters[param_list].values
             mean = mean_array.flatten()
-            par_samples = np.random.multivariate_normal(mean, cov,
-                                                        size=n_samples)
+            par_samples = rng.multivariate_normal(mean, cov, size=n_samples)
             spin = parameters['J'].values
             l_value = parameters['L'].values
             for sample in par_samples:
@@ -277,8 +277,7 @@ class ResonanceCovarianceRange:
             param_list = params[:mpar]
             mean_array = parameters[param_list].values
             mean = mean_array.flatten()
-            par_samples = np.random.multivariate_normal(mean, cov,
-                                                        size=n_samples)
+            par_samples = rng.multivariate_normal(mean, cov, size=n_samples)
             spin = parameters['J'].values
             l_value = parameters['L'].values
             for sample in par_samples:

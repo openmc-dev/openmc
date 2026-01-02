@@ -32,14 +32,14 @@ void PolarFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void PolarFilter::set_bins(gsl::span<double> bins)
+void PolarFilter::set_bins(span<double> bins)
 {
   // Clear existing bins
   bins_.clear();
   bins_.reserve(bins.size());
 
   // Copy bins, ensuring they are valid
-  for (gsl::index i = 0; i < bins.size(); ++i) {
+  for (int64_t i = 0; i < bins.size(); ++i) {
     if (i > 0 && bins[i] <= bins[i - 1]) {
       throw std::runtime_error {"Polar bins must be monotonically increasing."};
     }

@@ -19,7 +19,7 @@ void CollisionFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void CollisionFilter::set_bins(gsl::span<const int> bins)
+void CollisionFilter::set_bins(span<const int> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -27,7 +27,7 @@ void CollisionFilter::set_bins(gsl::span<const int> bins)
   map_.clear();
 
   // Copy bins
-  for (gsl::index i = 0; i < bins.size(); ++i) {
+  for (int64_t i = 0; i < bins.size(); ++i) {
     bins_.push_back(bins[i]);
     map_[bins[i]] = i;
   }

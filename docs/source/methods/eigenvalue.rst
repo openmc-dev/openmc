@@ -55,15 +55,17 @@ in :ref:`fission-bank-algorithms`.
 Source Convergence Issues
 -------------------------
 
+.. _methods-shannon-entropy:
+
 Diagnosing Convergence with Shannon Entropy
 -------------------------------------------
 
 As discussed earlier, it is necessary to converge both :math:`k_{eff}` and the
 source distribution before any tallies can begin. Moreover, the convergence rate
-of the source distribution is in general slower than that of
-:math:`k_{eff}`. One should thus examine not only the convergence of
-:math:`k_{eff}` but also the convergence of the source distribution in order to
-make decisions on when to start active batches.
+of the source distribution is in general slower than that of :math:`k_{eff}`.
+One should thus examine not only the convergence of :math:`k_{eff}` but also the
+convergence of the source distribution in order to make decisions on when to
+start active batches.
 
 However, the representation of the source distribution makes it a bit more
 difficult to analyze its convergence. Since :math:`k_{eff}` is a scalar
@@ -108,6 +110,13 @@ at plots of :math:`k_{eff}` and the Shannon entropy. A number of methods have
 been proposed (see e.g. [Romano]_, [Ueki]_), but each of these is not without
 problems.
 
+Shannon entropy is calculated differently for the random ray solver, as
+described :ref:`in the random ray theory section
+<methods-shannon-entropy-random-ray>`. Additionally, as the Shannon entropy only
+serves as a diagnostic tool for convergence of the fission source distribution,
+there is currently no diagnostic to determine if the scattering source
+distribution in random ray is converged.
+
 ---------------------------
 Uniform Fission Site Method
 ---------------------------
@@ -142,7 +151,7 @@ than unity. By ensuring that the expected number of fission sites in each mesh
 cell is constant, the collision density across all cells, and hence the variance
 of tallies, is more uniform than it would be otherwise.
 
-.. _Shannon entropy: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-06-3737.pdf
+.. _Shannon entropy: https://mcnp.lanl.gov/pdf_files/TechReport_2006_LANL_LA-UR-06-3737_Brown.pdf
 
 .. [Lieberoth] J. Lieberoth, "A Monte Carlo Technique to Solve the Static
    Eigenvalue Problem of the Boltzmann Transport Equation," *Nukleonik*, **11**,

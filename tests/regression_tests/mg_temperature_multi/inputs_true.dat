@@ -3,34 +3,37 @@
   <materials>
     <cross_sections>mgxs.h5</cross_sections>
     <material id="1" name="UO2 fuel">
-      <density units="macro" value="1.0"/>
+      <density value="1.0" units="macro"/>
       <macroscopic name="UO2"/>
     </material>
     <material id="2" name="Water">
-      <density units="macro" value="1.0"/>
+      <density value="1.0" units="macro"/>
       <macroscopic name="LWTR"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" name="fuel inner" region="-1" temperature="600.0" universe="1"/>
-    <cell id="2" material="1" name="fuel outer" region="1 -2" temperature="294.0" universe="1"/>
-    <cell id="3" material="2" name="moderator" region="2 3 -4 5 -6" universe="1"/>
-    <surface coeffs="0.0 0.0 0.25" id="1" name="Fuel IR" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 0.54" id="2" name="Fuel OR" type="z-cylinder"/>
-    <surface boundary="reflective" coeffs="-0.63" id="3" name="minimum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="0.63" id="4" name="maximum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-0.63" id="5" name="minimum y" type="y-plane"/>
-    <surface boundary="reflective" coeffs="0.63" id="6" name="maximum y" type="y-plane"/>
+    <cell id="1" name="fuel inner" material="1" region="-1" temperature="600.0" universe="1"/>
+    <cell id="2" name="fuel outer" material="1" region="1 -2" temperature="294.0" universe="1"/>
+    <cell id="3" name="moderator" material="2" region="2 3 -4 5 -6" universe="1"/>
+    <surface id="1" name="Fuel IR" type="z-cylinder" coeffs="0.0 0.0 0.25"/>
+    <surface id="2" name="Fuel OR" type="z-cylinder" coeffs="0.0 0.0 0.54"/>
+    <surface id="3" name="minimum x" type="x-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="4" name="maximum x" type="x-plane" boundary="reflective" coeffs="0.63"/>
+    <surface id="5" name="minimum y" type="y-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="6" name="maximum y" type="y-plane" boundary="reflective" coeffs="0.63"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>1000</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
-      <space type="fission">
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
         <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
       </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
     </source>
     <energy_mode>multi-group</energy_mode>
   </settings>

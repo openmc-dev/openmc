@@ -75,11 +75,20 @@ def test_calculate_cexs_with_materials(test_mat):
 @pytest.mark.parametrize("this", ["Be", "Be9"])
 def test_plot_xs(this):
     from matplotlib.figure import Figure
-    assert isinstance(openmc.plot_xs({this: ['total', 'elastic']}), Figure)
+    assert isinstance(openmc.plot_xs({this: ['total', 'elastic', 16, '(n,2n)']}), Figure)
+
 
 def test_plot_xs_mat(test_mat):
     from matplotlib.figure import Figure
     assert isinstance(openmc.plot_xs({test_mat: ['total']}), Figure)
+
+
+@pytest.mark.parametrize("units", ["eV", "keV", "MeV"])
+def test_plot_xs_energy_axis(units):
+    plot = openmc.plot_xs({'Be9': ['(n,2n)']}, energy_axis_units=units)
+    axis_text = plot.get_axes()[0].get_xaxis().get_label().get_text()
+    assert axis_text == f'Energy [{units}]'
+
 
 def test_plot_axes_labels():
     # just nuclides
@@ -108,6 +117,21 @@ def test_plot_axes_labels():
         }, divisor_types=False
     )
     assert axis_label == 'Microscopic Cross Section [b]'
+
+    axis_label = openmc.plotter._get_yaxis_label(
+        reactions={
+            "Li": ["heating", "heating-local"],
+            "Li7": ["heating"],
+            "Be": ["damage-energy"],
+        },
+        divisor_types=False,
+    )
+    assert axis_label == "Heating Cross Section [eV-barn]"
+
+    with pytest.raises(TypeError):
+        axis_label = openmc.plotter.plot_xs(
+            reactions={"Li": ["heating", "heating-local"], "Be9": ["(n,2n)"]}
+        )
 
     # just materials
     mat1 = openmc.Material()

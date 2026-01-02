@@ -256,7 +256,7 @@ for i, (lib, estimator, ext_geom, holes) in enumerate(product(*param_values)):
 def test_unstructured_mesh_tets(model, test_opts):
     # skip the test if the library is not enabled
     if test_opts['library'] == 'moab' and not openmc.lib._dagmc_enabled():
-        pytest.skip("DAGMC (and MOAB) mesh not enbaled in this build.")
+        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
     if test_opts['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
         pytest.skip("LibMesh is not enabled in this build.")
@@ -277,6 +277,8 @@ def test_unstructured_mesh_tets(model, test_opts):
 
     # add analagous unstructured mesh tally
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_opts['library'])
+    if test_opts['library'] == 'moab':
+        uscd_mesh.options = 'MAX_DEPTH=15;PLANE_SET=2'
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies

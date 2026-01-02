@@ -366,7 +366,7 @@ class KalbachMann(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('kalbach-mann')
+        group.attrs['type'] = np.bytes_('kalbach-mann')
 
         dset = group.create_dataset('energy', data=self.energy)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,

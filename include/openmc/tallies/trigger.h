@@ -23,6 +23,7 @@ enum class TriggerMetric {
 struct Trigger {
   TriggerMetric metric; //!< The type of uncertainty (e.g. std dev) measured
   double threshold;     //!< Uncertainty value below which trigger is satisfied
+  bool ignore_zeros;    //!< Whether to allow zero tally bins to be ignored
   int score_index;      //!< Index of the relevant score in the tally's arrays
 };
 

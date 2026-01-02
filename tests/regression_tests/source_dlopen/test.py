@@ -18,7 +18,7 @@ def compile_source(request):
     openmc_dir = Path(str(request.config.rootdir)) / 'build'
     with open('CMakeLists.txt', 'w') as f:
         f.write(textwrap.dedent("""
-            cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+            cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
             project(openmc_sources CXX)
             add_library(source SHARED source_sampling.cpp)
             find_package(OpenMC REQUIRED HINTS {})
@@ -72,8 +72,7 @@ def model():
     model.tallies = openmc.Tallies([tally])
 
     # custom source from shared library
-    source = openmc.CompiledSource()
-    source.library = 'build/libsource.so'
+    source = openmc.CompiledSource('build/libsource.so')
     model.settings.source = source
 
     return model

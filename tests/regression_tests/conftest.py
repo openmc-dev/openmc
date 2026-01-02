@@ -1,12 +1,12 @@
 import numpy as np
 import openmc
-from pkg_resources import parse_version
+from packaging.version import parse
 import pytest
 
 
 @pytest.fixture(scope='module', autouse=True)
 def numpy_version_requirement():
-    assert parse_version(np.__version__) >= parse_version("1.14"), \
+    assert parse(np.__version__) >= parse("1.14"), \
         "Regression tests require NumPy 1.14 or greater"
 
 

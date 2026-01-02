@@ -1,0 +1,262 @@
+====================
+What's New in 0.15.0
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC includes many bug fixes, performance improvements, and
+several notable new features. The major highlight of this release is the
+introduction of a new transport solver based on the random ray method, which is
+fully described in the :ref:`user's guide <random_ray>`. Other notable additions
+include a mesh-based source class (:class:`openmc.MeshSource`), a generalization
+of source domain rejection through the notion of "constraints", and new methods
+on mesh-based classes for computing material volume fractions and homogenized
+materials.
+
+------------------------------------
+Compatibility Notes and Deprecations
+------------------------------------
+
+Previously, specifying domain rejection for a source was only possible on the
+:class:`~openmc.IndependentSoure` class and worked by specifying a `domains`
+argument. This capability has been generalized to all source classes and
+expanded as well; specifying a domain to reject on should now be done with the
+`constraints` argument as follows::
+
+    source = openmc.IndependentSource(..., constraints={'domains': [cell]})
+
+The `domains` argument is deprecated and will be removed in a future version of
+OpenMC. Similarly, the ``only_fissionable`` argument to
+:class:`openmc.stats.Box` has been replaced by a `'fissionable'` constraint.
+That is, instead of specifying::
+
+    space = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
+    source = openmc.IndependentSource(space=space)
+
+You should now provide the constraint as::
+
+    space = openmc.stats.Box(lower_left, upper_right)
+    source = openmc.IndependentSource(space=space, constraints={'fissionable': True})
+
+The :attr:`openmc.Settings.max_splits` attribute was renamed to
+``max_history_splits`` and its default value has been changed to 1e7 (`#2954
+<https://github.com/openmc-dev/openmc/pull/2954>`_).
+
+------------
+New Features
+------------
+
+- When running OpenMC in volume calculation mode, only atomic weight ratio data
+  is loaded from data files which reduces initialization time. (`#2741
+  <https://github.com/openmc-dev/openmc/pull/2741>`_)
+- Introduced a ``GeometryState`` class in C++ to better separate particle and
+  geometry data. (`#2744 <https://github.com/openmc-dev/openmc/pull/2744>`_))
+- A new :class:`openmc.MaterialFromFilter` class allows filtering tallies by
+  which material a particle came from. (`#2750
+  <https://github.com/openmc-dev/openmc/pull/2750>`_)
+- Implemented a :meth:`openmc.deplete.MicroXS.from_multigroup_flux` method that
+  generates microscopic cross sections for depletion from a predetermined
+  multigroup flux. (`#2755 <https://github.com/openmc-dev/openmc/pull/2755>`_)
+- A new :class:`openmc.MeshSource` class enables the specification of a source
+  distribution over a mesh, where each mesh element has a different
+  energy/angle/time distribution. (`#2759
+  <https://github.com/openmc-dev/openmc/pull/2759>`_)
+- Improve performance of depletion solver by utilizing CSR sparse matrix
+  representation. (`#2764 <https://github.com/openmc-dev/openmc/pull/2764>`_,
+  `#2771 <https://github.com/openmc-dev/openmc/pull/2771>`_)
+- Added a :meth:`openmc.CylindricalMesh.get_indices_at_coords` method that
+  provides the mesh element index corresponding to a given point in space.
+  (`#2782 <https://github.com/openmc-dev/openmc/pull/2782>`_)
+- Added a `path` argument to the :meth:`openmc.deplete.Integrator.integrate`
+  method. (`#2784 <https://github.com/openmc-dev/openmc/pull/2784>`_)
+- Added a :meth:`openmc.Geometry.get_all_nuclides` method. (`#2796
+  <https://github.com/openmc-dev/openmc/pull/2796>`_)
+- A new capability to compute material volume fractions over mesh elements was
+  added in the :meth:`openmc.lib.Mesh.material_volumes` method. (`#2802
+  <https://github.com/openmc-dev/openmc/pull/2802>`_)
+- A new transport solver was added based on the `random ray
+  <https://doi.org/10.1016/j.jcp.2017.04.038>`_ method. (`#2823
+  <https://github.com/openmc-dev/openmc/pull/2823>`_, `#2988
+  <https://github.com/openmc-dev/openmc/pull/2988>`_)
+- Added a :attr:`openmc.lib.Material.depletable` attribute. (`#2843
+  <https://github.com/openmc-dev/openmc/pull/2843>`_)
+- Added a :meth:`openmc.lib.Mesh.get_plot_bins` method and corresponding
+  ``openmc_mesh_get_plot_bins`` C API function that can be utilized to generate
+  mesh tally visualizations in the plotter application. (`#2854
+  <https://github.com/openmc-dev/openmc/pull/2854>`_)
+- Introduced a :func:`openmc.read_source_file` function that enables reading a
+  source file from the Python API. (`#2858
+  <https://github.com/openmc-dev/openmc/pull/2858>`_)
+- Added a ``bounding_box`` property on the :class:`openmc.RectilinearMesh` and
+  :class:`openmc.UnstructuredMesh` classes. (`#2861
+  <https://github.com/openmc-dev/openmc/pull/2861>`_)
+- Added a ``openmc_mesh_get_volumes`` C API function. (`#2869
+  <https://github.com/openmc-dev/openmc/pull/2869>`_)
+- The :attr:`openmc.Settings.surf_source_write` dictionary now accepts `cell`,
+  `cellfrom`, or `cellto` keys that limit surface source sites to those entering
+  or leaving specific cells. (`#2888
+  <https://github.com/openmc-dev/openmc/pull/2888>`_)
+- Added a :meth:`openmc.Region.plot` method that allows regions to be plotted
+  directly. (`#2895 <https://github.com/openmc-dev/openmc/pull/2895>`_)
+- Implemented "contains" operator for the :class:`openmc.BoundingBox` class.
+  (`#2906 <https://github.com/openmc-dev/openmc/pull/2906>`_)
+- Generalized source rejection via a new ``constraints`` argument to all source
+  classes. (`#2916 <https://github.com/openmc-dev/openmc/pull/2916>`_)
+- Added a new :class:`openmc.MeshBornFilter` class that filters tally events
+  based on which mesh element a particle was born in. (`#2925
+  <https://github.com/openmc-dev/openmc/pull/2925>`_)
+- The :class:`openmc.Trigger` class now has a ``ignore_zeros`` argument that
+  results in any bins with zero score to be ignored when checking the trigger.
+  (`#2928 <https://github.com/openmc-dev/openmc/pull/2928>`_)
+- Introduced a :attr:`openmc.Settings.max_events` attribute that controls the
+  maximum number of events a particle can undergo. (`#2945
+  <https://github.com/openmc-dev/openmc/pull/2945>`_)
+- Added support for :class:`openmc.UnstructuredMesh` in the
+  :class:`openmc.MeshSource` class. (`#2949
+  <https://github.com/openmc-dev/openmc/pull/2949>`_)
+- Added a :meth:`openmc.MeshBase.get_homogenized_materials` method that computes
+  homogenized materials over mesh elements. (`#2971
+  <https://github.com/openmc-dev/openmc/pull/2971>`_)
+- Add an ``options`` argument to :class:`openmc.UnstructuredMesh` that allows
+  configuring underlying data structures in MOAB. (`#2976
+  <https://github.com/openmc-dev/openmc/pull/2976>`_)
+- Type hints were added to several classes in the :mod:`openmc.deplete` module.
+  (`#2866 <https://github.com/openmc-dev/openmc/pull/2866>`_)
+
+---------
+Bug Fixes
+---------
+
+- Fix unit conversion in openmc.deplete.Results.get_mass (`#2761 <https://github.com/openmc-dev/openmc/pull/2761>`_)
+- Fix Lagrangian interpolation (`#2775 <https://github.com/openmc-dev/openmc/pull/2775>`_)
+- Depletion restart with MPI (`#2778 <https://github.com/openmc-dev/openmc/pull/2778>`_)
+- Modify depletion transfer rates test to be more robust (`#2779 <https://github.com/openmc-dev/openmc/pull/2779>`_)
+- Call simulation_finalize if needed when finalizing OpenMC (`#2790 <https://github.com/openmc-dev/openmc/pull/2790>`_)
+- F90_NONE Removal (MGMC tallying optimization) (`#2785 <https://github.com/openmc-dev/openmc/pull/2785>`_)
+- Correctly apply volumes to materials when using DAGMC geometries (`#2787 <https://github.com/openmc-dev/openmc/pull/2787>`_)
+- Add inline to openmc::interpolate (`#2789 <https://github.com/openmc-dev/openmc/pull/2789>`_)
+- Use huge_tree=True in lxml parsing (`#2791 <https://github.com/openmc-dev/openmc/pull/2791>`_)
+- OpenMPMutex "Copying" (`#2794 <https://github.com/openmc-dev/openmc/pull/2794>`_)
+- Do not link against several transitive dependencies of HDF5 (`#2797 <https://github.com/openmc-dev/openmc/pull/2797>`_)
+- Added check to length of input arguments for IndependantOperator (`#2799 <https://github.com/openmc-dev/openmc/pull/2799>`_)
+- Pytest Update Documentation (`#2801 <https://github.com/openmc-dev/openmc/pull/2801>`_)
+- Move 'import lxml' to third-party block of imports (`#2803 <https://github.com/openmc-dev/openmc/pull/2803>`_)
+- Fix creation of meshes when from loading settings from XML (`#2805 <https://github.com/openmc-dev/openmc/pull/2805>`_)
+- Avoid high memory use when writing unstructured mesh VTK files (`#2806 <https://github.com/openmc-dev/openmc/pull/2806>`_)
+- Consolidating thread information into the openmp interface header (`#2809 <https://github.com/openmc-dev/openmc/pull/2809>`_)
+- Prevent underflow in calculation of speed (`#2811 <https://github.com/openmc-dev/openmc/pull/2811>`_)
+- Provide error message if a cell path can't be determined (`#2812 <https://github.com/openmc-dev/openmc/pull/2812>`_)
+- Fix distribcell labels for lattices used as fill in multiple cells (`#2813 <https://github.com/openmc-dev/openmc/pull/2813>`_)
+- Make creation of spatial trees based on usage for unstructured mesh. (`#2815 <https://github.com/openmc-dev/openmc/pull/2815>`_)
+- Ensure particle direction is normalized for plotting / volume calculations (`#2816 <https://github.com/openmc-dev/openmc/pull/2816>`_)
+- Added missing meshes to documentation (`#2820 <https://github.com/openmc-dev/openmc/pull/2820>`_)
+- Reset timers at correct place in deplete (`#2821 <https://github.com/openmc-dev/openmc/pull/2821>`_)
+- Fix config change not propagating through to decay energies (`#2825 <https://github.com/openmc-dev/openmc/pull/2825>`_)
+- Ensure that implicit complement cells appear last in DAGMC universes (`#2838 <https://github.com/openmc-dev/openmc/pull/2838>`_)
+- Export model.tallies to XML in CoupledOperator (`#2840 <https://github.com/openmc-dev/openmc/pull/2840>`_)
+- Fix locating h5m files references in DAGMC universes (`#2842 <https://github.com/openmc-dev/openmc/pull/2842>`_)
+- Prepare for NumPy 2.0 (`#2845 <https://github.com/openmc-dev/openmc/pull/2845>`_)
+- Added missing functions and classes to openmc.lib docs (`#2847 <https://github.com/openmc-dev/openmc/pull/2847>`_)
+- Fix compilation on CentOS 7 (missing link to libdl) (`#2849 <https://github.com/openmc-dev/openmc/pull/2849>`_)
+- Adding resulting nuclide to cross section plot legend (`#2851 <https://github.com/openmc-dev/openmc/pull/2851>`_)
+- Updating file extension for Excel files when exporting MGXS data (`#2852 <https://github.com/openmc-dev/openmc/pull/2852>`_)
+- Removed error raising when calling warn (`#2853 <https://github.com/openmc-dev/openmc/pull/2853>`_)
+- Setting ``surf_source_`` attribute for DAGMC surfaces. (`#2857 <https://github.com/openmc-dev/openmc/pull/2857>`_)
+- Changing y axis label for heating plots (`#2859 <https://github.com/openmc-dev/openmc/pull/2859>`_)
+- Removed unused step_index arg from restart (`#2867 <https://github.com/openmc-dev/openmc/pull/2867>`_)
+- Fix issue with Cell::get_contained_cells() utility function (`#2873 <https://github.com/openmc-dev/openmc/pull/2873>`_)
+- Adding energy axis units to plot xs (`#2876 <https://github.com/openmc-dev/openmc/pull/2876>`_)
+- Set OpenMCOperator materials when diff_burnable_mats = True (`#2877 <https://github.com/openmc-dev/openmc/pull/2877>`_)
+- Fix expansion filter merging (`#2882 <https://github.com/openmc-dev/openmc/pull/2882>`_)
+- Added checks that tolerance value is between 0 and 1 (`#2884 <https://github.com/openmc-dev/openmc/pull/2884>`_)
+- Statepoint file loading refactor and CAPI function (`#2886 <https://github.com/openmc-dev/openmc/pull/2886>`_)
+- Added check for length of value passed into EnergyFilter (`#2887 <https://github.com/openmc-dev/openmc/pull/2887>`_)
+- Ensure that Model.run() works when specifying a custom XML path (`#2889 <https://github.com/openmc-dev/openmc/pull/2889>`_)
+- Updating docker file base to bookworm (`#2890 <https://github.com/openmc-dev/openmc/pull/2890>`_)
+- Clarifying documentation for cones (`#2892 <https://github.com/openmc-dev/openmc/pull/2892>`_)
+- Abort on cmake config if openmp requested but not found (`#2893 <https://github.com/openmc-dev/openmc/pull/2893>`_)
+- Tiny updates from experience building on Mac (`#2894 <https://github.com/openmc-dev/openmc/pull/2894>`_)
+- Added damage-energy as optional reaction for micro (`#2903 <https://github.com/openmc-dev/openmc/pull/2903>`_)
+- docs: add missing max_splits in settings specification (`#2910 <https://github.com/openmc-dev/openmc/pull/2910>`_)
+- Changed CI to use latest actions to get away from the Node 16 deprecation. (`#2912 <https://github.com/openmc-dev/openmc/pull/2912>`_)
+- Mkdir to always allow parents and exist ok (`#2914 <https://github.com/openmc-dev/openmc/pull/2914>`_)
+- Fixed small sphinx typo (`#2915 <https://github.com/openmc-dev/openmc/pull/2915>`_)
+- Hexagonal lattice iterators (`#2921 <https://github.com/openmc-dev/openmc/pull/2921>`_)
+- Fix Chain.form_matrix to work with scipy 1.12 (`#2922 <https://github.com/openmc-dev/openmc/pull/2922>`_)
+- Allow get_microxs_and_flux to use OPENMC_CHAIN_FILE environment variable (`#2934 <https://github.com/openmc-dev/openmc/pull/2934>`_)
+- Polygon fix to better handle colinear points (`#2935 <https://github.com/openmc-dev/openmc/pull/2935>`_)
+- Fix CMFD to work with scipy 1.13 (`#2936 <https://github.com/openmc-dev/openmc/pull/2936>`_)
+- Print warning if no natural isotopes when using add_element (`#2938 <https://github.com/openmc-dev/openmc/pull/2938>`_)
+- Update xtl and xtensor submodules (`#2941 <https://github.com/openmc-dev/openmc/pull/2941>`_)
+- Ensure two surfaces with different boundary type are not considered redundant (`#2942 <https://github.com/openmc-dev/openmc/pull/2942>`_)
+- Updated package versions in Dockerfile (`#2946 <https://github.com/openmc-dev/openmc/pull/2946>`_)
+- Add MPI calls to DAGMC external test (`#2948 <https://github.com/openmc-dev/openmc/pull/2948>`_)
+- Eliminate deprecation warnings from scipy and pandas (`#2951 <https://github.com/openmc-dev/openmc/pull/2951>`_)
+- Update math function unit test with catch2 (`#2955 <https://github.com/openmc-dev/openmc/pull/2955>`_)
+- Support track file writing for particle restart runs. (`#2957 <https://github.com/openmc-dev/openmc/pull/2957>`_)
+- Make UWUW optional (`#2965 <https://github.com/openmc-dev/openmc/pull/2965>`_)
+- Allow pure decay IndependentOperator (`#2966 <https://github.com/openmc-dev/openmc/pull/2966>`_)
+- Added fix to cfloat_endf for length 11 endf floats (`#2967 <https://github.com/openmc-dev/openmc/pull/2967>`_)
+- Moved apt get to optional CI parts (`#2970 <https://github.com/openmc-dev/openmc/pull/2970>`_)
+- Update bounding_box docstrings (`#2972 <https://github.com/openmc-dev/openmc/pull/2972>`_)
+- Added extra error checking on spherical mesh creation (`#2973 <https://github.com/openmc-dev/openmc/pull/2973>`_)
+- Update CODEOWNERS file (`#2974 <https://github.com/openmc-dev/openmc/pull/2974>`_)
+- Added error checking on cylindrical mesh (`#2977 <https://github.com/openmc-dev/openmc/pull/2977>`_)
+- Correction for histogram interpolation of Tabular distributions (`#2981 <https://github.com/openmc-dev/openmc/pull/2981>`_)
+- Enforce lower_left in lattice geometry (`#2982 <https://github.com/openmc-dev/openmc/pull/2982>`_)
+- Update random_dist.h comment to be less specific (`#2991 <https://github.com/openmc-dev/openmc/pull/2991>`_)
+- Apply memoization in get_all_universes (`#2995 <https://github.com/openmc-dev/openmc/pull/2995>`_)
+- Make sure skewed dataset is cast to bool properly (`#3001 <https://github.com/openmc-dev/openmc/pull/3001>`_)
+- Hexagonal lattice roundtrip (`#3003 <https://github.com/openmc-dev/openmc/pull/3003>`_)
+- Fix CylinderSector and IsogonalOctagon translations (`#3018 <https://github.com/openmc-dev/openmc/pull/3018>`_)
+- Sets used instead of lists when membership testing (`#3021 <https://github.com/openmc-dev/openmc/pull/3021>`_)
+- Fixing plot xs for when plotting element string reaction (`#3029 <https://github.com/openmc-dev/openmc/pull/3029>`_)
+- Fix shannon entropy broken link (`#3034 <https://github.com/openmc-dev/openmc/pull/3034>`_)
+- Only add png or h5 extension if not present in plots.py (`#3036 <https://github.com/openmc-dev/openmc/pull/3036>`_)
+- Fix non-existent path causing segmentation fault when saving plot (`#3038 <https://github.com/openmc-dev/openmc/pull/3038>`_)
+- Resolve warnings related to numpy 2.0 (`#3044 <https://github.com/openmc-dev/openmc/pull/3044>`_)
+- Update IsogonalOctagon to use xz basis (`#3045 <https://github.com/openmc-dev/openmc/pull/3045>`_)
+- Determine whether nuclides are fissionable in volume calc mode (`#3047 <https://github.com/openmc-dev/openmc/pull/3047>`_)
+- Avoiding more numpy 2.0 deprecation warnings (`#3049 <https://github.com/openmc-dev/openmc/pull/3049>`_)
+- Set DAGMC cell instances on surface crossing (`#3052 <https://github.com/openmc-dev/openmc/pull/3052>`_)
+
+------------
+Contributors
+------------
+
+- `Aidan Crilly <https://github.com/aidancrilly>`_
+- `April Novak <https://github.com/aprilnovak>`_
+- `Davide Mancusi <https://github.com/arekfu>`_
+- `Baptiste Mouginot <https://github.com/bam241>`_
+- `Chris Wagner <https://github.com/chrwagne>`_
+- `Lorenzo Chierici <https://github.com/church89>`_
+- `Catherine Yu <https://github.com/cxtherineyu>`_
+- `Erik Knudsen <https://github.com/ebknudsen>`_
+- `Ethan Peterson <https://github.com/eepeterson>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `hsameer481 <https://github.com/hsameer481>`_
+- `Hunter Belanger <https://github.com/HunterBelanger>`_
+- `Isaac Meyer <https://github.com/icmeyer>`_
+- `Jin Whan Bae <https://github.com/jbae11>`_
+- `Joffrey Dorville <https://github.com/JoffreyDorville>`_
+- `John Tramm <https://github.com/jtramm>`_
+- `Yue Jin <https://github.com/kingyue737>`_
+- `Sigfrid Stjärnholm <https://github.com/Kladdy>`_
+- `Kimberly Meagher <https://github.com/kmeag>`_
+- `lhchg <https://github.com/lhchg>`_
+- `Luke Labrie-Cleary <https://github.com/LukeLabrie>`_
+- `Micah Gale <https://github.com/MicahGale>`_
+- `Nicholas Linden <https://github.com/nplinden>`_
+- `pitkajuh <https://github.com/pitkajuh>`_
+- `Rosie Barker <https://github.com/rlbarker>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_
+- `Travis Labossiere-Hickman <https://github.com/tjlaboss>`_
+- `Vanessa Lulla <https://github.com/vanessalulla>`_
+- `Olek Yardas <https://github.com/yardasol>`_
+- `Perry Young <https://github.com/yrrepy>`_

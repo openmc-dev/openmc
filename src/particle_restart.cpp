@@ -87,8 +87,10 @@ void run_particle_restart()
   read_particle_restart(p, previous_run_mode);
 
   // write track if that was requested on command line
-  if (settings::write_all_tracks)
+  if (settings::write_all_tracks) {
+    open_track_file();
     p.write_track() = true;
+  }
 
   // Set all tallies to 0 for now (just tracking errors)
   model::tallies.clear();
@@ -123,6 +125,10 @@ void run_particle_restart()
 
   // Write output if particle made it
   print_particle(p);
+
+  if (settings::write_all_tracks) {
+    close_track_file();
+  }
 }
 
 } // namespace openmc

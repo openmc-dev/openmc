@@ -55,6 +55,6 @@ developer or send a message to the `developers mailing list`_.
 
 
 .. _property attribute: https://docs.python.org/3.6/library/functions.html#property
-.. _XML Schema Part 2: http://www.w3.org/TR/xmlschema-2/
-.. _boolean: http://www.w3.org/TR/xmlschema-2/#boolean
+.. _XML Schema Part 2: https://www.w3.org/TR/xmlschema-2/
+.. _boolean: https://www.w3.org/TR/xmlschema-2/#boolean
 .. _developers mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-dev

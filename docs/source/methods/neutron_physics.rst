@@ -290,7 +290,10 @@ create and store fission sites for the following generation. First, the average
 number of prompt and delayed neutrons must be determined to decide whether the
 secondary neutrons will be prompt or delayed. This is important because delayed
 neutrons have a markedly different spectrum from prompt neutrons, one that has a
-lower average energy of emission. The total number of neutrons emitted
+lower average energy of emission. Furthermore, in simulations where tracking
+time of neutrons is important, we need to consider the emission time delay of
+the secondary neutrons, which is dependent on the decay constant of the
+delayed neutron precursor. The total number of neutrons emitted
 :math:`\nu_t` is given as a function of incident energy in the ENDF format. Two
 representations exist for :math:`\nu_t`. The first is a polynomial of order
 :math:`N` with coefficients :math:`c_0,c_1,\dots,c_N`. If :math:`\nu_t` has this
@@ -306,8 +309,8 @@ interpolation law. The number of prompt neutrons released per fission event
 :math:`\nu_p` is also given as a function of incident energy and can be
 specified in a polynomial or tabular format. The number of delayed neutrons
 released per fission event :math:`\nu_d` can only be specified in a tabular
-format. In practice, we only need to determine :math:`nu_t` and
-:math:`nu_d`. Once these have been determined, we can calculated the delayed
+format. In practice, we only need to determine :math:`\nu_t` and
+:math:`\nu_d`. Once these have been determined, we can calculate the delayed
 neutron fraction
 
 .. math::
@@ -335,8 +338,14 @@ neutrons. Otherwise, we produce :math:`\lfloor \nu \rfloor + 1` neutrons. Then,
 for each fission site produced, we sample the outgoing angle and energy
 according to the algorithms given in :ref:`sample-angle` and
 :ref:`sample-energy` respectively. If the neutron is to be born delayed, then
-there is an extra step of sampling a delayed neutron precursor group since they
-each have an associated secondary energy distribution.
+there is an extra step of sampling a delayed neutron precursor group to get the
+associated secondary energy distribution and the decay constant
+:math:`\lambda`, which is needed to sample the emission delay time :math:`t_d`:
+
+.. math::
+    :label: sample-delay-time
+
+    t_d = -\frac{\ln \xi}{\lambda}.
 
 The sampled outgoing angle and energy of fission neutrons along with the
 position of the collision site are stored in an array called the fission
@@ -1743,19 +1752,19 @@ types.
 
 .. _Watt fission spectrum: https://doi.org/10.1103/PhysRev.87.1037
 
-.. _Foderaro: http://hdl.handle.net/1721.1/1716
+.. _Foderaro: https://dspace.mit.edu/handle/1721.1/1716
 
 .. _OECD: https://www.oecd-nea.org/tools/abstract/detail/NEA-1792
 
 .. _NJOY: https://www.njoy21.io/NJOY2016/
 
-.. _PREPRO: https://www-nds.iaea.org/ndspub/endf/prepro/
+.. _PREPRO: https://www-nds.iaea.org/public/endf/prepro/
 
 .. _ENDF-6 Format: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
 
-.. _Monte Carlo Sampler: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-09721-MS
+.. _Monte Carlo Sampler: https://mcnp.lanl.gov/pdf_files/TechReport_1983_LANL_LA-9721-MS_EverettCashwell.pdf
 
-.. _LA-UR-14-27694: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694
+.. _LA-UR-14-27694: https://www.osti.gov/biblio/1159204
 
 .. _MC21: https://www.osti.gov/biblio/903083
 
@@ -1763,6 +1772,4 @@ types.
 
 .. _Sutton and Brown: https://www.osti.gov/biblio/307911
 
-.. _lectures: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-05-4983.pdf
-
-.. _MCNP Manual: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-03-1987.pdf
+.. _lectures: https://mcnp.lanl.gov/pdf_files/TechReport_2005_LANL_LA-UR-05-4983_Brown.pdf

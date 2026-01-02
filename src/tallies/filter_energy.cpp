@@ -3,7 +3,7 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
-#include "openmc/constants.h" // For F90_NONE
+#include "openmc/constants.h" // For C_NONE
 #include "openmc/mgxs_interface.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -21,14 +21,14 @@ void EnergyFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void EnergyFilter::set_bins(gsl::span<const double> bins)
+void EnergyFilter::set_bins(span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();
   bins_.reserve(bins.size());
 
   // Copy bins, ensuring they are valid
-  for (gsl::index i = 0; i < bins.size(); ++i) {
+  for (int64_t i = 0; i < bins.size(); ++i) {
     if (i > 0 && bins[i] <= bins[i - 1]) {
       throw std::runtime_error {
         "Energy bins must be monotonically increasing."};
@@ -46,7 +46,7 @@ void EnergyFilter::set_bins(gsl::span<const double> bins)
   if (!settings::run_CE) {
     if (n_bins_ == data::mg.num_energy_groups_) {
       matches_transport_groups_ = true;
-      for (gsl::index i = 0; i < n_bins_ + 1; ++i) {
+      for (int64_t i = 0; i < n_bins_ + 1; ++i) {
         if (data::mg.rev_energy_bins_[i] != bins_[i]) {
           matches_transport_groups_ = false;
           break;
@@ -59,7 +59,7 @@ void EnergyFilter::set_bins(gsl::span<const double> bins)
 void EnergyFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  if (p.g() != F90_NONE && matches_transport_groups_) {
+  if (p.g() != C_NONE && matches_transport_groups_) {
     if (estimator == TallyEstimator::TRACKLENGTH) {
       match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
     } else {
@@ -98,7 +98,7 @@ std::string EnergyFilter::text_label(int bin) const
 void EnergyoutFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  if (p.g() != F90_NONE && matches_transport_groups_) {
+  if (p.g() != C_NONE && matches_transport_groups_) {
     match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
     match.weights_.push_back(1.0);
 

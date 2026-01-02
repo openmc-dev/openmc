@@ -25,19 +25,38 @@ KERMA (Kinetic Energy Release in Materials) [Mack97]_ coefficients for reaction
 :math:`\times` cross-section (e.g., eV-barn) and can be used much like a reaction
 cross section for the purpose of tallying energy deposition.
 
-KERMA coefficients can be computed using the energy-balance method with
-a nuclear data processing code like NJOY, which performs the following
-iteration over all reactions :math:`r` for all isotopes :math:`i`
-requested
+KERMA coefficients can be computed using the energy-balance method with a
+nuclear data processing code like NJOY, which estimates the KERMA coefficients
+using the following equation:
 
 .. math::
 
-    k_{i, r}(E) = \left(E + Q_{i, r} - \bar{E}_{i, r, n}
+    k_{i, r}(E) = \left(E + Q_{i, r} - \sum\limits_x \bar{E}_{i, r, x}
+    \right)\sigma_{i, r}(E),
+
+where the summation is over each secondary particle type :math:`x`. This
+equation states that the energy deposited is equal to the energy of the incident
+particle plus the reaction :math:`Q` value less the energy of secondary
+particles that are transported away from the reaction site. For neutron
+interactions, the energy-balance KERMA coefficient is
+
+.. math::
+
+    k_{i, r}(E) = \left(E + Q_{i, r} - \sum\limits_x \bar{E}_{i, r, n}
     - \bar{E}_{i, r, \gamma}\right)\sigma_{i, r}(E),
 
-removing the energy of neutral particles (neutrons and photons) that are
-transported away from the reaction site :math:`\bar{E}`, and the reaction
-:math:`Q` value.
+where :math:`\bar{E}_{i, r, n}` is the average energy of secondary neutrons and
+:math:`\bar{E}_{i, r, \gamma}` is the average energy of secondary photons. For
+photon and charged particle interactions the KERMA coefficient is
+
+.. math::
+    :label: energy-balance-photon
+
+    k_{i, r}(E) = \left(E + Q_{i, r} - \sum\limits_x \bar{E}_{i, r, x}
+    \right)\sigma_{i, r}(E).
+
+where the :math:`Q` value is zero for all interactions except for pair
+production and positron annihilation.
 
 -------
 Fission
@@ -120,7 +139,7 @@ run with :math:`N918` reflecting fission heating computed from NJOY.
 This modified heating data is stored as the MT=901 reaction and will be scored
 if ``heating-local`` is included in :attr:`openmc.Tally.scores`.
 
-Coupled neutron-photon transport
+Coupled Neutron-Photon Transport
 --------------------------------
 
 Here, OpenMC instructs ``heatr`` to assume that energy from photons is not
@@ -137,6 +156,50 @@ Let :math:`N301` represent the total heating number returned from this
 
 This modified heating data is stored as the MT=301 reaction and will be scored
 if ``heating`` is included in :attr:`openmc.Tally.scores`.
+
+Photons and Charged Particles
+-----------------------------
+
+In OpenMC, energy deposition from photons or charged particles is scored using
+the energy balance method based on Equation :eq:`energy-balance-photon`. Special
+consideration is given to electrons and positrons as described below.
+
++++++++++++++++++
+Charged Particles
++++++++++++++++++
+
+OpenMC tracks photons interaction by interaction so the energy deposited in each
+collision is easily attributed back to the nuclide and reaction for which the
+photon interacted with. Charged particles (electrons and photons) aren't tracked
+in the same way. For charged particles, OpenMC assumes that all their energy
+(less the energy of bremsstrahlung radiation) is deposited in the material in
+which they were born. In this way it is harder to trace how much energy should
+be attributed in each nuclide.
+
+According to the CSDA approximation (see :ref:`ttb`) the energy deposited by a
+charged particle with kinetic energy :math:`T` in the :math:`i`-th element can
+be calculated as:
+
+.. math::
+
+    E_{i} = \int_{0}^{R(T)} w_{i}S_{\text{col,i}} dx
+
+where :math:`R(T)` is the CSDA range of the charged particle,
+:math:`S_{\text{col},i}` is the collision stopping power of the charged particle
+in the :math:`i`-th element and :math:`w_i` is the mass fraction of the
+:math:`i`-th element. According to the Bethe formula the collision stopping
+power of the :math:`i`-th element is proportional to :math:`Z_i/A_i`, so the
+fractional collision stopping power from the :math:`i`-th element is:
+
+.. math::
+
+    \frac{w_{i}S_{\text{col},i}(T)}{S_{\text{col}}(T)} =
+    \frac{\frac{w_{i}Z_{i}}{A_{i}}}{\sum_{i}\frac{w_{i}Z_{i}}{A_{i}}} =
+    \frac{\gamma_i Z_{i}}{\sum_{i}\gamma_i Z_{i}}.
+
+where :math:`\gamma_i` is the atomic fraction of the :math:`i`-th element.
+Therefore, the energy deposited by charged particles should be attributed to
+a given element according to its fractional charge density.
 
 ----------
 References

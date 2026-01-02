@@ -22,6 +22,8 @@ public:
   explicit UnitSphereDistribution(pugi::xml_node node);
   virtual ~UnitSphereDistribution() = default;
 
+  static unique_ptr<UnitSphereDistribution> create(pugi::xml_node node);
+
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
@@ -49,6 +51,8 @@ public:
   Distribution* phi() const { return phi_.get(); }
 
 private:
+  Direction v_ref_ {1.0, 0.0, 0.0}; //!< reference direction
+  Direction w_ref_;
   UPtrDist mu_;  //!< Distribution of polar angle
   UPtrDist phi_; //!< Distribution of azimuthal angle
 };

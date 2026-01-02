@@ -16,6 +16,40 @@
 
 namespace openmc {
 
+// Type of surface source write
+enum class SSWCellType {
+  None,
+  Both,
+  From,
+  To,
+};
+
+// Type of IFP parameters
+enum class IFPParameter {
+  None,
+  Both,
+  BetaEffective,
+  GenerationTime,
+};
+
+struct CollisionTrackConfig {
+  bool mcpl_write {false}; //!< Write collision tracks using MCPL?
+  std::unordered_set<int>
+    cell_ids; //!< Cell ids where collisions will be written
+  std::unordered_set<int>
+    mt_numbers; //!< MT Numbers where collisions will be written
+  std::unordered_set<int>
+    universe_ids; //!< Universe IDs where collisions will be written
+  std::unordered_set<int>
+    material_ids; //!< Material IDs where collisions will be written
+  std::unordered_set<std::string>
+    nuclides; //!< Nuclides where collisions will be written
+  double deposited_energy_threshold {0.0}; //!< Minimum deposited energy [eV]
+  int64_t max_collisions {
+    1000};               //!< Maximum events recorded per collision track file
+  int64_t max_files {1}; //!< Maximum number of collision track files
+};
+
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -25,6 +59,7 @@ namespace settings {
 // Boolean flags
 extern bool assume_separate;      //!< assume tallies are spatially separate?
 extern bool check_overlaps;       //!< check overlaps in geometry?
+extern bool collision_track;      //!< flag to use collision track feature?
 extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
   create_fission_neutrons; //!< create fission neutrons (fixed source)?
@@ -34,31 +69,35 @@ extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on; //!< calculate Shannon entropy?
 extern "C" bool
-  event_based; //!< use event-based mode (instead of history-based)
+  event_based;      //!< use event-based mode (instead of history-based)
+extern bool ifp_on; //!< Use IFP for kinetics parameters?
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
-extern bool material_cell_offsets; //!< create material cells offsets?
-extern "C" bool output_summary;    //!< write summary.h5?
-extern bool output_tallies;        //!< write tallies.out?
-extern bool particle_restart_run;  //!< particle restart run?
-extern "C" bool photon_transport;  //!< photon transport turned on?
-extern "C" bool reduce_tallies;    //!< reduce tallies at end of batch?
-extern bool res_scat_on;           //!< use resonance upscattering method?
-extern "C" bool restart_run;       //!< restart run?
-extern "C" bool run_CE;            //!< run with continuous-energy data?
-extern bool source_latest;         //!< write latest source at each batch?
-extern bool source_separate;       //!< write source to separate file?
-extern bool source_write;          //!< write source in HDF5 files?
-extern bool source_mcpl_write;     //!< write source in mcpl files?
-extern bool surf_source_write;     //!< write surface source file?
-extern bool surf_mcpl_write;       //!< write surface mcpl file?
-extern bool surf_source_read;      //!< read surface source file?
-extern bool survival_biasing;      //!< use survival biasing?
-extern bool temperature_multipole; //!< use multipole data?
-extern "C" bool trigger_on;        //!< tally triggers enabled?
-extern bool trigger_predict;       //!< predict batches for triggers?
-extern bool ufs_on;                //!< uniform fission site method on?
-extern bool urr_ptables_on;        //!< use unresolved resonance prob. tables?
-extern "C" bool weight_windows_on; //!< are weight windows are enabled?
+extern bool material_cell_offsets;   //!< create material cells offsets?
+extern "C" bool output_summary;      //!< write summary.h5?
+extern bool output_tallies;          //!< write tallies.out?
+extern bool particle_restart_run;    //!< particle restart run?
+extern "C" bool photon_transport;    //!< photon transport turned on?
+extern "C" bool reduce_tallies;      //!< reduce tallies at end of batch?
+extern bool res_scat_on;             //!< use resonance upscattering method?
+extern "C" bool restart_run;         //!< restart run?
+extern "C" bool run_CE;              //!< run with continuous-energy data?
+extern bool source_latest;           //!< write latest source at each batch?
+extern bool source_separate;         //!< write source to separate file?
+extern bool source_write;            //!< write source in HDF5 files?
+extern bool source_mcpl_write;       //!< write source in mcpl files?
+extern bool surf_source_write;       //!< write surface source file?
+extern bool surf_mcpl_write;         //!< write surface mcpl file?
+extern bool surf_source_read;        //!< read surface source file?
+extern bool survival_biasing;        //!< use survival biasing?
+extern bool survival_normalization;  //!< use survival normalization?
+extern bool temperature_multipole;   //!< use multipole data?
+extern "C" bool trigger_on;          //!< tally triggers enabled?
+extern bool trigger_predict;         //!< predict batches for triggers?
+extern bool uniform_source_sampling; //!< sample sources uniformly?
+extern bool ufs_on;                  //!< uniform fission site method on?
+extern bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
+extern bool use_decay_photons;       //!< use decay photons for D1S
+extern "C" bool weight_windows_on;   //!< are weight windows are enabled?
 extern bool weight_window_checkpoint_surface;   //!< enable weight window check
                                                 //!< upon surface crossing?
 extern bool weight_window_checkpoint_collision; //!< enable weight window check
@@ -93,14 +132,18 @@ extern "C" int32_t gen_per_batch; //!< number of generations per batch
 extern "C" int64_t n_particles;   //!< number of particles per generation
 
 extern int64_t
-  max_particles_in_flight; //!< Max num. event-based particles in flight
-
+  max_particles_in_flight;      //!< Max num. event-based particles in flight
+extern int max_particle_events; //!< Maximum number of particle events
 extern ElectronTreatment
   electron_treatment; //!< how to treat secondary electrons
 extern array<double, 4>
   energy_cutoff; //!< Energy cutoff in [eV] for each particle type
 extern array<double, 4>
   time_cutoff; //!< Time cutoff in [s] for each particle type
+extern int
+  ifp_n_generation; //!< Number of generation for Iterated Fission Probability
+extern IFPParameter
+  ifp_parameter; //!< Parameter to calculate for Iterated Fission Probability
 extern int
   legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;         //!< Maximum Legendre order for multigroup data
@@ -112,17 +155,32 @@ extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min; //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max; //!< Max energy in [eV] for res. upscattering
 extern vector<std::string>
-  res_scat_nuclides;     //!< Nuclides using res. upscattering treatment
-extern RunMode run_mode; //!< Run mode (eigenvalue, fixed src, etc.)
+  res_scat_nuclides;           //!< Nuclides using res. upscattering treatment
+extern RunMode run_mode;       //!< Run mode (eigenvalue, fixed src, etc.)
+extern SolverType solver_type; //!< Solver Type (Monte Carlo or Random Ray)
 extern std::unordered_set<int>
   sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
-extern int max_splits; //!< maximum number of particle splits for weight windows
-extern int64_t max_surface_particles; //!< maximum number of particles to be
-                                      //!< banked on surfaces per process
+extern CollisionTrackConfig collision_track_config;
+extern double source_rejection_fraction; //!< Minimum fraction of source sites
+                                         //!< that must be accepted
+extern double free_gas_threshold;        //!< Threshold multiplier for free gas
+                                         //!< scattering treatment
+
+extern int
+  max_history_splits; //!< maximum number of particle splits for weight windows
+extern int max_secondaries;       //!< maximum number of secondaries in the bank
+extern int64_t ssw_max_particles; //!< maximum number of particles to be
+                                  //!< banked on surfaces per process
+extern int64_t ssw_max_files;     //!< maximum number of surface source files
+                                  //!<  to be created
+extern int64_t ssw_cell_id;       //!< Cell id for the surface source
+                                  //!< write setting
+extern SSWCellType ssw_cell_type; //!< Type of option for the cell
+                                  //!< argument of surface source write
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures
 extern double
@@ -139,6 +197,7 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
+
 } // namespace settings
 
 //==============================================================================

@@ -10,14 +10,15 @@ int64_t master_seed {1};
 // LCG parameters
 constexpr uint64_t prn_mult {6364136223846793005ULL}; // multiplication
 constexpr uint64_t prn_add {1442695040888963407ULL};  // additive factor, c
-constexpr uint64_t prn_stride {152917LL}; // stride between particles
+uint64_t prn_stride {DEFAULT_STRIDE}; // stride between particles
 
 //==============================================================================
 // PRN
 //==============================================================================
 
 // 64 bit implementation of the PCG-RXS-M-XS 64-bit state / 64-bit output
-// geneator Adapted from: https://github.com/imneme/pcg-c
+// geneator Adapted from: https://github.com/imneme/pcg-c, in particular
+// https://github.com/imneme/pcg-c/blob/83252d9c23df9c82ecb42210afed61a7b42402d7/include/pcg_variants.h#L188-L192
 // @techreport{oneill:pcg2014,
 //    title = "PCG: A Family of Simple Fast Space-Efficient Statistically Good
 //    Algorithms for Random Number Generation", author = "Melissa E. O'Neill",
@@ -130,6 +131,16 @@ extern "C" int64_t openmc_get_seed()
 extern "C" void openmc_set_seed(int64_t new_seed)
 {
   master_seed = new_seed;
+}
+
+extern "C" uint64_t openmc_get_stride()
+{
+  return prn_stride;
+}
+
+extern "C" void openmc_set_stride(uint64_t new_stride)
+{
+  prn_stride = new_stride;
 }
 
 } // namespace openmc

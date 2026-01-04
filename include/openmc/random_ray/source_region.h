@@ -473,7 +473,7 @@ public:
     scalar_flux_new_; //!< The scalar flux from the current iteration
   vector<float>
     source_; //!< The total source term (fission + scattering + external)
-  vector<float> external_source_;   //!< The external source term
+  vector<float> external_source_;    //!< The external source term
   vector<double> scalar_flux_final_; //!< The scalar flux accumulated over all
                                      //!< active iterations (used for plotting,
                                      //!< computing adjoint sources, or
@@ -500,10 +500,10 @@ public:
 
   // Energy group-wise 1D time-dependent arrrays
   vector<float> source_final_; //!< The total source accumulated over all
-                                //!< active iterations (used for SDP)
+                               //!< active iterations (used for SDP)
 
   // Energy group-wise 1D derivative arrays
-  vector<float> source_time_derivative_;        //!< The time derivative of the
+  vector<float> source_time_derivative_;         //!< The time derivative of the
                                                  //!< source (used for SDP)
   vector<double> scalar_flux_time_derivative_2_; //!< The 2nd order time
                                                  //!< derivative of the scalar
@@ -747,10 +747,7 @@ public:
   float& source(int64_t se) { return source_[se]; }
   const float source(int64_t se) const { return source_[se]; }
 
-  float& source_final(int64_t sr, int g)
-  {
-    return source_final_[index(sr, g)];
-  }
+  float& source_final(int64_t sr, int g) { return source_final_[index(sr, g)]; }
   const float source_final(int64_t sr, int g) const
   {
     return source_final_[index(sr, g)];
@@ -767,10 +764,7 @@ public:
     return external_source_[index(sr, g)];
   }
   float& external_source(int64_t se) { return external_source_[se]; }
-  const float external_source(int64_t se) const
-  {
-    return external_source_[se];
-  }
+  const float external_source(int64_t se) const { return external_source_[se]; }
 
   vector<TallyTask>& tally_task(int64_t sr, int g)
   {

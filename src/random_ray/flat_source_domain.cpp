@@ -170,7 +170,7 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
           total_source -= scalar_flux_time_derivative * inverse_vbar;
         }
       }
-      srh.source(g_out) =  total_source / sigma_t;
+      srh.source(g_out) = total_source / sigma_t;
     }
   }
 

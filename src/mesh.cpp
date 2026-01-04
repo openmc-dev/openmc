@@ -239,7 +239,7 @@ namespace detail {
 //==============================================================================
 
 void MaterialVolumes::add_volume(
-  int index_elem, int index_material, double volume)
+  int index_elem, int index_material, double volume, const BoundingBox* bbox)
 {
   // This method handles adding elements to the materials hash table,
   // implementing open addressing with linear probing. Consistency across
@@ -258,90 +258,17 @@ void MaterialVolumes::add_volume(
     // Non-atomic read of current material
     int32_t current_val = *slot_ptr;
 
-    // Found the desired material; accumulate volume
-    if (current_val == index_material) {
-#pragma omp atomic
-      this->volumes(index_elem, slot) += volume;
-      return;
-    }
-
-    // Slot appears to be empty; attempt to claim
-    if (current_val == EMPTY) {
-      // Attempt compare-and-swap from EMPTY to index_material
-      int32_t expected_val = EMPTY;
-      bool claimed_slot =
-        atomic_cas_int32(slot_ptr, expected_val, index_material);
-
-      // If we claimed the slot or another thread claimed it but the same
-      // material was inserted, proceed to accumulate
-      if (claimed_slot || (expected_val == index_material)) {
-#pragma omp atomic
-        this->volumes(index_elem, slot) += volume;
-        return;
-      }
-    }
-  }
-
-  // If table is full, set a flag that can be checked later
-  table_full_ = true;
-}
-
-void MaterialVolumes::add_volume_unsafe(
-  int index_elem, int index_material, double volume)
-{
-  // Linear probe
-  for (int attempt = 0; attempt < table_size_; ++attempt) {
-    // Determine slot to check, making sure it is positive
-    int slot = (index_material + attempt) % table_size_;
-    if (slot < 0)
-      slot += table_size_;
-
-    // Read current material
-    int32_t current_val = this->materials(index_elem, slot);
-
-    // Found the desired material; accumulate volume
-    if (current_val == index_material) {
-      this->volumes(index_elem, slot) += volume;
-      return;
-    }
-
-    // Claim empty slot
-    if (current_val == EMPTY) {
-      this->materials(index_elem, slot) = index_material;
-      this->volumes(index_elem, slot) += volume;
-      return;
-    }
-  }
-
-  // If table is full, set a flag that can be checked later
-  table_full_ = true;
-}
-
-void MaterialVolumes::add_volume_bbox(
-  int index_elem, int index_material, double volume, const BoundingBox& bbox)
-{
-  // Loop for linear probing
-  for (int attempt = 0; attempt < table_size_; ++attempt) {
-    // Determine slot to check, making sure it is positive
-    int slot = (index_material + attempt) % table_size_;
-    if (slot < 0)
-      slot += table_size_;
-    int32_t* slot_ptr = &this->materials(index_elem, slot);
-
-    // Non-atomic read of current material
-    int32_t current_val = *slot_ptr;
-
     // Found the desired material; accumulate volume and bbox
     if (current_val == index_material) {
 #pragma omp atomic
       this->volumes(index_elem, slot) += volume;
-      if (bboxes_) {
-        atomic_min_double(&this->bboxes(index_elem, slot, 0), bbox.min.x);
-        atomic_min_double(&this->bboxes(index_elem, slot, 1), bbox.min.y);
-        atomic_min_double(&this->bboxes(index_elem, slot, 2), bbox.min.z);
-        atomic_max_double(&this->bboxes(index_elem, slot, 3), bbox.max.x);
-        atomic_max_double(&this->bboxes(index_elem, slot, 4), bbox.max.y);
-        atomic_max_double(&this->bboxes(index_elem, slot, 5), bbox.max.z);
+      if (bbox) {
+        atomic_min_double(&this->bboxes(index_elem, slot, 0), bbox->min.x);
+        atomic_min_double(&this->bboxes(index_elem, slot, 1), bbox->min.y);
+        atomic_min_double(&this->bboxes(index_elem, slot, 2), bbox->min.z);
+        atomic_max_double(&this->bboxes(index_elem, slot, 3), bbox->max.x);
+        atomic_max_double(&this->bboxes(index_elem, slot, 4), bbox->max.y);
+        atomic_max_double(&this->bboxes(index_elem, slot, 5), bbox->max.z);
       }
       return;
     }
@@ -358,13 +285,13 @@ void MaterialVolumes::add_volume_bbox(
       if (claimed_slot || (expected_val == index_material)) {
 #pragma omp atomic
         this->volumes(index_elem, slot) += volume;
-        if (bboxes_) {
-          atomic_min_double(&this->bboxes(index_elem, slot, 0), bbox.min.x);
-          atomic_min_double(&this->bboxes(index_elem, slot, 1), bbox.min.y);
-          atomic_min_double(&this->bboxes(index_elem, slot, 2), bbox.min.z);
-          atomic_max_double(&this->bboxes(index_elem, slot, 3), bbox.max.x);
-          atomic_max_double(&this->bboxes(index_elem, slot, 4), bbox.max.y);
-          atomic_max_double(&this->bboxes(index_elem, slot, 5), bbox.max.z);
+        if (bbox) {
+          atomic_min_double(&this->bboxes(index_elem, slot, 0), bbox->min.x);
+          atomic_min_double(&this->bboxes(index_elem, slot, 1), bbox->min.y);
+          atomic_min_double(&this->bboxes(index_elem, slot, 2), bbox->min.z);
+          atomic_max_double(&this->bboxes(index_elem, slot, 3), bbox->max.x);
+          atomic_max_double(&this->bboxes(index_elem, slot, 4), bbox->max.y);
+          atomic_max_double(&this->bboxes(index_elem, slot, 5), bbox->max.z);
         }
         return;
       }
@@ -375,8 +302,8 @@ void MaterialVolumes::add_volume_bbox(
   table_full_ = true;
 }
 
-void MaterialVolumes::add_volume_bbox_unsafe(
-  int index_elem, int index_material, double volume, const BoundingBox& bbox)
+void MaterialVolumes::add_volume_unsafe(
+  int index_elem, int index_material, double volume, const BoundingBox* bbox)
 {
   // Linear probe
   for (int attempt = 0; attempt < table_size_; ++attempt) {
@@ -391,19 +318,19 @@ void MaterialVolumes::add_volume_bbox_unsafe(
     // Found the desired material; accumulate volume and bbox
     if (current_val == index_material) {
       this->volumes(index_elem, slot) += volume;
-      if (bboxes_) {
+      if (bbox) {
         this->bboxes(index_elem, slot, 0) =
-          std::min(this->bboxes(index_elem, slot, 0), bbox.min.x);
+          std::min(this->bboxes(index_elem, slot, 0), bbox->min.x);
         this->bboxes(index_elem, slot, 1) =
-          std::min(this->bboxes(index_elem, slot, 1), bbox.min.y);
+          std::min(this->bboxes(index_elem, slot, 1), bbox->min.y);
         this->bboxes(index_elem, slot, 2) =
-          std::min(this->bboxes(index_elem, slot, 2), bbox.min.z);
+          std::min(this->bboxes(index_elem, slot, 2), bbox->min.z);
         this->bboxes(index_elem, slot, 3) =
-          std::max(this->bboxes(index_elem, slot, 3), bbox.max.x);
+          std::max(this->bboxes(index_elem, slot, 3), bbox->max.x);
         this->bboxes(index_elem, slot, 4) =
-          std::max(this->bboxes(index_elem, slot, 4), bbox.max.y);
+          std::max(this->bboxes(index_elem, slot, 4), bbox->max.y);
         this->bboxes(index_elem, slot, 5) =
-          std::max(this->bboxes(index_elem, slot, 5), bbox.max.z);
+          std::max(this->bboxes(index_elem, slot, 5), bbox->max.z);
       }
       return;
     }
@@ -412,19 +339,19 @@ void MaterialVolumes::add_volume_bbox_unsafe(
     if (current_val == EMPTY) {
       this->materials(index_elem, slot) = index_material;
       this->volumes(index_elem, slot) += volume;
-      if (bboxes_) {
+      if (bbox) {
         this->bboxes(index_elem, slot, 0) =
-          std::min(this->bboxes(index_elem, slot, 0), bbox.min.x);
+          std::min(this->bboxes(index_elem, slot, 0), bbox->min.x);
         this->bboxes(index_elem, slot, 1) =
-          std::min(this->bboxes(index_elem, slot, 1), bbox.min.y);
+          std::min(this->bboxes(index_elem, slot, 1), bbox->min.y);
         this->bboxes(index_elem, slot, 2) =
-          std::min(this->bboxes(index_elem, slot, 2), bbox.min.z);
+          std::min(this->bboxes(index_elem, slot, 2), bbox->min.z);
         this->bboxes(index_elem, slot, 3) =
-          std::max(this->bboxes(index_elem, slot, 3), bbox.max.x);
+          std::max(this->bboxes(index_elem, slot, 3), bbox->max.x);
         this->bboxes(index_elem, slot, 4) =
-          std::max(this->bboxes(index_elem, slot, 4), bbox.max.y);
+          std::max(this->bboxes(index_elem, slot, 4), bbox->max.y);
         this->bboxes(index_elem, slot, 5) =
-          std::max(this->bboxes(index_elem, slot, 5), bbox.max.z);
+          std::max(this->bboxes(index_elem, slot, 5), bbox->max.z);
       }
       return;
     }
@@ -699,8 +626,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
                 BoundingBox contrib_bbox {contrib_min, contrib_max};
                 contrib_bbox &= bbox;
 
-                result.add_volume_bbox(
-                  mesh_index, i_material, volume, contrib_bbox);
+                result.add_volume(
+                  mesh_index, i_material, volume, &contrib_bbox);
               } else {
                 // Add volume to result
                 result.add_volume(mesh_index, i_material, volume);
@@ -786,8 +713,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
                     recv_bboxes[bbox_index + 2]},
                   {recv_bboxes[bbox_index + 3], recv_bboxes[bbox_index + 4],
                     recv_bboxes[bbox_index + 5]}};
-                result.add_volume_bbox_unsafe(
-                  index_elem, mats[index], vols[index], slot_bbox);
+                result.add_volume_unsafe(
+                  index_elem, mats[index], vols[index], &slot_bbox);
               } else {
                 result.add_volume_unsafe(index_elem, mats[index], vols[index]);
               }

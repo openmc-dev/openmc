@@ -100,19 +100,11 @@ public:
   //! \param[in] index_elem Index of the mesh element
   //! \param[in] index_material Index of the material within the model
   //! \param[in] volume Volume to add
-  void add_volume(int index_elem, int index_material, double volume);
-  void add_volume_unsafe(int index_elem, int index_material, double volume);
-
-  //! Add volume and union a bounding box for a given material in a mesh element
-  //
-  //! \param[in] index_elem Index of the mesh element
-  //! \param[in] index_material Index of the material within the model
-  //! \param[in] volume Volume to add
-  //! \param[in] bbox Bounding box to union into the result
-  void add_volume_bbox(
-    int index_elem, int index_material, double volume, const BoundingBox& bbox);
-  void add_volume_bbox_unsafe(
-    int index_elem, int index_material, double volume, const BoundingBox& bbox);
+  //! \param[in] bbox Bounding box to union into the result (optional)
+  void add_volume(int index_elem, int index_material, double volume,
+    const BoundingBox* bbox = nullptr);
+  void add_volume_unsafe(int index_elem, int index_material, double volume,
+    const BoundingBox* bbox = nullptr);
 
   // Accessors
   int32_t& materials(int i, int j) { return materials_[i * table_size_ + j]; }

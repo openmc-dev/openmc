@@ -367,7 +367,7 @@ def test_ww_generation_with_dagmc(run_in_tmpdir):
         method="stochastic_slab",
         overwrite_mgxs_library=True,
         nparticles=10,
-        groups="CASMO-2"
+        energy_groups="CASMO-2"
     )
 
     rr_model.convert_to_random_ray()

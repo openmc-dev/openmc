@@ -183,34 +183,6 @@ public:
   virtual void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const = 0;
 
-  //! Determine which bins were crossed by a particle with segment start offsets
-  //
-  //! The default implementation assumes that the returned segments are
-  //! contiguous (i.e., no gaps along the track) and constructs `start`
-  //! from a cumulative sum of `lengths`. Meshes whose `bins_crossed` omits
-  //! gaps (e.g., cylindrical/spherical or unstructured meshes) should
-  //! override this method to provide correct `start` values.
-  //
-  //! \param[in] r0 Previous position of the particle
-  //! \param[in] r1 Current position of the particle
-  //! \param[in] u Particle direction
-  //! \param[out] bins Bins that were crossed
-  //! \param[out] lengths Fraction of tracklength in each bin
-  //! \param[out] start Fractional start offset for each segment
-  virtual void bins_crossed_with_start(Position r0, Position r1,
-    const Direction& u, vector<int>& bins, vector<double>& lengths,
-    vector<double>& start) const
-  {
-    this->bins_crossed(r0, r1, u, bins, lengths);
-    start.clear();
-    start.reserve(lengths.size());
-    double cumulative {0.0};
-    for (double frac : lengths) {
-      start.push_back(cumulative);
-      cumulative += frac;
-    }
-  }
-
   //! Determine which surface bins were crossed by a particle
   //
   //! \param[in] r0 Previous position of the particle
@@ -356,10 +328,6 @@ public:
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
-
-  void bins_crossed_with_start(Position r0, Position r1, const Direction& u,
-    vector<int>& bins, vector<double>& lengths,
-    vector<double>& start) const override;
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
@@ -866,10 +834,6 @@ public:
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
-
-  void bins_crossed_with_start(Position r0, Position r1, const Direction& u,
-    vector<int>& bins, vector<double>& lengths,
-    vector<double>& start) const override;
 
   int get_bin(Position r) const override;
 

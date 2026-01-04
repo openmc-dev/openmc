@@ -95,12 +95,6 @@ void FlatSourceDomain::batch_reset()
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_new(se) = 0.0;
   }
-
-  if (settings::kinetic_simulation && settings::create_delayed_neutrons) {
-#pragma omp parallel for
-    for (int64_t se = 0; se < n_source_elements(); se++)
-      source_regions_.precursors_new(se) = 0.0;
-  }
 }
 
 void FlatSourceDomain::accumulate_iteration_flux()

@@ -1275,7 +1275,7 @@ Applying Equation :eq:`ical-isotropic` to Equation :eq:`moc_td_final_flat` yield
 .. math::
    :label: char-td-isotropic
 
-    \Delta \psi(t) = \left(\psi_{r,g}(0, t) - \frac{Q_{i,g}(t)}{\Sigma{t,i,g}(t)} + \frac{1}{4\pi v_g \Sigma_{t,i,g}(t)} \frac{d}{d t} \phi_{i,g}(t)\right) (1 - e^{-\Sigma_t,i,g(t) \ell_r})
+    \Delta \psi(t) = \left(\psi_{r,g}(0, t) - \frac{Q_{i,g}(t)}{\Sigma_{t,i,g}(t)} + \frac{1}{4\pi v_g \Sigma_{t,i,g}(t)} \frac{d}{d t} \phi_{i,g}(t)\right) (1 - e^{-\Sigma_{t,i,g}(t) \ell_r})
 
 
 This approach was first applied to the random ray method by `Kraus

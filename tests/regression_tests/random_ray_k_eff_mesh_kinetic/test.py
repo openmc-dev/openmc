@@ -35,5 +35,5 @@ def test_random_ray_k_eff_mesh():
     
     model.settings.random_ray['source_region_meshes'] = [(mesh, [root])]
 
-    harness = KineticMGXSTestHarness(model, 6)
+    harness = KineticMGXSTestHarness('statepoint.400', 6, model)
     harness.main()

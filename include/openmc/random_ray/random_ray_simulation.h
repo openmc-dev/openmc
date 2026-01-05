@@ -19,9 +19,13 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
-  void compute_segment_correction_factors();
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fixed_sources_adjoint();
+  void print_random_ray_headers();
+  void run_single_simulation();
+  void random_ray_adjoint();
+  void kinetic_initial_condition();
+  void kinetic_single_time_step(int i);
   void simulate();
   void output_simulation_results() const;
   void instability_check(
@@ -52,9 +56,16 @@ private:
   // Number of delay groups
   int ndgroups_;
 
+  // Toggle for first simulation
+  bool is_first_simulation_;
+
+  // Flag for adjoint simulation;
+  bool adjoint_needed_;
+
   //----------------------------------------------------------------------------
   // Data Members for kinetic simulations
 
+  double static_avg_k_eff_;
   vector<double> static_k_eff_;
   vector<double> static_fission_rate_;
 
@@ -71,11 +82,12 @@ void openmc_reset_random_ray();
 //! Write data related to randaom ray to statepoint
 //! \param[in] group HDF5 group
 void write_random_ray_hdf5(hid_t group);
+void print_random_ray_headers(bool& adjoint_needed);
 
 // Functions for kinetic simulations
 void set_time_dependent_settings();
-void rename_statepoint_file(int i);
-void rename_tallies_file(int i);
+void rename_time_step_file(
+  std::string base_filename, std::string extension, int i);
 
 } // namespace openmc
 

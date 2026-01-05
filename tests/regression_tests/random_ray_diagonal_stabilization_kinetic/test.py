@@ -60,5 +60,5 @@ def test_random_ray_diagonal_stabilization():
     model.settings.inactive = 15
     model.settings.batches = 20
 
-    harness = KineticMGXSTestHarness(model, 6)
+    harness = KineticMGXSTestHarness('statepoint.20', 6, model)
     harness.main()

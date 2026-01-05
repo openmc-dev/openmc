@@ -28,27 +28,10 @@ void openmc_run_random_ray()
   // Run forward simulation
   //////////////////////////////////////////////////////////
 
-  // Check if adjoint calculation is needed. If it is, we will run the forward
-  // calculation first and then the adjoint calculation later.
-  bool adjoint_needed = FlatSourceDomain::adjoint_;
-
-  // Check if this simulation is to establish an initial condition
-  if (settings::kinetic_simulation) {
-    simulation::is_initial_condition = true;
+  if (mpi::master) {
+    bool adjoint_needed = FlatSourceDomain::adjoint_;
+    print_random_ray_headers(adjoint_needed);
   }
-
-  // Configure the domain for forward simulation
-  FlatSourceDomain::adjoint_ = false;
-
-  // If we're going to do a kinetic simulation, report that this is
-  // the initial condition.
-  if (settings::kinetic_simulation && mpi::master)
-    header("KINETIC SIMULATION INITIAL CONDITION", 3);
-
-  // If we're going to do an adjoint simulation afterwards, report that this is
-  // the initial forward flux solve.
-  if (adjoint_needed && mpi::master)
-    header("FORWARD FLUX SOLVE", 3);
 
   // Initialize OpenMC general data structures
   openmc_simulation_init();
@@ -63,187 +46,27 @@ void openmc_run_random_ray()
   // Initialize fixed sources, if present
   sim.apply_fixed_sources_and_mesh_domains();
 
-  // Begin main simulation timer
-  simulation::time_total.start();
-
-  // Execute random ray simulation
-  sim.simulate();
-
-  // End main simulation timer
-  simulation::time_total.stop();
-
-  // Normalize and save the final forward quantities
-  sim.domain()->normalize_final_quantities();
-
-  // Finalize OpenMC
-  openmc_simulation_finalize();
-
-  // Output all simulation results
-  sim.output_simulation_results();
+  // Run initial random ray simulation
+  sim.run_single_simulation();
 
   if (settings::kinetic_simulation) {
-    // Now do a second steady state simulation to correct the batch wise k-eff
-    // estimates
-    simulation::k_eff_correction = true;
-
-    if (settings::kinetic_simulation && mpi::master)
-      header("KINETIC SIMULATION INITIAL CONDITION (K-EFF CORRECTION)", 3);
-
-    // If we're going to do an adjoint simulation afterwards, report that this
-    // is the initial forward flux solve.
-    if (adjoint_needed && mpi::master)
-      header("FORWARD FLUX SOLVE", 3);
-
-    // Initialize OpenMC general data structures
-    openmc_simulation_init();
-
-    double initial_k_eff = simulation::keff;
-
-    sim.domain()->k_eff_ = initial_k_eff;
-    sim.domain()->source_regions_.adjoint_reset();
-    sim.domain()->propagate_final_quantities();
-    sim.domain()->source_regions_.time_step_reset();
-
-    // Begin main simulation timer
-    simulation::time_total.start();
-
-    // Execute random ray simulation
-    sim.simulate();
-
-    // End main simulation timer
-    simulation::time_total.stop();
-
-    // Normalize and save the final forward quantities
-    sim.domain()->normalize_final_quantities();
-
-    // Finalize OpenMC
-    openmc_simulation_finalize();
-
-    // Output all simulation results
-    sim.output_simulation_results();
-
-    //-------------------------------------------------------------------------
-    // KINETIC SIMULATION
+    // Second steady state simulation to correct the batchwise k-eff
+    sim.kinetic_initial_condition();
 
     warning(
       "Time-dependent explicit void treatment has not yet been "
       "implemented. Use caution when interpreting results from models with "
       "voids, as they may contain large inaccuracies.");
-    sim.domain()->store_time_step_quantities(false);
-    rename_statepoint_file(0);
-    if (settings::output_tallies) {
-      rename_tallies_file(0);
-    }
-    set_time_dependent_settings();
-
     // Timestepping loop
-    // TODO: Add support for time-dependent restart
-    for (int i = 0; i < settings::n_timesteps; i++) {
-      simulation::current_timestep = i + 1;
-
-      // Print simulation information
-      if (mpi::master) {
-        std::string message = fmt::format(
-          "KINETIC SIMULATION TIME STEP {0}", simulation::current_timestep);
-        const char* msg = message.c_str();
-        header(msg, 3);
-      }
-
-      // If we're going to do an adjoint simulation afterwards, report that this
-      // is the initial forward flux solve.
-      if (adjoint_needed && mpi::master)
-        header("FORWARD FLUX SOLVE", 3);
-
-      reset_timers();
-
-      // Initialize OpenMC general data structures
-      openmc_simulation_init();
-
-      sim.domain()->k_eff_ = initial_k_eff;
-      sim.domain()->source_regions_.adjoint_reset();
-      sim.domain()->propagate_final_quantities();
-      sim.domain()->source_regions_.time_step_reset();
-
-      // Compute RHS backward differences to be used later
-      sim.domain()->compute_rhs_bd_quantities();
-
-      // Update time dependent cross section based on the density
-      sim.domain()->update_material_density(i);
-
-      // Begin main simulation timer
-      simulation::time_total.start();
-
-      // Execute random ray simulation
-      sim.simulate();
-
-      // End main simulation timer
-      simulation::time_total.stop();
-
-      // Finalize OpenMC
-      openmc_simulation_finalize();
-
-      // Output all simulation results
-      sim.output_simulation_results();
-
-      // Rename statepoint and tallies file
-      rename_statepoint_file(simulation::current_timestep);
-      if (settings::output_tallies) {
-        rename_tallies_file(simulation::current_timestep);
-      }
-
-      // Normalize and store final quantities for next time step
-      sim.domain()->normalize_final_quantities();
-      sim.domain()->store_time_step_quantities();
-
-      // Advance time
-      simulation::current_time += settings::dt;
-    }
+    for (int i = 0; i < settings::n_timesteps; i++)
+      sim.kinetic_single_time_step(i);
   }
 
   //////////////////////////////////////////////////////////
   // Run adjoint simulation (if enabled)
   //////////////////////////////////////////////////////////
 
-  if (!adjoint_needed) {
-    return;
-  }
-
-  reset_timers();
-
-  // Configure the domain for adjoint simulation
-  FlatSourceDomain::adjoint_ = true;
-
-  if (mpi::master)
-    header("ADJOINT FLUX SOLVE", 3);
-
-  sim.domain()->k_eff_ = 1.0;
-
-  // Initialize adjoint fixed sources, if present
-  sim.prepare_fixed_sources_adjoint();
-
-  // Transpose scattering matrix
-  sim.domain()->transpose_scattering_matrix();
-
-  // Swap nu_sigma_f and chi
-  sim.domain()->nu_sigma_f_.swap(sim.domain()->chi_);
-
-  // Initialize OpenMC general data structures
-  openmc_simulation_init();
-
-  // Begin main simulation timer
-  simulation::time_total.start();
-
-  // Execute random ray simulation
-  sim.simulate();
-
-  // End main simulation timer
-  simulation::time_total.stop();
-
-  // Finalize OpenMC
-  openmc_simulation_finalize();
-
-  // Output all simulation results
-  sim.output_simulation_results();
+  sim.random_ray_adjoint();
 }
 
 // Enforces restrictions on inputs in random ray mode.  While there are
@@ -494,6 +317,8 @@ void openmc_reset_random_ray()
   RandomRay::ray_source_.reset();
   RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
   RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+  RandomRay::bd_order_ = 3;
+  RandomRay::time_method_ = RandomRayTimeMethod::ISOTROPIC;
 }
 
 void write_random_ray_hdf5(hid_t group)
@@ -562,41 +387,29 @@ void write_random_ray_hdf5(hid_t group)
   close_group(random_ray_group);
 }
 
+void print_random_ray_headers(bool& adjoint_needed)
+{
+  // If we're going to do an adjoint simulation afterwards, report that this is
+  // the initial forward flux solve.
+  if (adjoint_needed && !FlatSourceDomain::adjoint_)
+    header("FORWARD FLUX SOLVE", 3);
+
+  // Otherwise report that we are doing the adjoint simulation
+  if (adjoint_needed && FlatSourceDomain::adjoint_)
+    header("ADJOINT FLUX SOLVE", 3);
+}
+
 //-----------------------------------------------------------------------------
 // Non-member functions for kinetic simulations
 
-void set_time_dependent_settings()
+void rename_time_step_file(
+  std::string base_filename, std::string extension, int i)
 {
-  // Reset flags
-  simulation::is_initial_condition = false;
-  simulation::k_eff_correction = false;
-
-  // Set current time
-  simulation::current_time = settings::dt;
-}
-
-// TODO: condense this into one function with rename_tallies_file and use char
-// or string arguments
-void rename_statepoint_file(int i)
-{
-  // Rename statepoint file
-  std::string old_filename_ = fmt::format(
-    "{0}statepoint.{1}.h5", settings::path_output, settings::n_batches);
-  std::string new_filename_ =
-    fmt::format("{0}openmc_td_simulation_{1}.h5", settings::path_output, i);
-
-  const char* old_fname = old_filename_.c_str();
-  const char* new_fname = new_filename_.c_str();
-  std::rename(old_fname, new_fname);
-}
-
-void rename_tallies_file(int i)
-{
-  // Rename tallies file
+  // Rename file
   std::string old_filename_ =
-    fmt::format("{0}tallies.out", settings::path_output);
-  std::string new_filename_ =
-    fmt::format("{0}tallies_{1}.out", settings::path_output, i);
+    fmt::format("{0}{1}{2}", settings::path_output, base_filename, extension);
+  std::string new_filename_ = fmt::format(
+    "{0}{1}_{2}{3}", settings::path_output, base_filename, i, extension);
 
   const char* old_fname = old_filename_.c_str();
   const char* new_fname = new_filename_.c_str();
@@ -635,8 +448,21 @@ RandomRaySimulation::RandomRaySimulation()
   // internal to the random ray solver
   domain_->flatten_xs();
 
-  // Initialize vectors used for the steady state
+  // Check if adjoint calculation is needed. If it is, we will run the forward
+  // calculation first and then the adjoint calculation later.
+  adjoint_needed_ = FlatSourceDomain::adjoint_;
+
+  // Adjoint is always false for the forward calculation
+  FlatSourceDomain::adjoint_ = false;
+
+  // The first simulation is run after initialization
+  is_first_simulation_ = true;
+
+  // Initialize vectors used for baking in the initial condition during time
+  // stepping
   if (settings::kinetic_simulation) {
+    // Initialize vars used for time-consistent seed approach
+    static_avg_k_eff_;
     static_k_eff_;
     static_fission_rate_;
   }
@@ -658,6 +484,139 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint()
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     domain_->set_adjoint_sources();
   }
+}
+
+void RandomRaySimulation::print_random_ray_headers()
+{
+  openmc::print_random_ray_headers(adjoint_needed_);
+}
+
+void RandomRaySimulation::run_single_simulation()
+{
+  if (!is_first_simulation_) {
+    if (mpi::master)
+      print_random_ray_headers();
+
+    // Reset the timers and reinitialize the general OpenMC datastructures if
+    // this is after the first simulation
+    reset_timers();
+
+    // Initialize OpenMC general data structures
+    openmc_simulation_init();
+  }
+
+  // Begin main simulation timer
+  simulation::time_total.start();
+
+  // Execute random ray simulation
+  simulate();
+
+  // End main simulation timer
+  simulation::time_total.stop();
+
+  // Normalize and save the final forward quantities
+  domain_->normalize_final_quantities();
+
+  // Finalize OpenMC
+  openmc_simulation_finalize();
+
+  // Output all simulation results
+  output_simulation_results();
+
+  // Toggle that the simulation object has been initialized after the first
+  // simulation
+  if (is_first_simulation_)
+    is_first_simulation_ = false;
+}
+
+void RandomRaySimulation::random_ray_adjoint()
+{
+  if (!adjoint_needed_) {
+    return;
+  }
+
+  // Configure the domain for adjoint simulation
+  FlatSourceDomain::adjoint_ = true;
+
+  // Reset k-eff
+  domain_->k_eff_ = 1.0;
+
+  // Initialize adjoint fixed sources, if present
+  prepare_fixed_sources_adjoint();
+
+  // Transpose scattering matrix
+  domain_->transpose_scattering_matrix();
+
+  // Swap nu_sigma_f and chi
+  domain_->nu_sigma_f_.swap(domain_->chi_);
+
+  // Run a single simulation
+  run_single_simulation();
+}
+
+void RandomRaySimulation::kinetic_initial_condition()
+{
+  // Set flag for k_eff correction
+  simulation::k_eff_correction = true;
+
+  static_avg_k_eff_ = simulation::keff;
+  domain_->k_eff_ = static_avg_k_eff_;
+  domain_->source_regions_.adjoint_reset();
+  domain_->propagate_final_quantities();
+  domain_->source_regions_.time_step_reset();
+
+  // Run the initial condition
+  run_single_simulation();
+
+  // Initialize the BD arrays
+  domain_->store_time_step_quantities(false);
+
+  // Store k-eff corrected initial condition statepoints
+  rename_time_step_file(
+    fmt::format("statepoint.{0}", settings::n_batches), ".h5", 0);
+  if (settings::output_tallies) {
+    rename_time_step_file("tallies", ".out", 0);
+  }
+
+  // Set flags for kinetic simulation
+  simulation::is_initial_condition = false;
+  simulation::k_eff_correction = false;
+
+  // Set starting time as zero
+  simulation::current_time = 0;
+}
+
+// TODO: Add support for time-dependent restart
+void RandomRaySimulation::kinetic_single_time_step(int i)
+{
+  // Increment time step
+  simulation::current_timestep = i + 1;
+  simulation::current_time += settings::dt;
+
+  // Propogate results of previous simulation
+  domain_->k_eff_ = static_avg_k_eff_;
+  domain_->source_regions_.adjoint_reset();
+  domain_->propagate_final_quantities();
+  domain_->source_regions_.time_step_reset();
+
+  // Compute RHS backward differences
+  domain_->compute_rhs_bd_quantities();
+
+  // Update time dependent cross section based on the density
+  domain_->update_material_density(i);
+
+  // Run the simulation for the current time step
+  run_single_simulation();
+
+  // Rename statepoint and tallies file for the current time step
+  rename_time_step_file(fmt::format("statepoint.{0}", settings::n_batches),
+    ".h5", simulation::current_timestep);
+  if (settings::output_tallies) {
+    rename_time_step_file("tallies", ".out", simulation::current_timestep);
+  }
+
+  // Store final quantities for the current time step
+  domain_->store_time_step_quantities();
 }
 
 void RandomRaySimulation::simulate()

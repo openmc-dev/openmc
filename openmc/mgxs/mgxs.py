@@ -1923,7 +1923,7 @@ class MGXS:
 
             # Create an HDF5 group for the subdomain
             if self.domain_type == 'distribcell':
-                group_name = ''.zfill(num_digits)
+                group_name = str(subdomain).zfill(num_digits)
                 subdomain_group = domain_group.require_group(group_name)
             else:
                 subdomain_group = domain_group

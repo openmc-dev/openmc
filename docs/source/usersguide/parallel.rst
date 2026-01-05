@@ -101,5 +101,5 @@ performance on a machine when running in parallel:
      settings = openmc.Settings()
      settings.output = {'tallies': False}
 
-.. _Haswell-EP: http://www.anandtech.com/show/8423/intel-xeon-e5-version-3-up-to-18-haswell-ep-cores-/4
-.. _bound: https://wiki.mpich.org/mpich/index.php/Using_the_Hydra_Process_Manager#Process-core_Binding
+.. _Haswell-EP: https://www.anandtech.com/show/8423/intel-xeon-e5-version-3-up-to-18-haswell-ep-cores-/4
+.. _bound: https://github.com/pmodels/mpich/blob/main/doc/wiki/how_to/Using_the_Hydra_Process_Manager.md#process-core-binding

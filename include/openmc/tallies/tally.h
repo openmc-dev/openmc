@@ -3,6 +3,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/vector.h"
@@ -10,7 +11,6 @@
 #include "pugixml.hpp"
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 
 #include <string>
 #include <unordered_map>
@@ -93,7 +93,7 @@ public:
   //! \brief Check if this tally has a specified type of filter
   bool has_filter(FilterType filter_type) const;
 
-  void set_filters(gsl::span<Filter*> filters);
+  void set_filters(span<Filter*> filters);
 
   //! Given already-set filters, set the stride lengths
   void set_strides();
@@ -105,6 +105,8 @@ public:
   bool multiply_density() const { return multiply_density_; }
 
   bool writable() const { return writable_; }
+
+  bool higher_moments() const { return higher_moments_; }
 
   //----------------------------------------------------------------------------
   // Other methods.
@@ -169,10 +171,8 @@ public:
   // We need to have quick access to some filters.  The following gives indices
   // for various filters that could be in the tally or C_NONE if they are not
   // present.
-  int energy_filter_ {C_NONE};
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
-  int cell_filter_ {C_NONE};
 
   vector<Trigger> triggers_;
 
@@ -192,7 +192,10 @@ private:
   //! Whether to multiply by atom density for reaction rates
   bool multiply_density_ {true};
 
-  gsl::index index_;
+  //! Whether to accumulate higher moments (third and fourth)
+  bool higher_moments_ {false};
+
+  int64_t index_;
 };
 
 //==============================================================================
@@ -205,11 +208,14 @@ extern vector<unique_ptr<Tally>> tallies;
 extern vector<int> active_tallies;
 extern vector<int> active_analog_tallies;
 extern vector<int> active_tracklength_tallies;
+extern vector<int> active_timed_tracklength_tallies;
 extern vector<int> active_collision_tallies;
 extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
 extern vector<int> active_pulse_height_tallies;
 extern vector<int> pulse_height_cells;
+extern vector<double> time_grid;
+
 } // namespace model
 
 namespace simulation {
@@ -240,6 +246,13 @@ void read_tallies_xml(pugi::xml_node root);
 //! \brief Accumulate the sum of the contributions from each history within the
 //! batch to a new random variable
 void accumulate_tallies();
+
+//! Determine distance to next time boundary
+//
+//! \param time Current time of particle
+//! \param speed Speed of particle
+//! \return Distance to next time boundary (or INFTY if none)
+double distance_to_time_boundary(double time, double speed);
 
 //! Determine which tallies should be active
 void setup_active_tallies();

@@ -1,3 +1,4 @@
+import os
 import pytest
 import openmc
 
@@ -29,8 +30,28 @@ def run_in_tmpdir(tmpdir):
     finally:
         orig.chdir()
 
+@pytest.fixture(scope="module")
+def endf_data():
+    return os.environ['OPENMC_ENDF_DATA']
 
 @pytest.fixture(scope='session', autouse=True)
 def resolve_paths():
     with openmc.config.patch('resolve_paths', False):
         yield
+
+
+@pytest.fixture(scope='session', autouse=True)
+def disable_depletion_multiprocessing_under_mpi():
+    """Fork-based depletion multiprocessing may deadlock if MPI is active."""
+    if not regression_config['mpi']:
+        yield
+        return
+
+    from openmc.deplete import pool
+
+    original_setting = pool.USE_MULTIPROCESSING
+    pool.USE_MULTIPROCESSING = False
+    try:
+        yield
+    finally:
+        pool.USE_MULTIPROCESSING = original_setting

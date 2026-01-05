@@ -34,6 +34,10 @@ class CompositeSurface(ABC):
         return surf
 
     @property
+    def component_surfaces(self):
+        return [getattr(self, name) for name in self._surface_names]
+
+    @property
     def boundary_type(self):
         return getattr(self, self._surface_names[0]).boundary_type
 
@@ -131,6 +135,11 @@ class CylinderSector(CompositeSurface):
         if theta2 <= theta1:
             raise ValueError('theta2 must be greater than theta1.')
 
+        # Determine whether the angle between theta1 and theta2 is a reflex
+        # angle, in which case we need to use a union between the planar
+        # half-spaces
+        self._reflex = (theta2 - theta1 > 180.0)
+
         phi1 = pi / 180 * theta1
         phi2 = pi / 180 * theta2
 
@@ -165,6 +174,9 @@ class CylinderSector(CompositeSurface):
                                                **kwargs)
         self.plane2 = openmc.Plane.from_points(p1, p2_plane2, p3_plane2,
                                                **kwargs)
+        if axis == 'y':
+            self.plane1.flip_normal()
+            self.plane2.flip_normal()
 
     @classmethod
     def from_theta_alpha(cls,
@@ -219,16 +231,10 @@ class CylinderSector(CompositeSurface):
         return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
-        if isinstance(self.inner_cyl, openmc.YCylinder):
-            return -self.outer_cyl & +self.inner_cyl & +self.plane1 & -self.plane2
+        if self._reflex:
+            return -self.outer_cyl & +self.inner_cyl & (-self.plane1 | +self.plane2)
         else:
             return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
-
-    def __pos__(self):
-        if isinstance(self.inner_cyl, openmc.YCylinder):
-            return +self.outer_cyl | -self.inner_cyl | -self.plane1 | +self.plane2
-        else:
-            return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
 
 
 class IsogonalOctagon(CompositeSurface):
@@ -729,7 +735,7 @@ class OrthogonalBox(CompositeSurface):
 
 
 class XConeOneSided(CompositeSurface):
-    """One-sided cone parallel the x-axis
+    r"""One-sided cone parallel the x-axis
 
     A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
@@ -742,15 +748,16 @@ class XConeOneSided(CompositeSurface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along
-        the cone's axis of revolution.
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -783,7 +790,7 @@ class XConeOneSided(CompositeSurface):
 
 
 class YConeOneSided(CompositeSurface):
-    """One-sided cone parallel the y-axis
+    r"""One-sided cone parallel the y-axis
 
     A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
@@ -796,15 +803,16 @@ class YConeOneSided(CompositeSurface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along
-        the cone's axis of revolution.
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -836,7 +844,7 @@ class YConeOneSided(CompositeSurface):
 
 
 class ZConeOneSided(CompositeSurface):
-    """One-sided cone parallel the z-axis
+    r"""One-sided cone parallel the z-axis
 
     A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
@@ -849,15 +857,16 @@ class ZConeOneSided(CompositeSurface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along
-        the cone's axis of revolution.
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -1252,11 +1261,11 @@ class Polygon(CompositeSurface):
             else:
                 op = operator.neg
                 if basis == 'xy':
-                    surf = openmc.Plane(a=dx, b=dy, d=-c)
+                    surf = openmc.Plane(a=dx, b=dy, c=0.0, d=-c)
                 elif basis == 'yz':
-                    surf = openmc.Plane(b=dx, c=dy, d=-c)
+                    surf = openmc.Plane(a=0.0, b=dx, c=dy, d=-c)
                 elif basis == 'xz':
-                    surf = openmc.Plane(a=dx, c=dy, d=-c)
+                    surf = openmc.Plane(a=dx, b=0.0, c=dy, d=-c)
                 else:
                     y0 = -c/dy
                     r2 = dy**2 / dx**2

@@ -6,6 +6,7 @@
 #include "openmc/distribution.h"
 #include "openmc/mesh.h"
 #include "openmc/position.h"
+#include "openmc/span.h"
 
 namespace openmc {
 
@@ -104,7 +105,7 @@ private:
 class MeshSpatial : public SpatialDistribution {
 public:
   explicit MeshSpatial(pugi::xml_node node);
-  explicit MeshSpatial(int32_t mesh_id, gsl::span<const double> strengths);
+  explicit MeshSpatial(int32_t mesh_id, span<const double> strengths);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
@@ -144,7 +145,7 @@ class PointCloud : public SpatialDistribution {
 public:
   explicit PointCloud(pugi::xml_node node);
   explicit PointCloud(
-    std::vector<Position> point_cloud, gsl::span<const double> strengths);
+    std::vector<Position> point_cloud, span<const double> strengths);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer

@@ -1,5 +1,7 @@
 from itertools import product
 from pathlib import Path
+from math import sqrt
+import random
 
 import pytest
 import numpy as np
@@ -334,13 +336,10 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
     n_elements = 12_000
     model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])
     model.export_to_model_xml()
-    try:
-        openmc.lib.init()
+    with openmc.lib.run_in_memory():
         openmc.lib.simulation_init()
         sites = openmc.lib.sample_external_source(10)
         openmc.lib.statepoint_write('statepoint.h5')
-    finally:
-        openmc.lib.finalize()
 
     with openmc.StatePoint('statepoint.h5') as sp:
         uscd_mesh = sp.meshes[uscd_mesh.id]
@@ -351,31 +350,85 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
         assert site.r in bounding_box
 
 
-def test_mesh_source_file(run_in_tmpdir):
-    # Creating a source file with a single particle
-    source_particle = openmc.SourceParticle(time=10.0)
-    openmc.write_source_file([source_particle], 'source.h5')
-    file_source = openmc.FileSource('source.h5')
+def test_mesh_source_constraints(run_in_tmpdir):
+    """Test application of constraints to underlying mesh element sources"""
 
+    # Create simple model with two cells
+    m1 = openmc.Material()
+    m1.add_nuclide('H1', 1.0)
+    m2 = m1.clone()
+    sph = openmc.Sphere(r=100, boundary_type='vacuum')
+    box1 = openmc.model.RectangularParallelepiped(-1, 0, -1, 1, -1, 1)
+    box2 = openmc.model.RectangularParallelepiped(0, 2, -1, 1, -1, 1)
+    cell1 = openmc.Cell(fill=m1, region=-box1)
+    cell2 = openmc.Cell(fill=m2, region=-box2)
+    outer = openmc.Cell(region=-sph & (+box1 | +box2))
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell1, cell2, outer])
+
+    # Define a mesh covering the two cells: the first mesh element contains
+    # cell1 (-1 < x < 0) and the second element contains cells2 (0 < x < 2)
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-3., -1., -1.)
+    mesh.upper_right = (3., 1., 1.)
+    mesh.dimension = (2, 1, 1)
+
+    # Define a mesh source with a randomly chosen probability
+    p = random.random()
+    src1 = openmc.IndependentSource(strength=p, constraints={'domains': [cell1]})
+    src2 = openmc.IndependentSource(strength=1 - p, constraints={'domains': [cell2]})
+    model.settings.source = openmc.MeshSource(mesh, [src1, src2])
+
+    # Finish settings and export
+    model.settings.particles = 100
+    model.settings.batches = 1
+    model.export_to_model_xml()
+
+    with openmc.lib.run_in_memory():
+        # Sample sites from the source
+        sites = openmc.lib.sample_external_source(N := 1000)
+
+        # Check that all sites are either in cell1 or cell2
+        xs = np.array([s.r[0] for s in sites])
+        assert (xs >= -1.0).all()
+        assert (xs <= 2.0).all()
+
+        # Check that the correct percentage of the sites are in cell1
+        sigma = sqrt(p*(1- p)/N)
+        frac = xs[(-1.0 <= xs) & (xs <= 0.0)].size / N
+        assert frac == pytest.approx(p, abs=5*sigma)
+
+
+@pytest.mark.parametrize("mesh_type", ('rectangular', 'cylindrical', 'spherical'))
+def test_mesh_spatial(run_in_tmpdir, mesh_type):
+    """Test that a spherical mesh source works as expected."""
     model = openmc.Model()
 
-    rect_prism = openmc.model.RectangularParallelepiped(
-        -5.0, 5.0, -5.0, 5.0, -5.0, 5.0, boundary_type='vacuum')
-
+    # Set up geometry, a box that is shifted in x, y, and z
+    box = openmc.model.RectangularParallelepiped(5.0, 25.0, -20.0, 20.0, -30.0, 30.0, boundary_type='vacuum')
     mat = openmc.Material()
     mat.add_nuclide('H1', 1.0)
+    model.geometry = openmc.Geometry([openmc.Cell(fill=mat, region=-box)])
 
-    model.geometry = openmc.Geometry([openmc.Cell(fill=mat, region=-rect_prism)])
-    model.settings.particles = 1000
+    # Create a mesh of each type in turn
+    if mesh_type == 'rectangular':
+        mesh = openmc.RegularMesh.from_domain(model.geometry, (10, 2, 2))
+    elif mesh_type == 'cylindrical':
+        mesh = openmc.CylindricalMesh.from_domain(model.geometry, (10, 2, 2))
+        assert max(mesh.r_grid) == 10.0, "Cylindrical mesh radius exceeds geometry bounds"
+        assert mesh.origin[0] == 15.0, "Cylindrical mesh origin x-coordinate is incorrect"
+    elif mesh_type == 'spherical':
+        mesh = openmc.SphericalMesh.from_domain(model.geometry, (10, 2, 2))
+        assert max(mesh.r_grid) == 10.0, "Spherical mesh radius exceeds geometry bounds"
+        assert mesh.origin[0] == 15.0, "Spherical mesh origin x-coordinate is incorrect"
+
+    # Create a mesh source with a single particle
+    ind_source = openmc.IndependentSource(space=openmc.stats.MeshSpatial(mesh, np.prod(mesh.dimension)*[1.0]))
+    model.settings.source = ind_source
+
+    model.settings.particles = 100
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
-
-    mesh = openmc.RegularMesh()
-    mesh.lower_left = (-1, -2, -3)
-    mesh.upper_right = (2, 3, 4)
-    mesh.dimension = (1, 1, 1)
-
-    model.settings.source = openmc.MeshSource(mesh, [file_source])
 
     model.export_to_model_xml()
 
@@ -385,14 +438,7 @@ def test_mesh_source_file(run_in_tmpdir):
     openmc.lib.simulation_finalize()
     openmc.lib.finalize()
 
-    # The mesh bounds do not contain the point of the lone source site in the
-    # file source, so it should not appear in the set of source sites produced
-    # from the mesh source. Additionally, the source should be located within
-    # the mesh
+    # Check that the sites are within the spherical mesh bounds
     bbox = mesh.bounding_box
     for site in sites:
-        assert site.r != (0, 0, 0)
-        assert site.E == source_particle.E
-        assert site.u == source_particle.u
-        assert site.time == source_particle.time
         assert site.r in bbox

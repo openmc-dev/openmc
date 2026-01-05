@@ -1066,5 +1066,5 @@ surface is known as in :ref:`reflection`.
 .. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _surfaces: https://en.wikipedia.org/wiki/Surface
 .. _MCNP: https://mcnp.lanl.gov
-.. _Serpent: http://montecarlo.vtt.fi
+.. _Serpent: https://serpent.vtt.fi
 .. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc

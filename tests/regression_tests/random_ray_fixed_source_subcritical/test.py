@@ -17,7 +17,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
 
 
 @pytest.mark.parametrize("shape", ["flat", "linear_xy"])
-def test_random_ray_source(shape):
+def test_random_ray_fixed_source_subcritical(shape):
     with change_directory(shape):
         openmc.reset_auto_ids()
 

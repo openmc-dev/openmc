@@ -4,8 +4,7 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <gsl/gsl-lite.hpp>
-
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -42,7 +41,7 @@ public:
 
   const vector<int32_t>& cells() const { return cells_; }
 
-  void set_cells(gsl::span<int32_t> cells);
+  void set_cells(span<int32_t> cells);
 
 protected:
   //----------------------------------------------------------------------------

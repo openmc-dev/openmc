@@ -2,23 +2,23 @@
 <model>
   <materials>
     <material id="1" name="natural_lead">
-      <density units="g/cm3" value="11.34"/>
-      <nuclide ao="0.014" name="Pb204"/>
-      <nuclide ao="0.241" name="Pb206"/>
-      <nuclide ao="0.221" name="Pb207"/>
-      <nuclide ao="0.524" name="Pb208"/>
+      <density value="11.34" units="g/cm3"/>
+      <nuclide name="Pb204" ao="0.014"/>
+      <nuclide name="Pb206" ao="0.241"/>
+      <nuclide name="Pb207" ao="0.221"/>
+      <nuclide name="Pb208" ao="0.524"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1" universe="1"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100" id="1" type="sphere"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 100"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>1000</particles>
     <batches>10</batches>
     <inactive>0</inactive>
-    <source library="build/libsource.so" parameters="1e3" strength="1.0" type="compiled"/>
+    <source type="compiled" strength="1.0" library="build/libsource.so" parameters="1e3"/>
   </settings>
   <tallies>
     <filter id="1" type="material">

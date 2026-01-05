@@ -10,7 +10,6 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/bounding_box.h"
 #include "openmc/constants.h"
@@ -29,7 +28,6 @@ namespace openmc {
 
 enum class Fill { MATERIAL, UNIVERSE, LATTICE };
 
-// TODO: Convert to enum
 constexpr int32_t OP_LEFT_PAREN {std::numeric_limits<int32_t>::max()};
 constexpr int32_t OP_RIGHT_PAREN {std::numeric_limits<int32_t>::max() - 1};
 constexpr int32_t OP_COMPLEMENT {std::numeric_limits<int32_t>::max() - 2};
@@ -116,7 +114,7 @@ private:
   //!
   //! Uses the comobination of half-spaces and binary operators to determine
   //! if short circuiting can be used. Short cicuiting uses the relative and
-  //! absolute depth of parenthases in the expression.
+  //! absolute depth of parentheses in the expression.
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 
   //! BoundingBox if the paritcle is in a simple cell.
@@ -129,7 +127,7 @@ private:
   void add_precedence();
 
   //! Add parenthesis to enforce precedence
-  gsl::index add_parentheses(gsl::index start);
+  int64_t add_parentheses(int64_t start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();
@@ -218,6 +216,18 @@ public:
   //! \return Temperature in [K]
   double temperature(int32_t instance = -1) const;
 
+  //! Get the density multiplier of a cell instance
+  //! \param[in] instance Instance index. If -1 is given, the density multiplier
+  //! for the first instance is returned.
+  //! \return Density multiplier
+  double density_mult(int32_t instance = -1) const;
+
+  //! Get the density of a cell instance in g/cm3
+  //! \param[in] instance Instance index. If -1 is given, the density
+  //! for the first instance is returned.
+  //! \return Density in [g/cm3]
+  double density(int32_t instance = -1) const;
+
   //! Set the temperature of a cell instance
   //! \param[in] T Temperature in [K]
   //! \param[in] instance Instance index. If -1 is given, the temperature for
@@ -227,6 +237,18 @@ public:
   //!   temperatures.
   void set_temperature(
     double T, int32_t instance = -1, bool set_contained = false);
+
+  //! Set the density of a cell instance
+  //! \param[in] density Density [g/cm3]
+  //! \param[in] instance Instance index. If -1 is given, the density
+  //!   for all instances is set.
+  //! \param[in] set_contained If this cell is not filled with a material,
+  //!   collect all contained cells with material fills and set their
+  //!   densities.
+  void set_density(
+    double density, int32_t instance = -1, bool set_contained = false);
+
+  int32_t n_instances() const;
 
   //! Set the rotation matrix of a cell instance
   //! \param[in] rot The rotation matrix of length 3 or 9
@@ -314,13 +336,11 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t id_;              //!< Unique ID
-  std::string name_;        //!< User-defined name
-  Fill type_;               //!< Material, universe, or lattice
-  int32_t universe_;        //!< Universe # this cell is in
-  int32_t fill_;            //!< Universe # filling this cell
-  int32_t n_instances_ {0}; //!< Number of instances of this cell
-  GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
+  int32_t id_;       //!< Unique ID
+  std::string name_; //!< User-defined name
+  Fill type_;        //!< Material, universe, or lattice
+  int32_t universe_; //!< Universe # this cell is in
+  int32_t fill_;     //!< Universe # filling this cell
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
@@ -336,6 +356,9 @@ public:
   //! T. The units are sqrt(eV).
   vector<double> sqrtkT_;
 
+  //! \brief Unitless density multiplier(s) within this cell.
+  vector<double> density_mult_;
+
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
 
@@ -350,6 +373,9 @@ public:
   vector<double> rotation_;
 
   vector<int32_t> offset_; //!< Distribcell offset table
+
+  // Right now, either CSG or DAGMC cells are used.
+  virtual GeometryType geom_type() const = 0;
 };
 
 struct CellInstanceItem {
@@ -363,7 +389,7 @@ class CSGCell : public Cell {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  CSGCell();
+  CSGCell() = default;
   explicit CSGCell(pugi::xml_node cell_node);
 
   //----------------------------------------------------------------------------
@@ -390,6 +416,8 @@ public:
 
   bool is_simple() const override { return region_.is_simple(); }
 
+  virtual GeometryType geom_type() const override { return GeometryType::CSG; }
+
 protected:
   //! Returns the beginning position of a parenthesis block (immediately before
   //! two surface tokens) in the RPN given a starting position at the end of
@@ -415,8 +443,8 @@ struct CellInstance {
     return index_cell == other.index_cell && instance == other.instance;
   }
 
-  gsl::index index_cell;
-  gsl::index instance;
+  int64_t index_cell;
+  int64_t instance;
 };
 
 //! Structure necessary for inserting CellInstance into hashed STL data

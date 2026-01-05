@@ -44,7 +44,7 @@ class FissionEnergyRelease(EqualityMixin):
     ----------
     [1] D. G. Madland, "Total prompt energy release in the neutron-induced
     fission of ^235U, ^238U, and ^239Pu", Nuclear Physics A 772:113--137 (2006).
-    <http://dx.doi.org/10.1016/j.nuclphysa.2006.03.013>
+    <https://doi.org/10.1016/j.nuclphysa.2006.03.013>
 
     Attributes
     ----------

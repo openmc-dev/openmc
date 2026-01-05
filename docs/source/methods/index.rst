@@ -14,10 +14,12 @@ Theory and Methodology
     random_numbers
     neutron_physics
     photon_physics
+    charged_particles_physics
     tallies
     eigenvalue
     depletion
     energy_deposition
     parallelization
     cmfd
+    variance_reduction
     random_ray

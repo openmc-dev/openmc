@@ -23,6 +23,7 @@ The current version of the statepoint file format is 18.1.
                bank is present (1) or not (0).
 
 :Datasets: - **seed** (*int8_t*) -- Pseudo-random number generator seed.
+           - **stride** (*uint64_t*) -- Pseudo-random number generator stride.
            - **energy_mode** (*char[]*) -- Energy mode of the run, either
              'continuous-energy' or 'multi-group'.
            - **run_mode** (*char[]*) -- Run mode used, either 'eigenvalue' or
@@ -72,7 +73,10 @@ The current version of the statepoint file format is 18.1.
 
 **/tallies/meshes/mesh <uid>/**
 
-:Datasets: - **type** (*char[]*) -- Type of mesh.
+:Attributes: - **id** (*int*) -- ID of the mesh
+
+:Datasets: - **name** (*char[]*) -- Name of the mesh.
+           - **type** (*char[]*) -- Type of mesh.
            - **dimension** (*int*) -- Number of mesh cells in each dimension.
            - **Regular Mesh Only:**
               - **lower_left** (*double[]*) -- Coordinates of lower-left corner of
@@ -145,6 +149,8 @@ The current version of the statepoint file format is 18.1.
                tallies will have a value of 0 unless otherwise instructed.
              - **multiply_density** (*int*) -- Flag indicating whether reaction
                rates should be multiplied by atom density (1) or not (0).
+             - **higher_moments** (*int*) -- Flag indicating whether
+               higher-order tally moments are enabled (1) or not (0).
 
 :Datasets: - **n_realizations** (*int*) -- Number of realizations.
            - **n_filters** (*int*) -- Number of filters used.

@@ -1,0 +1,3 @@
+commit: $Format:%H$
+commit-date: $Format:%cI$
+describe-name: $Format:%(describe:tags=true,match=*[0-9]*)$

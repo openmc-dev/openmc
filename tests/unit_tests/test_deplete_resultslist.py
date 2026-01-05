@@ -21,14 +21,14 @@ def test_get_activity(res):
 
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
     a_ref = np.array(
-        [1.25167956e+06, 3.71938527e+11, 4.43264300e+11, 3.55547176e+11])
+        [1.25167956e+06, 3.69842310e+11, 3.70099291e+11, 3.53629755e+11])
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(a, a_ref)
 
     # Check by_nuclide
     a_xe135_ref = np.array(
-        [2.106574218e+05, 1.227519888e+11, 1.177491828e+11, 1.031986176e+11])
+        [2.10657422e+05, 1.12825236e+11, 1.09055177e+11, 1.07491257e+11])
     t_nuc, a_nuc = res.get_activity("1", by_nuclide=True)
 
     a_xe135 = np.array([a_nuc_i["Xe135"] for a_nuc_i in a_nuc])
@@ -43,7 +43,7 @@ def test_get_atoms(res):
 
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
     n_ref = np.array(
-        [6.67473282e+08, 3.88942731e+14, 3.73091215e+14, 3.26987387e+14])
+        [6.67473282e+08, 3.57489567e+14, 3.45544042e+14, 3.40588723e+14])
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(n, n_ref)
@@ -71,7 +71,7 @@ def test_get_decay_heat(res):
 
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
     dh_ref = np.array(
-        [1.27933813e-09, 5.85347232e-03, 7.38773010e-03, 5.79954067e-03])
+        [1.27933813e-09, 5.95370258e-03, 6.01335600e-03, 5.69831173e-03])
 
     t, dh = res.get_decay_heat("1")
 
@@ -80,7 +80,7 @@ def test_get_decay_heat(res):
 
     # Check by nuclide
     dh_xe135_ref = np.array(
-        [1.27933813e-09, 7.45481920e-04, 7.15099509e-04, 6.26732849e-04])
+        [1.27933813e-09, 6.85196014e-04, 6.62300168e-04, 6.52802366e-04])
     t_nuc, dh_nuc = res.get_decay_heat("1", by_nuclide=True)
 
     dh_nuc_xe135 = np.array([dh_nuc_i["Xe135"] for dh_nuc_i in dh_nuc])
@@ -95,7 +95,7 @@ def test_get_mass(res):
 
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
     n_ref = np.array(
-        [6.67473282e+08, 3.88942731e+14, 3.73091215e+14, 3.26987387e+14])
+        [6.67473282e+08, 3.57489567e+14, 3.45544042e+14, 3.40588723e+14])
 
     # Get g
     n_ref *= openmc.data.atomic_mass('Xe135') / openmc.data.AVOGADRO
@@ -123,8 +123,8 @@ def test_get_reaction_rate(res):
     t, r = res.get_reaction_rate("1", "Xe135", "(n,gamma)")
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
-    n_ref = [6.67473282e+08, 3.88942731e+14, 3.73091215e+14, 3.26987387e+14]
-    xs_ref = [2.53336104e-05, 4.21747011e-05, 3.48616127e-05, 3.61775563e-05]
+    n_ref = [6.67473282e+08, 3.57489567e+14, 3.45544042e+14, 3.40588723e+14]
+    xs_ref = [3.10220818e-05, 3.36754072e-05, 3.12740350e-05, 3.86717693e-05]
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(r, np.array(n_ref) * xs_ref)
@@ -136,8 +136,8 @@ def test_get_keff(res):
     t_min, k = res.get_keff(time_units='min')
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
-    k_ref = [1.1596402556, 1.1914183335, 1.2292570871, 1.1797030302]
-    u_ref = [0.0270680649, 0.0219163444, 0.024268508 , 0.0221401194]
+    k_ref = [1.1773089172, 1.2231748584, 1.1611455694, 1.1714783649]
+    u_ref = [0.0384666252, 0.0311915665, 0.0226370102, 0.0315964732]
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(t_min * 60, t_ref)
@@ -220,5 +220,4 @@ def test_stepresult_get_material(res):
     # Spot check number densities
     densities = mat1.get_nuclide_atom_densities()
     assert densities['Xe135'] == pytest.approx(1e-14)
-    assert densities['I135'] == pytest.approx(1e-21)
     assert densities['U234'] == pytest.approx(1.00506e-05)

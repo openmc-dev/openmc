@@ -43,6 +43,5 @@ recursive-include vendor *.hh
 recursive-include vendor *.hpp
 recursive-include vendor *.pc.in
 recursive-include vendor *.natvis
-include vendor/gsl-lite/include/gsl/gsl
 prune docs/build
 prune docs/source/pythonapi/generated/

@@ -76,7 +76,7 @@ public:
   }
 
   //! Populate the distribcell offset tables.
-  int32_t fill_offset_table(int32_t offset, int32_t target_univ_id, int map,
+  int32_t fill_offset_table(int32_t target_univ_id, int map,
     std::unordered_map<int32_t, int32_t>& univ_count_memo);
 
   //! \brief Check lattice indices.

@@ -30,3 +30,12 @@ TEST_CASE("Test file_exists")
   // Note: not clear how to portably test where a file should exist.
   REQUIRE(!file_exists("./should_not_exist/really_do_not_make_this_please"));
 }
+
+TEST_CASE("Test dir_name")
+{
+  REQUIRE(dir_name("") == "");
+  REQUIRE(dir_name("/") == "/");
+  REQUIRE(dir_name("hello") == "");
+  REQUIRE(dir_name("hello/world") == "hello");
+  REQUIRE(dir_name("/path/to/dir/") == "/path/to/dir");
+}

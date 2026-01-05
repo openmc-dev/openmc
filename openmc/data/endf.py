@@ -1,9 +1,9 @@
 """Module for parsing and manipulating data from ENDF evaluations.
 
-All the classes and functions in this module are based on document
-ENDF-102 titled "Data Formats and Procedures for the Evaluated Nuclear
-Data File ENDF-6". The latest version from June 2009 can be found at
-http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
+All the classes and functions in this module are based on document ENDF-102
+titled "Data Formats and Procedures for the Evaluated Nuclear Data File ENDF-6".
+The version from September 2023 can be found at
+https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
 
 """
 import io

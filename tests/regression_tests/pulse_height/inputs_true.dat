@@ -2,22 +2,22 @@
 <model>
   <materials>
     <material id="1">
-      <density units="g/cc" value="3.7"/>
-      <nuclide ao="1.0" name="Na23"/>
-      <nuclide ao="1.0" name="I127"/>
+      <density value="3.7" units="g/cc"/>
+      <nuclide name="Na23" ao="1.0"/>
+      <nuclide name="I127" ao="1.0"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" name="inner sphere" region="-1" universe="1"/>
-    <cell id="2" material="void" name="outer sphere" region="1 -2" universe="1"/>
-    <surface coeffs="0.0 0.0 0.0 1" id="1" type="sphere"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 2" id="2" type="sphere"/>
+    <cell id="1" name="inner sphere" material="1" region="-1" universe="1"/>
+    <cell id="2" name="outer sphere" material="void" region="1 -2" universe="1"/>
+    <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 1"/>
+    <surface id="2" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 2"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>100</particles>
     <batches>5</batches>
-    <source particle="photon" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="photon">
       <space type="point">
         <parameters>0.0 0.0 0.0</parameters>
       </space>

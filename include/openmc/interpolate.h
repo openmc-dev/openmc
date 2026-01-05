@@ -4,10 +4,9 @@
 #include <cmath>
 #include <vector>
 
-#include <gsl/gsl-lite.hpp>
-
 #include "openmc/error.h"
 #include "openmc/search.h"
+#include "openmc/span.h"
 
 namespace openmc {
 
@@ -36,8 +35,8 @@ inline double interpolate_log_log(
   return y0 * std::exp(f * std::log(y1 / y0));
 }
 
-inline double interpolate_lagrangian(gsl::span<const double> xs,
-  gsl::span<const double> ys, int idx, double x, int order)
+inline double interpolate_lagrangian(
+  span<const double> xs, span<const double> ys, int idx, double x, int order)
 {
   double output {0.0};
 
@@ -56,9 +55,8 @@ inline double interpolate_lagrangian(gsl::span<const double> xs,
   return output;
 }
 
-inline double interpolate(gsl::span<const double> xs,
-  gsl::span<const double> ys, double x,
-  Interpolation i = Interpolation::lin_lin)
+inline double interpolate(span<const double> xs, span<const double> ys,
+  double x, Interpolation i = Interpolation::lin_lin)
 {
   int idx = lower_bound_index(xs.begin(), xs.end(), x);
 

@@ -9,9 +9,9 @@
 namespace openmc {
 
 //==============================================================================
-//! Indexes the location of particle events to a regular mesh.  For tracklength
-//! tallies, it will produce multiple valid bins and the bin weight will
-//! correspond to the fraction of the track length that lies in that bin.
+//! Indexes the location of particle events to a mesh. For tracklength tallies,
+//! it will produce multiple valid bins and the bin weight will correspond to
+//! the fraction of the track length that lies in that bin.
 //==============================================================================
 
 class MeshFilter : public Filter {
@@ -51,6 +51,12 @@ public:
 
   virtual bool translated() const { return translated_; }
 
+  virtual void set_rotation(const vector<double>& rotation);
+
+  virtual const vector<double>& rotation() const { return rotation_; }
+
+  virtual bool rotated() const { return rotated_; }
+
 protected:
   //----------------------------------------------------------------------------
   // Data members
@@ -58,6 +64,8 @@ protected:
   int32_t mesh_;            //!< Index of the mesh
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
+  bool rotated_ {false};    //!< Whether or not the filter is rotated
+  vector<double> rotation_; //!< Filter rotation
 };
 
 } // namespace openmc

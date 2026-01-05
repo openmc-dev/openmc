@@ -53,6 +53,10 @@ public:
   //! \param[in] dset Dataset containing coefficients
   explicit Polynomial(hid_t dset);
 
+  //! Construct polynomial from coefficients
+  //! \param[in] coef Polynomial coefficients
+  explicit Polynomial(vector<double> coef) : coef_(coef) {}
+
   //! Evaluate the polynomials
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x

@@ -11,7 +11,7 @@ import h5py
 
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Library, Table, get_table, get_metadata
-from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
+from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV, gnds_name
 from .endf import (
     Evaluation, SUM_RULES, get_head_record, get_tab1_record, get_evaluations)
 from .fission_energy import FissionEnergyRelease
@@ -678,11 +678,7 @@ class IncidentNeutron(EqualityMixin):
         temperature = ev.target['temperature']
 
         # Determine name
-        element = ATOMIC_SYMBOL[atomic_number]
-        if metastable > 0:
-            name = f'{element}{mass_number}_m{metastable}'
-        else:
-            name = f'{element}{mass_number}'
+        name = gnds_name(atomic_number, mass_number, metastable)
 
         # Instantiate incident neutron data
         data = cls(name, atomic_number, mass_number, metastable,
@@ -769,6 +765,11 @@ class IncidentNeutron(EqualityMixin):
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
 
+            # Use name based on ENDF evaluation. The name assigned by from_ace
+            # may be wrong for higher metastable states (e.g., Hf178_m2)
+            ev = evaluation if evaluation is not None else Evaluation(filename)
+            data.name = ev.gnds_name
+
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:
                 pendf = Evaluation(kwargs['pendf'])
@@ -779,7 +780,6 @@ class IncidentNeutron(EqualityMixin):
                 data[2].xs['0K'] = xs
 
             # Add fission energy release data
-            ev = evaluation if evaluation is not None else Evaluation(filename)
             if (1, 458) in ev.section:
                 data.fission_energy = f = FissionEnergyRelease.from_endf(ev, data)
             else:

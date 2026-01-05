@@ -21,14 +21,14 @@ void EnergyFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void EnergyFilter::set_bins(gsl::span<const double> bins)
+void EnergyFilter::set_bins(span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();
   bins_.reserve(bins.size());
 
   // Copy bins, ensuring they are valid
-  for (gsl::index i = 0; i < bins.size(); ++i) {
+  for (int64_t i = 0; i < bins.size(); ++i) {
     if (i > 0 && bins[i] <= bins[i - 1]) {
       throw std::runtime_error {
         "Energy bins must be monotonically increasing."};
@@ -46,7 +46,7 @@ void EnergyFilter::set_bins(gsl::span<const double> bins)
   if (!settings::run_CE) {
     if (n_bins_ == data::mg.num_energy_groups_) {
       matches_transport_groups_ = true;
-      for (gsl::index i = 0; i < n_bins_ + 1; ++i) {
+      for (int64_t i = 0; i < n_bins_ + 1; ++i) {
         if (data::mg.rev_energy_bins_[i] != bins_[i]) {
           matches_transport_groups_ = false;
           break;

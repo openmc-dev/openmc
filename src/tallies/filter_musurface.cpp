@@ -12,7 +12,7 @@ void MuSurfaceFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get surface normal (and make sure it is a unit vector)
-  const auto surf {model::surfaces[std::abs(p.surface()) - 1].get()};
+  const auto surf {model::surfaces[p.surface_index()].get()};
   auto n = surf->normal(p.r());
   n /= n.norm();
 

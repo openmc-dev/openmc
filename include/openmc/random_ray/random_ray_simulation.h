@@ -20,10 +20,9 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   void compute_segment_correction_factors();
-  void prepare_fixed_sources();
-  void prepare_fixed_sources_adjoint(vector<double>& forward_flux);
+  void apply_fixed_sources_and_mesh_domains();
+  void prepare_fixed_sources_adjoint();
   void simulate();
-  void reduce_simulation_statistics();
   void output_simulation_results() const;
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
@@ -41,9 +40,6 @@ private:
 
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
-
-  // Random ray eigenvalue
-  double k_eff_ {1.0};
 
   // Tracks the average FSR miss rate for analysis and reporting
   double avg_miss_rate_ {0.0};
@@ -63,6 +59,7 @@ private:
 
 void openmc_run_random_ray();
 void validate_random_ray_inputs();
+void openmc_reset_random_ray();
 
 } // namespace openmc
 

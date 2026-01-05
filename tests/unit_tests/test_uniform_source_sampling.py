@@ -14,10 +14,15 @@ def sphere_model():
 
     model.settings.particles = 100
     model.settings.batches = 1
-    model.settings.source = openmc.IndependentSource(
+    src1 = openmc.IndependentSource(
         energy=openmc.stats.delta_function(1.0e3),
-        strength=100.0
+        strength=75.0
     )
+    src2 = openmc.IndependentSource(
+        energy=openmc.stats.delta_function(1.0e3),
+        strength=25.0
+    )
+    model.settings.source = [src1, src2]
     model.settings.run_mode = "fixed source"
     model.settings.surf_source_write = {
         "max_particles": 100,
@@ -42,11 +47,13 @@ def test_source_weight(run_in_tmpdir, sphere_model):
     sphere_model.settings.uniform_source_sampling = True
     sphere_model.run()
     particles = openmc.ParticleList.from_hdf5('surface_source.h5')
-    strength = sphere_model.settings.source[0].strength
-    assert set(p.wgt for p in particles) == {strength}
+    assert set(p.wgt for p in particles) == {0.5, 1.5}
 
 
 def test_tally_mean(run_in_tmpdir, sphere_model):
+    # Use only one source
+    sphere_model.settings.source.pop()
+
     # Run without uniform source sampling
     sphere_model.settings.uniform_source_sampling = False
     sp_file = sphere_model.run()

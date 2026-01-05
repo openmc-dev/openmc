@@ -21,7 +21,7 @@ void TimeFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void TimeFilter::set_bins(gsl::span<const double> bins)
+void TimeFilter::set_bins(span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();

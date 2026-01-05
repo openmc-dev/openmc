@@ -4,7 +4,7 @@
 Summary File Format
 ===================
 
-The current version of the summary file format is 6.0.
+The current version of the summary file format is 6.1.
 
 **/**
 
@@ -38,6 +38,7 @@ The current version of the summary file format is 6.0.
              is an array if the cell uses distributed materials, otherwise it is
              a scalar.
            - **temperature** (*double[]*) -- Temperature of the cell in Kelvin.
+           - **density** (*double[]*) -- Density of the cell in [g/cm3].
            - **translation** (*double[3]*) -- Translation applied to the fill
              universe. This dataset is present only if fill_type is set to
              'universe'.

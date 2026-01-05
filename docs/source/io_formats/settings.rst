@@ -20,6 +20,85 @@ source neutrons.
 
   *Default*: None
 
+-----------------------------
+``<collision_track>`` Element
+-----------------------------
+
+The ``<collision_track>`` element indicates to track information about particle
+collisions based on a set of criteria and store these events in a file named
+``collision_track.h5``. This file records details such as the position of the
+interaction, direction of the incoming particle, incident energy and deposited
+energy, weight, time of the interaction, and the delayed neutron group (0 for
+prompt neutrons). Additional information such as the cell ID, material ID,
+universe ID, nuclide ZAID, particle type, and event MT number are also stored.
+Users can specify one or more criterion to filter collisions. If no criteria are
+specified, it defaults to tracking all collisions across the model.
+
+.. warning::
+    Storing all collisions can be very memory intensive. For more targeted
+    tracking, users can employ a variety of parameters such as ``cell_ids``,
+    ``reactions``, ``universe_ids``, ``material_ids``, ``nuclides``, and
+    ``deposited_E_threshold`` to refine the selection of particle interactions
+    to be banked.
+
+This element can contain one or more of the following attributes or
+sub-elements:
+
+  :max_collisions:
+    An integer indicating the maximum number of collisions to be banked per file.
+
+    *Default*: 1000
+
+  :max_collision_track_files:
+    An integer indicating the number of collision_track files to be used.
+
+    *Default*: 1
+
+  :mcpl:
+    An optional boolean to enable MCPL_-format instead of the native HDF5-based
+    format. If activated, the output file name and type is changed to
+    ``collision_track.mcpl``.
+
+    *Default*: false
+
+    .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
+
+  :cell_ids:
+    A list of integers representing cell IDs to define specific cells in which
+    collisions are to be banked.
+
+    *Default*: None
+
+  :universe_ids:
+    A list of integers representing the universe IDs to define specific
+    universes in which collisions are to be banked.
+
+    *Default*: None
+
+  :material_ids:
+    A list of integers representing the material IDs to define specific
+    materials in which collisions are to be banked.
+
+    *Default*: None
+
+  :nuclides:
+    A list of strings representing the nuclide, to define specific
+    define specific target nuclide collisions to be banked.
+
+    *Default*: None
+
+  :reactions:
+    A list of integers representing the ENDF-6 format MT numbers or strings
+    (e.g. (n,fission)) to define specific reaction types to be banked.
+
+    *Default*: None
+
+  :deposited_E_threshold:
+    A float defining the minimum deposited energy per collision (in eV) to
+    trigger banking.
+
+    *Default*: 0.0
+
 ----------------------------------
 ``<confidence_intervals>`` Element
 ----------------------------------
@@ -80,6 +159,13 @@ time.
     roulette.
 
     *Default*: 1.0
+
+  :survival_normalization:
+    If this element is set to "true", this will enable the use of survival
+    biasing source normalization, whereby the weight parameters, weight and
+    weight_avg, are multiplied per history by the start weight of said history.
+
+    *Default*: false
 
   :energy_neutron:
     The energy under which neutrons will be killed.
@@ -171,6 +257,16 @@ history-based parallelism.
 
   *Default*: false
 
+--------------------------------
+``<free_gas_threshold>`` Element
+--------------------------------
+
+The ``<free_gas_threshold>`` element specifies the energy multiplier, expressed
+in units of :math:`kT`, that determines when the free gas scattering approach is
+used for elastic scattering. Values must be positive.
+
+  *Default*: 400.0
+
 -----------------------------------
 ``<generations_per_batch>`` Element
 -----------------------------------
@@ -238,7 +334,7 @@ based on the recommended value in LA-UR-14-24530_.
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
-.. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+.. _LA-UR-14-24530: https://mcnp.lanl.gov/pdf_files/TechReport_2014_LANL_LA-UR-14-24530_Brown.pdf
 
 ---------------------------
 ``<material_cell_offsets>``
@@ -252,11 +348,29 @@ to false.
 
   *Default*: true
 
+--------------------------------
+``<max_lost_particles>`` Element
+--------------------------------
+
+This element indicates the maximum number of lost particles.
+
+  *Default*: 10
+
+------------------------------------
+``<rel_max_lost_particles>`` Element
+------------------------------------
+
+
+This element indicates the maximum number of lost particles, relative to the
+total number of particles.
+
+  *Default*: 1.0e-6
+
 -------------------------------------
 ``<max_particles_in_flight>`` Element
 -------------------------------------
 
-This element indicates the number of neutrons to run in flight concurrently
+This element indicates the number of particles to run in flight concurrently
 when using event-based parallelism. A higher value uses more memory, but
 may be more efficient computationally.
 
@@ -439,6 +553,38 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: None
 
+  :sample_method:
+    Specifies the method for sampling the starting ray distribution. This
+    element can be set to "prng" or "halton".
+
+    *Default*: prng
+
+  :source_region_meshes:
+    Relates meshes to spatial domains for subdividing source regions with each domain.
+
+    :mesh:
+      Contains an ``id`` attribute and one or more ``<domain>`` sub-elements.
+
+      :id:
+        The unique identifier for the mesh.
+
+      :domain:
+        Each domain element has an ``id`` attribute and a ``type`` attribute.
+
+        :id:
+          The unique identifier for the domain.
+
+        :type:
+          The type of the domain. Can be ``material``, ``cell``, or ``universe``.
+
+  :diagonal_stabilization_rho:
+    The rho factor for use with diagonal stabilization. This technique is
+    applied when negative diagonal (in-group) elements are detected in
+    the scattering matrix of input MGXS data, which is a common feature
+    of transport corrected MGXS data.
+
+    *Default*: 1.0
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -513,6 +659,15 @@ The ``seed`` element is used to set the seed used for the linear congruential
 pseudo-random number generator.
 
   *Default*: 1
+
+--------------------
+``<stride>`` Element
+--------------------
+
+The ``stride`` element is used to specify how many random numbers are allocated
+for each source particle history.
+
+  *Default*: 152,917
 
 .. _source_element:
 
@@ -850,6 +1005,16 @@ variable and whose sub-elements/attributes are as follows:
 
   :dist:
     This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
+
+---------------------------------------
+``<source_rejection_fraction>`` Element
+---------------------------------------
+
+The ``<source_rejection_fraction>`` element specifies the minimum fraction of
+external source sites that must be accepted when applying rejection sampling
+based on constraints.
+
+   *Default*: 0.05
 
 -------------------------
 ``<state_point>`` Element
@@ -1380,7 +1545,7 @@ mesh-based weight windows.
     *Default*: true
 
   :method:
-    Method used to update weight window values (currently only 'magic' is supported)
+    Method used to update weight window values (one of 'magic' or 'fw_cadis')
 
     *Default*: magic
 

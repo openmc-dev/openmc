@@ -1,13 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1">
-      <density units="g/cm3" value="12.0"/>
-      <nuclide ao="1.0" name="U235"/>
+    <material id="1" depletable="true">
+      <density value="12.0" units="g/cm3"/>
+      <nuclide name="U235" ao="1.0"/>
     </material>
     <material id="2">
-      <density units="g/cm3" value="1.0"/>
-      <nuclide ao="1.0" name="H1"/>
+      <density value="1.0" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
     </material>
   </materials>
   <geometry>
@@ -15,15 +15,15 @@
     <cell id="2" material="1" region="-3" universe="1"/>
     <cell id="3" material="1" region="-1" universe="1"/>
     <cell id="4" material="2" region="-5 4 -7 6 -9 8 2 3 1" universe="1"/>
-    <surface coeffs="0.0 0.0 0.0 3 1.5 1" id="1" type="z-torus"/>
-    <surface coeffs="6 0.0 0.0 3 1.5 1" id="2" type="x-torus"/>
-    <surface coeffs="6 0.0 0.0 6 1 0.75" id="3" type="y-torus"/>
-    <surface boundary="vacuum" coeffs="-5" id="4" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="14" id="5" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="-5" id="6" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="5" id="7" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="-8" id="8" type="z-plane"/>
-    <surface boundary="vacuum" coeffs="8" id="9" type="z-plane"/>
+    <surface id="1" type="z-torus" coeffs="0.0 0.0 0.0 3 1.5 1"/>
+    <surface id="2" type="x-torus" coeffs="6 0.0 0.0 3 1.5 1"/>
+    <surface id="3" type="y-torus" coeffs="6 0.0 0.0 6 1 0.75"/>
+    <surface id="4" type="x-plane" boundary="vacuum" coeffs="-5"/>
+    <surface id="5" type="x-plane" boundary="vacuum" coeffs="14"/>
+    <surface id="6" type="y-plane" boundary="vacuum" coeffs="-5"/>
+    <surface id="7" type="y-plane" boundary="vacuum" coeffs="5"/>
+    <surface id="8" type="z-plane" boundary="vacuum" coeffs="-8"/>
+    <surface id="9" type="z-plane" boundary="vacuum" coeffs="8"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

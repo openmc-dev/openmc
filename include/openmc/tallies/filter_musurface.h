@@ -1,8 +1,6 @@
 #ifndef OPENMC_TALLIES_FILTER_MU_SURFACE_H
 #define OPENMC_TALLIES_FILTER_MU_SURFACE_H
 
-#include <gsl/gsl-lite.hpp>
-
 #include "openmc/tallies/filter_mu.h"
 #include "openmc/vector.h"
 

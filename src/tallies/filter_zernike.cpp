@@ -1,11 +1,11 @@
 #include "openmc/tallies/filter_zernike.h"
 
+#include <cassert>
 #include <cmath>
 #include <sstream>
 #include <utility> // For pair
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/error.h"
@@ -57,7 +57,7 @@ void ZernikeFilter::to_statepoint(hid_t filter_group) const
 
 std::string ZernikeFilter::text_label(int bin) const
 {
-  Expects(bin >= 0 && bin < n_bins_);
+  assert(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_ + 1; n++) {
     int last = (n + 1) * (n + 2) / 2;
     if (bin < last) {

@@ -4,6 +4,7 @@ import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from .mixin import EqualityMixin, IDManagerMixin
+from ._xml import get_text
 
 
 class TallyDerivative(EqualityMixin, IDManagerMixin):
@@ -122,8 +123,8 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
             Tally derivative object
 
         """
-        derivative_id = int(elem.get("id"))
-        variable = elem.get("variable")
-        material = int(elem.get("material"))
-        nuclide = elem.get("nuclide") if variable == "nuclide_density" else None
+        derivative_id = int(get_text(elem, "id"))
+        variable = get_text(elem, "variable")
+        material = int(get_text(elem, "material"))
+        nuclide = get_text(elem, "nuclide") if variable == "nuclide_density" else None
         return cls(derivative_id, variable, material, nuclide)

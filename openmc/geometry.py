@@ -9,6 +9,7 @@ import lxml.etree as ET
 
 import openmc
 import openmc._xml as xml
+from .plots import add_plot_params
 from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
 
 
@@ -139,7 +140,6 @@ class Geometry:
 
         # Clean the indentation in the file to be user-readable
         xml.clean_indentation(element)
-        xml.reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
         return element
 
@@ -217,7 +217,7 @@ class Geometry:
 
         # Add any DAGMC universes
         for e in elem.findall('dagmc_universe'):
-            dag_univ = openmc.DAGMCUniverse.from_xml_element(e)
+            dag_univ = openmc.DAGMCUniverse.from_xml_element(e, mats)
             universes[dag_univ.id] = dag_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
@@ -747,62 +747,37 @@ class Geometry:
         clone.root_universe = self.root_universe.clone()
         return clone
 
+    @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the geometry.
 
         .. versionadded:: 0.14.0
-
-        Parameters
-        ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None then the
-            bounding box center will be used to attempt to ascertain the origin.
-            Defaults to (0, 0, 0) if the bounding box is not finite
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            bounding box width will be used to attempt to ascertain the plot
-            width. Defaults to (10, 10) if the bounding box is not finite
-        pixels : Iterable of int or int
-            If iterable of ints provided, then this directly sets the number of
-            pixels to use in each basis direction. If int provided, then this
-            sets the total number of pixels in the plot and the number of pixels
-            in each basis direction is calculated from this total and the image
-            aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        color_by : {'cell', 'material'}
-            Indicate whether the plot should be colored by cell or by material
-        colors : dict
-            Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
-            4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for
-            example::
-
-               # Make water blue
-               water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
-        legend_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-        outline : bool
-            Whether outlines between color boundaries should be drawn
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-        **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
         """
+        model = openmc.Model()
+        model.geometry = self
+        model.materials = self.get_all_materials().values()
 
-        return self.root_universe.plot(*args, **kwargs)
+        # collect all the material names from the geometry
+        all_material_names = {m.name for m in model.materials if m.name is not None}
+
+        # makes a placeholder material for each material name if it isn't
+        # already present on the model. These materials are otherwise missing
+        # from the geometry and are needed for plotting.
+        for universe in model.geometry.get_all_universes().values():
+            if not isinstance(universe, openmc.DAGMCUniverse):
+                continue
+            for name in universe.material_names:
+                # if this name is already present in the model, skip it
+                # (this can happen if the same material name is used in multiple
+                # universes)
+                if name in all_material_names:
+                    continue
+                # if the material name is not present on the model,
+                # create a placeholder material with the same name
+                # and add it to the model
+                mat_dag = openmc.Material(name=name)
+                mat_dag.add_nuclide('H1', 1.0)
+                model.materials.append(mat_dag)
+                all_material_names.add(name)
+
+        return model.plot(*args, **kwargs)

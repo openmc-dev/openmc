@@ -6,7 +6,7 @@
   <batches>12</batches>
   <inactive>5</inactive>
   <particles>1200</particles>
-
+  <max_lost_particles>1000000</max_lost_particles>
   <source>
     <space type="box">
       <parameters>-10 -10 -5  10  10  5</parameters>

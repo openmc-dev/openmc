@@ -9,9 +9,9 @@ unresolved resonance region, and tabulated data in the fast region. After the
 ENDF data has been reconstructed and Doppler-broadened, the ACER module
 generates ACE-format cross sections.
 
-.. _MCNP: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/
-.. _NJOY: http://t2.lanl.gov/codes.shtml
-.. _ENDF: http://www.nndc.bnl.gov/endf
+.. _MCNP: https://mcnp.lanl.gov/
+.. _NJOY: https://www.njoy21.io/
+.. _ENDF: https://www.nndc.bnl.gov/endf-library/
 
 """
 

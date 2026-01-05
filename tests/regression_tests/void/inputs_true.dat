@@ -2,8 +2,8 @@
 <model>
   <materials>
     <material id="1">
-      <density units="g/cm3" value="7.14"/>
-      <nuclide ao="1.0" name="Zn64"/>
+      <density value="7.14" units="g/cm3"/>
+      <nuclide name="Zn64" ao="1.0"/>
     </material>
   </materials>
   <geometry>
@@ -58,62 +58,62 @@
     <cell id="49" material="1" region="48 -49" universe="1"/>
     <cell id="50" material="void" region="49 -50" universe="1"/>
     <cell id="51" material="1" region="50" universe="1"/>
-    <surface coeffs="0.0 0.0 0.0 1.0" id="1" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 3.020408163265306" id="2" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 5.040816326530612" id="3" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 7.061224489795918" id="4" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 9.081632653061224" id="5" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 11.102040816326529" id="6" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 13.122448979591836" id="7" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 15.142857142857142" id="8" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 17.163265306122447" id="9" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 19.183673469387752" id="10" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 21.204081632653057" id="11" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 23.224489795918366" id="12" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 25.24489795918367" id="13" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 27.265306122448976" id="14" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 29.285714285714285" id="15" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 31.30612244897959" id="16" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 33.326530612244895" id="17" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 35.3469387755102" id="18" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 37.367346938775505" id="19" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 39.38775510204081" id="20" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 41.408163265306115" id="21" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 43.42857142857142" id="22" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 45.44897959183673" id="23" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 47.469387755102034" id="24" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 49.48979591836734" id="25" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 51.51020408163265" id="26" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 53.53061224489795" id="27" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 55.55102040816326" id="28" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 57.57142857142857" id="29" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 59.59183673469387" id="30" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 61.61224489795918" id="31" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 63.63265306122448" id="32" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 65.65306122448979" id="33" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 67.67346938775509" id="34" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 69.6938775510204" id="35" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 71.71428571428571" id="36" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 73.73469387755101" id="37" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 75.75510204081633" id="38" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 77.77551020408163" id="39" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 79.79591836734693" id="40" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 81.81632653061223" id="41" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 83.83673469387755" id="42" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 85.85714285714285" id="43" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 87.87755102040815" id="44" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 89.89795918367346" id="45" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 91.91836734693877" id="46" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 93.93877551020407" id="47" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 95.95918367346938" id="48" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 97.97959183673468" id="49" type="sphere"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100.0" id="50" type="sphere"/>
+    <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 1.0"/>
+    <surface id="2" type="sphere" coeffs="0.0 0.0 0.0 3.020408163265306"/>
+    <surface id="3" type="sphere" coeffs="0.0 0.0 0.0 5.040816326530612"/>
+    <surface id="4" type="sphere" coeffs="0.0 0.0 0.0 7.061224489795918"/>
+    <surface id="5" type="sphere" coeffs="0.0 0.0 0.0 9.081632653061224"/>
+    <surface id="6" type="sphere" coeffs="0.0 0.0 0.0 11.102040816326529"/>
+    <surface id="7" type="sphere" coeffs="0.0 0.0 0.0 13.122448979591836"/>
+    <surface id="8" type="sphere" coeffs="0.0 0.0 0.0 15.142857142857142"/>
+    <surface id="9" type="sphere" coeffs="0.0 0.0 0.0 17.163265306122447"/>
+    <surface id="10" type="sphere" coeffs="0.0 0.0 0.0 19.183673469387752"/>
+    <surface id="11" type="sphere" coeffs="0.0 0.0 0.0 21.204081632653057"/>
+    <surface id="12" type="sphere" coeffs="0.0 0.0 0.0 23.224489795918366"/>
+    <surface id="13" type="sphere" coeffs="0.0 0.0 0.0 25.24489795918367"/>
+    <surface id="14" type="sphere" coeffs="0.0 0.0 0.0 27.265306122448976"/>
+    <surface id="15" type="sphere" coeffs="0.0 0.0 0.0 29.285714285714285"/>
+    <surface id="16" type="sphere" coeffs="0.0 0.0 0.0 31.30612244897959"/>
+    <surface id="17" type="sphere" coeffs="0.0 0.0 0.0 33.326530612244895"/>
+    <surface id="18" type="sphere" coeffs="0.0 0.0 0.0 35.3469387755102"/>
+    <surface id="19" type="sphere" coeffs="0.0 0.0 0.0 37.367346938775505"/>
+    <surface id="20" type="sphere" coeffs="0.0 0.0 0.0 39.38775510204081"/>
+    <surface id="21" type="sphere" coeffs="0.0 0.0 0.0 41.408163265306115"/>
+    <surface id="22" type="sphere" coeffs="0.0 0.0 0.0 43.42857142857142"/>
+    <surface id="23" type="sphere" coeffs="0.0 0.0 0.0 45.44897959183673"/>
+    <surface id="24" type="sphere" coeffs="0.0 0.0 0.0 47.469387755102034"/>
+    <surface id="25" type="sphere" coeffs="0.0 0.0 0.0 49.48979591836734"/>
+    <surface id="26" type="sphere" coeffs="0.0 0.0 0.0 51.51020408163265"/>
+    <surface id="27" type="sphere" coeffs="0.0 0.0 0.0 53.53061224489795"/>
+    <surface id="28" type="sphere" coeffs="0.0 0.0 0.0 55.55102040816326"/>
+    <surface id="29" type="sphere" coeffs="0.0 0.0 0.0 57.57142857142857"/>
+    <surface id="30" type="sphere" coeffs="0.0 0.0 0.0 59.59183673469387"/>
+    <surface id="31" type="sphere" coeffs="0.0 0.0 0.0 61.61224489795918"/>
+    <surface id="32" type="sphere" coeffs="0.0 0.0 0.0 63.63265306122448"/>
+    <surface id="33" type="sphere" coeffs="0.0 0.0 0.0 65.65306122448979"/>
+    <surface id="34" type="sphere" coeffs="0.0 0.0 0.0 67.67346938775509"/>
+    <surface id="35" type="sphere" coeffs="0.0 0.0 0.0 69.6938775510204"/>
+    <surface id="36" type="sphere" coeffs="0.0 0.0 0.0 71.71428571428571"/>
+    <surface id="37" type="sphere" coeffs="0.0 0.0 0.0 73.73469387755101"/>
+    <surface id="38" type="sphere" coeffs="0.0 0.0 0.0 75.75510204081633"/>
+    <surface id="39" type="sphere" coeffs="0.0 0.0 0.0 77.77551020408163"/>
+    <surface id="40" type="sphere" coeffs="0.0 0.0 0.0 79.79591836734693"/>
+    <surface id="41" type="sphere" coeffs="0.0 0.0 0.0 81.81632653061223"/>
+    <surface id="42" type="sphere" coeffs="0.0 0.0 0.0 83.83673469387755"/>
+    <surface id="43" type="sphere" coeffs="0.0 0.0 0.0 85.85714285714285"/>
+    <surface id="44" type="sphere" coeffs="0.0 0.0 0.0 87.87755102040815"/>
+    <surface id="45" type="sphere" coeffs="0.0 0.0 0.0 89.89795918367346"/>
+    <surface id="46" type="sphere" coeffs="0.0 0.0 0.0 91.91836734693877"/>
+    <surface id="47" type="sphere" coeffs="0.0 0.0 0.0 93.93877551020407"/>
+    <surface id="48" type="sphere" coeffs="0.0 0.0 0.0 95.95918367346938"/>
+    <surface id="49" type="sphere" coeffs="0.0 0.0 0.0 97.97959183673468"/>
+    <surface id="50" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 100.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>1000</particles>
     <batches>3</batches>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="point">
         <parameters>0.0 0.0 0.0</parameters>
       </space>

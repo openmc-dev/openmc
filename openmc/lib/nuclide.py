@@ -40,8 +40,14 @@ def load_nuclide(name):
     name : str
         Name of the nuclide, e.g. 'U235'
 
+    Returns
+    -------
+    Nuclide
+        The class:`Nuclide` that was just loaded.
+
     """
     _dll.openmc_load_nuclide(name.encode(), None, 0)
+    return nuclides[name]
 
 
 class Nuclide(_FortranObject):

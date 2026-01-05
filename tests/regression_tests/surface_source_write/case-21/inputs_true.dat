@@ -1,40 +1,40 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1">
-      <density units="g/cm3" value="11.0"/>
-      <nuclide ao="0.0004524" name="U234"/>
-      <nuclide ao="0.0506068" name="U235"/>
-      <nuclide ao="0.948709" name="U238"/>
-      <nuclide ao="0.0002318" name="U236"/>
-      <nuclide ao="2.0" name="O16"/>
+    <material id="1" depletable="true">
+      <density value="11.0" units="g/cm3"/>
+      <nuclide name="U234" ao="0.0004524"/>
+      <nuclide name="U235" ao="0.0506068"/>
+      <nuclide name="U238" ao="0.948709"/>
+      <nuclide name="U236" ao="0.0002318"/>
+      <nuclide name="O16" ao="2.0"/>
     </material>
     <material id="2">
-      <density units="g/cm3" value="1.0"/>
-      <nuclide ao="2.0" name="H1"/>
-      <nuclide ao="1.0" name="O16"/>
+      <density value="1.0" units="g/cm3"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1 2 -3" universe="1"/>
     <cell id="2" material="2" region="1 | -2 | 3" universe="1"/>
-    <cell fill="1" id="3" region="4 -5 6 -7 8 -9" universe="2"/>
-    <surface coeffs="0.0 0.0 2.0" id="1" type="z-cylinder"/>
-    <surface coeffs="-2.0" id="2" type="z-plane"/>
-    <surface coeffs="2.0" id="3" type="z-plane"/>
-    <surface boundary="periodic" coeffs="-3.0" id="4" type="z-plane"/>
-    <surface boundary="periodic" coeffs="3.0" id="5" type="z-plane"/>
-    <surface boundary="reflective" coeffs="-3.0" id="6" type="x-plane"/>
-    <surface boundary="reflective" coeffs="3.0" id="7" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-3.0" id="8" type="y-plane"/>
-    <surface boundary="reflective" coeffs="3.0" id="9" type="y-plane"/>
+    <cell id="3" fill="1" region="4 -5 6 -7 8 -9" universe="2"/>
+    <surface id="1" type="z-cylinder" coeffs="0.0 0.0 2.0"/>
+    <surface id="2" type="z-plane" coeffs="-2.0"/>
+    <surface id="3" type="z-plane" coeffs="2.0"/>
+    <surface id="4" type="z-plane" boundary="periodic" coeffs="-3.0"/>
+    <surface id="5" type="z-plane" boundary="periodic" coeffs="3.0"/>
+    <surface id="6" type="x-plane" boundary="reflective" coeffs="-3.0"/>
+    <surface id="7" type="x-plane" boundary="reflective" coeffs="3.0"/>
+    <surface id="8" type="y-plane" boundary="reflective" coeffs="-3.0"/>
+    <surface id="9" type="y-plane" boundary="reflective" coeffs="3.0"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>100</particles>
     <batches>5</batches>
     <inactive>1</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>-2.0 -2.0 -2.0 2.0 2.0 2.0</parameters>
       </space>

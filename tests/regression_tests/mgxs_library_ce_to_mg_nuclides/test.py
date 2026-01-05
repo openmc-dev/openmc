@@ -28,7 +28,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file
-        self.mgxs_lib.add_to_tallies_file(self._model.tallies, merge=False)
+        self.mgxs_lib.add_to_tallies(self._model.tallies, merge=False)
 
     def _run_openmc(self):
         # Initial run
@@ -40,8 +40,8 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Build MG Inputs
         # Get data needed to execute Library calculations.
-        sp = openmc.StatePoint(self._sp_name)
-        self.mgxs_lib.load_from_statepoint(sp)
+        with openmc.StatePoint(self._sp_name) as sp:
+            self.mgxs_lib.load_from_statepoint(sp)
         self._model.mgxs_file, self._model.materials, \
             self._model.geometry = self.mgxs_lib.create_mg_mode()
 
@@ -54,11 +54,6 @@ class MGXSTestHarness(PyAPITestHarness):
         # Write modified input files
         self._model.export_to_model_xml()
         self._model.mgxs_file.export_to_hdf5()
-
-        # Enforce closing statepoint and summary files so HDF5
-        # does not throw an error during the next OpenMC execution
-        sp._f.close()
-        sp._summary._f.close()
 
         # Re-run MG mode.
         if config['mpi']:

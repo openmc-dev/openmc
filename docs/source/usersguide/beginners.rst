@@ -109,8 +109,8 @@ familiar with. Whether you plan on working in Linux, macOS, or Windows, you
 should be comfortable working in a command line environment. There are many
 resources online for learning command line environments. If you are using Linux
 or Mac OS X (also Unix-derived), `this tutorial
-<http://www.ee.surrey.ac.uk/Teaching/Unix/>`_ will help you get acquainted with
-commonly-used commands.
+<https://info-ee.surrey.ac.uk/Teaching/Unix/>`_ will help you get acquainted
+with commonly-used commands.
 
 To reap the full benefits of OpenMC, you should also have basic proficiency in
 the use of `Python <https://www.python.org/>`_, as OpenMC includes a rich Python
@@ -127,8 +127,8 @@ are hosted at `GitHub`_. In order to receive updates to the code directly,
 submit `bug reports`_, and perform other development tasks, you may want to sign
 up for a free account on GitHub. Once you have an account, you can follow `these
 instructions
-<https://docs.github.com/en/github/getting-started-with-github/set-up-git>`_ on
-how to set up your computer for using GitHub.
+<https://docs.github.com/en/get-started/getting-started-with-git/set-up-git>`_
+on how to set up your computer for using GitHub.
 
 If you are new to nuclear engineering, you may want to review the NRC's `Reactor
 Concepts Manual`_. This manual describes the basics of nuclear power for
@@ -149,9 +149,9 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 .. _neutron transport: https://en.wikipedia.org/wiki/Neutron_transport
 .. _discretization: https://en.wikipedia.org/wiki/Discretization
 .. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
-.. _git: http://git-scm.com/
+.. _git: https://git-scm.com/
 .. _git tutorials: https://git-scm.com/doc
-.. _Reactor Concepts Manual: http://www.tayloredge.com/periodic/trivia/ReactorConcepts.pdf
+.. _Reactor Concepts Manual: https://www.tayloredge.com/periodic/trivia/ReactorConcepts.pdf
 .. _Volume I: https://www.standards.doe.gov/standards-documents/1000/1019-bhdbk-1993-v1
 .. _Volume II: https://www.standards.doe.gov/standards-documents/1000/1019-bhdbk-1993-v2
 .. _OpenMC source code: https://github.com/openmc-dev/openmc

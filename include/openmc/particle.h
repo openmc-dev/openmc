@@ -39,10 +39,6 @@ public:
 
   double speed() const;
 
-  //! moves the particle by the distance length to its next location
-  //! \param length the distance the particle is moved
-  void move_distance(double length);
-
   //! create a secondary particle
   //
   //! stores the current phase space attributes of the particle in the
@@ -51,7 +47,14 @@ public:
   //! \param u Direction of the secondary particle
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
-  void create_secondary(double wgt, Direction u, double E, ParticleType type);
+  //! \return Whether a secondary particle was created
+  bool create_secondary(double wgt, Direction u, double E, ParticleType type);
+
+  //! split a particle
+  //
+  //! creates a new particle with weight wgt
+  //! \param wgt Weight of the new particle
+  void split(double wgt);
 
   //! initialize from a source site
   //

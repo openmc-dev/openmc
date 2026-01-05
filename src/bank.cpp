@@ -1,6 +1,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/error.h"
+#include "openmc/ifp.h"
 #include "openmc/message_passing.h"
 #include "openmc/simulation.h"
 #include "openmc/vector.h"
@@ -19,12 +20,22 @@ vector<SourceSite> source_bank;
 
 SharedArray<SourceSite> surf_source_bank;
 
+SharedArray<CollisionTrackSite> collision_track_bank;
+
 // The fission bank is allocated as a SharedArray, rather than a vector, as it
 // will be shared by all threads in the simulation. It will be allocated to a
 // fixed maximum capacity in the init_fission_bank() function. Then, Elements
 // will be added to it by using SharedArray's special thread_safe_append()
 // function.
 SharedArray<SourceSite> fission_bank;
+
+vector<vector<int>> ifp_source_delayed_group_bank;
+
+vector<vector<double>> ifp_source_lifetime_bank;
+
+vector<vector<int>> ifp_fission_delayed_group_bank;
+
+vector<vector<double>> ifp_fission_lifetime_bank;
 
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is
@@ -41,8 +52,13 @@ void free_memory_bank()
 {
   simulation::source_bank.clear();
   simulation::surf_source_bank.clear();
+  simulation::collision_track_bank.clear();
   simulation::fission_bank.clear();
   simulation::progeny_per_particle.clear();
+  simulation::ifp_source_delayed_group_bank.clear();
+  simulation::ifp_source_lifetime_bank.clear();
+  simulation::ifp_fission_delayed_group_bank.clear();
+  simulation::ifp_fission_lifetime_bank.clear();
 }
 
 void init_fission_bank(int64_t max)
@@ -66,22 +82,17 @@ void sort_fission_bank()
 
   // Perform exclusive scan summation to determine starting indices in fission
   // bank for each parent particle id
-  int64_t tmp = simulation::progeny_per_particle[0];
-  simulation::progeny_per_particle[0] = 0;
-  for (int64_t i = 1; i < simulation::progeny_per_particle.size(); i++) {
-    int64_t value = simulation::progeny_per_particle[i - 1] + tmp;
-    tmp = simulation::progeny_per_particle[i];
-    simulation::progeny_per_particle[i] = value;
-  }
-
-  // TODO: C++17 introduces the exclusive_scan() function which could be
-  // used to replace everything above this point in this function.
+  std::exclusive_scan(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(),
+    simulation::progeny_per_particle.begin(), 0);
 
   // We need a scratch vector to make permutation of the fission bank into
   // sorted order easy. Under normal usage conditions, the fission bank is
   // over provisioned, so we can use that as scratch space.
   SourceSite* sorted_bank;
   vector<SourceSite> sorted_bank_holder;
+  vector<vector<int>> sorted_ifp_delayed_group_bank;
+  vector<vector<double>> sorted_ifp_lifetime_bank;
 
   // If there is not enough space, allocate a temporary vector and point to it
   if (simulation::fission_bank.size() >
@@ -90,6 +101,11 @@ void sort_fission_bank()
     sorted_bank = sorted_bank_holder.data();
   } else { // otherwise, point sorted_bank to unused portion of the fission bank
     sorted_bank = &simulation::fission_bank[simulation::fission_bank.size()];
+  }
+
+  if (settings::ifp_on) {
+    allocate_temporary_vector_ifp(
+      sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
   }
 
   // Use parent and progeny indices to sort fission bank
@@ -102,11 +118,19 @@ void sort_fission_bank()
                   "shared fission bank size.");
     }
     sorted_bank[idx] = site;
+    if (settings::ifp_on) {
+      copy_ifp_data_from_fission_banks(
+        i, sorted_ifp_delayed_group_bank[idx], sorted_ifp_lifetime_bank[idx]);
+    }
   }
 
   // Copy sorted bank into the fission bank
   std::copy(sorted_bank, sorted_bank + simulation::fission_bank.size(),
     simulation::fission_bank.data());
+  if (settings::ifp_on) {
+    copy_ifp_data_to_fission_banks(
+      sorted_ifp_delayed_group_bank.data(), sorted_ifp_lifetime_bank.data());
+  }
 }
 
 //==============================================================================

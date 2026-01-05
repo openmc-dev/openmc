@@ -36,12 +36,14 @@ inline int thread_num()
 
 class OpenMPMutex {
 public:
-  OpenMPMutex()
+  void init()
   {
 #ifdef _OPENMP
     omp_init_lock(&mutex_);
 #endif
   }
+
+  OpenMPMutex() { init(); }
 
   ~OpenMPMutex()
   {
@@ -62,14 +64,10 @@ public:
   // rather, it produces two different mutexes.
 
   // Copy constructor
-  OpenMPMutex(const OpenMPMutex& other) { OpenMPMutex(); }
+  OpenMPMutex(const OpenMPMutex& other) { init(); }
 
   // Copy assignment operator
-  OpenMPMutex& operator=(const OpenMPMutex& other)
-  {
-    OpenMPMutex();
-    return *this;
-  }
+  OpenMPMutex& operator=(const OpenMPMutex& other) { return *this; }
 
   //! Lock the mutex.
   //

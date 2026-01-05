@@ -94,8 +94,24 @@ struct Position {
   //! \result Reflected vector
   Position reflect(Position n) const;
 
-  //! Rotate the position based on a rotation matrix
-  Position rotate(const vector<double>& rotation) const;
+  //! Rotate the position by applying a rotation matrix
+  template<typename T>
+  Position rotate(const T& rotation) const
+  {
+    return {x * rotation[0] + y * rotation[1] + z * rotation[2],
+      x * rotation[3] + y * rotation[4] + z * rotation[5],
+      x * rotation[6] + y * rotation[7] + z * rotation[8]};
+  }
+
+  //! Rotate the position by applying the inverse of a rotation matrix
+  //! using the fact that rotation matrices are orthonormal.
+  template<typename T>
+  Position inverse_rotate(const T& rotation) const
+  {
+    return {x * rotation[0] + y * rotation[3] + z * rotation[6],
+      x * rotation[1] + y * rotation[4] + z * rotation[7],
+      x * rotation[2] + y * rotation[5] + z * rotation[8]};
+  }
 
   // Data members
   double x = 0.;

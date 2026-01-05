@@ -92,7 +92,7 @@ void get_shape_attr(hid_t obj_id, const char* name, hsize_t* dims)
   H5Aclose(attr);
 }
 
-hid_t create_group(hid_t parent_id, char const* name)
+hid_t create_group(hid_t parent_id, const char* name)
 {
   hid_t out = H5Gcreate(parent_id, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (out < 0) {
@@ -225,8 +225,7 @@ void get_name(hid_t obj_id, std::string& name)
 {
   size_t size = 1 + H5Iget_name(obj_id, nullptr, 0);
   name.resize(size);
-  // TODO: switch to name.data() when using C++17
-  H5Iget_name(obj_id, &name[0], size);
+  H5Iget_name(obj_id, name.data(), size);
 }
 
 int get_num_datasets(hid_t group_id)
@@ -537,14 +536,14 @@ void read_complex(
   H5Tclose(complex_id);
 }
 
-void read_tally_results(
-  hid_t group_id, hsize_t n_filter, hsize_t n_score, double* results)
+void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+  hsize_t n_results, double* results)
 {
   // Create dataspace for hyperslab in memory
   constexpr int ndim = 3;
-  hsize_t dims[ndim] {n_filter, n_score, 3};
+  hsize_t dims[ndim] {n_filter, n_score, n_results};
   hsize_t start[ndim] {0, 0, 1};
-  hsize_t count[ndim] {n_filter, n_score, 2};
+  hsize_t count[ndim] {n_filter, n_score, n_results - 1};
   hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
@@ -687,15 +686,15 @@ void write_string(
     group_id, 0, nullptr, buffer.length(), name, buffer.c_str(), indep);
 }
 
-void write_tally_results(
-  hid_t group_id, hsize_t n_filter, hsize_t n_score, const double* results)
+void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+  hsize_t n_results, const double* results)
 {
   // Set dimensions of sum/sum_sq hyperslab to store
   constexpr int ndim = 3;
-  hsize_t count[ndim] {n_filter, n_score, 2};
+  hsize_t count[ndim] {n_filter, n_score, n_results - 1};
 
   // Set dimensions of results array
-  hsize_t dims[ndim] {n_filter, n_score, 3};
+  hsize_t dims[ndim] {n_filter, n_score, n_results};
   hsize_t start[ndim] {0, 0, 1};
   hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);

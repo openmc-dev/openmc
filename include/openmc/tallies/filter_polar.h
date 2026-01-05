@@ -3,8 +3,7 @@
 
 #include <cmath>
 
-#include <gsl/gsl-lite.hpp>
-
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -39,7 +38,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  void set_bins(gsl::span<double> bins);
+  void set_bins(span<double> bins);
 
 private:
   //----------------------------------------------------------------------------

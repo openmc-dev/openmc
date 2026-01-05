@@ -83,6 +83,29 @@ ReactionProduct::ReactionProduct(hid_t group)
   }
 }
 
+ReactionProduct::ReactionProduct(const ChainNuclide::Product& product)
+{
+  particle_ = ParticleType::photon;
+  emission_mode_ = EmissionMode::delayed;
+
+  // Get chain nuclide object for radionuclide
+  parent_nuclide_ = data::chain_nuclide_map.at(product.name);
+  const auto& chain_nuc = data::chain_nuclides[parent_nuclide_].get();
+
+  // Determine decay constant in [s^-1]
+  decay_rate_ = chain_nuc->decay_constant();
+
+  // Determine number of photons per decay and set yield
+  double photon_per_sec = chain_nuc->photon_energy()->integral();
+  double photon_per_decay = photon_per_sec / decay_rate_;
+  vector<double> coef = {product.branching_ratio * photon_per_decay};
+  yield_ = make_unique<Polynomial>(coef);
+
+  // Set decay photon angle-energy distribution
+  distribution_.push_back(
+    make_unique<DecayPhotonAngleEnergy>(chain_nuc->photon_energy()));
+}
+
 void ReactionProduct::sample(
   double E_in, double& E_out, double& mu, uint64_t* seed) const
 {

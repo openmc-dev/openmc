@@ -5,7 +5,7 @@ import h5py
 import lxml.etree as ET
 
 import openmc
-from openmc._xml import clean_indentation, reorder_attributes
+from openmc._xml import get_elem_list, get_text, clean_indentation
 
 
 class DataLibrary(list):
@@ -132,7 +132,6 @@ class DataLibrary(list):
         clean_indentation(root)
 
         # Write XML file
-        reorder_attributes(root)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root)
         tree.write(str(path), xml_declaration=True, encoding='utf-8',
                    method='xml')
@@ -173,9 +172,9 @@ class DataLibrary(list):
             directory = os.path.dirname(path)
 
         for lib_element in root.findall('library'):
-            filename = os.path.join(directory, lib_element.attrib['path'])
-            filetype = lib_element.attrib['type']
-            materials = lib_element.attrib['materials'].split()
+            filename = os.path.join(directory, get_text(lib_element, "path"))
+            filetype = get_text(lib_element, "type")
+            materials = get_elem_list(lib_element, "materials", str) or []
             library = {'path': filename, 'type': filetype,
                        'materials': materials}
             data.libraries.append(library)
@@ -183,7 +182,7 @@ class DataLibrary(list):
         # get depletion chain data
         dep_node = root.find("depletion_chain")
         if dep_node is not None:
-            filename = os.path.join(directory, dep_node.attrib['path'])
+            filename = os.path.join(directory, get_text(dep_node, "path"))
             library = {'path': filename, 'type': 'depletion_chain',
                        'materials': []}
             data.libraries.append(library)

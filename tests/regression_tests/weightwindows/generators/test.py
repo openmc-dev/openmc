@@ -46,14 +46,14 @@ def test_ww_generator(run_in_tmpdir):
     # just test that the generation happens successfully here
     assert os.path.exists('weight_windows.h5')
 
-    wws_mean = openmc.hdf5_to_wws()
+    wws_mean = openmc.WeightWindowsList.from_hdf5()
     assert len(wws_mean) == 1
 
     # check that generation using the relative error works too
     wwg.update_parameters['value'] = 'rel_err'
     model.run()
 
-    wws_rel_err = openmc.hdf5_to_wws()
+    wws_rel_err = openmc.WeightWindowsList.from_hdf5()
     assert len(wws_rel_err) == 1
 
     # we should not get the same set of weight windows when switching to use of

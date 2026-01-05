@@ -10,7 +10,7 @@ from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
-from openmc._xml import get_text
+from openmc._xml import get_elem_list, get_text
 
 _VERSION_VOLUME = 1
 
@@ -375,13 +375,10 @@ class VolumeCalculation:
 
         """
         domain_type = get_text(elem, "domain_type")
-        domain_ids = get_text(elem, "domain_ids").split()
-        ids = [int(x) for x in domain_ids]
+        ids = get_elem_list(elem, "domain_ids", int)
         samples = int(get_text(elem, "samples"))
-        lower_left = get_text(elem, "lower_left").split()
-        lower_left = tuple([float(x) for x in lower_left])
-        upper_right = get_text(elem, "upper_right").split()
-        upper_right = tuple([float(x) for x in upper_right])
+        lower_left = tuple(get_elem_list(elem, "lower_left", float))
+        upper_right = tuple(get_elem_list(elem, "upper_right", float))
 
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs

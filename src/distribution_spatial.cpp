@@ -262,7 +262,7 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   elem_idx_dist_.assign(strengths);
 }
 
-MeshSpatial::MeshSpatial(int32_t mesh_idx, gsl::span<const double> strengths)
+MeshSpatial::MeshSpatial(int32_t mesh_idx, span<const double> strengths)
   : mesh_idx_(mesh_idx)
 {
   check_element_types();
@@ -331,7 +331,7 @@ PointCloud::PointCloud(pugi::xml_node node)
 }
 
 PointCloud::PointCloud(
-  std::vector<Position> point_cloud, gsl::span<const double> strengths)
+  std::vector<Position> point_cloud, span<const double> strengths)
 {
   point_cloud_.assign(point_cloud.begin(), point_cloud.end());
   point_idx_dist_.assign(strengths);

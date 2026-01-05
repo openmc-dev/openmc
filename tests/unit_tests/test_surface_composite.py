@@ -207,6 +207,19 @@ def test_cylinder_sector(axis, indices, center):
     assert point_neg[indices] in -s
     assert point_neg[indices] not in +s
 
+    # Check __contains__ for sector with reflex angle
+    s_reflex = openmc.model.CylinderSector(
+        r1, r2, 0., 270., center=center, axis=axis.lower())
+    points = [
+        np.array([c1 + r1 + d, c2 + 0.01, 0.]),
+        np.array([c1, c2 + r1 + d, 0.]),
+        np.array([c1 - r1 - d, c2, 0.]),
+        np.array([c1 - 0.01, c2 - r1 - d, 0.])
+    ]
+    for point_neg in points:
+        assert point_neg[indices] in -s_reflex
+        assert point_neg[indices] not in +s_reflex
+
     # translate method
     t = uniform(-5.0, 5.0)
     s_t = s.translate((t, t, t))

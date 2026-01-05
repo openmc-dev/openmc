@@ -139,6 +139,19 @@ int openmc_simulation_init()
 
   // Display header
   if (mpi::master) {
+    if (settings::kinetic_simulation) {
+      if (simulation::is_initial_condition) {
+        if (simulation::k_eff_correction)
+          header("KINETIC SIMULATION INITIAL CONDITION (K-EFF CORRECTION)", 3);
+        else
+          header("KINETIC SIMULATION INITIAL CONDITION", 3);
+      } else {
+        std::string message = fmt::format(
+          "KINETIC SIMULATION TIME STEP {0}", simulation::current_timestep);
+        const char* msg = message.c_str();
+        header(msg, 3);
+      }
+    }
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       if (settings::solver_type == SolverType::MONTE_CARLO) {
         header("FIXED SOURCE TRANSPORT SIMULATION", 3);
@@ -323,7 +336,7 @@ const RegularMesh* ufs_mesh {nullptr};
 vector<double> k_generation;
 vector<int64_t> work_index;
 
-bool is_initial_condition {false};
+bool is_initial_condition {true};
 int current_timestep;
 double current_time;
 bool k_eff_correction {false};

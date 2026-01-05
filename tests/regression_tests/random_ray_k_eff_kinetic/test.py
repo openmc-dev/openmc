@@ -26,5 +26,5 @@ def test_random_ray_time_dependent(time_method):
         model.settings.random_ray['time_method'] = time_method
         model.settings.batches = 400
         model.settings.inactive = 200 
-        harness = KineticMGXSTestHarness(model, 6)
+        harness = KineticMGXSTestHarness('statepoint.400', 6, model)
         harness.main()

@@ -53,5 +53,5 @@ def test_random_ray_auto_convert(method):
         model.settings.random_ray['source_region_meshes'] = [
             (mesh, [model.geometry.root_universe])]
 
-        harness = KineticMGXSTestHarness(model, 6)
+        harness = KineticMGXSTestHarness("statepoint.10", 6, model)
         harness.main()

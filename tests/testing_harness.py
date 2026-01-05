@@ -293,8 +293,8 @@ class ParticleRestartTestHarness(TestHarness):
 class KineticTestHarness(TestHarness):
     """General class for running OpenMC regression tests for kinetic simulations."""
 
-    def __init__(self, n_timesteps):
-        self._sp_base = "openmc_td_simulation"
+    def __init__(self, statepoint_base, n_timesteps):
+        self._sp_base = statepoint_base
         self._n_timesteps = n_timesteps
 
     def main(self):
@@ -597,8 +597,8 @@ class WeightWindowPyAPITestHarness(PyAPITestHarness):
 
 
 class KineticPyAPITestHarness(KineticTestHarness, PyAPITestHarness):
-    def __init__(self, model, n_timesteps, inputs_true=None):
-        super().__init__(n_timesteps)
+    def __init__(self, statepoint_base, n_timesteps, model, inputs_true=None):
+        super().__init__(statepoint_base, n_timesteps)
         self._model = model
         self._model.plots = []
 
@@ -660,7 +660,7 @@ class KineticTolerantPyAPITestHarness(KineticPyAPITestHarness, TolerantPyAPITest
                                 file_test)
             print('Result differences:')
             print(''.join(colorize(diff)))
-            os.rename(file_test, f'results_error_{i}.dat')
+            os.rename(file_test, f'results_error_{index}.dat')
         assert compare, 'Results do not agree'
 
 

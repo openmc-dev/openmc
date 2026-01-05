@@ -51,6 +51,7 @@
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
+#include "libmesh/replicated_mesh.h"
 #endif
 
 #ifdef OPENMC_DAGMC_ENABLED
@@ -358,9 +359,10 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   std::array<int, 3> n_rays = {nx, ny, nz};
 
   // Determine effective width of rays
-  Position width((nx > 0) ? (bbox.xmax - bbox.xmin) / nx : 0.0,
-    (ny > 0) ? (bbox.ymax - bbox.ymin) / ny : 0.0,
-    (nz > 0) ? (bbox.zmax - bbox.zmin) / nz : 0.0);
+  Position width = bbox.max - bbox.min;
+  width.x = (nx > 0) ? width.x / nx : 0.0;
+  width.y = (ny > 0) ? width.y / ny : 0.0;
+  width.z = (nz > 0) ? width.z / nz : 0.0;
 
   // Set flag for mesh being contained within model
   bool out_of_model = false;
@@ -379,15 +381,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
     for (int axis = 0; axis < 3; ++axis) {
       // Set starting position and direction
       site.r = {0.0, 0.0, 0.0};
-      site.r[axis] = bbox.min()[axis];
+      site.r[axis] = bbox.min[axis];
       site.u = {0.0, 0.0, 0.0};
       site.u[axis] = 1.0;
 
       // Determine width of rays and number of rays in other directions
       int ax1 = (axis + 1) % 3;
       int ax2 = (axis + 2) % 3;
-      double min1 = bbox.min()[ax1];
-      double min2 = bbox.min()[ax2];
+      double min1 = bbox.min[ax1];
+      double min2 = bbox.min[ax2];
       double d1 = width[ax1];
       double d2 = width[ax2];
       int n1 = n_rays[ax1];
@@ -432,7 +434,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           while (true) {
             // Ray trace from r_start to r_end
             Position r0 = p.r();
-            double max_distance = bbox.max()[axis] - r0[axis];
+            double max_distance = bbox.max[axis] - r0[axis];
 
             // Find the distance to the nearest boundary
             BoundaryInfo boundary = distance_to_boundary(p);
@@ -2414,14 +2416,14 @@ extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
   BoundingBox bbox = model::meshes[index]->bounding_box();
 
   // set lower left corner values
-  ll[0] = bbox.xmin;
-  ll[1] = bbox.ymin;
-  ll[2] = bbox.zmin;
+  ll[0] = bbox.min.x;
+  ll[1] = bbox.min.y;
+  ll[2] = bbox.min.z;
 
   // set upper right corner values
-  ur[0] = bbox.xmax;
-  ur[1] = bbox.ymax;
-  ur[2] = bbox.zmax;
+  ur[0] = bbox.max.x;
+  ur[1] = bbox.max.y;
+  ur[2] = bbox.max.z;
   return 0;
 }
 
@@ -3435,7 +3437,7 @@ LibMesh::LibMesh(hid_t group) : UnstructuredMesh(group)
 // create the mesh from a pointer to a libMesh Mesh
 LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 {
-  if (!dynamic_cast<libMesh::ReplicatedMesh*>(&input_mesh)) {
+  if (!input_mesh.is_replicated()) {
     fatal_error("At present LibMesh tallies require a replicated mesh. Please "
                 "ensure 'input_mesh' is a libMesh::ReplicatedMesh.");
   }

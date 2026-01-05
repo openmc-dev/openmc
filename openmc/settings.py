@@ -182,7 +182,7 @@ class Settings:
         Options for configuring the random ray solver. Acceptable keys are:
 
         :distance_inactive:
-            Indicates the total active distance in [cm] a ray should travel
+            Indicates the total inactive distance in [cm] a ray should travel
         :distance_active:
             Indicates the total active distance in [cm] a ray should travel
         :ray_source:
@@ -1278,9 +1278,12 @@ class Settings:
         return self._weight_windows_file
 
     @weight_windows_file.setter
-    def weight_windows_file(self, value: PathLike):
-        cv.check_type('weight windows file', value, PathLike)
-        self._weight_windows_file = input_path(value)
+    def weight_windows_file(self, value: PathLike | None):
+        if value is None:
+            self._weight_windows_file = None
+        else:
+            cv.check_type('weight windows file', value, PathLike)
+            self._weight_windows_file = input_path(value)
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:

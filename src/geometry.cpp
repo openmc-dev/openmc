@@ -480,14 +480,14 @@ extern "C" int openmc_global_bounding_box(double* llc, double* urc)
   auto bbox = model::universes.at(model::root_universe)->bounding_box();
 
   // set lower left corner values
-  llc[0] = bbox.xmin;
-  llc[1] = bbox.ymin;
-  llc[2] = bbox.zmin;
+  llc[0] = bbox.min.x;
+  llc[1] = bbox.min.y;
+  llc[2] = bbox.min.z;
 
   // set upper right corner values
-  urc[0] = bbox.xmax;
-  urc[1] = bbox.ymax;
-  urc[2] = bbox.zmax;
+  urc[0] = bbox.max.x;
+  urc[1] = bbox.max.y;
+  urc[2] = bbox.max.z;
 
   return 0;
 }

@@ -60,6 +60,26 @@ class Material(IDManagerMixin):
     temperature : float, optional
         Temperature of the material in Kelvin. If not specified, the material
         inherits the default temperature applied to the model.
+    density : float, optional
+        Density of the material (units defined separately)
+    density_units : str
+        Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/m3',
+        'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
+        applies in the case of a multi-group calculation. Defaults to 'sum'.
+    depletable : bool, optional
+        Indicate whether the material is depletable. Defaults to False.
+    volume : float, optional
+        Volume of the material in cm^3. This can either be set manually or
+        calculated in a stochastic volume calculation and added via the
+        :meth:`Material.add_volume_information` method.
+    components : dict of str to float or dict
+        Dictionary mapping element or nuclide names to their atom or weight
+        percent. To specify enrichment of an element, the entry of
+        ``components`` for that element must instead be a dictionary containing
+        the keyword arguments as well as a value for ``'percent'``
+    percent_type : {'ao', 'wo'}
+        Whether the values in `components` should be interpreted as atom percent
+        ('ao') or weight percent ('wo').
 
     Attributes
     ----------
@@ -111,17 +131,28 @@ class Material(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, material_id=None, name='', temperature=None):
+    def __init__(
+        self,
+        material_id: int | None = None,
+        name: str = "",
+        temperature: float | None = None,
+        density: float | None = None,
+        density_units: str = "sum",
+        depletable: bool | None = False,
+        volume: float | None = None,
+        components: dict | None = None,
+        percent_type: str = "ao",
+    ):
         # Initialize class attributes
         self.id = material_id
         self.name = name
         self.temperature = temperature
         self._density = None
-        self._density_units = 'sum'
-        self._depletable = False
+        self._density_units = density_units
+        self._depletable = depletable
         self._paths = None
         self._num_instances = None
-        self._volume = None
+        self._volume = volume
         self._atoms = {}
         self._isotropic = []
         self._ncrystal_cfg = None
@@ -135,6 +166,15 @@ class Material(IDManagerMixin):
 
         # If specified, a list of table names
         self._sab = []
+
+        # Set density if provided
+        if density is not None:
+            self.set_density(density_units, density)
+
+        # Add components if provided
+        if components is not None:
+            self.add_components(components, percent_type=percent_type)
+
 
     def __repr__(self) -> str:
         string = 'Material\n'

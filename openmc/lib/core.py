@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from random import getrandbits
 from tempfile import TemporaryDirectory
+import traceback as tb
 
 import numpy as np
 from numpy.ctypeslib import as_array
@@ -699,6 +700,15 @@ class TemporarySession:
         """Finalize the OpenMC library and clean up temporary directory."""
         if self.already_initialized:
             return
+
+        # If an exception occurred, abort all ranks immediately
+        if exc_type is not None:
+            # Print exception info on the rank that failed
+            tb.print_exception(exc_type, exc_value, traceback)
+            sys.stdout.flush()
+
+            # Abort all MPI processes
+            self.comm.Abort(1)
 
         try:
             finalize()

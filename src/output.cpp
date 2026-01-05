@@ -281,6 +281,7 @@ void print_usage()
       "  -t, --track            Write tracks for all particles (up to "
       "max_tracks)\n"
       "  -e, --event            Run using event-based parallelism\n"
+      "  -q, --verbosity        Output verbosity\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n");
   }

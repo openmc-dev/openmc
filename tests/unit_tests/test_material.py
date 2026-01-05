@@ -481,6 +481,7 @@ def test_borated_water():
     # Test the density override
     m = openmc.model.borated_water(975, 566.5, 15.51, density=0.9)
     assert m.density == pytest.approx(0.9, 1e-3)
+    assert m.temperature == pytest.approx(566.5)
 
 
 def test_from_xml(run_in_tmpdir):
@@ -767,3 +768,54 @@ def test_mean_free_path():
     mat2.add_nuclide('Pb208', 1.0)
     mat2.set_density('g/cm3', 11.34)
     assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)
+
+
+def test_material_from_constructor():
+    # Test that components and percent_type work in the constructor
+    components = {
+        'Li': {'percent': 0.5, 'enrichment': 60.0, 'enrichment_target': 'Li7'},
+        'O16': 1.0,
+        'Be': 0.5
+    }
+    mat = openmc.Material(
+        material_id=123,
+        name="test-mat",
+        components=components,
+        percent_type="ao"
+    )
+    # Check that nuclides were added
+    nuclide_names = [nuc.name for nuc in mat.nuclides]
+    assert 'O16' in nuclide_names
+    assert 'Be9' in nuclide_names
+    assert 'Li7' in nuclide_names
+    assert 'Li6' in nuclide_names
+    assert mat.id == 123
+    assert mat.name == "test-mat"
+
+    mat1 = openmc.Material(
+        **{
+            "material_id": 1,
+            "name": "neutron_star",
+            "density": 1e17,
+            "density_units": "kg/m3",
+        }
+    )
+    assert mat1.id == 1
+    assert mat1.name == "neutron_star"
+    assert mat1._density == 1e17
+    assert mat1._density_units == "kg/m3"
+    assert mat1.nuclides == []
+
+    mat2 = openmc.Material(
+        material_id=42,
+        name="plasma",
+        temperature=None,
+        density=1e-7,
+        density_units="g/cm3",
+    )
+    assert mat2.id == 42
+    assert mat2.name == "plasma"
+    assert mat2.temperature is None
+    assert mat2.density == 1e-7
+    assert mat2.density_units == "g/cm3"
+    assert mat2.nuclides == []

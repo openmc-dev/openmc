@@ -177,8 +177,9 @@ def get_microxs_and_flux(
         if not openmc.lib.is_initialized:
             run_kwargs.setdefault('cwd', temp_dir)
 
-        # Run transport simulation
+        # Run transport simulation and synchronize
         statepoint_path = model.run(**run_kwargs)
+        comm.barrier()
 
         if comm.rank == 0:
             # Move the statepoint file if it is being saved to a specific path

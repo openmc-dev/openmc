@@ -1971,7 +1971,7 @@ void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
 
     // Divide by sigma_t to save time during transport
     srh.T1(g) =
-      source_time_derivative - scalar_flux_time_derivative_2 / sigma_t;
+      (source_time_derivative - scalar_flux_time_derivative_2) / sigma_t;
   }
 }
 

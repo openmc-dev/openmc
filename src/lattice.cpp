@@ -262,10 +262,11 @@ std::pair<double, array<int, 3>> RectLattice::distance(
   double y0 {copysign(0.5 * pitch_[1], u.y)};
   double z0;
 
-  double d = std::min((x0 - x) / u.x, (y0 - y) / u.y);
+  double d = std::min(
+    u.x != 0.0 ? (x0 - x) / u.x : INFTY, u.y != 0.0 ? (y0 - y) / u.y : INFTY);
   if (is_3d_) {
     z0 = copysign(0.5 * pitch_[2], u.z);
-    d = std::min(d, (z0 - z) / u.z);
+    d = std::min(d, u.z != 0.0 ? (z0 - z) / u.z : INFTY);
   }
 
   array<int, 3> lattice_trans = {0, 0, 0};

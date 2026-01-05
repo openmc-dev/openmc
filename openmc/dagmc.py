@@ -223,9 +223,8 @@ class DAGMCUniverse(openmc.UniverseBase):
 
     @property
     def material_names(self):
-        dagmc_file_contents = h5py.File(self.filename)
-        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
-            'values')
+        with h5py.File(self.filename) as dagmc_file_contents:
+            material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get('values')
         material_tags_ascii = []
         for tag in material_tags_hex:
             candidate_tag = tag.tobytes().decode().replace('\x00', '')

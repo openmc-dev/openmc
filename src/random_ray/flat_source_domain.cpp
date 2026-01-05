@@ -150,7 +150,8 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       total_source = (scatter_source + fission_source * inverse_k_eff);
 
       if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-        // Add delayed source
+       // Add delayed source for kinetic simulation if delayed neutrons are
+       // turned on
         if (settings::create_delayed_neutrons) {
           double delayed_source = 0.0;
           for (int dg = 0; dg < ndgroups_; dg++) {
@@ -201,8 +202,7 @@ void FlatSourceDomain::update_all_neutron_sources()
     update_single_neutron_source(srh);
     if (settings::kinetic_simulation && !simulation::is_initial_condition &&
         RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      compute_single_neutron_source_time_derivative(srh);
-      compute_single_scalar_flux_time_derivative_2(srh);
+      compute_single_T1(srh);
     }
   }
 
@@ -1776,8 +1776,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   update_single_neutron_source(handle);
   if (settings::kinetic_simulation && !simulation::is_initial_condition &&
       RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-    compute_single_neutron_source_time_derivative(handle);
-    compute_single_scalar_flux_time_derivative_2(handle);
+    compute_single_T1(handle);
   }
 
   // Unlock the parallel map. Note: we may be tempted to release
@@ -1937,38 +1936,31 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 // kinetic simulations) sources in each source region based on the flux
 // estimate from the previous iteration.
 
-void FlatSourceDomain::compute_single_neutron_source_time_derivative(
-  SourceRegionHandle& srh)
+// T1 calculation
+void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
 {
   double A0 =
     (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
-  int material = srh.material();
-  for (int g = 0; g < negroups_; g++) {
-    float source_rhs_bd = srh.source_rhs_bd(g);
-    float source = srh.source(g);
-    // Multiply out sigma_t to correctly compute the derivative term
-    double sigma_t = sigma_t_[material * negroups_ + g];
-    srh.source_time_derivative(g) = A0 * source * sigma_t + source_rhs_bd;
-    // Divide by sigma_t to save time during transport
-    srh.source_time_derivative(g) /= sigma_t;
-  }
-}
-
-void FlatSourceDomain::compute_single_scalar_flux_time_derivative_2(
-  SourceRegionHandle& srh)
-{
   double B0 = (bd_coefficients_second_order_.at(RandomRay::bd_order_))[0] /
               (settings::dt * settings::dt);
   int material = srh.material();
   for (int g = 0; g < negroups_; g++) {
-    double scalar_flux_rhs_bd_2 = srh.scalar_flux_rhs_bd_2(g);
-    double scalar_flux = srh.scalar_flux_old(g);
-    srh.scalar_flux_time_derivative_2(g) =
-      B0 * scalar_flux + scalar_flux_rhs_bd_2;
-    double sigma_t = sigma_t_[material * negroups_ + g];
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
+    double sigma_t = 1.0;
+    if (material != MATERIAL_VOID)
+      double sigma_t = sigma_t_[material * negroups_ + g];
+
+    // Multiply out sigma_t to correctly compute the derivative term
+    float source_time_derivative =
+      A0 * srh.source(g) * sigma_t + srh.source_rhs_bd(g);
+
+    double scalar_flux_time_derivative_2 =
+      B0 * srh.scalar_flux_old(g) + srh.scalar_flux_rhs_bd_2(g);
+    scalar_flux_time_derivative_2 *= inverse_vbar;
+
     // Divide by sigma_t to save time during transport
-    srh.scalar_flux_time_derivative_2(g) *= inverse_vbar / sigma_t;
+    srh.T1(g) =
+      (source_time_derivative - scalar_flux_time_derivative_2) / sigma_t;
   }
 }
 

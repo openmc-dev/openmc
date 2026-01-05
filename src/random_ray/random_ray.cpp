@@ -454,9 +454,7 @@ void RandomRay::attenuate_flux_flat_source(
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
     if (settings::kinetic_simulation && !simulation::is_initial_condition &&
         RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      float source_derivative = srh.source_time_derivative(g);
-      float flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
-      float T1 = (source_derivative - flux_derivative_2);
+      float T1 = srh.T1(g);
 
       // Source Derivative Propogation terms for Time Derivative
       // Characteristic Equation
@@ -847,10 +845,8 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     if (settings::kinetic_simulation && !simulation::is_initial_condition &&
         RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       for (int g = 0; g < negroups_; g++) {
-        double source_derivative = srh.source_time_derivative(g);
-        double flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
         // T1
-        angular_flux_prime_[g] = source_derivative - flux_derivative_2;
+        angular_flux_prime_[g] = srh.T1(g);
       }
     }
   }

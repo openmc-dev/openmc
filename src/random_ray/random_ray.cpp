@@ -454,19 +454,17 @@ void RandomRay::attenuate_flux_flat_source(
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
     if (settings::kinetic_simulation && !simulation::is_initial_condition &&
         RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      float source_derivative = srh.source_time_derivative(g);
-      float flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
-      float T1 = (source_derivative - flux_derivative_2);
-
-      // Source Derivative Propogation terms for Time Derivative
-      // Characteristic Equation
       float inverse_vbar = domain_->inverse_vbar_[material * negroups_ + g];
+      float T1 = srh.T1(g);
+
+      // Source Derivative Propogation terms for Characteristic Equation
+      float new_delta_psi_prime = (angular_flux_prime_[g] - T1);
       new_delta_psi += T1 * inverse_vbar * exponential / sigma_t;
-      new_delta_psi += distance * inverse_vbar * (angular_flux_prime_[g] - T1) *
-                       (1 - exponential);
+      new_delta_psi +=
+        distance * inverse_vbar * new_delta_psi_prime * (1 - exponential);
 
       // Time Derivative Characteristic Equation
-      float new_delta_psi_prime = (angular_flux_prime_[g] - T1) * exponential;
+      new_delta_psi_prime *= exponential;
       delta_psi_prime_[g] = new_delta_psi_prime;
       angular_flux_prime_[g] -= new_delta_psi_prime;
     }
@@ -507,7 +505,6 @@ void RandomRay::attenuate_flux_flat_source(
 }
 
 // Alternative flux attenuation function for true void regions.
-// TODO: Implement support for time dependent voids
 void RandomRay::attenuate_flux_flat_source_void(
   SourceRegionHandle& srh, double distance, bool is_active, Position r)
 {
@@ -551,6 +548,21 @@ void RandomRay::attenuate_flux_flat_source_void(
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] += srh.external_source(g) * distance;
+    }
+  }
+
+  if (settings::kinetic_simulation && !simulation::is_initial_condition &&
+      RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
+    for (int g = 0; g < negroups_; g++) {
+      float inverse_vbar = domain_->inverse_vbar_[material * negroups_ + g];
+      float T1 = srh.T1(g);
+
+      // Source Derivative Propogation terms for Characteristic Equation
+      angular_flux_[g] -= inverse_vbar * angular_flux_prime_[g] * distance;
+      angular_flux_[g] -= distance * distance * 0.5f * T1;
+
+      // Time Derivative Characteristic Equation
+      angular_flux_prime_[g] += T1 * distance;
     }
   }
 }
@@ -847,10 +859,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     if (settings::kinetic_simulation && !simulation::is_initial_condition &&
         RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       for (int g = 0; g < negroups_; g++) {
-        double source_derivative = srh.source_time_derivative(g);
-        double flux_derivative_2 = srh.scalar_flux_time_derivative_2(g);
-        // T1
-        angular_flux_prime_[g] = source_derivative - flux_derivative_2;
+        angular_flux_prime_[g] = srh.T1(g);
       }
     }
   }

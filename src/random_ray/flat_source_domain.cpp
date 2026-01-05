@@ -257,32 +257,26 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
         0.5f * source_regions_.external_source(sr, g) *
         source_regions_.volume_sq(sr);
     }
-    // TODO: simplify this with the other one...
-    if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-        RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      double inverse_vbar = inverse_vbar_[material * negroups_ + g];
-      double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
-      double A0 = (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] /
-                  settings::dt;
-      source_regions_.scalar_flux_new(sr, g) -=
-        scalar_flux_rhs_bd * inverse_vbar;
-      source_regions_.scalar_flux_new(sr, g) /= 1 + A0 * inverse_vbar;
-    }
   } else {
-    double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
+    double sigma_t = sigma_t_[material * negroups_ + g];
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
-    if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-        RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      double inverse_vbar =
-        inverse_vbar_[source_regions_.material(sr) * negroups_ + g];
-      double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
-      double A0 = (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] /
-                  settings::dt;
-      source_regions_.scalar_flux_new(sr, g) -=
-        scalar_flux_rhs_bd * inverse_vbar / sigma_t;
-      source_regions_.scalar_flux_new(sr, g) /= 1 + A0 * inverse_vbar / sigma_t;
-    }
+  }
+  if (settings::kinetic_simulation && !simulation::is_initial_condition &&
+      RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
+    double inverse_vbar =
+      inverse_vbar_[source_regions_.material(sr) * negroups_ + g];
+    double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
+    double A0 =
+      (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
+
+    double sigma_t = 1.0;
+    if (material != MATERIAL_VOID)
+      sigma_t = sigma_t_[material * negroups_ + g];
+
+    source_regions_.scalar_flux_new(sr, g) -=
+      scalar_flux_rhs_bd * inverse_vbar / sigma_t;
+    source_regions_.scalar_flux_new(sr, g) /= 1 + A0 * inverse_vbar / sigma_t;
   }
 }
 

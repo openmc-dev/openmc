@@ -819,7 +819,7 @@ class DAGMCUniverse(UniverseBase):
         starting_id: int = 10000,
         padding_distance: float = 0.0,
         wedge_angles: Iterable[float] = (0.0, 180.0),
-    ):
+    ) -> openmc.Region:
         """
         Create a region bounded by a Z axis aligned cylindrical surface, two
         Z planes and two angled planar surfaces forming a wedge. Assumes the

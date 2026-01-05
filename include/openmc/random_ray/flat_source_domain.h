@@ -76,6 +76,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods for kinetic simulations
+  void compute_single_phi_prime(SourceRegionHandle& srh);
   void compute_single_T1(SourceRegionHandle& srh);
 
   void compute_single_delayed_fission_source(SourceRegionHandle& srh);

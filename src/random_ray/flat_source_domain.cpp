@@ -173,28 +173,6 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       srh.source(g) += srh.external_source(g);
     }
   }
-
-  // Add derivative of scalar flux to source (only works for isotropic
-  // method)
-  if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-      RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC) {
-    int material = srh.material();
-    for (int g = 0; g < negroups_; g++) {
-      double inverse_vbar = inverse_vbar_[material * negroups_ + g];
-      double scalar_flux_rhs_bd = srh.scalar_flux_rhs_bd(g);
-      double A0 = (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] /
-                  settings::dt;
-      double scalar_flux = srh.scalar_flux_old(g);
-      double scalar_flux_time_derivative =
-        A0 * scalar_flux + scalar_flux_rhs_bd;
-
-      double sigma_t = 1.0;
-      if (material != MATERIAL_VOID)
-        double sigma_t = sigma_t_[material * negroups_ + g];
-
-      srh.source(g) -= scalar_flux_time_derivative * inverse_vbar / sigma_t;
-    }
-  }
 }
 
 // Compute new estimate of scattering + fission sources in each source region
@@ -207,9 +185,11 @@ void FlatSourceDomain::update_all_neutron_sources()
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
     update_single_neutron_source(srh);
-    if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-        RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      compute_single_T1(srh);
+    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
+      if (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC)
+        compute_single_phi_prime(srh);
+      else if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION)
+        compute_single_T1(srh);
     }
   }
 
@@ -262,8 +242,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
   }
-  if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-      RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
     double inverse_vbar =
       inverse_vbar_[source_regions_.material(sr) * negroups_ + g];
     double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
@@ -1785,9 +1764,11 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 
   // Compute the combined source term
   update_single_neutron_source(handle);
-  if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-      RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-    compute_single_T1(handle);
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
+    if (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC)
+      compute_single_phi_prime(handle);
+    else if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION)
+      compute_single_T1(handle);
   }
 
   // Unlock the parallel map. Note: we may be tempted to release
@@ -1946,6 +1927,23 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 // Compute new estimate of scattering + fission (+ precursor decay for
 // kinetic simulations) sources in each source region based on the flux
 // estimate from the previous iteration.
+
+void FlatSourceDomain::compute_single_phi_prime(SourceRegionHandle& srh)
+{
+  double A0 =
+    (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
+  int material = srh.material();
+  for (int g = 0; g < negroups_; g++) {
+    double inverse_vbar = inverse_vbar_[material * negroups_ + g];
+    double sigma_t = 1.0;
+    if (material != MATERIAL_VOID)
+      double sigma_t = sigma_t_[material * negroups_ + g];
+
+    double scalar_flux_time_derivative =
+      A0 * srh.scalar_flux_old(g) + srh.scalar_flux_rhs_bd(g);
+    srh.phi_prime(g) = scalar_flux_time_derivative * inverse_vbar / sigma_t;
+  }
+}
 
 // T1 calculation
 void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)

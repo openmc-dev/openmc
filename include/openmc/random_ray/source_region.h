@@ -197,8 +197,7 @@ public:
   // Public Data Members for kinetic simulations
 
   // Energy group-wise 1D time-derivative arrays
-  float* source_time_derivative_;
-  double* scalar_flux_time_derivative_2_;
+  double* T1_;
 
   // Delay group-wise 1D arrays
   double* delayed_fission_source_;
@@ -343,20 +342,8 @@ public:
 
   //---------------------------------------------------------------------------
   // Public Accessors for kinetic simulations
-  float& source_time_derivative(int g) { return source_time_derivative_[g]; }
-  const float source_time_derivative(int g) const
-  {
-    return source_time_derivative_[g];
-  }
-
-  double& scalar_flux_time_derivative_2(int g)
-  {
-    return scalar_flux_time_derivative_2_[g];
-  }
-  const double scalar_flux_time_derivative_2(int g) const
-  {
-    return scalar_flux_time_derivative_2_[g];
-  }
+  double& T1(int g) { return T1_[g]; }
+  const double T1(int g) const { return T1_[g]; }
 
   double& delayed_fission_source(int dg) { return delayed_fission_source_[dg]; }
   const double delayed_fission_source(int dg) const
@@ -503,11 +490,8 @@ public:
                                //!< active iterations (used for SDP)
 
   // Energy group-wise 1D derivative arrays
-  vector<float> source_time_derivative_;         //!< The time derivative of the
-                                                 //!< source (used for SDP)
-  vector<double> scalar_flux_time_derivative_2_; //!< The 2nd order time
-                                                 //!< derivative of the scalar
-                                                 //!< flux (used for SDP)
+  vector<double> T1_; //!< The combined sourcetime derivative and 2nd order
+                      //!< scalar flux time derivative (used for SDP)
   // Delay group-wise 1D arrays
   vector<double> delayed_fission_source_; //!< The delayed fission source binned
                                           //!< by delay group
@@ -798,39 +782,10 @@ public:
 
   //---------------------------------------
   // For kinetic simulations
-  float& source_time_derivative(int64_t sr, int g)
-  {
-    return source_time_derivative_[index(sr, g)];
-  }
-  const float& source_time_derivative(int64_t sr, int g) const
-  {
-    return source_time_derivative_[index(sr, g)];
-  }
-  float& source_time_derivative(int64_t se)
-  {
-    return source_time_derivative_[se];
-  }
-  const float& source_time_derivative(int64_t se) const
-  {
-    return source_time_derivative_[se];
-  }
-
-  double& scalar_flux_time_derivative_2(int64_t sr, int g)
-  {
-    return scalar_flux_time_derivative_2_[index(sr, g)];
-  }
-  const double& scalar_flux_time_derivative_2(int64_t sr, int g) const
-  {
-    return scalar_flux_time_derivative_2_[index(sr, g)];
-  }
-  double& scalar_flux_time_derivative_2(int64_t se)
-  {
-    return scalar_flux_time_derivative_2_[se];
-  }
-  const double& scalar_flux_time_derivative_2(int64_t se) const
-  {
-    return scalar_flux_time_derivative_2_[se];
-  }
+  double& T1(int64_t sr, int g) { return T1_[index(sr, g)]; }
+  const double& T1(int64_t sr, int g) const { return T1_[index(sr, g)]; }
+  double& T1(int64_t se) { return T1_[se]; }
+  const double& T1(int64_t se) const { return T1_[se]; }
 
   double& precursors_old(int64_t sr, int dg)
   {
@@ -1079,8 +1034,7 @@ private:
   // Private Data Members for kinetic simulations
 
   // SoA energy group-wise 2D derivative arrays flattened to 1D
-  vector<float> source_time_derivative_;
-  vector<double> scalar_flux_time_derivative_2_;
+  vector<double> T1_;
 
   // SoA delay group-wise 2D arrays flattened to 1D
   vector<double> delayed_fission_source_;

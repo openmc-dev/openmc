@@ -31,9 +31,7 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
     flux_moments_old_(sr.flux_moments_old_.data()),
     flux_moments_new_(sr.flux_moments_new_.data()),
     flux_moments_t_(sr.flux_moments_t_.data()),
-    tally_task_(sr.tally_task_.data()),
-    source_time_derivative_(sr.source_time_derivative_.data()),
-    scalar_flux_time_derivative_2_(sr.scalar_flux_time_derivative_2_.data()),
+    tally_task_(sr.tally_task_.data()), T1_(sr.T1_.data()),
     delayed_fission_source_(sr.delayed_fission_source_.data()),
     precursors_old_(sr.precursors_old_.data()),
     precursors_new_(sr.precursors_new_.data()),
@@ -81,8 +79,7 @@ SourceRegion::SourceRegion(int negroups, int ndgroups, bool is_linear)
     if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       source_final_.assign(negroups, 0.0);
 
-      source_time_derivative_.assign(negroups, 0.0);
-      scalar_flux_time_derivative_2_.assign(negroups, 0.0);
+      T1_.assign(negroups, 0.0);
 
       source_bd_.resize(negroups);
       source_rhs_bd_.resize(negroups);
@@ -167,9 +164,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         source_final_.push_back(sr.source_final_[g]);
 
-        source_time_derivative_.push_back(sr.source_time_derivative_[g]);
-        scalar_flux_time_derivative_2_.push_back(
-          sr.scalar_flux_time_derivative_2_[g]);
+        T1_.push_back(sr.T1_[g]);
 
         source_bd_.push_back(sr.source_bd_[g]);
         source_rhs_bd_.push_back(sr.source_rhs_bd_[g]);
@@ -245,8 +240,7 @@ void SourceRegionContainer::assign(
     if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       source_final_.clear();
 
-      source_time_derivative_.clear();
-      scalar_flux_time_derivative_2_.clear();
+      T1_.clear();
 
       source_bd_.clear();
       source_rhs_bd_.clear();
@@ -329,9 +323,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
     if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
       handle.source_final_ = &source_final(sr, 0);
 
-      handle.source_time_derivative_ = &source_time_derivative(sr, 0);
-      handle.scalar_flux_time_derivative_2_ =
-        &scalar_flux_time_derivative_2(sr, 0);
+      handle.T1_ = &T1(sr, 0);
 
       handle.source_bd_ = &source_bd(sr, 0);
       handle.source_rhs_bd_ = &source_rhs_bd(sr, 0);
@@ -403,10 +395,7 @@ void SourceRegionContainer::adjoint_reset()
     std::fill(scalar_flux_rhs_bd_.begin(), scalar_flux_rhs_bd_.end(), 0.0);
 
     if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      std::fill(
-        source_time_derivative_.begin(), source_time_derivative_.end(), 0.0);
-      std::fill(scalar_flux_time_derivative_2_.begin(),
-        scalar_flux_time_derivative_2_.end(), 0.0);
+      std::fill(T1_.begin(), T1_.end(), 0.0);
 
       std::fill(source_rhs_bd_.begin(), source_rhs_bd_.end(), 0.0);
       std::fill(

@@ -76,8 +76,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods for kinetic simulations
-  void compute_single_neutron_source_time_derivative(SourceRegionHandle& srh);
-  void compute_single_scalar_flux_time_derivative_2(SourceRegionHandle& srh);
+  void compute_single_T1(SourceRegionHandle& srh);
 
   void compute_single_delayed_fission_source(SourceRegionHandle& srh);
   void compute_single_precursors(SourceRegionHandle& srh);

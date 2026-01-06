@@ -15,6 +15,7 @@ class KineticMGXSTestHarness(KineticTolerantPyAPITestHarness):
         if os.path.exists(f):
             os.remove(f)
 
+
 @pytest.mark.parametrize("time_method", ["isotropic",
                                          "propagation"])
 def test_random_ray_k_eff_mesh(time_method):
@@ -23,7 +24,7 @@ def test_random_ray_k_eff_mesh(time_method):
         model.settings.timestep_parameters['n_timesteps'] = 5
         model.settings.random_ray['time_method'] = time_method
         model.settings.batches = 400
-        model.settings.inactive = 200 
+        model.settings.inactive = 200
 
         # The model already has some geometrical subdivisions
         # up to a 10x10 grid in the moderator region. So, we
@@ -35,9 +36,9 @@ def test_random_ray_k_eff_mesh(time_method):
         mesh.dimension = (dim, dim)
         mesh.lower_left = (-pitch, -pitch)
         mesh.upper_right = (pitch, pitch)
-    
+
         root = model.geometry.root_universe
-    
+
         model.settings.random_ray['source_region_meshes'] = [(mesh, [root])]
 
         harness = KineticMGXSTestHarness('statepoint.400', 6, model)

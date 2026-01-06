@@ -150,8 +150,8 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       total_source = (scatter_source + fission_source * inverse_k_eff);
 
       if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-       // Add delayed source for kinetic simulation if delayed neutrons are
-       // turned on
+        // Add delayed source for kinetic simulation if delayed neutrons are
+        // turned on
         if (settings::create_delayed_neutrons) {
           double delayed_source = 0.0;
           for (int dg = 0; dg < ndgroups_; dg++) {
@@ -1948,7 +1948,7 @@ void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
     double sigma_t = 1.0;
     if (material != MATERIAL_VOID)
-      double sigma_t = sigma_t_[material * negroups_ + g];
+      sigma_t = sigma_t_[material * negroups_ + g];
 
     // Multiply out sigma_t to correctly compute the derivative term
     float source_time_derivative =

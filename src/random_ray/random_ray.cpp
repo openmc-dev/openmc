@@ -452,11 +452,11 @@ void RandomRay::attenuate_flux_flat_source(
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
     if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-      float inverse_vbar = domain_->inverse_vbar_[material * negroups_ + g];
       if (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC) {
         new_delta_psi += srh.phi_prime(g) * exponential;
       } else if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         // Source Derivative Propogation terms for Characteristic Equation
+        float inverse_vbar = domain_->inverse_vbar_[material * negroups_ + g];
         float T1 = srh.T1(g);
         float new_delta_psi_prime = (angular_flux_prime_[g] - T1);
         new_delta_psi += T1 * inverse_vbar * exponential / sigma_t;

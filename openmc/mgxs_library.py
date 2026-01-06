@@ -2558,7 +2558,7 @@ class MGXSLibrary:
 
             # Check filetype and version
             check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
-                                _VERSION_MGXS_LIBRARY)
+                                   _VERSION_MGXS_LIBRARY)
 
             group_structure = file.attrs['group structure']
             num_delayed_groups = file.attrs['delayed_groups']

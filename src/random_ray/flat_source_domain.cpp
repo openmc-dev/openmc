@@ -1937,7 +1937,7 @@ void FlatSourceDomain::compute_single_phi_prime(SourceRegionHandle& srh)
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
     double sigma_t = 1.0;
     if (material != MATERIAL_VOID)
-      double sigma_t = sigma_t_[material * negroups_ + g];
+      sigma_t = sigma_t_[material * negroups_ + g];
 
     double scalar_flux_time_derivative =
       A0 * srh.scalar_flux_old(g) + srh.scalar_flux_rhs_bd(g);
@@ -1957,7 +1957,7 @@ void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
     double sigma_t = 1.0;
     if (material != MATERIAL_VOID)
-      double sigma_t = sigma_t_[material * negroups_ + g];
+      sigma_t = sigma_t_[material * negroups_ + g];
 
     // Multiply out sigma_t to correctly compute the derivative term
     double source_time_derivative =
@@ -2154,8 +2154,10 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
         RandomRay::bd_order_ + j);
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         // Multiply out sigma_t to store the base source
-        double sigma_t = sigma_t =
-          sigma_t_[source_regions_.material(sr) * negroups_ + g];
+        int material = source_regions_.material(sr);
+        double sigma_t = 1.0;
+        if (material != MATERIAL_VOID) 
+          sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
         double source = source_regions_.source_final(sr, g) * sigma_t;
         add_value_to_bd_vector(source_regions_.source_bd(sr, g), source,
           increment_not_initialize, RandomRay::bd_order_);

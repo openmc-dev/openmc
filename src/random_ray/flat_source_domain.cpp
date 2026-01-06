@@ -2119,19 +2119,6 @@ void FlatSourceDomain::propagate_final_quantities()
   }
 }
 
-// Helper function for store_time_step_quantities()
-void add_value_to_bd_vector(std::deque<double>& bd_vector, double& new_value,
-  bool increment_not_initialize, int initialize_size)
-{
-  bd_vector.push_front(new_value);
-  if (increment_not_initialize) {
-    bd_vector.pop_back();
-  } else {
-    for (int i = 1; i < initialize_size; i++)
-      bd_vector.push_front(new_value);
-  }
-}
-
 void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
 {
 #pragma omp parallel for
@@ -2144,10 +2131,11 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
         source_regions_.scalar_flux_final(sr, g), increment_not_initialize,
         RandomRay::bd_order_ + j);
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
+        // TODO: add support for void regions
         // Multiply out sigma_t to store the base source
         double sigma_t = sigma_t =
           sigma_t_[source_regions_.material(sr) * negroups_ + g];
-        double source = source_regions_.source_final(sr, g) * sigma_t;
+        float source = source_regions_.source_final(sr, g) * sigma_t;
         add_value_to_bd_vector(source_regions_.source_bd(sr, g), source,
           increment_not_initialize, RandomRay::bd_order_);
       }

@@ -62,6 +62,19 @@ T rhs_backwards_difference(
   return rhs_bd;
 }
 
+template<typename T>
+void add_value_to_bd_vector(std::deque<T>& bd_vector, T& new_value,
+  bool increment_not_initialize, int initialize_size)
+{
+  bd_vector.push_front(new_value);
+  if (increment_not_initialize) {
+    bd_vector.pop_back();
+  } else {
+    for (int i = 1; i < initialize_size; i++)
+      bd_vector.push_front(new_value);
+  }
+}
+
 } // namespace openmc
 
 #endif // OPENMC_RANDOM_RAY_BD_UTILITIES_H

@@ -1,41 +1,38 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material id="1" name="air">
-      <density value="0.001" units="g/cc"/>
+    <material id="1">
+      <density value="0.001" units="g/cm3"/>
       <nuclide name="N14" ao="1.0"/>
     </material>
-    <material id="2" name="metal">
-      <density value="7" units="g/cc"/>
+    <material id="2">
+      <density value="7.0" units="g/cm3"/>
       <nuclide name="Fe56" ao="1.0"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" name="outside_lattice" material="1" region="-5 (-1 | 2 | -3 | 4)" universe="1"/>
-    <cell id="2" name="inside_lattice" fill="4" region="1 -2 3 -4" universe="1"/>
-    <cell id="3" material="2" region="-6" universe="2"/>
-    <cell id="4" material="1" region="-7" universe="3"/>
-    <lattice id="4">
+    <cell id="1" material="2" universe="1"/>
+    <cell id="2" material="1" universe="2"/>
+    <cell id="3" material="1" region="-5 (-1 | 2 | -3 | 4)" universe="4"/>
+    <cell id="4" fill="3" region="1 -2 3 -4" universe="4"/>
+    <lattice id="3">
       <pitch>10.0 10.0</pitch>
       <dimension>2 2</dimension>
       <lower_left>-10.0 -10.0</lower_left>
       <universes>
-2 3 
-3 2 </universes>
+1 2 
+2 1 </universes>
     </lattice>
-    <surface id="1" name="left" type="x-plane" coeffs="-10.0"/>
-    <surface id="2" name="right" type="x-plane" coeffs="10.0"/>
-    <surface id="3" name="bottom" type="y-plane" coeffs="-10.0"/>
-    <surface id="4" name="top" type="y-plane" coeffs="10.0"/>
-    <surface id="5" type="z-cylinder" boundary="vacuum" coeffs="0 0 20.0"/>
-    <surface id="6" type="sphere" coeffs="0.0 0.0 0.0 1e+90"/>
-    <surface id="7" type="sphere" coeffs="0.0 0.0 0.0 1e+90"/>
+    <surface id="1" name="minimum x" type="x-plane" coeffs="-10.0"/>
+    <surface id="2" name="maximum x" type="x-plane" coeffs="10.0"/>
+    <surface id="3" name="minimum y" type="y-plane" coeffs="-10.0"/>
+    <surface id="4" name="maximum y" type="y-plane" coeffs="10.0"/>
+    <surface id="5" type="z-cylinder" boundary="vacuum" coeffs="0.0 0.0 20.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>1000</particles>
     <batches>10</batches>
-    <max_lost_particles>100000000</max_lost_particles>
     <source type="independent" strength="1.0" particle="neutron">
       <space type="point">
         <parameters>-0.7071067811865476 -0.7071067811865475 0.0</parameters>
@@ -45,9 +42,9 @@
   </settings>
   <tallies>
     <mesh id="1">
-      <dimension>10 10 1</dimension>
-      <lower_left>-20.0 -20.0 -1000000000.0</lower_left>
-      <upper_right>20.0 20.0 1000000000.0</upper_right>
+      <dimension>10 10</dimension>
+      <lower_left>-20.0 -20.0</lower_left>
+      <upper_right>20.0 20.0</upper_right>
     </mesh>
     <filter id="1" type="mesh">
       <bins>1</bins>

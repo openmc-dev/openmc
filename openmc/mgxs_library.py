@@ -2554,20 +2554,20 @@ class MGXSLibrary:
                              "must be set")
 
         check_type('filename', filename, (str, PathLike))
-        file = h5py.File(filename, 'r')
+        with h5py.File(filename, 'r') as file:
 
-        # Check filetype and version
-        check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
-                               _VERSION_MGXS_LIBRARY)
+            # Check filetype and version
+            check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
+                                _VERSION_MGXS_LIBRARY)
 
-        group_structure = file.attrs['group structure']
-        num_delayed_groups = file.attrs['delayed_groups']
-        energy_groups = openmc.mgxs.EnergyGroups(group_structure)
-        data = cls(energy_groups, num_delayed_groups)
+            group_structure = file.attrs['group structure']
+            num_delayed_groups = file.attrs['delayed_groups']
+            energy_groups = openmc.mgxs.EnergyGroups(group_structure)
+            data = cls(energy_groups, num_delayed_groups)
 
-        for group_name, group in file.items():
-            data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
-                                                    energy_groups,
-                                                    num_delayed_groups))
+            for group_name, group in file.items():
+                data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
+                                                        energy_groups,
+                                                        num_delayed_groups))
 
         return data

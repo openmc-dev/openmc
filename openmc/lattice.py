@@ -1083,8 +1083,11 @@ class HexLattice(Lattice):
         from the outermost ring), and i is the index with a ring starting from
         the top and proceeding clockwise.
     orientation : {'x', 'y'}
-        str by default 'y' orientation of main lattice diagonal another option
-        - 'x'
+        The orientation of the lattice. The 'x' orientation means that each
+        lattice element has two faces that are perpendicular to the x-axis,
+        while the 'y' orientation means that each lattice element has two faces
+        that are perpendicular to the y-axis. By default, the orientation is
+        'y'.
     num_rings : int
         Number of radial ring positions in the xy-plane
     num_axial : int

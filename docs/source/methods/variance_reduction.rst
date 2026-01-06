@@ -22,15 +22,14 @@ not experience a single scoring event, even after billions of analog histories.
 Variance reduction techniques aim to either flatten the global uncertainty
 distribution, such that all regions of phase space have a fairly similar
 uncertainty, or to reduce the uncertainty in specific locations (such as a
-detector). There are three strategies available in OpenMC for variance reduction:
-weight-windowing via the Monte Carlo MAGIC method or the FW-CADIS method, and
-source biasing. Both weight windowing strategies work by developing a mesh that 
-can be utilized by subsequent Monte Carlo solves to split particles heading 
-towards areas of lower flux densities while terminating particles in higher flux 
-regions. In contrast, source biasing modifies source site sampling behavior to 
-preferentially track particles more likely to reach phase space regions of 
+detector). There are three strategies available in OpenMC for variance
+reduction: weight windows generated via the MAGIC method or the FW-CADIS method,
+and source biasing. Both weight windowing strategies work by developing a mesh
+that can be utilized by subsequent Monte Carlo solves to split particles heading
+towards areas of lower flux densities while terminating particles in higher flux
+regions. In contrast, source biasing modifies source site sampling behavior to
+preferentially track particles more likely to reach phase space regions of
 interest.
-
 
 ------------
 MAGIC Method
@@ -142,66 +141,64 @@ aware of this.
 Source Biasing
 --------------
 
-In contrast to the previous two methods which introduce population controls 
-during transport, source biasing modifies the sampling of fixed source site 
-distributions. The basic premise of the technique is that for each spatial, 
-angular (direction), energy, or time distribution of a fixed source, an 
-additional distribution can be specified, provided that the two share a common 
-support. Samples are then drawn from this "bias" distribution, which can be 
-chosen to preferentially direct particles towards phase space regions of 
-interest. In order to avoid biasing the tally results, however, a weight 
-adjustment is applied to each sampled site as described below.
+In contrast to the previous two methods that introduce population controls
+during transport, source biasing modifies the sampling of the external source
+distribution. The basic premise of the technique is that for each spatial,
+angular, energy, or time distribution of a source, an additional distribution
+can be specified provided that the two share a common support (set of points
+where the distribution is nonzero). Samples are then drawn from this "bias"
+distribution, which can be chosen to preferentially direct particles towards
+phase space regions of interest. In order to avoid biasing the tally results,
+however, a weight adjustment is applied to each sampled site as described below.
 
-Assume that the unbiased probability density function of a random variable 
-:math:`X:x \rightarrow \mathbb{R}` is given by :math:`p(x)`, but that using the 
-biasing distribution :math:`b(x)` will result in a greater number of particle 
-trajectories reaching some phase space region of interest. Then a sample 
-:math:`x_0` may be drawn from :math:`b(x)` while maintaining a fair game, 
-provided that its weight is adjusted according to Equation :eq:`source_bias`:: 
-
+Assume that the unbiased probability density function of a random variable
+:math:`X:x \rightarrow \mathbb{R}` is given by :math:`f(x)`, but that using the
+biased distribution :math:`g(x)` will result in a greater number of particle
+trajectories reaching some phase space region of interest. Then a sample
+:math:`x_0` may be drawn from :math:`g(x)` while maintaining a fair game,
+provided that its weight is adjusted as:
 
 .. math::
     :label: source_bias
 
-    w = w_0 \times \frac{p(x_0)}{b(x_0)} 
+    w = w_0 \times \frac{f(x_0)}{g(x_0)}
 
-Here, :math:`w_0` is the weight of an unbiased sample from :math:`p(x)`, 
+where :math:`w_0` is the weight of an unbiased sample from :math:`f(x)`,
 typically unity.
 
-Returning now to Equation :eq:`source_bias`, the requirement for common support 
-becomes evident. If :math:`\mathrm{supp} b(x)` fully contains but is not 
-identical to :math:`\mathrm{supp} p(x)`, then some samples from :math:`b(x)` 
-will correspond to points where :math:`p(x) = 0`. Thus these source sites would 
-be assigned a starting weight of 0, meaning the particles would be killed 
-immediately upon transport, effectively wasting computation time. Conversely, 
-if :math:`\mathrm{supp} b(x)` is fully contained by but not identical to 
-:math:`\mathrm{supp} p(x)`, the contributions of some regions outside 
-:math:`\mathrm{supp} b(x)` will not be counted towards the integral, 
-potentially biasing the tally. The weight assigned to such points 
-:math:`\mathbf{x_i}` would be undefined since 
-:math:`b(\mathbf{x_i}) = \mathbf{0}`.
+Returning now to Equation :eq:`source_bias`, the requirement for common support
+becomes evident. If :math:`\mathrm{supp} (g)` fully contains but is not
+identical to :math:`\mathrm{supp} (f)`, then some samples from :math:`g(x)` will
+correspond to points where :math:`f(x) = 0`. Thus these source sites would be
+assigned a starting weight of 0, meaning the particles would be killed
+immediately upon transport, effectively wasting computation time. Conversely, if
+:math:`\mathrm{supp} (g)` is fully contained by but not identical to
+:math:`\mathrm{supp} (f)`, the contributions of some regions outside
+:math:`\mathrm{supp} (g)` will not be counted towards the integral, potentially
+biasing the tally. The weight assigned to such points would be undefined since
+:math:`g(x) = \mathbf{0}` at these points.
 
-When an independent source is sampled in OpenMC, the particle's coordinate in 
-each variable of phase space :math:`(\mathbf{r},\mathbf{\Omega},E,t)` is 
-successively drawn from an independent probability distribution. Multiple 
-variables can be biased, in which case the resultant weight :math:`w` applied to 
-the particle is the product of the weights assigned from all sampled 
-distributions: space, angle, energy, and time, as shown in Equation 
+When an independent source is sampled in OpenMC, the particle's coordinate in
+each variable of phase space :math:`(\mathbf{r},\mathbf{\Omega},E,t)` is
+successively drawn from an independent probability distribution. Multiple
+variables can be biased, in which case the resultant weight :math:`w` applied to
+the particle is the product of the weights assigned from all sampled
+distributions: space, angle, energy, and time, as shown in Equation
 :eq:`tot_wgt`.
 
 .. math::
     :label: tot_wgt
 
-    w = w_r \times w_{\Omega} \times w_E \times w_t 
+    w = w_r \times w_{\Omega} \times w_E \times w_t
 
-
-Finally, in addition to offering global or local variance reduction 
-capabilities, source biasing usually requires fewer additional lines to 
-implement than FW-CADIS and MAGIC weight windowing in simple applications. In 
-comparison to these techniques, it also permits continuous biasing in spatial, 
-angle, energy, and time dimensions, and does not require additional transport 
-calculations. However, as particle transport proceeds as usual after a biased 
-source is sampled, particle attenuation in optically thick regions outside the 
-source volume will not be affected by source biasing. Instead, transport 
-biasing techniques such as weight windows will be more useful in such 
-scenarios.
+Finally, source biasing and weight windows serve different purposes. Source
+biasing changes how particles are born, allowing the initial source sites to be
+sampled preferentially from important regions of phase space (space, angle,
+energy, and time) with an accompanying weight adjustment. Weight windows, by
+contrast, apply population control during transport (splitting and Russian
+roulette) to help particles reach and contribute in important regions as they
+move through the system. Because particle transport proceeds as usual after a
+biased source is sampled, particle attenuation in optically thick regions
+outside the source volume will not be affected by source biasing; in such
+scenarios, transport biasing techniques such as weight windows are often more
+effective.

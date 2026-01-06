@@ -416,6 +416,8 @@ void SourceRegionContainer::time_step_reset()
 {
   std::fill(scalar_flux_final_.begin(), scalar_flux_final_.end(), 0.0);
   std::fill(precursors_final_.begin(), precursors_final_.end(), 0.0);
+  if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION)
+    std::fill(source_final_.begin(), source_final_.end(), 0.0);
 }
 
 } // namespace openmc

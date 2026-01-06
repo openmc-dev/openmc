@@ -10,7 +10,7 @@ from tests.testing_harness import PyAPITestHarness
 @pytest.mark.parametrize("flip1", [False, True])
 @pytest.mark.parametrize("flip2", [False, True])
 def test_periodic(flip1, flip2):
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Define materials
     water = openmc.Material()
@@ -41,39 +41,39 @@ def test_periodic(flip1, flip2):
     x_max = openmc.XPlane(5., boundary_type='reflective')
 
     z_cyl = openmc.ZCylinder(x0=3*cos(pi/6), y0=3*sin(pi/6), r=2.0)
-    
-    match (flip1,flip2):
-        case (False,False):
+
+    match (flip1, flip2):
+        case (False, False):
             outside_cyl = openmc.Cell(1, fill=water, region=(
                           +plane1 & +plane2 & -x_max & +z_cyl))
             inside_cyl = openmc.Cell(2, fill=fuel, region=(
                           +plane1 & +plane2 & -z_cyl))
-        case (False,True):
+        case (False, True):
             outside_cyl = openmc.Cell(1, fill=water, region=(
                           +plane1 & -plane2 & -x_max & +z_cyl))
             inside_cyl = openmc.Cell(2, fill=fuel, region=(
-                          +plane1 & -plane2 & -z_cyl))        
-        case (True,False):
+                          +plane1 & -plane2 & -z_cyl))
+        case (True, False):
             outside_cyl = openmc.Cell(1, fill=water, region=(
                           -plane1 & +plane2 & -x_max & +z_cyl))
             inside_cyl = openmc.Cell(2, fill=fuel, region=(
-                          -plane1 & +plane2 & -z_cyl))        
-        case (True,True):
+                          -plane1 & +plane2 & -z_cyl))
+        case (True, True):
             outside_cyl = openmc.Cell(1, fill=water, region=(
                           -plane1 & -plane2 & -x_max & +z_cyl))
             inside_cyl = openmc.Cell(2, fill=fuel, region=(
-                          -plane1 & -plane2 & -z_cyl))        
+                          -plane1 & -plane2 & -z_cyl))
     root_universe = openmc.Universe(0, cells=(outside_cyl, inside_cyl))
     model.geometry = openmc.Geometry(root_universe)
 
     # Define settings
-    model.settings = openmc.Settings()
     model.settings.particles = 1000
     model.settings.batches = 4
     model.settings.inactive = 0
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        (0, 0, 0), (5, 5, 0))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box((0, 0, 0), (5, 5, 0))
     )
+
     with change_directory(f'{flip1}-{flip2}'):
         harness = PyAPITestHarness('statepoint.4.h5', model)
         harness.main()

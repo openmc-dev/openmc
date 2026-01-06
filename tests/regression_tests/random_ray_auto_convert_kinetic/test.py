@@ -18,9 +18,15 @@ class KineticMGXSTestHarness(KineticTolerantPyAPITestHarness):
             os.remove(f)
 
 
-@pytest.mark.parametrize("method", ["material_wise", "stochastic_slab", "infinite_medium"])
-def test_random_ray_auto_convert(method):
-    with change_directory(method):
+@pytest.mark.parametrize("generation_method, time_method", [("material_wise","isotropic"),
+                                                            ("stochastic_slab","isotropic"),
+                                                            ("infinite_medium","isotropic"),
+                                                            ("material_wise","propagation"),
+                                                            ("stochastic_slab","propagation"),
+                                                            ("infinite_medium","propagation"),
+                                                            ])
+def test_random_ray_auto_convert(generation_method, time_method):
+    with change_directory(f'{generation_method}/{time_method}'):
         openmc.reset_auto_ids()
 
         # Start with a normal continuous energy model
@@ -28,7 +34,7 @@ def test_random_ray_auto_convert(method):
 
         # Convert to a multi-group model
         model.convert_to_multigroup(
-            method=method, energy_groups='CASMO-2', nparticles=30,
+            method=generation_method, energy_groups='CASMO-2', nparticles=30,
             overwrite_mgxs_library=False, mgxs_path="mgxs.h5", kinetic=True,
             num_delayed_groups=6
         )
@@ -52,6 +58,7 @@ def test_random_ray_auto_convert(method):
         mesh.upper_right = (bbox.upper_right[0], bbox.upper_right[1])
         model.settings.random_ray['source_region_meshes'] = [
             (mesh, [model.geometry.root_universe])]
+        model.settings.random_ray['time_derivative_method'] = time_method
 
         harness = KineticMGXSTestHarness("statepoint.10", 6, model)
         harness.main()

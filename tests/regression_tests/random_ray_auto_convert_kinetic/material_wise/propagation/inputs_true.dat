@@ -59,6 +59,7 @@
           <domain id="0" type="universe"/>
         </mesh>
       </source_region_meshes>
+      <time_derivative_method>propagation</time_derivative_method>
     </random_ray>
     <mesh id="1">
       <dimension>8 8</dimension>

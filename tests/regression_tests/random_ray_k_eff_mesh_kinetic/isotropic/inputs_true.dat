@@ -97,6 +97,7 @@
       </source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
       <bd_order>3</bd_order>
+      <time_method>isotropic</time_method>
       <source_region_meshes>
         <mesh id="2">
           <domain id="7" type="universe"/>

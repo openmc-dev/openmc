@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 
 #include "openmc/array.h"
+#include "openmc/cell.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/external/quartic_solver.h"
@@ -1169,7 +1170,10 @@ Direction SurfaceZTorus::normal(Position r) const
 
 //==============================================================================
 
-void read_surfaces(pugi::xml_node node)
+void read_surfaces(pugi::xml_node node,
+  std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map)
 {
   // Count the number of surfaces
   int n_surfaces = 0;
@@ -1180,8 +1184,6 @@ void read_surfaces(pugi::xml_node node)
   // Loop over XML surface elements and populate the array.  Keep track of
   // periodic surfaces and their albedos.
   model::surfaces.reserve(n_surfaces);
-  std::set<std::pair<int, int>> periodic_pairs;
-  std::unordered_map<int, double> albedo_map;
   {
     pugi::xml_node surf_node;
     int i_surf;
@@ -1244,6 +1246,7 @@ void read_surfaces(pugi::xml_node node)
       if (check_for_node(surf_node, "boundary")) {
         std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
         if (surf_bc == "periodic") {
+          periodic_sense_map[model::surfaces.back()->id_] = 0;
           // Check for surface albedo. Skip sanity check as it is already done
           // in the Surface class's constructor.
           if (check_for_node(surf_node, "albedo")) {
@@ -1273,6 +1276,28 @@ void read_surfaces(pugi::xml_node node)
     } else {
       fatal_error(
         fmt::format("Two or more surfaces use the same unique ID: {}", id));
+    }
+  }
+}
+
+void prepare_boundary_conditions(std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map)
+{
+  // Fill the senses map for periodic surfaces
+  auto n_periodic = periodic_sense_map.size();
+  for (const auto& cell : model::cells) {
+    if (n_periodic == 0)
+      break; // Early exit once all periodic surfaces found
+
+    for (auto s : cell->surfaces()) {
+      auto surf_idx = std::abs(s) - 1;
+      auto id = model::surfaces[surf_idx]->id_;
+
+      if (periodic_sense_map.count(id)) {
+        periodic_sense_map[id] = std::copysign(1, s);
+        --n_periodic;
+      }
     }
   }
 
@@ -1370,8 +1395,12 @@ void read_surfaces(pugi::xml_node node)
           "indicates that the two planes are not periodic about the X, Y, or Z "
           "axis, which is not supported."));
       }
-      surf1.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf, axis);
-      surf2.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf, axis);
+      auto i_sign = periodic_sense_map[periodic_pair.first];
+      auto j_sign = periodic_sense_map[periodic_pair.second];
+      surf1.bc_ = make_unique<RotationalPeriodicBC>(
+        i_sign * (i_surf + 1), j_sign * (j_surf + 1), axis);
+      surf2.bc_ = make_unique<RotationalPeriodicBC>(
+        j_sign * (j_surf + 1), i_sign * (i_surf + 1), axis);
     }
 
     // If albedo data is present in albedo map, set the boundary albedo.

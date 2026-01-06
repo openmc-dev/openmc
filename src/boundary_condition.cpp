@@ -160,7 +160,7 @@ void TranslationalPeriodicBC::handle_particle(
 
 RotationalPeriodicBC::RotationalPeriodicBC(
   int i_surf, int j_surf, PeriodicAxis axis)
-  : PeriodicBC(i_surf, j_surf)
+  : PeriodicBC(std::abs(i_surf) - 1, std::abs(j_surf) - 1)
 {
   Surface& surf1 {*model::surfaces[i_surf_]};
   Surface& surf2 {*model::surfaces[j_surf_]};
@@ -173,14 +173,9 @@ RotationalPeriodicBC::RotationalPeriodicBC(
     axis_2_idx_ = 2;    // z component dependent
     break;
   case y:
-    // for a right handed coordinate system, z should be the independent axis
-    // but this would cause the y-rotation case to be different than the other
-    // two. using a left handed coordinate system and a negative rotation the
-    // compute angle and rotation matrix behavior mimics that of the x and z
-    // cases
     zero_axis_idx_ = 1; // y component of plane must be zero
-    axis_1_idx_ = 0;    // x component independent
-    axis_2_idx_ = 2;    // z component dependent
+    axis_1_idx_ = 2;    // z component independent
+    axis_2_idx_ = 0;    // x component dependent
     break;
   case z:
     zero_axis_idx_ = 2; // z component of plane must be zero
@@ -192,10 +187,16 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       fmt::format("You've specified an axis that is not x, y, or z."));
   }
 
+  Direction ax = {0.0, 0.0, 0.0};
+  ax[zero_axis_idx_] = 1.0;
+
+  auto i_sign = std::copysign(1, i_surf);
+  auto j_sign = -std::copysign(1, j_surf);
+
   // Compute the surface normal vectors and make sure they are perpendicular
   // to the correct axis
-  Direction norm1 = surf1.normal({0, 0, 0});
-  Direction norm2 = surf2.normal({0, 0, 0});
+  Direction norm1 = i_sign * surf1.normal({0, 0, 0});
+  Direction norm2 = j_sign * surf2.normal({0, 0, 0});
   // Make sure both surfaces intersect the origin
   if (std::abs(surf1.evaluate({0, 0, 0})) > FP_COINCIDENT) {
     throw std::invalid_argument(fmt::format(
@@ -212,8 +213,15 @@ RotationalPeriodicBC::RotationalPeriodicBC(
       surf2.id_));
   }
 
-  angle_ = compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
-    norm2[axis_2_idx_], norm2[axis_1_idx_]);
+  // Compute the signed rotation angle about the periodic axis. Note that
+  // (n1×n2)·a = |n1||n2|sin(θ) and n1·n2 = |n1||n2|cos(θ), where a is the axis
+  // of rotation.
+  auto c = norm1.cross(norm2);
+  angle_ = std::atan2(c.dot(ax), norm1.dot(norm2));
+
+  // If the normals point in the same general direction, the surface sense
+  // should change when crossing the boundary
+  flip_sense_ = (i_sign * j_sign > 0.0);
 
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));
@@ -225,47 +233,18 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   }
 }
 
-double RotationalPeriodicBC::compute_periodic_rotation(
-  double rise_1, double run_1, double rise_2, double run_2) const
-{
-  // Compute the BC rotation angle.  Here it is assumed that both surface
-  // normal vectors point inwards---towards the valid geometry region.
-  // Consequently, the rotation angle is not the difference between the two
-  // normals, but is instead the difference between one normal and one
-  // anti-normal.  (An incident ray on one surface must be an outgoing ray on
-  // the other surface after rotation hence the anti-normal.)
-  double theta1 = std::atan2(rise_1, run_1);
-  double theta2 = std::atan2(rise_2, run_2) + PI;
-  return theta2 - theta1;
-}
-
 void RotationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  int i_particle_surf = p.surface_index();
+  int new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
+  if (flip_sense_)
+    new_surface = -new_surface;
 
-  // Figure out which of the two BC surfaces were struck to figure out if a
-  // forward or backward rotation is required.  Specify the other surface as
-  // the particle's new surface.
-  double theta;
-  int new_surface;
-  if (i_particle_surf == i_surf_) {
-    theta = angle_;
-    new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
-  } else if (i_particle_surf == j_surf_) {
-    theta = -angle_;
-    new_surface = p.surface() > 0 ? -(i_surf_ + 1) : i_surf_ + 1;
-  } else {
-    throw std::runtime_error(
-      "Called BoundaryCondition::handle_particle after "
-      "hitting a surface, but that surface is not recognized by the BC.");
-  }
-
-  // Rotate the particle's position and direction about the z-axis.
+  // Rotate the particle's position and direction.
   Position r = p.r();
   Direction u = p.u();
-  double cos_theta = std::cos(theta);
-  double sin_theta = std::sin(theta);
+  double cos_theta = std::cos(angle_);
+  double sin_theta = std::sin(angle_);
 
   Position new_r;
   new_r[zero_axis_idx_] = r[zero_axis_idx_];

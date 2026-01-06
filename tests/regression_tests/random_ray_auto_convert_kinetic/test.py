@@ -18,12 +18,17 @@ class KineticMGXSTestHarness(KineticTolerantPyAPITestHarness):
             os.remove(f)
 
 
-@pytest.mark.parametrize("generation_method, time_method", [("material_wise","isotropic"),
-                                                            ("stochastic_slab","isotropic"),
-                                                            ("infinite_medium","isotropic"),
-                                                            ("material_wise","propagation"),
-                                                            ("stochastic_slab","propagation"),
-                                                            ("infinite_medium","propagation"),
+@pytest.mark.parametrize("generation_method, time_method", [("material_wise", "isotropic"),
+                                                            ("stochastic_slab",
+                                                             "isotropic"),
+                                                            ("infinite_medium",
+                                                             "isotropic"),
+                                                            ("material_wise",
+                                                             "propagation"),
+                                                            ("stochastic_slab",
+                                                             "propagation"),
+                                                            ("infinite_medium",
+                                                             "propagation"),
                                                             ])
 def test_random_ray_auto_convert(generation_method, time_method):
     with change_directory(f'{generation_method}/{time_method}'):
@@ -41,7 +46,8 @@ def test_random_ray_auto_convert(generation_method, time_method):
 
         model.settings.timestep_parameters['n_timesteps'] = 5
         density_timeseries = np.linspace(1, 0.95, 100)
-        model.materials[2].set_density('macro', density=1.0, density_timeseries=density_timeseries)
+        model.materials[2].set_density(
+            'macro', density=1.0, density_timeseries=density_timeseries)
 
         # Convert to a random ray model
         model.convert_to_random_ray()

@@ -17,6 +17,7 @@ class KineticMGXSTestHarness(KineticTolerantPyAPITestHarness):
         if os.path.exists(f):
             os.remove(f)
 
+
 @pytest.mark.parametrize("time_method", ["isotropic",
                                          "propagation"])
 def test_random_ray_diagonal_stabilization(time_method):
@@ -38,7 +39,8 @@ def test_random_ray_diagonal_stabilization(time_method):
 
         model.settings.timestep_parameters['n_timesteps'] = 5
         density_timeseries = np.linspace(1, 0.95, 100)
-        model.materials[2].set_density('macro', density=1.0, density_timeseries=density_timeseries)
+        model.materials[2].set_density(
+            'macro', density=1.0, density_timeseries=density_timeseries)
 
         # Convert to a random ray model
         model.convert_to_random_ray()

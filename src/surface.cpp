@@ -1286,12 +1286,15 @@ void prepare_boundary_conditions(std::set<std::pair<int, int>>& periodic_pairs,
 {
   // Fill the senses map for periodic surfaces
   auto n_periodic = periodic_sense_map.size();
-  for (auto it = model::cells.begin();
-       (it != model::cells.end()) && (n_periodic > 0); ++it) {
-    auto& cell = *it;
+  for (const auto& cell : model::cells) {
+    if (n_periodic == 0)
+      break; // Early exit once all periodic surfaces found
+
     for (auto s : cell->surfaces()) {
-      auto id = model::surfaces[std::abs(s) - 1]->id_;
-      if (periodic_sense_map.find(id) != periodic_sense_map.end()) {
+      auto surf_idx = std::abs(s) - 1;
+      auto id = model::surfaces[surf_idx]->id_;
+
+      if (periodic_sense_map.count(id)) {
         periodic_sense_map[id] = std::copysign(1, s);
         --n_periodic;
       }

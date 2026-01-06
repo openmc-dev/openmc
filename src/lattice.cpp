@@ -269,14 +269,14 @@ std::pair<double, array<int, 3>> RectLattice::distance(
     d = std::min(d, u.z != 0.0 ? (z0 - z) / u.z : INFTY);
   }
 
+  // Determine which lattice boundaries are being crossed
   array<int, 3> lattice_trans = {0, 0, 0};
-
-  if (std::abs(x + u.x * d - x0) < FP_PRECISION)
+  if (u.x != 0.0 && std::abs(x + u.x * d - x0) < FP_PRECISION)
     lattice_trans[0] = copysign(1, u.x);
-  if (std::abs(y + u.y * d - y0) < FP_PRECISION)
+  if (u.y != 0.0 && std::abs(y + u.y * d - y0) < FP_PRECISION)
     lattice_trans[1] = copysign(1, u.y);
   if (is_3d_) {
-    if (std::abs(z + u.z * d - z0) < FP_PRECISION)
+    if (u.z != 0.0 && std::abs(z + u.z * d - z0) < FP_PRECISION)
       lattice_trans[2] = copysign(1, u.z);
   }
 

@@ -1942,11 +1942,12 @@ void FlatSourceDomain::compute_single_neutron_source_time_derivative(
 {
   double A0 =
     (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
+  int material = srh.material();
   for (int g = 0; g < negroups_; g++) {
     float source_rhs_bd = srh.source_rhs_bd(g);
     float source = srh.source(g);
     // Multiply out sigma_t to correctly compute the derivative term
-    double sigma_t = sigma_t_[srh.material() * negroups_ + g];
+    double sigma_t = sigma_t_[material * negroups_ + g];
     srh.source_time_derivative(g) = A0 * source * sigma_t + source_rhs_bd;
     // Divide by sigma_t to save time during transport
     srh.source_time_derivative(g) /= sigma_t;
@@ -1958,14 +1959,16 @@ void FlatSourceDomain::compute_single_scalar_flux_time_derivative_2(
 {
   double B0 = (bd_coefficients_second_order_.at(RandomRay::bd_order_))[0] /
               (settings::dt * settings::dt);
+  int material = srh.material();
   for (int g = 0; g < negroups_; g++) {
     double scalar_flux_rhs_bd_2 = srh.scalar_flux_rhs_bd_2(g);
     double scalar_flux = srh.scalar_flux_old(g);
     srh.scalar_flux_time_derivative_2(g) =
       B0 * scalar_flux + scalar_flux_rhs_bd_2;
-    double sigma_t = sigma_t_[srh.material() * negroups_ + g];
+    double sigma_t = sigma_t_[material * negroups_ + g];
+    double inverse_vbar = inverse_vbar_[material * negroups_ + g];
     // Divide by sigma_t to save time during transport
-    srh.scalar_flux_time_derivative_2(g) /= sigma_t;
+    srh.scalar_flux_time_derivative_2(g) *= inverse_vbar / sigma_t;
   }
 }
 

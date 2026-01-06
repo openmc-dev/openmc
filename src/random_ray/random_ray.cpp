@@ -252,8 +252,7 @@ RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
     delta_psi_(data::mg.num_energy_groups_),
     negroups_(data::mg.num_energy_groups_),
-    angular_flux_prime_(data::mg.num_energy_groups_),
-    delta_psi_prime_(data::mg.num_energy_groups_)
+    angular_flux_prime_(data::mg.num_energy_groups_)
 
 {
   if (source_shape_ == RandomRaySourceShape::LINEAR ||
@@ -457,18 +456,15 @@ void RandomRay::attenuate_flux_flat_source(
       if (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC) {
         new_delta_psi += srh.phi_prime(g) * exponential;
       } else if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-        float T1 = srh.T1(g);
-
         // Source Derivative Propogation terms for Characteristic Equation
+        float T1 = srh.T1(g);
         float new_delta_psi_prime = (angular_flux_prime_[g] - T1);
         new_delta_psi += T1 * inverse_vbar * exponential / sigma_t;
         new_delta_psi +=
           distance * inverse_vbar * new_delta_psi_prime * (1 - exponential);
 
         // Time Derivative Characteristic Equation
-        new_delta_psi_prime *= exponential;
-        delta_psi_prime_[g] = new_delta_psi_prime;
-        angular_flux_prime_[g] -= new_delta_psi_prime;
+        angular_flux_prime_[g] -= new_delta_psi_prime * exponential;
       }
     }
     delta_psi_[g] = new_delta_psi;

@@ -91,10 +91,6 @@ private:
   bool is_active_ {false};
   bool is_alive_ {true};
 
-  //---------------------------------------------------------------------------
-  // Private data members for kinetic simulations
-  vector<float> delta_psi_prime_;
-
 }; // class RandomRay
 
 } // namespace openmc

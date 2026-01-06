@@ -418,7 +418,7 @@ def test_mixture_clip():
     mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
     with pytest.warns(UserWarning):
         mix_clip = mix.clip(1e-6)
-    
+
     # Make sure warning is raised if a biased Discrete is clipped
     d3 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-8])
     d3.bias = [0.9, 0.1]
@@ -633,8 +633,8 @@ def test_combine_distributions():
     assert_sample_mean(samples, 0.25)
     assert np.all(weights == 1.0)
 
-    # If biased/unbiased Discrete distributions are combined, unbiased probability 
-    # should be conserved and points from both original distributions should be 
+    # If biased/unbiased Discrete distributions are combined, unbiased probability
+    # should be conserved and points from both original distributions should be
     # assigned bias probabilities.
     x1 = [0.0, 1.0, 10.0]
     p1 = [0.3, 0.2, 0.5]
@@ -649,3 +649,34 @@ def test_combine_distributions():
     b3 = [0.05, 0.1, 0.25, 0.025, 0.075]
     assert all(combined.distribution[-1].p == p3)
     assert all(combined.distribution[-1].bias == b3)
+
+
+def test_reference_vwu_projection():
+    """When a non-orthogonal vector is provided, the setter should project out
+    any component along reference_uvw so the stored vector is orthogonal.
+    """
+    pa = openmc.stats.PolarAzimuthal()  # default reference_uvw == (0, 0, 1)
+
+    # Provide a vector that is not orthogonal to (0,0,1)
+    pa.reference_vwu = (2.0, 0.5, 0.3)
+
+    reference_v = np.asarray(pa.reference_vwu)
+    reference_u = np.asarray(pa.reference_uvw)
+
+    # reference_v should be orthogonal to reference_u
+    assert abs(np.dot(reference_v, reference_u)) < 1e-6
+
+
+def test_reference_vwu_normalization():
+    """When a non-normalized vector is provided, the setter should normalize
+    the projected vector to unit length.
+    """
+    pa = openmc.stats.PolarAzimuthal()  # default reference_uvw == (0, 0, 1)
+
+    # Provide a vector that is neither orthogonal to (0,0,1) nor unit-length
+    pa.reference_vwu = (2.0, 0.5, 0.3)
+
+    reference_v = np.asarray(pa.reference_vwu)
+
+    # reference_v should be unit length
+    assert np.isclose(np.linalg.norm(reference_v), 1.0, atol=1e-12)

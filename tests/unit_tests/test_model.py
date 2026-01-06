@@ -7,6 +7,7 @@ import pytest
 
 import openmc
 import openmc.lib
+from openmc.plots import id_map_to_rgb
 
 
 @pytest.fixture(scope='function')
@@ -73,13 +74,13 @@ def pin_model_attributes():
     tal.scores = ['flux', 'fission']
     tals.append(tal)
 
-    plot1 = openmc.Plot(plot_id=1)
+    plot1 = openmc.SlicePlot(plot_id=1)
     plot1.origin = (0., 0., 0.)
     plot1.width = (pitch, pitch)
     plot1.pixels = (300, 300)
     plot1.color_by = 'material'
     plot1.filename = 'test'
-    plot2 = openmc.Plot(plot_id=2)
+    plot2 = openmc.SlicePlot(plot_id=2)
     plot2.origin = (0., 0., 0.)
     plot2.width = (pitch, pitch)
     plot2.pixels = (300, 300)
@@ -901,6 +902,33 @@ def test_id_map_aligned_model():
     assert tr_instance == 3, f"Expected cell instance 3 at top-right corner, got {tr_instance}"
     assert tr_material == 5, f"Expected material ID 5 at top-right corner, got {tr_material}"
 
+
+def test_id_map_model_with_overlaps():
+    """Test id_map with a model that has overlaps and color_overlaps option"""
+    surface1 = openmc.Sphere(r=50, boundary_type="vacuum")
+    surface2 = openmc.Sphere(r=30)
+    cell1 = openmc.Cell(region=-surface1)
+    cell2 = openmc.Cell(region=-surface2)
+    geometry = openmc.Geometry([cell1, cell2])
+    settings = openmc.Settings()
+    model = openmc.Model(geometry=geometry, settings=settings)
+    id_slice = model.id_map(
+        pixels=(10, 10),
+        basis='xy',
+        origin=(0, 0, 0),
+        width=(100, 100),
+    )
+    assert -3 not in id_slice  # -3 indicates overlap region
+    id_slice = model.id_map(
+        pixels=(10, 10),
+        basis='xy',
+        origin=(0, 0, 0),
+        width=(100, 100),
+        color_overlaps=True,  # enables id_map to return -3 for overlaps
+    )
+    assert -3 in id_slice
+
+
 def test_setter_from_list():
     mat = openmc.Material()
     model = openmc.Model(materials=[mat])
@@ -910,6 +938,103 @@ def test_setter_from_list():
     model = openmc.Model(tallies=[tally])
     assert isinstance(model.tallies, openmc.Tallies)
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     model = openmc.Model(plots=[plot])
     assert isinstance(model.plots, openmc.Plots)
+
+
+def test_keff_search(run_in_tmpdir):
+    """Test the Model.keff_search method"""
+
+    # Create model of a sphere of U235
+    mat = openmc.Material()
+    mat.set_density('g/cm3', 18.9)
+    mat.add_nuclide('U235', 1.0)
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sphere)
+    geometry = openmc.Geometry([cell])
+    settings = openmc.Settings(particles=1000, inactive=10, batches=30)
+    model = openmc.Model(geometry=geometry, settings=settings)
+
+    # Define function to modify sphere radius
+    def modify_radius(radius):
+        sphere.r = radius
+
+    # Perform keff search
+    k_tol = 4e-3
+    sigma_final = 2e-3
+    result = model.keff_search(
+        func=modify_radius,
+        x0=6.0,
+        x1=9.0,
+        k_tol=k_tol,
+        sigma_final=sigma_final,
+        output=True,
+    )
+
+    final_keff = result.means[-1] + 1.0  # Add back target since means are (keff - target)
+    final_sigma = result.stdevs[-1]
+
+    # Check for convergence and that tolerances are met
+    assert result.converged, "keff_search did not converge"
+    assert abs(final_keff - 1.0) <= k_tol, \
+        f"Final keff {final_keff:.5f} not within k_tol {k_tol}"
+    assert final_sigma <= sigma_final, \
+        f"Final uncertainty {final_sigma:.5f} exceeds sigma_final {sigma_final}"
+
+    # Check type of result
+    assert isinstance(result, openmc.model.SearchResult)
+
+    # Check that we have function evaluation history
+    assert len(result.parameters) >= 2
+    assert len(result.means) == len(result.parameters)
+    assert len(result.stdevs) == len(result.parameters)
+    assert len(result.batches) == len(result.parameters)
+
+    # Check that function_calls property works
+    assert result.function_calls == len(result.parameters)
+
+    # Check that total_batches property works
+    assert result.total_batches == sum(result.batches)
+    assert result.total_batches > 0
+
+
+def test_id_map_to_rgb():
+    """Test conversion of ID map to RGB image array."""
+    # Create a simple model
+    mat = openmc.Material()
+    mat.set_density('g/cm3', 1.0)
+    mat.add_nuclide('Li7', 1.0)
+
+    sphere = openmc.Sphere(r=5.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sphere)
+    geometry = openmc.Geometry([cell])
+    settings = openmc.Settings(
+        batches=10, particles=100, run_mode='fixed source'
+    )
+    model = openmc.Model(geometry, settings=settings)
+
+    id_data = np.zeros((10, 10, 3), dtype=np.int32)
+    id_data[:, :, 0] = cell.id  # Cell IDs
+    id_data[:, :, 2] = mat.id   # Material IDs
+
+    # Test color_by with default colors
+    for color_by in ['cell', 'material']:
+        rgb = id_map_to_rgb(id_data, color_by=color_by)
+        assert rgb.shape == (10, 10, 3)
+        assert rgb.dtype == float
+        assert np.all((rgb >= 0) & (rgb <= 1))  # RGB values in [0, 1]
+
+    # Test with custom colors
+    colors = {cell.id: (255, 0, 0)}  # Red
+    rgb_custom = id_map_to_rgb(id_data, color_by='cell', colors=colors)
+    assert np.allclose(rgb_custom, [1.0, 0.0, 0.0])  # All pixels should be red
+
+    # Test with overlaps
+    id_data_overlap = id_data.copy()
+    id_data_overlap[5:, 5:, 0] = -3  # Mark some pixels as overlaps
+    rgb_overlap = id_map_to_rgb(
+        id_data_overlap, overlap_color=(0, 255, 0)
+    )
+    # Check that overlap region is green
+    assert np.allclose(rgb_overlap[5:, 5:], [0.0, 1.0, 0.0])

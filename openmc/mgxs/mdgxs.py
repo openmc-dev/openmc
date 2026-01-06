@@ -7,6 +7,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from openmc.mgxs import MGXS
 from .mgxs import _DOMAIN_TO_FILTER
 
@@ -722,7 +723,7 @@ class MDGXS(MGXS):
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])

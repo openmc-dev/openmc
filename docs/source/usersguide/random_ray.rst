@@ -644,7 +644,8 @@ model to use these multigroup cross sections. An example is given below::
       nparticles=2000,
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
-      correction=None
+      correction=None,
+      source_energy=None
   )
 
 The most important parameter to set is the ``method`` parameter, which can be
@@ -706,6 +707,31 @@ generation and use an existing library file.
     with a :math:`\rho` default value of 1.0, which can be adjusted with the
     ``settings.random_ray['diagonal_stabilization_rho']`` parameter.
 
+When generating MGXS data with either the ``stochastic_slab`` or
+``infinite_medium`` methods, by default the simulation will use a uniform source
+distribution spread evenly over all energy groups. This ensures that all energy
+groups receive tallies and therefore produce non-zero total multigroup cross
+sections. Additionally, the function will convert any sources in the model into
+simplified spatial sources that retain the original energy distributions.  If
+sources are present, they will be used 99% of the time to sample source energies
+during MGXS generation. The other 1% of the time, energies will be sampled
+uniformly over all energy groups to ensure that all groups receive some tallies.
+However, the user may wish to specify a different source energy spectrum (for
+instance, if they are using a FileSource, such that the energy distribution
+cannot be extracted from the python source object). This can be done by
+providing a :class:`openmc.stats.Univariate` distribution as the
+``source_energy`` parameter of the :meth:`openmc.Model.convert_to_multigroup`
+method. If provided, it will override any sources present in the model and will
+be used 99% of the time to sample source energies during MGXS generation. The
+other 1% of the time, energies will be sampled uniformly over all energy groups
+to ensure that all groups receive some tallies.
+
+For instance, a D-D fusion simulation may involve a complex file source. In this
+case, the user may wish to provide a discrete 2.45 MeV energy source
+distribution for MGXS generation as::
+
+  source_energy = openmc.stats.delta_function(2.45e6)
+
 Ultimately, the methods described above are all just approximations.
 Approximations in the generated MGXS data will fundamentally limit the potential
 accuracy of the random ray solver. However, the methods described above are all
@@ -765,7 +791,7 @@ energy decomposition::
 
   # Create a "tallies.xml" file for the MGXS Library
   tallies = openmc.Tallies()
-  mgxs_lib.add_to_tallies_file(tallies, merge=True)
+  mgxs_lib.add_to_tallies(tallies, merge=True)
 
   # Export
   tallies.export_to_xml()
@@ -1105,11 +1131,10 @@ given below:
     tallies.export_to_xml()
 
     # Create voxel plot
-    plot = openmc.Plot()
+    plot = openmc.VoxelPlot()
     plot.origin = [0, 0, 0]
     plot.width = [2*pitch, 2*pitch, 1]
     plot.pixels = [1000, 1000, 1]
-    plot.type = 'voxel'
 
     # Instantiate a Plots collection and export to XML
     plots = openmc.Plots([plot])
@@ -1189,11 +1214,10 @@ given below:
     tallies.export_to_xml()
 
     # Create voxel plot
-    plot = openmc.Plot()
+    plot = openmc.VoxelPlot()
     plot.origin = [0, 0, 0]
     plot.width = [2*pitch, 2*pitch, 1]
     plot.pixels = [1000, 1000, 1]
-    plot.type = 'voxel'
 
     # Instantiate a Plots collection and export to XML
     plots = openmc.Plots([plot])

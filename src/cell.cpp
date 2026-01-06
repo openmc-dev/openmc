@@ -57,7 +57,7 @@ void Cell::set_rotation(const vector<double>& rot)
     fatal_error(fmt::format("Non-3D rotation vector applied to cell {}", id_));
   }
 
-  // Compute and store the rotation matrix.
+  // Compute and store the inverse rotation matrix for the angles given.
   rotation_.clear();
   rotation_.reserve(rot.size() == 9 ? 9 : 12);
   if (rot.size() == 3) {
@@ -1334,14 +1334,14 @@ extern "C" int openmc_cell_bounding_box(
   bbox = c->bounding_box();
 
   // set lower left corner values
-  llc[0] = bbox.xmin;
-  llc[1] = bbox.ymin;
-  llc[2] = bbox.zmin;
+  llc[0] = bbox.min.x;
+  llc[1] = bbox.min.y;
+  llc[2] = bbox.min.z;
 
   // set upper right corner values
-  urc[0] = bbox.xmax;
-  urc[1] = bbox.ymax;
-  urc[2] = bbox.zmax;
+  urc[0] = bbox.max.x;
+  urc[1] = bbox.max.y;
+  urc[2] = bbox.max.z;
 
   return 0;
 }

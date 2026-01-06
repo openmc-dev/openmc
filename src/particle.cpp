@@ -8,6 +8,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
@@ -121,6 +122,9 @@ void Particle::from_source(const SourceSite* src)
   fission() = false;
   zero_flux_derivs();
   lifetime() = 0.0;
+#ifdef OPENMC_DAGMC_ENABLED
+  history().reset();
+#endif
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -346,6 +350,11 @@ void Particle::event_collide()
     collision(*this);
   } else {
     collision_mg(*this);
+  }
+
+  // Collision track feature to recording particle interaction
+  if (settings::collision_track) {
+    collision_track_record(*this);
   }
 
   // Score collision estimator tallies -- this is done after a collision
@@ -735,9 +744,7 @@ void Particle::cross_periodic_bc(
   if (!neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after hitting periodic "
                  "boundary on surface " +
-                 std::to_string(surf.id_) +
-                 ". The normal vector "
-                 "of one periodic surface may need to be reversed.");
+                 std::to_string(surf.id_) + ".");
     return;
   }
 

@@ -2514,8 +2514,7 @@ class MGXSLibrary:
 
         """
 
-        check_type('filename', filename, PathLike)
-
+        check_type('filename', filename, (str, PathLike))
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)
         file.attrs['filetype'] = np.bytes_(_FILETYPE_MGXS_LIBRARY)
@@ -2554,7 +2553,7 @@ class MGXSLibrary:
             raise ValueError("Either path or openmc.config['mg_cross_sections']"
                              "must be set")
 
-        check_type('filename', filename, str)
+        check_type('filename', filename, (str, PathLike))
         file = h5py.File(filename, 'r')
 
         # Check filetype and version

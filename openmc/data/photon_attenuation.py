@@ -1,9 +1,7 @@
-import numpy as np
-
 from openmc.exceptions import DataError
 
 from .data import ATOMIC_SYMBOL, ELEMENT_SYMBOL, zam
-from .function import Sum, Tabulated1D
+from .function import Sum
 from .library import DataLibrary
 from .photon import IncidentPhoton
 

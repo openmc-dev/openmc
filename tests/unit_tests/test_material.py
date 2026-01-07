@@ -851,8 +851,9 @@ def elements_photon_xs(xs_filename):
 
 
 
-def test_material_photon_mass_attenuation_dist_returns_none_when_no_photon_data(monkeypatch):
+def test_photon_mass_attenuation_returns_none_when_no_photon_data(monkeypatch):
     """If no constituent has photon data, should return None."""
+    openmc.reset_auto_ids()
     # Make both element lookups return None
     monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda _: None)
 
@@ -866,10 +867,11 @@ def test_material_photon_mass_attenuation_dist_returns_none_when_no_photon_data(
 
 
 @pytest.mark.parametrize("symbol", ["C", "Pb"])
-def test_material_photon_mass_attenuation_dist_single_element_matches_linear_over_rho(
+def test_photon_mass_attenuation_single_element_matches_linear_over_rho(
     elements_photon_xs, symbol, monkeypatch
 ):
     """For a pure element: μ/ρ(E) == (N*σ(E))/ρ == linear_attenuation_xs(E)/ρ."""
+    openmc.reset_auto_ids()
     element = elements_photon_xs.get(symbol)
     if element is None:
         pytest.skip(f"No photon data for {symbol} in cross section library.")
@@ -908,10 +910,11 @@ def test_material_photon_mass_attenuation_dist_single_element_matches_linear_ove
     assert np.allclose(actual, expected)
 
 
-def test_material_photon_mass_attenuation_dist_mixture_matches_explicit_sum(
+def test_photon_mass_attenuation_mixture_matches_explicit_sum(
     elements_photon_xs, monkeypatch
 ):
     """For a mixture: μ/ρ(E) == (Σ_i N_i σ_i(E))/ρ."""
+    openmc.reset_auto_ids()
     c_data = elements_photon_xs.get("C")
     pb_data = elements_photon_xs.get("Pb")
     if c_data is None or pb_data is None:

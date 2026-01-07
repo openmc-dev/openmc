@@ -342,7 +342,8 @@ double Watt::sample_unbiased(uint64_t* seed) const
 
 double Watt::evaluate(double x) const
 {
-  double c = std::exp(-a_ * (b_ / 4.0)) / (std::pow(a_, 2.0) * std::sqrt(b_));
+  double c =
+    2.0 / (std::sqrt(PI * b_) * std::pow(a_, 1.5) * std::exp(a_ * b_ / 4.0));
   return c * std::exp(-x / a_) * std::sinh(std::sqrt(b_ * x));
 }
 
@@ -486,7 +487,8 @@ double Tabular::sample_unbiased(uint64_t* seed) const
     if (m == 0.0) {
       return (x_i + (c - c_i) / p_i);
     } else {
-      return (x_i +
+      return (
+        x_i +
         (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) / m);
     }
   }

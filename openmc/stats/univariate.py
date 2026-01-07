@@ -1058,7 +1058,7 @@ class Watt(Univariate):
         return result, np.ones_like(result)
 
     def evaluate(self, E):
-        c = np.exp(-self.a*self.b/4)/(self.a**2 *np.sqrt(self.b))
+        c = 2.0/(math.sqrt(np.pi * self.b) * (self.a**1.5) * math.exp(self.a*self.b/4))
         return c*np.exp(-E/self.a)*np.sinh(np.sqrt(self.b*E))
 
     def to_xml_element(self, element_name: str):

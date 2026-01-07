@@ -266,12 +266,6 @@ void get_run_parameters(pugi::xml_node node_base)
       fatal_error("Unsupported solver selected for kinetic simulation. Kinetic "
                   "simulations currently only support the random ray solver.");
     }
-    if (run_mode != RunMode::EIGENVALUE) {
-      fatal_error(
-        "Unsupported run mode selected for kinetic simulation. Kinetic "
-        "simulations currently only support run mode based on an eigenvalue "
-        "simulation establishing an initial condition.");
-    }
   }
 
   // Get timestep parameters for kinetic simulations

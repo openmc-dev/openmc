@@ -285,9 +285,11 @@ class Discrete(Univariate):
             return self._sample_unbiased(n_samples, seed)
         else:
             rng = np.random.RandomState(seed)
+            p = self.p / self.p.sum()
             b = self.bias / self.bias.sum()
-            biased_sample = rng.choice(self.x, n_samples, p=b)
-            wgt = [self._get_biased_weight(s) for s in biased_sample]
+            indices = rng.choice(self.x.size, n_samples, p=b)
+            biased_sample = self.x[indices]
+            wgt = p[indices] / b[indices]
             return biased_sample, wgt
 
     def _sample_unbiased(self, n_samples=1, seed=None):
@@ -304,14 +306,8 @@ class Discrete(Univariate):
     def evaluate(self, x):
         for x_i, p_i in zip(self.x, self.p):
             if abs(x_i - x) < 1e-14:
-                return (p_i/self.p.sum())
+                return p_i/self.p.sum()
         return 0.0
-
-    def _get_biased_weight(self, x):
-        for x_i, b_i in zip(self.x, self.bias):
-            if abs(x_i - x) < 1e-14:
-                bias_probability = (b_i/self.bias.sum())
-        return self.evaluate(x)/bias_probability
 
     def to_xml_element(self, element_name):
         """Return XML representation of the discrete distribution

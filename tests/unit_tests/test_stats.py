@@ -6,14 +6,7 @@ import openmc
 import openmc.stats
 from scipy.integrate import trapezoid
 
-
-def assert_sample_mean(samples, expected_mean):
-    # Calculate sample standard deviation
-    std_dev = samples.std() / np.sqrt(samples.size - 1)
-
-    # Means should agree within 4 sigma 99.993% of the time. Note that this is
-    # expected to fail about 1 out of 16,000 times
-    assert np.abs(expected_mean - samples.mean()) < 4*std_dev
+from tests.unit_tests import assert_sample_mean
 
 
 @pytest.mark.flaky(reruns=1)
@@ -245,7 +238,7 @@ def test_watt():
     assert np.all(weights == 1.0)
 
     # Test biased distribution with 5 percent higher T_e
-    d.bias = openmc.stats.Watt(1.0133e6, 2.077e-6)
+    d.bias = openmc.stats.Watt(a*1.05, b)
     bias_elem = d.to_xml_element('distribution')
     d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
     assert isinstance (d2.bias, openmc.stats.Watt)

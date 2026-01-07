@@ -17,6 +17,20 @@
 
 namespace openmc {
 
+std::pair<double, double> Distribution::sample(uint64_t* seed) const
+{
+  if (bias_) {
+    // Sample from the bias distribution and compute importance weight
+    auto biased = bias_->sample(seed);
+    double val = biased.first;
+    double wgt = this->evaluate(val) / bias_->evaluate(val);
+    return {val, wgt};
+  }
+  // Unbiased sampling: return sampled value with weight 1.0
+  double val = sample_unbiased(seed);
+  return {val, 1.0};
+}
+
 // PDF evaluation not supported for all distribution types
 double Distribution::evaluate(double x) const
 {
@@ -184,10 +198,12 @@ std::pair<double, double> Discrete::sample(uint64_t* seed) const
   return {x_[sample_index], di_.weight()[sample_index]};
 }
 
-std::pair<double, double> Discrete::sample_unbiased(uint64_t* seed) const
+double Discrete::sample_unbiased(uint64_t* seed) const
 {
-  // Discrete uses internal alias-table biasing, so this delegates to sample()
-  return sample(seed);
+  // Discrete uses internal alias-table biasing for weighted sampling,
+  // but unbiased sampling should return only the value.
+  size_t sample_index = di_.sample(seed);
+  return x_[sample_index];
 }
 
 double Discrete::evaluate(double x) const
@@ -229,9 +245,9 @@ Uniform::Uniform(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-std::pair<double, double> Uniform::sample_unbiased(uint64_t* seed) const
+double Uniform::sample_unbiased(uint64_t* seed) const
 {
-  return {a_ + prn(seed) * (b_ - a_), 1.0};
+  return a_ + prn(seed) * (b_ - a_);
 }
 
 double Uniform::evaluate(double x) const
@@ -279,9 +295,9 @@ double PowerLaw::evaluate(double x) const
   }
 }
 
-std::pair<double, double> PowerLaw::sample_unbiased(uint64_t* seed) const
+double PowerLaw::sample_unbiased(uint64_t* seed) const
 {
-  return {std::pow(offset_ + prn(seed) * span_, ninv_), 1.0};
+  return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
 
 //==============================================================================
@@ -293,9 +309,9 @@ Maxwell::Maxwell(pugi::xml_node node)
   theta_ = std::stod(get_node_value(node, "parameters"));
 }
 
-std::pair<double, double> Maxwell::sample_unbiased(uint64_t* seed) const
+double Maxwell::sample_unbiased(uint64_t* seed) const
 {
-  return {maxwell_spectrum(theta_, seed), 1.0};
+  return maxwell_spectrum(theta_, seed);
 }
 
 double Maxwell::evaluate(double x) const
@@ -319,9 +335,9 @@ Watt::Watt(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-std::pair<double, double> Watt::sample_unbiased(uint64_t* seed) const
+double Watt::sample_unbiased(uint64_t* seed) const
 {
-  return {watt_spectrum(a_, b_, seed), 1.0};
+  return watt_spectrum(a_, b_, seed);
 }
 
 double Watt::evaluate(double x) const
@@ -345,9 +361,9 @@ Normal::Normal(pugi::xml_node node)
   std_dev_ = params.at(1);
 }
 
-std::pair<double, double> Normal::sample_unbiased(uint64_t* seed) const
+double Normal::sample_unbiased(uint64_t* seed) const
 {
-  return {normal_variate(mean_value_, std_dev_, seed), 1.0};
+  return normal_variate(mean_value_, std_dev_, seed);
 }
 
 double Normal::evaluate(double x) const
@@ -435,7 +451,7 @@ void Tabular::init(
   }
 }
 
-std::pair<double, double> Tabular::sample_unbiased(uint64_t* seed) const
+double Tabular::sample_unbiased(uint64_t* seed) const
 {
   // Sample value of CDF
   double c = prn(seed);
@@ -457,9 +473,9 @@ std::pair<double, double> Tabular::sample_unbiased(uint64_t* seed) const
   if (interp_ == Interpolation::histogram) {
     // Histogram interpolation
     if (p_i > 0.0) {
-      return {(x_i + (c - c_i) / p_i), 1.0};
+      return (x_i + (c - c_i) / p_i);
     } else {
-      return {x_i, 1.0};
+      return x_i;
     }
   } else {
     // Linear-linear interpolation
@@ -468,12 +484,10 @@ std::pair<double, double> Tabular::sample_unbiased(uint64_t* seed) const
 
     double m = (p_i1 - p_i) / (x_i1 - x_i);
     if (m == 0.0) {
-      return {(x_i + (c - c_i) / p_i), 1.0};
+      return (x_i + (c - c_i) / p_i);
     } else {
-      return {
-        (x_i +
-          (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) / m),
-        1.0};
+      return (x_i +
+        (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) / m);
     }
   }
 }
@@ -510,7 +524,7 @@ double Tabular::evaluate(double x) const
 // Equiprobable implementation
 //==============================================================================
 
-std::pair<double, double> Equiprobable::sample_unbiased(uint64_t* seed) const
+double Equiprobable::sample_unbiased(uint64_t* seed) const
 {
   std::size_t n = x_.size();
 
@@ -519,7 +533,7 @@ std::pair<double, double> Equiprobable::sample_unbiased(uint64_t* seed) const
 
   double xl = x_[i];
   double xr = x_[i + i];
-  return {(xl + ((n - 1) * r - i) * (xr - xl)), 1.0};
+  return (xl + ((n - 1) * r - i) * (xr - xl));
 }
 
 double Equiprobable::evaluate(double x) const
@@ -587,10 +601,12 @@ std::pair<double, double> Mixture::sample(uint64_t* seed) const
   return {sample_pair.first, di_.weight()[sample_index] * sample_pair.second};
 }
 
-std::pair<double, double> Mixture::sample_unbiased(uint64_t* seed) const
+double Mixture::sample_unbiased(uint64_t* seed) const
 {
-  // Mixture uses internal alias-table biasing, so this delegates to sample()
-  return sample(seed);
+  // Unbiased sampling: choose a sub-distribution based on normalized probs
+  size_t sample_index = di_.sample(seed);
+  auto sample_pair = distribution_[sample_index]->sample(seed);
+  return sample_pair.first;
 }
 
 //==============================================================================

@@ -26,14 +26,7 @@ public:
   //! Sample a value from the distribution, handling biasing automatically
   //! \param seed Pseudorandom number seed pointer
   //! \return (sampled value, importance weight)
-  virtual std::pair<double, double> sample(uint64_t* seed) const
-  {
-    if (bias_) {
-      auto [val, wgt] = bias_->sample(seed);
-      return {val, this->evaluate(val) / bias_->evaluate(val)};
-    }
-    return sample_unbiased(seed);
-  }
+  virtual std::pair<double, double> sample(uint64_t* seed) const;
 
   //! Evaluate pdf at a point
   //! \return Value of pdf at a point
@@ -51,8 +44,8 @@ public:
 protected:
   //! Sample without bias handling - each derived class implements core sampling
   //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled value, weight=1.0)
-  virtual std::pair<double, double> sample_unbiased(uint64_t* seed) const = 0;
+  //! \return sampled value
+  virtual double sample_unbiased(uint64_t* seed) const = 0;
 
   // Biasing distribution
   unique_ptr<Distribution> bias_;
@@ -143,7 +136,7 @@ public:
   const vector<double>& weight() const { return di_.weight(); }
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   vector<double> x_; //!< Possible outcomes
@@ -169,7 +162,7 @@ public:
   double b() const { return b_; }
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   double a_; //!< Lower bound of distribution
@@ -197,7 +190,7 @@ public:
   double n() const { return 1 / ninv_ - 1; }
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   //! Store processed values in object to allow for faster sampling
@@ -223,7 +216,7 @@ public:
   double theta() const { return theta_; }
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   double theta_; //!< Factor in exponential [eV]
@@ -247,7 +240,7 @@ public:
   double b() const { return b_; }
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   double a_; //!< Factor in exponential [eV]
@@ -274,7 +267,7 @@ public:
   double std_dev() const { return std_dev_; }
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   double mean_value_; //!< middle of distribution [eV]
@@ -304,7 +297,7 @@ public:
   double integral() const override { return integral_; };
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   vector<double> x_;     //!< tabulated independent variable
@@ -338,7 +331,7 @@ public:
   const vector<double>& x() const { return x_; }
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   vector<double> x_; //! Possible outcomes
@@ -362,7 +355,7 @@ public:
   void set_bias_mixture(pugi::xml_node bias_node);
 
 protected:
-  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+  double sample_unbiased(uint64_t* seed) const override;
 
 private:
   vector<UPtrDist> distribution_; //!< sub-distributions

@@ -57,6 +57,13 @@ public:
   Distribution* phi() const { return phi_.get(); }
 
 private:
+  //! Common sampling implementation
+  //! \param seed Pseudorandom number seed pointer
+  //! \param return_pdf If true, return PDF evaluation; if false, return
+  //! importance weight \return (sampled Direction, weight or PDF value)
+  std::pair<Direction, double> sample_impl(
+    uint64_t* seed, bool return_pdf) const;
+
   Direction v_ref_ {1.0, 0.0, 0.0}; //!< reference direction
   Direction w_ref_;
   UPtrDist mu_;  //!< Distribution of polar angle

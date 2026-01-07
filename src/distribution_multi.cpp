@@ -84,23 +84,17 @@ PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
 
 std::pair<Direction, double> PolarAzimuthal::sample(uint64_t* seed) const
 {
-  // Sample cosine of polar angle
-  auto [mu, mu_wgt] = mu_->sample(seed);
-
-  // Sample azimuthal angle
-  auto [phi, phi_wgt] = phi_->sample(seed);
-  if (mu == 1.0)
-    return {u_ref_, mu_wgt * phi_wgt};
-  if (mu == -1.0)
-    return {-u_ref_, mu_wgt * phi_wgt};
-
-  double f = std::sqrt(1 - mu * mu);
-  return {mu * u_ref_ + f * std::cos(phi) * v_ref_ + f * std::sin(phi) * w_ref_,
-    mu_wgt * phi_wgt};
+  return sample_impl(seed, false);
 }
 
 std::pair<Direction, double> PolarAzimuthal::sample_as_bias(
   uint64_t* seed) const
+{
+  return sample_impl(seed, true);
+}
+
+std::pair<Direction, double> PolarAzimuthal::sample_impl(
+  uint64_t* seed, bool return_pdf) const
 {
   // Sample cosine of polar angle
   auto [mu, mu_wgt] = mu_->sample(seed);
@@ -108,16 +102,18 @@ std::pair<Direction, double> PolarAzimuthal::sample_as_bias(
   // Sample azimuthal angle
   auto [phi, phi_wgt] = phi_->sample(seed);
 
-  double pdf_evaluation = mu_->evaluate(mu) * phi_->evaluate(phi);
+  // Compute either the PDF value or the importance weight
+  double weight =
+    return_pdf ? (mu_->evaluate(mu) * phi_->evaluate(phi)) : (mu_wgt * phi_wgt);
 
   if (mu == 1.0)
-    return {u_ref_, pdf_evaluation};
+    return {u_ref_, weight};
   if (mu == -1.0)
-    return {-u_ref_, pdf_evaluation};
+    return {-u_ref_, weight};
 
   double f = std::sqrt(1 - mu * mu);
   return {mu * u_ref_ + f * std::cos(phi) * v_ref_ + f * std::sin(phi) * w_ref_,
-    pdf_evaluation};
+    weight};
 }
 
 //==============================================================================

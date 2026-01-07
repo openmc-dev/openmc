@@ -66,8 +66,8 @@ class Univariate(EqualityMixin, ABC):
             return Mixture.from_xml_element(elem)
 
     @abstractmethod
-    def sample(n_samples: int = 1, seed: int | None = None):
-        """Sample the univariate distribution
+    def _sample_unbiased(self, n_samples: int = 1, seed: int | None = None):
+        """Sample without bias handling; each derived class implements core sampling.
 
         Parameters
         ----------
@@ -78,10 +78,35 @@ class Univariate(EqualityMixin, ABC):
 
         Returns
         -------
-        numpy.ndarray
-            A 1-D array of sampled values
+        tuple of numpy.ndarray
+            A tuple of (samples, weights) where weights are all 1.0
         """
         pass
+
+    def sample(self, n_samples: int = 1, seed: int | None = None):
+        """Sample the univariate distribution, handling biasing automatically.
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of sampled values to generate
+        seed : int or None
+            Initial random number seed.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            A tuple of (samples, weights)
+        """
+        bias = getattr(self, '_bias', None)
+        if bias is None:
+            return self._sample_unbiased(n_samples, seed)
+        else:
+            if bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            biased_sample, _ = bias.sample(n_samples=n_samples, seed=seed)
+            wgt = np.array([self.evaluate(s) / bias.evaluate(s) for s in biased_sample])
+            return biased_sample, wgt
 
     def integral(self):
         """Return integral of distribution
@@ -94,16 +119,16 @@ class Univariate(EqualityMixin, ABC):
             Integral of distribution
         """
         return 1.0
-    
+
     @abstractmethod
     def evaluate(self,x):
         """Evaluate the probability density at the provided value.
-        
+
         Parameters
         ----------
         x : int
             Location to evaluate p(x)
-            
+
         Returns
         -------
         int
@@ -119,9 +144,9 @@ class Univariate(EqualityMixin, ABC):
         Returns
         -------
         set or tuple of float or dict
-            Returns the set of unique points assigned probability mass in a 
-            discrete distribution, the sampling interval for a continuous 
-            distribution, or a dictionary storing the discrete and continuous 
+            Returns the set of unique points assigned probability mass in a
+            discrete distribution, the sampling interval for a continuous
+            distribution, or a dictionary storing the discrete and continuous
             parts of the support of a mixed random variable
         """
         pass
@@ -179,7 +204,7 @@ class Discrete(Univariate):
     p : Iterable of float
         Discrete probability for each value
     bias : Iterable of float, optional
-        Alternative discrete probabilities for biased sampling. Defaults to 
+        Alternative discrete probabilities for biased sampling. Defaults to
         None for unbiased sampling.
 
     Attributes
@@ -189,7 +214,7 @@ class Discrete(Univariate):
     p : numpy.ndarray
         Discrete probability for each value
     support : set
-        Values of the random variable over which the distribution is 
+        Values of the random variable over which the distribution is
         nonzero-valued
     bias : numpy.ndarray or None
         Discrete probabilities for biased sampling
@@ -231,11 +256,11 @@ class Discrete(Univariate):
     @property
     def support(self):
         return set(np.unique(self._x))
-    
+
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         if bias is None:
@@ -255,17 +280,21 @@ class Discrete(Univariate):
         return np.insert(np.cumsum(self.p), 0, 0.0)
 
     def sample(self, n_samples=1, seed=None):
+        # Discrete uses internal bias mechanism, not base class bias
         if self.bias is None:
-            rng = np.random.RandomState(seed)
-            p = self.p / self.p.sum()
-            result = rng.choice(self.x, n_samples, p=p)
-            return result, np.ones_like(result)
+            return self._sample_unbiased(n_samples, seed)
         else:
             rng = np.random.RandomState(seed)
             b = self.bias / self.bias.sum()
             biased_sample = rng.choice(self.x, n_samples, p=b)
             wgt = [self._get_biased_weight(s) for s in biased_sample]
             return biased_sample, wgt
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        rng = np.random.RandomState(seed)
+        p = self.p / self.p.sum()
+        result = rng.choice(self.x, n_samples, p=p)
+        return result, np.ones_like(result)
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -277,7 +306,7 @@ class Discrete(Univariate):
             if abs(x_i - x) < 1e-14:
                 return (p_i/self.p.sum())
         return 0.0
-    
+
     def _get_biased_weight(self, x):
         for x_i, b_i in zip(self.x, self.bias):
             if abs(x_i - x) < 1e-14:
@@ -328,7 +357,7 @@ class Discrete(Univariate):
         params = get_elem_list(elem, "parameters", float)
         x = params[:len(params)//2]
         p = params[len(params)//2:]
-        
+
         if elem.find('bias') is not None:
             bias_dist = get_elem_list(elem, "bias", float)
         else:
@@ -361,13 +390,13 @@ class Discrete(Univariate):
         """
         if len(dists) != len(probs):
             raise ValueError("Number of distributions and probabilities must match.")
-            
+
         biasing = False
         for d in dists:
             if d.bias is not None:
-                # If we find that at least one distribution is biased, all 
-                # distributions which are not biased will be assigned their 
-                # default probability vector as a "bias" so that biased  
+                # If we find that at least one distribution is biased, all
+                # distributions which are not biased will be assigned their
+                # default probability vector as a "bias" so that biased
                 # sampling can occur on the merged distribution.
                 biasing = True
                 break
@@ -390,7 +419,7 @@ class Discrete(Univariate):
                     x_merged.add(x)
                     p_merged[x] += p*p_dist
                     b_merged[x] += b*p_dist
-            
+
             # Create values and bias probabilities as arrays
             x_arr = np.array(sorted(x_merged))
             new_bias = np.array([b_merged[x] for x in x_arr])
@@ -400,7 +429,7 @@ class Discrete(Univariate):
                 for x, p in zip(dist.x, dist.p):
                     x_merged.add(x)
                     p_merged[x] += p*p_dist
-            
+
             # Create values as array
             x_arr = np.array(sorted(x_merged))
 
@@ -443,8 +472,8 @@ class Discrete(Univariate):
         function will remove any low-importance points such that :math:`\sum_i
         x_i p_i` is preserved to within some threshold.
 
-        For biased distributions, clipping should be performed before the bias 
-        probabilities are added. 
+        For biased distributions, clipping should be performed before the bias
+        probabilities are added.
 
         .. versionadded:: 0.14.0
 
@@ -524,7 +553,7 @@ class Uniform(Univariate):
     b : float
         Upper bound of the sampling interval
     support : tuple of float
-        A 2-tuple (lower, upper) defining the interval over which the 
+        A 2-tuple (lower, upper) defining the interval over which the
         distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
@@ -565,7 +594,7 @@ class Uniform(Univariate):
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         check_bias_support(self, bias)
@@ -579,19 +608,12 @@ class Uniform(Univariate):
         t.c = [0., 1.]
         return t
 
-    def sample(self, n_samples=1, seed=None):
-        if self.bias is None:
-            rng = np.random.RandomState(seed)
-            result = rng.uniform(self.a, self.b, n_samples)
-            return result, np.ones_like(result)
-        else:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            biased_sample = self.bias.sample(n_samples=n_samples,seed=seed)[0]
-            wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
-            return biased_sample, wgt
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        rng = np.random.RandomState(seed)
+        result = rng.uniform(self.a, self.b, n_samples)
+        return result, np.ones_like(result)
 
-    
+
     def evaluate(self, x):
         if x <= self.a:
             return 0
@@ -692,14 +714,14 @@ class PowerLaw(Univariate):
     n : float
         Power law exponent
     support : tuple of float
-        A 2-tuple (lower, upper) defining the interval over which the 
+        A 2-tuple (lower, upper) defining the interval over which the
         distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
 
     """
 
-    def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0., 
+    def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.,
                  bias: Univariate = None):
         if a >= b:
             raise ValueError(
@@ -752,29 +774,22 @@ class PowerLaw(Univariate):
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         check_bias_support(self, bias)
         self._bias = bias
 
-    def sample(self, n_samples=1, seed=None):
-        if self.bias is None:
-            rng = np.random.RandomState(seed)
-            xi = rng.random(n_samples)
-            pwr = self.n + 1
-            offset = self.a**pwr
-            span = self.b**pwr - offset
-            result = np.power(offset + xi * span, 1/pwr)
-            return result, np.ones_like(result)
-        else:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            biased_sample = self.bias.sample(n_samples=n_samples,seed=seed)[0]
-            wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
-            return biased_sample, wgt
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        rng = np.random.RandomState(seed)
+        xi = rng.random(n_samples)
+        pwr = self.n + 1
+        offset = self.a**pwr
+        span = self.b**pwr - offset
+        result = np.power(offset + xi * span, 1/pwr)
+        return result, np.ones_like(result)
 
-    
+
     def evaluate(self, x):
         if x <= self.a:
             return 0
@@ -857,7 +872,7 @@ class Maxwell(Univariate):
     theta : float
         Effective temperature for distribution in eV
     support : tuple of float
-        A 2-tuple (lower, upper) defining the interval over which the 
+        A 2-tuple (lower, upper) defining the interval over which the
         distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
@@ -888,23 +903,16 @@ class Maxwell(Univariate):
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         check_bias_support(self, bias)
         self._bias = bias
 
-    def sample(self, n_samples=1, seed=None):
-        if self.bias is None:
-            rng = np.random.RandomState(seed)
-            result = self.sample_maxwell(self.theta, n_samples, rng=rng)
-            return result, np.ones_like(result)
-        else:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            biased_sample = self.bias.sample(n_samples=n_samples,seed=seed)[0]
-            wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
-            return biased_sample, wgt
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        rng = np.random.RandomState(seed)
+        result = self.sample_maxwell(self.theta, n_samples, rng=rng)
+        return result, np.ones_like(result)
 
     @staticmethod
     def sample_maxwell(t, n_samples: int, rng=None):
@@ -913,7 +921,7 @@ class Maxwell(Univariate):
         r1, r2, r3 = rng.random((3, n_samples))
         c = np.cos(0.5 * np.pi * r3)
         return -t * (np.log(r1) + np.log(r2) * c * c)
-    
+
     def evaluate(self, E):
         c = (2/np.sqrt(np.pi))*(self.theta**(-3/2))
         return c*np.sqrt(E)*np.exp(-E/self.theta)
@@ -993,7 +1001,7 @@ class Watt(Univariate):
     b : float
         Second parameter of distribution in units of 1/eV
     support : tuple of float
-        A 2-tuple (lower, upper) defining the interval over which the 
+        A 2-tuple (lower, upper) defining the interval over which the
         distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
@@ -1035,27 +1043,20 @@ class Watt(Univariate):
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         check_bias_support(self, bias)
         self._bias = bias
 
-    def sample(self, n_samples=1, seed=None):
-        if self.bias is None:
-            rng = np.random.RandomState(seed)
-            w = Maxwell.sample_maxwell(self.a, n_samples, rng=rng)
-            u = rng.uniform(-1., 1., n_samples)
-            aab = self.a * self.a * self.b
-            result = w + 0.25*aab + u*np.sqrt(aab*w)
-            return result, np.ones_like(result)
-        else:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            biased_sample = self.bias.sample(n_samples=n_samples,seed=seed)[0]
-            wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
-            return biased_sample, wgt
-        
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        rng = np.random.RandomState(seed)
+        w = Maxwell.sample_maxwell(self.a, n_samples, rng=rng)
+        u = rng.uniform(-1., 1., n_samples)
+        aab = self.a * self.a * self.b
+        result = w + 0.25*aab + u*np.sqrt(aab*w)
+        return result, np.ones_like(result)
+
     def evaluate(self, E):
         c = np.exp(-self.a*self.b/4)/(self.a**2 *np.sqrt(self.b))
         return c*np.exp(-E/self.a)*np.sinh(np.sqrt(self.b*E))
@@ -1103,7 +1104,7 @@ class Watt(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-        
+
         if elem.find('bias') is not None:
             bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
@@ -1135,7 +1136,7 @@ class Normal(Univariate):
     std_dev : float
         Standard deviation of the Normal distribution
     support : tuple of float
-        A 2-tuple (lower, upper) defining the interval over which the 
+        A 2-tuple (lower, upper) defining the interval over which the
         distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
@@ -1175,24 +1176,17 @@ class Normal(Univariate):
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         check_bias_support(self, bias)
         self._bias = bias
 
-    def sample(self, n_samples=1, seed=None):
-        if self.bias is None:
-            rng = np.random.RandomState(seed)
-            result = rng.normal(self.mean_value, self.std_dev, n_samples)
-            return result, np.ones_like(result)
-        else:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            biased_sample = self.bias.sample(n_samples=n_samples,seed=seed)[0]
-            wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
-            return biased_sample, wgt
-    
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        rng = np.random.RandomState(seed)
+        result = rng.normal(self.mean_value, self.std_dev, n_samples)
+        return result, np.ones_like(result)
+
     def evaluate(self, x):
         return (1/(np.sqrt(2/np.pi)*self.std_dev))*np.exp(-((x-self.mean_value)**2)/(2*(self.std_dev**2)))
 
@@ -1324,7 +1318,7 @@ class Tabular(Univariate):
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
     support : tuple of float
-        A 2-tuple (lower, upper) defining the interval over which the 
+        A 2-tuple (lower, upper) defining the interval over which the
         distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
@@ -1397,7 +1391,7 @@ class Tabular(Univariate):
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         check_bias_support(self, bias)
@@ -1456,75 +1450,80 @@ class Tabular(Univariate):
         """Normalize the probabilities stored on the distribution"""
         self._p /= self.cdf().max()
 
-    def sample(self, n_samples: int = 1, seed: int | None = None):
-        if self.bias is None:
-            rng = np.random.RandomState(seed)
-            xi = rng.random(n_samples)
+    def _sample_unbiased(self, n_samples: int = 1, seed: int | None = None):
+        rng = np.random.RandomState(seed)
+        xi = rng.random(n_samples)
 
-            # always use normalized probabilities when sampling
-            cdf = self.cdf()
-            p = self.p / cdf.max()
-            cdf /= cdf.max()
+        # always use normalized probabilities when sampling
+        cdf = self.cdf()
+        p = self.p / cdf.max()
+        cdf /= cdf.max()
 
-            # get CDF bins that are above the
-            # sampled values
-            c_i = np.full(n_samples, cdf[0])
-            cdf_idx = np.zeros(n_samples, dtype=int)
-            for i, val in enumerate(cdf[:-1]):
-                mask = xi > val
-                c_i[mask] = val
-                cdf_idx[mask] = i
+        # get CDF bins that are above the
+        # sampled values
+        c_i = np.full(n_samples, cdf[0])
+        cdf_idx = np.zeros(n_samples, dtype=int)
+        for i, val in enumerate(cdf[:-1]):
+            mask = xi > val
+            c_i[mask] = val
+            cdf_idx[mask] = i
 
-            # get table values at each index where
-            # the random number is less than the next cdf
-            # entry
-            x_i = self.x[cdf_idx]
-            p_i = p[cdf_idx]
+        # get table values at each index where
+        # the random number is less than the next cdf
+        # entry
+        x_i = self.x[cdf_idx]
+        p_i = p[cdf_idx]
 
-            if self.interpolation == 'histogram':
-                # mask where probability is greater than zero
-                pos_mask = p_i > 0.0
-                # probabilities greater than zero are set proportional to the
-                # position of the random numebers in relation to the cdf value
-                p_i[pos_mask] = x_i[pos_mask] + (xi[pos_mask] - c_i[pos_mask]) \
-                               / p_i[pos_mask]
-                # probabilities smaller than zero are set to the random number value
-                p_i[~pos_mask] = x_i[~pos_mask]
+        if self.interpolation == 'histogram':
+            # mask where probability is greater than zero
+            pos_mask = p_i > 0.0
+            # probabilities greater than zero are set proportional to the
+            # position of the random numebers in relation to the cdf value
+            p_i[pos_mask] = x_i[pos_mask] + (xi[pos_mask] - c_i[pos_mask]) \
+                           / p_i[pos_mask]
+            # probabilities smaller than zero are set to the random number value
+            p_i[~pos_mask] = x_i[~pos_mask]
 
-                samples_out = p_i
+            samples_out = p_i
 
-            elif self.interpolation == 'linear-linear':
-                # get variable and probability values for the
-                # next entry
-                x_i1 = self.x[cdf_idx + 1]
-                p_i1 = p[cdf_idx + 1]
-                # compute slope between entries
-                m = (p_i1 - p_i) / (x_i1 - x_i)
-                # set values for zero slope
-                zero = m == 0.0
-                m[zero] = x_i[zero] + (xi[zero] - c_i[zero]) / p_i[zero]
-                # set values for non-zero slope
-                non_zero = ~zero
-                quad = np.power(p_i[non_zero], 2) + 2.0 * m[non_zero] * (xi[non_zero] - c_i[non_zero])
-                quad[quad < 0.0] = 0.0
-                m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
-                samples_out = m
+        elif self.interpolation == 'linear-linear':
+            # get variable and probability values for the
+            # next entry
+            x_i1 = self.x[cdf_idx + 1]
+            p_i1 = p[cdf_idx + 1]
+            # compute slope between entries
+            m = (p_i1 - p_i) / (x_i1 - x_i)
+            # set values for zero slope
+            zero = m == 0.0
+            m[zero] = x_i[zero] + (xi[zero] - c_i[zero]) / p_i[zero]
+            # set values for non-zero slope
+            non_zero = ~zero
+            quad = np.power(p_i[non_zero], 2) + 2.0 * m[non_zero] * (xi[non_zero] - c_i[non_zero])
+            quad[quad < 0.0] = 0.0
+            m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
+            samples_out = m
 
-            else:
-                raise NotImplementedError('Can only sample tabular distributions '
-                                          'using histogram or '
-                                          'linear-linear interpolation')
-
-            assert all(samples_out < self.x[-1])
-            return samples_out, np.ones_like(samples_out)
         else:
-            if self.bias.bias is not None:
+            raise NotImplementedError('Can only sample tabular distributions '
+                                      'using histogram or '
+                                      'linear-linear interpolation')
+
+        assert all(samples_out < self.x[-1])
+        return samples_out, np.ones_like(samples_out)
+
+    def sample(self, n_samples: int = 1, seed: int | None = None):
+        # Override base class sample to normalize before biased sampling
+        bias = getattr(self, '_bias', None)
+        if bias is None:
+            return self._sample_unbiased(n_samples, seed)
+        else:
+            if bias.bias is not None:
                 raise RuntimeError('Biasing distributions should not have their own bias!')
-            biased_sample = self.bias.sample(n_samples=n_samples,seed=seed)[0]
-            self.normalize() # must have normalized probabilities to apply correct weights
-            wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
+            biased_sample, _ = bias.sample(n_samples=n_samples, seed=seed)
+            self.normalize()  # must have normalized probabilities to apply correct weights
+            wgt = np.array([self.evaluate(s) / bias.evaluate(s) for s in biased_sample])
             return biased_sample, wgt
-    
+
     def evaluate(self, x):
         if self.interpolation == 'linear-linear':
             i = np.searchsorted(self.x, x, side='left') - 1
@@ -1540,7 +1539,7 @@ class Tabular(Univariate):
             if i < 0 or i >= len(self.p):
                 return 0.0
             return self.p[i]
-        
+
         else:
             raise NotImplementedError('Can only evaluate tabular '
                                       'distributions using histogram '
@@ -1639,7 +1638,7 @@ class Legendre(Univariate):
         Expansion coefficients :math:`a_\ell`. Note that the :math:`(2\ell +
         1)/2` factor should not be included.
     support : tuple of float
-        A 2-tuple (lower, upper) defining the interval over which the 
+        A 2-tuple (lower, upper) defining the interval over which the
         distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
@@ -1678,15 +1677,18 @@ class Legendre(Univariate):
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         check_bias_support(self, bias)
         self._bias = bias
 
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        raise NotImplementedError
+
     def sample(self, n_samples=1, seed=None):
         raise NotImplementedError
-    
+
     def evaluate(self, x):
         raise NotImplementedError
 
@@ -1708,7 +1710,7 @@ class Mixture(Univariate):
     distribution : Iterable of Univariate
         List of distributions with corresponding probabilities
     bias : Iterable of Real, optional
-        Probability of selecting a particular distribution under biased 
+        Probability of selecting a particular distribution under biased
         sampling
 
     Attributes
@@ -1763,7 +1765,7 @@ class Mixture(Univariate):
     @property
     def bias(self):
         return self._bias
-    
+
     @bias.setter
     def bias(self, bias):
         if bias is None:
@@ -1786,7 +1788,7 @@ class Mixture(Univariate):
                 discrete_points |= dist.support
             else:
                 intervals.append(tuple(dist.support))
-        
+
         if intervals:
             # simplify union by combining intervals when able
             sorted_intervals = sorted(intervals, key=lambda x: x[0])
@@ -1800,7 +1802,7 @@ class Mixture(Univariate):
                     merged[-1] = (prev_start, max(prev_end, curr_end))
                 else:
                     merged.append(current)
-            
+
             intervals = merged
 
         return {"discrete", discrete_points,
@@ -1809,28 +1811,49 @@ class Mixture(Univariate):
     def cdf(self):
         return np.insert(np.cumsum(self.probability), 0, 0.0)
 
-    def sample(self, n_samples=1, seed=None):
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        # Mixture uses internal bias mechanism, not base class bias
         rng = np.random.RandomState(seed)
 
         # Get probability of each distribution accounting for its intensity
         p = np.array([prob*dist.integral() for prob, dist in
                       zip(self.probability, self.distribution)])
         p /= p.sum()
+
+        # Sample from the distributions
+        idx = rng.choice(range(len(self.distribution)), n_samples, p=p)
+
+        # Draw samples from the distributions sampled above
+        out = np.empty_like(idx, dtype=float)
+        out_wgt = np.empty_like(idx, dtype=float)
+        for i in np.unique(idx):
+            n_dist_samples = np.count_nonzero(idx == i)
+            samples, weights = self.distribution[i].sample(n_dist_samples)
+            out[idx == i] = samples
+            out_wgt[idx == i] = weights
+        return out, out_wgt
+
+    def sample(self, n_samples=1, seed=None):
+        # Mixture uses internal bias mechanism, not base class bias
+        if self.bias is None:
+            return self._sample_unbiased(n_samples, seed)
+
+        rng = np.random.RandomState(seed)
+
+        # Get probability of each distribution accounting for its intensity
+        p = np.array([prob*dist.integral() for prob, dist in
+                      zip(self.probability, self.distribution)])
+        p /= p.sum()
+
+        b = np.array([prob*dist.integral() for prob, dist in
+                      zip(self.bias, self.distribution)])
+        b /= b.sum()
+
+        # Sample from the distributions using biased probabilities
+        idx = rng.choice(range(len(self.distribution)), n_samples, p=b)
         idx_wgt = np.ones(n_samples)
-
-        if self.bias is not None:
-            b = np.array([prob*dist.integral() for prob, dist in
-                          zip(self.bias, self.distribution)])
-            b /= b.sum()
-
-            # Sample from the distributions
-            idx = rng.choice(range(len(self.distribution)), n_samples, p=b)
-            for i in np.unique(idx):
-                idx_wgt[idx == i] = p[i]/b[i]
-
-        else:
-            # Sample from the distributions
-            idx = rng.choice(range(len(self.distribution)), n_samples, p=p)
+        for i in np.unique(idx):
+            idx_wgt[idx == i] = p[i]/b[i]
 
         # Draw samples from the distributions sampled above
         out = np.empty_like(idx, dtype=float)
@@ -1841,7 +1864,7 @@ class Mixture(Univariate):
             out[idx == i] = samples
             out_wgt[idx == i] = weights * idx_wgt[idx == i]
         return out, out_wgt
-    
+
     def evaluate(self, x):
         raise NotImplementedError(
             "evaluate() is undefined for Mixture distributions")
@@ -2066,7 +2089,7 @@ def combine_distributions(
 
 
 def check_bias_support(parent: Univariate, bias: Univariate):
-    """Ensure that bias distributions share the support of the univariate 
+    """Ensure that bias distributions share the support of the univariate
     distribution they are biasing.
 
     Parameters
@@ -2079,12 +2102,12 @@ def check_bias_support(parent: Univariate, bias: Univariate):
     """
     if bias is None:
         return
-    
+
     def mismatch_error(err_type, msg):
         raise err_type(f"Support of parent {type(parent).__name__} and bias "
                        f"{type(bias).__name__} distributions do not match. "
                        f"{msg}")
-    
+
     p_sup, b_sup = parent.support, bias.support
 
     if isinstance(p_sup, set) or isinstance(b_sup, set):
@@ -2092,7 +2115,7 @@ def check_bias_support(parent: Univariate, bias: Univariate):
                            "distributions or be biased by another Univariate "
                            "distribution. Instead, assign a vector of "
                            "alternate probabilities to the bias attribute.")
-    
+
     elif isinstance(p_sup, dict) or isinstance (b_sup, dict):
         raise RuntimeError("Mixture distributions cannot be used as biasing "
                            "distributions or be biased by another Univariate "
@@ -2100,13 +2123,13 @@ def check_bias_support(parent: Univariate, bias: Univariate):
                            "object using biased member distributions, or "
                            "assign a vector of alternative probabilities to "
                            "the bias attribute.")
-    
+
     elif isinstance(p_sup, tuple):
         if isinstance(b_sup, tuple):
             if p_sup != b_sup:
                 mismatch_error(ValueError, "")
         else:
             mismatch_error(TypeError, "Incompatible support types.")
-    
+
     else:
         raise TypeError("Unrecognized type for parent distribution support")

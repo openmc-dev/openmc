@@ -22,7 +22,18 @@ namespace openmc {
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual std::pair<double, double> sample(uint64_t* seed) const = 0;
+
+  //! Sample a value from the distribution, handling biasing automatically
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (sampled value, importance weight)
+  virtual std::pair<double, double> sample(uint64_t* seed) const
+  {
+    if (bias_) {
+      auto [val, wgt] = bias_->sample(seed);
+      return {val, this->evaluate(val) / bias_->evaluate(val)};
+    }
+    return sample_unbiased(seed);
+  }
 
   //! Evaluate pdf at a point
   //! \return Value of pdf at a point
@@ -38,6 +49,11 @@ public:
   const Distribution* bias() const { return bias_.get(); }
 
 protected:
+  //! Sample without bias handling - each derived class implements core sampling
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (sampled value, weight=1.0)
+  virtual std::pair<double, double> sample_unbiased(uint64_t* seed) const = 0;
+
   // Biasing distribution
   unique_ptr<Distribution> bias_;
 };
@@ -126,6 +142,9 @@ public:
   const vector<double>& prob_actual() const { return di_.prob_actual(); }
   const vector<double>& weight() const { return di_.weight(); }
 
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
+
 private:
   vector<double> x_; //!< Possible outcomes
   DiscreteIndex di_; //!< discrete probability distribution of
@@ -141,11 +160,6 @@ public:
   explicit Uniform(pugi::xml_node node);
   Uniform(double a, double b) : a_ {a}, b_ {b} {};
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled value, sample weight)
-  std::pair<double, double> sample(uint64_t* seed) const override;
-
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
@@ -153,6 +167,9 @@ public:
 
   double a() const { return a_; }
   double b() const { return b_; }
+
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
 
 private:
   double a_; //!< Lower bound of distribution
@@ -170,11 +187,6 @@ public:
     : offset_ {std::pow(a, n + 1)}, span_ {std::pow(b, n + 1) - offset_},
       ninv_ {1 / (n + 1)} {};
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled value, sample weight)
-  std::pair<double, double> sample(uint64_t* seed) const override;
-
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
@@ -183,6 +195,9 @@ public:
   double a() const { return std::pow(offset_, ninv_); }
   double b() const { return std::pow(offset_ + span_, ninv_); }
   double n() const { return 1 / ninv_ - 1; }
+
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
 
 private:
   //! Store processed values in object to allow for faster sampling
@@ -200,17 +215,15 @@ public:
   explicit Maxwell(pugi::xml_node node);
   Maxwell(double theta) : theta_ {theta} {};
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled value, sample weight)
-  std::pair<double, double> sample(uint64_t* seed) const override;
-
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
 
   double theta() const { return theta_; }
+
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
 
 private:
   double theta_; //!< Factor in exponential [eV]
@@ -225,11 +238,6 @@ public:
   explicit Watt(pugi::xml_node node);
   Watt(double a, double b) : a_ {a}, b_ {b} {};
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled value, sample weight)
-  std::pair<double, double> sample(uint64_t* seed) const override;
-
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
@@ -237,6 +245,9 @@ public:
 
   double a() const { return a_; }
   double b() const { return b_; }
+
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
 
 private:
   double a_; //!< Factor in exponential [eV]
@@ -254,11 +265,6 @@ public:
   Normal(double mean_value, double std_dev)
     : mean_value_ {mean_value}, std_dev_ {std_dev} {};
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled value, sample weight)
-  std::pair<double, double> sample(uint64_t* seed) const override;
-
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
@@ -266,6 +272,9 @@ public:
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
+
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
 
 private:
   double mean_value_; //!< middle of distribution [eV]
@@ -282,11 +291,6 @@ public:
   Tabular(const double* x, const double* p, int n, Interpolation interp,
     const double* c = nullptr);
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled value, sample weight)
-  std::pair<double, double> sample(uint64_t* seed) const override;
-
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
@@ -298,6 +302,9 @@ public:
   const vector<double>& p() const { return p_; }
   Interpolation interp() const { return interp_; }
   double integral() const override { return integral_; };
+
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
 
 private:
   vector<double> x_;     //!< tabulated independent variable
@@ -323,17 +330,15 @@ public:
   explicit Equiprobable(pugi::xml_node node);
   Equiprobable(const double* x, int n) : x_ {x, x + n} {};
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled value, sample weight)
-  std::pair<double, double> sample(uint64_t* seed) const override;
-
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
 
   const vector<double>& x() const { return x_; }
+
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
 
 private:
   vector<double> x_; //! Possible outcomes
@@ -355,6 +360,9 @@ public:
   double integral() const override { return integral_; }
 
   void set_bias_mixture(pugi::xml_node bias_node);
+
+protected:
+  std::pair<double, double> sample_unbiased(uint64_t* seed) const override;
 
 private:
   vector<UPtrDist> distribution_; //!< sub-distributions

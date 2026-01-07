@@ -484,7 +484,8 @@ class XSdata:
 
         check_type('temperature', temperature, Real)
 
-        temp_store = self.temperatures.tolist().append(temperature)
+        temp_store = self.temperatures.tolist()
+        temp_store.append(temperature)
         self.temperatures = temp_store
 
         self._total.append(None)

@@ -1647,8 +1647,9 @@ class Settings:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):
+                    subelement = ET.SubElement(element, 'ray_source')
                     source_element = value.to_xml_element()
-                    element.append(source_element)
+                    subelement.append(source_element)
                 elif key == 'source_region_meshes':
                     subelement = ET.SubElement(element, 'source_region_meshes')
                     for mesh, domains in value:
@@ -1662,8 +1663,9 @@ class Settings:
                             root.append(mesh.to_xml_element())
                             mesh_memo.add(mesh.id)
                 elif key == 'adjoint_source' and isinstance(value, SourceBase):
+                    subelement = ET.SubElement(element, 'adjoint_source')
                     adj_source_element = value.to_xml_element()
-                    element.append(adj_source_element)
+                    subelement.append(adj_source_element)
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
@@ -2043,8 +2045,9 @@ class Settings:
             for child in elem:
                 if child.tag in ('distance_inactive', 'distance_active', 'diagonal_stabilization_rho'):
                     self.random_ray[child.tag] = float(child.text)
-                elif child.tag == 'source':
-                    source = SourceBase.from_xml_element(child)
+                elif child.tag == 'ray_source':
+                    source_element = child.find('source')
+                    source = SourceBase.from_xml_element(source_element)
                     self.random_ray['ray_source'] = source
                 elif child.tag == 'volume_estimator':
                     self.random_ray['volume_estimator'] = child.text
@@ -2058,6 +2061,11 @@ class Settings:
                     self.random_ray['adjoint'] = (
                         child.text in ('true', '1')
                     )
+                elif child.tag == 'adjoint_source':
+                    for subelem in child.findall('source'):
+                        src = SourceBase.from_xml_element(subelem)
+                        # add newly constructed source object to the list
+                        self.random_ray['adjoint_source'].append(src)
                 elif child.tag == 'sample_method':
                     self.random_ray['sample_method'] = child.text
                 elif child.tag == 'source_region_meshes':

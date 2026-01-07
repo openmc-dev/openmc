@@ -36,6 +36,13 @@ void openmc_run_random_ray()
   bool adjoint_needed = FlatSourceDomain::adjoint_;
   bool global_adjoint = model::adjoint_sources.empty();
 
+  // Declare forward flux so that it can be saved for either simulation
+  vector<double> forward_flux;
+  SourceRegionContainer forward_source_regions;
+  SourceRegionContainer forward_base_source_regions;
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+    forward_source_region_map;
+
   // If we're going to do an adjoint simulation with global adjoint sources 
   // afterwards, report that this is the initial forward flux solve.
   if (!adjoint_needed || global_adjoint) {
@@ -51,13 +58,6 @@ void openmc_run_random_ray()
     // Validate that inputs meet requirements for random ray mode
     if (mpi::master)
       validate_random_ray_inputs();
-
-    // Declare forward flux so that it can be saved for later adjoint simulation
-    vector<double> forward_flux;
-    SourceRegionContainer forward_source_regions;
-    SourceRegionContainer forward_base_source_regions;
-    std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
-      forward_source_region_map;
 
     {
       // Initialize Random Ray Simulation Object
@@ -418,7 +418,7 @@ void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
   domain_->apply_meshes();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // Transfer external source user inputs onto random ray source regions
-    domain_->convert_external_sources();
+    domain_->convert_external_sources(false);
     domain_->count_external_source_regions();
   }
 }

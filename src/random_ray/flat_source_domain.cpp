@@ -1226,6 +1226,7 @@ void FlatSourceDomain::set_local_adjoint_sources()
 {
   // Set the external source to user-specified adjoint sources.
   convert_external_sources(true);
+}
 
 void FlatSourceDomain::transpose_scattering_matrix()
 {

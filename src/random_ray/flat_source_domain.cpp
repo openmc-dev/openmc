@@ -665,10 +665,14 @@ void FlatSourceDomain::random_ray_tally()
           score = 1.0;
           break;
 
+        case SCORE_KAPPA_FISSION:
+          score = flux * volume * kappa_fission_[material * negroups_ + g];
+          break;
+
         default:
           fatal_error("Invalid score specified in tallies.xml. Only flux, "
-                      "total, fission, nu-fission, and events are supported in "
-                      "random ray mode.");
+                      "total, fission, nu-fission, kappa-fission, and events "
+                      "are supported in random ray mode.");
           break;
         }
         // Apply score to the appropriate tally bin
@@ -1165,6 +1169,10 @@ void FlatSourceDomain::flatten_xs()
         }
         chi_.push_back(chi);
 
+        double kappa_fission =
+          m.get_xs(MgxsType::KAPPA_FISSION, g_out, NULL, NULL, NULL, t, a);
+        kappa_fission_.push_back(kappa_fission);
+
         for (int g_in = 0; g_in < negroups_; g_in++) {
           double sigma_s =
             m.get_xs(MgxsType::NU_SCATTER, g_in, &g_out, NULL, NULL, t, a);
@@ -1180,6 +1188,7 @@ void FlatSourceDomain::flatten_xs()
         nu_sigma_f_.push_back(0);
         sigma_f_.push_back(0);
         chi_.push_back(0);
+        kappa_fission_.push_back(0);
         for (int g_in = 0; g_in < negroups_; g_in++) {
           sigma_s_.push_back(0);
         }

@@ -83,6 +83,7 @@ void validate_random_ray_inputs()
       case SCORE_FISSION:
       case SCORE_NU_FISSION:
       case SCORE_EVENTS:
+      case SCORE_KAPPA_FISSION:
         break;
       default:
         fatal_error(

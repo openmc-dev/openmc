@@ -288,8 +288,33 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
         }
       }
 
-      span<const double> b {bias_strengths};
-      elem_idx_dist_.apply_bias(b);
+      // Normalize original strengths
+      double sum_s = std::accumulate(strengths.begin(), strengths.end(), 0.0);
+      std::vector<double> s_norm(n_bins);
+      for (int i = 0; i < n_bins; ++i) {
+        s_norm[i] = strengths[i] / sum_s;
+      }
+
+      // Normalize bias strengths
+      double sum_b =
+        std::accumulate(bias_strengths.begin(), bias_strengths.end(), 0.0);
+      std::vector<double> b_norm(n_bins);
+      for (int i = 0; i < n_bins; ++i) {
+        b_norm[i] = bias_strengths[i] / sum_b;
+      }
+
+      // Compute importance weights
+      wgt_.resize(n_bins);
+      for (int i = 0; i < n_bins; ++i) {
+        if (b_norm[i] == 0.0) {
+          wgt_[i] = INFTY;
+        } else {
+          wgt_[i] = s_norm[i] / b_norm[i];
+        }
+      }
+
+      // Re-initialize DiscreteIndex with bias strengths for sampling
+      elem_idx_dist_.assign(bias_strengths);
     } else {
       fatal_error(fmt::format(
         "Bias node for mesh {} found without strengths array.", mesh_id));
@@ -333,7 +358,8 @@ std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
 std::pair<Position, double> MeshSpatial::sample(uint64_t* seed) const
 {
   auto [elem_idx, u] = this->sample_mesh(seed);
-  return {u, elem_idx_dist_.weight()[elem_idx]};
+  double wgt = wgt_.empty() ? 1.0 : wgt_[elem_idx];
+  return {u, wgt};
 }
 
 //==============================================================================
@@ -379,8 +405,35 @@ PointCloud::PointCloud(pugi::xml_node node)
             bias_strengths.size(), point_cloud_.size()));
       }
 
-      span<const double> b {bias_strengths};
-      point_idx_dist_.apply_bias(b);
+      std::size_t n = point_cloud_.size();
+
+      // Normalize original strengths
+      double sum_s = std::accumulate(strengths.begin(), strengths.end(), 0.0);
+      std::vector<double> s_norm(n);
+      for (std::size_t i = 0; i < n; ++i) {
+        s_norm[i] = strengths[i] / sum_s;
+      }
+
+      // Normalize bias strengths
+      double sum_b =
+        std::accumulate(bias_strengths.begin(), bias_strengths.end(), 0.0);
+      std::vector<double> b_norm(n);
+      for (std::size_t i = 0; i < n; ++i) {
+        b_norm[i] = bias_strengths[i] / sum_b;
+      }
+
+      // Compute importance weights
+      wgt_.resize(n);
+      for (std::size_t i = 0; i < n; ++i) {
+        if (b_norm[i] == 0.0) {
+          wgt_[i] = INFTY;
+        } else {
+          wgt_[i] = s_norm[i] / b_norm[i];
+        }
+      }
+
+      // Re-initialize DiscreteIndex with bias strengths for sampling
+      point_idx_dist_.assign(bias_strengths);
     } else {
       fatal_error(
         fmt::format("Bias node for PointCloud found without strengths array."));
@@ -398,7 +451,8 @@ PointCloud::PointCloud(
 std::pair<Position, double> PointCloud::sample(uint64_t* seed) const
 {
   int32_t index = point_idx_dist_.sample(seed);
-  return {point_cloud_[index], point_idx_dist_.weight()[index]};
+  double wgt = wgt_.empty() ? 1.0 : wgt_[index];
+  return {point_cloud_[index], wgt};
 }
 
 //==============================================================================

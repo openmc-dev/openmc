@@ -36,8 +36,11 @@ public:
   //! \return Integral of distribution
   virtual double integral() const { return 1.0; };
 
-  // Set or get bias distribution
-  void set_bias(std::unique_ptr<Distribution> bias) { bias_ = std::move(bias); }
+  //! Set bias distribution
+  virtual void set_bias(std::unique_ptr<Distribution> bias)
+  {
+    bias_ = std::move(bias);
+  }
 
   const Distribution* bias() const { return bias_.get(); }
 
@@ -46,6 +49,10 @@ protected:
   //! \param seed Pseudorandom number seed pointer
   //! \return sampled value
   virtual double sample_unbiased(uint64_t* seed) const = 0;
+
+  //! Read bias distribution from XML and call set_bias
+  //! \param node XML node that may contain a bias child element
+  void read_bias_from_xml(pugi::xml_node node);
 
   // Biasing distribution
   unique_ptr<Distribution> bias_;
@@ -72,37 +79,24 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return Sampled index
   size_t sample(uint64_t* seed) const;
-
-  //! Apply biased sampling using another Discrete distribution
-  //! \param b Biased probability vector for accepting a uniformly sampled bin
-  //! \return void
-  void apply_bias(span<const double> b);
 
   // Properties
   const vector<double>& prob() const { return prob_; }
   const vector<size_t>& alias() const { return alias_; }
-  const vector<double>& prob_norm() const { return prob_norm_; }
-  const vector<double>& weight() const { return wgt_; }
   double integral() const { return integral_; }
 
 private:
-  vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
-                        //!< mapped to alias method table
-  vector<size_t> alias_;     //!< Alias table
-  vector<double> prob_norm_; //!< Normalized probabilities before Vose algorithm
-  vector<double> wgt_;       //!< Weights for sampling from a biased prob_
-  double integral_;          //!< Integral of distribution
+  vector<double> prob_;  //!< Acceptance probabilities for alias method
+  vector<size_t> alias_; //!< Alias table
+  double integral_;      //!< Integral of distribution before normalization
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
 
-  //! Initialize alias tables for distribution
+  //! Initialize alias table for sampling
   void init_alias();
-
-  //! Initialize weight table for biased sampling
-  void init_wgt();
 };
 
 //==============================================================================
@@ -119,29 +113,24 @@ public:
   //! \return (sampled value, sample weight)
   std::pair<double, double> sample(uint64_t* seed) const override;
 
-  //! Evaluate probability density at a point
-  //! \param x Point to evaluate f(x)
-  //! \return f(x)
-  double evaluate(double x) const override;
-
   double integral() const override { return di_.integral(); };
 
-  void set_bias_discrete(pugi::xml_node bias_node);
+  //! Override set_bias as no-op (bias handled in constructor)
+  void set_bias(std::unique_ptr<Distribution> bias) override {}
 
   // Properties
   const vector<double>& x() const { return x_; }
   const vector<double>& prob() const { return di_.prob(); }
   const vector<size_t>& alias() const { return di_.alias(); }
-  const vector<double>& prob_norm() const { return di_.prob_norm(); }
-  const vector<double>& weight() const { return di_.weight(); }
+  const vector<double>& wgt() const { return wgt_; }
 
 protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
-  vector<double> x_; //!< Possible outcomes
-  DiscreteIndex di_; //!< discrete probability distribution of
-                     //!< outcome indices
+  vector<double> x_;   //!< Possible outcomes
+  vector<double> wgt_; //!< Importance weights (empty if unbiased)
+  DiscreteIndex di_;   //!< Discrete probability distribution of outcome indices
 };
 
 //==============================================================================
@@ -352,16 +341,17 @@ public:
 
   double integral() const override { return integral_; }
 
-  void set_bias_mixture(pugi::xml_node bias_node);
+  //! Override set_bias as no-op (bias handled in constructor)
+  void set_bias(std::unique_ptr<Distribution> bias) override {}
 
 protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
-  vector<UPtrDist> distribution_; //!< sub-distributions
-  DiscreteIndex di_;              //!< discrete probability distribution of
-                                  //!< sub-distribution indices
-  double integral_;               //!< integral of distribution
+  vector<UPtrDist> distribution_; //!< Sub-distributions
+  vector<double> wgt_; //!< Importance weights for component selection
+  DiscreteIndex di_;   //!< Discrete probability distribution of indices
+  double integral_;    //!< Integral of distribution
 };
 
 } // namespace openmc

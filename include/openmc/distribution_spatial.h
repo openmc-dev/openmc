@@ -131,22 +131,10 @@ public:
 
   double total_strength() { return this->elem_idx_dist_.integral(); }
 
-  // Set or get bias distribution
-  void set_bias(std::unique_ptr<DiscreteIndex> bias)
-  {
-    bias_ = std::move(bias);
-  }
-
-  const DiscreteIndex* bias() const { return bias_.get(); }
-
 private:
   int32_t mesh_idx_ {C_NONE};
-  DiscreteIndex elem_idx_dist_; //!< Distribution of
-                                //!< mesh element indices
-
-protected:
-  // Biasing distribution
-  unique_ptr<DiscreteIndex> bias_;
+  DiscreteIndex elem_idx_dist_; //!< Distribution of mesh element indices
+  vector<double> wgt_;          //!< Importance weights (empty if unbiased)
 };
 
 //==============================================================================
@@ -164,21 +152,10 @@ public:
   //! \return Sampled position
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
-  // Set or get bias distribution
-  void set_bias(std::unique_ptr<DiscreteIndex> bias)
-  {
-    bias_ = std::move(bias);
-  }
-
-  const DiscreteIndex* bias() const { return bias_.get(); }
-
 private:
   std::vector<Position> point_cloud_;
   DiscreteIndex point_idx_dist_; //!< Distribution of Position indices
-
-protected:
-  // Biasing distribution
-  unique_ptr<DiscreteIndex> bias_;
+  vector<double> wgt_;           //!< Importance weights (empty if unbiased)
 };
 
 //==============================================================================

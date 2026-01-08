@@ -38,6 +38,22 @@ double Distribution::evaluate(double x) const
     "PDF evaluation not implemented for this distribution type.");
 }
 
+void Distribution::read_bias_from_xml(pugi::xml_node node)
+{
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+
+    if (check_for_node(bias_node, "bias")) {
+      openmc::fatal_error(
+        "Distribution has a bias distribution with its own bias distribution. "
+        "Please ensure bias distributions do not have their own bias.");
+    }
+
+    UPtrDist bias = distribution_from_xml(bias_node);
+    this->set_bias(std::move(bias));
+  }
+}
+
 //==============================================================================
 // DiscreteIndex implementation
 //==============================================================================
@@ -58,17 +74,12 @@ DiscreteIndex::DiscreteIndex(span<const double> p)
 void DiscreteIndex::assign(span<const double> p)
 {
   prob_.assign(p.begin(), p.end());
-
   this->init_alias();
-  this->init_wgt();
 }
 
 void DiscreteIndex::init_alias()
 {
   normalize();
-
-  // Save normalized probabilities before Vose algorithm modifies prob_
-  prob_norm_ = prob_;
 
   // The initialization and sampling method is based on Vose
   // (DOI: 10.1109/32.92917)
@@ -110,11 +121,6 @@ void DiscreteIndex::init_alias()
   }
 }
 
-void DiscreteIndex::init_wgt()
-{
-  wgt_.assign(prob_.size(), 1.0);
-}
-
 size_t DiscreteIndex::sample(uint64_t* seed) const
 {
   // Alias sampling of discrete distribution
@@ -142,92 +148,79 @@ void DiscreteIndex::normalize()
   }
 }
 
-void DiscreteIndex::apply_bias(span<const double> b)
-{
-  // Replace the probability vector with that from the bias distribution.
-  prob_.assign(b.begin(), b.end());
-  if (prob_.size() != prob_norm_.size()) {
-    openmc::fatal_error(
-      "Size mismatch: Attempted to bias Discrete distribution with " +
-      std::to_string(prob_norm_.size()) +
-      " probability entries using a "
-      "Discrete distribution with " +
-      std::to_string(prob_.size()) +
-      " entries. Please ensure distributions have the same size.");
-  }
-
-  // Normalize biased probability vector and populate weight table.
-  normalize();
-  for (std::size_t i = 0; i < wgt_.size(); ++i) {
-    if (prob_[i] == 0.0) {
-      // Allow nonzero entries in original distribution to be given zero
-      // sampling probability in the biased distribution.
-      wgt_[i] = INFTY;
-    } else {
-      wgt_[i] = prob_norm_[i] / prob_[i];
-    }
-  }
-
-  // Reconstruct alias table for sampling from the biased distribution.
-  // Values from unbiased prob_actual_ may be recovered using weight table.
-  this->init_alias();
-}
-
 //==============================================================================
 // Discrete implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node) : di_(node)
+Discrete::Discrete(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
-
   std::size_t n = params.size() / 2;
 
+  // First half is x values, second half is probabilities
   x_.assign(params.begin(), params.begin() + n);
+  const double* p = params.data() + n;
+
+  // Check for bias
+  if (check_for_node(node, "bias")) {
+    // Get bias probabilities
+    auto bias_params = get_node_array<double>(node, "bias");
+    if (bias_params.size() != n) {
+      openmc::fatal_error(
+        "Size mismatch: Attempted to bias Discrete distribution with " +
+        std::to_string(n) + " probability entries using a bias with " +
+        std::to_string(bias_params.size()) +
+        " entries. Please ensure distributions have the same size.");
+    }
+
+    // Normalize original probabilities
+    double sum_p = std::accumulate(p, p + n, 0.0);
+    vector<double> p_norm(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      p_norm[i] = p[i] / sum_p;
+    }
+
+    // Normalize bias probabilities
+    double sum_b = std::accumulate(bias_params.begin(), bias_params.end(), 0.0);
+    vector<double> b_norm(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      b_norm[i] = bias_params[i] / sum_b;
+    }
+
+    // Compute importance weights
+    wgt_.resize(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      if (b_norm[i] == 0.0) {
+        wgt_[i] = INFTY;
+      } else {
+        wgt_[i] = p_norm[i] / b_norm[i];
+      }
+    }
+
+    // Initialize DiscreteIndex with bias probabilities for sampling
+    di_.assign(bias_params);
+  } else {
+    // Unbiased case: wgt_ stays empty
+    di_.assign({p, n});
+  }
 }
 
 Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
 {
-
   x_.assign(x, x + n);
 }
 
 std::pair<double, double> Discrete::sample(uint64_t* seed) const
 {
-  size_t sample_index = di_.sample(seed);
-  return {x_[sample_index], di_.weight()[sample_index]};
+  size_t idx = di_.sample(seed);
+  double wgt = wgt_.empty() ? 1.0 : wgt_[idx];
+  return {x_[idx], wgt};
 }
 
 double Discrete::sample_unbiased(uint64_t* seed) const
 {
-  // Discrete uses internal alias-table biasing for weighted sampling,
-  // but unbiased sampling should return only the value.
-  size_t sample_index = di_.sample(seed);
-  return x_[sample_index];
-}
-
-double Discrete::evaluate(double x) const
-{
-  // This function is not called when sampling from a Discrete distribution,
-  // even if it is biased. This is because Discrete distributions may only
-  // be biased by another Discrete distribution. It is only called when a
-  // Discrete distribution is used to bias another kind of distribution.
-  for (size_t i = 0; i < x_.size(); ++i) {
-    if (std::fabs(x_[i] - x) <= FP_PRECISION) {
-      // Return the normalized probability (before Vose transformation)
-      return di_.prob_norm()[i];
-    }
-  }
-  return 0.0;
-}
-
-void Discrete::set_bias_discrete(pugi::xml_node node)
-{
-  // Takes the probability vector from a bias distribution and applies it to
-  // the existing DiscreteIndex.
-  auto bias_params = get_node_array<double>(node, "bias");
-
-  di_.apply_bias(bias_params);
+  size_t idx = di_.sample(seed);
+  return x_[idx];
 }
 
 //==============================================================================
@@ -244,6 +237,8 @@ Uniform::Uniform(pugi::xml_node node)
 
   a_ = params.at(0);
   b_ = params.at(1);
+
+  read_bias_from_xml(node);
 }
 
 double Uniform::sample_unbiased(uint64_t* seed) const
@@ -281,6 +276,8 @@ PowerLaw::PowerLaw(pugi::xml_node node)
   offset_ = std::pow(a, n + 1);
   span_ = std::pow(b, n + 1) - offset_;
   ninv_ = 1 / (n + 1);
+
+  read_bias_from_xml(node);
 }
 
 double PowerLaw::evaluate(double x) const
@@ -308,6 +305,8 @@ double PowerLaw::sample_unbiased(uint64_t* seed) const
 Maxwell::Maxwell(pugi::xml_node node)
 {
   theta_ = std::stod(get_node_value(node, "parameters"));
+
+  read_bias_from_xml(node);
 }
 
 double Maxwell::sample_unbiased(uint64_t* seed) const
@@ -334,6 +333,8 @@ Watt::Watt(pugi::xml_node node)
 
   a_ = params.at(0);
   b_ = params.at(1);
+
+  read_bias_from_xml(node);
 }
 
 double Watt::sample_unbiased(uint64_t* seed) const
@@ -361,6 +362,8 @@ Normal::Normal(pugi::xml_node node)
 
   mean_value_ = params.at(0);
   std_dev_ = params.at(1);
+
+  read_bias_from_xml(node);
 }
 
 double Normal::sample_unbiased(uint64_t* seed) const
@@ -405,6 +408,8 @@ Tabular::Tabular(pugi::xml_node node)
   const double* x = params.data();
   const double* p = x + n;
   init(x, p, n);
+
+  read_bias_from_xml(node);
 }
 
 Tabular::Tabular(const double* x, const double* p, int n, Interpolation interp,
@@ -580,36 +585,70 @@ Mixture::Mixture(pugi::xml_node node)
   // Save sum of weighted probabilities
   integral_ = std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
 
-  // Initialize DiscreteIndex with probability vector, which will normalize
-  di_.assign(probabilities);
-}
+  std::size_t n = probabilities.size();
 
-void Mixture::set_bias_mixture(pugi::xml_node node)
-{
-  // Takes the probability vector from a bias distribution and applies it to
-  // the existing DiscreteIndex.
-  auto bias_params = get_node_array<double>(node, "bias");
+  // Check for bias
+  if (check_for_node(node, "bias")) {
+    // Get bias probabilities
+    auto bias_params = get_node_array<double>(node, "bias");
+    if (bias_params.size() != n) {
+      openmc::fatal_error(
+        "Size mismatch: Attempted to bias Mixture distribution with " +
+        std::to_string(n) + " components using a bias with " +
+        std::to_string(bias_params.size()) +
+        " entries. Please ensure distributions have the same size.");
+    }
 
-  di_.apply_bias(bias_params);
+    // Normalize original probabilities
+    double sum_p =
+      std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
+    vector<double> p_norm(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      p_norm[i] = probabilities[i] / sum_p;
+    }
+
+    // Normalize bias probabilities
+    double sum_b = std::accumulate(bias_params.begin(), bias_params.end(), 0.0);
+    vector<double> b_norm(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      b_norm[i] = bias_params[i] / sum_b;
+    }
+
+    // Compute importance weights
+    wgt_.resize(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      if (b_norm[i] == 0.0) {
+        wgt_[i] = INFTY;
+      } else {
+        wgt_[i] = p_norm[i] / b_norm[i];
+      }
+    }
+
+    // Initialize DiscreteIndex with bias probabilities for sampling
+    di_.assign(bias_params);
+  } else {
+    // Unbiased case: wgt_ stays empty
+    di_.assign(probabilities);
+  }
 }
 
 std::pair<double, double> Mixture::sample(uint64_t* seed) const
 {
-  size_t sample_index = di_.sample(seed);
+  size_t idx = di_.sample(seed);
 
   // Sample the chosen distribution
-  std::pair<double, double> sample_pair =
-    distribution_[sample_index]->sample(seed);
+  auto [val, sub_wgt] = distribution_[idx]->sample(seed);
 
-  return {sample_pair.first, di_.weight()[sample_index] * sample_pair.second};
+  // Multiply by component selection weight
+  double mix_wgt = wgt_.empty() ? 1.0 : wgt_[idx];
+  return {val, mix_wgt * sub_wgt};
 }
 
 double Mixture::sample_unbiased(uint64_t* seed) const
 {
-  // Unbiased sampling: choose a sub-distribution based on normalized probs
-  size_t sample_index = di_.sample(seed);
-  auto sample_pair = distribution_[sample_index]->sample(seed);
-  return sample_pair.first;
+  size_t idx = di_.sample(seed);
+  auto [val, wgt] = distribution_[idx]->sample(seed);
+  return val;
 }
 
 //==============================================================================
@@ -624,7 +663,9 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   // Determine type of distribution
   std::string type = get_node_value(node, "type", true, true);
 
-  // Allocate extension of Distribution
+  // Allocate extension of Distribution. Bias handling is done in each
+  // constructor via read_bias_from_xml() or special handling for
+  // Discrete/Mixture.
   UPtrDist dist;
   if (type == "uniform") {
     dist = UPtrDist {new Uniform(node)};
@@ -648,26 +689,6 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
       "function in Python. Please regenerate your XML files.");
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
-  }
-
-  // Check for biasing distribution
-  if (check_for_node(node, "bias")) {
-    pugi::xml_node bias_node = node.child("bias");
-
-    if (check_for_node(bias_node, "bias")) {
-      openmc::fatal_error(
-        "Distribution of type " + type +
-        " has a bias distribution with its "
-        "own bias distribution. Please ensure bias distributions do not have "
-        "their own bias.");
-    } else if (type == "discrete") {
-      static_cast<Discrete*>(dist.get())->set_bias_discrete(node);
-    } else if (type == "mixture") {
-      static_cast<Mixture*>(dist.get())->set_bias_mixture(node);
-    } else {
-      UPtrDist bias = distribution_from_xml(bias_node);
-      dist->set_bias(std::move(bias));
-    }
   }
 
   return dist;

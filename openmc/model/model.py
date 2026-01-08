@@ -16,6 +16,8 @@ import h5py
 import lxml.etree as ET
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.stats import gmean
+from uncertainties import ufloat, UFloat
 
 import openmc
 import openmc._xml as xml
@@ -2444,7 +2446,7 @@ class Model:
         deriv_material: int,
         deriv_nuclide: str | None = None,
         deriv_to_x_func: Callable[[float], float] | None = None,
-    ) -> tuple[float | None, float | None]:
+    ) -> UFloat | None:
         r"""Extract dk_eff/dx from StatePoint using derivative tallies.
 
         This method implements a generic approach to compute the derivative of
@@ -2485,9 +2487,8 @@ class Model:
 
         Returns
         -------
-        tuple
-            (dk_dx, dk_dx_std) if base and derivative tallies found,
-            else (None, None). For nuclide_density without deriv_to_x_func,
+        UFloat if base and derivative tallies found, else None.
+            For nuclide_density without deriv_to_x_func,
             returned derivative is dk/dN (where N is number density in atoms/cm³).
         """
         try:
@@ -2520,31 +2521,21 @@ class Model:
             # If we found all required tallies, compute dk/dx
             if (base_fission is not None and base_absorption is not None and
                     deriv_fission is not None and deriv_absorption is not None):
-                F = float(np.sum(base_fission.mean))
-                A = float(np.sum(base_absorption.mean))
-                dF_dx = float(np.sum(deriv_fission.mean))
-                dA_dx = float(np.sum(deriv_absorption.mean))
+                def tally_to_ufloat(t):
+                    return ufloat(t.mean.squeeze(),
+                                  t.std_dev.squeeze())
+                
+                F = tally_to_ufloat(base_fission)
+                A = tally_to_ufloat(base_absorption)
+                dF_dx = tally_to_ufloat(deriv_fission)
+                dA_dx = tally_to_ufloat(deriv_absorption)
                 
                 print(f'  [DERIV-EXTRACT] Found all 4 tallies for {deriv_variable}')
-                print(f'  [DERIV-EXTRACT] F={F:.6e}, A={A:.6e}, dF/dx={dF_dx:.6e}, dA/dx={dA_dx:.6e}')
+                print(f'  [DERIV-EXTRACT] F={F.n:.6e}, A={A.n:.6e}, dF/dx={dF_dx.n:.6e}, dA/dx={dA_dx.n:.6e}')
 
                 # Quotient rule: dk/dx = (A * dF/dx - F * dA/dx) / A^2
                 dk_dx = (A * dF_dx - F * dA_dx) / (A * A)
                 print(f'  [DERIV-EXTRACT] Computed dk/dx = {dk_dx:.6e} (before any conversion)')
-
-                # Uncertainty propagation (linear)
-                sig_F = float(np.sum(base_fission.std_dev))
-                sig_A = float(np.sum(base_absorption.std_dev))
-                sig_dF = float(np.sum(deriv_fission.std_dev))
-                sig_dA = float(np.sum(deriv_absorption.std_dev))
-
-                # Partial derivatives for error propagation:
-                # ∂(dk/dx)/∂(dF) = 1/A
-                # ∂(dk/dx)/∂(dA) = -F/A²
-                sig_dk = math.sqrt(
-                    (sig_dF / A) ** 2 +
-                    (sig_dA * F / (A * A)) ** 2
-                )
 
                 # For nuclide_density: convert dk/dN to dk/dx if conversion provided
                 if deriv_variable == 'nuclide_density' and deriv_to_x_func is not None:
@@ -2553,13 +2544,12 @@ class Model:
                         # It should return the scaled derivative (dk/dx = (dk/dN) * (dN/dx))
                         dk_dx_before = dk_dx
                         dk_dx = deriv_to_x_func(dk_dx)
-                        sig_dk = deriv_to_x_func(sig_dk)
                         print(f'  [DERIV-EXTRACT] Applied deriv_to_x_func: dk/dN={dk_dx_before:.6e} -> dk/dx={dk_dx:.6e}')
                     except Exception as e:
                         print(f'  [DERIV-EXTRACT] WARNING: deriv_to_x_func failed: {e}')
                         pass  # Silently ignore conversion errors
 
-                return float(dk_dx), float(sig_dk)
+                return dk_dx
             else:
                 print(f'  [DERIV-EXTRACT] Missing tallies: base_fission={base_fission is not None}, '
                       f'base_absorption={base_absorption is not None}, '
@@ -2570,7 +2560,7 @@ class Model:
             print(f"  [DERIV-EXTRACT] ERROR: Could not extract derivative: {e}")
             pass
 
-        return None, None
+        return None
 
     def keff_search(
         self,
@@ -2594,7 +2584,7 @@ class Model:
         deriv_variable: str | None = None,
         deriv_material: int | None = None,
         deriv_nuclide: str | None = None,
-        deriv_to_x_func: Callable[[float], float] | None = None,
+        deriv_to_x_func: Callable[[UFloat], UFloat] | None = None,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
@@ -2779,33 +2769,35 @@ class Model:
 
             # Extract keff and its uncertainty
             dk_dx = None
-            dk_dx_std = None
             with openmc.StatePoint(sp_filepath) as sp:
                 keff = sp.keff
 
                 # If requested, extract derivative constraint using generic method
                 if use_derivative_tallies and deriv_variable and deriv_material:
-                    dk_dx, dk_dx_std = self._extract_derivative_constraint(
+                    dk_dx = self._extract_derivative_constraint(
                         sp, deriv_variable, deriv_material, deriv_nuclide,
                         deriv_to_x_func
                     )
                     if output and dk_dx is not None:
-                        print(f'  [DERIV] Extracted dk/dx={dk_dx:.6e} ± {dk_dx_std:.6e}')
+                        print(f'  [DERIV] Extracted dk/dx={dk_dx:.6e}')
 
             if output:
                 nonlocal count
                 count += 1
-                deriv_str = f', dk/dx={dk_dx:.6g}' if dk_dx is not None else ''
+                deriv_str = f', dk/dx={dk_dx.n:.6g}' if dk_dx is not None else ''
                 print(f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}{deriv_str}')
 
             xs.append(float(x))
             fs.append(float(keff.n - target))
             ss.append(float(keff.s))
             gs.append(int(batches))
-            dks.append(dk_dx if dk_dx is not None else 0.0)
-            dks_std.append(dk_dx_std if dk_dx_std is not None else 0.0)
+            dks.append(dk_dx.n if dk_dx is not None else 0.0)
+            dks_std.append(dk_dx.s if dk_dx is not None else 0.0)
             
-            return fs[-1], ss[-1], dk_dx, dk_dx_std
+            return (fs[-1],
+                    ss[-1],
+                    dk_dx.n if dk_dx is not None else None,
+                    dk_dx.s if dk_dx is not None else None)
 
         # Default b0 to current model settings if not explicitly provided
         if b0 is None:
@@ -2838,11 +2830,11 @@ class Model:
                     # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
                     #         + sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
                     
-                    xs_fit = np.array([xs[i] for i in range(max(0, len(xs)-m), len(xs))])
-                    fs_fit = np.array([fs[i] for i in range(max(0, len(xs)-m), len(xs))])
-                    ss_fit = np.array([ss[i] for i in range(max(0, len(xs)-m), len(xs))])
-                    dks_fit = np.array([dks[i] for i in range(max(0, len(xs)-m), len(xs))])
-                    dks_std_fit = np.array([dks_std[i] for i in range(max(0, len(xs)-m), len(xs))])
+                    xs_fit = np.array(xs[-m:])
+                    fs_fit = np.array(fs[-m:])
+                    ss_fit = np.array(ss[-m:])
+                    dks_fit = np.array(dks[-m:])
+                    dks_std_fit = np.array(dks_std[-m:])
                     
                     # Build augmented system: minimize both point residuals and gradient errors
                     # Points with valid derivatives contribute dual constraints
@@ -2876,7 +2868,7 @@ class Model:
                         abs_derivs = np.abs(valid_deriv_values)
                         abs_derivs = abs_derivs[abs_derivs > 0]  # Exclude zeros
                         if len(abs_derivs) > 0:
-                            deriv_scale = np.exp(np.mean(np.log(abs_derivs)))  # Geometric mean
+                            deriv_scale = gmean(abs_derivs)  # Geometric mean
                         else:
                             deriv_scale = 1.0
                         

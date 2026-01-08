@@ -1,8 +1,12 @@
 from pathlib import Path
 
 import numpy as np
+from scipy.interpolate import interp1d
+from scipy.constants import eV, gram, pico
 
 import openmc.checkvalue as cv
+from .nist126 import NIST126_AIR
+from openmc.data import linearize
 
 _FILES = {
     ('icrp74', 'neutron'): Path('icrp74') / 'neutrons.txt',
@@ -60,7 +64,7 @@ def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
 
     Parameters
     ----------
-    particle : {'neutron', 'photon', 'photon kerma', 'electron', 'positron'}
+    particle : {'neutron', 'photon', 'photon kerma', 'electron', 'positron', 'air kerma'}
         Incident particle
     geometry : {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'}
         Irradiation geometry assumed. Refer to ICRP-116 (Section 3.2) for the
@@ -73,10 +77,19 @@ def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
     energy : numpy.ndarray
         Energies at which dose conversion coefficients are given
     dose_coeffs : numpy.ndarray
-        Effective dose coefficients in [pSv cm^2] at provided energies. For
-        'photon kerma', the coefficients are given in [Sv/Gy].
+        Effective dose coefficients in [pSv cm^2] at provided energies. 
+        For 'photon kerma', the coefficients are given in [Sv/Gy].
+        For 'air kerma', the coefficients are given in [pGy cm^2].
 
     """
+    
+    if particle == 'air kerma':
+      interp = interp1d(NIST126_AIR[:,0], NIST126_AIR[:,1])
+      
+      def func(e):
+          return e*interp(e)*eV/gram/pico
+          
+      return linearize(interp.x, func)
 
     cv.check_value('geometry', geometry, {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'})
     cv.check_value('data_source', data_source, {'icrp74', 'icrp116'})

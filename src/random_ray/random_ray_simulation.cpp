@@ -87,8 +87,8 @@ void validate_random_ray_inputs()
         break;
       default:
         fatal_error(
-          "Invalid score specified. Only flux, total, fission, nu-fission, and "
-          "event scores are supported in random ray mode.");
+          "Invalid score specified. Only flux, total, fission, nu-fission, "
+          "kappa-fission, and event scores are supported in random ray mode.");
       }
     }
 

@@ -1859,6 +1859,7 @@ class Model:
         correction: str | None,
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
+        gen_kappa_fission: bool = False,
     ):
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
@@ -1897,6 +1898,9 @@ class Model:
         source_energy : openmc.stats.Univariate, optional
             Energy distribution to use when generating MGXS data, replacing any
             existing sources in the model.
+        gen_kappa_fission : bool, optional
+            Whether fission heating cross sections (kappa-fission) should be
+            generated.
         """
         mgxs_sets = []
         for material in self.materials:
@@ -2024,6 +2028,7 @@ class Model:
         correction: str | None,
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
+        gen_kappa_fission: bool = False,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -2065,6 +2070,9 @@ class Model:
             no sources are defined on the model and the run mode is
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added.
+        gen_kappa_fission : bool, optional
+            Whether fission heating cross sections (kappa-fission) should be
+            generated.
         """
         model = openmc.Model()
         model.materials = self.materials
@@ -2108,6 +2116,7 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        gen_kappa_fission: bool = False,
     ) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
@@ -2132,6 +2141,9 @@ class Model:
             "P0".
         directory : PathLike
             Directory to run the simulation in, so as to contain XML files.
+        gen_kappa_fission : bool, optional
+            Whether fission heating cross sections (kappa-fission) should be
+            generated.
         """
         model = copy.deepcopy(self)
         model.tallies = openmc.Tallies()
@@ -2162,6 +2174,7 @@ class Model:
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
         source_energy: openmc.stats.Univariate | None = None,
+        gen_kappa_fission: bool = False,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2202,6 +2215,9 @@ class Model:
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added. Note that this argument is only used when using the
             "stochastic_slab" or "infinite_medium" MGXS generation methods.
+        gen_kappa_fission : bool, optional
+            Whether fission heating cross sections (kappa-fission) should be
+            generated.
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
@@ -2231,13 +2247,15 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
+                        gen_kappa_fission)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, gen_kappa_fission)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
+                        gen_kappa_fission)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')

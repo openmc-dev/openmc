@@ -87,6 +87,28 @@ def test_merge_discrete():
     assert triple.integral() == pytest.approx(6.0)
 
 
+def test_merge_discrete_with_bias():
+    # Two discrete distributions with different biases
+    d1 = openmc.stats.Discrete([1.0, 2.0], [0.5, 0.5])
+    d2 = openmc.stats.Discrete([2.0, 3.0], [0.3, 0.7], bias=[0.1, 0.9])
+
+    merged = openmc.stats.Discrete.merge([d1, d2], [0.6, 0.4])
+    exp_mean = 0.6 * d1.mean() + 0.4 * d2.mean()
+
+    # Verify merged distribution has correct x values
+    assert set(merged.x) == {1.0, 2.0, 3.0}
+
+    # Bias should not be changed in original distributions
+    assert d1.bias is None
+    assert np.all(d2.bias == [0.1, 0.9])
+
+    # Sample and verify bias is applied correctly
+    samples, weights = merged.sample(10_000)
+
+    # Verify weighted mean matches expected unbiased mean
+    assert_sample_mean(samples*weights, exp_mean)
+
+
 def test_clip_discrete():
     # Create discrete distribution with two points that are not important, one
     # because the x value is very small, and one because the p value is very

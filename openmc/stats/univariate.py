@@ -1,9 +1,9 @@
 from __future__ import annotations
-import math
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
+from math import sqrt, pi, exp
 from numbers import Real
 from warnings import warn
 
@@ -406,9 +406,10 @@ class Discrete(Univariate):
             b_merged = defaultdict(float)
 
             # Generate any missing bias distributions
-            for d in dists:
+            dists = dists.copy()
+            for i, d in enumerate(dists):
                 if d.bias is None:
-                    d.bias = d.p
+                    dists[i] = Discrete(d.x, d.p, bias=d.p)
 
             for dist, p_dist in zip(dists, probs):
                 for x, p, b in zip(dist.x, dist.p, dist.bias):
@@ -915,11 +916,11 @@ class Maxwell(Univariate):
         if rng is None:
             rng = np.random.default_rng()
         r1, r2, r3 = rng.random((3, n_samples))
-        c = np.cos(0.5 * np.pi * r3)
+        c = np.cos(0.5 * pi * r3)
         return -t * (np.log(r1) + np.log(r2) * c * c)
 
     def evaluate(self, E):
-        c = (2/np.sqrt(np.pi))*(self.theta**(-3/2))
+        c = (2/sqrt(pi))*(self.theta**(-3/2))
         return c*np.sqrt(E)*np.exp(-E/self.theta)
 
     def to_xml_element(self, element_name: str):
@@ -1054,7 +1055,7 @@ class Watt(Univariate):
         return result, np.ones_like(result)
 
     def evaluate(self, E):
-        c = 2.0/(math.sqrt(np.pi * self.b) * (self.a**1.5) * math.exp(self.a*self.b/4))
+        c = 2.0/(sqrt(pi * self.b) * (self.a**1.5) * exp(self.a*self.b/4))
         return c*np.exp(-E/self.a)*np.sinh(np.sqrt(self.b*E))
 
     def to_xml_element(self, element_name: str):
@@ -1184,7 +1185,7 @@ class Normal(Univariate):
         return result, np.ones_like(result)
 
     def evaluate(self, x):
-        return (1/(np.sqrt(2/np.pi)*self.std_dev))*np.exp(-((x-self.mean_value)**2)/(2*(self.std_dev**2)))
+        return (1/(sqrt(2/pi)*self.std_dev))*np.exp(-((x-self.mean_value)**2)/(2*(self.std_dev**2)))
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Normal distribution
@@ -1266,7 +1267,7 @@ def muir(e0: float, m_rat: float, kt: float, bias: Univariate = None):
 
     """
     # https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-    std_dev = math.sqrt(2 * e0 * kt / m_rat)
+    std_dev = sqrt(2 * e0 * kt / m_rat)
     return Normal(e0, std_dev, bias)
 
 

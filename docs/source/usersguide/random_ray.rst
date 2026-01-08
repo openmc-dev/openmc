@@ -513,6 +513,7 @@ Supported scores:
     - total
     - fission
     - nu-fission
+    - kappa-fission
     - events
 
 Supported Estimators:
@@ -645,7 +646,8 @@ model to use these multigroup cross sections. An example is given below::
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
       correction=None,
-      source_energy=None
+      source_energy=None,
+      gen_kappa_fission=True
   )
 
 The most important parameter to set is the ``method`` parameter, which can be

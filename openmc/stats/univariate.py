@@ -10,6 +10,7 @@ from warnings import warn
 import lxml.etree as ET
 import numpy as np
 from scipy.integrate import trapezoid
+import scipy
 
 import openmc.checkvalue as cv
 from .._xml import get_elem_list, get_text
@@ -104,9 +105,9 @@ class Univariate(EqualityMixin, ABC):
         else:
             if bias.bias is not None:
                 raise RuntimeError('Biasing distributions should not have their own bias!')
-            biased_sample, _ = bias.sample(n_samples=n_samples, seed=seed)
-            wgt = np.array([self.evaluate(s) / bias.evaluate(s) for s in biased_sample])
-            return biased_sample, wgt
+            x, _ = bias.sample(n_samples=n_samples, seed=seed)
+            wgt = self.evaluate(x) / bias.evaluate(x)
+            return x, wgt
 
     def integral(self):
         """Return integral of distribution
@@ -610,14 +611,8 @@ class Uniform(Univariate):
         result = rng.uniform(self.a, self.b, n_samples)
         return result, np.ones_like(result)
 
-
     def evaluate(self, x):
-        if x <= self.a:
-            return 0
-        elif x >= self.b:
-            return 0
-        else:
-            return 1/(self.b - self.a)
+        return np.where((self.a <= x) & (x <= self.b), 1/(self.b - self.a), 0.0)
 
     def mean(self) -> float:
         """Return mean of the uniform distribution
@@ -786,17 +781,9 @@ class PowerLaw(Univariate):
         result = np.power(offset + xi * span, 1/pwr)
         return result, np.ones_like(result)
 
-
     def evaluate(self, x):
-        if x <= self.a:
-            return 0
-        elif x >= self.b:
-            return 0
-        else:
-            pwr = self.n + 1
-            normalization_factor = pwr/(self.b**pwr - self.a**pwr)
-            return normalization_factor*(np.abs(x)**self.n)
-
+        c = (self.n + 1)/(self.b**(self.n + 1) - self.a**(self.n + 1))
+        return np.where((self.a <= x) & (x <= self.b), c * np.abs(x)**self.n, 0.0)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the power law distribution
@@ -915,13 +902,10 @@ class Maxwell(Univariate):
     def sample_maxwell(t, n_samples: int, rng=None):
         if rng is None:
             rng = np.random.default_rng()
-        r1, r2, r3 = rng.random((3, n_samples))
-        c = np.cos(0.5 * pi * r3)
-        return -t * (np.log(r1) + np.log(r2) * c * c)
+        return rng.gamma(1.5, t, n_samples)
 
     def evaluate(self, E):
-        c = (2/sqrt(pi))*(self.theta**(-3/2))
-        return c*np.sqrt(E)*np.exp(-E/self.theta)
+        return scipy.stats.gamma.pdf(E, 1.5, scale=self.theta)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Maxwellian distribution
@@ -1185,7 +1169,7 @@ class Normal(Univariate):
         return result, np.ones_like(result)
 
     def evaluate(self, x):
-        return (1/(sqrt(2/pi)*self.std_dev))*np.exp(-((x-self.mean_value)**2)/(2*(self.std_dev**2)))
+        return scipy.stats.norm.pdf(x, self.mean_value, self.std_dev)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Normal distribution

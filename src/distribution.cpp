@@ -17,6 +17,37 @@
 
 namespace openmc {
 
+//==============================================================================
+// Helper function for computing importance weights from biased sampling
+//==============================================================================
+
+vector<double> compute_importance_weights(
+  const vector<double>& p, const vector<double>& b)
+{
+  std::size_t n = p.size();
+
+  // Normalize original probabilities
+  double sum_p = std::accumulate(p.begin(), p.end(), 0.0);
+  vector<double> p_norm(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    p_norm[i] = p[i] / sum_p;
+  }
+
+  // Normalize bias probabilities
+  double sum_b = std::accumulate(b.begin(), b.end(), 0.0);
+  vector<double> b_norm(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    b_norm[i] = b[i] / sum_b;
+  }
+
+  // Compute importance weights
+  vector<double> weights(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    weights[i] = (b_norm[i] == 0.0) ? INFTY : p_norm[i] / b_norm[i];
+  }
+  return weights;
+}
+
 std::pair<double, double> Distribution::sample(uint64_t* seed) const
 {
   if (bias_) {
@@ -173,34 +204,14 @@ Discrete::Discrete(pugi::xml_node node)
         " entries. Please ensure distributions have the same size.");
     }
 
-    // Normalize original probabilities
-    double sum_p = std::accumulate(p, p + n, 0.0);
-    vector<double> p_norm(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      p_norm[i] = p[i] / sum_p;
-    }
-
-    // Normalize bias probabilities
-    double sum_b = std::accumulate(bias_params.begin(), bias_params.end(), 0.0);
-    vector<double> b_norm(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      b_norm[i] = bias_params[i] / sum_b;
-    }
-
     // Compute importance weights
-    wgt_.resize(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      if (b_norm[i] == 0.0) {
-        wgt_[i] = INFTY;
-      } else {
-        wgt_[i] = p_norm[i] / b_norm[i];
-      }
-    }
+    vector<double> p_vec(p, p + n);
+    weight_ = compute_importance_weights(p_vec, bias_params);
 
     // Initialize DiscreteIndex with bias probabilities for sampling
     di_.assign(bias_params);
   } else {
-    // Unbiased case: wgt_ stays empty
+    // Unbiased case: weight_ stays empty
     di_.assign({p, n});
   }
 }
@@ -213,7 +224,7 @@ Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
 std::pair<double, double> Discrete::sample(uint64_t* seed) const
 {
   size_t idx = di_.sample(seed);
-  double wgt = wgt_.empty() ? 1.0 : wgt_[idx];
+  double wgt = weight_.empty() ? 1.0 : weight_[idx];
   return {x_[idx], wgt};
 }
 
@@ -599,35 +610,13 @@ Mixture::Mixture(pugi::xml_node node)
         " entries. Please ensure distributions have the same size.");
     }
 
-    // Normalize original probabilities
-    double sum_p =
-      std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
-    vector<double> p_norm(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      p_norm[i] = probabilities[i] / sum_p;
-    }
-
-    // Normalize bias probabilities
-    double sum_b = std::accumulate(bias_params.begin(), bias_params.end(), 0.0);
-    vector<double> b_norm(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      b_norm[i] = bias_params[i] / sum_b;
-    }
-
     // Compute importance weights
-    wgt_.resize(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      if (b_norm[i] == 0.0) {
-        wgt_[i] = INFTY;
-      } else {
-        wgt_[i] = p_norm[i] / b_norm[i];
-      }
-    }
+    weight_ = compute_importance_weights(probabilities, bias_params);
 
     // Initialize DiscreteIndex with bias probabilities for sampling
     di_.assign(bias_params);
   } else {
-    // Unbiased case: wgt_ stays empty
+    // Unbiased case: weight_ stays empty
     di_.assign(probabilities);
   }
 }
@@ -640,7 +629,7 @@ std::pair<double, double> Mixture::sample(uint64_t* seed) const
   auto [val, sub_wgt] = distribution_[idx]->sample(seed);
 
   // Multiply by component selection weight
-  double mix_wgt = wgt_.empty() ? 1.0 : wgt_[idx];
+  double mix_wgt = weight_.empty() ? 1.0 : weight_[idx];
   return {val, mix_wgt * sub_wgt};
 }
 

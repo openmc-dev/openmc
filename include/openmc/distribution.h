@@ -16,6 +16,17 @@
 namespace openmc {
 
 //==============================================================================
+// Helper function for computing importance weights from biased sampling
+//==============================================================================
+
+//! Compute importance weights for biased sampling
+//! \param p Unnormalized original probability vector
+//! \param b Unnormalized bias probability vector
+//! \return Vector of importance weights (p_norm[i] / b_norm[i])
+vector<double> compute_importance_weights(
+  const vector<double>& p, const vector<double>& b);
+
+//==============================================================================
 //! Abstract class representing a univariate probability distribution
 //==============================================================================
 
@@ -122,15 +133,15 @@ public:
   const vector<double>& x() const { return x_; }
   const vector<double>& prob() const { return di_.prob(); }
   const vector<size_t>& alias() const { return di_.alias(); }
-  const vector<double>& wgt() const { return wgt_; }
+  const vector<double>& weight() const { return weight_; }
 
 protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
-  vector<double> x_;   //!< Possible outcomes
-  vector<double> wgt_; //!< Importance weights (empty if unbiased)
-  DiscreteIndex di_;   //!< Discrete probability distribution of outcome indices
+  vector<double> x_;      //!< Possible outcomes
+  vector<double> weight_; //!< Importance weights (empty if unbiased)
+  DiscreteIndex di_; //!< Discrete probability distribution of outcome indices
 };
 
 //==============================================================================
@@ -349,9 +360,9 @@ protected:
 
 private:
   vector<UPtrDist> distribution_; //!< Sub-distributions
-  vector<double> wgt_; //!< Importance weights for component selection
-  DiscreteIndex di_;   //!< Discrete probability distribution of indices
-  double integral_;    //!< Integral of distribution
+  vector<double> weight_; //!< Importance weights for component selection
+  DiscreteIndex di_;      //!< Discrete probability distribution of indices
+  double integral_;       //!< Integral of distribution
 };
 
 } // namespace openmc

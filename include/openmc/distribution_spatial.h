@@ -134,7 +134,7 @@ public:
 private:
   int32_t mesh_idx_ {C_NONE};
   DiscreteIndex elem_idx_dist_; //!< Distribution of mesh element indices
-  vector<double> wgt_;          //!< Importance weights (empty if unbiased)
+  vector<double> weight_;       //!< Importance weights (empty if unbiased)
 };
 
 //==============================================================================
@@ -155,7 +155,7 @@ public:
 private:
   std::vector<Position> point_cloud_;
   DiscreteIndex point_idx_dist_; //!< Distribution of Position indices
-  vector<double> wgt_;           //!< Importance weights (empty if unbiased)
+  vector<double> weight_;        //!< Importance weights (empty if unbiased)
 };
 
 //==============================================================================

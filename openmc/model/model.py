@@ -2487,7 +2487,8 @@ class Model:
 
         Returns
         -------
-        UFloat if base and derivative tallies found, else None.
+        UFloat | None
+            dk/dx if base and derivative tallies found, else None.
             For nuclide_density without deriv_to_x_func,
             returned derivative is dk/dN (where N is number density in atoms/cm³).
         """

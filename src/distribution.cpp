@@ -21,14 +21,14 @@ std::pair<double, double> Distribution::sample(uint64_t* seed) const
 {
   if (bias_) {
     // Sample from the bias distribution and compute importance weight
-    auto biased = bias_->sample(seed);
-    double val = biased.first;
+    double val = bias_->sample_unbiased(seed);
     double wgt = this->evaluate(val) / bias_->evaluate(val);
     return {val, wgt};
+  } else {
+    // Unbiased sampling: return sampled value with weight 1.0
+    double val = sample_unbiased(seed);
+    return {val, 1.0};
   }
-  // Unbiased sampling: return sampled value with weight 1.0
-  double val = sample_unbiased(seed);
-  return {val, 1.0};
 }
 
 // PDF evaluation not supported for all distribution types

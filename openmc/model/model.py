@@ -1729,12 +1729,14 @@ class Model:
         if correction == 'P0':
             mgxs_lib.mgxs_types = [
                 'nu-transport', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
+                'kappa-fission'
             ]
         elif correction is None:
             mgxs_lib.mgxs_types = [
                 'total', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
+                'kappa-fission'
             ]
 
         # Specify a "material" domain type for the cross section tally filters

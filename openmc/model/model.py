@@ -2445,7 +2445,7 @@ class Model:
         deriv_variable: str,
         deriv_material: int,
         deriv_nuclide: str | None = None,
-        deriv_to_x_func: Callable[[float], float] | None = None,
+        deriv_to_x_func: Callable[[UFloat], UFloat] | None = None,
     ) -> UFloat | None:
         r"""Extract dk_eff/dx from StatePoint using derivative tallies.
 
@@ -2518,48 +2518,37 @@ class Model:
                             deriv_fission = tally
                         if 'absorption' in scores and deriv_absorption is None:
                             deriv_absorption = tally
-
-            # If we found all required tallies, compute dk/dx
-            if (base_fission is not None and base_absorption is not None and
-                    deriv_fission is not None and deriv_absorption is not None):
-                def tally_to_ufloat(t):
-                    return ufloat(t.mean.squeeze(),
-                                  t.std_dev.squeeze())
+            check_type('base_fission', base_fission, openmc.Tally)
+            check_type('base_absorption', base_absorption, openmc.Tally)
+            check_type('deriv_fission', deriv_fission, openmc.Tally)
+            check_type('deriv_absorption', deriv_absorption, openmc.Tally)
+           
+            def tally_to_ufloat(t):
+                return ufloat(t.mean.squeeze(),
+                              t.std_dev.squeeze())
                 
-                F = tally_to_ufloat(base_fission)
-                A = tally_to_ufloat(base_absorption)
-                dF_dx = tally_to_ufloat(deriv_fission)
-                dA_dx = tally_to_ufloat(deriv_absorption)
+            F = tally_to_ufloat(base_fission)
+            A = tally_to_ufloat(base_absorption)
+            dF_dx = tally_to_ufloat(deriv_fission)
+            dA_dx = tally_to_ufloat(deriv_absorption)
                 
-                print(f'  [DERIV-EXTRACT] Found all 4 tallies for {deriv_variable}')
-                print(f'  [DERIV-EXTRACT] F={F.n:.6e}, A={A.n:.6e}, dF/dx={dF_dx.n:.6e}, dA/dx={dA_dx.n:.6e}')
+            print(f'  [DERIV-EXTRACT] Found all 4 tallies for {deriv_variable}')
+            print(f'  [DERIV-EXTRACT] F={F.n:.6e}, A={A.n:.6e}, dF/dx={dF_dx.n:.6e}, dA/dx={dA_dx.n:.6e}')
 
-                # Quotient rule: dk/dx = (A * dF/dx - F * dA/dx) / A^2
-                dk_dx = (A * dF_dx - F * dA_dx) / (A * A)
-                print(f'  [DERIV-EXTRACT] Computed dk/dx = {dk_dx:.6e} (before any conversion)')
+            # Quotient rule: dk/dx = (A * dF/dx - F * dA/dx) / A^2
+            dk_dx = (A * dF_dx - F * dA_dx) / (A * A)
+            print(f'  [DERIV-EXTRACT] Computed dk/dx = {dk_dx:.6e} (before any conversion)')
 
-                # For nuclide_density: convert dk/dN to dk/dx if conversion provided
-                if deriv_variable == 'nuclide_density' and deriv_to_x_func is not None:
-                    try:
-                        # deriv_to_x_func converts one derivative value
-                        # It should return the scaled derivative (dk/dx = (dk/dN) * (dN/dx))
-                        dk_dx_before = dk_dx
-                        dk_dx = deriv_to_x_func(dk_dx)
-                        print(f'  [DERIV-EXTRACT] Applied deriv_to_x_func: dk/dN={dk_dx_before:.6e} -> dk/dx={dk_dx:.6e}')
-                    except Exception as e:
-                        print(f'  [DERIV-EXTRACT] WARNING: deriv_to_x_func failed: {e}')
-                        pass  # Silently ignore conversion errors
+            # For nuclide_density: convert dk/dN to dk/dx if conversion provided
+            if deriv_variable == 'nuclide_density' and deriv_to_x_func is not None:
+                # deriv_to_x_func converts one derivative value
+                # It should return the scaled derivative (dk/dx = (dk/dN) * (dN/dx))
+                dk_dx = deriv_to_x_func(dk_dx)
+                print(f'  [DERIV-EXTRACT] Applied deriv_to_x_func: dk/dN={dk_dx_before:.6e} -> dk/dx={dk_dx:.6e}')
+            return dk_dx
 
-                return dk_dx
-            else:
-                print(f'  [DERIV-EXTRACT] Missing tallies: base_fission={base_fission is not None}, '
-                      f'base_absorption={base_absorption is not None}, '
-                      f'deriv_fission={deriv_fission is not None}, deriv_absorption={deriv_absorption is not None}')
-
-        except Exception as e:
-            # Silently fail if tallies are missing or extraction fails
-            print(f"  [DERIV-EXTRACT] ERROR: Could not extract derivative: {e}")
-            pass
+        except TypeError as e:
+            warnings.warn(f"  [DERIV-EXTRACT] ERROR: Could not extract derivative: {e}")
 
         return None
 
@@ -2708,8 +2697,6 @@ class Model:
             evaluation history (parameters, means, standard deviations, and
             batches), plus convergence status and termination reason.
 
-    
-
         """
         import openmc.lib
 
@@ -2720,22 +2707,14 @@ class Model:
         
         # Validate derivative parameters
         if use_derivative_tallies:
-            if not deriv_variable:
-                raise ValueError(
-                    "deriv_variable required when use_derivative_tallies=True. "
-                    "Supported: 'density', 'nuclide_density', 'temperature'"
-                )
-            if not deriv_material:
-                raise ValueError("deriv_material (int) required when use_derivative_tallies=True")
-            if deriv_variable == 'nuclide_density' and not deriv_nuclide:
-                raise ValueError("deriv_nuclide required when deriv_variable='nuclide_density'")
             # Validate against C++ backend supported types (see src/tallies/derivative.cpp)
-            if deriv_variable not in ('density', 'nuclide_density', 'temperature'):
-                raise ValueError(
-                    f"Unsupported deriv_variable='{deriv_variable}'. "
-                    "OpenMC C++ backend only supports: 'density', 'nuclide_density', 'temperature'"
-                )
-            
+            check_value('deriv_variable', 
+                        deriv_variable,
+                        ('density', 'nuclide_density', 'temperature'))
+            check_type('deriv_material', deriv_material, int)
+            if deriv_variable == 'nuclide_density':
+                check_type('deriv_nuclide', deriv_nuclide, str)
+    
             # Automatically add derivative tallies to the model
             self.add_derivative_tallies(deriv_variable, deriv_material, deriv_nuclide)
         
@@ -2769,9 +2748,9 @@ class Model:
                 sp_filepath = self.run(**run_kwargs)
 
             # Extract keff and its uncertainty
-            dk_dx = None
             with openmc.StatePoint(sp_filepath) as sp:
                 keff = sp.keff
+                dk_dx = None
 
                 # If requested, extract derivative constraint using generic method
                 if use_derivative_tallies and deriv_variable and deriv_material:
@@ -2785,20 +2764,23 @@ class Model:
             if output:
                 nonlocal count
                 count += 1
-                deriv_str = f', dk/dx={dk_dx.n:.6g}' if dk_dx is not None else ''
-                print(f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}{deriv_str}')
+                msg = f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}'
+                if dk_dx is not None:
+                    msg = f'{msg}, dk/dx={dk_dx.n:.6g}'
+                print(msg)
 
             xs.append(float(x))
             fs.append(float(keff.n - target))
             ss.append(float(keff.s))
             gs.append(int(batches))
-            dks.append(dk_dx.n if dk_dx is not None else 0.0)
-            dks_std.append(dk_dx.s if dk_dx is not None else 0.0)
-            
-            return (fs[-1],
-                    ss[-1],
-                    dk_dx.n if dk_dx is not None else None,
-                    dk_dx.s if dk_dx is not None else None)
+            if dk_dx is not None:
+                dks.append(dk_dx.n)
+                dks_std.append(dk_dx.s)
+                return fs[-1], ss[-1], dk_dx.n, dk_dx.s
+            else:
+                dks.append(0.0)
+                dks_std.append(0.0)
+                return fs[-1], ss[-1], None, None
 
         # Default b0 to current model settings if not explicitly provided
         if b0 is None:
@@ -2909,10 +2891,10 @@ class Model:
                     if output:
                         print(f'  [NO-DERIV-FIT] Standard fit: f(x) = {a:.6e} + {b:.6e}*x (no derivatives)')
                     return a, b
-
                 
                 a, b = custom_curve_fit()
                 x_new = float(-a / b)
+
                 # Clamp x_new to the bounds if provided
                 if x_min is not None:
                     x_new = max(x_new, x_min)

@@ -2806,6 +2806,10 @@ class Model:
                 # If derivative tallies enabled: augment with gradient constraints
                 m = min(memory, len(xs))
 
+                xs_fit = np.array(xs[-m:])
+                fs_fit = np.array(fs[-m:])
+                ss_fit = np.array(ss[-m:])
+
                 def custom_curve_fit():
                     # Perform a curve fit on f(x) = a + bx accounting for uncertainties
                     # If derivatives are available, augment with gradient constraints
@@ -2814,9 +2818,6 @@ class Model:
                         # Minimize: sum_i (f_i - a - b*x_i)^2 / sigma_i^2
                         #         + sum_j (b - dk_j/dx_j)^2 / (dk_std_j)^2
                     
-                        xs_fit = np.array(xs[-m:])
-                        fs_fit = np.array(fs[-m:])
-                        ss_fit = np.array(ss[-m:])
                         dks_fit = np.array(dks[-m:])
                         dks_std_fit = np.array(dks_std[-m:])
                     
@@ -2860,7 +2861,7 @@ class Model:
                             scaled_derivs = valid_deriv_values / deriv_scale
                             scaled_deriv_stds = valid_deriv_stds / deriv_scale
                         
-                                # Build constraint rows with normalized derivatives
+                            # Build constraint rows with normalized derivatives
                             deriv_rows = np.zeros((n_derivs, 2))
                             deriv_rows[:, 0] = 0.0  # a coefficient in gradient = 0
                             deriv_rows[:, 1] = 1.0  # b coefficient
@@ -2886,7 +2887,7 @@ class Model:
                     # in Equation (A.14)
                     (a, b), _ = curve_fit(
                         lambda x, a, b: a + b*x,
-                        xs[-m:], fs[-m:], sigma=ss[-m:], absolute_sigma=True
+                        xs_fit, fs_fit, sigma=ss_fit, absolute_sigma=True
                     )
                     if output:
                         print(f'  [NO-DERIV-FIT] Standard fit: f(x) = {a:.6e} + {b:.6e}*x (no derivatives)')

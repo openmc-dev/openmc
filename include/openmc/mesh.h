@@ -244,9 +244,7 @@ public:
   //! \return Bounding box of mesh
   BoundingBox bounding_box() const
   {
-    auto ll = this->lower_left();
-    auto ur = this->upper_right();
-    return {ll.x, ur.x, ll.y, ur.y, ll.z, ur.z};
+    return {this->lower_left(), this->upper_right()};
   }
 
   virtual Position lower_left() const = 0;

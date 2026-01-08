@@ -61,7 +61,7 @@ bool Universe::find_cell(GeometryState& p) const
 
 BoundingBox Universe::bounding_box() const
 {
-  BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
+  BoundingBox bbox = BoundingBox::inverted();
   if (cells_.size() == 0) {
     return {};
   } else {

@@ -1,6 +1,4 @@
-from math import pi
 from pathlib import Path
-import numpy as np
 import openmc
 
 

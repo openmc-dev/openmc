@@ -79,8 +79,8 @@ class Univariate(EqualityMixin, ABC):
 
         Returns
         -------
-        tuple of numpy.ndarray
-            A tuple of (samples, weights) where weights are all 1.0
+        numpy.ndarray
+            The array of sampled values
         """
         pass
 
@@ -101,7 +101,8 @@ class Univariate(EqualityMixin, ABC):
         """
         bias = getattr(self, '_bias', None)
         if bias is None:
-            return self._sample_unbiased(n_samples, seed)
+            x = self._sample_unbiased(n_samples, seed)
+            return x, np.ones_like(x)
         else:
             if bias.bias is not None:
                 raise RuntimeError('Biasing distributions should not have their own bias!')
@@ -222,7 +223,7 @@ class Discrete(Univariate):
 
     """
 
-    def __init__(self, x, p, bias = None):
+    def __init__(self, x, p, bias=None):
         self.x = x
         self.p = p
         self.bias = bias
@@ -283,7 +284,8 @@ class Discrete(Univariate):
     def sample(self, n_samples=1, seed=None):
         # Discrete uses internal bias mechanism, not base class bias
         if self.bias is None:
-            return self._sample_unbiased(n_samples, seed)
+            samples = self._sample_unbiased(n_samples, seed)
+            return samples, np.ones_like(samples)
         else:
             rng = np.random.RandomState(seed)
             p = self.p / self.p.sum()
@@ -296,8 +298,7 @@ class Discrete(Univariate):
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         p = self.p / self.p.sum()
-        result = rng.choice(self.x, n_samples, p=p)
-        return result, np.ones_like(result)
+        return rng.choice(self.x, n_samples, p=p)
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -305,10 +306,7 @@ class Discrete(Univariate):
         self.p = [val / norm for val in self.p]
 
     def evaluate(self, x):
-        for x_i, p_i in zip(self.x, self.p):
-            if abs(x_i - x) < 1e-14:
-                return p_i/self.p.sum()
-        return 0.0
+        raise NotImplementedError
 
     def to_xml_element(self, element_name):
         """Return XML representation of the discrete distribution
@@ -608,8 +606,7 @@ class Uniform(Univariate):
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
-        result = rng.uniform(self.a, self.b, n_samples)
-        return result, np.ones_like(result)
+        return rng.uniform(self.a, self.b, n_samples)
 
     def evaluate(self, x):
         return np.where((self.a <= x) & (x <= self.b), 1/(self.b - self.a), 0.0)
@@ -778,8 +775,7 @@ class PowerLaw(Univariate):
         pwr = self.n + 1
         offset = self.a**pwr
         span = self.b**pwr - offset
-        result = np.power(offset + xi * span, 1/pwr)
-        return result, np.ones_like(result)
+        return np.power(offset + xi * span, 1/pwr)
 
     def evaluate(self, x):
         c = (self.n + 1)/(self.b**(self.n + 1) - self.a**(self.n + 1))
@@ -895,8 +891,7 @@ class Maxwell(Univariate):
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
-        result = self.sample_maxwell(self.theta, n_samples, rng=rng)
-        return result, np.ones_like(result)
+        return self.sample_maxwell(self.theta, n_samples, rng=rng)
 
     @staticmethod
     def sample_maxwell(t, n_samples: int, rng=None):
@@ -1035,8 +1030,7 @@ class Watt(Univariate):
         w = Maxwell.sample_maxwell(self.a, n_samples, rng=rng)
         u = rng.uniform(-1., 1., n_samples)
         aab = self.a * self.a * self.b
-        result = w + 0.25*aab + u*np.sqrt(aab*w)
-        return result, np.ones_like(result)
+        return w + 0.25*aab + u*np.sqrt(aab*w)
 
     def evaluate(self, E):
         c = 2.0/(sqrt(pi * self.b) * (self.a**1.5) * exp(self.a*self.b/4))
@@ -1165,8 +1159,7 @@ class Normal(Univariate):
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
-        result = rng.normal(self.mean_value, self.std_dev, n_samples)
-        return result, np.ones_like(result)
+        return rng.normal(self.mean_value, self.std_dev, n_samples)
 
     def evaluate(self, x):
         return scipy.stats.norm.pdf(x, self.mean_value, self.std_dev)
@@ -1490,13 +1483,14 @@ class Tabular(Univariate):
                                       'linear-linear interpolation')
 
         assert all(samples_out < self.x[-1])
-        return samples_out, np.ones_like(samples_out)
+        return samples_out
 
     def sample(self, n_samples: int = 1, seed: int | None = None):
         # Override base class sample to normalize before biased sampling
         bias = getattr(self, '_bias', None)
         if bias is None:
-            return self._sample_unbiased(n_samples, seed)
+            samples = self._sample_unbiased(n_samples, seed)
+            return samples, np.ones_like(samples)
         else:
             if bias.bias is not None:
                 raise RuntimeError('Biasing distributions should not have their own bias!')

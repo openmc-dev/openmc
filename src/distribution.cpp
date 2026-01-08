@@ -67,8 +67,8 @@ void DiscreteIndex::init_alias()
 {
   normalize();
 
-  // record user input normalized distribution prob_actual for RR/source bias
-  prob_actual_ = prob_;
+  // Save normalized probabilities before Vose algorithm modifies prob_
+  prob_norm_ = prob_;
 
   // The initialization and sampling method is based on Vose
   // (DOI: 10.1109/32.92917)
@@ -146,10 +146,10 @@ void DiscreteIndex::apply_bias(span<const double> b)
 {
   // Replace the probability vector with that from the bias distribution.
   prob_.assign(b.begin(), b.end());
-  if (prob_.size() != prob_actual_.size()) {
+  if (prob_.size() != prob_norm_.size()) {
     openmc::fatal_error(
       "Size mismatch: Attempted to bias Discrete distribution with " +
-      std::to_string(prob_actual_.size()) +
+      std::to_string(prob_norm_.size()) +
       " probability entries using a "
       "Discrete distribution with " +
       std::to_string(prob_.size()) +
@@ -164,7 +164,7 @@ void DiscreteIndex::apply_bias(span<const double> b)
       // sampling probability in the biased distribution.
       wgt_[i] = INFTY;
     } else {
-      wgt_[i] = prob_actual_[i] / prob_[i];
+      wgt_[i] = prob_norm_[i] / prob_[i];
     }
   }
 
@@ -214,7 +214,8 @@ double Discrete::evaluate(double x) const
   // Discrete distribution is used to bias another kind of distribution.
   for (size_t i = 0; i < x_.size(); ++i) {
     if (std::fabs(x_[i] - x) <= FP_PRECISION) {
-      return di_.prob_actual()[i];
+      // Return the normalized probability (before Vose transformation)
+      return di_.prob_norm()[i];
     }
   }
   return 0.0;

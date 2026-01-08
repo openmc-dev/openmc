@@ -2878,7 +2878,7 @@ class Model:
                                 a, b = float(coeffs[0]), float(coeffs[1])
                                 if output:
                                     print(f'  [DERIV-FIT] Fitted line (with derivative constraints): f(x) = {a:.6e} + {b:.6e}*x')
-                                return a,b
+                                return a, b
                             except np.linalg.LinAlgError:
                                 pass
                                 

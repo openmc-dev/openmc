@@ -2874,30 +2874,30 @@ class Model:
                             if output:
                                 print(f'  [DERIV-FIT] Normalization scale factor: {deriv_scale:.6e}')
                         
-                                # Apply scaling to derivatives and their uncertainties
-                                scaled_derivs = valid_deriv_values / deriv_scale
-                                scaled_deriv_stds = valid_deriv_stds / deriv_scale
+                            # Apply scaling to derivatives and their uncertainties
+                            scaled_derivs = valid_deriv_values / deriv_scale
+                            scaled_deriv_stds = valid_deriv_stds / deriv_scale
                         
                                 # Build constraint rows with normalized derivatives
-                                deriv_rows = np.zeros((n_derivs, 2))
-                                deriv_rows[:, 0] = 0.0  # a coefficient in gradient = 0
-                                deriv_rows[:, 1] = 1.0  # b coefficient
+                            deriv_rows = np.zeros((n_derivs, 2))
+                            deriv_rows[:, 0] = 0.0  # a coefficient in gradient = 0
+                            deriv_rows[:, 1] = 1.0  # b coefficient
                         
-                                # Normalized targets: scale-invariant constraint weighted by uncertainty
-                                deriv_targets = scaled_derivs / scaled_deriv_stds
+                            # Normalized targets: scale-invariant constraint weighted by uncertainty
+                            deriv_targets = scaled_derivs / scaled_deriv_stds
                         
-                                A = np.vstack([A, deriv_rows])
-                                b_vec = np.hstack([b_vec, deriv_targets])
+                            A = np.vstack([A, deriv_rows])
+                            b_vec = np.hstack([b_vec, deriv_targets])
                     
-                                # Solve least squares: (A^T A)^{-1} A^T b
-                                try:
-                                    coeffs, residuals, rank, s = np.linalg.lstsq(A, b_vec, rcond=None)
-                                    a, b = float(coeffs[0]), float(coeffs[1])
-                                    if output:
-                                        print(f'  [DERIV-FIT] Fitted line (with derivative constraints): f(x) = {a:.6e} + {b:.6e}*x')
-                                    return a,b
-                                except np.linalg.LinAlgError:
-                                    pass
+                            # Solve least squares: (A^T A)^{-1} A^T b
+                            try:
+                                coeffs, residuals, rank, s = np.linalg.lstsq(A, b_vec, rcond=None)
+                                a, b = float(coeffs[0]), float(coeffs[1])
+                                if output:
+                                    print(f'  [DERIV-FIT] Fitted line (with derivative constraints): f(x) = {a:.6e} + {b:.6e}*x')
+                                return a,b
+                            except np.linalg.LinAlgError:
+                                pass
                                 
                     # Perform a curve fit on f(x) = a + bx accounting for
                     # uncertainties. This is equivalent to minimizing the function

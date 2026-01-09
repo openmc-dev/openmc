@@ -31,7 +31,55 @@ class Univariate(EqualityMixin, ABC):
     The Univariate class is an abstract class that can be derived to implement a
     specific probability distribution.
 
+    Parameters
+    ----------
+    bias : Iterable of float, optional
+        Distribution or discrete probabilities for biased sampling or discrete
+        probabilities for biased sampling.
+
     """
+    def __init__(self, bias: Univariate | Sequence[float] | None = None):
+        self.bias = bias
+
+    @property
+    def bias(self):
+        return self._bias
+
+    @bias.setter
+    def bias(self, bias):
+        check_bias_support(self, bias)
+        self._bias = bias
+
+    def _append_bias_to_xml(self, element: ET.Element) -> None:
+        """Append bias distribution element to XML if present."""
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias.')
+            bias_elem = self.bias.to_xml_element("bias")
+            element.append(bias_elem)
+
+    @classmethod
+    def _read_bias_from_xml(cls, elem: ET.Element):
+        """Read bias distribution from XML element if present."""
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            return Univariate.from_xml_element(bias_elem)
+        return None
+
+    def _append_array_bias_to_xml(self, element: ET.Element) -> None:
+        """Append array-based bias probabilities to XML."""
+        if self.bias is not None:
+            bias_elem = ET.SubElement(element, "bias")
+            bias_elem.text = ' '.join(map(str, self.bias))
+
+    @classmethod
+    def _read_array_bias_from_xml(cls, elem: ET.Element):
+        """Read array-based bias probabilities from XML."""
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            return get_elem_list(elem, "bias", float)
+        return None
+
     @abstractmethod
     def to_xml_element(self, element_name):
         return ''
@@ -105,7 +153,7 @@ class Univariate(EqualityMixin, ABC):
             return x, np.ones_like(x)
         else:
             if bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
+                raise RuntimeError('Biasing distributions should not have their own bias.')
             x, _ = bias.sample(n_samples=n_samples, seed=seed)
             wgt = self.evaluate(x) / bias.evaluate(x)
             return x, wgt
@@ -226,7 +274,7 @@ class Discrete(Univariate):
     def __init__(self, x, p, bias=None):
         self.x = x
         self.p = p
-        self.bias = bias
+        super().__init__(bias)
 
     def __len__(self):
         return len(self.x)
@@ -259,11 +307,7 @@ class Discrete(Univariate):
     def support(self):
         return set(np.unique(self._x))
 
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
+    @Univariate.bias.setter
     def bias(self, bias):
         if bias is None:
             self._bias = bias
@@ -275,7 +319,7 @@ class Discrete(Univariate):
                 cv.check_greater_than('discrete probability', bk, 0.0, True)
             if len(bias) != len(self.x):
                 raise RuntimeError("Discrete distribution has unequal number of "
-                                   "biased and unbiased probability entries!")
+                                   "biased and unbiased probability entries.")
             self._bias = np.array(bias, dtype=float)
 
     def cdf(self):
@@ -327,11 +371,7 @@ class Discrete(Univariate):
 
         params = ET.SubElement(element, "parameters")
         params.text = ' '.join(map(str, self.x)) + ' ' + ' '.join(map(str, self.p))
-
-        if self.bias is not None:
-            bias_elem = ET.SubElement(element,"bias")
-            bias_elem.text = ' '.join(map(str, self.bias))
-
+        self._append_array_bias_to_xml(element)
         return element
 
     @classmethod
@@ -352,12 +392,7 @@ class Discrete(Univariate):
         params = get_elem_list(elem, "parameters", float)
         x = params[:len(params)//2]
         p = params[len(params)//2:]
-
-        if elem.find('bias') is not None:
-            bias_dist = get_elem_list(elem, "bias", float)
-        else:
-            bias_dist = None
-
+        bias_dist = cls._read_array_bias_from_xml(elem)
         return cls(x, p, bias=bias_dist)
 
     @classmethod
@@ -540,7 +575,7 @@ class Uniform(Univariate):
     b : float, optional
         Upper bound of the sampling interval. Defaults to unity.
     bias : openmc.stats.Univariate, optional
-        Distribution for biased sampling. Defaults to None for unbiased sampling.
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -557,10 +592,10 @@ class Uniform(Univariate):
     """
 
     def __init__(self, a: float = 0.0, b: float = 1.0,
-                 bias: Univariate = None):
+                 bias: Univariate | None = None):
         self.a = a
         self.b = b
-        self.bias = bias
+        super().__init__(bias)
 
     def __len__(self):
         return 2
@@ -586,15 +621,6 @@ class Uniform(Univariate):
     @property
     def support(self):
         return (self._a, self._b)
-
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
-    def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
 
     def to_tabular(self):
         if self.bias is not None:
@@ -641,12 +667,7 @@ class Uniform(Univariate):
         element.set("type", "uniform")
         element.set("parameters", f'{self.a} {self.b}')
 
-        if self.bias is not None:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            else:
-                bias_elem = self.bias.to_xml_element("bias")
-                element.append(bias_elem)
+        self._append_bias_to_xml(element)
 
         return element
 
@@ -666,11 +687,7 @@ class Uniform(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-
-        if elem.find('bias') is not None:
-            bias_dist = Univariate.from_xml_element(elem.find('bias'))
-        else:
-            bias_dist = None
+        bias_dist = cls._read_bias_from_xml(elem)
 
         return cls(*params, bias=bias_dist)
 
@@ -692,7 +709,7 @@ class PowerLaw(Univariate):
         Power law exponent. Defaults to zero, which is equivalent to a uniform
         distribution.
     bias : openmc.stats.Univariate, optional
-        Distribution for biased sampling. Defaults to None for unbiased sampling.
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -711,14 +728,14 @@ class PowerLaw(Univariate):
     """
 
     def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.,
-                 bias: Univariate = None):
+                 bias: Univariate | None = None):
         if a >= b:
             raise ValueError(
                 "Lower bound of sampling interval must be less than upper bound.")
         self.a = a
         self.b = b
         self.n = n
-        self.bias = bias
+        super().__init__(bias)
 
     def __len__(self):
         return 3
@@ -760,15 +777,6 @@ class PowerLaw(Univariate):
     def support(self):
         return (self._a, self._b)
 
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
-    def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
-
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         xi = rng.random(n_samples)
@@ -799,12 +807,7 @@ class PowerLaw(Univariate):
         element.set("type", "powerlaw")
         element.set("parameters", f'{self.a} {self.b} {self.n}')
 
-        if self.bias is not None:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            else:
-                bias_elem = self.bias.to_xml_element("bias")
-                element.append(bias_elem)
+        self._append_bias_to_xml(element)
 
         return element
 
@@ -824,12 +827,7 @@ class PowerLaw(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-
-        if elem.find('bias') is not None:
-            bias_dist = Univariate.from_xml_element(elem.find('bias'))
-        else:
-            bias_dist = None
-
+        bias_dist = cls._read_bias_from_xml(elem)
         return cls(*map(float, params), bias=bias_dist)
 
 
@@ -845,7 +843,7 @@ class Maxwell(Univariate):
     theta : float
         Effective temperature for distribution in eV
     bias : openmc.stats.Univariate, optional
-        Distribution for biased sampling. Defaults to None for unbiased sampling.
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -859,9 +857,9 @@ class Maxwell(Univariate):
 
     """
 
-    def __init__(self, theta, bias: Univariate = None):
+    def __init__(self, theta, bias: Univariate | None = None):
         self.theta = theta
-        self.bias = bias
+        super().__init__(bias)
 
     def __len__(self):
         return 1
@@ -879,15 +877,6 @@ class Maxwell(Univariate):
     @property
     def support(self):
         return (0.0, np.inf)
-
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
-    def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
@@ -920,12 +909,7 @@ class Maxwell(Univariate):
         element.set("type", "maxwell")
         element.set("parameters", str(self.theta))
 
-        if self.bias is not None:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            else:
-                bias_elem = self.bias.to_xml_element("bias")
-                element.append(bias_elem)
+        self._append_bias_to_xml(element)
 
         return element
 
@@ -945,12 +929,7 @@ class Maxwell(Univariate):
 
         """
         theta = float(get_text(elem, 'parameters'))
-
-        if elem.find('bias') is not None:
-            bias_dist = Univariate.from_xml_element(elem.find('bias'))
-        else:
-            bias_dist = None
-
+        bias_dist = cls._read_bias_from_xml(elem)
         return cls(theta, bias=bias_dist)
 
 
@@ -968,7 +947,7 @@ class Watt(Univariate):
     b : float
         Second parameter of distribution in units of 1/eV
     bias : openmc.stats.Univariate, optional
-        Distribution for biased sampling. Defaults to None for unbiased sampling.
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -984,10 +963,10 @@ class Watt(Univariate):
 
     """
 
-    def __init__(self, a=0.988e6, b=2.249e-6, bias: Univariate = None):
+    def __init__(self, a=0.988e6, b=2.249e-6, bias: Univariate | None = None):
         self.a = a
         self.b = b
-        self.bias = bias
+        super().__init__(bias)
 
     def __len__(self):
         return 2
@@ -1015,15 +994,6 @@ class Watt(Univariate):
     @property
     def support(self):
         return (0.0, np.inf)
-
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
-    def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
@@ -1053,14 +1023,7 @@ class Watt(Univariate):
         element = ET.Element(element_name)
         element.set("type", "watt")
         element.set("parameters", f'{self.a} {self.b}')
-
-        if self.bias is not None:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            else:
-                bias_elem = self.bias.to_xml_element("bias")
-                element.append(bias_elem)
-
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -1079,12 +1042,7 @@ class Watt(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-
-        if elem.find('bias') is not None:
-            bias_dist = Univariate.from_xml_element(elem.find('bias'))
-        else:
-            bias_dist = None
-
+        bias_dist = cls._read_bias_from_xml(elem)
         return cls(*map(float, params), bias=bias_dist)
 
 
@@ -1102,7 +1060,7 @@ class Normal(Univariate):
     std_dev : float
         Standard deviation of the Normal distribution
     bias : openmc.stats.Univariate, optional
-        Distribution for biased sampling. Defaults to None for unbiased sampling.
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -1117,10 +1075,10 @@ class Normal(Univariate):
         Distribution for biased sampling
     """
 
-    def __init__(self, mean_value, std_dev, bias: Univariate = None):
+    def __init__(self, mean_value, std_dev, bias: Univariate | None = None):
         self.mean_value = mean_value
         self.std_dev = std_dev
-        self.bias = bias
+        super().__init__(bias)
 
     def __len__(self):
         return 2
@@ -1148,15 +1106,6 @@ class Normal(Univariate):
     def support(self):
         return (-np.inf, np.inf)
 
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
-    def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
-
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         return rng.normal(self.mean_value, self.std_dev, n_samples)
@@ -1181,14 +1130,7 @@ class Normal(Univariate):
         element = ET.Element(element_name)
         element.set("type", "normal")
         element.set("parameters", f'{self.mean_value} {self.std_dev}')
-
-        if self.bias is not None:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            else:
-                bias_elem = self.bias.to_xml_element("bias")
-                element.append(bias_elem)
-
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -1207,16 +1149,11 @@ class Normal(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-
-        if elem.find('bias') is not None:
-            bias_dist = Univariate.from_xml_element(elem.find('bias'))
-        else:
-            bias_dist = None
-
+        bias_dist = cls._read_bias_from_xml(elem)
         return cls(*map(float, params), bias=bias_dist)
 
 
-def muir(e0: float, m_rat: float, kt: float, bias: Univariate = None):
+def muir(e0: float, m_rat: float, kt: float, bias: Univariate | None = None):
     """Generate a Muir energy spectrum
 
     The Muir energy spectrum is a normal distribution, but for convenience
@@ -1235,7 +1172,7 @@ def muir(e0: float, m_rat: float, kt: float, bias: Univariate = None):
     kt : float
          Ion temperature for the Muir distribution in [eV]
     bias : openmc.stats.Univariate, optional
-        Distribution for biased sampling. Defaults to None for unbiased sampling.
+        Distribution for biased sampling.
 
     Returns
     -------
@@ -1280,7 +1217,7 @@ class Tabular(Univariate):
     ignore_negative : bool
         Ignore negative probabilities
     bias : openmc.stats.Univariate, optional
-        Distribution for biased sampling. Defaults to None for unbiased sampling.
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -1314,7 +1251,7 @@ class Tabular(Univariate):
             p: Sequence[float],
             interpolation: str = 'linear-linear',
             ignore_negative: bool = False,
-            bias: Univariate = None
+            bias: Univariate | None = None
         ):
         self.interpolation = interpolation
 
@@ -1336,7 +1273,7 @@ class Tabular(Univariate):
 
         self._x = x
         self._p = p
-        self.bias = bias
+        super().__init__(bias)
 
     def __len__(self):
         return self.p.size
@@ -1361,15 +1298,6 @@ class Tabular(Univariate):
     @property
     def support(self):
         return (self._x[0], self._x[-1])
-
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
-    def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
 
     def cdf(self):
         c = np.zeros_like(self.x)
@@ -1493,7 +1421,7 @@ class Tabular(Univariate):
             return samples, np.ones_like(samples)
         else:
             if bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
+                raise RuntimeError('Biasing distributions should not have their own bias.')
             biased_sample, _ = bias.sample(n_samples=n_samples, seed=seed)
             self.normalize()  # must have normalized probabilities to apply correct weights
             wgt = np.array([self.evaluate(s) / bias.evaluate(s) for s in biased_sample])
@@ -1540,14 +1468,7 @@ class Tabular(Univariate):
 
         params = ET.SubElement(element, "parameters")
         params.text = ' '.join(map(str, self.x)) + ' ' + ' '.join(map(str, self.p))
-
-        if self.bias is not None:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            else:
-                bias_elem = self.bias.to_xml_element("bias")
-                element.append(bias_elem)
-
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -1570,12 +1491,7 @@ class Tabular(Univariate):
         m = (len(params) + 1)//2  # +1 for when len(params) is odd
         x = params[:m]
         p = params[m:]
-
-        if elem.find('bias') is not None:
-            bias_dist = Univariate.from_xml_element(elem.find('bias'))
-        else:
-            bias_dist = None
-
+        bias_dist = cls._read_bias_from_xml(elem)
         return cls(x, p, interpolation, bias=bias_dist)
 
     def integral(self):
@@ -1606,6 +1522,8 @@ class Legendre(Univariate):
     coefficients : Iterable of Real
         Expansion coefficients :math:`a_\ell`. Note that the :math:`(2\ell +
         1)/2` factor should not be included.
+    bias : openmc.stats.Univariate or None, optional
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -1620,10 +1538,10 @@ class Legendre(Univariate):
 
     """
 
-    def __init__(self, coefficients: Sequence[float], bias: Univariate = None):
+    def __init__(self, coefficients: Sequence[float], bias: Univariate | None = None):
+        super().__init__(bias)
         self.coefficients = coefficients
         self._legendre_poly = None
-        self.bias = bias
 
     def __call__(self, x):
         # Create Legendre polynomial if we haven't yet
@@ -1648,15 +1566,6 @@ class Legendre(Univariate):
     @property
     def support(self):
         raise NotImplementedError
-
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
-    def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         raise NotImplementedError
@@ -1705,11 +1614,11 @@ class Mixture(Univariate):
         self,
         probability: Sequence[float],
         distribution: Sequence[Univariate],
-        bias: Sequence[float] = None
+        bias: Sequence[float] | None = None
     ):
+        super().__init__(bias)
         self.probability = probability
         self.distribution = distribution
-        self.bias = bias
 
     def __len__(self):
         return sum(len(d) for d in self.distribution)
@@ -1737,11 +1646,7 @@ class Mixture(Univariate):
                       Iterable, Univariate)
         self._distribution = distribution
 
-    @property
-    def bias(self):
-        return self._bias
-
-    @bias.setter
+    @Univariate.bias.setter
     def bias(self, bias):
         if bias is None:
             self._bias = bias
@@ -1873,10 +1778,7 @@ class Mixture(Univariate):
           data.set("probability", str(p))
           data.append(d.to_xml_element("dist"))
 
-        if self.bias is not None:
-            bias_elem = ET.SubElement(element,"bias")
-            bias_elem.text = ' '.join(map(str, self.bias))
-
+        self._append_array_bias_to_xml(element)
         return element
 
     @classmethod
@@ -1902,11 +1804,7 @@ class Mixture(Univariate):
             probability.append(float(get_text(pair, 'probability')))
             distribution.append(Univariate.from_xml_element(pair.find("dist")))
 
-        if elem.find('bias') is not None:
-            bias_dist = get_elem_list(elem, "bias", float)
-        else:
-            bias_dist = None
-
+        bias_dist = cls._read_array_bias_from_xml(elem)
         return cls(probability, distribution, bias=bias_dist)
 
     def integral(self):
@@ -2063,7 +1961,7 @@ def combine_distributions(
     return dist_list[0]
 
 
-def check_bias_support(parent: Univariate, bias: Univariate):
+def check_bias_support(parent: Univariate, bias: Univariate | None):
     """Ensure that bias distributions share the support of the univariate
     distribution they are biasing.
 

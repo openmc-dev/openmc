@@ -670,7 +670,7 @@ class WeightWindowGenerator:
         maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic', 'fw_cadis'}
+    method : {'magic', 'fw_cadis', 'cadis'}
         The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
@@ -775,7 +775,7 @@ class WeightWindowGenerator:
     @method.setter
     def method(self, m: str):
         cv.check_type('generation method', m, str)
-        cv.check_value('generation method', m, ('magic', 'fw_cadis'))
+        cv.check_value('generation method', m, ('magic', 'fw_cadis', 'cadis'))
         self._method = m
         if self._update_parameters is not None:
             try:
@@ -808,7 +808,7 @@ class WeightWindowGenerator:
         return self._update_parameters
 
     def _check_update_parameters(self, params: dict):
-        if self.method == 'magic' or self.method == 'fw_cadis':
+        if self.method == 'magic' or self.method == 'fw_cadis'  or self.method == 'cadis':
             check_params = self._MAGIC_PARAMS
 
         for key, val in params.items():
@@ -851,7 +851,7 @@ class WeightWindowGenerator:
         update_parameters : dict
             The update parameters as-read from the XML node (keys: str, values: str)
         """
-        if method == 'magic' or method == 'fw_cadis':
+        if method == 'magic' or method == 'fw_cadis'  or method == 'cadis':
             check_params = cls._MAGIC_PARAMS
 
         for param, param_type in check_params.items():

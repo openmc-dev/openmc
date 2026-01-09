@@ -17,7 +17,7 @@
 
 namespace openmc {
 
-enum class WeightWindowUpdateMethod { MAGIC, FW_CADIS };
+enum class WeightWindowUpdateMethod { MAGIC, FW_CADIS, CADIS };
 
 //==============================================================================
 // Constants
@@ -71,6 +71,7 @@ struct WeightWindow {
   {
     lower_weight *= factor;
     upper_weight *= factor;
+    survival_weight *= factor;
   }
 };
 

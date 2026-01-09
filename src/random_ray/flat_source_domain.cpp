@@ -30,6 +30,7 @@ RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_ {false};
+bool FlatSourceDomain::cadis_ {false};
 double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
   FlatSourceDomain::mesh_domain_map_;
@@ -1184,42 +1185,168 @@ void FlatSourceDomain::flatten_xs()
   }
 }
 
-void FlatSourceDomain::set_global_adjoint_sources(const vector<double>& forward_flux)
+void FlatSourceDomain::set_fw_adjoint_sources(const vector<double>& forward_flux)
 {
-  // Set the external source to 1/forward_flux. If the forward flux is negative
-  // or zero, set the adjoint source to zero, as this is likely a very small
-  // source region that we don't need to bother trying to vector particles
-  // towards. Flux negativity in random ray is not related to the flux being
-  // small in magnitude, but rather due to the source region being physically
-  // small in volume and thus having a noisy flux estimate.
+  // Set the adjoint external source to 1/forward_flux. If the forward flux is
+  // negative, zero, or extremely close to zero, set the adjoint source to zero,
+  // as this is likely a very small source region that we don't need to bother
+  // trying to vector particles towards. In the case of flux "being extremely
+  // close to zero", we define this as being a fixed fraction of the maximum
+  // forward flux, below which we assume the flux would be physically
+  // undetectable.
+
+  // First, find the maximum forward flux value
+  double max_flux = 0.0;
+#pragma omp parallel for reduction(max : max_flux)
+  for (int64_t se = 0; se < n_source_elements(); se++) {
+    double flux = source_regions_.scalar_flux_final(se);
+    if (flux > max_flux) {
+      max_flux = flux;
+    }
+  }
+
+  // Then, compute the adjoint source for each source region
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
-      double flux = forward_flux[sr * negroups_ + g];
-      if (flux <= 0.0) {
+      double flux = source_regions_.scalar_flux_final(sr, g);
+      if (flux <= ZERO_FLUX_CUTOFF * max_flux) {
         source_regions_.external_source(sr, g) = 0.0;
       } else {
         source_regions_.external_source(sr, g) = 1.0 / flux;
+        if (!std::isfinite(source_regions_.external_source(sr, g))) {
+          // If the flux is NaN or Inf, set the adjoint source to zero
+          source_regions_.external_source(sr, g) = 0.0;
+        }
       }
       if (flux > 0.0) {
         source_regions_.external_source_present(sr) = 1;
       }
+      source_regions_.scalar_flux_final(sr, g) = 0.0;
     }
   }
 
-  // Divide the fixed source term by sigma t (to save time when applying each
-  // iteration)
+  // "Small" source regions in OpenMC are defined as those that are hit by
+  // MIN_HITS_PER_BATCH rays or fewer each batch. These regions typically have
+  // very small volumes combined with a low aspect ratio, and are often
+  // generated when applying a source region mesh that clips the edge of a
+  // curved surface. As perhaps only a few rays will visit these regions over
+  // the entire forward simulation, the forward flux estimates are extremely
+  // noisy and unreliable. In some cases, the noise may make the forward fluxes
+  // extremely low, leading to unphysically large adjoint source terms,
+  // resulting in weight windows that aggressively try to drive particles
+  // towards these regions. To fix this, we simply filter out any "small" source
+  // regions from consideration. If a source region is "small", we
+  // set its adjoint source to zero. This adds negligible bias to the adjoint
+  // flux solution, as the true total adjoint source contribution from small
+  // regions is likely to be negligible.
+  if (!cadis_) {
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-    int material = source_regions_.material(sr);
-    if (material == MATERIAL_VOID) {
-      continue;
+    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+      if (source_regions_.is_small(sr)) {
+        for (int g = 0; g < negroups_; g++) {
+          source_regions_.external_source(sr, g) = 0.0;
+        }
+        source_regions_.external_source_present(sr) = 0;
+      }
     }
-    for (int g = 0; g < negroups_; g++) {
-      double sigma_t = sigma_t_[material * negroups_ + g];
-      source_regions_.external_source(sr, g) /= sigma_t;
+
+    // Divide the fixed source term by sigma t (to save time when applying each
+    // iteration)
+#pragma omp parallel for
+    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+      int material = source_regions_.material(sr);
+      if (material == MATERIAL_VOID) {
+        continue;
+      }
+      for (int g = 0; g < negroups_; g++) {
+        double sigma_t = sigma_t_[material * negroups_ + g];
+        source_regions_.external_source(sr, g) /= sigma_t;
+        if (!std::isfinite(source_regions_.external_source(sr, g))) {
+          // If the flux is NaN or Inf, set the adjoint source to zero
+          source_regions_.external_source(sr, g) = 0.0;
+        }
+      }
     }
   }
+
+  if (cadis_) {
+// Only external sources that have a non-mesh type tally task should remain
+// non-zero. Everything else gets zero'd out.
+#pragma omp parallel for
+    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+
+      // If there is already no external source, don't need to do anything
+      if (source_regions_.external_source_present(sr) == 0) {
+        continue;
+      }
+
+      // If there is an adjoint source term here, then we need to check it.
+
+      // We will track if ANY group has a valid CADIS source term
+      bool has_any_sources = false;
+
+      // Now, loop over groups
+      for (int g = 0; g < negroups_; g++) {
+
+        // If there are no tally tasks associated with this source element
+        // then it is not a CADIS source, so we continue to the next group
+        if (source_regions_.tally_task(sr, g).empty()) {
+          source_regions_.external_source(sr, g) = 0.0;
+          continue;
+        }
+
+        // If there are tally tasks, we can through them and check if
+        // any of them have a non-mesh filter type.
+
+        // We track if ANY of the tasks have a non-mesh filter
+        bool has_non_mesh_filter = false;
+
+        // Now we loop through
+        for (const auto& task : source_regions_.tally_task(sr, g)) {
+          Tally& tally {*model::tallies[task.tally_idx]};
+          auto filter_types = tally.filter_types();
+
+          // For each tally, we loop through the filter types array.
+          // If any of them have a CADIS-compatible filter type,
+          // then this source element is a valid CADIS source
+          for (const auto& filter_type : filter_types) {
+            if (filter_type == FilterType::CELL ||
+                filter_type == FilterType::CELL_INSTANCE ||
+                filter_type == FilterType::DISTRIBCELL ||
+                filter_type == FilterType::UNIVERSE ||
+                filter_type == FilterType::MATERIAL) {
+              has_non_mesh_filter = true;
+              break;
+            }
+          }
+        }
+
+        // If ANY of the tasks has a non-mesh filter type,
+        // Then we keep the source term and set that this
+        // source region has a valid CADIS source term.
+        // Otherwise, we zero out the source term.
+        if (has_non_mesh_filter) {
+          has_any_sources = true;
+          // print external source term
+          fmt::print("External source term for source region {} group {}: {}\n",
+            sr, g, source_regions_.external_source(sr, g));
+        } else {
+          source_regions_.external_source(sr, g) = 0.0;
+        }
+      } // End loop over groups
+
+      // If there were any valid CADIS source terms for any
+      // of the groups, then the SR as a whole counts as a source
+      if (has_any_sources) {
+        source_regions_.external_source_present(sr) = 1;
+      } else {
+        source_regions_.external_source_present(sr) = 0;
+      }
+    } // End loop over source regions
+  } // End CADIS logic
+}
+
 }
 
 void FlatSourceDomain::set_local_adjoint_sources()

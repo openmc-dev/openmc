@@ -153,8 +153,8 @@ class Univariate(EqualityMixin, ABC):
         else:
             if self.bias.bias is not None:
                 raise RuntimeError('Biasing distributions should not have their own bias.')
-            x, _ = bias.sample(n_samples=n_samples, seed=seed)
-            weight = self.evaluate(x) / bias.evaluate(x)
+            x, _ = self.bias.sample(n_samples=n_samples, seed=seed)
+            weight = self.evaluate(x) / self.bias.evaluate(x)
             return x, weight
 
     def integral(self):
@@ -170,17 +170,17 @@ class Univariate(EqualityMixin, ABC):
         return 1.0
 
     @abstractmethod
-    def evaluate(self,x):
+    def evaluate(self, x: float | Sequence[float]):
         """Evaluate the probability density at the provided value.
 
         Parameters
         ----------
-        x : int
+        x : float or sequence of float
             Location to evaluate p(x)
 
         Returns
         -------
-        int
+        float or numpy.ndarray
             Value of p(x)
         """
         pass

@@ -11,6 +11,16 @@ Module Variables
 .. autodata:: openmc.mgxs.GROUP_STRUCTURES
     :annotation:
 
+Functions 
++++++++++
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.mgxs.convert_flux_groups
+
 Classes
 +++++++
 
@@ -20,7 +30,6 @@ Classes
     :template: myclass.rst
 
     openmc.mgxs.EnergyGroups
-    openmc.mgxs.convert_flux_groups
 
 Multi-group Cross Sections
 --------------------------

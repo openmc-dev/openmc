@@ -355,7 +355,7 @@ def convert_flux_groups(flux, source_groups, target_groups):
     Convert FNS 709-group flux to UKAEA-1102 structure:
 
     >>> import numpy as np
-    >>> flux_709 = np.load('tests/unit_tests/fns_flux_709.npy')
+    >>> flux_709 = np.load('tests/fns_flux_709.npy')
     >>> flux_1102 = openmc.mgxs.convert_flux_groups(flux_709, 'CCFE-709', 'UKAEA-1102')
 
     Convert using EnergyGroups instances:

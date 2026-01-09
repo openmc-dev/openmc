@@ -52,7 +52,7 @@ def test_lethargy_distribution():
 def test_fns_ccfe709_to_ukaea1102():
     """Test CCFE-709 to UKAEA-1102 conversion with real FNS flux spectrum."""
     from pathlib import Path
-    flux_file = Path(__file__).parent / 'fns_flux_709.npy'
+    flux_file = Path(__file__).parent.parent / 'fns_flux_709.npy'
     fns_flux_709 = np.load(flux_file)
 
     flux_1102 = openmc.mgxs.convert_flux_groups(fns_flux_709, 'CCFE-709', 'UKAEA-1102')

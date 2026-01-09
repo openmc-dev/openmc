@@ -20,6 +20,7 @@ Classes
     :template: myclass.rst
 
     openmc.mgxs.EnergyGroups
+    openmc.mgxs.convert_flux_groups
 
 Multi-group Cross Sections
 --------------------------

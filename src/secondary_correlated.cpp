@@ -247,11 +247,9 @@ void CorrelatedAngleEnergy::sample(
   // Find correlated angular distribution for closest outgoing energy bin
   if (r1 - c_k < c_k1 - r1 ||
       distribution_[l].interpolation == Interpolation::histogram) {
-    auto [new_mu, mu_wgt] = distribution_[l].angle[k]->sample(seed);
-    mu = new_mu;
+    mu = distribution_[l].angle[k]->sample(seed).first;
   } else {
-    auto [new_mu, mu_wgt] = distribution_[l].angle[k + 1]->sample(seed);
-    mu = new_mu;
+    mu = distribution_[l].angle[k + 1]->sample(seed).first;
   }
 }
 

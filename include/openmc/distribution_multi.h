@@ -60,7 +60,8 @@ private:
   //! Common sampling implementation
   //! \param seed Pseudorandom number seed pointer
   //! \param return_pdf If true, return PDF evaluation; if false, return
-  //! importance weight \return (sampled Direction, weight or PDF value)
+  //!        importance weight
+  //! \return (sampled Direction, weight or PDF value)
   std::pair<Direction, double> sample_impl(
     uint64_t* seed, bool return_pdf) const;
 
@@ -83,7 +84,7 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled Direction, sample weight)
+  //! \return (sampled direction, sample weight)
   std::pair<Direction, double> sample(uint64_t* seed) const override;
 
   // Set or get bias distribution
@@ -111,7 +112,7 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled Direction, sample weight)
+  //! \return (sampled direction, sample weight)
   std::pair<Direction, double> sample(uint64_t* seed) const override;
 };
 

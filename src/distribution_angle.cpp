@@ -75,7 +75,7 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
     ++i;
 
   // Sample i-th distribution
-  auto [mu, mu_wgt] = distribution_[i]->sample(seed);
+  double mu = distribution_[i]->sample(seed).first;
 
   // Make sure mu is in range [-1,1] and return
   if (std::abs(mu) > 1.0)

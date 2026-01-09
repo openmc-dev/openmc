@@ -116,7 +116,7 @@ class Univariate(EqualityMixin, ABC):
 
     @abstractmethod
     def _sample_unbiased(self, n_samples: int = 1, seed: int | None = None):
-        """Sample without bias handling; each derived class implements core sampling.
+        """Sample without bias handling.
 
         Parameters
         ----------
@@ -147,16 +147,15 @@ class Univariate(EqualityMixin, ABC):
         tuple of numpy.ndarray
             A tuple of (samples, weights)
         """
-        bias = getattr(self, '_bias', None)
-        if bias is None:
+        if self.bias is None:
             x = self._sample_unbiased(n_samples, seed)
             return x, np.ones_like(x)
         else:
-            if bias.bias is not None:
+            if self.bias.bias is not None:
                 raise RuntimeError('Biasing distributions should not have their own bias.')
             x, _ = bias.sample(n_samples=n_samples, seed=seed)
-            wgt = self.evaluate(x) / bias.evaluate(x)
-            return x, wgt
+            weight = self.evaluate(x) / bias.evaluate(x)
+            return x, weight
 
     def integral(self):
         """Return integral of distribution
@@ -521,7 +520,7 @@ class Discrete(Univariate):
 
         """
         if self.bias is not None:
-            raise RuntimeError("Biased Discrete distributions should be clipped "
+            raise RuntimeError("Biased discrete distributions should be clipped "
                                "before applying bias.")
 
         cv.check_less_than("tolerance", tolerance, 1.0, equality=True)
@@ -666,9 +665,7 @@ class Uniform(Univariate):
         element = ET.Element(element_name)
         element.set("type", "uniform")
         element.set("parameters", f'{self.a} {self.b}')
-
         self._append_bias_to_xml(element)
-
         return element
 
     @classmethod
@@ -688,7 +685,6 @@ class Uniform(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
         bias_dist = cls._read_bias_from_xml(elem)
-
         return cls(*params, bias=bias_dist)
 
 
@@ -806,9 +802,7 @@ class PowerLaw(Univariate):
         element = ET.Element(element_name)
         element.set("type", "powerlaw")
         element.set("parameters", f'{self.a} {self.b} {self.n}')
-
         self._append_bias_to_xml(element)
-
         return element
 
     @classmethod
@@ -908,9 +902,7 @@ class Maxwell(Univariate):
         element = ET.Element(element_name)
         element.set("type", "maxwell")
         element.set("parameters", str(self.theta))
-
         self._append_bias_to_xml(element)
-
         return element
 
     @classmethod

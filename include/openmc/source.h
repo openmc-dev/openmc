@@ -217,7 +217,7 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return (sampled Position, sample weight)
+  //! \return (sampled position, importance weight)
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
 private:

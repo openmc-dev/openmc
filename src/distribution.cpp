@@ -491,7 +491,7 @@ double Tabular::sample_unbiased(uint64_t* seed) const
   if (interp_ == Interpolation::histogram) {
     // Histogram interpolation
     if (p_i > 0.0) {
-      return (x_i + (c - c_i) / p_i);
+      return x_i + (c - c_i) / p_i;
     } else {
       return x_i;
     }
@@ -502,11 +502,11 @@ double Tabular::sample_unbiased(uint64_t* seed) const
 
     double m = (p_i1 - p_i) / (x_i1 - x_i);
     if (m == 0.0) {
-      return (x_i + (c - c_i) / p_i);
+      return x_i + (c - c_i) / p_i;
     } else {
-      return (
-        x_i +
-        (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) / m);
+      return x_i +
+             (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
+               m;
     }
   }
 }
@@ -552,7 +552,7 @@ double Equiprobable::sample_unbiased(uint64_t* seed) const
 
   double xl = x_[i];
   double xr = x_[i + i];
-  return (xl + ((n - 1) * r - i) * (xr - xl));
+  return xl + ((n - 1) * r - i) * (xr - xl);
 }
 
 double Equiprobable::evaluate(double x) const
@@ -636,8 +636,7 @@ std::pair<double, double> Mixture::sample(uint64_t* seed) const
 double Mixture::sample_unbiased(uint64_t* seed) const
 {
   size_t idx = di_.sample(seed);
-  auto [val, wgt] = distribution_[idx]->sample(seed);
-  return val;
+  return distribution_[idx]->sample(seed).first;
 }
 
 //==============================================================================
@@ -652,9 +651,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   // Determine type of distribution
   std::string type = get_node_value(node, "type", true, true);
 
-  // Allocate extension of Distribution. Bias handling is done in each
-  // constructor via read_bias_from_xml() or special handling for
-  // Discrete/Mixture.
+  // Allocate extension of Distribution
   UPtrDist dist;
   if (type == "uniform") {
     dist = UPtrDist {new Uniform(node)};
@@ -679,7 +676,6 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }
-
   return dist;
 }
 

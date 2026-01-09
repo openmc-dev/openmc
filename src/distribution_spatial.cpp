@@ -429,7 +429,6 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
 std::pair<Position, double> SpatialBox::sample(uint64_t* seed) const
 {
   Position xi {prn(seed), prn(seed), prn(seed)};
-  // Biasing not implemented--use CartesianIndependent instead
   return {lower_left_ + xi * (upper_right_ - lower_left_), 1.0};
 }
 

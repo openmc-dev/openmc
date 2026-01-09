@@ -39,8 +39,9 @@ public:
   //! \return (sampled value, importance weight)
   virtual std::pair<double, double> sample(uint64_t* seed) const;
 
-  //! Evaluate pdf at a point
-  //! \return Value of pdf at a point
+  //! Evaluate probability density, f(x), at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
   virtual double evaluate(double x) const;
 
   //! Return integral of distribution
@@ -56,12 +57,12 @@ public:
   const Distribution* bias() const { return bias_.get(); }
 
 protected:
-  //! Sample without bias handling - each derived class implements core sampling
+  //! Sample a value (unbiased) from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return sampled value
+  //! \return Sampled value
   virtual double sample_unbiased(uint64_t* seed) const = 0;
 
-  //! Read bias distribution from XML and call set_bias
+  //! Read bias distribution from XML
   //! \param node XML node that may contain a bias child element
   void read_bias_from_xml(pugi::xml_node node);
 
@@ -99,9 +100,10 @@ public:
   double integral() const { return integral_; }
 
 private:
-  vector<double> prob_;  //!< Acceptance probabilities for alias method
+  vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
+                        //!< mapped to alias method table
   vector<size_t> alias_; //!< Alias table
-  double integral_;      //!< Integral of distribution before normalization
+  double integral_;      //!< Integral of distribution
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
@@ -136,6 +138,9 @@ public:
   const vector<double>& weight() const { return weight_; }
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
@@ -153,7 +158,7 @@ public:
   explicit Uniform(pugi::xml_node node);
   Uniform(double a, double b) : a_ {a}, b_ {b} {};
 
-  //! Evaluate probability density at a point
+  //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
@@ -162,6 +167,9 @@ public:
   double b() const { return b_; }
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
@@ -180,7 +188,7 @@ public:
     : offset_ {std::pow(a, n + 1)}, span_ {std::pow(b, n + 1) - offset_},
       ninv_ {1 / (n + 1)} {};
 
-  //! Evaluate probability density at a point
+  //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
@@ -190,6 +198,9 @@ public:
   double n() const { return 1 / ninv_ - 1; }
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
@@ -208,7 +219,7 @@ public:
   explicit Maxwell(pugi::xml_node node);
   Maxwell(double theta) : theta_ {theta} {};
 
-  //! Evaluate probability density at a point
+  //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
@@ -216,6 +227,9 @@ public:
   double theta() const { return theta_; }
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
@@ -231,7 +245,7 @@ public:
   explicit Watt(pugi::xml_node node);
   Watt(double a, double b) : a_ {a}, b_ {b} {};
 
-  //! Evaluate probability density at a point
+  //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
@@ -240,6 +254,9 @@ public:
   double b() const { return b_; }
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
@@ -258,7 +275,7 @@ public:
   Normal(double mean_value, double std_dev)
     : mean_value_ {mean_value}, std_dev_ {std_dev} {};
 
-  //! Evaluate probability density at a point
+  //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
@@ -267,6 +284,9 @@ public:
   double std_dev() const { return std_dev_; }
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
@@ -284,7 +304,7 @@ public:
   Tabular(const double* x, const double* p, int n, Interpolation interp,
     const double* c = nullptr);
 
-  //! Evaluate probability density at a point
+  //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
@@ -297,6 +317,9 @@ public:
   double integral() const override { return integral_; };
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
@@ -323,7 +346,7 @@ public:
   explicit Equiprobable(pugi::xml_node node);
   Equiprobable(const double* x, int n) : x_ {x, x + n} {};
 
-  //! Evaluate probability density at a point
+  //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)
   double evaluate(double x) const override;
@@ -331,6 +354,9 @@ public:
   const vector<double>& x() const { return x_; }
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
@@ -356,6 +382,9 @@ public:
   void set_bias(std::unique_ptr<Distribution> bias) override {}
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:

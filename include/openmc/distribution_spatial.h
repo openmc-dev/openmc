@@ -19,6 +19,8 @@ public:
   virtual ~SpatialDistribution() = default;
 
   //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled (position, importance weight)
   virtual std::pair<Position, double> sample(uint64_t* seed) const = 0;
 
   static unique_ptr<SpatialDistribution> create(pugi::xml_node node);
@@ -34,7 +36,7 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
+  //! \return Sampled (position, importance weight)
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
   // Observer pointers
@@ -58,7 +60,7 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
+  //! \return Sampled (position, importance weight)
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
@@ -83,7 +85,7 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
+  //! \return Sampled (position, importance weight)
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
@@ -109,7 +111,7 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
+  //! \return Sampled (position, importance weight)
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
   //! Sample the mesh for an element and position within that element
@@ -149,7 +151,7 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
+  //! \return Sampled (position, importance weight)
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
 private:
@@ -168,7 +170,7 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
+  //! \return Sampled (position, importance weight)
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
   // Properties
@@ -194,7 +196,7 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
+  //! \return Sampled (position, importance weight)
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Position r() const { return r_; }

@@ -815,7 +815,7 @@ class ParentNuclideFilter(ParticleFilter):
 
 
 class MeshFilter(Filter):
-    """Bins tally event locations by mesh elements.
+    r"""Bins tally event locations by mesh elements.
 
     Parameters
     ----------

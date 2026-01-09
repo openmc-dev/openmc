@@ -2451,7 +2451,7 @@ class Model:
 
         This method implements a generic approach to compute the derivative of
         k-effective with respect to any perturbation variable (density,
-        nuclide_density, temperature, enrichment) by using base and derivative
+        nuclide_density, temperature) by using base and derivative
         tallies and the quotient rule:
 
         .. math::
@@ -2473,8 +2473,7 @@ class Model:
         sp : openmc.StatePoint
             StatePoint after MC run
         deriv_variable : str
-            Type of derivative: 'density', 'nuclide_density', 'temperature',
-            or 'enrichment'
+            Type of derivative: 'density', 'nuclide_density', or 'temperature'
         deriv_material : int
             Material ID being perturbed
         deriv_nuclide : str, optional
@@ -2537,6 +2536,7 @@ class Model:
 
             # Quotient rule: dk/dx = (A * dF/dx - F * dA/dx) / A^2
             dk_dx = (A * dF_dx - F * dA_dx) / (A * A)
+            dk_dx_before = dk_dx
             print(f'  [DERIV-EXTRACT] Computed dk/dx = {dk_dx:.6e} (before any conversion)')
 
             # For nuclide_density: convert dk/dN to dk/dx if conversion provided
@@ -2683,7 +2683,9 @@ class Model:
             uncertainties as weights. Derivatives are also normalized by their
             magnitude (geometric mean of absolute values) to ensure numerical
             stability, handling large magnitudes (e.g., dk/dppm ∼ 10^20) without
-            requiring manual scaling.
+            requiring manual scaling. Temperature derivatives are not yet supported. 
+            For k-eff searches involving temperature changes, use the standard 
+            derivative-free search (set `use_derivative_tallies=False`).
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional

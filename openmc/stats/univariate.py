@@ -325,7 +325,6 @@ class Discrete(Univariate):
         return np.insert(np.cumsum(self.p), 0, 0.0)
 
     def sample(self, n_samples=1, seed=None):
-        # Discrete uses internal bias mechanism, not base class bias
         if self.bias is None:
             samples = self._sample_unbiased(n_samples, seed)
             return samples, np.ones_like(samples)
@@ -1406,17 +1405,15 @@ class Tabular(Univariate):
         return samples_out
 
     def sample(self, n_samples: int = 1, seed: int | None = None):
-        # Override base class sample to normalize before biased sampling
-        bias = getattr(self, '_bias', None)
-        if bias is None:
+        if self.bias is None:
             samples = self._sample_unbiased(n_samples, seed)
             return samples, np.ones_like(samples)
         else:
-            if bias.bias is not None:
+            if self.bias.bias is not None:
                 raise RuntimeError('Biasing distributions should not have their own bias.')
-            biased_sample, _ = bias.sample(n_samples=n_samples, seed=seed)
+            biased_sample, _ = self.bias.sample(n_samples=n_samples, seed=seed)
             self.normalize()  # must have normalized probabilities to apply correct weights
-            wgt = np.array([self.evaluate(s) / bias.evaluate(s) for s in biased_sample])
+            wgt = np.array([self.evaluate(s) / self.bias.evaluate(s) for s in biased_sample])
             return biased_sample, wgt
 
     def evaluate(self, x):
@@ -1677,8 +1674,7 @@ class Mixture(Univariate):
 
             intervals = merged
 
-        return {"discrete", discrete_points,
-                "continuous", intervals}
+        return {"discrete": discrete_points, "continuous": intervals}
 
     def cdf(self):
         return np.insert(np.cumsum(self.probability), 0, 0.0)

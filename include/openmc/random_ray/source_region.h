@@ -146,6 +146,7 @@ public:
 
   // Scalar fields
   int* material_;
+  double* density_mult_;
   int* is_small_;
   int* n_hits_;
   int* birthday_;
@@ -194,6 +195,9 @@ public:
 
   int& material() { return *material_; }
   const int material() const { return *material_; }
+
+  double& density_mult() { return *density_mult_; }
+  const double density_mult() const { return *density_mult_; }
 
   int& is_small() { return *is_small_; }
   const int is_small() const { return *is_small_; }
@@ -317,6 +321,7 @@ public:
   // Scalar fields
 
   int material_ {0}; //!< Index in openmc::model::materials array
+  double density_mult_ {1.0}; //!< A density multiplier queried from the cell corresponding to the source region.
   OpenMPMutex lock_;
   double volume_ {
     0.0}; //!< Volume (computed from the sum of ray crossing lengths)
@@ -393,6 +398,9 @@ public:
   // Public Accessors
   int& material(int64_t sr) { return material_[sr]; }
   const int material(int64_t sr) const { return material_[sr]; }
+
+  double& density_mult(int64_t sr) { return density_mult_[sr]; }
+  const double density_mult(int64_t sr) const { return density_mult_[sr]; }
 
   int& is_small(int64_t sr) { return is_small_[sr]; }
   const int is_small(int64_t sr) const { return is_small_[sr]; }
@@ -625,6 +633,7 @@ private:
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
+  vector<double> density_mult_;
   vector<int> is_small_;
   vector<int> n_hits_;
   vector<int> mesh_;

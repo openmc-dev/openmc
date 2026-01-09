@@ -844,12 +844,17 @@ attributes/sub-elements:
       relative source strength of each mesh element or each point in the cloud.
 
     :volume_normalized:
-      For "mesh" spatial distrubtions, this optional boolean element specifies
+      For "mesh" spatial distributions, this optional boolean element specifies
       whether the vector of relative strengths should be multiplied by the mesh
       element volume. This is most common if the strengths represent a source
       per unit volume.
 
       *Default*: false
+
+    :bias:
+      For "mesh" and "cloud" spatial distributions, this optional element
+      specifies floating point values corresponding to alternative probabilities
+      for each value/component to use for biased sampling.
 
   :angle:
     An element specifying the angular distribution of source sites. This element
@@ -883,6 +888,10 @@ attributes/sub-elements:
       are those of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
+    :bias:
+      For "isotropic" angular distributions, this optional element specifies a
+      "mu-phi" angular distribution used for biased sampling.
+
   :energy:
     An element specifying the energy distribution of source sites. The necessary
     sub-elements/attributes are those of a univariate probability distribution
@@ -905,6 +914,10 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
+
+  .. note:: Biased sampling can be applied to the spatial and energy distributions
+            of a source by using the ``<bias>`` sub-element (see
+            :ref:`univariate` for details on how to specify bias distributions).
 
   :constraints:
     This sub-element indicates the presence of constraints on sampled source
@@ -998,13 +1011,26 @@ variable and whose sub-elements/attributes are as follows:
   *Default*: histogram
 
 :pair:
-  For a "mixture" distribution, this element provides a distribution and its corresponding probability.
+  For a "mixture" distribution, this element provides a distribution and its
+  corresponding probability.
 
   :probability:
-    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution.
+    An attribute or ``pair`` that provides the probability of a univariate
+    distribution within a "mixture" distribution.
 
   :dist:
-    This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
+    This sub-element of a ``pair`` element provides information on the
+    corresponding univariate distribution.
+
+:bias:
+  This optional element specifies a biased distribution for importance sampling.
+  For continuous distributions, the ``bias`` element should contain another
+  univariate distribution with the same support (interval) as the parent
+  distribution. For discrete distributions, the ``bias`` element should contain
+  floating point values corresponding to alternative probabilities for each
+  value/component to be used for biased sampling.
+
+  *Default*: None
 
 ---------------------------------------
 ``<source_rejection_fraction>`` Element

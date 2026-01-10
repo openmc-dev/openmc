@@ -129,23 +129,8 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
 void TranslationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  int i_particle_surf = p.surface_index();
-
-  // Figure out which of the two BC surfaces were struck then find the
-  // particle's new location and surface.
-  Position new_r;
-  int new_surface;
-  if (i_particle_surf == i_surf_) {
-    new_r = p.r() + translation_;
-    new_surface = p.surface() > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
-  } else if (i_particle_surf == j_surf_) {
-    new_r = p.r() - translation_;
-    new_surface = p.surface() > 0 ? i_surf_ + 1 : -(i_surf_ + 1);
-  } else {
-    throw std::runtime_error(
-      "Called BoundaryCondition::handle_particle after "
-      "hitting a surface, but that surface is not recognized by the BC.");
-  }
+  auto new_r = p.r() + translation_;
+  int new_surface = p.surface() > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);

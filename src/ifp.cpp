@@ -91,7 +91,7 @@ void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
 
   // Send data
   requests.emplace_back();
-  MPI_Datatype datatype = mpi::H5TypeMap<T>::mpi_type;
+  MPI_Datatype datatype = mpi::MPITypeMap<T>::mpi_type;
   MPI_Isend(&send_data[n_generation * idx], n_generation * static_cast<int>(n),
     datatype, neighbor, mpi::rank, mpi::intracomm, &requests.back());
 }
@@ -102,7 +102,7 @@ void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
   vector<DeserializationInfo>& deserialization)
 {
   requests.emplace_back();
-  MPI_Datatype datatype = mpi::H5TypeMap<T>::mpi_type;
+  MPI_Datatype datatype = mpi::MPITypeMap<T>::mpi_type;
   MPI_Irecv(&data[n_generation * idx], n_generation * static_cast<int>(n),
     datatype, neighbor, neighbor, mpi::intracomm, &requests.back());
 

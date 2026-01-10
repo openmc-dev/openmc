@@ -833,6 +833,25 @@ class MeshFilter(Filter):
     translation : Iterable of float
         This array specifies a vector that is used to translate (shift) the mesh
         for this filter
+    rotation : Iterable of float
+        This array specifies the angles in degrees about the x, y, and z axes
+        that the mesh should be rotated. The rotation applied is an intrinsic
+        rotation with specified Tait-Bryan angles. That is to say, if the angles
+        are :math:`(\phi, \theta, \psi)`, then the rotation matrix applied is
+        :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
+
+        .. math::
+
+           \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\phi \sin\psi
+           + \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi
+           \sin\theta \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi +
+           \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
+           \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
+           \cos\theta \end{array} \right ]
+
+        A rotation matrix can also be specified directly by setting this
+        attribute to a nested list (or 2D numpy array) that specifies each
+        element of the matrix.
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -845,6 +864,7 @@ class MeshFilter(Filter):
         self.mesh = mesh
         self.id = filter_id
         self._translation = None
+        self._rotation = None
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -856,6 +876,7 @@ class MeshFilter(Filter):
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        string += '{: <16}=\t{}\n'.format('\tRotation', self.rotation)
         return string
 
     @classmethod
@@ -878,6 +899,10 @@ class MeshFilter(Filter):
         translation = group.get('translation')
         if translation:
             out.translation = translation[()]
+
+        rotation = group.get('rotation')
+        if rotation:
+            out.rotation = rotation[()]
 
         return out
 
@@ -910,6 +935,15 @@ class MeshFilter(Filter):
         cv.check_type('mesh filter translation', t, Iterable, Real)
         cv.check_length('mesh filter translation', t, 3)
         self._translation = np.asarray(t)
+
+    @property
+    def rotation(self):
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, rotation):
+        cv.check_length('mesh filter rotation', rotation, 3)
+        self._rotation = np.asarray(rotation)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -996,6 +1030,8 @@ class MeshFilter(Filter):
         subelement.text = str(self.mesh.id)
         if self.translation is not None:
             element.set('translation', ' '.join(map(str, self.translation)))
+        if self.rotation is not None:
+            element.set('rotation', ' '.join(map(str, self.rotation.ravel())))
         return element
 
     @classmethod
@@ -1008,6 +1044,13 @@ class MeshFilter(Filter):
         translation = get_elem_list(elem, "translation", float) or []
         if translation:
             out.translation = translation
+
+        rotation = get_elem_list(elem, 'rotation', float) or []
+        if rotation:
+            if len(rotation) == 3:
+                out.rotation = rotation
+            elif len(rotation) == 9:
+                out.rotation = np.array(rotation).reshape(3, 3)
         return out
 
 

@@ -2,6 +2,7 @@
 #define OPENMC_SURFACE_H
 
 #include <limits> // For numeric_limits
+#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -378,7 +379,39 @@ public:
 // Non-member functions
 //==============================================================================
 
-void read_surfaces(pugi::xml_node node);
+//! Read surface definitions from XML and populate the global surfaces vector.
+//!
+//! This function parses surface elements from the XML input, creates the
+//! appropriate surface objects, and identifies periodic surfaces along with
+//! their albedo values and sense information.
+//!
+//! \param node XML node containing surface definitions
+//! \param[out] periodic_pairs Set of surface ID pairs representing periodic
+//!   boundary conditions
+//! \param[out] albedo_map Map of surface IDs to albedo values for periodic
+//!   surfaces
+//! \param[out] periodic_sense_map Map of surface IDs to their sense values
+//!   (used to determine orientation for periodic BCs)
+void read_surfaces(pugi::xml_node node,
+  std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map);
+
+//! Resolve periodic surface pairs and assign boundary conditions.
+//!
+//! This function completes the setup of periodic boundary conditions by
+//! resolving unpaired periodic surfaces, determining whether each pair
+//! represents translational or rotational periodicity based on surface
+//! normals, and assigning the appropriate boundary condition objects.
+//!
+//! \param[inout] periodic_pairs Set of surface ID pairs representing periodic
+//!   boundary conditions; unpaired entries are resolved
+//! \param albedo_map Map of surface IDs to albedo values for periodic surfaces
+//! \param periodic_sense_map Map of surface IDs to their sense values (used to
+//!   determine orientation for periodic BCs)
+void prepare_boundary_conditions(std::set<std::pair<int, int>>& periodic_pairs,
+  std::unordered_map<int, double>& albedo_map,
+  std::unordered_map<int, int>& periodic_sense_map);
 
 void free_memory_surfaces();
 

@@ -42,9 +42,9 @@ vector<int64_t> calculate_parallel_index_vector(int64_t size)
 #ifdef OPENMC_MPI
 // Specializations of the MPITypeMap template struct
 template<>
-const hid_t MPITypeMap<int>::mpi_type = MPI_INT;
+const MPI_Datatype MPITypeMap<int>::mpi_type = MPI_INT;
 template<>
-const hid_t MPITypeMap<double>::mpi_type = MPI_DOUBLE;
+const MPI_Datatype MPITypeMap<double>::mpi_type = MPI_DOUBLE;
 #endif
 
 } // namespace mpi

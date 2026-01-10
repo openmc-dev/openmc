@@ -118,7 +118,20 @@ void broadcast_ifp_n_generation(int& n_generation,
 template<typename T>
 void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
   vector<MPI_Request>& requests, const vector<vector<T>>& data,
-  vector<T>& send_data);
+  vector<T>& send_data)
+{
+  // Copy data in buffer
+  for (int i = idx; i < idx + n; i++) {
+    std::copy(
+      data[i].begin(), data[i].end(), send_data.begin() + i * n_generation);
+  }
+
+  // Send data
+  requests.emplace_back();
+  MPI_Datatype datatype = mpi::MPITypeMap<T>::mpi_type;
+  MPI_Isend(&send_data[n_generation * idx], n_generation * static_cast<int>(n),
+    datatype, neighbor, mpi::rank, mpi::intracomm, &requests.back());
+}
 
 //! Receive IFP data using MPI.
 //!
@@ -132,7 +145,17 @@ void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
 template<typename T>
 void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
   vector<MPI_Request>& requests, vector<T>& data,
-  vector<DeserializationInfo>& deserialization);
+  vector<DeserializationInfo>& deserialization)
+{
+  requests.emplace_back();
+  MPI_Datatype datatype = mpi::MPITypeMap<T>::mpi_type;
+  MPI_Irecv(&data[n_generation * idx], n_generation * static_cast<int>(n),
+    datatype, neighbor, neighbor, mpi::intracomm, &requests.back());
+
+  // Deserialization info to reconstruct data later
+  DeserializationInfo info = {idx, n};
+  deserialization.push_back(info);
+}
 
 //! Copy partial IFP data from local lists to source banks.
 //!
@@ -154,7 +177,19 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
 //! \param[out] deserialization Information to deserialize the received data
 template<typename T>
 void deserialize_ifp_info(int n_generation, const vector<T>& data,
-  vector<vector<T>>& bank, const vector<DeserializationInfo>& deserialization);
+  vector<vector<T>>& bank, const vector<DeserializationInfo>& deserialization)
+{
+  for (auto info : deserialization) {
+    int64_t index_local = info.index_local;
+    int64_t n = info.n;
+
+    for (int i = index_local; i < index_local + n; i++) {
+      vector<T> data_received(
+        data.begin() + n_generation * i, data.begin() + n_generation * (i + 1));
+      bank[i] = data_received;
+    }
+  }
+}
 
 #endif
 

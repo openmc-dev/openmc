@@ -321,10 +321,10 @@ void synchronize_bank()
         // Receive IFP data
         if (is_beta_effective_or_both())
           receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
-          recv_delayed_groups, deserialization_info);
+            recv_delayed_groups, deserialization_info);
         if (is_generation_time_or_both())
           receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
-          recv_lifetimes, deserialization_info);
+            recv_lifetimes, deserialization_info);
       }
 
     } else {
@@ -356,11 +356,11 @@ void synchronize_bank()
 
   if (settings::ifp_on) {
     if (is_beta_effective_or_both())
-      deserialize_ifp_info(ifp_n_generation,
-      recv_delayed_groups, simulation::ifp_source_delayed_group_bank, deserialization_info);
+      deserialize_ifp_info(ifp_n_generation, recv_delayed_groups,
+        simulation::ifp_source_delayed_group_bank, deserialization_info);
     if (is_generation_time_or_both())
-      deserialize_ifp_info(ifp_n_generation,
-      recv_lifetimes, simulation::ifp_source_lifetime_bank, deserialization_info);
+      deserialize_ifp_info(ifp_n_generation, recv_lifetimes,
+        simulation::ifp_source_lifetime_bank, deserialization_info);
   }
 
 #else

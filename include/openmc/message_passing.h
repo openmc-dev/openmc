@@ -22,18 +22,16 @@ extern MPI_Datatype collision_track_site;
 extern MPI_Comm intracomm;
 #endif
 
+//==============================================================================
+// Template struct used to map types to MPI datatypes
+// By having a single static data member, the template can
+// be specialized for each type we know of. The specializations appear in the
+// .cpp file since they are definitions.
+//==============================================================================
 #ifdef OPENMC_MPI
 template<typename T>
-struct mpi_type;
-
-template<>
-struct mpi_type<int> {
-  static MPI_Datatype get() { return MPI_INT; }
-};
-
-template<>
-struct mpi_type<double> {
-  static MPI_Datatype get() { return MPI_DOUBLE; }
+struct MPITypeMap {
+  static const MPI_Datatype mpi_type;
 };
 #endif
 

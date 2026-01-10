@@ -35,7 +35,7 @@
     </tally>
     <tally id="2" name="IFP beta numerator">
       <filters>1</filters>
-      <nuclides>U235 Pu239</nuclides>
+      <nuclides>U235 Pu239 total</nuclides>
       <scores>ifp-beta-numerator</scores>
     </tally>
     <tally id="3" name="IFP denominator">

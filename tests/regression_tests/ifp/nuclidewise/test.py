@@ -32,7 +32,7 @@ def ifp_model():
     space = openmc.stats.Box(*cell.bounding_box)
     model.settings.source = openmc.IndependentSource(
         space=space, constraints={'fissionable': True})
-    model.add_kinetics_parameters_tallies(num_groups=6, nuclides = ["U235", "Pu239"])
+    model.add_kinetics_parameters_tallies(num_groups=6, nuclides = ["U235", "Pu239", "total"])
     return model
 
 

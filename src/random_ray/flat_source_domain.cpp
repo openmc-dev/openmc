@@ -1499,6 +1499,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   handle.material() = material;
 
   handle.density_mult() = cell.density_mult(gs.cell_instance());
+  std::cout << "Density mult: " << cell.density_mult(gs.cell_instance()) << std::endl;
 
   // Store the mesh index (if any) assigned to this source region
   handle.mesh() = mesh_idx;

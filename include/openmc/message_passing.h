@@ -22,6 +22,21 @@ extern MPI_Datatype collision_track_site;
 extern MPI_Comm intracomm;
 #endif
 
+#ifdef OPENMC_MPI
+template<typename T>
+struct mpi_type;
+
+template<>
+struct mpi_type<int> {
+  static MPI_Datatype get() { return MPI_INT; }
+};
+
+template<>
+struct mpi_type<double> {
+  static MPI_Datatype get() { return MPI_DOUBLE; }
+};
+#endif
+
 // Calculates global indices of the bank particles
 // across all ranks using a parallel scan. This is used to write
 // the surface source file in parallel runs. It will probably

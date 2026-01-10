@@ -78,56 +78,34 @@ void broadcast_ifp_n_generation(int& n_generation,
   MPI_Bcast(&n_generation, 1, MPI_INT, 0, mpi::intracomm);
 }
 
+template<typename T>
 void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
-  vector<MPI_Request>& requests, const vector<vector<int>>& delayed_groups,
-  vector<int>& send_delayed_groups, const vector<vector<double>>& lifetimes,
-  vector<double>& send_lifetimes)
+  vector<MPI_Request>& requests, const vector<vector<T>>& data,
+  vector<T>& send_data)
 {
-  // Copy data in send buffers
+  // Copy data in buffer
   for (int i = idx; i < idx + n; i++) {
-    if (is_beta_effective_or_both()) {
-      std::copy(delayed_groups[i].begin(), delayed_groups[i].end(),
-        send_delayed_groups.begin() + i * n_generation);
-    }
-    if (is_generation_time_or_both()) {
-      std::copy(lifetimes[i].begin(), lifetimes[i].end(),
-        send_lifetimes.begin() + i * n_generation);
-    }
+    std::copy(
+      data[i].begin(), data[i].end(), send_data.begin() + i * n_generation);
   }
-  // Send delayed groups
-  if (is_beta_effective_or_both()) {
-    requests.emplace_back();
-    MPI_Isend(&send_delayed_groups[n_generation * idx],
-      n_generation * static_cast<int>(n), MPI_INT, neighbor, mpi::rank,
-      mpi::intracomm, &requests.back());
-  }
-  // Send lifetimes
-  if (is_generation_time_or_both()) {
-    requests.emplace_back();
-    MPI_Isend(&send_lifetimes[n_generation * idx],
-      n_generation * static_cast<int>(n), MPI_DOUBLE, neighbor, mpi::rank,
-      mpi::intracomm, &requests.back());
-  }
+
+  // Send data
+  requests.emplace_back();
+  MPI_Datatype datatype = mpi::mpi_type<T>::get();
+  MPI_Isend(&send_data[n_generation * idx], n_generation * static_cast<int>(n),
+    datatype, neighbor, mpi::rank, mpi::intracomm, &requests.back());
 }
 
+template<typename T>
 void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
-  vector<MPI_Request>& requests, vector<int>& delayed_groups,
-  vector<double>& lifetimes, vector<DeserializationInfo>& deserialization)
+  vector<MPI_Request>& requests, vector<T>& data,
+  vector<DeserializationInfo>& deserialization)
 {
-  // Receive delayed groups
-  if (is_beta_effective_or_both()) {
-    requests.emplace_back();
-    MPI_Irecv(&delayed_groups[n_generation * idx],
-      n_generation * static_cast<int>(n), MPI_INT, neighbor, neighbor,
-      mpi::intracomm, &requests.back());
-  }
-  // Receive lifetimes
-  if (is_generation_time_or_both()) {
-    requests.emplace_back();
-    MPI_Irecv(&lifetimes[n_generation * idx],
-      n_generation * static_cast<int>(n), MPI_DOUBLE, neighbor, neighbor,
-      mpi::intracomm, &requests.back());
-  }
+  requests.emplace_back();
+  MPI_Datatype datatype = mpi::mpi_type<T>::get();
+  MPI_Irecv(&data[n_generation * idx], n_generation * static_cast<int>(n),
+    datatype, neighbor, neighbor, mpi::intracomm, &requests.back());
+
   // Deserialization info to reconstruct data later
   DeserializationInfo info = {idx, n};
   deserialization.push_back(info);
@@ -147,26 +125,18 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
   }
 }
 
-void deserialize_ifp_info(int n_generation,
-  const vector<DeserializationInfo>& deserialization,
-  const vector<int>& delayed_groups, const vector<double>& lifetimes)
+template<typename T>
+void deserialize_ifp_info(int n_generation, const vector<T>& data,
+  vector<vector<T>>& bank, const vector<DeserializationInfo>& deserialization)
 {
   for (auto info : deserialization) {
     int64_t index_local = info.index_local;
     int64_t n = info.n;
 
     for (int i = index_local; i < index_local + n; i++) {
-      if (is_beta_effective_or_both()) {
-        vector<int> delayed_groups_received(
-          delayed_groups.begin() + n_generation * i,
-          delayed_groups.begin() + n_generation * (i + 1));
-        simulation::ifp_source_delayed_group_bank[i] = delayed_groups_received;
-      }
-      if (is_generation_time_or_both()) {
-        vector<double> lifetimes_received(lifetimes.begin() + n_generation * i,
-          lifetimes.begin() + n_generation * (i + 1));
-        simulation::ifp_source_lifetime_bank[i] = lifetimes_received;
-      }
+      vector<T> data_received(
+        data.begin() + n_generation * i, data.begin() + n_generation * (i + 1));
+      bank[i] = data_received;
     }
   }
 }

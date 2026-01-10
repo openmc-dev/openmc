@@ -113,14 +113,12 @@ void broadcast_ifp_n_generation(int& n_generation,
 //! \param[in] n_generation Number of generations
 //! \param[in] neighbor Index of the neighboring processor
 //! \param[in] requests MPI requests
-//! \param[in] delayed_groups List of delayed group numbers lists
-//! \param[out] send_delayed_groups Delayed group numbers buffer
-//! \param[in] lifetimes List of lifetimes lists
-//! \param[out] send_lifetimes Lifetimes buffer
+//! \param[in] data List of data lists
+//! \param[out] send_data data buffer
+template<typename T>
 void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
-  vector<MPI_Request>& requests, const vector<vector<int>>& delayed_groups,
-  vector<int>& send_delayed_groups, const vector<vector<double>>& lifetimes,
-  vector<double>& send_lifetimes);
+  vector<MPI_Request>& requests, const vector<vector<T>>& data,
+  vector<T>& send_data);
 
 //! Receive IFP data using MPI.
 //!
@@ -132,9 +130,10 @@ void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
 //! \param[in] delayed_groups List of delayed group numbers
 //! \param[in] lifetimes List of lifetimes
 //! \param[out] deserialization Information to deserialize the received data
+template<typename T>
 void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
-  vector<MPI_Request>& requests, vector<int>& delayed_groups,
-  vector<double>& lifetimes, vector<DeserializationInfo>& deserialization);
+  vector<MPI_Request>& requests, vector<T>& data,
+  vector<DeserializationInfo>& deserialization);
 
 //! Copy partial IFP data from local lists to source banks.
 //!
@@ -151,12 +150,12 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
 //! the IFP source banks.
 //!
 //! \param[in] n_generation Number of generations
+//! \param[in] data data to deserialize
+//! \param[in] bank bank to store data
 //! \param[out] deserialization Information to deserialize the received data
-//! \param[in] delayed_groups List of delayed group numbers
-//! \param[in] lifetimes List of lifetimes
-void deserialize_ifp_info(int n_generation,
-  const vector<DeserializationInfo>& deserialization,
-  const vector<int>& delayed_groups, const vector<double>& lifetimes);
+template<typename T>
+void deserialize_ifp_info(int n_generation, const vector<T>& data,
+  vector<vector<T>>& bank, const vector<DeserializationInfo>& deserialization);
 
 #endif
 

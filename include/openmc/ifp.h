@@ -127,8 +127,7 @@ void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
 //! \param[in] n_generation Number of generations
 //! \param[in] neighbor Index of the neighboring processor
 //! \param[in] requests MPI requests
-//! \param[in] delayed_groups List of delayed group numbers
-//! \param[in] lifetimes List of lifetimes
+//! \param[in] data data buffer
 //! \param[out] deserialization Information to deserialize the received data
 template<typename T>
 void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,

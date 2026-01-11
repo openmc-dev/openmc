@@ -53,10 +53,10 @@ def test_exceptions(options, error, run_in_tmpdir, geometry):
 @pytest.mark.parametrize(
     "num_groups, nuclides, use_auto_tallies", 
     [
-        (None, None, True),
-        (None, None, False),
-        (6, None, True),
-        (6, None, False),
+        (None, ["total"], True),
+        (None, ["total"], False),
+        (6, ["total"], True),
+        (6, ["total"], False),
         (None, ["U235", "Pu239"], True),
         (None, ["U235", "Pu239"], False),
         (6, ["U235", "Pu239"], True),

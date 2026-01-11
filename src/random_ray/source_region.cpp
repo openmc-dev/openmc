@@ -11,10 +11,11 @@ namespace openmc {
 //==============================================================================
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   : negroups_(sr.scalar_flux_old_.size()), material_(&sr.material_),
-    density_mult_(&sr.density_mult_), is_small_(&sr.is_small_), n_hits_(&sr.n_hits_),
-    is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
-    volume_(&sr.volume_), volume_t_(&sr.volume_t_), volume_sq_(&sr.volume_sq_),
-    volume_sq_t_(&sr.volume_sq_t_), volume_naive_(&sr.volume_naive_),
+    density_mult_(&sr.density_mult_), is_small_(&sr.is_small_),
+    n_hits_(&sr.n_hits_), is_linear_(sr.source_gradients_.size() > 0),
+    lock_(&sr.lock_), volume_(&sr.volume_), volume_t_(&sr.volume_t_),
+    volume_sq_(&sr.volume_sq_), volume_sq_t_(&sr.volume_sq_t_),
+    volume_naive_(&sr.volume_naive_),
     position_recorded_(&sr.position_recorded_),
     external_source_present_(&sr.external_source_present_),
     position_(&sr.position_), centroid_(&sr.centroid_),

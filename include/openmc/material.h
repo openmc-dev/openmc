@@ -9,12 +9,12 @@
 #include "xtensor/xtensor.hpp"
 #include <hdf5.h>
 
-#include "openmc/settings.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/ncrystal_interface.h"
 #include "openmc/particle.h"
+#include "openmc/settings.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -113,7 +113,10 @@ public:
 
   //! Get density in [g/cm^3].
   //! \return Density in [g/cm^3]
-  double density_gpcc() const { return settings::run_CE ? density_gpcc_ : density(); }
+  double density_gpcc() const
+  {
+    return settings::run_CE ? density_gpcc_ : density();
+  }
 
   //! Get charge density in [e/b-cm]
   //! \return Charge density in [e/b-cm]

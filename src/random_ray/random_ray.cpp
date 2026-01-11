@@ -435,7 +435,8 @@ void RandomRay::attenuate_flux_flat_source(
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
-    float sigma_t = domain_->sigma_t_[material * negroups_ + g] * srh.density_mult();
+    float sigma_t =
+      domain_->sigma_t_[material * negroups_ + g] * srh.density_mult();
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
@@ -558,7 +559,8 @@ void RandomRay::attenuate_flux_linear_source(
   for (int g = 0; g < negroups_; g++) {
 
     // Compute tau, the optical thickness of the ray segment
-    float sigma_t = domain_->sigma_t_[material * negroups_ + g] * srh.density_mult();
+    float sigma_t =
+      domain_->sigma_t_[material * negroups_ + g] * srh.density_mult();
     float tau = sigma_t * distance;
 
     // If tau is very small, set it to zero to avoid numerical issues.

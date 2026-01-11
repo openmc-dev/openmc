@@ -152,10 +152,8 @@ class MeshMaterialVolumes(Mapping):
             vol = self._volumes[index_elem, i]
 
             if include_bboxes:
-                bbox = None
                 vals = self._bboxes[index_elem, i]
-                if (vals[0] <= vals[3]) and (vals[1] <= vals[4]) and (vals[2] <= vals[5]):
-                    bbox = BoundingBox(vals[0:3], vals[3:6])
+                bbox = BoundingBox(vals[0:3], vals[3:6])
                 results.append((mat_id, vol, bbox))
             else:
                 results.append((mat_id, vol))

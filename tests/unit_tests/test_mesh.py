@@ -723,20 +723,15 @@ def test_mesh_material_volumes_serialize_with_bboxes():
         loaded = openmc.MeshMaterialVolumes.from_npz(path)
 
     assert loaded.has_bounding_boxes
-    bb = loaded.bounding_box(1, 0)
-    assert isinstance(bb, openmc.BoundingBox)
-    np.testing.assert_array_equal(bb.lower_left, (-1.0, -2.0, -3.0))
-    np.testing.assert_array_equal(bb.upper_right, (1.0, 2.0, 3.0))
-
-    bb_void = loaded.bounding_box(None, 0)
-    assert isinstance(bb_void, openmc.BoundingBox)
-    np.testing.assert_array_equal(bb_void.lower_left, (-5.0, -6.0, -7.0))
-    np.testing.assert_array_equal(bb_void.upper_right, (5.0, 6.0, 7.0))
-
     first = loaded.by_element(0, include_bboxes=True)[0][2]
     assert isinstance(first, openmc.BoundingBox)
     np.testing.assert_array_equal(first.lower_left, (-1.0, -2.0, -3.0))
     np.testing.assert_array_equal(first.upper_right, (1.0, 2.0, 3.0))
+
+    second = loaded.by_element(0, include_bboxes=True)[1][2]
+    assert isinstance(second, openmc.BoundingBox)
+    np.testing.assert_array_equal(second.lower_left, (-5.0, -6.0, -7.0))
+    np.testing.assert_array_equal(second.upper_right, (5.0, 6.0, 7.0))
 
 
 def test_mesh_material_volumes_boundary_conditions(sphere_model):

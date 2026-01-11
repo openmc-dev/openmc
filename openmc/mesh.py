@@ -162,38 +162,6 @@ class MeshMaterialVolumes(Mapping):
 
         return results
 
-    def bounding_box(
-        self,
-        material_id: int | None,
-        index_elem: int
-    ) -> BoundingBox | None:
-        """Get the bounding box for a (material, element) pair.
-
-        Parameters
-        ----------
-        material_id : int or None
-            Material ID. Use None for void.
-        index_elem : int
-            Mesh element index
-
-        Returns
-        -------
-        openmc.BoundingBox or None
-            Bounding box if present; otherwise None.
-
-        """
-        if self._bboxes is None:
-            raise ValueError('Bounding boxes were not computed for this object.')
-
-        mat = -1 if material_id is None else material_id
-        for i in range(self._materials.shape[1]):
-            if self._materials[index_elem, i] == mat:
-                vals = self._bboxes[index_elem, i]
-                if (vals[0] <= vals[3]) and (vals[1] <= vals[4]) and (vals[2] <= vals[5]):
-                    return BoundingBox(vals[0:3], vals[3:6])
-                return None
-        return None
-
     def save(self, filename: PathLike):
         """Save material volumes to a .npz file.
 

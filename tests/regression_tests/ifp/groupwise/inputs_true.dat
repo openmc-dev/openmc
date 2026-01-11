@@ -34,6 +34,7 @@
     </tally>
     <tally id="2" name="IFP beta numerator">
       <filters>1</filters>
+      <nuclides>total</nuclides>
       <scores>ifp-beta-numerator</scores>
     </tally>
     <tally id="3" name="IFP denominator">

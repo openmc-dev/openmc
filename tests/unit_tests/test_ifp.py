@@ -93,9 +93,9 @@ def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, nuclides, 
     assert params.generation_time is not None
     assert params.beta_effective is not None
     if num_groups is not None:
-        if nuclides:
+        if len(nuclides)>1:
             assert params.beta_effective.shape == (num_groups, len(nuclides))
         else:
             assert len(params.beta_effective) == num_groups
-    elif nuclides:
+    elif len(nuclides)>1:
         assert len(params.beta_effective) == len(nuclides)

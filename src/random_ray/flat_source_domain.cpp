@@ -149,39 +149,24 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       }
       total_source = (scatter_source + fission_source * inverse_k_eff);
 
-      if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-        // Add delayed source for kinetic simulation if delayed neutrons are
-        // turned on
-        if (settings::create_delayed_neutrons) {
-          double delayed_source = 0.0;
-          for (int dg = 0; dg < ndgroups_; dg++) {
-            double chi_d =
-              chi_d_[material * negroups_ * ndgroups_ + dg * negroups_ + g_out];
-            double lambda = lambda_[material * ndgroups_ + dg];
-            double precursors = srh.precursors_old(dg);
-            delayed_source += chi_d * precursors * lambda;
-          }
-          total_source += delayed_source;
+      // Add delayed source for kinetic simulation if delayed neutrons are
+      // turned on
+      if (settings::kinetic_simulation && !simulation::is_initial_condition &&
+          settings::create_delayed_neutrons) {
+        double delayed_source = 0.0;
+        for (int dg = 0; dg < ndgroups_; dg++) {
+          double chi_d =
+            chi_d_[material * negroups_ * ndgroups_ + dg * negroups_ + g_out];
+          double lambda = lambda_[material * ndgroups_ + dg];
+          double precursors = srh.precursors_old(dg);
+          delayed_source += chi_d * precursors * lambda;
         }
-        // Add derivative of scalar flux to source (only works for isotropic
-        // method)
-        if (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC) {
-          double inverse_vbar = inverse_vbar_[material * negroups_ + g_out];
-          double scalar_flux_rhs_bd = srh.scalar_flux_rhs_bd(g_out);
-          double A0 =
-            (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] /
-            settings::dt;
-          double scalar_flux = srh.scalar_flux_old(g_out);
-          double scalar_flux_time_derivative =
-            A0 * scalar_flux + scalar_flux_rhs_bd;
-          total_source -= scalar_flux_time_derivative * inverse_vbar;
-        }
+        total_source += delayed_source;
       }
       srh.source(g_out) = total_source / sigma_t;
     }
   }
 
-  // TODO: Add control flow for k-eigenvalue forward-weighted adjoint
   // Add external source if in fixed source mode
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     for (int g = 0; g < negroups_; g++) {
@@ -200,9 +185,11 @@ void FlatSourceDomain::update_all_neutron_sources()
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
     update_single_neutron_source(srh);
-    if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-        RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      compute_single_T1(srh);
+    if (settings::kinetic_simulation && !simulation::is_initial_condition) {
+      if (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC)
+        compute_single_phi_prime(srh);
+      else if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION)
+        compute_single_T1(srh);
     }
   }
 
@@ -243,7 +230,6 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
   int material = source_regions_.material(sr);
-  // TODO: Implement support for time-dependent void transport
   if (material == MATERIAL_VOID) {
     source_regions_.scalar_flux_new(sr, g) /= volume;
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -252,20 +238,21 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
         source_regions_.volume_sq(sr);
     }
   } else {
-    double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
+    double sigma_t = sigma_t_[material * negroups_ + g];
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
-    if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-        RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-      double inverse_vbar =
-        inverse_vbar_[source_regions_.material(sr) * negroups_ + g];
-      double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
-      double A0 = (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] /
-                  settings::dt;
-      source_regions_.scalar_flux_new(sr, g) -=
-        scalar_flux_rhs_bd * inverse_vbar / sigma_t;
-      source_regions_.scalar_flux_new(sr, g) /= 1 + A0 * inverse_vbar / sigma_t;
-    }
+  }
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
+    double inverse_vbar =
+      inverse_vbar_[source_regions_.material(sr) * negroups_ + g];
+    double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
+    double A0 =
+      (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
+    // TODO: Add support for expicit void regions
+    double sigma_t = sigma_t_[material * negroups_ + g];
+    source_regions_.scalar_flux_new(sr, g) -=
+      scalar_flux_rhs_bd * inverse_vbar / sigma_t;
+    source_regions_.scalar_flux_new(sr, g) /= 1 + A0 * inverse_vbar / sigma_t;
   }
 }
 
@@ -1736,6 +1723,11 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     }
   }
 
+  if (settings::kinetic_simulation && material == MATERIAL_VOID) {
+    fatal_error("Explicit void treatment for kinetic simulations "
+                " is not currently supported.");
+  }
+
   handle.material() = material;
 
   // Store the mesh index (if any) assigned to this source region
@@ -1774,9 +1766,11 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 
   // Compute the combined source term
   update_single_neutron_source(handle);
-  if (settings::kinetic_simulation && !simulation::is_initial_condition &&
-      RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-    compute_single_T1(handle);
+  if (settings::kinetic_simulation && !simulation::is_initial_condition) {
+    if (RandomRay::time_method_ == RandomRayTimeMethod::ISOTROPIC)
+      compute_single_phi_prime(handle);
+    else if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION)
+      compute_single_T1(handle);
   }
 
   // Unlock the parallel map. Note: we may be tempted to release
@@ -1936,6 +1930,22 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 // kinetic simulations) sources in each source region based on the flux
 // estimate from the previous iteration.
 
+void FlatSourceDomain::compute_single_phi_prime(SourceRegionHandle& srh)
+{
+  double A0 =
+    (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
+  int material = srh.material();
+  for (int g = 0; g < negroups_; g++) {
+    double inverse_vbar = inverse_vbar_[material * negroups_ + g];
+    // TODO: add support for explicit void
+    double sigma_t = sigma_t_[material * negroups_ + g];
+
+    double scalar_flux_time_derivative =
+      A0 * srh.scalar_flux_old(g) + srh.scalar_flux_rhs_bd(g);
+    srh.phi_prime(g) = scalar_flux_time_derivative * inverse_vbar / sigma_t;
+  }
+}
+
 // T1 calculation
 void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
 {
@@ -1946,9 +1956,8 @@ void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
   int material = srh.material();
   for (int g = 0; g < negroups_; g++) {
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
-    double sigma_t = 1.0;
-    if (material != MATERIAL_VOID)
-      sigma_t = sigma_t_[material * negroups_ + g];
+    // TODO: add support for explicit void
+    double sigma_t = sigma_t_[material * negroups_ + g];
 
     // Multiply out sigma_t to correctly compute the derivative term
     float source_time_derivative =
@@ -2131,10 +2140,10 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
         source_regions_.scalar_flux_final(sr, g), increment_not_initialize,
         RandomRay::bd_order_ + j);
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-        // TODO: add support for void regions
         // Multiply out sigma_t to store the base source
-        double sigma_t = sigma_t =
-          sigma_t_[source_regions_.material(sr) * negroups_ + g];
+        int material = source_regions_.material(sr);
+        // TODO: add support for explicit void regions
+        double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
         float source = source_regions_.source_final(sr, g) * sigma_t;
         add_value_to_bd_vector(source_regions_.source_bd(sr, g), source,
           increment_not_initialize, RandomRay::bd_order_);

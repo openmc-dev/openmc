@@ -197,6 +197,7 @@ public:
   // Public Data Members for kinetic simulations
 
   // Energy group-wise 1D time-derivative arrays
+  double* phi_prime_;
   double* T1_;
 
   // Delay group-wise 1D arrays
@@ -342,6 +343,9 @@ public:
 
   //---------------------------------------------------------------------------
   // Public Accessors for kinetic simulations
+  double& phi_prime(int g) { return phi_prime_[g]; }
+  const double phi_prime(int g) const { return phi_prime_[g]; }
+
   double& T1(int g) { return T1_[g]; }
   const double T1(int g) const { return T1_[g]; }
 
@@ -490,7 +494,9 @@ public:
                                //!< active iterations (used for SDP)
 
   // Energy group-wise 1D derivative arrays
-  vector<double> T1_; //!< The combined sourcetime derivative and 2nd order
+  vector<double>
+    phi_prime_; //!< The 1st order scalar flux time derivative (used for TI)
+  vector<double> T1_; //!< The combined source time derivative and 2nd order
                       //!< scalar flux time derivative (used for SDP)
   // Delay group-wise 1D arrays
   vector<double> delayed_fission_source_; //!< The delayed fission source binned
@@ -782,6 +788,14 @@ public:
 
   //---------------------------------------
   // For kinetic simulations
+  double& phi_prime(int64_t sr, int g) { return phi_prime_[index(sr, g)]; }
+  const double& phi_prime(int64_t sr, int g) const
+  {
+    return phi_prime_[index(sr, g)];
+  }
+  double& phi_prime(int64_t se) { return phi_prime_[se]; }
+  const double& phi_prime(int64_t se) const { return phi_prime_[se]; }
+
   double& T1(int64_t sr, int g) { return T1_[index(sr, g)]; }
   const double& T1(int64_t sr, int g) const { return T1_[index(sr, g)]; }
   double& T1(int64_t se) { return T1_[se]; }
@@ -1034,6 +1048,7 @@ private:
   // Private Data Members for kinetic simulations
 
   // SoA energy group-wise 2D derivative arrays flattened to 1D
+  vector<double> phi_prime_;
   vector<double> T1_;
 
   // SoA delay group-wise 2D arrays flattened to 1D

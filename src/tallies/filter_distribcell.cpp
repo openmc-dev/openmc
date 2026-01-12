@@ -34,7 +34,7 @@ void DistribcellFilter::set_cell(int32_t cell)
   assert(cell >= 0);
   assert(cell < model::cells.size());
   cell_ = cell;
-  n_bins_ = model::cells[cell]->n_instances_;
+  n_bins_ = model::cells[cell]->n_instances();
 }
 
 void DistribcellFilter::get_all_bins(
@@ -43,18 +43,18 @@ void DistribcellFilter::get_all_bins(
   int offset = 0;
   auto distribcell_index = model::cells[cell_]->distribcell_index_;
   for (int i = 0; i < p.n_coord(); i++) {
-    auto& c {*model::cells[p.coord(i).cell]};
+    auto& c {*model::cells[p.coord(i).cell()]};
     if (c.type_ == Fill::UNIVERSE) {
       offset += c.offset_[distribcell_index];
     } else if (c.type_ == Fill::LATTICE) {
-      auto& lat {*model::lattices[p.coord(i + 1).lattice]};
-      const auto& i_xyz {p.coord(i + 1).lattice_i};
+      auto& lat {*model::lattices[p.coord(i + 1).lattice()]};
+      const auto& i_xyz {p.coord(i + 1).lattice_index()};
       if (lat.are_valid_indices(i_xyz)) {
         offset +=
           lat.offset(distribcell_index, i_xyz) + c.offset_[distribcell_index];
       }
     }
-    if (cell_ == p.coord(i).cell) {
+    if (cell_ == p.coord(i).cell()) {
       match.bins_.push_back(offset);
       match.weights_.push_back(1.0);
       return;

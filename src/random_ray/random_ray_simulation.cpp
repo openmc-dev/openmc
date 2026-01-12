@@ -36,13 +36,6 @@ void openmc_run_random_ray()
   bool adjoint_needed = FlatSourceDomain::adjoint_;
   bool global_adjoint = model::adjoint_sources.empty();
 
-  // Declare forward flux so that it can be saved for either simulation
-  vector<double> forward_flux;
-  SourceRegionContainer forward_source_regions;
-  SourceRegionContainer forward_base_source_regions;
-  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
-    forward_source_region_map;
-
   // If we're going to do an adjoint simulation with global adjoint sources 
   // afterwards, report that this is the initial forward flux solve.
   if (!adjoint_needed || global_adjoint) {
@@ -76,20 +69,15 @@ void openmc_run_random_ray()
       simulation::time_total.stop();
 
       // Normalize and save the final forward flux
-      sim.domain()->serialize_final_fluxes(forward_flux);
-
       double source_normalization_factor =
         sim.domain()->compute_fixed_source_normalization_factor() /
         (settings::n_batches - settings::n_inactive);
 
 #pragma omp parallel for
-      for (uint64_t i = 0; i < forward_flux.size(); i++) {
-        forward_flux[i] *= source_normalization_factor;
+      for (uint64_t se = 0; se < sim.domain()->n_source_elements(); se++) {
+        sim.domain()->source_regions_.scalar_flux_final(se) *=
+          source_normalization_factor;
       }
-
-      forward_source_regions = sim.domain()->source_regions_;
-      forward_source_region_map = sim.domain()->source_region_map_;
-      forward_base_source_regions = sim.domain()->base_source_regions_;
 
       // Finalize OpenMC
       openmc_simulation_finalize();
@@ -103,42 +91,41 @@ void openmc_run_random_ray()
   // Run adjoint simulation (if enabled)
   //////////////////////////////////////////////////////////
 
-  if (adjoint_needed) {
-    reset_timers();
+  if (!adjoint_needed) {
+    return;
+  }
 
-    // Configure the domain for adjoint simulation
-    FlatSourceDomain::adjoint_ = true;
+  reset_timers();
 
-    if (mpi::master)
-      header("ADJOINT FLUX SOLVE", 3);
+  // Configure the domain for adjoint simulation
+  FlatSourceDomain::adjoint_ = true;
 
-    // Initialize OpenMC general data structures
-    openmc_simulation_init();
+  if (mpi::master)
+    header("ADJOINT FLUX SOLVE", 3);
 
-    // Initialize Random Ray Simulation Object
-    RandomRaySimulation adjoint_sim;
+  // Initialize OpenMC general data structures
+  openmc_simulation_init();
+
+  sim.domain()->k_eff_ = 1.0;
 
     // Initialize adjoint fixed sources, if present
     if (global_adjoint) {
-      adjoint_sim.prepare_global_fixed_sources_adjoint(forward_flux,
-        forward_source_regions, forward_base_source_regions,
-        forward_source_region_map);
+      sim.prepare_global_fixed_sources_adjoint();
     } else {
-      adjoint_sim.prepare_local_fixed_sources_adjoint(forward_source_regions, 
-        forward_base_source_regions,forward_source_region_map);
+      sim.prepare_local_fixed_sources_adjoint();
     }
 
-    // Transpose scattering matrix
-    adjoint_sim.domain()->transpose_scattering_matrix();
+  // Transpose scattering matrix
+    sim.domain()->transpose_scattering_matrix();
 
     // Swap nu_sigma_f and chi
-    adjoint_sim.domain()->nu_sigma_f_.swap(adjoint_sim.domain()->chi_);
+    sim.domain()->nu_sigma_f_.swap(sim.domain()->chi_);
 
     // Begin main simulation timer
     simulation::time_total.start();
 
     // Execute random ray simulation
-    adjoint_sim.simulate();
+    sim.simulate();
 
     // End main simulation timer
     simulation::time_total.stop();
@@ -147,7 +134,7 @@ void openmc_run_random_ray()
     openmc_simulation_finalize();
 
     // Output all simulation results
-    adjoint_sim.output_simulation_results();
+    sim.output_simulation_results();
   }
 }
 
@@ -207,8 +194,8 @@ void validate_random_ray_inputs()
                   "supported in random ray mode.");
     }
     if (material.get_xsdata().size() > 1) {
-      fatal_error("Non-isothermal MGXS detected. Only isothermal XS data sets "
-                  "supported in random ray mode.");
+      warning("Non-isothermal MGXS detected. Only isothermal XS data sets "
+              "supported in random ray mode. Using lowest temperature.");
     }
     for (int g = 0; g < data::mg.num_energy_groups_; g++) {
       if (material.exists_in_model) {
@@ -359,7 +346,6 @@ void validate_random_ray_inputs()
   // when generating weight windows with FW-CADIS and an overlaid mesh.
   ///////////////////////////////////////////////////////////////////
   if (RandomRay::source_shape_ == RandomRaySourceShape::LINEAR &&
-      RandomRay::mesh_subdivision_enabled_ &&
       variance_reduction::weight_windows.size() > 0) {
     warning(
       "Linear sources may result in negative fluxes in small source regions "
@@ -377,7 +363,6 @@ void openmc_reset_random_ray()
   FlatSourceDomain::mesh_domain_map_.clear();
   RandomRay::ray_source_.reset();
   RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
-  RandomRay::mesh_subdivision_enabled_ = false;
   RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
 }
 
@@ -423,36 +408,17 @@ void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
   }
 }
 
-void RandomRaySimulation::prepare_global_fixed_sources_adjoint(
-  vector<double>& forward_flux, SourceRegionContainer& forward_source_regions,
-  SourceRegionContainer& forward_base_source_regions,
-  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
-    forward_source_region_map)
+void RandomRaySimulation::prepare_global_fixed_sources_adjoint()
 {
+  domain_->source_regions_.adjoint_reset();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    if (RandomRay::mesh_subdivision_enabled_) {
-      domain_->source_regions_ = forward_source_regions;
-      domain_->source_region_map_ = forward_source_region_map;
-      domain_->base_source_regions_ = forward_base_source_regions;
-      domain_->source_regions_.adjoint_reset();
-    }
-    domain_->set_global_adjoint_sources(forward_flux);
+    domain_->set_global_adjoint_sources();
   }
 }
 
-void RandomRaySimulation::prepare_local_fixed_sources_adjoint(
-  SourceRegionContainer& forward_source_regions,
-  SourceRegionContainer& forward_base_source_regions,
-  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
-    forward_source_region_map)
+void RandomRaySimulation::prepare_local_fixed_sources_adjoint()
 {
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    if (RandomRay::mesh_subdivision_enabled_) {
-      domain_->source_regions_ = forward_source_regions;
-      domain_->source_region_map_ = forward_source_region_map;
-      domain_->base_source_regions_ = forward_base_source_regions;
-      domain_->source_regions_.adjoint_reset();
-    }
     domain_->set_local_adjoint_sources();
   }
 }
@@ -473,22 +439,18 @@ void RandomRaySimulation::simulate()
       simulation::total_weight = 1.0;
 
       // Update source term (scattering + fission)
-      domain_->update_neutron_source(k_eff_);
+      domain_->update_all_neutron_sources();
 
-      // Reset scalar fluxes, iteration volume tallies, and region hit flags to
-      // zero
+      // Reset scalar fluxes, iteration volume tallies, and region hit flags
+      // to zero
       domain_->batch_reset();
 
-      // At the beginning of the simulation, if mesh subvivision is in use, we
+      // At the beginning of the simulation, if mesh subdivision is in use, we
       // need to swap the main source region container into the base container,
       // as the main source region container will be used to hold the true
       // subdivided source regions. The base container will therefore only
       // contain the external source region information, the mesh indices,
       // material properties, and initial guess values for the flux/source.
-      if (RandomRay::mesh_subdivision_enabled_ &&
-          simulation::current_batch == 1 && !FlatSourceDomain::adjoint_) {
-        domain_->prepare_base_source_regions();
-      }
 
       // Start timer for transport
       simulation::time_transport.start();
@@ -504,11 +466,9 @@ void RandomRaySimulation::simulate()
 
       simulation::time_transport.stop();
 
-      // If using mesh subdivision, add any newly discovered source regions
-      // to the main source region container.
-      if (RandomRay::mesh_subdivision_enabled_) {
-        domain_->finalize_discovered_source_regions();
-      }
+      // Add any newly discovered source regions to the main source region
+      // container.
+      domain_->finalize_discovered_source_regions();
 
       // Normalize scalar flux and update volumes
       domain_->normalize_scalar_flux_and_volumes(
@@ -522,10 +482,10 @@ void RandomRaySimulation::simulate()
 
       if (settings::run_mode == RunMode::EIGENVALUE) {
         // Compute random ray k-eff
-        k_eff_ = domain_->compute_k_eff(k_eff_);
+        domain_->compute_k_eff();
 
         // Store random ray k-eff into OpenMC's native k-eff variable
-        global_tally_tracklength = k_eff_;
+        global_tally_tracklength = domain_->k_eff_;
       }
 
       // Execute all tallying tasks, if this is an active batch
@@ -534,11 +494,6 @@ void RandomRaySimulation::simulate()
         // Add this iteration's scalar flux estimate to final accumulated
         // estimate
         domain_->accumulate_iteration_flux();
-
-        // Generate mapping between source regions and tallies
-        if (!domain_->mapped_all_tallies_) {
-          domain_->convert_source_regions_to_tallies();
-        }
 
         // Use above mapping to contribute FSR flux data to appropriate
         // tallies
@@ -549,7 +504,7 @@ void RandomRaySimulation::simulate()
       domain_->flux_swap();
 
       // Check for any obvious insabilities/nans/infs
-      instability_check(n_hits, k_eff_, avg_miss_rate_);
+      instability_check(n_hits, domain_->k_eff_, avg_miss_rate_);
     } // End MPI master work
 
     // Finalize the current batch
@@ -598,7 +553,7 @@ void RandomRaySimulation::instability_check(
     }
 
     if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
-      fatal_error("Instability detected");
+      fatal_error(fmt::format("Instability detected: k-eff = {:.5f}", k_eff));
     }
   }
 }

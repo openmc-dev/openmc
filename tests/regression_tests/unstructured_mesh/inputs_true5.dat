@@ -1,54 +1,54 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="16" name="fuel">
-      <density units="g/cc" value="4.5"/>
-      <nuclide ao="1.0" name="U235"/>
+    <material id="1" name="fuel" depletable="true">
+      <density value="4.5" units="g/cc"/>
+      <nuclide name="U235" ao="1.0"/>
     </material>
-    <material id="17" name="zircaloy">
-      <density units="g/cc" value="5.77"/>
-      <nuclide ao="0.5145" name="Zr90"/>
-      <nuclide ao="0.1122" name="Zr91"/>
-      <nuclide ao="0.1715" name="Zr92"/>
-      <nuclide ao="0.1738" name="Zr94"/>
-      <nuclide ao="0.028" name="Zr96"/>
+    <material id="2" name="zircaloy">
+      <density value="5.77" units="g/cc"/>
+      <nuclide name="Zr90" ao="0.5145"/>
+      <nuclide name="Zr91" ao="0.1122"/>
+      <nuclide name="Zr92" ao="0.1715"/>
+      <nuclide name="Zr94" ao="0.1738"/>
+      <nuclide name="Zr96" ao="0.028"/>
     </material>
-    <material id="18" name="water">
-      <density units="atom/b-cm" value="0.07416"/>
-      <nuclide ao="2.0" name="H1"/>
-      <nuclide ao="1.0" name="O16"/>
+    <material id="3" name="water">
+      <density value="0.07416" units="atom/b-cm"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
     </material>
   </materials>
   <geometry>
-    <cell id="16" material="16" name="fuel" region="91 -92 93 -94 95 -96" universe="6"/>
-    <cell id="17" material="17" name="clad" region="(-91 | 92 | -93 | 94 | -95 | 96) (97 -98 99 -100 101 -102)" universe="6"/>
-    <cell id="18" material="18" name="water" region="(-97 | 98 | -99 | 100 | -101 | 102) (103 -104 105 -106 107 -108)" universe="6"/>
-    <surface coeffs="-5.0" id="91" name="minimum x" type="x-plane"/>
-    <surface coeffs="5.0" id="92" name="maximum x" type="x-plane"/>
-    <surface coeffs="-5.0" id="93" name="minimum y" type="y-plane"/>
-    <surface coeffs="5.0" id="94" name="maximum y" type="y-plane"/>
-    <surface coeffs="-5.0" id="95" name="minimum z" type="z-plane"/>
-    <surface coeffs="5.0" id="96" name="maximum z" type="z-plane"/>
-    <surface coeffs="-6.0" id="97" name="minimum x" type="x-plane"/>
-    <surface coeffs="6.0" id="98" name="maximum x" type="x-plane"/>
-    <surface coeffs="-6.0" id="99" name="minimum y" type="y-plane"/>
-    <surface coeffs="6.0" id="100" name="maximum y" type="y-plane"/>
-    <surface coeffs="-6.0" id="101" name="minimum z" type="z-plane"/>
-    <surface coeffs="6.0" id="102" name="maximum z" type="z-plane"/>
-    <surface boundary="vacuum" coeffs="-15" id="103" name="minimum x" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="15" id="104" name="maximum x" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="-15" id="105" name="minimum y" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="15" id="106" name="maximum y" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="-15" id="107" name="minimum z" type="z-plane"/>
-    <surface boundary="vacuum" coeffs="15" id="108" name="maximum z" type="z-plane"/>
+    <cell id="1" name="fuel" material="1" region="1 -2 3 -4 5 -6" universe="1"/>
+    <cell id="2" name="clad" material="2" region="(-1 | 2 | -3 | 4 | -5 | 6) (7 -8 9 -10 11 -12)" universe="1"/>
+    <cell id="3" name="water" material="3" region="(-7 | 8 | -9 | 10 | -11 | 12) (13 -14 15 -16 17 -18)" universe="1"/>
+    <surface id="1" name="minimum x" type="x-plane" coeffs="-5.0"/>
+    <surface id="2" name="maximum x" type="x-plane" coeffs="5.0"/>
+    <surface id="3" name="minimum y" type="y-plane" coeffs="-5.0"/>
+    <surface id="4" name="maximum y" type="y-plane" coeffs="5.0"/>
+    <surface id="5" name="minimum z" type="z-plane" coeffs="-5.0"/>
+    <surface id="6" name="maximum z" type="z-plane" coeffs="5.0"/>
+    <surface id="7" name="minimum x" type="x-plane" coeffs="-6.0"/>
+    <surface id="8" name="maximum x" type="x-plane" coeffs="6.0"/>
+    <surface id="9" name="minimum y" type="y-plane" coeffs="-6.0"/>
+    <surface id="10" name="maximum y" type="y-plane" coeffs="6.0"/>
+    <surface id="11" name="minimum z" type="z-plane" coeffs="-6.0"/>
+    <surface id="12" name="maximum z" type="z-plane" coeffs="6.0"/>
+    <surface id="13" name="minimum x" type="x-plane" boundary="vacuum" coeffs="-15.0"/>
+    <surface id="14" name="maximum x" type="x-plane" boundary="vacuum" coeffs="15.0"/>
+    <surface id="15" name="minimum y" type="y-plane" boundary="vacuum" coeffs="-15.0"/>
+    <surface id="16" name="maximum y" type="y-plane" boundary="vacuum" coeffs="15.0"/>
+    <surface id="17" name="minimum z" type="z-plane" boundary="vacuum" coeffs="-15.0"/>
+    <surface id="18" name="maximum z" type="z-plane" boundary="vacuum" coeffs="15.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>100</particles>
+    <particles>1000</particles>
     <batches>10</batches>
-    <source strength="1.0">
-      <space origin="0.0 0.0 0.0" type="spherical">
-        <r parameters="0.0 0.0" type="uniform"/>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="spherical" origin="0.0 0.0 0.0">
+        <r type="uniform" parameters="0.0 0.0"/>
         <cos_theta type="discrete">
           <parameters>1.0 1.0</parameters>
         </cos_theta>
@@ -56,34 +56,33 @@
           <parameters>0.0 1.0</parameters>
         </phi>
       </space>
-      <angle reference_uvw="-1.0 0.0 0.0" type="monodirectional"/>
       <energy type="discrete">
         <parameters>15000000.0 1.0</parameters>
       </energy>
     </source>
   </settings>
   <tallies>
-    <mesh id="11">
+    <mesh id="1">
       <dimension>10 10 10</dimension>
       <lower_left>-10.0 -10.0 -10.0</lower_left>
       <upper_right>10.0 10.0 10.0</upper_right>
     </mesh>
-    <mesh id="12" library="moab" type="unstructured">
-      <filename>test_mesh_tets.exo</filename>
+    <mesh id="2" type="unstructured" library="libmesh">
+      <filename>test_mesh_tets.e</filename>
     </mesh>
-    <filter id="11" type="mesh">
-      <bins>11</bins>
+    <filter id="1" type="mesh">
+      <bins>1</bins>
     </filter>
-    <filter id="12" type="mesh">
-      <bins>12</bins>
+    <filter id="2" type="mesh">
+      <bins>2</bins>
     </filter>
-    <tally id="11" name="regular mesh tally">
-      <filters>11</filters>
+    <tally id="1" name="regular mesh tally">
+      <filters>1</filters>
       <scores>flux</scores>
       <estimator>tracklength</estimator>
     </tally>
-    <tally id="12" name="unstructured mesh tally">
-      <filters>12</filters>
+    <tally id="2" name="unstructured mesh tally">
+      <filters>2</filters>
       <scores>flux</scores>
       <estimator>tracklength</estimator>
     </tally>

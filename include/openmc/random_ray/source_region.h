@@ -308,7 +308,6 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   SourceRegion(int negroups, bool is_linear);
-  SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr);
   SourceRegion() = default;
 
   //----------------------------------------------------------------------------

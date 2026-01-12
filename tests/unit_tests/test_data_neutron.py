@@ -14,128 +14,113 @@ _TEMPERATURES = [300., 600., 900.]
 @pytest.fixture(scope='module')
 def pu239():
     """Pu239 HDF5 data."""
-    directory = os.path.dirname(os.environ['OPENMC_CROSS_SECTIONS'])
+    directory = os.path.dirname(openmc.config.get('cross_sections'))
     filename = os.path.join(directory, 'Pu239.h5')
     return openmc.data.IncidentNeutron.from_hdf5(filename)
 
 
 @pytest.fixture(scope='module')
-def xe135():
+def xe135(endf_data):
     """Xe135 ENDF data (contains SLBW resonance range)"""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-054_Xe_135.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def sm150():
+def sm150(endf_data):
     """Sm150 ENDF data (contains MLBW resonance range)"""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-062_Sm_150.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def gd154():
+def gd154(endf_data):
     """Gd154 ENDF data (contains Reich Moore resonance range and reosnance
     covariance with LCOMP=1)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-064_Gd_154.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')
-def cl35():
+def cl35(endf_data):
     """Cl35 ENDF data (contains RML resonance range)"""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-017_Cl_035.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def am241():
+def am241(endf_data):
     """Am241 ENDF data (contains Madland-Nix fission energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-095_Am_241.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def u233():
+def u233(endf_data):
     """U233 ENDF data (contains Watt fission energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-092_U_233.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def u236():
+def u236(endf_data):
     """U236 ENDF data (contains Watt fission energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-092_U_236.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def na22():
+def na22(endf_data):
     """Na22 ENDF data (contains evaporation spectrum)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-011_Na_022.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def na23():
+def na23(endf_data):
     """Na23 ENDF data (contains MLBW resonance covariance with LCOMP=0)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-011_Na_023.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')
-def be9():
+def be9(endf_data):
     """Be9 ENDF data (contains laboratory angle-energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-004_Be_009.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def h2():
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def h2(endf_data):
     endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_002.endf')
     return openmc.data.IncidentNeutron.from_njoy(
         endf_file, temperatures=_TEMPERATURES)
 
 
 @pytest.fixture(scope='module')
-def am244():
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def am244(endf_data):
     endf_file = os.path.join(endf_data, 'neutrons', 'n-095_Am_244.endf')
     return openmc.data.IncidentNeutron.from_njoy(endf_file)
 
 
 @pytest.fixture(scope='module')
-def ti50():
+def ti50(endf_data):
     """Ti50 ENDF data (contains Multi-level Breit-Wigner resonance range and
        resonance covariance with LCOMP=1)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-022_Ti_050.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')
-def cf252():
+def cf252(endf_data):
     """Cf252 ENDF data (contains RM resonance covariance with LCOMP=0)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-098_Cf_252.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')
-def th232():
+def th232(endf_data):
     """Th232 ENDF data (contains RM resonance covariance with LCOMP=2)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'neutrons', 'n-090_Th_232.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
@@ -453,8 +438,7 @@ def test_laboratory(be9):
 
 
 @needs_njoy
-def test_correlated(tmpdir):
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def test_correlated(tmpdir, endf_data):
     endf_file = os.path.join(endf_data, 'neutrons', 'n-014_Si_030.endf')
     si30 = openmc.data.IncidentNeutron.from_njoy(endf_file, heatr=False)
 
@@ -480,8 +464,7 @@ def test_nbody(tmpdir, h2):
 
 
 @needs_njoy
-def test_ace_convert(run_in_tmpdir):
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def test_ace_convert(run_in_tmpdir, endf_data):
     filename = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
     ace_ascii = 'ace_ascii'
     ace_binary = 'ace_binary'
@@ -515,8 +498,7 @@ def test_ace_table_types():
 
 
 @needs_njoy
-def test_high_temperature():
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def test_high_temperature(endf_data):
     endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
 
     # Ensure that from_njoy works when given a high temperature

@@ -100,6 +100,9 @@ int main(int argc, char* argv[])
     }
   }
 
+  // Finalize cell densities
+  openmc::finalize_cell_densities();
+
   // Run OpenMC
   openmc_err = openmc_run();
   if (openmc_err)

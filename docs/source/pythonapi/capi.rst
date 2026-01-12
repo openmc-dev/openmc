@@ -89,8 +89,10 @@ Classes
    SphericalMesh
    SurfaceFilter
    Tally
+   TemporarySession
    UniverseFilter
    UnstructuredMesh
+   WeightFilter
    WeightWindows
    ZernikeFilter
    ZernikeRadialFilter

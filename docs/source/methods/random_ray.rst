@@ -109,9 +109,7 @@ terms on the right hand side.
 In Equation :eq:`transport`, :math:`\psi` is the angular neutron flux. This
 parameter represents the total distance traveled by all neutrons in a particular
 direction inside of a control volume per second, and is often given in units of
-:math:`1/(\text{cm}^{2} \text{s})`. As OpenMC does not support time dependence
-in the random ray solver mode, we consider the steady state equation, where the
-units of flux become :math:`1/\text{cm}^{2}`. The angular direction unit vector,
+:math:`1/(\text{cm}^{2} \text{s})`. The angular direction unit vector,
 :math:`\mathbf{\Omega}`, represents the direction of travel for the neutron. The
 spatial position vector, :math:`\mathbf{r}`,  represents the location within the
 simulation. The neutron energy, :math:`E`, or speed in continuous space, is

@@ -30,7 +30,8 @@ responsible for specifying one or more of the following:
 Each of the above files can specified in several ways. In the Python API, a
 :ref:`runtime configuration variable <usersguide_data_runtime>`
 :data:`openmc.config` can be used to specify any of the above and is initialized
-using a set of environment variables.
+using a set of environment variables. Data configuration paths set in
+:data:`openmc.config` will be expanded to absolute paths.
 
 .. _usersguide_data_runtime:
 

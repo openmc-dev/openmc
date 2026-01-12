@@ -819,19 +819,27 @@ std::pair<double, double> VolumeCalculation::get_box_chord(
   const Position& r, const Direction& u) const
 {
   // Compute distanses to each box plane orthogonal to an axis
-  Direction u_1 = {1., 1., 1.};
-  u_1 = u_1 / u;
+  Direction u_1;
+  for (int i = 0; i < 3; i++) {
+    if (u[i] != 0.) {
+      u_1[i] = 1. / u[i];
+    } else {
+      // Explicit assignment because the C++ behavior is undefined without it
+      u_1[i] = std::numeric_limits<double>::infinity();
+    }
+  }
   Position xi = (lower_left_ - r) * u_1;
   const array<double, 3> dist1 = {xi.x, xi.y, xi.z};
   xi = (upper_right_ - r) * u_1;
   const array<double, 3> dist2 = {xi.x, xi.y, xi.z};
 
   // Find the minimal forward (positive values) and backward (negative values)
-  // distances across the computed ones (probably there is some STL
+  // distances across the computed ones (probably there are some STL
   // alternatives)
-  std::pair<double, double> chord_lengths {std::minmax(dist1[0], dist2[0])};
+  std::pair<double, double> chord_lengths {std::minmax(dist1[0], dist2[0])},
+    dist_mm;
   for (int i = 1; i < 3; i++) {
-    const std::pair<double, double> dist_mm = std::minmax(dist1[i], dist2[i]);
+    dist_mm = std::minmax(dist1[i], dist2[i]);
     chord_lengths.first = std::max(chord_lengths.first, dist_mm.first);
     chord_lengths.second = std::min(chord_lengths.second, dist_mm.second);
   }

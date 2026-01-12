@@ -248,11 +248,8 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
     double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
     double A0 =
       (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
-
-    double sigma_t = 1.0;
-    if (material != MATERIAL_VOID)
-      sigma_t = sigma_t_[material * negroups_ + g];
-
+    // TODO: Add support for expicit void regions
+    double sigma_t = sigma_t_[material * negroups_ + g];
     source_regions_.scalar_flux_new(sr, g) -=
       scalar_flux_rhs_bd * inverse_vbar / sigma_t;
     source_regions_.scalar_flux_new(sr, g) /= 1 + A0 * inverse_vbar / sigma_t;
@@ -1726,6 +1723,11 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     }
   }
 
+  if (settings::kinetic_simulation && material == MATERIAL_VOID) {
+    fatal_error("Explicit void treatment for kinetic simulations "
+                " is not currently supported.");
+  }
+
   handle.material() = material;
 
   // Store the mesh index (if any) assigned to this source region
@@ -1935,9 +1937,8 @@ void FlatSourceDomain::compute_single_phi_prime(SourceRegionHandle& srh)
   int material = srh.material();
   for (int g = 0; g < negroups_; g++) {
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
-    double sigma_t = 1.0;
-    if (material != MATERIAL_VOID)
-      sigma_t = sigma_t_[material * negroups_ + g];
+    // TODO: add support for explicit void
+    double sigma_t = sigma_t_[material * negroups_ + g];
 
     double scalar_flux_time_derivative =
       A0 * srh.scalar_flux_old(g) + srh.scalar_flux_rhs_bd(g);
@@ -1955,9 +1956,8 @@ void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
   int material = srh.material();
   for (int g = 0; g < negroups_; g++) {
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
-    double sigma_t = 1.0;
-    if (material != MATERIAL_VOID)
-      sigma_t = sigma_t_[material * negroups_ + g];
+    // TODO: add support for explicit void
+    double sigma_t = sigma_t_[material * negroups_ + g];
 
     // Multiply out sigma_t to correctly compute the derivative term
     float source_time_derivative =
@@ -2140,12 +2140,10 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
         source_regions_.scalar_flux_final(sr, g), increment_not_initialize,
         RandomRay::bd_order_ + j);
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
-        // TODO: add support for void regions
         // Multiply out sigma_t to store the base source
         int material = source_regions_.material(sr);
-        double sigma_t = 1.0;
-        if (material != MATERIAL_VOID) 
-          sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
+        // TODO: add support for explicit void regions
+        double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
         float source = source_regions_.source_final(sr, g) * sigma_t;
         add_value_to_bd_vector(source_regions_.source_bd(sr, g), source,
           increment_not_initialize, RandomRay::bd_order_);

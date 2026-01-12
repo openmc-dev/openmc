@@ -53,10 +53,6 @@ void openmc_run_random_ray()
     // Second steady state simulation to correct the batchwise k-eff
     sim.kinetic_initial_condition();
 
-    warning(
-      "Time-dependent explicit void treatment has not yet been "
-      "implemented. Use caution when interpreting results from models with "
-      "voids, as they may contain large inaccuracies.");
     // Timestepping loop
     for (int i = 0; i < settings::n_timesteps; i++)
       sim.kinetic_single_time_step(i);

@@ -20,7 +20,7 @@ unique_ptr<UnitSphereDistribution> UnitSphereDistribution::create(
   if (check_for_node(node, "type"))
     type = get_node_value(node, "type", true, true);
   if (type == "isotropic") {
-    return UPtrAngle {new Isotropic()};
+    return UPtrAngle {new Isotropic(node)};
   } else if (type == "monodirectional") {
     return UPtrAngle {new Monodirectional(node)};
   } else if (type == "mu-phi") {
@@ -84,21 +84,38 @@ PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
   }
 }
 
-Direction PolarAzimuthal::sample(uint64_t* seed) const
+std::pair<Direction, double> PolarAzimuthal::sample(uint64_t* seed) const
+{
+  return sample_impl(seed, false);
+}
+
+std::pair<Direction, double> PolarAzimuthal::sample_as_bias(
+  uint64_t* seed) const
+{
+  return sample_impl(seed, true);
+}
+
+std::pair<Direction, double> PolarAzimuthal::sample_impl(
+  uint64_t* seed, bool return_pdf) const
 {
   // Sample cosine of polar angle
-  double mu = mu_->sample(seed);
-  if (mu == 1.0)
-    return u_ref_;
-  if (mu == -1.0)
-    return -u_ref_;
+  auto [mu, mu_wgt] = mu_->sample(seed);
 
   // Sample azimuthal angle
-  double phi = phi_->sample(seed);
+  auto [phi, phi_wgt] = phi_->sample(seed);
+
+  // Compute either the PDF value or the importance weight
+  double weight =
+    return_pdf ? (mu_->evaluate(mu) * phi_->evaluate(phi)) : (mu_wgt * phi_wgt);
+
+  if (mu == 1.0)
+    return {u_ref_, weight};
+  if (mu == -1.0)
+    return {-u_ref_, weight};
 
   double f = std::sqrt(1 - mu * mu);
-
-  return mu * u_ref_ + f * std::cos(phi) * v_ref_ + f * std::sin(phi) * w_ref_;
+  return {mu * u_ref_ + f * std::cos(phi) * v_ref_ + f * std::sin(phi) * w_ref_,
+    weight};
 }
 
 double PolarAzimuthal::evaluate(Direction u) const
@@ -112,6 +129,25 @@ double PolarAzimuthal::evaluate(Direction u) const
 // Isotropic implementation
 //==============================================================================
 
+Isotropic::Isotropic(pugi::xml_node node) : UnitSphereDistribution {node}
+{
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+    std::string bias_type = get_node_value(bias_node, "type", true, true);
+    if (bias_type != "mu-phi") {
+      openmc::fatal_error(
+        "Isotropic distributions may only be biased by a PolarAzimuthal.");
+    }
+    auto bias = std::make_unique<PolarAzimuthal>(bias_node);
+    if (bias->mu()->bias() || bias->phi()->bias()) {
+      openmc::fatal_error(
+        "Attempted to bias Isotropic distribution with a biased PolarAzimuthal "
+        "distribution. Please ensure bias distributions are unbiased.");
+    }
+    this->set_bias(std::move(bias));
+  }
+}
+
 Direction isotropic_direction(uint64_t* seed)
 {
   double phi = uniform_distribution(0., 2.0 * PI, seed);
@@ -120,9 +156,14 @@ Direction isotropic_direction(uint64_t* seed)
     std::sqrt(1.0 - mu * mu) * std::sin(phi)};
 }
 
-Direction Isotropic::sample(uint64_t* seed) const
+std::pair<Direction, double> Isotropic::sample(uint64_t* seed) const
 {
-  return isotropic_direction(seed);
+  if (bias()) {
+    auto [val, eval] = bias()->sample_as_bias(seed);
+    return {val, 1.0 / (4.0 * PI * eval)};
+  } else {
+    return {isotropic_direction(seed), 1.0};
+  }
 }
 
 double Isotropic::evaluate(Direction u) const
@@ -134,9 +175,9 @@ double Isotropic::evaluate(Direction u) const
 // Monodirectional implementation
 //==============================================================================
 
-Direction Monodirectional::sample(uint64_t* seed) const
+std::pair<Direction, double> Monodirectional::sample(uint64_t* seed) const
 {
-  return u_ref_;
+  return {u_ref_, 1.0};
 }
 
 } // namespace openmc

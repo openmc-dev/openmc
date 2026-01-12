@@ -255,7 +255,7 @@ Distribution& CorrelatedAngleEnergy::sample_dist(
 void CorrelatedAngleEnergy::sample(
   double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
-  mu = sample_dist(E_in, E_out, seed).sample(seed);
+  mu = sample_dist(E_in, E_out, seed).sample(seed).first;
 }
 
 double CorrelatedAngleEnergy::sample_energy_and_pdf(

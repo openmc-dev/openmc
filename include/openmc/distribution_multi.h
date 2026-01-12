@@ -6,6 +6,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/distribution.h"
+#include "openmc/error.h"
 #include "openmc/position.h"
 
 namespace openmc {
@@ -26,8 +27,9 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Direction sampled
-  virtual Direction sample(uint64_t* seed) const = 0;
+  //! \return (sampled Direction, sample weight)
+  virtual std::pair<Direction, double> sample(uint64_t* seed) const = 0;
+
   virtual double evaluate(Direction u) const
   {
     fatal_error("evaluate not available for this UnitSphereDistribution type");
@@ -47,8 +49,15 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Direction sampled
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled Direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
+
+  //! Sample a direction and return evaluation of the PDF for biased sampling.
+  //! Note that bias distributions are intended to return unit-weight samples.
+  //! \param seed Pseudorandom number seed points
+  //! \return (sampled Direction, value of the PDF at this Direction)
+  std::pair<Direction, double> sample_as_bias(uint64_t* seed) const;
+
   double evaluate(Direction u) const override;
 
   // Observing pointers
@@ -56,6 +65,14 @@ public:
   Distribution* phi() const { return phi_.get(); }
 
 private:
+  //! Common sampling implementation
+  //! \param seed Pseudorandom number seed pointer
+  //! \param return_pdf If true, return PDF evaluation; if false, return
+  //!        importance weight
+  //! \return (sampled Direction, weight or PDF value)
+  std::pair<Direction, double> sample_impl(
+    uint64_t* seed, bool return_pdf) const;
+
   Direction v_ref_ {1.0, 0.0, 0.0}; //!< reference direction
   Direction w_ref_;
   UPtrDist mu_;  //!< Distribution of polar angle
@@ -71,12 +88,26 @@ Direction isotropic_direction(uint64_t* seed);
 class Isotropic : public UnitSphereDistribution {
 public:
   Isotropic() {};
+  explicit Isotropic(pugi::xml_node node);
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled direction
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
+
   double evaluate(Direction u) const override;
+
+  // Set or get bias distribution
+  void set_bias(std::unique_ptr<PolarAzimuthal> bias)
+  {
+    bias_ = std::move(bias);
+  }
+
+  const PolarAzimuthal* bias() const { return bias_.get(); }
+
+protected:
+  // Biasing distribution
+  unique_ptr<PolarAzimuthal> bias_;
 };
 
 //==============================================================================
@@ -91,8 +122,8 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled direction
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
 };
 
 using UPtrAngle = unique_ptr<UnitSphereDistribution>;

@@ -6,6 +6,8 @@
 #include "openmc/particle_data.h"
 #include "openmc/settings.h"
 
+#include <algorithm> // for copy
+
 namespace openmc {
 
 //! Check the value of the IFP parameter for beta effective or both.

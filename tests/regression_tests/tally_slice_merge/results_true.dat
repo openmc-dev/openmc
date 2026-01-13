@@ -1,45 +1,45 @@
    cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
-0    21         0.00e+00          6.25e-01    U235  fission 1.75e-01   1.20e-02   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0    21         0.00e+00          6.25e-01    U235  nu-fission 4.26e-01   2.92e-02   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
-0    21         0.00e+00          6.25e-01    U238  fission 2.41e-07   1.61e-08   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0    21         0.00e+00          6.25e-01    U238  nu-fission 6.00e-07   4.01e-08   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
-0    21         6.25e-01          2.00e+07    U235  fission 2.89e-02   2.07e-03   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0    21         6.25e-01          2.00e+07    U235  nu-fission 7.07e-02   5.06e-03   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
-0    21         6.25e-01          2.00e+07    U238  fission 1.41e-02   5.76e-04   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0    21         6.25e-01          2.00e+07    U238  nu-fission 3.95e-02   1.90e-03   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
-0    27         0.00e+00          6.25e-01    U235  fission 1.51e-01   1.17e-02   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0    27         0.00e+00          6.25e-01    U235  nu-fission 3.69e-01   2.86e-02   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
-0    27         0.00e+00          6.25e-01    U238  fission 2.07e-07   1.47e-08   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0    27         0.00e+00          6.25e-01    U238  nu-fission 5.17e-07   3.66e-08   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
-0    27         6.25e-01          2.00e+07    U235  fission 2.57e-02   2.43e-03   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0    27         6.25e-01          2.00e+07    U235  nu-fission 6.30e-02   5.92e-03   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
-0    27         6.25e-01          2.00e+07    U238  fission 1.47e-02   1.41e-03   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0    27         6.25e-01          2.00e+07    U238  nu-fission 4.12e-02   4.02e-03    cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0     21         0.00e+00          6.25e-01    U235     fission 1.75e-01   1.20e-02
-1     21         0.00e+00          6.25e-01    U235  nu-fission 4.26e-01   2.92e-02
-2     21         0.00e+00          6.25e-01    U238     fission 2.41e-07   1.61e-08
-3     21         0.00e+00          6.25e-01    U238  nu-fission 6.00e-07   4.01e-08
-4     21         6.25e-01          2.00e+07    U235     fission 2.89e-02   2.07e-03
-5     21         6.25e-01          2.00e+07    U235  nu-fission 7.07e-02   5.06e-03
-6     21         6.25e-01          2.00e+07    U238     fission 1.41e-02   5.76e-04
-7     21         6.25e-01          2.00e+07    U238  nu-fission 3.95e-02   1.90e-03
-8     27         0.00e+00          6.25e-01    U235     fission 1.51e-01   1.17e-02
-9     27         0.00e+00          6.25e-01    U235  nu-fission 3.69e-01   2.86e-02
-10    27         0.00e+00          6.25e-01    U238     fission 2.07e-07   1.47e-08
-11    27         0.00e+00          6.25e-01    U238  nu-fission 5.17e-07   3.66e-08
-12    27         6.25e-01          2.00e+07    U235     fission 2.57e-02   2.43e-03
-13    27         6.25e-01          2.00e+07    U235  nu-fission 6.30e-02   5.92e-03
-14    27         6.25e-01          2.00e+07    U238     fission 1.47e-02   1.41e-03
-15    27         6.25e-01          2.00e+07    U238  nu-fission 4.12e-02   4.02e-03
+0    21         0.00e+00          6.25e-01    U235  fission 1.93e-01   1.92e-02   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0    21         0.00e+00          6.25e-01    U235  nu-fission 4.70e-01   4.67e-02   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
+0    21         0.00e+00          6.25e-01    U238  fission 2.65e-07   2.60e-08   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0    21         0.00e+00          6.25e-01    U238  nu-fission 6.60e-07   6.47e-08   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
+0    21         6.25e-01          2.00e+07    U235  fission 3.39e-02   1.53e-03   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0    21         6.25e-01          2.00e+07    U235  nu-fission 8.30e-02   3.75e-03   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
+0    21         6.25e-01          2.00e+07    U238  fission 1.70e-02   2.01e-03   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0    21         6.25e-01          2.00e+07    U238  nu-fission 4.76e-02   6.12e-03   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
+0    27         0.00e+00          6.25e-01    U235  fission 7.61e-02   5.84e-03   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0    27         0.00e+00          6.25e-01    U235  nu-fission 1.85e-01   1.42e-02   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
+0    27         0.00e+00          6.25e-01    U238  fission 1.06e-07   7.62e-09   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0    27         0.00e+00          6.25e-01    U238  nu-fission 2.64e-07   1.90e-08   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
+0    27         6.25e-01          2.00e+07    U235  fission 1.69e-02   1.34e-03   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0    27         6.25e-01          2.00e+07    U235  nu-fission 4.15e-02   3.29e-03   cell  energy low [eV]  energy high [eV] nuclide    score     mean  std. dev.
+0    27         6.25e-01          2.00e+07    U238  fission 1.10e-02   1.69e-03   cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0    27         6.25e-01          2.00e+07    U238  nu-fission 3.13e-02   5.35e-03    cell  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
+0     21         0.00e+00          6.25e-01    U235     fission 1.93e-01   1.92e-02
+1     21         0.00e+00          6.25e-01    U235  nu-fission 4.70e-01   4.67e-02
+2     21         0.00e+00          6.25e-01    U238     fission 2.65e-07   2.60e-08
+3     21         0.00e+00          6.25e-01    U238  nu-fission 6.60e-07   6.47e-08
+4     21         6.25e-01          2.00e+07    U235     fission 3.39e-02   1.53e-03
+5     21         6.25e-01          2.00e+07    U235  nu-fission 8.30e-02   3.75e-03
+6     21         6.25e-01          2.00e+07    U238     fission 1.70e-02   2.01e-03
+7     21         6.25e-01          2.00e+07    U238  nu-fission 4.76e-02   6.12e-03
+8     27         0.00e+00          6.25e-01    U235     fission 7.61e-02   5.84e-03
+9     27         0.00e+00          6.25e-01    U235  nu-fission 1.85e-01   1.42e-02
+10    27         0.00e+00          6.25e-01    U238     fission 1.06e-07   7.62e-09
+11    27         0.00e+00          6.25e-01    U238  nu-fission 2.64e-07   1.90e-08
+12    27         6.25e-01          2.00e+07    U235     fission 1.69e-02   1.34e-03
+13    27         6.25e-01          2.00e+07    U235  nu-fission 4.15e-02   3.29e-03
+14    27         6.25e-01          2.00e+07    U238     fission 1.10e-02   1.69e-03
+15    27         6.25e-01          2.00e+07    U238  nu-fission 3.13e-02   5.35e-03
          sum(distribcell)  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
 0   (0, 100, 2000, 30000)         0.00e+00          6.25e-01    U235     fission 0.00e+00   0.00e+00
 1   (0, 100, 2000, 30000)         0.00e+00          6.25e-01    U235  nu-fission 0.00e+00   0.00e+00
 2   (0, 100, 2000, 30000)         0.00e+00          6.25e-01    U238     fission 0.00e+00   0.00e+00
 3   (0, 100, 2000, 30000)         0.00e+00          6.25e-01    U238  nu-fission 0.00e+00   0.00e+00
-4   (0, 100, 2000, 30000)         6.25e-01          2.00e+07    U235     fission 9.53e-07   9.53e-07
-5   (0, 100, 2000, 30000)         6.25e-01          2.00e+07    U235  nu-fission 2.37e-06   2.37e-06
-6   (0, 100, 2000, 30000)         6.25e-01          2.00e+07    U238     fission 1.25e-08   1.25e-08
-7   (0, 100, 2000, 30000)         6.25e-01          2.00e+07    U238  nu-fission 3.15e-08   3.15e-08
+4   (0, 100, 2000, 30000)         6.25e-01          2.00e+07    U235     fission 0.00e+00   0.00e+00
+5   (0, 100, 2000, 30000)         6.25e-01          2.00e+07    U235  nu-fission 0.00e+00   0.00e+00
+6   (0, 100, 2000, 30000)         6.25e-01          2.00e+07    U238     fission 0.00e+00   0.00e+00
+7   (0, 100, 2000, 30000)         6.25e-01          2.00e+07    U238  nu-fission 0.00e+00   0.00e+00
 8      (500, 5000, 50000)         0.00e+00          6.25e-01    U235     fission 0.00e+00   0.00e+00
 9      (500, 5000, 50000)         0.00e+00          6.25e-01    U235  nu-fission 0.00e+00   0.00e+00
 10     (500, 5000, 50000)         0.00e+00          6.25e-01    U238     fission 0.00e+00   0.00e+00
@@ -49,19 +49,19 @@
 14     (500, 5000, 50000)         6.25e-01          2.00e+07    U238     fission 0.00e+00   0.00e+00
 15     (500, 5000, 50000)         6.25e-01          2.00e+07    U238  nu-fission 0.00e+00   0.00e+00
            sum(mesh)  energy low [eV]  energy high [eV] nuclide       score     mean  std. dev.
-0   ((1, 1), (1, 2))         0.00e+00          6.25e-01    U235     fission 6.73e-03   3.04e-03
-1   ((1, 1), (1, 2))         0.00e+00          6.25e-01    U235  nu-fission 1.64e-02   7.40e-03
-2   ((1, 1), (1, 2))         0.00e+00          6.25e-01    U238     fission 8.80e-09   3.84e-09
-3   ((1, 1), (1, 2))         0.00e+00          6.25e-01    U238  nu-fission 2.19e-08   9.56e-09
-4   ((1, 1), (1, 2))         6.25e-01          2.00e+07    U235     fission 9.89e-04   3.53e-04
-5   ((1, 1), (1, 2))         6.25e-01          2.00e+07    U235  nu-fission 2.42e-03   8.60e-04
-6   ((1, 1), (1, 2))         6.25e-01          2.00e+07    U238     fission 5.01e-04   2.13e-04
-7   ((1, 1), (1, 2))         6.25e-01          2.00e+07    U238  nu-fission 1.36e-03   5.86e-04
-8   ((2, 1), (2, 2))         0.00e+00          6.25e-01    U235     fission 1.63e-02   4.21e-03
-9   ((2, 1), (2, 2))         0.00e+00          6.25e-01    U235  nu-fission 3.98e-02   1.02e-02
-10  ((2, 1), (2, 2))         0.00e+00          6.25e-01    U238     fission 2.28e-08   5.90e-09
-11  ((2, 1), (2, 2))         0.00e+00          6.25e-01    U238  nu-fission 5.67e-08   1.47e-08
-12  ((2, 1), (2, 2))         6.25e-01          2.00e+07    U235     fission 1.79e-03   4.31e-04
-13  ((2, 1), (2, 2))         6.25e-01          2.00e+07    U235  nu-fission 4.37e-03   1.05e-03
-14  ((2, 1), (2, 2))         6.25e-01          2.00e+07    U238     fission 7.51e-04   2.51e-04
-15  ((2, 1), (2, 2))         6.25e-01          2.00e+07    U238  nu-fission 2.02e-03   6.71e-04
+0   ((1, 1), (1, 2))         0.00e+00          6.25e-01    U235     fission 1.94e-03   1.03e-03
+1   ((1, 1), (1, 2))         0.00e+00          6.25e-01    U235  nu-fission 4.74e-03   2.50e-03
+2   ((1, 1), (1, 2))         0.00e+00          6.25e-01    U238     fission 2.74e-09   1.42e-09
+3   ((1, 1), (1, 2))         0.00e+00          6.25e-01    U238  nu-fission 6.83e-09   3.53e-09
+4   ((1, 1), (1, 2))         6.25e-01          2.00e+07    U235     fission 9.02e-04   3.69e-04
+5   ((1, 1), (1, 2))         6.25e-01          2.00e+07    U235  nu-fission 2.24e-03   9.12e-04
+6   ((1, 1), (1, 2))         6.25e-01          2.00e+07    U238     fission 1.44e-03   8.42e-04
+7   ((1, 1), (1, 2))         6.25e-01          2.00e+07    U238  nu-fission 4.37e-03   2.64e-03
+8   ((2, 1), (2, 2))         0.00e+00          6.25e-01    U235     fission 1.27e-02   2.76e-03
+9   ((2, 1), (2, 2))         0.00e+00          6.25e-01    U235  nu-fission 3.09e-02   6.72e-03
+10  ((2, 1), (2, 2))         0.00e+00          6.25e-01    U238     fission 1.70e-08   3.57e-09
+11  ((2, 1), (2, 2))         0.00e+00          6.25e-01    U238  nu-fission 4.25e-08   8.90e-09
+12  ((2, 1), (2, 2))         6.25e-01          2.00e+07    U235     fission 1.43e-03   1.69e-04
+13  ((2, 1), (2, 2))         6.25e-01          2.00e+07    U235  nu-fission 3.52e-03   4.20e-04
+14  ((2, 1), (2, 2))         6.25e-01          2.00e+07    U238     fission 1.37e-03   2.98e-04
+15  ((2, 1), (2, 2))         6.25e-01          2.00e+07    U238  nu-fission 4.16e-03   1.08e-03

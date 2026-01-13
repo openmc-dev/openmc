@@ -237,7 +237,6 @@ double RandomRay::distance_inactive_;
 double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
-bool RandomRay::mesh_subdivision_enabled_ {false};
 RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
 
 RandomRay::RandomRay()
@@ -265,6 +264,12 @@ uint64_t RandomRay::transport_history_based_single_ray()
     if (!alive())
       break;
     event_cross_surface();
+    // If ray has too many events, display warning and kill it
+    if (n_event() >= settings::max_particle_events) {
+      warning("Ray " + std::to_string(id()) +
+              " underwent maximum number of events, terminating ray.");
+      wgt() = 0.0;
+    }
   }
 
   return n_event();
@@ -273,11 +278,15 @@ uint64_t RandomRay::transport_history_based_single_ray()
 // Transports ray across a single source region
 void RandomRay::event_advance_ray()
 {
+  // If geometry debug mode is on, check for cell overlaps
+  if (settings::check_overlaps)
+    check_cell_overlap(*this);
+
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
-  double distance = boundary().distance;
+  double distance = boundary().distance();
 
-  if (distance <= 0.0) {
+  if (distance < 0.0) {
     mark_as_lost("Negative transport distance detected for particle " +
                  std::to_string(id()));
     return;
@@ -324,77 +333,66 @@ void RandomRay::event_advance_ray()
 
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += distance * coord(j).u;
+    coord(j).r() += distance * coord(j).u();
   }
 }
 
 void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 {
-  // Determine source region index etc.
-  int i_cell = lowest_coord().cell;
-
-  // The base source region is the spatial region index
-  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+  // Lookup base source region index
+  int64_t sr = domain_->lookup_base_source_region_idx(*this);
 
   // Perform ray tracing across mesh
-  if (mesh_subdivision_enabled_) {
-    // Determine the mesh index for the base source region, if any
-    int mesh_idx = domain_->base_source_regions_.mesh(sr);
+  // Determine the mesh index for the base source region, if any
+  int mesh_idx = domain_->lookup_mesh_idx(sr);
 
-    if (mesh_idx == C_NONE) {
-      // If there's no mesh being applied to this cell, then
-      // we just attenuate the flux as normal, and set
-      // the mesh bin to 0
-      attenuate_flux_inner(distance, is_active, sr, 0, r());
-    } else {
-      // If there is a mesh being applied to this cell, then
-      // we loop over all the bin crossings and attenuate
-      // separately.
-      Mesh* mesh = model::meshes[mesh_idx].get();
-
-      // We adjust the start and end positions of the ray slightly
-      // to accomodate for floating point precision issues that tend
-      // to occur at mesh boundaries that overlap with geometry lattice
-      // boundaries.
-      Position start = r() + (offset + TINY_BIT) * u();
-      Position end = start + (distance - 2.0 * TINY_BIT) * u();
-      double reduced_distance = (end - start).norm();
-
-      // Ray trace through the mesh and record bins and lengths
-      mesh_bins_.resize(0);
-      mesh_fractional_lengths_.resize(0);
-      mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
-
-      // Loop over all mesh bins and attenuate flux
-      for (int b = 0; b < mesh_bins_.size(); b++) {
-        double physical_length = reduced_distance * mesh_fractional_lengths_[b];
-        attenuate_flux_inner(
-          physical_length, is_active, sr, mesh_bins_[b], start);
-        start += physical_length * u();
-      }
-    }
+  if (mesh_idx == C_NONE) {
+    // If there's no mesh being applied to this cell, then
+    // we just attenuate the flux as normal, and set
+    // the mesh bin to 0
+    attenuate_flux_inner(distance, is_active, sr, 0, r());
   } else {
-    attenuate_flux_inner(distance, is_active, sr, C_NONE, r());
+    // If there is a mesh being applied to this cell, then
+    // we loop over all the bin crossings and attenuate
+    // separately.
+    Mesh* mesh = model::meshes[mesh_idx].get();
+
+    // We adjust the start and end positions of the ray slightly
+    // to accomodate for floating point precision issues that tend
+    // to occur at mesh boundaries that overlap with geometry lattice
+    // boundaries.
+    Position start = r() + (offset + TINY_BIT) * u();
+    Position end = start + (distance - 2.0 * TINY_BIT) * u();
+    double reduced_distance = (end - start).norm();
+
+    // Ray trace through the mesh and record bins and lengths
+    mesh_bins_.resize(0);
+    mesh_fractional_lengths_.resize(0);
+    mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
+
+    // Loop over all mesh bins and attenuate flux
+    for (int b = 0; b < mesh_bins_.size(); b++) {
+      double physical_length = reduced_distance * mesh_fractional_lengths_[b];
+      attenuate_flux_inner(
+        physical_length, is_active, sr, mesh_bins_[b], start);
+      start += physical_length * u();
+    }
   }
 }
 
 void RandomRay::attenuate_flux_inner(
   double distance, bool is_active, int64_t sr, int mesh_bin, Position r)
 {
+  SourceRegionKey sr_key {sr, mesh_bin};
   SourceRegionHandle srh;
-  if (mesh_subdivision_enabled_) {
-    srh = domain_->get_subdivided_source_region_handle(
-      sr, mesh_bin, r, distance, u());
-    if (srh.is_numerical_fp_artifact_) {
-      return;
-    }
-  } else {
-    srh = domain_->source_regions_.get_source_region_handle(sr);
+  srh = domain_->get_subdivided_source_region_handle(sr_key, r, u());
+  if (srh.is_numerical_fp_artifact_) {
+    return;
   }
 
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
-    if (this->material() == MATERIAL_VOID) {
+    if (srh.material() == MATERIAL_VOID) {
       attenuate_flux_flat_source_void(srh, distance, is_active, r);
     } else {
       attenuate_flux_flat_source(srh, distance, is_active, r);
@@ -402,7 +400,7 @@ void RandomRay::attenuate_flux_inner(
     break;
   case RandomRaySourceShape::LINEAR:
   case RandomRaySourceShape::LINEAR_XY:
-    if (this->material() == MATERIAL_VOID) {
+    if (srh.material() == MATERIAL_VOID) {
       attenuate_flux_linear_source_void(srh, distance, is_active, r);
     } else {
       attenuate_flux_linear_source(srh, distance, is_active, r);
@@ -433,7 +431,7 @@ void RandomRay::attenuate_flux_flat_source(
   n_event()++;
 
   // Get material
-  int material = this->material();
+  int material = srh.material();
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
@@ -484,7 +482,7 @@ void RandomRay::attenuate_flux_flat_source_void(
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
-  int material = this->material();
+  int material = srh.material();
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
@@ -518,8 +516,10 @@ void RandomRay::attenuate_flux_flat_source_void(
   }
 
   // Add source to incoming angular flux, assuming void region
-  for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] += srh.external_source(g) * distance;
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    for (int g = 0; g < negroups_; g++) {
+      angular_flux_[g] += srh.external_source(g) * distance;
+    }
   }
 }
 
@@ -529,7 +529,7 @@ void RandomRay::attenuate_flux_linear_source(
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
-  int material = this->material();
+  int material = srh.material();
 
   Position& centroid = srh.centroid();
   Position midpoint = r + u() * (distance / 2.0);
@@ -688,7 +688,10 @@ void RandomRay::attenuate_flux_linear_source_void(
   // transport through a void region is greatly simplified. Here we
   // compute the updated flux moments.
   for (int g = 0; g < negroups_; g++) {
-    float spatial_source = srh.external_source(g);
+    float spatial_source = 0.f;
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      spatial_source = srh.external_source(g);
+    }
     float new_delta_psi = (angular_flux_[g] - spatial_source) * distance;
     float h1 = 0.5f;
     h1 = h1 * angular_flux_[g];
@@ -750,8 +753,10 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 
   // Add source to incoming angular flux, assuming void region
-  for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] += srh.external_source(g) * distance;
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    for (int g = 0; g < negroups_; g++) {
+      angular_flux_[g] += srh.external_source(g) * distance;
+    }
   }
 }
 
@@ -782,13 +787,11 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     fatal_error("Unknown sample method for random ray transport.");
   }
 
-  site.E = lower_bound_index(
-    data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
-  site.E = negroups_ - site.E - 1.;
+  site.E = 0.0;
   this->from_source(&site);
 
   // Locate ray
-  if (lowest_coord().cell == C_NONE) {
+  if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -796,30 +799,15 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
-      cell_born() = lowest_coord().cell;
+      cell_born() = lowest_coord().cell();
   }
+
+  SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
+  SourceRegionHandle srh =
+    domain_->get_subdivided_source_region_handle(sr_key, r(), u());
 
   // Initialize ray's starting angular flux to starting location's isotropic
   // source
-  int i_cell = lowest_coord().cell;
-  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
-
-  SourceRegionHandle srh;
-  if (mesh_subdivision_enabled_) {
-    int mesh_idx = domain_->base_source_regions_.mesh(sr);
-    int mesh_bin;
-    if (mesh_idx == C_NONE) {
-      mesh_bin = 0;
-    } else {
-      Mesh* mesh = model::meshes[mesh_idx].get();
-      mesh_bin = mesh->get_bin(r());
-    }
-    srh =
-      domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), 0.0, u());
-  } else {
-    srh = domain_->source_regions_.get_source_region_handle(sr);
-  }
-
   if (!srh.is_numerical_fp_artifact_) {
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] = srh.source(g);

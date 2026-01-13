@@ -5,6 +5,8 @@ from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
+from pathlib import Path
+from typing import Protocol
 
 import h5py
 import lxml.etree as ET
@@ -15,7 +17,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.utility_funcs import change_directory
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
@@ -286,6 +288,7 @@ class MeshBase(IDManagerMixin, ABC):
             model: openmc.Model,
             n_samples: int | tuple[int, int, int] = 10_000,
             include_void: bool = True,
+            material_volumes: MeshMaterialVolumes | None = None,
             **kwargs
     ) -> list[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
@@ -304,8 +307,12 @@ class MeshBase(IDManagerMixin, ABC):
             the x, y, and z dimensions.
         include_void : bool, optional
             Whether homogenization should include voids.
+        material_volumes : MeshMaterialVolumes, optional
+            Previously computed mesh material volumes to use for homogenization.
+            If not provided, they will be computed by calling
+            :meth:`material_volumes`.
         **kwargs
-            Keyword-arguments passed to :meth:`MeshBase.material_volumes`.
+            Keyword-arguments passed to :meth:`material_volumes`.
 
         Returns
         -------
@@ -313,23 +320,16 @@ class MeshBase(IDManagerMixin, ABC):
             Homogenized material in each mesh element
 
         """
-        vols = self.material_volumes(model, n_samples, **kwargs)
+        if material_volumes is None:
+            vols = self.material_volumes(model, n_samples, **kwargs)
+        else:
+            vols = material_volumes
         mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
 
+        # Get dictionary of all materials
+        materials = model._get_all_materials()
+
         # Create homogenized material for each element
-        materials = model.geometry.get_all_materials()
-
-        # Account for materials in DAGMC universes
-        # TODO: This should really get incorporated in lower-level calls to
-        # get_all_materials, but right now it requires information from the
-        # Model object
-        for cell in model.geometry.get_all_cells().values():
-            if isinstance(cell.fill, openmc.DAGMCUniverse):
-                names = cell.fill.material_names
-                materials.update({
-                    mat.id: mat for mat in model.materials if mat.name in names
-                })
-
         homogenized_materials = []
         for mat_volume_list in mat_volume_by_element:
             material_ids, volumes = [list(x) for x in zip(*mat_volume_list)]
@@ -399,32 +399,30 @@ class MeshBase(IDManagerMixin, ABC):
         """
         import openmc.lib
 
-        with change_directory(tmpdir=True):
-            # In order to get mesh into model, we temporarily replace the
-            # tallies with a single mesh tally using the current mesh
-            original_tallies = model.tallies
-            new_tally = openmc.Tally()
-            new_tally.filters = [openmc.MeshFilter(self)]
-            new_tally.scores = ['flux']
-            model.tallies = [new_tally]
+        # In order to get mesh into model, we temporarily replace the
+        # tallies with a single mesh tally using the current mesh
+        original_tallies = list(model.tallies)
+        new_tally = openmc.Tally()
+        new_tally.filters = [openmc.MeshFilter(self)]
+        new_tally.scores = ['flux']
+        model.tallies = [new_tally]
 
-            # Export model to XML
-            model.export_to_model_xml()
+        # Set default arguments
+        kwargs.setdefault('output', True)
+        if 'args' in kwargs:
+            kwargs['args'] = ['-c'] + kwargs['args']
+        kwargs.setdefault('args', ['-c'])
 
-            # Get material volume fractions
-            kwargs.setdefault('output', True)
-            if 'args' in kwargs:
-                kwargs['args'] = ['-c'] + kwargs['args']
-            kwargs.setdefault('args', ['-c'])
-            openmc.lib.init(**kwargs)
+        with openmc.lib.TemporarySession(model, **kwargs):
+            # Get mesh from single tally
             mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
+
+            # Compute material volumes
             volumes = mesh.material_volumes(
                 n_samples, max_materials, output=kwargs['output'])
-            openmc.lib.finalize()
 
-            # Restore original tallies
-            model.tallies = original_tallies
-
+        # Restore original tallies
+        model.tallies = original_tallies
         return volumes
 
 
@@ -576,11 +574,16 @@ class StructuredMesh(MeshBase):
         filename : str
             Name of the VTK file to write.
         datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
+            Dictionary whose keys are the data labels and values are the data
+            sets. 1D datasets are expected to be extracted directly from
+            statepoint data without reordering/reshaping. Multidimensional
+            datasets are expected to have the same dimensions as the mesh itself
+            with structured indexing in "C" ordering. See the "expand_dims" flag
+            of :meth:`~openmc.Tally.get_reshaped_data` on reshaping tally data when using
+            :class:`~openmc.MeshFilter`'s.
         volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
             ``SphericalMesh`` and ``CylindricalMesh``.
@@ -594,13 +597,26 @@ class StructuredMesh(MeshBase):
         -------
         vtk.StructuredGrid or vtk.UnstructuredGrid
             a VTK grid object representing the mesh
+
+        Examples
+        --------
+        1D data from a tally with only a mesh filter and heating score:
+
+            # pass the tally mean property of shape (N, 1, 1) directly to this
+            # method; dimensions of size 1 will automatically removed
+            >>> heating = tally.mean
+            >>> mesh.write_data_to_vtk({'heating': heating})
+
+        Multidimensional data from a tally with only a mesh
+
+           # retrieve a data array with the mesh filter expanded into three
+           # dimensions, ijk; additional dimensions of size one will
+           # automatically be removed
+           >>> heating = tally.get_reshaped_data(expand_dims=True)
+           >>> mesh.write_data_to_vtk({'heating': heating})
         """
         import vtk
         from vtk.util import numpy_support as nps
-
-        # check that the data sets are appropriately sized
-        if datasets is not None:
-            self._check_vtk_datasets(datasets)
 
         # write linear elements using a structured grid
         if not curvilinear or isinstance(self, (RegularMesh, RectilinearMesh)):
@@ -612,22 +628,27 @@ class StructuredMesh(MeshBase):
             writer = vtk.vtkUnstructuredGridWriter()
 
         if datasets is not None:
-            # maintain a list of the datasets as added
-            # to the VTK arrays to ensure they persist
-            # in memory until the file is written
+            # maintain a list of the datasets as added to the VTK arrays to
+            # ensure they persist in memory until the file is written
             datasets_out = []
             for label, dataset in datasets.items():
-                dataset = np.asarray(dataset).flatten()
+                dataset = self._reshape_vtk_dataset(dataset)
+                self._check_vtk_dataset(label, dataset)
+                # If the array data is 3D, assume is in C ordering and transpose
+                # before flattening to match the ordering expected by the VTK
+                # array based on the way mesh indices are ordered in the Python
+                # API
+                # TODO: update to "C" ordering throughout
+                if dataset.ndim == 3:
+                    dataset = dataset.T.ravel()
                 datasets_out.append(dataset)
 
                 if volume_normalization:
-                    dataset /= self.volumes.T.flatten()
+                    dataset /= self.volumes.T.ravel()
 
                 dataset_array = vtk.vtkDoubleArray()
                 dataset_array.SetName(label)
-                dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                                    dataset.size,
-                                    True)
+                dataset_array.SetArray(nps.numpy_to_vtk(dataset), dataset.size, True)
                 vtk_grid.GetCellData().AddArray(dataset_array)
 
         writer.SetFileName(str(filename))
@@ -754,28 +775,74 @@ class StructuredMesh(MeshBase):
 
         return vtk_grid
 
-    def _check_vtk_datasets(self, datasets: dict):
-        """Perform some basic checks that the datasets are valid for this mesh
+    @staticmethod
+    def _reshape_vtk_dataset(dataset):
+        """Reshape a dataset to be compatible with VTK output
+
+        This method performs the following operations on a dataset:
+        1. Convert to numpy array if not already
+        2. Remove any trailing dimensions of size 1
+        3. Squeeze out any extra dimensions of size 1 beyond the first 3
 
         Parameters
         ----------
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
+        dataset : array-like
+            The dataset to reshape
+
+        Returns
+        -------
+        numpy.ndarray
+            The reshaped dataset
+        """
+        reshaped_data = np.asarray(dataset)
+
+        # detect flat array with extra dims
+        if all(d == 1 for d in reshaped_data.shape[1:]):
+            reshaped_data = reshaped_data.squeeze()
+
+        # remove any higher dimensions with size 1
+        if reshaped_data.ndim > 3 and all(d == 1 for d in reshaped_data.shape[3:]):
+            reshaped_data = reshaped_data.reshape(reshaped_data.shape[:3])
+
+        if np.shares_memory(reshaped_data, dataset):
+            return np.copy(reshaped_data)
+        else:
+            return reshaped_data
+
+    def _check_vtk_dataset(self, label: str, dataset: np.ndarray):
+        """Perform some basic checks that a dataset is valid for this Mesh
+
+        Parameters
+        ----------
+        label : str
+            The label for the dataset being checked
+        dataset : numpy.ndarray
+            The dataset array to check against this mesh's dimensions
 
         """
-        for label, dataset in datasets.items():
-            errmsg = (
+        cv.check_type('data label', label, str)
+
+        if dataset.size != self.num_mesh_cells:
+            raise ValueError(
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
                 f" equal to the number of mesh cells ({self.num_mesh_cells})"
             )
-            if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.num_mesh_cells:
-                    raise ValueError(errmsg)
-            else:
-                if len(dataset) == self.num_mesh_cells:
-                    raise ValueError(errmsg)
-            cv.check_type('data label', label, str)
+
+        # accept a flat array as-is, assuming it is in the correct order
+        if dataset.ndim == 1:
+            return
+
+        if dataset.shape != self.dimension:
+            raise ValueError(
+                f'Cannot apply multidimensional dataset "{label}" with '
+                f"shape {dataset.shape} to mesh {self.id} "
+                f"with dimensions {self.dimension}"
+            )
+
+
+class HasBoundingBox(Protocol):
+    """Object that has a ``bounding_box`` attribute."""
+    bounding_box: openmc.BoundingBox
 
 
 class RegularMesh(StructuredMesh):
@@ -1024,22 +1091,24 @@ class RegularMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
-        dimension: Sequence[int] = (10, 10, 10),
+        domain: HasBoundingBox,
+        dimension: Sequence[int] | int = 1000,
         mesh_id: int | None = None,
         name: str = ''
     ):
-        """Create mesh from an existing openmc cell, region, universe or
-        geometry by making use of the objects bounding box property.
+        """Create RegularMesh from a domain using its bounding box.
 
         Parameters
         ----------
-        domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
+        domain : HasBoundingBox
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
             set the lower_left and upper_right and of the mesh instance
-        dimension : Iterable of int
-            The number of mesh cells in each direction (x, y, z).
+        dimension : Iterable of int | int
+            The number of mesh cells in total or number of mesh cells in each
+            direction (x, y, z). If a single integer is provided, the domain
+            will will be divided into that many mesh cells with roughly equal
+            lengths in each direction (cubes).
         mesh_id : int
             Unique identifier for the mesh
         name : str
@@ -1051,15 +1120,22 @@ class RegularMesh(StructuredMesh):
             RegularMesh instance
 
         """
-        cv.check_type(
-            "domain",
-            domain,
-            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
-        )
+        if not hasattr(domain, 'bounding_box'):
+            raise TypeError("Domain must have a bounding_box property")
 
         mesh = cls(mesh_id=mesh_id, name=name)
         mesh.lower_left = domain.bounding_box[0]
         mesh.upper_right = domain.bounding_box[1]
+        if isinstance(dimension, int):
+            cv.check_greater_than("dimension", dimension, 1, equality=True)
+            # If a single integer is provided, divide the domain into that many
+            # mesh cells with roughly equal lengths in each direction
+            ideal_cube_volume = domain.bounding_box.volume / dimension
+            ideal_cube_size = ideal_cube_volume ** (1 / 3)
+            dimension = [
+                max(1, int(round(side / ideal_cube_size)))
+                for side in domain.bounding_box.width
+            ]
         mesh.dimension = dimension
 
         return mesh
@@ -1109,21 +1185,21 @@ class RegularMesh(StructuredMesh):
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id=mesh_id)
 
-        dimension = get_text(elem, 'dimension')
+        dimension = get_elem_list(elem, "dimension", int)
         if dimension is not None:
-            mesh.dimension = [int(x) for x in dimension.split()]
+            mesh.dimension = dimension
 
-        lower_left = get_text(elem, 'lower_left')
+        lower_left = get_elem_list(elem, "lower_left", float)
         if lower_left is not None:
-            mesh.lower_left = [float(x) for x in lower_left.split()]
+            mesh.lower_left = lower_left
 
-        upper_right = get_text(elem, 'upper_right')
+        upper_right = get_elem_list(elem, "upper_right", float)
         if upper_right is not None:
-            mesh.upper_right = [float(x) for x in upper_right.split()]
+            mesh.upper_right = upper_right
 
-        width = get_text(elem, 'width')
+        width = get_elem_list(elem, "width", float)
         if width is not None:
-            mesh.width = [float(x) for x in width.split()]
+            mesh.width = width
 
         return mesh
 
@@ -1429,9 +1505,9 @@ class RectilinearMesh(StructuredMesh):
         """
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id=mesh_id)
-        mesh.x_grid = [float(x) for x in get_text(elem, 'x_grid').split()]
-        mesh.y_grid = [float(y) for y in get_text(elem, 'y_grid').split()]
-        mesh.z_grid = [float(z) for z in get_text(elem, 'z_grid').split()]
+        mesh.x_grid = get_elem_list(elem, "x_grid", float)
+        mesh.y_grid = get_elem_list(elem, "y_grid", float)
+        mesh.z_grid = get_elem_list(elem, "z_grid", float)
 
         return mesh
 
@@ -1723,17 +1799,18 @@ class CylindricalMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
+        domain: HasBoundingBox,
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
-        name: str = ''
+        name: str = '',
+        enclose_domain: bool = False
     ):
-        """Creates a regular CylindricalMesh from an existing openmc domain.
+        """Create CylindricalMesh from a domain using its bounding box.
 
         Parameters
         ----------
-        domain : openmc.Cell or openmc.Region or openmc.Universe or openmc.Geometry
+        domain : HasBoundingBox
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
             set the r_grid, z_grid ranges.
@@ -1747,6 +1824,9 @@ class CylindricalMesh(StructuredMesh):
             is (0, 2π), i.e., the full phi range.
         name : str
             Name of the mesh
+        enclose_domain : bool
+            If True, the mesh will encompass the bounding box of the domain. If
+            False, the mesh will be inscribed within the domain's bounding box.
 
         Returns
         -------
@@ -1754,25 +1834,20 @@ class CylindricalMesh(StructuredMesh):
             CylindricalMesh instance
 
         """
-        cv.check_type(
-            "domain",
-            domain,
-            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
-        )
+        if not hasattr(domain, 'bounding_box'):
+            raise TypeError("Domain must have a bounding_box property")
 
         # loaded once to avoid recalculating bounding box
         cached_bb = domain.bounding_box
-        max_bounding_box_radius = max(
-            [
-                cached_bb[0][0],
-                cached_bb[0][1],
-                cached_bb[1][0],
-                cached_bb[1][1],
-            ]
-        )
+
+        if enclose_domain:
+            outer_radius = 0.5 * np.linalg.norm(cached_bb.width[:2])
+        else:
+            outer_radius = 0.5 * min(cached_bb.width[:2])
+
         r_grid = np.linspace(
             0,
-            max_bounding_box_radius,
+            outer_radius,
             num=dimension[0]+1
         )
         phi_grid = np.linspace(
@@ -1846,10 +1921,10 @@ class CylindricalMesh(StructuredMesh):
 
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(
-            r_grid = [float(x) for x in get_text(elem, "r_grid").split()],
-            phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()],
-            z_grid = [float(x) for x in get_text(elem, "z_grid").split()],
-            origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()],
+            r_grid = get_elem_list(elem, "r_grid", float),
+            phi_grid = get_elem_list(elem, "phi_grid", float),
+            z_grid = get_elem_list(elem, "z_grid", float),
+            origin = get_elem_list(elem, "origin", float) or [0., 0., 0.],
             mesh_id=mesh_id,
         )
 
@@ -2103,6 +2178,77 @@ class SphericalMesh(StructuredMesh):
 
         return mesh
 
+    @classmethod
+    def from_domain(
+        cls,
+        domain: HasBoundingBox,
+        dimension: Sequence[int] = (10, 10, 10),
+        mesh_id: int | None = None,
+        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
+        theta_grid_bounds: Sequence[float] = (0.0, pi),
+        name: str = '',
+        enclose_domain: bool = False
+    ):
+        """Create SphericalMesh from a domain using its bounding box.
+
+        Parameters
+        ----------
+        domain : HasBoundingBox
+            The object passed in will be used as a template for this mesh. The
+            bounding box of the property of the object passed will be used to
+            set the r_grid, phi_grid, and theta_grid ranges.
+        dimension : Iterable of int
+            The number of equally spaced mesh cells in each direction (r_grid,
+            phi_grid, theta_grid). Spacing is in angular space (radians) for
+            phi and theta, and in absolute space for r.
+        mesh_id : int
+            Unique identifier for the mesh
+        phi_grid_bounds : numpy.ndarray
+            Mesh bounds points along the phi-axis in radians. The default value
+            is (0, 2π), i.e., the full phi range.
+        theta_grid_bounds : numpy.ndarray
+            Mesh bounds points along the theta-axis in radians. The default value
+            is (0, π), i.e., the full theta range.
+        name : str
+            Name of the mesh
+        enclose_domain : bool
+            If True, the mesh will encompass the bounding box of the domain. If
+            False, the mesh will be inscribed within the domain's bounding box.
+
+        Returns
+        -------
+        openmc.SphericalMesh
+            SphericalMesh instance
+
+        """
+        if not hasattr(domain, 'bounding_box'):
+            raise TypeError("Domain must have a bounding_box property")
+
+        # loaded once to avoid recalculating bounding box
+        cached_bb = domain.bounding_box
+
+        if enclose_domain:
+            outer_radius = 0.5 * np.linalg.norm(cached_bb.width)
+        else:
+            outer_radius = 0.5 * min(cached_bb.width)
+
+        r_grid = np.linspace(0, outer_radius, num=dimension[0] + 1)
+        theta_grid = np.linspace(
+            theta_grid_bounds[0],
+            theta_grid_bounds[1],
+            num=dimension[1]+1
+        )
+        phi_grid = np.linspace(
+            phi_grid_bounds[0],
+            phi_grid_bounds[1],
+            num=dimension[2]+1
+        )
+        origin = np.array([
+            cached_bb.center[0], cached_bb.center[1], cached_bb.center[2]])
+
+        return cls(r_grid=r_grid, phi_grid=phi_grid, theta_grid=theta_grid,
+                   origin=origin, mesh_id=mesh_id, name=name)
+
     def to_xml_element(self):
         """Return XML representation of the mesh
 
@@ -2148,10 +2294,10 @@ class SphericalMesh(StructuredMesh):
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(
             mesh_id=mesh_id,
-            r_grid = [float(x) for x in get_text(elem, "r_grid").split()],
-            theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()],
-            phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()],
-            origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()],
+            r_grid = get_elem_list(elem, "r_grid", float),
+            theta_grid = get_elem_list(elem, "theta_grid", float),
+            phi_grid = get_elem_list(elem, "phi_grid", float),
+            origin = get_elem_list(elem, "origin", float) or [0., 0., 0.],
         )
 
         return mesh
@@ -2298,6 +2444,7 @@ class UnstructuredMesh(MeshBase):
     _UNSUPPORTED_ELEM = -1
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
+    _VTK_TETRA = 10
 
     def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
@@ -2507,7 +2654,8 @@ class UnstructuredMesh(MeshBase):
         warnings.warn(
             "The 'UnstructuredMesh.write_vtk_mesh' method has been renamed "
             "to 'write_data_to_vtk' and will be removed in a future version "
-            " of OpenMC.", FutureWarning
+            " of OpenMC.",
+            FutureWarning,
         )
         self.write_data_to_vtk(**kwargs)
 
@@ -2525,9 +2673,10 @@ class UnstructuredMesh(MeshBase):
         Parameters
         ----------
         filename : str or pathlib.Path
-            Name of the VTK file to write. If the filename ends in '.vtu' then a
-            binary VTU format file will be written, if the filename ends in
-            '.vtk' then a legacy VTK file will be written.
+            Name of the VTK file to write. If the filename ends in '.vtkhdf'
+            then a VTKHDF format file will be written. If the filename ends in
+            '.vtu' then a binary VTU format file will be written. If the
+            filename ends in '.vtk' then a legacy VTK file will be written.
         datasets : dict
             Dictionary whose keys are the data labels and values are numpy
             appropriately sized arrays of the data
@@ -2535,6 +2684,35 @@ class UnstructuredMesh(MeshBase):
             Whether or not to normalize the data by the volume of the mesh
             elements
         """
+
+        if Path(filename).suffix == ".vtkhdf":
+
+            self._write_data_to_vtk_hdf5_format(
+                filename=filename,
+                datasets=datasets,
+                volume_normalization=volume_normalization,
+            )
+
+        elif Path(filename).suffix == ".vtk" or Path(filename).suffix == ".vtu":
+
+            self._write_data_to_vtk_ascii_format(
+                filename=filename,
+                datasets=datasets,
+                volume_normalization=volume_normalization,
+            )
+
+        else:
+            raise ValueError(
+                "Unsupported file extension, The filename must end with "
+                "'.vtkhdf', '.vtu' or '.vtk'"
+            )
+
+    def _write_data_to_vtk_ascii_format(
+        self,
+        filename: PathLike | None = None,
+        datasets: dict | None = None,
+        volume_normalization: bool = True,
+    ):
         from vtkmodules.util import numpy_support
         from vtkmodules import vtkCommonCore
         from vtkmodules import vtkCommonDataModel
@@ -2542,9 +2720,7 @@ class UnstructuredMesh(MeshBase):
         from vtkmodules import vtkIOXML
 
         if self.connectivity is None or self.vertices is None:
-            raise RuntimeError(
-                "This mesh has not been loaded from a statepoint file."
-            )
+            raise RuntimeError("This mesh has not been loaded from a statepoint file.")
 
         if filename is None:
             filename = f"mesh_{self.id}.vtk"
@@ -2626,29 +2802,128 @@ class UnstructuredMesh(MeshBase):
 
         writer.Write()
 
+    def _write_data_to_vtk_hdf5_format(
+        self,
+        filename: PathLike | None = None,
+        datasets: dict | None = None,
+        volume_normalization: bool = True,
+    ):
+        def append_dataset(dset, array):
+            """Convenience function to append data to an HDF5 dataset"""
+            origLen = dset.shape[0]
+            dset.resize(origLen + array.shape[0], axis=0)
+            dset[origLen:] = array
+
+        if self.library != "moab":
+            raise NotImplementedError("VTKHDF output is only supported for MOAB meshes")
+
+        # the self.connectivity contains arrays of length 8 to support hex
+        # elements as well, in the case of tetrahedra mesh elements, the
+        # last 4 values are -1 and are removed
+        trimmed_connectivity = []
+        for cell in self.connectivity:
+            # Find the index of the first -1 value, if any
+            first_negative_index = np.where(cell == -1)[0]
+            if first_negative_index.size > 0:
+                # Slice the array up to the first -1 value
+                trimmed_connectivity.append(cell[: first_negative_index[0]])
+            else:
+                # No -1 values, append the whole cell
+                trimmed_connectivity.append(cell)
+        trimmed_connectivity = np.array(trimmed_connectivity, dtype="int32").flatten()
+
+        # MOAB meshes supports tet elements only so we know it has 4 points per cell
+        points_per_cell = 4
+
+        # offsets are the indices of the first point of each cell in the array of points
+        offsets = np.arange(0, self.n_elements * points_per_cell + 1, points_per_cell)
+
+        for name, data in datasets.items():
+            if data.shape != self.dimension:
+                raise ValueError(
+                    f'Cannot apply dataset "{name}" with '
+                    f"shape {data.shape} to mesh {self.id} "
+                    f"with dimensions {self.dimension}"
+                )
+
+        with h5py.File(filename, "w") as f:
+
+            root = f.create_group("VTKHDF")
+            vtk_file_format_version = (2, 1)
+            root.attrs["Version"] = vtk_file_format_version
+            ascii_type = "UnstructuredGrid".encode("ascii")
+            root.attrs.create(
+                "Type",
+                ascii_type,
+                dtype=h5py.string_dtype("ascii", len(ascii_type)),
+            )
+
+            # create hdf5 file structure
+            root.create_dataset("NumberOfPoints", (0,), maxshape=(None,), dtype="i8")
+            root.create_dataset("Types", (0,), maxshape=(None,), dtype="uint8")
+            root.create_dataset("Points", (0, 3), maxshape=(None, 3), dtype="f")
+            root.create_dataset(
+                "NumberOfConnectivityIds", (0,), maxshape=(None,), dtype="i8"
+            )
+            root.create_dataset("NumberOfCells", (0,), maxshape=(None,), dtype="i8")
+            root.create_dataset("Offsets", (0,), maxshape=(None,), dtype="i8")
+            root.create_dataset("Connectivity", (0,), maxshape=(None,), dtype="i8")
+
+            append_dataset(root["NumberOfPoints"], np.array([len(self.vertices)]))
+            append_dataset(root["Points"], self.vertices)
+            append_dataset(
+                root["NumberOfConnectivityIds"],
+                np.array([len(trimmed_connectivity)]),
+            )
+            append_dataset(root["Connectivity"], trimmed_connectivity)
+            append_dataset(root["NumberOfCells"], np.array([self.n_elements]))
+            append_dataset(root["Offsets"], offsets)
+
+            append_dataset(
+                root["Types"], np.full(self.n_elements, self._VTK_TETRA, dtype="uint8")
+            )
+
+            cell_data_group = root.create_group("CellData")
+
+            for name, data in datasets.items():
+
+                cell_data_group.create_dataset(
+                    name, (0,), maxshape=(None,), dtype="float64", chunks=True
+                )
+
+                if volume_normalization:
+                    data /= self.volumes
+                append_dataset(cell_data_group[name], data)
+
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
-        filename = group['filename'][()].decode()
-        library = group['library'][()].decode()
-        if 'options' in group.attrs:
+        filename = group["filename"][()].decode()
+        library = group["library"][()].decode()
+        if "options" in group.attrs:
             options = group.attrs['options'].decode()
         else:
             options = None
 
-        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, name=name, options=options)
+        mesh = cls(
+            filename=filename,
+            library=library,
+            mesh_id=mesh_id,
+            name=name,
+            options=options,
+        )
         mesh._has_statepoint_data = True
-        vol_data = group['volumes'][()]
+        vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.n_elements = mesh.volumes.size
 
-        vertices = group['vertices'][()]
+        vertices = group["vertices"][()]
         mesh._vertices = vertices.reshape((-1, 3))
-        connectivity = group['connectivity'][()]
+        connectivity = group["connectivity"][()]
         mesh._connectivity = connectivity.reshape((-1, 8))
-        mesh._element_types = group['element_types'][()]
+        mesh._element_types = group["element_types"][()]
 
-        if 'length_multiplier' in group:
-            mesh.length_multiplier = group['length_multiplier'][()]
+        if "length_multiplier" in group:
+            mesh.length_multiplier = group["length_multiplier"][()]
 
         return mesh
 
@@ -2667,7 +2942,7 @@ class UnstructuredMesh(MeshBase):
 
         element.set("library", self._library)
         if self.options is not None:
-            element.set('options', self.options)
+            element.set("options", self.options)
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
@@ -2694,7 +2969,7 @@ class UnstructuredMesh(MeshBase):
         filename = get_text(elem, 'filename')
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
-        options = elem.get('options')
+        options = get_text(elem, "options")
 
         return cls(filename, library, mesh_id, '', length_multiplier, options)
 

@@ -99,6 +99,10 @@ def test_plot(run_in_tmpdir, sphere_model):
             pixels=100,
         )
 
+    # Close plots to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close('all')
+
 
 def test_get_nuclides(uo2):
     c = openmc.Cell(fill=uo2)

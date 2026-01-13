@@ -29,7 +29,7 @@ if [[ $LIBMESH = 'y' ]]; then
 fi
 
 # Install MCPL
-./tools/ci/gha-install-mcpl.sh
+pip install mcpl
 
 # For MPI configurations, make sure mpi4py and h5py are built against the
 # correct version of MPI

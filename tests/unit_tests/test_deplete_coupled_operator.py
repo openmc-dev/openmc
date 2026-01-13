@@ -5,7 +5,7 @@
 from pathlib import Path
 
 import pytest
-from openmc.deplete import CoupledOperator
+from openmc.deplete import CoupledOperator, Chain
 import openmc
 import numpy as np
 
@@ -106,11 +106,13 @@ def test_diff_volume_method_match_cell(model_with_volumes):
 def test_diff_volume_method_divide_equally(model_with_volumes):
     """Tests the volumes assigned to the materials are divided equally"""
 
+    chain = Chain.from_xml(CHAIN_PATH)
+
     operator = openmc.deplete.CoupledOperator(
         model=model_with_volumes,
         diff_burnable_mats=True,
         diff_volume_method='divide equally',
-        chain_file=CHAIN_PATH
+        chain_file=chain
     )
 
     all_cells = list(operator.model.geometry.get_all_cells().values())

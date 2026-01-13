@@ -294,3 +294,75 @@ def test_tabular_from_energyfilter():
 
     tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
     assert tab.interpolation == 'linear-linear'
+
+
+def test_energy_filter():
+
+    # testing that bins descending value raises error
+    msg = "Values 1.0 and 0.5 appear to be out of order"
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([0.0, 1.0, 0.5])
+
+    # testing that bins with same value raises error
+    msg = "Values 0.25 and 0.25 appear to be out of order"
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([0.0, 0.25, 0.25])
+
+    # testing that negative bins values raises error
+    msg = 'Unable to set "filter value" to "-1.2" since it is less than "0.0"'
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([-1.2, 0.25, 0.5])
+
+
+def test_weight():
+    f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
+    expected_bins = [[0.01, 0.1], [0.1, 1.0], [1.0, 10.0]]
+
+    assert np.allclose(f.bins, expected_bins)
+    assert len(f.bins) == 3
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'weight'
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.allclose(new_f.bins, f.bins)
+
+
+def test_mesh_material():
+    mat1 = openmc.Material()
+    mat2 = openmc.Material()
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (2, 4, 1)
+    bins = [(0, mat1), (0, mat2), (6, mat1), (7, mat2)]
+    f = openmc.MeshMaterialFilter(mesh, bins)
+
+    expected_bins = [(0, mat1.id), (0, mat2.id), (6, mat1.id), (7, mat2.id)]
+    assert np.allclose(f.bins, expected_bins)
+    assert f.mesh == mesh
+    assert f.shape == (4,)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'meshmaterial'
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem, meshes={mesh.id: mesh})
+    assert isinstance(new_f, openmc.MeshMaterialFilter)
+    assert new_f.id == f.id
+    assert new_f.mesh == f.mesh
+    assert np.allclose(new_f.bins, expected_bins)
+
+    # Test hash and str
+    hash(f)
+    str(f)

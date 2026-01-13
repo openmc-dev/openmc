@@ -73,7 +73,7 @@ void CellInstanceFilter::set_cell_instances(span<CellInstance> instances)
 void CellInstanceFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  int64_t index_cell = p.lowest_coord().cell;
+  int64_t index_cell = p.lowest_coord().cell();
   int64_t instance = p.cell_instance();
 
   if (cells_.count(index_cell) > 0) {
@@ -89,7 +89,7 @@ void CellInstanceFilter::get_all_bins(
     return;
 
   for (int i = 0; i < p.n_coord() - 1; i++) {
-    int64_t index_cell = p.coord(i).cell;
+    int64_t index_cell = p.coord(i).cell();
     // if this cell isn't used on the filter, move on
     if (cells_.count(index_cell) == 0)
       continue;

@@ -808,33 +808,46 @@ class Chain:
         n = len(self)
         matrix = dok_array((n, n))
 
+        if isinstance(mats, str):
+            mat = mats
+            components = tr_rates.get_components(mat, current_timestep)
+            if not components:
+                return matrix.tocsc()
+            components = set(components)
+            rates = {
+                component: sum(tr_rates.get_external_rate(
+                    mat, component, current_timestep))
+                for component in components
+            }
+        elif isinstance(mats, tuple):
+            dest_mat, mat = mats
+            components = tr_rates.get_components(mat, current_timestep, dest_mat)
+            if not components:
+                return matrix.tocsc()
+            components = set(components)
+            rates = {
+                component: tr_rates.get_external_rate(
+                    mat, component, current_timestep, dest_mat)[0]
+                for component in components
+            }
+
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
             # Build transfer terms (nuclide transfer only)
             if isinstance(mats, str):
-                mat = mats
-                components = tr_rates.get_components(mat, current_timestep)
-                if not components:
-                    break
                 if elm in components:
-                    matrix[i, i] = sum(
-                        tr_rates.get_external_rate(mat, elm, current_timestep))
+                    matrix[i, i] = rates[elm]
                 elif nuc.name in components:
-                    matrix[i, i] = sum(
-                        tr_rates.get_external_rate(mat, nuc.name, current_timestep))
+                    matrix[i, i] = rates[nuc.name]
                 else:
                     matrix[i, i] = 0.0
 
             # Build transfer terms (transfer from one material into another)
             elif isinstance(mats, tuple):
-                dest_mat, mat = mats
-                components = tr_rates.get_components(mat, current_timestep, dest_mat)
                 if elm in components:
-                    matrix[i, i] = tr_rates.get_external_rate(
-                        mat, elm, current_timestep, dest_mat)[0]
+                    matrix[i, i] = rates[elm]
                 elif nuc.name in components:
-                    matrix[i, i] = tr_rates.get_external_rate(
-                        mat, nuc.name, current_timestep, dest_mat)[0]
+                    matrix[i, i] = rates[nuc.name]
                 else:
                     matrix[i, i] = 0.0
 
@@ -867,11 +880,18 @@ class Chain:
         n = len(self)
         vector = dok_array((n, 1))
 
+        components = ext_source_rates.get_components(mat, current_timestep)
+        components = set(components)
+        rates = {
+            component: sum(ext_source_rates.get_external_rate(
+                mat, component, current_timestep))
+            for component in components
+        }
+
         for i, nuc in enumerate(self.nuclides):
             # Build source term vector
-            if nuc.name in ext_source_rates.get_components(mat, current_timestep):
-                vector[i] = sum(ext_source_rates.get_external_rate(
-                    mat, nuc.name, current_timestep))
+            if nuc.name in components:
+                vector[i] = rates[nuc.name]
             else:
                 vector[i] = 0.0
 

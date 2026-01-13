@@ -24,7 +24,7 @@ jobs:
   filter-changes:
     runs-on: ubuntu-22.04
     outputs:
-      source_status: ${{ steps.filter.outputs.source }}
+      status: ${{ steps.filter.outputs.source }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
           predicate-quantifier: 'every'
   main:
     needs: filter-changes
-    if: ${{ needs.filter-changes.outputs.cpp_status == 'true' }}
+    if: ${{ needs.filter-changes.outputs.status == 'true' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:

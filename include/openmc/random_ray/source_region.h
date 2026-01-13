@@ -324,7 +324,8 @@ public:
   //---------------------------------------
   // Scalar fields
   int material_ {0}; //!< Index in openmc::model::materials array
-  int temperature_idx_ {0}; //!< Index into the MGXS array representing temperature
+  int temperature_idx_ {
+    0}; //!< Index into the MGXS array representing temperature
   double density_mult_ {1.0}; //!< A density multiplier queried from the cell
                               //!< corresponding to the source region.
   OpenMPMutex lock_;

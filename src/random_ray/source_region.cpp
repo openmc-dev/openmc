@@ -11,8 +11,7 @@ namespace openmc {
 //==============================================================================
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   : negroups_(sr.scalar_flux_old_.size()), material_(&sr.material_),
-    temperature_idx_(&sr.temperature_idx_),
-    density_mult_(&sr.density_mult_),
+    temperature_idx_(&sr.temperature_idx_), density_mult_(&sr.density_mult_),
     is_small_(&sr.is_small_), n_hits_(&sr.n_hits_),
     is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
     volume_(&sr.volume_), volume_t_(&sr.volume_t_), volume_sq_(&sr.volume_sq_),

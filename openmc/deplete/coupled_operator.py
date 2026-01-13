@@ -102,9 +102,9 @@ class CoupledOperator(OpenMCOperator):
     ----------
     model : openmc.model.Model
         OpenMC model object
-    chain_file : str, optional
-        Path to the depletion chain XML file. Defaults to
-        ``openmc.config['chain_file']``.
+    chain_file : PathLike or Chain, optional
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+        Defaults to ``openmc.config['chain_file']``.
     prev_results : Results, optional
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state
@@ -154,15 +154,9 @@ class CoupledOperator(OpenMCOperator):
         options.
 
         .. versionadded:: 0.12.1
-    reduce_chain : bool, optional
-        If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
-        depletion chain up to ``reduce_chain_level``.
-
-        .. versionadded:: 0.12
     reduce_chain_level : int, optional
-        Depth of the search when reducing the depletion chain. Only used
-        if ``reduce_chain`` evaluates to true. The default value of
-        ``None`` implies no limit on the depth.
+        Depth of the search when reducing the depletion chain. The default
+        value of ``None`` implies no limit on the depth.
 
         .. versionadded:: 0.12
     diff_volume_method : str
@@ -214,7 +208,7 @@ class CoupledOperator(OpenMCOperator):
                  normalization_mode="fission-q", fission_q=None,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
-                 reduce_chain=False, reduce_chain_level=None):
+                 reduce_chain_level=None):
 
         # check for old call to constructor
         if isinstance(model, openmc.Geometry):
@@ -270,7 +264,6 @@ class CoupledOperator(OpenMCOperator):
             diff_volume_method=diff_volume_method,
             fission_q=fission_q,
             helper_kwargs=helper_kwargs,
-            reduce_chain=reduce_chain,
             reduce_chain_level=reduce_chain_level)
 
     def _differentiate_burnable_mats(self):

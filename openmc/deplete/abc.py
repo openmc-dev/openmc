@@ -12,6 +12,7 @@ from copy import deepcopy
 from inspect import signature
 from numbers import Real, Integral
 from pathlib import Path
+from textwrap import dedent
 import time
 from typing import Optional, Union, Sequence
 from warnings import warn
@@ -22,20 +23,21 @@ from uncertainties import ufloat
 from openmc.checkvalue import check_value, check_type, check_greater_than, PathLike
 from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
-from openmc import Material
+from openmc import Material, Cell
 from .stepresult import StepResult
-from .chain import Chain
+from .chain import _get_chain
 from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
     _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR
 from .pool import deplete
 from .reaction_rates import ReactionRates
-from .transfer_rates import TransferRates
-from openmc import Material, Cell
+from .transfer_rates import TransferRates, ExternalSourceRates
 from .reactivity_control import (
     ReactivityController,
     CellReactivityController,
     MaterialReactivityController
 )
+
+
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -131,8 +133,8 @@ class TransportOperator(ABC):
 
     Parameters
     ----------
-    chain_file : str
-        Path to the depletion chain XML file
+    chain_file : PathLike or Chain
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
@@ -150,11 +152,12 @@ class TransportOperator(ABC):
         The depletion chain information necessary to form matrices and tallies.
 
     """
-    def __init__(self, chain_file, fission_q=None, prev_results=None):
+    def __init__(self, chain_file=None, fission_q=None, prev_results=None):
         self.output_dir = '.'
 
         # Read depletion chain
-        self.chain = Chain.from_xml(chain_file, fission_q)
+        self.chain = _get_chain(chain_file, fission_q)
+
         if prev_results is None:
             self.prev_res = None
         else:
@@ -530,7 +533,7 @@ class Integrator(ABC):
     r"""Abstract class for solving the time-integration for depletion
     """
 
-    _params = r"""
+    _params = dedent(r"""
     Parameters
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -603,7 +606,7 @@ class Integrator(ABC):
         User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
-            * ``A`` is a :class:`scipy.sparse.csc_matrix` making up the
+            * ``A`` is a :class:`scipy.sparse.csc_array` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
@@ -612,14 +615,23 @@ class Integrator(ABC):
               next time step. Expected to be of the same shape as ``n0``
 
     transfer_rates : openmc.deplete.TransferRates
-        Instance of TransferRates class to perform continuous transfer during depletion
+        Transfer rates for the depletion system used to model continuous
+        removal/feed between materials.
+
+        .. versionadded:: 0.14.0
+    external_source_rates : openmc.deplete.ExternalSourceRates
+        External source rates for the depletion system.
+
+        .. versionadded:: 0.15.3
     reactivity_control : openmc.deplete.ReactivityController
         Instance of ReactivityController class to perform reactivity control during
         transport-depletion simulation.
+        Transfer rates for the depletion system used to model continuous
+        removal/feed between materials.
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.15.4
 
-    """
+    """)
 
     def __init__(
             self,
@@ -632,17 +644,7 @@ class Integrator(ABC):
             solver: str = "cram48",
             continue_timesteps: bool = False,
         ):
-        # Check number of stages previously used
-        if operator.prev_res is not None:
-            res = operator.prev_res[-1]
-            if res.data.shape[0] != self._num_stages:
-                raise ValueError(
-                    "{} incompatible with previous restart calculation. "
-                    "Previous scheme used {} intermediate solutions, while "
-                    "this uses {}".format(
-                        self.__class__.__name__, res.data.shape[0],
-                        self._num_stages))
-        elif continue_timesteps:
+        if continue_timesteps and operator.prev_res is None:
             raise ValueError("Continuation run requires passing prev_results.")
         self.operator = operator
         self.chain = operator.chain
@@ -694,6 +696,7 @@ class Integrator(ABC):
         self.source_rates = np.asarray(source_rates)
 
         self.transfer_rates = None
+        self.external_source_rates = None
         self._reactivity_control = None
 
         if isinstance(solver, str):
@@ -749,11 +752,11 @@ class Integrator(ABC):
         check_type('reactivity control', reactivity_control, ReactivityController)
         self._reactivity_control = reactivity_control
 
-    def _timed_deplete(self, n, rates, dt, matrix_func=None):
+    def _timed_deplete(self, n, rates, dt, i=None, matrix_func=None):
         start = time.time()
         results = deplete(
-            self._solver, self.chain, n, rates, dt, matrix_func,
-            self.transfer_rates)
+            self._solver, self.chain, n, rates, dt, i, matrix_func,
+            self.transfer_rates, self.external_source_rates)
         return time.time() - start, results
 
     @abstractmethod
@@ -785,12 +788,8 @@ class Integrator(ABC):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        n_list : list of list of numpy.ndarray
-            Concentrations at each of the intermediate points with
-            the final concentration as the last element
-        op_results : list of openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates from intermediate transport
-            simulations
+        n_end : list of numpy.ndarray
+            Concentrations at end of timestep
         """
 
     @property
@@ -821,19 +820,44 @@ class Integrator(ABC):
         """Get beginning of step concentrations, reaction rates from restart"""
         res = self.operator.prev_res[-1]
         # Depletion methods expect list of arrays
-        bos_conc = list(res.data[0])
-        rates = res.rates[0]
-        k = ufloat(res.k[0, 0], res.k[0, 1])
+        bos_conc = list(res.data)
+        rates = res.rates
+        k = ufloat(res.k[0], res.k[1])
 
         if res.source_rate != 0.0:
             # Scale reaction rates by ratio of source rates
             rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
-    def _get_start_data(self):
+    def _get_start_data(self) -> tuple[float, int]:
+        """
+        This function fetches the starting state of a depletion simulation in
+        terms of the simulation physical time at which to start and the index at
+        which the depletion simulation should start. When no previous results
+        exist, the time and index are both zero. When previous results do exist,
+        it returns the time corresponding to beginning the previous results last
+        timestep and the index as N-1 where N is the number of previous
+        StepResults found in the previous Results (as expected from 0-based
+        indexing).
+
+        Note that the openmc.deplete.Results.time object is a list of float with
+        [t,t+dt] where t is the beginning of timestep time and t+dt is the end
+        of timestep time. If the previous results correspond to a simulation
+        that finished to completeion, it will contain a results in the form of
+        [t,t], but if a simulation doesn't finish all the given timesteps, it is
+        the t that is the desired start time, not t+dt. Thus, it is always safe
+        to take time[0].
+
+        Returns
+        -------
+        start_time : float
+            Time at which depletion simulation should start in [s]
+        index : int
+            Index at which depletion simulation should start
+        """
         if self.operator.prev_res is None:
             return 0.0, 0
-        return (self.operator.prev_res[-1].time[-1],
+        return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
     def _get_bos_from_reactivity_control(self, step_index, bos_conc):
@@ -847,7 +871,8 @@ class Integrator(ABC):
             self,
             final_step: bool = True,
             output: bool = True,
-            path: PathLike = 'depletion_results.h5'
+            path: PathLike = 'depletion_results.h5',
+            write_rates: bool = False
         ):
         """Perform the entire depletion process across all steps
 
@@ -866,6 +891,11 @@ class Integrator(ABC):
             Path to file to write. Defaults to 'depletion_results.h5'.
 
             .. versionadded:: 0.15.0
+        write_rates : bool, optional
+            Whether reaction rates should be written to the results file for
+            each step. Defaults to ``False`` to reduce file size.
+
+            .. versionadded:: 0.15.3
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -890,17 +920,23 @@ class Integrator(ABC):
                     else:
                         root = None
                 # Solve Bateman equations over time interval
-                proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
+                proc_time, n_end = self(n, res.rates, dt, source_rate, i)
 
-                # Insert BOS concentration, transport results
-                n_list.insert(0, n)
-                res_list.insert(0, res)
+                StepResult.save(
+                    self.operator,
+                    n,
+                    res,
+                    [t, t + dt],
+                    source_rate,
+                    self._i_res + i,
+                    proc_time,
+                    write_rates=write_rates,
+                    root=root,
+                    path=path
+                )
 
-                # Remove actual EOS concentration for next step
-                n = n_list.pop()
-                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                            source_rate, self._i_res + i, proc_time, root, path)
-
+                # Update for next step
+                n = n_end
                 t += dt
 
             # Final simulation -- in the case that final_step is False, a zero
@@ -913,21 +949,32 @@ class Integrator(ABC):
                 n, root = self._get_bos_from_reactivity_control(i+1, n)
             else:
                 root = None
-            res_list = [self.operator(n, source_rate if final_step else 0.0)]
-            StepResult.save(self.operator, [n], res_list, [t, t],
-                    source_rate, self._i_res + len(self), proc_time, root, path)
+            res_final = self.operator(n, source_rate if final_step else 0.0)
+            StepResult.save(
+                self.operator,
+                n,
+                res_final,
+                [t, t],
+                source_rate,
+                self._i_res + len(self),
+                proc_time,
+                write_rates=write_rates,
+                root=root,
+                path=path
+            )
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()
 
     def add_transfer_rate(
-            self,
-            material: Union[str, int, Material],
-            components: Sequence[str],
-            transfer_rate: float,
-            transfer_rate_units: str = '1/s',
-            destination_material: Optional[Union[str, int, Material]] = None
-        ):
+        self,
+        material: str | int | Material,
+        components: Sequence[str],
+        transfer_rate: float,
+        transfer_rate_units: str = '1/s',
+        timesteps: Sequence[int] | None = None,
+        destination_material: str | int | Material | None = None
+    ):
         """Add transfer rates to depletable material.
 
         Parameters
@@ -941,18 +988,109 @@ class Integrator(ABC):
         transfer_rate : float
             Rate at which elements are transferred. A positive or negative values
             set removal of feed rates, respectively.
-        destination_material : openmc.Material or str or int, Optional
-            Destination material to where nuclides get fed.
         transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
             Units for values specified in the transfer_rate argument. 's' means
             seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years.
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates.
+            Defaults to None, which means the external source rate is set for
+            all timesteps.
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
 
         """
         if self.transfer_rates is None:
-            self.transfer_rates = TransferRates(self.operator, self.operator.model)
+            if hasattr(self.operator, 'model'):
+                materials = self.operator.model.materials
+            elif hasattr(self.operator, 'materials'):
+                materials = self.operator.materials
+            self.transfer_rates = TransferRates(
+                self.operator, materials, len(self.timesteps))
 
-        self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
-                                      transfer_rate_units, destination_material)
+        if self.external_source_rates is not None and destination_material:
+            raise ValueError('Currently is not possible to set a transfer rate '
+                             'with destination matrial in combination with '
+                             'external source rates.')
+
+        self.transfer_rates.set_transfer_rate(
+            material, components, transfer_rate, transfer_rate_units,
+            timesteps, destination_material)
+
+    def add_external_source_rate(
+        self,
+        material: str | int | Material,
+        composition: dict[str, float],
+        rate: float,
+        rate_units: str = 'g/s',
+        timesteps: Sequence[int] | None = None
+    ):
+        """Add external source rates to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        composition : dict of str to float
+            External source rate composition vector, where key can be an element
+            or a nuclide and value the corresponding weight percent.
+        rate : float
+            External source rate in units of mass per time. A positive or
+            negative value corresponds to a feed or removal rate, respectively.
+        units : {'g/s', 'g/min', 'g/h', 'g/d', 'g/a'}
+            Units for values specified in the `rate` argument. 's' for seconds,
+            'min' for minutes, 'h' for hours, 'a' for Julian years.
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates.
+            Defaults to None, which means the external source rate is set for
+            all timesteps.
+
+        """
+        if self.external_source_rates is None:
+            if hasattr(self.operator, 'model'):
+                materials = self.operator.model.materials
+            elif hasattr(self.operator, 'materials'):
+                materials = self.operator.materials
+            self.external_source_rates = ExternalSourceRates(
+                self.operator, materials, len(self.timesteps))
+
+        if self.transfer_rates is not None and self.transfer_rates.index_transfer:
+            raise ValueError('Currently is not possible to set an external '
+                             'source rate in combination with transfer rates '
+                             'with destination matrial.')
+
+        self.external_source_rates.set_external_source_rate(
+            material, composition, rate, rate_units, timesteps)
+
+
+    def add_redox(self, material, buffer, oxidation_states, timesteps=None):
+        """Add redox control to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        buffer : dict
+            Dictionary of buffer nuclides used to maintain redox balance. Keys
+            are nuclide names (strings) and values are their respective
+            fractions (float) that collectively sum to 1.
+        oxidation_states : dict
+            User-defined oxidation states for elements. Keys are element symbols
+            (e.g., 'H', 'He'), and values are their corresponding oxidation
+            states as integers (e.g., +1, 0).
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates.
+            Defaults to None, which means the external source rate is set for
+            all timesteps.
+        """
+        if self.transfer_rates is None:
+            if hasattr(self.operator, 'model'):
+                materials = self.operator.model.materials
+            elif hasattr(self.operator, 'materials'):
+                materials = self.operator.materials
+            self.transfer_rates = TransferRates(
+                self.operator, materials, len(self.timesteps))
+
+        self.transfer_rates.set_redox(material, buffer, oxidation_states, timesteps)
 
     def add_reactivity_control(
             self,
@@ -985,7 +1123,7 @@ class SIIntegrator(Integrator):
     the number of particles used in initial transport calculation
     """
 
-    _params = r"""
+    _params = dedent(r"""
     Parameters
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -1063,7 +1201,7 @@ class SIIntegrator(Integrator):
         User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
-            * ``A`` is a :class:`scipy.sparse.csc_matrix` making up the
+            * ``A`` is a :class:`scipy.sparse.csc_array` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
@@ -1073,7 +1211,7 @@ class SIIntegrator(Integrator):
 
         .. versionadded:: 0.12
 
-    """
+    """)
 
     def __init__(
             self,
@@ -1105,11 +1243,41 @@ class SIIntegrator(Integrator):
             self.operator.settings.particles //= self.n_steps
         return inherited
 
+    @abstractmethod
+    def __call__(self, n, rates, dt, source_rate, i):
+        """Perform the integration across one time step
+
+        Parameters
+        ----------
+        n : list of numpy.ndarray
+            List of atom number arrays for each material. Each array has
+            shape ``(n_nucs,)`` where ``n_nucs`` is the number of nuclides
+        rates : openmc.deplete.ReactionRates
+            Reaction rates (from transport operator)
+        dt : float
+            Time step in [s]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
+        i : int
+            Current time step index
+
+        Returns
+        -------
+        proc_time : float
+            Time spent in transport simulation
+        n_end : list of numpy.ndarray
+            Updated atom number densities for each material
+        op_result : OperatorResult
+            Eigenvalue and reaction rates resulting from transport simulation
+
+        """
+
     def integrate(
-            self,
-            output: bool = True,
-            path: PathLike = "depletion_results.h5"
-        ):
+        self,
+        output: bool = True,
+        path: PathLike = "depletion_results.h5",
+        write_rates: bool = False
+    ):
         """Perform the entire depletion process across all steps
 
         Parameters
@@ -1120,11 +1288,17 @@ class SIIntegrator(Integrator):
             Path to file to write. Defaults to 'depletion_results.h5'.
 
             .. versionadded:: 0.15.0
+        write_rates : bool, optional
+            Whether reaction rates should be written to the results file for
+            each step. Defaults to ``False`` to reduce file size.
+
+            .. versionadded:: 0.15.3
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
+            res_end = None  # Will be set in first iteration
             for i, (dt, p) in enumerate(self):
                 if output:
                     print(f"[openmc.deplete] t={t} s, dt={dt} s, source={p}")
@@ -1134,28 +1308,38 @@ class SIIntegrator(Integrator):
                         n, res = self._get_bos_data_from_operator(i, p, n)
                     else:
                         n, res = self._get_bos_data_from_restart(p, n)
-                else:
-                    # Pull rates, k from previous iteration w/o
-                    # re-running transport
-                    res = res_list[-1]  # defined in previous i iteration
 
-                proc_time, n_list, res_list = self(n, res.rates, dt, p, i)
+                proc_time, n_end, res_end = self(n, res.rates, dt, p, i)
 
-                # Insert BOS concentration, transport results
-                n_list.insert(0, n)
-                res_list.insert(0, res)
+                StepResult.save(
+                    self.operator,
+                    n,
+                    res,
+                    [t, t + dt],
+                    p,
+                    self._i_res + i,
+                    proc_time,
+                    write_rates=write_rates,
+                    path=path
+                )
 
-                # Remove actual EOS concentration for next step
-                n = n_list.pop()
-
-                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                             p, self._i_res + i, proc_time, path=path)
-
+                # Update for next step
+                n = n_end
+                res = res_end
                 t += dt
 
             # No final simulation for SIE, use last iteration results
-            StepResult.save(self.operator, [n], [res_list[-1]], [t, t],
-                         p, self._i_res + len(self), proc_time, path=path)
+            StepResult.save(
+                self.operator,
+                n,
+                res_end,
+                [t, t],
+                p,
+                self._i_res + len(self),
+                proc_time,
+                write_rates=write_rates,
+                path=path
+            )
             self.operator.write_bos_data(self._i_res + len(self))
 
         self.operator.finalize()
@@ -1180,7 +1364,7 @@ class DepSystemSolver(ABC):
 
         Parameters
         ----------
-        A : scipy.sparse.csc_matrix
+        A : scipy.sparse.csc_array
             Sparse transmutation matrix ``A[j, i]`` describing rates at
             which isotope ``i`` transmutes to isotope ``j``
         n0 : numpy.ndarray

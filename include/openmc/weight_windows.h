@@ -71,6 +71,7 @@ struct WeightWindow {
   {
     lower_weight *= factor;
     upper_weight *= factor;
+    survival_weight *= factor;
   }
 };
 

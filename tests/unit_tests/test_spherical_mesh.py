@@ -63,8 +63,6 @@ def test_origin_read_write_to_xml(run_in_tmpdir, model):
     np.testing.assert_equal(new_mesh.origin, mesh.origin)
 
 estimators = ('tracklength', 'collision')
-# TODO: determine why this is needed for spherical mesh
-# but not cylindrical mesh
 offset = geom_size + 0.001
 
 origins = set(permutations((-offset, 0, 0)))

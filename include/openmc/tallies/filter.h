@@ -33,6 +33,7 @@ enum class FilterType {
   MATERIALFROM,
   MESH,
   MESHBORN,
+  MESH_MATERIAL,
   MESH_SURFACE,
   MU,
   MUSURFACE,
@@ -44,6 +45,7 @@ enum class FilterType {
   SURFACE,
   TIME,
   UNIVERSE,
+  WEIGHT,
   ZERNIKE,
   ZERNIKE_RADIAL
 };

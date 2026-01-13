@@ -1,28 +1,28 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1">
-      <density units="g/cm3" value="10.0"/>
-      <nuclide ao="1.0" name="U235"/>
+    <material id="1" depletable="true">
+      <density value="10.0" units="g/cm3"/>
+      <nuclide name="U235" ao="1.0"/>
     </material>
     <material id="2">
-      <density units="g/cm3" value="1.0"/>
-      <nuclide ao="1.0" name="Zr90"/>
+      <density value="1.0" units="g/cm3"/>
+      <nuclide name="Zr90" ao="1.0"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="1 -2 3 -4 10 -9" universe="1"/>
     <cell id="2" material="2" region="(-1 | 2 | -3 | 4) (5 -6 7 -8) 10 -9" universe="1"/>
-    <surface coeffs="-5.0" id="1" name="minimum x" type="x-plane"/>
-    <surface coeffs="5.0" id="2" name="maximum x" type="x-plane"/>
-    <surface coeffs="-5.0" id="3" name="minimum y" type="y-plane"/>
-    <surface coeffs="5.0" id="4" name="maximum y" type="y-plane"/>
-    <surface boundary="reflective" coeffs="-10.0" id="5" name="minimum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="10.0" id="6" name="maximum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-10.0" id="7" name="minimum y" type="y-plane"/>
-    <surface boundary="reflective" coeffs="10.0" id="8" name="maximum y" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="10.0" id="9" type="z-plane"/>
-    <surface boundary="vacuum" coeffs="-10.0" id="10" type="z-plane"/>
+    <surface id="1" name="minimum x" type="x-plane" coeffs="-5.0"/>
+    <surface id="2" name="maximum x" type="x-plane" coeffs="5.0"/>
+    <surface id="3" name="minimum y" type="y-plane" coeffs="-5.0"/>
+    <surface id="4" name="maximum y" type="y-plane" coeffs="5.0"/>
+    <surface id="5" name="minimum x" type="x-plane" boundary="reflective" coeffs="-10.0"/>
+    <surface id="6" name="maximum x" type="x-plane" boundary="reflective" coeffs="10.0"/>
+    <surface id="7" name="minimum y" type="y-plane" boundary="reflective" coeffs="-10.0"/>
+    <surface id="8" name="maximum y" type="y-plane" boundary="reflective" coeffs="10.0"/>
+    <surface id="9" type="z-plane" boundary="vacuum" coeffs="10.0"/>
+    <surface id="10" type="z-plane" boundary="vacuum" coeffs="-10.0"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
@@ -54,8 +54,8 @@
     <mesh id="5" type="cylindrical">
       <r_grid>0.0 0.4411764705882353 0.8823529411764706 1.3235294117647058 1.7647058823529411 2.2058823529411766 2.6470588235294117 3.0882352941176467 3.5294117647058822 3.9705882352941178 4.411764705882353 4.852941176470588 5.294117647058823 5.735294117647059 6.1764705882352935 6.617647058823529 7.0588235294117645 7.5</r_grid>
       <phi_grid>0.0 0.3490658503988659 0.6981317007977318 1.0471975511965976 1.3962634015954636 1.7453292519943295 2.0943951023931953 2.443460952792061 2.792526803190927 3.141592653589793 3.490658503988659 3.839724354387525 4.1887902047863905 4.537856055185257 4.886921905584122 5.235987755982989 5.585053606381854 5.93411945678072 6.283185307179586</phi_grid>
-      <z_grid>-7.5 -6.5625 -5.625 -4.6875 -3.75 -2.8125 -1.875 -0.9375 0.0 0.9375 1.875 2.8125 3.75 4.6875 5.625 6.5625 7.5</z_grid>
-      <origin>0.0 0.0 0.0</origin>
+      <z_grid>0.0 0.9375 1.875 2.8125 3.75 4.6875 5.625 6.5625 7.5 8.4375 9.375 10.3125 11.25 12.1875 13.125 14.0625 15.0</z_grid>
+      <origin>0.0 0.0 -7.5</origin>
     </mesh>
     <mesh id="6" type="spherical">
       <r_grid>0.0 0.4411764705882353 0.8823529411764706 1.3235294117647058 1.7647058823529411 2.2058823529411766 2.6470588235294117 3.0882352941176467 3.5294117647058822 3.9705882352941178 4.411764705882353 4.852941176470588 5.294117647058823 5.735294117647059 6.1764705882352935 6.617647058823529 7.0588235294117645 7.5</r_grid>

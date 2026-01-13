@@ -50,9 +50,9 @@ class IndependentOperator(OpenMCOperator):
         Cross sections in [b] for each domain. If the
         :class:`~openmc.deplete.MicroXS` object is empty, a decay-only
         calculation will be run.
-    chain_file : str
-        Path to the depletion chain XML file. Defaults to
-        ``openmc.config['chain_file']``.
+    chain_file : PathLike or Chain, optional
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+        Defaults to ``openmc.config['chain_file']``.
     keff : 2-tuple of float, optional
        keff eigenvalue and uncertainty from transport calculation.
     prev_results : Results, optional
@@ -66,13 +66,9 @@ class IndependentOperator(OpenMCOperator):
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable if
         ``"normalization_mode" == "fission-q"``.
-    reduce_chain : bool, optional
-        If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the depletion
-        chain up to ``reduce_chain_level``.
     reduce_chain_level : int, optional
-        Depth of the search when reducing the depletion chain. Only used if
-        ``reduce_chain`` evaluates to true. The default value of ``None``
-        implies no limit on the depth.
+        Depth of the search when reducing the depletion chain. The default
+        value of ``None`` implies no limit on the depth.
     fission_yield_opts : dict of str to option, optional
         Optional arguments to pass to the
         :class:`openmc.deplete.helpers.FissionYieldHelper` object. Will be
@@ -119,7 +115,6 @@ class IndependentOperator(OpenMCOperator):
                  normalization_mode='fission-q',
                  fission_q=None,
                  prev_results=None,
-                 reduce_chain=False,
                  reduce_chain_level=None,
                  fission_yield_opts=None):
         # Validate micro-xs parameters
@@ -157,7 +152,6 @@ class IndependentOperator(OpenMCOperator):
             prev_results=prev_results,
             fission_q=fission_q,
             helper_kwargs=helper_kwargs,
-            reduce_chain=reduce_chain,
             reduce_chain_level=reduce_chain_level)
 
     @classmethod
@@ -170,7 +164,6 @@ class IndependentOperator(OpenMCOperator):
                       normalization_mode='fission-q',
                       fission_q=None,
                       prev_results=None,
-                      reduce_chain=False,
                       reduce_chain_level=None,
                       fission_yield_opts=None):
         """
@@ -186,9 +179,9 @@ class IndependentOperator(OpenMCOperator):
         micro_xs : MicroXS
             Cross sections in [b]. If the :class:`~openmc.deplete.MicroXS`
             object is empty, a decay-only calculation will be run.
-        chain_file : str, optional
-            Path to the depletion chain XML file. Defaults to
-            ``openmc.config['chain_file']``.
+        chain_file : PathLike or Chain, optional
+            Path to the depletion chain XML file or instance of
+            openmc.deplete.Chain. Defaults to ``openmc.config['chain_file']``.
         nuc_units : {'atom/cm3', 'atom/b-cm'}, optional
             Units for nuclide concentration.
         keff : 2-tuple of float, optional
@@ -206,13 +199,9 @@ class IndependentOperator(OpenMCOperator):
             applicable if ``"normalization_mode" == "fission-q"``.
         prev_results : Results, optional
             Results from a previous depletion calculation.
-        reduce_chain : bool, optional
-            If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
-            depletion chain up to ``reduce_chain_level``. Default is False.
         reduce_chain_level : int, optional
-            Depth of the search when reducing the depletion chain. Only used
-            if ``reduce_chain`` evaluates to true. The default value of
-            ``None`` implies no limit on the depth.
+            Depth of the search when reducing the depletion chain. The default
+            value of ``None`` implies no limit on the depth.
         fission_yield_opts : dict of str to option, optional
             Optional arguments to pass to the
             :class:`openmc.deplete.helpers.FissionYieldHelper` class. Will be
@@ -232,7 +221,6 @@ class IndependentOperator(OpenMCOperator):
                    normalization_mode=normalization_mode,
                    fission_q=fission_q,
                    prev_results=prev_results,
-                   reduce_chain=reduce_chain,
                    reduce_chain_level=reduce_chain_level,
                    fission_yield_opts=fission_yield_opts)
 
@@ -285,7 +273,7 @@ class IndependentOperator(OpenMCOperator):
         Returns
         -------
         nuclides : set of str
-            Set of nuclide names that have cross secton data
+            Set of nuclide names that have cross section data
 
         """
         return set(cross_sections[0].nuclides)

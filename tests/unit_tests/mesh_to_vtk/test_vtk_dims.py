@@ -90,7 +90,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     # kji (i changing fastest) orering is expected for input data
     # by using the volumes transposed as the data here, we can ensure the
     # normalization is happening correctly
-    data = mesh.volumes.T
+    data = mesh.volumes
 
     # RUN
     mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})

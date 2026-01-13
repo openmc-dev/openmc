@@ -19,14 +19,14 @@
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "moab/AdaptiveKDTree.hpp"
 #include "moab/Core.hpp"
 #include "moab/GeomUtil.hpp"
 #include "moab/Matrix3.hpp"
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/bounding_box.h"
 #include "libmesh/dof_map.h"
 #include "libmesh/elem.h"
@@ -61,7 +61,7 @@ extern vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 namespace settings {
 // used when creating new libMesh::MeshBase instances
 extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
@@ -132,14 +132,17 @@ public:
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
+  Mesh(hid_t group);
   virtual ~Mesh() = default;
+
+  // Factory method for creating meshes from either an XML node or HDF5 group
+  template<typename T>
+  static const std::unique_ptr<Mesh>& create(
+    T dataset, const std::string& mesh_type, const std::string& mesh_library);
 
   // Methods
   //! Perform any preparation needed to support point location within the mesh
   virtual void prepare_for_point_location() {};
-
-  //! Update a position to the local coordinates of the mesh
-  virtual void local_coords(Position& r) const {};
 
   //! Return a position in the local coordinates of the mesh
   virtual Position local_coords(const Position& r) const { return r; };
@@ -241,9 +244,7 @@ public:
   //! \return Bounding box of mesh
   BoundingBox bounding_box() const
   {
-    auto ll = this->lower_left();
-    auto ur = this->upper_right();
-    return {ll.x, ur.x, ll.y, ur.y, ll.z, ur.z};
+    return {this->lower_left(), this->upper_right()};
   }
 
   virtual Position lower_left() const = 0;
@@ -261,6 +262,7 @@ class StructuredMesh : public Mesh {
 public:
   StructuredMesh() = default;
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
+  StructuredMesh(hid_t group) : Mesh {group} {};
   virtual ~StructuredMesh() = default;
 
   using MeshIndex = std::array<int, 3>;
@@ -426,8 +428,7 @@ class PeriodicStructuredMesh : public StructuredMesh {
 public:
   PeriodicStructuredMesh() = default;
   PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
-
-  void local_coords(Position& r) const override { r -= origin_; };
+  PeriodicStructuredMesh(hid_t group) : StructuredMesh {group} {};
 
   Position local_coords(const Position& r) const override
   {
@@ -447,6 +448,7 @@ public:
   // Constructors
   RegularMesh() = default;
   RegularMesh(pugi::xml_node node);
+  RegularMesh(hid_t group);
 
   // Overridden methods
   int get_index_in_direction(double r, int i) const override;
@@ -486,6 +488,8 @@ public:
   //! Return the volume for a given mesh index
   double volume(const MeshIndex& ijk) const override;
 
+  int set_grid();
+
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element
   double element_volume_;        //!< Volume of each mesh element
@@ -497,6 +501,7 @@ public:
   // Constructors
   RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
+  RectilinearMesh(hid_t group);
 
   // Overridden methods
   int get_index_in_direction(double r, int i) const override;
@@ -539,6 +544,7 @@ public:
   // Constructors
   CylindricalMesh() = default;
   CylindricalMesh(pugi::xml_node node);
+  CylindricalMesh(hid_t group);
 
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
@@ -603,6 +609,7 @@ public:
   // Constructors
   SphericalMesh() = default;
   SphericalMesh(pugi::xml_node node);
+  SphericalMesh(hid_t group);
 
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
@@ -671,9 +678,9 @@ class UnstructuredMesh : public Mesh {
 
 public:
   // Constructors
-  UnstructuredMesh() {};
+  UnstructuredMesh() { n_dimension_ = 3; };
   UnstructuredMesh(pugi::xml_node node);
-  UnstructuredMesh(const std::string& filename);
+  UnstructuredMesh(hid_t group);
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;
@@ -773,13 +780,14 @@ private:
   virtual void initialize() = 0;
 };
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 class MOABMesh : public UnstructuredMesh {
 public:
   // Constructors
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
+  MOABMesh(hid_t group);
   MOABMesh(const std::string& filename, double length_multiplier = 1.0);
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 
@@ -943,12 +951,13 @@ private:
 
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 
 class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
+  LibMesh(hid_t group);
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
   LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
@@ -996,25 +1005,26 @@ public:
 
   libMesh::MeshBase* mesh_ptr() const { return m_; };
 
+protected:
+  // Methods
+
+  //! Translate a bin value to an element reference
+  virtual const libMesh::Elem& get_element_from_bin(int bin) const;
+
+  //! Translate an element pointer to a bin index
+  virtual int get_bin_from_element(const libMesh::Elem* elem) const;
+
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
+                         //!< during intialization
 private:
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);
   void build_eqn_sys();
 
-  // Methods
-
-  //! Translate a bin value to an element reference
-  const libMesh::Elem& get_element_from_bin(int bin) const;
-
-  //! Translate an element pointer to a bin index
-  int get_bin_from_element(const libMesh::Elem* elem) const;
-
   // Data members
   unique_ptr<libMesh::MeshBase> unique_m_ =
     nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is
              //!< created inside OpenMC
-  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
-                         //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>
@@ -1028,8 +1038,34 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
+};
 
-  const bool adaptive_; //!< whether this mesh has adaptivity enabled or not
+class AdaptiveLibMesh : public LibMesh {
+public:
+  // Constructor
+  AdaptiveLibMesh(
+    libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
+
+  // Overridden methods
+  int n_bins() const override;
+
+  void add_score(const std::string& var_name) override;
+
+  void set_score_data(const std::string& var_name, const vector<double>& values,
+    const vector<double>& std_dev) override;
+
+  void write(const std::string& filename) const override;
+
+protected:
+  // Overridden methods
+  int get_bin_from_element(const libMesh::Elem* elem) const override;
+
+  const libMesh::Elem& get_element_from_bin(int bin) const override;
+
+private:
+  // Data members
+  const libMesh::dof_id_type num_active_; //!< cached number of active elements
+
   std::vector<libMesh::dof_id_type>
     bin_to_elem_map_; //!< mapping bin indices to dof indices for active
                       //!< elements
@@ -1047,6 +1083,11 @@ private:
 //
 //! \param[in] root XML node
 void read_meshes(pugi::xml_node root);
+
+//! Read meshes from an HDF5 file
+//
+//! \param[in] group HDF5 group ("meshes" group)
+void read_meshes(hid_t group);
 
 //! Write mesh data to an HDF5 group
 //

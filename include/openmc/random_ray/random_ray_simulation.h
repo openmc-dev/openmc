@@ -21,11 +21,7 @@ public:
   // Methods
   void compute_segment_correction_factors();
   void apply_fixed_sources_and_mesh_domains();
-  void prepare_fixed_sources_adjoint(vector<double>& forward_flux,
-    SourceRegionContainer& forward_source_regions,
-    SourceRegionContainer& forward_base_source_regions,
-    std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
-      forward_source_region_map);
+  void prepare_fixed_sources_adjoint();
   void simulate();
   void output_simulation_results() const;
   void instability_check(
@@ -44,9 +40,6 @@ private:
 
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
-
-  // Random ray eigenvalue
-  double k_eff_ {1.0};
 
   // Tracks the average FSR miss rate for analysis and reporting
   double avg_miss_rate_ {0.0};

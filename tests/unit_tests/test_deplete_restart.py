@@ -21,7 +21,7 @@ def test_restart_predictor_cecm(run_in_tmpdir):
     # Perform simulation using the predictor algorithm
     dt = [0.75]
     power = 1.0
-    openmc.deplete.PredictorIntegrator(op, dt, power).integrate()
+    openmc.deplete.PredictorIntegrator(op, dt, power).integrate(write_rates=True)
 
     # Load the files
     prev_res = openmc.deplete.Results(op.output_dir / "depletion_results.h5")
@@ -29,10 +29,6 @@ def test_restart_predictor_cecm(run_in_tmpdir):
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
     op.output_dir = output_dir
-
-    # check ValueError is raised, indicating previous and current stages
-    with pytest.raises(ValueError, match="incompatible.* 1.*2"):
-        openmc.deplete.CECMIntegrator(op, dt, power)
 
 
 def test_restart_cecm_predictor(run_in_tmpdir):
@@ -47,7 +43,7 @@ def test_restart_cecm_predictor(run_in_tmpdir):
     dt = [0.75]
     power = 1.0
     cecm = openmc.deplete.CECMIntegrator(op, dt, power)
-    cecm.integrate()
+    cecm.integrate(write_rates=True)
 
     # Load the files
     prev_res = openmc.deplete.Results(op.output_dir / "depletion_results.h5")
@@ -55,10 +51,6 @@ def test_restart_cecm_predictor(run_in_tmpdir):
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
     op.output_dir = output_dir
-
-    # check ValueError is raised, indicating previous and current stages
-    with pytest.raises(ValueError, match="incompatible.* 2.*1"):
-        openmc.deplete.PredictorIntegrator(op, dt, power)
 
 
 @pytest.mark.parametrize("scheme", dummy_operator.SCHEMES)
@@ -70,7 +62,7 @@ def test_restart(run_in_tmpdir, scheme):
     operator = dummy_operator.DummyOperator()
 
     # take first step
-    bundle.solver(operator, [0.75], 1.0).integrate()
+    bundle.solver(operator, [0.75], 1.0).integrate(write_rates=True)
 
     # restart
     prev_res = openmc.deplete.Results(

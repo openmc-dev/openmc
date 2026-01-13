@@ -20,6 +20,85 @@ source neutrons.
 
   *Default*: None
 
+-----------------------------
+``<collision_track>`` Element
+-----------------------------
+
+The ``<collision_track>`` element indicates to track information about particle
+collisions based on a set of criteria and store these events in a file named
+``collision_track.h5``. This file records details such as the position of the
+interaction, direction of the incoming particle, incident energy and deposited
+energy, weight, time of the interaction, and the delayed neutron group (0 for
+prompt neutrons). Additional information such as the cell ID, material ID,
+universe ID, nuclide ZAID, particle type, and event MT number are also stored.
+Users can specify one or more criterion to filter collisions. If no criteria are
+specified, it defaults to tracking all collisions across the model.
+
+.. warning::
+    Storing all collisions can be very memory intensive. For more targeted
+    tracking, users can employ a variety of parameters such as ``cell_ids``,
+    ``reactions``, ``universe_ids``, ``material_ids``, ``nuclides``, and
+    ``deposited_E_threshold`` to refine the selection of particle interactions
+    to be banked.
+
+This element can contain one or more of the following attributes or
+sub-elements:
+
+  :max_collisions:
+    An integer indicating the maximum number of collisions to be banked per file.
+
+    *Default*: 1000
+
+  :max_collision_track_files:
+    An integer indicating the number of collision_track files to be used.
+
+    *Default*: 1
+
+  :mcpl:
+    An optional boolean to enable MCPL_-format instead of the native HDF5-based
+    format. If activated, the output file name and type is changed to
+    ``collision_track.mcpl``.
+
+    *Default*: false
+
+    .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
+
+  :cell_ids:
+    A list of integers representing cell IDs to define specific cells in which
+    collisions are to be banked.
+
+    *Default*: None
+
+  :universe_ids:
+    A list of integers representing the universe IDs to define specific
+    universes in which collisions are to be banked.
+
+    *Default*: None
+
+  :material_ids:
+    A list of integers representing the material IDs to define specific
+    materials in which collisions are to be banked.
+
+    *Default*: None
+
+  :nuclides:
+    A list of strings representing the nuclide, to define specific
+    define specific target nuclide collisions to be banked.
+
+    *Default*: None
+
+  :reactions:
+    A list of integers representing the ENDF-6 format MT numbers or strings
+    (e.g. (n,fission)) to define specific reaction types to be banked.
+
+    *Default*: None
+
+  :deposited_E_threshold:
+    A float defining the minimum deposited energy per collision (in eV) to
+    trigger banking.
+
+    *Default*: 0.0
+
 ----------------------------------
 ``<confidence_intervals>`` Element
 ----------------------------------
@@ -177,6 +256,16 @@ Determines whether to use event-based parallelism instead of the default
 history-based parallelism.
 
   *Default*: false
+
+--------------------------------
+``<free_gas_threshold>`` Element
+--------------------------------
+
+The ``<free_gas_threshold>`` element specifies the energy multiplier, expressed
+in units of :math:`kT`, that determines when the free gas scattering approach is
+used for elastic scattering. Values must be positive.
+
+  *Default*: 400.0
 
 -----------------------------------
 ``<generations_per_batch>`` Element
@@ -488,6 +577,14 @@ found in the :ref:`random ray user guide <random_ray>`.
         :type:
           The type of the domain. Can be ``material``, ``cell``, or ``universe``.
 
+  :diagonal_stabilization_rho:
+    The rho factor for use with diagonal stabilization. This technique is
+    applied when negative diagonal (in-group) elements are detected in
+    the scattering matrix of input MGXS data, which is a common feature
+    of transport corrected MGXS data.
+
+    *Default*: 1.0
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -747,12 +844,17 @@ attributes/sub-elements:
       relative source strength of each mesh element or each point in the cloud.
 
     :volume_normalized:
-      For "mesh" spatial distrubtions, this optional boolean element specifies
+      For "mesh" spatial distributions, this optional boolean element specifies
       whether the vector of relative strengths should be multiplied by the mesh
       element volume. This is most common if the strengths represent a source
       per unit volume.
 
       *Default*: false
+
+    :bias:
+      For "mesh" and "cloud" spatial distributions, this optional element
+      specifies floating point values corresponding to alternative probabilities
+      for each value/component to use for biased sampling.
 
   :angle:
     An element specifying the angular distribution of source sites. This element
@@ -786,6 +888,10 @@ attributes/sub-elements:
       are those of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
+    :bias:
+      For "isotropic" angular distributions, this optional element specifies a
+      "mu-phi" angular distribution used for biased sampling.
+
   :energy:
     An element specifying the energy distribution of source sites. The necessary
     sub-elements/attributes are those of a univariate probability distribution
@@ -808,6 +914,10 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
+
+  .. note:: Biased sampling can be applied to the spatial and energy distributions
+            of a source by using the ``<bias>`` sub-element (see
+            :ref:`univariate` for details on how to specify bias distributions).
 
   :constraints:
     This sub-element indicates the presence of constraints on sampled source
@@ -901,13 +1011,36 @@ variable and whose sub-elements/attributes are as follows:
   *Default*: histogram
 
 :pair:
-  For a "mixture" distribution, this element provides a distribution and its corresponding probability.
+  For a "mixture" distribution, this element provides a distribution and its
+  corresponding probability.
 
   :probability:
-    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution.
+    An attribute or ``pair`` that provides the probability of a univariate
+    distribution within a "mixture" distribution.
 
   :dist:
-    This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
+    This sub-element of a ``pair`` element provides information on the
+    corresponding univariate distribution.
+
+:bias:
+  This optional element specifies a biased distribution for importance sampling.
+  For continuous distributions, the ``bias`` element should contain another
+  univariate distribution with the same support (interval) as the parent
+  distribution. For discrete distributions, the ``bias`` element should contain
+  floating point values corresponding to alternative probabilities for each
+  value/component to be used for biased sampling.
+
+  *Default*: None
+
+---------------------------------------
+``<source_rejection_fraction>`` Element
+---------------------------------------
+
+The ``<source_rejection_fraction>`` element specifies the minimum fraction of
+external source sites that must be accepted when applying rejection sampling
+based on constraints.
+
+   *Default*: 0.05
 
 -------------------------
 ``<state_point>`` Element

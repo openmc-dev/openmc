@@ -140,7 +140,6 @@ class Geometry:
 
         # Clean the indentation in the file to be user-readable
         xml.clean_indentation(element)
-        xml.reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
         return element
 
@@ -754,4 +753,31 @@ class Geometry:
 
         .. versionadded:: 0.14.0
         """
-        return self.root_universe.plot(*args, **kwargs)
+        model = openmc.Model()
+        model.geometry = self
+        model.materials = self.get_all_materials().values()
+
+        # collect all the material names from the geometry
+        all_material_names = {m.name for m in model.materials if m.name is not None}
+
+        # makes a placeholder material for each material name if it isn't
+        # already present on the model. These materials are otherwise missing
+        # from the geometry and are needed for plotting.
+        for universe in model.geometry.get_all_universes().values():
+            if not isinstance(universe, openmc.DAGMCUniverse):
+                continue
+            for name in universe.material_names:
+                # if this name is already present in the model, skip it
+                # (this can happen if the same material name is used in multiple
+                # universes)
+                if name in all_material_names:
+                    continue
+                # if the material name is not present on the model,
+                # create a placeholder material with the same name
+                # and add it to the model
+                mat_dag = openmc.Material(name=name)
+                mat_dag.add_nuclide('H1', 1.0)
+                model.materials.append(mat_dag)
+                all_material_names.add(name)
+
+        return model.plot(*args, **kwargs)

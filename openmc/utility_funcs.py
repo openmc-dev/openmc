@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import h5py
+
 import openmc
 from .checkvalue import PathLike
 
@@ -57,3 +59,20 @@ def input_path(filename: PathLike) -> Path:
         return Path(filename).resolve()
     else:
         return Path(filename)
+
+
+@contextmanager
+def h5py_file_or_group(group_or_filename: PathLike | h5py.Group, *args, **kwargs):
+    """Context manager for opening an HDF5 file or using an existing group
+
+    Parameters
+    ----------
+    group_or_filename : path-like or h5py.Group
+        Path to HDF5 file, or group from an existing HDF5 file
+
+    """
+    if isinstance(group_or_filename, h5py.Group):
+        yield group_or_filename
+    else:
+        with h5py.File(group_or_filename, *args, **kwargs) as f:
+            yield f

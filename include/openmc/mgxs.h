@@ -115,6 +115,14 @@ public:
 
   //! \brief Provides a cross section value given certain parameters
   //!
+  //! @return The number of temperature data points for this MGXS
+  inline int n_temperature_points()
+  {
+    return kTs.size();
+  }
+
+  //! \brief Provides a cross section value given certain parameters
+  //!
   //! @param xstype Type of cross section requested, according to the
   //!   enumerated constants.
   //! @param gin Incoming energy group.

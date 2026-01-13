@@ -252,6 +252,7 @@ RandomRay::RandomRay()
 
 RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
 {
+  ntemperature_ = domain->ntemperature_;
   initialize_ray(ray_id, domain);
 }
 
@@ -432,11 +433,11 @@ void RandomRay::attenuate_flux_flat_source(
 
   // Get material
   int material = srh.material();
+  int temp = srh.temperature_idx();
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
-    float sigma_t =
-      domain_->sigma_t_[material * negroups_ + g] * srh.density_mult();
+    float sigma_t = domain_->sigma_t_[(material * ntemperature_ + temp) * negroups_ +  g] * srh.density_mult();
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
@@ -531,6 +532,7 @@ void RandomRay::attenuate_flux_linear_source(
   n_event()++;
 
   int material = srh.material();
+  int temp = srh.temperature_idx();
 
   Position& centroid = srh.centroid();
   Position midpoint = r + u() * (distance / 2.0);
@@ -559,8 +561,7 @@ void RandomRay::attenuate_flux_linear_source(
   for (int g = 0; g < negroups_; g++) {
 
     // Compute tau, the optical thickness of the ray segment
-    float sigma_t =
-      domain_->sigma_t_[material * negroups_ + g] * srh.density_mult();
+    float sigma_t = domain_->sigma_t_[(material * ntemperature_ + temp) * negroups_ +  g] * srh.density_mult();
     float tau = sigma_t * distance;
 
     // If tau is very small, set it to zero to avoid numerical issues.

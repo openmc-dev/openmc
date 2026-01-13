@@ -250,9 +250,16 @@ void synchronize_bank()
 
         if (settings::ifp_on) {
           // Send IFP data
-          send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
-            temp_delayed_groups, send_delayed_groups, temp_ancestors,
-            send_ancestors, temp_lifetimes, send_lifetimes);
+          if (is_beta_effective_or_both()) {
+            send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+              temp_delayed_groups, send_delayed_groups);
+            if (settings::ifp_beta_nuclide)
+              send_ifp_info(index_local, n, ifp_n_generation, neighbor,
+                requests, temp_ancestors, send_ancestors);
+          }
+          if (is_generation_time_or_both())
+            send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+              temp_lifetimes, send_lifetimes);
         }
       }
 
@@ -319,9 +326,16 @@ void synchronize_bank()
 
       if (settings::ifp_on) {
         // Receive IFP data
-        receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
-          recv_delayed_groups, recv_ancestors, recv_lifetimes,
-          deserialization_info);
+        if (is_beta_effective_or_both()) {
+          receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+            recv_delayed_groups, deserialization_info);
+          if (settings::ifp_beta_nuclide)
+            receive_ifp_data(index_local, n, ifp_n_generation, neighbor,
+              requests, recv_ancestors, deserialization_info);
+        }
+        if (is_generation_time_or_both())
+          receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+            recv_lifetimes, deserialization_info);
       }
 
     } else {
@@ -352,8 +366,16 @@ void synchronize_bank()
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
   if (settings::ifp_on) {
-    deserialize_ifp_info(ifp_n_generation, deserialization_info,
-      recv_delayed_groups, recv_ancestors, recv_lifetimes);
+    if (is_beta_effective_or_both()) {
+      deserialize_ifp_info(ifp_n_generation, recv_delayed_groups,
+        simulation::ifp_source_delayed_group_bank, deserialization_info);
+      if (settings::ifp_beta_nuclide)
+        deserialize_ifp_info(ifp_n_generation, recv_ancestors,
+          simulation::ifp_source_ancestor_nuclide_bank, deserialization_info);
+    }
+    if (is_generation_time_or_both())
+      deserialize_ifp_info(ifp_n_generation, recv_lifetimes,
+        simulation::ifp_source_lifetime_bank, deserialization_info);
   }
 
 #else

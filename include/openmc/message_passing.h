@@ -22,6 +22,19 @@ extern MPI_Datatype collision_track_site;
 extern MPI_Comm intracomm;
 #endif
 
+//==============================================================================
+// Template struct used to map types to MPI datatypes
+// By having a single static data member, the template can
+// be specialized for each type we know of. The specializations appear in the
+// .cpp file since they are definitions.
+//==============================================================================
+#ifdef OPENMC_MPI
+template<typename T>
+struct MPITypeMap {
+  static const MPI_Datatype mpi_type;
+};
+#endif
+
 // Calculates global indices of the bank particles
 // across all ranks using a parallel scan. This is used to write
 // the surface source file in parallel runs. It will probably

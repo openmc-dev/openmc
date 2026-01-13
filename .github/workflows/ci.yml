@@ -34,10 +34,9 @@ jobs:
         with:
           filters: |
             source: 
-              - 'src/**' 
-              - 'tests/**'
-              - '.github/workflows/**' 
-              - 'tools/ci/**'
+              - '!docs/**' 
+              - '!*.md'
+          predicate-quantifier: 'every'
   main:
     needs: filter-changes
     if: ${{ needs.filter-changes.outputs.cpp_status == 'true' }}

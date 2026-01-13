@@ -577,6 +577,8 @@ class StepResult:
             Total process time spent depleting materials. This may
             be process-dependent and will be reduced across MPI
             processes.
+        write_rates : bool, optional
+            Whether reaction rates should be written to the results file.
         root : float
             The root returned by the reactivity controller.
         path : PathLike

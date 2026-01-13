@@ -1513,17 +1513,19 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   int gs_i_cell = gs.lowest_coord().cell();
   Cell& cell = *model::cells[gs_i_cell];
   int material = cell.material(gs.cell_instance());
-
-  int temp = data::mg.macro_xs_[material].get_temperature_index(cell.temperature(gs.cell_instance()));
+  int temp = 0;
 
   // If material total XS is extremely low, just set it to void to avoid
   // problems with 1/Sigma_t
-  for (int g = 0; g < negroups_; g++) {
-    double sigma_t = sigma_t_[(material * ntemperature_ + temp) * negroups_ + g];
-    if (sigma_t < MINIMUM_MACRO_XS) {
-      material = MATERIAL_VOID;
-      temp = 0;
-      break;
+  if (material != MATERIAL_VOID) {
+    temp = data::mg.macro_xs_[material].get_temperature_index(cell.temperature(gs.cell_instance()));
+    for (int g = 0; g < negroups_; g++) {
+      double sigma_t = sigma_t_[(material * ntemperature_ + temp) * negroups_ + g];
+      if (sigma_t < MINIMUM_MACRO_XS) {
+        material = MATERIAL_VOID;
+        temp = 0;
+        break;
+      }
     }
   }
 

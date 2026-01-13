@@ -281,10 +281,10 @@ ignored for all run modes other than "eigenvalue".
 ``<ifp_n_generation>`` Element
 ------------------------------
 
-The ``<ifp_n_generation>`` element indicates the number of generations 
-to consider for the Iterated Fission Probability method.
+The ``<ifp_n_generation>`` element indicates the number of generations to
+consider for the Iterated Fission Probability method.
 
-  *Default*: 10   
+  *Default*: 10
 
 ----------------------
 ``<inactive>`` Element
@@ -411,7 +411,8 @@ then, OpenMC will only use up to the :math:`P_1` data.
 ``<max_history_splits>`` Element
 --------------------------------
 
-The ``<max_history_splits>`` element indicates the number of times a particle can split during a history.
+The ``<max_history_splits>`` element indicates the number of times a particle
+can split during a history.
 
   *Default*: 1000
 
@@ -427,7 +428,8 @@ The ``<max_secondaries>`` element indicates the maximum secondary bank size.
 ``<max_tracks>`` Element
 ------------------------
 
-The ``<max_tracks>`` element indicates the maximum number of tracks written to a track file (per MPI process).
+The ``<max_tracks>`` element indicates the maximum number of tracks written to a
+track file (per MPI process).
 
   *Default*: 1000
 
@@ -1381,9 +1383,9 @@ has the following attributes/sub-elements:
 ``<uniform_source_sampling>`` Element
 -------------------------------------
 
-The ``<uniform_source_sampling>`` element indicates whether to sample 
-among multiple sources uniformly, applying their strengths as weights 
-to sampled particles. 
+The ``<uniform_source_sampling>`` element indicates whether to sample among
+multiple sources uniformly, applying their strengths as weights to sampled
+particles.
 
   *Default*: False
 
@@ -1402,8 +1404,9 @@ in the problem and is specified using a :ref:`mesh_element`.
 ``<use_decay_photons>`` Element
 -------------------------------
 
-The ``<use_decay_photons>`` element indicates whether to produce decay photons 
-from neutron reactions instead of prompt photons. 
+The ``<use_decay_photons>`` element indicates whether to produce decay photons
+from neutron reactions instead of prompt photons. This is used in conjunction
+with the direct 1-step method for shutdown dose rate calculations.
 
   *Default*: False
 
@@ -1637,20 +1640,21 @@ following sub-elements/attributes:
 
   The ``weight_windows_file`` element has no attributes and contains the path to
   a weight windows HDF5 file to load during simulation initialization.
-  
+
 -------------------------------
 ``<weight_windows_on>`` Element
 -------------------------------
 
-  The ``weight_windows_on`` element indicates whether weight windows are enabled.
-  
+  The ``weight_windows_on`` element indicates whether weight windows are
+  enabled.
+
   *Default*: False
-  
+
 ----------------------------------
 ``<write_initial_source>`` Element
 ----------------------------------
 
-  The ``write_initial_source`` element indicates whether to write the initial 
+  The ``write_initial_source`` element indicates whether to write the initial
   source distribution to file.
-  
-  *Default*: False  
+
+  *Default*: False

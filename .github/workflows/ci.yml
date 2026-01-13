@@ -5,16 +5,10 @@ on:
   workflow_dispatch:
 
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'  
     branches:
       - develop
       - master
   push:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
     branches:
       - develop
       - master
@@ -27,7 +21,26 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  filter-changes:
+    runs-on: ubuntu-22.04
+    outputs:
+      source_status: ${{ steps.filter.outputs.source }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Examine changed files
+        id: filter 
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            source: 
+              - 'src/**' 
+              - 'tests/**'
+              - '.github/workflows/**' 
+              - 'tools/ci/**'
   main:
+    needs: filter-changes
+    if: ${{ needs.filter-changes.outputs.cpp_status == 'true' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:

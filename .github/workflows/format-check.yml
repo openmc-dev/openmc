@@ -10,7 +10,26 @@ on:
       - master
 
 jobs:
+  filter-cpp-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      cpp_status: ${{ steps.filter.outputs.cpp }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Examine changed files
+        id: filter 
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            cpp: 
+              - 'src/**/*.cpp' 
+              - 'tests/**/*.cpp'
+              - 'src/**/*.h' 
+              - 'tests/**/*.h'
   cpp-linter:
+    needs: filter-cpp-changes
+    if: ${{ needs.filter-cpp-changes.outputs.cpp_status == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

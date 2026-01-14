@@ -945,11 +945,9 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       if (settings::ifp_on) {
         if ((p.type() == Type::neutron) && (p.fission())) {
           if (is_generation_time_or_both()) {
-            const auto& lifetimes =
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1];
-            if (lifetimes.size() == settings::ifp_n_generation) {
-              score = lifetimes[0] * p.wgt_last();
-            }
+            const auto& lifetime =
+              simulation::ifp_source_lifetime_bank[p.current_work() - 1][0];
+            score = lifetimes[0] * p.wgt_last();
           }
         }
       }
@@ -959,20 +957,19 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       if (settings::ifp_on) {
         if ((p.type() == Type::neutron) && (p.fission())) {
           if (is_beta_effective_or_both()) {
-            const auto& delayed_groups =
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
-            if (delayed_groups.size() == settings::ifp_n_generation) {
-              if (delayed_groups[0] > 0) {
-                score = p.wgt_last();
-                if (tally.delayedgroup_filter_ != C_NONE) {
-                  auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-                  const DelayedGroupFilter& filt {
-                    *dynamic_cast<DelayedGroupFilter*>(
-                      model::tally_filters[i_dg_filt].get())};
-                  score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
-                    score, score_index, p.filter_matches());
-                  continue;
-                }
+            const auto& delayed_group =
+              simulation::ifp_source_delayed_group_bank[p.current_work() - 1]
+                                                       [0];
+            if (delayed_group > 0) {
+              score = p.wgt_last();
+              if (tally.delayedgroup_filter_ != C_NONE) {
+                auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
+                const DelayedGroupFilter& filt {
+                  *dynamic_cast<DelayedGroupFilter*>(
+                    model::tally_filters[i_dg_filt].get())};
+                score_fission_delayed_dg(i_tally, delayed_groups[0] - 1, score,
+                  score_index, p.filter_matches());
+                continue;
               }
             }
           }
@@ -982,21 +979,8 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
     case SCORE_IFP_DENOM:
       if (settings::ifp_on) {
-        if ((p.type() == Type::neutron) && (p.fission())) {
-          int ifp_data_size;
-          if (is_beta_effective_or_both()) {
-            ifp_data_size = static_cast<int>(
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1]
-                .size());
-          } else {
-            ifp_data_size = static_cast<int>(
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1]
-                .size());
-          }
-          if (ifp_data_size == settings::ifp_n_generation) {
-            score = p.wgt_last();
-          }
-        }
+        if ((p.type() == Type::neutron) && (p.fission()))
+          score = p.wgt_last();
       }
       break;
 
@@ -2644,7 +2628,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
       // for a further scoring function.
       double score = current * filter_weight;
       for (auto score_index = 0; score_index < tally.scores_.size();
-           ++score_index) {
+        ++score_index) {
 #pragma omp atomic
         tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
       }
@@ -2719,7 +2703,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
             // Loop over scores.
             for (auto score_index = 0; score_index < tally.scores_.size();
-                 ++score_index) {
+              ++score_index) {
 #pragma omp atomic
               tally.results_(filter_index, score_index, TallyResult::VALUE) +=
                 filter_weight;

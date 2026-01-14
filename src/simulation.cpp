@@ -376,7 +376,6 @@ void initialize_batch()
   // Determine if this batch is the first inactive or active batch.
   bool first_inactive = false;
   bool first_active = false;
-  bool first_ifp_active = false;
   if (!settings::restart_run) {
     first_inactive = settings::n_inactive > 0 && simulation::current_batch == 1;
     first_active = simulation::current_batch == settings::n_inactive + 1;

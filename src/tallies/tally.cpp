@@ -595,15 +595,16 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_IFP_TIME_NUM:
-      simulation::ifp_lifetime_on = true;
     case SCORE_IFP_BETA_NUM:
-      simulation::ifp_delayed_on = true;
     case SCORE_IFP_DENOM:
+      if (score == SCORE_IFP_TIME_NUM)
+        simulation::ifp_lifetime_on = true;
+      if (score == SCORE_IFP_BETA_NUM)
+        simulation::ifp_delayed_on = true;
       if (settings::run_mode == RunMode::FIXED_SOURCE)
         fatal_error(
           "Iterated Fission Probability can only be used in an eigenvalue "
           "calculation.");
-      estimator_ = TallyEstimator::COLLISION;
       if (settings::ifp_n_generation < 0) {
         settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
         warning(fmt::format(
@@ -611,6 +612,7 @@ void Tally::set_scores(const vector<std::string>& scores)
           "changed using the 'ifp_n_generation' settings.",
           settings::ifp_n_generation));
       }
+      estimator_ = TallyEstimator::COLLISION;
       offset_ = settings::ifp_n_generation;
       break;
     }

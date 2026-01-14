@@ -18,7 +18,7 @@ class KineticMGXSTestHarness(KineticTolerantPyAPITestHarness):
 
 @pytest.mark.parametrize("time_method", ["isotropic",
                                          "propagation"])
-def test_random_ray_k_eff_mesh(time_method):
+def test_random_ray_k_eff_mesh_kinetic(time_method):
     with change_directory(time_method):
         model = random_ray_lattice(kinetic=True)
         model.settings.timestep_parameters['n_timesteps'] = 5

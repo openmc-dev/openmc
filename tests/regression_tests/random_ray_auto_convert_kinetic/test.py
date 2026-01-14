@@ -30,7 +30,7 @@ class KineticMGXSTestHarness(KineticTolerantPyAPITestHarness):
                                                             ("infinite_medium",
                                                              "propagation"),
                                                             ])
-def test_random_ray_auto_convert(generation_method, time_method):
+def test_random_ray_auto_convert_kinetic(generation_method, time_method):
     with change_directory(f'{generation_method}/{time_method}'):
         openmc.reset_auto_ids()
 

@@ -18,7 +18,7 @@ class KineticMGXSTestHarness(KineticTolerantPyAPITestHarness):
 
 @pytest.mark.parametrize("time_method", ["isotropic",
                                          "propagation"])
-def test_random_ray_time_dependent(time_method):
+def test_random_ray_basic_kinetic(time_method):
     with change_directory(time_method):
         openmc.reset_auto_ids()
         model = random_ray_pin_cell(kinetic=True)

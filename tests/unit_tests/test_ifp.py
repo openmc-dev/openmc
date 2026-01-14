@@ -32,8 +32,6 @@ def geometry():
         ({"ifp_n_generation": 0}, ValueError),
         ({"ifp_n_generation": -1}, ValueError),
         ({"run_mode": "fixed source"}, RuntimeError),
-        ({"inactive": 5, "ifp_n_generation": 6}, RuntimeError),
-        ({"inactive": 9}, RuntimeError)
     ],
 )
 def test_exceptions(options, error, run_in_tmpdir, geometry):

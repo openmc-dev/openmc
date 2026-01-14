@@ -52,7 +52,6 @@ struct SourceSite {
 
   // Extra attributes that don't show up in source written to file
   int parent_nuclide {-1};
-  int ancestor_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;
 };
@@ -66,7 +65,6 @@ struct CollisionTrackSite {
   double wgt {1.0};
   int event_mt {0};
   int delayed_group {0};
-  int ancestor_nuclide {0};
   int cell_id {0};
   int nuclide_id;
   int material_id {0};
@@ -519,7 +517,6 @@ private:
   int event_mt_;
   int delayed_group_ {0};
   int parent_nuclide_ {-1};
-  int ancestor_nuclide_ {-1};
 
   int n_bank_ {0};
   double bank_second_E_ {0.0};
@@ -657,8 +654,6 @@ public:
   const int& delayed_group() const { return delayed_group_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
   const int& parent_nuclide() const { return parent_nuclide_; }
-  int& ancestor_nuclide() { return ancestor_nuclide_; } // Ancestor nuclide
-  const int& ancestor_nuclide() const { return ancestor_nuclide_; }
 
   // Post-collision data
   double& bank_second_E()

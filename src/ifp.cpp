@@ -72,7 +72,6 @@ void copy_ifp_data_from_fission_banks(int i_bank, vector<int>& delayed_groups,
 }
 
 #ifdef OPENMC_MPI
-
 void broadcast_ifp_n_generation(int& n_generation,
   const vector<vector<int>>& delayed_groups,
   const vector<vector<int>>& ancestors, const vector<vector<double>>& lifetimes)

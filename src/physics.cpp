@@ -246,9 +246,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
       // Iterated Fission Probability (IFP) method
-      if (settings::ifp_on) {
-        ifp(p, idx);
-      }
+      ifp(p, idx);
     } else {
       p.secondary_bank().push_back(site);
     }

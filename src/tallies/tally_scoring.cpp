@@ -942,46 +942,34 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_TIME_NUM:
-      if (settings::ifp_on) {
-        if ((p.type() == Type::neutron) && (p.fission())) {
-          if (is_generation_time_or_both()) {
-            const auto& lifetime =
-              simulation::ifp_source_lifetime_bank[p.current_work() - 1][0];
-            score = lifetime * p.wgt_last();
-          }
-        }
+      if ((p.type() == Type::neutron) && (p.fission())) {
+        const auto& lifetime =
+          simulation::ifp_source_lifetime_bank[p.current_work() - 1][0];
+        score = lifetime * p.wgt_last();
       }
       break;
 
     case SCORE_IFP_BETA_NUM:
-      if (settings::ifp_on) {
-        if ((p.type() == Type::neutron) && (p.fission())) {
-          if (is_beta_effective_or_both()) {
-            const auto& delayed_group =
-              simulation::ifp_source_delayed_group_bank[p.current_work() - 1]
-                                                       [0];
-            if (delayed_group > 0) {
-              score = p.wgt_last();
-              if (tally.delayedgroup_filter_ != C_NONE) {
-                auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-                const DelayedGroupFilter& filt {
-                  *dynamic_cast<DelayedGroupFilter*>(
-                    model::tally_filters[i_dg_filt].get())};
-                score_fission_delayed_dg(i_tally, delayed_group - 1, score,
-                  score_index, p.filter_matches());
-                continue;
-              }
-            }
+      if ((p.type() == Type::neutron) && (p.fission())) {
+        const auto& delayed_group =
+          simulation::ifp_source_delayed_group_bank[p.current_work() - 1][0];
+        if (delayed_group > 0) {
+          score = p.wgt_last();
+          if (tally.delayedgroup_filter_ != C_NONE) {
+            auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
+            const DelayedGroupFilter& filt {*dynamic_cast<DelayedGroupFilter*>(
+              model::tally_filters[i_dg_filt].get())};
+            score_fission_delayed_dg(i_tally, delayed_group - 1, score,
+              score_index, p.filter_matches());
+            continue;
           }
         }
       }
       break;
 
     case SCORE_IFP_DENOM:
-      if (settings::ifp_on) {
-        if ((p.type() == Type::neutron) && (p.fission()))
-          score = p.wgt_last();
-      }
+      if ((p.type() == Type::neutron) && (p.fission()))
+        score = p.wgt_last();
       break;
 
     case N_2N:

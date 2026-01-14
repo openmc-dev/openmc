@@ -301,6 +301,8 @@ namespace simulation {
 int ct_current_file;
 int current_batch;
 int current_gen;
+bool ifp_delayed_on {false};
+bool ifp_lifetime_on {false};
 bool initialized {false};
 double keff {1.0};
 double keff_std;
@@ -340,9 +342,7 @@ void allocate_banks()
     init_fission_bank(3 * simulation::work_per_rank);
 
     // Allocate IFP bank
-    if (settings::ifp_on) {
-      resize_simulation_ifp_banks();
-    }
+    resize_simulation_ifp_banks();
   }
 
   if (settings::surf_source_write) {

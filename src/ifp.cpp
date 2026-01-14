@@ -10,33 +10,15 @@
 
 namespace openmc {
 
-bool is_beta_effective_or_both()
-{
-  if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-      settings::ifp_parameter == IFPParameter::Both) {
-    return true;
-  }
-  return false;
-}
-
-bool is_generation_time_or_both()
-{
-  if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-      settings::ifp_parameter == IFPParameter::Both) {
-    return true;
-  }
-  return false;
-}
-
 void ifp(const Particle& p, int64_t idx)
 {
-  if (is_beta_effective_or_both()) {
+  if (simulation::ifp_delayed_on) {
     const auto& delayed_groups =
       simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
     simulation::ifp_fission_delayed_group_bank[idx] =
       _ifp(p.delayed_group(), delayed_groups);
   }
-  if (is_generation_time_or_both()) {
+  if (simulation::ifp_lifetime_on) {
     const auto& lifetimes =
       simulation::ifp_source_lifetime_bank[p.current_work() - 1];
     simulation::ifp_fission_lifetime_bank[idx] = _ifp(p.lifetime(), lifetimes);
@@ -54,12 +36,11 @@ void resize_simulation_ifp_banks()
 void copy_ifp_data_from_fission_banks(
   int i_bank, vector<int>& delayed_groups, vector<double>& lifetimes)
 {
-  if (is_beta_effective_or_both()) {
+  if (simulation::ifp_delayed_on)
     delayed_groups = simulation::ifp_fission_delayed_group_bank[i_bank];
-  }
-  if (is_generation_time_or_both()) {
+
+  if (simulation::ifp_lifetime_on)
     lifetimes = simulation::ifp_fission_lifetime_bank[i_bank];
-  }
 }
 
 #ifdef OPENMC_MPI
@@ -68,10 +49,12 @@ void broadcast_ifp_n_generation(int& n_generation,
   const vector<vector<double>>& lifetimes)
 {
   if (mpi::rank == 0) {
-    if (is_beta_effective_or_both()) {
+    if (simulation::ifp_delayed_on) {
       n_generation = static_cast<int>(delayed_groups[0].size());
-    } else {
+    } else if (simulation::ifp_lifetime_on) {
       n_generation = static_cast<int>(lifetimes[0].size());
+    } else {
+      return;
     }
   }
   MPI_Bcast(&n_generation, 1, MPI_INT, 0, mpi::intracomm);
@@ -81,14 +64,12 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes)
 {
-  if (is_beta_effective_or_both()) {
+  if (simulation::ifp_delayed_on)
     std::copy(&delayed_groups[idx], &delayed_groups[idx + n],
       &simulation::ifp_source_delayed_group_bank[i_bank]);
-  }
-  if (is_generation_time_or_both()) {
+  if (simulation::ifp_lifetime_on)
     std::copy(&lifetimes[idx], &lifetimes[idx + n],
       &simulation::ifp_source_lifetime_bank[i_bank]);
-  }
 }
 #endif
 
@@ -96,40 +77,36 @@ void copy_complete_ifp_data_to_source_banks(
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes)
 {
-  if (is_beta_effective_or_both()) {
+  if (simulation::ifp_delayed_on)
     std::copy(delayed_groups.data(),
       delayed_groups.data() + settings::n_particles,
       simulation::ifp_source_delayed_group_bank.begin());
-  }
-  if (is_generation_time_or_both()) {
+  if (simulation::ifp_lifetime_on)
     std::copy(lifetimes.data(), lifetimes.data() + settings::n_particles,
       simulation::ifp_source_lifetime_bank.begin());
-  }
 }
 
 void allocate_temporary_vector_ifp(
   vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes)
 {
-  if (is_beta_effective_or_both()) {
+  if (simulation::ifp_delayed_on)
     delayed_groups.resize(simulation::fission_bank.size());
-  }
-  if (is_generation_time_or_both()) {
+
+  if (simulation::ifp_lifetime_on)
     lifetimes.resize(simulation::fission_bank.size());
-  }
 }
 
 void copy_ifp_data_to_fission_banks(const vector<int>* const delayed_groups_ptr,
   const vector<double>* lifetimes_ptr)
 {
-  if (is_beta_effective_or_both()) {
+  if (simulation::ifp_delayed_on)
     std::copy(delayed_groups_ptr,
       delayed_groups_ptr + simulation::fission_bank.size(),
       simulation::ifp_fission_delayed_group_bank.data());
-  }
-  if (is_generation_time_or_both()) {
+
+  if (simulation::ifp_lifetime_on)
     std::copy(lifetimes_ptr, lifetimes_ptr + simulation::fission_bank.size(),
       simulation::ifp_fission_lifetime_bank.data());
-  }
 }
 
 } // namespace openmc

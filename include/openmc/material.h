@@ -14,6 +14,7 @@
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/ncrystal_interface.h"
 #include "openmc/particle.h"
+#include "openmc/settings.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -110,9 +111,12 @@ public:
   //! \return Density in [atom/b-cm]
   double density() const { return density_; }
 
-  //! Get density in [g/cm^3]
+  //! Get density in [g/cm^3].
   //! \return Density in [g/cm^3]
-  double density_gpcc() const { return density_gpcc_; }
+  double density_gpcc() const
+  {
+    return settings::run_CE ? density_gpcc_ : density();
+  }
 
   //! Get charge density in [e/b-cm]
   //! \return Charge density in [e/b-cm]

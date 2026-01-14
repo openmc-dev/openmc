@@ -1,4 +1,4 @@
-name: CI
+name: Tests and Coverage
 
 on:
   # allows us to run workflows manually
@@ -24,22 +24,22 @@ jobs:
   filter-changes:
     runs-on: ubuntu-22.04
     outputs:
-      status: ${{ steps.filter.outputs.source }}
+      source_changed: ${{ steps.filter.outputs.source_changed }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
       - name: Examine changed files
-        id: filter 
+        id: filter
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            source: 
-              - '!docs/**' 
-              - '!*.md'
+            source_changed:
+              - '!docs/**'
+              - '!**/*.md'
           predicate-quantifier: 'every'
   main:
     needs: filter-changes
-    if: ${{ needs.filter-changes.outputs.status == 'true' }}
+    if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -223,12 +223,33 @@ jobs:
           flag-name: C++ and Python
           path-to-lcov: coverage.lcov
 
-  finish:
-    needs: main
+  coverage:
+    needs: [filter-changes, main]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
+        if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true
+
+  ci-pass:
+    needs: [filter-changes, main, coverage]
+    name: Check CI status
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI status
+        run: |
+          if [[ "${{ needs.filter-changes.outputs.source_changed }}" == "false" ]]; then
+            echo "Documentation-only change - CI skipped successfully"
+            exit 0
+          fi
+          if [[ "${{ needs.main.result }}" == "success" && "${{ needs.coverage.result }}" == "success" ]]; then
+            echo "CI passed"
+            exit 0
+          fi
+          echo "CI failed"
+          exit 1

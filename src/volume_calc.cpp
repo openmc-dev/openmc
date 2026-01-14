@@ -193,6 +193,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
         constexpr double sqrt3_1 = 1. / std::sqrt(3.);
         p.u() = {sqrt3_1, sqrt3_1, sqrt3_1};
 
+        // TO REVIEWER: THE SWITCH IS TRANSFERED TO score_hit()
         if (exhaustive_find_cell(p))
           this->score_hit(p, results);
 
@@ -222,6 +223,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
     // bump iteration counter
     master_results.iterations++;
 
+    // TO REVIEWER: THE MPI-RELATED PART IS MOVED TO collect_MPI()
 #ifdef OPENMC_MPI
     master_results.collect_MPI(); // collect results to master process
 #endif
@@ -324,6 +326,8 @@ void VolumeCalculation::show_volume(const std::string domain_type,
   fmt::print("\n");
 }
 
+// TO REVIEWER: I/O BLOCK BEGINS, I WOULD PREFFER TO PUT IT AT THE END OF FILE
+// BUT KEEPT THE FILE STRUCTURE UNCHANGED
 void VolumeCalculation::show_results(const CalcResults& results) const
 {
   // Show tracing statistics
@@ -452,6 +456,7 @@ void VolumeCalculation::to_hdf5(
   file_close(file_id);
 }
 
+// TO REVIEWER: THIS IS THE SAME check_hit()
 void VolumeCalculation::check_hit(const int32_t i_material,
   const double contrib, vector<VolTally>& vol_tallies) const
 {
@@ -471,6 +476,8 @@ void VolumeCalculation::check_hit(const int32_t i_material,
   vol_tallies.push_back(VolTally(i_material, contrib));
 }
 
+// TO REVIEWER: THIS IS AN EQUIVALENT OF THE reduce_indicies_hits() TEMPLATE
+// FROM volume_calc.h
 void VolumeCalculation::reduce_results(
   const CalcResults& local_results, CalcResults& results) const
 {
@@ -551,6 +558,8 @@ void VolumeCalculation::delete_MPI_struct() const
   MPI_Type_free(&mpi_volume_tally);
 }
 
+// TO REVIEWER: THIS IS AN EQUIVALENT OF THE RELATED MPI-INTERCHANGE BLOCK OF
+// execute()
 void VolumeCalculation::CalcResults::collect_MPI()
 {
   vector<int> domain_sizes(vol_tallies.size());
@@ -614,6 +623,7 @@ void VolumeCalculation::CalcResults::collect_MPI()
 }
 #endif
 
+// TO REVIEWER: STATISTICS AND TALLY MANIPULATION BLOCK BEGIN
 VolumeCalculation::CalcResults::CalcResults(const VolumeCalculation& vol_calc)
 {
   n_samples = 0;
@@ -637,6 +647,8 @@ void VolumeCalculation::CalcResults::reset()
   }
 }
 
+// TO REVIEWER: THIS IS A PART OF THE RELATED TO MPI-INTERCHANGE
+// BLOCK OF execute()
 void VolumeCalculation::CalcResults::append(const CalcResults& other)
 {
   n_samples += other.n_samples;
@@ -696,6 +708,10 @@ inline void VolumeCalculation::VolTally::append_tally(const VolTally& vol_tally)
   score_acc[1] += vol_tally.score_acc[1];
 }
 
+// TO REVIEWER: IF THIS APPROACH WILL BE FOUND OBFUSCATED, IT CAN BE ADJUSTED TO
+// LITERAL FORMULAE TRANSLATION WITH REPEATING MULTIPLY CALCULATIONS OF
+// THRESHOLD SQUARE ROOTS AND DIVISIONS FOR EACH VOLUME DOMAIN IN THE END OF
+// EACH BATCH
 inline bool VolumeCalculation::VolTally::trigger_state(
   const TriggerMetric trigger_type, const double threshold,
   const size_t& n_samples) const
@@ -740,6 +756,7 @@ array<double, 2> VolumeCalculation::get_tally_results(const size_t& n_samples,
   return volume;
 }
 
+// TO REVIEWER: THIS IS A FULL EQUIVALENT OF THE SWITCH FROM THE HISTORY LOOP
 void VolumeCalculation::score_hit(const Particle& p, CalcResults& results) const
 {
   const auto n_domains = domain_ids_.size();

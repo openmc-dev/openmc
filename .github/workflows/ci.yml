@@ -22,7 +22,7 @@ env:
 
 jobs:
   filter-changes:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       source_changed: ${{ steps.filter.outputs.source_changed }}
     steps:
@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Examine changed files
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@668c092af3649c4b664c54e4b704aa46782f6f7c # latest master commit, not released yet
         with:
           filters: |
             source_changed:

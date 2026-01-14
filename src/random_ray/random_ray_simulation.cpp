@@ -29,8 +29,11 @@ void openmc_run_random_ray()
   //////////////////////////////////////////////////////////
 
   if (mpi::master) {
-    bool adjoint_needed = FlatSourceDomain::adjoint_;
-    print_random_ray_headers(adjoint_needed);
+    if (FlatSourceDomain::adjoint_) {
+      FlatSourceDomain::adjoint_ = false;
+      openmc::print_adjoint_header();
+      FlatSourceDomain::adjoint_ = true;
+    }
   }
 
   // Initialize OpenMC general data structures
@@ -383,15 +386,14 @@ void write_random_ray_hdf5(hid_t group)
   close_group(random_ray_group);
 }
 
-void print_random_ray_headers(bool& adjoint_needed)
+void print_adjoint_header()
 {
-  // If we're going to do an adjoint simulation afterwards, report that this is
-  // the initial forward flux solve.
-  if (adjoint_needed && !FlatSourceDomain::adjoint_)
+  if (!FlatSourceDomain::adjoint_)
+    // If we're going to do an adjoint simulation afterwards, report that this
+    // is the initial forward flux solve.
     header("FORWARD FLUX SOLVE", 3);
-
-  // Otherwise report that we are doing the adjoint simulation
-  if (adjoint_needed && FlatSourceDomain::adjoint_)
+  else
+    // Otherwise report that we are doing the adjoint simulation
     header("ADJOINT FLUX SOLVE", 3);
 }
 
@@ -482,16 +484,11 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint()
   }
 }
 
-void RandomRaySimulation::print_random_ray_headers()
-{
-  openmc::print_random_ray_headers(adjoint_needed_);
-}
-
 void RandomRaySimulation::run_single_simulation()
 {
   if (!is_first_simulation_) {
-    if (mpi::master)
-      print_random_ray_headers();
+    if (mpi::master && adjoint_needed_)
+      openmc::print_adjoint_header();
 
     // Reset the timers and reinitialize the general OpenMC datastructures if
     // this is after the first simulation

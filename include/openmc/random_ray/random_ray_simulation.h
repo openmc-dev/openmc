@@ -21,7 +21,6 @@ public:
   // Methods
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fixed_sources_adjoint();
-  void print_random_ray_headers();
   void run_single_simulation();
   void random_ray_adjoint();
   void kinetic_initial_condition();
@@ -82,7 +81,7 @@ void openmc_reset_random_ray();
 //! Write data related to randaom ray to statepoint
 //! \param[in] group HDF5 group
 void write_random_ray_hdf5(hid_t group);
-void print_random_ray_headers(bool& adjoint_needed);
+void print_adjoint_header();
 
 // Functions for kinetic simulations
 void set_time_dependent_settings();

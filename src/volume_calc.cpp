@@ -13,7 +13,6 @@
 #include "openmc/nuclide.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/output.h"
-#include "openmc/plot.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
@@ -127,17 +126,6 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
     throw std::runtime_error {"Domain IDs for a volume calculation "
                               "must be unique."};
   }
-
-  // Type of volume estimator
-  std::string tmp = get_node_value(node, "estimator_type");
-  if (tmp == "hit") {
-    mode_ = EstMode::REJECTION;
-  } else if (tmp == "ray") {
-    mode_ = EstMode::RAYTRACE;
-  } else {
-    fatal_error(
-      fmt::format("Invalid volume calculation mode '{}' provided.", tmp));
-  }
 }
 
 void VolumeCalculation::execute(CalcResults& master_results) const
@@ -190,6 +178,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
       // Temporary variables that are private to each thread
       CalcResults results(*this);
       results.sampling_time.start();
+      Particle p;
 
       // Sample locations and count scores
 #pragma omp for
@@ -197,32 +186,15 @@ void VolumeCalculation::execute(CalcResults& master_results) const
         uint64_t id = master_results.iterations * n_samples_ + i;
         uint64_t seed = init_seed(id, STREAM_VOLUME);
 
-        Position r {uniform_distribution(lower_left_.x, upper_right_.x, &seed),
+        p.n_coord() = 1;
+        p.r() = {uniform_distribution(lower_left_.x, upper_right_.x, &seed),
           uniform_distribution(lower_left_.y, upper_right_.y, &seed),
           uniform_distribution(lower_left_.z, upper_right_.z, &seed)};
+        constexpr double sqrt3_1 = 1. / std::sqrt(3.);
+        p.u() = {sqrt3_1, sqrt3_1, sqrt3_1};
 
-        switch (mode_) {
-        case EstMode::REJECTION: {
-          constexpr double sqrt3_1 = 1. / std::sqrt(3.);
-          Direction u {sqrt3_1, sqrt3_1, sqrt3_1};
-
-          // Create zero-length ray, it is a bit excessive due to undemanded
-          // internal ray variables initialization
-          VolEstRay ray_hit(r, u, 0., 1., *this, results);
-          ray_hit.score_hit();
-        } break;
-        case EstMode::RAYTRACE: {
-          Direction u = isotropic_direction(&seed);
-
-          // Compute lengths of the bounding box's chord segments
-          const auto chord_len = get_box_chord(r, u);
-          const double ch_len_tot = -chord_len.first + chord_len.second;
-
-          r += chord_len.first * u;
-          VolEstRay ray(r, u, ch_len_tot, 1. / ch_len_tot, *this, results);
-          ray.trace(); // Trace from a boundary to another
-        }
-        }
+        if (exhaustive_find_cell(p))
+          this->score_hit(p, results);
 
         results.n_samples++;
 
@@ -242,8 +214,8 @@ void VolumeCalculation::execute(CalcResults& master_results) const
       results.cost = results.sampling_time.elapsed();
 
       // At this point, each thread has its own volume tallies lists and we
-      // now need to reduce them. OpenMP is not nearly smart enough to do this
-      // on its own, so we have to manually reduce them
+      // now need to reduce them. OpenMP is not nearly smart enough to do
+      // this on its own, so we have to manually reduce them
       reduce_results(results, master_results);
     } // omp parallel
 
@@ -359,25 +331,8 @@ void VolumeCalculation::show_results(const CalcResults& results) const
   show_vol_stat(
     "Total sample size", "", static_cast<double>(results.n_samples));
   show_vol_stat("Running cost", "thread-sec", results.cost);
-
-  switch (mode_) {
-  case EstMode::REJECTION:
-    show_vol_stat("Cost of hitting", "thread-sec/hit",
-      static_cast<double>(results.cost) /
-        static_cast<double>(results.n_samples));
-    break;
-  case EstMode::RAYTRACE:
-    show_vol_stat("Rays traced", "", results.n_rays);
-    show_vol_stat("Average ray length", "segments/ray",
-      static_cast<double>(results.n_segs) /
-        static_cast<double>(results.n_rays));
-    show_vol_stat("Cost of tracing", "thread-sec/segment",
-      static_cast<double>(results.cost) / static_cast<double>(results.n_segs));
-    if (results.n_errors != 0)
-      show_vol_stat("Error rate", "errors/ray",
-        static_cast<double>(results.n_errors) /
-          static_cast<double>(results.n_rays));
-  }
+  show_vol_stat("Cost of hitting", "thread-sec/hit",
+    static_cast<double>(results.cost) / static_cast<double>(results.n_samples));
   write_message(5, " ");
 
   std::string domain_type;
@@ -430,17 +385,6 @@ void VolumeCalculation::to_hdf5(
   write_attribute(file_id, "samples", n_samples_);
   write_attribute(file_id, "lower_left", lower_left_);
   write_attribute(file_id, "upper_right", upper_right_);
-  // Write estimator info
-  std::string estimator_str;
-  switch (mode_) {
-  case EstMode::REJECTION:
-    estimator_str = "hit";
-    break;
-  case EstMode::RAYTRACE:
-    estimator_str = "ray";
-    break;
-  }
-  write_attribute(file_id, "estimator_type", estimator_str);
   // Write trigger info
   if (trigger_type_ != TriggerMetric::not_active) {
     write_attribute(file_id, "iterations", results.iterations);
@@ -538,9 +482,6 @@ void VolumeCalculation::reduce_results(
 #pragma omp ordered
     {
       results.n_samples += local_results.n_samples;
-      results.n_rays += local_results.n_rays;
-      results.n_segs += local_results.n_segs;
-      results.n_errors += local_results.n_errors;
       results.cost += local_results.cost;
     }
   }
@@ -576,21 +517,16 @@ void VolumeCalculation::initialize_MPI_struct() const
   // This code is a slightly modified replica of initialize_mpi() from
   // initialize.cpp
   CalcResults cr(*this);
-  MPI_Aint cr_disp[5], cr_d;
+  MPI_Aint cr_disp[1], cr_d;
   MPI_Get_address(&cr, &cr_d);
-  MPI_Get_address(&cr.n_errors, &cr_disp[0]);
-  MPI_Get_address(&cr.n_rays, &cr_disp[1]);
-  MPI_Get_address(&cr.n_segs, &cr_disp[2]);
-  MPI_Get_address(&cr.n_samples, &cr_disp[3]);
-  MPI_Get_address(&cr.cost, &cr_disp[4]);
-  for (int i = 0; i < 5; i++) {
+  MPI_Get_address(&cr.cost, &cr_disp[0]);
+  for (int i = 0; i < 1; i++) {
     cr_disp[i] -= cr_d;
   }
 
-  int cr_blocks[] {1, 1, 1, 1, 1};
-  MPI_Datatype cr_types[] {
-    MPI_UINT64_T, MPI_UINT64_T, MPI_UINT64_T, MPI_UINT64_T, MPI_DOUBLE};
-  MPI_Type_create_struct(5, cr_blocks, cr_disp, cr_types, &mpi_vol_results);
+  int cr_blocks[] {1};
+  MPI_Datatype cr_types[] {MPI_DOUBLE};
+  MPI_Type_create_struct(1, cr_blocks, cr_disp, cr_types, &mpi_vol_results);
   MPI_Type_commit(&mpi_vol_results);
 
   VolTally vt;
@@ -681,9 +617,6 @@ void VolumeCalculation::CalcResults::collect_MPI()
 VolumeCalculation::CalcResults::CalcResults(const VolumeCalculation& vol_calc)
 {
   n_samples = 0;
-  n_rays = 0;
-  n_segs = 0;
-  n_errors = 0;
   iterations = 0;
   cost = 0.;
   for (int i = 0; i < vol_calc.domain_ids_.size(); i++) {
@@ -698,9 +631,6 @@ VolumeCalculation::CalcResults::CalcResults(const VolumeCalculation& vol_calc)
 void VolumeCalculation::CalcResults::reset()
 {
   n_samples = 0;
-  n_rays = 0;
-  n_segs = 0;
-  n_errors = 0;
   cost = 0.;
   for (auto& vt : vol_tallies) {
     std::fill(vt.begin(), vt.end(), VolTally());
@@ -710,9 +640,6 @@ void VolumeCalculation::CalcResults::reset()
 void VolumeCalculation::CalcResults::append(const CalcResults& other)
 {
   n_samples += other.n_samples;
-  n_rays += other.n_rays;
-  n_segs += other.n_segs;
-  n_errors += other.n_errors;
   cost += other.cost;
 
   // The domain-wise vectors this.vol_tallies and other.vol_tallies are
@@ -813,131 +740,43 @@ array<double, 2> VolumeCalculation::get_tally_results(const size_t& n_samples,
   return volume;
 }
 
-std::pair<double, double> VolumeCalculation::get_box_chord(
-  const Position& r, const Direction& u) const
+void VolumeCalculation::score_hit(const Particle& p, CalcResults& results) const
 {
-  // Compute distanses to each box plane orthogonal to an axis
-  Direction u_1;
-  for (int i = 0; i < 3; i++) {
-    if (u[i] != 0.) {
-      u_1[i] = 1. / u[i];
-    } else {
-      // Explicit assignment because the C++ behavior is undefined without it
-      u_1[i] = std::numeric_limits<double>::infinity();
-    }
-  }
-  Position xi = (lower_left_ - r) * u_1;
-  const array<double, 3> dist1 = {xi.x, xi.y, xi.z};
-  xi = (upper_right_ - r) * u_1;
-  const array<double, 3> dist2 = {xi.x, xi.y, xi.z};
+  const auto n_domains = domain_ids_.size();
+  const auto id_mat = p.material();
+  const auto score = 1.; // Floating-point score value
 
-  // Find the minimal forward (positive values) and backward (negative values)
-  // distances across the computed ones (probably there are some STL
-  // alternatives)
-  std::pair<double, double> chord_lengths {std::minmax(dist1[0], dist2[0])},
-    dist_mm;
-  for (int i = 1; i < 3; i++) {
-    dist_mm = std::minmax(dist1[i], dist2[i]);
-    chord_lengths.first = std::max(chord_lengths.first, dist_mm.first);
-    chord_lengths.second = std::min(chord_lengths.second, dist_mm.second);
-  }
-  return chord_lengths;
-}
-
-void VolEstRay::on_intersection()
-{
-  if (traversal_distance_ == 0.) {
-    return; // No crossing model
-  }
-
-  results_.n_segs++;
-  if (traversal_distance_last_ == 0.) {
-    results_.n_rays++; // First segment of new ray
-  }
-
-  // At this point, current GeometryState parameters represent the cell behind
-  // crossed surface, but the segment length is known for the previous
-  // cell only, therefore we use below the last cell keept in GeometryState
-  const auto score = (std::min(traversal_distance_, traversal_distance_max_) -
-                       traversal_distance_last_) *
-                     coeff_mult_;
-
-  //----------------------------------------------------------------------------
-  // Tracing error diagnostic
-  // TODO: clever diagnostic and guidance for user to fix input mistakes can be
-  // implemented here
-  //----------------------------------------------------------------------------
-
-  if (traversal_distance_ >= traversal_distance_max_) {
-    stop();
-  } else {
-    traversal_distance_last_ = traversal_distance_;
-  }
-
-  // In a case of single-segment ray (leakage after 1st surface crossing),
-  // current segment material ID seems to be contained in material(), but in
-  // other cases it is in material_last(). Due to this unclear behavior, it is
-  // used below a more fundamental way for material determination -- via the
-  // stable last cell record.
-  vol_scoring(VolumeCalculation::EstMode::RAYTRACE, score,
-    (current_cell(VolumeCalculation::EstMode::RAYTRACE, n_coord_last() - 1)
-        ->material(n_coord_last() - 1)));
-}
-
-void VolEstRay::score_hit()
-{
-  if (exhaustive_find_cell(*this))
-    vol_scoring(VolumeCalculation::EstMode::REJECTION, 1.,
-      material()); // One hit score
-}
-
-void VolEstRay::vol_scoring(
-  const VolumeCalculation::EstMode mode, const double score, const int id_mat)
-{
-  const auto n_domains = vol_calc_.domain_ids_.size();
-
-  switch (vol_calc_.domain_type_) {
+  switch (domain_type_) {
   case VolumeCalculation::TallyDomain::MATERIAL:
     if (id_mat != MATERIAL_VOID) {
       for (auto i_domain = 0; i_domain < n_domains; i_domain++) {
-        if (model::materials[id_mat]->id_ == vol_calc_.domain_ids_[i_domain]) {
-          vol_calc_.check_hit(id_mat, score, results_.vol_tallies[i_domain]);
+        if (model::materials[id_mat]->id_ == domain_ids_[i_domain]) {
+          this->check_hit(id_mat, score, results.vol_tallies[i_domain]);
           break;
         }
       }
     }
     break;
   case VolumeCalculation::TallyDomain::CELL:
-    for (auto level = 0; level < n_coord_last(); ++level) {
+    for (auto level = 0; level < p.n_coord_last(); ++level) {
       for (auto i_domain = 0; i_domain < n_domains; i_domain++) {
-        if (current_cell(mode, level)->id_ == vol_calc_.domain_ids_[i_domain]) {
-          vol_calc_.check_hit(id_mat, score, results_.vol_tallies[i_domain]);
+        if (model::cells[p.coord(level).cell()]->id_ == domain_ids_[i_domain]) {
+          this->check_hit(id_mat, score, results.vol_tallies[i_domain]);
           break;
         }
       }
     }
     break;
   case VolumeCalculation::TallyDomain::UNIVERSE:
-    for (auto level = 0; level < n_coord_last(); ++level) {
+    for (auto level = 0; level < p.n_coord_last(); ++level) {
       for (auto i_domain = 0; i_domain < n_domains; ++i_domain) {
-        if (model::universes[current_cell(mode, level)->universe_]->id_ ==
-            vol_calc_.domain_ids_[i_domain]) {
-          vol_calc_.check_hit(id_mat, score, results_.vol_tallies[i_domain]);
+        if (model::universes[model::cells[p.coord(level).cell()]->universe_]
+              ->id_ == domain_ids_[i_domain]) {
+          this->check_hit(id_mat, score, results.vol_tallies[i_domain]);
           break;
         }
       }
     }
-  }
-}
-
-inline std::unique_ptr<Cell>& VolEstRay::current_cell(
-  VolumeCalculation::EstMode mode, int level)
-{
-  switch (mode) {
-  case VolumeCalculation::EstMode::REJECTION:
-    return model::cells[coord(level).cell()]; // Current position
-  case VolumeCalculation::EstMode::RAYTRACE:
-    return model::cells[cell_last(level)]; // Previous segment
   }
 }
 

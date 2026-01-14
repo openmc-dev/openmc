@@ -62,11 +62,9 @@ class VolumeTest(PyAPITestHarness):
             openmc.VolumeCalculation(list(root.cells.values()), 100000),
             openmc.VolumeCalculation([water, fuel], 100000, ll, ur),
             openmc.VolumeCalculation([root], 100000, ll, ur),
-            openmc.VolumeCalculation(list(root.cells.values()), 100,
-                                     estimator_type = 'ray'),
-            openmc.VolumeCalculation([water, fuel], 100, ll, ur, 'ray'),
-            openmc.VolumeCalculation(list(root.cells.values()), 100,
-                                     estimator_type = 'ray'),
+            openmc.VolumeCalculation(list(root.cells.values()), 100),
+            openmc.VolumeCalculation([water, fuel], 100, ll, ur),
+            openmc.VolumeCalculation(list(root.cells.values()), 100),
             openmc.VolumeCalculation([water, fuel], 100, ll, ur)
         ]
 
@@ -76,7 +74,7 @@ class VolumeTest(PyAPITestHarness):
 
         vol_calcs[5].set_trigger(self.exp_variance, 'variance')
 
-        vol_calcs[6].set_trigger(self.tiny_rel_err, 'rel_err', 
+        vol_calcs[6].set_trigger(self.tiny_rel_err, 'rel_err',
             self.max_iterations)
 
         # Define settings
@@ -141,7 +139,7 @@ class VolumeTest(PyAPITestHarness):
             outstr += 'Iterations limit: {}\n'.format(volume_calc.max_iterations)
             outstr += 'Iterations completed: {}\n'.format(volume_calc.iterations)
 
-            # make sure the volume calculation results contains true  
+            # make sure the volume calculation results contains true
             # values of trigger and iteration limit
             if i == 3:
                 assert volume_calc.trigger_type == 'std_dev'
@@ -165,17 +163,17 @@ class VolumeTest(PyAPITestHarness):
                 assert volume_calc.max_iterations is None
                 assert volume_calc.iterations == 1
 
-            # if a trigger is applied, make sure the calculation satisfies 
+            # if a trigger is applied, make sure the calculation satisfies
             # the trigger and iteration limit
             for vol in volume_calc.volumes.values():
                 if volume_calc.trigger_type == 'std_dev':
-                    assert (vol.std_dev <= volume_calc.threshold or 
+                    assert (vol.std_dev <= volume_calc.threshold or
                             volume_calc.iterations == volume_calc.max_iterations)
                 if volume_calc.trigger_type == 'rel_err':
-                    assert (vol.std_dev/vol.nominal_value <= volume_calc.threshold or 
+                    assert (vol.std_dev/vol.nominal_value <= volume_calc.threshold or
                             volume_calc.iterations == volume_calc.max_iterations)
                 if volume_calc.trigger_type == 'variance':
-                    assert (vol.std_dev * vol.std_dev <= volume_calc.threshold or 
+                    assert (vol.std_dev * vol.std_dev <= volume_calc.threshold or
                             volume_calc.iterations == volume_calc.max_iterations)
 
             # Write cell volumes and total # of atoms for each nuclide

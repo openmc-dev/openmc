@@ -32,10 +32,6 @@ class VolumeCalculation:
         Upper-right coordinates of bounding box used to sample points. If this
         argument is not supplied, an attempt is made to automatically determine
         a bounding box.
-    estimator_type : {'hit', 'ray'}
-        Type of volume estimator (default: 'hit').
-
-        .. versionadded:: 0.15.x
 
     Attributes
     ----------
@@ -77,8 +73,7 @@ class VolumeCalculation:
         .. versionadded:: 0.15.x
 
     """
-    def __init__(self, domains, samples, lower_left=None, upper_right=None,
-                 estimator_type='hit'):
+    def __init__(self, domains, samples, lower_left=None, upper_right=None):
         self._atoms = {}
         self._volumes = {}
         self._threshold = None
@@ -135,8 +130,6 @@ class VolumeCalculation:
         if np.isinf(self.lower_left).any() or np.isinf(self.upper_right).any():
             raise ValueError('Lower-left and upper-right bounding box '
                              'coordinates must be finite.')
-
-        self.estimator_type = estimator_type
 
     @property
     def ids(self):
@@ -224,16 +217,6 @@ class VolumeCalculation:
         self._iterations = iterations
 
     @property
-    def estimator_type(self):
-        return self._estimator_type
-
-    @estimator_type.setter
-    def estimator_type(self, estimator_type):
-        cv.check_value('volume estimator mode', estimator_type,
-                       ('hit', 'ray'))
-        self._estimator_type = estimator_type
-
-    @property
     def domain_type(self):
         return self._domain_type
 
@@ -283,18 +266,6 @@ class VolumeCalculation:
         self.threshold = threshold
         self.max_iterations = max_iterations
 
-    def set_estimator(self, estimator_type):
-        """Define type of volume estimator
-
-        .. versionadded:: 0.15
-
-        Parameters
-        ----------
-        estimator_type : {'hit', 'ray'}
-            Either rejection or ray tracing volume estimator
-        """
-        self.estimator_type = estimator_type
-
     @classmethod
     def from_hdf5(cls, filename):
         """Load stochastic volume calculation results from HDF5 file.
@@ -322,8 +293,6 @@ class VolumeCalculation:
             trigger_type = f.attrs.get('trigger_type')
             max_iterations = f.attrs.get('max_iterations')
             iterations = f.attrs.get('iterations', 1)
-
-            estimator_type = f.attrs.get('estimator_type')
 
             volumes = {}
             atoms = {}
@@ -354,8 +323,7 @@ class VolumeCalculation:
                 domains = [openmc.Universe(uid) for uid in ids]
 
         # Instantiate the class and assign results
-        vol = cls(domains, samples, lower_left, upper_right,
-                  estimator_type.decode())
+        vol = cls(domains, samples, lower_left, upper_right)
 
         if trigger_type is not None:
             vol.set_trigger(threshold, trigger_type.decode(), max_iterations)
@@ -411,8 +379,6 @@ class VolumeCalculation:
             trigger_elem.set("threshold", str(self.threshold))
             if self.max_iterations is not None:
                 trigger_elem.set("max_iterations", str(self.max_iterations))
-        et_elem = ET.SubElement(element, "estimator_type")
-        et_elem.text = str(self.estimator_type)
         return element
 
     @classmethod
@@ -437,7 +403,6 @@ class VolumeCalculation:
         samples = int(get_text(elem, "samples"))
         lower_left = tuple(get_elem_list(elem, "lower_left", float))
         upper_right = tuple(get_elem_list(elem, "upper_right", float))
-        estimator_type = get_text(elem, "estimator_type")
 
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs
@@ -450,7 +415,7 @@ class VolumeCalculation:
             elif domain_type == 'universe':
                 domains = [openmc.Universe(uid) for uid in ids]
 
-        vol = cls(domains, samples, lower_left, upper_right, estimator_type)
+        vol = cls(domains, samples, lower_left, upper_right)
 
         # Check for trigger
         trigger_elem = elem.find("threshold")

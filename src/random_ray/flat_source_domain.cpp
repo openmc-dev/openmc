@@ -144,10 +144,9 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
           nu_sigma_f = nu_sigma_f_[material * negroups_ + g_in];
           chi = chi_[material * negroups_ + g_out];
         }
-        nu_sigma_f *= density_mult;
         scatter_source += sigma_s * scalar_flux;
         if (settings::create_fission_neutrons) {
-          fission_source += nu_sigma_f * scalar_flux * chi;
+          fission_source += nu_sigma_f * density_mult * scalar_flux * chi;
         }
       }
       total_source = (scatter_source + fission_source * inverse_k_eff);
@@ -233,6 +232,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
   int material = source_regions_.material(sr);
+  double density_mult = source_regions_.density_mult(sr);
   if (material == MATERIAL_VOID) {
     source_regions_.scalar_flux_new(sr, g) /= volume;
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -241,19 +241,17 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
         source_regions_.volume_sq(sr);
     }
   } else {
-    double sigma_t = sigma_t_[material * negroups_ + g] *
-                     source_regions_.density_mult(sr);
+    double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
   }
   if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-    double inverse_vbar =
-      inverse_vbar_[source_regions_.material(sr) * negroups_ + g];
+    double inverse_vbar = inverse_vbar_[material * negroups_ + g];
     double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
     double A0 =
       (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
     // TODO: Add support for expicit void regions
-    double sigma_t = sigma_t_[material * negroups_ + g];
+    double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
     source_regions_.scalar_flux_new(sr, g) -=
       scalar_flux_rhs_bd * inverse_vbar / sigma_t;
     source_regions_.scalar_flux_new(sr, g) /= 1 + A0 * inverse_vbar / sigma_t;
@@ -1469,12 +1467,12 @@ void FlatSourceDomain::set_adjoint_sources()
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
+    double density_mult = source_regions_.density_mult(sr);
     if (material == MATERIAL_VOID) {
       continue;
     }
     for (int g = 0; g < negroups_; g++) {
-      double sigma_t =
-        sigma_t_[material * negroups_ + g] * source_regions_.density_mult(sr);
+      double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
       source_regions_.external_source(sr, g) /= sigma_t;
     }
   }
@@ -1951,10 +1949,12 @@ void FlatSourceDomain::compute_single_phi_prime(SourceRegionHandle& srh)
   double A0 =
     (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
   int material = srh.material();
+  double density_mult = srh.density_mult();
   for (int g = 0; g < negroups_; g++) {
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
     // TODO: add support for explicit void
-    double sigma_t = sigma_t_[material * negroups_ + g];
+    double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
+    ;
 
     double scalar_flux_time_derivative =
       A0 * srh.scalar_flux_old(g) + srh.scalar_flux_rhs_bd(g);
@@ -1970,10 +1970,11 @@ void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
   double B0 = (bd_coefficients_second_order_.at(RandomRay::bd_order_))[0] /
               (settings::dt * settings::dt);
   int material = srh.material();
+  double density_mult = srh.density_mult();
   for (int g = 0; g < negroups_; g++) {
     double inverse_vbar = inverse_vbar_[material * negroups_ + g];
     // TODO: add support for explicit void
-    double sigma_t = sigma_t_[material * negroups_ + g];
+    double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
 
     // Multiply out sigma_t to correctly compute the derivative term
     float source_time_derivative =
@@ -1999,6 +2000,7 @@ void FlatSourceDomain::compute_single_delayed_fission_source(
   }
 
   int material = srh.material();
+  double density_mult = srh.density_mult();
   if (material != MATERIAL_VOID) {
     double inverse_k_eff = 1.0 / k_eff_;
     for (int dg = 0; dg < ndgroups_; dg++) {
@@ -2008,7 +2010,8 @@ void FlatSourceDomain::compute_single_delayed_fission_source(
         for (int g = 0; g < negroups_; g++) {
           double scalar_flux = scalar_flux = srh.scalar_flux_new(g);
           double nu_d_sigma_f = nu_d_sigma_f_[material * negroups_ * ndgroups_ +
-                                              dg * negroups_ + g];
+                                              dg * negroups_ + g] *
+                                density_mult;
           srh.delayed_fission_source(dg) += nu_d_sigma_f * scalar_flux;
         }
         srh.delayed_fission_source(dg) *= inverse_k_eff;
@@ -2158,8 +2161,9 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         // Multiply out sigma_t to store the base source
         int material = source_regions_.material(sr);
+        double density_mult = source_regions_.density_mult(sr);
         // TODO: add support for explicit void regions
-        double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
+        double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
         float source = source_regions_.source_final(sr, g) * sigma_t;
         add_value_to_bd_vector(source_regions_.source_bd(sr, g), source,
           increment_not_initialize, RandomRay::bd_order_);

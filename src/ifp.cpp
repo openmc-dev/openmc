@@ -95,7 +95,7 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
     std::copy(&delayed_groups[idx], &delayed_groups[idx + n],
       &simulation::ifp_source_delayed_group_bank[i_bank]);
     if (settings::ifp_beta_nuclide)
-      std::copy(&ancestors[idx], &ancestors[idx + n],
+      std::copy(&ancestors[idx], &ancestors[idx + n + 1],
         &simulation::ifp_source_ancestor_nuclide_bank[i_bank]);
   }
   if (is_generation_time_or_both()) {

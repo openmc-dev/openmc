@@ -254,7 +254,7 @@ void synchronize_bank()
             send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
               temp_delayed_groups, send_delayed_groups);
             if (settings::ifp_beta_nuclide)
-              send_ifp_info(index_local, n, ifp_n_generation, neighbor,
+              send_ifp_info(index_local, n + 1, ifp_n_generation, neighbor,
                 requests, temp_ancestors, send_ancestors);
           }
           if (is_generation_time_or_both())
@@ -330,7 +330,7 @@ void synchronize_bank()
           receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
             recv_delayed_groups, deserialization_info);
           if (settings::ifp_beta_nuclide)
-            receive_ifp_data(index_local, n, ifp_n_generation, neighbor,
+            receive_ifp_data(index_local, n + 1, ifp_n_generation, neighbor,
               requests, recv_ancestors, deserialization_info);
         }
         if (is_generation_time_or_both())

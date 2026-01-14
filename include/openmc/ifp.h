@@ -32,7 +32,7 @@ void resize_ifp_data(vector<T>& delayed_groups, vector<T>& ancestors,
 {
   if (is_beta_effective_or_both()) {
     delayed_groups.resize(n);
-    ancestors.resize(n);
+    ancestors.resize(n + 1);
   }
   if (is_generation_time_or_both()) {
     lifetimes.resize(n);

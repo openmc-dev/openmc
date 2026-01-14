@@ -201,12 +201,10 @@ void VolumeCalculation::execute(CalcResults& master_results) const
           uniform_distribution(lower_left_.y, upper_right_.y, &seed),
           uniform_distribution(lower_left_.z, upper_right_.z, &seed)};
 
-        results.n_samples++;
-
         switch (mode_) {
         case EstMode::REJECTION: {
-          constexpr double flt3 = 1. / std::sqrt(3.);
-          Direction u {flt3, flt3, flt3};
+          constexpr double sqrt3_1 = 1. / std::sqrt(3.);
+          Direction u {sqrt3_1, sqrt3_1, sqrt3_1};
 
           // Create zero-length ray, it is a bit excessive due to undemanded
           // internal ray variables initialization
@@ -225,6 +223,8 @@ void VolumeCalculation::execute(CalcResults& master_results) const
           ray.trace(); // Trace from a boundary to another
         }
         }
+
+        results.n_samples++;
 
         // This passing across all tallies after each sample can be
         // inefficient for the case of large number of domains and small
@@ -308,7 +308,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
           for (int k = 0; k < mat->nuclide_.size(); ++k) {
             auto& volume = master_results.vol_tallies[i_domain][j].score_acc;
             // Collect calculated nuclide amounts N [atoms] and stddev as
-            // N = V [cm^3] * \ro [atoms/b-cm] * 1.e24 [b-cm/cm^3]
+            // N = V [cm^3] * \rho [atoms/b-cm] * 1.e24 [b-cm/cm^3]
             atoms(mat->nuclide_[k], 0) +=
               volume[0] * mat->atom_density(k) * 1.0e24;
             atoms(mat->nuclide_[k], 1) +=
@@ -574,9 +574,7 @@ void VolumeCalculation::reduce_results(
 void VolumeCalculation::initialize_MPI_struct() const
 {
   // This code is a slightly modified replica of initialize_mpi() from
-  // initialize.cpp. It works under GCC in the Release configuration, but not
-  // sure that the adress offsets of structure's memebrs should be necessary the
-  // same everywhere as using an optimizing compiler.
+  // initialize.cpp
   CalcResults cr(*this);
   MPI_Aint cr_disp[5], cr_d;
   MPI_Get_address(&cr, &cr_d);
@@ -649,7 +647,7 @@ void VolumeCalculation::CalcResults::collect_MPI()
 
   } else {
 
-    // n_domain + 2 MPI messages will be recieved in total on node mpi::master
+    // n_domain + 2 MPI messages will be recieved in total from node mpi::master
 
     for (int i_proc = 1; i_proc < mpi::n_procs; i_proc++) {
 
@@ -866,8 +864,8 @@ void VolEstRay::on_intersection()
 
   //----------------------------------------------------------------------------
   // Tracing error diagnostic
-  // TODO: those can be implemented here clever diagnostic and guidance for
-  // user to fix input mistakes
+  // TODO: clever diagnostic and guidance for user to fix input mistakes can be
+  // implemented here
   //----------------------------------------------------------------------------
 
   if (traversal_distance_ >= traversal_distance_max_) {

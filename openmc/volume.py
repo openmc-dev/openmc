@@ -35,7 +35,7 @@ class VolumeCalculation:
     estimator_type : {'hit', 'ray'}
         Type of volume estimator (default: 'hit').
 
-        .. versionadded:: 0.15
+        .. versionadded:: 0.15.x
 
     Attributes
     ----------
@@ -71,10 +71,10 @@ class VolumeCalculation:
 
         .. versionadded:: 0.12
     max_iterations : int
-        Limit of the maximal allowed iterations number (optional, for 
+        Limit of the maximal allowed iterations number (optional, for
         calculations with a trigger).
 
-        .. versionadded:: 0.15
+        .. versionadded:: 0.15.x
 
     """
     def __init__(self, domains, samples, lower_left=None, upper_right=None,
@@ -354,7 +354,7 @@ class VolumeCalculation:
                 domains = [openmc.Universe(uid) for uid in ids]
 
         # Instantiate the class and assign results
-        vol = cls(domains, samples, lower_left, upper_right, 
+        vol = cls(domains, samples, lower_left, upper_right,
                   estimator_type.decode())
 
         if trigger_type is not None:

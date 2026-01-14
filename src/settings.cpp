@@ -552,14 +552,8 @@ void read_settings_xml(pugi::xml_node root)
     // Probability (IFP) method
     if (check_for_node(root, "ifp_n_generation")) {
       ifp_n_generation = std::stoi(get_node_value(root, "ifp_n_generation"));
-      if (ifp_n_generation <= 0) {
+      if (ifp_n_generation <= 0)
         fatal_error("'ifp_n_generation' must be greater than 0.");
-      }
-      // Avoid tallying 0 if IFP logs are not complete when active cycles start
-      if (ifp_n_generation > n_inactive) {
-        fatal_error("'ifp_n_generation' must be lower than or equal to the "
-                    "number of inactive cycles.");
-      }
     }
   }
 

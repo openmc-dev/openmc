@@ -32,9 +32,7 @@ the ``ifp_n_generation`` settings in the Python API::
 
     settings.ifp_n_generation = 5
 
-``ifp_n_generation`` should be greater than 0, but should also be lower than
-or equal to the number of inactive batches declared for the calculation.
-The respect of these constraints is verified by OpenMC before any calculation.
+``ifp_n_generation`` should be greater than 0.
 
 OpenMC will automatically detect the type of data that needs to be stored based
 on the tally scores selected by the user. This guarantees that only information

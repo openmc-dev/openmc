@@ -210,10 +210,6 @@ Tally::Tally(pugi::xml_node node)
             "changed using the 'ifp_n_generation' settings.",
             settings::ifp_n_generation));
         }
-        if (settings::ifp_n_generation > settings::n_inactive) {
-          fatal_error("'ifp_n_generation' must be lower than or equal to the "
-                      "number of inactive cycles.");
-        }
         settings::ifp_on = true;
       } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
         fatal_error(
@@ -656,6 +652,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_IFP_BETA_NUM:
     case SCORE_IFP_DENOM:
       estimator_ = TallyEstimator::COLLISION;
+      offset_ = settings::ifp_n_generation;
       break;
     }
 

@@ -148,6 +148,9 @@ public:
   //! Whether this tally is currently being updated
   bool active_ {false};
 
+  //! Offset batch to activate this tally after.
+  int offset_ {0};
+
   //! Number of realizations
   int n_realizations_ {0};
 

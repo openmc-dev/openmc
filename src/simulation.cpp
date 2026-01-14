@@ -376,6 +376,7 @@ void initialize_batch()
   // Determine if this batch is the first inactive or active batch.
   bool first_inactive = false;
   bool first_active = false;
+  bool first_ifp_active = false;
   if (!settings::restart_run) {
     first_inactive = settings::n_inactive > 0 && simulation::current_batch == 1;
     first_active = simulation::current_batch == settings::n_inactive + 1;
@@ -391,7 +392,21 @@ void initialize_batch()
     simulation::time_inactive.stop();
     simulation::time_active.start();
     for (auto& t : model::tallies) {
-      t->active_ = true;
+      if (t->offset_ == 0)
+        t->active_ = true;
+    }
+  }
+
+  // Activate tallies which have activation offset.
+  for (auto& t : model::tallies) {
+    if (t->offset_ > 0) {
+      if (!settings::restart_run) {
+        if (simulation::current_batch == settings::n_inactive + 1 + t->offset_)
+          t->active_ = true;
+      } else if (simulation::current_batch == simulation::restart_batch + 1) {
+        if (simulation::restart_batch >= settings::n_inactive + t->offset_)
+          t->active_ = true;
+      }
     }
   }
 

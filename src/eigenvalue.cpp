@@ -254,7 +254,7 @@ void synchronize_bank()
             send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
               temp_delayed_groups, send_delayed_groups);
             if (settings::ifp_beta_nuclide)
-              send_ifp_info(index_local, n + 1, ifp_n_generation, neighbor,
+              send_ifp_info(index_local, n, ifp_n_generation + 1, neighbor,
                 requests, temp_ancestors, send_ancestors);
           }
           if (is_generation_time_or_both())
@@ -287,6 +287,7 @@ void synchronize_bank()
   vector<int> recv_ancestors;
   vector<double> recv_lifetimes;
   vector<DeserializationInfo> deserialization_info;
+  vector<DeserializationInfo> deserialization_info2;
 
   // Determine what process has the source sites that will need to be stored at
   // the beginning of this processor's source bank.
@@ -330,8 +331,8 @@ void synchronize_bank()
           receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
             recv_delayed_groups, deserialization_info);
           if (settings::ifp_beta_nuclide)
-            receive_ifp_data(index_local, n + 1, ifp_n_generation, neighbor,
-              requests, recv_ancestors, deserialization_info);
+            receive_ifp_data(index_local, n, ifp_n_generation + 1, neighbor,
+              requests, recv_ancestors, deserialization_info2);
         }
         if (is_generation_time_or_both())
           receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
@@ -370,8 +371,8 @@ void synchronize_bank()
       deserialize_ifp_info(ifp_n_generation, recv_delayed_groups,
         simulation::ifp_source_delayed_group_bank, deserialization_info);
       if (settings::ifp_beta_nuclide)
-        deserialize_ifp_info(ifp_n_generation, recv_ancestors,
-          simulation::ifp_source_ancestor_nuclide_bank, deserialization_info);
+        deserialize_ifp_info(ifp_n_generation + 1, recv_ancestors,
+          simulation::ifp_source_ancestor_nuclide_bank, deserialization_info2);
     }
     if (is_generation_time_or_both())
       deserialize_ifp_info(ifp_n_generation, recv_lifetimes,

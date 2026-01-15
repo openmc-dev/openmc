@@ -5,6 +5,8 @@
 #include <iostream>
 #include <stdexcept> // for out_of_range
 
+#include <fmt/format.h>
+
 #include "openmc/array.h"
 #include "openmc/vector.h"
 
@@ -161,5 +163,19 @@ std::ostream& operator<<(std::ostream& os, Position a);
 using Direction = Position;
 
 } // namespace openmc
+
+//==============================================================================
+// fmt formatter for Position
+//==============================================================================
+
+template<>
+struct fmt::formatter<openmc::Position> {
+  constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
+
+  template<typename FormatContext>
+  auto format(const openmc::Position& p, FormatContext& ctx) const {
+    return fmt::format_to(ctx.out(), "({}, {}, {})", p.x, p.y, p.z);
+  }
+};
 
 #endif // OPENMC_POSITION_H

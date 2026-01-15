@@ -60,8 +60,9 @@ def test_results_save(run_in_tmpdir):
     burn_list = full_burn_list[2*comm.rank: 2*comm.rank + 2]
     nuc_list = ["na", "nb"]
 
+    mat_to_name = {mat: "" for mat in full_burn_list}
     op.get_results_info.return_value = (
-        vol_dict, nuc_list, burn_list, full_burn_list)
+        vol_dict, nuc_list, burn_list, full_burn_list, mat_to_name)
 
     # Construct x
     x1 = []

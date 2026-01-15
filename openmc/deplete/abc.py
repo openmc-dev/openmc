@@ -190,7 +190,7 @@ class TransportOperator(ABC):
 
     @abstractmethod
     def get_results_info(self):
-        """Returns volume list, cell lists, and nuc lists.
+        """Returns volume list, cell lists, nuc lists, and material names.
 
         Returns
         -------
@@ -203,6 +203,8 @@ class TransportOperator(ABC):
             simulation.
         full_burn_list : list of int
             All burnable materials in the geometry.
+        mat_to_name : dict of str to str
+            Mapping of material ID to material name
         """
 
     def finalize(self):

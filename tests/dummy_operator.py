@@ -228,7 +228,7 @@ class DummyOperator(TransportOperator):
         return [np.array((1.0, 1.0))]
 
     def get_results_info(self):
-        """Returns volume list, cell lists, and nuc lists.
+        """Returns volume list, cell lists, nuc lists, and material names.
 
         Returns
         -------
@@ -241,6 +241,9 @@ class DummyOperator(TransportOperator):
             simulation.
         full_burn_list : OrderedDict of str to int
             Maps cell name to index in global geometry.
+        mat_to_name : dict of str to str
+            Mapping of material ID to material name
 
         """
-        return self.volume, self.nuc_list, self.local_mats, self.burnable_mats
+        mat_to_name = {mat: "" for mat in self.burnable_mats}
+        return self.volume, self.nuc_list, self.local_mats, self.burnable_mats, mat_to_name

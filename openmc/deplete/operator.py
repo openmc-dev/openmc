@@ -219,7 +219,7 @@ class Operator(TransportOperator):
 
         # Clear out OpenMC, create task lists, distribute
         openmc.reset_auto_ids()
-        self.burnable_mats, volume, nuclides = self._get_burnable_mats()
+        self.burnable_mats, volume, nuclides, self.mat_to_name = self._get_burnable_mats()
         self.local_mats = _distribute(self.burnable_mats)
 
         # Generate map from local materials => material index
@@ -387,7 +387,7 @@ class Operator(TransportOperator):
                                  for i in range(cell.num_instances)]
 
     def _get_burnable_mats(self):
-        """Determine depletable materials, volumes, and nuclides
+        """Determine depletable materials, volumes, nuclides, and names
 
         Returns
         -------
@@ -397,12 +397,15 @@ class Operator(TransportOperator):
             Volume of each material in [cm^3]
         nuclides : list of str
             Nuclides in order of how they'll appear in the simulation.
+        mat_name : OrderedDict of str to str
+            Name of each material (empty string if not set)
 
         """
 
         burnable_mats = set()
         model_nuclides = set()
         volume = OrderedDict()
+        mat_name = OrderedDict()
 
         self.heavy_metal = 0.0
 
@@ -416,6 +419,7 @@ class Operator(TransportOperator):
                     raise RuntimeError("Volume not specified for depletable "
                                        "material with ID={}.".format(mat.id))
                 volume[str(mat.id)] = mat.volume
+                mat_name[str(mat.id)] = mat.name if mat.name else ""
                 self.heavy_metal += mat.fissionable_mass
 
         # Make sure there are burnable materials
@@ -433,7 +437,7 @@ class Operator(TransportOperator):
             if nuc not in nuclides:
                 nuclides.append(nuc)
 
-        return burnable_mats, volume, nuclides
+        return burnable_mats, volume, nuclides, mat_name
 
     def _extract_number(self, local_mats, volume, nuclides, prev_res=None):
         """Construct AtomNumber using geometry
@@ -782,7 +786,7 @@ class Operator(TransportOperator):
         return nuclides
 
     def get_results_info(self):
-        """Returns volume list, material lists, and nuc lists.
+        """Returns volume list, material lists, nuc lists, and material names.
 
         Returns
         -------
@@ -794,6 +798,8 @@ class Operator(TransportOperator):
             A list of all material IDs to be burned.  Used for sorting the simulation.
         full_burn_list : list
             List of all burnable material IDs
+        mat_to_name : dict of str to str
+            Mapping of material ID to material name
 
         """
         nuc_list = self.number.burnable_nuclides
@@ -807,4 +813,4 @@ class Operator(TransportOperator):
         volume_list = comm.allgather(volume)
         volume = {k: v for d in volume_list for k, v in d.items()}
 
-        return volume, nuc_list, burn_list, self.burnable_mats
+        return volume, nuc_list, burn_list, self.burnable_mats, self.mat_to_name

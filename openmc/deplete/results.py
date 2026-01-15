@@ -37,6 +37,8 @@ class Results:
         The reaction rates for each substep.
     volume : OrderedDict of str to float
         Dictionary mapping mat id to volume.
+    mat_to_name : OrderedDict of str to str
+        Dictionary mapping mat id to material name.
     mat_to_ind : OrderedDict of str to int
         A dictionary mapping mat ID as string to index.
     nuc_to_ind : OrderedDict of str to int
@@ -60,6 +62,7 @@ class Results:
         self.source_rate = None
         self.rates = None
         self.volume = None
+        self.mat_to_name = None
         self.proc_time = None
 
         self.mat_to_ind = None
@@ -130,7 +133,8 @@ class Results:
     def n_stages(self):
         return self.data.shape[0]
 
-    def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages):
+    def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages,
+                 mat_to_name=None):
         """Allocates memory of Results.
 
         Parameters
@@ -145,12 +149,15 @@ class Results:
             List of all burnable material IDs
         stages : int
             Number of stages in simulation.
+        mat_to_name : dict of str to str, optional
+            Mapping of material ID to material name
 
         """
         self.volume = copy.deepcopy(volume)
         self.nuc_to_ind = {nuc: i for i, nuc in enumerate(nuc_list)}
         self.mat_to_ind = {mat: i for i, mat in enumerate(burn_list)}
         self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
+        self.mat_to_name = copy.deepcopy(mat_to_name) if mat_to_name else {}
 
         # Create storage array
         self.data = np.zeros((stages, self.n_mat, self.n_nuc))
@@ -178,7 +185,7 @@ class Results:
 
         # Direct transfer
         direct_attrs = ("time", "k", "source_rate", "nuc_to_ind",
-                        "mat_to_hdf5_ind", "proc_time")
+                        "mat_to_hdf5_ind", "mat_to_name", "proc_time")
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
         # Get applicable slice of data
@@ -255,6 +262,8 @@ class Results:
             mat_single_group = mat_group.create_group(mat)
             mat_single_group.attrs["index"] = self.mat_to_hdf5_ind[mat]
             mat_single_group.attrs["volume"] = self.volume[mat]
+            if self.mat_to_name and mat in self.mat_to_name:
+                mat_single_group.attrs["name"] = self.mat_to_name[mat]
 
         nuc_group = handle.create_group("nuclides")
 
@@ -416,6 +425,7 @@ class Results:
         # Reconstruct dictionaries
         results.volume = OrderedDict()
         results.mat_to_ind = OrderedDict()
+        results.mat_to_name = OrderedDict()
         results.nuc_to_ind = OrderedDict()
         rxn_nuc_to_ind = OrderedDict()
         rxn_to_ind = OrderedDict()
@@ -426,6 +436,10 @@ class Results:
 
             results.volume[mat] = vol
             results.mat_to_ind[mat] = ind
+            if "name" in mat_handle.attrs:
+                results.mat_to_name[mat] = mat_handle.attrs["name"]
+            else:
+                results.mat_to_name[mat] = ""
 
         for nuc, nuc_handle in handle["/nuclides"].items():
             ind_atom = nuc_handle.attrs["atom number index"]
@@ -472,13 +486,14 @@ class Results:
 
         """
         # Get indexing terms
-        vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
+        vol_dict, nuc_list, burn_list, full_burn_list, mat_to_name = op.get_results_info()
 
         stages = len(x)
 
         # Create results
         results = Results()
-        results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
+        results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages,
+                         mat_to_name)
 
         n_mat = len(burn_list)
 

@@ -127,7 +127,7 @@ private:
   void add_precedence();
 
   //! Add parenthesis to enforce precedence
-  int64_t add_parentheses(int64_t start);
+  void add_parentheses(int64_t start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();

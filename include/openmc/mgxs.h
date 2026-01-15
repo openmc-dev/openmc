@@ -113,7 +113,7 @@ public:
     const vector<Mgxs*>& micros, const vector<double>& atom_densities,
     int num_group, int num_delay);
 
-  //! \brief Provides a cross section value given certain parameters
+  //! \brief Get the number of temperature data points.
   //!
   //! @return The number of temperature data points for this MGXS
   inline int n_temperature_points() { return kTs.size(); }

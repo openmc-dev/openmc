@@ -156,14 +156,14 @@ inline double uint64_to_double(uint64_t bits)
   return value;
 }
 
-inline void atomic_min_double(double* ptr, double value)
+inline void atomic_update_double(double* ptr, double value, bool is_min)
 {
 #if defined(__GNUC__) || defined(__clang__)
   using may_alias_uint64_t [[gnu::may_alias]] = uint64_t;
   auto* bits_ptr = reinterpret_cast<may_alias_uint64_t*>(ptr);
   uint64_t current_bits = __atomic_load_n(bits_ptr, __ATOMIC_SEQ_CST);
   double current = uint64_to_double(current_bits);
-  while (value < current) {
+  while (is_min ? (value < current) : (value > current)) {
     uint64_t desired_bits = double_to_uint64(value);
     uint64_t expected_bits = current_bits;
     if (__atomic_compare_exchange_n(bits_ptr, &expected_bits, desired_bits,
@@ -178,7 +178,7 @@ inline void atomic_min_double(double* ptr, double value)
   auto* bits_ptr = reinterpret_cast<volatile long long*>(ptr);
   long long current_bits = *bits_ptr;
   double current = uint64_to_double(current_bits);
-  while (value < current) {
+  while (is_min ? (value < current) : (value > current)) {
     long long desired_bits = double_to_uint64(value);
     long long old_bits =
       _InterlockedCompareExchange64(bits_ptr, desired_bits, current_bits);
@@ -196,40 +196,12 @@ inline void atomic_min_double(double* ptr, double value)
 
 inline void atomic_max_double(double* ptr, double value)
 {
-#if defined(__GNUC__) || defined(__clang__)
-  using may_alias_uint64_t [[gnu::may_alias]] = uint64_t;
-  auto* bits_ptr = reinterpret_cast<may_alias_uint64_t*>(ptr);
-  uint64_t current_bits = __atomic_load_n(bits_ptr, __ATOMIC_SEQ_CST);
-  double current = uint64_to_double(current_bits);
-  while (value > current) {
-    uint64_t desired_bits = double_to_uint64(value);
-    uint64_t expected_bits = current_bits;
-    if (__atomic_compare_exchange_n(bits_ptr, &expected_bits, desired_bits,
-          false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
-      return;
-    }
-    current_bits = expected_bits;
-    current = uint64_to_double(current_bits);
-  }
+  atomic_update_double(ptr, value, false);
+}
 
-#elif defined(_MSC_VER)
-  auto* bits_ptr = reinterpret_cast<volatile long long*>(ptr);
-  long long current_bits = *bits_ptr;
-  double current = uint64_to_double(current_bits);
-  while (value > current) {
-    long long desired_bits = double_to_uint64(value);
-    long long old_bits =
-      _InterlockedCompareExchange64(bits_ptr, desired_bits, current_bits);
-    if (old_bits == current_bits) {
-      return;
-    }
-    current_bits = old_bits;
-    current = uint64_to_double(current_bits);
-  }
-
-#else
-#error "No compare-and-swap implementation available for this compiler."
-#endif
+inline void atomic_min_double(double* ptr, double value)
+{
+  atomic_update_double(ptr, value, true);
 }
 
 namespace detail {

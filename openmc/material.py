@@ -533,14 +533,15 @@ class Material(IDManagerMixin):
         mu_en_x, mu_en_y = mu_en_coefficients("air", data_source="nist126")
         mu_en_air = Tabulated1D(mu_en_x, mu_en_y, breakpoints=[len(mu_en_x)], interpolation=[5])
 
-        mu_en_x_low = mu_en_air.x[0]
-        mu_en_x_high = mu_en_air.x[-1]
 
         # photon mass attenuation distribution as a function of energy
         # distribution values in [cm2/g]
         mass_attenuation_dist = self.get_photon_mass_attenuation()
         if mass_attenuation_dist is None:
             raise ValueError("Cannot compute photon mass attenuation for material")
+        mass_attenuation_e_lists = []
+        for photon_xs in mass_attenuation_dist.functions:
+            mass_attenuation_e_lists.append(photon_xs.x)
 
         # CDR computation
         cdr = {}
@@ -579,8 +580,19 @@ class Material(IDManagerMixin):
                 e_vals = np.array(photon_source_per_atom.x)
                 p_vals = np.array(photon_source_per_atom.p)
 
-                # clip distributions for values outside the air tabulated values
-                mask = (e_vals >= mu_en_x_low) & (e_vals <= mu_en_x_high)
+                # remove initial zero value
+                if p_vals[0] == 0.0:
+                    p_vals = p_vals[1:]
+                    e_vals = e_vals[1:]
+
+                e_lists = [e_vals, mu_en_air.x]
+                e_lists.extend(mass_attenuation_e_lists)
+
+                # clip distributions for values outside the tabulated values
+                left_bound = max(a.min() for a in e_lists)   # 10
+                right_bound = min(a.max() for a in e_lists)
+
+                mask = (e_vals >= left_bound) & (e_vals <= right_bound)
                 e_vals = e_vals[mask]
                 p_vals = p_vals[mask]
 
@@ -602,11 +614,8 @@ class Material(IDManagerMixin):
 
             elif isinstance(photon_source_per_atom, Tabular):
 
-                # fix zero p values in tabular spectrum
+                # fix zero p values in last tabular value - histogram formalism
                 p_vals[-1] = p_vals[-2] if p_vals[-1] == 0.0 else p_vals[-1]
-                if p_vals[0] == 0.0:
-                    p_vals = p_vals[1:]
-                    e_vals = e_vals[1:]
 
                 # generate the tabulated1D functions
                 e_p_dist = Tabulated1D(
@@ -616,15 +625,10 @@ class Material(IDManagerMixin):
                     e_vals, e_vals, breakpoints=[len(e_vals)], interpolation=[2]
                 )
 
-                # generate a union of abscissae
-                e_lists = [e_vals, mu_en_air.x]
-                for photon_xs in mass_attenuation_dist.functions:
-                    e_lists.append(photon_xs.x)
-                e_union = reduce(np.union1d, e_lists)
 
                 # limit the computation to the tabulated mu_en_air range
-                mask = (e_union >= mu_en_x_low) & (e_union <= mu_en_x_high)
-                e_union = e_union[mask]
+                e_union = reduce(np.union1d, e_lists)
+                e_union = e_union[(e_union >= left_bound) & (e_union <= right_bound)]
                 if len(e_union) < 2:
                     raise ValueError("Not enough overlapping energy points to compute CDR")
 

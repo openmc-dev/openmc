@@ -50,16 +50,15 @@ void broadcast_ifp_n_generation(int& n_generation,
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes)
 {
-  if (mpi::rank == 0) {
-    if (simulation::ifp_delayed_on) {
+  if (simulation::ifp_delayed_on) {
+    if (mpi::rank == 0)
       n_generation = static_cast<int>(delayed_groups[0].size());
-    } else if (simulation::ifp_lifetime_on) {
+    MPI_Bcast(&n_generation, 1, MPI_INT, 0, mpi::intracomm);
+  } else if (simulation::ifp_lifetime_on) {
+    if (mpi::rank == 0)
       n_generation = static_cast<int>(lifetimes[0].size());
-    } else {
-      return;
-    }
+    MPI_Bcast(&n_generation, 1, MPI_INT, 0, mpi::intracomm);
   }
-  MPI_Bcast(&n_generation, 1, MPI_INT, 0, mpi::intracomm);
 }
 
 void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,

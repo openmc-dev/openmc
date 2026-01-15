@@ -43,12 +43,13 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 
   // Add scattering + fission source
   int material = srh.material();
+  double density_mult = srh.density_mult();
   if (material != MATERIAL_VOID) {
     double inverse_k_eff = 1.0 / k_eff_;
     MomentMatrix invM = srh.mom_matrix().inverse();
 
     for (int g_out = 0; g_out < negroups_; g_out++) {
-      double sigma_t = sigma_t_[material * negroups_ + g_out];
+      double sigma_t = sigma_t_[material * negroups_ + g_out] * density_mult;
 
       double scatter_flat = 0.0f;
       double fission_flat = 0.0f;
@@ -61,9 +62,11 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
         MomentArray flux_linear = srh.flux_moments_old(g_in);
 
         // Handles for cross sections
-        double sigma_s =
-          sigma_s_[material * negroups_ * negroups_ + g_out * negroups_ + g_in];
-        double nu_sigma_f = nu_sigma_f_[material * negroups_ + g_in];
+        double sigma_s = sigma_s_[material * negroups_ * negroups_ +
+                                  g_out * negroups_ + g_in] *
+                         density_mult;
+        double nu_sigma_f =
+          nu_sigma_f_[material * negroups_ + g_in] * density_mult;
         double chi = chi_[material * negroups_ + g_out];
 
         // Compute source terms for flat and linear components of the flux

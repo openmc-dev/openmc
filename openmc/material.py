@@ -531,7 +531,7 @@ class Material(IDManagerMixin):
 
         # mu_en/ rho for air distribution, [eV, cm2/g]
         mu_en_x, mu_en_y = mu_en_coefficients("air", data_source="nist126")
-        mu_en_air = Tabulated1D(mu_en_x, mu_en_y, breakpoints=None, interpolation=[5])
+        mu_en_air = Tabulated1D(mu_en_x, mu_en_y, breakpoints=[len(mu_en_x)], interpolation=[5])
 
         mu_en_x_low = mu_en_air.x[0]
         mu_en_x_high = mu_en_air.x[-1]
@@ -603,10 +603,12 @@ class Material(IDManagerMixin):
             elif isinstance(photon_source_per_atom, Tabular):
 
 
-                # generate the tabulated1D function  p x e
-                e_p_vals = np.array(e_vals*p_vals, dtype=float)
+                # generate the tabulated1D functions
                 e_p_dist = Tabulated1D(
-                    e_vals, e_p_vals, breakpoints=None, interpolation=[2]
+                    e_vals, p_vals, breakpoints=[len(e_vals)], interpolation=[1]
+                )
+                e_e_dist = Tabulated1D(
+                    e_vals, e_vals, breakpoints=[len(e_vals)], interpolation=[2]
                 )
 
                 # generate a union of abscissae
@@ -630,14 +632,14 @@ class Material(IDManagerMixin):
                     )
 
                 integrand_operator = Combination(
-                    functions=[mu_en_air, e_p_dist, mass_attenuation_dist],
-                    operations=[np.multiply, np.divide],
+                    functions=[mu_en_air, e_p_dist, e_e_dist, mass_attenuation_dist],
+                    operations=[np.multiply, np.multiply, np.divide],
                 )
 
                 y_evaluated = integrand_operator(e_union)
 
                 integrand_function = Tabulated1D(
-                    e_union, y_evaluated, breakpoints=None, interpolation=[5]
+                    e_union, y_evaluated, breakpoints=[len(e_union)], interpolation=[5]
                 )
 
                 cdr_nuc += integrand_function.integral()[-1]

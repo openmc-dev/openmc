@@ -720,7 +720,8 @@ UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
   }
 }
 
-double UnstructuredMesh::distance_to_next_boundary(Position r, Direction u) const
+double UnstructuredMesh::distance_to_next_boundary(
+  Position r, Direction u) const
 {
   fatal_error("Not implemented");
   return -1.0;

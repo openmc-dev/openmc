@@ -753,14 +753,15 @@ class _Cone(_Container):
             z = self.length/2
             r = self.sphere_radius
             r_major = self.radius_major
-            r_minor = seld.radius_minor
+            r_minor = self.radius_minor
+            m = (2*z)/(r_major-r_minor)
             # r limit depends on z-coord of packed sphere.
             # the equation is broken into [factor, constant]
             # so it can be stored without symbols
             self._limits = [[z0 - z + r], 
                             [z0 + z - r, 
-                             [(r_major-r_minor)/(2*z),
-                              (r_major-r_minor)/(2*z)*(z - z0) + r_minor - r]]]
+                             [1/m,
+                              r_minor - (z0 - z)/m - (r/m)*(m**2 + 1)**0.5]]]
         return self._limits
 
     @limits.setter
@@ -771,11 +772,11 @@ class _Cone(_Container):
     def cell_length(self):
         if self._cell_length is None:
             h = 4*self.sphere_radius
-            r_avg = 0.5*(self.radius_major + self.radius_minor)
+            #r_avg = 0.5*(self.radius_major + self.radius_minor)
             i, j, k = self.shift
             self._cell_length = [None]*3
-            self._cell_length[i] = 2*r_avg/int(2*r_avg/h)
-            self._cell_length[j] = 2*r_avg/int(2*r_avg/h)
+            self._cell_length[i] = 2*self.radius_major/int(2*self.radius_major/h)
+            self._cell_length[j] = 2*self.radius_major/int(2*self.radius_major/h)
             self._cell_length[k] = self.length/int(self.length/h)
         return self._cell_length
 
@@ -886,7 +887,7 @@ class _Cone(_Container):
         p[k] = np.clip(p[k], ll[0], ul[0])
         r = sqrt((p[i] - c[i])**2 + (p[j] - c[j])**2)
         rl = p[k]*ul[1][0] + ul[1][1]
-        if r > rlp:
+        if r > rl:
             p[i] = (p[i] - c[i])*rl/r + c[i]
             p[j] = (p[j] - c[j])*rl/r + c[j]
 
@@ -896,7 +897,6 @@ class _Cone(_Container):
         if r > rl:
             q[i] = (q[i] - c[i])*rl/r + c[i]
             q[j] = (q[j] - c[j])*rl/r + c[j]
-
 
 class _SphericalShell(_Container):
     """Spherical shell container in which to pack spheres.
@@ -1558,7 +1558,7 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
     if not domain:
         raise ValueError('Could not map region {} to a container: supported '
                          'container shapes are rectangular prism, cylinder, '
-                         'sphere, and spherical shell.'.format(region))
+                         'cone, sphere, and spherical shell.'.format(region))
 
     # Determine the packing fraction/number of spheres
     volume = _volume_sphere(radius)
@@ -1593,8 +1593,14 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
     # Recalculate the limits for the initial random sequential packing using
     # the desired final sphere radius to ensure spheres are fully contained
     # within the domain during the close random pack
-    domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
-                     [x + initial_radius - radius for x in domain.limits[1]]]
+    try:
+        domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
+                        [x + initial_radius - radius for x in domain.limits[1]]]
+    except TypeError:
+        ll, ul = domain.limits
+        domain.limits = [[ll[0] - initial_radius + radius],
+                        [ul[0] + initial_radius - radius,
+                         [ul[1][0], ul[1][1] + initial_radius - radius]]]
 
     # Generate non-overlapping spheres for an initial inner radius using
     # random sequential packing algorithm

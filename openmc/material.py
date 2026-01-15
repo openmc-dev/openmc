@@ -580,16 +580,11 @@ class Material(IDManagerMixin):
                 e_vals = np.array(photon_source_per_atom.x)
                 p_vals = np.array(photon_source_per_atom.p)
 
-                # remove initial zero value
-                if p_vals[0] == 0.0:
-                    p_vals = p_vals[1:]
-                    e_vals = e_vals[1:]
-
                 e_lists = [e_vals, mu_en_air.x]
                 e_lists.extend(mass_attenuation_e_lists)
 
                 # clip distributions for values outside the tabulated values
-                left_bound = max(a.min() for a in e_lists)   # 10
+                left_bound = max(a.min() for a in e_lists)
                 right_bound = min(a.max() for a in e_lists)
 
                 mask = (e_vals >= left_bound) & (e_vals <= right_bound)
@@ -613,9 +608,6 @@ class Material(IDManagerMixin):
                 cdr_nuc += np.sum((mu_en_air(e_vals) / mu_vals) * p_vals * e_vals)
 
             elif isinstance(photon_source_per_atom, Tabular):
-
-                # fix zero p values in last tabular value - histogram formalism
-                p_vals[-1] = p_vals[-2] if p_vals[-1] == 0.0 else p_vals[-1]
 
                 # generate the tabulated1D functions
                 e_p_dist = Tabulated1D(
@@ -648,7 +640,7 @@ class Material(IDManagerMixin):
                 y_evaluated = integrand_operator(e_union)
 
                 integrand_function = Tabulated1D(
-                    e_union, y_evaluated, breakpoints=[len(e_union)], interpolation=[5]
+                    e_union, y_evaluated, breakpoints=[len(e_union)], interpolation=[2]
                 )
 
                 cdr_nuc += integrand_function.integral()[-1]

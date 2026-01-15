@@ -123,8 +123,8 @@ private:
   //! BoundingBox if the particle is in a complex cell.
   BoundingBox bounding_box_complex(vector<int32_t> postfix) const;
 
-  //! Enfource precedence: Parenthases, Complement, Intersection, Union
-  void add_precedence();
+  //! Enforce precedence between intersections and unions
+  void enforce_precedence();
 
   //! Add parenthesis to enforce precedence
   void add_parentheses(int64_t start);

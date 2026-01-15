@@ -660,7 +660,7 @@ Region::Region(std::string region_spec, int32_t cell_id)
       if (token == OP_UNION) {
         simple_ = false;
         // Ensure intersections have precedence over unions
-        add_precedence();
+        enforce_precedence();
         break;
       }
     }
@@ -763,7 +763,7 @@ void Region::add_parentheses(int64_t start)
 //! higher-precedence operations.
 //==============================================================================
 
-void Region::add_precedence()
+void Region::enforce_precedence()
 {
   // Stack tracking the operator type at each depth (0 = no operator seen yet)
   vector<int32_t> op_stack = {0};

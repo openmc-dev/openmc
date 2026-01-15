@@ -142,18 +142,13 @@ inline bool atomic_cas_int32(int32_t* ptr, int32_t& expected, int32_t desired)
 #endif
 }
 
-inline uint64_t double_to_uint64(double value)
+// Helper function equivalent to std::bit_cast in C++20
+template<typename To, typename From>
+inline To bit_cast_value(const From& value)
 {
-  uint64_t bits;
-  std::memcpy(&bits, &value, sizeof(value));
-  return bits;
-}
-
-inline double uint64_to_double(uint64_t bits)
-{
-  double value;
-  std::memcpy(&value, &bits, sizeof(value));
-  return value;
+  To out;
+  std::memcpy(&out, &value, sizeof(To));
+  return out;
 }
 
 inline void atomic_update_double(double* ptr, double value, bool is_min)
@@ -162,31 +157,31 @@ inline void atomic_update_double(double* ptr, double value, bool is_min)
   using may_alias_uint64_t [[gnu::may_alias]] = uint64_t;
   auto* bits_ptr = reinterpret_cast<may_alias_uint64_t*>(ptr);
   uint64_t current_bits = __atomic_load_n(bits_ptr, __ATOMIC_SEQ_CST);
-  double current = uint64_to_double(current_bits);
+  double current = bit_cast_value<double>(current_bits);
   while (is_min ? (value < current) : (value > current)) {
-    uint64_t desired_bits = double_to_uint64(value);
+    uint64_t desired_bits = bit_cast_value<uint64_t>(value);
     uint64_t expected_bits = current_bits;
     if (__atomic_compare_exchange_n(bits_ptr, &expected_bits, desired_bits,
           false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
       return;
     }
     current_bits = expected_bits;
-    current = uint64_to_double(current_bits);
+    current = bit_cast_value<double>(current_bits);
   }
 
 #elif defined(_MSC_VER)
   auto* bits_ptr = reinterpret_cast<volatile long long*>(ptr);
   long long current_bits = *bits_ptr;
-  double current = uint64_to_double(current_bits);
+  double current = bit_cast_value<double>(current_bits);
   while (is_min ? (value < current) : (value > current)) {
-    long long desired_bits = double_to_uint64(value);
+    long long desired_bits = bit_cast_value<long long>(value);
     long long old_bits =
       _InterlockedCompareExchange64(bits_ptr, desired_bits, current_bits);
     if (old_bits == current_bits) {
       return;
     }
     current_bits = old_bits;
-    current = uint64_to_double(current_bits);
+    current = bit_cast_value<double>(current_bits);
   }
 
 #else

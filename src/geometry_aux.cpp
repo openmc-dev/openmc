@@ -55,8 +55,13 @@ void read_geometry_xml()
 void read_geometry_xml(pugi::xml_node root)
 {
   // Read surfaces, cells, lattice
-  read_surfaces(root);
+  std::set<std::pair<int, int>> periodic_pairs;
+  std::unordered_map<int, double> albedo_map;
+  std::unordered_map<int, int> periodic_sense_map;
+
+  read_surfaces(root, periodic_pairs, albedo_map, periodic_sense_map);
   read_cells(root);
+  prepare_boundary_conditions(periodic_pairs, albedo_map, periodic_sense_map);
   read_lattices(root);
 
   // Check to make sure a boundary condition was applied to at least one

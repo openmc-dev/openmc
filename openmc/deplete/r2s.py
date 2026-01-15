@@ -392,6 +392,7 @@ class R2SManager:
         )
         output_path = output_dir / 'depletion_results.h5'
         integrator.integrate(final_step=False, path=output_path)
+        comm.barrier()
 
         # Get depletion results
         self.results['depletion_results'] = Results(output_path)

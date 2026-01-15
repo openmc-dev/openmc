@@ -131,7 +131,7 @@ class StatePoint:
             Choice of volume estimator for the random ray solver, e.g.
             'naive', 'simulation_averaged', or 'hybrid'
         :volume_normalized_flux_tallies:
-            Indicated whether volume normalized flux tallies are used or not.
+            Indicates whether volume normalized flux tallies are used or not.
 
         .. versionadded:: 0.16.0
     run_mode : str

@@ -1,6 +1,8 @@
 from math import pi
 from tempfile import TemporaryDirectory
 from pathlib import Path
+import itertools
+import random
 
 import h5py
 import numpy as np
@@ -761,25 +763,51 @@ def test_mesh_material_volumes_boundary_conditions(sphere_model):
         assert evaluated[1] == pytest.approx(expected[1], rel=1e-2)
 
 
-def test_mesh_material_volumes_bounding_boxes(sphere_model):
-    # Choose r_max such that the spherical mesh bounding box is fully contained
-    # in the geometry (the sphere_model has an outer sphere boundary at r=25).
-    mesh = openmc.SphericalMesh([0.0, 14.0], origin=(0.0, 0.0, 0.0))
+def test_mesh_material_volumes_bounding_boxes():
+    # Create a model with 8 spherical cells at known locations with random radii
+    box = openmc.model.RectangularParallelepiped(
+        -10, 10, -10, 10, -10, 10, boundary_type='vacuum')
 
-    mmv = mesh.material_volumes(sphere_model, (0, 50, 50), bounding_boxes=True)
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+
+    sph_cells = []
+    for x, y, z in itertools.product((-5., 5.), repeat=3):
+        mat_i = mat.clone()
+        sph = openmc.Sphere(x, y, z, r=random.uniform(0.5, 1.5))
+        sph_cells.append(openmc.Cell(region=-sph, fill=mat_i))
+    background = openmc.Cell(region=-box & openmc.Intersection([~c.region for c in sph_cells]))
+
+    model = openmc.Model()
+    model.geometry = openmc.Geometry(sph_cells + [background])
+    model.settings.particles = 1000
+    model.settings.batches = 10
+
+    # Create a one-element mesh that encompasses the entire geometry
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-10., -10., -10.)
+    mesh.upper_right = (10., 10., 10.)
+    mesh.dimension = (1, 1, 1)
+
+    # Run material volume calculation with bounding boxes
+    n_samples = (400, 400, 400)
+    mmv = mesh.material_volumes(model, n_samples, max_materials=10, bounding_boxes=True)
     assert mmv.has_bounding_boxes
 
-    mesh_bb = mesh.bounding_box
-    found = False
-    for _, vol, bb in mmv.by_element(0, include_bboxes=True):
-        if vol > 0.0:
-            assert bb is not None
-            assert np.all(bb.lower_left >= mesh_bb.lower_left - 1e-12)
-            assert np.all(bb.upper_right <= mesh_bb.upper_right + 1e-12)
-            found = True
-            break
+    # Create a mapping of material ID to bounding box
+    bbox_by_mat = {
+        mat_id: bbox
+        for mat_id, vol, bbox in mmv.by_element(0, include_bboxes=True)
+        if mat_id is not None and vol > 0.0
+    }
 
-    assert found
+    # Match the mesh ray spacing used for the bounding box estimator.
+    tol = 0.5 * mesh.bounding_box.width[0] / n_samples[0]
+    for cell in sph_cells:
+        bbox = bbox_by_mat[cell.fill.id]
+        cell_bbox = cell.bounding_box
+        np.testing.assert_allclose(bbox.lower_left, cell_bbox.lower_left, atol=tol)
+        np.testing.assert_allclose(bbox.upper_right, cell_bbox.upper_right, atol=tol)
 
 
 def test_raytrace_mesh_infinite_loop(run_in_tmpdir):

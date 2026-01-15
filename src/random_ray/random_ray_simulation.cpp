@@ -139,7 +139,6 @@ void openmc_run_random_ray()
   
   // Output all simulation results
   sim.output_simulation_results();
-  }
 }
 
 // Enforces restrictions on inputs in random ray mode.  While there are

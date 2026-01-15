@@ -1342,8 +1342,6 @@ void FlatSourceDomain::set_fw_adjoint_sources()
   } // End CADIS logic
 }
 
-}
-
 void FlatSourceDomain::set_local_adjoint_sources()
 {
   // Set the external source to user-specified adjoint sources.

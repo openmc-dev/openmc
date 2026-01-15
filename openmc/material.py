@@ -602,6 +602,11 @@ class Material(IDManagerMixin):
 
             elif isinstance(photon_source_per_atom, Tabular):
 
+                # fix zero p values in tabular spectrum
+                p_vals[-1] = p_vals[-2] if p_vals[-1] == 0.0 else p_vals[-1]
+                if p_vals[0] == 0.0:
+                    p_vals = p_vals[1:]
+                    e_vals = e_vals[1:]
 
                 # generate the tabulated1D functions
                 e_p_dist = Tabulated1D(

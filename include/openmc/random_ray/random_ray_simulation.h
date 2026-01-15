@@ -19,9 +19,10 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
-  void compute_segment_correction_factors();
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fixed_sources_adjoint();
+  void run_single_simulation();
+  void random_ray_adjoint();
   void simulate();
   void output_simulation_results() const;
   void instability_check(
@@ -51,6 +52,12 @@ private:
   // Number of energy groups
   int negroups_;
 
+  // Toggle for first simulation
+  bool is_first_simulation_;
+
+  // Flag for adjoint simulation;
+  bool adjoint_needed_;
+
 }; // class RandomRaySimulation
 
 //============================================================================
@@ -60,6 +67,7 @@ private:
 void openmc_run_random_ray();
 void validate_random_ray_inputs();
 void openmc_reset_random_ray();
+void print_adjoint_header();
 
 } // namespace openmc
 

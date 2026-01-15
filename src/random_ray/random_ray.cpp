@@ -770,7 +770,6 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 {
   domain_ = domain;
   ntemperature_ = domain->ntemperature_;
-  std::cout << "Number of temperature points: " << ntemperature_ << std::endl;
 
   // Reset particle event counter
   n_event() = 0;

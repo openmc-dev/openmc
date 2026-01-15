@@ -1539,7 +1539,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // problems with 1/Sigma_t
   if (material != MATERIAL_VOID) {
     temp = data::mg.macro_xs_[material].get_temperature_index(
-      cell.temperature(gs.cell_instance()));
+      cell.sqrtkT(gs.cell_instance()));
     for (int g = 0; g < negroups_; g++) {
       double sigma_t =
         sigma_t_[(material * ntemperature_ + temp) * negroups_ + g];

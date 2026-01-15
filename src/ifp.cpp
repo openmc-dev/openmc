@@ -33,14 +33,16 @@ void resize_simulation_ifp_banks()
     simulation::ifp_fission_lifetime_bank, 3 * simulation::work_per_rank);
 }
 
-void copy_ifp_data_from_fission_banks(
-  int i_bank, vector<int>& delayed_groups, vector<double>& lifetimes)
+void copy_ifp_data_from_fission_banks(int i_bank, int j_bank,
+  vector<vector<int>>& delayed_groups_bank,
+  vector<vector<double>>& lifetimes_bank)
 {
   if (simulation::ifp_delayed_on)
-    delayed_groups = simulation::ifp_fission_delayed_group_bank[i_bank];
+    delayed_groups_bank[j_bank] =
+      simulation::ifp_fission_delayed_group_bank[i_bank];
 
   if (simulation::ifp_lifetime_on)
-    lifetimes = simulation::ifp_fission_lifetime_bank[i_bank];
+    lifetimes_bank[j_bank] = simulation::ifp_fission_lifetime_bank[i_bank];
 }
 
 #ifdef OPENMC_MPI

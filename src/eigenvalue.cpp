@@ -166,7 +166,7 @@ void synchronize_bank()
     int64_t idx = std::floor(tooth) - start;
     temp_sites[index_temp] = simulation::fission_bank[idx];
     copy_ifp_data_from_fission_banks(
-      idx, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
+      idx, index_temp, temp_delayed_groups, temp_lifetimes);
     ++index_temp;
 
     // Next tooth

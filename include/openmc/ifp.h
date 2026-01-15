@@ -76,10 +76,12 @@ void resize_simulation_ifp_banks();
 //! Retrieve IFP data from the IFP fission banks.
 //!
 //! \param[in] i_bank Index in the fission banks
-//! \param[in,out] delayed_groups Delayed group numbers
-//! \param[in,out] lifetimes Lifetimes lists
-void copy_ifp_data_from_fission_banks(
-  int i_bank, vector<int>& delayed_groups, vector<double>& lifetimes);
+//! \param[in] j_bank Index in the ifp banks
+//! \param[in,out] delayed_groups_bank Delayed group numbers
+//! \param[in,out] lifetimes_bank Lifetimes lists
+void copy_ifp_data_from_fission_banks(int i_bank, int j_bank,
+  vector<vector<int>>& delayed_groups_bank,
+  vector<vector<double>>& lifetimes_bank);
 
 #ifdef OPENMC_MPI
 

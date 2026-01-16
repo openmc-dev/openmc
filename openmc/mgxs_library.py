@@ -515,6 +515,70 @@ class XSdata:
         if np.sum(array) > 0:
             self._fissionable = True
 
+    def add_temperature_data(self, other):
+        """This method adds temperature-dependent cross section
+        values from other to this XSdata object.
+
+        Parameters
+        ----------
+        other: openmc.XSdata
+            The other XSdata object to fetch data from
+        """
+
+        # Sanity check to make sure they have the same name
+        check_value('name', other.name, self.name)
+
+        # Add the temperature data.
+        for temp in other.temperatures:
+            if temp not in self.temperatures:
+                self.add_temperature(temp)
+
+            if np.all(other.absorption[other._temperature_index(temp)] != None):
+              self.set_absorption(other.absorption[other._temperature_index(temp)], temp)
+
+            if np.all(other.beta[other._temperature_index(temp)] != None):
+              self.set_beta(other.beta[other._temperature_index(temp)], temp)
+
+            if np.all(other.chi[other._temperature_index(temp)] != None):
+              self.set_chi(other.chi[other._temperature_index(temp)], temp)
+
+            if np.all(other.chi_delayed[other._temperature_index(temp)] != None):
+              self.set_chi_delayed(other.chi_delayed[other._temperature_index(temp)], temp)
+
+            if np.all(other.chi_prompt[other._temperature_index(temp)] != None):
+              self.set_chi_prompt(other.chi_prompt[other._temperature_index(temp)], temp)
+
+            if np.all(other.decay_rate[other._temperature_index(temp)] != None):
+              self.set_decay_rate(other.decay_rate[other._temperature_index(temp)], temp)
+
+            if np.all(other.delayed_nu_fission[other._temperature_index(temp)] != None):
+              self.set_delayed_nu_fission(other.delayed_nu_fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.fission[other._temperature_index(temp)] != None):
+              self.set_fission(other.fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.inverse_velocity[other._temperature_index(temp)] != None):
+              self.set_inverse_velocity(other.inverse_velocity[other._temperature_index(temp)], temp)
+
+            if np.all(other.kappa_fission[other._temperature_index(temp)] != None):
+              self.set_kappa_fission(other.kappa_fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.multiplicity_matrix[other._temperature_index(temp)] != None):
+              self.set_multiplicity_matrix(other.multiplicity_matrix[other._temperature_index(temp)], temp)
+
+            if np.all(other.nu_fission[other._temperature_index(temp)] != None):
+              self.set_nu_fission(other.nu_fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.prompt_nu_fission[other._temperature_index(temp)] != None):
+              self.set_prompt_nu_fission(other.prompt_nu_fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.scatter_matrix[other._temperature_index(temp)] != None):
+              self.set_scatter_matrix(other.scatter_matrix[other._temperature_index(temp)], temp)
+
+            if np.all(other.fission[other._temperature_index(temp)] != None):
+              self.set_total(other.total[other._temperature_index(temp)], temp)
+
+
     def set_total(self, total, temperature=ROOM_TEMPERATURE_KELVIN):
         """This method sets the cross section for this XSdata object at the
         provided temperature.

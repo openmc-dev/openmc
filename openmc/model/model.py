@@ -1932,8 +1932,9 @@ class Model:
         mgxs_lib = Model._auto_generate_mgxs_lib(
                 model, groups, correction, directory)
 
-        # Create a MGXS File which can then be written to disk
-        return mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
+        data = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
+        data.temperatures[0] = temperature
+        return data
 
     def _generate_infinite_medium_mgxs(
         self,
@@ -2046,17 +2047,10 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for m in range(len(self.materials)):
-                mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups, temperatures))
+                mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups))
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
-                    mgxs = raw_mgxs_sets[temperature][m]
-                    mgxs_sets[-1].set_absorption(mgxs.absorption[0], temperature=temperature)
-                    mgxs_sets[-1].set_chi(mgxs.chi[0], temperature=temperature)
-                    mgxs_sets[-1].set_fission(mgxs.fission[0], temperature=temperature)
-                    mgxs_sets[-1].set_multiplicity_matrix(mgxs.multiplicity_matrix[0], temperature=temperature)
-                    mgxs_sets[-1].set_nu_fission(mgxs.nu_fission[0], temperature=temperature)
-                    mgxs_sets[-1].set_scatter_matrix(mgxs.scatter_matrix[0], temperature=temperature)
-                    mgxs_sets[-1].set_total(mgxs.total[0], temperature=temperature)
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][m])
 
             # Write the file to disk.
             mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
@@ -2206,7 +2200,12 @@ class Model:
         mgxs_lib = Model._auto_generate_mgxs_lib(
                 model, groups, correction, directory)
 
-        return {mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains}
+        # Fetch all of the isothermal results.
+        data = {mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains}
+        for d in data.values():
+            d.temperatures[0] = temperature
+
+        return data
 
     def _generate_stochastic_slab_mgxs(
         self,
@@ -2318,17 +2317,11 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for mat in self.materials:
-                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures))
+                mgxs_sets.append(openmc.XSdata(mat.name, groups))
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
-                    mgxs = raw_mgxs_sets[temperature][mat.name]
-                    mgxs_sets[-1].set_absorption(mgxs.absorption[0], temperature=temperature)
-                    mgxs_sets[-1].set_chi(mgxs.chi[0], temperature=temperature)
-                    mgxs_sets[-1].set_fission(mgxs.fission[0], temperature=temperature)
-                    mgxs_sets[-1].set_multiplicity_matrix(mgxs.multiplicity_matrix[0], temperature=temperature)
-                    mgxs_sets[-1].set_nu_fission(mgxs.nu_fission[0], temperature=temperature)
-                    mgxs_sets[-1].set_scatter_matrix(mgxs.scatter_matrix[0], temperature=temperature)
-                    mgxs_sets[-1].set_total(mgxs.total[0], temperature=temperature)
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
+                print(mgxs_sets[-1].temperatures)
 
             # Write the file to disk.
             mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
@@ -2395,8 +2388,11 @@ class Model:
         mgxs_lib = Model._auto_generate_mgxs_lib(
                 model, groups, correction, directory)
 
-        # Fetch all of the isothermal results
-        return {mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains}
+        # Fetch all of the isothermal results.
+        data = {mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains}
+        for d in data.values():
+            d.temperatures[0] = temperature
+        return data
 
     def _generate_material_wise_mgxs(
         self,
@@ -2477,17 +2473,10 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for mat in self.materials:
-                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures))
+                mgxs_sets.append(openmc.XSdata(mat.name, groups))
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
-                    mgxs = raw_mgxs_sets[temperature][mat.name]
-                    mgxs_sets[-1].set_absorption(mgxs.absorption[0], temperature=temperature)
-                    mgxs_sets[-1].set_chi(mgxs.chi[0], temperature=temperature)
-                    mgxs_sets[-1].set_fission(mgxs.fission[0], temperature=temperature)
-                    mgxs_sets[-1].set_multiplicity_matrix(mgxs.multiplicity_matrix[0], temperature=temperature)
-                    mgxs_sets[-1].set_nu_fission(mgxs.nu_fission[0], temperature=temperature)
-                    mgxs_sets[-1].set_scatter_matrix(mgxs.scatter_matrix[0], temperature=temperature)
-                    mgxs_sets[-1].set_total(mgxs.total[0], temperature=temperature)
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
 
             # Write the file to disk.
             mgxs_file = openmc.MGXSLibrary(energy_groups=groups)

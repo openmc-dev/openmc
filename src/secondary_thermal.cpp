@@ -64,8 +64,6 @@ double CoherentElasticAE::sample_energy_and_pdf(
   }
 
   const int n = upper_bound_index(energies.begin(), energies.end(), E_in);
-  vector<double> energies_cut(energies.begin(), energies.begin() + n);
-  vector<double> factors_cut(factors.begin(), factors.begin() + n);
 
   vector<double> mu_vector;
   mu_vector.reserve(n);

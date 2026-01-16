@@ -6,6 +6,7 @@
 
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
+#include "openmc/search.h"
 #include "openmc/secondary_correlated.h"
 #include "openmc/vector.h"
 
@@ -196,11 +197,11 @@ private:
 
 struct DoubleVector {
   double data;
-  double& operator[](size_t index) { return data; }
-}
+  const double& operator[](size_t index) const { return data; }  
+};
 
-typename<T> double
-get_pdf_discrete(const vector<double>& mu, const T& w, double mu_0)
+template<typename T>
+double get_pdf_discrete(const vector<double>& mu, const T& w, double mu_0)
 {
   // Make sure mu is in range [-1,1]
   if (std::abs(mu_0) > 1.0)

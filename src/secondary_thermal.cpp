@@ -68,7 +68,7 @@ double CoherentElasticAE::sample_energy_and_pdf(
   vector<double> mu_vector;
   mu_vector.reserve(n);
 
-  std::transform(std::advance(energies.rbegin(), n - 1), energies.rend(),
+  std::transform(energies.rbegin() + n - 1, energies.rend(),
     std::back_inserter(mu_vector),
     [E_in](double Ei) { return 1 - 2 * Ei / E_in; });
 

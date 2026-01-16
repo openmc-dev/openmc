@@ -1919,7 +1919,7 @@ def combine_distributions(
 
     """
     for i, dist in enumerate(dists):
-        cv.check_type(f'dists[{i}]', dist, Discrete, Tabular)
+        cv.check_type(f'dists[{i}]', dist, (Discrete, Tabular))
         cv.check_type(f'probs[{i}]', probs[i], Real)
         cv.check_greater_than(f'probs[{i}]', probs[i], 0.0)     
 

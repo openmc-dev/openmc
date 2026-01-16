@@ -1947,7 +1947,7 @@ class Model:
         temperature_settings: dict | None = None,
         temperatures: Sequence[float] | None = None,
     ):
-        """Generate a single MGXS set for one material, each
+        """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
         material. A discrete source is used to sample particles, with an equal
         strength spread across each of the energy groups. This is a highly naive
@@ -2145,7 +2145,7 @@ class Model:
     ) -> dict[str, openmc.XSdata]:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. If a temperature is specified, all materials in the slab have
-        their temperatures set to an isothermal value.
+        their temperatures set to be isothermal at this temperature.
 
         Parameters
         ----------
@@ -2226,7 +2226,9 @@ class Model:
         will generate cross sections for all materials in the problem regardless
         of type. If this is a fixed source problem, a discrete source is used to
         sample particles, with an equal strength spread across each of the
-        energy groups.
+        energy groups. If temperature data points are provided,
+        isothermal cross sections are generated at each temperature point for
+        the stochastic slab to build a temperature interpolation table.
 
         Parameters
         ----------
@@ -2340,10 +2342,12 @@ class Model:
         temperature: float | None = None,
     ) -> dict[str, openmc.XSdata]:
         """Generate a material-wise MGXS library for the model by running the
-        original continuous energy OpenMC simulation of the full material
-        geometry and source, and tally MGXS data for each material. If a temperature
-        is specified, each material in the input model is set to that temperature.
-        Otherwise, the original material temperatures are used.
+        original continuous energy OpenMC simulation. If a temperature is
+        specified, each material in the input model is set to that temperature.
+        Otherwise, the original material temperatures are used. If temperature
+        data points are provided, isothermal cross sections are generated at
+        each temperature point for the whole model to build a temperature
+        interpolation table.
 
         Parameters
         ----------

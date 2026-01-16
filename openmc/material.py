@@ -26,7 +26,7 @@ from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, BARN_PER_CM_SQ, JOULE_PER_EV
 from openmc.data.function import Combination, Tabulated1D, Sum
-from openmc.data import mu_en_coefficients
+from openmc.data import mu_en_coefficients, dose_coefficients
 from openmc.data.photon_attenuation import linear_attenuation_xs
 
 
@@ -478,11 +478,11 @@ class Material(IDManagerMixin):
         return Sum(terms) if terms else None
 
 
-    def get_photon_contact_dose_rate(self,  by_nuclide: bool = False) -> float | dict[str, float]:
+    def get_photon_contact_dose_rate(self, dose_quantity:str = "absorbed-air", build_up:float = 2.0, by_nuclide: bool = False) -> float | dict[str, float]:
         """Compute the photon contact dose rate (CDR) produced by radioactive decay
         of the material.
 
-        A slab-geometry approximation and a fixed photon build-up factor are used.
+        A slab-geometry approximation and a photon build-up factor are used.
 
         The method implemented here follows the approach described in FISPACT-II
         manual (UKAEA-CCFE-RE(21)02 - May 2021). Appendix C.7.1.
@@ -508,6 +508,12 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
+        dose_quantity : {'absorbed-air', 'effective'}, optional
+            Specifies the dose quantity to be calculated. 
+            The only supported options are 'aborbed-air' which implements a the methodology
+            from FISPACT-II, and 'effective' which uses ICRP-116 effective dose coefficients.
+        build_up : float, optional. The default value is 2.0 as suggested in the FISPACT-II
+            manual.
         by_nuclide : bool, optional
             Specifies if the cdr should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -515,10 +521,14 @@ class Material(IDManagerMixin):
         Returns
         -------
         cdr : float or dict[str, float]
-            Photon Contact Dose Rate due to material decay in [Sv/hr].
+            Photon Contact Dose Rate due to material decay
+            If the dose quantity is [Sv/hr].
         """
 
         cv.check_type("by_nuclide", by_nuclide, bool)
+        cv.check_type("dose_quantity", dose_quantity, str)
+        cv.check_value("dose_quantity", dose_quantity, ['absorbed-air', 'effective'])
+        cv.check_type("build_up", build_up, float)
 
         # Mass density of the material [g/cm^3]
         rho = self.get_mass_density()  # g/cm^3
@@ -528,11 +538,6 @@ class Material(IDManagerMixin):
                 f'Material ID="{self.id}" has non-positive mass density; '
                 "cannot compute mass attenuation coefficient."
             )
-
-        # mu_en/ rho for air distribution, [eV, cm2/g]
-        mu_en_x, mu_en_y = mu_en_coefficients("air", data_source="nist126")
-        mu_en_air = Tabulated1D(mu_en_x, mu_en_y, breakpoints=[len(mu_en_x)], interpolation=[5])
-
 
         # photon mass attenuation distribution as a function of energy
         # distribution values in [cm2/g]
@@ -546,24 +551,45 @@ class Material(IDManagerMixin):
         # CDR computation
         cdr = {}
 
-        # build up factor - as reported from fispact reference
-        B = 2.0
         geometry_factor_slab = 0.5
 
         # ancillary conversion factors for clarity
         seconds_per_hour = 3600.0
         grams_per_kg = 1000.0
+        sv_per_psv = 1e-12
 
-        # converts [eV barns-1 cm-1 s-1] to [Sv hr-1]
-        multiplier = (
-            B
-            * geometry_factor_slab
-            * seconds_per_hour
-            * grams_per_kg
-            * (1 / rho)
-            * BARN_PER_CM_SQ
-            * JOULE_PER_EV
-        )
+        if dose_quantity == 'absorbed-air':
+
+            # mu_en/ rho for air distribution, [eV, cm2/g]
+            response_f_x, response_f_y = mu_en_coefficients("air", data_source="nist126")
+
+            # converts [eV barns-1 cm-1 s-1] to [Gy hr-1]
+            multiplier = (
+                build_up
+                * geometry_factor_slab
+                * seconds_per_hour
+                * grams_per_kg
+                * (1 / rho)
+                * BARN_PER_CM_SQ
+                * JOULE_PER_EV
+            )
+
+        elif dose_quantity == 'effective':
+
+            # effective dose as a function of photon fluence [pSv cm2]
+            response_f_x, response_f_y = dose_coefficients("photon", geometry='AP', data_source='icrp116')
+
+            # converts [pSv g barns-1 cm-1 s-1] to [Sv hr-1]
+            multiplier = (
+                build_up
+                * geometry_factor_slab
+                * seconds_per_hour
+                * sv_per_psv
+                * (1 / rho)
+                * BARN_PER_CM_SQ
+            )
+
+        response_f = Tabulated1D(response_f_x, response_f_y, breakpoints=[len(response_f_x)], interpolation=[5])
 
         for nuc, nuc_atoms_per_bcm in self.get_nuclide_atom_densities().items():
 
@@ -580,7 +606,7 @@ class Material(IDManagerMixin):
                 e_vals = np.array(photon_source_per_atom.x)
                 p_vals = np.array(photon_source_per_atom.p)
 
-                e_lists = [e_vals, mu_en_air.x]
+                e_lists = [e_vals, response_f.x]
                 e_lists.extend(mass_attenuation_e_lists)
 
                 # clip distributions for values outside the tabulated values
@@ -604,17 +630,19 @@ class Material(IDManagerMixin):
                     raise ValueError(
                         f"Mass attenuation coefficient <= 0 at energies: {zero_vals}"
                     )
-                # units [eV atoms-1 s-1]
-                cdr_nuc += np.sum((mu_en_air(e_vals) / mu_vals) * p_vals * e_vals)
+                if dose_quantity == 'absorbed-air':
+                    # units [eV atoms-1 s-1]
+                    cdr_nuc += np.sum((response_f(e_vals) / mu_vals) * p_vals * e_vals)
+                elif dose_quantity == 'effective':
+                    # units [pSv g atoms-1 s-1]
+                    cdr_nuc += np.sum((response_f(e_vals) / mu_vals) * p_vals)
+
 
             elif isinstance(photon_source_per_atom, Tabular):
 
                 # generate the tabulated1D functions
                 e_p_dist = Tabulated1D(
                     e_vals, p_vals, breakpoints=[len(e_vals)], interpolation=[1]
-                )
-                e_e_dist = Tabulated1D(
-                    e_vals, e_vals, breakpoints=[len(e_vals)], interpolation=[2]
                 )
 
 
@@ -632,10 +660,22 @@ class Material(IDManagerMixin):
                         f"Mass attenuation coefficient <= 0 at energies: {zero_vals}"
                     )
 
-                integrand_operator = Combination(
-                    functions=[mu_en_air, e_p_dist, e_e_dist, mass_attenuation_dist],
-                    operations=[np.multiply, np.multiply, np.divide],
-                )
+                if dose_quantity == 'absorbed-air':
+                    # units [eV atoms-1 s-1]
+                    e_e_dist = Tabulated1D(
+                        e_vals, e_vals, breakpoints=[len(e_vals)], interpolation=[2]
+                    )
+                    integrand_operator = Combination(
+                        functions=[response_f, e_p_dist, e_e_dist, mass_attenuation_dist],
+                        operations=[np.multiply, np.multiply, np.divide],
+                    )
+                elif dose_quantity == 'effective':
+                    # units [pSv g atoms-1 s-1]
+                    integrand_operator = Combination(
+                        functions=[response_f, e_p_dist,  mass_attenuation_dist],
+                        operations=[np.multiply,  np.divide],
+                    )
+
 
                 y_evaluated = integrand_operator(e_union)
 
@@ -646,10 +686,12 @@ class Material(IDManagerMixin):
                 cdr_nuc += integrand_function.integral()[-1]
 
 
-            # units [eV barns-1 cm-1 s-1]
+            # units effective dose [eV barns-1 cm-1 s-1]
+            # units air-absorbed dose [pSv g barns-1 cm-1 s-1]
             cdr_nuc *= nuc_atoms_per_bcm
 
-            # units [Sv hr-1] - includes build up factor
+            # units effective dose [Sv hr-1]
+            # units air-absorbed dose [Gy hr-1]
             cdr_nuc *= multiplier
 
             cdr[nuc] = cdr_nuc

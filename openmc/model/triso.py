@@ -761,7 +761,7 @@ class _Cone(_Container):
             self._limits = [[z0 - z + r], 
                             [z0 + z - r, 
                              [1/m,
-                              r_minor - (z0 - z)/m - (r/m)*(m**2 + 1)**0.5]]]
+                              -(r/m)*(m**2 + 1)**0.5 - (z0-z)/m + r_minor]]]
         return self._limits
 
     @limits.setter

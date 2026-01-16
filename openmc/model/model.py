@@ -1895,6 +1895,11 @@ class Model:
         temperature : float, optional
             The isothermal temperature value to apply to the material. If not specified,
             defaults to the temperature in the material.
+
+        Returns
+        -------
+        data : openmc.XSdata
+            The material MGXS for the given temperature isotherm.
         """
         model = openmc.Model()
 
@@ -2042,6 +2047,7 @@ class Model:
             mgxs_sets = []
             for m in range(len(self.materials)):
                 mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups, temperatures))
+                mgxs_sets[-1].order = 0
                 for temperature in temperatures:
                     mgxs = raw_mgxs_sets[temperature][m]
                     mgxs_sets[-1].set_absorption(mgxs.absorption[0], temperature=temperature)
@@ -2142,7 +2148,7 @@ class Model:
         source: openmc.IndependentSource,
         temperature_settings: dict,
         temperature: float | None = None,
-    ) -> Sequence[openmc.XSdata]:
+    ) -> dict[str, openmc.XSdata]:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. If a temperature is specified, all materials in the slab have
         their temperatures set to an isothermal value.
@@ -2150,7 +2156,7 @@ class Model:
         Parameters
         ----------
         stoch_geom : openmc.Geometry
-            The sstochastic slab geometry.
+            The stochastic slab geometry.
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
         nparticles : int
@@ -2167,6 +2173,11 @@ class Model:
         temperature : float, optional
             The isothermal temperature value to apply to the materials in the
             slab. If not specified, defaults to the temperature in the materials.
+
+        Returns
+        -------
+        data : dict[str, openmc.XSdata]
+            A dictionary where the key is the name of the material and the value is the isothermal MGXS.
         """
 
         model = openmc.Model()
@@ -2195,8 +2206,7 @@ class Model:
         mgxs_lib = Model._auto_generate_mgxs_lib(
                 model, groups, correction, directory)
 
-        # Fetch all of the isothermal results
-        return [mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains]
+        return {mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains}
 
     def _generate_stochastic_slab_mgxs(
         self,
@@ -2283,7 +2293,7 @@ class Model:
                       directory,
                       src,
                       temp_settings
-            )
+            ).values()
 
             # Write the file to disk.
             mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
@@ -2307,10 +2317,11 @@ class Model:
 
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
-            for m in range(len(self.materials)):
-                mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups, temperatures))
+            for mat in self.materials:
+                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures))
+                mgxs_sets[-1].order = 0
                 for temperature in temperatures:
-                    mgxs = raw_mgxs_sets[temperature][m]
+                    mgxs = raw_mgxs_sets[temperature][mat.name]
                     mgxs_sets[-1].set_absorption(mgxs.absorption[0], temperature=temperature)
                     mgxs_sets[-1].set_chi(mgxs.chi[0], temperature=temperature)
                     mgxs_sets[-1].set_fission(mgxs.fission[0], temperature=temperature)
@@ -2334,7 +2345,7 @@ class Model:
         directory: PathLike,
         temperature_settings: dict,
         temperature: float | None = None,
-    ) -> Sequence[openmc.XSdata]:
+    ) -> dict[str, openmc.XSdata]:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
         geometry and source, and tally MGXS data for each material. If a temperature
@@ -2360,6 +2371,11 @@ class Model:
             The isothermal temperature value to apply to the materials in the
             input model. If not specified, defaults to the temperatures in the
             materials.
+
+        Returns
+        -------
+        data : dict[str, openmc.XSdata]
+            A dictionary where the key is the name of the material and the value is the isothermal MGXS.
         """
         model = copy.deepcopy(input_model)
         model.tallies = openmc.Tallies()
@@ -2380,7 +2396,7 @@ class Model:
                 model, groups, correction, directory)
 
         # Fetch all of the isothermal results
-        return [mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains]
+        return {mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains}
 
     def _generate_material_wise_mgxs(
         self,
@@ -2437,7 +2453,7 @@ class Model:
                       correction,
                       directory,
                       temp_settings
-            )
+            ).values()
 
             # Write the file to disk.
             mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
@@ -2460,10 +2476,11 @@ class Model:
 
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
-            for m in range(len(self.materials)):
-                mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups, temperatures))
+            for mat in self.materials:
+                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures))
+                mgxs_sets[-1].order = 0
                 for temperature in temperatures:
-                    mgxs = raw_mgxs_sets[temperature][m]
+                    mgxs = raw_mgxs_sets[temperature][mat.name]
                     mgxs_sets[-1].set_absorption(mgxs.absorption[0], temperature=temperature)
                     mgxs_sets[-1].set_chi(mgxs.chi[0], temperature=temperature)
                     mgxs_sets[-1].set_fission(mgxs.fission[0], temperature=temperature)

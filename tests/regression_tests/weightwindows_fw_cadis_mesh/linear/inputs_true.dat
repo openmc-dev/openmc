@@ -227,7 +227,7 @@
           <parameters>0.0 0.0 0.0 30.0 30.0 30.0</parameters>
         </space>
       </source>
-      <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
+      <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
       <source_region_meshes>
         <mesh id="1">
           <domain id="6" type="universe"/>

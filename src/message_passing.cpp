@@ -10,6 +10,7 @@ bool master {true};
 #ifdef OPENMC_MPI
 MPI_Comm intracomm {MPI_COMM_NULL};
 MPI_Datatype source_site {MPI_DATATYPE_NULL};
+MPI_Datatype collision_track_site {MPI_DATATYPE_NULL};
 #endif
 
 extern "C" bool openmc_master()
@@ -37,6 +38,14 @@ vector<int64_t> calculate_parallel_index_vector(int64_t size)
 
   return result;
 }
+
+#ifdef OPENMC_MPI
+// Specializations of the MPITypeMap template struct
+template<>
+const MPI_Datatype MPITypeMap<int>::mpi_type = MPI_INT;
+template<>
+const MPI_Datatype MPITypeMap<double>::mpi_type = MPI_DOUBLE;
+#endif
 
 } // namespace mpi
 

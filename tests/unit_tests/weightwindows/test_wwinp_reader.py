@@ -140,4 +140,4 @@ def test_wwinp_reader_failures(wwinp_data, request):
     filename, expected_failure = wwinp_data
 
     with pytest.raises(expected_failure):
-        _ = openmc.wwinp_to_wws(request.node.path.parent / filename)
+        _ = openmc.WeightWindowsList.from_wwinp(request.node.path.parent / filename)

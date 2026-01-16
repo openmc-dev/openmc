@@ -259,3 +259,29 @@ def test_get_reshaped_data(run_in_tmpdir):
 
     assert data1.shape == (2, 19*3*2, 1, 1)
     assert data2.shape == (2, 19, 3, 2, 1, 1)
+
+def test_mesh_filter_rotation_roundtrip(run_in_tmpdir):
+    """Test that MeshFilter rotation works as expected"""
+
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [-10, -10, -10]
+    mesh.upper_right = [10, 10, 10]
+    mesh.dimension = [2, 3, 4]
+
+    # check that rotatoin is round-tripped correctly for a set of angles
+    mesh_filter = openmc.MeshFilter(mesh)
+    mesh_filter.rotation = [0, 0, 90]  # Rotate around z-axis by 90 degrees
+
+    elem = mesh_filter.to_xml_element()
+    mesh_filter_xml = openmc.MeshFilter.from_xml_element(elem, meshes={mesh.id: mesh})
+    assert all(mesh_filter_xml.rotation == mesh_filter.rotation)
+
+    # check that rotation matrix is round-tripped correctly for a rotation matrix
+    mesh_filter.rotation = np.array([[0.7071, 0, 0.7071],
+                                     [0, 1, 0],
+                                     [-0.7071, 0, 0.7071]])
+
+    elem = mesh_filter.to_xml_element()
+    mesh_filter_xml = openmc.MeshFilter.from_xml_element(elem, meshes={mesh.id: mesh})
+    assert np.allclose(mesh_filter_xml.rotation, mesh_filter.rotation)

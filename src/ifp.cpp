@@ -28,13 +28,13 @@ bool is_generation_time_or_both()
   return false;
 }
 
-void ifp(const Particle& p, const SourceSite& site, int64_t idx)
+void ifp(const Particle& p, int64_t idx)
 {
   if (is_beta_effective_or_both()) {
     const auto& delayed_groups =
       simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
     simulation::ifp_fission_delayed_group_bank[idx] =
-      _ifp(site.delayed_group, delayed_groups);
+      _ifp(p.delayed_group(), delayed_groups);
   }
   if (is_generation_time_or_both()) {
     const auto& lifetimes =
@@ -63,7 +63,6 @@ void copy_ifp_data_from_fission_banks(
 }
 
 #ifdef OPENMC_MPI
-
 void broadcast_ifp_n_generation(int& n_generation,
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes)
@@ -76,61 +75,6 @@ void broadcast_ifp_n_generation(int& n_generation,
     }
   }
   MPI_Bcast(&n_generation, 1, MPI_INT, 0, mpi::intracomm);
-}
-
-void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
-  vector<MPI_Request>& requests, const vector<vector<int>>& delayed_groups,
-  vector<int>& send_delayed_groups, const vector<vector<double>>& lifetimes,
-  vector<double>& send_lifetimes)
-{
-  // Copy data in send buffers
-  for (int i = idx; i < idx + n; i++) {
-    if (is_beta_effective_or_both()) {
-      std::copy(delayed_groups[i].begin(), delayed_groups[i].end(),
-        send_delayed_groups.begin() + i * n_generation);
-    }
-    if (is_generation_time_or_both()) {
-      std::copy(lifetimes[i].begin(), lifetimes[i].end(),
-        send_lifetimes.begin() + i * n_generation);
-    }
-  }
-  // Send delayed groups
-  if (is_beta_effective_or_both()) {
-    requests.emplace_back();
-    MPI_Isend(&send_delayed_groups[n_generation * idx],
-      n_generation * static_cast<int>(n), MPI_INT, neighbor, mpi::rank,
-      mpi::intracomm, &requests.back());
-  }
-  // Send lifetimes
-  if (is_generation_time_or_both()) {
-    requests.emplace_back();
-    MPI_Isend(&send_lifetimes[n_generation * idx],
-      n_generation * static_cast<int>(n), MPI_DOUBLE, neighbor, mpi::rank,
-      mpi::intracomm, &requests.back());
-  }
-}
-
-void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
-  vector<MPI_Request>& requests, vector<int>& delayed_groups,
-  vector<double>& lifetimes, vector<DeserializationInfo>& deserialization)
-{
-  // Receive delayed groups
-  if (is_beta_effective_or_both()) {
-    requests.emplace_back();
-    MPI_Irecv(&delayed_groups[n_generation * idx],
-      n_generation * static_cast<int>(n), MPI_INT, neighbor, neighbor,
-      mpi::intracomm, &requests.back());
-  }
-  // Receive lifetimes
-  if (is_generation_time_or_both()) {
-    requests.emplace_back();
-    MPI_Irecv(&lifetimes[n_generation * idx],
-      n_generation * static_cast<int>(n), MPI_DOUBLE, neighbor, neighbor,
-      mpi::intracomm, &requests.back());
-  }
-  // Deserialization info to reconstruct data later
-  DeserializationInfo info = {idx, n};
-  deserialization.push_back(info);
 }
 
 void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
@@ -146,31 +90,6 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
       &simulation::ifp_source_lifetime_bank[i_bank]);
   }
 }
-
-void deserialize_ifp_info(int n_generation,
-  const vector<DeserializationInfo>& deserialization,
-  const vector<int>& delayed_groups, const vector<double>& lifetimes)
-{
-  for (auto info : deserialization) {
-    int64_t index_local = info.index_local;
-    int64_t n = info.n;
-
-    for (int i = index_local; i < index_local + n; i++) {
-      if (is_beta_effective_or_both()) {
-        vector<int> delayed_groups_received(
-          delayed_groups.begin() + n_generation * i,
-          delayed_groups.begin() + n_generation * (i + 1));
-        simulation::ifp_source_delayed_group_bank[i] = delayed_groups_received;
-      }
-      if (is_generation_time_or_both()) {
-        vector<double> lifetimes_received(lifetimes.begin() + n_generation * i,
-          lifetimes.begin() + n_generation * (i + 1));
-        simulation::ifp_source_lifetime_bank[i] = lifetimes_received;
-      }
-    }
-  }
-}
-
 #endif
 
 void copy_complete_ifp_data_to_source_banks(

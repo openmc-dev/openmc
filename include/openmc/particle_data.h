@@ -56,6 +56,25 @@ struct SourceSite {
   int64_t progeny_id;
 };
 
+struct CollisionTrackSite {
+  Position r;
+  Direction u;
+  double E;
+  double dE;
+  double time {0.0};
+  double wgt {1.0};
+  int event_mt {0};
+  int delayed_group {0};
+  int cell_id {0};
+  int nuclide_id;
+  int material_id {0};
+  int universe_id {0};
+  int n_collision {0};
+  ParticleType particle;
+  int64_t parent_id;
+  int64_t progeny_id;
+};
+
 //! State of a particle used for particle track files
 struct TrackState {
   Position r;           //!< Position in [cm]
@@ -154,9 +173,10 @@ struct NuclideMicroXS {
 
   // Energy and temperature last used to evaluate these cross sections.  If
   // these values have changed, then the cross sections must be re-evaluated.
-  double last_E {0.0};      //!< Last evaluated energy
-  double last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
-                            //!< * temperature (eV))
+  double last_E {0.0};       //!< Last evaluated energy
+  double last_sqrtkT {0.0};  //!< Last temperature in sqrt(Boltzmann constant
+                             //!< * temperature (eV))
+  double ncrystal_xs {-1.0}; //!< NCrystal cross section
 };
 
 //==============================================================================
@@ -631,6 +651,7 @@ public:
   int& event_mt() { return event_mt_; } // MT number of collision
   const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
+  const int& delayed_group() const { return delayed_group_; }
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 

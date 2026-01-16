@@ -5,7 +5,7 @@ shutdown dose rate calculations.
 
 """
 
-from copy import deepcopy
+from copy import copy
 from typing import Sequence
 from math import log, prod
 
@@ -108,14 +108,15 @@ def time_correction_factors(
     # Create a 2D array for the time correction factors
     h = np.zeros((n_timesteps, n_nuclides))
 
-    for i, (dt, rate) in enumerate(zip(timesteps, source_rates)):
-        # Precompute the exponential terms. Since (1 - exp(-x)) is susceptible to
-        # roundoff error, use expm1 instead (which computes exp(x) - 1)
-        g = np.exp(-decay_rate*dt)
-        one_minus_g = -np.expm1(-decay_rate*dt)
+    # Precompute all exponential terms with same shape as h
+    decay_dt = decay_rate[np.newaxis, :] * timesteps[:, np.newaxis]
+    g = np.exp(-decay_dt)
+    one_minus_g = -np.expm1(-decay_dt)
 
+    # Apply recurrence relation step by step
+    for i in range(len(timesteps)):
         # Eq. (4) in doi:10.1016/j.fusengdes.2019.111399
-        h[i + 1] = rate*one_minus_g + h[i]*g
+        h[i + 1] = source_rates[i] * one_minus_g[i] + h[i] * g[i]
 
     return {nuclides[i]: h[:, i] for i in range(n_nuclides)}
 
@@ -163,8 +164,12 @@ def apply_time_correction(
     radionuclides = [str(x) for x in tally.filters[i_filter].bins]
     tcf = np.array([time_correction_factors[x][index] for x in radionuclides])
 
-    # Create copy of tally
-    new_tally = deepcopy(tally)
+    # Force tally results to be read and std_dev to be computed
+    tally.std_dev
+
+    # Create shallow copy of tally
+    new_tally = copy(tally)
+    new_tally._filters = copy(tally._filters)
 
     # Determine number of bins in other filters
     n_bins_before = prod([f.num_bins for f in tally.filters[:i_filter]])
@@ -176,32 +181,33 @@ def apply_time_correction(
     shape = (n_bins_before, n_radionuclides, n_bins_after, n_nuclides, n_scores)
     tally_sum = new_tally.sum.reshape(shape)
     tally_sum_sq = new_tally.sum_sq.reshape(shape)
+    tally_mean = new_tally.mean.reshape(shape)
+    tally_std_dev = new_tally.std_dev.reshape(shape)
 
     # Apply TCF, broadcasting to the correct dimensions
     tcf.shape = (1, -1, 1, 1, 1)
     new_tally._sum = tally_sum * tcf
     new_tally._sum_sq = tally_sum_sq * (tcf*tcf)
-    new_tally._mean = None
-    new_tally._std_dev = None
+    new_tally._mean = tally_mean * tcf
+    new_tally._std_dev = tally_std_dev * tcf
 
     shape = (-1, n_nuclides, n_scores)
 
     if sum_nuclides:
-        # Query the mean and standard deviation
-        mean = new_tally.mean
-        std_dev = new_tally.std_dev
-
         # Sum over parent nuclides (note that when combining different bins for
         # parent nuclide, we can't work directly on sum_sq)
-        new_tally._mean = mean.sum(axis=1).reshape(shape)
-        new_tally._std_dev = np.linalg.norm(std_dev, axis=1).reshape(shape)
+        new_tally._mean = new_tally.mean.sum(axis=1).reshape(shape)
+        new_tally._std_dev = np.linalg.norm(new_tally.std_dev, axis=1).reshape(shape)
         new_tally._derived = True
 
         # Remove ParentNuclideFilter
         new_tally.filters.pop(i_filter)
     else:
+        # Change shape back to (filter combinations, nuclides, scores)
         new_tally._sum.shape = shape
         new_tally._sum_sq.shape = shape
+        new_tally._mean.shape = shape
+        new_tally._std_dev.shape = shape
 
     return new_tally
 

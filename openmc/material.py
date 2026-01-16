@@ -60,6 +60,26 @@ class Material(IDManagerMixin):
     temperature : float, optional
         Temperature of the material in Kelvin. If not specified, the material
         inherits the default temperature applied to the model.
+    density : float, optional
+        Density of the material (units defined separately)
+    density_units : str
+        Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/m3',
+        'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
+        applies in the case of a multi-group calculation. Defaults to 'sum'.
+    depletable : bool, optional
+        Indicate whether the material is depletable. Defaults to False.
+    volume : float, optional
+        Volume of the material in cm^3. This can either be set manually or
+        calculated in a stochastic volume calculation and added via the
+        :meth:`Material.add_volume_information` method.
+    components : dict of str to float or dict
+        Dictionary mapping element or nuclide names to their atom or weight
+        percent. To specify enrichment of an element, the entry of
+        ``components`` for that element must instead be a dictionary containing
+        the keyword arguments as well as a value for ``'percent'``
+    percent_type : {'ao', 'wo'}
+        Whether the values in `components` should be interpreted as atom percent
+        ('ao') or weight percent ('wo').
 
     Attributes
     ----------
@@ -111,17 +131,28 @@ class Material(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, material_id=None, name='', temperature=None):
+    def __init__(
+        self,
+        material_id: int | None = None,
+        name: str = "",
+        temperature: float | None = None,
+        density: float | None = None,
+        density_units: str = "sum",
+        depletable: bool | None = False,
+        volume: float | None = None,
+        components: dict | None = None,
+        percent_type: str = "ao",
+    ):
         # Initialize class attributes
         self.id = material_id
         self.name = name
         self.temperature = temperature
         self._density = None
-        self._density_units = 'sum'
-        self._depletable = False
+        self._density_units = density_units
+        self._depletable = depletable
         self._paths = None
         self._num_instances = None
-        self._volume = None
+        self._volume = volume
         self._atoms = {}
         self._isotropic = []
         self._ncrystal_cfg = None
@@ -135,6 +166,15 @@ class Material(IDManagerMixin):
 
         # If specified, a list of table names
         self._sab = []
+
+        # Set density if provided
+        if density is not None:
+            self.set_density(density_units, density)
+
+        # Add components if provided
+        if components is not None:
+            self.add_components(components, percent_type=percent_type)
+
 
     def __repr__(self) -> str:
         string = 'Material\n'
@@ -290,11 +330,13 @@ class Material(IDManagerMixin):
         return self.get_decay_photon_energy(0.0)
 
     def get_decay_photon_energy(
-            self,
-            clip_tolerance: float = 1e-6,
-            units: str = 'Bq',
-            volume: float | None = None
-        ) -> Univariate | None:
+        self,
+        clip_tolerance: float = 1e-6,
+        units: str = 'Bq',
+        volume: float | None = None,
+        exclude_nuclides: list[str] | None = None,
+        include_nuclides: list[str] | None = None
+    ) -> Univariate | None:
         r"""Return energy distribution of decay photons from unstable nuclides.
 
         .. versionadded:: 0.14.0
@@ -302,22 +344,31 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         clip_tolerance : float
-            Maximum fraction of :math:`\sum_i x_i p_i` for discrete
-            distributions that will be discarded.
+            Maximum fraction of :math:`\sum_i x_i p_i` for discrete distributions
+            that will be discarded.
         units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
             Specifies the units on the integral of the distribution.
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
+        exclude_nuclides : list of str, optional
+            Nuclides to exclude from the photon source calculation.
+        include_nuclides : list of str, optional
+            Nuclides to include in the photon source calculation. If specified,
+            only these nuclides are used.
 
         Returns
         -------
         Univariate or None
-            Decay photon energy distribution. The integral of this distribution
-            is the total intensity of the photon source in the requested units.
+            Decay photon energy distribution. The integral of this distribution is
+            the total intensity of the photon source in the requested units.
 
         """
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
+
+        if exclude_nuclides is not None and include_nuclides is not None:
+            raise ValueError("Cannot specify both exclude_nuclides and include_nuclides")
+
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
             if multiplier is None:
@@ -332,6 +383,11 @@ class Material(IDManagerMixin):
         dists = []
         probs = []
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
+            if exclude_nuclides is not None and nuc in exclude_nuclides:
+                continue
+            if include_nuclides is not None and nuc not in include_nuclides:
+                continue
+
             source_per_atom = openmc.data.decay_photon_energy(nuc)
             if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)

@@ -6,7 +6,6 @@ import pytest
 
 from tests.testing_harness import PyAPITestHarness
 
-
 @pytest.fixture()
 def ifp_model():
     model = openmc.Model()

@@ -1933,7 +1933,8 @@ class Model:
                 model, groups, correction, directory)
 
         data = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
-        data.temperatures[0] = temperature
+        if temperature != None:
+          data.temperatures[0] = temperature
         return data
 
     def _generate_infinite_medium_mgxs(
@@ -2202,8 +2203,9 @@ class Model:
 
         # Fetch all of the isothermal results.
         data = {mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains}
-        for d in data.values():
-            d.temperatures[0] = temperature
+        if temperature != None:
+            for d in data.values():
+                d.temperatures[0] = temperature
 
         return data
 
@@ -2394,8 +2396,9 @@ class Model:
 
         # Fetch all of the isothermal results.
         data = {mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name) for mat in mgxs_lib.domains}
-        for d in data.values():
-            d.temperatures[0] = temperature
+        if temperature != None:
+          for d in data.values():
+              d.temperatures[0] = temperature
         return data
 
     def _generate_material_wise_mgxs(

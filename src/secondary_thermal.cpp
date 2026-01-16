@@ -177,6 +177,7 @@ double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
   int n_mu = mu_out_.shape()[1];
 
   std::vector<double> mu_vector;
+  mu_vector.reserve(n_mu);
 
   for (int k = 0; k < n_mu; ++k) {
     double mu_k = mu_out_(i, k) + f * (mu_out_(i + 1, k) - mu_out_(i, k));
@@ -282,6 +283,7 @@ double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
 
   int m = mu_out_.shape()[2];
   std::vector<double> mu_vector;
+  mu_vector.reserve(n_mu);
 
   for (int k = 0; k < m; ++k) {
     double mu_ijk = mu_out_(i, j, k);

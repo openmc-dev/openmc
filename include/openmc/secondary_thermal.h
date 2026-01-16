@@ -194,6 +194,52 @@ private:
   const Function1D& incoherent_xs_;      //!< Polymorphic ref. to incoherent XS
 };
 
+struct DoubleVector {
+  double data;
+  double& operator[](size_t index) { return data; }
+}
+
+typename<T> double
+get_pdf_discrete(const vector<double>& mu, const T& w, double mu_0)
+{
+  // Make sure mu is in range [-1,1]
+  if (std::abs(mu_0) > 1.0)
+    mu_0 = std::copysign(1.0, mu_0);
+  double a0;
+  double a1;
+  double b0;
+  double b1;
+  int32_t ai = -1;
+  int32_t bi = -1;
+  if (mu_0 > mu[0]) {
+    ai = lower_bound_index(mu.begin(), mu.end(), mu_0);
+    a0 = mu[ai];
+    a1 = (ai > 1) ? mu[ai - 1] : -1.0;
+  } else {
+    a0 = -1.0;
+    a1 = -1.0;
+  }
+  if (mu_0 < mu[mu.size() - 1]) {
+    bi = upper_bound_index(mu.begin(), mu.end(), mu_0);
+    b0 = mu[bi];
+    b1 = (bi < mu.size() - 1) ? mu[bi + 1] : 1.0;
+  } else {
+    b0 = 1.0;
+    b1 = 1.0;
+  }
+
+  //  Calculate Delta_a and Delta_b
+  double delta_a = 0.5 * std::min(b0 - a0, a0 - a1);
+  double delta_b = 0.5 * std::min(b1 - b0, b0 - a0);
+
+  if (mu_0 < a0 + delta_a)
+    return w[ai] / (2.0 * delta_a);
+  else if (mu_0 + delta_b < b0)
+    return w[bi] / (2.0 * delta_b);
+  else
+    return 0.0;
+}
+
 } // namespace openmc
 
 #endif // OPENMC_SECONDARY_THERMAL_H

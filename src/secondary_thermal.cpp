@@ -13,50 +13,9 @@
 
 namespace openmc {
 
-double get_pdf_discrete(
-  const vector<double>& mu, const vector<double>& w, double mu_0)
-{
-  // Make sure mu is in range [-1,1]
-  if (std::abs(mu_0) > 1.0)
-    mu_0 = std::copysign(1.0, mu_0);
-  double a0;
-  double a1;
-  double b0;
-  double b1;
-  int32_t ai = -1;
-  int32_t bi = -1;
-  if (mu_0 > mu[0]) {
-    ai = lower_bound_index(mu.begin(), mu.end(), mu_0);
-    a0 = mu[ai];
-    a1 = (ai > 1) ? mu[ai - 1] : -1.0;
-  } else {
-    a0 = -1.0;
-    a1 = -1.0;
-  }
-  if (mu_0 < mu[mu.size() - 1]) {
-    bi = upper_bound_index(mu.begin(), mu.end(), mu_0);
-    b0 = mu[bi];
-    b1 = (bi < mu.size() - 1) ? mu[bi + 1] : 1.0;
-  } else {
-    b0 = 1.0;
-    b1 = 1.0;
-  }
-
-  //  Calculate Delta_a and Delta_b
-  double delta_a = 0.5 * std::min(b0 - a0, a0 - a1);
-  double delta_b = 0.5 * std::min(b1 - b0, b0 - a0);
-
-  if (mu_0 < a0 + delta_a)
-    return w[ai] / (2.0 * delta_a);
-  else if (mu_0 + delta_b < b0)
-    return w[bi] / (2.0 * delta_b);
-  else
-    return 0.0;
-}
-
 double get_pdf_discrete(const vector<double>& mu, double mu_0)
 {
-  vector<double> w(mu.size(), 1.0 / mu.size());
+  DoubleVector w {1.0 / mu.size()};
   return get_pdf_discrete(mu, w, mu_0);
 }
 
@@ -104,23 +63,25 @@ double CoherentElasticAE::sample_energy_and_pdf(
     return 0;
   }
 
-  const int i = lower_bound_index(energies.begin(), energies.end(), E_in);
-  vector<double> energies_cut(energies.begin(), energies.begin() + i + 1);
-  vector<double> factors_cut(factors.begin(), factors.begin() + i + 1);
+  const int n = upper_bound_index(energies.begin(), energies.end(), E_in);
+  vector<double> energies_cut(energies.begin(), energies.begin() + n);
+  vector<double> factors_cut(factors.begin(), factors.begin() + n);
 
-  vector<double> mu_vector_rev;
-  std::transform(energies_cut.begin(), energies_cut.end(),
-    std::back_inserter(mu_vector_rev),
+  vector<double> mu_vector;
+  mu_vector.reserve(n);
+
+  std::transform(std::advance(energies.rbegin(), n - 1), energies.rend(),
+    std::back_inserter(mu_vector),
     [E_in](double Ei) { return 1 - 2 * Ei / E_in; });
-  vector<double> mu_vector(mu_vector_rev.rbegin(), mu_vector_rev.rend());
 
-  auto f = xt::adapt(factors_cut, {
-                                    factors_cut.size(),
-                                  });
-  auto weights = xt::diff(f);
-  weights /= xt::sum(weights);
-  vector<double> w(weights.begin(), weights.end());
-  return get_pdf_discrete(mu_vector, w, mu);
+  vector<double> weights;
+  weights.reserve(n);
+
+  weights.emplace_back(factors[0] / factors[n]);
+  for (int i = 1; i <= n; ++i) {
+    weights.emplace_back((factors[i] - factors[i - 1]) / factors[n]);
+  }
+  return get_pdf_discrete(mu_vector, weights, mu);
 }
 
 //==============================================================================

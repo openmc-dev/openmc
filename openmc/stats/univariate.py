@@ -1926,13 +1926,9 @@ def combine_distributions(
     # Get list of discrete/continuous distribution indices
     discrete_index = [i for i, d in enumerate(dists) if isinstance(d, Discrete)]
     cont_index = [i for i, d in enumerate(dists) if isinstance(d, Tabular)]
-
-    dist_list = []
-    prob_list = []
-
-    for i in cont_index:
-        dist_list.append(dists[i])
-        prob_list.append(probs[i])
+    
+    cont_dists = [dists[i] for i in cont_index]
+    cont_probs = [probs[i] for i in cont_index]
 
     if discrete_index:
         # Create combined discrete distribution
@@ -1940,11 +1936,11 @@ def combine_distributions(
         discrete_probs = [probs[i] for i in discrete_index]
         combined_dist = Discrete.merge(dist_discrete, discrete_probs)
         if cont_index:
-            return Mixture(prob_list+[1.0], dist_list+[combined_dist])
+            return Mixture(cont_probs+[1.0], cont_dists+[combined_dist])
         else:
             return combined_dist
     else:
-        return Mixture(prob_list, dist_list)
+        return Mixture(cont_probs, cont_dists)
 
 
 def check_bias_support(parent: Univariate, bias: Univariate | None):

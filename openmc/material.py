@@ -482,35 +482,38 @@ class Material(IDManagerMixin):
         """Compute the photon contact dose rate (CDR) produced by radioactive decay
         of the material.
 
-        A slab-geometry approximation and a photon build-up factor are used.
-
-        The method implemented here follows the approach described in FISPACT-II
-        manual (UKAEA-CCFE-RE(21)02 - May 2021). Appendix C.7.1.
-
         The contact dose rate is calculated from decay photon energy spectra for
         each nuclide in the material, combined with photon mass attenuation data
-        for the material and mass energy-absorption coefficients for air.
+        for the material and the appropriate response function for the dose quantity.
+        A slab-geometry approximation and a photon build-up factor are used.
 
+        Absorbed-air dose:
+            The approach follows the FISPACT-II manual (UKAEA-CCFE-RE(21)02 - May 2021).
+            Appendix C.7.1.
+            This method integrates over the photon energy:
 
-        The calculation integrates, over photon energy, the quantity::
+                (B/2) * (mu_en_air(E) / mu_material(E)) * E * S(E)
 
-            (mu_en_air(E) / mu_material(E)) * E * S(E)
+        Effective dose:
+            The approach uses ICRP-116 effective dose coefficients to convert the photon
+            fluence due to decay photons to effective dose.
+            This method integrates over the photon energy:
+
+                (B/2) * (h_e(E) / mu_material(E)) * S(E)
 
         where:
             - mu_en_air(E) is the air mass energy-absorption coefficient,
             - mu_material(E) is the photon mass attenuation coefficient of the material,
             - S(E) is the photon emission spectrum per atom,
+            - h_e(E) is the ICRP-116 effective dose coefficient,
+            - B is the build-up factor,
             - E is the photon energy.
-
-        Results are converted to dose rate units using physical constants and
-        material mass density.
-
 
         Parameters
         ----------
         dose_quantity : {'absorbed-air', 'effective'}, optional
             Specifies the dose quantity to be calculated. 
-            The only supported options are 'aborbed-air' which implements a the methodology
+            The only supported options are 'absorbed-air' which implements the methodology
             from FISPACT-II, and 'effective' which uses ICRP-116 effective dose coefficients.
         build_up : float, optional. The default value is 2.0 as suggested in the FISPACT-II
             manual.
@@ -521,8 +524,9 @@ class Material(IDManagerMixin):
         Returns
         -------
         cdr : float or dict[str, float]
-            Photon Contact Dose Rate due to material decay
-            If the dose quantity is [Sv/hr].
+            Contact Dose Rate due to decay photons.
+            'absorbed-air': returns the absorbed dose in air [Gy/hr].
+            'effective': returns the effective dose [Sv/hr].
         """
 
         cv.check_type("by_nuclide", by_nuclide, bool)
@@ -531,7 +535,7 @@ class Material(IDManagerMixin):
         cv.check_type("build_up", build_up, float)
 
         # Mass density of the material [g/cm^3]
-        rho = self.get_mass_density()  # g/cm^3
+        rho = self.get_mass_density()
 
         if rho is None or rho <= 0.0:
             raise ValueError(

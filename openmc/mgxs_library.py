@@ -517,7 +517,9 @@ class XSdata:
 
     def add_temperature_data(self, other):
         """This method adds temperature-dependent cross section
-        values from other to this XSdata object.
+        values from another XSdata object to this XSdata object.
+        Note: if a temperature datapoint from 'other' already exists in this
+        object, it will be overridden.
 
         Parameters
         ----------

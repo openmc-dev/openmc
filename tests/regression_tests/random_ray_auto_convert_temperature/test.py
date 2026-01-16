@@ -36,7 +36,7 @@ def test_random_ray_auto_convert(method):
         model.convert_to_multigroup(
             method=method, groups='CASMO-2', nparticles=100,
             overwrite_mgxs_library=False, mgxs_path="mgxs.h5",
-            temperature_settings=temp_settings, temperatures=[294.0, 394.0]
+            temperatures=[294.0, 394.0], temperature_settings=temp_settings
         )
 
         # Convert to a random ray model

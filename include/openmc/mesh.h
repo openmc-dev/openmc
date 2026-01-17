@@ -429,6 +429,7 @@ class PeriodicStructuredMesh : public StructuredMesh {
 public:
   PeriodicStructuredMesh() = default;
   PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
+  PeriodicStructuredMesh(hid_t group) : StructuredMesh {group} {};
 
   Position local_coords(const Position& r) const override
   {
@@ -787,6 +788,7 @@ public:
   // Constructors
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
+  MOABMesh(hid_t group);
   MOABMesh(const std::string& filename, double length_multiplier = 1.0);
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 

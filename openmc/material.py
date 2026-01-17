@@ -512,7 +512,7 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         dose_quantity : {'absorbed-air', 'effective'}, optional
-            Specifies the dose quantity to be calculated. 
+            Specifies the dose quantity to be calculated.
             The only supported options are 'absorbed-air' which implements the methodology
             from FISPACT-II, and 'effective' which uses ICRP-116 effective dose coefficients.
         build_up : float, optional. The default value is 2.0 as suggested in the FISPACT-II

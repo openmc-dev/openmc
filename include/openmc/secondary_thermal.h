@@ -197,7 +197,7 @@ private:
 
 struct DoubleVector {
   double data;
-  const double& operator[](size_t index) const { return data; }  
+  const double& operator[](size_t index) const { return data; }
 };
 
 template<typename T>

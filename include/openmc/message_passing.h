@@ -20,6 +20,8 @@ extern bool master;
 extern MPI_Datatype source_site;
 extern MPI_Datatype collision_track_site;
 extern MPI_Comm intracomm;
+extern MPI_Datatype mpi_volume_results;
+extern MPI_Datatype mpi_volume_tally;
 #endif
 
 //==============================================================================

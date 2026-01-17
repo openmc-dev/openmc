@@ -47,12 +47,17 @@ public:
     int32_t index;              //!< Material ID
 
     inline VolTally(const int i_material = 0, const double contrib = 0.0,
-      const double score_acc_ = 0.0, const double score2_acc_ = 0.0);
+      const double score_acc_ = 0.0, const double score2_acc_ = 0.0)
+    {
+      score = contrib;
+      score_acc[0] = score_acc_;
+      score_acc[1] = score2_acc_;
+      index = i_material;
+    }
 
     // private:
     //! \brief Add batch scores means to a tally
     //! \param[in] batch_size_1 Inversed batch size
-    //! \param[in] vol_tallies  All tallies
     inline void finalize_batch(const double batch_size_1);
 
     //! \brief Pass counters data from a given tally to this
@@ -86,6 +91,7 @@ public:
       nuc_results; //!< Nuclides of each domain
 
     CalcResults(const VolumeCalculation& vol_calc);
+    CalcResults() = default;
 
     //! \brief Reset all counters
     void reset();
@@ -179,14 +185,6 @@ public:
   Position lower_left_;         //!< Lower-left position of bounding box
   Position upper_right_;        //!< Upper-right position of bounding box
   vector<int> domain_ids_;      //!< IDs of domains to find volumes of
-
-#ifdef OPENMC_MPI
-  //! \brief Creates MPI structs for passing data between threads
-  void initialize_MPI_struct() const;
-
-  //! \brief Deletes MPI structs for passing data between threads
-  void delete_MPI_struct() const;
-#endif
 
 private:
   constexpr static int _INDEX_TOTAL =

@@ -36,6 +36,7 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/vector.h"
+#include "openmc/volume_calc.h"
 #include "openmc/weight_windows.h"
 
 #ifdef OPENMC_LIBMESH_ENABLED
@@ -209,6 +210,37 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Type_create_struct(
     16, blocksc, dispc, typesc, &mpi::collision_track_site);
   MPI_Type_commit(&mpi::collision_track_site);
+
+  // Volume Calculation data types
+  VolumeCalculation::CalcResults cr;
+  MPI_Aint cr_disp[1], cr_d;
+  MPI_Get_address(&cr, &cr_d);
+  MPI_Get_address(&cr.cost, &cr_disp[0]);
+  for (int i = 0; i < 1; i++) {
+    cr_disp[i] -= cr_d;
+  }
+
+  int cr_blocks[] {1};
+  MPI_Datatype cr_types[] {MPI_DOUBLE};
+  MPI_Type_create_struct(
+    1, cr_blocks, cr_disp, cr_types, &mpi::mpi_volume_results);
+  MPI_Type_commit(&mpi::mpi_volume_results);
+
+  VolumeCalculation::VolTally vt = VolumeCalculation::VolTally();
+  MPI_Aint vt_disp[3], vt_d;
+  MPI_Get_address(&vt, &vt_d);
+  MPI_Get_address(&vt.score, &vt_disp[0]);
+  MPI_Get_address(&vt.score_acc, &vt_disp[1]);
+  MPI_Get_address(&vt.index, &vt_disp[2]);
+  for (int i = 0; i < 3; i++) {
+    vt_disp[i] -= vt_d;
+  }
+
+  int vt_blocks[] {1, 2, 1};
+  MPI_Datatype vt_types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT};
+  MPI_Type_create_struct(
+    3, vt_blocks, vt_disp, vt_types, &mpi::mpi_volume_tally);
+  MPI_Type_commit(&mpi::mpi_volume_tally);
 }
 #endif // OPENMC_MPI
 

@@ -11,6 +11,8 @@ bool master {true};
 MPI_Comm intracomm {MPI_COMM_NULL};
 MPI_Datatype source_site {MPI_DATATYPE_NULL};
 MPI_Datatype collision_track_site {MPI_DATATYPE_NULL};
+MPI_Datatype mpi_volume_results {MPI_DATATYPE_NULL};
+MPI_Datatype mpi_volume_tally {MPI_DATATYPE_NULL};
 #endif
 
 extern "C" bool openmc_master()

@@ -5,8 +5,10 @@
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/error.h"
+#include "openmc/finalize.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/initialize.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -36,11 +38,6 @@ namespace openmc {
 namespace model {
 vector<VolumeCalculation> volume_calcs;
 } // namespace model
-
-#ifdef OPENMC_MPI
-static MPI_Datatype mpi_vol_results;  //!< MPI struct for CalcResults
-static MPI_Datatype mpi_volume_tally; //!< MPI struct for VolTally
-#endif
 
 //==============================================================================
 // VolumeCalculation implementation
@@ -519,45 +516,6 @@ void VolumeCalculation::reduce_results(
 }
 
 #ifdef OPENMC_MPI
-void VolumeCalculation::initialize_MPI_struct() const
-{
-  // This code is a slightly modified replica of initialize_mpi() from
-  // initialize.cpp
-  CalcResults cr(*this);
-  MPI_Aint cr_disp[1], cr_d;
-  MPI_Get_address(&cr, &cr_d);
-  MPI_Get_address(&cr.cost, &cr_disp[0]);
-  for (int i = 0; i < 1; i++) {
-    cr_disp[i] -= cr_d;
-  }
-
-  int cr_blocks[] {1};
-  MPI_Datatype cr_types[] {MPI_DOUBLE};
-  MPI_Type_create_struct(1, cr_blocks, cr_disp, cr_types, &mpi_vol_results);
-  MPI_Type_commit(&mpi_vol_results);
-
-  VolTally vt;
-  MPI_Aint vt_disp[3], vt_d;
-  MPI_Get_address(&vt, &vt_d);
-  MPI_Get_address(&vt.score, &vt_disp[0]);
-  MPI_Get_address(&vt.score_acc, &vt_disp[1]);
-  MPI_Get_address(&vt.index, &vt_disp[2]);
-  for (int i = 0; i < 3; i++) {
-    vt_disp[i] -= vt_d;
-  }
-
-  int vt_blocks[] {1, 2, 1};
-  MPI_Datatype vt_types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT};
-  MPI_Type_create_struct(3, vt_blocks, vt_disp, vt_types, &mpi_volume_tally);
-  MPI_Type_commit(&mpi_volume_tally);
-}
-
-void VolumeCalculation::delete_MPI_struct() const
-{
-  MPI_Type_free(&mpi_vol_results);
-  MPI_Type_free(&mpi_volume_tally);
-}
-
 // TO REVIEWER: THIS IS AN EQUIVALENT OF THE RELATED MPI-INTERCHANGE BLOCK OF
 // execute()
 void VolumeCalculation::CalcResults::collect_MPI()
@@ -571,8 +529,8 @@ void VolumeCalculation::CalcResults::collect_MPI()
     int mpi_offset = mpi::rank * (vol_tallies.size() + 2) + 2;
 
     // Pass root data of the struct
-    MPI_Send(
-      (void*)this, 1, mpi_vol_results, 0, mpi_offset - 2, mpi::intracomm);
+    MPI_Send((void*)this, 1, mpi::mpi_volume_results, 0, mpi_offset - 2,
+      mpi::intracomm);
 
     // Pass sizes of domain-wise data
     for (int i_domain = 0; i_domain < vol_tallies.size(); i_domain++) {
@@ -585,7 +543,7 @@ void VolumeCalculation::CalcResults::collect_MPI()
     // Pass domain-wise data of struct
     for (int i_domain = 0; i_domain < vol_tallies.size(); i_domain++) {
       MPI_Send(vol_tallies[i_domain].data(), domain_sizes[i_domain],
-        mpi_volume_tally, 0, mpi_offset + i_domain, mpi::intracomm);
+        mpi::mpi_volume_tally, 0, mpi_offset + i_domain, mpi::intracomm);
     }
 
     this->reset(); // Delete passed to main process data
@@ -602,7 +560,7 @@ void VolumeCalculation::CalcResults::collect_MPI()
       int mpi_offset = i_proc * (vol_tallies.size() + 2) + 2;
 
       // Pass root data of struct
-      MPI_Recv(&res_buff, 1, mpi_vol_results, i_proc, mpi_offset - 2,
+      MPI_Recv(&res_buff, 1, mpi::mpi_volume_results, i_proc, mpi_offset - 2,
         mpi::intracomm, MPI_STATUS_IGNORE);
 
       // Pass sizes of domain-wise data
@@ -613,7 +571,7 @@ void VolumeCalculation::CalcResults::collect_MPI()
       for (int i_domain = 0; i_domain < vol_tallies.size(); i_domain++) {
         res_buff.vol_tallies[i_domain].resize(domain_sizes[i_domain]);
         MPI_Recv(res_buff.vol_tallies[i_domain].data(), domain_sizes[i_domain],
-          mpi_volume_tally, i_proc, mpi_offset + i_domain, mpi::intracomm,
+          mpi::mpi_volume_tally, i_proc, mpi_offset + i_domain, mpi::intracomm,
           MPI_STATUS_IGNORE);
       }
 
@@ -672,15 +630,6 @@ void VolumeCalculation::CalcResults::append(const CalcResults& other)
         vol_tallies[id].push_back(vt_other);
     }
   }
-}
-
-inline VolumeCalculation::VolTally::VolTally(const int i_material,
-  const double contrib, const double score_acc_, const double score2_acc_)
-{
-  score = contrib;
-  score_acc[0] = score_acc_;
-  score_acc[1] = score2_acc_;
-  index = i_material;
 }
 
 inline void VolumeCalculation::VolTally::finalize_batch(
@@ -826,20 +775,12 @@ int openmc_calculate_volumes()
     const auto& vol_calc {model::volume_calcs[i]};
     VolumeCalculation::CalcResults results(vol_calc);
 
-#ifdef OPENMC_MPI
-    vol_calc.initialize_MPI_struct();
-#endif
-
     try {
       vol_calc.execute(results);
     } catch (const std::exception& e) {
       set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
     }
-
-#ifdef OPENMC_MPI
-    vol_calc.delete_MPI_struct();
-#endif
 
     if (mpi::master) {
 

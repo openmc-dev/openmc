@@ -213,17 +213,18 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Volume Calculation data types
   VolumeCalculation::CalcResults cr;
-  MPI_Aint cr_disp[1], cr_d;
+  MPI_Aint cr_disp[2], cr_d;
   MPI_Get_address(&cr, &cr_d);
-  MPI_Get_address(&cr.cost, &cr_disp[0]);
-  for (int i = 0; i < 1; i++) {
+  MPI_Get_address(&cr.n_samples, &cr_disp[0]);
+  MPI_Get_address(&cr.cost, &cr_disp[1]);
+  for (int i = 0; i < 2; i++) {
     cr_disp[i] -= cr_d;
   }
 
-  int cr_blocks[] {1};
-  MPI_Datatype cr_types[] {MPI_DOUBLE};
+  int cr_blocks[] {1, 1};
+  MPI_Datatype cr_types[] {MPI_UINT64_T, MPI_DOUBLE};
   MPI_Type_create_struct(
-    1, cr_blocks, cr_disp, cr_types, &mpi::mpi_volume_results);
+    2, cr_blocks, cr_disp, cr_types, &mpi::mpi_volume_results);
   MPI_Type_commit(&mpi::mpi_volume_results);
 
   VolumeCalculation::VolTally vt = VolumeCalculation::VolTally();

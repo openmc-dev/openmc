@@ -197,7 +197,7 @@ class OpenMCOperator(TransportOperator):
         burnable_mats = set()
         model_nuclides = set()
         volume = {}
-        mat_name = {}
+        name_list = {}
 
         self.heavy_metal = 0.0
 
@@ -222,7 +222,7 @@ class OpenMCOperator(TransportOperator):
                                f"with ID={mat.id} Name={mat.name}.")
                     raise RuntimeError(msg)
                 volume[str(mat.id)] = mat.volume
-                mat_name[str(mat.id)] = mat.name
+                name_list[str(mat.id)] = mat.name
                 self.heavy_metal += mat.fissionable_mass
 
         # Make sure there are burnable materials
@@ -235,7 +235,7 @@ class OpenMCOperator(TransportOperator):
         model_nuclides = sorted(model_nuclides)
 
         # Store material names for later use
-        self.mat_name = mat_name
+        self.name_list = name_list
 
         # Construct a global nuclide dictionary, burned first
         nuclides = list(self.chain.nuclide_dict)
@@ -546,7 +546,7 @@ class OpenMCOperator(TransportOperator):
             A list of all material IDs to be burned.  Used for sorting the simulation.
         full_burn_list : list
             List of all burnable material IDs
-        mat_name : dict of str to str
+        name_list : dict of str to str
             Material names corresponding to materials in full_burn_dict
 
         """
@@ -561,4 +561,4 @@ class OpenMCOperator(TransportOperator):
         volume_list = comm.allgather(volume)
         volume = {k: v for d in volume_list for k, v in d.items()}
 
-        return volume, nuc_list, burn_list, self.burnable_mats, self.mat_name
+        return volume, nuc_list, burn_list, self.burnable_mats, self.name_list

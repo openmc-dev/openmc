@@ -209,7 +209,7 @@ class TransportOperator(ABC):
             simulation.
         full_burn_list : list of int
             All burnable materials in the geometry.
-        mat_name : dict of str to str
+        name_list : dict of str to str
             Material names corresponding to materials in burn_list
         """
 

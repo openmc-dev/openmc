@@ -223,9 +223,8 @@ void initialize_mpi(MPI_Comm intracomm)
 
   int cr_blocks[] {1, 1};
   MPI_Datatype cr_types[] {MPI_UINT64_T, MPI_DOUBLE};
-  MPI_Type_create_struct(
-    2, cr_blocks, cr_disp, cr_types, &mpi::mpi_volume_results);
-  MPI_Type_commit(&mpi::mpi_volume_results);
+  MPI_Type_create_struct(2, cr_blocks, cr_disp, cr_types, &mpi::volume_results);
+  MPI_Type_commit(&mpi::volume_results);
 
   VolumeCalculation::VolTally vt = VolumeCalculation::VolTally();
   MPI_Aint vt_disp[3], vt_d;
@@ -239,9 +238,8 @@ void initialize_mpi(MPI_Comm intracomm)
 
   int vt_blocks[] {1, 2, 1};
   MPI_Datatype vt_types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_INT32_T};
-  MPI_Type_create_struct(
-    3, vt_blocks, vt_disp, vt_types, &mpi::mpi_volume_tally);
-  MPI_Type_commit(&mpi::mpi_volume_tally);
+  MPI_Type_create_struct(3, vt_blocks, vt_disp, vt_types, &mpi::volume_tally);
+  MPI_Type_commit(&mpi::volume_tally);
 }
 #endif // OPENMC_MPI
 

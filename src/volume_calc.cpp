@@ -529,8 +529,8 @@ void VolumeCalculation::CalcResults::collect_MPI()
     int mpi_offset = mpi::rank * (vol_tallies.size() + 2) + 2;
 
     // Pass root data of the struct
-    MPI_Send((void*)this, 1, mpi::mpi_volume_results, 0, mpi_offset - 2,
-      mpi::intracomm);
+    MPI_Send(
+      (void*)this, 1, mpi::volume_results, 0, mpi_offset - 2, mpi::intracomm);
 
     // Pass sizes of domain-wise data
     for (int i_domain = 0; i_domain < vol_tallies.size(); i_domain++) {
@@ -543,7 +543,7 @@ void VolumeCalculation::CalcResults::collect_MPI()
     // Pass domain-wise data of struct
     for (int i_domain = 0; i_domain < vol_tallies.size(); i_domain++) {
       MPI_Send(vol_tallies[i_domain].data(), domain_sizes[i_domain],
-        mpi::mpi_volume_tally, 0, mpi_offset + i_domain, mpi::intracomm);
+        mpi::volume_tally, 0, mpi_offset + i_domain, mpi::intracomm);
     }
 
     this->reset(); // Delete passed to main process data
@@ -560,7 +560,7 @@ void VolumeCalculation::CalcResults::collect_MPI()
       int mpi_offset = i_proc * (vol_tallies.size() + 2) + 2;
 
       // Pass root data of struct
-      MPI_Recv(&res_buff, 1, mpi::mpi_volume_results, i_proc, mpi_offset - 2,
+      MPI_Recv(&res_buff, 1, mpi::volume_results, i_proc, mpi_offset - 2,
         mpi::intracomm, MPI_STATUS_IGNORE);
 
       // Pass sizes of domain-wise data
@@ -571,7 +571,7 @@ void VolumeCalculation::CalcResults::collect_MPI()
       for (int i_domain = 0; i_domain < vol_tallies.size(); i_domain++) {
         res_buff.vol_tallies[i_domain].resize(domain_sizes[i_domain]);
         MPI_Recv(res_buff.vol_tallies[i_domain].data(), domain_sizes[i_domain],
-          mpi::mpi_volume_tally, i_proc, mpi_offset + i_domain, mpi::intracomm,
+          mpi::volume_tally, i_proc, mpi_offset + i_domain, mpi::intracomm,
           MPI_STATUS_IGNORE);
       }
 

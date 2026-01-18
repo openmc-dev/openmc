@@ -35,20 +35,17 @@ public:
 
   //! \brief Tally corresponding to a single material (AoS)
   struct VolTally {
-    double score;               //!< Current batch scores accumulator
-    array<double, 2> score_acc; //!< Scores and squared scores accumulator
-    int32_t index;              //!< Material ID
+    double score {0.0};            //!< Current batch scores accumulator
+    array<double, 2> score_acc {}; //!< Scores and squared scores accumulator
+    int32_t index {0};             //!< Material ID
 
-    inline VolTally(const int i_material = 0, const double contrib = 0.0,
-      const double score_acc_ = 0.0, const double score2_acc_ = 0.0)
+    VolTally() = default;
+    inline VolTally(int i, double s = 0.0)
     {
-      score = contrib;
-      score_acc[0] = score_acc_;
-      score_acc[1] = score2_acc_;
-      index = i_material;
+      index = i;
+      score = s;
     }
 
-    // private:
     //! \brief Add batch scores means to a tally
     //! \param[in] batch_size_1 Inversed batch size
     inline void finalize_batch(const double batch_size_1);

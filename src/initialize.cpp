@@ -237,7 +237,7 @@ void initialize_mpi(MPI_Comm intracomm)
   }
 
   int vt_blocks[] {1, 2, 1};
-  MPI_Datatype vt_types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT};
+  MPI_Datatype vt_types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_INT32_T};
   MPI_Type_create_struct(
     3, vt_blocks, vt_disp, vt_types, &mpi::mpi_volume_tally);
   MPI_Type_commit(&mpi::mpi_volume_tally);

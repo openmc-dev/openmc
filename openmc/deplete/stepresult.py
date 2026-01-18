@@ -152,15 +152,15 @@ class StepResult:
             A list of all mat IDs to be burned.  Used for sorting the simulation.
         full_burn_list : list of str
             List of all burnable material IDs
-        name_list : dict of str to str, optional
-            Material names corresponding to materials in full_burn_dict
+        name_list : list of str, optional
+            Material names corresponding to materials in burn_list
 
         """
         self.volume = copy.deepcopy(volume)
         self.index_nuc = {nuc: i for i, nuc in enumerate(nuc_list)}
         self.index_mat = {mat: i for i, mat in enumerate(burn_list)}
         self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
-        self.name_list = copy.deepcopy(name_list) if name_list is not None else {}
+        self.mat_to_name = dict(zip(burn_list ,name_list)) if name_list is not None else {}
 
         # Create storage array
         self.data = np.zeros((self.n_mat, self.n_nuc))
@@ -188,7 +188,7 @@ class StepResult:
 
         # Direct transfer
         direct_attrs = ("time", "k", "source_rate", "index_nuc",
-                        "mat_to_hdf5_ind", "name_list", "proc_time")
+                        "mat_to_hdf5_ind", "mat_to_name", "proc_time")
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
         # Get applicable slice of data
@@ -227,8 +227,8 @@ class StepResult:
                 f'mat_id {mat_id} not found in StepResult. Available mat_id '
                 f'values are {list(self.volume.keys())}'
             ) from e
-        if self.name_list and mat_id in self.name_list:
-            material.name = self.name_list[mat_id]
+        if mat_id in self.mat_to_name:
+            material.name = self.mat_to_name[mat_id]
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
             atoms = self[mat_id, nuc]
             if atoms <= 0.0:
@@ -319,8 +319,8 @@ class StepResult:
             mat_single_group = mat_group.create_group(mat)
             mat_single_group.attrs["index"] = self.mat_to_hdf5_ind[mat]
             mat_single_group.attrs["volume"] = self.volume[mat]
-            if self.name_list and mat in self.name_list:
-                mat_single_group.attrs["name"] = self.name_list[mat]
+            if mat in self.mat_to_name:
+                mat_single_group.attrs["name"] = self.mat_to_name[mat]
 
         nuc_group = handle.create_group("nuclides")
 
@@ -503,7 +503,7 @@ class StepResult:
         results.volume = {}
         results.index_mat = {}
         results.index_nuc = {}
-        results.name_list = {}
+        results.mat_to_name = {}
         rxn_nuc_to_ind = {}
         rxn_to_ind = {}
 
@@ -514,7 +514,7 @@ class StepResult:
             results.volume[mat] = vol
             results.index_mat[mat] = ind
             if "name" in mat_handle.attrs:
-                results.name_list[mat] = mat_handle.attrs["name"]
+                results.mat_to_name[mat] = mat_handle.attrs["name"]
 
         for nuc, nuc_handle in handle["/nuclides"].items():
             ind_atom = nuc_handle.attrs["atom number index"]

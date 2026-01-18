@@ -197,7 +197,6 @@ class OpenMCOperator(TransportOperator):
         burnable_mats = set()
         model_nuclides = set()
         volume = {}
-        name_list = {}
 
         self.heavy_metal = 0.0
 
@@ -212,7 +211,7 @@ class OpenMCOperator(TransportOperator):
                            "section data.")
                     warn(msg)
             if mat.depletable:
-                burnable_mats.add(str(mat.id))
+                burnable_mats.add((str(mat.id), mat.name))
                 if mat.volume is None:
                     if mat.name is None:
                         msg = ("Volume not specified for depletable material "
@@ -222,7 +221,6 @@ class OpenMCOperator(TransportOperator):
                                f"with ID={mat.id} Name={mat.name}.")
                     raise RuntimeError(msg)
                 volume[str(mat.id)] = mat.volume
-                name_list[str(mat.id)] = mat.name
                 self.heavy_metal += mat.fissionable_mass
 
         # Make sure there are burnable materials
@@ -231,11 +229,13 @@ class OpenMCOperator(TransportOperator):
                 "No depletable materials were found in the model.")
 
         # Sort the sets
-        burnable_mats = sorted(burnable_mats, key=int)
+        burnable_mats = sorted(burnable_mats, key=lambda x:int(x[0]))
         model_nuclides = sorted(model_nuclides)
 
         # Store material names for later use
-        self.name_list = name_list
+        self.name_list = [name for mat_id, name in burnable_mats]
+
+        burnable_mats = [mat_id for mat_id, name in burnable_mats]
 
         # Construct a global nuclide dictionary, burned first
         nuclides = list(self.chain.nuclide_dict)
@@ -546,8 +546,8 @@ class OpenMCOperator(TransportOperator):
             A list of all material IDs to be burned.  Used for sorting the simulation.
         full_burn_list : list
             List of all burnable material IDs
-        name_list : dict of str to str
-            Material names corresponding to materials in full_burn_dict
+        name_list : list of str
+            Material names corresponding to materials in burn_list
 
         """
         nuc_list = self.number.burnable_nuclides

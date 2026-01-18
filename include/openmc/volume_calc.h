@@ -17,13 +17,6 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
-#ifdef OPENMC_MPI
-#include <mpi.h>
-#endif
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 namespace openmc {
 
 //==============================================================================

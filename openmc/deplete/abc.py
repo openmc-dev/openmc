@@ -20,10 +20,10 @@ from warnings import warn
 import numpy as np
 from uncertainties import ufloat
 
-from openmc.checkvalue import check_value, check_type, check_greater_than, PathLike
+from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
-from openmc import Material, Cell
+from openmc import Material
 from .stepresult import StepResult
 from .chain import _get_chain
 from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \

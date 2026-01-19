@@ -202,3 +202,4 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     zero_value = root_finder(**args)
 
     return zero_value, guesses, results
+    

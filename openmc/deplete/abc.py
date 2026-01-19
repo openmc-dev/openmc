@@ -34,7 +34,6 @@ from .transfer_rates import TransferRates, ExternalSourceRates
 from .reactivity_control import ReactivityController
 
 
-
 __all__ = [
     "OperatorResult", "TransportOperator",
     "ReactionRateHelper", "NormalizationHelper", "FissionYieldHelper",
@@ -909,6 +908,7 @@ class Integrator(ABC):
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
                     n, res = self._get_bos_data_from_restart(source_rate, n)
+                    # Get root from reactivity control
                     if self._reactivity_control:
                         root = self.operator.prev_res[-1].reac_cont
                     else:

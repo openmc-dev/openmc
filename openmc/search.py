@@ -105,6 +105,8 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     run_args : dict, optional
         Keyword arguments to pass to :meth:`openmc.Model.run`. Defaults to no
         arguments.
+
+        .. versionadded:: 0.13.1
     **kwargs
         All remaining keyword arguments are passed to the root-finding
         method.

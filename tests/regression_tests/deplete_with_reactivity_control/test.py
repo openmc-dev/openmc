@@ -10,10 +10,6 @@ import numpy as np
 import openmc
 import openmc.lib
 from openmc.deplete import CoupledOperator
-from openmc.deplete import (
-    CellReactivityController,
-    MaterialReactivityController
-)
 
 from tests.regression_tests import config
 
@@ -82,45 +78,37 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.fixture
-def mix_mat():
-    mix_mat = openmc.Material()
-    mix_mat.add_element("U", 1, percent_type="ao", enrichment=90)
-    mix_mat.add_element("O", 2)
-    mix_mat.set_density("g/cc", 10.4)
-    return mix_mat
+def translate_cell(position):
+    cell_trans = [cell for cell in openmc.lib.cells.values() if cell.name == 'trans_cell'][0]
+    openmc.lib.cells[cell_trans.id].translation = [0, 0, position]
 
-@pytest.mark.parametrize("obj, attribute, bracket, bracket_limit, axis, ref_result", [
-    ('trans_cell', 'translation', [-5,5], [-40,40], 2, 'depletion_with_translation'),
-    ('rot_cell', 'rotation', [-5,5], [-90,90], 2, 'depletion_with_rotation'),
-    ('f', None, [-1,2], [-100,100], None, 'depletion_with_refuel')
+def rotate_cell(angle):
+    cell_rot = [cell for cell in openmc.lib.cells.values() if cell.name == 'rot_cell'][0]
+    openmc.lib.cells[cell_rot.id].rotation = [0, 0, angle]
+
+def adjust_material_density(density_factor):
+    f = [material for material in openmc.lib.materials.values() if material.name == 'f'][0]
+    nuclides = openmc.lib.materials[f.id].nuclides
+    current_densities = openmc.lib.materials[f.id].densities
+    new_densities = [d * density_factor for d in current_densities]
+    openmc.lib.materials[f.id].set_densities(nuclides, new_densities)
+
+@pytest.mark.parametrize("function, x0, x1, bracket, ref_result", [
+    (translate_cell, -11, -5, [-15,0], 'depletion_with_translation'),
+    (rotate_cell, -80, -50, [-90,0], 'depletion_with_rotation'),
+    (adjust_material_density, 0.5, 1.2, [0.2, 1.5], 'depletion_with_refuel')
     ])
-def test_reactivity_control(run_in_tmpdir, model, obj, attribute, bracket,
-                    bracket_limit, axis, ref_result, mix_mat):
+
+def test_reactivity_control(run_in_tmpdir, model, function, x0, x1, bracket, ref_result):
 
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
     op = CoupledOperator(model, chain_file)
 
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], 174., timestep_units = 'd')
-
-    if attribute:
-        integrator.reactivity_control = CellReactivityController(
-                cell=obj,
-                operator=op,
-                attribute=attribute,
-                bracket=bracket,
-                bracket_limit=bracket_limit,
-                axis=axis
-        )
-    else:
-        integrator.reactivity_control = MaterialReactivityController(
-                material=obj,
-                operator=op,
-                material_to_mix=mix_mat,
-                bracket=bracket,
-                bracket_limit=bracket_limit,
-        )
+    integrator.add_reactivity_control(function, x0, x1, bracket, 
+        kwargs={'output': True, 'k_tol': 0.1, 'sigma_final': 1e-3})
+    
     integrator.integrate()
 
     # Get path to test and reference results

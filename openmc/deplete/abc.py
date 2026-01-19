@@ -31,11 +31,7 @@ from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates, ExternalSourceRates
-from .reactivity_control import (
-    ReactivityController,
-    CellReactivityController,
-    MaterialReactivityController
-)
+from .reactivity_control import ReactivityController
 
 
 
@@ -626,8 +622,6 @@ class Integrator(ABC):
     reactivity_control : openmc.deplete.ReactivityController
         Instance of ReactivityController class to perform reactivity control during
         transport-depletion simulation.
-        Transfer rates for the depletion system used to model continuous
-        removal/feed between materials.
 
         .. versionadded:: 0.15.4
 
@@ -1093,27 +1087,111 @@ class Integrator(ABC):
         self.transfer_rates.set_redox(material, buffer, oxidation_states, timesteps)
 
     def add_reactivity_control(
-            self,
-            obj: Union[Cell, Material],
-            **kwargs):
-        """Add pre-defined Cell based or Material bases reactivity control to
-        integrator scheme.
+        self,
+        function: Callable,
+        x0: float,
+        x1: float,
+        bracket: list[float],
+        **kwargs
+    ):
+        """Add reactivity control to the integrator scheme.
+
+        This method creates a :class:`openmc.deplete.ReactivityController` that
+        performs keff searches during depletion to maintain a target reactivity
+        by adjusting a model parameter through the provided function.
+
+        .. important::
+            The function **must** modify the model through ``openmc.lib`` (e.g.,
+            ``openmc.lib.cells``, ``openmc.lib.materials``) and **NOT** through
+            ``openmc.model``. The function is called within a
+            :class:`openmc.lib.TemporarySession` context where only the C API
+            (``openmc.lib``) is available for modifications.
 
         Parameters
         ----------
-        obj : openmc.Cell or openmc.Material
-            Cell or Material identifier to where add reactivity control
+        function : Callable
+            Function that modifies the model through ``openmc.lib`` based on a
+            parameter value. The function should take a single float parameter
+            and modify ``openmc.lib`` objects accordingly (e.g., adjust control
+            rod position via ``openmc.lib.cells[...].translation``, material
+            density via ``openmc.lib.materials[...].set_densities(...)``, etc.).
+            
+            **Important**: The function must modify ``openmc.lib`` objects, not
+            ``openmc.model`` objects.
+        x0: float
+            Initial lower bound for the keff search.
+        x1: float
+            Initial upper bound for the keff search.
+        bracket : list[float]
+            Bracket interval [x_min, x_max] that constrains the allowed parameter
+            values during the keff search. This is a required parameter 
+            that defines the absolute bounds for the search. The bracket must contain
+            exactly 2 elements with bracket[0] < bracket[1]. These values are passed
+            directly to the ``x_min`` and ``x_max`` optional arguments in
+            :meth:`openmc.Model.keff_search`, which enforce hard limits on the
+            parameter range. If the keff search converges to a value outside this
+            bracket, it will be clamped to the nearest bracket bound with a warning.
         **kwargs
-            keyword arguments that are passed to the specific ReactivityController
-            class.
+            Additional keyword arguments passed to
+            :meth:`openmc.Model.keff_search`. Common options include:
+
+            * ``target`` : float, optional
+              Target keff value to search for. Defaults to 1.0.
+            * ``k_tol`` : float, optional
+              Stopping criterion on the function value. Defaults to 1e-4.
+            * ``sigma_final`` : float, optional
+              Maximum accepted k-effective uncertainty. Defaults to 3e-4.
+            * ``maxiter`` : int, optional
+              Maximum number of iterations. Defaults to 50.
+
+            See :meth:`openmc.Model.keff_search` for a complete list of
+            available options.
+
+        Examples
+        --------
+        Add reactivity control that adjusts a control rod position:
+
+        >>> def adjust_rod_position(position):
+        ...     openmc.lib.cells[rod_cell.id].translation = [0, 0, position]
+        >>> integrator.add_reactivity_control(
+        ...     adjust_rod_position,
+        ...     x0=0.0,
+        ...     x1=5.0,
+        ...     bracket=[-10,10],
+        ...     target=1.0,
+        ...     k_tol=1e-4
+        ... )
+
+        Add reactivity control that adjusts material density:
+
+        >>> def adjust_material_density(density_factor):
+        ...     # Get the material from openmc.lib
+        ...     lib_mat = openmc.lib.materials[material_id]
+        ...     # Get current nuclides and densities
+        ...     nuclides = lib_mat.nuclides
+        ...     current_densities = lib_mat.densities
+        ...     # Scale all densities by the factor
+        ...     new_densities = densities * density_factor
+        ...     # Update the material densities
+        ...     lib_mat.set_densities(nuclides, new_densities)
+        >>> integrator.add_reactivity_control(
+        ...     adjust_material_density,
+        ...     x0=0.8,
+        ...     x1=1.2,
+        ...     bracket=[0.2, 1.5],
+        ...     target=1.0
+        ... )
+
+        .. versionadded:: 0.15.4
 
         """
-        if isinstance(obj, Cell):
-            reactivity_control = CellReactivityController
-        elif isinstance(obj, Material):
-            reactivity_control = MaterialReactivityController
-        self._reactivity_control = reactivity_control.from_params(obj,
-                                        self.operator, **kwargs)
+        self._reactivity_control = ReactivityController(
+            self.operator, 
+            function, 
+            x0,
+            x1,
+            bracket,
+            **kwargs)
 
 @add_params
 class SIIntegrator(Integrator):

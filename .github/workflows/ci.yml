@@ -1,4 +1,4 @@
-name: CI
+name: Tests and Coverage
 
 on:
   # allows us to run workflows manually
@@ -21,7 +21,25 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  filter-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      source_changed: ${{ steps.filter.outputs.source_changed }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Examine changed files
+        id: filter
+        uses: dorny/paths-filter@668c092af3649c4b664c54e4b704aa46782f6f7c # latest master commit, not released yet
+        with:
+          filters: |
+            source_changed:
+              - '!docs/**'
+              - '!**/*.md'
+          predicate-quantifier: 'every'
   main:
+    needs: filter-changes
+    if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -158,7 +176,7 @@ jobs:
           path: |
             ~/nndc_hdf5
             ~/endf-b-vii.1
-          key: ${{ runner.os }}-build-xs-cache
+          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
 
       - name: before
         shell: bash
@@ -190,6 +208,7 @@ jobs:
             --gcov-ignore-errors source_not_found \
             --gcov-ignore-errors output_error \
             --gcov-ignore-parse-errors suspicious_hits.warn \
+            --merge-mode-functions=separate \
             --print-summary \
             --lcov -o coverage-cpp.lcov || true
 
@@ -208,12 +227,33 @@ jobs:
           flag-name: C++ and Python
           path-to-lcov: coverage.lcov
 
-  finish:
-    needs: main
+  coverage:
+    needs: [filter-changes, main]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
+        if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true
+
+  ci-pass:
+    needs: [filter-changes, main, coverage]
+    name: Check CI status
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI status
+        run: |
+          if [[ "${{ needs.filter-changes.outputs.source_changed }}" == "false" ]]; then
+            echo "Documentation-only change - CI skipped successfully"
+            exit 0
+          fi
+          if [[ "${{ needs.main.result }}" == "success" && "${{ needs.coverage.result }}" == "success" ]]; then
+            echo "CI passed"
+            exit 0
+          fi
+          echo "CI failed"
+          exit 1

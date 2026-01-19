@@ -10,7 +10,7 @@ import warnings
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-from openmc.stats.multivariate import MeshSpatial
+from openmc.stats.multivariate import MeshSpatial, Box, PolarAzimuthal, Isotropic
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
@@ -182,7 +182,7 @@ class Settings:
         Options for configuring the random ray solver. Acceptable keys are:
 
         :distance_inactive:
-            Indicates the total active distance in [cm] a ray should travel
+            Indicates the total inactive distance in [cm] a ray should travel
         :distance_active:
             Indicates the total active distance in [cm] a ray should travel
         :ray_source:
@@ -1278,9 +1278,12 @@ class Settings:
         return self._weight_windows_file
 
     @weight_windows_file.setter
-    def weight_windows_file(self, value: PathLike):
-        cv.check_type('weight windows file', value, PathLike)
-        self._weight_windows_file = input_path(value)
+    def weight_windows_file(self, value: PathLike | None):
+        if value is None:
+            self._weight_windows_file = None
+        else:
+            cv.check_type('weight windows file', value, PathLike)
+            self._weight_windows_file = input_path(value)
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:
@@ -1874,7 +1877,11 @@ class Settings:
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):
                     source_element = value.to_xml_element()
+                    if source_element.find('bias') is not None:
+                        raise RuntimeError(
+                            "Ray source distributions should not be biased.")
                     element.append(source_element)
+
                 elif key == 'source_region_meshes':
                     subelement = ET.SubElement(element, 'source_region_meshes')
                     for mesh, domains in value:
@@ -2321,6 +2328,9 @@ class Settings:
                     self.random_ray[child.tag] = float(child.text)
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
+                    if child.find('bias') is not None:
+                        raise RuntimeError(
+                            "Ray source distributions should not be biased.")
                     self.random_ray['ray_source'] = source
                 elif child.tag == 'volume_estimator':
                     self.random_ray['volume_estimator'] = child.text

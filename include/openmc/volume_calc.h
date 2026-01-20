@@ -24,8 +24,7 @@ namespace openmc {
 //==============================================================================
 
 class VolumeCalculation {
-
-public:
+private:
   // Aliases, types
   struct NuclResult {
     vector<int> nuclides;       //!< Index of nuclides
@@ -33,6 +32,7 @@ public:
     vector<double> uncertainty; //!< Uncertainty on number of atoms
   }; // Results of nuclides calculation for a single domain
 
+public:
   //! \brief Tally corresponding to a single material (AoS)
   struct VolTally {
     double score {0.0};            //!< Current batch scores accumulator
@@ -67,7 +67,7 @@ public:
     //! \return                 True if the trigger condition is satisfied
     inline bool trigger_state(const TriggerMetric trigger_type,
       const double threshold, const size_t& n_samples) const;
-  };
+  }; // public just because it is used externally for the MPI struct definition
 
   //! \brief Online results of calculation specific for each thread
   struct CalcResults {
@@ -108,6 +108,18 @@ public:
   //! \return Vector of results for each user-specified domain
   void execute(CalcResults& results) const;
 
+  //! \brief Print volume calculation results
+  //
+  //! \param[in] results   Full volume calculation results
+  void show_results(const CalcResults& results) const;
+
+  //! \brief Write volume calculation results to HDF5 file
+  //
+  //! \param[in] filename  Path to HDF5 file to write
+  //! \param[in] results   Results entity
+  void to_hdf5(const std::string& filename, const CalcResults& results) const;
+
+private:
   //! \brief Rejection estimator
   inline void score_hit(const Particle& p, CalcResults& results) const;
 
@@ -129,11 +141,6 @@ public:
   void reduce_results(
     const CalcResults& local_results, CalcResults& results) const;
 
-  //! \brief Print volume calculation results
-  //
-  //! \param[in] results   Full volume calculation results
-  void show_results(const CalcResults& results) const;
-
   //! \brief Prints a statistics parameter
   //
   //! \param[in] label   Name of parameter
@@ -153,12 +160,6 @@ public:
     const std::string region_name, const double mean,
     const double stddev) const;
 
-  //! \brief Write volume calculation results to HDF5 file
-  //
-  //! \param[in] filename  Path to HDF5 file to write
-  //! \param[in] results   Results entity
-  void to_hdf5(const std::string& filename, const CalcResults& results) const;
-
   // Tally filter and map types
   enum class TallyDomain { UNIVERSE, MATERIAL, CELL };
 
@@ -176,7 +177,6 @@ public:
   Position upper_right_;        //!< Upper-right position of bounding box
   vector<int> domain_ids_;      //!< IDs of domains to find volumes of
 
-private:
   constexpr static int _INDEX_TOTAL =
     -999; //!< Index of zero-element tally for entire domain totals should be
           //!< out of material ID range

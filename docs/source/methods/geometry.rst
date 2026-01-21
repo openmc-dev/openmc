@@ -191,7 +191,7 @@ within the container's boundaries.  New spheres which overlap with previously
 generated spheres are rejected.  This random coordinate selection continues
 until the target number of random sphere centers is generated.
 
-In OpenMC, the CRP method implemented uses the Jodrey-Tory algorithm [1]_.
+In OpenMC, the CRP method implemented uses the Jodrey-Tory algorithm [Jodrey-Tory]_.
 In Jodrey-Tory, each sphere is assigned two diameters: the inner diameter,
 :math:`d_{inner}`, and the outer diameter, :math:`d_{outer}`,
 which approach each other during the simulation.  The inner diameter is defined
@@ -260,9 +260,9 @@ the top and bottom surfaces are capped by planes (similar to a cylinder).  In
 the case of such a container, the limit in r is dependent upon the sphere's
 current z-coordinate relative to the top and bottom surfaces of the container.
 
-.. _fig-PLACEHOLDER:
+.. _fig-cone-container:
 
-.. figure:: ../_images/IMGDOESNOTEXIST.svg
+.. figure:: ../_images/jt-truncated-cone.svg
    :align: center
    :figclass: align-center
    :width: 400px
@@ -325,13 +325,6 @@ by choosing the sign that results in adding :math:`r_{minor}`, which gives an
 
 
 
-[fix refs later, this formatting is probably wrong]
-References
-----------
-.. [1] W. S. Jodrey and E. M. Tory, "Computer simulation of close random
-       packing of equal spheres", Phys. Rev. A 32 (1985) 2347-2351.
-
-
 ------------------------------------------
 Computing the Distance to Nearest Boundary
 ------------------------------------------
@@ -386,7 +379,7 @@ use the minimum function because some of the calculated distances, which should
 be the same in theory (e.g. coincident surfaces), may be slightly different due
 to the use of floating-point arithmetic. Consequently, we should first check for
 floating-point equality of the current distance calculated and the minimum found
-thus far. This is done by checking if
+thus far. This is done by checking if:
 
 .. math::
     :label: fp-distance
@@ -1222,3 +1215,5 @@ surface is known as in :ref:`reflection`.
 .. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: https://serpent.vtt.fi
 .. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc
+.. [Jodrey-Tory] W. S. Jodrey and E. M. Tory, "Computer simulation of close random
+       packing of equal spheres", Phys. Rev. A 32 (1985) 2347-2351.

@@ -111,9 +111,9 @@ void score_meshsurface_tally(Particle& p, const vector<int>& tallies);
 //
 //! \param p The particle being tracked
 //! \param tallies A vector of the indices of the tallies to score to
-//! \param surface The surface being crossed
+//! \param surf The surface being crossed
 void score_surface_tally(
-  Particle& p, const vector<int>& tallies, const Surface& surface);
+  Particle& p, const vector<int>& tallies, const Surface& surf);
 
 //! Score the pulse-height tally
 //! This is triggered at the end of every particle history

@@ -2620,12 +2620,54 @@ void score_collision_tally(Particle& p)
     match.bins_present_ = false;
 }
 
-void score_surface_tally(Particle& p, const vector<int>& tallies)
+void score_meshsurface_tally(Particle& p, const vector<int>& tallies)
 {
   double current = p.wgt_last();
 
-  // Get surface normal (and make sure it is a unit vector)
-  const auto surf {model::surfaces[std::abs(p.surface()) - 1].get()};
+  for (auto i_tally : tallies) {
+    auto& tally {*model::tallies[i_tally]};
+
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    if (filter_iter == end)
+      continue;
+
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
+
+      // Loop over scores.
+      // There is only one score type for current tallies so there is no need
+      // for a further scoring function.
+      double score = current * filter_weight;
+      for (auto score_index = 0; score_index < tally.scores_.size();
+           ++score_index) {
+#pragma omp atomic
+        tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
+      }
+    }
+
+    // If the user has specified that we can assume all tallies are spatially
+    // separate, this implies that once a tally has been scored to, we needn't
+    // check the others. This cuts down on overhead when there are many
+    // tallies specified
+    if (settings::assume_separate)
+      break;
+  }
+
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : p.filter_matches())
+    match.bins_present_ = false;
+}
+
+void score_surface_tally(Particle& p, const vector<int>& tallies, Surface& surf)
+{
+  double current = p.wgt_last();
+
   auto n = surf->normal(p.r());
   n /= n.norm();
 
@@ -2657,9 +2699,9 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
         double score = current;
 
         auto score_bin = tally.scores_[score_index];
-        if (score_bin == SCORE_SURFACE_FLUX)
+        if (score_bin == SCORE_SURFACE_FLUX) {
           score /= abs_mu;
-
+        }
 #pragma omp atomic
         tally.results_(filter_index, score_index, TallyResult::VALUE) +=
           score * filter_weight;

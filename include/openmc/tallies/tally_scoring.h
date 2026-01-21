@@ -101,11 +101,19 @@ void score_tracklength_tally(Particle& p, double distance);
 //! \param total_distance The distance in [cm] traveled by the particle
 void score_timed_tracklength_tally(Particle& p, double total_distance);
 
-//! Score surface or mesh-surface tallies for particle currents.
+//! Score mesh-surface tallies for particle currents.
 //
 //! \param p The particle being tracked
 //! \param tallies A vector of the indices of the tallies to score to
-void score_surface_tally(Particle& p, const vector<int>& tallies);
+void score_meshsurface_tally(Particle& p, const vector<int>& tallies);
+
+//! Score surface tallies for particle currents.
+//
+//! \param p The particle being tracked
+//! \param tallies A vector of the indices of the tallies to score to
+//! \param surface The surface being crossed
+void score_surface_tally(
+  Particle& p, const vector<int>& tallies, const Surface& surface);
 
 //! Score the pulse-height tally
 //! This is triggered at the end of every particle history

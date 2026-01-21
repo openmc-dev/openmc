@@ -2664,7 +2664,8 @@ void score_meshsurface_tally(Particle& p, const vector<int>& tallies)
     match.bins_present_ = false;
 }
 
-void score_surface_tally(Particle& p, const vector<int>& tallies, Surface& surf)
+void score_surface_tally(
+  Particle& p, const vector<int>& tallies, const Surface& surf)
 {
   double current = p.wgt_last();
 

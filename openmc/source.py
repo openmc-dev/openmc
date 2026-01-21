@@ -570,13 +570,13 @@ class MeshSource(SourceBase):
         cv.check_iterable_type('mesh sources', s, SourceBase, max_depth=3)
 
         s = np.asarray(s)
+        
+        if s.size != self.mesh.n_elements:
+            raise ValueError(
+                    f'The length of the source array ({s.size}) does not match '
+                    f'the number of mesh elements ({self.mesh.n_elements}).')
 
         if isinstance(self.mesh, StructuredMesh):
-            if s.size != self.mesh.num_mesh_cells:
-                raise ValueError(
-                    f'The length of the source array ({s.size}) does not match '
-                    f'the number of mesh elements ({self.mesh.num_mesh_cells}).')
-
             # If user gave a multidimensional array, flatten in the order
             # of the mesh indices
             if s.ndim > 1:

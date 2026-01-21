@@ -713,7 +713,7 @@ void VolumeCalculation::score_hit(const Particle& p, CalcResults& results) const
   const auto score = 1.; // Floating-point score value
 
   switch (domain_type_) {
-  case VolumeCalculation::TallyDomain::MATERIAL:
+  case TallyDomain::MATERIAL:
     if (id_mat != MATERIAL_VOID) {
       for (auto i_domain = 0; i_domain < n_domains; i_domain++) {
         if (model::materials[id_mat]->id_ == domain_ids_[i_domain]) {
@@ -723,7 +723,7 @@ void VolumeCalculation::score_hit(const Particle& p, CalcResults& results) const
       }
     }
     break;
-  case VolumeCalculation::TallyDomain::CELL:
+  case TallyDomain::CELL:
     for (auto level = 0; level < p.n_coord_last(); ++level) {
       for (auto i_domain = 0; i_domain < n_domains; i_domain++) {
         if (model::cells[p.coord(level).cell()]->id_ == domain_ids_[i_domain]) {
@@ -733,7 +733,7 @@ void VolumeCalculation::score_hit(const Particle& p, CalcResults& results) const
       }
     }
     break;
-  case VolumeCalculation::TallyDomain::UNIVERSE:
+  case TallyDomain::UNIVERSE:
     for (auto level = 0; level < p.n_coord_last(); ++level) {
       for (auto i_domain = 0; i_domain < n_domains; ++i_domain) {
         if (model::universes[model::cells[p.coord(level).cell()]->universe_]

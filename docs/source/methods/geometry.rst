@@ -210,7 +210,17 @@ moving the spheres apart along the line joining their centers until they are
 :math:`d_{outer}` apart.  At the end of an iteration, :math:`d_{outer}` is
 reduced according to:
 
-[insert dout eqn here, it is in the docstrings in triso.py]
+.. math::
+    :label: jt-dout
+
+    d_{out}^{i+1} = d_{out}^{i} - \frac{1}{2}^{j} * d_{out0} * \frac{k}{n}
+
+where k is the contraction rate, n is the number of spheres, and
+
+.. math::
+    :label: jt-dout-j
+
+    j = floor(-log_{10}(pf_{out} - pf_{in}))
 
 Iterations continue until the :math:`d_{outer}` and :math:`d_{inner}` converge
 or the target :math:`pf` is reached, which is determined by the current value
@@ -305,7 +315,8 @@ is found to be:
 
 Which can be used to define the radial limit as a function of the sphere's current
 z-position relative to the bases of the cone.  The :math:`\pm` symbol is resolved
-by choosing the sign that results in adding :math:`r_{minor}`.
+by choosing the sign that results in adding :math:`r_{minor}`, which gives an
+:math:`r_{lim}` line the appropriate distance inside the conical container.
 
 .. math::
     :label: rlim-eqn

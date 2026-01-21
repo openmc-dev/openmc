@@ -701,11 +701,12 @@ void Tally::set_scores(const vector<std::string>& scores)
   }
 
   // Make sure surface tallies contain only surface type scores score.
-  if (surface_present || cell_present || cellfrom_present) {
+  if (type_ == TallyType::SURFACE) {
     for (auto sc : scores_)
       if ((sc != SCORE_CURRENT) && (sc != SCORE_SURFACE_FLUX))
-        fatal_error("Cannot tally score other than 'current' or 'surface-flux' "
-                    "when using surface filters.");
+        fatal_error(
+          "Cannot tally scores other than 'current' or 'surface-flux' "
+          "when using surface filters.");
   }
 }
 

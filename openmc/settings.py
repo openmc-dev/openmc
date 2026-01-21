@@ -4,6 +4,7 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
+import traceback
 
 import lxml.etree as ET
 import warnings
@@ -466,6 +467,16 @@ class Settings:
 
         for key, value in kwargs.items():
             setattr(self, key, value)
+            
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            try:
+              getattr(self, name)
+            except AttributeError as e:
+              msg, = traceback.format_exception_only(e)
+              msg = msg.strip().split(maxsplit=1)[-1]
+              warnings.warn(msg, stacklevel=2)
+        super().__setattr__(name, value)
 
     @property
     def run_mode(self) -> str:

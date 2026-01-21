@@ -2668,7 +2668,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies, Surface& surf)
 {
   double current = p.wgt_last();
 
-  auto n = surf->normal(p.r());
+  auto n = surf.normal(p.r());
   n /= n.norm();
 
   // Determine absolute cosine of angle between normal and particle direction

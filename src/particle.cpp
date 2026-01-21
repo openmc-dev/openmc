@@ -297,7 +297,7 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
-  const auto& surf {model::surfaces[surface_index()].get()};
+  const auto& surf {*model::surfaces[surface_index()].get()};
 
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
@@ -310,13 +310,13 @@ void Particle::event_cross_surface()
   } else {
     // Particle crosses surface
     // If BC, add particle to surface source before crossing surface
-    if (surf->surf_source_ && surf->bc_) {
-      add_surf_source_to_bank(*this, *surf);
+    if (surf.surf_source_ && surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
     }
-    this->cross_surface(*surf);
+    this->cross_surface(surf);
     // If no BC, add particle to surface source after crossing surface
-    if (surf->surf_source_ && !surf->bc_) {
-      add_surf_source_to_bank(*this, *surf);
+    if (surf.surf_source_ && !surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
     }
     if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);

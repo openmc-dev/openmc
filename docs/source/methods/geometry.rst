@@ -379,7 +379,7 @@ use the minimum function because some of the calculated distances, which should
 be the same in theory (e.g. coincident surfaces), may be slightly different due
 to the use of floating-point arithmetic. Consequently, we should first check for
 floating-point equality of the current distance calculated and the minimum found
-thus far. This is done by checking if:
+thus far. This is done by checking if
 
 .. math::
     :label: fp-distance

@@ -8,20 +8,24 @@
 #include <cmath>
 #include <utility>
 
-namespace openmc{
-    
-void convert_to_subcritical_k(double& k, double& k_std) {
-    double k_sub = k / (k + 1);
-    double k_sub_std = k_sub * sqrt( pow(k_std / k, 2) + pow(k_std / (k + 1), 2) );
-    k = k_sub;
-    k_std = k_sub_std;
+namespace openmc {
+
+void convert_to_subcritical_k(double& k, double& k_std)
+{
+  double k_sub = k / (k + 1);
+  double k_sub_std = k_sub * sqrt(pow(k_std / k, 2) + pow(k_std / (k + 1), 2));
+  k = k_sub;
+  k_std = k_sub_std;
 }
 
-double convert_to_subcritical_k(double k) {
-    // Used to convert keff estimators in fixed source mode, which are multiplicities, specifically = M-1
-    // into the corresponding estimators for subcritical k
-    double k_sub = (k/simulation::total_weight) / (k/simulation::total_weight + 1) * simulation::total_weight;
-    return k_sub;
+double convert_to_subcritical_k(double k)
+{
+  // Used to convert keff estimators in fixed source mode, which are
+  // multiplicities, specifically = M-1 into the corresponding estimators for
+  // subcritical k
+  double k_sub = (k / simulation::total_weight) /
+                 (k / simulation::total_weight + 1) * simulation::total_weight;
+  return k_sub;
 }
 
 void calculate_generation_kq()
@@ -94,7 +98,7 @@ void calculate_average_kq()
       }
 
       // Standard deviation of the sample mean of k
-      simulation::keff_std =
+      simulation::kq_std =
         t_value *
         std::sqrt(
           (simulation::kq_sum[1] / n - std::pow(simulation::kq, 2)) / (n - 1));

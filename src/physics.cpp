@@ -178,15 +178,12 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   if (settings::run_mode == RunMode::FIXED_SOURCE &&
       settings::calculate_subcritical_k) {
     // In fixed source mode, no need to scale by keff
-    nu_t = p.wgt() * weight *
-                p.neutron_xs(i_nuclide).nu_fission /
-                p.neutron_xs(i_nuclide).total;
+    nu_t = p.wgt() * weight * p.neutron_xs(i_nuclide).nu_fission /
+           p.neutron_xs(i_nuclide).total;
   } else {
     nu_t = p.wgt() / simulation::keff * weight *
-                p.neutron_xs(i_nuclide).nu_fission /
-                p.neutron_xs(i_nuclide).total;
+           p.neutron_xs(i_nuclide).nu_fission / p.neutron_xs(i_nuclide).total;
   }
-  
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);

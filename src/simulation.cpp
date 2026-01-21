@@ -19,6 +19,7 @@
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
+#include "openmc/subcritical.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
@@ -26,7 +27,6 @@
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
-#include "openmc/subcritical.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -536,8 +536,8 @@ void initialize_generation()
       GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
 
     if (settings::calculate_subcritical_k) {
-        simulation::kq_generation_val = simulation::global_tallies_first_gen(
-            GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+      simulation::kq_generation_val = simulation::global_tallies_first_gen(
+        GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
     }
   }
 }
@@ -548,15 +548,14 @@ void finalize_generation()
   auto& gt_first_gen = simulation::global_tallies_first_gen;
 
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) +=
-      global_tally_collision;
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
     gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
       global_tally_absorption;
     gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
       global_tally_tracklength;
   }
   if (settings::run_mode == RunMode::FIXED_SOURCE &&
-        settings::calculate_subcritical_k) {
+      settings::calculate_subcritical_k) {
     // Update global tallies
     gt(GlobalTally::K_COLLISION, TallyResult::VALUE) +=
       convert_to_subcritical_k(global_tally_collision);
@@ -584,7 +583,7 @@ void finalize_generation()
     global_tally_tracklength = 0.0;
   }
   if (settings::run_mode == RunMode::FIXED_SOURCE &&
-        settings::calculate_subcritical_k) {
+      settings::calculate_subcritical_k) {
     global_tally_absorption_first_gen = 0.0;
     global_tally_collision_first_gen = 0.0;
     global_tally_tracklength_first_gen = 0.0;
@@ -851,7 +850,8 @@ void broadcast_results()
   auto& gt = simulation::global_tallies;
   MPI_Bcast(gt.data(), gt.size(), MPI_DOUBLE, 0, mpi::intracomm);
   auto& gt_first_gen = simulation::global_tallies_first_gen;
-  MPI_Bcast(gt_first_gen.data(), gt_first_gen.size(), MPI_DOUBLE, 0, mpi::intracomm);
+  MPI_Bcast(
+    gt_first_gen.data(), gt_first_gen.size(), MPI_DOUBLE, 0, mpi::intracomm);
 
   // These guys are needed so that non-master processes can calculate the
   // combined estimate of k-effective
@@ -895,7 +895,7 @@ void transport_history_based_single_particle(Particle& p)
     }
     // Check for first generation completion
     if ((!p.alive() || p.n_progeny() > 0) && tally_first_generation) {
-        if (settings::calculate_subcritical_k) {
+      if (settings::calculate_subcritical_k) {
 // Protect global updates with atomic to prevent data races
 #pragma omp atomic
         global_tally_absorption_first_gen += p.keff_tally_absorption();

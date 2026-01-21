@@ -205,6 +205,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {SCORE_IFP_TIME_NUM, "ifp-time-numerator"},
   {SCORE_IFP_BETA_NUM, "ifp-beta-numerator"},
   {SCORE_IFP_DENOM, "ifp-denominator"},
+  {SCORE_SURFACE_FLUX, "surface-flux"},
   // Normal ENDF-based reactions
   {TOTAL_XS, "(n,total)"},
   {ELASTIC, "(n,elastic)"},

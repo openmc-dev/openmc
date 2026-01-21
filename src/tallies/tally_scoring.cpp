@@ -14,6 +14,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
@@ -2640,16 +2641,37 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
       auto filter_weight = filter_iter.weight_;
 
       // Loop over scores.
-      // There is only one score type for current tallies so there is no need
-      // for a further scoring function.
-      double score = current * filter_weight;
-      for (auto score_index = 0; score_index < tally.scores_.size();
-           ++score_index) {
+      for (auto i = 0; i < tally.scores_.size(); ++i) {
+        auto score_bin = tally.scores_[i];
+        auto score_index = filter_index + i;
+        double score = current;
+
+        if (score_bin == SCORE_SURFACE_FLUX) {
+          // Get surface normal (and make sure it is a unit vector)
+          const auto surf {model::surfaces[std::abs(p.surface()) - 1].get()};
+          auto n = surf->normal(p.r());
+          n /= n.norm();
+
+          // Determine whether normal should be pointing in or out
+          if (p.surface() < 0)
+            n *= -1;
+
+          // Determine cosine of angle between normal and particle direction
+          double abs_mu = std::min(std::abs(p.u().dot(n)), 1.0);
+
+          if (abs_mu < settings::surface_grazing_cutoff)
+            abs_mu = settings::surface_grazing_ratio *
+                     settings::surface_grazing_cutoff;
+          score /= abs_mu;
+        }
+        for (auto score_index = 0; score_index < tally.scores_.size();
+             ++score_index) {
 #pragma omp atomic
-        tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
+          tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+            score * filter_weight;
+        }
       }
     }
-
     // If the user has specified that we can assume all tallies are spatially
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many

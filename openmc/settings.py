@@ -284,6 +284,12 @@ class Settings:
         :cellto: Cell ID used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
                  cell will be banked (int)
+    surface_grazing_cutoff : float
+        Surface flux cosine cutoff. If not specified, the default
+        value is 0.01.
+    surface_grazing_ratio : float
+        Surface flux cosine substitution ratio. If not specified, the default
+        value is 0.5.
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -394,6 +400,8 @@ class Settings:
         self._uniform_source_sampling = None
         self._seed = None
         self._stride = None
+        self._surface_grazing_cutoff = None
+        self._surface_grazing_ratio = None
         self._survival_biasing = None
         self._free_gas_threshold = None
 
@@ -694,7 +702,28 @@ class Settings:
         cv.check_type('random number generator stride', stride, Integral)
         cv.check_greater_than('random number generator stride', stride, 0)
         self._stride = stride
+        
+    @property
+    def surface_grazing_cutoff(self) -> float:
+        return self._surface_grazing_cutoff
 
+    @surface_grazing_cutoff.setter
+    def surface_grazing_cutoff(self, surface_grazing_cutoff: float):
+        cv.check_type('surface grazing cutoff', surface_grazing_cutoff, float)
+        cv.check_greater_than('surface grazing cutoff', surface_grazing_cutoff, 0.0)
+        cv.check_less_than('surface grazing cutoff', surface_grazing_cutoff, 1.0)
+        self._surface_grazing_cutoff = surface_grazing_cutoff
+        
+    @property
+    def surface_grazing_ratio(self) -> float:
+        return self._surface_grazing_ratio
+
+    @surface_grazing_ratio.setter
+    def surface_grazing_ratio(self, surface_grazing_ratio: float):
+        cv.check_type('surface grazing ratio', surface_grazing_ratio, float)
+        cv.check_greater_than('surface grazing ratio', surface_grazing_ratio, 0.0)
+        self._surface_grazing_ratio = surface_grazing_ratio
+                
     @property
     def survival_biasing(self) -> bool:
         return self._survival_biasing

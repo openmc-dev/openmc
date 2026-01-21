@@ -136,6 +136,8 @@ int64_t ssw_max_particles;
 int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
+double surface_grazing_cutoff {0.01};
+double surface_grazing_ratio {0.5};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -675,6 +677,14 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "free_gas_threshold")) {
     free_gas_threshold = std::stod(get_node_value(root, "free_gas_threshold"));
   }
+
+  // Surface grazing
+  if (check_for_node(root, "surface_grazing_cutoff"))
+    surface_grazing_cutoff =
+      std::stod(get_node_value(root, "surface_grazing_cutoff"));
+  if (check_for_node(root, "surface_grazing_ratio"))
+    surface_grazing_ratio =
+      std::stod(get_node_value(root, "surface_grazing_ratio"));
 
   // Survival biasing
   if (check_for_node(root, "survival_biasing")) {

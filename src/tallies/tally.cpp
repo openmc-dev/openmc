@@ -266,6 +266,7 @@ Tally::Tally(pugi::xml_node node)
                       "transport on and inverse velocity score");
           break;
         case SCORE_FLUX:
+        case SCORE_SURFACE_FLUX:
         case SCORE_TOTAL:
         case SCORE_SCATTER:
         case SCORE_NU_SCATTER:
@@ -608,6 +609,17 @@ void Tally::set_scores(const vector<std::string>& scores)
       }
       break;
 
+    case SCORE_SURFACE_FLUX:
+      if (meshsurface_present)
+        fatal_error("OpenMC does not support mesh surface fluxes yet");
+      if (surface_present || cell_present || cellfrom_present) {
+        type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
+      } else {
+        fatal_error("Cannot tally surface flux without surface type filters");
+      }
+      break;
+
     case SCORE_CURRENT:
       // Check which type of current is desired: mesh or surface currents.
       if (surface_present || cell_present || cellfrom_present) {
@@ -681,15 +693,20 @@ void Tally::set_scores(const vector<std::string>& scores)
                     "in multi-group mode");
   }
 
-  // Make sure current scores are not mixed in with volumetric scores.
-  if (type_ == TallyType::SURFACE || type_ == TallyType::MESH_SURFACE) {
-    if (scores_.size() != 1)
-      fatal_error("Cannot tally other scores in the same tally as surface "
-                  "currents.");
+  // Make sure mesh surface tallies contain only current score.
+  if (meshsurface_present) {
+    if ((scores_[0] != SCORE_CURRENT) || (scores_.size() > 1))
+      fatal_error("Cannot tally score other than 'current' when using a "
+                  "mesh-surface filter.");
   }
-  if ((surface_present || meshsurface_present) && scores_[0] != SCORE_CURRENT)
-    fatal_error("Cannot tally score other than 'current' when using a surface "
-                "or mesh-surface filter.");
+
+  // Make sure surface tallies contain only surface type scores score.
+  if (surface_present || cell_present || cellfrom_present) {
+    for (auto sc : scores_)
+      if ((sc != SCORE_CURRENT) && (sc != SCORE_SURFACE_FLUX))
+        fatal_error("Cannot tally score other than 'current' or 'surface-flux' "
+                    "when using surface filters.");
+  }
 }
 
 void Tally::set_nuclides(pugi::xml_node node)

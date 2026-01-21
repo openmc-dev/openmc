@@ -203,7 +203,9 @@ class AtomicRelaxation(EqualityMixin):
         for subshell, df in transitions.items():
             cv.check_value('subshell', subshell, _SUBSHELLS)
             cv.check_type('transitions', df, pd.DataFrame)
-        self._transitions = transitions
+        self._transitions = {
+            subshell: df.convert_dtypes() for subshell, df in transitions.items()
+        }
 
     @classmethod
     def from_ace(cls, ace):
@@ -260,7 +262,7 @@ class AtomicRelaxation(EqualityMixin):
 
                 # Create dataframe for transitions
                 transitions[subi] = pd.DataFrame.from_records(
-                    records, columns=columns).convert_dtypes()
+                    records, columns=columns)
 
         return cls(binding_energy, num_electrons, transitions)
 
@@ -321,7 +323,7 @@ class AtomicRelaxation(EqualityMixin):
 
                 # Create dataframe for transitions
                 transitions[subi] = pd.DataFrame.from_records(
-                    records, columns=columns).convert_dtypes()
+                    records, columns=columns)
 
         # Return instance of class
         return cls(binding_energy, num_electrons, transitions)
@@ -366,7 +368,7 @@ class AtomicRelaxation(EqualityMixin):
                 with pd.option_context('future.no_silent_downcasting', True):
                     df[columns[:2]] = df[columns[:2]].replace(
                                 np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
-                transitions[shell] = df.convert_dtypes()
+                transitions[shell] = df
 
         return cls(binding_energy, num_electrons, transitions)
 

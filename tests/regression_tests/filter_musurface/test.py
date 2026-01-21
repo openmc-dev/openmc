@@ -32,7 +32,7 @@ def model():
     mu_filter = openmc.MuSurfaceFilter([-1.0, -0.5, 0.0, 0.5, 1.0])
     tally = openmc.Tally()
     tally.filters = [surf_filter, mu_filter]
-    tally.scores = ['current']
+    tally.scores = ['current', 'surface-flux']
     model.tallies.append(tally)
 
     return model

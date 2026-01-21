@@ -260,7 +260,7 @@ class AtomicRelaxation(EqualityMixin):
 
                 # Create dataframe for transitions
                 transitions[subi] = pd.DataFrame.from_records(
-                    records, columns=columns)
+                    records, columns=columns).convert_dtypes()
 
         return cls(binding_energy, num_electrons, transitions)
 
@@ -321,7 +321,7 @@ class AtomicRelaxation(EqualityMixin):
 
                 # Create dataframe for transitions
                 transitions[subi] = pd.DataFrame.from_records(
-                    records, columns=columns)
+                    records, columns=columns).convert_dtypes()
 
         # Return instance of class
         return cls(binding_energy, num_electrons, transitions)
@@ -366,7 +366,7 @@ class AtomicRelaxation(EqualityMixin):
                 with pd.option_context('future.no_silent_downcasting', True):
                     df[columns[:2]] = df[columns[:2]].replace(
                                 np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
-                transitions[shell] = df
+                transitions[shell] = df.convert_dtypes()
 
         return cls(binding_energy, num_electrons, transitions)
 

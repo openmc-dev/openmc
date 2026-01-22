@@ -21,8 +21,7 @@ public:
   // Methods
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fixed_sources_adjoint();
-  void run_single_simulation();
-  void random_ray_adjoint();
+  void prepare_adjoint_simulation();
   void simulate();
   void output_simulation_results() const;
   void instability_check(
@@ -35,9 +34,15 @@ public:
   // Accessors
   FlatSourceDomain* domain() const { return domain_.get(); }
 
+  //----------------------------------------------------------------------------
+  // Public data members
+
+  // Flag for adjoint simulation;
+  bool adjoint_needed_;
+
 private:
   //----------------------------------------------------------------------------
-  // Data members
+  // Private data members
 
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
@@ -54,9 +59,6 @@ private:
 
   // Toggle for first simulation
   bool is_first_simulation_;
-
-  // Flag for adjoint simulation;
-  bool adjoint_needed_;
 
 }; // class RandomRaySimulation
 

@@ -1,5 +1,6 @@
 from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from enum import Enum
+import inspect
 import itertools
 from math import ceil
 from numbers import Integral, Real
@@ -467,15 +468,15 @@ class Settings:
 
         for key, value in kwargs.items():
             setattr(self, key, value)
-            
-    def __setattr__(self, name, value):
+
+    def __setattr__(self, name: str, value):
         if not name.startswith('_'):
             try:
-              getattr(self, name)
+                getattr(self, name)
             except AttributeError as e:
-              msg, = traceback.format_exception_only(e)
-              msg = msg.strip().split(maxsplit=1)[-1]
-              warnings.warn(msg, stacklevel=2)
+                msg, = traceback.format_exception_only(e)
+                msg = msg.strip().split(maxsplit=1)[-1]
+                warnings.warn(msg, stacklevel=2)
         super().__setattr__(name, value)
 
     @property

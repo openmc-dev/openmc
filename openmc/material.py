@@ -1950,7 +1950,7 @@ class Materials(cv.CheckedList):
         elif material.cross_sections is not None:
             self.cross_sections = material.cross_sections
     
-    def __setitem__(index: int, material):
+    def __setitem__(self, index: int, material):
         self._setup_cross_sections(material)
         super().__setitem__(index, material)
 

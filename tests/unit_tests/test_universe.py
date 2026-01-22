@@ -6,6 +6,46 @@ import pytest
 from tests.unit_tests import assert_unbounded
 
 
+@pytest.fixture
+def mg_lib():
+    groups = openmc.mgxs.EnergyGroups(group_edges=[1e-5, 20.0e6])
+    h2o_xsdata = openmc.XSdata('LWTR', groups)
+    h2o_xsdata.order = 0
+    h2o_xsdata.set_total([1.0])
+    h2o_xsdata.set_absorption([0.5])
+    scatter_matrix = np.array([[[0.5]]])
+    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
+    h2o_xsdata.set_scatter_matrix(scatter_matrix)
+    mg_cross_sections_file = openmc.MGXSLibrary(groups)
+    mg_cross_sections_file.add_xsdatas([h2o_xsdata])
+    mg_cross_sections_file.export_to_hdf5()
+    return "mgxs.h5"
+
+
+@pytest.fixture
+def mg_model(mg_lib):
+    model = openmc.Model()
+    
+    # Create materials for the problem
+    h2o_data = openmc.Macroscopic('LWTR')
+
+    water = openmc.Material(name='Water')
+    water.set_density('macro', 1.0)
+    water.add_macroscopic(h2o_data)
+
+    # Instantiate a Materials collection and export to XML
+    model.materials = openmc.Materials([water])
+    model.materials.cross_sections = mg_lib
+    H = 1.0
+    L = 100
+
+    sph00 = openmc.Sphere(r=10, boundary_type = "vacuum")
+    cell00 = openmc.Cell(region = -sph00 ,  fill = water)
+    univ = openmc.Universe(cells = [cell00], universe_id = 1)
+    model.geometry = openmc.Geometry(univ)
+    return model
+
+
 def test_basic():
     c1 = openmc.Cell()
     c2 = openmc.Cell()
@@ -102,6 +142,12 @@ def test_plot(run_in_tmpdir, sphere_model):
     # Close plots to avoid warning
     import matplotlib.pyplot as plt
     plt.close('all')
+    
+
+def test_mg_plot(mg_model):    
+    univ = mg_model.geometry.root_universe
+    univ.plot(width=(200, 200), basis='yz', color_by='cell')
+    univ.plot(width=(200, 200), basis='yz', color_by='material')
 
 
 def test_get_nuclides(uo2):

@@ -753,9 +753,9 @@ def _generate_c5g7_materials() -> openmc.Materials:
     return materials
 
 
-def _generate_random_ray_pin_cell(uo2, water) -> openmc.Universe:
-    """Create a random ray pin cell universe. Helper function for
-    random_ray_pin_cell() and random_ray_lattice()
+def _generate_subdivided_pin_cell(uo2, water) -> openmc.Universe:
+    """Create a radially and azimuthally subdivided pin celluniverse. Helper
+    function for random_ray_pin_cell() and random_ray_lattice()
 
     Parameters
     ----------
@@ -843,7 +843,7 @@ def random_ray_pin_cell() -> openmc.Model:
 
     ###########################################################################
     # Define problem geometry
-    pincell = _generate_random_ray_pin_cell(uo2, water)
+    pincell = _generate_subdivided_pin_cell(uo2, water)
 
     ########################################
     # Define cell containing lattice and other stuff
@@ -920,7 +920,7 @@ def random_ray_lattice() -> openmc.Model:
 
     ###########################################################################
     # Define problem geometry
-    pincell = _generate_random_ray_pin_cell(uo2, water)
+    pincell = _generate_subdivided_pin_cell(uo2, water)
 
     ########################################
     # Define a moderator lattice universe

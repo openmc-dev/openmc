@@ -171,7 +171,8 @@ void create_fission_sites(Particle& p)
       site.time -= std::log(prn(p.current_seed())) / decay_rate;
 
       // Reject site if it exceeds time cutoff
-      double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      double t_cutoff =
+        settings::time_cutoff[transport_index_from_pdg(site.particle)];
       if (site.time > t_cutoff) {
         continue;
       }

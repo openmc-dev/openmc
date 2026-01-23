@@ -250,7 +250,7 @@ void Particle::event_advance()
   }
 
   double speed = this->speed();
-  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
+  double time_cutoff = settings::time_cutoff[transport_index_from_pdg(type())];
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 

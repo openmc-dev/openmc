@@ -294,7 +294,7 @@ Tally::Tally(pugi::xml_node node)
             "Particle filter other than NEUTRON used with "
             "photon transport turned off. All tallies for particle type {}"
             " will have no scores",
-            static_cast<int>(p)));
+            particle_pdg_to_str(p)));
         }
       }
     }

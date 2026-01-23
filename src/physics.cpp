@@ -220,7 +220,8 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
     // Reject site if it exceeds time cutoff
     if (site.delayed_group > 0) {
-      double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      double t_cutoff =
+        settings::time_cutoff[transport_index_from_pdg(site.particle)];
       if (site.time > t_cutoff) {
         continue;
       }

@@ -66,9 +66,7 @@ private:
 //! Non-member functions
 //============================================================================
 
-void openmc_run_random_ray();
 void validate_random_ray_inputs();
-void openmc_reset_random_ray();
 void print_adjoint_header();
 
 } // namespace openmc

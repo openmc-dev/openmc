@@ -668,7 +668,8 @@ void openmc_run_random_ray()
 
 void openmc_reset_random_ray()
 {
-  openmc::FlatSourceDomain::volume_estimator_ = openmc::RandomRayVolumeEstimator::HYBRID;
+  openmc::FlatSourceDomain::volume_estimator_ =
+    openmc::RandomRayVolumeEstimator::HYBRID;
   openmc::FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   openmc::FlatSourceDomain::adjoint_ = false;
   openmc::FlatSourceDomain::mesh_domain_map_.clear();

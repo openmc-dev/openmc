@@ -656,7 +656,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model
     return model
 
 
-def _generate_c5g7_materials(second_temp : False) -> openmc.Materials:
+def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
     """Generate materials utilizing multi-group cross sections based on the
     the C5G7 Benchmark.
 
@@ -955,7 +955,7 @@ def random_ray_pin_cell(second_temp : False) -> openmc.Model:
     return model
 
 
-def random_ray_lattice(second_temp : False) -> openmc.Model:
+def random_ray_lattice(second_temp = False) -> openmc.Model:
     """Create a 2x2 PWR pin cell asymmetrical lattice example.
 
     This model is a 2x2 reflective lattice of fuel pins with one of the lattice

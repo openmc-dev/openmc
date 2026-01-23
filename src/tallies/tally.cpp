@@ -536,6 +536,8 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool legendre_present = false;
   bool cell_present = false;
   bool cellfrom_present = false;
+  bool material_present = false;
+  bool materialfrom_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
   bool non_cell_energy_present = false;
@@ -552,12 +554,19 @@ void Tally::set_scores(const vector<std::string>& scores)
       cellfrom_present = true;
     } else if (filt->type() == FilterType::CELL) {
       cell_present = true;
+    } else if (filt->type() == FilterType::MATERIALFROM) {
+      materialfrom_present = true;
+    } else if (filt->type() == FilterType::MATERIAL) {
+      material_present = true;
     } else if (filt->type() == FilterType::SURFACE) {
       surface_present = true;
     } else if (filt->type() == FilterType::MESH_SURFACE) {
       meshsurface_present = true;
     }
   }
+  bool surface_types_present =
+    (surface_present || cell_present || cellfrom_present || material_present ||
+      materialfrom_present);
 
   // Iterate over the given scores.
   for (auto score_str : scores) {
@@ -612,26 +621,20 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_SURFACE_FLUX:
       if (meshsurface_present)
         fatal_error("OpenMC does not support mesh surface fluxes yet");
-      if (surface_present || cell_present || cellfrom_present) {
-        type_ = TallyType::SURFACE;
-        estimator_ = TallyEstimator::ANALOG;
-      } else {
-        fatal_error("Cannot tally surface flux without surface type filters");
-      }
+      type_ = TallyType::SURFACE;
+      estimator_ = TallyEstimator::ANALOG;
       break;
 
     case SCORE_CURRENT:
       // Check which type of current is desired: mesh or surface currents.
-      if (surface_present || cell_present || cellfrom_present) {
-        if (meshsurface_present)
+      if (meshsurface_present) {
+        if (surface_types_present)
           fatal_error("Cannot tally mesh surface currents in the same tally as "
                       "normal surface currents");
-        type_ = TallyType::SURFACE;
-        estimator_ = TallyEstimator::ANALOG;
-      } else if (meshsurface_present) {
         type_ = TallyType::MESH_SURFACE;
       } else {
-        fatal_error("Cannot tally currents without surface type filters");
+        type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
       }
       break;
 

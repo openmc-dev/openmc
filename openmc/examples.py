@@ -7,7 +7,6 @@ import openmc
 C5G7_N_DG = 8
 PINCELL_PITCH = 1.26
 
-
 def pwr_pin_cell() -> openmc.Model:
     """Create a PWR pin-cell model.
 
@@ -53,7 +52,7 @@ def pwr_pin_cell() -> openmc.Model:
     model.materials = (fuel, clad, hot_water)
 
     # Instantiate ZCylinder surfaces
-    pitch = 1.26
+    pitch = PINCELL_PITCH
     fuel_or = openmc.ZCylinder(x0=0, y0=0, r=0.39218, name='Fuel OR')
     clad_or = openmc.ZCylinder(x0=0, y0=0, r=0.45720, name='Clad OR')
     left = openmc.XPlane(x0=-pitch/2, name='left', boundary_type='reflective')
@@ -321,14 +320,14 @@ def pwr_core() -> openmc.Model:
     l100 = openmc.RectLattice(
         name='Fuel assembly (lower half)', lattice_id=100)
     l100.lower_left = (-10.71, -10.71)
-    l100.pitch = (1.26, 1.26)
+    l100.pitch = (PINCELL_PITCH, PINCELL_PITCH)
     l100.universes = np.tile(fuel_cold, (17, 17))
     l100.universes[tube_x, tube_y] = tube_cold
 
     l101 = openmc.RectLattice(
         name='Fuel assembly (upper half)', lattice_id=101)
     l101.lower_left = (-10.71, -10.71)
-    l101.pitch = (1.26, 1.26)
+    l101.pitch = (PINCELL_PITCH, PINCELL_PITCH)
     l101.universes = np.tile(fuel_hot, (17, 17))
     l101.universes[tube_x, tube_y] = tube_hot
 
@@ -352,7 +351,7 @@ def pwr_core() -> openmc.Model:
     # Define core lattices
     l200 = openmc.RectLattice(name='Core lattice (lower half)', lattice_id=200)
     l200.lower_left = (-224.91, -224.91)
-    l200.pitch = (21.42, 21.42)
+    l200.pitch = (17 * PINCELL_PITCH, 17 * PINCELL_PITCH)
     l200.universes = [
         [fa_cw]*21,
         [fa_cw]*21,
@@ -378,7 +377,7 @@ def pwr_core() -> openmc.Model:
 
     l201 = openmc.RectLattice(name='Core lattice (lower half)', lattice_id=201)
     l201.lower_left = (-224.91, -224.91)
-    l201.pitch = (21.42, 21.42)
+    l201.pitch = (17 * PINCELL_PITCH, 17 * PINCELL_PITCH)
     l201.universes = [
         [fa_hw]*21,
         [fa_hw]*21,
@@ -490,7 +489,7 @@ def pwr_assembly() -> openmc.Model:
     clad_or = openmc.ZCylinder(x0=0, y0=0, r=0.45720, name='Clad OR')
 
     # Create boundary planes to surround the geometry
-    pitch = 21.42
+    pitch = 17 * PINCELL_PITCH
     min_x = openmc.XPlane(x0=-pitch/2, boundary_type='reflective')
     max_x = openmc.XPlane(x0=+pitch/2, boundary_type='reflective')
     min_y = openmc.YPlane(y0=-pitch/2, boundary_type='reflective')
@@ -516,7 +515,7 @@ def pwr_assembly() -> openmc.Model:
 
     # Create fuel assembly Lattice
     assembly = openmc.RectLattice(name='Fuel Assembly')
-    assembly.pitch = (pitch/17, pitch/17)
+    assembly.pitch = (PINCELL_PITCH, PINCELL_PITCH)
     assembly.lower_left = (-pitch/2, -pitch/2)
 
     # Create array indices for guide tube locations in lattice
@@ -839,9 +838,9 @@ def _generate_c5g7_materials(kinetic) -> openmc.Materials:
     return materials
 
 
-def _generate_random_ray_pin_cell(uo2, water) -> openmc.Universe:
-    """Create a random ray pin cell universe. Helper function for
-    random_ray_pin_cell() and random_ray_lattice()
+def _generate_subdivided_pin_cell(uo2, water) -> openmc.Universe:
+    """Create a radially and azimuthally subdivided pin cell universe. Helper
+    function for random_ray_pin_cell() and random_ray_lattice()
 
     Parameters
     ----------
@@ -911,7 +910,6 @@ def _generate_random_ray_pin_cell(uo2, water) -> openmc.Universe:
 
 def random_ray_pin_cell(kinetic=False) -> openmc.Model:
     """Create a PWR pin cell example using C5G7 cross section data.
-    cross section data.
 
     Parameters
     ----------
@@ -934,12 +932,12 @@ def random_ray_pin_cell(kinetic=False) -> openmc.Model:
 
     ###########################################################################
     # Define problem geometry
-    pincell = _generate_random_ray_pin_cell(uo2, water)
+    pincell = _generate_subdivided_pin_cell(uo2, water)
 
     ########################################
     # Define cell containing lattice and other stuff
-    box = openmc.model.RectangularPrism(
-        PINCELL_PITCH, PINCELL_PITCH, boundary_type='reflective')
+    pitch = PINCELL_PITCH
+    box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
 
     pincell = openmc.Cell(fill=pincell, region=-box, name='pincell')
 
@@ -957,8 +955,8 @@ def random_ray_pin_cell(kinetic=False) -> openmc.Model:
     settings.particles = 100
 
     # Create an initial uniform spatial source distribution over fissionable zones
-    lower_left = (-PINCELL_PITCH / 2, -PINCELL_PITCH / 2, -1)
-    upper_right = (PINCELL_PITCH / 2, PINCELL_PITCH / 2, 1)
+    lower_left = (-pitch / 2, -pitch / 2, -1)
+    upper_right = (pitch / 2, pitch / 2, 1)
     uniform_dist = openmc.stats.Box(lower_left, upper_right)
     rr_source = openmc.IndependentSource(space=uniform_dist)
 
@@ -1031,7 +1029,7 @@ def random_ray_lattice(kinetic=False) -> openmc.Model:
 
     ###########################################################################
     # Define problem geometry
-    pincell = _generate_random_ray_pin_cell(uo2, water)
+    pincell = _generate_subdivided_pin_cell(uo2, water)
 
     ########################################
     # Define a moderator lattice universe
@@ -1049,6 +1047,7 @@ def random_ray_lattice(kinetic=False) -> openmc.Model:
     mu = openmc.Universe()
     mu.add_cells([moderator_infinite])
 
+    pitch = PINCELL_PITCH
     lattice = openmc.RectLattice()
     lattice.lower_left = [-PINCELL_PITCH/2.0, -PINCELL_PITCH/2.0]
     lattice.pitch = [PINCELL_PITCH/10.0, PINCELL_PITCH/10.0]
@@ -1072,8 +1071,7 @@ def random_ray_lattice(kinetic=False) -> openmc.Model:
 
     ########################################
     # Define cell containing lattice and other stuff
-    box = openmc.model.RectangularPrism(
-        PINCELL_PITCH*2, PINCELL_PITCH*2, boundary_type='reflective')
+    box = openmc.model.RectangularPrism(pitch*2, pitch*2, boundary_type='reflective')
 
     assembly = openmc.Cell(fill=lattice2x2, region=-box, name='assembly')
 

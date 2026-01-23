@@ -21,10 +21,8 @@ public:
   // Methods
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fixed_sources_adjoint();
-  void run_single_simulation();
-  void random_ray_adjoint();
-  void kinetic_initial_condition();
   void kinetic_single_time_step(int i);
+  void prepare_adjoint_simulation();
   void simulate();
   void output_simulation_results() const;
   void instability_check(
@@ -35,9 +33,15 @@ public:
   // Accessors
   FlatSourceDomain* domain() const { return domain_.get(); }
 
+  //----------------------------------------------------------------------------
+  // Public data members
+
+  // Flag for adjoint simulation;
+  bool adjoint_needed_;
+
 private:
   //----------------------------------------------------------------------------
-  // Data Members
+  // Private data members
 
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
@@ -58,9 +62,6 @@ private:
   // Toggle for first simulation
   bool is_first_simulation_;
 
-  // Flag for adjoint simulation;
-  bool adjoint_needed_;
-
   //----------------------------------------------------------------------------
   // Data Members for kinetic simulations
 
@@ -77,6 +78,7 @@ private:
 void openmc_run_random_ray();
 void validate_random_ray_inputs();
 void openmc_reset_random_ray();
+void print_adjoint_header();
 
 //! Write data related to randaom ray to statepoint
 //! \param[in] group HDF5 group

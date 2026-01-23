@@ -50,14 +50,12 @@ void openmc_run_random_ray()
   sim.apply_fixed_sources_and_mesh_domains();
 
   // Run initial random ray simulation
-  sim.run_single_simulation();
+  sim.simulate();
 
   if (settings::kinetic_simulation) {
-    // Second steady state simulation to correct the batchwise k-eff
-    sim.kinetic_initial_condition();
-
-    // Timestepping loop
-    for (int i = 0; i < settings::n_timesteps; i++)
+    // Timestepping loop, including k-eff correction initial
+    // condition (i = -1)
+    for (int i = -1; i < settings::n_timesteps; i++)
       sim.kinetic_single_time_step(i);
   }
 
@@ -65,7 +63,13 @@ void openmc_run_random_ray()
   // Run adjoint simulation (if enabled)
   //////////////////////////////////////////////////////////
 
-  sim.random_ray_adjoint();
+  if (sim.adjoint_needed_) {
+    // Setup for adjoint simulation
+    sim.prepare_adjoint_simulation();
+
+    // Run adjoint simulation
+    sim.simulate();
+  }
 }
 
 // Enforces restrictions on inputs in random ray mode.  While there are
@@ -86,6 +90,7 @@ void validate_random_ray_inputs()
       case SCORE_FISSION:
       case SCORE_NU_FISSION:
       case SCORE_EVENTS:
+      case SCORE_KAPPA_FISSION:
         break;
 
       // TODO: add support for prompt and delayed fission
@@ -99,10 +104,10 @@ void validate_random_ray_inputs()
       }
       default:
         fatal_error(
-          "Invalid score specified. Only flux, total, fission, nu-fission, and "
-          "event scores are supported in random ray mode. (precursors are "
-          "supported for "
-          "kinetic simulations when delayed neutrons are turned on).");
+          "Invalid score specified. Only flux, total, fission, nu-fission, "
+          "kappa-fission and event scores are supported in random ray mode. "
+          "(precursors are supported for kinetic simulations when delayed "
+          "neutrons are turned on).");
       }
     }
 
@@ -484,7 +489,82 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint()
   }
 }
 
-void RandomRaySimulation::run_single_simulation()
+void RandomRaySimulation::prepare_adjoint_simulation()
+{
+  // Configure the domain for adjoint simulation
+  FlatSourceDomain::adjoint_ = true;
+
+  // Reset k-eff
+  domain_->k_eff_ = 1.0;
+
+  // Initialize adjoint fixed sources, if present
+  prepare_fixed_sources_adjoint();
+
+  // Transpose scattering matrix
+  domain_->transpose_scattering_matrix();
+
+  // Swap nu_sigma_f and chi
+  domain_->nu_sigma_f_.swap(domain_->chi_);
+}
+
+// TODO: Add support for time-dependent restart
+void RandomRaySimulation::kinetic_single_time_step(int i)
+{
+  if (i == -1) {
+    // Set flag for k_eff correction if initial condition
+    simulation::k_eff_correction = true;
+
+    // Store average keff from initial simulation
+    static_avg_k_eff_ = simulation::keff;
+  }
+
+  // Increment time step
+  simulation::current_timestep = i + 1;
+  if (i == -1)
+    // Current time is zero for initial condition
+    simulation::current_time = 0;
+  else
+    // Else, increment the current time
+    simulation::current_time += settings::dt;
+
+  domain_->k_eff_ = static_avg_k_eff_;
+  domain_->source_regions_.adjoint_reset();
+  domain_->propagate_final_quantities();
+  domain_->source_regions_.time_step_reset();
+
+  if (i >= 0) {
+    // Compute RHS backward differences
+    domain_->compute_rhs_bd_quantities();
+
+    // Update time dependent cross section based on the density
+    domain_->update_material_density(i);
+  }
+
+  // Run the initial condition
+  simulate();
+
+  if (i == -1)
+    // Initialize the BD arrays if initial condition
+    domain_->store_time_step_quantities(false);
+  else
+    // Else, store final quantities for the current time step
+    domain_->store_time_step_quantities();
+
+  // Rename statepoint and tallies file for the current time step
+  rename_time_step_file(fmt::format("statepoint.{0}", settings::n_batches),
+    ".h5", simulation::current_timestep);
+  if (settings::output_tallies) {
+    rename_time_step_file("tallies", ".out", simulation::current_timestep);
+  }
+
+  if (i == -1) {
+    // Reset flags for kinetic simulation if initial condition
+    simulation::is_initial_condition = false;
+    simulation::k_eff_correction = false;
+  }
+}
+
+void RandomRaySimulation::simulate()
 {
   if (!is_first_simulation_) {
     if (mpi::master && adjoint_needed_)
@@ -501,119 +581,6 @@ void RandomRaySimulation::run_single_simulation()
   // Begin main simulation timer
   simulation::time_total.start();
 
-  // Execute random ray simulation
-  simulate();
-
-  // End main simulation timer
-  simulation::time_total.stop();
-
-  // Normalize and save the final forward quantities
-  domain_->normalize_final_quantities();
-
-  // Finalize OpenMC
-  openmc_simulation_finalize();
-
-  // Output all simulation results
-  output_simulation_results();
-
-  // Toggle that the simulation object has been initialized after the first
-  // simulation
-  if (is_first_simulation_)
-    is_first_simulation_ = false;
-}
-
-void RandomRaySimulation::random_ray_adjoint()
-{
-  if (!adjoint_needed_) {
-    return;
-  }
-
-  // Configure the domain for adjoint simulation
-  FlatSourceDomain::adjoint_ = true;
-
-  // Reset k-eff
-  domain_->k_eff_ = 1.0;
-
-  // Initialize adjoint fixed sources, if present
-  prepare_fixed_sources_adjoint();
-
-  // Transpose scattering matrix
-  domain_->transpose_scattering_matrix();
-
-  // Swap nu_sigma_f and chi
-  domain_->nu_sigma_f_.swap(domain_->chi_);
-
-  // Run a single simulation
-  run_single_simulation();
-}
-
-void RandomRaySimulation::kinetic_initial_condition()
-{
-  // Set flag for k_eff correction
-  simulation::k_eff_correction = true;
-
-  static_avg_k_eff_ = simulation::keff;
-  domain_->k_eff_ = static_avg_k_eff_;
-  domain_->source_regions_.adjoint_reset();
-  domain_->propagate_final_quantities();
-  domain_->source_regions_.time_step_reset();
-
-  // Run the initial condition
-  run_single_simulation();
-
-  // Initialize the BD arrays
-  domain_->store_time_step_quantities(false);
-
-  // Store k-eff corrected initial condition statepoints
-  rename_time_step_file(
-    fmt::format("statepoint.{0}", settings::n_batches), ".h5", 0);
-  if (settings::output_tallies) {
-    rename_time_step_file("tallies", ".out", 0);
-  }
-
-  // Set flags for kinetic simulation
-  simulation::is_initial_condition = false;
-  simulation::k_eff_correction = false;
-
-  // Set starting time as zero
-  simulation::current_time = 0;
-}
-
-// TODO: Add support for time-dependent restart
-void RandomRaySimulation::kinetic_single_time_step(int i)
-{
-  // Increment time step
-  simulation::current_timestep = i + 1;
-  simulation::current_time += settings::dt;
-
-  // Propogate results of previous simulation
-  domain_->k_eff_ = static_avg_k_eff_;
-  domain_->source_regions_.adjoint_reset();
-  domain_->propagate_final_quantities();
-  domain_->source_regions_.time_step_reset();
-
-  // Compute RHS backward differences
-  domain_->compute_rhs_bd_quantities();
-
-  // Update time dependent cross section based on the density
-  domain_->update_material_density(i);
-
-  // Run the simulation for the current time step
-  run_single_simulation();
-
-  // Rename statepoint and tallies file for the current time step
-  rename_time_step_file(fmt::format("statepoint.{0}", settings::n_batches),
-    ".h5", simulation::current_timestep);
-  if (settings::output_tallies) {
-    rename_time_step_file("tallies", ".out", simulation::current_timestep);
-  }
-
-  // Store final quantities for the current time step
-  domain_->store_time_step_quantities();
-}
-
-void RandomRaySimulation::simulate()
-{
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
     // Initialize the current batch
@@ -726,6 +693,23 @@ void RandomRaySimulation::simulate()
   } // End random ray power iteration loop
 
   domain_->count_external_source_regions();
+
+  // End main simulation timer
+  simulation::time_total.stop();
+
+  // Normalize and save the final forward quantities
+  domain_->normalize_final_quantities();
+
+  // Finalize OpenMC
+  openmc_simulation_finalize();
+
+  // Output all simulation results
+  output_simulation_results();
+
+  // Toggle that the simulation object has been initialized after the first
+  // simulation
+  if (is_first_simulation_)
+    is_first_simulation_ = false;
 }
 
 void RandomRaySimulation::output_simulation_results() const

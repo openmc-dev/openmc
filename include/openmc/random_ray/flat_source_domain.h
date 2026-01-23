@@ -138,6 +138,7 @@ public:
   vector<double> nu_sigma_f_;
   vector<double> sigma_f_;
   vector<double> chi_;
+  vector<double> kappa_fission_;
 
   // 3D arrays stored in 1D representing values for all materials x energy
   // groups x energy groups

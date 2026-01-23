@@ -513,6 +513,7 @@ Supported scores:
     - total
     - fission
     - nu-fission
+    - kappa-fission
     - events
 
 Supported Estimators:

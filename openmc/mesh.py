@@ -153,11 +153,17 @@ class MeshBase(IDManagerMixin, ABC):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    lower_left : Iterable of float
+        The lower-left coordinates
+    upper_right : Iterable of float
+        The upper-right coordinates
     bounding_box : openmc.BoundingBox
         Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1, 1), ...]
+    n_elements : int
+        Number of elements in the mesh
     """
 
     next_id = 1
@@ -179,6 +185,16 @@ class MeshBase(IDManagerMixin, ABC):
             self._name = name
         else:
             self._name = ''
+            
+    @property
+    @abstractmethod
+    def lower_left(self):
+        pass
+        
+    @property
+    @abstractmethod
+    def upper_right(self):
+        pass
 
     @property
     def bounding_box(self) -> openmc.BoundingBox:
@@ -187,6 +203,11 @@ class MeshBase(IDManagerMixin, ABC):
     @property
     @abstractmethod
     def indices(self):
+        pass
+        
+    @property
+    @abstractmethod
+    def n_elements(self):
         pass
 
     def __repr__(self):
@@ -557,10 +578,19 @@ class StructuredMesh(MeshBase):
         s0 = (slice(0, -1),)*ndim + (slice(None),)
         s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
+    
+    @property
+    def n_elements(self):
+        return np.prod(self.dimension)
 
     @property
     def num_mesh_cells(self):
-        return np.prod(self.dimension)
+        warnings.warn(
+            "The 'num_mesh_cells' attribute is deprecated and will be removed in a future version. "
+            "Use 'n_elements' instead.",
+            FutureWarning, stacklevel=2
+        )
+        return self.n_elements
 
     def write_data_to_vtk(self,
                           filename: PathLike,
@@ -822,10 +852,10 @@ class StructuredMesh(MeshBase):
         """
         cv.check_type('data label', label, str)
 
-        if dataset.size != self.num_mesh_cells:
+        if dataset.size != self.n_elements:
             raise ValueError(
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
-                f" equal to the number of mesh cells ({self.num_mesh_cells})"
+                f" equal to the number of mesh cells ({self.n_elements})"
             )
 
         # accept a flat array as-is, assuming it is in the correct order

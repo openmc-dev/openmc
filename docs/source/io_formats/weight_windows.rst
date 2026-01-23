@@ -4,7 +4,7 @@
 Weight Window Format
 ====================
 
-The current revision of the weight window file format is 1.0.
+The current revision of the weight window file format is 1.1.
 
 **/**
 
@@ -20,7 +20,7 @@ The current revision of the weight window file format is 1.0.
 **/weight_windows/weight_windows_<uid>/**
 
 :Datasets: - **mesh** (*int*) -- ID of the mesh associated with the weight window object.
-           - **particle_type** (*char[]*)  -- Particle type to which the weight windows apply.
+           - **particle_pdg** (*int*)  -- Particle type (PDG code) to which the weight windows apply.
            - **energy_bounds** (*double[]*) -- Energy bounds of the weight windows in [eV]
            - **lower_ww_bounds** (*double[]*) -- Weight window lower bounds.
            - **upper_ww_bounds** (*double[]*) -- Weight window upper bounds.

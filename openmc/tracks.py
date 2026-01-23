@@ -15,7 +15,7 @@ Particle track information
 Parameters
 ----------
 particle : openmc.ParticleType
-    Type of the particle
+    Type of the particle (PDG-backed)
 states : numpy.ndarray
     Structured array containing each state of the particle. The structured array
     contains the following fields: ``r`` (position; each direction in [cm]),
@@ -92,8 +92,8 @@ class Track(Sequence):
 
         Parameters
         ----------
-        particle : {'neutron', 'photon', 'electron', 'positron'}
-            Matching particle type
+        particle : str or int or openmc.ParticleType
+            Matching particle type (alias, PDG, or GNDS nuclide)
         state_filter : function
             Function that takes a state (structured datatype) and returns a bool
             depending on some criteria.
@@ -123,10 +123,22 @@ class Track(Sequence):
 
         """
         matching = []
+        particle_match = None
+        if particle is not None:
+            try:
+                if isinstance(particle, str):
+                    particle_match = ParticleType.from_string(particle)
+                else:
+                    particle_match = ParticleType(particle)
+            except (TypeError, ValueError):
+                track = type(self).__new__(type(self))
+                track.identifier = self.identifier
+                track.particle_tracks = []
+                return track
         for t in self:
             # Check for matching particle
-            if particle is not None:
-                if t.particle.name.lower() != particle:
+            if particle_match is not None:
+                if t.particle != particle_match:
                     continue
 
             # Apply arbitrary state filter
@@ -184,7 +196,7 @@ class Track(Sequence):
     def sources(self):
         sources = []
         for particle_track in self:
-            particle_type = ParticleType(particle_track.particle)
+            particle_type = particle_track.particle
             state = particle_track.states[0]
             sources.append(
                 SourceParticle(

@@ -153,7 +153,7 @@ public:
 
   void set_bounds(span<const double> lower_bounds, double ratio);
 
-  void set_particle_type(ParticleType p_type);
+  void set_particle_type(ParticlePdg p_type);
 
   double survival_ratio() const { return survival_ratio_; }
 
@@ -188,15 +188,15 @@ public:
   const xt::xtensor<double, 2>& upper_ww_bounds() const { return upper_ww_; }
   xt::xtensor<double, 2>& upper_ww_bounds() { return upper_ww_; }
 
-  ParticleType particle_type() const { return particle_type_; }
+  ParticlePdg particle_type() const { return particle_type_; }
 
 private:
   //----------------------------------------------------------------------------
   // Data members
   int32_t id_;    //!< Unique ID
   int64_t index_; //!< Index into weight windows vector
-  ParticleType particle_type_ {
-    ParticleType::neutron};      //!< Particle type to apply weight windows to
+  ParticlePdg particle_type_ {
+    PDG_NEUTRON};                //!< Particle type to apply weight windows to
   vector<double> energy_bounds_; //!< Energy boundaries [eV]
   xt::xtensor<double, 2> lower_ww_; //!< Lower weight window bounds (shape:
                                     //!< energy_bins, mesh_bins (k, j, i))

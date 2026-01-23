@@ -37,6 +37,20 @@
 
 namespace openmc {
 
+namespace {
+
+void validate_pdg_or_fatal(ParticlePdg pdg, const std::string& context)
+{
+  if (is_transport_pdg(pdg))
+    return;
+
+  fatal_error(
+    fmt::format("Unsupported source particle type '{}' (PDG {}) in {}.",
+      particle_pdg_to_str(pdg), pdg.value, context));
+}
+
+} // namespace
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -284,20 +298,11 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
-    auto temp_str = get_node_value(node, "particle", true, true);
-    if (temp_str == "neutron") {
-      particle_ = ParticleType::neutron;
-    } else if (temp_str == "photon") {
-      particle_ = ParticleType::photon;
+    auto temp_str = get_node_value(node, "particle", false, true);
+    particle_ = str_to_particle_pdg(temp_str);
+    if (particle_ == PDG_PHOTON || particle_ == PDG_ELECTRON ||
+        particle_ == PDG_POSITRON) {
       settings::photon_transport = true;
-    } else if (temp_str == "electron") {
-      particle_ = ParticleType::electron;
-      settings::photon_transport = true;
-    } else if (temp_str == "positron") {
-      particle_ = ParticleType::positron;
-      settings::photon_transport = true;
-    } else {
-      fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }
   }
 
@@ -609,6 +614,30 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+void validate_external_sources()
+{
+  for (const auto& source : model::external_sources) {
+    if (auto independent =
+          dynamic_cast<const IndependentSource*>(source.get())) {
+      validate_pdg_or_fatal(independent->particle_type(), "IndependentSource");
+      continue;
+    }
+
+    if (auto mesh_source = dynamic_cast<const MeshSource*>(source.get())) {
+      for (const auto& sub_source : mesh_source->sources()) {
+        validate_pdg_or_fatal(sub_source->particle_type(), "MeshSource");
+      }
+      continue;
+    }
+
+    if (auto file_source = dynamic_cast<const FileSource*>(source.get())) {
+      for (const auto& site : file_source->sites()) {
+        validate_pdg_or_fatal(site.particle, "FileSource");
+      }
+    }
+  }
+}
 
 void initialize_source()
 {

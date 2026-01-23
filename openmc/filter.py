@@ -35,7 +35,6 @@ _CURRENT_NAMES = (
     'z-min out', 'z-min in', 'z-max out', 'z-max in'
 )
 
-_PARTICLES = {'neutron', 'photon', 'electron', 'positron'}
 
 
 class FilterMeta(ABCMeta):
@@ -735,16 +734,16 @@ class ParticleFilter(Filter):
 
     Parameters
     ----------
-    bins : str, or sequence of str
-        The particles to tally represented as strings ('neutron', 'photon',
-        'electron', 'positron').
+    bins : str, int, openmc.ParticleType, or sequence
+        The particles to tally represented as strings, PDG codes, or GNDS
+        nuclide names.
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
     bins : sequence of str
-        The particles to tally
+        The particles to tally (canonical strings)
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -763,11 +762,24 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        cv.check_type('bins', bins, Sequence, str)
+        if isinstance(bins, (str, Integral, openmc.ParticleType)):
+            bins = [bins]
+        else:
+            cv.check_type('bins', bins, Sequence,
+                          (str, Integral, openmc.ParticleType))
         bins = np.atleast_1d(bins)
-        for edge in bins:
-            cv.check_value('filter bin', edge, _PARTICLES)
-        self._bins = bins
+        normalized = []
+        for entry in bins:
+            if isinstance(entry, openmc.ParticleType):
+                pdg = int(entry)
+            elif isinstance(entry, str):
+                pdg = int(openmc.ParticleType.from_string(entry))
+            elif isinstance(entry, Integral):
+                pdg = int(openmc.ParticleType(entry))
+            else:
+                raise TypeError("ParticleFilter bins must be str, int, or ParticleType")
+            normalized.append(openmc.particle_pdg_to_str(pdg))
+        self._bins = np.array(normalized, dtype=str)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):

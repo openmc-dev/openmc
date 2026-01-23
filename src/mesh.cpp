@@ -376,7 +376,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
     SourceSite site;
     site.E = 1.0;
-    site.particle = ParticleType::neutron;
+    site.particle = PDG_NEUTRON;
 
     for (int axis = 0; axis < 3; ++axis) {
       // Set starting position and direction

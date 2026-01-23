@@ -2,8 +2,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import IntEnum
-from numbers import Real
+from numbers import Real, Integral
 from pathlib import Path
+import re
 import warnings
 from typing import Any
 
@@ -20,6 +21,9 @@ from openmc.stats.univariate import Univariate
 from ._xml import get_elem_list, get_text
 from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
 from .utility_funcs import input_path
+
+
+_VERSION_STATEPOINT = 18
 
 
 class SourceBase(ABC):
@@ -265,8 +269,8 @@ class IndependentSource(SourceBase):
         time distribution of source sites
     strength : float
         Strength of the source
-    particle : {'neutron', 'photon', 'electron', 'positron'}
-        Source particle type
+    particle : str or int or openmc.ParticleType
+        Source particle type (alias, PDG code, or GNDS nuclide name)
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
@@ -304,8 +308,8 @@ class IndependentSource(SourceBase):
 
     .. versionadded:: 0.14.0
 
-    particle : {'neutron', 'photon', 'electron', 'positron'}
-        Source particle type
+    particle : str or int or openmc.ParticleType
+        Source particle type (alias, PDG code, or GNDS nuclide name)
     constraints : dict
         Constraints on sampled source particles. Valid keys include
         'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
@@ -320,7 +324,7 @@ class IndependentSource(SourceBase):
         energy: openmc.stats.Univariate | None = None,
         time: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
-        particle: str = 'neutron',
+        particle: str | int | ParticleType = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material |
                           openmc.Universe] | None = None,
         constraints: dict[str, Any] | None = None
@@ -410,9 +414,13 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle', particle,
-                       ['neutron', 'photon', 'electron', 'positron'])
-        self._particle = particle
+        if isinstance(particle, str):
+            pdg = _particle_pdg_from_string(particle)
+        elif isinstance(particle, (Integral, ParticleType)):
+            pdg = int(ParticleType(particle))
+        else:
+            raise TypeError("Particle must be a string, int, or ParticleType")
+        self._particle = particle_pdg_to_str(pdg)
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
@@ -898,15 +906,181 @@ class FileSource(SourceBase):
         return cls(**kwargs)
 
 
+_PDG_NAME = {
+    2112: 'neutron',
+    22: 'photon',
+    11: 'electron',
+    -11: 'positron',
+    2212: 'proton',
+}
+
+_ALIAS_PDG = {
+    'neutron': 2112,
+    'n': 2112,
+    'photon': 22,
+    'gamma': 22,
+    'electron': 11,
+    'positron': -11,
+    'proton': 2212,
+    'p': 2212,
+    'h1': 2212,
+    'deuteron': 1000010020,
+    'd': 1000010020,
+    'h2': 1000010020,
+    'triton': 1000010030,
+    't': 1000010030,
+    'h3': 1000010030,
+    'alpha': 1000020040,
+    'he4': 1000020040,
+}
+
+_LEGACY_PARTICLE_CODE = {
+    0: 2112,
+    1: 22,
+    2: 11,
+    3: -11,
+}
+
+_GNDS_RE = re.compile(r'^([A-Z][a-z]?)(\d+)(?:_m(\d+))?$')
+
+_ATOMIC_SYMBOL = (
+    '', 'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al',
+    'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe',
+    'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr',
+    'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn',
+    'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm',
+    'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta', 'W',
+    'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn',
+    'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf',
+    'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds',
+    'Rg', 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og',
+)
+
+_ATOMIC_NUMBER = {symbol: idx for idx, symbol in enumerate(_ATOMIC_SYMBOL)
+                  if symbol}
+
+
+def _is_integer_string(value: str) -> bool:
+    if not value:
+        return False
+    if value[0] in ('+', '-'):
+        return value[1:].isdigit()
+    return value.isdigit()
+
+
+def _particle_pdg_from_zam(Z: int, A: int, m: int) -> int:
+    if Z <= 0 or Z > 999 or A <= 0 or A > 999 or m < 0 or m > 9:
+        raise ValueError('Invalid Z/A/m for nuclear PDG code.')
+    return 1000000000 + Z * 10000 + A * 10 + m
+
+
+def _particle_pdg_from_nuclide_name(name: str) -> int:
+    match = _GNDS_RE.fullmatch(name)
+    if not match:
+        raise ValueError(f"Invalid nuclide name: {name}")
+
+    symbol, mass_str, metastable_str = match.groups()
+    if symbol not in _ATOMIC_NUMBER:
+        raise ValueError(f"Invalid nuclide name: {name}")
+
+    mass_number = int(mass_str)
+    if mass_number <= 0 or mass_number > 999:
+        raise ValueError(f"Invalid nuclide name: {name}")
+
+    metastable = int(metastable_str) if metastable_str else 0
+    if metastable < 0 or metastable > 9:
+        raise ValueError(f"Invalid nuclide name: {name}")
+
+    return _particle_pdg_from_zam(_ATOMIC_NUMBER[symbol], mass_number, metastable)
+
+
+def _is_nuclear_pdg(pdg: int) -> bool:
+    if pdg < 1000000000:
+        return False
+    Z = (pdg // 10000) % 1000
+    A = (pdg // 10) % 1000
+    return Z > 0 and A > 0
+
+
+def _nuclide_name_from_particle_pdg(pdg: int) -> str:
+    if not _is_nuclear_pdg(pdg):
+        raise ValueError(f"PDG code is not a nuclear code: {pdg}")
+
+    m = pdg % 10
+    A = (pdg // 10) % 1000
+    Z = (pdg // 10000) % 1000
+
+    if Z <= 0 or Z >= len(_ATOMIC_SYMBOL) or A <= 0 or A > 999:
+        raise ValueError(f"Invalid nuclear PDG code: {pdg}")
+
+    name = f'{_ATOMIC_SYMBOL[Z]}{A}'
+    if m > 0:
+        name += f'_m{m}'
+    return name
+
+
+def _particle_pdg_from_string(value: str) -> int:
+    if not isinstance(value, str):
+        raise TypeError('Particle identifier must be a string.')
+
+    s = value.strip()
+    if not s:
+        raise ValueError('Particle identifier cannot be empty.')
+
+    lower = s.lower()
+    if lower.startswith('pdg:'):
+        code_str = lower[4:]
+        if not _is_integer_string(code_str):
+            raise ValueError(f'Invalid PDG code: {code_str}')
+        return int(code_str)
+
+    if lower in _ALIAS_PDG:
+        return _ALIAS_PDG[lower]
+
+    if _is_integer_string(s):
+        return int(s)
+
+    return _particle_pdg_from_nuclide_name(s)
+
+
+def particle_pdg_to_str(pdg: int) -> str:
+    """Return canonical string for a PDG code."""
+    if pdg in _PDG_NAME:
+        return _PDG_NAME[pdg]
+
+    if _is_nuclear_pdg(pdg):
+        return _nuclide_name_from_particle_pdg(pdg)
+
+    return f'pdg:{pdg}'
+
+
 class ParticleType(IntEnum):
     """
-    IntEnum class representing a particle type. Type
-    values mirror those found in the C++ class.
+    IntEnum class representing a particle type using PDG codes.
     """
-    NEUTRON = 0
-    PHOTON = 1
-    ELECTRON = 2
-    POSITRON = 3
+    NEUTRON = 2112
+    PHOTON = 22
+    ELECTRON = 11
+    POSITRON = -11
+    PROTON = 2212
+    DEUTERON = 1000010020
+    TRITON = 1000010030
+    ALPHA = 1000020040
+
+    @classmethod
+    def _missing_(cls, value):
+        try:
+            int_value = int(value)
+        except (TypeError, ValueError):
+            return None
+
+        if int_value in _LEGACY_PARTICLE_CODE:
+            return cls(_LEGACY_PARTICLE_CODE[int_value])
+
+        obj = int.__new__(cls, int_value)
+        obj._value_ = int_value
+        obj._name_ = None
+        return obj
 
     @classmethod
     def from_string(cls, value: str):
@@ -922,11 +1096,8 @@ class ParticleType(IntEnum):
         -------
         The corresponding ParticleType instance.
         """
-        try:
-            return cls[value.upper()]
-        except KeyError:
-            raise ValueError(
-                f"Invalid string for creation of {cls.__name__}: {value}")
+        pdg_number = _particle_pdg_from_string(value)
+        return cls(pdg_number)
 
     @classmethod
     def from_pdg_number(cls, pdg_number: int) -> ParticleType:
@@ -946,24 +1117,16 @@ class ParticleType(IntEnum):
         -------
         The corresponding ParticleType instance.
         """
-        try:
-            return {
-                2112: ParticleType.NEUTRON,
-                22: ParticleType.PHOTON,
-                11: ParticleType.ELECTRON,
-                -11: ParticleType.POSITRON,
-            }[pdg_number]
-        except KeyError:
-            raise ValueError(f"Unrecognized PDG number: {pdg_number}")
+        return cls(pdg_number)
 
     def __repr__(self) -> str:
         """
         Returns a string representation of the ParticleType instance.
 
         Returns:
-            str: The lowercase name of the ParticleType instance.
+            str: Canonical string for the particle type.
         """
-        return self.name.lower()
+        return particle_pdg_to_str(self.value)
 
     # needed for < Python 3.11
     def __str__(self) -> str:
@@ -992,8 +1155,8 @@ class SourceParticle:
         Delayed group particle was created in (neutrons only)
     surf_id : int
         Surface ID where particle is at, if any.
-    particle : ParticleType
-        Type of the particle
+    particle : ParticleType or str or int
+        Type of the particle (PDG code, alias, or GNDS nuclide name)
 
     """
 
@@ -1006,7 +1169,7 @@ class SourceParticle:
         wgt: float = 1.0,
         delayed_group: int = 0,
         surf_id: int = 0,
-        particle: ParticleType = ParticleType.NEUTRON
+        particle: ParticleType | str | int = ParticleType.NEUTRON
     ):
 
         self.r = tuple(r)
@@ -1018,8 +1181,23 @@ class SourceParticle:
         self.surf_id = surf_id
         self.particle = particle
 
+    @property
+    def particle(self):
+        return self._particle
+
+    @particle.setter
+    def particle(self, particle):
+        if isinstance(particle, ParticleType):
+            self._particle = particle
+        elif isinstance(particle, str):
+            self._particle = ParticleType.from_string(particle)
+        elif isinstance(particle, int):
+            self._particle = ParticleType(particle)
+        else:
+            raise TypeError("Particle must be ParticleType, str, or int")
+
     def __repr__(self):
-        name = self.particle.name.lower()
+        name = particle_pdg_to_str(self.particle.value)
         return f'<SourceParticle: {name} at E={self.E:.6e} eV>'
 
     def to_tuple(self) -> tuple:
@@ -1116,12 +1294,7 @@ class ParticleList(list):
         particles = []
         with mcpl.MCPLFile(filename) as f:
             for particle in f.particles:
-                # Determine particle type based on the PDG number
-                try:
-                    particle_type = ParticleType.from_pdg_number(
-                        particle.pdgcode)
-                except ValueError:
-                    particle_type = "UNKNOWN"
+                particle_type = ParticleType(particle.pdgcode)
 
                 # Create a source particle instance. Note that MCPL stores
                 # energy in MeV and time in ms.
@@ -1179,7 +1352,7 @@ class ParticleList(list):
         # Extract the attributes of the source particles into a list of tuples
         data = [(sp.r[0], sp.r[1], sp.r[2], sp.u[0], sp.u[1], sp.u[2],
                  sp.E, sp.time, sp.wgt, sp.delayed_group, sp.surf_id,
-                 sp.particle.name.lower()) for sp in self]
+                 particle_pdg_to_str(sp.particle.value)) for sp in self]
 
         # Define the column names for the DataFrame
         columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt',
@@ -1226,6 +1399,7 @@ class ParticleList(list):
         kwargs.setdefault('mode', 'w')
         with h5py.File(filename, **kwargs) as fh:
             fh.attrs['filetype'] = np.bytes_("source")
+            fh.attrs['version'] = np.array([_VERSION_STATEPOINT, 2])
             fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
 
@@ -1337,7 +1511,7 @@ def read_collision_track_mcpl(file_path):
             data['material_id'].append(int(values_dict.get('material_id', 0)))
             data['universe_id'].append(int(values_dict.get('universe_id', 0)))
             data['n_collision'].append(int(values_dict.get('n_collision', 0)))
-            data['particle'].append(ParticleType.from_pdg_number(p.pdgcode))
+            data['particle'].append(ParticleType(p.pdgcode))
             data['parent_id'].append(int(values_dict.get('parent_id', 0)))
             data['progeny_id'].append(int(values_dict.get('progeny_id', 0)))
 

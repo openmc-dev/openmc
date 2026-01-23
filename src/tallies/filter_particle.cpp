@@ -10,15 +10,15 @@ void ParticleFilter::from_xml(pugi::xml_node node)
 {
   auto particles = get_node_array<std::string>(node, "bins");
 
-  // Convert to vector of ParticleType
-  vector<ParticleType> types;
+  // Convert to vector of ParticlePdg
+  vector<ParticlePdg> types;
   for (auto& p : particles) {
-    types.push_back(str_to_particle_type(p));
+    types.push_back(str_to_particle_pdg(p));
   }
   this->set_particles(types);
 }
 
-void ParticleFilter::set_particles(span<ParticleType> particles)
+void ParticleFilter::set_particles(span<ParticlePdg> particles)
 {
   // Clear existing particles
   particles_.clear();
@@ -47,7 +47,7 @@ void ParticleFilter::to_statepoint(hid_t filter_group) const
   Filter::to_statepoint(filter_group);
   vector<std::string> particles;
   for (auto p : particles_) {
-    particles.push_back(particle_type_to_str(p));
+    particles.push_back(particle_pdg_to_str(p));
   }
   write_dataset(filter_group, "bins", particles);
 }
@@ -55,10 +55,10 @@ void ParticleFilter::to_statepoint(hid_t filter_group) const
 std::string ParticleFilter::text_label(int bin) const
 {
   const auto& p = particles_.at(bin);
-  return fmt::format("Particle: {}", particle_type_to_str(p));
+  return fmt::format("Particle: {}", particle_pdg_to_str(p));
 }
 
-extern "C" int openmc_particle_filter_get_bins(int32_t idx, int bins[])
+extern "C" int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[])
 {
   if (int err = verify_filter(idx))
     return err;
@@ -68,7 +68,7 @@ extern "C" int openmc_particle_filter_get_bins(int32_t idx, int bins[])
   if (pf) {
     const auto& particles = pf->particles();
     for (int i = 0; i < particles.size(); i++) {
-      bins[i] = static_cast<int>(particles[i]);
+      bins[i] = particles[i].value;
     }
   } else {
     set_errmsg("The filter at the specified index is not a ParticleFilter");

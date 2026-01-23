@@ -37,15 +37,15 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const vector<ParticleType>& particles() const { return particles_; }
+  const vector<ParticlePdg>& particles() const { return particles_; }
 
-  void set_particles(span<ParticleType> particles);
+  void set_particles(span<ParticlePdg> particles);
 
 private:
   //----------------------------------------------------------------------------
   // Data members
 
-  vector<ParticleType> particles_;
+  vector<ParticlePdg> particles_;
 };
 
 } // namespace openmc

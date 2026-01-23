@@ -10,7 +10,6 @@ import numpy as np
 import h5py
 
 import openmc
-from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
@@ -18,6 +17,22 @@ from ._xml import get_elem_list, get_text, clean_indentation
 from .mixin import IDManagerMixin
 from .utility_funcs import change_directory
 
+
+_ALLOWED_WW_PARTICLES = {'neutron', 'photon'}
+
+
+def _normalize_ww_particle(particle):
+    if isinstance(particle, str):
+        pdg = int(openmc.ParticleType.from_string(particle))
+    elif isinstance(particle, (Integral, openmc.ParticleType)):
+        pdg = int(openmc.ParticleType(particle))
+    else:
+        raise TypeError("Particle type must be str, int, or ParticleType")
+
+    name = openmc.particle_pdg_to_str(pdg)
+    if name not in _ALLOWED_WW_PARTICLES:
+        raise ValueError("Weight windows can only be applied for neutrons or photons")
+    return name
 
 class WeightWindows(IDManagerMixin):
     """Mesh-based weight windows
@@ -51,8 +66,8 @@ class WeightWindows(IDManagerMixin):
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin. If no energy bins are provided, the
         maximum and minimum energy for the data available at runtime.
-    particle_type : {'neutron', 'photon'}
-        Particle type the weight windows apply to
+    particle_type : str or int or openmc.ParticleType
+        Particle type the weight windows apply to (PDG code or alias)
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
         rouletting
@@ -76,7 +91,7 @@ class WeightWindows(IDManagerMixin):
     mesh : openmc.MeshBase
         Mesh for the weight windows with dimension (ni, nj, nk)
     particle_type : str
-        Particle type the weight windows apply to
+        Particle type the weight windows apply to (canonical string)
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
@@ -116,7 +131,7 @@ class WeightWindows(IDManagerMixin):
         upper_ww_bounds: Iterable[float] | None = None,
         upper_bound_ratio: float | None = None,
         energy_bounds: Iterable[Real] | None = None,
-        particle_type: str = 'neutron',
+        particle_type: str | int | openmc.ParticleType = 'neutron',
         survival_ratio: float = 3.0,
         max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
@@ -218,8 +233,7 @@ class WeightWindows(IDManagerMixin):
 
     @particle_type.setter
     def particle_type(self, pt: str):
-        cv.check_value('Particle type', pt, _PARTICLES)
-        self._particle_type = pt
+        self._particle_type = _normalize_ww_particle(pt)
 
     @property
     def energy_bounds(self) -> Iterable[Real]:
@@ -431,7 +445,10 @@ class WeightWindows(IDManagerMixin):
         mesh_id = group['mesh'][()]
         mesh = meshes[mesh_id]
 
-        ptype = group['particle_type'][()].decode()
+        if 'particle_pdg' in group:
+            ptype = _normalize_ww_particle(int(group['particle_pdg'][()]))
+        else:
+            ptype = _normalize_ww_particle(group['particle_type'][()].decode())
         e_bounds = group['energy_bounds'][()]
         # weight window bounds are stored with the shape (e, k, j, i)
         # in C++ and HDF5 -- the opposite of how they are stored here
@@ -494,8 +511,8 @@ class WeightWindowGenerator:
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin. If no energy bins are provided, the
         maximum and minimum energy for the data available at runtime.
-    particle_type : {'neutron', 'photon'}
-        Particle type the weight windows apply to
+    particle_type : str or int or openmc.ParticleType
+        Particle type the weight windows apply to (PDG code or alias)
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
     max_realizations : int
@@ -513,8 +530,8 @@ class WeightWindowGenerator:
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
-    particle_type : {'neutron', 'photon'}
-        Particle type the weight windows apply to
+    particle_type : str
+        Particle type the weight windows apply to (canonical string)
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
     max_realizations : int
@@ -534,7 +551,7 @@ class WeightWindowGenerator:
         self,
         mesh: openmc.MeshBase,
         energy_bounds: Sequence[float] | None = None,
-        particle_type: str = 'neutron',
+        particle_type: str | int | openmc.ParticleType = 'neutron',
         method: str = 'magic',
         max_realizations: int = 1,
         update_interval: int = 1,
@@ -591,8 +608,7 @@ class WeightWindowGenerator:
 
     @particle_type.setter
     def particle_type(self, pt: str):
-        cv.check_value('particle type', pt, ('neutron', 'photon'))
-        self._particle_type = pt
+        self._particle_type = _normalize_ww_particle(pt)
 
     @property
     def method(self) -> str:

@@ -4,7 +4,7 @@
 Track File Format
 =================
 
-The current revision of the particle track file format is 3.0.
+The current revision of the particle track file format is 3.1.
 
 **/**
 
@@ -33,5 +33,4 @@ The current revision of the particle track file format is 3.0.
                             last offset should match the total size of the
                             array.
                           - **particles** (*int[]*) -- Particle type for each
-                            primary/secondary particle (0=neutron, 1=photon,
-                            2=electron, 3=positron).
+                            primary/secondary particle (PDG code).

@@ -136,7 +136,7 @@ void create_fission_sites(Particle& p)
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
-    site.particle = ParticleType::neutron;
+    site.particle = PDG_NEUTRON;
     site.time = p.time();
     site.wgt = 1. / weight;
 

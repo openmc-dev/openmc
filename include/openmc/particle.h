@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -48,7 +49,7 @@ public:
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
   //! \return Whether a secondary particle was created
-  bool create_secondary(double wgt, Direction u, double E, ParticleType type);
+  bool create_secondary(double wgt, Direction u, double E, ParticlePdg type);
 
   //! split a particle
   //
@@ -126,9 +127,9 @@ public:
 //! Functions
 //============================================================================
 
-std::string particle_type_to_str(ParticleType type);
+std::string particle_pdg_to_str(ParticlePdg type);
 
-ParticleType str_to_particle_type(std::string str);
+ParticlePdg str_to_particle_pdg(std::string_view str);
 
 void add_surf_source_to_bank(Particle& p, const Surface& surf);
 

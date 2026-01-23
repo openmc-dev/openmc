@@ -293,7 +293,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_group(rgroup);
 
     // Truncate the bremsstrahlung data at the cutoff energy
-    int photon = static_cast<int>(ParticleType::photon);
+    int photon = transport_index_from_pdg(PDG_PHOTON);
     const auto& E {electron_energy};
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {
@@ -805,7 +805,7 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
     if (shell.transitions.empty()) {
       Direction u = isotropic_direction(p.current_seed());
       double E = shell.binding_energy;
-      p.create_secondary(p.wgt(), u, E, ParticleType::photon);
+      p.create_secondary(p.wgt(), u, E, PDG_PHOTON);
       continue;
     }
 
@@ -833,12 +833,12 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
       holes[n_holes++] = transition.secondary_subshell;
 
       // Create auger electron
-      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::electron);
+      p.create_secondary(p.wgt(), u, transition.energy, PDG_ELECTRON);
     } else {
       // Radiative transition -- get X-ray energy
 
       // Create fluorescent photon
-      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon);
+      p.create_secondary(p.wgt(), u, transition.energy, PDG_PHOTON);
     }
   }
 }

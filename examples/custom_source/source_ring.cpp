@@ -11,7 +11,7 @@ class RingSource : public openmc::Source
   {
     openmc::SourceSite particle;
     // particle type
-    particle.particle = openmc::ParticleType::neutron;
+    particle.particle = openmc::PDG_NEUTRON;
     // position
     double angle = 2.0 * M_PI * openmc::prn(seed);
     double radius = 3.0;

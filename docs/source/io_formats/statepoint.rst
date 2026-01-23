@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current version of the statepoint file format is 18.1.
+The current version of the statepoint file format is 18.2.
 
 **/**
 
@@ -56,8 +56,8 @@ The current version of the statepoint file format is 18.1.
              ``time``, ``wgt``, ``delayed_group``, ``surf_id``, and
              ``particle``, which represent the position, direction, energy,
              time, weight, delayed group, surface ID, and particle type
-             (0=neutron, 1=photon, 2=electron, 3=positron), respectively. Only
-             present when `run_mode` is 'eigenvalue'.
+             (PDG code), respectively. Only present when `run_mode` is
+             'eigenvalue'.
 
 **/tallies/**
 

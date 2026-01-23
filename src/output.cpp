@@ -155,21 +155,21 @@ std::string time_stamp()
 void print_particle(Particle& p)
 {
   // Display particle type and ID.
-  switch (p.type()) {
-  case ParticleType::neutron:
+  switch (p.type().value) {
+  case PDG_NEUTRON.value:
     fmt::print("Neutron ");
     break;
-  case ParticleType::photon:
+  case PDG_PHOTON.value:
     fmt::print("Photon ");
     break;
-  case ParticleType::electron:
+  case PDG_ELECTRON.value:
     fmt::print("Electron ");
     break;
-  case ParticleType::positron:
+  case PDG_POSITRON.value:
     fmt::print("Positron ");
     break;
   default:
-    fmt::print("Unknown Particle ");
+    fmt::print("Particle {} ", particle_pdg_to_str(p.type()));
   }
   fmt::print("{}\n", p.id());
 

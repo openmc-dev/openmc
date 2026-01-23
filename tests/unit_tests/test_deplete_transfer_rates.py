@@ -198,3 +198,35 @@ def test_transfer(run_in_tmpdir, model):
     # Ensure number of atoms equal transfer decay
     assert atoms[1] == pytest.approx(atoms[0]*exp(-transfer_rate*3600*24))
     assert atoms[2] == pytest.approx(atoms[1]*exp(-transfer_rate*3600*24))
+
+@pytest.mark.parametrize("case_name, buffer, ox", [
+    ('redox', {'Gd157':1}, {'Gd': 3, 'U': 4}),
+    ('buffer_invalid', {'Gd158':1}, {'Gd': 3, 'U': 4}),
+    ('elm_invalid', {'Gd157':1}, {'Gb': 3, 'U': 4}),
+    ])
+def test_redox(case_name, buffer, ox, model):
+    op = CoupledOperator(model, CHAIN_PATH)
+    number_of_timesteps = 2
+    transfer = TransferRates(op, model.materials, number_of_timesteps)
+
+    # Test by Openmc material, material name and material id
+    material, dest_material, dest_material2 = [m for m in model.materials
+                                               if m.depletable]
+    for material_input in [material, material.name, material.id]:
+        for dest_material_input in [dest_material, dest_material.name,
+                                    dest_material.id]:
+
+            if case_name == 'buffer_invalid':
+                with pytest.raises(ValueError, match='Gd158 is not a valid '
+                                   'nuclide.'):
+                    transfer.set_redox(material_input, buffer, ox)
+
+            elif case_name == 'elm_invalid':
+                with pytest.raises(ValueError, match='Gb is not a valid '
+                                   'element.'):
+                    transfer.set_redox(material_input, buffer, ox)
+            else:
+                transfer.set_redox(material_input, buffer, ox)
+                mat_id = transfer._get_material_id(material_input)
+                assert transfer.redox[mat_id][0] == buffer
+                assert transfer.redox[mat_id][1] == ox

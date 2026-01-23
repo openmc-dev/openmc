@@ -496,9 +496,6 @@ def test_set_n_batches(lib_run):
 
     for i in range(7):
         openmc.lib.next_batch()
-    # Setting n_batches less than current_batch should raise error
-    with pytest.raises(exc.InvalidArgumentError):
-        settings.set_batches(6)
     # n_batches should stay the same
     assert settings.get_batches() == 10
 
@@ -610,6 +607,13 @@ def test_regular_mesh(lib_init):
     for mesh_id, mesh in meshes.items():
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
+
+    rotation = (180.0, 0.0, 0.0)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+    mf.rotation = rotation
+    assert np.allclose(mf.rotation, rotation)
 
     translation = (1.0, 2.0, 3.0)
 

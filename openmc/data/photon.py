@@ -203,7 +203,9 @@ class AtomicRelaxation(EqualityMixin):
         for subshell, df in transitions.items():
             cv.check_value('subshell', subshell, _SUBSHELLS)
             cv.check_type('transitions', df, pd.DataFrame)
-        self._transitions = transitions
+        self._transitions = {
+            subshell: df.convert_dtypes() for subshell, df in transitions.items()
+        }
 
     @classmethod
     def from_ace(cls, ace):

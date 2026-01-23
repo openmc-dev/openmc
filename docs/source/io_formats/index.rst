@@ -44,6 +44,7 @@ Output Files
 
    statepoint
    source
+   collision_track
    summary
    properties
    depletion_results

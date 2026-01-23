@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/collision_track.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -9,7 +10,6 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
-#include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
@@ -118,6 +118,7 @@ int openmc_simulation_init()
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
+  simulation::ct_current_file = 1;
   simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
@@ -297,6 +298,7 @@ namespace openmc {
 
 namespace simulation {
 
+int ct_current_file;
 int current_batch;
 int current_gen;
 bool initialized {false};
@@ -346,6 +348,11 @@ void allocate_banks()
   if (settings::surf_source_write) {
     // Allocate surface source bank
     simulation::surf_source_bank.reserve(settings::ssw_max_particles);
+  }
+
+  if (settings::collision_track) {
+    // Allocate collision track bank
+    collision_track_reserve_bank();
   }
 }
 
@@ -400,11 +407,8 @@ void finalize_batch()
   simulation::time_tallies.stop();
 
   // update weight windows if needed
-  if (settings::solver_type != SolverType::RANDOM_RAY ||
-      simulation::current_batch == settings::n_batches) {
-    for (const auto& wwg : variance_reduction::weight_windows_generators) {
-      wwg->update();
-    }
+  for (const auto& wwg : variance_reduction::weight_windows_generators) {
+    wwg->update();
   }
 
   // Reset global tally results
@@ -492,6 +496,10 @@ void finalize_batch()
       }
       ++simulation::ssw_current_file;
     }
+  }
+  // Write collision track file if requested
+  if (settings::collision_track) {
+    collision_track_flush_bank();
   }
 }
 
@@ -674,8 +682,9 @@ void calculate_work()
 void initialize_data()
 {
   // Determine minimum/maximum energy for incident neutron/photon data
-  data::energy_max = {INFTY, INFTY};
-  data::energy_min = {0.0, 0.0};
+  data::energy_max = {INFTY, INFTY, INFTY, INFTY};
+  data::energy_min = {0.0, 0.0, 0.0, 0.0};
+
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
       int neutron = static_cast<int>(ParticleType::neutron);
@@ -703,11 +712,21 @@ void initialize_data()
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
         int photon = static_cast<int>(ParticleType::photon);
+        int electron = static_cast<int>(ParticleType::electron);
+        int positron = static_cast<int>(ParticleType::positron);
         int n_e = data::ttb_e_grid.size();
+
+        const std::vector<int> charged = {electron, positron};
+        for (auto t : charged) {
+          data::energy_min[t] = std::exp(data::ttb_e_grid(1));
+          data::energy_max[t] = std::exp(data::ttb_e_grid(n_e - 1));
+        }
+
         data::energy_min[photon] =
-          std::max(data::energy_min[photon], std::exp(data::ttb_e_grid(1)));
-        data::energy_max[photon] = std::min(
-          data::energy_max[photon], std::exp(data::ttb_e_grid(n_e - 1)));
+          std::max(data::energy_min[photon], data::energy_min[electron]);
+
+        data::energy_max[photon] =
+          std::min(data::energy_max[photon], data::energy_max[electron]);
       }
     }
   }

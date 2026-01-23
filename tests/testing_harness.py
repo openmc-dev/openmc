@@ -68,7 +68,7 @@ class TestHarness:
         if config['mpi']:
             mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
             openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args,
-              event_based=config['event'])
+                       event_based=config['event'])
         else:
             openmc.run(openmc_exec=config['exe'], event_based=config['event'])
 
@@ -305,9 +305,12 @@ class PyAPITestHarness(TestHarness):
         else:
             self.execute_test()
 
-    def execute_test(self):
+    def execute_test(self, change_dir=False):
         """Build input XMLs, run OpenMC, and verify correct results."""
+        base_dir = os.getcwd() if change_dir else None
         try:
+            if change_dir:
+                os.chdir(self.workdir)
             self._build_inputs()
             inputs = self._get_inputs()
             self._write_inputs(inputs)
@@ -319,10 +322,15 @@ class PyAPITestHarness(TestHarness):
             self._compare_results()
         finally:
             self._cleanup()
+            if base_dir:
+                os.chdir(base_dir)
 
-    def update_results(self):
+    def update_results(self, change_dir=False):
         """Update results_true.dat and inputs_true.dat"""
+        base_dir = os.getcwd() if change_dir else None
         try:
+            if change_dir:
+                os.chdir(self.workdir)
             self._build_inputs()
             inputs = self._get_inputs()
             self._write_inputs(inputs)
@@ -334,6 +342,8 @@ class PyAPITestHarness(TestHarness):
             self._overwrite_results()
         finally:
             self._cleanup()
+            if base_dir:
+                os.chdir(base_dir)
 
     def _build_inputs(self):
         """Write input XML files."""
@@ -371,7 +381,8 @@ class PyAPITestHarness(TestHarness):
         """Delete XMLs, statepoints, tally, and test files."""
         super()._cleanup()
         output = ['materials.xml', 'geometry.xml', 'settings.xml',
-                  'tallies.xml', 'plots.xml', 'inputs_test.dat', 'model.xml']
+                  'tallies.xml', 'plots.xml', 'inputs_test.dat', 'model.xml',
+                  'collision_track.h5', 'collision_track.mcpl']
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
@@ -389,6 +400,7 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
     due to single precision usage (e.g., as in the random ray solver).
 
     """
+
     def _are_files_equal(self, actual_path, expected_path, tolerance):
         def isfloat(value):
             try:
@@ -428,7 +440,8 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
 
     def _compare_results(self):
         """Make sure the current results agree with the reference."""
-        compare = self._are_files_equal('results_test.dat', 'results_true.dat', 1e-6)
+        compare = self._are_files_equal(
+            'results_test.dat', 'results_true.dat', 1e-6)
         if not compare:
             expected = open('results_true.dat').readlines()
             actual = open('results_test.dat').readlines()
@@ -476,6 +489,7 @@ class WeightWindowPyAPITestHarness(PyAPITestHarness):
 
 class PlotTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC plotting tests."""
+
     def __init__(self, plot_names, voxel_convert_checks=[]):
         super().__init__(None)
         self._plot_names = plot_names
@@ -523,3 +537,105 @@ class PlotTestHarness(TestHarness):
         outstr = sha512.hexdigest()
 
         return outstr
+
+
+class CollisionTrackTestHarness(PyAPITestHarness):
+    def __init__(self, statepoint_name, model=None, inputs_true=None, workdir=None):
+        super().__init__(statepoint_name, model, inputs_true)
+        self.workdir = workdir
+
+    def _test_output_created(self):
+        """Make sure collision_track.h5 has also been created."""
+        super()._test_output_created()
+        if self._model.settings.collision_track:
+            assert os.path.exists(
+                "collision_track.h5"
+            ), "collision_track file has not been created."
+
+    def _compare_output(self):
+        """Compare collision_track.h5 files."""
+        if self._model.settings.collision_track:
+            collision_track_true = self._return_collision_track_data(
+                "collision_track_true.h5")
+            collision_track_test = self._return_collision_track_data(
+                "collision_track.h5")
+            np.testing.assert_allclose(
+                collision_track_true, collision_track_test, rtol=1e-07)
+
+    def main(self):
+        """Accept commandline arguments and either run or update tests."""
+        if config["build_inputs"]:
+            self.build_inputs()
+        elif config["update"]:
+            self.update_results(change_dir=True)
+        else:
+            self.execute_test(change_dir=True)
+
+    def build_inputs(self):
+        """Build inputs."""
+        base_dir = os.getcwd()
+        try:
+            os.chdir(self.workdir)
+            self._build_inputs()
+        finally:
+            os.chdir(base_dir)
+
+    def _overwrite_results(self):
+        """Also add the 'collision_track.h5' file during overwriting."""
+        super()._overwrite_results()
+        if os.path.exists("collision_track.h5"):
+            shutil.copyfile("collision_track.h5", "collision_track_true.h5")
+
+    @staticmethod
+    def _return_collision_track_data(filepath):
+        """
+        Read a collision_track file and return a sorted array composed
+        of flatten arrays of collision information.
+
+        Parameters
+        ----------
+        filepath : str
+            Path to the collision_track file
+
+        Returns
+        -------
+        data : np.array
+            Sorted array composed of flatten arrays of collision_track data for
+            each collision information
+        """
+        data = []
+        keys = []
+
+        # Read source file
+        source = openmc.read_collision_track_file(filepath)
+        for src in source:
+            r = src['r']
+            u = src['u']
+            e = src['E']
+            de = src['dE']
+            time = src['time']
+            wgt = src['wgt']
+            delayed_group = src['delayed_group']
+            cell_id = src['cell_id']
+            nuclide_id = src['nuclide_id']
+            material_id = src['material_id']
+            universe_id = src['universe_id']
+            n_collision = src['n_collision']
+            event_mt = src['event_mt']
+            key = (
+                f"{r[0]:.10e} {r[1]:.10e} {r[2]:.10e} {u[0]:.10e} {u[1]:.10e} {u[2]:.10e}"
+                f"{e:.10e} {de:.10e}  {time:.10e} {wgt:.10e} {event_mt} {delayed_group} {cell_id}"
+                f"{nuclide_id} {material_id} {universe_id} {n_collision} "
+            )
+            keys.append(key)
+            values = [*r, *u, e, de, time, wgt, event_mt,
+                      delayed_group, cell_id, nuclide_id, material_id,
+                      universe_id, n_collision]
+            assert len(values) == 17
+            data.append(values)
+
+        data = np.array(data)
+        keys = np.array(keys)
+        sorted_idx = np.argsort(keys, kind='stable')
+
+        return data[sorted_idx]

@@ -754,7 +754,7 @@ def _generate_c5g7_materials() -> openmc.Materials:
 
 
 def _generate_subdivided_pin_cell(uo2, water) -> openmc.Universe:
-    """Create a radially and azimuthally subdivided pin celluniverse. Helper
+    """Create a radially and azimuthally subdivided pin cell universe. Helper
     function for random_ray_pin_cell() and random_ray_lattice()
 
     Parameters

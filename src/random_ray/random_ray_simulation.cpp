@@ -789,6 +789,8 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
   simulation::time_decomposition_handling.start();
 
+  // printf("Batch %d: Transport sweep with domain decomposition...\n", simulation::current_batch);
+
   // Create rays and add them to ray bank
   #pragma omp parallel for schedule(static)
     for (int i = 0; i < simulation::work_per_rank; i++) {
@@ -811,6 +813,8 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       }
     }
 
+    // printf("  Rank %d: Initial rays in ray bank: %d\n", mpi::rank, RB.ray_bank_size());
+
     // If no ray is alive at this stage, it means that all of them have been buffered because they were sampled in foregin subdomain. This requires a ray bank update here.
     if (!RB.is_any_ray_alive()) {
       RB.update(domain_.get());
@@ -828,6 +832,7 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
         reduction(+ : total_geometric_intersections_)
           for (int i = 0; i < RB.ray_bank_size(); i++) {
             RandomRay& ray = RB.my_ray_list_[i];
+            // printf("    Rank %d: Transporting ray %lu\n", mpi::rank, ray.id());
             total_geometric_intersections_ += ray.transport_history_based_single_ray();
 
             // If ray has left my subdomain, buffer ray state
@@ -849,6 +854,8 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
       num_communication_rounds ++;
     }
+
+    // printf("  Rank %d: Total communication rounds: %d\n", mpi::rank, num_communication_rounds);
 
     // Calculate load per rank based on number of hits in each source region that a rank owns
     double batch_ray_buffering_time = simulation::time_ray_buffering.elapsed() - start_time_ray_buffering;

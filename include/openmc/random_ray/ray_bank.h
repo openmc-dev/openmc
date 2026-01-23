@@ -43,8 +43,16 @@ private:
   int total_receiving_rays_;
   int negroups_;
 
-  // Map that contains the rank to which rays are buffered to be sent
-  std::unordered_map<int, vector<RayBufferContainer>> ray_send_buffer_;
+  // Per-rank send buffers - data is packed directly into these in send-ready format
+  // This eliminates intermediate copying and buffering
+  struct RankSendBuffers {
+    vector<RayExchangeData> ray_data;
+    vector<float> angular_flux;
+    vector<LocalCoord> coord;
+    vector<int> cell_last;
+    int count = 0;  // Number of rays buffered for this rank
+  };
+  std::unordered_map<int, RankSendBuffers> ray_send_buffer_;
 
   // Vector that contains the number of rays to be received from each rank
   vector<int> num_messages_receiving_;
@@ -53,6 +61,8 @@ private:
   // vectors that received ray data
   vector<RayExchangeData> received_ray_data_;
   vector<float> received_angular_flux_data_;
+  vector<LocalCoord> received_coord_;
+  vector<int> received_cell_last_;
 
 }; // class DecompositionMap
 

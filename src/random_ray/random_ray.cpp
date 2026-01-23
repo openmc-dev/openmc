@@ -289,9 +289,24 @@ void RandomRay::event_advance_ray()
   if (settings::check_overlaps)
     check_cell_overlap(*this);
 
+  // if (id() ==5){
+  //   printf("RANK %d: Advancing Ray %lu at position (%f, %f, %f)\n",
+  //          mpi::rank, id(),
+  //          r().x, r().y, r().z);
+  // }
+
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance();
+
+  // if (id() == 5) {
+  //   printf("RANK %d: Ray %lu at position (%f, %f, %f) "
+  //          "traveling distance %f to surface %d\n",
+  //          mpi::rank, id(),
+  //          r().x, r().y, r().z,
+  //          distance,
+  //          boundary().surface());
+  // }
 
   if (mpi::n_procs > 1) {
     // If domain decomposition is being used, update counter for 
@@ -434,8 +449,20 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
   if(has_left_subdomain()) {
     Position position_buffer =  r() + (offset + mesh_partial_length) * u();
     double distance_buffer = distance_travelled_ + mesh_partial_length;
+    
+#ifdef OPENMC_DAGMC_ENABLED
+    history().rollback_last_intersection();
+#endif
     pack_ray_for_buffer(distance_buffer, position_buffer);
     wgt() = 0.0;
+    // if (id() == 5) {
+    //   printf("RANK %d: Ray %lu leaving subdomain to rank %d at position (%f, %f, %f) to new owner %d\n", 
+    //          mpi::rank, id(), owner_rank_,
+    //          position_buffer.x,
+    //          position_buffer.y,
+    //          position_buffer.z,
+    //          owner_rank_);
+    // }
   }
 }
 
@@ -839,16 +866,17 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 }
 
-void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux)
+void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux,
+                             LocalCoord* coord, int* cell_last_data)
 {
 
   domain_ = domain;
   distance_travelled_ = data.distance_travelled;
   owner_rank_ = mpi::rank;
 
-  // Reset particle event counter. I read out intersections after each ray transport, 
-  // so the reset to zero after transmission between ranks should be OK here.
-  n_event() = 0;
+  // Restore particle event counter from the transmitted ray 
+  // This preserves the event count across MPI rank boundaries
+  n_event() = data.n_event + 1;
 
   is_active_ = data.is_active;
 
@@ -857,32 +885,80 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   // set identifier for particle
   id() = data.ray_id;
 
-  // generate source site using sample method
-  SourceSite site;
+  // SourceSite site;
 
   // Set location and direction as in previous subdomain
-  site.r = data.position;
+  // site.r = data.position;
 
   // angle
-  site.u = data.direction;
+  // site.u = data.direction;
 
-  site.E = 0.0;
-  this->from_source(&site);
+  // site.E = 0.0;
+  // this->from_source(&site);
 
-  // reinitialize last surface that was crossed
+  // Restore GeometryState scalar fields
+  n_coord() = data.n_coord;
+  cell_instance() = data.cell_instance;
+  n_coord_last() = data.n_coord_last;
+  material() = data.material;
+  material_last() = data.material_last;
+  sqrtkT() = data.sqrtkT;
+  sqrtkT_last() = data.sqrtkT_last;
   surface() = data.surface;
-
-  // Locate ray
-  if (lowest_coord().cell() == C_NONE) {
-    if (!exhaustive_find_cell(*this)) {
-      this->mark_as_lost(
-        "Could not find the cell containing particle " + std::to_string(id()));
-    }
-
-    // Set birth cell attribute
-    if (cell_born() == C_NONE)
-      cell_born() = lowest_coord().cell();
+  
+  // Restore LocalCoord vector data (coord_)
+  // The vectors were already sized to model::n_coord_levels in the GeometryState constructor
+  // LocalCoord is POD so we can just copy the entire structure
+  const int n_coord_max = model::n_coord_levels;
+  for (int i = 0; i < n_coord_max; i++) {
+    this->coord(i) = coord[i];
+    cell_last(i) = cell_last_data[i];
   }
+  
+  // Override the position and direction at ALL coordinate levels with the buffered values
+  // These may have been adjusted when the ray left the previous subdomain
+  // We need to update all levels to maintain consistency in the coordinate hierarchy
+  Position delta_r = data.position - r();
+  for (int i = 0; i < n_coord(); i++) {
+    this->coord(i).r() += delta_r;
+    // this->coord(i).u() = data.direction; // Overwriting local directions causes problems when checking distance to boundary
+  }
+
+  // r() = data.position;
+  u() = data.direction;
+
+  // if (id() == 5) {
+  //   printf("RANK %d: Restarting ray %lu at position (%f, %f, %f) with distance travelled %f\n",
+  //          mpi::rank, id(),
+  //          r().x, r().y, r().z,
+  //          distance_travelled_);
+  // }
+  
+#ifdef OPENMC_DAGMC_ENABLED
+  // Restore DAGMC fields
+  // Restore last_dir and rebuild the history by adding entities in reverse order
+  last_dir() = data.last_dir;
+  for (int i = data.n_handles - 1; i >= 0; i--) {
+    history().add_entity(data.handles[i]);
+  }
+#endif
+  
+  // Set particle type and energy (for random ray, these are not actually used)
+  type() = ParticleType::neutron;
+  E() = 0.0;
+
+  // No need to call exhaustive_find_cell() since we have the full geometry state!
+  // Just verify we have valid cell information
+  if (lowest_coord().cell() == C_NONE) {
+    // if (!exhaustive_find_cell(*this)) {
+      this->mark_as_lost(
+      "Received particle " + std::to_string(id()) + " with invalid cell information");
+  }
+
+  // Set birth cell attribute if not set
+  if (cell_born() == C_NONE)
+    cell_born() = lowest_coord().cell();
+  // }
 
   // Set ray's angular flux to value before subdomain change
   if (distance_travelled_ > 0.0 || is_active_){
@@ -890,8 +966,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
       angular_flux_[g] = angular_flux[g];
     }
   } 
-  // Initialize ray's starting angular flux to starting location's isotropic
-  // source 
+  // Initialize ray's starting angular flux to starting location's isotropic source 
   else {
     SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
     SourceRegionHandle srh =
@@ -1039,6 +1114,49 @@ void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_bu
  exchange_data_.surface = surface();
  exchange_data_.is_active = is_active_;
  exchange_data_.ray_id = id();
+ exchange_data_.n_event = n_event();
+
+ // Pack GeometryState scalar fields
+ exchange_data_.n_coord = n_coord();
+ exchange_data_.cell_instance = cell_instance();
+ exchange_data_.n_coord_last = n_coord_last();
+ exchange_data_.material = material();
+ exchange_data_.material_last = material_last();
+ exchange_data_.sqrtkT = sqrtkT();
+ exchange_data_.sqrtkT_last = sqrtkT_last();
+ 
+ // Pack GeometryState vector fields
+ // LocalCoord is POD, so we can just copy the entire vector
+ // We always pack model::n_coord_levels elements to ensure consistent sizes
+ const int n_coord_max = model::n_coord_levels;
+ 
+ exchange_data_.coord.resize(n_coord_max);
+ exchange_data_.cell_last.resize(n_coord_max);
+ 
+ for (int i = 0; i < n_coord_max; i++) {
+   exchange_data_.coord[i] = coord(i);
+   exchange_data_.cell_last[i] = cell_last(i);
+ }
+
+#ifdef OPENMC_DAGMC_ENABLED
+ // Pack DAGMC fields
+ // Extract up to MAX_N_HANDLES from the ray history by rolling back
+ exchange_data_.last_dir = last_dir();
+ exchange_data_.n_handles = 0;
+ 
+ for (int i = 0; i < MAX_N_HANDLES; i++) {
+   moab::EntityHandle handle;
+   if (history().get_last_intersection(handle) == moab::MB_SUCCESS) {
+     exchange_data_.handles[i] = handle;
+     exchange_data_.n_handles++;
+     history().rollback_last_intersection();
+   } else {
+     // No more handles in history
+     break;
+   }
+ }
+#endif
+
 }
 
 int RandomRay::get_energy_groups() {

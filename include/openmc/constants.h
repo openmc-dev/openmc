@@ -74,6 +74,11 @@ constexpr double ZERO_FLUX_CUTOFF {1e-22};
 // value will be converted to pure void.
 constexpr double MINIMUM_MACRO_XS {1e-6};
 
+// Maximum number of DAGMC entity handles to send when exchanging rays
+// between MPI ranks. This caps the RayHistory length to avoid sending
+// variable-length vectors.
+constexpr int MAX_N_HANDLES {5};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 

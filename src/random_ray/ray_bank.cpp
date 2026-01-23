@@ -1,11 +1,14 @@
 #include "openmc/random_ray/ray_bank.h"
 
+#include <cstring>
+
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/random_ray/source_region.h"
 #include "openmc/message_passing.h"
 #include "openmc/random_ray/decomposition_map.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/timer.h"
+#include "openmc/geometry.h"
 
 namespace openmc {
 
@@ -29,8 +32,62 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain){
         , ray.exchange_data_.ray_id, ray.exchange_data_.position.x, ray.exchange_data_.position.y, ray.exchange_data_.position.z, rank));
     }
 
-    // Add ray data to buffer
-    ray_send_buffer_[rank].push_back(ray.exchange_data_);
+    // Get or create the send buffer for this rank
+    auto& buffers = ray_send_buffer_[rank];
+    
+    // Get the maximum coordinate levels
+    const int n_coord_max = model::n_coord_levels;
+    
+    // Reserve space if this is the first ray for this rank
+    // This is just a heuristic to reduce reallocations
+    if (buffers.count == 0) {
+      buffers.ray_data.reserve(32);
+      buffers.angular_flux.reserve(32 * negroups_);
+      buffers.coord.reserve(32 * n_coord_max);
+      buffers.cell_last.reserve(32 * n_coord_max);
+    }
+    
+    // Pack RayExchangeData directly into send buffer
+    RayBufferContainer& rbc = ray.exchange_data_;
+    RayExchangeData rd;
+    
+    rd.position = rbc.position;
+    rd.direction = rbc.direction;
+    rd.distance_travelled = rbc.distance_travelled;
+    rd.surface = rbc.surface;
+    rd.is_active = rbc.is_active;
+    rd.ray_id = rbc.ray_id;
+    rd.n_event = rbc.n_event;
+    rd.n_coord = rbc.n_coord;
+    rd.cell_instance = rbc.cell_instance;
+    rd.n_coord_last = rbc.n_coord_last;
+    rd.material = rbc.material;
+    rd.material_last = rbc.material_last;
+    rd.sqrtkT = rbc.sqrtkT;
+    rd.sqrtkT_last = rbc.sqrtkT_last;
+    
+#ifdef OPENMC_DAGMC_ENABLED
+    rd.last_dir = rbc.last_dir;
+    rd.n_handles = rbc.n_handles;
+    std::memcpy(rd.handles, rbc.handles, MAX_N_HANDLES * sizeof(moab::EntityHandle));
+#endif
+    
+    buffers.ray_data.push_back(rd);
+    
+    // Pack angular flux array directly
+    buffers.angular_flux.insert(buffers.angular_flux.end(), 
+                                rbc.angular_flux.begin(), 
+                                rbc.angular_flux.end());
+    
+    // Pack coord and cell_last arrays directly
+    buffers.coord.insert(buffers.coord.end(), 
+                        rbc.coord.begin(), 
+                        rbc.coord.end());
+    buffers.cell_last.insert(buffers.cell_last.end(), 
+                            rbc.cell_last.begin(), 
+                            rbc.cell_last.end());
+    
+    buffers.count++;
 }
 
 // Update ray bank
@@ -62,8 +119,8 @@ void RayBank::communicate_message_metadata() {
   fill(num_messages_sending_.begin(), num_messages_sending_.end(), 0);
 
   // Fill the sending counts
-  for (auto& [rank, rays] : ray_send_buffer_) {
-    num_messages_sending_[rank] = rays.size();
+  for (auto& [rank, buffers] : ray_send_buffer_) {
+    num_messages_sending_[rank] = buffers.count;
   }
 
   // Exchange message counts with all ranks
@@ -81,79 +138,91 @@ void RayBank::communicate_message_metadata() {
 
 void RayBank::communicate_rays(){
 
-    // Each ray requires 2 sends (data + angular flux)
-    int num_requests = ray_send_buffer_.size() * 2;
-    vector<MPI_Request> requests(num_requests);
-    int req_idx = 0;
+    // Get the maximum coordinate levels
+    const int n_coord_max = model::n_coord_levels;
 
-    // Define one-dimensional arrays to be sent and received and allocate size
-    // Sending
-    vector<RayExchangeData> ray_data;
-    vector<float> angular_flux_data;
-    ray_data.resize(total_sending_rays_);
-    angular_flux_data.resize(total_sending_rays_ * negroups_);  
-
-    // Receiving
+    // Allocate receiving buffers
     received_ray_data_.resize(total_receiving_rays_);
     received_angular_flux_data_.resize(total_receiving_rays_ * negroups_);
+    received_coord_.resize(total_receiving_rays_ * n_coord_max);
+    received_cell_last_.resize(total_receiving_rays_ * n_coord_max);
 
-    // Indices to keep track of where to pack/unpack data in 1D arrays
-    int vector_send_idx = 0;
-    int vector_receive_idx = 0;
+    // Calculate total number of MPI requests needed
+    // 4 messages per sending rank + 4 messages per receiving rank
+    int num_send_ranks = ray_send_buffer_.size();
+    int num_recv_ranks = 0;
+    for (int i = 0; i < mpi::n_procs; i++) {
+      if (num_messages_receiving_[i] > 0) num_recv_ranks++;
+    }
+    
+    int total_requests = num_send_ranks * 4 + num_recv_ranks * 4;
+    vector<MPI_Request> requests(total_requests);
+    int req_idx = 0;
 
-    // Send ray data to neighbouring ranks
-    for (auto [receiving_rank, rays] : ray_send_buffer_) {
-
-      int num_rays_sending = num_messages_sending_[receiving_rank];
-
-      for (int i = 0; i < num_rays_sending; i++) { 
-        //TODO: get rid of this! Entire rayExchangeData should be buffered
-        //TODO: OMP?
-        // Pack slimmed down data container for MPI send
-        RayExchangeData exchange_data;
-        exchange_data.position = rays[i].position;
-        exchange_data.direction = rays[i].direction;
-        exchange_data.distance_travelled = rays[i].distance_travelled;
-        exchange_data.is_active = rays[i].is_active;
-        exchange_data.ray_id = rays[i].ray_id;
-        exchange_data.surface = rays[i].surface;
-        ray_data[vector_send_idx + i] = exchange_data;
-        // Angular flux array
-        for (int g = 0; g < negroups_; g++){
-          angular_flux_data[(vector_send_idx + i) * negroups_ + g] = rays[i].angular_flux[g];
-        }
-        // Check neighbor list and add if not already known (insert does this check automatically). 
-        // Only check active rays to filter out rays that are sampled in wrong subdomain.
-        // TODO: Maybe this is not efficient here. If load balancing constrained to first 
-        // 5 batches, maybe this should be moved elsewhere
-        if (rays[i].distance_travelled > 0.0 || rays[i].is_active) {
-            mpi::decomp_map.my_neighbors.insert(receiving_rank);
-        }
-      }
-
-      MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx]);
-      MPI_Isend(&angular_flux_data[vector_send_idx * negroups_], num_rays_sending * negroups_, MPI_FLOAT, receiving_rank, 2, mpi::intracomm, &requests[req_idx+1]); 
-
-      vector_send_idx += num_rays_sending;
-      req_idx += 2;
-      }
-
-    //TODO: Post Irecv before Isend?
-    //TODO: OMP?
-    // Receive ray data from neighbouring ranks 
+    // Post all non-blocking receives first (better for overlap)
+    int recv_offset = 0;
     for (int sending_rank = 0; sending_rank < mpi::n_procs; sending_rank++) {
       int num_rays_receiving = num_messages_receiving_[sending_rank];
       if (num_rays_receiving == 0) continue;
-      MPI_Recv(&received_ray_data_[vector_receive_idx], num_rays_receiving * sizeof(RayExchangeData), MPI_BYTE, sending_rank, 1, mpi::intracomm, MPI_STATUS_IGNORE);
-      MPI_Recv(&received_angular_flux_data_[vector_receive_idx * negroups_], num_rays_receiving * negroups_, MPI_FLOAT, sending_rank, 2, mpi::intracomm, MPI_STATUS_IGNORE);
+      
+      MPI_Irecv(&received_ray_data_[recv_offset], 
+                num_rays_receiving * sizeof(RayExchangeData), 
+                MPI_BYTE, sending_rank, 1, mpi::intracomm, &requests[req_idx++]);
+      
+      MPI_Irecv(&received_angular_flux_data_[recv_offset * negroups_], 
+                num_rays_receiving * negroups_, 
+                MPI_FLOAT, sending_rank, 2, mpi::intracomm, &requests[req_idx++]);
+      
+      MPI_Irecv(&received_coord_[recv_offset * n_coord_max], 
+                num_rays_receiving * n_coord_max * sizeof(LocalCoord), 
+                MPI_BYTE, sending_rank, 3, mpi::intracomm, &requests[req_idx++]);
+      
+      MPI_Irecv(&received_cell_last_[recv_offset * n_coord_max], 
+                num_rays_receiving * n_coord_max, 
+                MPI_INT, sending_rank, 4, mpi::intracomm, &requests[req_idx++]);
 
-      vector_receive_idx += num_rays_receiving;
+      recv_offset += num_rays_receiving;
+    }
+
+    // Post all non-blocking sends - data is already packed in send-ready format!
+    for (auto& [receiving_rank, buffers] : ray_send_buffer_) {
+      int num_rays = buffers.count;
+      
+      // Check neighbor list and add if not already known
+      // Filter out rays that are sampled elsewhere
+      bool has_transported_rays = false;
+      for (int i = 0; i < num_rays; i++) {
+        if (buffers.ray_data[i].distance_travelled > 0.0 || buffers.ray_data[i].is_active) {
+          has_transported_rays = true;
+          break;
+        }
+      }
+      if (has_transported_rays) {
+        mpi::decomp_map.my_neighbors.insert(receiving_rank);
+      }
+      
+      // Send all 4 data arrays - already packed, no intermediate copying!
+      MPI_Isend(buffers.ray_data.data(), 
+                num_rays * sizeof(RayExchangeData), 
+                MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx++]);
+      
+      MPI_Isend(buffers.angular_flux.data(), 
+                num_rays * negroups_, 
+                MPI_FLOAT, receiving_rank, 2, mpi::intracomm, &requests[req_idx++]);
+      
+      MPI_Isend(buffers.coord.data(), 
+                num_rays * n_coord_max * sizeof(LocalCoord), 
+                MPI_BYTE, receiving_rank, 3, mpi::intracomm, &requests[req_idx++]);
+      
+      MPI_Isend(buffers.cell_last.data(), 
+                num_rays * n_coord_max, 
+                MPI_INT, receiving_rank, 4, mpi::intracomm, &requests[req_idx++]);
     }
 
     // Wait for all communication to complete
-    MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(req_idx, requests.data(), MPI_STATUSES_IGNORE);
     
-    // Empty buffered_ray_data
+    // Clear send buffers - this frees memory immediately after communication
     ray_send_buffer_.clear();
 }
 
@@ -161,15 +230,38 @@ void RayBank::update_my_ray_list(FlatSourceDomain* domain){
 
   my_ray_list_.resize(received_ray_data_.size());
 
-  // Add rays to ray list by restarting them from received data
+  const int n_coord_max = model::n_coord_levels;
+
+  // printf("  Rank %d: Received %lu rays.\n", mpi::rank, received_ray_data_.size());
+
+  // Add re-initialized random ray objects to my_ray_list
   #pragma omp parallel for
     for (int i = 0; i < received_ray_data_.size(); i++) {
-      my_ray_list_[i].restart_ray(domain, received_ray_data_[i], &received_angular_flux_data_[i * negroups_]);
+
+      // Re-initialize rays with received data, including full geometry state
+      my_ray_list_[i].restart_ray(domain, received_ray_data_[i], 
+                                   &received_angular_flux_data_[i * negroups_],
+                                   &received_coord_[i * n_coord_max],
+                                   &received_cell_last_[i * n_coord_max]);
+
+      // if (my_ray_list_[i].id() == 5) 
+      // {
+      //   printf("Ray %lu restarted on rank %d at position (%f, %f, %f)\n", 
+      //        my_ray_list_[i].id(), mpi::rank,
+      //        my_ray_list_[i].r().x,
+      //        my_ray_list_[i].r().y,
+      //        my_ray_list_[i].r().z);
+      //   }
     }
+
+  // printf("  Rank %d: Ray bank updated with %lu rays.\n", mpi::rank, my_ray_list_.size());
 
   // Clear received data vectors
   received_ray_data_.resize(0);
   received_angular_flux_data_.resize(0);
+  received_coord_.resize(0);
+  received_cell_last_.resize(0);
+
 }
 
 bool RayBank::is_any_ray_alive(){

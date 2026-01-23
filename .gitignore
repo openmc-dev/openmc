@@ -45,6 +45,7 @@ results_test.dat
 
 # HDF5 files
 *.h5
+*.h5m
 
 # Build files
 src/CMakeCache.txt

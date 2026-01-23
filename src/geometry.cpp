@@ -360,6 +360,11 @@ void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
 
 BoundaryInfo distance_to_boundary(GeometryState& p)
 {
+  // if (p.id() == 5) 
+  // {
+  //   printf("Finding boundary for particle %lu at position (%f, %f, %f)\n",
+  //          p.id(), p.r().x, p.r().y, p.r().z);
+  // }
   BoundaryInfo info;
   double d_lat = INFINITY;
   double d_surf = INFINITY;
@@ -403,6 +408,9 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
       level_lat_trans = lattice_distance.second;
 
       if (d_lat < 0) {
+        // if(p.id() == 5){
+        //   printf("Lattice distance: %f\n", d_lat);
+        // }
         p.mark_as_lost(fmt::format("Particle {} had a negative distance "
                                    "to a lattice boundary.",
           p.id()));

@@ -38,6 +38,7 @@ Functions
    property_map
    reset
    reset_timers
+   reset_random_ray
    run
    run_in_memory
    sample_external_source

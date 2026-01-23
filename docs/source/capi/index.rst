@@ -587,6 +587,10 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: void openmc_reset_random_ray()
+
+  Reset the random ray solver
+
 .. c:function:: int openmc_remove_tally(int32_t index);
 
    Given an index of a tally, remove it from the tallies array
@@ -600,6 +604,10 @@ Functions
 
    :return: Return status (negative if an error occurs)
    :rtype: int
+
+.. c:function:: void openmc_run_random_ray()
+
+   Run a random ray simulation
 
 .. c:function:: int openmc_set_n_batches(int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)
 

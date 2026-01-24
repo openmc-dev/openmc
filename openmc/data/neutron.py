@@ -765,6 +765,11 @@ class IncidentNeutron(EqualityMixin):
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
 
+            # Use name based on ENDF evaluation. The name assigned by from_ace
+            # may be wrong for higher metastable states (e.g., Hf178_m2)
+            ev = evaluation if evaluation is not None else Evaluation(filename)
+            data.name = ev.gnds_name
+
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:
                 pendf = Evaluation(kwargs['pendf'])
@@ -775,7 +780,6 @@ class IncidentNeutron(EqualityMixin):
                 data[2].xs['0K'] = xs
 
             # Add fission energy release data
-            ev = evaluation if evaluation is not None else Evaluation(filename)
             if (1, 458) in ev.section:
                 data.fission_energy = f = FissionEnergyRelease.from_endf(ev, data)
             else:

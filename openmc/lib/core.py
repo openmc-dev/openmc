@@ -83,11 +83,8 @@ _dll.openmc_properties_import.errcheck = _error_handler
 _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
 _dll.openmc_run_random_ray.restype = None
-_dll.openmc_run_random_ray.errcheck = _error_handler
 _dll.openmc_reset.restype = c_int
 _dll.openmc_reset.errcheck = _error_handler
-_dll.openmc_reset_random_ray.restype = None
-_dll.openmc_reset_random_ray.errcheck = _error_handler
 _dll.openmc_reset_timers.restype = c_int
 _dll.openmc_reset_timers.errcheck = _error_handler
 _run_linsolver_argtypes = [_array_1d_dble, _array_1d_dble, _array_1d_dble,
@@ -460,11 +457,6 @@ def plot_geometry(output=True):
 def reset():
     """Reset tally results"""
     _dll.openmc_reset()
-
-
-def reset_random_ray():
-    """Reset the random ray solver"""
-    _dll.openmc_reset_random_ray()
 
 
 def reset_timers():

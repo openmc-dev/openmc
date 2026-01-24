@@ -38,9 +38,9 @@ Functions
    property_map
    reset
    reset_timers
-   reset_random_ray
    run
    run_in_memory
+   run_random_ray
    sample_external_source
    simulation_finalize
    simulation_init

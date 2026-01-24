@@ -184,7 +184,7 @@ int openmc_finalize()
   }
 #endif
 
-  openmc_reset_random_ray();
+  openmc_finalize_random_ray();
 
   return 0;
 }

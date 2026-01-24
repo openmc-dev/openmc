@@ -68,6 +68,7 @@ private:
 
 void validate_random_ray_inputs();
 void print_adjoint_header();
+void openmc_finalize_random_ray();
 
 } // namespace openmc
 

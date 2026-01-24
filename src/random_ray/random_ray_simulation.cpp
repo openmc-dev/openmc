@@ -617,6 +617,17 @@ void RandomRaySimulation::print_results_random_ray(
   }
 }
 
+void openmc_finalize_random_ray()
+{
+  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+  FlatSourceDomain::volume_normalized_flux_tallies_ = false;
+  FlatSourceDomain::adjoint_ = false;
+  FlatSourceDomain::mesh_domain_map_.clear();
+  RandomRay::ray_source_.reset();
+  RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
+  RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+}
+
 } // namespace openmc
 
 //==============================================================================
@@ -664,16 +675,4 @@ void openmc_run_random_ray()
     // Run adjoint simulation
     sim.simulate();
   }
-}
-
-void openmc_reset_random_ray()
-{
-  openmc::FlatSourceDomain::volume_estimator_ =
-    openmc::RandomRayVolumeEstimator::HYBRID;
-  openmc::FlatSourceDomain::volume_normalized_flux_tallies_ = false;
-  openmc::FlatSourceDomain::adjoint_ = false;
-  openmc::FlatSourceDomain::mesh_domain_map_.clear();
-  openmc::RandomRay::ray_source_.reset();
-  openmc::RandomRay::source_shape_ = openmc::RandomRaySourceShape::FLAT;
-  openmc::RandomRay::sample_method_ = openmc::RandomRaySampleMethod::PRNG;
 }

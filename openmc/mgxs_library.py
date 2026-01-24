@@ -527,8 +527,11 @@ class XSdata:
             The other XSdata object to fetch data from
         """
 
-        # Sanity check to make sure they have the same name
+        # Sanity check to make sure they have the same name, energy group structure,
+        # and delayed group structure
         check_value('name', other.name, self.name)
+        check_value('energy_groups', other.energy_groups, [self.energy_groups])
+        check_value('delayed_groups', other.num_delayed_groups, [self.num_delayed_groups])
 
         # Add the temperature data.
         for temp in other.temperatures:

@@ -1892,6 +1892,20 @@ class Model:
             Source to use when generating MGXS.
         temperature_settings : dict
             A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings. Accepted keys are
+            'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+            for 'default' should be a float representing the default temperature
+            in Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+            If the method is 'nearest', 'tolerance' indicates a range of temperature
+            within which cross sections may be used. If the method is 'interpolation',
+            'tolerance' indicates the range of temperatures outside of the available
+            cross section temperatures where cross sections will evaluate to the nearer
+            bound. The value for 'range' should be a pair of minimum and maximum
+            temperatures which are used to indicate that cross sections be loaded
+            at all temperatures within the range. 'multipole' is a boolean indicating
+            whether or not the windowed multipole method should be used to evaluate
+            resolved resonance cross sections.
         temperature : float, optional
             The isothermal temperature value to apply to the material. If not specified,
             defaults to the temperature in the material.
@@ -1995,6 +2009,20 @@ class Model:
         temperature_settings : dict, optional
             A dictionary of temperature settings to use when generating MGXS. If not
             provided, the settings stored in the model will be used.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings. Accepted keys are
+            'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+            for 'default' should be a float representing the default temperature
+            in Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+            If the method is 'nearest', 'tolerance' indicates a range of temperature
+            within which cross sections may be used. If the method is 'interpolation',
+            'tolerance' indicates the range of temperatures outside of the available
+            cross section temperatures where cross sections will evaluate to the nearer
+            bound. The value for 'range' should be a pair of minimum and maximum
+            temperatures which are used to indicate that cross sections be loaded
+            at all temperatures within the range. 'multipole' is a boolean indicating
+            whether or not the windowed multipole method should be used to evaluate
+            resolved resonance cross sections.
         """
 
         src = self._create_mgxs_sources(
@@ -2166,6 +2194,20 @@ class Model:
             Source to use when generating MGXS.
         temperature_settings : dict
             A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings. Accepted keys are
+            'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+            for 'default' should be a float representing the default temperature
+            in Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+            If the method is 'nearest', 'tolerance' indicates a range of temperature
+            within which cross sections may be used. If the method is 'interpolation',
+            'tolerance' indicates the range of temperatures outside of the available
+            cross section temperatures where cross sections will evaluate to the nearer
+            bound. The value for 'range' should be a pair of minimum and maximum
+            temperatures which are used to indicate that cross sections be loaded
+            at all temperatures within the range. 'multipole' is a boolean indicating
+            whether or not the windowed multipole method should be used to evaluate
+            resolved resonance cross sections.
         temperature : float, optional
             The isothermal temperature value to apply to the materials in the
             slab. If not specified, defaults to the temperature in the materials.
@@ -2275,6 +2317,20 @@ class Model:
         temperature_settings : dict, optional
             A dictionary of temperature settings to use when generating MGXS. If not
             provided, the settings stored in the model will be used.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings. Accepted keys are
+            'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+            for 'default' should be a float representing the default temperature
+            in Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+            If the method is 'nearest', 'tolerance' indicates a range of temperature
+            within which cross sections may be used. If the method is 'interpolation',
+            'tolerance' indicates the range of temperatures outside of the available
+            cross section temperatures where cross sections will evaluate to the nearer
+            bound. The value for 'range' should be a pair of minimum and maximum
+            temperatures which are used to indicate that cross sections be loaded
+            at all temperatures within the range. 'multipole' is a boolean indicating
+            whether or not the windowed multipole method should be used to evaluate
+            resolved resonance cross sections.
         """
 
         # Stochastic slab geometry
@@ -2331,7 +2387,6 @@ class Model:
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
-                print(mgxs_sets[-1].temperatures)
 
             # Write the file to disk.
             mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
@@ -2372,6 +2427,20 @@ class Model:
             Directory to run the simulation in, so as to contain XML files.
         temperature_settings : dict
             A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings. Accepted keys are
+            'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+            for 'default' should be a float representing the default temperature
+            in Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+            If the method is 'nearest', 'tolerance' indicates a range of temperature
+            within which cross sections may be used. If the method is 'interpolation',
+            'tolerance' indicates the range of temperatures outside of the available
+            cross section temperatures where cross sections will evaluate to the nearer
+            bound. The value for 'range' should be a pair of minimum and maximum
+            temperatures which are used to indicate that cross sections be loaded
+            at all temperatures within the range. 'multipole' is a boolean indicating
+            whether or not the windowed multipole method should be used to evaluate
+            resolved resonance cross sections.
         temperature : float, optional
             The isothermal temperature value to apply to the materials in the
             input model. If not specified, defaults to the temperatures in the
@@ -2453,6 +2522,20 @@ class Model:
         temperature_settings : dict, optional
             A dictionary of temperature settings to use when generating MGXS. If not
             provided, the settings stored in the model will be used.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings. Accepted keys are
+            'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+            for 'default' should be a float representing the default temperature
+            in Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+            If the method is 'nearest', 'tolerance' indicates a range of temperature
+            within which cross sections may be used. If the method is 'interpolation',
+            'tolerance' indicates the range of temperatures outside of the available
+            cross section temperatures where cross sections will evaluate to the nearer
+            bound. The value for 'range' should be a pair of minimum and maximum
+            temperatures which are used to indicate that cross sections be loaded
+            at all temperatures within the range. 'multipole' is a boolean indicating
+            whether or not the windowed multipole method should be used to evaluate
+            resolved resonance cross sections.
         """
         temp_settings = {}
         if temperature_settings == None:
@@ -2561,6 +2644,20 @@ class Model:
         temperature_settings : dict, optional
             A dictionary of temperature settings to use when generating MGXS. If not
             provided, the settings stored in the model will be used.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings. Accepted keys are
+            'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+            for 'default' should be a float representing the default temperature
+            in Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+            If the method is 'nearest', 'tolerance' indicates a range of temperature
+            within which cross sections may be used. If the method is 'interpolation',
+            'tolerance' indicates the range of temperatures outside of the available
+            cross section temperatures where cross sections will evaluate to the nearer
+            bound. The value for 'range' should be a pair of minimum and maximum
+            temperatures which are used to indicate that cross sections be loaded
+            at all temperatures within the range. 'multipole' is a boolean indicating
+            whether or not the windowed multipole method should be used to evaluate
+            resolved resonance cross sections.
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)

@@ -872,7 +872,7 @@ def _generate_subdivided_pin_cell(uo2, water) -> openmc.Universe:
     return pincell
 
 
-def random_ray_pin_cell(second_temp : False) -> openmc.Model:
+def random_ray_pin_cell(second_temp = False) -> openmc.Model:
     """Create a PWR pin cell example using C5G7 cross section data.
     cross section data.
 

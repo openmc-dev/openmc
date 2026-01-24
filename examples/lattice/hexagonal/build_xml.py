@@ -128,14 +128,14 @@ settings_file.export_to_xml()
 #                   Exporting to OpenMC plots.xml file
 ###############################################################################
 
-plot_xy = openmc.Plot(plot_id=1)
+plot_xy = openmc.SlicePlot(plot_id=1)
 plot_xy.filename = 'plot_xy'
 plot_xy.origin = [0, 0, 0]
 plot_xy.width = [6, 6]
 plot_xy.pixels = [400, 400]
 plot_xy.color_by = 'material'
 
-plot_yz = openmc.Plot(plot_id=2)
+plot_yz = openmc.SlicePlot(plot_id=2)
 plot_yz.filename = 'plot_yz'
 plot_yz.basis = 'yz'
 plot_yz.origin = [0, 0, 0]

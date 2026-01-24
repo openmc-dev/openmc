@@ -5,6 +5,7 @@ import os
 import numpy as np
 import pytest
 import openmc
+from openmc.examples import random_ray_pin_cell
 import openmc.exceptions as exc
 import openmc.lib
 
@@ -82,6 +83,19 @@ def uo2_trigger_model():
         model.export_to_xml()
         yield
 
+
+@pytest.fixture(scope='module')
+def random_ray_pincell_model():
+    """Set up a random ray model to test with and delete files when done"""
+    openmc.reset_auto_ids()
+    # Write XML and MGXS files in tmpdir
+    with cdtemp():
+        model = random_ray_pin_cell()
+        model.settings.batches = 200
+        model.settings.inactive = 50
+        model.settings.particles = 50
+        model.export_to_xml()
+        yield
 
 @pytest.fixture(scope='module')
 def lib_init(pincell_model, mpi_intracomm):
@@ -1051,4 +1065,16 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     # Make sure sampling works in volume calculation mode
     openmc.lib.init(["-c"])
     openmc.lib.sample_external_source(100)
+    openmc.lib.finalize()
+
+
+def test_random_ray(random_ray_pincell_model, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+    openmc.lib.run_random_ray()
+    keff = openmc.lib.keff()
+
+    assert keff[0]==pytest.approx(1.3236826574065745)
+
     openmc.lib.finalize()

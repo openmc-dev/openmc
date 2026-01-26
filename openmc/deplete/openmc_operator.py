@@ -233,9 +233,7 @@ class OpenMCOperator(TransportOperator):
         model_nuclides = sorted(model_nuclides)
 
         # Store material names for later use
-        self.name_list = [name for mat_id, name in burnable_mats]
-
-        burnable_mats = [mat_id for mat_id, name in burnable_mats]
+        burnable_mats, self.name_list = zip(*burnable_mats)
 
         # Construct a global nuclide dictionary, burned first
         nuclides = list(self.chain.nuclide_dict)

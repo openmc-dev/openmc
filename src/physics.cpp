@@ -153,7 +153,7 @@ void sample_neutron_reaction(Particle& p)
     advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
-  // Play russian roulette if neutrons have no weight windows
+  // Play russian roulette if there are no weight windows
   if (!settings::weight_window_checkpoint_collision)
     apply_neutron_russian_roulette(p);
 }

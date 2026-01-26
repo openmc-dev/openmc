@@ -66,7 +66,7 @@ void sample_reaction(Particle& p)
   // Sample a scattering event to determine the energy of the exiting neutron
   scatter(p);
 
-  // Play russian roulette if neutrons have no weight windows
+  // Play russian roulette if there are no weight windows
   if (!settings::weight_window_checkpoint_collision)
     apply_neutron_russian_roulette(p);
 }

@@ -66,18 +66,9 @@ void sample_reaction(Particle& p)
   // Sample a scattering event to determine the energy of the exiting neutron
   scatter(p);
 
-  // Play Russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
-    // if survival normalization is applicable, use normalized weight cutoff and
-    // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
-      }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
-    }
-  }
+  // Play russian roulette if neutrons have no weight windows
+  if (!settings::weight_window_checkpoint_collision)
+    apply_neutron_russian_roulette(p);
 }
 
 void scatter(Particle& p)

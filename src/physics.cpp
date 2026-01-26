@@ -153,18 +153,9 @@ void sample_neutron_reaction(Particle& p)
     advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
-  // Play russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
-    // if survival normalization is on, use normalized weight cutoff and
-    // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
-      }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
-    }
-  }
+  // Play russian roulette if neutrons have no weight windows
+  if (!settings::weight_window_checkpoint_collision)
+    apply_neutron_russian_roulette(p);
 }
 
 void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)

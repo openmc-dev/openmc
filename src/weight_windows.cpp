@@ -86,9 +86,13 @@ void apply_weight_windows(Particle& p)
     }
   }
 
-  // particle is not in any of the ww domains, do nothing
-  if (!weight_window.is_valid())
+  // If particle is not in any of the ww domains
+  if (!weight_window.is_valid()) {
+    // If particle is a neutron do russian roulette.
+    if (p.type() == ParticleType::neutron)
+      apply_neutron_russian_roulette(p);
     return;
+  }
 
   // Normalize weight windows based on particle's starting weight
   // and the value of the weight window the particle was born in.

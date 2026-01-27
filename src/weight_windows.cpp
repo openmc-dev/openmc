@@ -90,7 +90,7 @@ void apply_weight_windows(Particle& p)
   if (!weight_window.is_valid()) {
     // If particle is a neutron do russian roulette.
     if (p.type() == ParticleType::neutron)
-      apply_neutron_russian_roulette(p);
+      apply_russian_roulette(p);
     return;
   }
 

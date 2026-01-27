@@ -69,7 +69,7 @@ void sample_reaction(Particle& p)
   // Play russian roulette if there are no weight windows
   if (!settings::weight_windows_on ||
       !settings::weight_window_checkpoint_collision)
-    apply_neutron_russian_roulette(p);
+    apply_russian_roulette(p);
 }
 
 void scatter(Particle& p)

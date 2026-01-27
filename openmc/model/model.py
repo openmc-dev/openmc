@@ -265,6 +265,37 @@ class Model:
             denom_tally = openmc.Tally(name='IFP denominator')
             denom_tally.scores = ['ifp-denominator']
             self.tallies.append(denom_tally)
+    
+    # TODO: This should also be incorporated into lower-level calls in 
+    # settings.py, but it requires information about the tallies currently
+    # on the active Model
+    def _assign_cadis_tally_IDs(self):
+        # Verify that all tallies assigned as targets on WeightWindowGenerators 
+        # exist within model.tallies. If this is the case, convert the .targets 
+        # attribute of each WeightWindowGenerator to a sequence of tally IDs.
+        if len(self.settings.weight_window_generators) == 0:
+            return
+        
+        for wwg in self.settings.weight_window_generators:
+            # Only proceeds if the "targets" attribute is an openmc.Tallies, 
+            # which means it hasn't been checked against model.tallies.
+            if isinstance(wwg.targets, openmc.Tallies):
+                id_vec = []
+                for tal in wwg.targets:
+                    # check against model tallies
+                    id_next = None
+                    for reference_tal in self.tallies:
+                        if tal == reference_tal:
+                            id_next = reference_tal.id
+                            break
+                    
+                    if id_next == None:
+                        raise RuntimeError(
+                            f'CADIS target tally {tal.id} not found on model.tallies!')
+                    else:
+                        id_vec.append(id_next)
+
+                wwg.targets = id_vec
 
     @classmethod
     def from_xml(
@@ -576,6 +607,7 @@ class Model:
         if not d.is_dir():
             d.mkdir(parents=True, exist_ok=True)
 
+        self._assign_cadis_tally_IDs()
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
 
@@ -633,6 +665,9 @@ class Model:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
                           "set the Geometry.merge_surfaces attribute instead.")
             self.geometry.merge_surfaces = True
+
+        # Link CADIS WeightWindowGenerator target tallies, if present
+        self._assign_cadis_tally_IDs()
 
         # provide a memo to track which meshes have been written
         mesh_memo = set()

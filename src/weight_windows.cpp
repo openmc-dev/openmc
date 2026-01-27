@@ -68,8 +68,13 @@ void apply_weight_windows(Particle& p)
 {
   if (!settings::weight_windows_on)
     return;
+
   // WW on photon and neutron only
   if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
+    return;
+
+  // skip dead or no energy
+  if (p.E() <= 0 || !p.alive())
     return;
 
   WeightWindow* ww = search_weight_window(p);

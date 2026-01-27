@@ -772,7 +772,7 @@ class WeightWindowGenerator:
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
         
-        energy_bounds = get_elem_list(elem, "energy_bounds, float")
+        energy_bounds = get_elem_list(elem, "energy_bounds", float)
         particle_type = get_text(elem, 'particle_type')
 
         wwg = cls(mesh, energy_bounds, particle_type)

@@ -269,7 +269,7 @@ class IndependentSource(SourceBase):
         time distribution of source sites
     strength : float
         Strength of the source
-    particle : str or int or openmc.ParticleType
+    particle : str or int or openmc.PDGNumber
         Source particle type (alias, PDG code, or GNDS nuclide name)
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
@@ -308,7 +308,7 @@ class IndependentSource(SourceBase):
 
     .. versionadded:: 0.14.0
 
-    particle : str or int or openmc.ParticleType
+    particle : str or int or openmc.PDGNumber
         Source particle type (alias, PDG code, or GNDS nuclide name)
     constraints : dict
         Constraints on sampled source particles. Valid keys include
@@ -324,7 +324,7 @@ class IndependentSource(SourceBase):
         energy: openmc.stats.Univariate | None = None,
         time: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
-        particle: str | int | ParticleType = 'neutron',
+        particle: str | int | PDGNumber = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material |
                           openmc.Universe] | None = None,
         constraints: dict[str, Any] | None = None
@@ -416,10 +416,10 @@ class IndependentSource(SourceBase):
     def particle(self, particle):
         if isinstance(particle, str):
             pdg = _particle_pdg_from_string(particle)
-        elif isinstance(particle, (Integral, ParticleType)):
-            pdg = int(ParticleType(particle))
+        elif isinstance(particle, (Integral, PDGNumber)):
+            pdg = int(PDGNumber(particle))
         else:
-            raise TypeError("Particle must be a string, int, or ParticleType")
+            raise TypeError("Particle must be a string, int, or PDGNumber")
         self._particle = particle_pdg_to_str(pdg)
 
     def populate_xml_element(self, element):
@@ -934,7 +934,7 @@ _ALIAS_PDG = {
     'he4': 1000020040,
 }
 
-_LEGACY_PARTICLE_CODE = {
+_LEGACY_PARTICLE_INDEX = {
     0: 2112,
     1: 22,
     2: 11,
@@ -1054,7 +1054,7 @@ def particle_pdg_to_str(pdg: int) -> str:
     return f'pdg:{pdg}'
 
 
-class ParticleType(IntEnum):
+class PDGNumber(IntEnum):
     """
     IntEnum class representing a particle type using PDG codes.
     """
@@ -1069,59 +1069,32 @@ class ParticleType(IntEnum):
 
     @classmethod
     def _missing_(cls, value):
-        try:
-            int_value = int(value)
-        except (TypeError, ValueError):
-            return None
+        if isinstance(value, str):
+            try:
+                int_value = _particle_pdg_from_string(value)
+            except (TypeError, ValueError):
+                return None
+        else:
+            try:
+                int_value = int(value)
+            except (TypeError, ValueError):
+                return None
 
-        if int_value in _LEGACY_PARTICLE_CODE:
-            return cls(_LEGACY_PARTICLE_CODE[int_value])
+        if int_value in _LEGACY_PARTICLE_INDEX:
+            int_value = _LEGACY_PARTICLE_INDEX[int_value]
+
+        member = cls._value2member_map_.get(int_value)
+        if member is not None:
+            return member
 
         obj = int.__new__(cls, int_value)
         obj._value_ = int_value
         obj._name_ = None
         return obj
 
-    @classmethod
-    def from_string(cls, value: str):
-        """
-        Constructs a ParticleType instance from a string.
-
-        Parameters
-        ----------
-        value : str
-            The string representation of the particle type.
-
-        Returns
-        -------
-        The corresponding ParticleType instance.
-        """
-        pdg_number = _particle_pdg_from_string(value)
-        return cls(pdg_number)
-
-    @classmethod
-    def from_pdg_number(cls, pdg_number: int) -> ParticleType:
-        """Constructs a ParticleType instance from a PDG number.
-
-        The Particle Data Group at LBNL publishes a Monte Carlo particle
-        numbering scheme as part of the `Review of Particle Physics
-        <10.1103/PhysRevD.110.030001>`_. This method maps PDG numbers to the
-        corresponding :class:`ParticleType`.
-
-        Parameters
-        ----------
-        pdg_number : int
-            The PDG number of the particle type.
-
-        Returns
-        -------
-        The corresponding ParticleType instance.
-        """
-        return cls(pdg_number)
-
     def __repr__(self) -> str:
         """
-        Returns a string representation of the ParticleType instance.
+        Returns a string representation of the PDGNumber instance.
 
         Returns:
             str: Canonical string for the particle type.
@@ -1155,7 +1128,7 @@ class SourceParticle:
         Delayed group particle was created in (neutrons only)
     surf_id : int
         Surface ID where particle is at, if any.
-    particle : ParticleType or str or int
+    particle : PDGNumber or str or int
         Type of the particle (PDG code, alias, or GNDS nuclide name)
 
     """
@@ -1169,7 +1142,7 @@ class SourceParticle:
         wgt: float = 1.0,
         delayed_group: int = 0,
         surf_id: int = 0,
-        particle: ParticleType | str | int = ParticleType.NEUTRON
+        particle: PDGNumber | str | int = PDGNumber.NEUTRON
     ):
 
         self.r = tuple(r)
@@ -1187,14 +1160,14 @@ class SourceParticle:
 
     @particle.setter
     def particle(self, particle):
-        if isinstance(particle, ParticleType):
+        if isinstance(particle, PDGNumber):
             self._particle = particle
         elif isinstance(particle, str):
-            self._particle = ParticleType.from_string(particle)
+            self._particle = PDGNumber(particle)
         elif isinstance(particle, int):
-            self._particle = ParticleType(particle)
+            self._particle = PDGNumber(particle)
         else:
-            raise TypeError("Particle must be ParticleType, str, or int")
+            raise TypeError("Particle must be PDGNumber, str, or int")
 
     def __repr__(self):
         name = particle_pdg_to_str(self.particle.value)
@@ -1270,7 +1243,7 @@ class ParticleList(list):
             raise ValueError(f'File {filename} is not a source file')
 
         source_particles = [
-            SourceParticle(*params, ParticleType(particle))
+            SourceParticle(*params, PDGNumber(particle))
             for *params, particle in arr
         ]
         return cls(source_particles)
@@ -1294,7 +1267,7 @@ class ParticleList(list):
         particles = []
         with mcpl.MCPLFile(filename) as f:
             for particle in f.particles:
-                particle_type = ParticleType(particle.pdgcode)
+                particle_type = PDGNumber(particle.pdgcode)
 
                 # Create a source particle instance. Note that MCPL stores
                 # energy in MeV and time in ms.
@@ -1511,7 +1484,7 @@ def read_collision_track_mcpl(file_path):
             data['material_id'].append(int(values_dict.get('material_id', 0)))
             data['universe_id'].append(int(values_dict.get('universe_id', 0)))
             data['n_collision'].append(int(values_dict.get('n_collision', 0)))
-            data['particle'].append(ParticleType(p.pdgcode))
+            data['particle'].append(PDGNumber(p.pdgcode))
             data['parent_id'].append(int(values_dict.get('parent_id', 0)))
             data['progeny_id'].append(int(values_dict.get('progeny_id', 0)))
 

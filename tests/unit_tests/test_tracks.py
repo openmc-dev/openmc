@@ -123,7 +123,7 @@ def test_filter(sphere_model, run_in_tmpdir):
         # Test filtering by particle
         matches = track.filter(particle='photon')
         for x in matches:
-            assert x.particle == openmc.ParticleType.PHOTON
+            assert x.particle == openmc.PDGNumber.PHOTON
 
         # Test general state filter
         matches = track.filter(state_filter=lambda s: s['cell_id'] == 1)

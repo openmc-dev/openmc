@@ -1,7 +1,7 @@
 import h5py
 
 import openmc.checkvalue as cv
-from .source import ParticleType
+from .source import PDGNumber
 
 _VERSION_PARTICLE_RESTART = 2
 
@@ -29,7 +29,7 @@ class Particle:
         Type of simulation (criticality or fixed source)
     id : long
         Identifier of the particle
-    type : openmc.ParticleType
+    type : openmc.PDGNumber
         Particle type encoded as a PDG number
     weight : float
         Weight of the particle
@@ -53,7 +53,7 @@ class Particle:
             self.energy = f['energy'][()]
             self.generations_per_batch = f['generations_per_batch'][()]
             self.id = f['id'][()]
-            self.type = ParticleType(f['type'][()])
+            self.type = PDGNumber(f['type'][()])
             self.n_particles = f['n_particles'][()]
             self.run_mode = f['run_mode'][()].decode()
             self.uvw = f['uvw'][()]

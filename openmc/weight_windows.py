@@ -23,11 +23,11 @@ _ALLOWED_WW_PARTICLES = {'neutron', 'photon'}
 
 def _normalize_ww_particle(particle):
     if isinstance(particle, str):
-        pdg = int(openmc.ParticleType.from_string(particle))
-    elif isinstance(particle, (Integral, openmc.ParticleType)):
-        pdg = int(openmc.ParticleType(particle))
+        pdg = int(openmc.PDGNumber(particle))
+    elif isinstance(particle, (Integral, openmc.PDGNumber)):
+        pdg = int(openmc.PDGNumber(particle))
     else:
-        raise TypeError("Particle type must be str, int, or ParticleType")
+        raise TypeError("Particle type must be str, int, or PDGNumber")
 
     name = openmc.particle_pdg_to_str(pdg)
     if name not in _ALLOWED_WW_PARTICLES:
@@ -66,7 +66,7 @@ class WeightWindows(IDManagerMixin):
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin. If no energy bins are provided, the
         maximum and minimum energy for the data available at runtime.
-    particle_type : str or int or openmc.ParticleType
+    particle_type : str or int or openmc.PDGNumber
         Particle type the weight windows apply to (PDG code or alias)
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
@@ -131,7 +131,7 @@ class WeightWindows(IDManagerMixin):
         upper_ww_bounds: Iterable[float] | None = None,
         upper_bound_ratio: float | None = None,
         energy_bounds: Iterable[Real] | None = None,
-        particle_type: str | int | openmc.ParticleType = 'neutron',
+        particle_type: str | int | openmc.PDGNumber = 'neutron',
         survival_ratio: float = 3.0,
         max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
@@ -511,7 +511,7 @@ class WeightWindowGenerator:
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin. If no energy bins are provided, the
         maximum and minimum energy for the data available at runtime.
-    particle_type : str or int or openmc.ParticleType
+    particle_type : str or int or openmc.PDGNumber
         Particle type the weight windows apply to (PDG code or alias)
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
@@ -551,7 +551,7 @@ class WeightWindowGenerator:
         self,
         mesh: openmc.MeshBase,
         energy_bounds: Sequence[float] | None = None,
-        particle_type: str | int | openmc.ParticleType = 'neutron',
+        particle_type: str | int | openmc.PDGNumber = 'neutron',
         method: str = 'magic',
         max_realizations: int = 1,
         update_interval: int = 1,

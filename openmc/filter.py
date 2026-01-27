@@ -734,7 +734,7 @@ class ParticleFilter(Filter):
 
     Parameters
     ----------
-    bins : str, int, openmc.ParticleType, or sequence
+    bins : str, int, openmc.PDGNumber, or sequence
         The particles to tally represented as strings, PDG codes, or GNDS
         nuclide names.
     filter_id : int
@@ -762,22 +762,22 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        if isinstance(bins, (str, Integral, openmc.ParticleType)):
+        if isinstance(bins, (str, Integral, openmc.PDGNumber)):
             bins = [bins]
         else:
             cv.check_type('bins', bins, Sequence,
-                          (str, Integral, openmc.ParticleType))
+                          (str, Integral, openmc.PDGNumber))
         bins = np.atleast_1d(bins)
         normalized = []
         for entry in bins:
-            if isinstance(entry, openmc.ParticleType):
+            if isinstance(entry, openmc.PDGNumber):
                 pdg = int(entry)
             elif isinstance(entry, str):
-                pdg = int(openmc.ParticleType.from_string(entry))
+                pdg = int(openmc.PDGNumber(entry))
             elif isinstance(entry, Integral):
-                pdg = int(openmc.ParticleType(entry))
+                pdg = int(openmc.PDGNumber(entry))
             else:
-                raise TypeError("ParticleFilter bins must be str, int, or ParticleType")
+                raise TypeError("ParticleFilter bins must be str, int, or PDGNumber")
             normalized.append(openmc.particle_pdg_to_str(pdg))
         self._bins = np.array(normalized, dtype=str)
 

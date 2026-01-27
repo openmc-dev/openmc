@@ -315,12 +315,12 @@ def test_ww_attrs_capi(run_in_tmpdir, model):
 
     assert wws.mesh.id == mesh.id
 
-    assert wws.particle == openmc.ParticleType.NEUTRON
+    assert wws.particle == openmc.PDGNumber.NEUTRON
 
     wws.particle = 1
-    assert wws.particle == openmc.ParticleType.PHOTON
+    assert wws.particle == openmc.PDGNumber.PHOTON
     wws.particle = 'photon'
-    assert wws.particle == openmc.ParticleType.PHOTON
+    assert wws.particle == openmc.PDGNumber.PHOTON
 
     with pytest.raises(ValueError):
         wws.particle = '🌠'
@@ -334,7 +334,7 @@ def test_ww_attrs_capi(run_in_tmpdir, model):
 
     wws = openmc.lib.WeightWindows.from_tally(tally, particle='photon')
     assert wws.id == 2
-    assert wws.particle == openmc.ParticleType.PHOTON
+    assert wws.particle == openmc.PDGNumber.PHOTON
 
     openmc.lib.finalize()
 

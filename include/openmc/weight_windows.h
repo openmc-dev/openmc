@@ -246,14 +246,15 @@ void apply_weight_windows(Particle& p);
 //! Apply weight window to a particle
 //! \param[in] p  Particle to apply weight window to
 //! \param[in] weight_window WeightWindow to apply
-void apply_weight_window(Particle& p, WeightWindow& weight_window);
+void apply_weight_window(Particle& p, WeightWindow weight_window);
 
 //! Free memory associated with weight windows
 void free_memory_weight_windows();
 
 //! Search weight window that apply to a particle
-//! \param[in] p  Particle to search weight window for
-WeightWindow* search_weight_window(Particle& p);
+//! \param[in]  p  Particle to search weight window for
+//! \param[out] mesh_bin int mesh bin inside WeightWindows
+const WeightWindows* search_weight_window(Particle& p, int& mesh_bin);
 
 //! Finalize variance reduction objects after all inputs have been read
 void finalize_variance_reduction();

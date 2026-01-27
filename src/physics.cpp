@@ -62,10 +62,11 @@ void collision(Particle& p)
   }
 
   if (settings::weight_windows_on) {
-    WeightWindow* ww = search_weight_window(p);
+    int mesh_bin;
+    const auto& ww = search_weight_window(p, mesh_bin);
     if (ww != nullptr) {
       if (settings::weight_window_checkpoint_collision)
-        apply_weight_window(p, *ww);
+        apply_weight_window(p, ww->get_weight_window(p.E(), mesh_bin));
     } else if (p.type() == ParticleType::neutron) {
       apply_russian_roulette(p);
     }

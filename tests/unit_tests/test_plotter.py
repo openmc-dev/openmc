@@ -181,3 +181,45 @@ def test_get_title():
     mat1.name = 'my_mat'
     title = openmc.plotter._get_title(reactions={mat1: [205]})
     assert title == 'Cross Section Plot For my_mat'
+
+@pytest.mark.parametrize("this", ["Be", "Be9"])
+def test_calculate_cexs_photon_with_element_and_nuclide(this):
+    # Use a common photoatomic MT (total) and verify basic shape/types
+    energy_grid, data = openmc.plotter.calculate_cexs(
+        this=this, types=[501], incident_particle="photon"
+    )
+
+    assert isinstance(energy_grid, np.ndarray)
+    assert isinstance(data, np.ndarray)
+    assert len(energy_grid) > 1
+    assert len(data) == 1
+    assert len(data[0]) == len(energy_grid)
+
+
+def test_calculate_cexs_photon_requires_integer_mts():
+    # Photon cross sections can only be requested with integer MT numbers
+    with pytest.raises(TypeError):
+        openmc.plotter.calculate_cexs(
+            this="Be", types=["total"], incident_particle="photon"
+        )
+
+    with pytest.raises(TypeError):
+        openmc.plotter.calculate_cexs(
+            this="Be", types=[502, "elastic"], incident_particle="photon"
+        )
+
+
+def test_calculate_cexs_photon_with_material():
+    mat = openmc.Material()
+    mat.add_element("Be", 1.0, "ao")
+    mat.set_density("g/cm3", 1.85)
+
+    energy_grid, data = openmc.plotter.calculate_cexs(
+        this=mat, types=[501], incident_particle="photon"
+    )
+
+    assert isinstance(energy_grid, np.ndarray)
+    assert isinstance(data, np.ndarray)
+    assert len(energy_grid) > 1
+    assert len(data) == 1
+    assert len(data[0]) == len(energy_grid)

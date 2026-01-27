@@ -15,7 +15,7 @@ from openmc.mixin import EqualityMixin
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
-from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
+from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record, get_list_record
 from .function import Tabulated1D
 
 
@@ -486,6 +486,30 @@ class IncidentPhoton(EqualityMixin):
     @property
     def name(self):
         return ATOMIC_SYMBOL[self.atomic_number]
+
+    def get_reaction_components(self, mt):
+        """Determine what reactions make up redundant reaction.
+
+        Parameters
+        ----------
+        mt : int
+            ENDF MT number of the reaction to find components of.
+
+        Returns
+        -------
+        mts : list of int
+            ENDF MT numbers of reactions that make up the redundant reaction and
+            have cross sections provided.
+
+        """
+        mts = []
+        if mt in SUM_RULES:
+            for mt_i in SUM_RULES[mt]:
+                mts += self.get_reaction_components(mt_i)
+        if mts:
+            return mts
+        else:
+            return [mt] if mt in self else []
 
     @classmethod
     def from_ace(cls, ace_or_filename):

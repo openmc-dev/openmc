@@ -70,8 +70,8 @@ ChainNuclide::~ChainNuclide()
 void DecayPhotonAngleEnergy::sample(
   double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
-  E_out = photon_energy_->sample(seed);
-  mu = Uniform(-1., 1.).sample(seed);
+  E_out = photon_energy_->sample(seed).first;
+  mu = Uniform(-1., 1.).sample(seed).first;
 }
 
 //==============================================================================

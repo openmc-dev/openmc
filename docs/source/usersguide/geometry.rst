@@ -415,11 +415,11 @@ to help figure out how to place universes::
 
 
 Note that by default, hexagonal lattices are positioned such that each lattice
-element has two faces that are parallel to the :math:`y` axis. As one example,
-to create a three-ring lattice centered at the origin with a pitch of 10 cm
-where all the lattice elements centered along the :math:`y` axis are filled with
-universe ``u`` and the remainder are filled with universe ``q``, the following
-code would work::
+element has two faces that are perpendicular to the :math:`y` axis. As one
+example, to create a three-ring lattice centered at the origin with a pitch of
+10 cm where all the lattice elements centered along the :math:`y` axis are
+filled with universe ``u`` and the remainder are filled with universe ``q``, the
+following code would work::
 
   hexlat = openmc.HexLattice()
   hexlat.center = (0, 0)

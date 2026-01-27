@@ -33,8 +33,17 @@ constexpr double DEFAULT_WEIGHT_CUTOFF {1.0e-38}; // default low weight cutoff
 //! \param[in] p  Particle to apply weight windows to
 void apply_weight_windows(Particle& p);
 
+//! Apply weight window to a particle
+//! \param[in] p  Particle to apply weight window to
+//! \param[in] ww WeightWindow to apply
+void apply_weight_window(Particle& p, WeightWindow& ww);
+
 //! Free memory associated with weight windows
 void free_memory_weight_windows();
+
+//! Search weight window that apply to a particle
+//! \param[in] p  Particle to search weight window for
+WeightWindow* search_weight_window(Particle& p);
 
 //==============================================================================
 // Global variables
@@ -135,9 +144,18 @@ public:
   //! \param[in] group  HDF5 group to write to
   void to_hdf5(hid_t group) const;
 
+  //! Get particle bin inside weight window mesh
+  //! \param[in] p  Particle to get weight window bin for
+  const int get_mesh_bin(const Particle& p) const;
+
   //! Retrieve the weight window for a particle
   //! \param[in] p  Particle to get weight window for
   WeightWindow get_weight_window(const Particle& p) const;
+
+  //! Retrieve the weight window for a mesh bin
+  //! \param[in] double E particle energy
+  //! \param[in] int mesh_bin mesh bin
+  WeightWindow get_weight_window(double E, const int mesh_bin) const;
 
   std::array<int, 2> bounds_size() const;
 

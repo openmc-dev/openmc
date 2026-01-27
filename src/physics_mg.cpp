@@ -31,8 +31,15 @@ void collision_mg(Particle& p)
   // Sample the reaction type
   sample_reaction(p);
 
-  if (settings::weight_window_checkpoint_collision)
-    apply_weight_windows(p);
+  if (settings::weight_windows_on) {
+    WeightWindow* ww = search_weight_window(p);
+    if (ww != nullptr) {
+      if (settings::weight_window_checkpoint_collision)
+        apply_weight_window(p, *ww);
+    } else if (p.type() == ParticleType::neutron) {
+      apply_russian_roullete(p);
+    }
+  }
 
   // Display information about collision
   if ((settings::verbosity >= 10) || p.trace()) {
@@ -67,8 +74,7 @@ void sample_reaction(Particle& p)
   scatter(p);
 
   // Play russian roulette if there are no weight windows
-  if (!settings::weight_windows_on ||
-      !settings::weight_window_checkpoint_collision)
+  if (!settings::weight_windows_on)
     apply_russian_roulette(p);
 }
 

@@ -61,8 +61,15 @@ void collision(Particle& p)
     break;
   }
 
-  if (settings::weight_window_checkpoint_collision)
-    apply_weight_windows(p);
+  if (settings::weight_windows_on) {
+    WeightWindow* ww = search_weight_window(p);
+    if (ww != nullptr) {
+      if (settings::weight_window_checkpoint_collision)
+        apply_weight_window(p, *ww);
+    } else if (p.type() == ParticleType::neutron) {
+      apply_russian_roullete(p);
+    }
+  }
 
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type());
@@ -154,8 +161,7 @@ void sample_neutron_reaction(Particle& p)
   }
 
   // Play russian roulette if there are no weight windows
-  if (!settings::weight_windows_on ||
-      !settings::weight_window_checkpoint_collision)
+  if (!settings::weight_windows_on)
     apply_russian_roulette(p);
 }
 

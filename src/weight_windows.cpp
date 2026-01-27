@@ -53,28 +53,32 @@ openmc::vector<unique_ptr<WeightWindowsGenerator>> weight_windows_generators;
 // Non-member functions
 //==============================================================================
 
+WeightWindow* search_weight_window(Particle& p)
+{
+  // TODO: this is a linear search - should do something more clever
+  WeightWindow weight_window;
+  for (const auto& ww : variance_reduction::weight_windows) {
+    int mesh_bin = ww->get_mesh_bin(p);
+    if (mesh_bin > 0)
+      return ww->get_weight_window(p.E(), mesh_bin);
+  }
+}
+
 void apply_weight_windows(Particle& p)
 {
   if (!settings::weight_windows_on)
     return;
-
   // WW on photon and neutron only
   if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
     return;
 
-  // skip dead or no energy
-  if (p.E() <= 0 || !p.alive())
-    return;
+  WeightWindow* ww = search_weight_window(p);
+  if (ww != nullptr)
+    apply_weight_window(p, *ww);
+}
 
-  bool in_domain = false;
-  // TODO: this is a linear search - should do something more clever
-  WeightWindow weight_window;
-  for (const auto& ww : variance_reduction::weight_windows) {
-    weight_window = ww->get_weight_window(p);
-    if (weight_window.is_valid())
-      break;
-  }
-
+void apply_weight_window(Particle& p, WeightWindow& ww)
+{
   // If particle has not yet had its birth weight window value set, set it to
   // the current weight window (or 1.0 if not born in a weight window).
   if (p.wgt_ww_born() == -1.0) {
@@ -84,14 +88,6 @@ void apply_weight_windows(Particle& p)
     } else {
       p.wgt_ww_born() = 1.0;
     }
-  }
-
-  // If particle is not in any of the ww domains
-  if (!weight_window.is_valid()) {
-    // If particle is a neutron do russian roulette.
-    if (p.type() == ParticleType::neutron)
-      apply_russian_roulette(p);
-    return;
   }
 
   // Normalize weight windows based on particle's starting weight
@@ -376,26 +372,34 @@ void WeightWindows::set_mesh(const Mesh* mesh)
   set_mesh(model::mesh_map[mesh->id_]);
 }
 
-WeightWindow WeightWindows::get_weight_window(const Particle& p) const
+const int WeightWindows::get_mesh_bin(const Particle& p) const
 {
   // check for particle type
-  if (particle_type_ != p.type()) {
-    return {};
-  }
-
-  // Get mesh index for particle's position
-  const auto& mesh = this->mesh();
-  int mesh_bin = mesh->get_bin(p.r());
-
-  // particle is outside the weight window mesh
-  if (mesh_bin < 0)
-    return {};
+  if (particle_type_ != p.type())
+    return C_NONE;
 
   // particle energy
   double E = p.E();
 
   // check to make sure energy is in range, expects sorted energy values
   if (E < energy_bounds_.front() || E > energy_bounds_.back())
+    return C_NONE;
+
+  // Get mesh index for particle's position
+  const auto& mesh = this->mesh();
+  return mesh->get_bin(p.r());
+}
+
+WeightWindow WeightWindows::get_weight_window(const Particle& p) const
+{
+  return get_weight_window(p.E(), get_mesh_bin(p));
+}
+
+WeightWindow WeightWindows::get_weight_window(
+  const double E, const int mesh_bin) const
+{
+  // particle is outside the weight window mesh
+  if (mesh_bin < 0)
     return {};
 
   // get the mesh bin in energy group

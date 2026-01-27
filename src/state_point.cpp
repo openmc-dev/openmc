@@ -753,7 +753,7 @@ void read_source_bank(
 
   if (legacy_particle_codes) {
     for (auto& site : sites) {
-      site.particle = legacy_particle_code_to_pdg(site.particle.value);
+      site.particle = legacy_particle_index_to_pdg(site.particle.value);
     }
   }
 }

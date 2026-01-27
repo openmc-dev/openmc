@@ -10,7 +10,7 @@ void ParticleFilter::from_xml(pugi::xml_node node)
 {
   auto particles = get_node_array<std::string>(node, "bins");
 
-  // Convert to vector of ParticlePdg
+  // Convert to vector of PDGNumber
   vector<PDGNumber> types;
   for (auto& p : particles) {
     types.push_back(str_to_pdg_number(p));

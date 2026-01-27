@@ -24,13 +24,13 @@ struct PDGNumber {
 };
 
 static_assert(
-  std::is_standard_layout_v<PDGNumber>, "ParticlePdg must be standard-layout");
+  std::is_standard_layout_v<PDGNumber>, "PDGNumber must be standard-layout");
 static_assert(std::is_trivially_copyable_v<PDGNumber>,
-  "ParticlePdg must be trivially copyable");
+  "PDGNumber must be trivially copyable");
 static_assert(
-  offsetof(PDGNumber, value) == 0, "ParticlePdg value must be at offset 0");
+  offsetof(PDGNumber, value) == 0, "PDGNumber value must be at offset 0");
 static_assert(sizeof(PDGNumber) == sizeof(int32_t),
-  "ParticlePdg must be same size as int32_t");
+  "PDGNumber must be same size as int32_t");
 
 constexpr bool operator==(PDGNumber lhs, PDGNumber rhs)
 {
@@ -94,7 +94,7 @@ PDGNumber str_to_pdg_number(std::string_view str);
 std::string pdg_number_to_str(PDGNumber pdg);
 
 // Legacy enum code (0..3) to PDG conversion
-PDGNumber legacy_particle_code_to_pdg(int code);
+PDGNumber legacy_particle_index_to_pdg(int code);
 
 // GNDS nuclide name to PDG nuclear code (100ZZZAAAI)
 PDGNumber pdg_number_from_nuclide_name(std::string_view gnds);

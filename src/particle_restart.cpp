@@ -55,7 +55,7 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   read_dataset(file_id, "id", p.id());
   int type;
   read_dataset(file_id, "type", type);
-  p.type() = legacy_particle_codes ? legacy_particle_code_to_pdg(type)
+  p.type() = legacy_particle_codes ? legacy_particle_index_to_pdg(type)
                                    : PDGNumber {type};
   read_dataset(file_id, "weight", p.wgt());
   read_dataset(file_id, "energy", p.E());

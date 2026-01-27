@@ -121,7 +121,7 @@ PDGNumber str_to_pdg_number(std::string_view str)
   if (starts_with(lower, "pdg:")) {
     std::string value_str = lower.substr(4);
     if (!is_integer_string(value_str)) {
-      throw std::invalid_argument {"Invalid PDG code: " + value_str};
+      throw std::invalid_argument {"Invalid PDG number: " + value_str};
     }
     int32_t value = std::stoi(value_str);
     return PDGNumber {value};
@@ -172,9 +172,9 @@ std::string pdg_number_to_str(PDGNumber pdg)
   return "pdg:" + std::to_string(pdg.value);
 }
 
-PDGNumber legacy_particle_code_to_pdg(int code)
+PDGNumber legacy_particle_index_to_pdg(int index)
 {
-  switch (code) {
+  switch (index) {
   case 0:
     return PDG_NEUTRON;
   case 1:
@@ -185,7 +185,7 @@ PDGNumber legacy_particle_code_to_pdg(int code)
     return PDG_POSITRON;
   default:
     throw std::invalid_argument {
-      "Invalid legacy particle code: " + std::to_string(code)};
+      "Invalid legacy particle index: " + std::to_string(index)};
   }
 }
 
@@ -204,7 +204,7 @@ std::string nuclide_name_from_pdg_number(PDGNumber pdg)
 {
   if (!is_nuclear_pdg(pdg)) {
     throw std::invalid_argument {
-      "PDG code is not a nuclear code: " + std::to_string(pdg.value)};
+      "PDG number is not a nuclear code: " + std::to_string(pdg.value)};
   }
 
   int32_t code = pdg.value;
@@ -214,7 +214,7 @@ std::string nuclide_name_from_pdg_number(PDGNumber pdg)
 
   if (Z <= 0 || Z > MAX_Z || A <= 0 || A > 999) {
     throw std::invalid_argument {
-      "Invalid nuclear PDG code: " + std::to_string(pdg.value)};
+      "Invalid nuclear PDG number: " + std::to_string(pdg.value)};
   }
 
   std::string name = ATOMIC_SYMBOL[Z] + std::to_string(A);
@@ -227,7 +227,7 @@ std::string nuclide_name_from_pdg_number(PDGNumber pdg)
 PDGNumber pdg_number_from_zam(int Z, int A, int m)
 {
   if (Z <= 0 || Z > 999 || A <= 0 || A > 999 || m < 0 || m > 9) {
-    throw std::invalid_argument {"Invalid Z/A/m for nuclear PDG code."};
+    throw std::invalid_argument {"Invalid Z/A/m for nuclear PDG number."};
   }
   int32_t code = 1000000000 + Z * 10000 + A * 10 + m;
   return PDGNumber {code};

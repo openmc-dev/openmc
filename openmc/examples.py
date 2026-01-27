@@ -667,7 +667,7 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
         The first data point is the C5G7 cross sections, which corresponds to a temperature
         of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
         which corresponds to a temperature of 394 K. This temperature dependence is
-        ficticious; it is used for testing temperature feedback in the random ray solver.
+        fictitious; it is used for testing temperature feedback in the random ray solver.
 
     Returns
     -------
@@ -883,7 +883,7 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
         The first data point is the C5G7 cross sections, which corresponds to a temperature
         of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
         which corresponds to a temperature of 3934 K. This temperature dependence is
-        ficticious; it is used for testing temperature feedback in the random ray solver.
+        fictitious; it is used for testing temperature feedback in the random ray solver.
 
     Returns
     -------
@@ -969,7 +969,7 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
         The first data point is the C5G7 cross sections, which corresponds to a temperature
         of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
         which corresponds to a temperature of 3934 K. This temperature dependence is
-        ficticious; it is used for testing temperature feedback in the random ray solver.
+        fictitious; it is used for testing temperature feedback in the random ray solver.
 
     Returns
     -------

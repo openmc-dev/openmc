@@ -26,26 +26,6 @@ enum class WeightWindowUpdateMethod { MAGIC, FW_CADIS };
 constexpr double DEFAULT_WEIGHT_CUTOFF {1.0e-38}; // default low weight cutoff
 
 //==============================================================================
-// Non-member functions
-//==============================================================================
-
-//! Apply weight windows to a particle
-//! \param[in] p  Particle to apply weight windows to
-void apply_weight_windows(Particle& p);
-
-//! Apply weight window to a particle
-//! \param[in] p  Particle to apply weight window to
-//! \param[in] ww WeightWindow to apply
-void apply_weight_window(Particle& p, WeightWindow& ww);
-
-//! Free memory associated with weight windows
-void free_memory_weight_windows();
-
-//! Search weight window that apply to a particle
-//! \param[in] p  Particle to search weight window for
-WeightWindow* search_weight_window(Particle& p);
-
-//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -254,6 +234,26 @@ public:
                            // update weight windows
   double ratio_ {5.0};     //<! ratio of lower to upper weight window bounds
 };
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+//! Apply weight windows to a particle
+//! \param[in] p  Particle to apply weight windows to
+void apply_weight_windows(Particle& p);
+
+//! Apply weight window to a particle
+//! \param[in] p  Particle to apply weight window to
+//! \param[in] ww WeightWindow to apply
+void apply_weight_window(Particle& p, WeightWindow& ww);
+
+//! Free memory associated with weight windows
+void free_memory_weight_windows();
+
+//! Search weight window that apply to a particle
+//! \param[in] p  Particle to search weight window for
+WeightWindow* search_weight_window(Particle& p);
 
 //! Finalize variance reduction objects after all inputs have been read
 void finalize_variance_reduction();

@@ -37,7 +37,7 @@ void collision_mg(Particle& p)
       if (settings::weight_window_checkpoint_collision)
         apply_weight_window(p, *ww);
     } else if (p.type() == ParticleType::neutron) {
-      apply_russian_roullete(p);
+      apply_russian_roulette(p);
     }
   }
 

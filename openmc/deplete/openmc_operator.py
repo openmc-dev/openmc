@@ -229,7 +229,7 @@ class OpenMCOperator(TransportOperator):
                 "No depletable materials were found in the model.")
 
         # Sort the sets
-        burnable_mats = sorted(burnable_mats, key=lambda x:int(x[0]))
+        burnable_mats = sorted(burnable_mats, key=lambda x: int(x[0]))
         model_nuclides = sorted(model_nuclides)
 
         # Store material names for later use

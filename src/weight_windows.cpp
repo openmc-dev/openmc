@@ -294,7 +294,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 }
 
 WeightWindow WeightWindows::get_weight_window(
-  const double E, const int mesh_bin) const
+  double E, const int mesh_bin) const
 {
   // particle is outside the weight window mesh
   if (mesh_bin < 0)

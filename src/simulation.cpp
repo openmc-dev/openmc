@@ -338,7 +338,7 @@ vector<int64_t> work_index;
 
 bool is_initial_condition {true};
 int current_timestep;
-double current_time;
+double current_time {0.0};
 bool k_eff_correction {false};
 
 } // namespace simulation

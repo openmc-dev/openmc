@@ -191,7 +191,7 @@ public:
   // 3D arrays stored in 1D representing values for all materials x energy
   // groups x delay groups
   vector<double> nu_d_sigma_f_;
-  vector<double> chi_d_;
+  vector<double> chi_d_lambda_; // chi-delayed * lambda in each delay group
 
   // 2D arrays stored in 1D representing values for all materials x energy
   // groups

@@ -510,24 +510,23 @@ void RandomRaySimulation::prepare_adjoint_simulation()
 // TODO: Add support for time-dependent restart
 void RandomRaySimulation::kinetic_single_time_step(int i)
 {
-  if (i == -1) {
-    // Set flag for k_eff correction if initial condition
-    simulation::k_eff_correction = true;
-
-    // Store average keff from initial simulation
-    static_avg_k_eff_ = simulation::keff;
-  }
-
   // Increment time step
   simulation::current_timestep = i + 1;
-  if (i == -1)
-    // Current time is zero for initial condition
-    simulation::current_time = 0;
-  else
-    // Else, increment the current time
+  if (i >= 0)
+    // Increment the current time
     simulation::current_time += settings::dt;
 
-  domain_->k_eff_ = static_avg_k_eff_;
+  // Set eigenvalue if needed
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (i == -1) {
+      // Set flag for k_eff correction if initial condition
+      simulation::k_eff_correction = true;
+
+      // Store average keff from initial simulation
+      static_avg_k_eff_ = simulation::keff;
+    }
+    domain_->k_eff_ = static_avg_k_eff_;
+  }
   domain_->source_regions_.adjoint_reset();
   domain_->propagate_final_quantities();
   domain_->source_regions_.time_step_reset();
@@ -543,25 +542,22 @@ void RandomRaySimulation::kinetic_single_time_step(int i)
   // Run the initial condition
   simulate();
 
-  if (i == -1)
+  if (i == -1) {
     // Initialize the BD arrays if initial condition
     domain_->store_time_step_quantities(false);
-  else
+    // Reset flags for kinetic simulation if initial condition
+    simulation::is_initial_condition = false;
+    simulation::k_eff_correction = false;
+  } else {
     // Else, store final quantities for the current time step
     domain_->store_time_step_quantities();
+  }
 
   // Rename statepoint and tallies file for the current time step
   rename_time_step_file(fmt::format("statepoint.{0}", settings::n_batches),
     ".h5", simulation::current_timestep);
-  if (settings::output_tallies) {
+  if (settings::output_tallies)
     rename_time_step_file("tallies", ".out", simulation::current_timestep);
-  }
-
-  if (i == -1) {
-    // Reset flags for kinetic simulation if initial condition
-    simulation::is_initial_condition = false;
-    simulation::k_eff_correction = false;
-  }
 }
 
 void RandomRaySimulation::simulate()

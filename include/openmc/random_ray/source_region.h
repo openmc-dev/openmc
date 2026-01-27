@@ -209,10 +209,10 @@ public:
 
   // Energy group-wise 2D BD arrays (g x time step)
   std::deque<double>* scalar_flux_bd_;
-  std::deque<double>* precursors_bd_;
+  std::deque<float>* source_bd_;
 
   // Delay group-wise 2D BD arrays (dg x time step)
-  std::deque<float>* source_bd_;
+  std::deque<double>* precursors_bd_;
 
   // Energy group-wise 1D RHS BD arrays
   double* scalar_flux_rhs_bd_;
@@ -374,14 +374,14 @@ public:
     return scalar_flux_bd_[g];
   }
 
+  std::deque<float>& source_bd(int g) { return source_bd_[g]; }
+  const std::deque<float>& source_bd(int g) const { return source_bd_[g]; }
+
   std::deque<double>& precursors_bd(int dg) { return precursors_bd_[dg]; }
   const std::deque<double>& precursors_bd(int dg) const
   {
     return precursors_bd_[dg];
   }
-
-  std::deque<float>& source_bd(int g) { return source_bd_[g]; }
-  const std::deque<float>& source_bd(int g) const { return source_bd_[g]; }
 
   double& scalar_flux_rhs_bd(int g) { return scalar_flux_rhs_bd_[g]; }
   const double scalar_flux_rhs_bd(int g) const
@@ -522,17 +522,17 @@ public:
                      //!< finite number of previous time steps (used for
                      //!< computing the first order (and second order, for SDP)
                      //!< scalar flux time derivative)
-  vector<std::deque<double>>
-    precursors_bd_; //!< The final scalar flux in each energy group from a
-                    //!< finite number of previous time steps (used for
-                    //!< computing the first order source time derivative for
-                    //!< SDP)
+  vector<std::deque<float>>
+    source_bd_; //!< The final scalar flux in each energy group from a
+                //!< finite number of previous time steps (used for
+                //!< computing the first order source time derivative for
+                //!< SDP)
 
   // Delay group-wise 2D BD arrays (dg x time step)
-  vector<std::deque<float>>
-    source_bd_; //!< The final precursor population in each energy group from a
-                //!< finite number of previous time steps (used for computing
-                //!< the first order precursor time derivative)
+  vector<std::deque<double>>
+    precursors_bd_; //!< The final precursor population in each energy group
+                    //!< from a finite number of previous time steps (used for
+                    //!< computing the first order precursor time derivative)
 
   // Energy group-wise 1D RHS BD arrays
   vector<double>
@@ -877,20 +877,6 @@ public:
     return scalar_flux_bd_[se];
   }
 
-  std::deque<double>& precursors_bd(int64_t sr, int dg)
-  {
-    return precursors_bd_[dindex(sr, dg)];
-  }
-  const std::deque<double>& precursors_bd(int64_t sr, int dg) const
-  {
-    return precursors_bd_[dindex(sr, dg)];
-  }
-  std::deque<double>& precursors_bd(int64_t de) { return precursors_bd_[de]; }
-  const std::deque<double>& precursors_bd(int64_t de) const
-  {
-    return precursors_bd_[de];
-  }
-
   std::deque<float>& source_bd(int64_t sr, int g)
   {
     return source_bd_[index(sr, g)];
@@ -903,6 +889,20 @@ public:
   const std::deque<float>& source_bd(int64_t se) const
   {
     return source_bd_[se];
+  }
+
+  std::deque<double>& precursors_bd(int64_t sr, int dg)
+  {
+    return precursors_bd_[dindex(sr, dg)];
+  }
+  const std::deque<double>& precursors_bd(int64_t sr, int dg) const
+  {
+    return precursors_bd_[dindex(sr, dg)];
+  }
+  std::deque<double>& precursors_bd(int64_t de) { return precursors_bd_[de]; }
+  const std::deque<double>& precursors_bd(int64_t de) const
+  {
+    return precursors_bd_[de];
   }
 
   double& scalar_flux_rhs_bd(int64_t sr, int g)
@@ -1067,10 +1067,12 @@ private:
   vector<double> precursors_new_;
   vector<double> precursors_final_;
 
-  // SoA energy group-wise 3D BD arrays (sr x g/dg X timestep) flattened to 2D
+  // SoA energy group-wise 3D BD arrays (sr x g X timestep) flattened to 2D
   vector<std::deque<double>> scalar_flux_bd_;
-  vector<std::deque<double>> precursors_bd_;
   vector<std::deque<float>> source_bd_;
+
+  // SoA delay group-wise 3D BD arrays (sr x dg X timestep) flattened to 2D
+  vector<std::deque<double>> precursors_bd_;
 
   // SoA energy group-wise 2D RHS BD arrays flattened to 1D
   vector<double> scalar_flux_rhs_bd_;

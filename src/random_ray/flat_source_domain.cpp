@@ -158,11 +158,10 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
           settings::create_delayed_neutrons) {
         double delayed_source = 0.0;
         for (int dg = 0; dg < ndgroups_; dg++) {
-          double chi_d =
-            chi_d_[material * negroups_ * ndgroups_ + dg * negroups_ + g_out];
-          double lambda = lambda_[material * ndgroups_ + dg];
+          double chi_d_lambda = chi_d_lambda_[material * negroups_ * ndgroups_ +
+                                              dg * negroups_ + g_out];
           double precursors = srh.precursors_old(dg);
-          delayed_source += chi_d * precursors * lambda;
+          delayed_source += chi_d_lambda * precursors;
         }
         total_source += delayed_source;
       }
@@ -1400,13 +1399,13 @@ void FlatSourceDomain::flatten_xs()
               // material is fissionable but has very small sigma_f.
               chi_d = 0.0;
             }
-            chi_d_.push_back(chi_d);
+            chi_d_lambda_.push_back(chi_d * lambda);
           }
         } else {
           lambda_.push_back(0);
           for (int g_out = 0; g_out < negroups_; g_out++) {
             nu_d_sigma_f_.push_back(0);
-            chi_d_.push_back(0);
+            chi_d_lambda_.push_back(0);
           }
         }
       }

@@ -46,7 +46,7 @@ struct SourceSite {
   double wgt {1.0};
   int delayed_group {0};
   int surf_id {SURFACE_NONE};
-  ParticlePdg particle;
+  PDGNumber particle;
 
   // Extra attributes that don't show up in source written to file
   int parent_nuclide {-1};
@@ -68,7 +68,7 @@ struct CollisionTrackSite {
   int material_id {0};
   int universe_id {0};
   int n_collision {0};
-  ParticlePdg particle;
+  PDGNumber particle;
   int64_t parent_id;
   int64_t progeny_id;
 };
@@ -87,7 +87,7 @@ struct TrackState {
 
 //! Full history of a single particle's track states
 struct TrackStateHistory {
-  ParticlePdg particle;
+  PDGNumber particle;
   std::vector<TrackState> states;
 };
 
@@ -494,7 +494,7 @@ private:
   MacroXS macro_xs_;
   CacheDataMG mg_xs_cache_;
 
-  ParticlePdg type_ {PDG_NEUTRON};
+  PDGNumber type_ {PDG_NEUTRON};
 
   double E_;
   double E_last_;
@@ -590,10 +590,10 @@ public:
   const CacheDataMG& mg_xs_cache() const { return mg_xs_cache_; }
 
   // Particle type (n, p, e, gamma, etc)
-  ParticlePdg& type() { return type_; }
-  const ParticlePdg& type() const { return type_; }
-  ParticlePdg& pdg() { return type_; }
-  const ParticlePdg& pdg() const { return type_; }
+  PDGNumber& type() { return type_; }
+  const PDGNumber& type() const { return type_; }
+  PDGNumber& pdg() { return type_; }
+  const PDGNumber& pdg() const { return type_; }
 
   // Current particle energy, energy before collision,
   // and corresponding multigroup group indices. Energy

@@ -250,11 +250,11 @@ WeightWindows* WeightWindows::from_hdf5(
 
   auto wws = WeightWindows::create();
 
-  ParticlePdg particle_pdg;
+  PDGNumber particle_pdg;
   if (H5Lexists(ww_group, "particle_pdg", H5P_DEFAULT) > 0) {
     int particle_pdg_value;
     read_dataset(ww_group, "particle_pdg", particle_pdg_value);
-    particle_pdg = ParticlePdg {particle_pdg_value};
+    particle_pdg = PDGNumber {particle_pdg_value};
   } else {
     std::string particle_type;
     read_dataset(ww_group, "particle_type", particle_type);
@@ -354,7 +354,7 @@ void WeightWindows::set_energy_bounds(span<const double> bounds)
     allocate_ww_bounds();
 }
 
-void WeightWindows::set_particle_type(ParticlePdg p_type)
+void WeightWindows::set_particle_type(PDGNumber p_type)
 {
   if (p_type != PDG_NEUTRON && p_type != PDG_PHOTON)
     fatal_error(
@@ -1130,7 +1130,7 @@ extern "C" int openmc_weight_windows_set_particle(
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  wws->set_particle_type(ParticlePdg {particle});
+  wws->set_particle_type(PDGNumber {particle});
   return 0;
 }
 

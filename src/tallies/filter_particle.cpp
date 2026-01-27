@@ -11,14 +11,14 @@ void ParticleFilter::from_xml(pugi::xml_node node)
   auto particles = get_node_array<std::string>(node, "bins");
 
   // Convert to vector of ParticlePdg
-  vector<ParticlePdg> types;
+  vector<PDGNumber> types;
   for (auto& p : particles) {
     types.push_back(str_to_particle_pdg(p));
   }
   this->set_particles(types);
 }
 
-void ParticleFilter::set_particles(span<ParticlePdg> particles)
+void ParticleFilter::set_particles(span<PDGNumber> particles)
 {
   // Clear existing particles
   particles_.clear();

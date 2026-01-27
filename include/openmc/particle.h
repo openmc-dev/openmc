@@ -49,7 +49,7 @@ public:
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
   //! \return Whether a secondary particle was created
-  bool create_secondary(double wgt, Direction u, double E, ParticlePdg type);
+  bool create_secondary(double wgt, Direction u, double E, PDGNumber type);
 
   //! split a particle
   //
@@ -127,9 +127,9 @@ public:
 //! Functions
 //============================================================================
 
-std::string particle_pdg_to_str(ParticlePdg type);
+std::string particle_pdg_to_str(PDGNumber type);
 
-ParticlePdg str_to_particle_pdg(std::string_view str);
+PDGNumber str_to_particle_pdg(std::string_view str);
 
 void add_surf_source_to_bank(Particle& p, const Surface& surf);
 

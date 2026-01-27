@@ -107,7 +107,7 @@ bool parse_gnds_nuclide(std::string_view name, int& Z, int& A, int& m)
 
 } // namespace
 
-ParticlePdg str_to_particle_pdg(std::string_view str)
+PDGNumber str_to_particle_pdg(std::string_view str)
 {
   std::string s {str};
   strtrim(s);
@@ -124,7 +124,7 @@ ParticlePdg str_to_particle_pdg(std::string_view str)
       throw std::invalid_argument {"Invalid PDG code: " + value_str};
     }
     int32_t value = std::stoi(value_str);
-    return ParticlePdg {value};
+    return PDGNumber {value};
   }
 
   if (lower == "neutron" || lower == "n")
@@ -146,13 +146,13 @@ ParticlePdg str_to_particle_pdg(std::string_view str)
 
   if (is_integer_string(s)) {
     int32_t value = std::stoi(s);
-    return ParticlePdg {value};
+    return PDGNumber {value};
   }
 
   return particle_pdg_from_nuclide_name(s);
 }
 
-std::string particle_pdg_to_str(ParticlePdg pdg)
+std::string particle_pdg_to_str(PDGNumber pdg)
 {
   if (pdg == PDG_NEUTRON)
     return "neutron";
@@ -172,7 +172,7 @@ std::string particle_pdg_to_str(ParticlePdg pdg)
   return "pdg:" + std::to_string(pdg.value);
 }
 
-ParticlePdg legacy_particle_code_to_pdg(int code)
+PDGNumber legacy_particle_code_to_pdg(int code)
 {
   switch (code) {
   case 0:
@@ -189,7 +189,7 @@ ParticlePdg legacy_particle_code_to_pdg(int code)
   }
 }
 
-ParticlePdg particle_pdg_from_nuclide_name(std::string_view gnds)
+PDGNumber particle_pdg_from_nuclide_name(std::string_view gnds)
 {
   int Z = 0;
   int A = 0;
@@ -200,7 +200,7 @@ ParticlePdg particle_pdg_from_nuclide_name(std::string_view gnds)
   return particle_pdg_from_zam(Z, A, m);
 }
 
-std::string nuclide_name_from_particle_pdg(ParticlePdg pdg)
+std::string nuclide_name_from_particle_pdg(PDGNumber pdg)
 {
   if (!is_nuclear_pdg(pdg)) {
     throw std::invalid_argument {
@@ -224,16 +224,16 @@ std::string nuclide_name_from_particle_pdg(ParticlePdg pdg)
   return name;
 }
 
-ParticlePdg particle_pdg_from_zam(int Z, int A, int m)
+PDGNumber particle_pdg_from_zam(int Z, int A, int m)
 {
   if (Z <= 0 || Z > 999 || A <= 0 || A > 999 || m < 0 || m > 9) {
     throw std::invalid_argument {"Invalid Z/A/m for nuclear PDG code."};
   }
   int32_t code = 1000000000 + Z * 10000 + A * 10 + m;
-  return ParticlePdg {code};
+  return PDGNumber {code};
 }
 
-bool is_nuclear_pdg(ParticlePdg pdg)
+bool is_nuclear_pdg(PDGNumber pdg)
 {
   int32_t code = pdg.value;
   if (code < 1000000000)

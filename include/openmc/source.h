@@ -127,7 +127,7 @@ public:
   SourceSite sample(uint64_t* seed) const override;
 
   // Properties
-  ParticlePdg particle_type() const { return particle_; }
+  PDGNumber particle_type() const { return particle_; }
 
   // Make observing pointers available
   SpatialDistribution* space() const { return space_.get(); }
@@ -148,11 +148,11 @@ protected:
 
 private:
   // Data members
-  ParticlePdg particle_ {PDG_NEUTRON};            //!< Type of particle emitted
-  UPtrSpace space_;                               //!< Spatial distribution
-  UPtrAngle angle_;                               //!< Angular distribution
-  UPtrDist energy_;                               //!< Energy distribution
-  UPtrDist time_;                                 //!< Time distribution
+  PDGNumber particle_ {PDG_NEUTRON}; //!< Type of particle emitted
+  UPtrSpace space_;                  //!< Spatial distribution
+  UPtrAngle angle_;                  //!< Angular distribution
+  UPtrDist energy_;                  //!< Energy distribution
+  UPtrDist time_;                    //!< Time distribution
 };
 
 //==============================================================================

@@ -75,7 +75,7 @@ double Particle::speed() const
 }
 
 bool Particle::create_secondary(
-  double wgt, Direction u, double E, ParticlePdg type)
+  double wgt, Direction u, double E, PDGNumber type)
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle

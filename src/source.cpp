@@ -39,7 +39,7 @@ namespace openmc {
 
 namespace {
 
-void validate_pdg_or_fatal(ParticlePdg pdg, const std::string& context)
+void validate_pdg_or_fatal(PDGNumber pdg, const std::string& context)
 {
   if (is_transport_pdg(pdg))
     return;

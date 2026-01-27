@@ -3,7 +3,7 @@
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
-#include "openmc/particle_pdg.h"
+#include "openmc/pdg_number.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include "openmc/tallies/filter_match.h"

@@ -1,4 +1,4 @@
-#include "openmc/particle_pdg.h"
+#include "openmc/pdg_number.h"
 
 #include <algorithm>
 #include <cctype>

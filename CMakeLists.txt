@@ -371,8 +371,8 @@ list(APPEND libopenmc_SOURCES
   src/output.cpp
   src/particle.cpp
   src/particle_data.cpp
-  src/particle_pdg.cpp
   src/particle_restart.cpp
+  src/pdg_number.cpp
   src/photon.cpp
   src/physics.cpp
   src/physics_common.cpp

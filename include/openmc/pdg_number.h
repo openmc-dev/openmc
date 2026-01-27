@@ -2,8 +2,8 @@
 // Particle PDG definitions and helpers
 //==============================================================================
 
-#ifndef OPENMC_PARTICLE_PDG_H
-#define OPENMC_PARTICLE_PDG_H
+#ifndef OPENMC_PDG_NUMBER_H
+#define OPENMC_PDG_NUMBER_H
 
 #include <cstddef>
 #include <cstdint>
@@ -110,4 +110,4 @@ bool is_nuclear_pdg(PDGNumber pdg);
 
 } // namespace openmc
 
-#endif // OPENMC_PARTICLE_PDG_H
+#endif // OPENMC_PDG_NUMBER_H

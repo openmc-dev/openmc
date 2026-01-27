@@ -5,10 +5,11 @@ Provided to avoid some circular imports
 from itertools import repeat, starmap
 from multiprocessing import Pool
 
-from scipy.sparse import bmat, hstack, vstack, csc_matrix
 import numpy as np
+from scipy.sparse import hstack
 
 from openmc.mpi import comm
+from .._sparse_compat import block_array
 
 # Configurable switch that enables / disables the use of
 # multiprocessing routines during depletion
@@ -159,7 +160,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                             cols.append(None)
 
                     rows.append(cols)
-                matrix = bmat(rows)
+                matrix = block_array(rows)
 
                 # Concatenate vectors of nuclides in one
                 n_multi = np.concatenate(n)
@@ -194,7 +195,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         # of the nuclide vectors
         for i, matrix in enumerate(matrices):
             if not np.equal(*matrix.shape):
-                matrices[i] = vstack([matrix, csc_matrix([0]*matrix.shape[1])])
+                matrix.resize(matrix.shape[1], matrix.shape[1])
                 n[i] = np.append(n[i], 1.0)
 
     inputs = zip(matrices, n, repeat(dt))

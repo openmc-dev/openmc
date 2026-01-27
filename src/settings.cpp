@@ -145,7 +145,7 @@ int trace_gen;
 int64_t trace_particle;
 vector<array<int, 3>> track_identifiers;
 int trigger_batch_interval {1};
-int verbosity {7};
+int verbosity {-1};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 
@@ -396,8 +396,10 @@ void read_settings_xml()
   xml_node root = doc.document_element();
 
   // Verbosity
-  if (check_for_node(root, "verbosity")) {
+  if (check_for_node(root, "verbosity") && verbosity == -1) {
     verbosity = std::stoi(get_node_value(root, "verbosity"));
+  } else if (verbosity == -1) {
+    verbosity = 7;
   }
 
   // To this point, we haven't displayed any output since we didn't know what

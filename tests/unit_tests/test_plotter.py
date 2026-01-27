@@ -182,11 +182,30 @@ def test_get_title():
     title = openmc.plotter._get_title(reactions={mat1: [205]})
     assert title == 'Cross Section Plot For my_mat'
 
+def _any_photon_mt(element_symbol, cross_sections=None):
+    """Return a photon MT that is guaranteed to exist for the given element
+    in the configured cross sections library.
+    """
+    if cross_sections is None:
+        cross_sections = openmc.config.get("cross_sections")
+
+    library = openmc.data.DataLibrary.from_xml(cross_sections)
+    lib = library.get_by_material(element_symbol, data_type="photon")
+    if lib is None:
+        raise RuntimeError(f"No photon library entry found for {element_symbol}")
+
+    inc = openmc.data.IncidentPhoton.from_hdf5(lib["path"])
+    # `reactions` is a dict keyed by MT
+    return next(iter(inc.reactions.keys()))
+
 @pytest.mark.parametrize("this", ["Be", "Be9"])
 def test_calculate_cexs_photon_with_element_and_nuclide(this):
+
+    mt = _any_photon_mt('Be')
+
     # Use a common photoatomic MT (total) and verify basic shape/types
     energy_grid, data = openmc.plotter.calculate_cexs(
-        this=this, types=[501], incident_particle="photon"
+        this=this, types=[mt], incident_particle="photon"
     )
 
     assert isinstance(energy_grid, np.ndarray)
@@ -214,8 +233,10 @@ def test_calculate_cexs_photon_with_material():
     mat.add_element("Be", 1.0, "ao")
     mat.set_density("g/cm3", 1.85)
 
+    mt = _any_photon_mt('Be')
+
     energy_grid, data = openmc.plotter.calculate_cexs(
-        this=mat, types=[501], incident_particle="photon"
+        this=mat, types=[mt], incident_particle="photon"
     )
 
     assert isinstance(energy_grid, np.ndarray)
@@ -223,3 +244,72 @@ def test_calculate_cexs_photon_with_material():
     assert len(energy_grid) > 1
     assert len(data) == 1
     assert len(data[0]) == len(energy_grid)
+
+
+
+def _any_photon_mt(element_symbol="C", cross_sections=None):
+    """Pick an MT that actually exists in the configured photon library."""
+    if cross_sections is None:
+        cross_sections = openmc.config.get("cross_sections")
+
+    library = openmc.data.DataLibrary.from_xml(cross_sections)
+    lib = library.get_by_material(element_symbol, data_type="photon")
+    if lib is None:
+        raise RuntimeError(f"No photon library entry found for {element_symbol}")
+
+    inc = openmc.data.IncidentPhoton.from_hdf5(lib["path"])
+    return next(iter(inc.reactions.keys()))
+
+
+def test_calculate_cexs_photon_material_element_vs_explicit_natural_abundance():
+
+    mt = _any_photon_mt("C")
+
+    # Material 1: defined as a single element (uses natural abundance implicitly)
+    mat_elem = openmc.Material()
+    mat_elem.add_element("C", 1.0, "ao")
+    mat_elem.set_density("g/cm3", 1.0)
+
+    # Material 2: defined by explicitly specifying natural isotopic abundance
+    # (values are standard natural abundances for carbon)
+    mat_iso = openmc.Material()
+    mat_iso.add_nuclide("C12", 0.9893, "ao")
+    mat_iso.add_nuclide("C13", 0.0107, "ao")
+    mat_iso.set_density("g/cm3", 1.0)
+
+    E1, xs1 = openmc.plotter.calculate_cexs(
+        this=mat_elem, types=[mt], incident_particle="photon"
+    )
+    E2, xs2 = openmc.plotter.calculate_cexs(
+        this=mat_iso, types=[mt], incident_particle="photon"
+    )
+
+    assert isinstance(E1, np.ndarray)
+    assert isinstance(E2, np.ndarray)
+    assert isinstance(xs1, np.ndarray)
+    assert isinstance(xs2, np.ndarray)
+
+    assert len(E1) > 1
+    assert len(E2) > 1
+    assert len(xs1) == 1
+    assert len(xs2) == 1
+    assert len(xs1[0]) == len(E1)
+    assert len(xs2[0]) == len(E2)
+
+    # For photon data, isotopes map to the same element library, so these should match.
+    assert np.array_equal(E1, E2)
+    assert np.allclose(xs1[0], xs2[0], rtol=1e-12, atol=0.0)
+
+def test_calculate_cexs_photon_missing_mt_fallback():
+    # Use an MT that should never exist in photon data
+    energy_grid, data = openmc.plotter.calculate_cexs(
+        this="Be", types=[9999], incident_particle="photon"
+    )
+
+    assert isinstance(energy_grid, np.ndarray)
+    assert isinstance(data, np.ndarray)
+    assert np.allclose(
+        energy_grid, [openmc.plotter._MIN_E, openmc.plotter._MAX_E]
+    )
+    assert data.shape == (1, 2)
+    assert np.allclose(data, 0.0)

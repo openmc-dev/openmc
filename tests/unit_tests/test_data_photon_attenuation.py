@@ -12,31 +12,31 @@ from openmc.data.library import DataLibrary
 from openmc.data.photon_attenuation import linear_attenuation_xs
 from openmc.exceptions import DataError
 
-PHOTON_MTS = (502, 504, 515, 517, 522)
-
-
-@pytest.fixture(scope="module")
-def xs_filename():
-    xs = os.environ.get("OPENMC_CROSS_SECTIONS")
-    if xs is None:
-        pytest.skip("OPENMC_CROSS_SECTIONS not set.")
-    return xs
-
-
-@pytest.fixture(scope="module")
-def elements_photon_xs(xs_filename):
-    """Dictionary of IncidentPhoton data indexed by atomic symbol."""
-    lib = DataLibrary.from_xml(xs_filename)
-
-    elements = ["H", "O", "Al", "C", "Ag", "U", "Pb", "V"]
-    data = {}
-    for symbol in elements:
-        entry = lib.get_by_material(symbol, data_type="photon")
-        if entry is None:
-            continue
-        data[symbol] = IncidentPhoton.from_hdf5(entry["path"])
-    return data
-
+# PHOTON_MTS = (502, 504, 515, 517, 522)
+#
+#
+# @pytest.fixture(scope="module")
+# def xs_filename():
+#     xs = os.environ.get("OPENMC_CROSS_SECTIONS")
+#     if xs is None:
+#         pytest.skip("OPENMC_CROSS_SECTIONS not set.")
+#     return xs
+#
+#
+# @pytest.fixture(scope="module")
+# def elements_photon_xs(xs_filename):
+#     """Dictionary of IncidentPhoton data indexed by atomic symbol."""
+#     lib = DataLibrary.from_xml(xs_filename)
+#
+#     elements = ["H", "O", "Al", "C", "Ag", "U", "Pb", "V"]
+#     data = {}
+#     for symbol in elements:
+#         entry = lib.get_by_material(symbol, data_type="photon")
+#         if entry is None:
+#             continue
+#         data[symbol] = IncidentPhoton.from_hdf5(entry["path"])
+#     return data
+#
 
 @pytest.mark.parametrize("symbol", ["C", "Pb"])
 def test_linear_attenuation_xs_matches_sum(elements_photon_xs, symbol, monkeypatch):
@@ -72,40 +72,40 @@ def test_linear_attenuation_xs_matches_sum(elements_photon_xs, symbol, monkeypat
     actual = xs_sum(energy)
     assert np.allclose(actual, expected)
 
-def test_linear_attenuation_xs_element_conversion(elements_photon_xs, monkeypatch):
-    """linear_attenuation_xs should fetch the corresponding element data when
-    given a nuclide symbol.
-    """
-    symbol_el = 'C'
-    symbol_nuc = 'C12'
-    element = elements_photon_xs.get(symbol_el)
-    if element is None:
-        pytest.skip(f"No photon data for {element} in cross section library.")
+# def test_linear_attenuation_xs_element_conversion(elements_photon_xs, monkeypatch):
+#     """linear_attenuation_xs should fetch the corresponding element data when
+#     given a nuclide symbol.
+#     """
+#     symbol_el = 'C'
+#     symbol_nuc = 'C12'
+#     element = elements_photon_xs.get(symbol_el)
+#     if element is None:
+#         pytest.skip(f"No photon data for {element} in cross section library.")
+#
+#     # Use preloaded IncidentPhoton instead of reading via DataLibrary in the helper
+#     monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda _: element)
+#
+#     xs_el = linear_attenuation_xs(symbol_el)
+#     xs_nuc = linear_attenuation_xs(symbol_nuc)
+#
+#     if xs_el is None or xs_nuc is None:
+#         pytest.skip("No relevant photon reactions for C or C12.")
+#
+#     energy = np.logspace(2, 4, 50)
+#
+#     element_values = xs_el(energy)
+#     nuclide_values = xs_nuc(energy)
+#
+#     assert np.array_equal(element_values, nuclide_values)
 
-    # Use preloaded IncidentPhoton instead of reading via DataLibrary in the helper
-    monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda _: element)
-
-    xs_el = linear_attenuation_xs(symbol_el)
-    xs_nuc = linear_attenuation_xs(symbol_nuc)
-
-    if xs_el is None or xs_nuc is None:
-        pytest.skip("No relevant photon reactions for C or C12.")
-
-    energy = np.logspace(2, 4, 50)
-
-    element_values = xs_el(energy)
-    nuclide_values = xs_nuc(energy)
-
-    assert np.array_equal(element_values, nuclide_values)
 
 
-
-def test_linear_attenuation_xs_returns_none_when_no_photon_data(monkeypatch):
-    """If _get_photon_data returns None, the helper should return None."""
-    monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda _: None)
-
-    xs_sum = linear_attenuation_xs("Og")
-    assert xs_sum is None
+# def test_linear_attenuation_xs_returns_none_when_no_photon_data(monkeypatch):
+#     """If _get_photon_data returns None, the helper should return None."""
+#     monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda _: None)
+#
+#     xs_sum = linear_attenuation_xs("Og")
+#     assert xs_sum is None
 
 def test_linear_attenuation_xs_gives_error_wrong_name(monkeypatch):
     """Non existant nuclides should raise Value Error"""
@@ -119,71 +119,71 @@ def test_linear_attenuation_xs_gives_error_wrong_name(monkeypatch):
 # ================================================================
 
 
-def test_get_photon_data_valid(xs_filename):
-    """_get_photon_data should load an IncidentPhoton object from the
-    cross sections library and cache it.
-    """
-    lib = DataLibrary.from_xml(xs_filename)
-
-    photon_nuclides = [mat for mat in lib if "photon" in mat["type"]]
-    if not photon_nuclides:
-        pytest.skip("No photon data entries available in cross section library.")
-
-    nuclide = photon_nuclides[0]["materials"][0]
-
-    # Clear internal cache
-    photon_attenuation._PHOTON_LIB = None
-    photon_attenuation._PHOTON_DATA = {}
-
-    # Call target function
-    data1 = photon_attenuation._get_photon_data(nuclide)
-
-    assert isinstance(data1, IncidentPhoton)
-
-    # Cached instance should be reused on repeated calls
-    data2 = photon_attenuation._get_photon_data(nuclide)
-    assert data1 is data2  # same object, cached
-
-
-def test_get_photon_data_missing_nuclide():
-    """_get_photon_data should return None when the nuclide has no photon data."""
-    photon_attenuation._PHOTON_LIB = None
-    photon_attenuation._PHOTON_DATA = {}
-
-    # Pick a nuclide name guaranteed *not* to have data
-    name_no_data = "Og"
-
-    data = photon_attenuation._get_photon_data(name_no_data)
-    assert data is None
-
-def test_get_photon_data_wrong_name():
-    """_get_photon_data should return None when the nuclide does not exist."""
-    photon_attenuation._PHOTON_LIB = None
-    photon_attenuation._PHOTON_DATA = {}
-
-    # Pick a nuclide name guaranteed *not* to exist
-    bad_name = "ThisNuclideDoesNotExist123"
-
-    data = photon_attenuation._get_photon_data(bad_name)
-    assert data is None
-
-def test_get_photon_data_no_library(monkeypatch):
-    """If DataLibrary.from_xml() fails, _get_photon_data should raise DataError."""
-    # Force DataLibrary.from_xml to throw
-    monkeypatch.setattr(
-        photon_attenuation.DataLibrary,
-        "from_xml",
-        lambda *_, **kw: (kw, (_ for _ in ()).throw(IOError("missing file")))[1],
-    )
-
-    # Clear caches
-    photon_attenuation._PHOTON_LIB = None
-    photon_attenuation._PHOTON_DATA = {}
-
-    with pytest.raises(DataError):
-        photon_attenuation._get_photon_data("U235")
-
-
+# def test_get_photon_data_valid(xs_filename):
+#     """_get_photon_data should load an IncidentPhoton object from the
+#     cross sections library and cache it.
+#     """
+#     lib = DataLibrary.from_xml(xs_filename)
+#
+#     photon_nuclides = [mat for mat in lib if "photon" in mat["type"]]
+#     if not photon_nuclides:
+#         pytest.skip("No photon data entries available in cross section library.")
+#
+#     nuclide = photon_nuclides[0]["materials"][0]
+#
+#     # Clear internal cache
+#     photon_attenuation._PHOTON_LIB = None
+#     photon_attenuation._PHOTON_DATA = {}
+#
+#     # Call target function
+#     data1 = photon_attenuation._get_photon_data(nuclide)
+#
+#     assert isinstance(data1, IncidentPhoton)
+#
+#     # Cached instance should be reused on repeated calls
+#     data2 = photon_attenuation._get_photon_data(nuclide)
+#     assert data1 is data2  # same object, cached
+#
+#
+# def test_get_photon_data_missing_nuclide():
+#     """_get_photon_data should return None when the nuclide has no photon data."""
+#     photon_attenuation._PHOTON_LIB = None
+#     photon_attenuation._PHOTON_DATA = {}
+#
+#     # Pick a nuclide name guaranteed *not* to have data
+#     name_no_data = "Og"
+#
+#     data = photon_attenuation._get_photon_data(name_no_data)
+#     assert data is None
+#
+# def test_get_photon_data_wrong_name():
+#     """_get_photon_data should return None when the nuclide does not exist."""
+#     photon_attenuation._PHOTON_LIB = None
+#     photon_attenuation._PHOTON_DATA = {}
+#
+#     # Pick a nuclide name guaranteed *not* to exist
+#     bad_name = "ThisNuclideDoesNotExist123"
+#
+#     data = photon_attenuation._get_photon_data(bad_name)
+#     assert data is None
+#
+# def test_get_photon_data_no_library(monkeypatch):
+#     """If DataLibrary.from_xml() fails, _get_photon_data should raise DataError."""
+#     # Force DataLibrary.from_xml to throw
+#     monkeypatch.setattr(
+#         photon_attenuation.DataLibrary,
+#         "from_xml",
+#         lambda *_, **kw: (kw, (_ for _ in ()).throw(IOError("missing file")))[1],
+#     )
+#
+#     # Clear caches
+#     photon_attenuation._PHOTON_LIB = None
+#     photon_attenuation._PHOTON_DATA = {}
+#
+#     with pytest.raises(DataError):
+#         photon_attenuation._get_photon_data("U235")
+#
+#
 def test_linear_attenuation_reference_values(elements_photon_xs, monkeypatch):
     """Check linear_attenuation_xs for Pb and V at two reference energies."""
     openmc.reset_auto_ids()

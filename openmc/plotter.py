@@ -597,6 +597,9 @@ def _calculate_cexs_nuclide(this, types, incident_particle='neutron', temperatur
         funcs = funcs if funcs else [lambda x: 0.]
         xs.append(openmc.data.Combination(funcs, op))
 
+    if  len(energy_grid) == 0:
+        energy_grid = np.array([_MIN_E, _MAX_E], dtype=float)
+
     return energy_grid, xs
 
 

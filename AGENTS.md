@@ -31,6 +31,24 @@ C++17/Python codebase where:
 - **Depletion**: `openmc.deplete` implements burnup via operator-splitting with various integrators (Predictor, CECM, etc.)
 - **Nuclear Data**: `openmc.data` provides programmatic access to nuclear data files (ENDF, ACE, HDF5)
 
+## Git Branching Workflow
+
+OpenMC uses a git flow branching model with two primary branches:
+
+- **`develop` branch**: The main development branch where all ongoing development takes place. This is the **primary branch against which pull requests are submitted and merged**. This branch is not guaranteed to be stable and may contain work-in-progress features.
+- **`master` branch**: The stable release branch containing the latest stable release of OpenMC. This branch only receives merges from `develop` when the development team decides a release should occur.
+
+### Instructions for Code Review
+
+When analyzing code changes on a feature or bugfix branch (e.g., when a user asks "what do you think of these changes?"), **compare the branch changes against `develop`, not `master`**. Pull requests are submitted to merge into `develop`, so differences relative to `develop` represent the actual proposed changes. Comparing against `master` will include unrelated changes from other features that have already been merged to `develop`.
+
+### Workflow for contributors
+
+1. Create a feature/bugfix branch off `develop`
+2. Make changes and commit to the feature branch
+3. Open a pull request to merge the feature branch into `develop`
+4. A committer reviews and merges the PR into `develop`
+
 ## Critical Build & Test Workflows
 
 ### Build Dependencies

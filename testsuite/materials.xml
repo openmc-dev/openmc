@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1" depletable="true">
+    <density value="10.0" units="g/cm3"/>
+    <nuclide name="U235" ao="0.05"/>
+    <nuclide name="U238" ao="0.95"/>
+    <nuclide name="O16" ao="1.9952412"/>
+    <nuclide name="O17" ao="0.000758"/>
+    <nuclide name="O18" ao="0.0040008"/>
+  </material>
+  <material id="2">
+    <density value="1.0" units="g/cm3"/>
+    <nuclide name="H1" ao="1.99968852"/>
+    <nuclide name="H2" ao="0.00031148"/>
+    <nuclide name="O16" ao="0.9976206"/>
+    <nuclide name="O17" ao="0.000379"/>
+    <nuclide name="O18" ao="0.0020004"/>
+    <sab name="c_H_in_H2O"/>
+  </material>
+</materials>

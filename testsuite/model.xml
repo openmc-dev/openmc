@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" depletable="true">
+      <density value="10.0" units="g/cm3"/>
+      <nuclide name="U234" ao="0.00040712390870120436"/>
+      <nuclide name="U235" ao="0.045549059817946165"/>
+      <nuclide name="U238" ao="0.953835179701444"/>
+      <nuclide name="U236" ao="0.00020863657190853607"/>
+      <nuclide name="O16" ao="1.9952412"/>
+      <nuclide name="O17" ao="0.000758"/>
+      <nuclide name="O18" ao="0.0040008"/>
+    </material>
+    <material id="2">
+      <density value="0.74" units="g/cm3"/>
+      <nuclide name="H1" ao="1.99968852"/>
+      <nuclide name="H2" ao="0.00031148"/>
+      <nuclide name="O16" ao="0.9976206"/>
+      <nuclide name="O17" ao="0.000379"/>
+      <nuclide name="O18" ao="0.0020004"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <cell id="2" material="2" region="1 2 -3 4 -5" universe="1"/>
+    <surface id="1" type="z-cylinder" coeffs="0.0 0.0 0.392"/>
+    <surface id="2" type="x-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="3" type="x-plane" boundary="reflective" coeffs="0.63"/>
+    <surface id="4" type="y-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="5" type="y-plane" boundary="reflective" coeffs="0.63"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>5000</particles>
+    <batches>50</batches>
+    <inactive>10</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="fission">
+        <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+      </space>
+    </source>
+  </settings>
+  <tallies>
+    <mesh id="1" type="cylindrical">
+      <r_grid>0.0 0.12396128427860048 0.17530772943598352 0.2147072425420251 0.24792256855720096 0.27718585822512665 0.30364189434266153 0.32797073040135766 0.35061545887196705 0.3718838528358014 0.392</r_grid>
+      <phi_grid>0.0 6.283185307179586</phi_grid>
+      <z_grid>-1.0 1.0</z_grid>
+      <origin>0.0 0.0 0.0</origin>
+    </mesh>
+    <filter id="1" type="mesh">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="zernikeradial">
+      <order>20</order>
+      <x>0.0</x>
+      <y>0.0</y>
+      <r>0.392</r>
+    </filter>
+    <tally id="1" name="tally_truth">
+      <filters>1</filters>
+      <nuclides>U238</nuclides>
+      <scores>absorption</scores>
+    </tally>
+    <tally id="2" name="zernike_tally">
+      <filters>2</filters>
+      <nuclides>U238</nuclides>
+      <scores>absorption</scores>
+    </tally>
+  </tallies>
+</model>

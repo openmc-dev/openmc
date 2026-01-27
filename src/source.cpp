@@ -46,7 +46,7 @@ void validate_pdg_or_fatal(PDGNumber pdg, const std::string& context)
 
   fatal_error(
     fmt::format("Unsupported source particle type '{}' (PDG {}) in {}.",
-      particle_pdg_to_str(pdg), pdg.value, context));
+      pdg_number_to_str(pdg), pdg.value, context));
 }
 
 } // namespace
@@ -299,7 +299,7 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
   // Check for particle type
   if (check_for_node(node, "particle")) {
     auto temp_str = get_node_value(node, "particle", false, true);
-    particle_ = str_to_particle_pdg(temp_str);
+    particle_ = str_to_pdg_number(temp_str);
     if (particle_ == PDG_PHOTON || particle_ == PDG_ELECTRON ||
         particle_ == PDG_POSITRON) {
       settings::photon_transport = true;

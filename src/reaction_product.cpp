@@ -26,7 +26,7 @@ ReactionProduct::ReactionProduct(hid_t group)
   // Read particle type
   std::string temp;
   read_attribute(group, "particle", temp);
-  particle_ = str_to_particle_pdg(temp);
+  particle_ = str_to_pdg_number(temp);
 
   // Read emission mode and decay rate
   read_attribute(group, "emission_mode", temp);

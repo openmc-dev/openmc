@@ -127,9 +127,9 @@ public:
 //! Functions
 //============================================================================
 
-std::string particle_pdg_to_str(PDGNumber type);
+std::string pdg_number_to_str(PDGNumber type);
 
-PDGNumber str_to_particle_pdg(std::string_view str);
+PDGNumber str_to_pdg_number(std::string_view str);
 
 void add_surf_source_to_bank(Particle& p, const Surface& surf);
 

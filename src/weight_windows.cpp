@@ -179,7 +179,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // get the particle type
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
-  particle_type_ = openmc::str_to_particle_pdg(particle_type_str);
+  particle_type_ = openmc::str_to_pdg_number(particle_type_str);
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
@@ -258,7 +258,7 @@ WeightWindows* WeightWindows::from_hdf5(
   } else {
     std::string particle_type;
     read_dataset(ww_group, "particle_type", particle_type);
-    particle_pdg = str_to_particle_pdg(particle_type);
+    particle_pdg = str_to_pdg_number(particle_type);
   }
   wws->particle_type_ = particle_pdg;
 
@@ -359,7 +359,7 @@ void WeightWindows::set_particle_type(PDGNumber p_type)
   if (p_type != PDG_NEUTRON && p_type != PDG_PHOTON)
     fatal_error(
       fmt::format("Particle type '{}' cannot be applied to weight windows.",
-        particle_pdg_to_str(p_type)));
+        pdg_number_to_str(p_type)));
   particle_type_ = p_type;
 }
 
@@ -619,7 +619,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     if (p_it == particles.end()) {
       auto msg = fmt::format("Particle type '{}' not present on Filter {} for "
                              "Tally {} used to update WeightWindows {}",
-        particle_pdg_to_str(this->particle_type_), pf->id(), tally->id(),
+        pdg_number_to_str(this->particle_type_), pf->id(), tally->id(),
         this->id());
       fatal_error(msg);
     }
@@ -857,7 +857,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     warning(msg);
   }
   auto tmp_str = get_node_value(node, "particle_type", false, true);
-  auto particle_type = str_to_particle_pdg(tmp_str);
+  auto particle_type = str_to_pdg_number(tmp_str);
 
   update_interval_ = std::stoi(get_node_value(node, "update_interval"));
   on_the_fly_ = get_node_value_bool(node, "on_the_fly");

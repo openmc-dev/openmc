@@ -107,7 +107,7 @@ bool parse_gnds_nuclide(std::string_view name, int& Z, int& A, int& m)
 
 } // namespace
 
-PDGNumber str_to_particle_pdg(std::string_view str)
+PDGNumber str_to_pdg_number(std::string_view str)
 {
   std::string s {str};
   strtrim(s);
@@ -149,10 +149,10 @@ PDGNumber str_to_particle_pdg(std::string_view str)
     return PDGNumber {value};
   }
 
-  return particle_pdg_from_nuclide_name(s);
+  return pdg_number_from_nuclide_name(s);
 }
 
-std::string particle_pdg_to_str(PDGNumber pdg)
+std::string pdg_number_to_str(PDGNumber pdg)
 {
   if (pdg == PDG_NEUTRON)
     return "neutron";
@@ -166,7 +166,7 @@ std::string particle_pdg_to_str(PDGNumber pdg)
     return "proton";
 
   if (is_nuclear_pdg(pdg)) {
-    return nuclide_name_from_particle_pdg(pdg);
+    return nuclide_name_from_pdg_number(pdg);
   }
 
   return "pdg:" + std::to_string(pdg.value);
@@ -189,7 +189,7 @@ PDGNumber legacy_particle_code_to_pdg(int code)
   }
 }
 
-PDGNumber particle_pdg_from_nuclide_name(std::string_view gnds)
+PDGNumber pdg_number_from_nuclide_name(std::string_view gnds)
 {
   int Z = 0;
   int A = 0;
@@ -197,10 +197,10 @@ PDGNumber particle_pdg_from_nuclide_name(std::string_view gnds)
   if (!parse_gnds_nuclide(gnds, Z, A, m)) {
     throw std::invalid_argument {"Invalid nuclide name: " + std::string {gnds}};
   }
-  return particle_pdg_from_zam(Z, A, m);
+  return pdg_number_from_zam(Z, A, m);
 }
 
-std::string nuclide_name_from_particle_pdg(PDGNumber pdg)
+std::string nuclide_name_from_pdg_number(PDGNumber pdg)
 {
   if (!is_nuclear_pdg(pdg)) {
     throw std::invalid_argument {
@@ -224,7 +224,7 @@ std::string nuclide_name_from_particle_pdg(PDGNumber pdg)
   return name;
 }
 
-PDGNumber particle_pdg_from_zam(int Z, int A, int m)
+PDGNumber pdg_number_from_zam(int Z, int A, int m)
 {
   if (Z <= 0 || Z > 999 || A <= 0 || A > 999 || m < 0 || m > 9) {
     throw std::invalid_argument {"Invalid Z/A/m for nuclear PDG code."};

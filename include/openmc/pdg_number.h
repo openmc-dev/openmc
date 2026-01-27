@@ -88,22 +88,22 @@ constexpr bool is_transport_pdg(PDGNumber pdg)
 //------------------------------------------------------------------------------
 
 // Convert a particle identifier string to PDG.
-PDGNumber str_to_particle_pdg(std::string_view str);
+PDGNumber str_to_pdg_number(std::string_view str);
 
 // Convert PDG to a canonical string (known names or GNDS nuclide name).
-std::string particle_pdg_to_str(PDGNumber pdg);
+std::string pdg_number_to_str(PDGNumber pdg);
 
 // Legacy enum code (0..3) to PDG conversion
 PDGNumber legacy_particle_code_to_pdg(int code);
 
 // GNDS nuclide name to PDG nuclear code (100ZZZAAAI)
-PDGNumber particle_pdg_from_nuclide_name(std::string_view gnds);
+PDGNumber pdg_number_from_nuclide_name(std::string_view gnds);
 
 // PDG nuclear code to GNDS nuclide name (e.g., "Fe57", "Am242_m1")
-std::string nuclide_name_from_particle_pdg(PDGNumber pdg);
+std::string nuclide_name_from_pdg_number(PDGNumber pdg);
 
 // Build a PDG nuclear code from Z, A, and isomer level
-PDGNumber particle_pdg_from_zam(int Z, int A, int m);
+PDGNumber pdg_number_from_zam(int Z, int A, int m);
 
 // Check for PDG nuclear code (100ZZZAAAI)
 bool is_nuclear_pdg(PDGNumber pdg);

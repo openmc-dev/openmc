@@ -13,7 +13,7 @@ void ParticleFilter::from_xml(pugi::xml_node node)
   // Convert to vector of ParticlePdg
   vector<PDGNumber> types;
   for (auto& p : particles) {
-    types.push_back(str_to_particle_pdg(p));
+    types.push_back(str_to_pdg_number(p));
   }
   this->set_particles(types);
 }
@@ -47,7 +47,7 @@ void ParticleFilter::to_statepoint(hid_t filter_group) const
   Filter::to_statepoint(filter_group);
   vector<std::string> particles;
   for (auto p : particles_) {
-    particles.push_back(particle_pdg_to_str(p));
+    particles.push_back(pdg_number_to_str(p));
   }
   write_dataset(filter_group, "bins", particles);
 }
@@ -55,7 +55,7 @@ void ParticleFilter::to_statepoint(hid_t filter_group) const
 std::string ParticleFilter::text_label(int bin) const
 {
   const auto& p = particles_.at(bin);
-  return fmt::format("Particle: {}", particle_pdg_to_str(p));
+  return fmt::format("Particle: {}", pdg_number_to_str(p));
 }
 
 extern "C" int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[])

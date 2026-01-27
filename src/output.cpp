@@ -169,7 +169,7 @@ void print_particle(Particle& p)
     fmt::print("Positron ");
     break;
   default:
-    fmt::print("Particle {} ", particle_pdg_to_str(p.type()));
+    fmt::print("Particle {} ", pdg_number_to_str(p.type()));
   }
   fmt::print("{}\n", p.id());
 

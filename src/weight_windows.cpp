@@ -56,11 +56,10 @@ openmc::vector<unique_ptr<WeightWindowsGenerator>> weight_windows_generators;
 WeightWindow* search_weight_window(Particle& p)
 {
   // TODO: this is a linear search - should do something more clever
-  WeightWindow weight_window;
   for (const auto& ww : variance_reduction::weight_windows) {
     int mesh_bin = ww->get_mesh_bin(p);
     if (mesh_bin > 0)
-      return ww->get_weight_window(p.E(), mesh_bin);
+      return &(ww->get_weight_window(p.E(), mesh_bin));
   }
 }
 
@@ -82,7 +81,7 @@ void apply_weight_windows(Particle& p)
     apply_weight_window(p, *ww);
 }
 
-void apply_weight_window(Particle& p, WeightWindow& ww)
+void apply_weight_window(Particle& p, WeightWindow& weight_window)
 {
   // If particle has not yet had its birth weight window value set, set it to
   // the current weight window (or 1.0 if not born in a weight window).

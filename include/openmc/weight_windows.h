@@ -245,8 +245,8 @@ void apply_weight_windows(Particle& p);
 
 //! Apply weight window to a particle
 //! \param[in] p  Particle to apply weight window to
-//! \param[in] ww WeightWindow to apply
-void apply_weight_window(Particle& p, WeightWindow& ww);
+//! \param[in] weight_window WeightWindow to apply
+void apply_weight_window(Particle& p, WeightWindow& weight_window);
 
 //! Free memory associated with weight windows
 void free_memory_weight_windows();

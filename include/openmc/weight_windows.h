@@ -254,7 +254,7 @@ void free_memory_weight_windows();
 //! Search weight window that apply to a particle
 //! \param[in]  p  Particle to search weight window for
 //! \param[out] mesh_bin int mesh bin inside WeightWindows
-const WeightWindows* search_weight_window(Particle& p, int& mesh_bin);
+const WeightWindows* search_weight_window(const Particle& p, int& mesh_bin);
 
 //! Finalize variance reduction objects after all inputs have been read
 void finalize_variance_reduction();

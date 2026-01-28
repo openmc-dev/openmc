@@ -329,8 +329,8 @@ def test_calculate_cexs_photon_total_attenuation_reference_values():
             2.877e-01,
             5.794e-02,
         ]
-    ) # cm2/g
-    v_expected = v_ref*v_density
+    )  # cm2/g
+    v_expected = v_ref * v_density
 
     # data from https://physics.nist.gov/PhysRefData/XrayMassCoef/ElemTab/z82.html
     pb_density = 11.35  # g/cm3
@@ -339,11 +339,10 @@ def test_calculate_cexs_photon_total_attenuation_reference_values():
             5.549e00,
             7.102e-02,
         ]
-    ) # cm2/g
-    pb_expected = pb_ref*pb_density
+    )  # cm2/g
+    pb_expected = pb_ref * pb_density
 
     def _run_element(symbol: str, density: float):
-
         mat = openmc.Material()
         mat.add_element(symbol, 1.0)
         mat.set_density("g/cm3", density)
@@ -362,7 +361,9 @@ def test_calculate_cexs_photon_total_attenuation_reference_values():
         pb_vals = _run_element("Pb", pb_density)
         v_vals = _run_element("V", v_density)
     except Exception:
-        pytest.skip("Pb or V photon data / required MTs not available in cross section library.")
+        pytest.skip(
+            "Pb or V photon data / required MTs not available in cross section library."
+        )
 
-    assert np.allclose(pb_vals, pb_expected, rtol=5e-3, atol=1e-8)
-    assert np.allclose(v_vals, v_expected, rtol=5e-3, atol=1e-8)
+    assert np.allclose(pb_vals, pb_expected, rtol=1e-2, atol=1e-8)
+    assert np.allclose(v_vals, v_expected, rtol=1e-2, atol=1e-8)

@@ -457,6 +457,13 @@ class Material(IDManagerMixin):
             Specifies if the cdr should be returned for the material as a
             whole or per nuclide. Default is False.
 
+        Limitations
+        ----------
+        This method does not implement correction from Bremsstrahlung photons which can be 
+        relevant at close distances.
+        In addition, it computes the gamma contact dose rate only for the unstable nuclides 
+        for which the radiation source specification is present in the chain file. 
+
         Returns
         -------
         cdr : float or dict[str, float]
@@ -468,7 +475,8 @@ class Material(IDManagerMixin):
         cv.check_type("by_nuclide", by_nuclide, bool)
         cv.check_type("dose_quantity", dose_quantity, str)
         cv.check_value("dose_quantity", dose_quantity, ['absorbed-air', 'effective'])
-        cv.check_type("build_up", build_up, float)
+        cv.check_type("build_up", build_up, Real)
+        cv.check_greater_than("build_up", build_up, 0.0)
 
         # photon linear attenuation distribution as a function of energy
         # distribution values in [cm-1]

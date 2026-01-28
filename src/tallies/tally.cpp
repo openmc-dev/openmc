@@ -636,13 +636,15 @@ void Tally::set_scores(const vector<std::string>& scores)
             bool positron_present = contains(particles, "positron");
             if (!positron_present || !electron_present) {
               if (!electron_present)
-                warning("Tally {} contains heating score with photon bin but "
-                        "without electron bin.",
-                  id_);
+                warning(fmt::format(
+                  "Tally {} contains heating score with photon bin but "
+                  "without electron bin.",
+                  id_));
               if (!positron_present)
-                warning("Tally {} contains heating score with photon bin but "
-                        "without positron bin.",
-                  id_);
+                warning(fmt::format(
+                  "Tally {} contains heating score with photon bin but "
+                  "without positron bin.",
+                  id_));
               warning("Forgetting to specify charged particles in particle "
                       "filter when using heating score is a common gotcha.");
             }

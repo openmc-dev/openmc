@@ -903,15 +903,15 @@ void WeightWindowsGenerator::update() const
 // Non-member functions
 //==============================================================================
 
-const WeightWindows* search_weight_window(const Particle& p, int& mesh_bin)
+WeightWindow search_weight_window(const Particle& p)
 {
   // TODO: this is a linear search - should do something more clever
   for (const auto& ww : variance_reduction::weight_windows) {
     mesh_bin = ww->get_mesh_bin(p);
     if (mesh_bin > 0)
-      return ww.get();
+      return ww->get_weight_window(p.E(), mesh_bin);
   }
-  return nullptr;
+  return {};
 }
 
 void apply_weight_windows(Particle& p)
@@ -928,9 +928,9 @@ void apply_weight_windows(Particle& p)
     return;
 
   int mesh_bin;
-  const auto& ww = search_weight_window(p, mesh_bin);
-  if (ww != nullptr)
-    apply_weight_window(p, ww->get_weight_window(p.E(), mesh_bin));
+  auto ww = search_weight_window(p, mesh_bin);
+  if (ww.is_valid())
+    apply_weight_window(p, ww);
 }
 
 void apply_weight_window(Particle& p, WeightWindow weight_window)

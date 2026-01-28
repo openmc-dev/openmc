@@ -38,10 +38,10 @@ void collision_mg(Particle& p)
     if (ww.is_valid()) {
       apply_weight_window(p, ww);
     } else if (p.type() == ParticleType::neutron) {
-      apply_russian_roulette(p)
+      apply_russian_roulette(p);
     }
-    // If collision checkpoint is disabled, apply russian roulette if
-    // the particle is outside the weight window domain
+  // If collision checkpoint is disabled, apply russian roulette if
+  // the particle is outside the weight window domain
   } else if (settings::weight_windows_on) {
     auto ww = search_weight_window(p);
     if (!ww.is_valid())

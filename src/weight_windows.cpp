@@ -935,6 +935,10 @@ void apply_weight_windows(Particle& p)
 
 void apply_weight_window(Particle& p, WeightWindow weight_window)
 {
+  // skip dead or no energy
+  if (p.E() <= 0 || !p.alive())
+    return;
+
   // If particle has not yet had its birth weight window value set, set it to
   // the current weight window (or 1.0 if not born in a weight window).
   if (p.wgt_ww_born() == -1.0) {

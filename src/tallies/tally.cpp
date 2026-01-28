@@ -535,6 +535,7 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool legendre_present = false;
   bool cell_present = false;
   bool cellfrom_present = false;
+  bool particle_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
   bool non_cell_energy_present = false;
@@ -555,6 +556,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       surface_present = true;
     } else if (filt->type() == FilterType::MESH_SURFACE) {
       meshsurface_present = true;
+    } else if (filt->type() == FilterType::PARTICLE) {
+      particle_present = true;
     }
   }
 
@@ -624,8 +627,28 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case HEATING:
-      if (settings::photon_transport)
+      if (settings::photon_transport) {
         estimator_ = TallyEstimator::COLLISION;
+        if (particle_present) {
+          const auto particles = get_filter<ParticleFilter>().particles();
+          if (contains(particles, "photon")) {
+            bool electron_present = contains(particles, "electron");
+            bool positron_present = contains(particles, "positron");
+            if (!positron_present || !electron_present) {
+              if (!electron_present)
+                warning("Tally {} contains heating score with photon bin but "
+                        "without electron bin.",
+                  id_);
+              if (!positron_present)
+                warning("Tally {} contains heating score with photon bin but "
+                        "without positron bin.",
+                  id_);
+              warning("Forgetting to specify charged particles in particle "
+                      "filter when using heating score is a common gotcha.");
+            }
+          }
+        }
+      }
       break;
 
     case SCORE_PULSE_HEIGHT:

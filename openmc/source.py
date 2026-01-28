@@ -406,12 +406,12 @@ class IndependentSource(SourceBase):
         self._time = time
 
     @property
-    def particle(self):
+    def particle(self) -> ParticleType:
         return self._particle
 
     @particle.setter
     def particle(self, particle):
-        self._particle = ParticleType(particle).name
+        self._particle = ParticleType(particle)
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
@@ -422,7 +422,7 @@ class IndependentSource(SourceBase):
             XML element containing source data
 
         """
-        element.set("particle", self.particle)
+        element.set("particle", str(self.particle))
         if self.space is not None:
             element.append(self.space.to_xml_element())
         if self.angle is not None:

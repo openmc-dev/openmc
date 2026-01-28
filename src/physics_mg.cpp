@@ -32,7 +32,7 @@ void collision_mg(Particle& p)
   sample_reaction(p);
 
   if (settings::weight_windows_on) {
-    auto ww = search_weight_window(p, mesh_bin);
+    auto ww = search_weight_window(p);
     if (ww.is_valid()) {
       if (settings::weight_window_checkpoint_collision)
         apply_weight_window(p, ww);

@@ -4,7 +4,7 @@ from collections.abc import Sequence
 import h5py
 
 from .checkvalue import check_filetype_version
-from .source import SourceParticle, PDGNumber
+from .source import SourceParticle, ParticleType
 
 from pathlib import Path
 
@@ -14,7 +14,7 @@ Particle track information
 
 Parameters
 ----------
-particle : openmc.PDGNumber
+particle : openmc.ParticleType
     Type of the particle (PDG-backed)
 states : numpy.ndarray
     Structured array containing each state of the particle. The structured array
@@ -74,7 +74,7 @@ class Track(Sequence):
         # Construct list of track histories
         tracks_list = []
         for particle, start, end in zip(particles, offsets[:-1], offsets[1:]):
-            ptype = PDGNumber(particle)
+            ptype = ParticleType(particle)
             tracks_list.append(ParticleTrack(ptype, tracks[start:end]))
         self.particle_tracks = tracks_list
 
@@ -92,7 +92,7 @@ class Track(Sequence):
 
         Parameters
         ----------
-        particle : str or int or openmc.PDGNumber
+        particle : str or int or openmc.ParticleType
             Matching particle type (alias, PDG, or GNDS nuclide)
         state_filter : function
             Function that takes a state (structured datatype) and returns a bool
@@ -127,9 +127,9 @@ class Track(Sequence):
         if particle is not None:
             try:
                 if isinstance(particle, str):
-                    particle_match = PDGNumber(particle)
+                    particle_match = ParticleType(particle)
                 else:
-                    particle_match = PDGNumber(particle)
+                    particle_match = ParticleType(particle)
             except (TypeError, ValueError):
                 track = type(self).__new__(type(self))
                 track.identifier = self.identifier

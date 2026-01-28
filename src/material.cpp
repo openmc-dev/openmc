@@ -819,9 +819,9 @@ void Material::calculate_xs(Particle& p) const
   p.macro_xs().fission = 0.0;
   p.macro_xs().nu_fission = 0.0;
 
-  if (p.type() == PDG_NEUTRON) {
+  if (p.type().pdg_number() == PDG_NEUTRON) {
     this->calculate_neutron_xs(p);
-  } else if (p.type() == PDG_PHOTON) {
+  } else if (p.type().pdg_number() == PDG_PHOTON) {
     this->calculate_photon_xs(p);
   }
 }
@@ -829,7 +829,7 @@ void Material::calculate_xs(Particle& p) const
 void Material::calculate_neutron_xs(Particle& p) const
 {
   // Find energy index on energy grid
-  int neutron = transport_index_from_pdg(PDG_NEUTRON);
+  int neutron = transport_index(ParticleType {PDG_NEUTRON});
   int i_grid =
     std::log(p.E() / data::energy_min[neutron]) / simulation::log_spacing;
 

@@ -1,4 +1,4 @@
-#include "openmc/pdg_number.h"
+#include "openmc/particle_type.h"
 
 #include <algorithm>
 #include <cctype>
@@ -105,9 +105,33 @@ bool parse_gnds_nuclide(std::string_view name, int& Z, int& A, int& m)
   return Z != 0;
 }
 
+// Helper to convert nuclear PDG code to nuclide name
+std::string nuclide_name_from_pdg(int32_t pdg)
+{
+  int32_t code = pdg;
+  int m = code % 10;
+  int A = (code / 10) % 1000;
+  int Z = (code / 10000) % 1000;
+
+  if (Z <= 0 || Z > MAX_Z || A <= 0 || A > 999) {
+    throw std::invalid_argument {
+      "Invalid nuclear PDG number: " + std::to_string(pdg)};
+  }
+
+  std::string name = ATOMIC_SYMBOL[Z] + std::to_string(A);
+  if (m > 0) {
+    name += "_m" + std::to_string(m);
+  }
+  return name;
+}
+
 } // namespace
 
-PDGNumber str_to_pdg_number(std::string_view str)
+//==============================================================================
+// ParticleType member function implementations
+//==============================================================================
+
+ParticleType::ParticleType(std::string_view str)
 {
   std::string s {str};
   strtrim(s);
@@ -118,129 +142,105 @@ PDGNumber str_to_pdg_number(std::string_view str)
   std::string lower = s;
   to_lower(lower);
 
+  // Check for pdg: prefix
   if (starts_with(lower, "pdg:")) {
     std::string value_str = lower.substr(4);
     if (!is_integer_string(value_str)) {
       throw std::invalid_argument {"Invalid PDG number: " + value_str};
     }
-    int32_t value = std::stoi(value_str);
-    return PDGNumber {value};
+    pdg_number_ = std::stoi(value_str);
+    return;
   }
 
-  if (lower == "neutron" || lower == "n")
-    return PDG_NEUTRON;
-  if (lower == "photon" || lower == "gamma")
-    return PDG_PHOTON;
-  if (lower == "electron")
-    return PDG_ELECTRON;
-  if (lower == "positron")
-    return PDG_POSITRON;
-  if (lower == "proton" || lower == "p" || lower == "h1")
-    return PDG_PROTON;
-  if (lower == "deuteron" || lower == "d" || lower == "h2")
-    return PDG_DEUTERON;
-  if (lower == "triton" || lower == "t" || lower == "h3")
-    return PDG_TRITON;
-  if (lower == "alpha" || lower == "he4")
-    return PDG_ALPHA;
+  // Check for known particle names
+  if (lower == "neutron" || lower == "n") {
+    pdg_number_ = PDG_NEUTRON;
+    return;
+  }
+  if (lower == "photon" || lower == "gamma") {
+    pdg_number_ = PDG_PHOTON;
+    return;
+  }
+  if (lower == "electron") {
+    pdg_number_ = PDG_ELECTRON;
+    return;
+  }
+  if (lower == "positron") {
+    pdg_number_ = PDG_POSITRON;
+    return;
+  }
+  if (lower == "proton" || lower == "p" || lower == "h1") {
+    pdg_number_ = PDG_PROTON;
+    return;
+  }
+  if (lower == "deuteron" || lower == "d" || lower == "h2") {
+    pdg_number_ = PDG_DEUTERON;
+    return;
+  }
+  if (lower == "triton" || lower == "t" || lower == "h3") {
+    pdg_number_ = PDG_TRITON;
+    return;
+  }
+  if (lower == "alpha" || lower == "he4") {
+    pdg_number_ = PDG_ALPHA;
+    return;
+  }
 
+  // Check for integer string
   if (is_integer_string(s)) {
-    int32_t value = std::stoi(s);
-    return PDGNumber {value};
+    pdg_number_ = std::stoi(s);
+    return;
   }
 
-  return pdg_number_from_nuclide_name(s);
+  // Try to parse as GNDS nuclide name
+  int Z = 0;
+  int A = 0;
+  int m = 0;
+  if (!parse_gnds_nuclide(s, Z, A, m)) {
+    throw std::invalid_argument {"Invalid nuclide name: " + s};
+  }
+  pdg_number_ = 1000000000 + Z * 10000 + A * 10 + m;
 }
 
-std::string pdg_number_to_str(PDGNumber pdg)
+std::string ParticleType::str() const
 {
-  if (pdg == PDG_NEUTRON)
+  if (pdg_number_ == PDG_NEUTRON)
     return "neutron";
-  if (pdg == PDG_PHOTON)
+  if (pdg_number_ == PDG_PHOTON)
     return "photon";
-  if (pdg == PDG_ELECTRON)
+  if (pdg_number_ == PDG_ELECTRON)
     return "electron";
-  if (pdg == PDG_POSITRON)
+  if (pdg_number_ == PDG_POSITRON)
     return "positron";
-  if (pdg == PDG_PROTON)
+  if (pdg_number_ == PDG_PROTON)
     return "proton";
 
-  if (is_nuclear_pdg(pdg)) {
-    return nuclide_name_from_pdg_number(pdg);
+  if (is_nucleus()) {
+    return nuclide_name_from_pdg(pdg_number_);
   }
 
-  return "pdg:" + std::to_string(pdg.value);
+  return "pdg:" + std::to_string(pdg_number_);
 }
 
-PDGNumber legacy_particle_index_to_pdg(int index)
+//==============================================================================
+// Free function implementations
+//==============================================================================
+
+ParticleType legacy_particle_index_to_type(int index)
 {
   switch (index) {
   case 0:
-    return PDG_NEUTRON;
+    return ParticleType {PDG_NEUTRON};
   case 1:
-    return PDG_PHOTON;
+    return ParticleType {PDG_PHOTON};
   case 2:
-    return PDG_ELECTRON;
+    return ParticleType {PDG_ELECTRON};
   case 3:
-    return PDG_POSITRON;
+    return ParticleType {PDG_POSITRON};
   default:
     throw std::invalid_argument {
       "Invalid legacy particle index: " + std::to_string(index)};
   }
-}
-
-PDGNumber pdg_number_from_nuclide_name(std::string_view gnds)
-{
-  int Z = 0;
-  int A = 0;
-  int m = 0;
-  if (!parse_gnds_nuclide(gnds, Z, A, m)) {
-    throw std::invalid_argument {"Invalid nuclide name: " + std::string {gnds}};
-  }
-  return pdg_number_from_zam(Z, A, m);
-}
-
-std::string nuclide_name_from_pdg_number(PDGNumber pdg)
-{
-  if (!is_nuclear_pdg(pdg)) {
-    throw std::invalid_argument {
-      "PDG number is not a nuclear code: " + std::to_string(pdg.value)};
-  }
-
-  int32_t code = pdg.value;
-  int m = code % 10;
-  int A = (code / 10) % 1000;
-  int Z = (code / 10000) % 1000;
-
-  if (Z <= 0 || Z > MAX_Z || A <= 0 || A > 999) {
-    throw std::invalid_argument {
-      "Invalid nuclear PDG number: " + std::to_string(pdg.value)};
-  }
-
-  std::string name = ATOMIC_SYMBOL[Z] + std::to_string(A);
-  if (m > 0) {
-    name += "_m" + std::to_string(m);
-  }
-  return name;
-}
-
-PDGNumber pdg_number_from_zam(int Z, int A, int m)
-{
-  if (Z <= 0 || Z > 999 || A <= 0 || A > 999 || m < 0 || m > 9) {
-    throw std::invalid_argument {"Invalid Z/A/m for nuclear PDG number."};
-  }
-  int32_t code = 1000000000 + Z * 10000 + A * 10 + m;
-  return PDGNumber {code};
-}
-
-bool is_nuclear_pdg(PDGNumber pdg)
-{
-  int32_t code = pdg.value;
-  if (code < 1000000000)
-    return false;
-  int Z = (code / 10000) % 1000;
-  int A = (code / 10) % 1000;
-  return Z > 0 && A > 0;
 }
 
 } // namespace openmc

@@ -24,7 +24,7 @@ namespace openmc {
 // to achieve consistent locality improvements.
 struct EventQueueItem {
   int64_t idx;      //!< particle index in event-based particle buffer
-  PDGNumber type;   //!< particle PDG
+  ParticleType type; //!< particle type
   int64_t material; //!< material that particle is in
   double E;         //!< particle energy
 

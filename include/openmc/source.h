@@ -12,7 +12,7 @@
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -127,7 +127,7 @@ public:
   SourceSite sample(uint64_t* seed) const override;
 
   // Properties
-  PDGNumber particle_type() const { return particle_; }
+  ParticleType particle_type() const { return particle_; }
 
   // Make observing pointers available
   SpatialDistribution* space() const { return space_.get(); }
@@ -148,7 +148,7 @@ protected:
 
 private:
   // Data members
-  PDGNumber particle_ {PDG_NEUTRON}; //!< Type of particle emitted
+  ParticleType particle_;            //!< Type of particle emitted
   UPtrSpace space_;                  //!< Spatial distribution
   UPtrAngle angle_;                  //!< Angular distribution
   UPtrDist energy_;                  //!< Energy distribution

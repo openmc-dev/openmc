@@ -8,7 +8,7 @@ from numpy.ctypeslib import as_array
 
 from openmc.exceptions import AllocationError, InvalidIDError
 from openmc.data.function import INTERPOLATION_SCHEME
-from openmc import PDGNumber
+from openmc import ParticleType
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
@@ -601,7 +601,7 @@ class ParticleFilter(Filter):
         particle_i = np.zeros((self.n_bins,), dtype=c_int32)
         _dll.openmc_particle_filter_get_bins(
             self._index, particle_i.ctypes.data_as(POINTER(c_int32)))
-        return [PDGNumber(i) for i in particle_i]
+        return [ParticleType(i) for i in particle_i]
 
 
 class PolarFilter(Filter):

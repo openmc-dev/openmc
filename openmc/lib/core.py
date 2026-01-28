@@ -514,7 +514,7 @@ def sample_external_source(
     return openmc.ParticleList([openmc.SourceParticle(
             r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
             delayed_group=site.delayed_group, surf_id=site.surf_id,
-            particle=openmc.PDGNumber(site.particle)
+            particle=openmc.ParticleType(site.particle)
         )
         for site in sites_array
     ])

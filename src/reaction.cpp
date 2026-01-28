@@ -70,8 +70,9 @@ Reaction::Reaction(
 
   if (settings::use_decay_photons) {
     // Remove photon products for D1S method
-    products_.erase(std::remove_if(products_.begin(), products_.end(),
-                      [](const auto& p) { return p.particle_ == PDG_PHOTON; }),
+    products_.erase(
+      std::remove_if(products_.begin(), products_.end(),
+        [](const auto& p) { return p.particle_.pdg_number() == PDG_PHOTON; }),
       products_.end());
 
     // Determine product for D1S method

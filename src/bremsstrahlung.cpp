@@ -31,13 +31,13 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   if (p.material() == MATERIAL_VOID)
     return;
 
-  int photon = transport_index_from_pdg(PDG_PHOTON);
+  int photon = transport_index(ParticleType {PDG_PHOTON});
   if (p.E() < settings::energy_cutoff[photon])
     return;
 
   // Get bremsstrahlung data for this material and particle type
   BremsstrahlungData* mat;
-  if (p.type() == PDG_POSITRON) {
+  if (p.type().pdg_number() == PDG_POSITRON) {
     mat = &model::materials[p.material()]->ttb_->positron;
   } else {
     mat = &model::materials[p.material()]->ttb_->electron;
@@ -119,7 +119,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
       }
 
       // Create secondary photon
-      p.create_secondary(p.wgt(), p.u(), w, PDG_PHOTON);
+      p.create_secondary(p.wgt(), p.u(), w, ParticleType {PDG_PHOTON});
       *E_lost += w;
     }
   }

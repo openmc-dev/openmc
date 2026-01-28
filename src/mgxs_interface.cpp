@@ -244,7 +244,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
 void put_mgxs_header_data_to_globals()
 {
   // Get the minimum and maximum energies
-  int neutron = transport_index_from_pdg(PDG_NEUTRON);
+  int neutron = transport_index(ParticleType {PDG_NEUTRON});
   data::energy_min[neutron] = data::mg.energy_bins_.back();
   data::energy_max[neutron] = data::mg.energy_bins_.front();
 

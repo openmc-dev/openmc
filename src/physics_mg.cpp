@@ -136,7 +136,7 @@ void create_fission_sites(Particle& p)
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
-    site.particle = PDG_NEUTRON;
+    site.particle = ParticleType {PDG_NEUTRON};
     site.time = p.time();
     site.wgt = 1. / weight;
 
@@ -171,8 +171,7 @@ void create_fission_sites(Particle& p)
       site.time -= std::log(prn(p.current_seed())) / decay_rate;
 
       // Reject site if it exceeds time cutoff
-      double t_cutoff =
-        settings::time_cutoff[transport_index_from_pdg(site.particle)];
+      double t_cutoff = settings::time_cutoff[transport_index(site.particle)];
       if (site.time > t_cutoff) {
         continue;
       }

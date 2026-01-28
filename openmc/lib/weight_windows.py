@@ -5,7 +5,7 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
-from openmc import PDGNumber
+from openmc import ParticleType
 from openmc.exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
@@ -127,7 +127,7 @@ class WeightWindows(_FortranObjectWithID):
         ID of the weight windows object
     mesh : openmc.lib.Mesh
         Mesh used for the weight windows
-    particle : openmc.PDGNumber
+    particle : openmc.ParticleType
         The particle type to which these weight windows apply (PDG-backed)
     energy_bounds : numpy.ndarray
         The energy bounds for the weight windows
@@ -203,11 +203,11 @@ class WeightWindows(_FortranObjectWithID):
     def particle(self):
         val = c_int32()
         _dll.openmc_weight_windows_get_particle(self._index, val)
-        return PDGNumber(val.value)
+        return ParticleType(val.value)
 
     @particle.setter
     def particle(self, p):
-        p = PDGNumber(p)
+        p = ParticleType(p)
         _dll.openmc_weight_windows_set_particle(self._index, int(p))
 
     @property
@@ -294,16 +294,16 @@ class WeightWindows(_FortranObjectWithID):
                                                 ratio)
 
     @classmethod
-    def from_tally(cls, tally, particle=PDGNumber.NEUTRON):
+    def from_tally(cls, tally, particle=ParticleType.NEUTRON):
         """Create an instance of the WeightWindows class based on the specified tally.
 
         Parameters
         ----------
         tally : openmc.lib.Tally
             The tally used to create the WeightWindows instance.
-        particle : openmc.PDGNumber or str or int, optional
+        particle : openmc.ParticleType or str or int, optional
             The particle type to use for the WeightWindows instance. Should be
-            specified as an instance of PDGNumber, a PDG code, or as a string
+            specified as an instance of ParticleType, a PDG code, or as a string
             with a value of 'neutron' or 'photon'.
 
         Returns
@@ -314,7 +314,7 @@ class WeightWindows(_FortranObjectWithID):
         Raises
         ------
         ValueError
-            If the particle parameter is not an instance of PDGNumber, a string,
+            If the particle parameter is not an instance of ParticleType, a string,
             or an integer PDG code.
         ValueError
             If the particle parameter is not a valid particle type (i.e., not 'neutron'
@@ -326,18 +326,18 @@ class WeightWindows(_FortranObjectWithID):
             If the tally does not have a MeshFilter.
         """
         # do some checks on particle value
-        if not isinstance(particle, (PDGNumber, str, int)):
+        if not isinstance(particle, (ParticleType, str, int)):
             raise ValueError(
-                f"Parameter 'particle' must be {PDGNumber} or one of ('neutron', 'photon')."
+                f"Parameter 'particle' must be {ParticleType} or one of ('neutron', 'photon')."
             )
 
         # convert particle type if needed
         if isinstance(particle, str):
-            particle = PDGNumber(particle)
+            particle = ParticleType(particle)
         else:
-            particle = PDGNumber(particle)
+            particle = ParticleType(particle)
 
-        if particle not in (PDGNumber.NEUTRON, PDGNumber.PHOTON):
+        if particle not in (ParticleType.NEUTRON, ParticleType.PHOTON):
             raise ValueError('Weight windows can only be applied for neutrons or photons')
 
         try:

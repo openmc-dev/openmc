@@ -49,7 +49,7 @@ public:
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
   //! \return Whether a secondary particle was created
-  bool create_secondary(double wgt, Direction u, double E, PDGNumber type);
+  bool create_secondary(double wgt, Direction u, double E, ParticleType type);
 
   //! split a particle
   //

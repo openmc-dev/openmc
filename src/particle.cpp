@@ -48,15 +48,15 @@ double Particle::speed() const
   if (settings::run_CE) {
     // Determine mass in eV/c^2
     double mass;
-    switch (this->type().value) {
-    case PDG_NEUTRON.value:
+    switch (this->type().pdg_number()) {
+    case PDG_NEUTRON:
       mass = MASS_NEUTRON_EV;
       break;
-    case PDG_PHOTON.value:
+    case PDG_PHOTON:
       mass = 0.0;
       break;
-    case PDG_ELECTRON.value:
-    case PDG_POSITRON.value:
+    case PDG_ELECTRON:
+    case PDG_POSITRON:
       mass = MASS_ELECTRON_EV;
       break;
     default:
@@ -75,11 +75,11 @@ double Particle::speed() const
 }
 
 bool Particle::create_secondary(
-  double wgt, Direction u, double E, PDGNumber type)
+  double wgt, Direction u, double E, ParticleType type)
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
-  int idx = transport_index_from_pdg(type);
+  int idx = transport_index(type);
   if (idx == C_NONE) {
     return false;
   }
@@ -241,7 +241,8 @@ void Particle::event_advance()
   boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
-  if (type() == PDG_ELECTRON || type() == PDG_POSITRON) {
+  if (type() == ParticleType {PDG_ELECTRON} ||
+      type() == ParticleType {PDG_POSITRON}) {
     collision_distance() = material() == MATERIAL_VOID ? INFINITY : 0.0;
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;
@@ -250,7 +251,7 @@ void Particle::event_advance()
   }
 
   double speed = this->speed();
-  double time_cutoff = settings::time_cutoff[transport_index_from_pdg(type())];
+  double time_cutoff = settings::time_cutoff[transport_index(type())];
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
@@ -275,7 +276,8 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE && type() == PDG_NEUTRON) {
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      type() == ParticleType {PDG_NEUTRON}) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -336,7 +338,8 @@ void Particle::event_cross_surface()
 void Particle::event_collide()
 {
   // Score collision estimate of keff
-  if (settings::run_mode == RunMode::EIGENVALUE && type() == PDG_NEUTRON) {
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      type() == ParticleType {PDG_NEUTRON}) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
   }
 
@@ -374,7 +377,8 @@ void Particle::event_collide()
     }
   }
 
-  if (!model::active_pulse_height_tallies.empty() && type() == PDG_PHOTON) {
+  if (!model::active_pulse_height_tallies.empty() &&
+      type() == ParticleType {PDG_PHOTON}) {
     pht_collision_energy();
   }
 
@@ -445,7 +449,7 @@ void Particle::event_revive_from_secondary()
 
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&
-        this->type() == PDG_PHOTON) {
+        this->type() == ParticleType {PDG_PHOTON}) {
       // Since the birth cell of the particle has not been set we
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.
@@ -528,7 +532,7 @@ void Particle::pht_collision_energy()
 
     // If the energy of the particle is below the cutoff, it will not be sampled
     // so its energy is added to the pulse-height in the cell
-    int photon = transport_index_from_pdg(PDG_PHOTON);
+    int photon = transport_index(ParticleType {PDG_PHOTON});
     if (E() < settings::energy_cutoff[photon]) {
       pht_storage()[index] += E();
     }
@@ -827,7 +831,7 @@ void Particle::write_restart() const
       break;
     }
     write_dataset(file_id, "id", id());
-    write_dataset(file_id, "type", type().value);
+    write_dataset(file_id, "type", type().pdg_number());
 
     int64_t i = current_work();
     if (settings::run_mode == RunMode::EIGENVALUE) {

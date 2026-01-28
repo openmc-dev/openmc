@@ -321,7 +321,7 @@ inline void ensure_mcpl_ready_or_fatal()
 SourceSite mcpl_particle_to_site(const mcpl_particle_repr_t* particle_repr)
 {
   SourceSite site;
-  site.particle = PDGNumber {static_cast<int32_t>(particle_repr->pdgcode)};
+  site.particle = ParticleType {static_cast<int32_t>(particle_repr->pdgcode)};
 
   // Copy position and direction
   site.r.x = particle_repr->position[0];
@@ -427,7 +427,7 @@ void write_mcpl_source_bank_internal(mcpl_outfile_t* file_id,
         p_repr.ekin = site.E * 1e-6;
         p_repr.time = site.time * 1e3;
         p_repr.weight = site.wgt;
-        p_repr.pdgcode = site.particle.value;
+        p_repr.pdgcode = site.particle.pdg_number();
         g_mcpl_api->add_particle(file_id, &p_repr);
       }
     }
@@ -584,7 +584,7 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
       p_repr.ekin = site.E * 1e-6;
       p_repr.time = site.time * 1e3;
       p_repr.weight = site.wgt;
-      p_repr.pdgcode = site.particle.value;
+      p_repr.pdgcode = site.particle.pdg_number();
       g_mcpl_api->add_particle(file_id, &p_repr);
     }
   } else {

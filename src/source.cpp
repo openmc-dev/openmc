@@ -39,14 +39,14 @@ namespace openmc {
 
 namespace {
 
-void validate_pdg_or_fatal(PDGNumber pdg, const std::string& context)
+void validate_pdg_or_fatal(ParticleType pdg, const std::string& context)
 {
-  if (is_transport_pdg(pdg))
+  if (is_transportable(pdg))
     return;
 
   fatal_error(
     fmt::format("Unsupported source particle type '{}' (PDG {}) in {}.",
-      pdg_number_to_str(pdg), pdg.value, context));
+      pdg.str(), pdg.pdg_number(), context));
 }
 
 } // namespace
@@ -299,9 +299,10 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
   // Check for particle type
   if (check_for_node(node, "particle")) {
     auto temp_str = get_node_value(node, "particle", false, true);
-    particle_ = str_to_pdg_number(temp_str);
-    if (particle_ == PDG_PHOTON || particle_ == PDG_ELECTRON ||
-        particle_ == PDG_POSITRON) {
+    particle_ = ParticleType {temp_str};
+    if (particle_ == ParticleType {PDG_PHOTON} ||
+        particle_ == ParticleType {PDG_ELECTRON} ||
+        particle_ == ParticleType {PDG_POSITRON}) {
       settings::photon_transport = true;
     }
   }
@@ -395,7 +396,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   // Sample energy and time for neutron and photon sources
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
-    auto p = transport_index_from_pdg(particle_);
+    auto p = transport_index(particle_);
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
     if (energy_ptr) {
       auto energies = xt::adapt(energy_ptr->x());

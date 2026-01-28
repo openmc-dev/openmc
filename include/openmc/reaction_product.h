@@ -10,7 +10,7 @@
 #include "openmc/chain.h"
 #include "openmc/endf.h"
 #include "openmc/memory.h" // for unique_ptr
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/vector.h" // for vector
 
 namespace openmc {
@@ -49,7 +49,7 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
-  PDGNumber particle_;         //!< Particle PDG
+  ParticleType particle_;      //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode
   double decay_rate_; //!< Decay rate (for delayed neutron precursors) in [1/s]
   unique_ptr<Function1D> yield_;      //!< Yield as a function of energy

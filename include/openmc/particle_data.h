@@ -3,7 +3,7 @@
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
-#include "openmc/pdg_number.h"
+#include "openmc/particle_type.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include "openmc/tallies/filter_match.h"
@@ -46,7 +46,7 @@ struct SourceSite {
   double wgt {1.0};
   int delayed_group {0};
   int surf_id {SURFACE_NONE};
-  PDGNumber particle;
+  ParticleType particle;
 
   // Extra attributes that don't show up in source written to file
   int parent_nuclide {-1};
@@ -68,7 +68,7 @@ struct CollisionTrackSite {
   int material_id {0};
   int universe_id {0};
   int n_collision {0};
-  PDGNumber particle;
+  ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
 };
@@ -87,7 +87,7 @@ struct TrackState {
 
 //! Full history of a single particle's track states
 struct TrackStateHistory {
-  PDGNumber particle;
+  ParticleType particle;
   std::vector<TrackState> states;
 };
 
@@ -494,7 +494,7 @@ private:
   MacroXS macro_xs_;
   CacheDataMG mg_xs_cache_;
 
-  PDGNumber type_ {PDG_NEUTRON};
+  ParticleType type_;
 
   double E_;
   double E_last_;
@@ -590,10 +590,8 @@ public:
   const CacheDataMG& mg_xs_cache() const { return mg_xs_cache_; }
 
   // Particle type (n, p, e, gamma, etc)
-  PDGNumber& type() { return type_; }
-  const PDGNumber& type() const { return type_; }
-  PDGNumber& pdg() { return type_; }
-  const PDGNumber& pdg() const { return type_; }
+  ParticleType& type() { return type_; }
+  const ParticleType& type() const { return type_; }
 
   // Current particle energy, energy before collision,
   // and corresponding multigroup group indices. Energy

@@ -1,5 +1,4 @@
 from collections import defaultdict
-import os
 from pathlib import Path
 
 import pytest
@@ -8,11 +7,7 @@ import numpy as np
 
 import openmc
 from openmc.data import decay_photon_energy
-from openmc.data import IncidentPhoton
-from openmc.data.library import DataLibrary
 from openmc.deplete import Chain
-import openmc.data.photon_attenuation as photon_attenuation
-from openmc.data.photon_attenuation import linear_attenuation_xs
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -824,131 +819,3 @@ def test_material_from_constructor():
     assert mat2.density == 1e-7
     assert mat2.density_units == "g/cm3"
     assert mat2.nuclides == []
-
-# test of the photon mass attenuation distribution generator
-
-@pytest.fixture(scope="module")
-def xs_filename():
-    xs = os.environ.get("OPENMC_CROSS_SECTIONS")
-    if xs is None:
-        pytest.skip("OPENMC_CROSS_SECTIONS not set.")
-    return xs
-
-
-@pytest.fixture(scope="module")
-def elements_photon_xs(xs_filename):
-    """Dictionary of IncidentPhoton data indexed by atomic symbol."""
-    lib = DataLibrary.from_xml(xs_filename)
-
-    elements = ["H", "O", "Al", "C", "Ag", "U", "Pb", "V"]
-    data = {}
-    for symbol in elements:
-        entry = lib.get_by_material(symbol, data_type="photon")
-        if entry is None:
-            continue
-        data[symbol] = IncidentPhoton.from_hdf5(entry["path"])
-    return data
-
-
-
-def test_photon_mass_attenuation_returns_none_when_no_photon_data(monkeypatch):
-    """If no constituent has photon data, should return None."""
-    openmc.reset_auto_ids()
-    # Make both element lookups return None
-    monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda _: None)
-
-    mat = openmc.Material()
-    mat.add_element("C", 1.0)
-    mat.add_element("Pb", 1.0)
-    mat.set_density("g/cm3", 1.0)
-
-    out = mat.get_photon_mass_attenuation()
-    assert out is None
-
-
-@pytest.mark.parametrize("symbol", ["C", "Pb"])
-def test_photon_mass_attenuation_single_element_matches_linear_over_rho(
-    elements_photon_xs, symbol, monkeypatch
-):
-    """For a pure element: μ/ρ(E) == (N*σ(E))/ρ == linear_attenuation_xs(E)/ρ."""
-    openmc.reset_auto_ids()
-    element = elements_photon_xs.get(symbol)
-    if element is None:
-        pytest.skip(f"No photon data for {symbol} in cross section library.")
-
-    # Route _get_photon_data to preloaded element data
-    monkeypatch.setattr(photon_attenuation, "_get_photon_data", lambda name: element if name == symbol else None)
-
-    if symbol == "Pb":
-        rho = 11.34
-    elif symbol == "C":
-        rho = 2.0
-    else:
-        rho = 1.0
-
-    mat = openmc.Material()
-    mat.add_element(symbol, 1.0)
-    mat.set_density("g/cm3", rho)
-
-    xs = linear_attenuation_xs(symbol)
-    if xs is None:
-        pytest.skip(f"No relevant photon reactions for {symbol}.")
-
-    mu_over_rho = mat.get_photon_mass_attenuation()
-    assert mu_over_rho is not None
-
-    energy = np.logspace(2, 6, 80)
-
-
-    rho = mat.get_mass_density()
-    n_el = mat.get_element_atom_densities()[symbol]
-    expected = xs(energy) * (n_el / rho)
-    actual = mu_over_rho(energy)
-
-
-
-    assert np.allclose(actual, expected)
-
-
-def test_photon_mass_attenuation_mixture_matches_explicit_sum(
-    elements_photon_xs, monkeypatch
-):
-    """For a mixture: μ/ρ(E) == (Σ_i N_i σ_i(E))/ρ."""
-    openmc.reset_auto_ids()
-    c_data = elements_photon_xs.get("C")
-    pb_data = elements_photon_xs.get("Pb")
-    if c_data is None or pb_data is None:
-        pytest.skip("C or Pb photon data not available in cross section library.")
-
-    def _fake_get_photon_data(name: str):
-        if name == "C":
-            return c_data
-        if name == "Pb":
-            return pb_data
-        return None
-
-    monkeypatch.setattr(photon_attenuation, "_get_photon_data", _fake_get_photon_data)
-
-    rho = 7.0
-
-    mat = openmc.Material()
-    mat.add_element("C", 0.5)
-    mat.add_element("Pb", 0.5)
-    mat.set_density("g/cm3", rho)
-
-    mu_over_rho = mat.get_photon_mass_attenuation()
-    if mu_over_rho is None:
-        pytest.skip("No relevant photon reactions for C/Pb.")
-
-    # Explicit construction using the same building blocks:
-    el_dens = mat.get_element_atom_densities()
-    xs_c = linear_attenuation_xs("C")
-    xs_pb = linear_attenuation_xs("Pb")
-    if xs_c is None or xs_pb is None:
-        pytest.skip("No relevant photon reactions for C or Pb.")
-
-    energy = np.logspace(2, 6, 80)
-    expected = (el_dens["C"] * xs_c(energy) + el_dens["Pb"] * xs_pb(energy)) / rho
-    actual = mu_over_rho(energy)
-
-    assert np.allclose(actual, expected)

@@ -25,9 +25,8 @@ from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, BARN_PER_CM_SQ, JOULE_PER_EV
-from openmc.data.function import Combination, Tabulated1D, Sum
+from openmc.data.function import Combination, Tabulated1D
 from openmc.data import mu_en_coefficients, dose_coefficients
-from openmc.data.photon_attenuation import linear_attenuation_xs
 
 
 # Units for density supported by OpenMC

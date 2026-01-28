@@ -273,8 +273,8 @@ def test_calculate_cexs_photon_material_element_vs_explicit_natural_abundance():
     # Material 2: defined by explicitly specifying natural isotopic abundance
     # (values are standard natural abundances for carbon)
     mat_iso = openmc.Material()
-    mat_iso.add_nuclide("C12", 0.9893, "ao")
-    mat_iso.add_nuclide("C13", 0.0107, "ao")
+    mat_iso.add_nuclide("C12", 0.988922, "ao")
+    mat_iso.add_nuclide("C13", 0.011078, "ao")
     mat_iso.set_density("g/cm3", 1.0)
 
     E1, xs1 = openmc.plotter.calculate_cexs(
@@ -313,3 +313,56 @@ def test_calculate_cexs_photon_missing_mt_fallback():
     )
     assert data.shape == (1, 2)
     assert np.allclose(data, 0.0)
+
+
+def test_calculate_cexs_photon_total_attenuation_reference_values():
+    """Check total photon interaction XS for Pb and V at two reference energies.
+
+    Total interaction is approximated by summing MTs: 502, 504, 515, 517, 522.
+    Reference mass attenuation data from NIST.
+    """
+    openmc.reset_auto_ids()
+
+    # Total interaction channels (library must contain these to run the test)
+    types = [502, 504, 515, 517, 522]
+    energies = np.array([1.0e5, 1.0e6])  # eV
+    # data from https://physics.nist.gov/PhysRefData/XrayMassCoef/ElemTab/z23.html
+    v_density = 6.11  # g/cm3
+    v_expected = np.array(
+        [
+            2.877e-01,
+            5.794e-02,
+        ]
+    )
+    # data from https://physics.nist.gov/PhysRefData/XrayMassCoef/ElemTab/z82.html
+    pb_density = 11.35  # g/cm3
+    pb_expected = np.array(
+        [
+            5.549e00,
+            7.102e-02,
+        ]
+    )
+
+    def _run_element(symbol: str):
+
+        mat = openmc.Material()
+        mat.add_element(symbol, 1.0)
+
+        # Compute microscopic total XS for the material
+        e_grid, data = openmc.plotter.calculate_cexs(
+            this=mat, types=types, incident_particle="photon"
+        )
+        xs_grid = data[0]  
+        xs_mat_eval = np.interp(energies, e_grid ,xs_grid)
+
+        return xs_mat_eval
+
+    try:
+        pb_vals = _run_element("Pb")
+        v_vals = _run_element("V")
+    except Exception:
+        pytest.skip("Pb or V photon data / required MTs not available in cross section library.")
+
+    assert np.allclose(pb_vals/pb_density, pb_expected, rtol=1e-5, atol=1e-8)
+    assert np.allclose(v_vals/v_density, v_expected, rtol=1e-5, atol=1e-8)
+

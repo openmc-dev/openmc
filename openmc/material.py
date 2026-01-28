@@ -413,69 +413,6 @@ class Material(IDManagerMixin):
 
         return combined
 
-    def get_photon_mass_attenuation(self) -> Sum | None:
-        """Return the photon mass attenuation distribution μ/ρ(E) [cm^2/g].
-
-        the linear attenuation coefficient of the material is given by:
-            μ(E) = Σ_el N_el * σ_el(E)
-        with N_el in [atom/b-cm] and σ_el(E) in [barn/atom] => μ in [1/cm].
-
-        The mass attenuation coefficients are given by:
-            μ/ρ(E) = μ(E) / ρ
-        => [1/cm] / [g/cm^3] = [cm^2/g]
-
-        Parameters
-        ----------
-        self : openmc.Material
-
-        Returns
-        -------
-        openmc.data.Sum or None
-            Sum of Tabulated1D terms giving μ/ρ(E) in [cm^2/g], or None if no photon
-            data exist for any constituents.
-        """
-        el_dens = self.get_element_atom_densities()
-        if not el_dens:
-            raise ValueError(
-                f'For Material ID="{self.id}" no element densities are defined.'
-            )
-
-        # Mass density of the material [g/cm^3]
-        rho = self.get_mass_density()  # g/cm^3
-
-        if rho is None or rho <= 0.0:
-            raise ValueError(
-                f'Material ID="{self.id}" has non-positive mass density; '
-                "cannot compute mass attenuation coefficient."
-            )
-
-
-        inv_rho = 1.0 / rho
-        terms = []
-
-        for el, n_el in el_dens.items():
-            xs_sum = linear_attenuation_xs(el)  # barns/atom functions vs E
-            if xs_sum is None or n_el == 0.0:
-                continue
-
-            scale = float(n_el) * inv_rho  # (atom/b-cm) / (g/cm^3) = (atom*cm^2)/(barn*g)
-
-            for f in xs_sum.functions:
-                if not isinstance(f, Tabulated1D):
-                    raise TypeError(
-                        f"Expected Tabulated1D photon XS for element {el}, got {type(f)!r}."
-                    )
-                # keep x, breakpoints, interpolation; scale y. 
-                terms.append(
-                    Tabulated1D(
-                        f.x,
-                        np.asarray(f.y, dtype=float) * scale,
-                        breakpoints=f.breakpoints,
-                        interpolation=f.interpolation,
-                    )
-                )
-
-        return Sum(terms) if terms else None
 
 
     def get_photon_contact_dose_rate(self, dose_quantity:str = "absorbed-air", build_up:float = 2.0, by_nuclide: bool = False) -> float | dict[str, float]:
@@ -534,23 +471,18 @@ class Material(IDManagerMixin):
         cv.check_value("dose_quantity", dose_quantity, ['absorbed-air', 'effective'])
         cv.check_type("build_up", build_up, float)
 
-        # Mass density of the material [g/cm^3]
-        rho = self.get_mass_density()
-
-        if rho is None or rho <= 0.0:
-            raise ValueError(
-                f'Material ID="{self.id}" has non-positive mass density; '
-                "cannot compute mass attenuation coefficient."
-            )
-
         # photon mass attenuation distribution as a function of energy
-        # distribution values in [cm2/g]
-        mass_attenuation_dist = self.get_photon_mass_attenuation()
-        if mass_attenuation_dist is None:
+        # distribution values in [cm-2]
+
+        mu_e_vals, cexs = _calculate_cexs_elem_mat(
+            this=self,
+            types=[502, 504, 515, 517, 522],
+            incident_particle="photon"
+        )
+        mu_y_vals = np.array(cexs[0])  # total mass attenuation coeffs
+        if mu_y_vals is None:
             raise ValueError("Cannot compute photon mass attenuation for material")
-        mass_attenuation_e_lists = []
-        for photon_xs in mass_attenuation_dist.functions:
-            mass_attenuation_e_lists.append(photon_xs.x)
+        linear_attenuation_dist = Tabulated1D(mu_e_vals, mu_y_vals, breakpoints=[len(mu_e_vals)], interpolation=[5])
 
         # CDR computation
         cdr = {}
@@ -573,7 +505,6 @@ class Material(IDManagerMixin):
                 * geometry_factor_slab
                 * seconds_per_hour
                 * grams_per_kg
-                * (1 / rho)
                 * BARN_PER_CM_SQ
                 * JOULE_PER_EV
             )
@@ -589,7 +520,6 @@ class Material(IDManagerMixin):
                 * geometry_factor_slab
                 * seconds_per_hour
                 * sv_per_psv
-                * (1 / rho)
                 * BARN_PER_CM_SQ
             )
 
@@ -611,7 +541,7 @@ class Material(IDManagerMixin):
                 p_vals = np.array(photon_source_per_atom.p)
 
                 e_lists = [e_vals, response_f.x]
-                e_lists.extend(mass_attenuation_e_lists)
+                e_lists.append(mu_e_vals)
 
                 # clip distributions for values outside the tabulated values
                 left_bound = max(a.min() for a in e_lists)
@@ -628,7 +558,7 @@ class Material(IDManagerMixin):
                 )
 
             if isinstance(photon_source_per_atom, Discrete):
-                mu_vals = np.array(mass_attenuation_dist(e_vals))
+                mu_vals = np.array(linear_attenuation_dist(e_vals))
                 if np.any(mu_vals <= 0.0):
                     zero_vals = e_vals[mu_vals <= 0.0]
                     raise ValueError(
@@ -657,7 +587,7 @@ class Material(IDManagerMixin):
                     raise ValueError("Not enough overlapping energy points to compute CDR")
 
                 # check for negative denominator valuenters
-                mu_vals_check = np.array(mass_attenuation_dist(e_union))
+                mu_vals_check = np.array(linear_attenuation_dist(e_union))
                 if np.any(mu_vals_check <= 0.0):
                     zero_vals = e_union[mu_vals_check <= 0.0]
                     raise ValueError(
@@ -670,13 +600,13 @@ class Material(IDManagerMixin):
                         e_vals, e_vals, breakpoints=[len(e_vals)], interpolation=[2]
                     )
                     integrand_operator = Combination(
-                        functions=[response_f, e_p_dist, e_e_dist, mass_attenuation_dist],
+                        functions=[response_f, e_p_dist, e_e_dist, linear_attenuation_dist],
                         operations=[np.multiply, np.multiply, np.divide],
                     )
                 elif dose_quantity == 'effective':
                     # units [pSv g atoms-1 s-1]
                     integrand_operator = Combination(
-                        functions=[response_f, e_p_dist,  mass_attenuation_dist],
+                        functions=[response_f, e_p_dist,  linear_attenuation_dist],
                         operations=[np.multiply,  np.divide],
                     )
 

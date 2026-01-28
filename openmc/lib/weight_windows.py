@@ -303,8 +303,8 @@ class WeightWindows(_FortranObjectWithID):
             The tally used to create the WeightWindows instance.
         particle : openmc.ParticleType or str or int, optional
             The particle type to use for the WeightWindows instance. Should be
-            specified as an instance of ParticleType, a PDG code, or as a string
-            with a value of 'neutron' or 'photon'.
+            specified as an instance of ParticleType, a PDG number, or as a
+            name.
 
         Returns
         -------
@@ -315,7 +315,7 @@ class WeightWindows(_FortranObjectWithID):
         ------
         ValueError
             If the particle parameter is not an instance of ParticleType, a string,
-            or an integer PDG code.
+            or an integer PDG number.
         ValueError
             If the particle parameter is not a valid particle type (i.e., not 'neutron'
             or 'photon').

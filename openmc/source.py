@@ -2,9 +2,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import IntEnum
-from numbers import Real, Integral
+from numbers import Real
 from pathlib import Path
-import re
 import warnings
 from typing import Any
 
@@ -16,7 +15,7 @@ import pandas as pd
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-from openmc.data import gnds_name
+from openmc.data import gnds_name, zam, ATOMIC_SYMBOL
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_elem_list, get_text
@@ -309,7 +308,7 @@ class IndependentSource(SourceBase):
 
         .. versionadded:: 0.14.0
     particle : str or int or openmc.ParticleType
-        Source particle type (alias, PDG code, or GNDS nuclide name)
+        Source particle type (alias, PDG number, or GNDS nuclide name)
     constraints : dict
         Constraints on sampled source particles. Valid keys include
         'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
@@ -414,13 +413,7 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        if isinstance(particle, str):
-            pdg = _particle_pdg_from_string(particle)
-        elif isinstance(particle, (Integral, ParticleType)):
-            pdg = int(ParticleType(particle))
-        else:
-            raise TypeError("Particle must be a string, int, or ParticleType")
-        self._particle = particle_pdg_to_str(pdg)
+        self._particle = ParticleType(particle).name
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
@@ -911,7 +904,7 @@ _PDG_NAME = {
     22: 'photon',
     11: 'electron',
     -11: 'positron',
-    2212: 'proton',
+    2212: 'H1',
 }
 
 _ALIAS_PDG = {
@@ -941,122 +934,9 @@ _LEGACY_PARTICLE_INDEX = {
     3: -11,
 }
 
-_GNDS_RE = re.compile(r'^([A-Z][a-z]?)(\d+)(?:_m(\d+))?$')
-
-_ATOMIC_SYMBOL = (
-    '', 'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al',
-    'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe',
-    'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr',
-    'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn',
-    'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm',
-    'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta', 'W',
-    'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn',
-    'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf',
-    'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds',
-    'Rg', 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og',
-)
-
-_ATOMIC_NUMBER = {symbol: idx for idx, symbol in enumerate(_ATOMIC_SYMBOL)
-                  if symbol}
-
-
-def _is_integer_string(value: str) -> bool:
-    if not value:
-        return False
-    if value[0] in ('+', '-'):
-        return value[1:].isdigit()
-    return value.isdigit()
-
-
-def _particle_pdg_from_zam(Z: int, A: int, m: int) -> int:
-    if Z <= 0 or Z > 999 or A <= 0 or A > 999 or m < 0 or m > 9:
-        raise ValueError('Invalid Z/A/m for nuclear PDG code.')
-    return 1000000000 + Z * 10000 + A * 10 + m
-
-
-def _particle_pdg_from_nuclide_name(name: str) -> int:
-    match = _GNDS_RE.fullmatch(name)
-    if not match:
-        raise ValueError(f"Invalid nuclide name: {name}")
-
-    symbol, mass_str, metastable_str = match.groups()
-    if symbol not in _ATOMIC_NUMBER:
-        raise ValueError(f"Invalid nuclide name: {name}")
-
-    mass_number = int(mass_str)
-    if mass_number <= 0 or mass_number > 999:
-        raise ValueError(f"Invalid nuclide name: {name}")
-
-    metastable = int(metastable_str) if metastable_str else 0
-    if metastable < 0 or metastable > 9:
-        raise ValueError(f"Invalid nuclide name: {name}")
-
-    return _particle_pdg_from_zam(_ATOMIC_NUMBER[symbol], mass_number, metastable)
-
-
-def _is_nuclear_pdg(pdg: int) -> bool:
-    if pdg < 1000000000:
-        return False
-    Z = (pdg // 10000) % 1000
-    A = (pdg // 10) % 1000
-    return Z > 0 and A > 0
-
-
-def _nuclide_name_from_particle_pdg(pdg: int) -> str:
-    if not _is_nuclear_pdg(pdg):
-        raise ValueError(f"PDG code is not a nuclear code: {pdg}")
-
-    m = pdg % 10
-    A = (pdg // 10) % 1000
-    Z = (pdg // 10000) % 1000
-
-    if Z <= 0 or Z >= len(_ATOMIC_SYMBOL) or A <= 0 or A > 999:
-        raise ValueError(f"Invalid nuclear PDG code: {pdg}")
-
-    name = f'{_ATOMIC_SYMBOL[Z]}{A}'
-    if m > 0:
-        name += f'_m{m}'
-    return name
-
-
-def _particle_pdg_from_string(value: str) -> int:
-    if not isinstance(value, str):
-        raise TypeError('Particle identifier must be a string.')
-
-    s = value.strip()
-    if not s:
-        raise ValueError('Particle identifier cannot be empty.')
-
-    lower = s.lower()
-    if lower.startswith('pdg:'):
-        code_str = lower[4:]
-        if not _is_integer_string(code_str):
-            raise ValueError(f'Invalid PDG code: {code_str}')
-        return int(code_str)
-
-    if lower in _ALIAS_PDG:
-        return _ALIAS_PDG[lower]
-
-    if _is_integer_string(s):
-        return int(s)
-
-    return _particle_pdg_from_nuclide_name(s)
-
-
-def particle_pdg_to_str(pdg: int) -> str:
-    """Return canonical string for a PDG code."""
-    if pdg in _PDG_NAME:
-        return _PDG_NAME[pdg]
-
-    if _is_nuclear_pdg(pdg):
-        return _nuclide_name_from_particle_pdg(pdg)
-
-    return f'pdg:{pdg}'
-
-
 class ParticleType(IntEnum):
     """
-    IntEnum class representing a particle type using PDG codes.
+    IntEnum class representing a particle type using PDG numbers.
     """
     NEUTRON = 2112
     PHOTON = 22
@@ -1071,7 +951,7 @@ class ParticleType(IntEnum):
     def _missing_(cls, value):
         if isinstance(value, str):
             try:
-                int_value = _particle_pdg_from_string(value)
+                int_value = cls._pdg_number_from_string(value)
             except (TypeError, ValueError):
                 return None
         else:
@@ -1092,18 +972,61 @@ class ParticleType(IntEnum):
         obj._name_ = None
         return obj
 
+    @staticmethod
+    def _pdg_number_from_string(value: str) -> int:
+        s = value.strip()
+        if not s:
+            raise ValueError('Particle identifier cannot be empty.')
+
+        lower = s.lower()
+        if lower.startswith('pdg:'):
+            code_str = lower[4:]
+            try:
+                return int(code_str)
+            except ValueError:
+                raise ValueError(f'Invalid PDG number: {code_str}')
+
+        if lower in _ALIAS_PDG:
+            return _ALIAS_PDG[lower]
+
+        # Assume it is a GNDS nuclide name
+        Z, A, m = zam(s)
+        if Z <= 0 or Z > 999 or A <= 0 or A > 999 or m < 0 or m > 9:
+            raise ValueError('Invalid Z/A/m for nuclear PDG number.')
+        return 1000000000 + Z * 10000 + A * 10 + m
+
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the ParticleType instance.
+        return f'<ParticleType: {str(self)} (PDG={self.value})>'
 
-        Returns:
-            str: Canonical string for the particle type.
-        """
-        return particle_pdg_to_str(self.value)
-
-    # needed for < Python 3.11
     def __str__(self) -> str:
-        return self.__repr__()
+        """Returns a canonical string representation of the particle type."""
+        if self.value in _PDG_NAME:
+            return _PDG_NAME[self.value]
+
+        if (zam := self.zam) is not None:
+            Z, A, m = zam
+            if Z <= 0 or Z > max(ATOMIC_SYMBOL) or A <= 0 or A > 999:
+                raise ValueError(f"Invalid nuclear PDG number: {self.value}")
+            return gnds_name(Z, A, m)
+
+        return f'pdg:{self.value}'
+
+    @property
+    def zam(self) -> tuple[int, int, int] | None:
+        """Returns the (Z, A, m) tuple for nuclear particles."""
+        if self.value < 1000000000:
+            return None
+        Z = (self.value // 10000) % 1000
+        A = (self.value // 10) % 1000
+        m = self.value % 10
+        if Z <= 0 or A <= 0:
+            return None
+        else:
+            return (Z, A, m)
+
+    @property
+    def is_nucleus(self) -> bool:
+        return self.zam is not None
 
 
 class SourceParticle:
@@ -1155,23 +1078,15 @@ class SourceParticle:
         self.particle = particle
 
     @property
-    def particle(self):
+    def particle(self) -> ParticleType:
         return self._particle
 
     @particle.setter
     def particle(self, particle):
-        if isinstance(particle, ParticleType):
-            self._particle = particle
-        elif isinstance(particle, str):
-            self._particle = ParticleType(particle)
-        elif isinstance(particle, int):
-            self._particle = ParticleType(particle)
-        else:
-            raise TypeError("Particle must be ParticleType, str, or int")
+        self._particle = ParticleType(particle)
 
     def __repr__(self):
-        name = particle_pdg_to_str(self.particle.value)
-        return f'<SourceParticle: {name} at E={self.E:.6e} eV>'
+        return f'<SourceParticle: {str(self.particle)} at E={self.E:.6e} eV>'
 
     def to_tuple(self) -> tuple:
         """Return source particle attributes as a tuple
@@ -1325,7 +1240,7 @@ class ParticleList(list):
         # Extract the attributes of the source particles into a list of tuples
         data = [(sp.r[0], sp.r[1], sp.r[2], sp.u[0], sp.u[1], sp.u[2],
                  sp.E, sp.time, sp.wgt, sp.delayed_group, sp.surf_id,
-                 particle_pdg_to_str(sp.particle.value)) for sp in self]
+                 str(sp.particle)) for sp in self]
 
         # Define the column names for the DataFrame
         columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt',

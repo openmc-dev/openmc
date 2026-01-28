@@ -40,7 +40,7 @@ public:
   // Default constructor: defaults to neutron
   constexpr ParticleType() : pdg_number_(PDG_NEUTRON) {}
 
-  // Constructor from PDG code
+  // Constructor from PDG number
   constexpr explicit ParticleType(int32_t pdg_number) : pdg_number_(pdg_number)
   {}
 

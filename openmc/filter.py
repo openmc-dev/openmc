@@ -735,8 +735,7 @@ class ParticleFilter(Filter):
     Parameters
     ----------
     bins : str, int, openmc.ParticleType, or sequence
-        The particles to tally represented as strings, PDG codes, or GNDS
-        nuclide names.
+        The particle types to tally represented as names, PDG numbers, or types.
     filter_id : int
         Unique identifier for the filter
 
@@ -770,8 +769,7 @@ class ParticleFilter(Filter):
         bins = np.atleast_1d(bins)
         normalized = []
         for entry in bins:
-            pdg = int(openmc.ParticleType(entry))
-            normalized.append(openmc.particle_pdg_to_str(pdg))
+            normalized.append(str(openmc.ParticleType(entry)))
         self._bins = np.array(normalized, dtype=str)
 
     @classmethod

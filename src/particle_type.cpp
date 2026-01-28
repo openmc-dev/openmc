@@ -105,7 +105,7 @@ bool parse_gnds_nuclide(std::string_view name, int& Z, int& A, int& m)
   return Z != 0;
 }
 
-// Helper to convert nuclear PDG code to nuclide name
+// Helper to convert nuclear PDG number to nuclide name
 std::string nuclide_name_from_pdg(int32_t pdg)
 {
   int32_t code = pdg;

@@ -21,8 +21,7 @@ _ALLOWED_WW_PARTICLES = {'neutron', 'photon'}
 
 
 def _normalize_ww_particle(particle):
-    pdg = int(openmc.ParticleType(particle))
-    name = openmc.particle_pdg_to_str(pdg)
+    name = str(openmc.ParticleType(particle))
     if name not in _ALLOWED_WW_PARTICLES:
         raise ValueError("Weight windows can only be applied for neutrons or photons")
     return name
@@ -60,7 +59,7 @@ class WeightWindows(IDManagerMixin):
         energies in [eV] for a single bin. If no energy bins are provided, the
         maximum and minimum energy for the data available at runtime.
     particle_type : str or int or openmc.ParticleType
-        Particle type the weight windows apply to (PDG code or alias)
+        Particle type the weight windows apply to
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
         rouletting
@@ -502,7 +501,7 @@ class WeightWindowGenerator:
         energies in [eV] for a single bin. If no energy bins are provided, the
         maximum and minimum energy for the data available at runtime.
     particle_type : str or int or openmc.ParticleType
-        Particle type the weight windows apply to (PDG code or alias)
+        Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
     max_realizations : int

@@ -2448,7 +2448,7 @@ void score_tracklength_tally_general(
             if (j == C_NONE) {
               // Determine log union grid index
               if (i_log_union == C_NONE) {
-                int neutron = transport_index(ParticleType {PDG_NEUTRON});
+                int neutron = ParticleType::neutron().transport_index();
                 i_log_union = std::log(p.E() / data::energy_min[neutron]) /
                               simulation::log_spacing;
               }
@@ -2580,7 +2580,7 @@ void score_collision_tally(Particle& p)
           if (j == C_NONE) {
             // Determine log union grid index
             if (i_log_union == C_NONE) {
-              int neutron = transport_index(ParticleType {PDG_NEUTRON});
+              int neutron = ParticleType::neutron().transport_index();
               i_log_union = std::log(p.E() / data::energy_min[neutron]) /
                             simulation::log_spacing;
             }

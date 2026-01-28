@@ -71,6 +71,35 @@ public:
     return pdg_number_ >= 1000000000;
   }
 
+  // Get transport index (0-3 for transportable particles, C_NONE otherwise)
+  constexpr int transport_index() const;
+
+  constexpr bool is_transportable()
+  {
+    return this->transport_index() != C_NONE;
+  }
+
+  //----------------------------------------------------------------------------
+  // Static factory methods
+
+  static constexpr ParticleType neutron() { return ParticleType {PDG_NEUTRON}; }
+  static constexpr ParticleType photon() { return ParticleType {PDG_PHOTON}; }
+  static constexpr ParticleType electron()
+  {
+    return ParticleType {PDG_ELECTRON};
+  }
+  static constexpr ParticleType positron()
+  {
+    return ParticleType {PDG_POSITRON};
+  }
+  static constexpr ParticleType proton() { return ParticleType {PDG_PROTON}; }
+  static constexpr ParticleType deuteron()
+  {
+    return ParticleType {PDG_DEUTERON};
+  }
+  static constexpr ParticleType triton() { return ParticleType {PDG_TRITON}; }
+  static constexpr ParticleType alpha() { return ParticleType {PDG_ALPHA}; }
+
 private:
   int32_t pdg_number_;
 };
@@ -106,12 +135,12 @@ constexpr bool operator<(ParticleType lhs, ParticleType rhs)
 }
 
 //------------------------------------------------------------------------------
-// Transport indexing helpers (for dense arrays keyed by transport kind)
+// ParticleType member function implementations (inline)
 //------------------------------------------------------------------------------
 
-constexpr int transport_index(ParticleType type)
+constexpr int ParticleType::transport_index() const
 {
-  switch (type.pdg_number()) {
+  switch (pdg_number_) {
   case PDG_NEUTRON:
     return 0;
   case PDG_PHOTON:
@@ -123,11 +152,6 @@ constexpr int transport_index(ParticleType type)
   default:
     return C_NONE;
   }
-}
-
-constexpr bool is_transportable(ParticleType type)
-{
-  return transport_index(type) != C_NONE;
 }
 
 //------------------------------------------------------------------------------

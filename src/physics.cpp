@@ -67,7 +67,7 @@ void collision(Particle& p)
     apply_weight_windows(p);
 
   // Kill particle if energy falls below cutoff
-  int type = transport_index(p.type());
+  int type = p.type().transport_index();
   if (type != C_NONE && p.E() < settings::energy_cutoff[type]) {
     p.wgt() = 0.0;
   }
@@ -220,7 +220,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
     // Reject site if it exceeds time cutoff
     if (site.delayed_group > 0) {
-      double t_cutoff = settings::time_cutoff[transport_index(site.particle)];
+      double t_cutoff = settings::time_cutoff[site.particle.transport_index()];
       if (site.time > t_cutoff) {
         continue;
       }
@@ -291,7 +291,7 @@ void sample_photon_reaction(Particle& p)
   // Kill photon if below energy cutoff -- an extra check is made here because
   // photons with energy below the cutoff may have been produced by neutrons
   // reactions or atomic relaxation
-  int photon = transport_index(ParticleType {PDG_PHOTON});
+  int photon = ParticleType::photon().transport_index();
   if (p.E() < settings::energy_cutoff[photon]) {
     p.E() = 0.0;
     p.wgt() = 0.0;
@@ -341,7 +341,7 @@ void sample_photon_reaction(Particle& p)
     // Create Compton electron
     double phi = uniform_distribution(0., 2.0 * PI, p.current_seed());
     double E_electron = (alpha - alpha_out) * MASS_ELECTRON_EV - e_b;
-    int electron = transport_index(ParticleType {PDG_ELECTRON});
+    int electron = ParticleType::electron().transport_index();
     if (E_electron >= settings::energy_cutoff[electron]) {
       double mu_electron = (alpha - alpha_out * p.mu()) /
                            std::sqrt(alpha * alpha + alpha_out * alpha_out -
@@ -1100,7 +1100,7 @@ void sample_fission_neutron(
     rx.products_[site->delayed_group].sample(E_in, site->E, mu, seed);
 
     // resample if energy is greater than maximum neutron energy
-    int neutron = transport_index(ParticleType {PDG_NEUTRON});
+    int neutron = ParticleType::neutron().transport_index();
     if (site->E < data::energy_max[neutron])
       break;
 

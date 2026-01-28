@@ -31,7 +31,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   if (p.material() == MATERIAL_VOID)
     return;
 
-  int photon = transport_index(ParticleType {PDG_PHOTON});
+  int photon = ParticleType::photon().transport_index();
   if (p.E() < settings::energy_cutoff[photon])
     return;
 

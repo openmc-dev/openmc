@@ -293,7 +293,7 @@ void WeightWindows::set_defaults()
 {
   // set energy bounds to the min/max energy supported by the data
   if (energy_bounds_.size() == 0) {
-    int p_type = transport_index(particle_type_);
+    int p_type = particle_type_.transport_index();
     if (p_type == C_NONE) {
       fatal_error("Weight windows particle is not supported for transport.");
     }
@@ -865,7 +865,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   if (check_for_node(node, "energy_bounds")) {
     e_bounds = get_node_array<double>(node, "energy_bounds");
   } else {
-    int p_type = transport_index(particle_type);
+    int p_type = particle_type.transport_index();
     if (p_type == C_NONE) {
       fatal_error("Weight windows particle is not supported for transport.");
     }

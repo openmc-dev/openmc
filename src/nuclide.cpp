@@ -501,7 +501,7 @@ void Nuclide::create_derived(
 
 void Nuclide::init_grid()
 {
-  int neutron = transport_index(ParticleType {PDG_NEUTRON});
+  int neutron = ParticleType::neutron().transport_index();
   double E_min = data::energy_min[neutron];
   double E_max = data::energy_max[neutron];
   int M = settings::n_log_bins;

@@ -41,7 +41,7 @@ namespace {
 
 void validate_pdg_or_fatal(ParticleType pdg, const std::string& context)
 {
-  if (is_transportable(pdg))
+  if (pdg.is_transportable())
     return;
 
   fatal_error(
@@ -396,7 +396,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   // Sample energy and time for neutron and photon sources
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
-    auto p = transport_index(particle_);
+    auto p = particle_.transport_index();
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
     if (energy_ptr) {
       auto energies = xt::adapt(energy_ptr->x());

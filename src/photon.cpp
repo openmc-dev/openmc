@@ -293,7 +293,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_group(rgroup);
 
     // Truncate the bremsstrahlung data at the cutoff energy
-    int photon = transport_index(ParticleType {PDG_PHOTON});
+    int photon = ParticleType::photon().transport_index();
     const auto& E {electron_energy};
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {

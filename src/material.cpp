@@ -829,7 +829,7 @@ void Material::calculate_xs(Particle& p) const
 void Material::calculate_neutron_xs(Particle& p) const
 {
   // Find energy index on energy grid
-  int neutron = transport_index(ParticleType {PDG_NEUTRON});
+  int neutron = ParticleType::neutron().transport_index();
   int i_grid =
     std::log(p.E() / data::energy_min[neutron]) / simulation::log_spacing;
 

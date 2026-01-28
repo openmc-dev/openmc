@@ -79,7 +79,7 @@ bool Particle::create_secondary(
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
-  int idx = transport_index(type);
+  int idx = type.transport_index();
   if (idx == C_NONE) {
     return false;
   }
@@ -251,7 +251,7 @@ void Particle::event_advance()
   }
 
   double speed = this->speed();
-  double time_cutoff = settings::time_cutoff[transport_index(type())];
+  double time_cutoff = settings::time_cutoff[type().transport_index()];
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
@@ -532,7 +532,7 @@ void Particle::pht_collision_energy()
 
     // If the energy of the particle is below the cutoff, it will not be sampled
     // so its energy is added to the pulse-height in the cell
-    int photon = transport_index(ParticleType {PDG_PHOTON});
+    int photon = ParticleType::photon().transport_index();
     if (E() < settings::energy_cutoff[photon]) {
       pht_storage()[index] += E();
     }

@@ -15,7 +15,7 @@ Particle track information
 Parameters
 ----------
 particle : openmc.ParticleType
-    Type of the particle (PDG-backed)
+    Type of the particle
 states : numpy.ndarray
     Structured array containing each state of the particle. The structured array
     contains the following fields: ``r`` (position; each direction in [cm]),
@@ -25,7 +25,7 @@ states : numpy.ndarray
 
 """
 def _particle_track_repr(self):
-    return f"<ParticleTrack: {self.particle}, {len(self.states)} states>"
+    return f"<ParticleTrack: {str(self.particle)}, {len(self.states)} states>"
 ParticleTrack.__repr__ = _particle_track_repr
 
 
@@ -93,7 +93,7 @@ class Track(Sequence):
         Parameters
         ----------
         particle : str or int or openmc.ParticleType
-            Matching particle type (alias, PDG, or GNDS nuclide)
+            Matching particle type (name, PDG number, or type)
         state_filter : function
             Function that takes a state (structured datatype) and returns a bool
             depending on some criteria.
@@ -123,22 +123,10 @@ class Track(Sequence):
 
         """
         matching = []
-        particle_match = None
-        if particle is not None:
-            try:
-                if isinstance(particle, str):
-                    particle_match = ParticleType(particle)
-                else:
-                    particle_match = ParticleType(particle)
-            except (TypeError, ValueError):
-                track = type(self).__new__(type(self))
-                track.identifier = self.identifier
-                track.particle_tracks = []
-                return track
         for t in self:
             # Check for matching particle
-            if particle_match is not None:
-                if t.particle != particle_match:
+            if particle is not None:
+                if t.particle != ParticleType(particle):
                     continue
 
             # Apply arbitrary state filter

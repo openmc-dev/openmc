@@ -20,10 +20,8 @@ from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_elem_list, get_text
 from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
+from .statepoint import _VERSION_STATEPOINT
 from .utility_funcs import input_path
-
-
-_VERSION_STATEPOINT = 18
 
 
 class SourceBase(ABC):

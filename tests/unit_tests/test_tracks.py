@@ -140,8 +140,10 @@ def test_filter(sphere_model, run_in_tmpdir):
     assert matches == tracks
     matches = tracks.filter(state_filter=lambda s: s['E'] > 0.0)
     assert matches == tracks
-    matches = tracks.filter(particle='bunnytron')
+    matches = tracks.filter(particle='proton')
     assert matches == []
+    with pytest.raises(ValueError):
+        tracks.filter(particle='bunnytron')
 
 
 def test_write_to_vtk(sphere_model):

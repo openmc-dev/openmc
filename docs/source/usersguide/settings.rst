@@ -400,7 +400,7 @@ below.
     {
       openmc::SourceSite particle;
       // weight
-      particle.particle = openmc::PDG_NEUTRON;
+      particle.particle = openmc::ParticleType::neutron();
       particle.wgt = 1.0;
       // position
       double angle = 2.0 * M_PI * openmc::prn(seed);
@@ -477,7 +477,7 @@ parameters to the source class when it is created:
     {
       openmc::SourceSite particle;
       // weight
-      particle.particle = openmc::PDG_NEUTRON;
+      particle.particle = openmc::ParticleType::neutron();
       particle.wgt = 1.0;
       // position
       particle.r.x = 0.0;

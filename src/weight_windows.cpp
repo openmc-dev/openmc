@@ -906,6 +906,7 @@ void WeightWindowsGenerator::update() const
 WeightWindow search_weight_window(const Particle& p)
 {
   // TODO: this is a linear search - should do something more clever
+  int mesh_bin;
   for (const auto& ww : variance_reduction::weight_windows) {
     mesh_bin = ww->get_mesh_bin(p);
     if (mesh_bin > 0)
@@ -927,8 +928,7 @@ void apply_weight_windows(Particle& p)
   if (p.E() <= 0 || !p.alive())
     return;
 
-  int mesh_bin;
-  auto ww = search_weight_window(p, mesh_bin);
+  auto ww = search_weight_window(p);
   if (ww.is_valid())
     apply_weight_window(p, ww);
 }

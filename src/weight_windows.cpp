@@ -909,7 +909,7 @@ WeightWindow search_weight_window(const Particle& p)
   int mesh_bin;
   for (const auto& ww : variance_reduction::weight_windows) {
     mesh_bin = ww->get_mesh_bin(p);
-    if (mesh_bin > 0)
+    if (mesh_bin >= 0)
       return ww->get_weight_window(p.E(), mesh_bin);
   }
   return {};

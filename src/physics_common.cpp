@@ -21,7 +21,7 @@ void russian_roulette(Particle& p, double weight_survive)
 void apply_russian_roulette(Particle& p)
 {
   // Exit if survival biasing is turned off
-  if (settings::survival_biasing)
+  if (!settings::survival_biasing)
     return;
 
   // if survival normalization is on, use normalized weight cutoff and

@@ -320,7 +320,7 @@ def test_calculate_cexs_photon_total_attenuation_reference_values():
     openmc.reset_auto_ids()
 
     # Total interaction channels (library must contain these to run the test)
-    types = [502, 504, 515, 517, 522]
+    types = [501]
     energies = np.array([1.0e5, 1.0e6])  # eV
     # data from https://physics.nist.gov/PhysRefData/XrayMassCoef/ElemTab/z23.html
     v_density = 6.11  # g/cm3
@@ -365,5 +365,5 @@ def test_calculate_cexs_photon_total_attenuation_reference_values():
             "Pb or V photon data / required MTs not available in cross section library."
         )
 
-    assert np.allclose(pb_vals, pb_expected, rtol=1e-2, atol=1e-8)
-    assert np.allclose(v_vals, v_expected, rtol=1e-2, atol=1e-8)
+    assert np.allclose(pb_vals, pb_expected, rtol=5e-3, atol=1e-8)
+    assert np.allclose(v_vals, v_expected, rtol=5e-3, atol=1e-8)

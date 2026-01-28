@@ -484,7 +484,7 @@ class Material(IDManagerMixin):
 
         mu_e_vals, cexs = _calculate_cexs_elem_mat(
             this=self,
-            types=[502, 504, 515, 517, 522],
+            types=[501],
             incident_particle="photon"
         )
         mu_y_vals = np.array(cexs[0])  # total mass attenuation coeffs
@@ -628,12 +628,12 @@ class Material(IDManagerMixin):
                 cdr_nuc += integrand_function.integral()[-1]
 
 
-            # units effective dose [eV cm2 barns-1 g-1 s-1]
-            # units air-absorbed dose [pSv cm2 barns-1 s-1]
+            # units air-absorbed dose [eV cm2 barns-1 g-1 s-1]
+            # units effective dose [pSv cm2 barns-1 s-1]
             cdr_nuc *= nuc_atoms_per_bcm
 
-            # units effective dose [Sv hr-1]
             # units air-absorbed dose [Gy hr-1]
+            # units effective dose [Sv hr-1]
             cdr_nuc *= multiplier
 
             cdr[nuc] = cdr_nuc

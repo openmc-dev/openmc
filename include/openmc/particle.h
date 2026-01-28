@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <string>
-#include <string_view>
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr

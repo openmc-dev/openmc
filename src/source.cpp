@@ -39,14 +39,14 @@ namespace openmc {
 
 namespace {
 
-void validate_pdg_or_fatal(ParticleType pdg, const std::string& context)
+void validate_particle_type(ParticleType type, const std::string& context)
 {
-  if (pdg.is_transportable())
+  if (type.is_transportable())
     return;
 
   fatal_error(
     fmt::format("Unsupported source particle type '{}' (PDG {}) in {}.",
-      pdg.str(), pdg.pdg_number(), context));
+      type.str(), type.pdg_number(), context));
 }
 
 } // namespace
@@ -299,10 +299,10 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
   // Check for particle type
   if (check_for_node(node, "particle")) {
     auto temp_str = get_node_value(node, "particle", false, true);
-    particle_ = ParticleType {temp_str};
-    if (particle_ == ParticleType {PDG_PHOTON} ||
-        particle_ == ParticleType {PDG_ELECTRON} ||
-        particle_ == ParticleType {PDG_POSITRON}) {
+    particle_ = ParticleType(temp_str);
+    if (particle_ == ParticleType::photon() ||
+        particle_ == ParticleType::electron() ||
+        particle_ == ParticleType::positron()) {
       settings::photon_transport = true;
     }
   }
@@ -621,20 +621,20 @@ void validate_external_sources()
   for (const auto& source : model::external_sources) {
     if (auto independent =
           dynamic_cast<const IndependentSource*>(source.get())) {
-      validate_pdg_or_fatal(independent->particle_type(), "IndependentSource");
+      validate_particle_type(independent->particle_type(), "IndependentSource");
       continue;
     }
 
     if (auto mesh_source = dynamic_cast<const MeshSource*>(source.get())) {
       for (const auto& sub_source : mesh_source->sources()) {
-        validate_pdg_or_fatal(sub_source->particle_type(), "MeshSource");
+        validate_particle_type(sub_source->particle_type(), "MeshSource");
       }
       continue;
     }
 
     if (auto file_source = dynamic_cast<const FileSource*>(source.get())) {
       for (const auto& site : file_source->sites()) {
-        validate_pdg_or_fatal(site.particle, "FileSource");
+        validate_particle_type(site.particle, "FileSource");
       }
     }
   }

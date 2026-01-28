@@ -15,14 +15,12 @@ import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_elem_list, get_text, clean_indentation
 from .mixin import IDManagerMixin
-
-
-_ALLOWED_WW_PARTICLES = {'neutron', 'photon'}
+from .source import ParticleType
 
 
 def _normalize_ww_particle(particle):
     name = str(openmc.ParticleType(particle))
-    if name not in _ALLOWED_WW_PARTICLES:
+    if name not in {'neutron', 'photon'}:
         raise ValueError("Weight windows can only be applied for neutrons or photons")
     return name
 
@@ -220,12 +218,15 @@ class WeightWindows(IDManagerMixin):
         self._mesh = mesh
 
     @property
-    def particle_type(self) -> str:
+    def particle_type(self) -> ParticleType:
         return self._particle_type
 
     @particle_type.setter
-    def particle_type(self, pt: str):
-        self._particle_type = _normalize_ww_particle(pt)
+    def particle_type(self, pt):
+        ptype = ParticleType(pt)
+        if ptype not in {ParticleType.NEUTRON, ParticleType.PHOTON}:
+            raise ValueError("Weight windows can only be applied for neutrons or photons")
+        self._particle_type = ptype
 
     @property
     def energy_bounds(self) -> Iterable[Real]:
@@ -335,7 +336,7 @@ class WeightWindows(IDManagerMixin):
         subelement.text = str(self.mesh.id)
 
         subelement = ET.SubElement(element, 'particle_type')
-        subelement.text = self.particle_type
+        subelement.text = str(self.particle_type)
 
         if self.energy_bounds is not None:
             subelement = ET.SubElement(element, 'energy_bounds')
@@ -561,7 +562,7 @@ class WeightWindowGenerator:
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += f'\t{"Mesh":<20}=\t{self.mesh.id}\n'
-        string += f'\t{"Particle:":<20}=\t{self.particle_type}\n'
+        string += f'\t{"Particle:":<20}=\t{str(self.particle_type)}\n'
         string += f'\t{"Energy Bounds:":<20}=\t{self.energy_bounds}\n'
         string += f'\t{"Method":<20}=\t{self.method}\n'
         string += f'\t{"Max Realizations:":<20}=\t{self.max_realizations}\n'
@@ -592,12 +593,15 @@ class WeightWindowGenerator:
         self._energy_bounds = eb
 
     @property
-    def particle_type(self) -> str:
+    def particle_type(self) -> ParticleType:
         return self._particle_type
 
     @particle_type.setter
-    def particle_type(self, pt: str):
-        self._particle_type = _normalize_ww_particle(pt)
+    def particle_type(self, pt):
+        ptype = ParticleType(pt)
+        if ptype not in {ParticleType.NEUTRON, ParticleType.PHOTON}:
+            raise ValueError("Weight windows can only be applied for neutrons or photons")
+        self._particle_type = ptype
 
     @property
     def method(self) -> str:
@@ -700,7 +704,7 @@ class WeightWindowGenerator:
             subelement = ET.SubElement(element, 'energy_bounds')
             subelement.text = ' '.join(str(e) for e in self.energy_bounds)
         particle_elem = ET.SubElement(element, 'particle_type')
-        particle_elem.text = self.particle_type
+        particle_elem.text = str(self.particle_type)
         realizations_elem = ET.SubElement(element, 'max_realizations')
         realizations_elem.text = str(self.max_realizations)
         update_interval_elem = ET.SubElement(element, 'update_interval')

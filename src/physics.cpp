@@ -70,8 +70,9 @@ void collision(Particle& p)
     } else if (p.type() == ParticleType::neutron) {
       apply_russian_roulette(p);
     }
-    // If collision checkpoint is disabled, apply russian roulette if
-    // the particle is a neutron and it is outside the weight window domain
+    // If collision checkpoint is disabled and weight windows are enabled,
+    // apply russian roulette if the particle is a neutron and it is outside
+    // the weight window domain
   } else if (settings::weight_windows_on && p.type() == ParticleType::neutron) {
     auto ww = search_weight_window(p);
     if (!ww.is_valid())
@@ -132,8 +133,7 @@ void sample_neutron_reaction(Particle& p)
       if (p.secondary_bank().size() >= settings::max_secondaries) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
-          "bound. You are likely running a subcritical multiplication "
-          "problem "
+          "bound. You are likely running a subcritical multiplication problem "
           "with k-effective close to or greater than one.");
       }
     }
@@ -561,8 +561,8 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
   const auto& nuc {data::nuclides[i_nuclide]};
 
   // If we're in the URR, by default use the first fission reaction. We also
-  // default to the first reaction if we know that there are no partial
-  // fission reactions
+  // default to the first reaction if we know that there are no partial fission
+  // reactions
   if (p.neutron_xs(i_nuclide).use_ptable || !nuc->has_partial_fission_) {
     return *nuc->fission_rx_[0];
   }
@@ -784,8 +784,8 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
   // Find speed of neutron in CM
   vel = v_n.norm();
 
-  // Sample scattering angle, checking if angle distribution is present
-  // (assume isotropic otherwise)
+  // Sample scattering angle, checking if angle distribution is present (assume
+  // isotropic otherwise)
   double mu_cm;
   auto& d = rx.products_[0].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
@@ -817,8 +817,8 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
   p.u() = v_n / vel;
 
   // Because of floating-point roundoff, it may be possible for mu_lab to be
-  // outside of the range [-1,1). In these cases, we just set mu_lab to
-  // exactly -1 or 1
+  // outside of the range [-1,1). In these cases, we just set mu_lab to exactly
+  // -1 or 1
   if (std::abs(p.mu()) > 1.0)
     p.mu() = std::copysign(1.0, p.mu());
 }
@@ -849,13 +849,11 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     // sampling method to use
     sampling_method = settings::res_scat_method;
 
-    // upper resonance scattering energy bound (target is at rest above this
-    // E)
+    // upper resonance scattering energy bound (target is at rest above this E)
     if (E > settings::res_scat_energy_max) {
       return {};
 
-      // lower resonance scattering energy bound (should be no resonances
-      // below)
+      // lower resonance scattering energy bound (should be no resonances below)
     } else if (E < settings::res_scat_energy_min) {
       sampling_method = ResScatMethod::cxs;
     }
@@ -906,8 +904,8 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     }
 
     if (i_E_up == i_E_low) {
-      // Handle degenerate case -- if the upper/lower bounds occur for the
-      // same index, then using cxs is probably a good approximation
+      // Handle degenerate case -- if the upper/lower bounds occur for the same
+      // index, then using cxs is probably a good approximation
       return sample_cxs_target_velocity(nuc.awr_, E, u, kT, seed);
     }
 
@@ -1211,11 +1209,11 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Sample the new direction
     Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
-    // In a k-eigenvalue simulation, it's necessary to provide higher weight
-    // to secondary photons from non-fission reactions to properly balance
-    // energy release and deposition. See D. P. Griesheimer, S. J. Douglass,
-    // and M. H. Stedry, "Self-consistent energy normalization for quasistatic
-    // reactor calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+    // In a k-eigenvalue simulation, it's necessary to provide higher weight to
+    // secondary photons from non-fission reactions to properly balance energy
+    // release and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
+    // Stedry, "Self-consistent energy normalization for quasistatic reactor
+    // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
     double wgt = photon_wgt;
     if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
       wgt *= simulation::keff;

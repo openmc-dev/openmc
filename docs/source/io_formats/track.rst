@@ -32,5 +32,5 @@ The current revision of the particle track file format is 3.1.
                             the array for each primary/secondary particle. The
                             last offset should match the total size of the
                             array.
-                          - **particles** (*int[]*) -- Particle type for each
-                            primary/secondary particle (PDG code).
+                          - **particles** (*int32_t[]*) -- Particle type for
+                            each primary/secondary particle (PDG number).

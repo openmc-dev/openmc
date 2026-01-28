@@ -319,7 +319,7 @@ should be set to:
 
 :particle:
   A list of particle identifiers to tally, specified as strings (e.g.,
-  ``neutron``, ``photon``, ``He4``) or as integer PDG codes.
+  ``neutron``, ``photon``, ``He4``) or as integer PDG numbers.
 
 ------------------
 ``<mesh>`` Element

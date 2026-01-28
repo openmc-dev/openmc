@@ -37,9 +37,9 @@ The current revision of the collision track file format is 1.1.
               - ``material_id`` (*int*) -- ID of the material containing the collision site.
               - ``universe_id`` (*int*) -- ID of the universe containing the collision site.
               - ``n_collision`` (*int*) -- Collision counter for the particle history.
-              - ``particle`` (*int*) -- Particle type (PDG code).
-              - ``parent_id`` (*int64*) -- Unique ID of the parent particle.
-              - ``progeny_id`` (*int64*) -- Progeny ID of the particle.
+              - ``particle`` (*int32_t*) -- Particle type (PDG number).
+              - ``parent_id`` (*int64_t*) -- Unique ID of the parent particle.
+              - ``progeny_id`` (*int64_t*) -- Progeny ID of the particle.
 
 In an MPI run, OpenMC writes the combined dataset by gathering collision-track
 entries from all ranks before flushing them to disk, so the final file appears

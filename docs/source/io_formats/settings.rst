@@ -721,7 +721,7 @@ attributes/sub-elements:
     is present.
 
   :particle:
-    The source particle type, specified as a PDG code or a string alias (e.g.,
+    The source particle type, specified as a PDG number or a string alias (e.g.,
     ``neutron``/``n``, ``photon``/``gamma``, ``electron``, ``positron``,
     ``proton``/``p``, ``deuteron``/``d``, ``triton``/``t``, ``alpha``, or GNDS
     nuclide names like ``Fe57``).

@@ -56,7 +56,7 @@ The current version of the statepoint file format is 18.2.
              ``time``, ``wgt``, ``delayed_group``, ``surf_id``, and
              ``particle``, which represent the position, direction, energy,
              time, weight, delayed group, surface ID, and particle type
-             (PDG code), respectively. Only present when `run_mode` is
+             (PDG number), respectively. Only present when `run_mode` is
              'eigenvalue'.
 
 **/tallies/**

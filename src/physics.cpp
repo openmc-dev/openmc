@@ -61,22 +61,24 @@ void collision(Particle& p)
     break;
   }
 
-  // If collision checkpoint is enabled, apply weight window
-  // if valid and apply global russian roulette if not.
-  if (settings::weight_window_checkpoint_collision) {
-    auto ww = search_weight_window(p);
-    if (ww.is_valid()) {
-      apply_weight_window(p, ww);
+  if (settings::weight_windows_on) {
+    if (settings::weight_window_checkpoint_collision) {
+      // If collision checkpoint is enabled, apply weight window
+      // if valid and apply global russian roulette if not.
+      auto ww = search_weight_window(p);
+      if (ww.is_valid()) {
+        apply_weight_window(p, ww);
+      } else if (p.type() == ParticleType::neutron) {
+        apply_russian_roulette(p);
+      }
     } else if (p.type() == ParticleType::neutron) {
-      apply_russian_roulette(p);
+      // If collision checkpoint is disabled and weight windows are enabled,
+      // apply russian roulette if the particle is a neutron and it is outside
+      // the weight window domain
+      auto ww = search_weight_window(p);
+      if (!ww.is_valid())
+        apply_russian_roulette(p);
     }
-    // If collision checkpoint is disabled and weight windows are enabled,
-    // apply russian roulette if the particle is a neutron and it is outside
-    // the weight window domain
-  } else if (settings::weight_windows_on && p.type() == ParticleType::neutron) {
-    auto ww = search_weight_window(p);
-    if (!ww.is_valid())
-      apply_russian_roulette(p);
   }
 
   // Kill particle if energy falls below cutoff

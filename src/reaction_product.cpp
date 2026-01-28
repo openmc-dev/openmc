@@ -85,7 +85,7 @@ ReactionProduct::ReactionProduct(hid_t group)
 
 ReactionProduct::ReactionProduct(const ChainNuclide::Product& product)
 {
-  particle_ = ParticleType {PDG_PHOTON};
+  particle_ = ParticleType::photon();
   emission_mode_ = EmissionMode::delayed;
 
   // Get chain nuclide object for radionuclide

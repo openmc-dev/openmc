@@ -60,7 +60,7 @@ double Particle::speed() const
       mass = MASS_ELECTRON_EV;
       break;
     default:
-      fatal_error("Unsupported particle PDG for speed calculation.");
+      fatal_error("Unsupported particle for speed calculation.");
     }
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
@@ -241,8 +241,8 @@ void Particle::event_advance()
   boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
-  if (type() == ParticleType {PDG_ELECTRON} ||
-      type() == ParticleType {PDG_POSITRON}) {
+  if (type() == ParticleType::electron() ||
+      type() == ParticleType::positron()) {
     collision_distance() = material() == MATERIAL_VOID ? INFINITY : 0.0;
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;
@@ -375,8 +375,7 @@ void Particle::event_collide()
     }
   }
 
-  if (!model::active_pulse_height_tallies.empty() &&
-      type() == ParticleType {PDG_PHOTON}) {
+  if (!model::active_pulse_height_tallies.empty() && type().is_photon()) {
     pht_collision_energy();
   }
 
@@ -447,7 +446,7 @@ void Particle::event_revive_from_secondary()
 
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&
-        this->type() == ParticleType {PDG_PHOTON}) {
+        this->type().is_photon()) {
       // Since the birth cell of the particle has not been set we
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.

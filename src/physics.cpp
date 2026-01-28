@@ -347,7 +347,7 @@ void sample_photon_reaction(Particle& p)
                            std::sqrt(alpha * alpha + alpha_out * alpha_out -
                                      2.0 * alpha * alpha_out * p.mu());
       Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
-      p.create_secondary(p.wgt(), u, E_electron, ParticleType {PDG_ELECTRON});
+      p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
     }
 
     // Allow electrons to fill orbital and produce Auger electrons and
@@ -420,7 +420,7 @@ void sample_photon_reaction(Particle& p)
         u.z = std::sqrt(1.0 - mu * mu) * std::sin(phi);
 
         // Create secondary electron
-        p.create_secondary(p.wgt(), u, E_electron, ParticleType {PDG_ELECTRON});
+        p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
@@ -445,12 +445,11 @@ void sample_photon_reaction(Particle& p)
 
     // Create secondary electron
     Direction u = rotate_angle(p.u(), mu_electron, nullptr, p.current_seed());
-    p.create_secondary(p.wgt(), u, E_electron, ParticleType {PDG_ELECTRON});
+    p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
 
     // Create secondary positron
     u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
-    p.create_secondary(p.wgt(), u, E_positron, ParticleType {PDG_POSITRON});
-
+    p.create_secondary(p.wgt(), u, E_positron, ParticleType::positron());
     p.event() = TallyEvent::ABSORB;
     p.event_mt() = PAIR_PROD;
     p.wgt() = 0.0;
@@ -485,8 +484,8 @@ void sample_positron_reaction(Particle& p)
   Direction u = isotropic_direction(p.current_seed());
 
   // Create annihilation photon pair traveling in opposite directions
-  p.create_secondary(p.wgt(), u, MASS_ELECTRON_EV, ParticleType {PDG_PHOTON});
-  p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType {PDG_PHOTON});
+  p.create_secondary(p.wgt(), u, MASS_ELECTRON_EV, ParticleType::photon());
+  p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType::photon());
 
   p.E() = 0.0;
   p.wgt() = 0.0;
@@ -1216,8 +1215,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     }
 
     // Create the secondary photon
-    bool created_photon =
-      p.create_secondary(wgt, u, E, ParticleType {PDG_PHOTON});
+    bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon());
 
     // Tag secondary particle with parent nuclide
     if (created_photon && settings::use_decay_photons) {

@@ -13,7 +13,7 @@ void ParticleFilter::from_xml(pugi::xml_node node)
   // Convert to vector of ParticleType
   vector<ParticleType> types;
   for (auto& p : particles) {
-    types.push_back(ParticleType {p});
+    types.emplace_back(p);
   }
   this->set_particles(types);
 }

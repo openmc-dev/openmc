@@ -321,7 +321,7 @@ inline void ensure_mcpl_ready_or_fatal()
 SourceSite mcpl_particle_to_site(const mcpl_particle_repr_t* particle_repr)
 {
   SourceSite site;
-  site.particle = ParticleType {static_cast<int32_t>(particle_repr->pdgcode)};
+  site.particle = ParticleType {particle_repr->pdgcode};
 
   // Copy position and direction
   site.r.x = particle_repr->position[0];

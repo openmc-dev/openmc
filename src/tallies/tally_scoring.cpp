@@ -331,7 +331,7 @@ double get_reaction_q_value(const Particle& p)
   if (p.type().is_photon() && p.event_mt() == PAIR_PROD) {
     // pair production
     return -2 * MASS_ELECTRON_EV;
-  } else if (p.type().pdg_number() == PDG_POSITRON) {
+  } else if (p.type() == ParticleType::positron()) {
     // positron annihilation
     return 2 * MASS_ELECTRON_EV;
   } else {

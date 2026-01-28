@@ -250,17 +250,9 @@ WeightWindows* WeightWindows::from_hdf5(
 
   auto wws = WeightWindows::create();
 
-  ParticleType particle_pdg;
-  if (H5Lexists(ww_group, "particle_pdg", H5P_DEFAULT) > 0) {
-    int particle_pdg_value;
-    read_dataset(ww_group, "particle_pdg", particle_pdg_value);
-    particle_pdg = ParticleType {particle_pdg_value};
-  } else {
-    std::string particle_type;
-    read_dataset(ww_group, "particle_type", particle_type);
-    particle_pdg = ParticleType {particle_type};
-  }
-  wws->particle_type_ = particle_pdg;
+  std::string particle_type;
+  read_dataset(ww_group, "particle_type", particle_type);
+  wws->particle_type_ = ParticleType {particle_type};
 
   read_dataset<double>(ww_group, "energy_bounds", wws->energy_bounds_);
 
@@ -827,7 +819,7 @@ void WeightWindows::to_hdf5(hid_t group) const
   hid_t ww_group = create_group(group, fmt::format("weight_windows_{}", id()));
 
   write_dataset(ww_group, "mesh", this->mesh()->id());
-  write_dataset(ww_group, "particle_pdg", particle_type_.pdg_number());
+  write_dataset(ww_group, "particle_type", particle_type_.str());
   write_dataset(ww_group, "energy_bounds", energy_bounds_);
   write_dataset(ww_group, "lower_ww_bounds", lower_ww_);
   write_dataset(ww_group, "upper_ww_bounds", upper_ww_);

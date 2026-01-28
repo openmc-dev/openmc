@@ -16,6 +16,7 @@ import pandas as pd
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
+from openmc.data import gnds_name
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_elem_list, get_text
@@ -270,7 +271,7 @@ class IndependentSource(SourceBase):
     strength : float
         Strength of the source
     particle : str or int or openmc.ParticleType
-        Source particle type (alias, PDG code, or GNDS nuclide name)
+        Source particle type (name, PDG number, or type)
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
@@ -306,8 +307,7 @@ class IndependentSource(SourceBase):
     type : str
         Indicator of source type: 'independent'
 
-    .. versionadded:: 0.14.0
-
+        .. versionadded:: 0.14.0
     particle : str or int or openmc.ParticleType
         Source particle type (alias, PDG code, or GNDS nuclide name)
     constraints : dict
@@ -1129,7 +1129,7 @@ class SourceParticle:
     surf_id : int
         Surface ID where particle is at, if any.
     particle : ParticleType or str or int
-        Type of the particle (PDG code, alias, or GNDS nuclide name)
+        Type of the particle (type, name, or PDG number)
 
     """
 

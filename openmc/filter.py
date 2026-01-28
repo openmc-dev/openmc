@@ -743,7 +743,7 @@ class ParticleFilter(Filter):
     Attributes
     ----------
     bins : sequence of str
-        The particles to tally (canonical strings)
+        The particles to tally
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -770,14 +770,7 @@ class ParticleFilter(Filter):
         bins = np.atleast_1d(bins)
         normalized = []
         for entry in bins:
-            if isinstance(entry, openmc.ParticleType):
-                pdg = int(entry)
-            elif isinstance(entry, str):
-                pdg = int(openmc.ParticleType(entry))
-            elif isinstance(entry, Integral):
-                pdg = int(openmc.ParticleType(entry))
-            else:
-                raise TypeError("ParticleFilter bins must be str, int, or ParticleType")
+            pdg = int(openmc.ParticleType(entry))
             normalized.append(openmc.particle_pdg_to_str(pdg))
         self._bins = np.array(normalized, dtype=str)
 

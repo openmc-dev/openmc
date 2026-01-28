@@ -15,20 +15,13 @@ import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_elem_list, get_text, clean_indentation
 from .mixin import IDManagerMixin
-from .utility_funcs import change_directory
 
 
 _ALLOWED_WW_PARTICLES = {'neutron', 'photon'}
 
 
 def _normalize_ww_particle(particle):
-    if isinstance(particle, str):
-        pdg = int(openmc.ParticleType(particle))
-    elif isinstance(particle, (Integral, openmc.ParticleType)):
-        pdg = int(openmc.ParticleType(particle))
-    else:
-        raise TypeError("Particle type must be str, int, or ParticleType")
-
+    pdg = int(openmc.ParticleType(particle))
     name = openmc.particle_pdg_to_str(pdg)
     if name not in _ALLOWED_WW_PARTICLES:
         raise ValueError("Weight windows can only be applied for neutrons or photons")
@@ -91,7 +84,7 @@ class WeightWindows(IDManagerMixin):
     mesh : openmc.MeshBase
         Mesh for the weight windows with dimension (ni, nj, nk)
     particle_type : str
-        Particle type the weight windows apply to (canonical string)
+        Particle type the weight windows apply to
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
@@ -445,10 +438,7 @@ class WeightWindows(IDManagerMixin):
         mesh_id = group['mesh'][()]
         mesh = meshes[mesh_id]
 
-        if 'particle_pdg' in group:
-            ptype = _normalize_ww_particle(int(group['particle_pdg'][()]))
-        else:
-            ptype = _normalize_ww_particle(group['particle_type'][()].decode())
+        ptype = group['particle_type'][()].decode()
         e_bounds = group['energy_bounds'][()]
         # weight window bounds are stored with the shape (e, k, j, i)
         # in C++ and HDF5 -- the opposite of how they are stored here
@@ -531,7 +521,7 @@ class WeightWindowGenerator:
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
     particle_type : str
-        Particle type the weight windows apply to (canonical string)
+        Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
     max_realizations : int

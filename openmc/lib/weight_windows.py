@@ -128,7 +128,7 @@ class WeightWindows(_FortranObjectWithID):
     mesh : openmc.lib.Mesh
         Mesh used for the weight windows
     particle : openmc.ParticleType
-        The particle type to which these weight windows apply (PDG-backed)
+        The particle type to which these weight windows apply
     energy_bounds : numpy.ndarray
         The energy bounds for the weight windows
     bounds : numpy.ndarray
@@ -332,10 +332,7 @@ class WeightWindows(_FortranObjectWithID):
             )
 
         # convert particle type if needed
-        if isinstance(particle, str):
-            particle = ParticleType(particle)
-        else:
-            particle = ParticleType(particle)
+        particle = ParticleType(particle)
 
         if particle not in (ParticleType.NEUTRON, ParticleType.PHOTON):
             raise ValueError('Weight windows can only be applied for neutrons or photons')

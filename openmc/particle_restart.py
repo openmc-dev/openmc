@@ -30,7 +30,7 @@ class Particle:
     id : long
         Identifier of the particle
     type : openmc.ParticleType
-        Particle type encoded as a PDG number
+        Particle type
     weight : float
         Weight of the particle
     energy : float
@@ -53,7 +53,7 @@ class Particle:
             self.energy = f['energy'][()]
             self.generations_per_batch = f['generations_per_batch'][()]
             self.id = f['id'][()]
-            self.type = ParticleType(f['type'][()])
+            self.type = ParticleType(f['type'][()].decode())
             self.n_particles = f['n_particles'][()]
             self.run_mode = f['run_mode'][()].decode()
             self.uvw = f['uvw'][()]

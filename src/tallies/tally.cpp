@@ -630,10 +630,10 @@ void Tally::set_scores(const vector<std::string>& scores)
       if (settings::photon_transport) {
         estimator_ = TallyEstimator::COLLISION;
         if (particle_present) {
-          const auto particles = get_filter<ParticleFilter>().particles();
-          if (contains(particles, "photon")) {
-            bool electron_present = contains(particles, "electron");
-            bool positron_present = contains(particles, "positron");
+          const auto particles = get_filter<ParticleFilter>()->particles();
+          if (contains(particles, ParticleType::photon)) {
+            bool electron_present = contains(particles, ParticleType::electron);
+            bool positron_present = contains(particles, ParticleType::positron);
             if (!positron_present || !electron_present) {
               if (!electron_present)
                 warning(fmt::format(

@@ -402,8 +402,8 @@ class MeshFilter(Filter):
     translation : Iterable of float
         3-D coordinates of the translation vector
     rotation : Iterable of float
-        The rotation matrix or angles of the filter mesh. This can either be 
-        a fully specified 3 x 3 rotation matrix or an Iterable of length 3 
+        The rotation matrix or angles of the filter mesh. This can either be
+        a fully specified 3 x 3 rotation matrix or an Iterable of length 3
         with the angles in degrees about the x, y, and z axes, respectively.
 
     """
@@ -454,7 +454,7 @@ class MeshFilter(Filter):
         else:
             raise ValueError(
                 f'Invalid size of rotation matrix: {rot_size}')
-        
+
     @rotation.setter
     def rotation(self, rotation_data):
         flat_rotation = np.asarray(rotation_data, dtype=float).flatten()

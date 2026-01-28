@@ -74,6 +74,12 @@ public:
   // Get transport index (0-3 for transportable particles, C_NONE otherwise)
   constexpr int transport_index() const;
 
+  // Check if this is a neutron
+  constexpr bool is_neutron() const { return pdg_number_ == PDG_NEUTRON; }
+
+  // Check if this is a photon
+  constexpr bool is_photon() const { return pdg_number_ == PDG_PHOTON; }
+
   constexpr bool is_transportable()
   {
     return this->transport_index() != C_NONE;

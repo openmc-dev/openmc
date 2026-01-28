@@ -276,8 +276,7 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      type() == ParticleType {PDG_NEUTRON}) {
+  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -338,8 +337,7 @@ void Particle::event_cross_surface()
 void Particle::event_collide()
 {
   // Score collision estimate of keff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      type() == ParticleType {PDG_NEUTRON}) {
+  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
   }
 

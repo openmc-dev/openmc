@@ -379,7 +379,7 @@ void Nuclide::create_derived(
       auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
 
       for (const auto& p : rx->products_) {
-        if (p.particle_.pdg_number() == PDG_PHOTON) {
+        if (p.particle_.is_photon()) {
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k + j];
 
@@ -552,7 +552,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
         for (int i = 1; i < rx->products_.size(); ++i) {
           // Skip any non-neutron products
           const auto& product = rx->products_[i];
-          if (product.particle_.pdg_number() != PDG_NEUTRON)
+          if (!product.particle_.is_neutron())
             continue;
 
           // Evaluate yield

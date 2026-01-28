@@ -77,11 +77,11 @@ void collision(Particle& p)
     std::string msg;
     if (p.event() == TallyEvent::KILL) {
       msg = fmt::format("    Killed. Energy = {} eV.", p.E());
-    } else if (p.type().pdg_number() == PDG_NEUTRON) {
+    } else if (p.type().is_neutron()) {
       msg = fmt::format("    {} with {}. Energy = {} eV.",
         reaction_name(p.event_mt()), data::nuclides[p.event_nuclide()]->name_,
         p.E());
-    } else if (p.type().pdg_number() == PDG_PHOTON) {
+    } else if (p.type().is_photon()) {
       msg = fmt::format("    {} with {}. Energy = {} eV.",
         reaction_name(p.event_mt()),
         to_element(data::nuclides[p.event_nuclide()]->name_), p.E());
@@ -210,7 +210,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
-    site.particle = ParticleType {PDG_NEUTRON};
+    site.particle = ParticleType::neutron();
     site.time = p.time();
     site.wgt = 1. / weight;
     site.surf_id = 0;
@@ -611,7 +611,7 @@ void sample_photon_product(
       continue;
 
     for (int j = 0; j < rx->products_.size(); ++j) {
-      if (rx->products_[j].particle_.pdg_number() == PDG_PHOTON) {
+      if (rx->products_[j].particle_.is_photon()) {
         // For fission, artificially increase the photon yield to account
         // for delayed photons
         double f = 1.0;
@@ -1160,7 +1160,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   if (std::floor(yield) == yield && yield > 0) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
-      p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType {PDG_NEUTRON});
+      p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron());
     }
   } else {
     // Otherwise, change weight of particle based on yield

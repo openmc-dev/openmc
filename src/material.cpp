@@ -819,9 +819,9 @@ void Material::calculate_xs(Particle& p) const
   p.macro_xs().fission = 0.0;
   p.macro_xs().nu_fission = 0.0;
 
-  if (p.type().pdg_number() == PDG_NEUTRON) {
+  if (p.type().is_neutron()) {
     this->calculate_neutron_xs(p);
-  } else if (p.type().pdg_number() == PDG_PHOTON) {
+  } else if (p.type().is_photon()) {
     this->calculate_photon_xs(p);
   }
 }

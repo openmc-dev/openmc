@@ -148,11 +148,11 @@ protected:
 
 private:
   // Data members
-  ParticleType particle_;            //!< Type of particle emitted
-  UPtrSpace space_;                  //!< Spatial distribution
-  UPtrAngle angle_;                  //!< Angular distribution
-  UPtrDist energy_;                  //!< Energy distribution
-  UPtrDist time_;                    //!< Time distribution
+  ParticleType particle_; //!< Type of particle emitted
+  UPtrSpace space_;       //!< Spatial distribution
+  UPtrAngle angle_;       //!< Angular distribution
+  UPtrDist energy_;       //!< Energy distribution
+  UPtrDist time_;         //!< Time distribution
 };
 
 //==============================================================================

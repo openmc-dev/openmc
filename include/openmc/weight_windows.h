@@ -193,8 +193,8 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Data members
-  int32_t id_;    //!< Unique ID
-  int64_t index_; //!< Index into weight windows vector
+  int32_t id_;                   //!< Unique ID
+  int64_t index_;                //!< Index into weight windows vector
   ParticleType particle_type_;   //!< Particle type to apply weight windows to
   vector<double> energy_bounds_; //!< Energy boundaries [eV]
   xt::xtensor<double, 2> lower_ww_; //!< Lower weight window bounds (shape:

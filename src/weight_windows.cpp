@@ -59,8 +59,7 @@ void apply_weight_windows(Particle& p)
     return;
 
   // WW on photon and neutron only
-  if (p.type().pdg_number() != PDG_NEUTRON &&
-      p.type().pdg_number() != PDG_PHOTON)
+  if (!p.type().is_neutron() && !p.type().is_photon())
     return;
 
   // skip dead or no energy
@@ -357,7 +356,7 @@ void WeightWindows::set_energy_bounds(span<const double> bounds)
 
 void WeightWindows::set_particle_type(ParticleType p_type)
 {
-  if (p_type.pdg_number() != PDG_NEUTRON && p_type.pdg_number() != PDG_PHOTON)
+  if (!p_type.is_neutron() && !p_type.is_photon())
     fatal_error(fmt::format(
       "Particle type '{}' cannot be applied to weight windows.", p_type.str()));
   particle_type_ = p_type;

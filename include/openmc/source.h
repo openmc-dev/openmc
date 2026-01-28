@@ -169,8 +169,6 @@ public:
   void load_sites_from_file(
     const std::string& path); //!< Load source sites from file
 
-  const vector<SourceSite>& sites() const { return sites_; }
-
 protected:
   SourceSite sample(uint64_t* seed) const override;
 
@@ -246,11 +244,6 @@ public:
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
 
-  const vector<unique_ptr<IndependentSource>>& sources() const
-  {
-    return sources_;
-  }
-
 private:
   // Data members
   unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
@@ -269,9 +262,6 @@ extern "C" void initialize_source();
 //! \param[inout] seed Pseudorandom seed pointer
 //! \return Sampled source site
 SourceSite sample_external_source(uint64_t* seed);
-
-//! Validate that external sources use supported particle types
-void validate_external_sources();
 
 void free_memory_source();
 

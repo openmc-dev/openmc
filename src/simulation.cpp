@@ -124,8 +124,6 @@ int openmc_simulation_init()
   simulation::entropy.clear();
   openmc_reset();
 
-  validate_external_sources();
-
   // If this is a restart run, load the state point data and binary source
   // file
   if (settings::restart_run) {

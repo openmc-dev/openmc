@@ -306,6 +306,7 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
       settings::photon_transport = true;
     }
   }
+  validate_particle_type(particle_, "IndependentSource");
 
   // Check for external source file
   if (check_for_node(node, "file")) {
@@ -478,6 +479,11 @@ void FileSource::load_sites_from_file(const std::string& path)
     // Close file
     file_close(file_id);
   }
+
+  // Make sure particles in source file have valid types
+  for (const auto& site : this->sites_) {
+    validate_particle_type(site.particle, "FileSource");
+  }
 }
 
 SourceSite FileSource::sample(uint64_t* seed) const
@@ -591,6 +597,11 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
       std::make_unique<MeshElementSpatial>(mesh_idx, elem_index));
   }
 
+  // Make sure sources use valid particle types
+  for (const auto& src : sources_) {
+    validate_particle_type(src->particle_type(), "MeshSource");
+  }
+
   // the number of source distributions should either be one or equal to the
   // number of mesh elements
   if (sources_.size() > 1 && sources_.size() != mesh->n_bins()) {
@@ -615,30 +626,6 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-void validate_external_sources()
-{
-  for (const auto& source : model::external_sources) {
-    if (auto independent =
-          dynamic_cast<const IndependentSource*>(source.get())) {
-      validate_particle_type(independent->particle_type(), "IndependentSource");
-      continue;
-    }
-
-    if (auto mesh_source = dynamic_cast<const MeshSource*>(source.get())) {
-      for (const auto& sub_source : mesh_source->sources()) {
-        validate_particle_type(sub_source->particle_type(), "MeshSource");
-      }
-      continue;
-    }
-
-    if (auto file_source = dynamic_cast<const FileSource*>(source.get())) {
-      for (const auto& site : file_source->sites()) {
-        validate_particle_type(site.particle, "FileSource");
-      }
-    }
-  }
-}
 
 void initialize_source()
 {

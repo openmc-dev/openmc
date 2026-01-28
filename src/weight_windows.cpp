@@ -72,8 +72,11 @@ void apply_weight_windows(Particle& p)
   for (const auto& ww : variance_reduction::weight_windows) {
     weight_window = ww->get_weight_window(p);
     if (weight_window.is_valid())
+      in_domain = true;
       break;
   }
+  if (!in_domain)
+    weight_window = {};
 
   // If particle has not yet had its birth weight window value set, set it to
   // the current weight window (or 1.0 if not born in a weight window).

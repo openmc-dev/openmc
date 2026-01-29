@@ -514,7 +514,7 @@ class WeightWindowGenerator:
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
-    particle_type : str
+    particle_type : openmc.ParticleType
         Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.

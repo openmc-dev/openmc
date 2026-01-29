@@ -826,29 +826,37 @@ void transport_history_based_single_particle(Particle& p)
 
 double transport_pseudoparticle(Particle& p, double total_distance)
 {
+  double time_cutoff = settings::time_cutoff[static_cast<int>(p.type())];
+  double speed = p.speed();
+  p.event_calculate_xs(true);
+
   double mfp = 0.0;
   while (total_distance > 0.0) {
-    p.event_calculate_xs(true);
     p.boundary() = distance_to_boundary(p);
-    double speed = p.speed();
-    double time_cutoff = settings::time_cutoff[static_cast<int>(p.type())];
+
     double distance_cutoff =
-      (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+      (time_cutoff < INFTY) ? (time_cutoff - p.time()) * speed : INFTY;
 
     double distance =
       std::min({p.boundary().distance(), distance_cutoff, total_distance});
     if (distance == distance_cutoff) {
       p.wgt() = 0.0;
-      return;
+      return mfp;
     }
 
     // Advance particle in space and time
-    p.move_distance(advance_distance);
+    p.move_distance(distance);
     p.time() += distance / speed;
     p.lifetime() += distance / speed;
+    total_distance -= distance;
     mfp += distance * p.macro_xs().total;
-    if (distance == p.boundary().distance())
+
+    if (distance == p.boundary().distance()) {
       p.event_cross_surface(true);
+      p.event_calculate_xs(true);
+      if (!settings::run_CE)
+        speed = p.speed();
+    }
   }
   return mfp;
 }

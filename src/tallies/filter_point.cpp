@@ -63,7 +63,7 @@ void PointFilter::get_all_bins(
       if (distance > r) {
         weight = attenuation / (distance * distance);
       } else {
-        weight = 3.0 * -exprel(-p.macro_xs().total * r) / (r * r);
+        weight = 3.0 * exprel(-p.macro_xs().total * r) / (r * r);
       }
       match.weights_.push_back(weight);
     }

@@ -2773,6 +2773,9 @@ void score_point_tally(
   u_cm /= u_cm.norm();
   double mfp;
 
+  auto old_stream = p.stream();
+  p.stream() = STREAM_NEXT_EVENT;
+
   simulation::i_det = -1;
   for (auto& det : model::active_point_detectors) {
     ++simulation::i_det;
@@ -2805,6 +2808,7 @@ void score_point_tally(
       continue;
     score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
   }
+  p.stream() = old_stream;
 }
 
 void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
@@ -2819,6 +2823,9 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   Direction u_cm = (v_n - v_cm);
   u_cm /= u_cm.norm();
   double mfp;
+
+  auto old_stream = p.stream();
+  p.stream() = STREAM_NEXT_EVENT;
 
   simulation::i_det = -1;
   for (auto& det : model::active_point_detectors) {
@@ -2839,6 +2846,7 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
       continue;
     score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
   }
+  p.stream() = old_stream;
 }
 
 void score_point_tally(SourceSite& site, int source_index)

@@ -4,7 +4,8 @@ from collections.abc import Sequence
 import h5py
 
 from .checkvalue import check_filetype_version
-from .source import SourceParticle, ParticleType
+from .particle_type import ParticleType
+from .source import SourceParticle
 
 from pathlib import Path
 

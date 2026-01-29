@@ -15,14 +15,8 @@ import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_elem_list, get_text, clean_indentation
 from .mixin import IDManagerMixin
-from .source import ParticleType
+from .particle_type import ParticleType
 
-
-def _normalize_ww_particle(particle):
-    name = str(openmc.ParticleType(particle))
-    if name not in {'neutron', 'photon'}:
-        raise ValueError("Weight windows can only be applied for neutrons or photons")
-    return name
 
 class WeightWindows(IDManagerMixin):
     """Mesh-based weight windows

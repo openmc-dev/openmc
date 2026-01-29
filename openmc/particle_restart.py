@@ -1,7 +1,7 @@
 import h5py
 
 import openmc.checkvalue as cv
-from .source import ParticleType
+from .particle_type import ParticleType
 
 _VERSION_PARTICLE_RESTART = 2
 

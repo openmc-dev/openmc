@@ -40,7 +40,7 @@ _LEGACY_PARTICLE_INDEX = {
 
 
 class ParticleType:
-    """Immutable class representing a particle type based on PDG numbers.
+    """Particle type defined by a PDG number.
 
     ParticleType uses the Particle Data Group (PDG) Monte Carlo numbering scheme
     to uniquely identify particle types. This includes elementary particles
@@ -59,7 +59,7 @@ class ParticleType:
     Attributes
     ----------
     pdg_number : int
-        The PDG Monte Carlo number for this particle type
+        The PDG number for this particle type
     zam : tuple of int or None
         For nuclear particles, the (Z, A, m) tuple where Z is atomic number,
         A is mass number, and m is metastable state. None for elementary particles.
@@ -94,40 +94,9 @@ class ParticleType:
         else:
             raise TypeError(f"Cannot create ParticleType from {type(value).__name__}")
 
-        object.__setattr__(self, '_pdg_number', pdg)
-
-    def __setattr__(self, name, value):
-        raise AttributeError("ParticleType instances are immutable")
-
-    def __delattr__(self, name):
-        raise AttributeError("ParticleType instances are immutable")
-
-    def __copy__(self):
-        """Return self since ParticleType is immutable."""
-        return self
-
-    def __deepcopy__(self, memo):
-        """Return self since ParticleType is immutable."""
-        return self
-
-    def __reduce__(self):
-        """Support for pickling."""
-        return (self.__class__, (self._pdg_number,))
+        self._pdg_number = pdg
 
     def __eq__(self, other):
-        """Compare particle types for equality.
-
-        Parameters
-        ----------
-        other : ParticleType, int, or str
-            Value to compare against
-
-        Returns
-        -------
-        bool
-            True if the PDG numbers match
-
-        """
         if isinstance(other, ParticleType):
             return self._pdg_number == other._pdg_number
         if isinstance(other, Integral):
@@ -139,31 +108,14 @@ class ParticleType:
                 return False
         return NotImplemented
 
-    def __hash__(self):
-        """Return hash based on PDG number.
-
-        Returns
-        -------
-        int
-            Hash value
-
-        """
+    def __hash__(self) -> int:
         return hash(self._pdg_number)
 
-    def __int__(self):
-        """Return the PDG number as an integer.
-
-        Returns
-        -------
-        int
-            PDG Monte Carlo number
-
-        """
+    def __int__(self) -> int:
         return self._pdg_number
 
     @property
     def pdg_number(self) -> int:
-        """PDG Monte Carlo number for this particle type."""
         return self._pdg_number
 
     @staticmethod

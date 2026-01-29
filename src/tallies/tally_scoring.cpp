@@ -2771,7 +2771,7 @@ void score_point_tally(
     v_cm += awr / (awr + 1.0) * (*v_t);
   Direction u_cm = (v_n - v_cm);
   u_cm /= u_cm.norm();
-  double mfp;
+  double mfp = 0;
 
   auto old_stream = p.stream();
   p.stream() = STREAM_NEXT_EVENT;
@@ -2822,7 +2822,7 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   Direction v_cm = v_n / (awr + 1.0);
   Direction u_cm = (v_n - v_cm);
   u_cm /= u_cm.norm();
-  double mfp;
+  double mfp = 0;
 
   auto old_stream = p.stream();
   p.stream() = STREAM_NEXT_EVENT;
@@ -2859,7 +2859,7 @@ void score_point_tally(SourceSite& site, int source_index)
     fatal_error("Only independent source is valid for point detectors.");
   auto angle = src->angle();
 
-  double mfp;
+  double mfp = 0;
 
   simulation::i_det = -1;
   for (auto& det : model::active_point_detectors) {

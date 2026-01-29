@@ -7,10 +7,12 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
+#include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
@@ -824,25 +826,25 @@ void transport_history_based_single_particle(Particle& p)
 
 void transport_pseudoparticle(Particle& p, double total_distance, double& mfp)
 {
-  if (!p.alive())
-    return;
+  double remaining_distance = total_distance;
+  p.event_calculate_xs();
+  p.boundary() = distance_to_boundary(p);
+  double advance_distance = p.boundary().distance();
 
-  double distance = total_distance;
-  bool cross_surface = false;
-  while (distance > 0.0) {
+  while (advance_distance < remaining_distance) {
+    mfp += advance_distance * p.macro_xs().total;
+    // Advance particle in space and time
+    p.move_distance(advance_distance);
+    remaining_distance -= advance_distance;
+    p.time() += advance_distance / p.speed();
+    p.event_cross_surface();
     p.event_calculate_xs();
-    if (p.alive()) {
-      cross_surface = (distance > p.boundary().distance());
-      p.event_advance_pseudo(distance, mfp);
-    } else {
-      return;
-    }
-    if (p.alive() && cross_surface) {
-      p.event_cross_surface_pseudo();
-    }
-    if (!p.alive())
-      return;
+    p.boundary() = distance_to_boundary(p);
+    advance_distance = p.boundary().distance();
   }
+  mfp += remaining_distance * p.macro_xs().total;
+  p.move_distance(remaining_distance);
+  p.time() += remaining_distance / p.speed();
 }
 
 void transport_history_based()

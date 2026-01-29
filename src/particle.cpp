@@ -549,61 +549,6 @@ void Particle::event_death()
   }
 }
 
-void Particle::event_advance_pseudo(double& total_distance, double& mfp)
-{
-  // Find the distance to the nearest boundary
-  boundary() = distance_to_boundary(*this);
-
-  double speed = this->speed();
-  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
-  double distance_cutoff =
-    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
-
-  if (distance_cutoff < boundary().distance()) {
-    wgt() = 0.0;
-    return;
-  }
-
-  // Select smaller of the two distances
-  double distance = std::min({boundary().distance(), total_distance});
-
-  // Advance particle in space and time
-  this->move_distance(distance);
-  double dt = distance / speed;
-  this->time() += dt;
-  this->lifetime() += dt;
-  mfp += distance * macro_xs().total;
-  total_distance -= distance;
-}
-
-void Particle::event_cross_surface_pseudo()
-{
-  // Saving previous cell data
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
-  n_coord_last() = n_coord();
-
-  // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface();
-  n_coord() = boundary().coord_level();
-
-  if (boundary().lattice_translation()[0] != 0 ||
-      boundary().lattice_translation()[1] != 0 ||
-      boundary().lattice_translation()[2] != 0) {
-    // Particle crosses lattice boundary
-
-    bool verbose = settings::verbosity >= 10 || trace();
-    cross_lattice(*this, boundary(), verbose);
-    event() = TallyEvent::LATTICE;
-  } else {
-    // Particle crosses surface
-    const auto& surf {model::surfaces[surface_index()].get()};
-    this->cross_surface(*surf);
-    event() = TallyEvent::SURFACE;
-  }
-}
-
 void Particle::pht_collision_energy()
 {
   // Adds the energy particles lose in a collision to the pulse-height

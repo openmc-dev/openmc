@@ -76,10 +76,6 @@ public:
   void event_revive_from_secondary();
   void event_death();
 
-  // Pseudo-particles events
-  void event_advance_pseudo(double& total_distance, double& mfp);
-  void event_cross_surface_pseudo();
-
   //! pulse-height recording
   void pht_collision_energy();
   void pht_secondary_particles();

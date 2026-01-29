@@ -34,6 +34,7 @@ The current version of the depletion results file format is 1.2.
 
 :Attributes: - **index** (*int*) -- Index used in results for this material
              - **volume** (*double*) -- Volume of this material in [cm^3]
+             - **name** (*char[]*) -- Name of this material
 
 **/nuclides/<name>/**
 

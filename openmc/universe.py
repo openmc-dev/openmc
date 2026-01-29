@@ -337,7 +337,6 @@ class UniverseBase(ABC, IDManagerMixin):
         """
         model = openmc.Model()
         model.geometry = openmc.Geometry(self)
-        model.materials = openmc.Materials(self.get_all_materials().values())
         return model.plot(*args, **kwargs)
 
     def get_nuclides(self):

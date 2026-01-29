@@ -163,8 +163,6 @@ class Material(IDManagerMixin):
         # The single instance of Macroscopic data present in this material
         # (only one is allowed, hence this is different than _nuclides, etc)
         self._macroscopic = None
-        
-        self._cross_sections = None
 
         # If specified, a list of table names
         self._sab = []
@@ -209,15 +207,6 @@ class Material(IDManagerMixin):
             string += '{: <16}'.format('\t{}'.format(self._macroscopic))
 
         return string
-
-    @property
-    def cross_sections(self) -> Path | None:
-        return self._cross_sections
-
-    @cross_sections.setter
-    def cross_sections(self, cross_sections):
-        if cross_sections is not None:
-            self._cross_sections = input_path(cross_sections)        
 
     @property
     def name(self) -> str | None:
@@ -1929,30 +1918,6 @@ class Materials(cv.CheckedList):
     def cross_sections(self, cross_sections):
         if cross_sections is not None:
             self._cross_sections = input_path(cross_sections)
-            for mat in self:
-                mat.cross_sections = self.cross_sections
-    
-    def _setup_cross_sections(self, material):
-        """Copy cross_sections to material if exists
-           and copy cross_sections from material if not exists
-
-        Parameters
-        ----------
-        material : openmc.Material
-
-
-        """
-        if self.cross_sections is not None:
-            if material.cross_sections is not None:
-                if material.cross_sections != self.cross_sections:
-                    warn("Material {material.id} cross_sections value has been overriden.")
-            material.cross_sections = self.cross_sections
-        elif material.cross_sections is not None:
-            self.cross_sections = material.cross_sections
-    
-    def __setitem__(self, index: int, material):
-        self._setup_cross_sections(material)
-        super().__setitem__(index, material)
 
     def append(self, material):
         """Append material to collection
@@ -1963,7 +1928,6 @@ class Materials(cv.CheckedList):
             Material to append
 
         """
-        self._setup_cross_sections(material)
         super().append(material)
 
     def insert(self, index: int, material):
@@ -1977,7 +1941,6 @@ class Materials(cv.CheckedList):
             Material to insert
 
         """
-        self._setup_cross_sections(material)
         super().insert(index, material)
 
     def make_isotropic_in_lab(self):

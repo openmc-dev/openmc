@@ -1159,17 +1159,13 @@ class Model:
         x_max = (origin[x] + 0.5*width[0]) * axis_scaling_factor[axis_units]
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
-        
+
         # Determine whether any materials contains macroscopic data and if so,
         # set energy mode accordingly
         for mat in self.geometry.get_all_materials().values():
             if mat._macroscopic is not None:
                 self.settings.energy_mode = 'multi-group'
                 break
-                
-        # Convert cross_section path to absolute
-        if self.materials.cross_sections is not None:
-            self.materials.cross_sections = Path(self.materials.cross_sections).resolve()
 
         # Get ID map from the C API
         id_map = self.id_map(
@@ -1190,8 +1186,8 @@ class Model:
 
         # Convert ID map to RGB image
         img = id_map_to_rgb(
-            id_map=id_map, 
-            color_by=color_by, 
+            id_map=id_map,
+            color_by=color_by,
             colors=colors,
             overlap_color=overlap_color
         )
@@ -1228,7 +1224,7 @@ class Model:
                 extent=(x_min, x_max, y_min, y_max),
                 **contour_kwargs
             )
-            
+
             # If only showing outline, set the axis limits and aspect explicitly
             if outline == 'only':
                 axes.set_xlim(x_min, x_max)

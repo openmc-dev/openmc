@@ -1241,7 +1241,7 @@ void setup_active_tallies()
           for (auto [det, r] : pf->detectors()) {
             add_point_detector(det);
           }
-          particle_filter_ids.insert(pf->id());
+          particle_filter_ids.insert(model::tally_map[pf->id()]);
           break;
         }
       }

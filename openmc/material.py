@@ -459,7 +459,7 @@ class Material(IDManagerMixin):
 
         Limitations
         ----------
-        This method does not implement correction from Bremsstrahlung photons which can be 
+        This method does not implement correction from Bremsstrahlung particles which can be 
         relevant at close distances.
         In addition, it computes the gamma contact dose rate only for the unstable nuclides 
         for which the radiation source specification is present in the chain file. 

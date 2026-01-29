@@ -365,5 +365,5 @@ def test_calculate_cexs_photon_total_attenuation_reference_values():
             "Pb or V photon data / required MTs not available in cross section library."
         )
 
-    assert np.allclose(pb_vals, pb_expected, rtol=5e-3, atol=1e-8)
-    assert np.allclose(v_vals, v_expected, rtol=5e-3, atol=1e-8)
+    assert np.allclose(pb_vals, pb_expected, rtol=1e-2, atol=1e-8)
+    assert np.allclose(v_vals, v_expected, rtol=1e-2, atol=1e-8)

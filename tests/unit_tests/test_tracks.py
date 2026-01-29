@@ -70,7 +70,7 @@ def test_tracks(sphere_model, particle, run_in_tmpdir):
         particle_track = track.particle_tracks[0]
         assert isinstance(particle_track, openmc.ParticleTrack)
 
-        assert particle_track.particle.name.lower() == particle
+        assert str(particle_track.particle).lower() == particle
         assert isinstance(particle_track.states, np.ndarray)
 
         # Sanity checks on actual data

@@ -1,6 +1,8 @@
 #include "openmc/mesh.h"
 #include <algorithm> // for copy, equal, min, min_element
 #include <cassert>
+#include <cstdint>        // for uint64_t
+#include <cstring>        // for memcpy
 #define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>          // for ceil
 #include <cstddef>        // for size_t
@@ -51,6 +53,7 @@
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
+#include "libmesh/replicated_mesh.h"
 #endif
 
 #ifdef OPENMC_DAGMC_ENABLED
@@ -139,6 +142,63 @@ inline bool atomic_cas_int32(int32_t* ptr, int32_t& expected, int32_t desired)
 #endif
 }
 
+// Helper function equivalent to std::bit_cast in C++20
+template<typename To, typename From>
+inline To bit_cast_value(const From& value)
+{
+  To out;
+  std::memcpy(&out, &value, sizeof(To));
+  return out;
+}
+
+inline void atomic_update_double(double* ptr, double value, bool is_min)
+{
+#if defined(__GNUC__) || defined(__clang__)
+  using may_alias_uint64_t [[gnu::may_alias]] = uint64_t;
+  auto* bits_ptr = reinterpret_cast<may_alias_uint64_t*>(ptr);
+  uint64_t current_bits = __atomic_load_n(bits_ptr, __ATOMIC_SEQ_CST);
+  double current = bit_cast_value<double>(current_bits);
+  while (is_min ? (value < current) : (value > current)) {
+    uint64_t desired_bits = bit_cast_value<uint64_t>(value);
+    uint64_t expected_bits = current_bits;
+    if (__atomic_compare_exchange_n(bits_ptr, &expected_bits, desired_bits,
+          false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+      return;
+    }
+    current_bits = expected_bits;
+    current = bit_cast_value<double>(current_bits);
+  }
+
+#elif defined(_MSC_VER)
+  auto* bits_ptr = reinterpret_cast<volatile long long*>(ptr);
+  long long current_bits = *bits_ptr;
+  double current = bit_cast_value<double>(current_bits);
+  while (is_min ? (value < current) : (value > current)) {
+    long long desired_bits = bit_cast_value<long long>(value);
+    long long old_bits =
+      _InterlockedCompareExchange64(bits_ptr, desired_bits, current_bits);
+    if (old_bits == current_bits) {
+      return;
+    }
+    current_bits = old_bits;
+    current = bit_cast_value<double>(current_bits);
+  }
+
+#else
+#error "No compare-and-swap implementation available for this compiler."
+#endif
+}
+
+inline void atomic_max_double(double* ptr, double value)
+{
+  atomic_update_double(ptr, value, false);
+}
+
+inline void atomic_min_double(double* ptr, double value)
+{
+  atomic_update_double(ptr, value, true);
+}
+
 namespace detail {
 
 //==============================================================================
@@ -146,7 +206,7 @@ namespace detail {
 //==============================================================================
 
 void MaterialVolumes::add_volume(
-  int index_elem, int index_material, double volume)
+  int index_elem, int index_material, double volume, const BoundingBox* bbox)
 {
   // This method handles adding elements to the materials hash table,
   // implementing open addressing with linear probing. Consistency across
@@ -165,10 +225,18 @@ void MaterialVolumes::add_volume(
     // Non-atomic read of current material
     int32_t current_val = *slot_ptr;
 
-    // Found the desired material; accumulate volume
+    // Found the desired material; accumulate volume and bbox
     if (current_val == index_material) {
 #pragma omp atomic
       this->volumes(index_elem, slot) += volume;
+      if (bbox) {
+        atomic_min_double(&this->bboxes(index_elem, slot, 0), bbox->min.x);
+        atomic_min_double(&this->bboxes(index_elem, slot, 1), bbox->min.y);
+        atomic_min_double(&this->bboxes(index_elem, slot, 2), bbox->min.z);
+        atomic_max_double(&this->bboxes(index_elem, slot, 3), bbox->max.x);
+        atomic_max_double(&this->bboxes(index_elem, slot, 4), bbox->max.y);
+        atomic_max_double(&this->bboxes(index_elem, slot, 5), bbox->max.z);
+      }
       return;
     }
 
@@ -184,6 +252,14 @@ void MaterialVolumes::add_volume(
       if (claimed_slot || (expected_val == index_material)) {
 #pragma omp atomic
         this->volumes(index_elem, slot) += volume;
+        if (bbox) {
+          atomic_min_double(&this->bboxes(index_elem, slot, 0), bbox->min.x);
+          atomic_min_double(&this->bboxes(index_elem, slot, 1), bbox->min.y);
+          atomic_min_double(&this->bboxes(index_elem, slot, 2), bbox->min.z);
+          atomic_max_double(&this->bboxes(index_elem, slot, 3), bbox->max.x);
+          atomic_max_double(&this->bboxes(index_elem, slot, 4), bbox->max.y);
+          atomic_max_double(&this->bboxes(index_elem, slot, 5), bbox->max.z);
+        }
         return;
       }
     }
@@ -194,7 +270,7 @@ void MaterialVolumes::add_volume(
 }
 
 void MaterialVolumes::add_volume_unsafe(
-  int index_elem, int index_material, double volume)
+  int index_elem, int index_material, double volume, const BoundingBox* bbox)
 {
   // Linear probe
   for (int attempt = 0; attempt < table_size_; ++attempt) {
@@ -206,9 +282,23 @@ void MaterialVolumes::add_volume_unsafe(
     // Read current material
     int32_t current_val = this->materials(index_elem, slot);
 
-    // Found the desired material; accumulate volume
+    // Found the desired material; accumulate volume and bbox
     if (current_val == index_material) {
       this->volumes(index_elem, slot) += volume;
+      if (bbox) {
+        this->bboxes(index_elem, slot, 0) =
+          std::min(this->bboxes(index_elem, slot, 0), bbox->min.x);
+        this->bboxes(index_elem, slot, 1) =
+          std::min(this->bboxes(index_elem, slot, 1), bbox->min.y);
+        this->bboxes(index_elem, slot, 2) =
+          std::min(this->bboxes(index_elem, slot, 2), bbox->min.z);
+        this->bboxes(index_elem, slot, 3) =
+          std::max(this->bboxes(index_elem, slot, 3), bbox->max.x);
+        this->bboxes(index_elem, slot, 4) =
+          std::max(this->bboxes(index_elem, slot, 4), bbox->max.y);
+        this->bboxes(index_elem, slot, 5) =
+          std::max(this->bboxes(index_elem, slot, 5), bbox->max.z);
+      }
       return;
     }
 
@@ -216,6 +306,20 @@ void MaterialVolumes::add_volume_unsafe(
     if (current_val == EMPTY) {
       this->materials(index_elem, slot) = index_material;
       this->volumes(index_elem, slot) += volume;
+      if (bbox) {
+        this->bboxes(index_elem, slot, 0) =
+          std::min(this->bboxes(index_elem, slot, 0), bbox->min.x);
+        this->bboxes(index_elem, slot, 1) =
+          std::min(this->bboxes(index_elem, slot, 1), bbox->min.y);
+        this->bboxes(index_elem, slot, 2) =
+          std::min(this->bboxes(index_elem, slot, 2), bbox->min.z);
+        this->bboxes(index_elem, slot, 3) =
+          std::max(this->bboxes(index_elem, slot, 3), bbox->max.x);
+        this->bboxes(index_elem, slot, 4) =
+          std::max(this->bboxes(index_elem, slot, 4), bbox->max.y);
+        this->bboxes(index_elem, slot, 5) =
+          std::max(this->bboxes(index_elem, slot, 5), bbox->max.z);
+      }
       return;
     }
   }
@@ -333,6 +437,12 @@ vector<double> Mesh::volumes() const
 void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   int32_t* materials, double* volumes) const
 {
+  this->material_volumes(nx, ny, nz, table_size, materials, volumes, nullptr);
+}
+
+void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
+  int32_t* materials, double* volumes, double* bboxes) const
+{
   if (mpi::master) {
     header("MESH MATERIAL VOLUMES CALCULATION", 7);
   }
@@ -350,7 +460,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   timer.start();
 
   // Create object for keeping track of materials/volumes
-  detail::MaterialVolumes result(materials, volumes, table_size);
+  detail::MaterialVolumes result(materials, volumes, bboxes, table_size);
+  bool compute_bboxes = bboxes != nullptr;
 
   // Determine bounding box
   auto bbox = this->bounding_box();
@@ -358,9 +469,10 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   std::array<int, 3> n_rays = {nx, ny, nz};
 
   // Determine effective width of rays
-  Position width((nx > 0) ? (bbox.xmax - bbox.xmin) / nx : 0.0,
-    (ny > 0) ? (bbox.ymax - bbox.ymin) / ny : 0.0,
-    (nz > 0) ? (bbox.zmax - bbox.zmin) / nz : 0.0);
+  Position width = bbox.max - bbox.min;
+  width.x = (nx > 0) ? width.x / nx : 0.0;
+  width.y = (ny > 0) ? width.y / ny : 0.0;
+  width.z = (nz > 0) ? width.z / nz : 0.0;
 
   // Set flag for mesh being contained within model
   bool out_of_model = false;
@@ -368,8 +480,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 #pragma omp parallel
   {
     // Preallocate vector for mesh indices and length fractions and particle
-    std::vector<int> bins;
-    std::vector<double> length_fractions;
+    vector<int> bins;
+    vector<double> length_fractions;
     Particle p;
 
     SourceSite site;
@@ -379,15 +491,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
     for (int axis = 0; axis < 3; ++axis) {
       // Set starting position and direction
       site.r = {0.0, 0.0, 0.0};
-      site.r[axis] = bbox.min()[axis];
+      site.r[axis] = bbox.min[axis];
       site.u = {0.0, 0.0, 0.0};
       site.u[axis] = 1.0;
 
       // Determine width of rays and number of rays in other directions
       int ax1 = (axis + 1) % 3;
       int ax2 = (axis + 2) % 3;
-      double min1 = bbox.min()[ax1];
-      double min2 = bbox.min()[ax2];
+      double min1 = bbox.min[ax1];
+      double min2 = bbox.min[ax2];
       double d1 = width[ax1];
       double d2 = width[ax2];
       int n1 = n_rays[ax1];
@@ -432,7 +544,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           while (true) {
             // Ray trace from r_start to r_end
             Position r0 = p.r();
-            double max_distance = bbox.max()[axis] - r0[axis];
+            double max_distance = bbox.max[axis] - r0[axis];
 
             // Find the distance to the nearest boundary
             BoundaryInfo boundary = distance_to_boundary(p);
@@ -451,12 +563,36 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             if (i_material != C_NONE) {
               i_material = model::materials[i_material]->id();
             }
+            double cumulative_frac = 0.0;
             for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
               int mesh_index = bins[i_bin];
               double length = distance * length_fractions[i_bin];
+              double volume = length * d1 * d2;
 
-              // Add volume to result
-              result.add_volume(mesh_index, i_material, length * d1 * d2);
+              if (compute_bboxes) {
+                double axis_start = r0[axis] + distance * cumulative_frac;
+                double axis_end = axis_start + length;
+                cumulative_frac += length_fractions[i_bin];
+
+                Position contrib_min = site.r;
+                Position contrib_max = site.r;
+
+                contrib_min[ax1] = site.r[ax1] - 0.5 * d1;
+                contrib_max[ax1] = site.r[ax1] + 0.5 * d1;
+                contrib_min[ax2] = site.r[ax2] - 0.5 * d2;
+                contrib_max[ax2] = site.r[ax2] + 0.5 * d2;
+                contrib_min[axis] = std::min(axis_start, axis_end);
+                contrib_max[axis] = std::max(axis_start, axis_end);
+
+                BoundingBox contrib_bbox {contrib_min, contrib_max};
+                contrib_bbox &= bbox;
+
+                result.add_volume(
+                  mesh_index, i_material, volume, &contrib_bbox);
+              } else {
+                // Add volume to result
+                result.add_volume(mesh_index, i_material, volume);
+              }
             }
 
             if (distance == max_distance)
@@ -503,10 +639,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   // Combine results from multiple MPI processes
   if (mpi::n_procs > 1) {
     int total = this->n_bins() * table_size;
+    int total_bbox = total * 6;
     if (mpi::master) {
       // Allocate temporary buffer for receiving data
-      std::vector<int32_t> mats(total);
-      std::vector<double> vols(total);
+      vector<int32_t> mats(total);
+      vector<double> vols(total);
+      vector<double> recv_bboxes;
+      if (compute_bboxes) {
+        recv_bboxes.resize(total_bbox);
+      }
 
       for (int i = 1; i < mpi::n_procs; ++i) {
         // Receive material indices and volumes from process i
@@ -514,6 +655,10 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           MPI_STATUS_IGNORE);
         MPI_Recv(vols.data(), total, MPI_DOUBLE, i, i, mpi::intracomm,
           MPI_STATUS_IGNORE);
+        if (compute_bboxes) {
+          MPI_Recv(recv_bboxes.data(), total_bbox, MPI_DOUBLE, i, i,
+            mpi::intracomm, MPI_STATUS_IGNORE);
+        }
 
         // Combine with existing results; we can call thread unsafe version of
         // add_volume because each thread is operating on a different element
@@ -522,7 +667,18 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           for (int k = 0; k < table_size; ++k) {
             int index = index_elem * table_size + k;
             if (mats[index] != EMPTY) {
-              result.add_volume_unsafe(index_elem, mats[index], vols[index]);
+              if (compute_bboxes) {
+                int bbox_index = index * 6;
+                BoundingBox slot_bbox {
+                  {recv_bboxes[bbox_index + 0], recv_bboxes[bbox_index + 1],
+                    recv_bboxes[bbox_index + 2]},
+                  {recv_bboxes[bbox_index + 3], recv_bboxes[bbox_index + 4],
+                    recv_bboxes[bbox_index + 5]}};
+                result.add_volume_unsafe(
+                  index_elem, mats[index], vols[index], &slot_bbox);
+              } else {
+                result.add_volume_unsafe(index_elem, mats[index], vols[index]);
+              }
             }
           }
         }
@@ -531,6 +687,9 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
       // Send material indices and volumes to process 0
       MPI_Send(materials, total, MPI_INT32_T, 0, mpi::rank, mpi::intracomm);
       MPI_Send(volumes, total, MPI_DOUBLE, 0, mpi::rank, mpi::intracomm);
+      if (compute_bboxes) {
+        MPI_Send(bboxes, total_bbox, MPI_DOUBLE, 0, mpi::rank, mpi::intracomm);
+      }
     }
   }
 
@@ -2414,26 +2573,26 @@ extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
   BoundingBox bbox = model::meshes[index]->bounding_box();
 
   // set lower left corner values
-  ll[0] = bbox.xmin;
-  ll[1] = bbox.ymin;
-  ll[2] = bbox.zmin;
+  ll[0] = bbox.min.x;
+  ll[1] = bbox.min.y;
+  ll[2] = bbox.min.z;
 
   // set upper right corner values
-  ur[0] = bbox.xmax;
-  ur[1] = bbox.ymax;
-  ur[2] = bbox.zmax;
+  ur[0] = bbox.max.x;
+  ur[1] = bbox.max.y;
+  ur[2] = bbox.max.z;
   return 0;
 }
 
 extern "C" int openmc_mesh_material_volumes(int32_t index, int nx, int ny,
-  int nz, int table_size, int32_t* materials, double* volumes)
+  int nz, int table_size, int32_t* materials, double* volumes, double* bboxes)
 {
   if (int err = check_mesh(index))
     return err;
 
   try {
     model::meshes[index]->material_volumes(
-      nx, ny, nz, table_size, materials, volumes);
+      nx, ny, nz, table_size, materials, volumes, bboxes);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     if (starts_with(e.what(), "Mesh")) {
@@ -3435,7 +3594,7 @@ LibMesh::LibMesh(hid_t group) : UnstructuredMesh(group)
 // create the mesh from a pointer to a libMesh Mesh
 LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 {
-  if (!dynamic_cast<libMesh::ReplicatedMesh*>(&input_mesh)) {
+  if (!input_mesh.is_replicated()) {
     fatal_error("At present LibMesh tallies require a replicated mesh. Please "
                 "ensure 'input_mesh' is a libMesh::ReplicatedMesh.");
   }
@@ -3483,9 +3642,6 @@ void LibMesh::initialize()
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  if (length_multiplier_ > 0.0) {
-    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
-  }
   // if OpenMC is managing the libMesh::MeshBase instance, prepare the mesh.
   // Otherwise assume that it is prepared by its owning application
   if (unique_m_) {
@@ -3535,7 +3691,11 @@ Position LibMesh::centroid(int bin) const
 {
   const auto& elem = this->get_element_from_bin(bin);
   auto centroid = elem.vertex_average();
-  return {centroid(0), centroid(1), centroid(2)};
+  if (length_multiplier_ > 0.0) {
+    return length_multiplier_ * Position(centroid(0), centroid(1), centroid(2));
+  } else {
+    return {centroid(0), centroid(1), centroid(2)};
+  }
 }
 
 int LibMesh::n_vertices() const
@@ -3546,7 +3706,11 @@ int LibMesh::n_vertices() const
 Position LibMesh::vertex(int vertex_id) const
 {
   const auto node_ref = m_->node_ref(vertex_id);
-  return {node_ref(0), node_ref(1), node_ref(2)};
+  if (length_multiplier_ > 0.0) {
+    return length_multiplier_ * Position(node_ref(0), node_ref(1), node_ref(2));
+  } else {
+    return {node_ref(0), node_ref(1), node_ref(2)};
+  }
 }
 
 std::vector<int> LibMesh::connectivity(int elem_id) const
@@ -3687,6 +3851,11 @@ int LibMesh::get_bin(Position r) const
   // look-up a tet using the point locator
   libMesh::Point p(r.x, r.y, r.z);
 
+  if (length_multiplier_ > 0.0) {
+    // Scale the point down
+    p /= length_multiplier_;
+  }
+
   // quick rejection check
   if (!bbox_.contains_point(p)) {
     return -1;
@@ -3720,22 +3889,32 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 
 double LibMesh::volume(int bin) const
 {
-  return this->get_element_from_bin(bin).volume();
+  return this->get_element_from_bin(bin).volume() * length_multiplier_ *
+         length_multiplier_ * length_multiplier_;
 }
 
-AdaptiveLibMesh::AdaptiveLibMesh(
-  libMesh::MeshBase& input_mesh, double length_multiplier)
-  : LibMesh(input_mesh, length_multiplier), num_active_(m_->n_active_elem())
+AdaptiveLibMesh::AdaptiveLibMesh(libMesh::MeshBase& input_mesh,
+  double length_multiplier,
+  const std::set<libMesh::subdomain_id_type>& block_ids)
+  : LibMesh(input_mesh, length_multiplier), block_ids_(block_ids),
+    block_restrict_(!block_ids_.empty()),
+    num_active_(
+      block_restrict_
+        ? std::distance(m_->active_subdomain_set_elements_begin(block_ids_),
+            m_->active_subdomain_set_elements_end(block_ids_))
+        : m_->n_active_elem())
 {
   // if the mesh is adaptive elements aren't guaranteed by libMesh to be
   // contiguous in ID space, so we need to map from bin indices (defined over
   // active elements) to global dof ids
   bin_to_elem_map_.reserve(num_active_);
   elem_to_bin_map_.resize(m_->n_elem(), -1);
-  for (auto it = m_->active_elements_begin(); it != m_->active_elements_end();
-       it++) {
-    auto elem = *it;
-
+  auto begin = block_restrict_
+                 ? m_->active_subdomain_set_elements_begin(block_ids_)
+                 : m_->active_elements_begin();
+  auto end = block_restrict_ ? m_->active_subdomain_set_elements_end(block_ids_)
+                             : m_->active_elements_end();
+  for (const auto& elem : libMesh::as_range(begin, end)) {
     bin_to_elem_map_.push_back(elem->id());
     elem_to_bin_map_[elem->id()] = bin_to_elem_map_.size() - 1;
   }
@@ -3766,6 +3945,27 @@ void AdaptiveLibMesh::write(const std::string& filename) const
   warning(fmt::format(
     "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
     this->id_));
+}
+
+int AdaptiveLibMesh::get_bin(Position r) const
+{
+  // look-up a tet using the point locator
+  libMesh::Point p(r.x, r.y, r.z);
+
+  if (length_multiplier_ > 0.0) {
+    // Scale the point down
+    p /= length_multiplier_;
+  }
+
+  // quick rejection check
+  if (!bbox_.contains_point(p)) {
+    return -1;
+  }
+
+  const auto& point_locator = pl_.at(thread_num());
+
+  const auto elem_ptr = (*point_locator)(p, &block_ids_);
+  return elem_ptr ? get_bin_from_element(elem_ptr) : -1;
 }
 
 int AdaptiveLibMesh::get_bin_from_element(const libMesh::Elem* elem) const

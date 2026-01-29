@@ -4,6 +4,7 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
+import traceback
 
 import lxml.etree as ET
 import warnings
@@ -466,6 +467,16 @@ class Settings:
 
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    def __setattr__(self, name: str, value):
+        if not name.startswith('_'):
+            try:
+                getattr(self, name)
+            except AttributeError as e:
+                msg, = traceback.format_exception_only(e)
+                msg = msg.strip().split(maxsplit=1)[-1]
+                warnings.warn(msg, stacklevel=2)
+        super().__setattr__(name, value)
 
     @property
     def run_mode(self) -> str:
@@ -1877,7 +1888,11 @@ class Settings:
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):
                     source_element = value.to_xml_element()
+                    if source_element.find('bias') is not None:
+                        raise RuntimeError(
+                            "Ray source distributions should not be biased.")
                     element.append(source_element)
+
                 elif key == 'source_region_meshes':
                     subelement = ET.SubElement(element, 'source_region_meshes')
                     for mesh, domains in value:
@@ -2324,6 +2339,9 @@ class Settings:
                     self.random_ray[child.tag] = float(child.text)
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
+                    if child.find('bias') is not None:
+                        raise RuntimeError(
+                            "Ray source distributions should not be biased.")
                     self.random_ray['ray_source'] = source
                 elif child.tag == 'volume_estimator':
                     self.random_ray['volume_estimator'] = child.text

@@ -568,6 +568,9 @@ void Tally::set_scores(const vector<std::string>& scores)
   }
 
   if (point_present) {
+    if (simulation::nonvacuum_boundary_present)
+      fatal_error(
+        "Cannot use point detectors with non-vacuum boundary conditions.");
     if (legendre_present)
       fatal_error("Cannot use LegendreFilter with PointFilter.");
     if (energyout_present)

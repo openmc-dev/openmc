@@ -111,6 +111,8 @@ def test_mg_plot(run_in_tmpdir):
     water.set_density('macro', 1.0)
     water.add_macroscopic(h2o_data)
     sph = openmc.Sphere(r=10, boundary_type="vacuum")
+    cell = openmc.Cell(region=-sph, fill=water)
+    univ = openmc.Universe(cells=[cell])
 
     # Create MGXS library and export to HDF5
     groups = openmc.mgxs.EnergyGroups([1e-5, 20.0e6])
@@ -127,8 +129,11 @@ def test_mg_plot(run_in_tmpdir):
 
     # Set MG cross sections in config and plot
     with openmc.config.patch('mg_cross_sections', 'mgxs.h5'):
-        (-sph).plot(width=(200, 200), basis='yz', color_by='cell')
-        (-sph).plot(width=(200, 200), basis='yz', color_by='material')
+        (univ).plot(width=(200, 200), basis='yz', color_by='cell')
+        (univ).plot(width=(200, 200), basis='yz', color_by='material')
+    
+    with pytest.raises(RuntimeError):    
+        (univ).plot(width=(200, 200), basis='yz', color_by='cell')
 
     # Close plots to avoid warning
     import matplotlib.pyplot as plt

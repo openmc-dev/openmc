@@ -51,7 +51,11 @@ public:
   //! \param[out] mu Outgoing scattering angle cosine
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(const NuclideMicroXS& micro_xs, double E_in, double* E_out,
-    double* mu, uint64_t* seed);
+    double* mu, uint64_t* seed) const;
+  AngleEnergy& sample_dist(
+    const NuclideMicroXS& micro_xs, double E, uint64_t* seed) const;
+  double sample_energy_and_pdf(const NuclideMicroXS& micro_xs, double E_in,
+    double mu, double& E_out, uint64_t* seed) const;
 
 private:
   struct Reaction {

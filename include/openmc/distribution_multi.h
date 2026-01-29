@@ -6,6 +6,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/distribution.h"
+#include "openmc/error.h"
 #include "openmc/position.h"
 
 namespace openmc {
@@ -29,6 +30,11 @@ public:
   //! \return (sampled Direction, sample weight)
   virtual std::pair<Direction, double> sample(uint64_t* seed) const = 0;
 
+  virtual double evaluate(Direction u) const
+  {
+    fatal_error("evaluate not available for this UnitSphereDistribution type");
+  }
+
   Direction u_ref_ {0.0, 0.0, 1.0}; //!< reference direction
 };
 
@@ -51,6 +57,8 @@ public:
   //! \param seed Pseudorandom number seed points
   //! \return (sampled Direction, value of the PDF at this Direction)
   std::pair<Direction, double> sample_as_bias(uint64_t* seed) const;
+
+  double evaluate(Direction u) const override;
 
   // Observing pointers
   Distribution* mu() const { return mu_.get(); }
@@ -86,6 +94,8 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return (sampled direction, sample weight)
   std::pair<Direction, double> sample(uint64_t* seed) const override;
+
+  double evaluate(Direction u) const override;
 
   // Set or get bias distribution
   void set_bias(std::unique_ptr<PolarAzimuthal> bias)

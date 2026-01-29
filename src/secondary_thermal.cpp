@@ -4,6 +4,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
+#include "openmc/vector.h"
 
 #include "xtensor/xview.hpp"
 
@@ -11,6 +12,12 @@
 #include <cmath> // for log, exp
 
 namespace openmc {
+
+double get_pdf_discrete(const vector<double>& mu, double mu_0)
+{
+  DoubleVector w {1.0 / mu.size()};
+  return get_pdf_discrete(mu, w, mu_0);
+}
 
 //==============================================================================
 // CoherentElasticAE implementation
@@ -42,6 +49,39 @@ void CoherentElasticAE::sample(
   mu = 1.0 - 2.0 * energies[k] / E_in;
 }
 
+double CoherentElasticAE::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
+
+  double pdf;
+  E_out = E_in;
+  const auto& energies {xs_.bragg_edges()};
+  const auto& factors = xs_.factors();
+
+  if (E_in < energies.front() || E_in > energies.back()) {
+    return 0;
+  }
+
+  const int n = upper_bound_index(energies.begin(), energies.end(), E_in);
+
+  vector<double> mu_vector;
+  mu_vector.reserve(n);
+
+  std::transform(energies.rbegin() + n - 1, energies.rend(),
+    std::back_inserter(mu_vector),
+    [E_in](double Ei) { return 1 - 2 * Ei / E_in; });
+
+  vector<double> weights;
+  weights.reserve(n);
+
+  weights.emplace_back(factors[0] / factors[n]);
+  for (int i = 1; i <= n; ++i) {
+    weights.emplace_back((factors[i] - factors[i - 1]) / factors[n]);
+  }
+  return get_pdf_discrete(mu_vector, weights, mu);
+}
+
 //==============================================================================
 // IncoherentElasticAE implementation
 //==============================================================================
@@ -54,12 +94,21 @@ IncoherentElasticAE::IncoherentElasticAE(hid_t group)
 void IncoherentElasticAE::sample(
   double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
+  E_out = E_in;
+
   // Sample angle by inverting the distribution in ENDF-102, Eq. 7.4
   double c = 2 * E_in * debye_waller_;
   mu = std::log(1.0 + prn(seed) * (std::exp(2.0 * c) - 1)) / c - 1.0;
-
-  // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7.4)
+}
+double IncoherentElasticAE::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
   E_out = E_in;
+
+  // Sample angle by inverting the distribution in ENDF-102, Eq. 7.4
+  double c = 2 * E_in * debye_waller_;
+  double A = c / (1 - std::exp(-2.0 * c)); // normalization factor
+  return A * std::exp(-c * (1 - mu));
 }
 
 //==============================================================================
@@ -116,6 +165,28 @@ void IncoherentElasticAEDiscrete::sample(
   E_out = E_in;
 }
 
+double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  // Get index and interpolation factor for elastic grid
+  int i;
+  double f;
+  get_energy_index(energy_, E_in, i, f);
+  // Energy doesn't change in elastic scattering
+  E_out = E_in;
+  int n_mu = mu_out_.shape()[1];
+
+  std::vector<double> mu_vector;
+  mu_vector.reserve(n_mu);
+
+  for (int k = 0; k < n_mu; ++k) {
+    double mu_k = mu_out_(i, k) + f * (mu_out_(i + 1, k) - mu_out_(i, k));
+    mu_vector.push_back(mu_k);
+  }
+
+  return get_pdf_discrete(mu_vector, mu);
+}
+
 //==============================================================================
 // IncoherentInelasticAEDiscrete implementation
 //==============================================================================
@@ -129,8 +200,8 @@ IncoherentInelasticAEDiscrete::IncoherentInelasticAEDiscrete(
   read_dataset(group, "skewed", skewed_);
 }
 
-void IncoherentInelasticAEDiscrete::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+void IncoherentInelasticAEDiscrete::sample_params(
+  double E_in, double& E_out, int& j, uint64_t* seed) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;
@@ -144,7 +215,6 @@ void IncoherentInelasticAEDiscrete::sample(
   // for the second and second to last bins, relative to a normal bin
   // probability of 1). Otherwise, each bin is equally probable.
 
-  int j;
   int n = energy_out_.shape()[1];
   if (!skewed_) {
     // All bins equally likely
@@ -176,6 +246,18 @@ void IncoherentInelasticAEDiscrete::sample(
 
   // Outgoing energy
   E_out = (1 - f) * E_ij + f * E_i1j;
+}
+
+void IncoherentInelasticAEDiscrete::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  // Get index and interpolation factor for inelastic grid
+  int i;
+  double f;
+  get_energy_index(energy_, E_in, i, f);
+
+  int j;
+  sample_params(E_in, E_out, j, seed);
 
   // Sample outgoing cosine bin
   int m = mu_out_.shape()[2];
@@ -187,6 +269,30 @@ void IncoherentInelasticAEDiscrete::sample(
 
   // Cosine of angle between incoming and outgoing neutron
   mu = (1 - f) * mu_ijk + f * mu_i1jk;
+}
+
+double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  // Get index and interpolation factor for inelastic grid
+  int i;
+  double f;
+  get_energy_index(energy_, E_in, i, f);
+  int j;
+  sample_params(E_in, E_out, j, seed);
+
+  int m = mu_out_.shape()[2];
+  std::vector<double> mu_vector;
+  mu_vector.reserve(m);
+
+  for (int k = 0; k < m; ++k) {
+    double mu_ijk = mu_out_(i, j, k);
+    double mu_i1jk = mu_out_(i + 1, j, k);
+    double mu_k = (1 - f) * mu_ijk + f * mu_i1jk;
+    mu_vector.push_back(mu_k);
+  }
+
+  return get_pdf_discrete(mu_vector, mu);
 }
 
 //==============================================================================
@@ -231,24 +337,23 @@ IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
   }
 }
 
-void IncoherentInelasticAE::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+void IncoherentInelasticAE::sample_params(
+  double E_in, double& E_out, double& f, int& l, int& j, uint64_t* seed) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;
-  double f;
-  get_energy_index(energy_, E_in, i, f);
+  double f0;
+  get_energy_index(energy_, E_in, i, f0);
 
   // Pick closer energy based on interpolation factor
-  int l = f > 0.5 ? i + 1 : i;
+  l = f0 > 0.5 ? i + 1 : i;
 
   // Determine outgoing energy bin
   // (First reset n_energy_out to the right value)
-  auto n = distribution_[l].n_e_out;
+  int n = distribution_[l].n_e_out;
   double r1 = prn(seed);
   double c_j = distribution_[l].e_out_cdf[0];
   double c_j1;
-  std::size_t j;
   for (j = 0; j < n - 1; ++j) {
     c_j1 = distribution_[l].e_out_cdf[j + 1];
     if (r1 < c_j1)
@@ -286,6 +391,15 @@ void IncoherentInelasticAE::sample(
     E_out += E_in - E_l;
   }
 
+  f = (r1 - c_j) / (c_j1 - c_j);
+}
+void IncoherentInelasticAE::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  double f;
+  int l, j;
+  sample_params(E_in, E_out, f, l, j, seed);
+
   // Sample outgoing cosine bin
   int n_mu = distribution_[l].mu.shape()[1];
   std::size_t k = prn(seed) * n_mu;
@@ -294,7 +408,6 @@ void IncoherentInelasticAE::sample(
   // a bin of width 0.5*min(mu[k] - mu[k-1], mu[k+1] - mu[k]) centered on the
   // discrete mu value itself.
   const auto& mu_l = distribution_[l].mu;
-  f = (r1 - c_j) / (c_j1 - c_j);
 
   // Interpolate kth mu value between distributions at energies j and j+1
   mu = mu_l(j, k) + f * (mu_l(j + 1, k) - mu_l(j, k));
@@ -316,6 +429,25 @@ void IncoherentInelasticAE::sample(
 
   // Smear cosine
   mu += std::min(mu - mu_left, mu_right - mu) * (prn(seed) - 0.5);
+}
+
+double IncoherentInelasticAE::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  double f;
+  int l, j;
+  sample_params(E_in, E_out, f, l, j, seed);
+
+  int n_mu = distribution_[l].mu.shape()[1];
+  const auto& mu_l = distribution_[l].mu;
+  std::vector<double> mu_vector;
+
+  for (int k = 0; k < n_mu; ++k) {
+    double mu_k = mu_l(j, k) + f * (mu_l(j + 1, k) - mu_l(j, k));
+    mu_vector.push_back(mu_k);
+  }
+
+  return get_pdf_discrete(mu_vector, mu);
 }
 
 //==============================================================================
@@ -340,18 +472,30 @@ MixedElasticAE::MixedElasticAE(
   close_group(incoherent_group);
 }
 
-void MixedElasticAE::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+const AngleEnergy& MixedElasticAE::sample_dist(
+  double E_in, uint64_t* seed) const
 {
   // Evaluate coherent and incoherent elastic cross sections
   double xs_coh = coherent_xs_(E_in);
   double xs_incoh = incoherent_xs_(E_in);
 
   if (prn(seed) * (xs_coh + xs_incoh) < xs_coh) {
-    coherent_dist_.sample(E_in, E_out, mu, seed);
+    return coherent_dist_;
   } else {
-    incoherent_dist_->sample(E_in, E_out, mu, seed);
+    return *incoherent_dist_;
   }
+}
+
+void MixedElasticAE::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  sample_dist(E_in, seed).sample(E_in, E_out, mu, seed);
+}
+
+double MixedElasticAE::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  return sample_dist(E_in, seed).sample_energy_and_pdf(E_in, mu, E_out, seed);
 }
 
 } // namespace openmc

@@ -827,7 +827,7 @@ void transport_history_based_single_particle(Particle& p)
 void transport_pseudoparticle(Particle& p, double total_distance, double& mfp)
 {
   double remaining_distance = total_distance;
-  p.event_calculate_xs();
+  p.event_calculate_xs(true);
   p.boundary() = distance_to_boundary(p);
   double advance_distance = p.boundary().distance();
 
@@ -837,8 +837,8 @@ void transport_pseudoparticle(Particle& p, double total_distance, double& mfp)
     p.move_distance(advance_distance);
     remaining_distance -= advance_distance;
     p.time() += advance_distance / p.speed();
-    p.event_cross_surface();
-    p.event_calculate_xs();
+    p.event_cross_surface(true);
+    p.event_calculate_xs(true);
     p.boundary() = distance_to_boundary(p);
     advance_distance = p.boundary().distance();
   }

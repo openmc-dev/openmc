@@ -195,10 +195,10 @@ void Particle::initialize_pseudoparticle(
   time_last() = p.time();
 }
 
-void Particle::event_calculate_xs()
+void Particle::event_calculate_xs(bool is_pseudo)
 {
   // Set the random number stream
-  stream() = STREAM_TRACKING;
+  stream() = is_pseudo ? STREAM_NEXT_EVENT : STREAM_TRACKING;
 
   // Store pre-collision particle properties
   wgt_last() = wgt();
@@ -234,7 +234,7 @@ void Particle::event_calculate_xs()
   }
 
   // Write particle track.
-  if (write_track())
+  if (write_track() && !is_pseudo)
     write_particle_track(*this);
 
   if (settings::check_overlaps)
@@ -323,7 +323,7 @@ void Particle::event_advance()
   }
 }
 
-void Particle::event_cross_surface()
+void Particle::event_cross_surface(bool is_pseudo)
 {
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
@@ -347,21 +347,21 @@ void Particle::event_cross_surface()
     // Particle crosses surface
     const auto& surf {model::surfaces[surface_index()].get()};
     // If BC, add particle to surface source before crossing surface
-    if (surf->surf_source_ && surf->bc_) {
+    if (surf->surf_source_ && surf->bc_ && !is_pseudo) {
       add_surf_source_to_bank(*this, *surf);
     }
     this->cross_surface(*surf);
     // If no BC, add particle to surface source after crossing surface
-    if (surf->surf_source_ && !surf->bc_) {
+    if (surf->surf_source_ && !surf->bc_ && !is_pseudo) {
       add_surf_source_to_bank(*this, *surf);
     }
-    if (settings::weight_window_checkpoint_surface) {
+    if (settings::weight_window_checkpoint_surface && !is_pseudo) {
       apply_weight_windows(*this);
     }
     event() = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
-  if (!model::active_surface_tallies.empty()) {
+  if (!model::active_surface_tallies.empty() && !is_pseudo) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
 }

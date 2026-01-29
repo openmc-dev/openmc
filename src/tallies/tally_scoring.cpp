@@ -2802,8 +2802,7 @@ void score_point_tally(
              (1 - mu / (awr + 1) * std::sqrt(E_in / E_out));
     }
     simulation::pseudoparticle.initialize_pseudoparticle(p, u, E_out);
-    mfp = 0.0;
-    transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
+    double mfp = transport_pseudoparticle(simulation::pseudoparticle, distance);
     if (!simulation::pseudoparticle.alive())
       continue;
     score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
@@ -2840,8 +2839,7 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
     double pdf =
       sab.sample_energy_and_pdf(micro, p.E(), mu, E_out, p.current_seed());
     simulation::pseudoparticle.initialize_pseudoparticle(p, u, E_out);
-    mfp = 0.0;
-    transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
+    double mfp = transport_pseudoparticle(simulation::pseudoparticle, distance);
     if (!simulation::pseudoparticle.alive())
       continue;
     score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
@@ -2872,8 +2870,7 @@ void score_point_tally(SourceSite& site, int source_index)
     double pdf = angle->evaluate(u);
     simulation::pseudoparticle.from_source(&site);
     simulation::pseudoparticle.u() = u;
-    mfp = 0.0;
-    transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
+    double mfp = transport_pseudoparticle(simulation::pseudoparticle, distance);
     if (!simulation::pseudoparticle.alive())
       continue;
     score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);

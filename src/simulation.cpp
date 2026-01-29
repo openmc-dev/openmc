@@ -824,27 +824,33 @@ void transport_history_based_single_particle(Particle& p)
   p.event_death();
 }
 
-void transport_pseudoparticle(Particle& p, double total_distance, double& mfp)
+double transport_pseudoparticle(Particle& p, double total_distance)
 {
-  double remaining_distance = total_distance;
-  p.event_calculate_xs(true);
-  p.boundary() = distance_to_boundary(p);
-  double advance_distance = p.boundary().distance();
-
-  while (advance_distance < remaining_distance) {
-    mfp += advance_distance * p.macro_xs().total;
-    // Advance particle in space and time
-    p.move_distance(advance_distance);
-    remaining_distance -= advance_distance;
-    p.time() += advance_distance / p.speed();
-    p.event_cross_surface(true);
+  double mfp = 0.0;
+  while (total_distance > 0.0) {
     p.event_calculate_xs(true);
     p.boundary() = distance_to_boundary(p);
-    advance_distance = p.boundary().distance();
+    double speed = p.speed();
+    double time_cutoff = settings::time_cutoff[static_cast<int>(p.type())];
+    double distance_cutoff =
+      (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
+    double distance =
+      std::min({p.boundary().distance(), distance_cutoff, total_distance});
+    if (distance == distance_cutoff) {
+      p.wgt() = 0.0;
+      return;
+    }
+
+    // Advance particle in space and time
+    p.move_distance(advance_distance);
+    p.time() += distance / speed;
+    p.lifetime() += distance / speed;
+    mfp += distance * p.macro_xs().total;
+    if (distance == p.boundary().distance())
+      p.event_cross_surface(true);
   }
-  mfp += remaining_distance * p.macro_xs().total;
-  p.move_distance(remaining_distance);
-  p.time() += remaining_distance / p.speed();
+  return mfp;
 }
 
 void transport_history_based()

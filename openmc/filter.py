@@ -807,6 +807,9 @@ class PointFilter(Filter):
         The number of filter bins
 
     """
+    
+    __hash__ = Filter.__hash__
+    
     def __eq__(self, other):
         if type(self) is not type(other):
             return False

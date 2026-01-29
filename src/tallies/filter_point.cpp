@@ -1,8 +1,10 @@
 #include "openmc/tallies/filter_point.h"
+#include "openmc/tallies/tally_scoring.h"
 
 #include <fmt/core.h>
 
 #include "openmc/math_functions.h"
+#include "openmc/simulation.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -34,11 +36,25 @@ void PointFilter::set_detectors(span<std::pair<Position, double>> detectors)
   n_bins_ = detectors_.size();
 }
 
+void PointFilter::reset_indices()
+{
+  indices_.clear();
+  for (auto det : model::active_point_detectors) {
+    vector<int32_t> temp;
+    for (auto i = 0; i < detectors_.size(); i++) {
+      auto [d, r] = detectors_[i];
+      if (d == det)
+        temp.push_back(i);
+    }
+    indices_.push_back(temp);
+  }
+}
+
 void PointFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   double attenuation = p.wgt() / p.wgt_last();
-  for (auto i = 0; i < detectors_.size(); i++) {
+  for (auto i : indices_[simulation::i_det]) {
     auto [pos, r] = detectors_[i];
     if ((p.r() - pos).norm() < FP_COINCIDENT) {
       match.bins_.push_back(i);

@@ -27,7 +27,8 @@ namespace openmc {
 
 namespace simulation {
 thread_local Particle pseudoparticle;
-}
+thread_local int i_det;
+} // namespace simulation
 
 //==============================================================================
 // FilterBinIter implementation
@@ -2771,7 +2772,9 @@ void score_point_tally(
   u_cm /= u_cm.norm();
   double mfp;
 
+  simulation::i_det = -1;
   for (auto& det : model::active_point_detectors) {
+    ++simulation::i_det;
 
     auto u = (det - p.r());
     double distance = u.norm();
@@ -2816,7 +2819,9 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   u_cm /= u_cm.norm();
   double mfp;
 
+  simulation::i_det = -1;
   for (auto& det : model::active_point_detectors) {
+    ++simulation::i_det;
 
     auto u = (det - p.r());
     double distance = u.norm();
@@ -2847,7 +2852,10 @@ void score_point_tally(SourceSite& site, int source_index)
 
   double mfp;
 
+  simulation::i_det = -1;
   for (auto& det : model::active_point_detectors) {
+    ++simulation::i_det;
+
     auto u = (det - r);
     double distance = u.norm();
     u /= distance;

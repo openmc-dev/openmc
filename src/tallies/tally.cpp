@@ -1191,6 +1191,8 @@ void setup_active_tallies()
   model::time_grid.clear();
   model::active_point_detectors.clear();
 
+  std::set<int32_t> particle_filter_ids;
+
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
 
@@ -1239,10 +1241,15 @@ void setup_active_tallies()
           for (auto [det, r] : pf->detectors()) {
             add_point_detector(det);
           }
+          particle_filter_ids.insert(pf->id());
           break;
         }
       }
     }
+  }
+  for (auto id : particle_filter_ids) {
+    auto pf = dynamic_cast<PointFilter*>(model::tally_filters.at(id).get());
+    pf->reset_indices();
   }
 }
 

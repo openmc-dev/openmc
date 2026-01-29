@@ -117,10 +117,8 @@ AngleEnergy& ReactionProduct::sample_dist(double E_in, uint64_t* seed) const
       prob += applicability_[i](E_in);
 
       // If i-th distribution is sampled, sample energy from the distribution
-      if (c <= prob) {
+      if (c <= prob)
         return *distribution_[i];
-        break;
-      }
     }
   } else {
     // If only one distribution is present, go ahead and sample it

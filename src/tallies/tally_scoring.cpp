@@ -2748,54 +2748,14 @@ void score_pseudoparticle_tally(
   Particle& p, double distance, double mfp, double pdf)
 {
   double attenuation = std::exp(-mfp);
-  double flux = pdf / (distance * distance);
-  
-  write_message(2, "wgt {} wgt_last {} flux {}", p.wgt(), p.wgt_last(), flux);
 
   // Save the attenuation for point filter handling
-  //p.wgt_last() = p.wgt();
-  //p.wgt() *= attenuation;
+  p.wgt_last() = p.wgt();
+  p.wgt() *= attenuation;
 
-  for (auto i_tally : model::active_point_tallies) {
-    const Tally& tally {*model::tallies[i_tally]};
+  double flux = p.wgt_last() * pdf;
 
-    // Initialize an iterator over valid filter bin combinations.  If there are
-    // no valid combinations, use a continue statement to ensure we skip the
-    // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p.filter_matches());
-    if (filter_iter == end)
-      continue;
-
-    // Loop over filter bins.
-    for (; filter_iter != end; ++filter_iter) {
-      auto filter_index = filter_iter.index_;
-      auto filter_weight = filter_iter.weight_;
-
-      // Loop over nuclide bins.
-      for (auto i = 0; i < tally.nuclides_.size(); ++i) {
-        auto i_nuclide = tally.nuclides_[i];
-
-        // Tally this event in the present nuclide bin if that bin represents
-        // the event nuclide or the total material.  Note that the atomic
-        // density argument for score_general is not used for analog tallies.
-        if (i_nuclide == p.event_nuclide() || i_nuclide == -1)
-          score_general_ce_analog(p, i_tally, i * tally.scores_.size(),
-            filter_index, filter_weight, i_nuclide, -1.0, flux);
-      }
-    }
-
-    // If the user has specified that we can assume all tallies are spatially
-    // separate, this implies that once a tally has been scored to, we needn't
-    // check the others. This cuts down on overhead when there are many
-    // tallies specified
-    if (settings::assume_separate)
-      break;
-  }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+  score_tracklength_tally_general(p, flux, model::active_point_tallies);
 }
 
 void score_point_tally(

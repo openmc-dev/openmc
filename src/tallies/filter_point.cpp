@@ -37,15 +37,17 @@ void PointFilter::set_detectors(span<std::pair<Position, double>> detectors)
 void PointFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
+  double attenuation = p.wgt() / p.wgt_last();
   for (auto i = 0; i < detectors_.size(); i++) {
     auto [pos, r] = detectors_[i];
     if ((p.r() - pos).norm() < FP_COINCIDENT) {
       match.bins_.push_back(i);
       double weight;
-      if ((p.r_last() - pos).norm() < r) {
-        weight = 3.0 * exprel(-r * p.macro_xs().total);
+      double distance = (p.r_last() - pos).norm();
+      if (distance > r) {
+        weight = attenuation / (distance * distance);
       } else {
-        weight = p.wgt() / p.wgt_last();
+        weight = 3.0 * -exprel(-p.macro_xs().total * r) / (r * r);
       }
       match.weights_.push_back(weight);
     }

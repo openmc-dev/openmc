@@ -31,6 +31,7 @@
 #include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter_point.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_time.h"
@@ -538,6 +539,7 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool legendre_present = false;
   bool cell_present = false;
   bool cellfrom_present = false;
+  bool point_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
   bool non_cell_energy_present = false;
@@ -554,11 +556,25 @@ void Tally::set_scores(const vector<std::string>& scores)
       cellfrom_present = true;
     } else if (filt->type() == FilterType::CELL) {
       cell_present = true;
+    } else if (filt->type() == FilterType::POINT) {
+      point_present = true;
+      type_ = TallyType::NEXT_EVENT;
+      estimator_ = TallyEstimator::POINT;
     } else if (filt->type() == FilterType::SURFACE) {
       surface_present = true;
     } else if (filt->type() == FilterType::MESH_SURFACE) {
       meshsurface_present = true;
     }
+  }
+
+  if (point_present) {
+    if (legendre_present)
+      fatal_error("Cannot use LegendreFilter with PointFilter.");
+    if (energyout_present)
+      fatal_error("Cannot use EnergyoutFilter with PointFilter.");
+    if (surface_present || meshsurface_present)
+      fatal_error(
+        "Cannot use surface or mesh-surface filters with PointFilter.");
   }
 
   // Iterate over the given scores.
@@ -604,6 +620,9 @@ void Tally::set_scores(const vector<std::string>& scores)
 
     case SCORE_NU_SCATTER:
       if (settings::run_CE) {
+        if (point_present)
+          fatal_error("Cannot use nu-scatter score with PointFilter in "
+                      "continuous energy mode.");
         estimator_ = TallyEstimator::ANALOG;
       } else {
         if (energyout_present || legendre_present)
@@ -612,6 +631,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_CURRENT:
+      if (point_present)
+        fatal_error("Cannot use current score with PointFilter.");
       // Check which type of current is desired: mesh or surface currents.
       if (surface_present || cell_present || cellfrom_present) {
         if (meshsurface_present)
@@ -627,11 +648,15 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case HEATING:
+      if (point_present)
+        fatal_error("Cannot use heating score with PointFilter.");
       if (settings::photon_transport)
         estimator_ = TallyEstimator::COLLISION;
       break;
 
     case SCORE_PULSE_HEIGHT:
+      if (point_present)
+        fatal_error("Cannot use pulse-height score with PointFilter.");
       if (non_cell_energy_present) {
         fatal_error("Pulse-height tallies are not compatible with filters "
                     "other than CellFilter and EnergyFilter");
@@ -658,6 +683,8 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_IFP_TIME_NUM:
     case SCORE_IFP_BETA_NUM:
     case SCORE_IFP_DENOM:
+      if (point_present)
+        fatal_error("Cannot use ifp scores with PointFilter.");
       estimator_ = TallyEstimator::COLLISION;
       break;
     }
@@ -1139,7 +1166,7 @@ void add_to_time_grid(vector<double> grid)
   model::time_grid.swap(merged);
 }
 
-//! Add new points to the global time grid
+//! Add new points to global point_detectors
 //
 //! \param detector Position of new point detector to add
 void add_point_detector(Position& detector)
@@ -1205,6 +1232,10 @@ void setup_active_tallies()
         switch (tally.estimator_) {
         case TallyEstimator::POINT:
           model::active_point_tallies.push_back(i);
+          auto pf = tally.get_filter<PointFilter>();
+          for (auto [det, r] : pf->detectors()) {
+            add_point_detector(det);
+          }
           break;
         }
       }

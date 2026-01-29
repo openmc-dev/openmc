@@ -828,6 +828,24 @@ class PointFilter(Filter):
             cv.check_length(f'bins[{i}][0]', item[0], 3, 3)
             cv.check_type(f'bins[{i}][1]', item[1], Real)
         self._bins = bins
+    
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = ' '.join(str(b) for item in self.bins 
+                                          for b in list(item[0])+[item[1]])
+        return element    
 
 class ParentNuclideFilter(ParticleFilter):
     """Bins tally events based on the parent nuclide

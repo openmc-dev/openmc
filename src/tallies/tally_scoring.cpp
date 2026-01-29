@@ -2748,11 +2748,13 @@ void score_pseudoparticle_tally(
   Particle& p, double distance, double mfp, double pdf)
 {
   double attenuation = std::exp(-mfp);
-  double flux = pdf * p.wgt() / (2 * PI * distance * distance);
+  double flux = pdf / (distance * distance);
+  
+  write_message(2, "wgt {} wgt_last {} flux {}", p.wgt(), p.wgt_last(), flux);
 
   // Save the attenuation for point filter handling
-  p.wgt_last() = p.wgt();
-  p.wgt() *= attenuation;
+  //p.wgt_last() = p.wgt();
+  //p.wgt() *= attenuation;
 
   for (auto i_tally : model::active_point_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2808,6 +2810,7 @@ void score_point_tally(
   Direction u_cm = (v_n - v_cm);
   u_cm /= u_cm.norm();
   double mfp;
+  fatal_error("moo");
 
   for (auto& det : model::active_point_detectors) {
 
@@ -2844,6 +2847,7 @@ void score_point_tally(
 void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   const NuclideMicroXS& micro)
 {
+  fatal_error("moo");
   const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
   double E_in = p.E();
@@ -2886,7 +2890,6 @@ void score_point_tally(SourceSite& site, int source_index)
   double mfp;
 
   for (auto& det : model::active_point_detectors) {
-
     auto u = (det - r);
     double distance = u.norm();
     u /= distance;

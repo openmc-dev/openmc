@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER,
+from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, c_void_p,
                     create_string_buffer, c_size_t)
 from math import sqrt
 import sys
@@ -47,7 +47,8 @@ _dll.openmc_mesh_bounding_box.argtypes = [
 _dll.openmc_mesh_bounding_box.restype = c_int
 _dll.openmc_mesh_bounding_box.errcheck = _error_handler
 _dll.openmc_mesh_material_volumes.argtypes = [
-    c_int32, c_int, c_int, c_int, c_int, arr_2d_int32, arr_2d_double]
+    c_int32, c_int, c_int, c_int, c_int, arr_2d_int32, arr_2d_double,
+    c_void_p]
 _dll.openmc_mesh_material_volumes.restype = c_int
 _dll.openmc_mesh_material_volumes.errcheck = _error_handler
 _dll.openmc_mesh_get_plot_bins.argtypes = [
@@ -188,6 +189,7 @@ class Mesh(_FortranObjectWithID):
             n_samples: int | tuple[int, int, int] = 10_000,
             max_materials: int = 4,
             output: bool = True,
+            bounding_boxes: bool = False,
     ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
 
@@ -213,6 +215,11 @@ class Mesh(_FortranObjectWithID):
             Estimated maximum number of materials in any given mesh element.
         output : bool, optional
             Whether or not to show output.
+        bounding_boxes : bool, optional
+            Whether or not to compute an axis-aligned bounding box for each
+            (mesh element, material) combination. When enabled, the bounding
+            box encloses the ray-estimator prisms used for the volume
+            estimation.
 
         Returns
         -------
@@ -243,23 +250,36 @@ class Mesh(_FortranObjectWithID):
         table_size = slot_factor*max_materials
         materials = np.full((n, table_size), EMPTY_SLOT, dtype=np.int32)
         volumes = np.zeros((n, table_size), dtype=np.float64)
+        bboxes = None
+        if bounding_boxes:
+            bboxes = np.empty((n, table_size, 6), dtype=np.float64)
+            bboxes[..., 0:3] = np.inf
+            bboxes[..., 3:6] = -np.inf
 
         # Run material volume calculation
         while True:
             try:
+                bboxes_ptr = None
+                if bboxes is not None:
+                    bboxes_ptr = bboxes.ctypes.data_as(POINTER(c_double))
                 with quiet_dll(output):
                     _dll.openmc_mesh_material_volumes(
-                        self._index, nx, ny, nz, table_size, materials, volumes)
+                        self._index, nx, ny, nz, table_size, materials,
+                        volumes, bboxes_ptr)
             except AllocationError:
                 # Increase size of result array and try again
                 table_size *= 2
                 materials = np.full((n, table_size), EMPTY_SLOT, dtype=np.int32)
                 volumes = np.zeros((n, table_size), dtype=np.float64)
+                if bounding_boxes:
+                    bboxes = np.empty((n, table_size, 6), dtype=np.float64)
+                    bboxes[..., 0:3] = np.inf
+                    bboxes[..., 3:6] = -np.inf
             else:
                 # If no error, break out of loop
                 break
 
-        return MeshMaterialVolumes(materials, volumes)
+        return MeshMaterialVolumes(materials, volumes, bboxes)
 
     def get_plot_bins(
             self,

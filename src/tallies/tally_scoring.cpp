@@ -2770,7 +2770,6 @@ void score_point_tally(
   Direction u_cm = (v_n - v_cm);
   u_cm /= u_cm.norm();
   double mfp;
-  fatal_error("moo");
 
   for (auto& det : model::active_point_detectors) {
 
@@ -2807,7 +2806,6 @@ void score_point_tally(
 void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   const NuclideMicroXS& micro)
 {
-  fatal_error("moo");
   const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
   double E_in = p.E();

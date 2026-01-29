@@ -129,8 +129,7 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
 
 void score_point_tally(SourceSite& site, int source_index);
 
-void score_pseudoparticle_tally(
-  Particle& p, double distance, double mfp, double pdf);
+void score_pseudoparticle_tally(Particle& p, double mfp, double pdf);
 } // namespace openmc
 
 #endif // OPENMC_TALLIES_TALLY_SCORING_H

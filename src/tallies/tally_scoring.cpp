@@ -2745,8 +2745,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   }
 }
 
-void score_pseudoparticle_tally(
-  Particle& p, double distance, double mfp, double pdf)
+void score_pseudoparticle_tally(Particle& p, double mfp, double pdf)
 {
   double attenuation = std::exp(-mfp);
 
@@ -2802,7 +2801,7 @@ void score_point_tally(
     transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
     if (!simulation::pseudoparticle.alive())
       continue;
-    score_pseudoparticle_tally(simulation::pseudoparticle, distance, mfp, pdf);
+    score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
   }
 }
 
@@ -2836,7 +2835,7 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
     transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
     if (!simulation::pseudoparticle.alive())
       continue;
-    score_pseudoparticle_tally(simulation::pseudoparticle, distance, mfp, pdf);
+    score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
   }
 }
 
@@ -2867,7 +2866,7 @@ void score_point_tally(SourceSite& site, int source_index)
     transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
     if (!simulation::pseudoparticle.alive())
       continue;
-    score_pseudoparticle_tally(simulation::pseudoparticle, distance, mfp, pdf);
+    score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
   }
 }
 

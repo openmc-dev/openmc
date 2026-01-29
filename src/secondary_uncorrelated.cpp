@@ -69,7 +69,12 @@ double UncorrelatedAngleEnergy::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Sample outgoing energy
-  E_out = energy_->sample(E_in, seed);
+  if (energy_ != nullptr) {
+    E_out = energy_->sample(E_in, seed);
+  } else {
+    E_out = E_in;
+  }
+
   if (!angle_.empty()) {
     return angle_.evaluate(E_in, mu);
   } else {

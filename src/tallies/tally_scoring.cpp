@@ -2766,7 +2766,9 @@ void score_point_tally(
   double E_in = p.E();
   double vel = std::sqrt(E_in);
   Direction v_n = vel * p.u();
-  Direction v_cm = (v_n + awr * (v_t != nullptr ? *v_t : 0)) / (awr + 1.0);
+  Direction v_cm = v_n / (awr + 1.0);
+  if (v_t != nullptr)
+    v_cm += awr / (awr + 1.0) * (*v_t);
   Direction u_cm = (v_n - v_cm);
   u_cm /= u_cm.norm();
   double mfp;

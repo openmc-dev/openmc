@@ -22,11 +22,11 @@ from ._xml import get_elem_list, get_text
 
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
-    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
-    'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time', 'parentnuclide', 'weight', 'meshborn', 'meshsurface',
-    'meshmaterial',
+    'energyout', 'mu', 'musurface', 'point', 'polar', 'azimuthal', 'distribcell', 
+    'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 
+    'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 
+    'cellinstance', 'collision', 'time', 'parentnuclide', 'weight', 'meshborn', 
+    'meshsurface', 'meshmaterial',
 )
 
 _CURRENT_NAMES = (
@@ -786,6 +786,45 @@ class ParticleFilter(Filter):
         bins = get_elem_list(elem, "bins", str) or []
         return cls(bins, filter_id=filter_id)
 
+
+class PointFilter(Filter):
+    """Bins tally events based on point detectors.
+
+    Parameters
+    ----------
+    bins : sequence of tuple[tuple[Real, Real, Real], Real]
+        Point detectors positions and exclusion radii.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : sequence of tuple[tuple[Real, Real, Real], Real]
+        Point detectors positions and exclusion radii.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
+            return False
+        else:
+            return all(b1==b2 for b1,b2 in zip(self.bins,other.bins))
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        cv.check_type('bins', bins, Sequence, tuple)
+        for i, item in enumerate(bins):
+            cv.check_type(f'bins[{i}]', item, tuple)
+            cv.check_length(f'bins[{i}]', item, 2, 2)
+            cv.check_type(f'bins[{i}][0]', item[0], tuple, Real)
+            cv.check_length(f'bins[{i}][0]', item[0], 3, 3)
+            cv.check_type(f'bins[{i}][1]', item[1], Real)
+        self._bins = bins
 
 class ParentNuclideFilter(ParticleFilter):
     """Bins tally events based on the parent nuclide

@@ -2796,9 +2796,10 @@ void score_pseudoparticle_tally(
     match.bins_present_ = false;
 }
 
-void score_point_tally(Particle& p, const Nuclide* nuc, const Reaction& rx,
-  int i_product, Direction* v_t)
+void score_point_tally(
+  Particle& p, int i_nuclide, const Reaction& rx, int i_product, Direction* v_t)
 {
+  const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
   double E_in = p.E();
   double vel = std::sqrt(E_in);
@@ -2840,9 +2841,10 @@ void score_point_tally(Particle& p, const Nuclide* nuc, const Reaction& rx,
   }
 }
 
-void score_point_tally(Particle& p, const Nuclide* nuc, const ThermalData& sab,
+void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   const NuclideMicroXS& micro)
 {
+  const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
   double E_in = p.E();
   double vel = std::sqrt(E_in);

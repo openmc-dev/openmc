@@ -14,7 +14,7 @@ void PointFilter::from_xml(pugi::xml_node node)
   // Convert to vector of detectors
   vector<std::pair<Position, double>> detectors;
   size_t n = bins.size() / 4;
-  for (int i = 0; i < n, ++i) {
+  for (int i = 0; i < n; ++i) {
     Position pos {bins[4 * i], bins[4 * i + 1], bins[4 * i + 2]};
     detectors.push_back(std::make_pair(pos, bins[4 * i + 3]));
   }
@@ -62,7 +62,7 @@ void PointFilter::to_statepoint(hid_t filter_group) const
     detectors.push_back(pos[2]);
     detectors.push_back(r);
   }
-  write_dataset(filter_group, "bins", particles);
+  write_dataset(filter_group, "bins", detectors);
 }
 
 std::string PointFilter::text_label(int bin) const

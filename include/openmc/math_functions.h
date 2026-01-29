@@ -201,6 +201,12 @@ std::complex<double> faddeeva(std::complex<double> z);
 //! \return Derivative of Faddeeva function evaluated at z
 std::complex<double> w_derivative(std::complex<double> z, int order);
 
+//! Evaluate relative exponential function
+//!
+//! \param x Real argument
+//! \return (exp(x)-1)/x without loss of precision near 0
+double exprel(double x);
+
 //! Helper function to get index and interpolation function on an incident
 //! energy grid
 //!

@@ -22,7 +22,7 @@ __all__ = [
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
     'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
-    'ParentNuclideFilter', 'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
+    'ParentNuclideFilter', 'ParticleFilter', 'PointFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
     'SpatialLegendreFilter', 'SurfaceFilter', 'TimeFilter', 'UniverseFilter',
     'WeightFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
@@ -603,6 +603,8 @@ class ParticleFilter(Filter):
             self._index, particle_i.ctypes.data_as(POINTER(c_int)))
         return [ParticleType(i) for i in particle_i]
 
+class PointFilter(Filter):
+    filter_type = 'point'
 
 class PolarFilter(Filter):
     filter_type = 'polar'

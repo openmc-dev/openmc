@@ -967,7 +967,7 @@ class SourceParticle:
 
         """
         return (self.r, self.u, self.E, self.time, self.wgt,
-                self.delayed_group, self.surf_id, self.particle.value)
+                self.delayed_group, self.surf_id, self.particle.pdg_number)
 
 
 def write_source_file(

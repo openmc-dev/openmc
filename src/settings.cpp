@@ -364,11 +364,13 @@ void get_run_parameters(pugi::xml_node node_base)
                     "between 0 and 1");
       }
     }
-
-    for (pugi::xml_node adj_source_node : random_ray_node.children("adjoint_source")) {
-      // Find any local adjoint sources
-      xml_node source_node = adj_source_node.child("source");
-      model::adjoint_sources.push_back(Source::create(source_node));
+    if (check_for_node(random_ray_node, "adjoint_source")) {
+      for (pugi::xml_node adj_source_node : 
+        random_ray_node.children("adjoint_source")) {
+        // Find any local adjoint sources
+        xml_node source_node = adj_source_node.child("source");
+        model::adjoint_sources.push_back(Source::create(source_node));
+      }
     }
   }
 }
@@ -1254,6 +1256,16 @@ void read_settings_xml(pugi::xml_node root)
       if (wwg->on_the_fly_) {
         settings::weight_windows_on = true;
         break;
+      }
+    }
+    // If any weight window generators have CADIS target tallies, user-defined
+    // adjoint sources cannot be used at the same time.
+    if (!model::adjoint_sources.empty()) {
+      for (const auto& wwg : variance_reduction::weight_windows_generators) {
+        if (!wwg->targets_.empty()) {
+          fatal_error("Cannot use both user-defined adjoint sources and CADIS "
+                      "target tallies at the same time.");
+        }
       }
     }
   }

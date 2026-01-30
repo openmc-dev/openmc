@@ -698,7 +698,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       }
     }
   } else {
-    // For FW-CADIS, weight windows are inversely proportional to the adjoint
+    // For (FW-)CADIS, weight windows are inversely proportional to the adjoint
     // fluxes. We normalize the weight windows across all energy groups.
 #pragma omp parallel for collapse(2) schedule(static)
     for (int e = 0; e < e_bins; e++) {
@@ -883,6 +883,15 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     }
     FlatSourceDomain::adjoint_ = true;
     FlatSourceDomain::cadis_ = true;
+    if (check_for_node(node,"targets")) {
+      targets_ = get_node_array<size_t>(node, "targets");
+      FlatSourceDomain::cadis_targets_.insert(
+        std::end(FlatSourceDomain::cadis_targets_), std::begin(targets_), 
+        std::end(targets_));
+    } else {
+      fatal_error("CADIS method requires target tallies be specified to "
+                  "WeightWindowGenerator.");
+    }
   } else {
     fatal_error(fmt::format(
       "Unknown weight window update method '{}' specified", method_string));

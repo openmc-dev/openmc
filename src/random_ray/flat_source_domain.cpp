@@ -1292,14 +1292,23 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         }
 
         // If there are tally tasks, we can through them and check if
-        // any of them have a non-mesh filter type.
+        // any of them are CADIS targets and have a non-mesh filter type.
 
-        // We track if ANY of the tasks have a non-mesh filter
-        bool has_non_mesh_filter = false;
+        // We track if ANY of the tasks are CADIS target tallies
+        bool cadis_target_region = false;
 
         // Now we loop through
         for (const auto& task : source_regions_.tally_task(sr, g)) {
           Tally& tally {*model::tallies[task.tally_idx]};
+          const auto t_id = tally.id();
+          
+          // Skip non-target tallies
+          if (std::find(cadis_targets_.begin(),
+                        cadis_targets_.end(),
+                        t_id) == cadis_targets_.end()) {
+            continue;
+          }
+          
           auto filter_types = tally.filter_types();
 
           // For each tally, we loop through the filter types array.
@@ -1311,17 +1320,23 @@ void FlatSourceDomain::set_fw_adjoint_sources()
                 filter_type == FilterType::DISTRIBCELL ||
                 filter_type == FilterType::UNIVERSE ||
                 filter_type == FilterType::MATERIAL) {
-              has_non_mesh_filter = true;
+              cadis_target_region = true;
               break;
             }
           }
+          // If a target tally doesn't have any compatible filters, error
+          if (!cadis_target_region) {
+            fatal_error("CADIS target tally with ID " + 
+                        std::to_string(t_id) + " does not have any "
+                        "CADIS-compatible filters.");
+          }
         }
 
-        // If ANY of the tasks has a non-mesh filter type,
+        // If ANY of the tasks is a CADIS target,
         // Then we keep the source term and set that this
         // source region has a valid CADIS source term.
         // Otherwise, we zero out the source term.
-        if (has_non_mesh_filter) {
+        if (cadis_target_region) {
           has_any_sources = true;
           // print external source term
           fmt::print("External source term for source region {} group {}: {}\n",

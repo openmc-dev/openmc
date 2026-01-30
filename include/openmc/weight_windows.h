@@ -235,6 +235,9 @@ public:
   double threshold_ {1.0}; //<! Relative error threshold for values used to
                            // update weight windows
   double ratio_ {5.0};     //<! ratio of lower to upper weight window bounds
+
+  // CADIS target tallies
+  std::vector<size_t> targets_;
 };
 
 //! Finalize variance reduction objects after all inputs have been read

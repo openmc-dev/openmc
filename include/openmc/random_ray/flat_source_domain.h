@@ -86,6 +86,8 @@ public:
   static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
     mesh_domain_map_;
 
+  static std::vector<size_t> cadis_targets_;
+
   //----------------------------------------------------------------------------
   // Static data members
   static RandomRayVolumeEstimator volume_estimator_;

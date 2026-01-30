@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import lxml.etree as ET
 import numpy as np
 import openmc
@@ -125,15 +127,16 @@ def test_mg_plot(run_in_tmpdir):
     h2o_xsdata.set_scatter_matrix(scatter_matrix)
     mg_library = openmc.MGXSLibrary(groups)
     mg_library.add_xsdatas([h2o_xsdata])
-    mg_library.export_to_hdf5('mgxs.h5')
+    mgxs_path = Path.cwd() / 'mgxs.h5'
+    mg_library.export_to_hdf5(mgxs_path)
 
     # Set MG cross sections in config and plot
-    with openmc.config.patch('mg_cross_sections', 'mgxs.h5'):
-        (univ).plot(width=(200, 200), basis='yz', color_by='cell')
-        (univ).plot(width=(200, 200), basis='yz', color_by='material')
-    
-    with pytest.raises(RuntimeError):    
-        (univ).plot(width=(200, 200), basis='yz', color_by='cell')
+    with openmc.config.patch('mg_cross_sections', mgxs_path):
+        univ.plot(width=(200, 200), basis='yz', color_by='cell')
+        univ.plot(width=(200, 200), basis='yz', color_by='material')
+
+    with pytest.raises(RuntimeError):
+        univ.plot(width=(200, 200), basis='yz', color_by='cell')
 
     # Close plots to avoid warning
     import matplotlib.pyplot as plt

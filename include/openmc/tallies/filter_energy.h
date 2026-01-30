@@ -98,6 +98,8 @@ public:
 
   void from_xml(pugi::xml_node node) override;
 
+  void to_statepoint(hid_t filter_group) const override;
+
 protected:
   // This filter could simultaneously use different particle types, for
   // example creating one set of energy bins for photons and another for

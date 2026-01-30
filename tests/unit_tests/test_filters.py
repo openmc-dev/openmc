@@ -236,7 +236,8 @@ def test_first_moment(run_in_tmpdir, box_model):
         flux, scatter = sp.tallies[plain_tally.id].mean.ravel()
 
         # Check that first moment matches
-        def first_score(t): return sp.tallies[t.id].mean.ravel()[0]
+        def first_score(t):
+            return sp.tallies[t.id].mean.ravel()[0]
         assert first_score(leg_tally) == scatter
         assert first_score(leg_sptl_tally) == scatter
         assert first_score(sph_scat_tally) == scatter

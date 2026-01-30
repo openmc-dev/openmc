@@ -118,7 +118,7 @@ std::string EnergyoutFilter::text_label(int bin) const
 }
 
 //==============================================================================
-// SecondaryEnergyoutFilter implementation
+// SecondaryEnergyFilter implementation
 //==============================================================================
 
 void SecondaryEnergyFilter::get_all_bins(
@@ -156,6 +156,13 @@ void SecondaryEnergyFilter::from_xml(pugi::xml_node node)
   EnergyFilter::from_xml(node);
   std::string p = get_node_value(node, "particle");
   secondary_type_ = str_to_particle_type(p);
+}
+
+void SecondaryEnergyFilter::to_statepoint(hid_t filter_group) const
+{
+  EnergyFilter::to_statepoint(filter_group);
+  write_dataset(
+    filter_group, "particle", particle_type_to_str(secondary_type_));
 }
 
 //==============================================================================

@@ -1702,13 +1702,13 @@ class EnergyoutFilter(EnergyFilter):
 class SecondaryEnergyFilter(EnergyFilter):
     """Bins tally events based on energy of secondary particles.
 
-    .. versionadded:: 0.15.3
-
     This filter collects the energies of secondary particles (e.g., photons
     or electrons) produced in a reaction. This is useful for constructing
     production matrices or analyzing secondary particle spectra.
 
-    The primary particle type should be filtered by the usual ParticleFilter.
+    The incident particle type should be filtered using :class:`ParticleFilter`.
+
+    .. versionadded:: 0.15.4
 
     Parameters
     ----------
@@ -1731,9 +1731,16 @@ class SecondaryEnergyFilter(EnergyFilter):
         The secondary particle type this filter applies to
     """
 
-    def __init__(self, values, filter_id=None, particle='photon'):
-        self.particle = particle
+    def __init__(self, values, particle='photon', filter_id=None):
         super().__init__(values, filter_id)
+        self.particle = particle
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
+        string += '{: <16}=\t{}\n'.format('\tParticle', self.particle)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
 
     @property
     def particle(self):
@@ -1756,6 +1763,13 @@ class SecondaryEnergyFilter(EnergyFilter):
         values = [float(x) for x in get_text(elem, 'bins').split()]
         particle = get_text(elem, 'particle')
         return cls(values, filter_id=filter_id, particle=particle)
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        bins = group['bins'][()]
+        particle = group['particle'][()].decode()
+        return cls(bins, particle=particle, filter_id=filter_id)
 
 
 class TimeFilter(RealFilter):

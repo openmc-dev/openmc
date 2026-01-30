@@ -6,6 +6,7 @@ from functools import cache
 from pathlib import Path
 import math
 from numbers import Integral, Real
+import os
 import random
 import re
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -1159,6 +1160,8 @@ class Model:
         x_max = (origin[x] + 0.5*width[0]) * axis_scaling_factor[axis_units]
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
+        
+        mg_cross_sections = os.devnull
 
         # Determine whether any materials contains macroscopic data and if so,
         # set energy mode accordingly and check that mg cross sections path is accessible
@@ -1166,19 +1169,20 @@ class Model:
             if mat._macroscopic is not None:
                 self.settings.energy_mode = 'multi-group'
                 try:
-                    openmc.config['mg_cross_sections'] = Path(openmc.config['mg_cross_sections']).resolve()
+                    mg_cross_sections = Path(openmc.config['mg_cross_sections']).resolve()
                 except KeyError:
                     raise RuntimeError("'mg_cross_sections' path must be set before plotting.")
                 break
-
-        # Get ID map from the C API
-        id_map = self.id_map(
-            origin=origin,
-            width=width,
-            pixels=pixels,
-            basis=basis,
-            color_overlaps=show_overlaps
-        )
+        
+        with openmc.config.patch('mg_cross_sections', mg_cross_sections):
+            # Get ID map from the C API
+            id_map = self.id_map(
+                origin=origin,
+                width=width,
+                pixels=pixels,
+                basis=basis,
+                color_overlaps=show_overlaps
+            )
 
         # Generate colors if not provided
         if colors is None and seed is not None:

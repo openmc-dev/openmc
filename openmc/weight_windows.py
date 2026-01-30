@@ -12,7 +12,7 @@ import h5py
 import openmc
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
-from openmc.tally import Tallies
+from openmc.tallies import Tallies
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_elem_list, get_text, clean_indentation

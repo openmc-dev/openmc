@@ -34,6 +34,7 @@ bool FlatSourceDomain::cadis_ {false};
 double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
   FlatSourceDomain::mesh_domain_map_;
+std::vector<size_t> FlatSourceDomain::cadis_targets_;
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {

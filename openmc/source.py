@@ -572,10 +572,10 @@ class MeshSource(SourceBase):
         s = np.asarray(s)
 
         if isinstance(self.mesh, StructuredMesh):
-            if s.size != self.mesh.num_mesh_cells:
+            if s.size != self.mesh.n_elements:
                 raise ValueError(
                     f'The length of the source array ({s.size}) does not match '
-                    f'the number of mesh elements ({self.mesh.num_mesh_cells}).')
+                    f'the number of mesh elements ({self.mesh.n_elements}).')
 
             # If user gave a multidimensional array, flatten in the order
             # of the mesh indices

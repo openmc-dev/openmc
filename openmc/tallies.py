@@ -1999,7 +1999,7 @@ class Tally(IDManagerMixin):
 
         # Expand the columns into Pandas MultiIndices for readability
         if pd.__version__ >= '0.16':
-            columns = copy.deepcopy(df.columns.values)
+            columns = copy.deepcopy(list(df.columns.values))
 
             # Convert all elements in columns list to tuples
             for i, column in enumerate(columns):

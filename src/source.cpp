@@ -358,6 +358,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
   site.particle = particle_;
+  double r_wgt = 1.0;
+  double E_wgt = 1.0;
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
@@ -367,7 +369,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   while (!accepted) {
 
     // Sample spatial distribution
-    site.r = space_->sample(seed);
+    auto [r, r_wgt_temp] = space_->sample(seed);
+    site.r = r;
+    r_wgt = r_wgt_temp;
 
     // Check if sampled position satisfies spatial constraints
     accepted = satisfies_spatial_constraints(site.r);
@@ -380,7 +384,10 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   }
 
   // Sample angle
-  site.u = angle_->sample(seed);
+  auto [u, u_wgt] = angle_->sample(seed);
+  site.u = u;
+
+  site.wgt = r_wgt * u_wgt;
 
   // Sample energy and time for neutron and photon sources
   if (settings::solver_type != SolverType::RANDOM_RAY) {
@@ -397,7 +404,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     while (true) {
       // Sample energy spectrum
-      site.E = energy_->sample(seed);
+      auto [E, E_wgt_temp] = energy_->sample(seed);
+      site.E = E;
+      E_wgt = E_wgt_temp;
 
       // Resample if energy falls above maximum particle energy
       if (site.E < data::energy_max[p] &&
@@ -409,7 +418,10 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     }
 
     // Sample particle creation time
-    site.time = time_->sample(seed);
+    auto [time, time_wgt] = time_->sample(seed);
+    site.time = time;
+
+    site.wgt *= (E_wgt * time_wgt);
   }
 
   // Increment number of accepted samples
@@ -539,9 +551,9 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 // MeshElementSpatial implementation
 //==============================================================================
 
-Position MeshElementSpatial::sample(uint64_t* seed) const
+std::pair<Position, double> MeshElementSpatial::sample(uint64_t* seed) const
 {
-  return model::meshes[mesh_index_]->sample_element(elem_index_, seed);
+  return {model::meshes[mesh_index_]->sample_element(elem_index_, seed), 1.0};
 }
 
 //==============================================================================

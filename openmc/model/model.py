@@ -1214,8 +1214,8 @@ class Model:
 
         # Convert ID map to RGB image
         img = id_map_to_rgb(
-            id_map=id_map, 
-            color_by=color_by, 
+            id_map=id_map,
+            color_by=color_by,
             colors=colors,
             overlap_color=overlap_color
         )
@@ -1252,7 +1252,7 @@ class Model:
                 extent=(x_min, x_max, y_min, y_max),
                 **contour_kwargs
             )
-            
+
             # If only showing outline, set the axis limits and aspect explicitly
             if outline == 'only':
                 axes.set_xlim(x_min, x_max)
@@ -1720,6 +1720,87 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
+    def _auto_generate_mgxs_lib(
+        self,
+        model: openmc.model.model,
+        groups: openmc.mgxs.EnergyGroups,
+        correction: str | none,
+        directory: pathlike,
+    ) -> openmc.mgxs.Library:
+        """
+        Automatically generate a multi-group cross section libray from a model
+        with the specified group structure.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        mgxs_path : str
+            Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+
+        Returns
+        -------
+        mgxs_lib : openmc.mgxs.Library
+            OpenMC MGXS Library object
+        """
+
+        # Initialize MGXS library with a finished OpenMC geometry object
+        mgxs_lib = openmc.mgxs.Library(model.geometry)
+
+        # Pick energy group structure
+        mgxs_lib.energy_groups = groups
+
+        # Disable transport correction
+        mgxs_lib.correction = correction
+
+        # Specify needed cross sections for random ray
+        if correction == 'P0':
+            mgxs_lib.mgxs_types = [
+                'nu-transport', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
+                'kappa-fission'
+            ]
+        elif correction is None:
+            mgxs_lib.mgxs_types = [
+                'total', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
+                'kappa-fission'
+            ]
+
+        # Specify a "material" domain type for the cross section tally filters
+        mgxs_lib.domain_type = "material"
+
+        # Specify the domains over which to compute multi-group cross sections
+        mgxs_lib.domains = model.geometry.get_all_materials().values()
+
+        # Do not compute cross sections on a nuclide-by-nuclide basis
+        mgxs_lib.by_nuclide = False
+
+        # Check the library - if no errors are raised, then the library is satisfactory.
+        mgxs_lib.check_library_for_openmc_mgxs()
+
+        # Construct all tallies needed for the multi-group cross section library
+        mgxs_lib.build_library()
+
+        # Create a "tallies.xml" file for the MGXS Library
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
+
+        # Run
+        statepoint_filename = model.run(cwd=directory)
+
+        # Load MGXS
+        with openmc.StatePoint(statepoint_filename) as sp:
+            mgxs_lib.load_from_statepoint(sp)
+
+        return mgxs_lib
+
     def _create_mgxs_sources(
         self,
         groups: openmc.mgxs.EnergyGroups,
@@ -1883,52 +1964,8 @@ class Model:
             model.geometry.root_universe = infinite_universe
 
             # Add MGXS Tallies
-
-            # Initialize MGXS library with a finished OpenMC geometry object
-            mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-            # Pick energy group structure
-            mgxs_lib.energy_groups = groups
-
-            # Disable transport correction
-            mgxs_lib.correction = correction
-
-            # Specify needed cross sections for random ray
-            if correction == 'P0':
-                mgxs_lib.mgxs_types = [
-                    'nu-transport', 'absorption', 'nu-fission', 'fission',
-                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-                ]
-            elif correction is None:
-                mgxs_lib.mgxs_types = [
-                    'total', 'absorption', 'nu-fission', 'fission',
-                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-                ]
-
-            # Specify a "cell" domain type for the cross section tally filters
-            mgxs_lib.domain_type = "material"
-
-            # Specify the cell domains over which to compute multi-group cross sections
-            mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-            # Do not compute cross sections on a nuclide-by-nuclide basis
-            mgxs_lib.by_nuclide = False
-
-            # Check the library - if no errors are raised, then the library is satisfactory.
-            mgxs_lib.check_library_for_openmc_mgxs()
-
-            # Construct all tallies needed for the multi-group cross section library
-            mgxs_lib.build_library()
-
-            # Create a "tallies.xml" file for the MGXS Library
-            mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-            # Run
-            statepoint_filename = model.run(cwd=directory)
-
-            # Load MGXS
-            with openmc.StatePoint(statepoint_filename) as sp:
-                mgxs_lib.load_from_statepoint(sp)
+            mgxs_lib = self._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
 
             # Create a MGXS File which can then be written to disk
             mgxs_set = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
@@ -2090,48 +2127,8 @@ class Model:
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
-
-        # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-        # Pick energy group structure
-        mgxs_lib.energy_groups = groups
-
-        # Disable transport correction
-        mgxs_lib.correction = correction
-
-       # Specify needed cross sections for random ray
-        if correction == 'P0':
-            mgxs_lib.mgxs_types = ['nu-transport', 'absorption', 'nu-fission', 'fission',
-                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
-        elif correction is None:
-            mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
-
-        # Specify a "cell" domain type for the cross section tally filters
-        mgxs_lib.domain_type = "material"
-
-        # Specify the cell domains over which to compute multi-group cross sections
-        mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-        # Do not compute cross sections on a nuclide-by-nuclide basis
-        mgxs_lib.by_nuclide = False
-
-        # Check the library - if no errors are raised, then the library is satisfactory.
-        mgxs_lib.check_library_for_openmc_mgxs()
-
-        # Construct all tallies needed for the multi-group cross section library
-        mgxs_lib.build_library()
-
-        # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-        # Run
-        statepoint_filename = model.run(cwd=directory)
-
-        # Load MGXS
-        with openmc.StatePoint(statepoint_filename) as sp:
-            mgxs_lib.load_from_statepoint(sp)
+        mgxs_lib = self._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
 
         names = [mat.name for mat in mgxs_lib.domains]
 
@@ -2181,52 +2178,8 @@ class Model:
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
-
-        # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-        # Pick energy group structure
-        mgxs_lib.energy_groups = groups
-
-        # Disable transport correction
-        mgxs_lib.correction = correction
-
-        # Specify needed cross sections for random ray
-        if correction == 'P0':
-            mgxs_lib.mgxs_types = [
-                'nu-transport', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-            ]
-        elif correction is None:
-            mgxs_lib.mgxs_types = [
-                'total', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-            ]
-
-        # Specify a "cell" domain type for the cross section tally filters
-        mgxs_lib.domain_type = "material"
-
-        # Specify the cell domains over which to compute multi-group cross sections
-        mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-        # Do not compute cross sections on a nuclide-by-nuclide basis
-        mgxs_lib.by_nuclide = False
-
-        # Check the library - if no errors are raised, then the library is satisfactory.
-        mgxs_lib.check_library_for_openmc_mgxs()
-
-        # Construct all tallies needed for the multi-group cross section library
-        mgxs_lib.build_library()
-
-        # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-        # Run
-        statepoint_filename = model.run(cwd=directory)
-
-        # Load MGXS
-        with openmc.StatePoint(statepoint_filename) as sp:
-            mgxs_lib.load_from_statepoint(sp)
+        mgxs_lib = self._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
 
         names = [mat.name for mat in mgxs_lib.domains]
 
@@ -2652,5 +2605,3 @@ class SearchResult:
     def total_batches(self) -> int:
         """Total number of active batches used across all evaluations."""
         return sum(self.batches)
-
-

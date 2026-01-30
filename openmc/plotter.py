@@ -468,7 +468,7 @@ def _calculate_cexs_nuclide(this, types, incident_particle='neutron', temperatur
             energy_grid = grid
         else:
             energy_grid = nuc.energy[nucT]
-    if incident_particle == 'photon':
+    elif incident_particle == 'photon':
         nuc = openmc.data.IncidentPhoton.from_hdf5(lib['path'])
         if any(type(line) is not int for line in types):
             raise TypeError("Photon cross sections can only be requested "

@@ -343,13 +343,9 @@ def test_calculate_cexs_photon_total_attenuation_reference_values():
 
         return xs_mat_eval
 
-    try:
-        pb_vals = _run_element("Pb", pb_density)
-        v_vals = _run_element("V", v_density)
-    except Exception:
-        pytest.skip(
-            "Pb or V photon data / required MTs not available in cross section library."
-        )
-
+    
+    pb_vals = _run_element("Pb", pb_density)
+    v_vals = _run_element("V", v_density)
+    
     assert np.allclose(pb_vals, pb_expected, rtol=1e-2, atol=1e-8)
     assert np.allclose(v_vals, v_expected, rtol=1e-2, atol=1e-8)

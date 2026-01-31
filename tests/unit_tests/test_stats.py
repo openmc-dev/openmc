@@ -624,7 +624,6 @@ def test_normal_truncated():
 
     # Verify that PDF integrates to approximately 1
     x = np.linspace(lower, upper, 1000)
-    from scipy.integrate import trapezoid
     integral = trapezoid(d.evaluate(x), x)
     assert integral == pytest.approx(1.0, rel=0.01)
 

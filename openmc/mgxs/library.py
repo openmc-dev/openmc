@@ -10,6 +10,7 @@ import numpy as np
 import openmc
 import openmc.mgxs
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from ..tallies import ESTIMATOR_TYPES
 
 
@@ -555,14 +556,14 @@ class Library:
 
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
-    def add_to_tallies_file(self, tallies_file, merge=True):
-        """Add all tallies from all MGXS objects to a tallies file.
+    def add_to_tallies(self, tallies, merge=True):
+        """Add tallies from all MGXS objects to a tallies object.
 
         NOTE: This assumes that :meth:`Library.build_library` has been called
 
         Parameters
         ----------
-        tallies_file : openmc.Tallies
+        tallies : openmc.Tallies
             A Tallies collection to add each MGXS' tallies to generate a
             'tallies.xml' input file for OpenMC
         merge : bool
@@ -571,7 +572,7 @@ class Library:
 
         """
 
-        cv.check_type('tallies_file', tallies_file, openmc.Tallies)
+        cv.check_type('tallies', tallies, openmc.Tallies)
 
         # Add tallies from each MGXS for each domain and mgxs type
         for domain in self.domains:
@@ -586,7 +587,15 @@ class Library:
                             = list(range(1, self.num_delayed_groups + 1))
 
                 for tally in mgxs.tallies.values():
-                    tallies_file.append(tally, merge=merge)
+                    tallies.append(tally, merge=merge)
+
+    def add_to_tallies_file(self, tallies_file, merge=True):
+        warn(
+            "The Library.add_to_tallies_file(...) method has been renamed to"
+            "add_to_tallies(...) and will be removed in a future version of "
+            "OpenMC.", FutureWarning
+        )
+        self.add_to_tallies(tallies_file, merge=merge)
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
@@ -851,7 +860,7 @@ class Library:
                   'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         import h5py
@@ -894,7 +903,7 @@ class Library:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist
@@ -930,7 +939,7 @@ class Library:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist

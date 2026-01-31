@@ -6,13 +6,14 @@ Geometry Visualization
 
 .. currentmodule:: openmc
 
-OpenMC is capable of producing two-dimensional slice plots of a geometry as well
-as three-dimensional voxel plots using the geometry plotting :ref:`run mode
-<usersguide_run_modes>`. The geometry plotting mode relies on the presence of a
-:ref:`plots.xml <io_plots>` file that indicates what plots should be created. To
-create this file, one needs to create one or more :class:`openmc.Plot`
-instances, add them to a :class:`openmc.Plots` collection, and then use the
-:class:`Plots.export_to_xml` method to write the ``plots.xml`` file.
+OpenMC is capable of producing two-dimensional slice plots of a geometry,
+three-dimensional voxel plots, and three-dimensional raytrace plots using the
+geometry plotting :ref:`run mode <usersguide_run_modes>`. The geometry plotting
+mode relies on the presence of a :ref:`plots.xml <io_plots>` file that indicates
+what plots should be created. To create this file, one needs to create one or
+more instances of the various plot classes described below, add them to a
+:class:`openmc.Plots` collection, and then use the :class:`Plots.export_to_xml`
+method to write the ``plots.xml`` file.
 
 -----------
 Slice Plots
@@ -21,15 +22,14 @@ Slice Plots
 .. image:: ../_images/atr.png
    :width: 300px
 
-By default, when an instance of :class:`openmc.Plot` is created, it indicates
-that a 2D slice plot should be made. You can specify the origin of the plot
-(:attr:`Plot.origin`), the width of the plot in each direction
-(:attr:`Plot.width`), the number of pixels to use in each direction
-(:attr:`Plot.pixels`), and the basis directions for the plot. For example, to
-create a :math:`x` - :math:`z` plot centered at (5.0, 2.0, 3.0) with a width of
-(50., 50.)  and 400x400 pixels::
+The :class:`openmc.SlicePlot` class indicates that a 2D slice plot should be
+made. You can specify the origin of the plot (:attr:`SlicePlot.origin`), the
+width of the plot in each direction (:attr:`SlicePlot.width`), the number of
+pixels to use in each direction (:attr:`SlicePlot.pixels`), and the basis
+directions for the plot. For example, to create a :math:`x` - :math:`z` plot
+centered at (5.0, 2.0, 3.0) with a width of (50., 50.)  and 400x400 pixels::
 
-  plot = openmc.Plot()
+  plot = openmc.SlicePlot()
   plot.basis = 'xz'
   plot.origin = (5.0, 2.0, 3.0)
   plot.width = (50., 50.)
@@ -47,7 +47,7 @@ that location.
 
 By default, a unique color will be assigned to each cell in the geometry. If you
 want your plot to be colored by material instead, change the
-:attr:`Plot.color_by` attribute::
+:attr:`SlicePlot.color_by` attribute::
 
   plot.color_by = 'material'
 
@@ -68,8 +68,8 @@ particular cells/materials should be given colors of your choosing::
 Note that colors can be given as RGB tuples or by a string indicating a valid
 `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
-When you're done creating your :class:`openmc.Plot` instances, you need to then
-assign them to a :class:`openmc.Plots` collection and export it to XML::
+When you're done creating your :class:`openmc.SlicePlot` instances, you need to
+then assign them to a :class:`openmc.Plots` collection and export it to XML::
 
   plots = openmc.Plots([plot1, plot2, plot3])
   plots.export_to_xml()
@@ -97,13 +97,11 @@ Voxel Plots
 .. image:: ../_images/3dba.png
    :width: 200px
 
-The :class:`openmc.Plot` class can also be told to generate a 3D voxel plot
-instead of a 2D slice plot. Simply change the :attr:`Plot.type` attribute to
-'voxel'. In this case, the :attr:`Plot.width` and :attr:`Plot.pixels` attributes
-should be three items long, e.g.::
+The :class:`openmc.VoxelPlot` class enables the generation of a 3D voxel plot
+instead of a 2D slice plot. In this case, the :attr:`VoxelPlot.width` and
+:attr:`VoxelPlot.pixels` attributes should be three items long, e.g.::
 
-  vox_plot = openmc.Plot()
-  vox_plot.type = 'voxel'
+  vox_plot = openmc.VoxelPlot()
   vox_plot.width = (100., 100., 50.)
   vox_plot.pixels = (400, 400, 200)
 

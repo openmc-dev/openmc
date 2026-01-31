@@ -5,10 +5,12 @@ Variance Reduction
 ==================
 
 Global variance reduction in OpenMC is accomplished by weight windowing
-techniques. OpenMC is capable of generating weight windows using either the
-MAGIC or FW-CADIS methods. Both techniques will produce a ``weight_windows.h5``
-file that can be loaded and used later on. In this section, we break down the
-steps required to both generate and then apply weight windows.
+or source biasing techniques, the latter of which additionally provides a
+local variance reduction capability. OpenMC is capable of generating weight
+windows using either the MAGIC or FW-CADIS methods. Both techniques will
+produce a ``weight_windows.h5`` file that can be loaded and used later on. In
+this section, we first break down the steps required to generate and apply
+weight windows, then describe how source biasing may be applied.
 
 .. _ww_generator:
 
@@ -51,7 +53,7 @@ With the :class:`~openmc.WeightWindowGenerator` instance added to the
 :attr:`~openmc.Settings`, the rest of the problem can be defined as normal. When
 running, note that the second iteration and beyond may be several orders of
 magnitude slower than the first. As the weight windows are applied in each
-iteration, particles may be agressively split, resulting in a large number of
+iteration, particles may be aggressively split, resulting in a large number of
 secondary (split) particles being generated per initial source particle. This is
 not necessarily a bad thing, as the split particles are much more efficient at
 exploring low flux regions of phase space as compared to initial particles.
@@ -133,8 +135,7 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
        # we used for source region decomposition
        wwg = openmc.WeightWindowGenerator(
            method='fw_cadis',
-           mesh=mesh,
-           max_realizations=settings.batches
+           mesh=mesh
        )
 
        # Add generator to openmc.settings object
@@ -162,7 +163,7 @@ solver, the Python input just needs to load the h5 file::
 
     settings.weight_window_checkpoints = {'collision': True, 'surface': True}
     settings.survival_biasing = False
-    settings.weight_windows = openmc.WeightWindowsList.from_hdf5('weight_windows.h5')
+    settings.weight_windows_file = "weight_windows.h5"
     settings.weight_windows_on = True
 
 The :class:`~openmc.WeightWindowGenerator` instance is not needed to load an
@@ -173,3 +174,148 @@ Weight window mesh information is embedded into the weight window file, so the
 mesh does not need to be redefined. Monte Carlo solves that load a weight window
 file as above will utilize weight windows to reduce the variance of the
 simulation.
+
+.. _source_biasing:
+
+--------------
+Source Biasing
+--------------
+
+In fixed source problems, source biasing provides a means to reduce the variance
+on global or localized responses, depending on the biasing scheme. In either
+case, the premise of the method is to sample source sites from a biased
+distribution that directs a larger fraction of the simulated histories towards
+phase space regions of interest than would be found there under analog sampling.
+In order to preserve an unbiased estimate of the tally mean, the weight of these
+with analog sampling, divided by the probability assigned by the biased
+distribution. While the assignment of statistical weights is outlined in the
+:ref:`methods section <methods_source_biasing>`, this section demonstrates the
+implementation of source biasing to problems in OpenMC.
+
+Source biasing in OpenMC is accomplished by applying a distribution to the
+:attr:`bias` attribute of one or more of the univariate or independent
+multivariate distributions which make up an :class:`~openmc.IndependentSource`
+instance as follows::
+
+    # First create the biased distribution
+    biased_dist = openmc.stats.PowerLaw(a=0, b=3, n=3)
+
+    # Construct a new distribution with the bias applied
+    dist = openmc.stats.PowerLaw(a=0, b=3, n=2, bias=biased_dist)
+
+    # The bias attribute can also be set on an existing "analog" distribution:
+    sphere_dist = openmc.stats.spherical_uniform(r_outer=3)
+    sphere_dist.r.bias = biased_dist
+
+Univariate distributions may be sampled via the Python API, returning the
+sample(s) along with the associated weight(s)::
+
+    sample_vec, wgt_vec = dist.sample(n_samples=100)
+
+Here, if the distribution is unbiased, the weight of each sample will be unity.
+Finally, :class:`~openmc.IndependentSource` instances can be constructed with
+biased distributions::
+
+    # Create a source with a biased spatial distribution
+    source = openmc.IndependentSource(space=sphere_dist)
+
+During the simulation, source sites are then sampled using the biased
+distributions where available and given starting statistical weights
+corresponding to the cumulative product of the weights assigned by each
+distribution in the source object. Hence multiple source variables (e.g.,
+direction and energy) may be biased and the resulting source sites will have
+their weights adjusted accordingly.
+
+.. note::
+    Combining source biasing with weight windows can be a powerful variance
+    reduction technique if each is constructed appropriately for the response
+    of interest. For example, if a source biasing scheme is devised for
+    variance reduction of a specific localized response, the user may be able
+    to specify their own weight window structure that results in more efficient
+    transport than if weight windows were generated by either of OpenMC's
+    automatic weight window generators, which are intended for global variance
+    reduction.
+
+Biased distributions that could result in degenerate weight mappings are not
+recommended; this is most commonly seen when biasing the :math:`\phi`-coordinate
+of spherical or cylindrical independent multivariate distributions. In such
+cases degenerate behavior will be observed at the pole about which :math:`\phi`
+is measured, with all values of :math:`\phi` (hence many possible statistical
+weights) mapping to the same point for :math:`r=0` or :math:`\mu=0`, and large
+weight gradients in the vicinity. In most cases requiring a spherical
+independent source, it would be preferable to reorient the reference vector of
+the distribution such that biasing could be applied to the
+:math:`\mu`-coordinate instead.
+
+When biasing a distribution, care should also be taken to ensure that both the
+unbiased and biased distribution share a common support---that is, every region
+of phase space mapped to a nonzero probability density by the unbiased
+distribution should likewise map to nonzero probability under the biased
+distribution, and vice versa. In OpenMC, this places restrictions on the set of
+compatible distributions that may be used to bias sampling of each distribution
+type. The following table summarizes the method for each distribution in OpenMC
+that permits biased sampling.
+
+.. list-table:: **Distributions that support biased sampling**
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Discrete Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Discrete`
+     - Apply a vector of alternative probabilities to the :attr:`bias`
+       attribute
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Continuous Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Uniform`,
+       :class:`openmc.stats.PowerLaw`,
+       :class:`openmc.stats.Maxwell`,
+       :class:`openmc.stats.Watt`,
+       :class:`openmc.stats.Normal`,
+       :class:`openmc.stats.Tabular`
+     - Apply a second, unbiased continous univariate PDF to the :attr:`bias`
+       attribute, ensuring that the :attr:`support` attribute of each
+       distribution is the same
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Mixed Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Mixture`
+     - May be constructed from multiple biased univariate distributions, or a
+       second, unbiased continous univariate PDF may be applied to the
+       :attr:`bias` attribute
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Discrete Multivariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.PointCloud`,
+       :class:`openmc.stats.MeshSpatial`
+     - Apply a vector of the new relative probabilities of each point or mesh
+       element under biased sampling to the :attr:`bias` attribute
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Continuous Multivariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.CartesianIndependent`,
+       :class:`openmc.stats.CylindricalIndependent`,
+       :class:`openmc.stats.SphericalIndependent`,
+       :class:`openmc.stats.PolarAzimuthal`
+     - Construct from biased univariate distributions for :attr:`x`, :attr:`y`,
+       :attr:`z`, etc.
+   * - :class:`openmc.stats.Isotropic`
+     - Apply an unbiased :class:`openmc.stats.PolarAzimuthal` to the
+       :attr:`bias` attribute

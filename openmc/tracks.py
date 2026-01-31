@@ -296,16 +296,16 @@ class Tracks(list):
                 for state in pt.states:
                     points.InsertNextPoint(state['r'])
 
-            # Create VTK line and assign points to line.
-            n = pt.states.size
-            line = vtk.vtkPolyLine()
-            line.GetPointIds().SetNumberOfIds(n)
-            for i in range(n):
-                line.GetPointIds().SetId(i, point_offset + i)
-            point_offset += n
+                # Create VTK line and assign points to line.
+                n = pt.states.size
+                line = vtk.vtkPolyLine()
+                line.GetPointIds().SetNumberOfIds(n)
+                for i in range(n):
+                    line.GetPointIds().SetId(i, point_offset + i)
+                point_offset += n
 
-            # Add line to cell array
-            cells.InsertNextCell(line)
+                # Add line to cell array
+                cells.InsertNextCell(line)
 
         data = vtk.vtkPolyData()
         data.SetPoints(points)

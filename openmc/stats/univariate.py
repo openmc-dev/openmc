@@ -1142,12 +1142,11 @@ class Normal(Univariate):
         if self._is_truncated:
             alpha = (self._lower - self._mean_value) / self._std_dev
             beta = (self._upper - self._mean_value) / self._std_dev
-            self._cdf_diff = scipy.stats.norm.cdf(beta) - scipy.stats.norm.cdf(alpha)
-            if self._cdf_diff <= 0:
+            cdf_diff = scipy.stats.norm.cdf(beta) - scipy.stats.norm.cdf(alpha)
+            if cdf_diff <= 0:
                 raise ValueError("Truncation bounds exclude entire distribution")
-            self._norm_factor = 1.0 / self._cdf_diff
+            self._norm_factor = 1.0 / cdf_diff
         else:
-            self._cdf_diff = 1.0
             self._norm_factor = 1.0
 
     @property
@@ -1159,13 +1158,13 @@ class Normal(Univariate):
         if not self._is_truncated:
             return rng.normal(self.mean_value, self.std_dev, n_samples)
         else:
-            # Rejection sampling to match C++ behavior
-            samples = []
-            while len(samples) < n_samples:
-                x = rng.normal(self.mean_value, self.std_dev)
-                if self._lower <= x <= self._upper:
-                    samples.append(x)
-            return np.array(samples)
+            # Use scipy's truncated normal for efficient direct sampling
+            a = (self._lower - self._mean_value) / self._std_dev
+            b = (self._upper - self._mean_value) / self._std_dev
+            return scipy.stats.truncnorm.rvs(
+                a, b, loc=self._mean_value, scale=self._std_dev,
+                size=n_samples, random_state=rng
+            )
 
     def evaluate(self, x):
         """Evaluate PDF at x, returning normalized value for truncated dist."""

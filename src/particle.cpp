@@ -99,7 +99,7 @@ bool Particle::create_secondary(
     tmp.r_last() = this->r();
     tmp.E_last() = this->E();
     tmp.type_last() = this->type();
-    
+
     // Load geometry info
     if (!exhaustive_find_cell(tmp))
       fatal_error("Cannot find temporary particle in model.");

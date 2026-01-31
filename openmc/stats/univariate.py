@@ -1169,18 +1169,12 @@ class Normal(Univariate):
     def evaluate(self, x):
         """Evaluate PDF at x, returning normalized value for truncated dist."""
         x = np.asarray(x)
-
-        if not self._is_truncated:
-            return scipy.stats.norm.pdf(x, self.mean_value, self.std_dev)
-        else:
+        f = scipy.stats.norm.pdf(x, self.mean_value, self.std_dev)
+        if self._is_truncated:
             # PDF is zero outside bounds
             in_bounds = (x >= self._lower) & (x <= self._upper)
-            pdf = np.where(
-                in_bounds,
-                scipy.stats.norm.pdf(x, self.mean_value, self.std_dev) * self._norm_factor,
-                0.0
-            )
-            return pdf
+            f = np.where(in_bounds, f * self._norm_factor, 0.0)
+        return f
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Normal distribution

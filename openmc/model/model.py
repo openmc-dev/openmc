@@ -1038,7 +1038,6 @@ class Model:
         pixels: int | Sequence[int] = 40000,
         basis: str = 'xy',
         color_overlaps: bool = False,
-        filter: openmc.Filter | None = None,
         **init_kwargs
     ) -> np.ndarray:
         """Generate an ID map for domains based on the plot parameters
@@ -1071,9 +1070,6 @@ class Model:
             Whether to assign unique IDs (-3) to overlapping regions. If False,
             overlapping regions will be assigned the ID of the lowest-numbered
             cell that occupies that region. Defaults to False.
-        filter : openmc.Filter, optional
-            If provided, the information for each pixel also includes an index
-            in the filter corresponding to the pixel position.
         **init_kwargs
             Keyword arguments passed to :meth:`Model.init_lib`.
 
@@ -1105,6 +1101,83 @@ class Model:
         init_kwargs.setdefault('output', False)
         init_kwargs.setdefault('args', ['-c'])
 
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            ids = openmc.lib.id_map(plot_obj)
+
+        return ids
+
+    def raster_plot(
+        self,
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        color_overlaps: bool = False,
+        level: int = -1,
+        filter: openmc.Filter | None = None,
+        include_properties: bool = True,
+        **init_kwargs
+    ) -> tuple[np.ndarray, np.ndarray | None]:
+        """Generate geometry and property data for a 2D plot slice.
+
+        This method combines the functionality of :meth:`id_map` and property
+        mapping into a single call, avoiding duplicate geometry lookups. It also
+        supports filter bin index lookup for tally visualization.
+
+        .. versionadded:: 0.16.0
+
+        Parameters
+        ----------
+        origin : Sequence[float], optional
+            Origin of the plot. If unspecified, this argument defaults to the
+            center of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (0.0, 0.0, 0.0).
+        width : Sequence[float], optional
+            Width of the plot. If unspecified, this argument defaults to the
+            width of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (10.0, 10.0).
+        pixels : int | Sequence[int], optional
+            If an iterable of ints is provided then this directly sets the
+            number of pixels to use in each basis direction. If a single int is
+            provided then this sets the total number of pixels in the plot and
+            the number of pixels in each basis direction is calculated from this
+            total and the image aspect ratio based on the width argument.
+        basis : {'xy', 'yz', 'xz'}, optional
+            Basis of the plot.
+        color_overlaps : bool, optional
+            Whether to assign unique IDs (-3) to overlapping regions. If False,
+            overlapping regions will be assigned the ID of the lowest-numbered
+            cell that occupies that region. Defaults to False.
+        level : int, optional
+            Universe level to plot (-1 for deepest). Defaults to -1.
+        filter : openmc.Filter, optional
+            If provided, the information for each pixel also includes an index
+            in the filter corresponding to the pixel position.
+        include_properties : bool, optional
+            Whether to include temperature/density data. Defaults to True.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        -------
+        geom_data : numpy.ndarray
+            Shape (v_res, h_res, 3) or (v_res, h_res, 4) int32 array.
+            Contains [cell_id, cell_instance, material_id] when no filter,
+            or [cell_id, cell_instance, material_id, filter_bin] with filter.
+        property_data : numpy.ndarray or None
+            Shape (v_res, h_res, 2) float64 array with
+            [temperature, density], or None if include_properties=False.
+        """
+        import openmc.lib
+
+        origin, width, pixels = self._set_plot_defaults(
+            origin, width, pixels, basis)
+
+        # Silence output by default. Also set arguments to start in volume
+        # calculation mode to avoid loading cross sections
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
         # If filter does not already appear in the model, temporarily add a
         # tally with the filter
         filter_ids = {f.id for t in self.tallies for f in t.filters}
@@ -1116,12 +1189,16 @@ class Model:
             self.tallies.append(temp_tally)
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            ids = openmc.lib.id_map(plot_obj)
+            geom_data, property_data = openmc.lib.raster_plot(
+                origin, width, basis, pixels, color_overlaps, level, filter,
+                include_properties
+            )
 
         # If filter was temporarily added, remove it
         if len(self.tallies) > original_length:
             self.tallies.pop()
-        return ids
+
+        return geom_data, property_data
 
     @add_plot_params
     def plot(
@@ -1716,10 +1793,10 @@ class Model:
 
     @staticmethod
     def _auto_generate_mgxs_lib(
-        model: openmc.model.model,
+        model: openmc.model.Model,
         groups: openmc.mgxs.EnergyGroups,
-        correction: str | none,
-        directory: pathlike,
+        correction: str | None,
+        directory: PathLike,
     ) -> openmc.mgxs.Library:
         """
         Automatically generate a multi-group cross section libray from a model

@@ -204,12 +204,12 @@ class _PlotBase(Structure):
         return '\n'.join(out_str)
 
 
-_dll.openmc_id_map.argtypes = [POINTER(_PlotBase), c_int32, POINTER(c_int32)]
+_dll.openmc_id_map.argtypes = [POINTER(_PlotBase), POINTER(c_int32)]
 _dll.openmc_id_map.restype = c_int
 _dll.openmc_id_map.errcheck = _error_handler
 
 
-def id_map(plot, filter=None):
+def id_map(plot):
     """
     Generate a 2-D map of cell and material IDs. Used for in-memory image
     generation.
@@ -218,22 +218,17 @@ def id_map(plot, filter=None):
     ----------
     plot : openmc.lib.plot._PlotBase
         Object describing the slice of the model to be generated
-    filter : openmc.Filter, optional
-        If provided, the information for each pixel also includes an index in
-        the filter corresponding to the pixel position.
 
     Returns
     -------
     id_map : numpy.ndarray
-        A NumPy array with shape (vertical pixels, horizontal pixels, 4) of
+        A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
         OpenMC property ids with dtype int32. The last dimension of the array
-        contains, in order, cell IDs, cell instances, material IDs, and filter
-        indices.
+        contains, in order, cell IDs, cell instances, and material IDs.
 
     """
-    filter_id = filter.id if filter is not None else -1
-    img_data = np.zeros((plot.v_res, plot.h_res, 4), dtype=np.int32)
-    _dll.openmc_id_map(plot, filter_id, img_data.ctypes.data_as(POINTER(c_int32)))
+    img_data = np.zeros((plot.v_res, plot.h_res, 3), dtype=np.int32)
+    _dll.openmc_id_map(plot, img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data
 
 
@@ -262,3 +257,95 @@ def property_map(plot):
     prop_data = np.zeros((plot.v_res, plot.h_res, 2))
     _dll.openmc_property_map(plot, prop_data.ctypes.data_as(POINTER(c_double)))
     return prop_data
+
+
+_dll.openmc_raster_plot.argtypes = [
+    POINTER(c_double * 3),   # origin
+    POINTER(c_double * 2),   # width
+    c_int,                   # basis
+    POINTER(c_size_t * 2),   # pixels
+    c_bool,                  # color_overlaps
+    c_int,                   # level
+    c_int32,                 # filter_index
+    POINTER(c_int32),        # geom_data
+    POINTER(c_double),       # property_data (can be None)
+]
+_dll.openmc_raster_plot.restype = c_int
+_dll.openmc_raster_plot.errcheck = _error_handler
+
+
+def raster_plot(origin, width, basis, pixels, color_overlaps=False, level=-1,
+                filter=None, include_properties=True):
+    """
+    Generate a 2D raster of geometry and property data for plotting.
+
+    Parameters
+    ----------
+    origin : sequence of float
+        Center position of the plot [x, y, z]
+    width : sequence of float
+        Width of the plot [horizontal, vertical]
+    basis : {'xy', 'xz', 'yz'} or int
+        Plot basis
+    pixels : sequence of int
+        Number of pixels [horizontal, vertical]
+    color_overlaps : bool, optional
+        Whether to detect overlapping cells
+    level : int, optional
+        Universe level (-1 for deepest)
+    filter : openmc.Filter, optional
+        Filter for bin index lookup
+    include_properties : bool, optional
+        Whether to compute temperature/density
+
+    Returns
+    -------
+    geom_data : numpy.ndarray
+        Array of shape (v_res, h_res, 3) or (v_res, h_res, 4) with int32 dtype.
+        Contains [cell_id, cell_instance, material_id] when no filter is provided,
+        or [cell_id, cell_instance, material_id, filter_bin] when a filter is provided.
+    property_data : numpy.ndarray or None
+        Array of shape (v_res, h_res, 2) with float64 dtype containing
+        [temperature, density], or None if include_properties=False
+    """
+    # Convert basis string to int
+    basis_map = {'xy': 1, 'xz': 2, 'yz': 3}
+    if isinstance(basis, str):
+        basis = basis_map[basis.lower()]
+
+    # Prepare ctypes arrays
+    origin_arr = (c_double * 3)(*origin)
+    width_arr = (c_double * 2)(*width)
+    pixels_arr = (c_size_t * 2)(*pixels)
+
+    # Get internal filter index from filter ID if filter is provided
+    if filter is not None:
+        filter_index = c_int32()
+        _dll.openmc_get_filter_index(filter.id, filter_index)
+        filter_index = filter_index.value
+    else:
+        filter_index = -1
+
+    # Allocate output arrays with dynamic size based on filter
+    n_geom_fields = 4 if filter is not None else 3
+    geom_data = np.zeros((pixels[1], pixels[0], n_geom_fields), dtype=np.int32)
+    if include_properties:
+        property_data = np.zeros((pixels[1], pixels[0], 2), dtype=np.float64)
+        prop_ptr = property_data.ctypes.data_as(POINTER(c_double))
+    else:
+        property_data = None
+        prop_ptr = None
+
+    _dll.openmc_raster_plot(
+        origin_arr,
+        width_arr,
+        basis,
+        pixels_arr,
+        color_overlaps,
+        level,
+        filter_index,
+        geom_data.ctypes.data_as(POINTER(c_int32)),
+        prop_ptr
+    )
+
+    return geom_data, property_data

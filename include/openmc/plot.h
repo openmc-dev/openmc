@@ -150,13 +150,12 @@ struct IdData {
   IdData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(size_t y, size_t x, const Particle& p, int level,
-    Filter* filter, FilterMatch* match);
+  void set_value(size_t y, size_t x, const Particle& p, int level);
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 4> data_; //!< 4D array of cell ID, cell instance,
-                                 //!< material ID, and filter index
+  xt::xtensor<int32_t, 3> data_; //!< 3D array of cell ID, cell instance,
+                                 //!< and material ID
 };
 
 struct PropertyData {
@@ -164,12 +163,28 @@ struct PropertyData {
   PropertyData(size_t h_res, size_t v_res);
 
   // Methods
+  void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_overlap(size_t y, size_t x);
+
+  // Members
+  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+};
+
+struct RasterData {
+  // Constructor
+  RasterData(size_t h_res, size_t v_res, bool include_filter);
+
+  // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter, FilterMatch* match);
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+  xt::xtensor<int32_t, 3>
+    id_data_; //!< [v_res, h_res, 3 or 4]: cell, instance, mat, [filter_bin]
+  xt::xtensor<double, 3>
+    property_data_;     //!< [v_res, h_res, 2]: temperature, density
+  bool include_filter_; //!< Whether filter bin index is included
 };
 
 //===============================================================================
@@ -179,7 +194,10 @@ struct PropertyData {
 class SlicePlotBase {
 public:
   template<class T>
-  T get_map(int32_t filter_index = -1) const;
+  T get_map() const;
+
+  // Specialized method for RasterData that takes filter_index
+  RasterData get_raster_map(int32_t filter_index) const;
 
   enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
 
@@ -200,16 +218,11 @@ private:
 };
 
 template<class T>
-T SlicePlotBase::get_map(int32_t filter_index) const
+T SlicePlotBase::get_map() const
 {
 
   size_t width = pixels_[0];
   size_t height = pixels_[1];
-
-  Filter* filter = nullptr;
-  if (filter_index > 0) {
-    filter = &model::tally_filters[filter_index].get();
-  }
 
   // get pixel size
   double in_pixel = (width_[0]) / static_cast<double>(width);
@@ -253,7 +266,6 @@ T SlicePlotBase::get_map(int32_t filter_index) const
     p.coord(0).universe() = model::root_universe;
     int level = slice_level_;
     int j {};
-    FilterMatch match;
 
 #pragma omp for
     for (int y = 0; y < height; y++) {
@@ -268,7 +280,7 @@ T SlicePlotBase::get_map(int32_t filter_index) const
           j = level;
         }
         if (found_cell) {
-          data.set_value(y, x, p, j, filter, &match);
+          data.set_value(y, x, p, j);
         }
         if (slice_color_overlaps_ && check_cell_overlap(p, false)) {
           data.set_overlap(y, x);

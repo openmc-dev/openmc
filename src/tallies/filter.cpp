@@ -10,8 +10,6 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h" // for MAX_LINE_LEN;
 #include "openmc/error.h"
-#include "openmc/geometry.h"
-#include "openmc/position.h"
 #include "openmc/tallies/filter_azimuthal.h"
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cell_instance.h"
@@ -250,76 +248,6 @@ extern "C" int openmc_filter_get_num_bins(int32_t index, int* n_bins)
     return err;
 
   *n_bins = model::tally_filters[index]->n_bins();
-  return 0;
-}
-
-extern "C" int openmc_filter_get_plot_bins(int32_t index, Position origin,
-  Position width, int basis, int* pixels, int32_t* data)
-{
-  if (int err = verify_filter(index))
-    return err;
-  const auto& filter = model::tally_filters[index].get();
-
-  int pixel_width = pixels[0];
-  int pixel_height = pixels[1];
-
-  // get pixel size
-  double in_pixel = (width[0]) / static_cast<double>(pixel_width);
-  double out_pixel = (width[1]) / static_cast<double>(pixel_height);
-
-  // setup basis indices and initial position centered on pixel
-  int in_i, out_i;
-  Position xyz = origin;
-  enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
-  PlotBasis basis_enum = static_cast<PlotBasis>(basis);
-  switch (basis_enum) {
-  case PlotBasis::xy:
-    in_i = 0;
-    out_i = 1;
-    break;
-  case PlotBasis::xz:
-    in_i = 0;
-    out_i = 2;
-    break;
-  case PlotBasis::yz:
-    in_i = 1;
-    out_i = 2;
-    break;
-  default:
-    UNREACHABLE();
-  }
-
-  // set initial position
-  xyz[in_i] = origin[in_i] - width[0] / 2. + in_pixel / 2.;
-  xyz[out_i] = origin[out_i] + width[1] / 2. - out_pixel / 2.;
-
-#pragma omp parallel
-  {
-    Particle p;
-    p.r() = xyz;
-    p.u() = {1.0, 0.0, 0.0};
-    p.coord(0).universe() = model::root_universe;
-    FilterMatch match;
-
-#pragma omp for
-    for (int y = 0; y < pixel_height; y++) {
-      p.r()[out_i] = xyz[out_i] - out_pixel * y;
-      for (int x = 0; x < pixel_width; x++) {
-        p.r()[in_i] = xyz[in_i] + in_pixel * x;
-        p.n_coord() = 1;
-        bool found_cell = exhaustive_find_cell(p);
-        filter->get_all_bins(p, TallyEstimator::COLLISION, match);
-        if (match.bins_.empty()) {
-          data[pixel_width * y + x] = -1;
-        } else {
-          data[pixel_width * y + x] = match.bins_[0];
-        }
-        match.bins_.clear();
-        match.weights_.clear();
-      }
-    }
-  }
-
   return 0;
 }
 

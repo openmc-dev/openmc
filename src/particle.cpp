@@ -39,10 +39,6 @@
 
 namespace openmc {
 
-namespace simulation {
-thread_local Particle tmp_particle;
-}
-
 //==============================================================================
 // Particle implementation
 //==============================================================================
@@ -97,18 +93,21 @@ bool Particle::create_secondary(
   // Score tallies affected by secondary particles
   if (!model::active_particleout_analog_tallies.empty()) {
     // Create secondary particle for tallying purposes only
-    simulation::tmp_particle.from_source(&bank);
-    simulation::tmp_particle.u_last() = this->u();
-    simulation::tmp_particle.r_last() = this->r();
-    simulation::tmp_particle.E_last() = this->E();
-    simulation::tmp_particle.type_last() = this->type();
+    Particle tmp;
+    tmp.from_source(&bank);
+    tmp.u_last() = this->u();
+    tmp.r_last() = this->r();
+    tmp.E_last() = this->E();
+    tmp.type_last() = this->type();
+    
+    // Load geometry info
+    if (!exhaustive_find_cell(tmp))
+      fatal_error("Cannot find temporary particle in model.");
 
     if (settings::run_CE) {
-      score_analog_tally_ce(
-        simulation::tmp_particle, model::active_particleout_analog_tallies);
+      score_analog_tally_ce(tmp, model::active_particleout_analog_tallies);
     } else {
-      score_analog_tally_mg(
-        simulation::tmp_particle, model::active_particleout_analog_tallies);
+      score_analog_tally_mg(tmp, model::active_particleout_analog_tallies);
     }
   }
   return true;

@@ -211,5 +211,15 @@ std::complex<double> w_derivative(std::complex<double> z, int order);
 void get_energy_index(
   const vector<double>& energies, double E, int& i, double& f);
 
+//==============================================================================
+//! Calculate the cumulative distribution function of the standard normal
+//! distribution at a given value.
+//!
+//! \param z The value at which to evaluate the CDF
+//! \return Phi(z) = P(X <= z) for X ~ N(0,1)
+//==============================================================================
+
+double standard_normal_cdf(double z);
+
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

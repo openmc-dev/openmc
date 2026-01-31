@@ -582,6 +582,93 @@ def test_normal():
 
 
 @pytest.mark.flaky(reruns=1)
+def test_normal_truncated():
+    mean = 10.0
+    std_dev = 2.0
+    lower = 6.0
+    upper = 14.0
+
+    d = openmc.stats.Normal(mean, std_dev, lower, upper)
+
+    # Check attributes
+    assert d.mean_value == pytest.approx(mean)
+    assert d.std_dev == pytest.approx(std_dev)
+    assert d.lower == pytest.approx(lower)
+    assert d.upper == pytest.approx(upper)
+    assert len(d) == 4
+    assert d.support == (lower, upper)
+
+    # Test XML round-trip
+    elem = d.to_xml_element('distribution')
+    assert elem.attrib['type'] == 'normal'
+    params = elem.attrib['parameters'].split()
+    assert len(params) == 4
+
+    d2 = openmc.stats.Normal.from_xml_element(elem)
+    assert d2.mean_value == pytest.approx(mean)
+    assert d2.std_dev == pytest.approx(std_dev)
+    assert d2.lower == pytest.approx(lower)
+    assert d2.upper == pytest.approx(upper)
+
+    # Test PDF evaluation
+    # PDF should be zero outside bounds
+    assert d.evaluate(lower - 1.0) == 0.0
+    assert d.evaluate(upper + 1.0) == 0.0
+
+    # PDF should be positive inside bounds
+    assert d.evaluate(mean) > 0.0
+
+    # PDF should be higher than untruncated at the mean (due to renormalization)
+    d_unbounded = openmc.stats.Normal(mean, std_dev)
+    assert d.evaluate(mean) > d_unbounded.evaluate(mean)
+
+    # Verify that PDF integrates to approximately 1
+    x = np.linspace(lower, upper, 1000)
+    from scipy.integrate import trapezoid
+    integral = trapezoid(d.evaluate(x), x)
+    assert integral == pytest.approx(1.0, rel=0.01)
+
+    # Sample truncated distribution
+    n_samples = 10_000
+    samples, weights = d.sample(n_samples)
+
+    # All samples should be within bounds
+    assert np.all(samples >= lower)
+    assert np.all(samples <= upper)
+
+    # Weights should all be 1 (no biasing)
+    assert np.all(weights == 1.0)
+
+
+def test_normal_truncated_one_sided():
+    # Test lower-bounded only (positive half-normal centered at 0)
+    d_lower = openmc.stats.Normal(0.0, 1.0, lower=0.0)
+    assert d_lower.lower == 0.0
+    assert d_lower.upper == np.inf
+    assert d_lower.evaluate(-1.0) == 0.0
+    assert d_lower.evaluate(1.0) > 0.0
+
+    # PDF at 0 should be approximately 2 * 0.3989 ≈ 0.798 (half-normal)
+    assert d_lower.evaluate(0.0) == pytest.approx(0.798, rel=0.01)
+
+    # Test upper-bounded only
+    d_upper = openmc.stats.Normal(0.0, 1.0, upper=0.0)
+    assert d_upper.lower == -np.inf
+    assert d_upper.upper == 0.0
+    assert d_upper.evaluate(1.0) == 0.0
+    assert d_upper.evaluate(-1.0) > 0.0
+
+
+def test_normal_truncated_errors():
+    # Invalid bounds (lower >= upper)
+    with pytest.raises(ValueError):
+        openmc.stats.Normal(0.0, 1.0, lower=1.0, upper=0.0)
+
+    with pytest.raises(ValueError):
+        openmc.stats.Normal(0.0, 1.0, lower=1.0, upper=1.0)
+
+
+@pytest.mark.flaky(reruns=1)
 def test_muir():
     mean = 10.0
     mass = 5.0

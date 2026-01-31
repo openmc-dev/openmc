@@ -1038,18 +1038,27 @@ class Watt(Univariate):
 
 
 class Normal(Univariate):
-    r"""Normally distributed sampling.
+    r"""Normally distributed sampling with optional truncation.
 
-    The Normal Distribution is characterized by two parameters
-    :math:`\mu` and :math:`\sigma` and has density function
-    :math:`p(X) dX = 1/(\sqrt{2\pi}\sigma) e^{-(X-\mu)^2/(2\sigma^2)}`
+    The normal distribution is characterized by parameters :math:`\mu` and
+    :math:`\sigma` and has density function :math:`p(X) = 1/(\sqrt{2\pi}\sigma)
+    e^{-(X-\mu)^2/(2\sigma^2)}`. When truncated to the interval [lower, upper],
+    the distribution is renormalized so that the PDF integrates to 1 over the
+    truncation interval.
+
+    .. versionchanged:: 0.15.4
+        Added optional truncation bounds via `lower` and `upper` parameters.
 
     Parameters
     ----------
     mean_value : float
-        Mean value of the  distribution
+        Mean value of the distribution
     std_dev : float
         Standard deviation of the Normal distribution
+    lower : float, optional
+        Lower truncation bound. Defaults to -infinity (no lower bound).
+    upper : float, optional
+        Upper truncation bound. Defaults to +infinity (no upper bound).
     bias : openmc.stats.Univariate, optional
         Distribution for biased sampling.
 
@@ -1059,6 +1068,10 @@ class Normal(Univariate):
         Mean of the Normal distribution
     std_dev : float
         Standard deviation of the Normal distribution
+    lower : float
+        Lower truncation bound
+    upper : float
+        Upper truncation bound
     support : tuple of float
         A 2-tuple (lower, upper) defining the interval over which the
         distribution is nonzero-valued
@@ -1066,12 +1079,18 @@ class Normal(Univariate):
         Distribution for biased sampling
     """
 
-    def __init__(self, mean_value, std_dev, bias: Univariate | None = None):
+    def __init__(self, mean_value, std_dev, lower=-np.inf, upper=np.inf,
+                 bias: Univariate | None = None):
         self.mean_value = mean_value
         self.std_dev = std_dev
+        self.lower = lower
+        self.upper = upper
+        self._compute_normalization()
         super().__init__(bias)
 
     def __len__(self):
+        if self._is_truncated:
+            return 4
         return 2
 
     @property
@@ -1094,15 +1113,75 @@ class Normal(Univariate):
         self._std_dev = std_dev
 
     @property
+    def lower(self):
+        return self._lower
+
+    @lower.setter
+    def lower(self, lower):
+        cv.check_type('Normal lower bound', lower, Real)
+        self._lower = lower
+
+    @property
+    def upper(self):
+        return self._upper
+
+    @upper.setter
+    def upper(self, upper):
+        cv.check_type('Normal upper bound', upper, Real)
+        self._upper = upper
+
+    def _compute_normalization(self):
+        """Compute normalization factor for truncated distribution."""
+        # Check if truncation bounds are finite
+        self._is_truncated = (self._lower > -np.inf or self._upper < np.inf)
+
+        if self._lower >= self._upper:
+            raise ValueError("Normal distribution lower bound must be less "
+                             "than upper bound.")
+
+        if self._is_truncated:
+            alpha = (self._lower - self._mean_value) / self._std_dev
+            beta = (self._upper - self._mean_value) / self._std_dev
+            self._cdf_diff = scipy.stats.norm.cdf(beta) - scipy.stats.norm.cdf(alpha)
+            if self._cdf_diff <= 0:
+                raise ValueError("Truncation bounds exclude entire distribution")
+            self._norm_factor = 1.0 / self._cdf_diff
+        else:
+            self._cdf_diff = 1.0
+            self._norm_factor = 1.0
+
+    @property
     def support(self):
-        return (-np.inf, np.inf)
+        return (self._lower, self._upper)
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
-        return rng.normal(self.mean_value, self.std_dev, n_samples)
+        if not self._is_truncated:
+            return rng.normal(self.mean_value, self.std_dev, n_samples)
+        else:
+            # Rejection sampling to match C++ behavior
+            samples = []
+            while len(samples) < n_samples:
+                x = rng.normal(self.mean_value, self.std_dev)
+                if self._lower <= x <= self._upper:
+                    samples.append(x)
+            return np.array(samples)
 
     def evaluate(self, x):
-        return scipy.stats.norm.pdf(x, self.mean_value, self.std_dev)
+        """Evaluate PDF at x, returning normalized value for truncated dist."""
+        x = np.asarray(x)
+
+        if not self._is_truncated:
+            return scipy.stats.norm.pdf(x, self.mean_value, self.std_dev)
+        else:
+            # PDF is zero outside bounds
+            in_bounds = (x >= self._lower) & (x <= self._upper)
+            pdf = np.where(
+                in_bounds,
+                scipy.stats.norm.pdf(x, self.mean_value, self.std_dev) * self._norm_factor,
+                0.0
+            )
+            return pdf
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Normal distribution
@@ -1115,12 +1194,16 @@ class Normal(Univariate):
         Returns
         -------
         element : lxml.etree._Element
-            XML element containing Watt distribution data
+            XML element containing Normal distribution data
 
         """
         element = ET.Element(element_name)
         element.set("type", "normal")
-        element.set("parameters", f'{self.mean_value} {self.std_dev}')
+        if self._is_truncated:
+            element.set("parameters",
+                f'{self.mean_value} {self.std_dev} {self.lower} {self.upper}')
+        else:
+            element.set("parameters", f'{self.mean_value} {self.std_dev}')
         self._append_bias_to_xml(element)
         return element
 
@@ -1141,7 +1224,10 @@ class Normal(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
         bias_dist = cls._read_bias_from_xml(elem)
-        return cls(*map(float, params), bias=bias_dist)
+        if len(params) == 4:
+            return cls(params[0], params[1], params[2], params[3], bias=bias_dist)
+        else:
+            return cls(params[0], params[1], bias=bias_dist)
 
 
 def muir(e0: float, m_rat: float, kt: float, bias: Univariate | None = None):
@@ -1173,7 +1259,7 @@ def muir(e0: float, m_rat: float, kt: float, bias: Univariate | None = None):
     """
     # https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
     std_dev = sqrt(2 * e0 * kt / m_rat)
-    return Normal(e0, std_dev, bias)
+    return Normal(e0, std_dev, bias=bias)
 
 
 # Retain deprecated name for the time being

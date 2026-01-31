@@ -363,30 +363,92 @@ double Watt::evaluate(double x) const
 //==============================================================================
 // Normal implementation
 //==============================================================================
+
+Normal::Normal(double mean_value, double std_dev, double lower, double upper)
+  : mean_value_ {mean_value}, std_dev_ {std_dev}, lower_ {lower}, upper_ {upper}
+{
+  compute_normalization();
+}
+
 Normal::Normal(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
-  if (params.size() != 2) {
+  if (params.size() != 2 && params.size() != 4) {
     openmc::fatal_error("Normal energy distribution must have two "
-                        "parameters specified.");
+                        "parameters (mean, std_dev) or four parameters "
+                        "(mean, std_dev, lower, upper) specified.");
   }
 
   mean_value_ = params.at(0);
   std_dev_ = params.at(1);
 
+  // Optional truncation bounds
+  if (params.size() == 4) {
+    lower_ = params.at(2);
+    upper_ = params.at(3);
+  } else {
+    lower_ = -INFTY;
+    upper_ = INFTY;
+  }
+
+  compute_normalization();
   read_bias_from_xml(node);
+}
+
+void Normal::compute_normalization()
+{
+  // Validate bounds
+  if (lower_ >= upper_) {
+    openmc::fatal_error(
+      "Normal distribution lower bound must be less than upper bound.");
+  }
+
+  // Check if truncation bounds are finite
+  is_truncated_ = (lower_ > -INFTY || upper_ < INFTY);
+
+  if (is_truncated_) {
+    double alpha = (lower_ - mean_value_) / std_dev_;
+    double beta = (upper_ - mean_value_) / std_dev_;
+    double cdf_diff = standard_normal_cdf(beta) - standard_normal_cdf(alpha);
+
+    if (cdf_diff <= 0.0) {
+      openmc::fatal_error(
+        "Normal distribution truncation bounds exclude entire distribution.");
+    }
+    norm_factor_ = 1.0 / cdf_diff;
+  } else {
+    norm_factor_ = 1.0;
+  }
 }
 
 double Normal::sample_unbiased(uint64_t* seed) const
 {
-  return normal_variate(mean_value_, std_dev_, seed);
+  if (!is_truncated_) {
+    return normal_variate(mean_value_, std_dev_, seed);
+  }
+
+  // Rejection sampling for truncated normal
+  double x;
+  do {
+    x = normal_variate(mean_value_, std_dev_, seed);
+  } while (x < lower_ || x > upper_);
+  return x;
 }
 
 double Normal::evaluate(double x) const
 {
-  return (1.0 / (std::sqrt(2.0 / PI) * std_dev_)) *
-         std::exp(-(std::pow((x - mean_value_), 2.0)) /
-                  (2.0 * std::pow(std_dev_, 2.0)));
+  // Return 0 outside truncation bounds
+  if (x < lower_ || x > upper_) {
+    return 0.0;
+  }
+
+  // Standard normal PDF value
+  double pdf = (1.0 / (std::sqrt(2.0 * PI) * std_dev_)) *
+               std::exp(-std::pow((x - mean_value_), 2.0) /
+                        (2.0 * std::pow(std_dev_, 2.0)));
+
+  // Apply normalization for truncation
+  return pdf * norm_factor_;
 }
 
 //==============================================================================

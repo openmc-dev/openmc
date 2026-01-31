@@ -46,10 +46,12 @@ constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
 constexpr int32_t OVERLAP {-3};
 
-IdData::IdData(size_t h_res, size_t v_res) : data_({v_res, h_res, 3}, NOT_FOUND)
+IdData::IdData(size_t h_res, size_t v_res, bool /*include_filter*/)
+  : data_({v_res, h_res, 3}, NOT_FOUND)
 {}
 
-void IdData::set_value(size_t y, size_t x, const Particle& p, int level)
+void IdData::set_value(size_t y, size_t x, const Particle& p, int level,
+  Filter* /*filter*/, FilterMatch* /*match*/)
 {
   // set cell data
   if (p.n_coord() <= level) {
@@ -77,11 +79,12 @@ void IdData::set_overlap(size_t y, size_t x)
   xt::view(data_, y, x, xt::all()) = OVERLAP;
 }
 
-PropertyData::PropertyData(size_t h_res, size_t v_res)
+PropertyData::PropertyData(size_t h_res, size_t v_res, bool /*include_filter*/)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 {}
 
-void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level)
+void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level,
+  Filter* /*filter*/, FilterMatch* /*match*/)
 {
   Cell* c = model::cells.at(p.lowest_coord().cell()).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
@@ -162,90 +165,6 @@ void RasterData::set_overlap(size_t y, size_t x)
 
   property_data_(y, x, 0) = OVERLAP;
   property_data_(y, x, 1) = OVERLAP;
-}
-
-//==============================================================================
-// SlicePlotBase::get_raster_map implementation
-//==============================================================================
-
-RasterData SlicePlotBase::get_raster_map(int32_t filter_index) const
-{
-  size_t width = pixels_[0];
-  size_t height = pixels_[1];
-
-  bool include_filter = (filter_index >= 0);
-  Filter* filter = nullptr;
-  if (include_filter) {
-    filter = model::tally_filters[filter_index].get();
-  }
-
-  // get pixel size
-  double in_pixel = (width_[0]) / static_cast<double>(width);
-  double out_pixel = (width_[1]) / static_cast<double>(height);
-
-  // size data array
-  RasterData data(width, height, include_filter);
-
-  // setup basis indices and initial position centered on pixel
-  int in_i, out_i;
-  Position xyz = origin_;
-  switch (basis_) {
-  case PlotBasis::xy:
-    in_i = 0;
-    out_i = 1;
-    break;
-  case PlotBasis::xz:
-    in_i = 0;
-    out_i = 2;
-    break;
-  case PlotBasis::yz:
-    in_i = 1;
-    out_i = 2;
-    break;
-  default:
-    UNREACHABLE();
-  }
-
-  // set initial position
-  xyz[in_i] = origin_[in_i] - width_[0] / 2. + in_pixel / 2.;
-  xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
-
-  // arbitrary direction
-  Direction dir = {1. / std::sqrt(2.), 1. / std::sqrt(2.), 0.0};
-
-#pragma omp parallel
-  {
-    Particle p;
-    p.r() = xyz;
-    p.u() = dir;
-    p.coord(0).universe() = model::root_universe;
-    int level = slice_level_;
-    int j {};
-    FilterMatch match;
-
-#pragma omp for
-    for (int y = 0; y < height; y++) {
-      p.r()[out_i] = xyz[out_i] - out_pixel * y;
-      for (int x = 0; x < width; x++) {
-        p.r()[in_i] = xyz[in_i] + in_pixel * x;
-        p.n_coord() = 1;
-        // local variables
-        bool found_cell = exhaustive_find_cell(p);
-        j = p.n_coord() - 1;
-        if (level >= 0) {
-          j = level;
-        }
-        if (found_cell) {
-          data.set_value(y, x, p, j, filter, &match);
-        }
-        if (slice_color_overlaps_ && check_cell_overlap(p, false)) {
-          data.set_overlap(y, x);
-        }
-      } // inner for
-    }
-  }
-
-  return data;
 }
 
 //==============================================================================
@@ -2114,8 +2033,8 @@ extern "C" int openmc_raster_plot(const double origin[3], const double width[2],
     plot_params.slice_color_overlaps_ = color_overlaps;
     plot_params.slice_level_ = level;
 
-    // Use get_raster_map to generate data
-    auto data = plot_params.get_raster_map(filter_index);
+    // Use get_map<RasterData> to generate data
+    auto data = plot_params.get_map<RasterData>(filter_index);
 
     // Copy geometry data
     std::copy(data.id_data_.begin(), data.id_data_.end(), geom_data);

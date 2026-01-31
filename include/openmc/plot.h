@@ -147,10 +147,11 @@ public:
 
 struct IdData {
   // Constructor
-  IdData(size_t h_res, size_t v_res);
+  IdData(size_t h_res, size_t v_res, bool include_filter = false);
 
   // Methods
-  void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_value(size_t y, size_t x, const Particle& p, int level,
+    Filter* filter = nullptr, FilterMatch* match = nullptr);
   void set_overlap(size_t y, size_t x);
 
   // Members
@@ -160,10 +161,11 @@ struct IdData {
 
 struct PropertyData {
   // Constructor
-  PropertyData(size_t h_res, size_t v_res);
+  PropertyData(size_t h_res, size_t v_res, bool include_filter = false);
 
   // Methods
-  void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_value(size_t y, size_t x, const Particle& p, int level,
+    Filter* filter = nullptr, FilterMatch* match = nullptr);
   void set_overlap(size_t y, size_t x);
 
   // Members
@@ -172,11 +174,11 @@ struct PropertyData {
 
 struct RasterData {
   // Constructor
-  RasterData(size_t h_res, size_t v_res, bool include_filter);
+  RasterData(size_t h_res, size_t v_res, bool include_filter = false);
 
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
-    Filter* filter, FilterMatch* match);
+    Filter* filter = nullptr, FilterMatch* match = nullptr);
   void set_overlap(size_t y, size_t x);
 
   // Members
@@ -194,10 +196,7 @@ struct RasterData {
 class SlicePlotBase {
 public:
   template<class T>
-  T get_map() const;
-
-  // Specialized method for RasterData that takes filter_index
-  RasterData get_raster_map(int32_t filter_index) const;
+  T get_map(int32_t filter_index = -1) const;
 
   enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
 
@@ -218,18 +217,25 @@ private:
 };
 
 template<class T>
-T SlicePlotBase::get_map() const
+T SlicePlotBase::get_map(int32_t filter_index) const
 {
 
   size_t width = pixels_[0];
   size_t height = pixels_[1];
+
+  // Determine if filter is being used
+  bool include_filter = (filter_index >= 0);
+  Filter* filter = nullptr;
+  if (include_filter) {
+    filter = model::tally_filters[filter_index].get();
+  }
 
   // get pixel size
   double in_pixel = (width_[0]) / static_cast<double>(width);
   double out_pixel = (width_[1]) / static_cast<double>(height);
 
   // size data array
-  T data(width, height);
+  T data(width, height, include_filter);
 
   // setup basis indices and initial position centered on pixel
   int in_i, out_i;
@@ -266,6 +272,7 @@ T SlicePlotBase::get_map() const
     p.coord(0).universe() = model::root_universe;
     int level = slice_level_;
     int j {};
+    FilterMatch match;
 
 #pragma omp for
     for (int y = 0; y < height; y++) {
@@ -280,7 +287,7 @@ T SlicePlotBase::get_map() const
           j = level;
         }
         if (found_cell) {
-          data.set_value(y, x, p, j);
+          data.set_value(y, x, p, j, filter, &match);
         }
         if (slice_color_overlaps_ && check_cell_overlap(p, false)) {
           data.set_overlap(y, x);

@@ -40,7 +40,7 @@
       </constraints>
     </source>
     <energy_mode>multi-group</energy_mode>
-    <random_ray>  
+    <random_ray>
       <ray_source>
         <source type="independent" strength="1.0" particle="neutron">
           <space type="box">

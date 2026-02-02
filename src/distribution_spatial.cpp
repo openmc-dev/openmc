@@ -426,6 +426,11 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
   upper_right_ = Position {params[3], params[4], params[5]};
 }
 
+SpatialBox::SpatialBox(Position lower_left, Position upper_right, bool fission)
+  : lower_left_(lower_left), upper_right_(upper_right),
+    only_fissionable_(fission)
+{}
+
 std::pair<Position, double> SpatialBox::sample(uint64_t* seed) const
 {
   Position xi {prn(seed), prn(seed), prn(seed)};

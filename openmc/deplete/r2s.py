@@ -269,6 +269,7 @@ class R2SManager:
             # Compute material volume fractions on the mesh
             if mat_vol_kwargs is None:
                 mat_vol_kwargs = {}
+            mat_vol_kwargs.setdefault('bounding_boxes', True)
             self.results['mesh_material_volumes'] = mmv = comm.bcast(
                 self.domains.material_volumes(self.neutron_model, **mat_vol_kwargs))
 
@@ -539,14 +540,15 @@ class R2SManager:
     def get_decay_photon_source_mesh(
         self,
         time_index: int = -1
-    ) -> list[openmc.MeshSource]:
+    ) -> list[openmc.IndependentSource]:
         """Create decay photon source for a mesh-based calculation.
 
-        This function creates N :class:`MeshSource` objects where N is the
-        maximum number of unique materials that appears in a single mesh
-        element. For each mesh element-material combination, and
-        IndependentSource instance is created with a spatial constraint limited
-        the sampled decay photons to the correct region.
+        For each mesh element-material combination, an
+        :class:`~openmc.IndependentSource` is created with a
+        :class:`~openmc.stats.Box` spatial distribution based on the bounding
+        box of the material within the mesh element. A material constraint is
+        also applied so that sampled source sites are limited to the correct
+        region.
 
         When the photon transport model is different from the neutron model, the
         photon MeshMaterialVolumes is used to determine whether an (element,
@@ -559,19 +561,15 @@ class R2SManager:
 
         Returns
         -------
-        list of openmc.MeshSource
-            A list of MeshSource objects, each containing IndependentSource
-            instances for the decay photons in the corresponding mesh element.
+        list of openmc.IndependentSource
+            A list of IndependentSource objects for the decay photons, one for
+            each mesh element-material combination with non-zero source strength.
 
         """
         mat_dict = self.neutron_model._get_all_materials()
 
-        # Some MeshSource objects will have empty positions; create a "null source"
-        # that is used for this case
-        null_source = openmc.IndependentSource(particle='photon', strength=0.0)
-
-        # List to hold sources for each MeshSource (length = N)
-        source_lists = []
+        # List to hold all sources
+        sources = []
 
         # Index in the overall list of activated materials
         index_mat = 0
@@ -594,7 +592,7 @@ class R2SManager:
                     if mat_id is not None
                 }
 
-            for j, (mat_id, _) in enumerate(mat_vols.by_element(index_elem)):
+            for mat_id, _, bbox in mat_vols.by_element(index_elem, include_bboxes=True):
                 # Skip void volume
                 if mat_id is None:
                     continue
@@ -604,30 +602,27 @@ class R2SManager:
                     index_mat += 1
                     continue
 
-                # Check whether a new MeshSource object is needed
-                if j >= len(source_lists):
-                    source_lists.append([null_source]*n_elements)
-
                 # Get activated material composition
                 original_mat = materials[index_mat]
                 activated_mat = results[time_index].get_material(str(original_mat.id))
 
-                # Create decay photon source source
+                # Create decay photon source
                 energy = activated_mat.get_decay_photon_energy()
                 if energy is not None:
                     strength = energy.integral()
-                    source_lists[j][index_elem] = openmc.IndependentSource(
+                    space = openmc.stats.Box(*bbox)
+                    sources.append(openmc.IndependentSource(
+                        space=space,
                         energy=energy,
                         particle='photon',
                         strength=strength,
                         constraints={'domains': [mat_dict[mat_id]]}
-                    )
+                    ))
 
                 # Increment index of activated material
                 index_mat += 1
 
-        # Return list of mesh sources
-        return [openmc.MeshSource(self.domains, sources) for sources in source_lists]
+        return sources
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

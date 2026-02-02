@@ -270,32 +270,24 @@ void WeightWindows::set_mesh(const Mesh* mesh)
   set_mesh(model::mesh_map[mesh->id_]);
 }
 
-const int WeightWindows::get_mesh_bin(const Particle& p) const
+WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 {
   // check for particle type
-  if (particle_type_ != p.type())
-    return C_NONE;
+  if (particle_type_ != p.type()) {
+    return {};
+  }
 
   // particle energy
   double E = p.E();
 
   // check to make sure energy is in range, expects sorted energy values
   if (E < energy_bounds_.front() || E > energy_bounds_.back())
-    return C_NONE;
+    return {};
 
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
-  return mesh->get_bin(p.r());
-}
+  int mesh_bin = mesh->get_bin(p.r());
 
-WeightWindow WeightWindows::get_weight_window(const Particle& p) const
-{
-  return get_weight_window(p.E(), get_mesh_bin(p));
-}
-
-WeightWindow WeightWindows::get_weight_window(
-  double E, const int mesh_bin) const
-{
   // particle is outside the weight window mesh
   if (mesh_bin < 0)
     return {};
@@ -909,10 +901,7 @@ WeightWindow search_weight_window(const Particle& p)
   int mesh_bin;
   WeightWindow weight_window;
   for (const auto& ww : variance_reduction::weight_windows) {
-    mesh_bin = ww->get_mesh_bin(p);
-    if (mesh_bin < 0)
-      continue;
-    weight_window = ww->get_weight_window(p.E(), mesh_bin);
+    weight_window = ww->get_weight_window(p);
     if (weight_window.is_valid())
       return weight_window;
   }

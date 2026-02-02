@@ -293,7 +293,7 @@ def raster_plot(origin, width, basis, pixels, color_overlaps=False, level=-1,
         Whether to detect overlapping cells
     level : int, optional
         Universe level (-1 for deepest)
-    filter : openmc.Filter, optional
+    filter : openmc.lib.Filter, optional
         Filter for bin index lookup
     include_properties : bool, optional
         Whether to compute temperature/density

@@ -883,10 +883,10 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     }
     FlatSourceDomain::adjoint_ = true;
     FlatSourceDomain::cadis_ = true;
-    if (check_for_node(node,"targets")) {
+    if (check_for_node(node, "targets")) {
       targets_ = get_node_array<size_t>(node, "targets");
       FlatSourceDomain::cadis_targets_.insert(
-        std::end(FlatSourceDomain::cadis_targets_), std::begin(targets_), 
+        std::end(FlatSourceDomain::cadis_targets_), std::begin(targets_),
         std::end(targets_));
     } else {
       fatal_error("CADIS method requires target tallies be specified to "

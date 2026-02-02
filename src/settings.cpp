@@ -365,7 +365,7 @@ void get_run_parameters(pugi::xml_node node_base)
       }
     }
     if (check_for_node(random_ray_node, "adjoint_source")) {
-      for (pugi::xml_node adj_source_node : 
+      for (pugi::xml_node adj_source_node :
         random_ray_node.children("adjoint_source")) {
         // Find any local adjoint sources
         xml_node source_node = adj_source_node.child("source");

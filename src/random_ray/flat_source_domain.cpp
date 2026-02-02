@@ -1058,9 +1058,9 @@ void FlatSourceDomain::count_external_source_regions()
 void FlatSourceDomain::convert_external_sources(bool use_adjoint_sources)
 {
   // Determine whether forward or (local) adjoint sources are desired
-  const auto& sources = use_adjoint_sources ? 
-    model::adjoint_sources : model::external_sources;
-    
+  const auto& sources =
+    use_adjoint_sources ? model::adjoint_sources : model::external_sources;
+
   // Loop over external sources
   for (int es = 0; es < sources.size(); es++) {
 
@@ -1326,14 +1326,13 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         for (const auto& task : source_regions_.tally_task(sr, g)) {
           Tally& tally {*model::tallies[task.tally_idx]};
           const auto t_id = tally.id();
-          
+
           // Skip non-target tallies
-          if (std::find(cadis_targets_.begin(),
-                        cadis_targets_.end(),
-                        t_id) == cadis_targets_.end()) {
+          if (std::find(cadis_targets_.begin(), cadis_targets_.end(), t_id) ==
+              cadis_targets_.end()) {
             continue;
           }
-          
+
           auto filter_types = tally.filter_types();
 
           // For each tally, we loop through the filter types array.
@@ -1351,8 +1350,8 @@ void FlatSourceDomain::set_fw_adjoint_sources()
           }
           // If a target tally doesn't have any compatible filters, error
           if (!cadis_target_region) {
-            fatal_error("CADIS target tally with ID " + 
-                        std::to_string(t_id) + " does not have any "
+            fatal_error("CADIS target tally with ID " + std::to_string(t_id) +
+                        " does not have any "
                         "CADIS-compatible filters.");
           }
         }

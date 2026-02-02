@@ -28,10 +28,10 @@ void openmc_run_random_ray()
   // Run forward simulation
   //////////////////////////////////////////////////////////
 
-  // Check if adjoint calculation is needed, and if local adjoint source(s) 
-  // are present. If an adjoint calculation is needed and no sources are 
-  // specified, we will run a forward calculation first to calculate adjoint 
-  // sources for global variance reduction, then perform an adjoint 
+  // Check if adjoint calculation is needed, and if local adjoint source(s)
+  // are present. If an adjoint calculation is needed and no sources are
+  // specified, we will run a forward calculation first to calculate adjoint
+  // sources for global variance reduction, then perform an adjoint
   // calculation later.
   bool adjoint_needed = FlatSourceDomain::adjoint_;
   bool fw_adjoint = model::adjoint_sources.empty() && adjoint_needed;
@@ -42,7 +42,7 @@ void openmc_run_random_ray()
     // Configure the domain for forward simulation
     FlatSourceDomain::adjoint_ = false;
 
-    if (adjoint_needed && mpi::master) 
+    if (adjoint_needed && mpi::master)
       header("FORWARD FLUX SOLVE", 3);
   } else {
     // Configure domain for adjoint simulation (later)
@@ -136,7 +136,7 @@ void openmc_run_random_ray()
 
   // Finalize OpenMC
   openmc_simulation_finalize();
-  
+
   // Output all simulation results
   sim.output_simulation_results();
 }

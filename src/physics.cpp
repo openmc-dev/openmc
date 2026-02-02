@@ -62,22 +62,14 @@ void collision(Particle& p)
   }
 
   if (settings::weight_windows_on) {
-    if (settings::weight_window_checkpoint_collision) {
-      // If collision checkpoint is enabled, apply weight window
-      // if valid and apply global russian roulette if not.
-      auto ww = search_weight_window(p);
-      if (ww.is_valid()) {
-        apply_weight_window(p, ww);
-      } else if (p.type() == ParticleType::neutron) {
-        apply_russian_roulette(p);
-      }
-    } else if (p.type() == ParticleType::neutron) {
-      // If collision checkpoint is disabled and weight windows are enabled,
-      // apply russian roulette if the particle is a neutron and it is outside
-      // the weight window domain
-      auto ww = search_weight_window(p);
-      if (!ww.is_valid())
-        apply_russian_roulette(p);
+    auto ww = search_weight_window(p);
+    if (!ww.is_valid() && p.type() == ParticleType::neutron) {
+      // if the weight window is not valid, apply russian roulette for neutrons
+      // (regardless of weight window collision checkpoint setting)
+      apply_russian_roulette(p);
+    } else if (settings::weight_window_checkpoint_collision) {
+      // if collision checkpointing is on, apply weight window
+      apply_weight_window(p, ww);
     }
   }
 

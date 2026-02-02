@@ -943,6 +943,9 @@ void apply_weight_windows(Particle& p)
 
 void apply_weight_window(Particle& p, WeightWindow weight_window)
 {
+  if (!weight_window.is_valid())
+    return;
+
   // skip dead or no energy
   if (p.E() <= 0 || !p.alive())
     return;

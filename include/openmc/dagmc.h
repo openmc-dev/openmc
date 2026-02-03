@@ -214,6 +214,13 @@ private:
 
 int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
+inline void dagmc_check_error(
+  moab::ErrorCode err_code, std::string msg = "dagmc error")
+{
+  if (err_code != moab::MB_SUCCESS)
+    fatal_error(msg);
+}
+
 } // namespace openmc
 
 #endif // OPENMC_DAGMC_ENABLED

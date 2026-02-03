@@ -153,12 +153,12 @@ void DAGUniverse::init_dagmc()
   if (!file_exists(filename_)) {
     fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
   }
-  moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
-  MB_CHK_ERR_RET(rval);
+  auto rval = dagmc_instance_->load_file(filename_.c_str());
+  dagmc_check_error(rval);
 
   // initialize acceleration data structures
   rval = dagmc_instance_->init_OBBTree();
-  MB_CHK_ERR_RET(rval);
+  dagmc_check_error(rval);
 }
 
 void DAGUniverse::init_metadata()
@@ -171,15 +171,13 @@ void DAGUniverse::init_metadata()
   std::vector<std::string> keywords {"temp"};
   std::map<std::string, std::string> dum;
   std::string delimiters = ":/";
-  moab::ErrorCode rval;
-  rval = dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
-  MB_CHK_ERR_RET(rval);
+  auto rval =
+    dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
+  dagmc_check_error(rval);
 }
 
 void DAGUniverse::init_geometry()
 {
-  moab::ErrorCode rval;
-
   // determine the next cell id
   int32_t next_cell_id = 0;
   for (const auto& c : model::cells) {
@@ -255,8 +253,8 @@ void DAGUniverse::init_geometry()
     // assign cell temperature
     const auto& mat = model::materials[model::material_map.at(c->material_[0])];
     if (dagmc_instance_->has_prop(vol_handle, "temp")) {
-      rval = dagmc_instance_->prop_value(vol_handle, "temp", temp_value);
-      MB_CHK_ERR_RET(rval);
+      auto rval = dagmc_instance_->prop_value(vol_handle, "temp", temp_value);
+      dagmc_check_error(rval);
       double temp = std::stod(temp_value);
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
     } else if (mat->temperature() > 0.0) {
@@ -323,9 +321,9 @@ void DAGUniverse::init_geometry()
 
     // graveyard check
     moab::Range parent_vols;
-    rval = dagmc_instance_->moab_instance()->get_parent_meshsets(
+    auto rval = dagmc_instance_->moab_instance()->get_parent_meshsets(
       surf_handle, parent_vols);
-    MB_CHK_ERR_RET(rval);
+    dagmc_check_error(rval);
 
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
@@ -417,9 +415,8 @@ std::string DAGUniverse::dagmc_ids_for_dim(int dim) const
 int32_t DAGUniverse::implicit_complement_idx() const
 {
   moab::EntityHandle ic;
-  moab::ErrorCode rval =
-    dagmc_instance_->geom_tool()->get_implicit_complement(ic);
-  MB_CHK_SET_ERR_CONT(rval, "Failed to get implicit complement");
+  auto rval = dagmc_instance_->geom_tool()->get_implicit_complement(ic);
+  dagmc_check_error(rval, "Failed to get implicit complement");
   // off-by-one: DAGMC indices start at one
   return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
 }
@@ -692,8 +689,9 @@ std::pair<double, int32_t> DAGCell::distance(
   // create the ray
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  MB_CHK_ERR_RET(
-    dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history()));
+  auto rval =
+    dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history());
+  dagmc_check_error(rval);
   if (hit_surf != 0) {
     surf_idx =
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
@@ -725,14 +723,13 @@ std::pair<double, int32_t> DAGCell::distance(
 
 bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
 {
-  moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
 
   int result = 0;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
-  MB_CHK_ERR_RET(rval);
+  auto rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
+  dagmc_check_error(rval);
   return result;
 }
 
@@ -748,11 +745,10 @@ void DAGCell::to_hdf5_inner(hid_t group_id) const
 
 BoundingBox DAGCell::bounding_box() const
 {
-  moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   double min[3], max[3];
-  rval = dagmc_ptr_->getobb(vol, min, max);
-  MB_CHK_ERR_RET(rval);
+  auto rval = dagmc_ptr_->getobb(vol, min, max);
+  dagmc_check_error(rval);
   return {{min[0], min[1], min[2]}, {max[0], max[1], max[2]}};
 }
 
@@ -776,14 +772,13 @@ double DAGSurface::evaluate(Position r) const
 
 double DAGSurface::distance(Position r, Direction u, bool coincident) const
 {
-  moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   moab::EntityHandle hit_surf;
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(surf, pnt, dir, hit_surf, dist, NULL, 0, 0);
-  MB_CHK_ERR_RET(rval);
+  auto rval = dagmc_ptr_->ray_fire(surf, pnt, dir, hit_surf, dist, NULL, 0, 0);
+  dagmc_check_error(rval);
   if (dist < 0.0)
     dist = INFTY;
   return dist;
@@ -791,12 +786,11 @@ double DAGSurface::distance(Position r, Direction u, bool coincident) const
 
 Direction DAGSurface::normal(Position r) const
 {
-  moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
-  MB_CHK_ERR_RET(rval);
+  auto rval = dagmc_ptr_->get_angle(surf, pnt, dir);
+  dagmc_check_error(rval);
   return dir;
 }
 
@@ -805,9 +799,8 @@ Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
   assert(p);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  moab::ErrorCode rval =
-    dagmc_ptr_->get_angle(mesh_handle(), pnt, dir, &p->history());
-  MB_CHK_ERR_RET(rval);
+  auto rval = dagmc_ptr_->get_angle(mesh_handle(), pnt, dir, &p->history());
+  dagmc_check_error(rval);
   return u.reflect(dir);
 }
 
@@ -849,8 +842,7 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   moab::EntityHandle curr_vol = cellp->mesh_handle();
 
   moab::EntityHandle new_vol;
-  moab::ErrorCode rval =
-    cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
+  auto rval = cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
   if (rval != moab::MB_SUCCESS)
     return -1;
 

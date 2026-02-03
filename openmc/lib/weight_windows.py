@@ -53,11 +53,11 @@ _dll.openmc_weight_windows_get_energy_bounds.argtypes = [c_int32, POINTER(POINTE
 _dll.openmc_weight_windows_get_energy_bounds.restype = c_int
 _dll.openmc_weight_windows_get_energy_bounds.errcheck = _error_handler
 
-_dll.openmc_weight_windows_set_particle.argtypes = [c_int32, c_int]
+_dll.openmc_weight_windows_set_particle.argtypes = [c_int32, c_int32]
 _dll.openmc_weight_windows_set_particle.restype = c_int
 _dll.openmc_weight_windows_set_particle.errcheck = _error_handler
 
-_dll.openmc_weight_windows_get_particle.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_weight_windows_get_particle.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_weight_windows_get_particle.restype = c_int
 _dll.openmc_weight_windows_get_particle.errcheck = _error_handler
 
@@ -201,16 +201,13 @@ class WeightWindows(_FortranObjectWithID):
 
     @property
     def particle(self):
-        val = c_int()
+        val = c_int32()
         _dll.openmc_weight_windows_get_particle(self._index, val)
         return ParticleType(val.value)
 
     @particle.setter
     def particle(self, p):
-        if isinstance(p, str):
-            p = ParticleType.from_string(p)
-        else:
-            p = ParticleType(p)
+        p = ParticleType(p)
         _dll.openmc_weight_windows_set_particle(self._index, int(p))
 
     @property
@@ -304,10 +301,10 @@ class WeightWindows(_FortranObjectWithID):
         ----------
         tally : openmc.lib.Tally
             The tally used to create the WeightWindows instance.
-        particle : openmc.ParticleType or str, optional
+        particle : openmc.ParticleType or str or int, optional
             The particle type to use for the WeightWindows instance. Should be
-            specified as an instance of ParticleType or as a string with a value of
-            'neutron' or 'photon'.
+            specified as an instance of ParticleType, a PDG number, or as a
+            name.
 
         Returns
         -------
@@ -317,7 +314,8 @@ class WeightWindows(_FortranObjectWithID):
         Raises
         ------
         ValueError
-            If the particle parameter is not an instance of ParticleType or a string.
+            If the particle parameter is not an instance of ParticleType, a string,
+            or an integer PDG number.
         ValueError
             If the particle parameter is not a valid particle type (i.e., not 'neutron'
             or 'photon').
@@ -328,12 +326,13 @@ class WeightWindows(_FortranObjectWithID):
             If the tally does not have a MeshFilter.
         """
         # do some checks on particle value
-        if not isinstance(particle, (ParticleType, str)):
-            raise ValueError(f"Parameter 'particle' must be {ParticleType} or one of ('neutron', 'photon').")
+        if not isinstance(particle, (ParticleType, str, int)):
+            raise ValueError(
+                f"Parameter 'particle' must be {ParticleType} or one of ('neutron', 'photon')."
+            )
 
         # convert particle type if needed
-        if isinstance(particle, str):
-            particle = ParticleType.from_string(particle)
+        particle = ParticleType(particle)
 
         if particle not in (ParticleType.NEUTRON, ParticleType.PHOTON):
             raise ValueError('Weight windows can only be applied for neutrons or photons')

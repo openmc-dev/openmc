@@ -28,7 +28,8 @@ KalbachMann::KalbachMann(hid_t group)
   if (attribute_exists(group, "particle")) {
     std::string temp;
     read_attribute(group, "particle", temp);
-    if (temp == "photon")
+    auto type = ParticleType(temp);
+    if (type.is_photon())
       is_photon_ = true;
   }
   // Open incoming energy dataset

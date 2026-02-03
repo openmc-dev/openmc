@@ -154,7 +154,8 @@ void DAGUniverse::init_dagmc()
     fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
   }
   auto rval = dagmc_instance_->load_file(filename_.c_str());
-  dagmc_check_error(rval);
+  dagmc_check_error(
+    rval, "Failed to load geometry DAGMC file '" + filename_ + "'.");
 
   // initialize acceleration data structures
   rval = dagmc_instance_->init_OBBTree();

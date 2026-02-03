@@ -594,6 +594,9 @@ public:
   ParticleType& type() { return type_; }
   const ParticleType& type() const { return type_; }
 
+  ParticleType& type_last() { return type_last_; }
+  const ParticleType& type_last() const { return type_last_; }
+
   // Current particle energy, energy before collision,
   // and corresponding multigroup group indices. Energy
   // units are eV.

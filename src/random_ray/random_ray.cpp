@@ -289,24 +289,9 @@ void RandomRay::event_advance_ray()
   if (settings::check_overlaps)
     check_cell_overlap(*this);
 
-  // if (id() ==5){
-  //   printf("RANK %d: Advancing Ray %lu at position (%f, %f, %f)\n",
-  //          mpi::rank, id(),
-  //          r().x, r().y, r().z);
-  // }
-
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance();
-
-  // if (id() == 5) {
-  //   printf("RANK %d: Ray %lu at position (%f, %f, %f) "
-  //          "traveling distance %f to surface %d\n",
-  //          mpi::rank, id(),
-  //          r().x, r().y, r().z,
-  //          distance,
-  //          boundary().surface());
-  // }
 
   if (mpi::n_procs > 1) {
     // If domain decomposition is being used, update counter for 
@@ -455,14 +440,6 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 #endif
     pack_ray_for_buffer(distance_buffer, position_buffer);
     wgt() = 0.0;
-    // if (id() == 5) {
-    //   printf("RANK %d: Ray %lu leaving subdomain to rank %d at position (%f, %f, %f) to new owner %d\n", 
-    //          mpi::rank, id(), owner_rank_,
-    //          position_buffer.x,
-    //          position_buffer.y,
-    //          position_buffer.z,
-    //          owner_rank_);
-    // }
   }
 }
 
@@ -926,13 +903,6 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
 
   // r() = data.position;
   u() = data.direction;
-
-  // if (id() == 5) {
-  //   printf("RANK %d: Restarting ray %lu at position (%f, %f, %f) with distance travelled %f\n",
-  //          mpi::rank, id(),
-  //          r().x, r().y, r().z,
-  //          distance_travelled_);
-  // }
   
 #ifdef OPENMC_DAGMC_ENABLED
   // Restore DAGMC fields

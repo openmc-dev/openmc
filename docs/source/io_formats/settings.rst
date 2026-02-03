@@ -721,7 +721,10 @@ attributes/sub-elements:
     is present.
 
   :particle:
-    The source particle type, either ``neutron`` or ``photon``.
+    The source particle type, specified as a PDG number or a string alias (e.g.,
+    ``neutron``/``n``, ``photon``/``gamma``, ``electron``, ``positron``,
+    ``proton``/``p``, ``deuteron``/``d``, ``triton``/``t``, ``alpha``, or GNDS
+    nuclide names like ``Fe57``).
 
     *Default*: neutron
 
@@ -1537,7 +1540,8 @@ sub-elements/attributes:
     *Default*: None
 
   :particle_type:
-    The particle that the weight windows will apply to (e.g., 'neutron')
+    The particle that the weight windows will apply to, specified as a PDG
+    code or string (e.g., ``neutron``).
 
     *Default*: 'neutron'
 
@@ -1597,7 +1601,8 @@ mesh-based weight windows.
     *Default*: None
 
   :particle_type:
-    The particle that the weight windows will apply to (e.g., 'neutron')
+    The particle that the weight windows will apply to, specified as a PDG
+    code or string (e.g., ``neutron``).
 
     *Default*: neutron
 

@@ -34,6 +34,7 @@ extern "C" double
 extern "C" double
   k_abs_tra;               //!< sum over batches of k_absorption * k_tracklength
 extern double log_spacing; //!< lethargy spacing for energy grid searches
+extern int32_t mg_void_index;      //!< index of void xs in mg data
 extern "C" int n_lost_particles;   //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;      //!< batch at which a restart job resumed

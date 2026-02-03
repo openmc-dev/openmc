@@ -22,6 +22,7 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -397,6 +398,11 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
       for (std::string mat : mats) {
         if (mat.compare("void") == 0) {
           material_.push_back(MATERIAL_VOID);
+          if (!settings::run_CE && simulation::mg_void_index < 0)
+            fatal_error("Could not find void data in the "
+                        "multi-group nuclear data library. "
+                        "Multi-group data for void regions"
+                        " is needed for inverse-velocity data.");
         } else {
           material_.push_back(std::stoi(mat));
         }

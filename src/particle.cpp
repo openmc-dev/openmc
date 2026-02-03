@@ -66,6 +66,9 @@ double Particle::speed() const
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
   } else {
+    auto mat = this->material();
+    if (mat == MATERIAL_VOID)
+      mat = simulation::mg_void_index;
     auto& macro_xs = data::mg.macro_xs_[this->material()];
     int macro_t = this->mg_xs_cache().t;
     int macro_a = macro_xs.get_angle_index(this->u());
@@ -232,6 +235,9 @@ void Particle::event_calculate_xs()
     macro_xs().absorption = 0.0;
     macro_xs().fission = 0.0;
     macro_xs().nu_fission = 0.0;
+    if (!settings::run_CE && simulation::mg_void_index > -1) {
+      data::mg.macro_xs_[simulation::mg_void_index].calculate_xs(*this);
+    }
   }
 }
 

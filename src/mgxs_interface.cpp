@@ -17,6 +17,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 
 namespace openmc {
 
@@ -107,6 +108,9 @@ void MgxsInterface::add_mgxs(
     fatal_error(
       fmt::format("Data for {} does not exist in provided MGXS Library", name));
   }
+
+  if (name == "void")
+    simulation::mg_void_index = size();
 
   nuclides_.emplace_back(
     xs_grp, temperature, num_energy_groups_, num_delayed_groups_);

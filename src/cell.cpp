@@ -399,10 +399,9 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
         if (mat.compare("void") == 0) {
           material_.push_back(MATERIAL_VOID);
           if (!settings::run_CE && simulation::mg_void_index < 0)
-            fatal_error("Could not find void data in the "
-                        "multi-group nuclear data library. "
-                        "Multi-group data for void regions"
-                        " is needed for inverse-velocity data.");
+            warning("Void data is not available in the "
+                    "multi-group nuclear data library. "
+                    "Time related calculation results might be wrong!");
         } else {
           material_.push_back(std::stoi(mat));
         }

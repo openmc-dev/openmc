@@ -177,7 +177,9 @@ class XSdata:
     def __init__(self, name, energy_groups, temperatures=[ROOM_TEMPERATURE_KELVIN],
                  representation=REPRESENTATION_ISOTROPIC, num_delayed_groups=0):
 
-        # Initialize class attributes
+        self._is_void = False
+
+        #Initialize class attributes
         self.name = name
         self.energy_groups = energy_groups
         self.num_delayed_groups = num_delayed_groups
@@ -260,6 +262,9 @@ class XSdata:
     def name(self, name):
 
         check_type('name for XSdata', name, str)
+        if name == 'void':
+          self._is_void = True
+          
         self._name = name
 
     @property
@@ -481,6 +486,8 @@ class XSdata:
             Temperature (in units of Kelvin) of the provided dataset.
 
         """
+        if self._is_void:
+            raise TypeError('Cannot add temperatures to a void xs')
 
         check_type('temperature', temperature, Real)
 
@@ -532,6 +539,8 @@ class XSdata:
         openmc.mgxs_library.set_total_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set total xs in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
@@ -561,6 +570,8 @@ class XSdata:
         openmc.mgxs_library.set_absorption_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set absorption xs in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
@@ -590,6 +601,8 @@ class XSdata:
         openmc.mgxs_library.set_fission_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set fission xs in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
@@ -621,6 +634,8 @@ class XSdata:
         openmc.mgxs_library.set_kappa_fission_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set kappa-fission xs in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
@@ -652,6 +667,8 @@ class XSdata:
         openmc.mgxs_library.set_chi_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set chi in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G']"]]
@@ -681,6 +698,8 @@ class XSdata:
         openmc.mgxs_library.set_chi_prompt_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set chi-prompt in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G']"]]
@@ -710,6 +729,8 @@ class XSdata:
         openmc.mgxs_library.set_chi_delayed_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set chi-delayed in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G']"], self.xs_shapes["[DG][G']"]]
@@ -741,6 +762,8 @@ class XSdata:
         openmc.mgxs_library.set_beta_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set beta in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[DG][G]"]]
@@ -770,6 +793,8 @@ class XSdata:
         openmc.mgxs_library.set_decay_rate_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set decay rate in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[DG]"]]
@@ -799,6 +824,8 @@ class XSdata:
         openmc.mgxs_library.set_scatter_matrix_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set scatter matrix in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G][G'][Order]"]]
@@ -830,6 +857,8 @@ class XSdata:
         openmc.mgxs_library.set_multiplicity_matrix_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set multiplicity matrix in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G][G']"]]
@@ -861,6 +890,8 @@ class XSdata:
         openmc.mgxs_library.set_nu_fission_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set nu-fission in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"], self.xs_shapes["[G][G']"]]
@@ -893,6 +924,8 @@ class XSdata:
         openmc.mgxs_library.set_prompt_nu_fission_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set prompt nu-fission in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"], self.xs_shapes["[G][G']"]]
@@ -925,6 +958,8 @@ class XSdata:
         openmc.mgxs_library.set_delayed_nu_fission_mgxs()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set delayed nu-fission in a void')
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[DG][G]"], self.xs_shapes["[DG][G][G']"]]
@@ -996,6 +1031,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set total xs in a void')
 
         check_type('total', total, (openmc.mgxs.TotalXS,
                                     openmc.mgxs.TransportXS))
@@ -1036,6 +1073,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set absorption xs in a void')        
 
         check_type('absorption', absorption, openmc.mgxs.AbsorptionXS)
         check_value('energy_groups', absorption.energy_groups,
@@ -1078,6 +1117,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set fission in a void')        
 
         check_type('fission', fission, openmc.mgxs.FissionXS)
         check_value('energy_groups', fission.energy_groups,
@@ -1120,6 +1161,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set nu-fission in a void')        
 
         check_type('nu_fission', nu_fission, (openmc.mgxs.FissionXS,
                                               openmc.mgxs.NuFissionMatrixXS))
@@ -1171,6 +1214,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set prompt nu-fission in a void')        
 
         check_type('prompt_nu_fission', prompt_nu_fission,
                    (openmc.mgxs.FissionXS, openmc.mgxs.NuFissionMatrixXS))
@@ -1218,6 +1263,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set delayed nu-fission in a void')        
 
         check_type('delayed_nu_fission', delayed_nu_fission,
                    (openmc.mgxs.DelayedNuFissionXS,
@@ -1267,6 +1314,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set kappa-fission in a void')         
 
         check_type('kappa_fission', k_fission, openmc.mgxs.KappaFissionXS)
         check_value('energy_groups', k_fission.energy_groups,
@@ -1308,6 +1357,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set chi in a void')         
 
         check_type('chi', chi, openmc.mgxs.Chi)
         check_value('energy_groups', chi.energy_groups, [self.energy_groups])
@@ -1346,6 +1397,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set prompt chi in a void')        
 
         check_type('chi_prompt', chi_prompt, openmc.mgxs.Chi)
         check_value('prompt', chi_prompt.prompt, [True])
@@ -1388,6 +1441,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set delayed chi in a void')        
 
         check_type('chi_delayed', chi_delayed, openmc.mgxs.ChiDelayed)
         check_value('energy_groups', chi_delayed.energy_groups,
@@ -1431,6 +1486,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set beta in a void')        
 
         check_type('beta', beta, openmc.mgxs.Beta)
         check_value('num_delayed_groups', beta.num_delayed_groups,
@@ -1471,6 +1528,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set decay rate in a void')        
 
         check_type('decay_rate', decay_rate, openmc.mgxs.DecayRate)
         check_value('num_delayed_groups', decay_rate.num_delayed_groups,
@@ -1516,6 +1575,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set scatter matrix in a void')        
 
         check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
         check_value('energy_groups', scatter.energy_groups,
@@ -1604,6 +1665,8 @@ class XSdata:
         openmc.mgxs.Library.get_xsdata()
 
         """
+        if self._is_void:
+            raise TypeError('Cannot set multiplicity matrix in a void')                
 
         check_type('nuscatter', nuscatter, (openmc.mgxs.ScatterMatrixXS,
                                             openmc.mgxs.MultiplicityMatrixXS))
@@ -1992,6 +2055,15 @@ class XSdata:
 
             xs_grp = grp.create_group(str(int(np.round(temperature))) + "K")
 
+            # Add the kinetics data
+            if self._inverse_velocity[i] is not None:
+                xs_grp.create_dataset("inverse-velocity",
+                                      data=self._inverse_velocity[i])
+            elif self._is_void:
+                raise TypeError('Void mgxs must have inverse-velocity data.')
+ 
+            if self._is_void: continue
+
             if self._total[i] is None:
                 raise ValueError('total data must be provided when writing '
                                  'the HDF5 library')
@@ -2141,10 +2213,6 @@ class XSdata:
                 scatt_grp.create_dataset("g_min", data=g_out_bounds[:, :, :, 0])
                 scatt_grp.create_dataset("g_max", data=g_out_bounds[:, :, :, 1])
 
-            # Add the kinetics data
-            if self._inverse_velocity[i] is not None:
-                xs_grp.create_dataset("inverse-velocity",
-                                      data=self._inverse_velocity[i])
 
     @classmethod
     def from_hdf5(cls, group, name, energy_groups, num_delayed_groups):

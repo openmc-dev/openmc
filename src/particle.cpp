@@ -67,9 +67,14 @@ double Particle::speed() const
            (this->E() + mass);
   } else {
     auto mat = this->material();
-    if (mat == MATERIAL_VOID)
-      mat = simulation::mg_void_index;
-    auto& macro_xs = data::mg.macro_xs_[this->material()];
+    if (mat == MATERIAL_VOID) {
+      if (simulation::mg_void_index > -1) {
+        mat = simulation::mg_void_index;
+      } else {
+        return 0.0;
+      }
+    }
+    auto& macro_xs = data::mg.macro_xs_[mat];
     int macro_t = this->mg_xs_cache().t;
     int macro_a = macro_xs.get_angle_index(this->u());
     return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, this->g(), nullptr,

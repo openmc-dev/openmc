@@ -154,11 +154,11 @@ void DAGUniverse::init_dagmc()
     fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
   }
   moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
-  MB_CHK_ERR(rval);
+  MB_CHK_ERR_RET(rval);
 
   // initialize acceleration data structures
   rval = dagmc_instance_->init_OBBTree();
-  MB_CHK_ERR(rval);
+  MB_CHK_ERR_RET(rval);
 }
 
 void DAGUniverse::init_metadata()
@@ -173,7 +173,7 @@ void DAGUniverse::init_metadata()
   std::string delimiters = ":/";
   moab::ErrorCode rval;
   rval = dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
-  MB_CHK_ERR(rval);
+  MB_CHK_ERR_RET(rval);
 }
 
 void DAGUniverse::init_geometry()
@@ -256,7 +256,7 @@ void DAGUniverse::init_geometry()
     const auto& mat = model::materials[model::material_map.at(c->material_[0])];
     if (dagmc_instance_->has_prop(vol_handle, "temp")) {
       rval = dagmc_instance_->prop_value(vol_handle, "temp", temp_value);
-      MB_CHK_ERR(rval);
+      MB_CHK_ERR_RET(rval);
       double temp = std::stod(temp_value);
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
     } else if (mat->temperature() > 0.0) {
@@ -325,7 +325,7 @@ void DAGUniverse::init_geometry()
     moab::Range parent_vols;
     rval = dagmc_instance_->moab_instance()->get_parent_meshsets(
       surf_handle, parent_vols);
-    MB_CHK_ERR(rval);
+    MB_CHK_ERR_RET(rval);
 
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
@@ -692,7 +692,7 @@ std::pair<double, int32_t> DAGCell::distance(
   // create the ray
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  MB_CHK_ERR(
+  MB_CHK_ERR_RET(
     dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history()));
   if (hit_surf != 0) {
     surf_idx =
@@ -732,7 +732,7 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
-  MB_CHK_ERR(rval);
+  MB_CHK_ERR_RET(rval);
   return result;
 }
 
@@ -752,7 +752,7 @@ BoundingBox DAGCell::bounding_box() const
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   double min[3], max[3];
   rval = dagmc_ptr_->getobb(vol, min, max);
-  MB_CHK_ERR(rval);
+  MB_CHK_ERR_RET(rval);
   return {{min[0], min[1], min[2]}, {max[0], max[1], max[2]}};
 }
 
@@ -783,7 +783,7 @@ double DAGSurface::distance(Position r, Direction u, bool coincident) const
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   rval = dagmc_ptr_->ray_fire(surf, pnt, dir, hit_surf, dist, NULL, 0, 0);
-  MB_CHK_ERR(rval);
+  MB_CHK_ERR_RET(rval);
   if (dist < 0.0)
     dist = INFTY;
   return dist;
@@ -796,7 +796,7 @@ Direction DAGSurface::normal(Position r) const
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
   rval = dagmc_ptr_->get_angle(surf, pnt, dir);
-  MB_CHK_ERR(rval);
+  MB_CHK_ERR_RET(rval);
   return dir;
 }
 
@@ -807,7 +807,7 @@ Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
   double dir[3];
   moab::ErrorCode rval =
     dagmc_ptr_->get_angle(mesh_handle(), pnt, dir, &p->history());
-  MB_CHK_ERR(rval);
+  MB_CHK_ERR_RET(rval);
   return u.reflect(dir);
 }
 

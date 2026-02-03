@@ -55,6 +55,8 @@
 #include "moab/FileOptions.hpp"
 #endif
 
+#include "openmc/xdg.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -340,6 +342,10 @@ const std::unique_ptr<Mesh>& Mesh::create(
   } else if (mesh_type == UnstructuredMesh::mesh_type &&
              mesh_library == MOABMesh::mesh_lib_type) {
     model::meshes.push_back(make_unique<MOABMesh>(dataset));
+#endif
+#ifdef OPENMC_XDG_ENABLED
+  } else if (mesh_type == "xdg") {
+      model::meshes.push_back(make_unique<XDGMesh>(dataset));
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED
   } else if (mesh_type == UnstructuredMesh::mesh_type &&
@@ -811,12 +817,12 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   n_dimension_ = 3;
 
   // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != mesh_type) {
-      fatal_error(fmt::format("Invalid mesh type: {}", temp));
-    }
-  }
+  // if (check_for_node(node, "type")) {
+  //   auto temp = get_node_value(node, "type", true, true);
+  //   if (temp != mesh_type) {
+  //     fatal_error(fmt::format("Invalid mesh type: {}", temp));
+  //   }
+  // }
 
   // check if a length unit multiplier was specified
   if (check_for_node(node, "length_multiplier")) {
@@ -907,36 +913,6 @@ void UnstructuredMesh::determine_bounds()
   upper_right_ = {xmax, ymax, zmax};
 }
 
-Position UnstructuredMesh::sample_tet(
-  std::array<Position, 4> coords, uint64_t* seed) const
-{
-  // Uniform distribution
-  double s = prn(seed);
-  double t = prn(seed);
-  double u = prn(seed);
-
-  // From PyNE implementation of moab tet sampling C. Rocchini & P. Cignoni
-  // (2000) Generating Random Points in a Tetrahedron, Journal of Graphics
-  // Tools, 5:4, 9-12, DOI: 10.1080/10867651.2000.10487528
-  if (s + t > 1) {
-    s = 1.0 - s;
-    t = 1.0 - t;
-  }
-  if (s + t + u > 1) {
-    if (t + u > 1) {
-      double old_t = t;
-      t = 1.0 - u;
-      u = 1.0 - s - old_t;
-    } else if (t + u <= 1) {
-      double old_s = s;
-      s = 1.0 - t - u;
-      u = old_s + t + u - 1;
-    }
-  }
-  return s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
-         u * (coords[3] - coords[0]) + coords[0];
-}
-
 const std::string UnstructuredMesh::mesh_type = "unstructured";
 
 std::string UnstructuredMesh::get_mesh_type() const
@@ -1004,7 +980,6 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
       connectivity.slice(i) = -1;
     }
   }
-
   // warn users that some elements were skipped
   if (num_elem_skipped > 0) {
     warning(fmt::format("The connectivity of {} elements "
@@ -3198,7 +3173,6 @@ std::string MOABMesh::library() const
 // Sample position within a tet for MOAB type tets
 Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
-
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
 
   // Get vertex coordinates for MOAB tet
@@ -3216,12 +3190,8 @@ Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
     fatal_error("Failed to get tet coords");
   }
 
-  std::array<Position, 4> tet_verts;
-  for (int i = 0; i < 4; i++) {
-    tet_verts[i] = {p[i][0], p[i][1], p[i][2]};
-  }
   // Samples position within tet using Barycentric stuff
-  return this->sample_tet(tet_verts, seed);
+  return this->sample_tet<moab::CartVect>({p, 4}, seed);
 }
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
@@ -3713,7 +3683,7 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  Position sampled_position = this->sample_tet(tet_verts, seed);
+  Position sampled_position = this->sample_tet<Position>({tet_verts.begin(), tet_verts.end()}, seed);
   if (length_multiplier_ > 0.0) {
     return length_multiplier_ * sampled_position;
   } else {

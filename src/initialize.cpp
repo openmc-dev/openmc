@@ -42,6 +42,10 @@
 #include "libmesh/libmesh.h"
 #endif
 
+#ifdef OPENMC_XDG_ENABLED
+#include "xdg/config.h"
+#endif
+
 int openmc_init(int argc, char* argv[], const void* intracomm)
 {
   using namespace openmc;
@@ -84,6 +88,11 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
     settings::libmesh_comm = &(settings::libmesh_init->comm());
   }
+
+#ifdef OPENMC_XDG_ENABLED
+  xdg::config::external_libmesh_init = settings::libmesh_init.get();
+  xdg::config::external_libmesh_comm = &(settings::libmesh_init->comm());
+#endif
 
 #endif
 

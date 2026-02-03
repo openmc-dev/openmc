@@ -47,6 +47,13 @@ namespace openmc {
 
 enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
+struct NextMeshCell
+{
+  double distance {INFTY};
+  int face_idx {-1};
+  std::array<int, 3> next_ijk;
+};
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -782,6 +789,9 @@ public:
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
 
+  //! Get the mesh filename
+  virtual std::string filename() const { return filename_; }
+
   // Data members
   bool output_ {
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
@@ -808,7 +818,36 @@ protected:
   //! \param[in] coords Coordinates of the tetrahedron
   //! \param[in] seed Random number generation seed
   //! \return Sampled position within the tetrahedron
-  Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
+  template<typename V>
+  Position sample_tet(span<V> coords, uint64_t* seed) const
+  {
+    // Uniform distribution
+    double s = prn(seed);
+    double t = prn(seed);
+    double u = prn(seed);
+
+    // From PyNE implementation of moab tet sampling C. Rocchini & P. Cignoni
+    // (2000) Generating Random Points in a Tetrahedron, Journal of Graphics
+    // Tools, 5:4, 9-12, DOI: 10.1080/10867651.2000.10487528
+    if (s + t > 1) {
+      s = 1.0 - s;
+      t = 1.0 - t;
+    }
+    if (s + t + u > 1) {
+      if (t + u > 1) {
+        double old_t = t;
+        t = 1.0 - u;
+        u = 1.0 - s - old_t;
+      } else if (t + u <= 1) {
+        double old_s = s;
+        s = 1.0 - t - u;
+        u = old_s + t + u - 1;
+      }
+    }
+    V result = s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
+              u * (coords[3] - coords[0]) + coords[0];
+    return {result[0], result[1], result[2]};
+  }
 
   // Data members
   double length_multiplier_ {

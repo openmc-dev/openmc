@@ -701,7 +701,7 @@ void initialize_data()
 
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
-      int neutron = static_cast<int>(ParticleType::neutron);
+      int neutron = ParticleType::neutron().transport_index();
       data::energy_min[neutron] =
         std::max(data::energy_min[neutron], nuc->grid_[0].energy.front());
       data::energy_max[neutron] =
@@ -712,7 +712,7 @@ void initialize_data()
   if (settings::photon_transport) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
-        int photon = static_cast<int>(ParticleType::photon);
+        int photon = ParticleType::photon().transport_index();
         int n = elem->energy_.size();
         data::energy_min[photon] =
           std::max(data::energy_min[photon], std::exp(elem->energy_(1)));
@@ -725,9 +725,9 @@ void initialize_data()
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
-        int photon = static_cast<int>(ParticleType::photon);
-        int electron = static_cast<int>(ParticleType::electron);
-        int positron = static_cast<int>(ParticleType::positron);
+        int photon = ParticleType::photon().transport_index();
+        int electron = ParticleType::electron().transport_index();
+        int positron = ParticleType::positron().transport_index();
         int n_e = data::ttb_e_grid.size();
 
         const std::vector<int> charged = {electron, positron};
@@ -751,7 +751,7 @@ void initialize_data()
     // grid has not been allocated
     if (nuc->grid_.size() > 0) {
       double max_E = nuc->grid_[0].energy.back();
-      int neutron = static_cast<int>(ParticleType::neutron);
+      int neutron = ParticleType::neutron().transport_index();
       if (max_E == data::energy_max[neutron]) {
         write_message(7, "Maximum neutron transport energy: {} eV for {}",
           data::energy_max[neutron], nuc->name_);
@@ -768,7 +768,7 @@ void initialize_data()
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = ParticleType::neutron().transport_index();
   simulation::log_spacing =
     std::log(data::energy_max[neutron] / data::energy_min[neutron]) /
     settings::n_log_bins;

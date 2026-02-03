@@ -26,7 +26,7 @@ ReactionProduct::ReactionProduct(hid_t group)
   // Read particle type
   std::string temp;
   read_attribute(group, "particle", temp);
-  particle_ = str_to_particle_type(temp);
+  particle_ = ParticleType {temp};
 
   // Read emission mode and decay rate
   read_attribute(group, "emission_mode", temp);
@@ -42,7 +42,7 @@ ReactionProduct::ReactionProduct(hid_t group)
   if (emission_mode_ == EmissionMode::delayed) {
     if (attribute_exists(group, "decay_rate")) {
       read_attribute(group, "decay_rate", decay_rate_);
-    } else if (particle_ == ParticleType::neutron) {
+    } else if (particle_.is_neutron()) {
       warning(fmt::format("Decay rate doesn't exist for delayed neutron "
                           "emission ({}).",
         object_name(group)));
@@ -85,7 +85,7 @@ ReactionProduct::ReactionProduct(hid_t group)
 
 ReactionProduct::ReactionProduct(const ChainNuclide::Product& product)
 {
-  particle_ = ParticleType::photon;
+  particle_ = ParticleType::photon();
   emission_mode_ = EmissionMode::delayed;
 
   // Get chain nuclide object for radionuclide

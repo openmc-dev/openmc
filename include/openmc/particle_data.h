@@ -3,6 +3,7 @@
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/particle_type.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include "openmc/tallies/filter_match.h"
@@ -29,9 +30,6 @@ constexpr double CACHE_INVALID {-1.0};
 
 //==========================================================================
 // Aliases and type definitions
-
-//! Particle types
-enum class ParticleType { neutron, photon, electron, positron };
 
 //! Saved ("banked") state of a particle
 //! NOTE: This structure's MPI type is built in initialize_mpi() of
@@ -496,7 +494,7 @@ private:
   MacroXS macro_xs_;
   CacheDataMG mg_xs_cache_;
 
-  ParticleType type_ {ParticleType::neutron};
+  ParticleType type_;
 
   double E_;
   double E_last_;

@@ -10,6 +10,7 @@
 
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
+#include "openmc/particle_type.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"

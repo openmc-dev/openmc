@@ -9,6 +9,7 @@
 #include <limits>
 
 #include "openmc/array.h"
+#include "openmc/atomic_mass.h"
 #include "openmc/vector.h"
 #include "openmc/version.h"
 
@@ -86,12 +87,12 @@ constexpr double INFTY {std::numeric_limits<double>::max()};
 // (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
 // Physical constants
-constexpr double MASS_NEUTRON {1.00866491595}; // mass of a neutron in amu
+constexpr double AMU_EV {
+  9.3149410242e8}; // atomic mass unit energy equivalent in eV/c^2
 constexpr double MASS_NEUTRON_EV {
-  939.56542052e6};                             // mass of a neutron in eV/c^2
-constexpr double MASS_PROTON {1.007276466621}; // mass of a proton in amu
+  NEUTRON_MASS * AMU_EV}; // neutron mass energy equivalent in eV/c^2
 constexpr double MASS_ELECTRON_EV {
-  0.51099895000e6}; // electron mass energy equivalent in eV/c^2
+  MASS_ELECTRON * AMU_EV}; // electron mass energy equivalent in eV/c^2
 constexpr double FINE_STRUCTURE {
   137.035999084}; // inverse fine structure constant
 constexpr double PLANCK_C {

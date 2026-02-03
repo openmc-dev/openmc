@@ -12,6 +12,7 @@
 #include <type_traits>
 
 #include "openmc/constants.h"
+#include "openmc/error.h"
 
 namespace openmc {
 
@@ -60,6 +61,20 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
+
+  // Get particle mass
+  double mass() const
+  {
+    int32_t p = std::abs(pdg_number_);
+    if atomic_mass
+      .count(p)
+      {
+        return atomic_mass[p];
+      }
+    else {
+      fatal_error("Unknown mass for particle " + str());
+    }
+  }
 
   // Convert to string representation
   std::string str() const;

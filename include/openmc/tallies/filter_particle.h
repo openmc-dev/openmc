@@ -1,7 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_PARTICLE_H
 #define OPENMC_TALLIES_FILTER_PARTICLE_H
 
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"

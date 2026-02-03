@@ -1160,6 +1160,16 @@ class Model:
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
+        # Determine whether any materials contains macroscopic data and if so,
+        # set energy mode accordingly and check that mg cross sections path is accessible
+        for mat in self.geometry.get_all_materials().values():
+            if mat._macroscopic is not None:
+                self.settings.energy_mode = 'multi-group'
+                if 'mg_cross_sections' not in openmc.config:
+                    raise RuntimeError("'mg_cross_sections' path must be set in "
+                                       "openmc.config before plotting.")
+                break
+
         # Get ID map from the C API
         id_map = self.id_map(
             origin=origin,

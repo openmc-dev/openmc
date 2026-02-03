@@ -126,10 +126,6 @@ public:
 //! Functions
 //============================================================================
 
-std::string particle_type_to_str(ParticleType type);
-
-ParticleType str_to_particle_type(std::string str);
-
 void add_surf_source_to_bank(Particle& p, const Surface& surf);
 
 } // namespace openmc

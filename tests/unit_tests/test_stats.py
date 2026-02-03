@@ -637,12 +637,27 @@ def test_combine_distributions():
     assert len(mixed.distribution) == 2
     assert len(mixed.probability) == 2
 
+    # Single tabular returns a tabular distribution with scaled probabilities
+    t_single = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])
+    scaled = openmc.stats.combine_distributions([t_single], [0.25])
+    assert isinstance(scaled, openmc.stats.Tabular)
+    assert scaled.p == pytest.approx([0.5, 0.0])
+
+    # Mixture with biased tabular should preserve unbiased mean via weights
+    bias = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])
+    t_biased = openmc.stats.Tabular([0.0, 1.0], [1.0, 1.0], bias=bias)
+    d1 = openmc.stats.delta_function(0.0)
+    mixed = openmc.stats.combine_distributions([t_biased, d1], [0.5, 0.5])
+    assert isinstance(mixed, openmc.stats.Mixture)
+    samples, weights = mixed.sample(10_000)
+    assert_sample_mean(samples*weights, 0.25)
+
     # Combine 1 discrete and 2 tabular -- the tabular distributions should
     # combine to produce a uniform distribution with mean 0.5. The combined
     # distribution should have a mean of 0.25.
     t1 = openmc.stats.Tabular([0., 1.], [2.0, 0.0])
     t2 = openmc.stats.Tabular([0., 1.], [0.0, 2.0])
-    d1 = openmc.stats.Discrete([0.0], [1.0])
+    d1 = openmc.stats.delta_function(0.0)
     combined = openmc.stats.combine_distributions([t1, t2, d1], [0.25, 0.25, 0.5])
     assert combined.integral() == pytest.approx(1.0)
 

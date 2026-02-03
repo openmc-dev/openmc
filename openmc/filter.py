@@ -35,7 +35,6 @@ _CURRENT_NAMES = (
     'z-min out', 'z-min in', 'z-max out', 'z-max in'
 )
 
-_PARTICLES = {'neutron', 'photon', 'electron', 'positron'}
 
 
 class FilterMeta(ABCMeta):
@@ -735,9 +734,8 @@ class ParticleFilter(Filter):
 
     Parameters
     ----------
-    bins : str, or sequence of str
-        The particles to tally represented as strings ('neutron', 'photon',
-        'electron', 'positron').
+    bins : str, int, openmc.ParticleType, or sequence
+        The particle types to tally represented as names, PDG numbers, or types.
     filter_id : int
         Unique identifier for the filter
 
@@ -763,11 +761,16 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        cv.check_type('bins', bins, Sequence, str)
+        if isinstance(bins, (str, Integral, openmc.ParticleType)):
+            bins = [bins]
+        else:
+            cv.check_type('bins', bins, Sequence,
+                          (str, Integral, openmc.ParticleType))
         bins = np.atleast_1d(bins)
-        for edge in bins:
-            cv.check_value('filter bin', edge, _PARTICLES)
-        self._bins = bins
+        normalized = []
+        for entry in bins:
+            normalized.append(str(openmc.ParticleType(entry)))
+        self._bins = np.array(normalized, dtype=str)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):

@@ -88,8 +88,12 @@ namespace detail {
 
 class MaterialVolumes {
 public:
+  MaterialVolumes(int32_t* mats, double* vols, double* bboxes, int table_size)
+    : materials_(mats), volumes_(vols), bboxes_(bboxes), table_size_(table_size)
+  {}
+
   MaterialVolumes(int32_t* mats, double* vols, int table_size)
-    : materials_(mats), volumes_(vols), table_size_(table_size)
+    : MaterialVolumes(mats, vols, nullptr, table_size)
   {}
 
   //! Add volume for a given material in a mesh element
@@ -97,8 +101,11 @@ public:
   //! \param[in] index_elem Index of the mesh element
   //! \param[in] index_material Index of the material within the model
   //! \param[in] volume Volume to add
-  void add_volume(int index_elem, int index_material, double volume);
-  void add_volume_unsafe(int index_elem, int index_material, double volume);
+  //! \param[in] bbox Bounding box to union into the result (optional)
+  void add_volume(int index_elem, int index_material, double volume,
+    const BoundingBox* bbox = nullptr);
+  void add_volume_unsafe(int index_elem, int index_material, double volume,
+    const BoundingBox* bbox = nullptr);
 
   // Accessors
   int32_t& materials(int i, int j) { return materials_[i * table_size_ + j]; }
@@ -113,11 +120,23 @@ public:
     return volumes_[i * table_size_ + j];
   }
 
+  double& bboxes(int i, int j, int k)
+  {
+    return bboxes_[(i * table_size_ + j) * 6 + k];
+  }
+  const double& bboxes(int i, int j, int k) const
+  {
+    return bboxes_[(i * table_size_ + j) * 6 + k];
+  }
+
+  bool has_bboxes() const { return bboxes_ != nullptr; }
+
   bool table_full() const { return table_full_; }
 
 private:
   int32_t* materials_;      //!< material index (bins, table_size)
   double* volumes_;         //!< volume in [cm^3] (bins, table_size)
+  double* bboxes_;          //!< bounding boxes (bins, table_size, 6)
   int table_size_;          //!< Size of hash table for each mesh element
   bool table_full_ {false}; //!< Whether the hash table is full
 };
@@ -239,6 +258,19 @@ public:
   //! \param[inout] volumes Array storing volumes
   void material_volumes(int nx, int ny, int nz, int max_materials,
     int32_t* materials, double* volumes) const;
+
+  //! Determine volume and bounding boxes of materials within each mesh element
+  //
+  //! \param[in] nx Number of samples in x direction
+  //! \param[in] ny Number of samples in y direction
+  //! \param[in] nz Number of samples in z direction
+  //! \param[in] max_materials Maximum number of materials in a single mesh
+  //!                          element
+  //! \param[inout] materials Array storing material indices
+  //! \param[inout] volumes Array storing volumes
+  //! \param[inout] bboxes Array storing bounding boxes (n_elems, table_size, 6)
+  void material_volumes(int nx, int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes, double* bboxes) const;
 
   //! Determine bounding box of mesh
   //

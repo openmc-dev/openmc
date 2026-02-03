@@ -30,7 +30,7 @@ docs/source/_images/*.aux
 docs/source/pythonapi/generated/
 
 # Source build
-build
+build*/
 
 # build from src/utils/setup.py
 src/utils/build

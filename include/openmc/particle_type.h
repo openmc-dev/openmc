@@ -80,7 +80,7 @@ public:
   // Check if this is a photon
   constexpr bool is_photon() const { return pdg_number_ == PDG_PHOTON; }
 
-  constexpr bool is_transportable()
+  constexpr bool is_transportable() const
   {
     return this->transport_index() != C_NONE;
   }

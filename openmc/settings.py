@@ -4,13 +4,14 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
+import traceback
 
 import lxml.etree as ET
 import warnings
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-from openmc.stats.multivariate import MeshSpatial, Box, PolarAzimuthal, Isotropic
+from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
@@ -474,6 +475,16 @@ class Settings:
 
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    def __setattr__(self, name: str, value):
+        if not name.startswith('_'):
+            try:
+                getattr(self, name)
+            except AttributeError as e:
+                msg, = traceback.format_exception_only(e)
+                msg = msg.strip().split(maxsplit=1)[-1]
+                warnings.warn(msg, stacklevel=2)
+        super().__setattr__(name, value)
 
     @property
     def run_mode(self) -> str:

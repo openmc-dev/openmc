@@ -4,7 +4,8 @@
 #define HAS_DYNAMIC_LINKING
 #endif
 
-#include <utility> // for move
+#include <algorithm> // for lower_bound, max, distance
+#include <utility>   // for move
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -27,6 +28,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -98,6 +100,8 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
       return make_unique<CompiledSourceWrapper>(node);
     } else if (source_type == "mesh") {
       return make_unique<MeshSource>(node);
+    } else if (source_type == "tokamak") {
+      return make_unique<TokamakSource>(node);
     } else {
       fatal_error(fmt::format("Invalid source type '{}' found.", source_type));
     }
@@ -640,6 +644,566 @@ SourceSite MeshSource::sample(uint64_t* seed) const
   // Sample the distribution for the specific mesh element; note that the
   // spatial distribution has been set for each element using MeshElementSpatial
   return source(element)->sample_with_constraints(seed);
+}
+
+//==============================================================================
+// TokamakSource implementation
+//==============================================================================
+
+TokamakSource::TokamakSource(const vector<double>& r_over_a,
+  const vector<double>& emission_rate,
+  vector<unique_ptr<Distribution>> energy_dists, double major_radius,
+  double minor_radius, double elongation, double triangularity,
+  double shafranov_shift, double phi_start, double phi_extent, int n_alpha)
+  : r_over_a_(r_over_a),
+    emission_rate_(emission_rate),
+    energy_dists_(std::move(energy_dists)),
+    major_radius_(major_radius),
+    minor_radius_(minor_radius),
+    elongation_(elongation),
+    triangularity_(triangularity),
+    shafranov_shift_(shafranov_shift),
+    phi_start_(phi_start),
+    phi_extent_(phi_extent),
+    n_alpha_(n_alpha)
+{
+  // Validate inputs
+  if (emission_rate_.size() != r_over_a_.size()) {
+    fatal_error(
+      "TokamakSource: emission_rate and r_over_a must have the same length.");
+  }
+  if (r_over_a_.size() < 2) {
+    fatal_error(
+      "TokamakSource: At least 2 radial points are required for profiles.");
+  }
+  if (minor_radius_ <= 0.0 || major_radius_ <= 0.0) {
+    fatal_error("TokamakSource: major_radius and minor_radius must be > 0.");
+  }
+  if (elongation_ <= 0.0) {
+    fatal_error("TokamakSource: elongation must be > 0.");
+  }
+  if (triangularity_ < -1.0 || triangularity_ > 1.0) {
+    fatal_error(
+      "TokamakSource: triangularity (delta) must be in the range [-1, 1].");
+  }
+  if (shafranov_shift_ / minor_radius_ >= 0.5) {
+    fatal_error(
+      "TokamakSource: Shafranov shift must be less than half the minor radius "
+      "(Delta/a < 0.5).");
+  }
+  if (phi_extent_ <= 0.0) {
+    fatal_error("TokamakSource: phi_extent must be > 0.");
+  }
+  if (n_alpha_ < 3) {
+    fatal_error("TokamakSource: n_alpha must be at least 3.");
+  }
+  if (energy_dists_.empty()) {
+    fatal_error("TokamakSource: At least one energy distribution is required.");
+  }
+  // Energy distributions must be either 1 (for all r) or match r_over_a size
+  if (energy_dists_.size() != 1 && energy_dists_.size() != r_over_a_.size()) {
+    fatal_error("TokamakSource: energy distributions must be either 1 (for all "
+                "r) or match the number of r_over_a points.");
+  }
+
+  // Ensure r_over_a is sorted
+  for (size_t i = 1; i < r_over_a_.size(); ++i) {
+    if (r_over_a_[i] <= r_over_a_[i - 1]) {
+      fatal_error("TokamakSource: r_over_a must be strictly increasing.");
+    }
+  }
+
+  // Precompute sampling CDFs
+  precompute_sampling_cdfs();
+}
+
+TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
+{
+  // Read geometry parameters
+  major_radius_ = std::stod(get_node_value(node, "major_radius"));
+  minor_radius_ = std::stod(get_node_value(node, "minor_radius"));
+  elongation_ = std::stod(get_node_value(node, "elongation"));
+  triangularity_ = std::stod(get_node_value(node, "triangularity"));
+  shafranov_shift_ = std::stod(get_node_value(node, "shafranov_shift"));
+
+  // Read optional toroidal angle bounds
+  if (check_for_node(node, "phi_start")) {
+    phi_start_ = std::stod(get_node_value(node, "phi_start"));
+  } else {
+    phi_start_ = 0.0;
+  }
+  if (check_for_node(node, "phi_extent")) {
+    phi_extent_ = std::stod(get_node_value(node, "phi_extent"));
+  } else {
+    phi_extent_ = 2.0 * M_PI;
+  }
+  if (check_for_node(node, "n_alpha")) {
+    n_alpha_ = std::stoi(get_node_value(node, "n_alpha"));
+  } else {
+    n_alpha_ = 101; // Default
+  }
+
+  // Read emission profile
+  r_over_a_ = get_node_array<double>(node, "r_over_a");
+  emission_rate_ = get_node_array<double>(node, "emission_rate");
+
+  // Read energy distribution(s)
+  for (auto energy_node : node.children("energy")) {
+    energy_dists_.push_back(distribution_from_xml(energy_node));
+  }
+
+  // Validate inputs
+  if (emission_rate_.size() != r_over_a_.size()) {
+    fatal_error(
+      "TokamakSource: emission_rate and r_over_a must have the same length.");
+  }
+  if (r_over_a_.size() < 2) {
+    fatal_error(
+      "TokamakSource: At least 2 radial points are required for profiles.");
+  }
+  if (minor_radius_ <= 0.0 || major_radius_ <= 0.0) {
+    fatal_error("TokamakSource: major_radius and minor_radius must be > 0.");
+  }
+  if (elongation_ <= 0.0) {
+    fatal_error("TokamakSource: elongation must be > 0.");
+  }
+  if (triangularity_ < -1.0 || triangularity_ > 1.0) {
+    fatal_error(
+      "TokamakSource: triangularity (delta) must be in the range [-1, 1].");
+  }
+  if (shafranov_shift_ / minor_radius_ >= 0.5) {
+    fatal_error(
+      "TokamakSource: Shafranov shift must be less than half the minor radius "
+      "(Delta/a < 0.5).");
+  }
+  if (phi_extent_ <= 0.0) {
+    fatal_error("TokamakSource: phi_extent must be > 0.");
+  }
+  if (n_alpha_ < 3) {
+    fatal_error("TokamakSource: n_alpha must be at least 3.");
+  }
+  if (energy_dists_.empty()) {
+    fatal_error("TokamakSource: At least one energy distribution is required.");
+  }
+  // Energy distributions must be either 1 (for all r) or match r_over_a size
+  if (energy_dists_.size() != 1 && energy_dists_.size() != r_over_a_.size()) {
+    fatal_error("TokamakSource: energy distributions must be either 1 (for all "
+                "r) or match the number of r_over_a points.");
+  }
+
+  // Ensure r_over_a is sorted
+  for (size_t i = 1; i < r_over_a_.size(); ++i) {
+    if (r_over_a_[i] <= r_over_a_[i - 1]) {
+      fatal_error("TokamakSource: r_over_a must be strictly increasing.");
+    }
+  }
+
+  // Precompute sampling CDFs
+  precompute_sampling_cdfs();
+}
+
+double TokamakSource::interpolate_emission_rate(double r_norm) const
+{
+  // Linear interpolation on the emission rate profile
+  if (r_norm <= r_over_a_.front())
+    return emission_rate_.front();
+  if (r_norm >= r_over_a_.back())
+    return emission_rate_.back();
+
+  // Find the interval
+  auto it = std::lower_bound(r_over_a_.begin(), r_over_a_.end(), r_norm);
+  size_t i = std::distance(r_over_a_.begin(), it);
+  if (i > 0)
+    --i;
+
+  // Linear interpolation
+  double t = (r_norm - r_over_a_[i]) / (r_over_a_[i + 1] - r_over_a_[i]);
+  return emission_rate_[i] + t * (emission_rate_[i + 1] - emission_rate_[i]);
+}
+
+void TokamakSource::precompute_sampling_cdfs()
+{
+  // Compute normalized geometry parameters
+  epsilon_ = minor_radius_ / major_radius_;      // Inverse aspect ratio
+  delta_tilde_ = shafranov_shift_ / minor_radius_; // Normalized Shafranov shift
+
+  // Precompute Bernstein basis functions for the poloidal distribution.
+  // The joint PDF is proportional to f(r_tilde, alpha) = R* x J* where:
+  //   R* = 1 + eps*Dt + eps*cos(psi)*r - eps*Dt*r^2
+  //   J* = A(alpha) - 2*Dt*r*cos(alpha)
+  // with psi = alpha + delta*sin(alpha), Dt = Delta/a, eps = a/R0,
+  // and A(alpha) = cos(delta*sin(alpha)) + (delta/2)*sin(2*alpha)*sin(psi).
+  //
+  // Converting to Bernstein form:
+  //   R* = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2
+  //   J* = J0*(1-r) + J1*r
+  // where:
+  //   b0 = 1 + eps*Dt
+  //   b1 = 1 + eps*Dt + eps*cos(psi)/2
+  //   b2 = 1 + eps*cos(psi)
+  //   J0 = A(alpha)
+  //   J1 = A(alpha) - 2*Dt*cos(alpha)
+  //
+  // The product R* x J* gives 6 terms with non-negative basis functions:
+  //   g0 = b0*J0,  w0 = (1-r)^3
+  //   g1 = b0*J1,  w1 = (1-r)^2*r
+  //   g2 = b1*J0,  w2 = 2*(1-r)^2*r
+  //   g3 = b1*J1,  w3 = 2*(1-r)*r^2
+  //   g4 = b2*J0,  w4 = (1-r)*r^2
+  //   g5 = b2*J1,  w5 = r^3
+  //
+  // Exploiting up-down symmetry: the basis functions satisfy g_k(2*pi - alpha)
+  // = g_k(alpha), so we only need to compute CDFs on [0, pi] and randomly flip
+  // to [pi, 2*pi] at sample time.
+
+  int n_alpha = n_alpha_;
+  poloidal_alpha_grid_.resize(n_alpha);
+  for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
+    poloidal_cdfs_[k].resize(n_alpha);
+    poloidal_integrals_[k] = 0.0;
+  }
+
+  // Build the alpha grid on [0, pi] (half domain due to symmetry)
+  double dalpha = M_PI / (n_alpha - 1);
+  for (int i = 0; i < n_alpha; ++i) {
+    poloidal_alpha_grid_[i] = i * dalpha;
+  }
+
+  // Precompute basis function values
+  double eps = epsilon_;
+  double Dt = delta_tilde_;
+  double delta = triangularity_;
+
+  array<vector<double>, N_POLOIDAL_BASIS> basis;
+  for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
+    basis[k].resize(n_alpha);
+  }
+
+  for (int i = 0; i < n_alpha; ++i) {
+    double alpha = poloidal_alpha_grid_[i];
+    double sin_alpha = std::sin(alpha);
+    double cos_alpha = std::cos(alpha);
+    double psi = alpha + delta * sin_alpha;
+    double sin_psi = std::sin(psi);
+    double cos_psi = std::cos(psi);
+
+    // A(alpha) = cos(delta*sin(alpha)) + (delta/2)*sin(2*alpha)*sin(psi)
+    double A = std::cos(delta * sin_alpha) +
+               0.5 * delta * std::sin(2.0 * alpha) * sin_psi;
+
+    // Bernstein coefficients for R*
+    double b0 = 1.0 + eps * Dt;
+    double b1 = 1.0 + eps * Dt + 0.5 * eps * cos_psi;
+    double b2 = 1.0 + eps * cos_psi;
+
+    // Linear coefficients for J*
+    double J0 = A;
+    double J1 = A - 2.0 * Dt * cos_alpha;
+
+    // 6 basis functions g_k(alpha) = b_i * J_j
+    basis[0][i] = b0 * J0; // (1-r)^3
+    basis[1][i] = b0 * J1; // (1-r)^2 * r
+    basis[2][i] = b1 * J0; // 2*(1-r)^2 * r
+    basis[3][i] = b1 * J1; // 2*(1-r) * r^2
+    basis[4][i] = b2 * J0; // (1-r) * r^2
+    basis[5][i] = b2 * J1; // r^3
+  }
+
+  // Compute integrals and build CDFs for each basis function
+  // Note: integrals are over [0, pi], but due to symmetry the full integral
+  // over [0, 2*pi] is 2x this value. We use the half-integral for mixture
+  // weights since the factor of 2 cancels when normalizing.
+  for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
+    // Integrate using trapezoidal rule
+    for (int i = 0; i < n_alpha; ++i) {
+      double w = (i == 0 || i == n_alpha - 1) ? 0.5 : 1.0;
+      poloidal_integrals_[k] += w * basis[k][i] * dalpha;
+    }
+
+    // Build CDF
+    poloidal_cdfs_[k][0] = 0.0;
+    for (int i = 1; i < n_alpha; ++i) {
+      double avg = 0.5 * (basis[k][i - 1] + basis[k][i]);
+      poloidal_cdfs_[k][i] = poloidal_cdfs_[k][i - 1] + avg * dalpha;
+    }
+
+    // Normalize CDF to [0, 1]
+    double norm = poloidal_cdfs_[k][n_alpha - 1];
+    if (norm > 0.0) {
+      double inv_norm = 1.0 / norm;
+      for (int i = 0; i < n_alpha; ++i) {
+        poloidal_cdfs_[k][i] *= inv_norm;
+      }
+    }
+  }
+
+  // Precompute radial CDF
+  // The marginal distribution in r_tilde is obtained by integrating
+  // f(r, alpha) over alpha. With the Bernstein factorization:
+  //   f = sum_k w_k(r) * g_k(alpha)
+  // where w_k are the Bernstein weight functions and g_k are the basis functions.
+  // The marginal is: P(r) ~ S(r) * r * sum_k w_k(r) * I_k
+  // where I_k = integral of g_k(alpha) over [0, 2*pi].
+  //
+  // The weight functions are:
+  //   w0 = (1-r)^3,           w1 = (1-r)^2*r,      w2 = 2*(1-r)^2*r
+  //   w3 = 2*(1-r)*r^2,       w4 = (1-r)*r^2,      w5 = r^3
+
+  constexpr int n_r = 201;
+  radial_cdf_grid_.resize(n_r);
+  radial_cdf_.resize(n_r);
+
+  double r_min = r_over_a_.front();
+  double r_max = r_over_a_.back();
+  double dr = (r_max - r_min) / (n_r - 1);
+
+  for (int i = 0; i < n_r; ++i) {
+    radial_cdf_grid_[i] = r_min + i * dr;
+  }
+
+  // Compute unnormalized PDF values using Bernstein weights
+  vector<double> radial_pdf(n_r);
+
+  for (int i = 0; i < n_r; ++i) {
+    double r = radial_cdf_grid_[i]; // r_tilde = r/a
+    double S = interpolate_emission_rate(r);
+    double one_minus_r = 1.0 - r;
+
+    // Compute Bernstein weight functions
+    double w0 = one_minus_r * one_minus_r * one_minus_r;        // (1-r)^3
+    double w1 = one_minus_r * one_minus_r * r;                  // (1-r)^2 * r
+    double w2 = 2.0 * one_minus_r * one_minus_r * r;            // 2*(1-r)^2 * r
+    double w3 = 2.0 * one_minus_r * r * r;                      // 2*(1-r) * r^2
+    double w4 = one_minus_r * r * r;                            // (1-r) * r^2
+    double w5 = r * r * r;                                      // r^3
+
+    // Sum weighted integrals
+    double weighted_sum = w0 * poloidal_integrals_[0] +
+                          w1 * poloidal_integrals_[1] +
+                          w2 * poloidal_integrals_[2] +
+                          w3 * poloidal_integrals_[3] +
+                          w4 * poloidal_integrals_[4] +
+                          w5 * poloidal_integrals_[5];
+
+    // Include the r_tilde factor from the Jacobian (absorbed into f)
+    radial_pdf[i] = S * r * std::max(0.0, weighted_sum);
+  }
+
+  // Integrate to get CDF using trapezoidal rule
+  radial_cdf_[0] = 0.0;
+  for (int i = 1; i < n_r; ++i) {
+    double avg = 0.5 * (radial_pdf[i - 1] + radial_pdf[i]);
+    radial_cdf_[i] = radial_cdf_[i - 1] + avg * dr;
+  }
+
+  // Normalize CDF
+  double total = radial_cdf_[n_r - 1];
+  if (total <= 0.0) {
+    fatal_error(
+      "TokamakSource: Integrated emission rate is zero or negative. "
+      "Check emission_rate profile.");
+  }
+  for (int i = 0; i < n_r; ++i) {
+    radial_cdf_[i] /= total;
+  }
+}
+
+double TokamakSource::sample_r_over_a(uint64_t* seed) const
+{
+  double xi = prn(seed);
+
+  // Binary search to find the interval in the CDF
+  auto it = std::lower_bound(radial_cdf_.begin(), radial_cdf_.end(), xi);
+  size_t i = std::distance(radial_cdf_.begin(), it);
+
+  if (i == 0)
+    return radial_cdf_grid_.front();
+  if (i >= radial_cdf_.size())
+    return radial_cdf_grid_.back();
+
+  // Linear interpolation within the interval
+  double cdf_lo = radial_cdf_[i - 1];
+  double cdf_hi = radial_cdf_[i];
+  double r_lo = radial_cdf_grid_[i - 1];
+  double r_hi = radial_cdf_grid_[i];
+
+  double t = (xi - cdf_lo) / (cdf_hi - cdf_lo);
+  return r_lo + t * (r_hi - r_lo);
+}
+
+double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
+{
+  // Sample from the conditional distribution P(alpha | r_tilde) using
+  // mixture sampling with 6 precomputed Bernstein basis CDFs.
+  //
+  // The conditional is: P(alpha | r) ~ sum_k w_k(r) * g_k(alpha)
+  // where w_k(r) are the Bernstein weight functions and g_k(alpha) are
+  // the basis functions with precomputed CDFs.
+  //
+  // Algorithm:
+  // 1. Compute mixture weights: m_k = w_k(r) * I_k where I_k = integral of g_k
+  // 2. Sample component k from categorical distribution on {m_k}
+  // 3. Sample alpha from CDF_k using inverse transform
+
+  double r = r_norm;
+  double one_minus_r = 1.0 - r;
+
+  // Compute Bernstein weight functions
+  double w0 = one_minus_r * one_minus_r * one_minus_r;  // (1-r)^3
+  double w1 = one_minus_r * one_minus_r * r;            // (1-r)^2 * r
+  double w2 = 2.0 * one_minus_r * one_minus_r * r;      // 2*(1-r)^2 * r
+  double w3 = 2.0 * one_minus_r * r * r;                // 2*(1-r) * r^2
+  double w4 = one_minus_r * r * r;                      // (1-r) * r^2
+  double w5 = r * r * r;                                // r^3
+
+  // Compute mixture weights (unnormalized)
+  double m0 = w0 * poloidal_integrals_[0];
+  double m1 = w1 * poloidal_integrals_[1];
+  double m2 = w2 * poloidal_integrals_[2];
+  double m3 = w3 * poloidal_integrals_[3];
+  double m4 = w4 * poloidal_integrals_[4];
+  double m5 = w5 * poloidal_integrals_[5];
+  double total = m0 + m1 + m2 + m3 + m4 + m5;
+
+  if (total <= 0.0) {
+    // Fallback to uniform if something is wrong
+    return M_PI * prn(seed) + (prn(seed) < 0.5 ? 0.0 : M_PI);
+  }
+
+  // Sample component from categorical distribution
+  // Order optimized for small r (core-weighted): 0, 2, 1, 3, 4, 5
+  // since w2 = 2*w1 and w3 = 2*w4, components 2 and 3 should be checked
+  // before 1 and 4 respectively for faster average termination.
+  double xi = prn(seed) * total;
+  int component;
+  double cumsum = m0;
+  if (xi < cumsum) {
+    component = 0;
+  } else if ((cumsum += m2) > xi) {
+    component = 2;
+  } else if ((cumsum += m1) > xi) {
+    component = 1;
+  } else if ((cumsum += m3) > xi) {
+    component = 3;
+  } else if ((cumsum += m4) > xi) {
+    component = 4;
+  } else {
+    component = 5;
+  }
+
+  // Sample alpha from the selected CDF using inverse transform
+  double eta = prn(seed);
+  const auto& cdf = poloidal_cdfs_[component];
+  const size_t n_alpha = poloidal_alpha_grid_.size();
+
+  auto it = std::lower_bound(cdf.begin(), cdf.end(), eta);
+  size_t j = std::distance(cdf.begin(), it);
+
+  // Sample alpha from [0, pi]
+  double alpha;
+  if (j == 0) {
+    alpha = poloidal_alpha_grid_.front();
+  } else if (j >= n_alpha) {
+    alpha = poloidal_alpha_grid_.back();
+  } else {
+    // Linear interpolation within the bin
+    double cdf_lo = cdf[j - 1];
+    double cdf_hi = cdf[j];
+    double alpha_lo = poloidal_alpha_grid_[j - 1];
+    double alpha_hi = poloidal_alpha_grid_[j];
+    double t = (eta - cdf_lo) / (cdf_hi - cdf_lo);
+    alpha = alpha_lo + t * (alpha_hi - alpha_lo);
+  }
+
+  // Exploit up-down symmetry: randomly flip to [pi, 2*pi] with 50% probability
+  // This is equivalent to flipping the sign of Z in the final position
+  if (prn(seed) >= 0.5) {
+    alpha = 2.0 * M_PI - alpha;
+  }
+  return alpha;
+}
+
+double TokamakSource::sample_energy(double r_norm, uint64_t* seed) const
+{
+  if (energy_dists_.size() == 1) {
+    // Single distribution for all r
+    return energy_dists_[0]->sample(seed).first;
+  }
+
+  // Multiple distributions: stochastic selection between bracketing r points
+  // Find the interval containing r_norm
+  auto it = std::lower_bound(r_over_a_.begin(), r_over_a_.end(), r_norm);
+  size_t i = std::distance(r_over_a_.begin(), it);
+  if (i > 0)
+    --i;
+
+  // Handle boundary cases
+  if (i >= energy_dists_.size() - 1) {
+    return energy_dists_.back()->sample(seed).first;
+  }
+
+  // Stochastic interpolation: randomly select one of the two bracketing
+  // distributions based on distance to each
+  double t = (r_norm - r_over_a_[i]) / (r_over_a_[i + 1] - r_over_a_[i]);
+  size_t idx = (prn(seed) < t) ? i + 1 : i;
+  return energy_dists_[idx]->sample(seed).first;
+}
+
+Position TokamakSource::flux_to_cartesian(
+  double r, double alpha, double phi) const
+{
+  // Flux surface parameterization:
+  // R = R0 + r*cos(alpha + delta*sin(alpha)) + Delta*(1 - (r/a)^2)
+  // Z = kappa * r * sin(alpha)
+  // x = R * cos(phi)
+  // y = R * sin(phi)
+  // z = Z
+
+  double psi = alpha + triangularity_ * std::sin(alpha);
+  double r_over_a_sq = (r * r) / (minor_radius_ * minor_radius_);
+
+  double R = major_radius_ + r * std::cos(psi) +
+             shafranov_shift_ * (1.0 - r_over_a_sq);
+  double Z = elongation_ * r * std::sin(alpha);
+
+  double x = R * std::cos(phi);
+  double y = R * std::sin(phi);
+  double z = Z;
+
+  return {x, y, z};
+}
+
+SourceSite TokamakSource::sample(uint64_t* seed) const
+{
+  SourceSite site;
+  site.particle = ParticleType::neutron;
+  site.wgt = 1.0;
+  site.delayed_group = 0;
+  site.time = 0.0;
+
+  // 1. Sample r/a from radial CDF
+  double r_norm = sample_r_over_a(seed);
+  double r = r_norm * minor_radius_;
+
+  // 2. Sample poloidal angle from conditional distribution P(alpha|r)
+  double alpha = sample_poloidal_angle(r_norm, seed);
+
+  // 3. Sample toroidal angle uniformly in [phi_start, phi_start + phi_extent]
+  double phi = phi_start_ + phi_extent_ * prn(seed);
+
+  // 4. Convert to Cartesian coordinates
+  site.r = flux_to_cartesian(r, alpha, phi);
+
+  // 5. Sample isotropic direction
+  double mu = 2.0 * prn(seed) - 1.0;
+  double phi_dir = 2.0 * M_PI * prn(seed);
+  double sin_theta = std::sqrt(1.0 - mu * mu);
+  site.u = {sin_theta * std::cos(phi_dir), sin_theta * std::sin(phi_dir), mu};
+
+  // 6. Sample energy from distribution(s)
+  site.E = sample_energy(r_norm, seed);
+
+  return site;
 }
 
 //==============================================================================

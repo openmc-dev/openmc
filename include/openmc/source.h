@@ -5,11 +5,14 @@
 #define OPENMC_SOURCE_H
 
 #include <atomic>
+#include <cmath>
 #include <limits>
 #include <unordered_set>
 
 #include "pugixml.hpp"
 
+#include "openmc/array.h"
+#include "openmc/distribution.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
@@ -257,6 +260,142 @@ private:
   // Data members
   unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
   vector<unique_ptr<IndependentSource>> sources_; //!< Source distributions
+};
+
+//==============================================================================
+//! Parametric tokamak plasma neutron source
+//!
+//! This source samples neutron positions from a tokamak plasma geometry using
+//! Miller-style flux surface parameterization with user-specified emission
+//! profiles and energy distributions.
+//!
+//! Flux surface parameterization:
+//!   R = R0 + r*cos(alpha + delta*sin(alpha)) + Delta*(1 - (r/a)^2)
+//!   Z = kappa * r * sin(alpha)
+//!
+//! The sampling algorithm:
+//! 1. Sample minor radius r from precomputed CDF of S(r) * Jacobian
+//! 2. Sample poloidal angle alpha from conditional P(alpha|r) using mixture
+//!    of precomputed CDFs weighted by functions of r
+//! 3. Sample energy from user-provided distribution(s)
+//! 4. Sample isotropic direction
+//! 5. Sample toroidal angle phi uniformly in [phi_start, phi_start + phi_extent]
+//! 6. Transform (r, alpha, phi) to Cartesian (x, y, z)
+//!
+//! The user provides the emission rate S(r) directly (e.g., from transport
+//! codes like TRANSP, ASTRA, etc.), allowing full flexibility in reaction
+//! physics calculations. Energy distributions can be specified as either a
+//! single distribution for all r, or one distribution per radial point.
+//==============================================================================
+
+class TokamakSource : public Source {
+public:
+  // Constructors
+  explicit TokamakSource(pugi::xml_node node);
+
+  //! Construct from emission profile and geometry parameters
+  //! \param r_over_a Normalized minor radius coordinates (r/a)
+  //! \param emission_rate Emission rate S(r) at each r/a point [arb. units]
+  //! \param energy_dists Energy distribution(s): 1 for all r, or N for each r
+  //! \param major_radius Major radius R0 [cm]
+  //! \param minor_radius Minor radius a [cm]
+  //! \param elongation Plasma elongation kappa
+  //! \param triangularity Plasma triangularity delta
+  //! \param shafranov_shift Shafranov shift Delta [cm]
+  //! \param phi_start Starting toroidal angle [rad], default 0
+  //! \param phi_extent Toroidal angle extent [rad], default 2*pi
+  //! \param n_alpha Number of poloidal angle grid points, default 101
+  TokamakSource(const vector<double>& r_over_a,
+    const vector<double>& emission_rate,
+    vector<unique_ptr<Distribution>> energy_dists, double major_radius,
+    double minor_radius, double elongation, double triangularity,
+    double shafranov_shift, double phi_start = 0.0,
+    double phi_extent = 2.0 * M_PI, int n_alpha = 101);
+
+  //! Sample from the tokamak source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+private:
+  //==========================================================================
+  // Private methods
+
+  //! Precompute data structures for efficient sampling
+  void precompute_sampling_cdfs();
+
+  //! Interpolate emission rate at given r/a
+  //! \param r_norm Normalized minor radius r/a
+  //! \return Interpolated emission rate
+  double interpolate_emission_rate(double r_norm) const;
+
+  //! Sample minor radius from marginal CDF
+  //! \param seed Pseudorandom seed pointer
+  //! \return Sampled r/a value
+  double sample_r_over_a(uint64_t* seed) const;
+
+  //! Sample poloidal angle given r using mixture of precomputed CDFs
+  //! \param r_norm Normalized minor radius r/a
+  //! \param seed Pseudorandom seed pointer
+  //! \return Sampled poloidal angle alpha [rad]
+  double sample_poloidal_angle(double r_norm, uint64_t* seed) const;
+
+  //! Sample energy from the distribution(s)
+  //! \param r_norm Normalized minor radius r/a (for distribution selection)
+  //! \param seed Pseudorandom seed pointer
+  //! \return Sampled energy [eV]
+  double sample_energy(double r_norm, uint64_t* seed) const;
+
+  //! Transform from flux coordinates (r, alpha, phi) to Cartesian (x, y, z)
+  //! \param r Minor radius [cm]
+  //! \param alpha Poloidal angle [rad]
+  //! \param phi Toroidal angle [rad]
+  //! \return Position in Cartesian coordinates [cm]
+  Position flux_to_cartesian(double r, double alpha, double phi) const;
+
+  //==========================================================================
+  // Data members
+
+  // Emission profile (input)
+  vector<double> r_over_a_;     //!< Normalized minor radius grid points
+  vector<double> emission_rate_; //!< Emission rate S(r) at grid points
+
+  // Energy distribution(s): either 1 for all r, or one per r point
+  vector<unique_ptr<Distribution>> energy_dists_;
+
+  // Tokamak geometry parameters
+  double major_radius_;    //!< Major radius R0 [cm]
+  double minor_radius_;    //!< Minor radius a [cm]
+  double elongation_;      //!< Elongation kappa
+  double triangularity_;   //!< Triangularity delta
+  double shafranov_shift_; //!< Shafranov shift Delta [cm]
+
+  // Normalized geometry parameters (precomputed for efficiency)
+  double epsilon_;      //!< Inverse aspect ratio a/R0
+  double delta_tilde_;  //!< Normalized Shafranov shift Delta/a
+
+  // Toroidal angle bounds
+  double phi_start_;  //!< Starting toroidal angle [rad]
+  double phi_extent_; //!< Toroidal angle extent [rad]
+
+  // Precomputed data for radial sampling
+  vector<double> radial_cdf_;      //!< CDF for radial sampling
+  vector<double> radial_cdf_grid_; //!< r/a grid for radial CDF
+
+  // Precomputed Bernstein basis functions for poloidal angle sampling.
+  // Using the factorization f(r_tilde, alpha) = R* x J* where:
+  //   R* = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2  (Bernstein quadratic)
+  //   J* = J0*(1-r) + J1*r                      (Bernstein linear)
+  // The product gives 6 non-negative basis functions g_k(alpha) with
+  // weights w_k(r_tilde) that are products of Bernstein polynomials.
+  // CDFs are computed on [0, pi] exploiting up-down symmetry.
+  static constexpr int N_POLOIDAL_BASIS = 6; //!< Number of basis functions
+  int n_alpha_;                              //!< Number of poloidal angle grid points
+  vector<double> poloidal_alpha_grid_;       //!< alpha grid for CDF lookup [0, pi]
+  array<vector<double>, N_POLOIDAL_BASIS>
+    poloidal_cdfs_; //!< CDFs for each basis function g_k(alpha)
+  array<double, N_POLOIDAL_BASIS>
+    poloidal_integrals_; //!< Integrals of g_k(alpha) over [0, pi]
 };
 
 //==============================================================================

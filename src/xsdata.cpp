@@ -96,6 +96,11 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   read_nd_vector(xsdata_grp, "absorption", absorption, true);
   read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
 
+  if (!object_exists(xsdata_grp, "inverse-velocity")) {
+    warning("Inverse-velocity is not available in XsData "
+            "Time related calculation results might be wrong!");
+  }
+
   // Get scattering data
   scatter_from_hdf5(
     xsdata_grp, n_ang, scatter_format, final_scatter_format, order_data);

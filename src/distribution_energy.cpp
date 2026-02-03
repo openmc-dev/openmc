@@ -55,17 +55,17 @@ LevelInelastic::LevelInelastic(hid_t group)
     read_attribute(group, "mass", A);
     read_attribute(group, "q_value", Q);
     read_attribute(group, "particle", temp);
-    auto particle = str_to_particle_type(temp);
-    if (particle == ParticleType::neutron) {
+    auto type = ParticleType(temp);
+    if (type.is_neutron()) {
       a_ = (A / (A + 1.0)) * (A / (A + 1.0));
       b_ = (A + 1.0) / A * std::abs(Q);
       c_ = 0.0;
-    } else if (particle == ParticleType::photon) {
+    } else if (type.is_photon()) {
       a_ = (A - 1.0) / A;
       b_ = std::abs(Q);
       c_ = 1.0 / (2.0 * MASS_NEUTRON_EV * (A - 1.0));
     } else {
-      fatal_error("Unrecognized particle: " + temp);
+      fatal_error("Unrecognized particle: " + type.str());
     }
   }
 }

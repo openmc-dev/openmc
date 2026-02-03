@@ -70,6 +70,8 @@ vector<double> time_grid;
 
 namespace simulation {
 xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>>
+  global_tallies_first_gen;
 int32_t n_realizations {0};
 } // namespace simulation
 
@@ -78,6 +80,12 @@ double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_tracklength_sq;
 double global_tally_leakage;
+
+// Tallies for first generation quantities
+double global_tally_absorption_first_gen;
+double global_tally_collision_first_gen;
+double global_tally_tracklength_first_gen;
+double global_tally_tracklength_sq_first_gen;
 
 //==============================================================================
 // Tally object implementation

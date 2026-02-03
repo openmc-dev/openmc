@@ -37,7 +37,9 @@ namespace openmc {
 namespace simulation {
 
 array<double, 2> keff_generation;
+array<double, 2> kq_generation_val;
 array<double, 2> k_sum;
+array<double, 2> kq_sum;
 vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
 
@@ -46,45 +48,60 @@ xt::xtensor<double, 1> source_frac;
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
 void calculate_generation_keff()
 {
-  const auto& gt = simulation::global_tallies;
+  calculate_generation_keff(false);
+}
 
-  if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      settings::calculate_subcritical_k) {
-    // For fixed source mode, we don't subtract previous generation values
-    simulation::keff_generation[0] =
-      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
-    simulation::keff_generation[1] =
-      gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE);
-  } else {
-    simulation::keff_generation[0] =
-      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
-      simulation::keff_generation[0];
-    simulation::keff_generation[1] =
-      gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) -
-      simulation::keff_generation[1];
-  }
+void calculate_generation_keff(bool is_kq)
+{
+  // Initialize variables
+  auto& gt =
+    is_kq ? simulation::global_tallies_first_gen : simulation::global_tallies;
+  auto& keff_generation =
+    is_kq ? simulation::kq_generation_val : simulation::keff_generation;
+  auto& k_generation =
+    is_kq ? simulation::kq_generation : simulation::k_generation;
+
+  //   if (settings::run_mode == RunMode::FIXED_SOURCE &&
+  //       settings::calculate_subcritical_k) {
+  //     // For fixed source mode, we don't subtract previous generation values
+  //     simulation::keff_generation[0] =
+  //       gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+  //     simulation::keff_generation[1] =
+  //       gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE);
+  //   } else {
+  //     simulation::keff_generation[0] =
+  //       gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+  //       simulation::keff_generation[0];
+  //     simulation::keff_generation[1] =
+  //       gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) -
+  //       simulation::keff_generation[1];
+  //   }
+
+  keff_generation[0] =
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) - keff_generation[0];
+  keff_generation[1] =
+    gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) - keff_generation[1];
 
   array<double, 2> keff_reduced;
 #ifdef OPENMC_MPI
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Combine values across all processors
-    MPI_Allreduce(&simulation::keff_generation[0], &keff_reduced[0], 1,
-      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-    MPI_Allreduce(&simulation::keff_generation[1], &keff_reduced[1], 1,
-      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(&keff_generation[0], &keff_reduced[0], 1, MPI_DOUBLE, MPI_SUM,
+      mpi::intracomm);
+    MPI_Allreduce(&keff_generation[1], &keff_reduced[1], 1, MPI_DOUBLE, MPI_SUM,
+      mpi::intracomm);
   } else {
     // If using random ray, MPI parallelism is provided by domain replication.
     // As such, all fluxes will be reduced at the end of each transport sweep,
     // such that all ranks have identical scalar flux vectors, and will all
     // independently compute the same value of k. Thus, there is no need to
     // perform any additional MPI reduction here.
-    keff_reduced = simulation::keff_generation;
+    keff_reduced = keff_generation;
   }
 #else
-  keff_reduced = simulation::keff_generation;
+  keff_reduced = keff_generation;
 #endif
 
   // Normalize single batch estimate of k
@@ -96,7 +113,7 @@ void calculate_generation_keff()
   double k_mean = keff_reduced[0];
   double k_std = std::sqrt(
     (keff_reduced[1] - std::pow(k_mean, 2)) / (settings::n_particles - 1));
-  simulation::k_generation.push_back({k_mean, k_std});
+  k_generation.push_back({k_mean, k_std});
 }
 
 std::pair<double, double> convert_m_to_k(double m, double m_std)
@@ -400,6 +417,11 @@ void synchronize_bank()
 
 void calculate_average_keff()
 {
+  calculate_average_keff(false);
+}
+
+void calculate_average_keff(bool is_kq)
+{
   // Determine overall generation and number of active generations
   int i = overall_generation() - 1;
   int n;
@@ -409,20 +431,30 @@ void calculate_average_keff()
   } else {
     n = 0;
   }
+  // Initialize variables
   double keff;
   double keff_std;
+  auto& gt =
+    is_kq ? simulation::global_tallies_first_gen : simulation::global_tallies;
+  auto& keff_generation =
+    is_kq ? simulation::kq_generation_val : simulation::keff_generation;
+  auto& k_generation =
+    is_kq ? simulation::kq_generation : simulation::k_generation;
+  auto& k_sum = is_kq ? simulation::kq_sum : simulation::k_sum;
+  auto& k = is_kq ? simulation::kq : simulation::k;
+  auto& k_std = is_kq ? simulation::kq_std : simulation::k_std;
 
   if (n <= 0) {
     // For inactive generations, use current generation k as estimate for next
     // generation
-    keff = simulation::k_generation[i][0];
+    keff = k_generation[i][0];
   } else {
     // Sample mean of keff
-    simulation::k_sum[0] += simulation::k_generation[i][0];
-    simulation::k_sum[1] += std::pow(simulation::k_generation[i][0], 2);
+    k_sum[0] += k_generation[i][0];
+    k_sum[1] += std::pow(k_generation[i][0], 2);
 
     // Determine mean
-    keff = simulation::k_sum[0] / n;
+    keff = k_sum[0] / n;
 
     if (n > 1) {
       double t_value;
@@ -436,8 +468,7 @@ void calculate_average_keff()
 
       // Standard deviation of the sample mean of k
       keff_std =
-        t_value *
-        std::sqrt((simulation::k_sum[1] / n - std::pow(keff, 2)) / (n - 1));
+        t_value * std::sqrt((k_sum[1] / n - std::pow(keff, 2)) / (n - 1));
 
       // In some cases (such as an infinite medium problem), random ray
       // may estimate k exactly and in an unvarying manner between iterations.
@@ -450,9 +481,9 @@ void calculate_average_keff()
       }
     }
   }
-  simulation::k = keff;
-  simulation::k_std = keff_std;
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  k = keff;
+  k_std = keff_std;
+  if (settings::run_mode == RunMode::EIGENVALUE and !is_kq) {
     // Only set simulation::keff for eigenvalue mode, since it's used to bias
     // physics
     simulation::keff = keff;
@@ -743,10 +774,6 @@ void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "k_generation", k_generation);
   array<double, 2> k_combined;
   openmc_get_keff(k_combined.data());
-  fmt::print("K_combined: {} +/- {}\n", k_combined[0], k_combined[1]);
-  fmt::print("k col abs {}", simulation::k_col_abs);
-  fmt::print("k col tra {}", simulation::k_col_tra);
-  fmt::print("k abs tra {}", simulation::k_abs_tra);
   if (settings::run_mode == RunMode::FIXED_SOURCE &&
       settings::calculate_subcritical_k) {
     // Temporary fix until formula for combined estimator can be implemented

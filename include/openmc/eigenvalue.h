@@ -23,7 +23,10 @@ namespace simulation {
 
 extern array<double, 2>
   keff_generation;             //!<  Single-generation k on each processor
+extern array<double, 2>
+  kq_generation_val;           //!<  Single-generation kq on each processor
 extern array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
+extern array<double, 2> kq_sum;
 extern vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
@@ -33,8 +36,13 @@ extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 // Non-member functions
 //==============================================================================
 
-//! Collect/normalize the tracklength keff from each process
+//! Collect/normalize the tracklength keff from each process (keff)
 void calculate_generation_keff();
+
+//! Collect/normalize the tracklength keff from each process
+//!
+//! \param[in] is_kq  If true, operate on kq tallies instead of keff
+void calculate_generation_keff(bool is_kq);
 
 std::pair<double, double> convert_m_to_k(double m, double m_std);
 
@@ -44,6 +52,7 @@ std::pair<double, double> convert_m_to_k(double m, double m_std);
 //! the mean and standard deviation of the mean of k-effective over active
 //! generations. It also broadcasts the value from the master process.
 void calculate_average_keff();
+void calculate_average_keff(bool is_kq);
 
 //! Calculates a minimum variance estimate of k-effective
 //!

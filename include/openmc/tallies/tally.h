@@ -222,6 +222,9 @@ namespace simulation {
 //! Global tallies (such as k-effective estimators)
 extern xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>>
   global_tallies;
+//! Global tallies for first generation (for subcritical multiplication)
+extern xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>>
+  global_tallies_first_gen;
 
 //! Number of realizations for global tallies
 extern "C" int32_t n_realizations;
@@ -232,6 +235,11 @@ extern double global_tally_collision;
 extern double global_tally_tracklength;
 extern double global_tally_tracklength_sq;
 extern double global_tally_leakage;
+
+extern double global_tally_absorption_first_gen;
+extern double global_tally_collision_first_gen;
+extern double global_tally_tracklength_first_gen;
+extern double global_tally_tracklength_sq_first_gen;
 
 //==============================================================================
 // Non-member functions

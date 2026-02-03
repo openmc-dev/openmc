@@ -1,63 +1,87 @@
+"""This test is based on a simple 4-group slab model from 
+"MCNP Calculations of Subcritical Fixed and Fission Multiplication Factors",
+LA-UR-10-00141 which can be found at https://mcnp.lanl.gov/pdf_files/TechReport_2010_LANL_LA-UR-10-00141_KiedrowskiBrown.pdf 
+"""
 import openmc
+from openmc.stats import delta_function
+import numpy as np
 import pytest
-
+from openmc.examples import slab_mg
+import os
+import glob
+    
 from tests.testing_harness import PyAPITestHarness
 
-def create_universe():
-    # Define materials
-    heu = openmc.Material(name='HEU')
-    heu.add_element('U', 1, enrichment=93.0, enrichment_type='wo')
-    heu.set_density('g/cm3', 19.1)
 
-    dep_uranium = openmc.Material(name='Depleted Uranium')
-    dep_uranium.add_nuclide('U238', 1.0)
-    dep_uranium.set_density('g/cm3', 19.1)
+class MGXSTestHarness(PyAPITestHarness):
+    def _cleanup(self):
+        super()._cleanup()
+        f = 'mgxs.h5'
+        if os.path.exists(f):
+            os.remove(f)
+    def _get_results(self, hash_output=False):
+        outstr = super()._get_results(hash_output=hash_output)
+        # Read the statepoint file.
+        statepoint = glob.glob(self._sp_name)[0]
+        with openmc.StatePoint(statepoint) as sp:
+            # Write out multiplication.
+            outstr += 'multiplication:\n'
+            form = '{0:12.6E} {1:12.6E}\n'
+            M = sp.multiplication
+            outstr += form.format(M.n, M.s)              
+        return outstr   
+                       
 
-    mats = openmc.Materials([heu, dep_uranium])
-    mats.export_to_xml()
+@pytest.fixture()
+def slab_model():
+    model = slab_mg(mgxslib_name='mgxs.h5')
+    right_boundary = model.geometry.get_all_surfaces()[2]
+    right_boundary.coefficients['x0'] = 10.0
+    
+    cell = model.geometry.get_all_cells()[1]
+    
+    mat = model.geometry.get_all_materials()[1]
+    mat.set_density('macro', 0.01) 
+    ###########################################################################
+    # Create multigroup data
 
-    # Geometry
-    fuel_radius = 4.8
-    dep_uranium_radius = 12.2
+    # Instantiate the energy group data
+    ebins = np.geomspace(1e-5, 20.0e6, 5)
+    groups = openmc.mgxs.EnergyGroups(group_edges=ebins)
 
-    fuel_sphere = openmc.Sphere(r=fuel_radius)
-    dep_uranium_sphere = openmc.Sphere(r=dep_uranium_radius, boundary_type='vacuum')
+    nusigma_f = np.array([9.6,5.4,5.2,2.5])
+    sigma_s = np.array([[0.5,0.5,0.5,0.5],
+                        [0.0,1.0,0.5,0.5],
+                        [0.0,0.0,1.5,0.5],
+                        [0.0,0.0,0.0,2.0]])
+    sigma_t = np.array([5.0,5.0,5.0,5.0])
+    sigma_a = sigma_t - sigma_s.sum(axis=1)
+    chi = np.array([0.0,0.2,0.8,0.0])
+    mat_data = openmc.XSdata('mat_1', groups)
+    mat_data.order = 0
+    mat_data.set_total(sigma_t)
+    mat_data.set_nu_fission(nusigma_f)
+    mat_data.set_chi(chi)
+    mat_data.set_absorption(sigma_a)
+    mat_data.set_scatter_matrix(sigma_s[...,np.newaxis])
 
-    fuel_region = -fuel_sphere
-    dep_uranium_region = +fuel_sphere & -dep_uranium_sphere
+    mg_cross_sections_file = openmc.MGXSLibrary(groups)
+    mg_cross_sections_file.add_xsdata(mat_data)
+    mg_cross_sections_file.export_to_hdf5()
 
-    fuel_cell = openmc.Cell(name='Fuel', region=fuel_region)
-    fuel_cell.fill = heu
-
-    dep_uranium_cell = openmc.Cell(name='Depleted Uranium', region=dep_uranium_region)
-    dep_uranium_cell.fill = dep_uranium
-
-    universe = openmc.Universe(cells=[fuel_cell, dep_uranium_cell])
-    return universe
-
-def test_source():
-    source_space = openmc.stats.Point((0,0,0))
-    source_angle = openmc.stats.Isotropic()
-    source_energy = openmc.stats.Maxwell(293.6)
-    source = openmc.IndependentSource(space=source_space, angle=source_angle, energy=source_energy)
-    return source
-
-@pytest.fixture
-def model():
-    model = openmc.Model()
-
-    universe = create_universe()
-    model.geometry = openmc.Geometry(universe)
+    # Settings
+    model.settings.particles = 100000
+    model.settings.batches = 20
     model.settings.run_mode = 'fixed source'
-    model.settings.source = test_source()
+    model.settings.calculate_subcritical_k = True
 
-    model.settings.batches = 10
-    model.settings.inactive = 5
-    model.settings.particles = 1000
-
+    space = openmc.stats.Box([0,-1000,-1000],[10,1000,1000])
+    model.settings.source = openmc.IndependentSource(
+        space=space, energy = delta_function(10e6))
+        
     return model
 
-def test_fixed_source_run(model):
-    """Test that fixed source run with subcritical k calculation works."""
-    harness = PyAPITestHarness("statepoint.10.h5", model, inputs_true='inputs_true.dat')
+
+def test_multiplication(slab_model):
+    harness = MGXSTestHarness("statepoint.20.h5", model=slab_model)
     harness.main()

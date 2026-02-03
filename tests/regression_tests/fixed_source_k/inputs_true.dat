@@ -1,35 +1,37 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material id="1" name="HEU" depletable="true">
-      <density value="19.1" units="g/cm3"/>
-      <nuclide name="U234" ao="0.008318362645468546"/>
-      <nuclide name="U235" ao="0.9306591669709396"/>
-      <nuclide name="U238" ao="0.05675960438837378"/>
-      <nuclide name="U236" ao="0.004262865995217944"/>
-    </material>
-    <material id="2" name="Depleted Uranium" depletable="true">
-      <density value="19.1" units="g/cm3"/>
-      <nuclide name="U238" ao="1.0"/>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="mat_1">
+      <density value="0.01" units="macro"/>
+      <macroscopic name="mat_1"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" name="Fuel" material="1" region="-1" universe="1"/>
-    <cell id="2" name="Depleted Uranium" material="2" region="1 -2" universe="1"/>
-    <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 4.8"/>
-    <surface id="2" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 12.2"/>
+    <cell id="1" material="1" region="1 -2" universe="0"/>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="10.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>1000</particles>
-    <batches>10</batches>
+    <particles>100000</particles>
+    <batches>20</batches>
     <inactive>5</inactive>
     <source type="independent" strength="1.0" particle="neutron">
-      <space type="point">
-        <parameters>0 0 0</parameters>
+      <space type="box">
+        <parameters>0 -1000 -1000 10 1000 1000</parameters>
       </space>
-      <angle type="isotropic"/>
-      <energy type="maxwell" parameters="293.6"/>
+      <energy type="discrete">
+        <parameters>10000000.0 1.0</parameters>
+      </energy>
     </source>
+    <output>
+      <summary>false</summary>
+    </output>
+    <energy_mode>multi-group</energy_mode>
+    <tabular_legendre>
+      <enable>false</enable>
+    </tabular_legendre>
+    <calculate_subcritical_k>true</calculate_subcritical_k>
   </settings>
   </model>

@@ -279,7 +279,10 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
+  if ((settings::run_mode == RunMode::EIGENVALUE && type().is_neutron() ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) &&
+      type() == ParticleType::neutron) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -341,7 +344,14 @@ void Particle::event_collide()
 {
 
   // Score collision estimate of keff
+<<<<<<< HEAD
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
+=======
+  if ((settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) &&
+      type() == ParticleType::neutron) {
+>>>>>>> e709e130e (Initial implementation of total multiplication factor tally in fixed source mode, currently incorrect though)
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
   }
 

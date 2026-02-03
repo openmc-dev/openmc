@@ -118,9 +118,11 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(file_id, "source_present", write_source_);
 
     // Write out information for eigenvalue run
-    if (settings::run_mode == RunMode::EIGENVALUE)
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) {
       write_eigenvalue_hdf5(file_id);
-
+    }
     hid_t tallies_group = create_group(file_id, "tallies");
 
     // Write meshes

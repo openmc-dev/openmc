@@ -143,6 +143,9 @@ int openmc_simulation_init()
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       if (settings::solver_type == SolverType::MONTE_CARLO) {
         header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+        if (settings::verbosity >= 7 && settings::calculate_subcritical_k) {
+          print_columns();
+        }
       } else if (settings::solver_type == SolverType::RANDOM_RAY) {
         header("FIXED SOURCE TRANSPORT SIMULATION (RANDOM RAY SOLVER)", 3);
       }
@@ -305,6 +308,8 @@ int current_gen;
 bool initialized {false};
 double keff {1.0};
 double keff_std;
+double k {1.0};
+double k_std;
 double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
@@ -322,6 +327,7 @@ const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 vector<array<double, 2>> k_generation;
+vector<array<double, 2>> m_generation;
 vector<int64_t> work_index;
 
 } // namespace simulation
@@ -367,7 +373,9 @@ void initialize_batch()
       write_message(
         6, "Simulating batch {:<4} (inactive)", simulation::current_batch);
     } else {
-      write_message(6, "Simulating batch {}", simulation::current_batch);
+      if (!settings::calculate_subcritical_k) {
+        write_message(6, "Simulating batch {}", simulation::current_batch);
+      }
     }
   }
 
@@ -527,7 +535,9 @@ void finalize_generation()
   auto& gt = simulation::global_tallies;
 
   // Update global tallies with the accumulation variables
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
     gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
     gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
       global_tally_absorption;
@@ -539,7 +549,9 @@ void finalize_generation()
   gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
   // reset tallies
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
     global_tally_tracklength = 0.0;
@@ -547,19 +559,20 @@ void finalize_generation()
   }
   global_tally_leakage = 0.0;
 
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      settings::solver_type == SolverType::MONTE_CARLO) {
-    // If using shared memory, stable sort the fission bank (by parent IDs)
-    // so as to allow for reproducibility regardless of which order particles
-    // are run in.
-    sort_fission_bank();
+  // For fixed source mode, we need different handling
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
 
-    // Distribute fission bank across processors evenly
+  } else if (settings::run_mode == RunMode::EIGENVALUE &&
+             settings::solver_type == SolverType::MONTE_CARLO) {
+
+    sort_fission_bank();
     synchronize_bank();
   }
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k)) {
     // Calculate shannon entropy
     if (settings::entropy_on &&
         settings::solver_type == SolverType::MONTE_CARLO)

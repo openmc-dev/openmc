@@ -1075,7 +1075,9 @@ void accumulate_tallies()
   if (mpi::master || !settings::reduce_tallies) {
     auto& gt = simulation::global_tallies;
 
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) {
       if (simulation::current_batch > settings::n_inactive) {
         // Accumulate products of different estimators of k
         double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /

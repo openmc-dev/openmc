@@ -398,6 +398,13 @@ void print_generation()
   array<double, 2> k_gen;
   k_gen[0] = simulation::k_generation[idx][0];
   k_gen[1] = simulation::k_generation[idx][1];
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    // convert from multiplication factor to subcritical k
+    auto [k0, k1] = convert_m_to_k(k_gen[0], k_gen[1]);
+    k_gen[0] = k0;
+    k_gen[1] = k1;
+  }
   fmt::print("  {:>9}   {:8.5f} +/-{:8.5f}", batch_and_gen, k_gen[0], k_gen[1]);
 
   // write out entropy info
@@ -406,7 +413,18 @@ void print_generation()
   }
 
   if (n > 1) {
-    fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
+    double k, k_std;
+    if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+      // convert from multiplication factor to subcritical k
+      auto [k0, k1] = convert_m_to_k(simulation::k, simulation::k_std);
+      k = k0;
+      k_std = k1;
+    } else {
+      k = simulation::k;
+      k_std = simulation::k_std;
+    }
+    fmt::print("   {:8.5f} +/-{:8.5f}", k, k_std);
   }
   fmt::print("\n");
   std::fflush(stdout);

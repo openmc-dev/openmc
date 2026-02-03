@@ -36,6 +36,8 @@ extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 //! Collect/normalize the tracklength keff from each process
 void calculate_generation_keff();
 
+std::pair<double, double> convert_m_to_k(double m, double m_std);
+
 //! Calculate mean/standard deviation of keff during active generations
 //!
 //! This function sets the global variables keff and keff_std which represent

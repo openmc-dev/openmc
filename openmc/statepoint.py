@@ -36,6 +36,8 @@ class StatePoint:
 
     Attributes
     ----------
+    calculate_subcritical_k : bool
+        Whether subcritical multiplication factors were calculated in fixed source mode
     cmfd_on : bool
         Indicate whether CMFD is active
     cmfd_balance : numpy.ndarray
@@ -174,6 +176,15 @@ class StatePoint:
         self.close()
 
     @property
+    def calculate_subcritical_k(self):
+        """Indicate whether subcritical multiplication was calculated."""
+        # If we are in fixed source mode and k_generation exists, 
+        # then calculate_subcritical_k was True during the simulation.
+        if self.run_mode == 'fixed source' and 'k_generation' in self._f:
+            return True
+        return False
+
+    @property
     def cmfd_on(self):
         return self._f.attrs['cmfd_on'] > 0
 
@@ -272,7 +283,7 @@ class StatePoint:
 
     @property
     def k_generation(self):
-        if self.run_mode == 'eigenvalue':
+        if 'k_generation' in self._f:
             arr = self._f['k_generation'][()]
             if arr.ndim==1:
                 return arr
@@ -285,7 +296,7 @@ class StatePoint:
 
     @property
     def keff(self):
-        if self.run_mode == 'eigenvalue':
+        if 'k_combined' in self._f:
             return ufloat(*self._f['k_combined'][()])
         else:
             return None
@@ -341,6 +352,8 @@ class StatePoint:
             cumprod = np.cumprod(k_inactive)
             cumprod[-1] *= 1/(1-self.keff)
             return 1.0+np.sum(cumprod)
+        elif self.calculate_subcritical_k:
+            return 1/(1 - self.keff)
         else:
             return None        
 

@@ -51,13 +51,21 @@ void calculate_generation_keff()
 {
   const auto& gt = simulation::global_tallies;
 
-  // Get keff for this generation by subtracting off the starting value
-  simulation::keff_generation[0] =
-    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
-    simulation::keff_generation[0];
-  simulation::keff_generation[1] =
-    gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) -
-    simulation::keff_generation[1];
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    // For fixed source mode, we don't subtract previous generation values
+    simulation::keff_generation[0] =
+      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    simulation::keff_generation[1] =
+      gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE);
+  } else {
+    simulation::keff_generation[0] =
+      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+      simulation::keff_generation[0];
+    simulation::keff_generation[1] =
+      gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) -
+      simulation::keff_generation[1];
+  }
 
   array<double, 2> keff_reduced;
 #ifdef OPENMC_MPI
@@ -89,6 +97,13 @@ void calculate_generation_keff()
   double k_std = std::sqrt(
     (keff_reduced[1] - std::pow(k_mean, 2)) / (settings::n_particles - 1));
   simulation::k_generation.push_back({k_mean, k_std});
+}
+
+std::pair<double, double> convert_m_to_k(double m, double m_std)
+{
+  double k = 1.0 - 1.0 / m;
+  double k_std = m_std / (m * m);
+  return {k, k_std};
 }
 
 void synchronize_bank()
@@ -394,18 +409,20 @@ void calculate_average_keff()
   } else {
     n = 0;
   }
+  double keff;
+  double keff_std;
 
   if (n <= 0) {
     // For inactive generations, use current generation k as estimate for next
     // generation
-    simulation::keff = simulation::k_generation[i][0];
+    keff = simulation::k_generation[i][0];
   } else {
     // Sample mean of keff
     simulation::k_sum[0] += simulation::k_generation[i][0];
     simulation::k_sum[1] += std::pow(simulation::k_generation[i][0], 2);
 
     // Determine mean
-    simulation::keff = simulation::k_sum[0] / n;
+    keff = simulation::k_sum[0] / n;
 
     if (n > 1) {
       double t_value;
@@ -418,10 +435,9 @@ void calculate_average_keff()
       }
 
       // Standard deviation of the sample mean of k
-      simulation::keff_std =
+      keff_std =
         t_value *
-        std::sqrt(
-          (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
+        std::sqrt((simulation::k_sum[1] / n - std::pow(keff, 2)) / (n - 1));
 
       // In some cases (such as an infinite medium problem), random ray
       // may estimate k exactly and in an unvarying manner between iterations.
@@ -429,10 +445,18 @@ void calculate_average_keff()
       // power operations may cause an extremely small negative value to occur
       // inside the sqrt operation, leading to NaN. If this occurs, we check for
       // it and set the std dev to zero.
-      if (!std::isfinite(simulation::keff_std)) {
-        simulation::keff_std = 0.0;
+      if (!std::isfinite(keff_std)) {
+        keff_std = 0.0;
       }
     }
+  }
+  simulation::k = keff;
+  simulation::k_std = keff_std;
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // Only set simulation::keff for eigenvalue mode, since it's used to bias
+    // physics
+    simulation::keff = keff;
+    simulation::keff_std = keff_std;
   }
 }
 
@@ -687,23 +711,50 @@ double ufs_get_weight(const Particle& p)
 
 void write_eigenvalue_hdf5(hid_t group)
 {
-  write_dataset(group, "n_inactive", settings::n_inactive);
-  write_dataset(group, "generations_per_batch", settings::gen_per_batch);
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    write_dataset(group, "n_inactive", settings::n_inactive);
+    write_dataset(group, "generations_per_batch", settings::gen_per_batch);
+    if (settings::entropy_on) {
+      write_dataset(group, "entropy", simulation::entropy);
+    }
+    write_dataset(group, "k_col_abs", simulation::k_col_abs);
+    write_dataset(group, "k_col_tra", simulation::k_col_tra);
+    write_dataset(group, "k_abs_tra", simulation::k_abs_tra);
+  }
   auto n = simulation::k_generation.size();
   xt::xtensor<double, 2> k_generation({n, 2});
   for (int i = 0; i < n; ++i) {
-    k_generation(i, 0) = simulation::k_generation[i][0];
-    k_generation(i, 1) = simulation::k_generation[i][1];
+    double k, k_std;
+    if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+      // Temporary fix until formula for combined estimator can be implemented
+      // correctly
+      auto [k0, k1] = convert_m_to_k(
+        simulation::k_generation[i][0], simulation::k_generation[i][1]);
+      k = k0;
+      k_std = k1;
+    } else {
+      k = simulation::k_generation[i][0];
+      k_std = simulation::k_generation[i][1];
+    }
+    k_generation(i, 0) = k;
+    k_generation(i, 1) = k_std;
   }
   write_dataset(group, "k_generation", k_generation);
-  if (settings::entropy_on) {
-    write_dataset(group, "entropy", simulation::entropy);
-  }
-  write_dataset(group, "k_col_abs", simulation::k_col_abs);
-  write_dataset(group, "k_col_tra", simulation::k_col_tra);
-  write_dataset(group, "k_abs_tra", simulation::k_abs_tra);
   array<double, 2> k_combined;
   openmc_get_keff(k_combined.data());
+  fmt::print("K_combined: {} +/- {}\n", k_combined[0], k_combined[1]);
+  fmt::print("k col abs {}", simulation::k_col_abs);
+  fmt::print("k col tra {}", simulation::k_col_tra);
+  fmt::print("k abs tra {}", simulation::k_abs_tra);
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    // Temporary fix until formula for combined estimator can be implemented
+    // correctly
+    auto [k0, k1] = convert_m_to_k(k_combined[0], k_combined[1]);
+    k_combined[0] = k0;
+    k_combined[1] = k1;
+  }
   write_dataset(group, "k_combined", k_combined);
 }
 

@@ -201,8 +201,8 @@ int openmc_weight_windows_set_energy_bounds(
   int32_t index, double* e_bounds, size_t e_bounds_size);
 int openmc_weight_windows_get_energy_bounds(
   int32_t index, const double** e_bounds, size_t* e_bounds_size);
-int openmc_weight_windows_set_particle(int32_t index, int particle);
-int openmc_weight_windows_get_particle(int32_t index, int* particle);
+int openmc_weight_windows_set_particle(int32_t index, int32_t particle);
+int openmc_weight_windows_get_particle(int32_t index, int32_t* particle);
 int openmc_weight_windows_get_bounds(int32_t index, const double** lower_bounds,
   const double** upper_bounds, size_t* size);
 int openmc_weight_windows_set_bounds(int32_t index, const double* lower_bounds,
@@ -227,7 +227,7 @@ int openmc_zernike_filter_set_order(int32_t index, int order);
 int openmc_zernike_filter_set_params(
   int32_t index, const double* x, const double* y, const double* r);
 
-int openmc_particle_filter_get_bins(int32_t idx, int bins[]);
+int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[]);
 
 //! Sets the mesh and energy grid for CMFD reweight
 //! \param[in] meshtyally_id id of CMFD Mesh Tally

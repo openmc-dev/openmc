@@ -77,7 +77,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // get the particle type
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
-  particle_type_ = openmc::str_to_particle_type(particle_type_str);
+  particle_type_ = ParticleType {particle_type_str};
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
@@ -150,7 +150,7 @@ WeightWindows* WeightWindows::from_hdf5(
 
   std::string particle_type;
   read_dataset(ww_group, "particle_type", particle_type);
-  wws->particle_type_ = openmc::str_to_particle_type(particle_type);
+  wws->particle_type_ = ParticleType {particle_type};
 
   read_dataset<double>(ww_group, "energy_bounds", wws->energy_bounds_);
 
@@ -182,7 +182,10 @@ void WeightWindows::set_defaults()
 {
   // set energy bounds to the min/max energy supported by the data
   if (energy_bounds_.size() == 0) {
-    int p_type = static_cast<int>(particle_type_);
+    int p_type = particle_type_.transport_index();
+    if (p_type == C_NONE) {
+      fatal_error("Weight windows particle is not supported for transport.");
+    }
     energy_bounds_.push_back(data::energy_min[p_type]);
     energy_bounds_.push_back(data::energy_max[p_type]);
   }
@@ -243,10 +246,9 @@ void WeightWindows::set_energy_bounds(span<const double> bounds)
 
 void WeightWindows::set_particle_type(ParticleType p_type)
 {
-  if (p_type != ParticleType::neutron && p_type != ParticleType::photon)
-    fatal_error(
-      fmt::format("Particle type '{}' cannot be applied to weight windows.",
-        particle_type_to_str(p_type)));
+  if (!p_type.is_neutron() && !p_type.is_photon())
+    fatal_error(fmt::format(
+      "Particle type '{}' cannot be applied to weight windows.", p_type.str()));
   particle_type_ = p_type;
 }
 
@@ -277,19 +279,19 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
     return {};
   }
 
-  // particle energy
-  double E = p.E();
-
-  // check to make sure energy is in range, expects sorted energy values
-  if (E < energy_bounds_.front() || E > energy_bounds_.back())
-    return {};
-
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
   int mesh_bin = mesh->get_bin(p.r());
 
   // particle is outside the weight window mesh
   if (mesh_bin < 0)
+    return {};
+
+  // particle energy
+  double E = p.E();
+
+  // check to make sure energy is in range, expects sorted energy values
+  if (E < energy_bounds_.front() || E > energy_bounds_.back())
     return {};
 
   // get the mesh bin in energy group
@@ -506,8 +508,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     if (p_it == particles.end()) {
       auto msg = fmt::format("Particle type '{}' not present on Filter {} for "
                              "Tally {} used to update WeightWindows {}",
-        particle_type_to_str(this->particle_type_), pf->id(), tally->id(),
-        this->id());
+        this->particle_type_.str(), pf->id(), tally->id(), this->id());
       fatal_error(msg);
     }
 
@@ -716,8 +717,7 @@ void WeightWindows::to_hdf5(hid_t group) const
   hid_t ww_group = create_group(group, fmt::format("weight_windows_{}", id()));
 
   write_dataset(ww_group, "mesh", this->mesh()->id());
-  write_dataset(
-    ww_group, "particle_type", openmc::particle_type_to_str(particle_type_));
+  write_dataset(ww_group, "particle_type", particle_type_.str());
   write_dataset(ww_group, "energy_bounds", energy_bounds_);
   write_dataset(ww_group, "lower_ww_bounds", lower_ww_);
   write_dataset(ww_group, "upper_ww_bounds", upper_ww_);
@@ -744,8 +744,8 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
         max_realizations_, active_batches);
     warning(msg);
   }
-  auto tmp_str = get_node_value(node, "particle_type", true, true);
-  auto particle_type = str_to_particle_type(tmp_str);
+  auto tmp_str = get_node_value(node, "particle_type", false, true);
+  auto particle_type = ParticleType {tmp_str};
 
   update_interval_ = std::stoi(get_node_value(node, "update_interval"));
   on_the_fly_ = get_node_value_bool(node, "on_the_fly");
@@ -754,7 +754,10 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   if (check_for_node(node, "energy_bounds")) {
     e_bounds = get_node_array<double>(node, "energy_bounds");
   } else {
-    int p_type = static_cast<int>(particle_type);
+    int p_type = particle_type.transport_index();
+    if (p_type == C_NONE) {
+      fatal_error("Weight windows particle is not supported for transport.");
+    }
     e_bounds.push_back(data::energy_min[p_type]);
     e_bounds.push_back(data::energy_max[p_type]);
   }
@@ -914,7 +917,7 @@ void apply_weight_windows(Particle& p)
     return;
 
   // WW on photon and neutron only
-  if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
+  if (!p.type().is_neutron() && !p.type().is_photon())
     return;
 
   // skip dead or no energy
@@ -1119,23 +1122,25 @@ extern "C" int openmc_weight_windows_get_energy_bounds(
   return 0;
 }
 
-extern "C" int openmc_weight_windows_set_particle(int32_t index, int particle)
+extern "C" int openmc_weight_windows_set_particle(
+  int32_t index, int32_t particle)
 {
   if (int err = verify_ww_index(index))
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  wws->set_particle_type(static_cast<ParticleType>(particle));
+  wws->set_particle_type(ParticleType {particle});
   return 0;
 }
 
-extern "C" int openmc_weight_windows_get_particle(int32_t index, int* particle)
+extern "C" int openmc_weight_windows_get_particle(
+  int32_t index, int32_t* particle)
 {
   if (int err = verify_ww_index(index))
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  *particle = static_cast<int>(wws->particle_type());
+  *particle = wws->particle_type().pdg_number();
   return 0;
 }
 

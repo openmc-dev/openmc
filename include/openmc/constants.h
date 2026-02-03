@@ -90,7 +90,7 @@ constexpr double INFTY {std::numeric_limits<double>::max()};
 constexpr double AMU_EV {
   9.3149410242e8}; // atomic mass unit energy equivalent in eV/c^2
 constexpr double MASS_NEUTRON_EV {
-  NEUTRON_MASS * AMU_EV}; // neutron mass energy equivalent in eV/c^2
+  MASS_NEUTRON * AMU_EV}; // neutron mass energy equivalent in eV/c^2
 constexpr double MASS_ELECTRON_EV {
   MASS_ELECTRON * AMU_EV}; // electron mass energy equivalent in eV/c^2
 constexpr double FINE_STRUCTURE {

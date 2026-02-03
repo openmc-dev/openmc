@@ -22,6 +22,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
+#include "openmc/particle_type.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -632,6 +633,7 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
   if (mpi::master || parallel) {
     file_id = file_open(filename_.c_str(), 'w', true);
     write_attribute(file_id, "filetype", "source");
+    write_attribute(file_id, "version", VERSION_STATEPOINT);
   }
 
   // Get pointer to source bank and write to file
@@ -677,6 +679,16 @@ std::string dtype_member_names(hid_t dtype_id)
 void read_source_bank(
   hid_t group_id, vector<SourceSite>& sites, bool distribute)
 {
+  bool legacy_particle_codes = true;
+  if (attribute_exists(group_id, "version")) {
+    array<int, 2> version;
+    read_attribute(group_id, "version", version);
+    if (version[0] > VERSION_STATEPOINT[0] ||
+        (version[0] == VERSION_STATEPOINT[0] && version[1] >= 2)) {
+      legacy_particle_codes = false;
+    }
+  }
+
   hid_t banktype = h5banktype(true);
 
   // Open the dataset
@@ -738,6 +750,12 @@ void read_source_bank(
     H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
+
+  if (legacy_particle_codes) {
+    for (auto& site : sites) {
+      site.particle = legacy_particle_index_to_type(site.particle.pdg_number());
+    }
+  }
 }
 
 void write_unstructured_mesh_results()

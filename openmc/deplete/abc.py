@@ -209,6 +209,8 @@ class TransportOperator(ABC):
             simulation.
         full_burn_list : list of int
             All burnable materials in the geometry.
+        name_list : list of str
+            Material names corresponding to materials in burn_list
         """
 
     def finalize(self):

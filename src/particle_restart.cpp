@@ -31,6 +31,16 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   hid_t file_id = file_open(settings::path_particle_restart, 'r');
 
   // Read data from file
+  bool legacy_particle_codes = true;
+  if (attribute_exists(file_id, "version")) {
+    array<int, 2> version;
+    read_attribute(file_id, "version", version);
+    if (version[0] > VERSION_PARTICLE_RESTART[0] ||
+        (version[0] == VERSION_PARTICLE_RESTART[0] && version[1] >= 1)) {
+      legacy_particle_codes = false;
+    }
+  }
+
   read_dataset(file_id, "current_batch", simulation::current_batch);
   read_dataset(file_id, "generations_per_batch", settings::gen_per_batch);
   read_dataset(file_id, "current_generation", simulation::current_gen);
@@ -45,7 +55,8 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   read_dataset(file_id, "id", p.id());
   int type;
   read_dataset(file_id, "type", type);
-  p.type() = static_cast<ParticleType>(type);
+  p.type() = legacy_particle_codes ? legacy_particle_index_to_type(type)
+                                   : ParticleType {type};
   read_dataset(file_id, "weight", p.wgt());
   read_dataset(file_id, "energy", p.E());
   read_dataset(file_id, "xyz", p.r());

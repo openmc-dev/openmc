@@ -208,8 +208,10 @@ public:
   // Members
 public:
   Position origin_;           //!< Plot origin in geometry
-  Position width_;            //!< Plot width in geometry
-  PlotBasis basis_;           //!< Plot basis (XY/XZ/YZ)
+  Position u_span_;           //!< Full-width span vector in geometry
+  Position v_span_;           //!< Full-height span vector in geometry
+  Position width_;            //!< Axis-aligned plot width in geometry
+  PlotBasis basis_;           //!< Plot basis (XY/XZ/YZ) for axis-aligned slices
   array<size_t, 3> pixels_;   //!< Plot size in pixels
   bool slice_color_overlaps_; //!< Show overlapping cells?
   int slice_level_ {-1};      //!< Plot universe level
@@ -230,44 +232,27 @@ T SlicePlotBase::get_map(int32_t filter_index) const
     filter = model::tally_filters[filter_index].get();
   }
 
-  // get pixel size
-  double in_pixel = (width_[0]) / static_cast<double>(width);
-  double out_pixel = (width_[1]) / static_cast<double>(height);
-
   // size data array
   T data(width, height, include_filter);
 
-  // setup basis indices and initial position centered on pixel
-  int in_i, out_i;
-  Position xyz = origin_;
-  switch (basis_) {
-  case PlotBasis::xy:
-    in_i = 0;
-    out_i = 1;
-    break;
-  case PlotBasis::xz:
-    in_i = 0;
-    out_i = 2;
-    break;
-  case PlotBasis::yz:
-    in_i = 1;
-    out_i = 2;
-    break;
-  default:
-    UNREACHABLE();
+  // compute pixel steps and top-left pixel center
+  Position u_step = u_span_ / static_cast<double>(width);
+  Position v_step = v_span_ / static_cast<double>(height);
+
+  Position start =
+    origin_ - 0.5 * u_span_ + 0.5 * v_span_ + 0.5 * u_step - 0.5 * v_step;
+
+  Direction dir = u_span_.cross(v_span_);
+  double dir_norm = dir.norm();
+  if (dir_norm == 0.0) {
+    fatal_error("Slice span vectors are invalid (zero area).");
   }
-
-  // set initial position
-  xyz[in_i] = origin_[in_i] - width_[0] / 2. + in_pixel / 2.;
-  xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
-
-  // arbitrary direction
-  Direction dir = {1. / std::sqrt(2.), 1. / std::sqrt(2.), 0.0};
+  dir /= dir_norm;
 
 #pragma omp parallel
   {
     Particle p;
-    p.r() = xyz;
+    p.r() = start;
     p.u() = dir;
     p.coord(0).universe() = model::root_universe;
     int level = slice_level_;
@@ -276,9 +261,9 @@ T SlicePlotBase::get_map(int32_t filter_index) const
 
 #pragma omp for
     for (int y = 0; y < height; y++) {
-      p.r()[out_i] = xyz[out_i] - out_pixel * y;
+      Position row = start - v_step * static_cast<double>(y);
       for (int x = 0; x < width; x++) {
-        p.r()[in_i] = xyz[in_i] + in_pixel * x;
+        p.r() = row + u_step * static_cast<double>(x);
         p.n_coord() = 1;
         // local variables
         bool found_cell = exhaustive_find_cell(p);

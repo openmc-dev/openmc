@@ -495,6 +495,22 @@ void Plot::set_width(pugi::xml_node plot_node)
     if (pl_width.size() == 2) {
       width_.x = pl_width[0];
       width_.y = pl_width[1];
+      switch (basis_) {
+      case PlotBasis::xy:
+        u_span_ = {width_.x, 0.0, 0.0};
+        v_span_ = {0.0, width_.y, 0.0};
+        break;
+      case PlotBasis::xz:
+        u_span_ = {width_.x, 0.0, 0.0};
+        v_span_ = {0.0, 0.0, width_.y};
+        break;
+      case PlotBasis::yz:
+        u_span_ = {0.0, width_.x, 0.0};
+        v_span_ = {0.0, 0.0, width_.y};
+        break;
+      default:
+        UNREACHABLE();
+      }
     } else {
       fatal_error(
         fmt::format("<width> must be length 2 in slice plot {}", id()));
@@ -1057,6 +1073,8 @@ void Plot::create_voxel() const
   pltbase.width_ = width_;
   pltbase.origin_ = origin_;
   pltbase.basis_ = PlotBasis::xy;
+  pltbase.u_span_ = {width_.x, 0.0, 0.0};
+  pltbase.v_span_ = {0.0, width_.y, 0.0};
   pltbase.pixels() = pixels();
   pltbase.slice_color_overlaps_ = color_overlaps_;
 
@@ -2001,13 +2019,25 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
   return 0;
 }
 
-extern "C" int openmc_raster_plot(const double origin[3], const double width[2],
-  int basis, const size_t pixels[2], bool color_overlaps, int level,
-  int32_t filter_index, int32_t* geom_data, double* property_data)
+extern "C" int openmc_raster_plot(const double origin[3],
+  const double u_span[3], const double v_span[3], const size_t pixels[2],
+  bool color_overlaps, int level, int32_t filter_index, int32_t* geom_data,
+  double* property_data)
 {
-  // Validate basis
-  if (basis < 1 || basis > 3) {
-    set_errmsg("Invalid basis value. Must be 1 (xy), 2 (xz), or 3 (yz).");
+  // Validate span vectors
+  Position u_span_pos {u_span[0], u_span[1], u_span[2]};
+  Position v_span_pos {v_span[0], v_span[1], v_span[2]};
+  double u_norm = u_span_pos.norm();
+  double v_norm = v_span_pos.norm();
+  if (u_norm == 0.0 || v_norm == 0.0) {
+    set_errmsg("Slice span vectors must be non-zero.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  constexpr double ORTHO_REL_TOL = 1e-10;
+  double dot = u_span_pos.dot(v_span_pos);
+  if (std::abs(dot) > ORTHO_REL_TOL * u_norm * v_norm) {
+    set_errmsg("Slice span vectors must be orthogonal.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
@@ -2026,8 +2056,10 @@ extern "C" int openmc_raster_plot(const double origin[3], const double width[2],
     // Create a temporary SlicePlotBase object to reuse get_raster_map logic
     SlicePlotBase plot_params;
     plot_params.origin_ = Position {origin[0], origin[1], origin[2]};
-    plot_params.width_ = Position {width[0], width[1], 0.0};
-    plot_params.basis_ = static_cast<SlicePlotBase::PlotBasis>(basis);
+    plot_params.u_span_ = u_span_pos;
+    plot_params.v_span_ = v_span_pos;
+    plot_params.width_ = Position {u_norm, v_norm, 0.0};
+    plot_params.basis_ = SlicePlotBase::PlotBasis::xy;
     plot_params.pixels_[0] = pixels[0];
     plot_params.pixels_[1] = pixels[1];
     plot_params.slice_color_overlaps_ = color_overlaps;

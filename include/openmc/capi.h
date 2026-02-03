@@ -125,9 +125,9 @@ int openmc_nuclide_name(int index, const char** name);
 int openmc_plot_geometry();
 int openmc_id_map(const void* slice, int32_t* data_out);
 int openmc_property_map(const void* slice, double* data_out);
-int openmc_raster_plot(const double origin[3], const double width[2], int basis,
-  const size_t pixels[2], bool color_overlaps, int level, int32_t filter_index,
-  int32_t* geom_data, double* property_data);
+int openmc_raster_plot(const double origin[3], const double u_span[3],
+  const double v_span[3], const size_t pixels[2], bool color_overlaps,
+  int level, int32_t filter_index, int32_t* geom_data, double* property_data);
 int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
   double** grid_y, int* ny, double** grid_z, int* nz);
 int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,

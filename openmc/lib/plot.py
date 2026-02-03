@@ -54,6 +54,10 @@ class _PlotBase(Structure):
     -----------------
     origin_ : openmc.lib.plot._Position
         A position defining the origin of the plot.
+    u_span_ : openmc.lib.plot._Position
+        Full-width span vector defining the plot's horizontal axis.
+    v_span_ : openmc.lib.plot._Position
+        Full-height span vector defining the plot's vertical axis.
     width_ : openmc.lib.plot._Position
         The width of the plot along the x, y, and z axes, respectively
     basis_ : c_int
@@ -84,6 +88,8 @@ class _PlotBase(Structure):
         The universe level for the plot (default: -1 -> all universes shown)
     """
     _fields_ = [('origin_', _Position),
+                ('u_span_', _Position),
+                ('v_span_', _Position),
                 ('width_', _Position),
                 ('basis_', c_int),
                 ('pixels_', 3*c_size_t),
@@ -94,6 +100,30 @@ class _PlotBase(Structure):
         self.level_ = -1
         self.basis_ = 1
         self.color_overlaps_ = False
+        self._update_spans()
+
+    def _update_spans(self):
+        if self.basis_ == 1:
+            self.u_span_.x = self.width_.x
+            self.u_span_.y = 0.0
+            self.u_span_.z = 0.0
+            self.v_span_.x = 0.0
+            self.v_span_.y = self.width_.y
+            self.v_span_.z = 0.0
+        elif self.basis_ == 2:
+            self.u_span_.x = self.width_.x
+            self.u_span_.y = 0.0
+            self.u_span_.z = 0.0
+            self.v_span_.x = 0.0
+            self.v_span_.y = 0.0
+            self.v_span_.z = self.width_.y
+        elif self.basis_ == 3:
+            self.u_span_.x = 0.0
+            self.u_span_.y = self.width_.x
+            self.u_span_.z = 0.0
+            self.v_span_.x = 0.0
+            self.v_span_.y = 0.0
+            self.v_span_.z = self.width_.y
 
     @property
     def origin(self):
@@ -112,6 +142,7 @@ class _PlotBase(Structure):
     @width.setter
     def width(self, width):
         self.width_.x = width
+        self._update_spans()
 
     @property
     def height(self):
@@ -120,6 +151,7 @@ class _PlotBase(Structure):
     @height.setter
     def height(self, height):
         self.width_.y = height
+        self._update_spans()
 
     @property
     def basis(self):
@@ -146,6 +178,7 @@ class _PlotBase(Structure):
                 self.basis_ = 2
             elif basis == 'yz':
                 self.basis_ = 3
+            self._update_spans()
             return
 
         if isinstance(basis, int):
@@ -153,6 +186,7 @@ class _PlotBase(Structure):
             if basis not in valid_bases:
                 raise ValueError(f"{basis} is not a valid plot basis.")
             self.basis_ = basis
+            self._update_spans()
             return
 
         raise ValueError(f"{basis} of type {type(basis)} is an invalid plot basis")
@@ -261,8 +295,8 @@ def property_map(plot):
 
 _dll.openmc_raster_plot.argtypes = [
     POINTER(c_double * 3),   # origin
-    POINTER(c_double * 2),   # width
-    c_int,                   # basis
+    POINTER(c_double * 3),   # u_span
+    POINTER(c_double * 3),   # v_span
     POINTER(c_size_t * 2),   # pixels
     c_bool,                  # color_overlaps
     c_int,                   # level
@@ -274,8 +308,10 @@ _dll.openmc_raster_plot.restype = c_int
 _dll.openmc_raster_plot.errcheck = _error_handler
 
 
-def raster_plot(origin, width, basis, pixels, color_overlaps=False, level=-1,
-                filter=None, include_properties=True):
+def raster_plot(origin, width=None, basis='xy', pixels=None,
+                color_overlaps=False, level=-1, filter=None,
+                include_properties=True, u_span=None, v_span=None,
+                axes=None):
     """
     Generate a 2D raster of geometry and property data for plotting.
 
@@ -284,9 +320,10 @@ def raster_plot(origin, width, basis, pixels, color_overlaps=False, level=-1,
     origin : sequence of float
         Center position of the plot [x, y, z]
     width : sequence of float
-        Width of the plot [horizontal, vertical]
+        Width of the plot [horizontal, vertical]. Mutually exclusive with
+        u_span/v_span/axes.
     basis : {'xy', 'xz', 'yz'} or int
-        Plot basis
+        Plot basis. Ignored if u_span/v_span/axes are provided.
     pixels : sequence of int
         Number of pixels [horizontal, vertical]
     color_overlaps : bool, optional
@@ -297,6 +334,14 @@ def raster_plot(origin, width, basis, pixels, color_overlaps=False, level=-1,
         Filter for bin index lookup
     include_properties : bool, optional
         Whether to compute temperature/density
+    u_span : sequence of float, optional
+        Full-width span vector for the horizontal axis (3 values). Mutually
+        exclusive with width.
+    v_span : sequence of float, optional
+        Full-height span vector for the vertical axis (3 values). Mutually
+        exclusive with width.
+    axes : tuple of (u_span, v_span), optional
+        Convenience alternative to pass both span vectors.
 
     Returns
     -------
@@ -308,14 +353,71 @@ def raster_plot(origin, width, basis, pixels, color_overlaps=False, level=-1,
         Array of shape (v_res, h_res, 2) with float64 dtype containing
         [temperature, density], or None if include_properties=False
     """
-    # Convert basis string to int
-    basis_map = {'xy': 1, 'xz': 2, 'yz': 3}
-    if isinstance(basis, str):
-        basis = basis_map[basis.lower()]
+    if pixels is None:
+        raise ValueError("pixels must be specified.")
+    if len(pixels) != 2:
+        raise ValueError("pixels must be a length-2 sequence.")
+
+    if axes is not None:
+        if u_span is not None or v_span is not None:
+            raise ValueError("axes is mutually exclusive with u_span/v_span.")
+        if len(axes) != 2:
+            raise ValueError("axes must be a length-2 iterable of span vectors.")
+        u_span, v_span = axes
+
+    if width is not None and (u_span is not None or v_span is not None):
+        raise ValueError("width is mutually exclusive with u_span/v_span/axes.")
+
+    if u_span is not None or v_span is not None:
+        if u_span is None or v_span is None:
+            raise ValueError("Both u_span and v_span must be provided.")
+        u_span = np.asarray(u_span, dtype=float)
+        v_span = np.asarray(v_span, dtype=float)
+        if u_span.shape != (3,) or v_span.shape != (3,):
+            raise ValueError("u_span and v_span must be length-3 sequences.")
+        u_norm = np.linalg.norm(u_span)
+        v_norm = np.linalg.norm(v_span)
+        if u_norm == 0.0 or v_norm == 0.0:
+            raise ValueError("u_span and v_span must be non-zero vectors.")
+        dot = float(np.dot(u_span, v_span))
+        ortho_tol = 1.0e-10 * u_norm * v_norm
+        if abs(dot) > ortho_tol:
+            raise ValueError("u_span and v_span must be orthogonal.")
+    else:
+        if width is None:
+            raise ValueError("width must be provided when u_span/v_span are not set.")
+        if len(width) != 2:
+            raise ValueError("width must be a length-2 sequence.")
+        basis_map = {'xy': 1, 'xz': 2, 'yz': 3}
+        if isinstance(basis, str):
+            basis = basis.lower()
+            if basis not in basis_map:
+                raise ValueError(f"{basis} is not a valid plot basis.")
+            basis = basis_map[basis]
+        elif isinstance(basis, int):
+            if basis not in basis_map.values():
+                raise ValueError(f"{basis} is not a valid plot basis.")
+        else:
+            raise ValueError(f"{basis} is not a valid plot basis.")
+
+        if basis == 1:
+            u_span = np.array([width[0], 0.0, 0.0], dtype=float)
+            v_span = np.array([0.0, width[1], 0.0], dtype=float)
+        elif basis == 2:
+            u_span = np.array([width[0], 0.0, 0.0], dtype=float)
+            v_span = np.array([0.0, 0.0, width[1]], dtype=float)
+        else:
+            u_span = np.array([0.0, width[0], 0.0], dtype=float)
+            v_span = np.array([0.0, 0.0, width[1]], dtype=float)
+
+    origin = np.asarray(origin, dtype=float)
+    if origin.shape != (3,):
+        raise ValueError("origin must be a length-3 sequence.")
 
     # Prepare ctypes arrays
     origin_arr = (c_double * 3)(*origin)
-    width_arr = (c_double * 2)(*width)
+    u_span_arr = (c_double * 3)(*u_span)
+    v_span_arr = (c_double * 3)(*v_span)
     pixels_arr = (c_size_t * 2)(*pixels)
 
     # Get internal filter index from filter ID if filter is provided
@@ -338,8 +440,8 @@ def raster_plot(origin, width, basis, pixels, color_overlaps=False, level=-1,
 
     _dll.openmc_raster_plot(
         origin_arr,
-        width_arr,
-        basis,
+        u_span_arr,
+        v_span_arr,
         pixels_arr,
         color_overlaps,
         level,

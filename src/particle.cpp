@@ -68,8 +68,8 @@ double Particle::speed() const
   } else {
     auto mat = this->material();
     if (mat == MATERIAL_VOID) {
-      if (!mg::void_velocities_.empty()) {
-        return mg::void_velocities_[this->g()];
+      if (!data::mg.void_velocities_.empty()) {
+        return data::mg.void_velocities_[this->g()];
       } else {
         return 0.0;
       }

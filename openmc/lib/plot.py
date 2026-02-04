@@ -308,12 +308,10 @@ _dll.openmc_raster_plot.restype = c_int
 _dll.openmc_raster_plot.errcheck = _error_handler
 
 
-def raster_plot(origin, width=None, basis='xy', pixels=None,
-                color_overlaps=False, level=-1, filter=None,
-                include_properties=True, u_span=None, v_span=None,
-                axes=None):
-    """
-    Generate a 2D raster of geometry and property data for plotting.
+def raster_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
+                pixels=None, color_overlaps=False, level=-1, filter=None,
+                include_properties=True):
+    """Generate a 2D raster of geometry and property data for plotting.
 
     Parameters
     ----------
@@ -321,9 +319,15 @@ def raster_plot(origin, width=None, basis='xy', pixels=None,
         Center position of the plot [x, y, z]
     width : sequence of float
         Width of the plot [horizontal, vertical]. Mutually exclusive with
-        u_span/v_span/axes.
+        u_span/v_span.
     basis : {'xy', 'xz', 'yz'} or int
-        Plot basis. Ignored if u_span/v_span/axes are provided.
+        Plot basis. Ignored if u_span/v_span are provided.
+    u_span : sequence of float, optional
+        Full-width span vector for the horizontal axis (3 values). Mutually
+        exclusive with width.
+    v_span : sequence of float, optional
+        Full-height span vector for the vertical axis (3 values). Mutually
+        exclusive with width.
     pixels : sequence of int
         Number of pixels [horizontal, vertical]
     color_overlaps : bool, optional
@@ -334,14 +338,6 @@ def raster_plot(origin, width=None, basis='xy', pixels=None,
         Filter for bin index lookup
     include_properties : bool, optional
         Whether to compute temperature/density
-    u_span : sequence of float, optional
-        Full-width span vector for the horizontal axis (3 values). Mutually
-        exclusive with width.
-    v_span : sequence of float, optional
-        Full-height span vector for the vertical axis (3 values). Mutually
-        exclusive with width.
-    axes : tuple of (u_span, v_span), optional
-        Convenience alternative to pass both span vectors.
 
     Returns
     -------
@@ -357,13 +353,6 @@ def raster_plot(origin, width=None, basis='xy', pixels=None,
         raise ValueError("pixels must be specified.")
     if len(pixels) != 2:
         raise ValueError("pixels must be a length-2 sequence.")
-
-    if axes is not None:
-        if u_span is not None or v_span is not None:
-            raise ValueError("axes is mutually exclusive with u_span/v_span.")
-        if len(axes) != 2:
-            raise ValueError("axes must be a length-2 iterable of span vectors.")
-        u_span, v_span = axes
 
     if width is not None and (u_span is not None or v_span is not None):
         raise ValueError("width is mutually exclusive with u_span/v_span/axes.")

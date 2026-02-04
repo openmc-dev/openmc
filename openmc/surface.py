@@ -150,7 +150,8 @@ class Surface(IDManagerMixin, ABC):
         Type of the surface
 
     """
-
+    
+    min_id = 1
     next_id = 1
     used_ids = set()
     _atol = 1.e-12

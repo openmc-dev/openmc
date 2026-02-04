@@ -6,9 +6,9 @@
       <density value="1.0" units="macro"/>
       <macroscopic name="source"/>
     </material>
-    <material id="2" name="void">
+    <material id="2" name="approx void">
       <density value="1.0" units="macro"/>
-      <macroscopic name="void"/>
+      <macroscopic name="approx void"/>
     </material>
     <material id="3" name="absorber">
       <density value="1.0" units="macro"/>

@@ -871,7 +871,10 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
-  bool tally_first_generation = true;
+  bool tally_first_generation = (settings::run_mode == RunMode::FIXED_SOURCE &&
+                                  settings::calculate_subcritical_k)
+                                  ? true
+                                  : false;
   while (p.alive()) {
     p.event_calculate_xs();
     if (p.alive()) {
@@ -885,7 +888,7 @@ void transport_history_based_single_particle(Particle& p)
       }
     }
     // Check for first generation completion
-    if ((!p.alive() || p.n_progeny() > 0) && tally_first_generation) {
+    if (!p.alive() && tally_first_generation) {
       if (settings::calculate_subcritical_k) {
 // Protect global updates with atomic to prevent data races
 #pragma omp atomic
@@ -900,8 +903,9 @@ void transport_history_based_single_particle(Particle& p)
       }
       tally_first_generation = false;
     }
-
-    p.event_revive_from_secondary();
+    if (!tally_first_generation) {
+      p.event_revive_from_secondary();
+    }
   }
   p.event_death();
 }

@@ -1763,10 +1763,10 @@ class SecondaryEnergyFilter(EnergyFilter):
     ----------
     values : Iterable of Real
         A list of energy boundaries in [eV]; each successive pair defines a bin.
+    particle : str, int, openmc.ParticleType
+        Type of secondary particle to tally ('photon', 'neutron', etc.)
     filter_id : int, optional
         Unique identifier for the filter
-    particle : str
-        Type of secondary particle to tally ('photon', 'neutron', etc.)
 
     Attributes
     ----------
@@ -1780,30 +1780,29 @@ class SecondaryEnergyFilter(EnergyFilter):
         The secondary particle type this filter applies to
     """
 
-    def __init__(self, values, particle='photon', filter_id=None):
+    def __init__(self, particle, values, filter_id=None):
         super().__init__(values, filter_id)
         self.particle = particle
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
         string += '{: <16}=\t{}\n'.format('\tParticle', self.particle)
+        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
     @property
-    def particle(self):
+    def particle(self) -> openmc.ParticleType:
         return self._particle
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('particle', particle, _PARTICLES)
-        self._particle = particle
+        self._particle = openmc.ParticleType(particle)
 
     def to_xml_element(self):
         element = super().to_xml_element()
         subelement = ET.SubElement(element, 'particle')
-        subelement.text = self.particle
+        subelement.text = str(self.particle)
         return element
 
     @classmethod
@@ -1811,7 +1810,7 @@ class SecondaryEnergyFilter(EnergyFilter):
         filter_id = int(elem.get('id'))
         values = [float(x) for x in get_text(elem, 'bins').split()]
         particle = get_text(elem, 'particle')
-        return cls(values, filter_id=filter_id, particle=particle)
+        return cls(particle, values, filter_id=filter_id)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):

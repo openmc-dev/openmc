@@ -37,10 +37,12 @@ void MaterialFilter::set_materials(span<const int32_t> materials)
   materials_.reserve(materials.size());
   map_.clear();
 
+  int32_t size = model::materials.size();
+
   // Update materials and mapping
   for (auto& index : materials) {
     assert(index >= MATERIAL_VOID);
-    assert(index < model::materials.size());
+    assert(index < size);
     materials_.push_back(index);
     map_[index] = materials_.size() - 1;
   }

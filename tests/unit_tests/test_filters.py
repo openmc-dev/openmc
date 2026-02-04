@@ -321,9 +321,9 @@ def test_energy_filter():
 
 def test_secondary_energy_filter():
     energy_bins = [1e3, 1e4, 1e5, 1e6]
-    f = openmc.SecondaryEnergyFilter(energy_bins, particle='photon')
+    f = openmc.SecondaryEnergyFilter('photon', energy_bins)
 
-    assert f.particle == 'photon'
+    assert f.particle == openmc.ParticleType.PHOTON
     assert f.num_bins == 3
     assert f.bins.shape == (3, 2)
     assert np.allclose(f.values, energy_bins)

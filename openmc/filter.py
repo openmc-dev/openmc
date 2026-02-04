@@ -1817,7 +1817,7 @@ class SecondaryEnergyFilter(EnergyFilter):
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
         bins = group['bins'][()]
         particle = group['particle'][()].decode()
-        return cls(bins, particle=particle, filter_id=filter_id)
+        return cls(particle, bins, filter_id=filter_id)
 
 
 class TimeFilter(RealFilter):

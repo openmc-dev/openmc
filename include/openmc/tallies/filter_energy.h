@@ -105,7 +105,7 @@ protected:
   // example creating one set of energy bins for photons and another for
   // electrons. However, for typical use only photons are of interest.
   // Covering multiple particles can be done by defining separate tallies.
-  ParticleType secondary_type_ {ParticleType::photon};
+  ParticleType secondary_type_;
 };
 
 } // namespace openmc

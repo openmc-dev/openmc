@@ -44,6 +44,7 @@ void collision(Particle& p)
 {
   // Add to collision counter for particle
   ++(p.n_collision());
+  p.secondary_bank_index() = p.secondary_bank().size();
 
   // Sample reaction for the material the particle is in
   switch (p.type().pdg_number()) {

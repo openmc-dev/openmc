@@ -90,7 +90,7 @@ bool Particle::create_secondary(
   // This is used to count backward in the secondary source bank for tallying
   // outgoing photon energies from a neutron in the SecondaryPhotonEnergy
   // filter.
-  secondaries_this_collision()++;
+  n_secondaries()++;
 
   auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
@@ -392,7 +392,7 @@ void Particle::event_collide()
 
   // Clear number of secondaries in this collision. This is
   // distinct from the number of created neutrons n_bank() above!
-  secondaries_this_collision() = 0;
+  n_secondaries() = 0;
 
   zero_delayed_bank();
 

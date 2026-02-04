@@ -1061,7 +1061,7 @@ def random_ray_three_region_cube() -> openmc.Model:
 
     void_sigma_a = 4.0e-6
     void_sigma_s = 3.0e-4
-    void_mat_data = openmc.XSdata('void', groups)
+    void_mat_data = openmc.XSdata('approx void', groups)
     void_mat_data.order = 0
     void_mat_data.set_total([void_sigma_a + void_sigma_s])
     void_mat_data.set_absorption([void_sigma_a])
@@ -1097,7 +1097,7 @@ def random_ray_three_region_cube() -> openmc.Model:
 
     # Instantiate some Macroscopic Data
     source_data = openmc.Macroscopic('source')
-    void_data = openmc.Macroscopic('void')
+    void_data = openmc.Macroscopic('approx void')
     absorber_data = openmc.Macroscopic('absorber')
 
     # Instantiate some Materials and register the appropriate Macroscopic objects
@@ -1105,7 +1105,7 @@ def random_ray_three_region_cube() -> openmc.Model:
     source_mat.set_density('macro', 1.0)
     source_mat.add_macroscopic(source_data)
 
-    void_mat = openmc.Material(name='void')
+    void_mat = openmc.Material(name='approx void')
     void_mat.set_density('macro', 1.0)
     void_mat.add_macroscopic(void_data)
 

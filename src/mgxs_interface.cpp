@@ -95,7 +95,7 @@ void MgxsInterface::init()
     get_datasets(kT_group, dset_names);
     if (num_temps > 1)
       fatal_error("Multigroup void data must have only one dummy temperature");
-    xsdata_grp = open_group(kT_group, dset_names[0]);
+    auto xsdata_grp = open_group(kT_group, dset_names[0]);
     auto inverse_velocity = xt::zeros<double>({
       num_energy_groups_,
     });

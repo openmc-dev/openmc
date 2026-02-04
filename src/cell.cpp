@@ -398,7 +398,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
       for (std::string mat : mats) {
         if (mat.compare("void") == 0) {
           material_.push_back(MATERIAL_VOID);
-          if (!settings::run_CE && mg::void_velocities_.empty())
+          if (!settings::run_CE && data::mg.void_velocities_.empty())
             warning("Void inverse-velocity data is not available in the "
                     "multi-group nuclear data library. "
                     "Time related calculation results might be wrong!");

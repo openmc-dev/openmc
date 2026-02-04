@@ -88,7 +88,7 @@ constexpr double INFTY {std::numeric_limits<double>::max()};
 
 // Physical constants
 constexpr double AMU_EV {
-  9.3149410242e8}; // atomic mass unit energy equivalent in eV/c^2
+  9.314941024146563e8}; // atomic mass unit energy equivalent in eV/c^2
 constexpr double MASS_NEUTRON_EV {
   MASS_NEUTRON * AMU_EV}; // neutron mass energy equivalent in eV/c^2
 constexpr double MASS_ELECTRON_EV {
@@ -101,6 +101,8 @@ constexpr double AMU {1.66053906660e-27};      // 1 amu in kg
 constexpr double C_LIGHT {2.99792458e10};      // speed of light in cm/s
 constexpr double N_AVOGADRO {0.602214076};     // Avogadro's number in 10^24/mol
 constexpr double K_BOLTZMANN {8.617333262e-5}; // Boltzmann constant in eV/K
+
+static_assert(MASS_NEUTRON_EV == 939.56542052e6);
 
 // Electron subshell labels
 constexpr array<const char*, 39> SUBSHELLS = {"K", "L1", "L2", "L3", "M1", "M2",

@@ -77,7 +77,7 @@ def model():
     neutron_only = openmc.ParticleFilter(['neutron'])
     tally_gam_ene = openmc.Tally()
     tally_gam_ene.filters = [neutron_only, ene_filter, ene2_filter]
-    tally_gam_ene.scores = ['total']
+    tally_gam_ene.scores = ['events']
     tally_gam_ene.estimator = 'analog'
 
     model.tallies.extend([current_tally, tally_tracklength,

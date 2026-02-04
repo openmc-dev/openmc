@@ -126,9 +126,8 @@ void ParticleProductionFilter::get_all_bins(
 {
   int start_idx = p.secondary_bank_index();
   int end_idx = start_idx + p.n_secondaries();
-  assert(p.secondary_bank().size() > end_idx);
 
-  // Loop over secondary bank entries from latest to earliest
+  // Loop over secondary bank entries
   for (int bank_idx = start_idx; bank_idx < end_idx; bank_idx++) {
     // Check if this is the correct type of secondary, then match its energy if
     // it's the right type

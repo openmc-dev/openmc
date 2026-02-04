@@ -87,9 +87,7 @@ bool Particle::create_secondary(
     return false;
   }
 
-  // This is used to count backward in the secondary source bank for tallying
-  // outgoing photon energies from a neutron in the SecondaryPhotonEnergy
-  // filter.
+  // Increment number of secondaries created (for ParticleProductionFilter)
   n_secondaries()++;
 
   auto& bank = secondary_bank().emplace_back();

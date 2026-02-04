@@ -254,6 +254,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       }
     } else {
       p.secondary_bank().push_back(site);
+      p.n_secondaries()++;
     }
 
     // Increment the number of neutrons born delayed

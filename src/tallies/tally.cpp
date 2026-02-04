@@ -641,7 +641,7 @@ void Tally::set_scores(const vector<std::string>& scores)
               if (!electron_present) {
                 missing_bins += "electron bin";
                 if (!positron_present)
-                  missing_bins += "and positron bin";
+                  missing_bins += " and positron bin";
               } else {
                 missing_bins += "positron bin";
               }

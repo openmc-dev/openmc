@@ -2437,24 +2437,21 @@ void score_tracklength_tally_general(
           if (p.material() != MATERIAL_VOID) {
             const auto& mat = model::materials[p.material()];
             auto j = mat->mat_nuclide_index_[i_nuclide];
-            if (j == C_NONE) {
-              // Determine log union grid index
-              if (i_log_union == C_NONE) {
-                int neutron = ParticleType::neutron().transport_index();
-                i_log_union = std::log(p.E() / data::energy_min[neutron]) /
-                              simulation::log_spacing;
-              }
-
-              // Update micro xs cache
-              if (!tally.multiply_density()) {
-                p.update_neutron_xs(i_nuclide, i_log_union);
-                atom_density = 1.0;
-              }
-            } else {
-              atom_density = tally.multiply_density()
-                               ? mat->atom_density(j, p.density_mult())
-                               : 1.0;
+            atom_density = mat->atom_density(j, p.density_mult());
+          }
+          if (atom_density > 0) {
+            if (!tally.multiply_density())
+              atom_density = 1.0;
+          } else if (!tally.multiply_density()) {
+            // Determine log union grid index
+            if (i_log_union == C_NONE) {
+              int neutron = ParticleType::neutron().transport_index();
+              i_log_union = std::log(p.E() / data::energy_min[neutron]) /
+                            simulation::log_spacing;
             }
+            // Update micro xs cache
+            p.update_neutron_xs(i_nuclide, i_log_union);
+            atom_density = 1.0;
           }
         }
 
@@ -2566,25 +2563,24 @@ void score_collision_tally(Particle& p)
 
         double atom_density = 0.;
         if (i_nuclide >= 0) {
-          const auto& mat = model::materials[p.material()];
-          auto j = mat->mat_nuclide_index_[i_nuclide];
-          if (j == C_NONE) {
+          if (p.material() != MATERIAL_VOID) {
+            const auto& mat = model::materials[p.material()];
+            auto j = mat->mat_nuclide_index_[i_nuclide];
+            atom_density = mat->atom_density(j, p.density_mult());
+          }
+          if (atom_density > 0) {
+            if (!tally.multiply_density())
+              atom_density = 1.0;
+          } else if (!tally.multiply_density()) {
             // Determine log union grid index
             if (i_log_union == C_NONE) {
               int neutron = ParticleType::neutron().transport_index();
               i_log_union = std::log(p.E() / data::energy_min[neutron]) /
                             simulation::log_spacing;
             }
-
             // Update micro xs cache
-            if (!tally.multiply_density()) {
-              p.update_neutron_xs(i_nuclide, i_log_union);
-              atom_density = 1.0;
-            }
-          } else {
-            atom_density = tally.multiply_density()
-                             ? mat->atom_density(j, p.density_mult())
-                             : 1.0;
+            p.update_neutron_xs(i_nuclide, i_log_union);
+            atom_density = 1.0;
           }
         }
 

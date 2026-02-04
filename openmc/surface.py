@@ -13,6 +13,7 @@ from .checkvalue import check_type, check_value, check_length, check_greater_tha
 from .mixin import IDManagerMixin, IDWarning
 from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
+from ._xml import get_elem_list, get_text
 
 
 _BOUNDARY_TYPES = {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
@@ -122,9 +123,8 @@ class Surface(IDManagerMixin, ABC):
     boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface. Note that periodic boundary conditions
-        can only be applied to x-, y-, and z-planes, and only axis-aligned
-        periodicity is supported.
+        freely pass through the surface. Note that only axis-aligned
+        periodicity is supported around the x-, y-, and z-axes.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only
@@ -451,17 +451,17 @@ class Surface(IDManagerMixin, ABC):
         """
 
         # Determine appropriate class
-        surf_type = elem.get('type')
+        surf_type = get_text(elem, "type")
         cls = _SURFACE_CLASSES[surf_type]
 
         # Determine ID, boundary type, boundary albedo, coefficients
         kwargs = {}
-        kwargs['surface_id'] = int(elem.get('id'))
-        kwargs['boundary_type'] = elem.get('boundary', 'transmission')
+        kwargs['surface_id'] = int(get_text(elem, "id"))
+        kwargs['boundary_type'] = get_text(elem, "boundary", "transmission")
         if kwargs['boundary_type'] in _ALBEDO_BOUNDARIES:
-            kwargs['albedo'] = float(elem.get('albedo', 1.0))
-        kwargs['name'] = elem.get('name')
-        coeffs = [float(x) for x in elem.get('coeffs').split()]
+            kwargs['albedo'] = float(get_text(elem, "albedo", 1.0))
+        kwargs['name'] = get_text(elem, "name")
+        coeffs = get_elem_list(elem, "coeffs", float)
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
 
         return cls(**kwargs)
@@ -821,8 +821,7 @@ class XPlane(PlaneMixin, Surface):
     boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface. Only axis-aligned periodicity is
-        supported, i.e., x-planes can only be paired with x-planes.
+        freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only
@@ -886,8 +885,7 @@ class YPlane(PlaneMixin, Surface):
     boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface. Only axis-aligned periodicity is
-        supported, i.e., y-planes can only be paired with y-planes.
+        freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only
@@ -951,8 +949,7 @@ class ZPlane(PlaneMixin, Surface):
     boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface. Only axis-aligned periodicity is
-        supported, i.e., z-planes can only be paired with z-planes.
+        freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only

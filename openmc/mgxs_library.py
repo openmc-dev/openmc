@@ -11,7 +11,7 @@ import openmc
 import openmc.mgxs
 from openmc.mgxs import SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM
 from .checkvalue import check_type, check_value, check_greater_than, \
-    check_iterable_type, check_less_than, check_filetype_version
+    check_iterable_type, check_less_than, check_filetype_version, PathLike
 
 ROOM_TEMPERATURE_KELVIN = 294.0
 
@@ -484,7 +484,8 @@ class XSdata:
 
         check_type('temperature', temperature, Real)
 
-        temp_store = self.temperatures.tolist().append(temperature)
+        temp_store = self.temperatures.tolist()
+        temp_store.append(temperature)
         self.temperatures = temp_store
 
         self._total.append(None)
@@ -2506,7 +2507,7 @@ class MGXSLibrary:
 
         Parameters
         ----------
-        filename : str
+        filename : str or PathLike
             Filename of file, default is mgxs.h5.
         libver : {'earliest', 'latest'}
             Compatibility mode for the HDF5 file. 'latest' will produce files
@@ -2514,8 +2515,7 @@ class MGXSLibrary:
 
         """
 
-        check_type('filename', filename, str)
-
+        check_type('filename', filename, (str, PathLike))
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)
         file.attrs['filetype'] = np.bytes_(_FILETYPE_MGXS_LIBRARY)
@@ -2554,21 +2554,21 @@ class MGXSLibrary:
             raise ValueError("Either path or openmc.config['mg_cross_sections']"
                              "must be set")
 
-        check_type('filename', filename, str)
-        file = h5py.File(filename, 'r')
+        check_type('filename', filename, (str, PathLike))
+        with h5py.File(filename, 'r') as file:
 
-        # Check filetype and version
-        check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
-                               _VERSION_MGXS_LIBRARY)
+            # Check filetype and version
+            check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
+                                   _VERSION_MGXS_LIBRARY)
 
-        group_structure = file.attrs['group structure']
-        num_delayed_groups = file.attrs['delayed_groups']
-        energy_groups = openmc.mgxs.EnergyGroups(group_structure)
-        data = cls(energy_groups, num_delayed_groups)
+            group_structure = file.attrs['group structure']
+            num_delayed_groups = file.attrs['delayed_groups']
+            energy_groups = openmc.mgxs.EnergyGroups(group_structure)
+            data = cls(energy_groups, num_delayed_groups)
 
-        for group_name, group in file.items():
-            data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
-                                                    energy_groups,
-                                                    num_delayed_groups))
+            for group_name, group in file.items():
+                data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
+                                                        energy_groups,
+                                                        num_delayed_groups))
 
         return data

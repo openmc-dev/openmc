@@ -6,6 +6,8 @@
 #include "openmc/particle_data.h"
 #include "openmc/settings.h"
 
+#include <algorithm> // for copy
+
 namespace openmc {
 
 //! Check the value of the IFP parameter for beta effective or both.
@@ -68,15 +70,14 @@ vector<T> _ifp(const T& value, const vector<T>& data)
 //!
 //! Add the IFP information in the IFP banks using the same index
 //! as the one used to append the fission site to the fission bank.
+//! The information stored are the delayed group number and lifetime
+//! of the neutron that created the fission event.
 //! Multithreading protection is guaranteed by the index returned by the
 //! thread_safe_append call in physics.cpp.
 //!
-//! Needs to be done after the delayed group is found.
-//!
 //! \param[in] p Particle
-//! \param[in] site Fission site
 //! \param[in] idx Bank index from the thread_safe_append call in physics.cpp
-void ifp(const Particle& p, const SourceSite& site, int64_t idx);
+void ifp(const Particle& p, int64_t idx);
 
 //! Resize the IFP banks used in the simulation
 void resize_simulation_ifp_banks();
@@ -114,14 +115,25 @@ void broadcast_ifp_n_generation(int& n_generation,
 //! \param[in] n_generation Number of generations
 //! \param[in] neighbor Index of the neighboring processor
 //! \param[in] requests MPI requests
-//! \param[in] delayed_groups List of delayed group numbers lists
-//! \param[out] send_delayed_groups Delayed group numbers buffer
-//! \param[in] lifetimes List of lifetimes lists
-//! \param[out] send_lifetimes Lifetimes buffer
+//! \param[in] data List of data lists
+//! \param[out] send_data data buffer
+template<typename T>
 void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
-  vector<MPI_Request>& requests, const vector<vector<int>>& delayed_groups,
-  vector<int>& send_delayed_groups, const vector<vector<double>>& lifetimes,
-  vector<double>& send_lifetimes);
+  vector<MPI_Request>& requests, const vector<vector<T>>& data,
+  vector<T>& send_data)
+{
+  // Copy data in buffer
+  for (int i = idx; i < idx + n; i++) {
+    std::copy(
+      data[i].begin(), data[i].end(), send_data.begin() + i * n_generation);
+  }
+
+  // Send data
+  requests.emplace_back();
+  MPI_Datatype datatype = mpi::MPITypeMap<T>::mpi_type;
+  MPI_Isend(&send_data[n_generation * idx], n_generation * static_cast<int>(n),
+    datatype, neighbor, mpi::rank, mpi::intracomm, &requests.back());
+}
 
 //! Receive IFP data using MPI.
 //!
@@ -130,12 +142,22 @@ void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
 //! \param[in] n_generation Number of generations
 //! \param[in] neighbor Index of the neighboring processor
 //! \param[in] requests MPI requests
-//! \param[in] delayed_groups List of delayed group numbers
-//! \param[in] lifetimes List of lifetimes
+//! \param[in] data data buffer
 //! \param[out] deserialization Information to deserialize the received data
+template<typename T>
 void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
-  vector<MPI_Request>& requests, vector<int>& delayed_groups,
-  vector<double>& lifetimes, vector<DeserializationInfo>& deserialization);
+  vector<MPI_Request>& requests, vector<T>& data,
+  vector<DeserializationInfo>& deserialization)
+{
+  requests.emplace_back();
+  MPI_Datatype datatype = mpi::MPITypeMap<T>::mpi_type;
+  MPI_Irecv(&data[n_generation * idx], n_generation * static_cast<int>(n),
+    datatype, neighbor, neighbor, mpi::intracomm, &requests.back());
+
+  // Deserialization info to reconstruct data later
+  DeserializationInfo info = {idx, n};
+  deserialization.push_back(info);
+}
 
 //! Copy partial IFP data from local lists to source banks.
 //!
@@ -152,12 +174,24 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
 //! the IFP source banks.
 //!
 //! \param[in] n_generation Number of generations
+//! \param[in] data data to deserialize
+//! \param[in] bank bank to store data
 //! \param[out] deserialization Information to deserialize the received data
-//! \param[in] delayed_groups List of delayed group numbers
-//! \param[in] lifetimes List of lifetimes
-void deserialize_ifp_info(int n_generation,
-  const vector<DeserializationInfo>& deserialization,
-  const vector<int>& delayed_groups, const vector<double>& lifetimes);
+template<typename T>
+void deserialize_ifp_info(int n_generation, const vector<T>& data,
+  vector<vector<T>>& bank, const vector<DeserializationInfo>& deserialization)
+{
+  for (auto info : deserialization) {
+    int64_t index_local = info.index_local;
+    int64_t n = info.n;
+
+    for (int i = index_local; i < index_local + n; i++) {
+      vector<T> data_received(
+        data.begin() + n_generation * i, data.begin() + n_generation * (i + 1));
+      bank[i] = data_received;
+    }
+  }
+}
 
 #endif
 

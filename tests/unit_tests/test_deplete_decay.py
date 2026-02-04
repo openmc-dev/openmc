@@ -82,3 +82,8 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
     _, u238 = results.get_atoms(f"{mat.id}", "U238")
 
     assert u238[1] == pytest.approx(original_atoms)
+
+    # Check that material name is preserved in depletion results
+    step_result = results[0]
+    mat_from_results = step_result.get_material(f"{mat.id}")
+    assert mat_from_results.name == 'I do not decay.'

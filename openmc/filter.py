@@ -17,7 +17,7 @@ from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
 from .universe import UniverseBase
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 
 
 _FILTER_TYPES = (
@@ -35,7 +35,6 @@ _CURRENT_NAMES = (
     'z-min out', 'z-min in', 'z-max out', 'z-max in'
 )
 
-_PARTICLES = {'neutron', 'photon', 'electron', 'positron'}
 
 
 class FilterMeta(ABCMeta):
@@ -259,17 +258,15 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             Filter object
 
         """
-        filter_type = elem.get('type')
-        if filter_type is None:
-            filter_type = elem.find('type').text
+        filter_type = get_text(elem, "type")
 
         # If the filter type matches this class's short_name, then
         # there is no overridden from_xml_element method
         if filter_type == cls.short_name.lower():
             # Get bins from element -- the default here works for any filters
             # that just store a list of bins that can be represented as integers
-            filter_id = int(elem.get('id'))
-            bins = [int(x) for x in get_text(elem, 'bins').split()]
+            filter_id = int(get_text(elem, "id"))
+            bins = get_elem_list(elem, "bins", int) or []
             return cls(bins, filter_id=filter_id)
 
         # Search through all subclasses and find the one matching the HDF5
@@ -702,8 +699,8 @@ class CellInstanceFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = [int(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", int) or []
         cell_instances = list(zip(bins[::2], bins[1::2]))
         return cls(cell_instances, filter_id=filter_id)
 
@@ -738,9 +735,8 @@ class ParticleFilter(Filter):
 
     Parameters
     ----------
-    bins : str, or sequence of str
-        The particles to tally represented as strings ('neutron', 'photon',
-        'electron', 'positron').
+    bins : str, int, openmc.ParticleType, or sequence
+        The particle types to tally represented as names, PDG numbers, or types.
     filter_id : int
         Unique identifier for the filter
 
@@ -767,11 +763,16 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        cv.check_type('bins', bins, Sequence, str)
+        if isinstance(bins, (str, Integral, openmc.ParticleType)):
+            bins = [bins]
+        else:
+            cv.check_type('bins', bins, Sequence,
+                          (str, Integral, openmc.ParticleType))
         bins = np.atleast_1d(bins)
-        for edge in bins:
-            cv.check_value('filter bin', edge, _PARTICLES)
-        self._bins = bins
+        normalized = []
+        for entry in bins:
+            normalized.append(str(openmc.ParticleType(entry)))
+        self._bins = np.array(normalized, dtype=str)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -786,8 +787,8 @@ class ParticleFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = get_text(elem, 'bins').split()
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", str) or []
         return cls(bins, filter_id=filter_id)
 
 
@@ -819,7 +820,7 @@ class ParentNuclideFilter(ParticleFilter):
 
 
 class MeshFilter(Filter):
-    """Bins tally event locations by mesh elements.
+    r"""Bins tally event locations by mesh elements.
 
     Parameters
     ----------
@@ -837,6 +838,25 @@ class MeshFilter(Filter):
     translation : Iterable of float
         This array specifies a vector that is used to translate (shift) the mesh
         for this filter
+    rotation : Iterable of float
+        This array specifies the angles in degrees about the x, y, and z axes
+        that the mesh should be rotated. The rotation applied is an intrinsic
+        rotation with specified Tait-Bryan angles. That is to say, if the angles
+        are :math:`(\phi, \theta, \psi)`, then the rotation matrix applied is
+        :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
+
+        .. math::
+
+           \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\phi \sin\psi
+           + \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi
+           \sin\theta \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi +
+           \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
+           \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
+           \cos\theta \end{array} \right ]
+
+        A rotation matrix can also be specified directly by setting this
+        attribute to a nested list (or 2D numpy array) that specifies each
+        element of the matrix.
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -849,6 +869,7 @@ class MeshFilter(Filter):
         self.mesh = mesh
         self.id = filter_id
         self._translation = None
+        self._rotation = None
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -860,6 +881,7 @@ class MeshFilter(Filter):
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        string += '{: <16}=\t{}\n'.format('\tRotation', self.rotation)
         return string
 
     @classmethod
@@ -882,6 +904,10 @@ class MeshFilter(Filter):
         translation = group.get('translation')
         if translation:
             out.translation = translation[()]
+
+        rotation = group.get('rotation')
+        if rotation:
+            out.rotation = rotation[()]
 
         return out
 
@@ -914,6 +940,15 @@ class MeshFilter(Filter):
         cv.check_type('mesh filter translation', t, Iterable, Real)
         cv.check_length('mesh filter translation', t, 3)
         self._translation = np.asarray(t)
+
+    @property
+    def rotation(self):
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, rotation):
+        cv.check_length('mesh filter rotation', rotation, 3)
+        self._rotation = np.asarray(rotation)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -1000,18 +1035,27 @@ class MeshFilter(Filter):
         subelement.text = str(self.mesh.id)
         if self.translation is not None:
             element.set('translation', ' '.join(map(str, self.translation)))
+        if self.rotation is not None:
+            element.set('rotation', ' '.join(map(str, self.rotation.ravel())))
         return element
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
         mesh_id = int(get_text(elem, 'bins'))
         mesh_obj = kwargs['meshes'][mesh_id]
-        filter_id = int(elem.get('id'))
+        filter_id = int(get_text(elem, "id"))
         out = cls(mesh_obj, filter_id=filter_id)
 
-        translation = elem.get('translation')
+        translation = get_elem_list(elem, "translation", float) or []
         if translation:
-            out.translation = [float(x) for x in translation.split()]
+            out.translation = translation
+
+        rotation = get_elem_list(elem, 'rotation', float) or []
+        if rotation:
+            if len(rotation) == 3:
+                out.rotation = rotation
+            elif len(rotation) == 9:
+                out.rotation = np.array(rotation).reshape(3, 3)
         return out
 
 
@@ -1085,7 +1129,12 @@ class MeshMaterialFilter(MeshFilter):
             A new MeshMaterialFilter instance
 
         """
-        bins = list(zip(*np.where(volumes._materials > -1)))
+        # Get flat arrays of material IDs and element indices
+        mat_ids = volumes._materials[volumes._materials > -1]
+        elems, _ = np.where(volumes._materials > -1)
+
+        # Stack them into a 2D array of (element, material) pairs
+        bins = np.column_stack((elems, mat_ids))
         return cls(mesh, bins)
 
     def __hash__(self):
@@ -1147,16 +1196,16 @@ class MeshMaterialFilter(MeshFilter):
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshMaterialFilter:
-        filter_id = int(elem.get('id'))
-        mesh_id = int(elem.get('mesh'))
+        filter_id = int(get_text(elem, "id"))
+        mesh_id = int(get_text(elem, "mesh"))
         mesh_obj = kwargs['meshes'][mesh_id]
-        bins = [int(x) for x in get_text(elem, 'bins').split()]
+        bins = get_elem_list(elem, "bins", int) or []
         bins = list(zip(bins[::2], bins[1::2]))
         out = cls(mesh_obj, bins, filter_id=filter_id)
 
-        translation = elem.get('translation')
+        translation = get_elem_list(elem, "translation", float) or []
         if translation:
-            out.translation = [float(x) for x in translation.split()]
+            out.translation = translation
         return out
 
     @classmethod
@@ -1556,8 +1605,8 @@ class RealFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = [float(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", float) or []
         return cls(bins, filter_id=filter_id)
 
 
@@ -1915,12 +1964,21 @@ class DistribcellFilter(Filter):
 
     @property
     def paths(self):
-        return self._paths
+        if self._paths is None:
+            if not hasattr(self, '_geometry'):
+                raise ValueError(
+                    "Model must be exported before the 'paths' attribute is" \
+                    "available for a DistribcellFilter.")
 
-    @paths.setter
-    def paths(self, paths):
-        cv.check_iterable_type('paths', paths, str)
-        self._paths = paths
+            # Determine paths for cell instances
+            self._geometry.determine_paths()
+
+            # Get paths for the corresponding cell
+            cell_id = self.bins[0]
+            cell = self._geometry.get_all_cells()[cell_id]
+            self._paths = cell.paths
+
+        return self._paths
 
     @Filter.bins.setter
     def bins(self, bins):
@@ -2527,12 +2585,13 @@ class EnergyFunctionFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        energy = [float(x) for x in get_text(elem, 'energy').split()]
-        y = [float(x) for x in get_text(elem, 'y').split()]
+        filter_id = int(get_text(elem, "id"))
+        energy = get_elem_list(elem, "energy", float) or []
+        y = get_elem_list(elem, "y", float) or []
         out = cls(energy, y, filter_id=filter_id)
-        if elem.find('interpolation') is not None:
-            out.interpolation = elem.find('interpolation').text
+        interpolation = get_text(elem, "interpolation")
+        if interpolation is not None:
+            out.interpolation = interpolation
         return out
 
     def can_merge(self, other):

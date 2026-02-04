@@ -4,7 +4,8 @@ from collections.abc import Sequence
 import h5py
 
 from .checkvalue import check_filetype_version
-from .source import SourceParticle, ParticleType
+from .particle_type import ParticleType
+from .source import SourceParticle
 
 from pathlib import Path
 
@@ -25,7 +26,7 @@ states : numpy.ndarray
 
 """
 def _particle_track_repr(self):
-    return f"<ParticleTrack: {self.particle}, {len(self.states)} states>"
+    return f"<ParticleTrack: {str(self.particle)}, {len(self.states)} states>"
 ParticleTrack.__repr__ = _particle_track_repr
 
 
@@ -92,8 +93,8 @@ class Track(Sequence):
 
         Parameters
         ----------
-        particle : {'neutron', 'photon', 'electron', 'positron'}
-            Matching particle type
+        particle : str or int or openmc.ParticleType
+            Matching particle type (name, PDG number, or type)
         state_filter : function
             Function that takes a state (structured datatype) and returns a bool
             depending on some criteria.
@@ -126,7 +127,7 @@ class Track(Sequence):
         for t in self:
             # Check for matching particle
             if particle is not None:
-                if t.particle.name.lower() != particle:
+                if t.particle != ParticleType(particle):
                     continue
 
             # Apply arbitrary state filter
@@ -184,7 +185,7 @@ class Track(Sequence):
     def sources(self):
         sources = []
         for particle_track in self:
-            particle_type = ParticleType(particle_track.particle)
+            particle_type = particle_track.particle
             state = particle_track.states[0]
             sources.append(
                 SourceParticle(
@@ -296,16 +297,16 @@ class Tracks(list):
                 for state in pt.states:
                     points.InsertNextPoint(state['r'])
 
-            # Create VTK line and assign points to line.
-            n = pt.states.size
-            line = vtk.vtkPolyLine()
-            line.GetPointIds().SetNumberOfIds(n)
-            for i in range(n):
-                line.GetPointIds().SetId(i, point_offset + i)
-            point_offset += n
+                # Create VTK line and assign points to line.
+                n = pt.states.size
+                line = vtk.vtkPolyLine()
+                line.GetPointIds().SetNumberOfIds(n)
+                for i in range(n):
+                    line.GetPointIds().SetId(i, point_offset + i)
+                point_offset += n
 
-            # Add line to cell array
-            cells.InsertNextCell(line)
+                # Add line to cell array
+                cells.InsertNextCell(line)
 
         data = vtk.vtkPolyData()
         data.SetPoints(points)

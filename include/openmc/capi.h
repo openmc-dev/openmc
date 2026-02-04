@@ -17,6 +17,8 @@ int openmc_cell_get_fill(
 int openmc_cell_get_id(int32_t index, int32_t* id);
 int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T);
+int openmc_cell_get_density(
+  int32_t index, const int32_t* instance, double* rho);
 int openmc_cell_get_translation(int32_t index, double xyz[]);
 int openmc_cell_get_rotation(int32_t index, double rot[], size_t* n);
 int openmc_cell_get_name(int32_t index, const char** name);
@@ -27,6 +29,8 @@ int openmc_cell_set_fill(
 int openmc_cell_set_id(int32_t index, int32_t id);
 int openmc_cell_set_temperature(
   int32_t index, double T, const int32_t* instance, bool set_contained = false);
+int openmc_cell_set_density(int32_t index, double rho, const int32_t* instance,
+  bool set_contained = false);
 int openmc_cell_set_translation(int32_t index, const double xyz[]);
 int openmc_cell_set_rotation(int32_t index, const double rot[], size_t rot_len);
 int openmc_dagmc_universe_get_cell_ids(
@@ -112,7 +116,7 @@ int openmc_mesh_set_id(int32_t index, int32_t id);
 int openmc_mesh_get_n_elements(int32_t index, size_t* n);
 int openmc_mesh_get_volumes(int32_t index, double* volumes);
 int openmc_mesh_material_volumes(int32_t index, int nx, int ny, int nz,
-  int max_mats, int32_t* materials, double* volumes);
+  int max_mats, int32_t* materials, double* volumes, double* bboxes);
 int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_new_filter(const char* type, int32_t* index);
@@ -197,8 +201,8 @@ int openmc_weight_windows_set_energy_bounds(
   int32_t index, double* e_bounds, size_t e_bounds_size);
 int openmc_weight_windows_get_energy_bounds(
   int32_t index, const double** e_bounds, size_t* e_bounds_size);
-int openmc_weight_windows_set_particle(int32_t index, int particle);
-int openmc_weight_windows_get_particle(int32_t index, int* particle);
+int openmc_weight_windows_set_particle(int32_t index, int32_t particle);
+int openmc_weight_windows_get_particle(int32_t index, int32_t* particle);
 int openmc_weight_windows_get_bounds(int32_t index, const double** lower_bounds,
   const double** upper_bounds, size_t* size);
 int openmc_weight_windows_set_bounds(int32_t index, const double* lower_bounds,
@@ -223,7 +227,7 @@ int openmc_zernike_filter_set_order(int32_t index, int order);
 int openmc_zernike_filter_set_params(
   int32_t index, const double* x, const double* y, const double* r);
 
-int openmc_particle_filter_get_bins(int32_t idx, int bins[]);
+int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[]);
 
 //! Sets the mesh and energy grid for CMFD reweight
 //! \param[in] meshtyally_id id of CMFD Mesh Tally

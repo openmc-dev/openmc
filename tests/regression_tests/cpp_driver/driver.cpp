@@ -15,14 +15,16 @@
 
 using namespace openmc;
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 #ifdef OPENMC_MPI
   MPI_Comm world {MPI_COMM_WORLD};
   int err = openmc_init(argc, argv, &world);
 #else
   int err = openmc_init(argc, argv, nullptr);
 #endif
-  if (err) fatal_error(openmc_err_msg);
+  if (err)
+    fatal_error(openmc_err_msg);
 
   // create a new cell filter
   auto cell_filter = Filter::create<CellFilter>();
@@ -30,7 +32,7 @@ int main(int argc, char** argv) {
   // add all cells to the cell filter
   std::vector<int32_t> cell_indices;
   for (auto& entry : openmc::model::cell_map) {
-      cell_indices.push_back(entry.second);
+    cell_indices.push_back(entry.second);
   }
   // enable distribcells offsets for all cells
   prepare_distribcell(&cell_indices);
@@ -38,7 +40,6 @@ int main(int argc, char** argv) {
   // order as the test relying on the openmc exe
   std::sort(cell_indices.begin(), cell_indices.end());
   cell_filter->set_cells(cell_indices);
-
 
   // create a new tally
   auto tally = Tally::create();
@@ -60,14 +61,19 @@ int main(int argc, char** argv) {
     }
   }
 
-  // set a higher temperature for only one of the lattice cells (ID is 4 in the model)
+  // set a higher temperature for only one of the lattice cells (ID is 4 in the
+  // model)
   model::cells[model::cell_map[4]]->set_temperature(400.0, 3, true);
+
+  // set the density of another lattice cell to 2
+  model::cells[model::cell_map[4]]->set_density(2.0, 2, true);
 
   // the summary file will be used to check that
   // temperatures were set correctly so clear
   // error output can be provided
 #ifdef OPENMC_MPI
-  if (openmc::mpi::master) openmc::write_summary();
+  if (openmc::mpi::master)
+    openmc::write_summary();
 #else
   openmc::write_summary();
 #endif

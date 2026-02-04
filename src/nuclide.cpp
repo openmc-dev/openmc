@@ -31,8 +31,8 @@ namespace openmc {
 //==============================================================================
 
 namespace data {
-array<double, 2> energy_min {0.0, 0.0};
-array<double, 2> energy_max {INFTY, INFTY};
+array<double, 4> energy_min {0.0, 0.0, 0.0, 0.0};
+array<double, 4> energy_max {INFTY, INFTY, INFTY, INFTY};
 double temperature_min {INFTY};
 double temperature_max {0.0};
 std::unordered_map<std::string, int> nuclide_map;
@@ -379,7 +379,7 @@ void Nuclide::create_derived(
       auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
 
       for (const auto& p : rx->products_) {
-        if (p.particle_ == ParticleType::photon) {
+        if (p.particle_.is_photon()) {
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k + j];
 
@@ -501,7 +501,7 @@ void Nuclide::create_derived(
 
 void Nuclide::init_grid()
 {
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = ParticleType::neutron().transport_index();
   double E_min = data::energy_min[neutron];
   double E_max = data::energy_max[neutron];
   int M = settings::n_log_bins;
@@ -552,7 +552,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
         for (int i = 1; i < rx->products_.size(); ++i) {
           // Skip any non-neutron products
           const auto& product = rx->products_[i];
-          if (product.particle_ != ParticleType::neutron)
+          if (!product.particle_.is_neutron())
             continue;
 
           // Evaluate yield
@@ -1114,7 +1114,7 @@ extern "C" size_t nuclides_size()
 extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 {
   if (data::nuclide_map.find(name) == data::nuclide_map.end() ||
-      data::nuclide_map.at(name) >= data::elements.size()) {
+      data::nuclide_map.at(name) >= data::nuclides.size()) {
     LibraryKey key {Library::Type::neutron, name};
     const auto& it = data::library_map.find(key);
     if (it == data::library_map.end()) {
@@ -1215,7 +1215,6 @@ extern "C" int openmc_nuclide_collapse_rate(int index, int MT,
     *xs = data::nuclides[index]->collapse_rate(
       MT, temperature, {energy, energy + n + 1}, {flux, flux + n});
   } catch (const std::out_of_range& e) {
-    fmt::print("Caught error\n");
     set_errmsg(e.what());
     return OPENMC_E_OUT_OF_BOUNDS;
   }

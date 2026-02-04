@@ -25,15 +25,16 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {18, 1};
-constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr array<int, 2> VERSION_TRACK {3, 0};
-constexpr array<int, 2> VERSION_SUMMARY {6, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 2};
+constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 1};
+constexpr array<int, 2> VERSION_TRACK {3, 1};
+constexpr array<int, 2> VERSION_SUMMARY {6, 1};
 constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
-constexpr array<int, 2> VERSION_PROPERTIES {1, 0};
+constexpr array<int, 2> VERSION_PROPERTIES {1, 1};
 constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
+constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 1};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -62,6 +63,16 @@ constexpr int MAX_SAMPLE {100000};
 // Avg. number of hits per batch to be defined as a "small"
 // source region in the random ray solver
 constexpr double MIN_HITS_PER_BATCH {1.5};
+
+// The minimum flux value to be considered non-zero when computing adjoint
+// sources. Positive values below this cutoff will be treated as zero, so as to
+// prevent extremely large adjoint source terms from being generated.
+constexpr double ZERO_FLUX_CUTOFF {1e-22};
+
+// The minimum macroscopic cross section value considered non-void for the
+// random ray solver. Materials with any group with a cross section below this
+// value will be converted to pure void.
+constexpr double MINIMUM_MACRO_XS {1e-6};
 
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
@@ -281,7 +292,7 @@ enum class MgxsType {
 // ============================================================================
 // TALLY-RELATED CONSTANTS
 
-enum class TallyResult { VALUE, SUM, SUM_SQ, SIZE };
+enum class TallyResult { VALUE, SUM, SUM_SQ, SUM_THIRD, SUM_FOURTH };
 
 enum class TallyType { VOLUME, MESH_SURFACE, SURFACE, PULSE_HEIGHT };
 

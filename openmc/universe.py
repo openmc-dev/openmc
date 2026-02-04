@@ -337,14 +337,6 @@ class UniverseBase(ABC, IDManagerMixin):
         """
         model = openmc.Model()
         model.geometry = openmc.Geometry(self)
-
-        # Determine whether any materials contains macroscopic data and if
-        # so, set energy mode accordingly
-        for mat in self.get_all_materials().values():
-            if mat._macroscopic is not None:
-                model.settings.energy_mode = 'multi-group'
-                break
-
         return model.plot(*args, **kwargs)
 
     def get_nuclides(self):

@@ -819,9 +819,9 @@ void Material::calculate_xs(Particle& p) const
   p.macro_xs().fission = 0.0;
   p.macro_xs().nu_fission = 0.0;
 
-  if (p.type() == ParticleType::neutron) {
+  if (p.type().is_neutron()) {
     this->calculate_neutron_xs(p);
-  } else if (p.type() == ParticleType::photon) {
+  } else if (p.type().is_photon()) {
     this->calculate_photon_xs(p);
   }
 }
@@ -829,7 +829,7 @@ void Material::calculate_xs(Particle& p) const
 void Material::calculate_neutron_xs(Particle& p) const
 {
   // Find energy index on energy grid
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = ParticleType::neutron().transport_index();
   int i_grid =
     std::log(p.E() / data::energy_min[neutron]) / simulation::log_spacing;
 
@@ -890,7 +890,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = atom_density_(i);
+    double atom_density = this->atom_density(i, p.density_mult());
 
     // Add contributions to cross sections
     p.macro_xs().total += atom_density * micro.total;
@@ -925,7 +925,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = atom_density_(i);
+    double atom_density = this->atom_density(i, p.density_mult());
 
     // Add contributions to material macroscopic cross sections
     p.macro_xs().total += atom_density * micro.total;

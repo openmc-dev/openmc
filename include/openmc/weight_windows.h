@@ -10,7 +10,7 @@
 #include "openmc/constants.h"
 #include "openmc/memory.h"
 #include "openmc/mesh.h"
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/span.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/vector.h"
@@ -71,6 +71,7 @@ struct WeightWindow {
   {
     lower_weight *= factor;
     upper_weight *= factor;
+    survival_weight *= factor;
   }
 };
 
@@ -192,10 +193,9 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Data members
-  int32_t id_;    //!< Unique ID
-  int64_t index_; //!< Index into weight windows vector
-  ParticleType particle_type_ {
-    ParticleType::neutron};      //!< Particle type to apply weight windows to
+  int32_t id_;                   //!< Unique ID
+  int64_t index_;                //!< Index into weight windows vector
+  ParticleType particle_type_;   //!< Particle type to apply weight windows to
   vector<double> energy_bounds_; //!< Energy boundaries [eV]
   xt::xtensor<double, 2> lower_ww_; //!< Lower weight window bounds (shape:
                                     //!< energy_bins, mesh_bins (k, j, i))

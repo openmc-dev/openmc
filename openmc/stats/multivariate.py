@@ -10,7 +10,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from .._xml import get_text
+from .._xml import get_elem_list, get_text
 from ..mesh import MeshBase
 from .univariate import PowerLaw, Uniform, Univariate
 
@@ -79,6 +79,9 @@ class PolarAzimuthal(UnitSphere):
     reference_uvw : Iterable of float
         Direction from which polar angle is measured. Defaults to the positive
         z-direction.
+    reference_vwu : Iterable of float
+        Direction from which azimuthal angle is measured. Defaults to the positive
+        x-direction.
 
     Attributes
     ----------
@@ -89,8 +92,9 @@ class PolarAzimuthal(UnitSphere):
 
     """
 
-    def __init__(self, mu=None, phi=None, reference_uvw=(0., 0., 1.)):
+    def __init__(self, mu=None, phi=None, reference_uvw=(0., 0., 1.), reference_vwu=(1., 0., 0.)):
         super().__init__(reference_uvw)
+        self.reference_vwu = reference_vwu
         if mu is not None:
             self.mu = mu
         else:
@@ -100,6 +104,20 @@ class PolarAzimuthal(UnitSphere):
             self.phi = phi
         else:
             self.phi = Uniform(0., 2*pi)
+
+    @property
+    def reference_vwu(self):
+        return self._reference_vwu
+
+    @reference_vwu.setter
+    def reference_vwu(self, vwu):
+        cv.check_type('reference v direction', vwu, Iterable, Real)
+        vwu = np.asarray(vwu)
+        uvw = self.reference_uvw
+        cv.check_greater_than('reference v direction must not be parallel to reference u direction', np.linalg.norm(np.cross(vwu,uvw)), 1e-6*np.linalg.norm(vwu))
+        vwu -= vwu.dot(uvw)*uvw
+        cv.check_less_than('reference v direction must be orthogonal to reference u direction', np.abs(vwu.dot(uvw)), 1e-6)
+        self._reference_vwu = vwu/np.linalg.norm(vwu)
 
     @property
     def mu(self):
@@ -119,8 +137,13 @@ class PolarAzimuthal(UnitSphere):
         cv.check_type('azimuthal angle', phi, Univariate)
         self._phi = phi
 
-    def to_xml_element(self):
+    def to_xml_element(self, element_name: str = None):
         """Return XML representation of the angular distribution
+
+        Parameters
+        ----------
+        element_name : str, optional
+            XML element name
 
         Returns
         -------
@@ -128,10 +151,16 @@ class PolarAzimuthal(UnitSphere):
             XML element containing angular distribution data
 
         """
-        element = ET.Element('angle')
+        if element_name is not None:
+            element = ET.Element(element_name)
+        else:
+            element = ET.Element('angle')
+
         element.set("type", "mu-phi")
         if self.reference_uvw is not None:
             element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
+        if self.reference_vwu is not None:
+            element.set("reference_vwu", ' '.join(map(str, self.reference_vwu)))
         element.append(self.mu.to_xml_element('mu'))
         element.append(self.phi.to_xml_element('phi'))
         return element
@@ -152,19 +181,53 @@ class PolarAzimuthal(UnitSphere):
 
         """
         mu_phi = cls()
-        uvw = get_text(elem, 'reference_uvw')
+        uvw = get_elem_list(elem, "reference_uvw", float)
         if uvw is not None:
-            mu_phi.reference_uvw = [float(x) for x in uvw.split()]
+            mu_phi.reference_uvw = uvw
+        vwu = get_elem_list(elem, "reference_vwu", float)
+        if vwu is not None:
+            mu_phi.reference_vwu = vwu
         mu_phi.mu = Univariate.from_xml_element(elem.find('mu'))
         mu_phi.phi = Univariate.from_xml_element(elem.find('phi'))
         return mu_phi
 
 
 class Isotropic(UnitSphere):
-    """Isotropic angular distribution."""
+    """Isotropic angular distribution.
 
-    def __init__(self):
+    Parameters
+    ----------
+    bias : openmc.stats.PolarAzimuthal, optional
+        Distribution for biased sampling.
+
+    Attributes
+    ----------
+    bias : openmc.stats.PolarAzimuthal or None
+        Distribution for biased sampling
+
+    """
+
+    def __init__(self, bias: PolarAzimuthal | None = None):
         super().__init__()
+        self.bias = bias
+
+    @property
+    def bias(self):
+        return self._bias
+
+    @bias.setter
+    def bias(self, bias):
+        cv.check_type('Biasing distribution', bias, PolarAzimuthal, none_ok=True)
+        if bias is not None:
+            if (bias.mu.bias is not None) or (bias.phi.bias is not None):
+                raise RuntimeError('Biasing distributions should not have their own bias.')
+            elif (bias.mu.support != (-1., 1.)
+                or not np.all(np.isclose(bias.phi.support, (0., 2*np.pi)))):
+                raise ValueError("Biasing distribution for an isotropic "
+                                 "distribution should be supported on "
+                                 "mu=(-1.0,1.0) and phi=(0.0,2*pi).")
+
+        self._bias = bias
 
     def to_xml_element(self):
         """Return XML representation of the isotropic distribution
@@ -177,6 +240,15 @@ class Isotropic(UnitSphere):
         """
         element = ET.Element('angle')
         element.set("type", "isotropic")
+
+        if self.bias is not None:
+            bias_dist = self.bias
+            if (bias_dist.mu.bias is not None) or (bias_dist.phi.bias is not None):
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            else:
+                bias_elem = self.bias.to_xml_element("bias")
+                element.append(bias_elem)
+
         return element
 
     @classmethod
@@ -194,7 +266,13 @@ class Isotropic(UnitSphere):
             Isotropic distribution generated from XML element
 
         """
-        return cls()
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            bias_dist = PolarAzimuthal.from_xml_element(bias_elem)
+            return cls(bias=bias_dist)
+        else:
+            return cls()
+
 
 
 class Monodirectional(UnitSphere):
@@ -246,9 +324,9 @@ class Monodirectional(UnitSphere):
 
         """
         monodirectional = cls()
-        uvw = get_text(elem, 'reference_uvw')
+        uvw = get_elem_list(elem, "reference_uvw", float)
         if uvw is not None:
-            monodirectional.reference_uvw = [float(x) for x in uvw.split()]
+            monodirectional.reference_uvw = uvw
         return monodirectional
 
 
@@ -504,7 +582,7 @@ class SphericalIndependent(Spatial):
         r = Univariate.from_xml_element(elem.find('r'))
         cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
         phi = Univariate.from_xml_element(elem.find('phi'))
-        origin = [float(x) for x in elem.get('origin').split()]
+        origin = get_elem_list(elem, "origin", float)
         return cls(r, cos_theta, phi, origin=origin)
 
 
@@ -626,7 +704,7 @@ class CylindricalIndependent(Spatial):
         r = Univariate.from_xml_element(elem.find('r'))
         phi = Univariate.from_xml_element(elem.find('phi'))
         z = Univariate.from_xml_element(elem.find('z'))
-        origin = [float(x) for x in elem.get('origin').split()]
+        origin = get_elem_list(elem, "origin", float)
         return cls(r, phi, z, origin=origin)
 
 
@@ -649,6 +727,9 @@ class MeshSpatial(Spatial):
     volume_normalized : bool, optional
         Whether or not the strengths will be multiplied by element volumes at
         runtime. Default is True.
+    bias : iterable of float, optional
+        An iterable of values giving the selection weights assigned to each
+        element during biased sampling.
 
     Attributes
     ----------
@@ -659,12 +740,16 @@ class MeshSpatial(Spatial):
     volume_normalized : bool
         Whether or not the strengths will be multiplied by element volumes at
         runtime.
+    bias : numpy.ndarray or None
+        Distribution for biased sampling
     """
 
-    def __init__(self, mesh, strengths=None, volume_normalized=True):
+    def __init__(self, mesh, strengths=None, volume_normalized=True,
+                 bias: Sequence[float] | None = None):
         self.mesh = mesh
         self.strengths = strengths
         self.volume_normalized = volume_normalized
+        self.bias = bias
 
     @property
     def mesh(self):
@@ -698,6 +783,23 @@ class MeshSpatial(Spatial):
             self._strengths = None
 
     @property
+    def bias(self):
+        return self._bias
+
+    @bias.setter
+    def bias(self, given_bias):
+        if given_bias is not None:
+            cv.check_type('Biasing strengths array', given_bias, Iterable, Real)
+            bias_array = np.asarray(given_bias, dtype=float).flatten()
+            if bias_array.size != self.strengths.size:
+                raise ValueError(
+                    'Bias strengths array must have same size as strengths array.')
+            else:
+                self._bias = bias_array
+        else:
+            self._bias = None
+
+    @property
     def num_strength_bins(self):
         if self.strengths is None:
             raise ValueError('Strengths are not set')
@@ -722,6 +824,9 @@ class MeshSpatial(Spatial):
             subelement = ET.SubElement(element, 'strengths')
             subelement.text = ' '.join(str(e) for e in self.strengths)
 
+        if self.bias is not None:
+            Univariate._append_array_bias_to_xml(self, element)
+
         return element
 
     @classmethod
@@ -743,19 +848,16 @@ class MeshSpatial(Spatial):
 
         """
 
-        mesh_id = int(elem.get('mesh_id'))
+        mesh_id = int(get_text(elem, "mesh_id"))
 
         # check if this mesh has been read in from another location already
         if mesh_id not in meshes:
             raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
 
-        volume_normalized = elem.get("volume_normalized")
         volume_normalized = get_text(elem, 'volume_normalized').lower() == 'true'
-        strengths = get_text(elem, 'strengths')
-        if strengths is not None:
-            strengths = [float(b) for b in get_text(elem, 'strengths').split()]
-
-        return cls(meshes[mesh_id], strengths, volume_normalized)
+        strengths = get_elem_list(elem, 'strengths', float)
+        bias_strengths = Univariate._read_array_bias_from_xml(elem)
+        return cls(meshes[mesh_id], strengths, volume_normalized, bias=bias_strengths)
 
 
 class PointCloud(Spatial):
@@ -773,6 +875,9 @@ class PointCloud(Spatial):
     strengths : iterable of float, optional
         An iterable of values that represents the relative probabilty of each
         point.
+    bias : iterable of float, optional
+        An iterable of values representing the relative probability of each
+        point under biased sampling.
 
     Attributes
     ----------
@@ -780,15 +885,19 @@ class PointCloud(Spatial):
         The points in space to be sampled with shape (N, 3)
     strengths : numpy.ndarray or None
         An array of relative probabilities for each mesh point
+    bias : numpy.ndarray or None
+        An array of relative probabilities for biased sampling of mesh points
     """
 
     def __init__(
         self,
         positions: Sequence[Sequence[float]],
-        strengths: Sequence[float] | None = None
+        strengths: Sequence[float] | None = None,
+        bias: Sequence[float] | None = None
     ):
         self.positions = positions
         self.strengths = strengths
+        self.bias = bias
 
     @property
     def positions(self) -> np.ndarray:
@@ -818,6 +927,23 @@ class PointCloud(Spatial):
         self._strengths = strengths
 
     @property
+    def bias(self):
+        return self._bias
+
+    @bias.setter
+    def bias(self, given_bias):
+        if given_bias is not None:
+            cv.check_type('Biasing strengths array', given_bias, Iterable, Real)
+            bias_array = np.asarray(given_bias, dtype=float).flatten()
+            if bias_array.size != self.strengths.size:
+                raise ValueError(
+                    'Bias strengths array must have same size as strengths array.')
+            else:
+                self._bias = bias_array
+        else:
+            self._bias = None
+
+    @property
     def num_strength_bins(self) -> int:
         if self.strengths is None:
             raise ValueError('Strengths are not set')
@@ -842,6 +968,9 @@ class PointCloud(Spatial):
             subelement = ET.SubElement(element, 'strengths')
             subelement.text = ' '.join(str(e) for e in self.strengths)
 
+        if self.bias is not None:
+            Univariate._append_array_bias_to_xml(self, element)
+
         return element
 
     @classmethod
@@ -860,14 +989,12 @@ class PointCloud(Spatial):
 
 
         """
-        coord_data = get_text(elem, 'coords')
-        positions = np.array([float(b) for b in coord_data.split()]).reshape((-1, 3))
+        coord_data = get_elem_list(elem, 'coords', float)
+        positions = np.array(coord_data).reshape((-1, 3))
 
-        strengths = get_text(elem, 'strengths')
-        if strengths is not None:
-            strengths = [float(b) for b in strengths.split()]
-
-        return cls(positions, strengths)
+        strengths = get_elem_list(elem, 'strengths', float)
+        bias_strengths = Univariate._read_array_bias_from_xml(elem)
+        return cls(positions, strengths, bias=bias_strengths)
 
 
 class Box(Spatial):
@@ -979,7 +1106,7 @@ class Box(Spatial):
 
         """
         only_fissionable = get_text(elem, 'type') == 'fission'
-        params = [float(x) for x in get_text(elem, 'parameters').split()]
+        params = get_elem_list(elem, "parameters", float)
         lower_left = params[:len(params)//2]
         upper_right = params[len(params)//2:]
         return cls(lower_left, upper_right, only_fissionable)
@@ -1046,7 +1173,7 @@ class Point(Spatial):
             Point distribution generated from XML element
 
         """
-        xyz = [float(x) for x in get_text(elem, 'parameters').split()]
+        xyz = get_elem_list(elem, "parameters", float)
         return cls(xyz)
 
 

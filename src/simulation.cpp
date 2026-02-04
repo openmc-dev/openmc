@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/collision_track.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -9,7 +10,6 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
-#include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
@@ -118,6 +118,7 @@ int openmc_simulation_init()
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
+  simulation::ct_current_file = 1;
   simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
@@ -297,6 +298,7 @@ namespace openmc {
 
 namespace simulation {
 
+int ct_current_file;
 int current_batch;
 int current_gen;
 bool initialized {false};
@@ -346,6 +348,11 @@ void allocate_banks()
   if (settings::surf_source_write) {
     // Allocate surface source bank
     simulation::surf_source_bank.reserve(settings::ssw_max_particles);
+  }
+
+  if (settings::collision_track) {
+    // Allocate collision track bank
+    collision_track_reserve_bank();
   }
 }
 
@@ -490,6 +497,10 @@ void finalize_batch()
       ++simulation::ssw_current_file;
     }
   }
+  // Write collision track file if requested
+  if (settings::collision_track) {
+    collision_track_flush_bank();
+  }
 }
 
 void initialize_generation()
@@ -614,6 +625,10 @@ void initialize_history(Particle& p, int64_t index_source)
   // Set particle track.
   p.write_track() = check_track_criteria(p);
 
+  // Set the particle's initial weight window value.
+  p.wgt_ww_born() = -1.0;
+  apply_weight_windows(p);
+
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {
     write_message("Simulating Particle {}", p.id());
@@ -667,11 +682,12 @@ void calculate_work()
 void initialize_data()
 {
   // Determine minimum/maximum energy for incident neutron/photon data
-  data::energy_max = {INFTY, INFTY};
-  data::energy_min = {0.0, 0.0};
+  data::energy_max = {INFTY, INFTY, INFTY, INFTY};
+  data::energy_min = {0.0, 0.0, 0.0, 0.0};
+
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
-      int neutron = static_cast<int>(ParticleType::neutron);
+      int neutron = ParticleType::neutron().transport_index();
       data::energy_min[neutron] =
         std::max(data::energy_min[neutron], nuc->grid_[0].energy.front());
       data::energy_max[neutron] =
@@ -682,7 +698,7 @@ void initialize_data()
   if (settings::photon_transport) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
-        int photon = static_cast<int>(ParticleType::photon);
+        int photon = ParticleType::photon().transport_index();
         int n = elem->energy_.size();
         data::energy_min[photon] =
           std::max(data::energy_min[photon], std::exp(elem->energy_(1)));
@@ -695,12 +711,22 @@ void initialize_data()
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
-        int photon = static_cast<int>(ParticleType::photon);
+        int photon = ParticleType::photon().transport_index();
+        int electron = ParticleType::electron().transport_index();
+        int positron = ParticleType::positron().transport_index();
         int n_e = data::ttb_e_grid.size();
+
+        const std::vector<int> charged = {electron, positron};
+        for (auto t : charged) {
+          data::energy_min[t] = std::exp(data::ttb_e_grid(1));
+          data::energy_max[t] = std::exp(data::ttb_e_grid(n_e - 1));
+        }
+
         data::energy_min[photon] =
-          std::max(data::energy_min[photon], std::exp(data::ttb_e_grid(1)));
-        data::energy_max[photon] = std::min(
-          data::energy_max[photon], std::exp(data::ttb_e_grid(n_e - 1)));
+          std::max(data::energy_min[photon], data::energy_min[electron]);
+
+        data::energy_max[photon] =
+          std::min(data::energy_max[photon], data::energy_max[electron]);
       }
     }
   }
@@ -711,7 +737,7 @@ void initialize_data()
     // grid has not been allocated
     if (nuc->grid_.size() > 0) {
       double max_E = nuc->grid_[0].energy.back();
-      int neutron = static_cast<int>(ParticleType::neutron);
+      int neutron = ParticleType::neutron().transport_index();
       if (max_E == data::energy_max[neutron]) {
         write_message(7, "Maximum neutron transport energy: {} eV for {}",
           data::energy_max[neutron], nuc->name_);
@@ -728,7 +754,7 @@ void initialize_data()
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = ParticleType::neutron().transport_index();
   simulation::log_spacing =
     std::log(data::energy_max[neutron] / data::energy_min[neutron]) /
     settings::n_log_bins;
@@ -783,7 +809,7 @@ void transport_history_based_single_particle(Particle& p)
       p.event_advance();
     }
     if (p.alive()) {
-      if (p.collision_distance() > p.boundary().distance) {
+      if (p.collision_distance() > p.boundary().distance()) {
         p.event_cross_surface();
       } else if (p.alive()) {
         p.event_collide();

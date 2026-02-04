@@ -8,14 +8,14 @@ import openmc.data
 
 @pytest.fixture(scope='module')
 def u235():
-    directory = pathlib.Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    directory = pathlib.Path(openmc.config.get('cross_sections')).parent
     u235 = directory / 'wmp' / '092235.h5'
     return openmc.data.WindowedMultipole.from_hdf5(u235)
 
 
 @pytest.fixture(scope='module')
 def b10():
-    directory = pathlib.Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    directory = pathlib.Path(openmc.config.get('cross_sections')).parent
     b10 = directory / 'wmp' / '005010.h5'
     return openmc.data.WindowedMultipole.from_hdf5(b10)
 
@@ -48,17 +48,15 @@ def test_export_to_hdf5(tmpdir, u235):
     assert os.path.exists(filename)
 
 
-def test_from_endf():
+def test_from_endf(endf_data):
     pytest.importorskip('vectfit')
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
     assert openmc.data.WindowedMultipole.from_endf(
             endf_file, log=True, wmp_options={"n_win": 400, "n_cf": 3})
 
 
-def test_from_endf_search():
+def test_from_endf_search(endf_data):
     pytest.importorskip('vectfit')
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     endf_file = os.path.join(endf_data, 'neutrons', 'n-095_Am_244.endf')
     assert openmc.data.WindowedMultipole.from_endf(
             endf_file, log=True, wmp_options={"search": True, 'rtol':1e-2})

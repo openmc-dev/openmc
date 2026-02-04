@@ -6,11 +6,11 @@
 #include <set>
 #include <string>
 
+#include "xtensor/xdynamic_view.hpp"
 #include "xtensor/xindex_view.hpp"
 #include "xtensor/xio.hpp"
 #include "xtensor/xmasked_view.hpp"
 #include "xtensor/xnoalias.hpp"
-#include "xtensor/xstrided_view.hpp"
 #include "xtensor/xview.hpp"
 
 #include "openmc/error.h"
@@ -26,6 +26,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"
@@ -58,7 +59,7 @@ void apply_weight_windows(Particle& p)
     return;
 
   // WW on photon and neutron only
-  if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
+  if (!p.type().is_neutron() && !p.type().is_photon())
     return;
 
   // skip dead or no energy
@@ -73,9 +74,25 @@ void apply_weight_windows(Particle& p)
     if (weight_window.is_valid())
       break;
   }
+
+  // If particle has not yet had its birth weight window value set, set it to
+  // the current weight window (or 1.0 if not born in a weight window).
+  if (p.wgt_ww_born() == -1.0) {
+    if (weight_window.is_valid()) {
+      p.wgt_ww_born() =
+        (weight_window.lower_weight + weight_window.upper_weight) / 2;
+    } else {
+      p.wgt_ww_born() = 1.0;
+    }
+  }
+
   // particle is not in any of the ww domains, do nothing
   if (!weight_window.is_valid())
     return;
+
+  // Normalize weight windows based on particle's starting weight
+  // and the value of the weight window the particle was born in.
+  weight_window.scale(p.wgt_born() / p.wgt_ww_born());
 
   // get the paramters
   double weight = p.wgt();
@@ -162,7 +179,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // get the particle type
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
-  particle_type_ = openmc::str_to_particle_type(particle_type_str);
+  particle_type_ = ParticleType {particle_type_str};
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
@@ -235,7 +252,7 @@ WeightWindows* WeightWindows::from_hdf5(
 
   std::string particle_type;
   read_dataset(ww_group, "particle_type", particle_type);
-  wws->particle_type_ = openmc::str_to_particle_type(particle_type);
+  wws->particle_type_ = ParticleType {particle_type};
 
   read_dataset<double>(ww_group, "energy_bounds", wws->energy_bounds_);
 
@@ -267,7 +284,10 @@ void WeightWindows::set_defaults()
 {
   // set energy bounds to the min/max energy supported by the data
   if (energy_bounds_.size() == 0) {
-    int p_type = static_cast<int>(particle_type_);
+    int p_type = particle_type_.transport_index();
+    if (p_type == C_NONE) {
+      fatal_error("Weight windows particle is not supported for transport.");
+    }
     energy_bounds_.push_back(data::energy_min[p_type]);
     energy_bounds_.push_back(data::energy_max[p_type]);
   }
@@ -328,10 +348,9 @@ void WeightWindows::set_energy_bounds(span<const double> bounds)
 
 void WeightWindows::set_particle_type(ParticleType p_type)
 {
-  if (p_type != ParticleType::neutron && p_type != ParticleType::photon)
-    fatal_error(
-      fmt::format("Particle type '{}' cannot be applied to weight windows.",
-        particle_type_to_str(p_type)));
+  if (!p_type.is_neutron() && !p_type.is_photon())
+    fatal_error(fmt::format(
+      "Particle type '{}' cannot be applied to weight windows.", p_type.str()));
   particle_type_ = p_type;
 }
 
@@ -490,8 +509,18 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   ///////////////////////////
   this->check_tally_update_compatibility(tally);
 
-  lower_ww_.fill(-1);
-  upper_ww_.fill(-1);
+  // Dimensions of weight window arrays
+  int e_bins = lower_ww_.shape()[0];
+  int64_t mesh_bins = lower_ww_.shape()[1];
+
+  // Initialize weight window arrays to -1.0 by default
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      lower_ww_(e, m) = -1.0;
+      upper_ww_(e, m) = -1.0;
+    }
+  }
 
   // determine which value to use
   const std::set<std::string> allowed_values = {"mean", "rel_err"};
@@ -520,8 +549,10 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // build a shape for a view of the tally results, this will always be
   // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
-  std::array<int, 5> shape = {
-    1, 1, 1, tally->n_scores(), static_cast<int>(TallyResult::SIZE)};
+  // Look for the size of the last dimension of the results array
+  const auto& results_arr = tally->results();
+  const int results_dim = static_cast<int>(results_arr.shape()[2]);
+  std::array<int, 5> shape = {1, 1, 1, tally->n_scores(), results_dim};
 
   // set the shape for the filters applied on the tally
   for (int i = 0; i < tally->filters().size(); i++) {
@@ -559,7 +590,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // get a fully reshaped view of the tally according to tally ordering of
   // filters
-  auto tally_values = xt::reshape_view(tally->results(), shape);
+  auto tally_values = xt::reshape_view(results_arr, shape);
 
   // get a that is (particle, energy, mesh, scores, values)
   auto transposed_view = xt::transpose(tally_values, transpose);
@@ -579,8 +610,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     if (p_it == particles.end()) {
       auto msg = fmt::format("Particle type '{}' not present on Filter {} for "
                              "Tally {} used to update WeightWindows {}",
-        particle_type_to_str(this->particle_type_), pf->id(), tally->id(),
-        this->id());
+        this->particle_type_.str(), pf->id(), tally->id(), this->id());
       fatal_error(msg);
     }
 
@@ -589,10 +619,12 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   }
 
   // down-select data based on particle and score
-  auto sum = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
-    score_index, static_cast<int>(TallyResult::SUM));
-  auto sum_sq = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
-    score_index, static_cast<int>(TallyResult::SUM_SQ));
+  auto sum = xt::dynamic_view(
+    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
+                       static_cast<int>(TallyResult::SUM)});
+  auto sum_sq = xt::dynamic_view(
+    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
+                       static_cast<int>(TallyResult::SUM_SQ)});
   int n = tally->n_realizations_;
 
   //////////////////////////////////////////////
@@ -610,78 +642,117 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   auto& new_bounds = this->lower_ww_;
   auto& rel_err = this->upper_ww_;
 
-  // noalias avoids memory allocation here
-  xt::noalias(new_bounds) = sum / n;
-
-  xt::noalias(rel_err) =
-    xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
-  xt::filter(rel_err, sum <= 0.0).fill(INFTY);
-
-  if (value == "rel_err")
-    xt::noalias(new_bounds) = 1 / rel_err;
-
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
 
-  int e_bins = new_bounds.shape()[0];
-
-  if (method == WeightWindowUpdateMethod::MAGIC) {
-    // If we are computing weight windows with forward fluxes derived from a
-    // Monte Carlo or forward random ray solve, we use the MAGIC algorithm.
-    for (int e = 0; e < e_bins; e++) {
-      // select all
-      auto group_view = xt::view(new_bounds, e);
-
-      // divide by volume of mesh elements
-      for (int i = 0; i < group_view.size(); i++) {
-        group_view[i] /= mesh_vols[i];
+  // Calculate mean (new_bounds) and relative error
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      // Calculate mean
+      new_bounds(e, m) = sum(e, m) / n;
+      // Calculate relative error
+      if (sum(e, m) > 0.0) {
+        double mean_val = new_bounds(e, m);
+        double variance = (sum_sq(e, m) / n - mean_val * mean_val) / (n - 1);
+        rel_err(e, m) = std::sqrt(variance) / mean_val;
+      } else {
+        rel_err(e, m) = INFTY;
       }
-
-      double group_max =
-        *std::max_element(group_view.begin(), group_view.end());
-      // normalize values in this energy group by the maximum value for this
-      // group
-      if (group_max > 0.0)
-        group_view /= 2.0 * group_max;
-    }
-  } else {
-    // If we are computing weight windows with adjoint fluxes derived from an
-    // adjoint random ray solve, we use the FW-CADIS algorithm.
-    for (int e = 0; e < e_bins; e++) {
-      // select all
-      auto group_view = xt::view(new_bounds, e);
-
-      // divide by volume of mesh elements
-      for (int i = 0; i < group_view.size(); i++) {
-        group_view[i] /= mesh_vols[i];
+      if (value == "rel_err") {
+        new_bounds(e, m) = 1.0 / rel_err(e, m);
       }
     }
-
-    // We take the inverse, but are careful not to divide by zero e.g. if some
-    // mesh bins are not reachable in the physical geometry.
-    xt::noalias(new_bounds) =
-      xt::where(xt::not_equal(new_bounds, 0.0), 1.0 / new_bounds, 0.0);
-    auto max_val = xt::amax(new_bounds)();
-    xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
-
-    // For bins that were missed, we use the minimum weight window value. This
-    // shouldn't matter except for plotting.
-    auto min_val = xt::amin(new_bounds)();
-    xt::noalias(new_bounds) =
-      xt::where(xt::not_equal(new_bounds, 0.0), new_bounds, min_val);
   }
 
-  // make sure that values where the mean is zero are set s.t. the weight window
-  // value will be ignored
-  xt::filter(new_bounds, sum <= 0.0).fill(-1.0);
+  // Divide by volume of mesh elements
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      new_bounds(e, m) /= mesh_vols[m];
+    }
+  }
 
-  // make sure the weight windows are ignored for any locations where the
-  // relative error is higher than the specified relative error threshold
-  xt::filter(new_bounds, rel_err > threshold).fill(-1.0);
+  if (method == WeightWindowUpdateMethod::MAGIC) {
+    // For MAGIC, weight windows are proportional to the forward fluxes.
+    // We normalize weight windows independently for each energy group.
 
-  // update the bounds of this weight window class
-  // noalias avoids additional memory allocation
-  xt::noalias(upper_ww_) = ratio * lower_ww_;
+    // Find group maximum and normalize (per energy group)
+    for (int e = 0; e < e_bins; e++) {
+      double group_max = 0.0;
+
+      // Find maximum value across all elements in this energy group
+#pragma omp parallel for schedule(static) reduction(max : group_max)
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        if (new_bounds(e, m) > group_max) {
+          group_max = new_bounds(e, m);
+        }
+      }
+
+      // Normalize values in this energy group by the maximum value
+      if (group_max > 0.0) {
+        double norm_factor = 1.0 / (2.0 * group_max);
+#pragma omp parallel for schedule(static)
+        for (int64_t m = 0; m < mesh_bins; m++) {
+          new_bounds(e, m) *= norm_factor;
+        }
+      }
+    }
+  } else {
+    // For FW-CADIS, weight windows are inversely proportional to the adjoint
+    // fluxes. We normalize the weight windows across all energy groups.
+#pragma omp parallel for collapse(2) schedule(static)
+    for (int e = 0; e < e_bins; e++) {
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        // Take the inverse, but are careful not to divide by zero
+        if (new_bounds(e, m) != 0.0) {
+          new_bounds(e, m) = 1.0 / new_bounds(e, m);
+        } else {
+          new_bounds(e, m) = 0.0;
+        }
+      }
+    }
+
+    // Find the maximum value across all elements
+    double max_val = 0.0;
+#pragma omp parallel for collapse(2) schedule(static) reduction(max : max_val)
+    for (int e = 0; e < e_bins; e++) {
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        if (new_bounds(e, m) > max_val) {
+          max_val = new_bounds(e, m);
+        }
+      }
+    }
+
+    // Parallel normalization
+    if (max_val > 0.0) {
+      double norm_factor = 1.0 / (2.0 * max_val);
+#pragma omp parallel for collapse(2) schedule(static)
+      for (int e = 0; e < e_bins; e++) {
+        for (int64_t m = 0; m < mesh_bins; m++) {
+          new_bounds(e, m) *= norm_factor;
+        }
+      }
+    }
+  }
+
+  // Final processing
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      // Values where the mean is zero should be ignored
+      if (sum(e, m) <= 0.0) {
+        new_bounds(e, m) = -1.0;
+      }
+      // Values where the relative error is higher than the threshold should be
+      // ignored
+      else if (rel_err(e, m) > threshold) {
+        new_bounds(e, m) = -1.0;
+      }
+      // Set the upper bounds
+      upper_ww_(e, m) = ratio * lower_ww_(e, m);
+    }
+  }
 }
 
 void WeightWindows::check_tally_update_compatibility(const Tally* tally)
@@ -748,8 +819,7 @@ void WeightWindows::to_hdf5(hid_t group) const
   hid_t ww_group = create_group(group, fmt::format("weight_windows_{}", id()));
 
   write_dataset(ww_group, "mesh", this->mesh()->id());
-  write_dataset(
-    ww_group, "particle_type", openmc::particle_type_to_str(particle_type_));
+  write_dataset(ww_group, "particle_type", particle_type_.str());
   write_dataset(ww_group, "energy_bounds", energy_bounds_);
   write_dataset(ww_group, "lower_ww_bounds", lower_ww_);
   write_dataset(ww_group, "upper_ww_bounds", upper_ww_);
@@ -776,8 +846,8 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
         max_realizations_, active_batches);
     warning(msg);
   }
-  auto tmp_str = get_node_value(node, "particle_type", true, true);
-  auto particle_type = str_to_particle_type(tmp_str);
+  auto tmp_str = get_node_value(node, "particle_type", false, true);
+  auto particle_type = ParticleType {tmp_str};
 
   update_interval_ = std::stoi(get_node_value(node, "update_interval"));
   on_the_fly_ = get_node_value_bool(node, "on_the_fly");
@@ -786,7 +856,10 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   if (check_for_node(node, "energy_bounds")) {
     e_bounds = get_node_array<double>(node, "energy_bounds");
   } else {
-    int p_type = static_cast<int>(particle_type);
+    int p_type = particle_type.transport_index();
+    if (p_type == C_NONE) {
+      fatal_error("Weight windows particle is not supported for transport.");
+    }
     e_bounds.push_back(data::energy_min[p_type]);
     e_bounds.push_back(data::energy_max[p_type]);
   }
@@ -863,7 +936,8 @@ void WeightWindowsGenerator::create_tally()
   for (const auto& f : model::tally_filters) {
     if (f->type() == FilterType::MESH) {
       const auto* mesh_filter = dynamic_cast<MeshFilter*>(f.get());
-      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated()) {
+      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated() &&
+          !mesh_filter->rotated()) {
         ww_tally->add_filter(f.get());
         found_mesh_filter = true;
         break;
@@ -899,11 +973,17 @@ void WeightWindowsGenerator::update() const
 
   Tally* tally = model::tallies[tally_idx_].get();
 
-  // if we're beyond the number of max realizations or not at the corrrect
-  // update interval, skip the update
-  if (max_realizations_ < tally->n_realizations_ ||
-      tally->n_realizations_ % update_interval_ != 0)
+  // If in random ray mode, only update on the last batch
+  if (settings::solver_type == SolverType::RANDOM_RAY) {
+    if (simulation::current_batch != settings::n_batches) {
+      return;
+    }
+    // If in Monte Carlo mode and beyond the number of max realizations or
+    // not at the correct update interval, skip the update
+  } else if (max_realizations_ < tally->n_realizations_ ||
+             tally->n_realizations_ % update_interval_ != 0) {
     return;
+  }
 
   wws->update_weights(tally, tally_value_, threshold_, ratio_, method_);
 
@@ -1033,23 +1113,25 @@ extern "C" int openmc_weight_windows_get_energy_bounds(
   return 0;
 }
 
-extern "C" int openmc_weight_windows_set_particle(int32_t index, int particle)
+extern "C" int openmc_weight_windows_set_particle(
+  int32_t index, int32_t particle)
 {
   if (int err = verify_ww_index(index))
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  wws->set_particle_type(static_cast<ParticleType>(particle));
+  wws->set_particle_type(ParticleType {particle});
   return 0;
 }
 
-extern "C" int openmc_weight_windows_get_particle(int32_t index, int* particle)
+extern "C" int openmc_weight_windows_get_particle(
+  int32_t index, int32_t* particle)
 {
   if (int err = verify_ww_index(index))
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  *particle = static_cast<int>(wws->particle_type());
+  *particle = wws->particle_type().pdg_number();
   return 0;
 }
 
@@ -1260,6 +1342,10 @@ extern "C" int openmc_weight_windows_import(const char* filename)
   }
 
   hid_t weight_windows_group = open_group(ww_file, "weight_windows");
+
+  hid_t mesh_group = open_group(ww_file, "meshes");
+
+  read_meshes(mesh_group);
 
   std::vector<std::string> names = group_names(weight_windows_group);
 

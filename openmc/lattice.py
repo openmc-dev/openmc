@@ -10,7 +10,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 
 
@@ -959,18 +959,17 @@ class RectLattice(Lattice):
         lat_id = int(get_text(elem, 'id'))
         name = get_text(elem, 'name')
         lat = cls(lat_id, name)
-        lat.lower_left = [float(i)
-                          for i in get_text(elem, 'lower_left').split()]
-        lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
+        lat.lower_left = get_elem_list(elem, "lower_left", float)
+        lat.pitch = get_elem_list(elem, "pitch", float)
         outer = get_text(elem, 'outer')
         if outer is not None:
             lat.outer = get_universe(int(outer))
 
         # Get array of universes
-        dimension = get_text(elem, 'dimension').split()
+        dimension = get_elem_list(elem, 'dimension', int)
         shape = np.array(dimension, dtype=int)[::-1]
-        uarray = np.array([get_universe(int(i)) for i in
-                           get_text(elem, 'universes').split()])
+        universes = get_elem_list(elem, 'universes', int)
+        uarray = np.array([get_universe(u) for u in universes])
         uarray.shape = shape
         lat.universes = uarray
         return lat
@@ -1084,8 +1083,11 @@ class HexLattice(Lattice):
         from the outermost ring), and i is the index with a ring starting from
         the top and proceeding clockwise.
     orientation : {'x', 'y'}
-        str by default 'y' orientation of main lattice diagonal another option
-        - 'x'
+        The orientation of the lattice. The 'x' orientation means that each
+        lattice element has two faces that are perpendicular to the x-axis,
+        while the 'y' orientation means that each lattice element has two faces
+        that are perpendicular to the y-axis. By default, the orientation is
+        'y'.
     num_rings : int
         Number of radial ring positions in the xy-plane
     num_axial : int
@@ -1530,8 +1532,8 @@ class HexLattice(Lattice):
         lat_id = int(get_text(elem, 'id'))
         name = get_text(elem, 'name')
         lat = cls(lat_id, name)
-        lat.center = [float(i) for i in get_text(elem, 'center').split()]
-        lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
+        lat.center = get_elem_list(elem, "center", float)
+        lat.pitch = get_elem_list(elem, "pitch", float)
         lat.orientation = get_text(elem, 'orientation', 'y')
         outer = get_text(elem, 'outer')
         if outer is not None:
@@ -1548,8 +1550,8 @@ class HexLattice(Lattice):
             univs = [deepcopy(univs) for i in range(n_axial)]
 
         # Get flat array of universes
-        uarray = np.array([get_universe(int(i)) for i in
-                           get_text(elem, 'universes').split()])
+        universes = get_elem_list(elem, "universes", int)
+        uarray = np.array([get_universe(u) for u in universes])
 
         # Fill nested lists
         j = 0

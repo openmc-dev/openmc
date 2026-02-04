@@ -47,7 +47,7 @@ double Particle::speed() const
 {
   if (settings::run_CE) {
     // Determine mass in eV/c^2
-    double mass = this->type().mass();
+    double mass = this->type().mass() * AMU_EV;
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);

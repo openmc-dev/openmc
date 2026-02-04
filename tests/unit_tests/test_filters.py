@@ -334,6 +334,16 @@ def test_weight():
     assert new_f.id == f.id
     assert np.allclose(new_f.bins, f.bins)
 
+def test_material():
+    filt1 = openmc.MaterialFilter([None])
+    filt2 = openmc.MaterialFilter(['void'])
+    
+    assert filt1.bins == [-1]
+    assert filt2.bins == [-1]
+    
+    with raises(ValueError):
+        openmc.MaterialFilter(['void2'])
+
 
 def test_mesh_material():
     mat1 = openmc.Material()

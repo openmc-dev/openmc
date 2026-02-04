@@ -468,7 +468,7 @@ class UniverseFilter(WithIDFilter):
     expected_type = UniverseBase
 
 
-class MaterialFilter(WithIDFilter):
+class MaterialFilter(Filter):
     """Bins tally event locations based on the Material they occurred in.
 
     Parameters
@@ -489,7 +489,34 @@ class MaterialFilter(WithIDFilter):
         The number of filter bins
 
     """
-    expected_type = Material
+    expected_type = Material | str | None
+    
+    def __init__(self, bins, filter_id=None):
+        bins = np.atleast_1d(bins)
+
+        # Make sure bins are either integers or appropriate objects
+        cv.check_iterable_type('filter bins', bins,
+                               (Integral, self.expected_type))
+        for i,b in enumerate(bins):
+            if isinstance(b, str):
+              cv.check_value(f'filter bins[{i}]', b, "void")
+              
+        def get_id(b):
+            if isinstance(b, Integral):
+                return b
+            elif b == 'void' or b is None:
+                return -1
+            else:
+                return b.id
+
+        # Extract ID values
+        bins = np.array([get_id(b) for b in bins])
+        super().__init__(bins, filter_id)
+        
+    def check_bins(self, bins):
+        # Check the bin values.
+        for edge in bins:
+            cv.check_greater_than('filter bin', edge, -1, equality=True)        
 
 
 class MaterialFromFilter(WithIDFilter):

@@ -126,7 +126,7 @@ public:
 
   //! Retrieve the weight window for a particle
   //! \param[in] p  Particle to get weight window for
-  WeightWindow get_weight_window(const Particle& p) const;
+  std::pair<bool, WeightWindow> get_weight_window(const Particle& p) const;
 
   std::array<int, 2> bounds_size() const;
 
@@ -243,7 +243,7 @@ void free_memory_weight_windows();
 
 //! Search weight window that apply to a particle
 //! \param[in]  p  Particle to search weight window for
-WeightWindow search_weight_window(const Particle& p);
+std::pair<bool, WeightWindow> search_weight_window(const Particle& p);
 
 //! Finalize variance reduction objects after all inputs have been read
 void finalize_variance_reduction();

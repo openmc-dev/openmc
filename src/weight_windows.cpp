@@ -272,12 +272,19 @@ void WeightWindows::set_mesh(const Mesh* mesh)
   set_mesh(model::mesh_map[mesh->id_]);
 }
 
-WeightWindow WeightWindows::get_weight_window(const Particle& p) const
+std::pair<bool, WeightWindow> WeightWindows::get_weight_window(const Particle& p) const
 {
   // check for particle type
   if (particle_type_ != p.type()) {
-    return {};
+    return {false, {}};
   }
+
+  // particle energy
+  double E = p.E();
+
+  // check to make sure energy is in range, expects sorted energy values
+  if (E < energy_bounds_.front() || E > energy_bounds_.back())
+    return {false, {}};
 
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
@@ -285,16 +292,9 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 
   // particle is outside the weight window mesh
   if (mesh_bin < 0)
-    return {};
+    return {false, {}};
 
-  // particle energy
-  double E = p.E();
-
-  // check to make sure energy is in range, expects sorted energy values
-  if (E < energy_bounds_.front() || E > energy_bounds_.back())
-    return {};
-
-  // get the mesh bin in energy group
+   // get the mesh bin in energy group
   int energy_bin =
     lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
 
@@ -307,7 +307,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   ww.max_lb_ratio = max_lb_ratio_;
   ww.max_split = max_split_;
   ww.weight_cutoff = weight_cutoff_;
-  return ww;
+  return {true, ww};
 }
 
 std::array<int, 2> WeightWindows::bounds_size() const
@@ -898,17 +898,15 @@ void WeightWindowsGenerator::update() const
 // Non-member functions
 //==============================================================================
 
-WeightWindow search_weight_window(const Particle& p)
+std::pair<bool, WeightWindow> search_weight_window(const Particle& p)
 {
   // TODO: this is a linear search - should do something more clever
-  int mesh_bin;
-  WeightWindow weight_window;
   for (const auto& ww : variance_reduction::weight_windows) {
-    weight_window = ww->get_weight_window(p);
-    if (weight_window.is_valid())
-      return weight_window;
+    auto [ww_found, weight_window] = ww->get_weight_window(p);
+    if (ww_found)
+      return {true, weight_window};
   }
-  return {};
+  return {false, {}};
 }
 
 void apply_weight_windows(Particle& p)
@@ -924,8 +922,8 @@ void apply_weight_windows(Particle& p)
   if (p.E() <= 0 || !p.alive())
     return;
 
-  auto ww = search_weight_window(p);
-  if (ww.is_valid()) {
+  auto [ww_found, ww] = search_weight_window(p);
+  if (ww_found && ww.is_valid()) {
     apply_weight_window(p, ww);
   } else {
     if (p.wgt_ww_born() == -1.0)

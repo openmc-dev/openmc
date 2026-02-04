@@ -32,8 +32,8 @@ void collision_mg(Particle& p)
   sample_reaction(p);
 
   if (settings::weight_windows_on) {
-    auto ww = search_weight_window(p);
-    if (!ww.is_valid()) {
+    auto [ww_found, ww] = search_weight_window(p);
+    if (!ww_found && p.type() == ParticleType::neutron()) {
       // if the weight window is not valid, apply russian roulette
       // (regardless of weight window collision checkpoint setting)
       apply_russian_roulette(p);

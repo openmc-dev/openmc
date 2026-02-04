@@ -88,6 +88,8 @@ const RGBColor BLACK {0, 0, 0};
  * is designed to be implemented by classes that produce plot-relevant data
  * which can be visualized.
  */
+
+typedef xt::xtensor<RGBColor, 2> ImageData;
 class PlottableInterface {
 public:
   PlottableInterface() = default;
@@ -112,8 +114,14 @@ protected:
 public:
   enum class PlotColorBy { cells = 0, mats = 1 };
 
+  // Generates image data based on plot parameters and returns it
+  virtual ImageData create_image() const = 0;
+
   // Creates the output image named path_plot_
   virtual void create_output() const = 0;
+
+  // Write populated image data to file
+  void write_image(const ImageData& data) const;
 
   // Print useful info to the terminal
   virtual void print_info() const = 0;
@@ -134,8 +142,6 @@ public:
   RGBColor overlap_color_ {RED}; // Plot overlap color
   vector<RGBColor> colors_;      // Plot colors
 };
-
-typedef xt::xtensor<RGBColor, 2> ImageData;
 
 struct IdData {
   // Constructor
@@ -281,11 +287,11 @@ private:
 public:
   // Add mesh lines to ImageData
   void draw_mesh_lines(ImageData& data) const;
-  void create_image() const;
+  ImageData create_image() const override;
   void create_voxel() const;
 
-  virtual void create_output() const;
-  virtual void print_info() const;
+  void create_output() const override;
+  void print_info() const override;
 
   PlotType type_;                 //!< Plot type (Slice/Voxel)
   int meshlines_width_;           //!< Width of lines added to the plot
@@ -320,7 +326,7 @@ public:
   }
   double& horizontal_field_of_view() { return horizontal_field_of_view_; }
 
-  virtual void print_info() const;
+  void print_info() const override;
 
   const std::array<int, 2>& pixels() const { return pixels_; }
   std::array<int, 2>& pixels() { return pixels_; }
@@ -401,8 +407,9 @@ class WireframeRayTracePlot : public RayTracePlot {
 public:
   WireframeRayTracePlot(pugi::xml_node plot);
 
-  virtual void create_output() const;
-  virtual void print_info() const;
+  ImageData create_image() const override;
+  void create_output() const override;
+  void print_info() const override;
 
 private:
   void set_opacities(pugi::xml_node node);
@@ -462,10 +469,9 @@ public:
 
   SolidRayTracePlot(pugi::xml_node plot);
 
-  ImageData create_image() const;
-
-  virtual void create_output() const;
-  virtual void print_info() const;
+  ImageData create_image() const override;
+  void create_output() const override;
+  void print_info() const override;
 
   const std::unordered_set<int>& opaque_ids() const { return opaque_ids_; }
   std::unordered_set<int>& opaque_ids() { return opaque_ids_; }
@@ -533,7 +539,7 @@ public:
     : Ray(r, u), plot_(plot), line_segments_(line_segments)
   {}
 
-  virtual void on_intersection() override;
+  void on_intersection() override;
 
 private:
   /* Store a reference to the plot object which is running this ray, in order
@@ -556,7 +562,7 @@ public:
     result_color_ = plot_.not_found_;
   }
 
-  virtual void on_intersection() override;
+  void on_intersection() override;
 
   const RGBColor& result_color() { return result_color_; }
 

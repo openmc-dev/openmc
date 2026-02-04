@@ -124,11 +124,21 @@ extern "C" int openmc_plot_geometry()
   return 0;
 }
 
+void PlottableInterface::write_image(const ImageData& data) const
+{
+  #ifdef USE_LIBPNG
+    output_png(path_plot(), data);
+  #else
+    output_ppm(path_plot(), data);
+  #endif
+}
+
 void Plot::create_output() const
 {
   if (PlotType::slice == type_) {
     // create 2D image
-    create_image();
+    ImageData image = create_image();
+    write_image(image);
   } else if (PlotType::voxel == type_) {
     // create voxel file for 3D viewing
     create_voxel();
@@ -235,9 +245,8 @@ void free_memory_plot()
 
 // creates an image based on user input from a plots.xml <plot>
 // specification in the PNG/PPM format
-void Plot::create_image() const
+ImageData Plot::create_image() const
 {
-
   size_t width = pixels()[0];
   size_t height = pixels()[1];
 
@@ -276,12 +285,7 @@ void Plot::create_image() const
     draw_mesh_lines(data);
   }
 
-// create image file
-#ifdef USE_LIBPNG
-  output_png(path_plot(), data);
-#else
-  output_ppm(path_plot(), data);
-#endif
+  return data;
 }
 
 void PlottableInterface::set_id(pugi::xml_node plot_node)
@@ -1233,7 +1237,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   return result;
 }
 
-void WireframeRayTracePlot::create_output() const
+ImageData WireframeRayTracePlot::create_image() const
 {
   size_t width = pixels()[0];
   size_t height = pixels()[1];
@@ -1391,11 +1395,14 @@ void WireframeRayTracePlot::create_output() const
     }
   }
 
-#ifdef USE_LIBPNG
-  output_png(path_plot(), data);
-#else
-  output_ppm(path_plot(), data);
-#endif
+  return data;
+  write_image(data);
+}
+
+void WireframeRayTracePlot::create_output() const
+{
+  ImageData data = create_image();
+  write_image(data);
 }
 
 void RayTracePlot::print_info() const
@@ -1565,14 +1572,8 @@ ImageData SolidRayTracePlot::create_image() const
 
 void SolidRayTracePlot::create_output() const
 {
-
   ImageData data = create_image();
-
-#ifdef USE_LIBPNG
-  output_png(path_plot(), data);
-#else
-  output_ppm(path_plot(), data);
-#endif
+  write_image(data);
 }
 
 void SolidRayTracePlot::set_opaque_ids(pugi::xml_node node)

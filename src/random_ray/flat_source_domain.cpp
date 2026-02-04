@@ -1277,6 +1277,7 @@ void FlatSourceDomain::set_adjoint_sources()
 void FlatSourceDomain::transpose_scattering_matrix()
 {
   // Transpose the inner two dimensions for each material
+#pragma omp parallel for
   for (int m = 0; m < n_materials_; ++m) {
     int material_offset = m * negroups_ * negroups_;
     for (int i = 0; i < negroups_; ++i) {

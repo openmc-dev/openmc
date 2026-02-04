@@ -2,7 +2,7 @@
 
 namespace openmc {
 
-static std::unordered_map<int32_t, double> atomic_mass = {
+std::unordered_map<int32_t, double> atomic_mass = {
   {11, MASS_ELECTRON},
   {22, 0.0},
   {2112, MASS_NEUTRON},

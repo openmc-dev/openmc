@@ -17,7 +17,6 @@
 #include "openmc/nuclide.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
-#include "openmc/simulation.h"
 
 namespace openmc {
 
@@ -83,6 +82,30 @@ void MgxsInterface::init()
                 "supported by OpenMC.");
   }
 
+  // Read void velocities
+  if (object_exists(file_id, "void")) {
+    auto void_grp = open_group(file_id, "void");
+    // Determine the available temperatures
+    hid_t kT_group = open_group(void_grp, "kTs");
+    size_t num_temps = get_num_datasets(kT_group);
+    char** dset_names = new char*[num_temps];
+    for (int i = 0; i < num_temps; i++) {
+      dset_names[i] = new char[151];
+    }
+    get_datasets(kT_group, dset_names);
+    if (num_temps > 1)
+      fatal_error("Multigroup void data must have only one dummy temperature");
+    xsdata_grp = open_group(kT_group, dset_names[0]);
+    auto inverse_velocity = xt::zeros<double>({
+      num_energy_groups_,
+    });
+    read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
+    auto velocity = 1.0 / inverse_velocity;
+    for (double v : velocity) {
+      void_velocities_.push_back(v);
+    }
+  }
+
   // ==========================================================================
   // READ ALL MGXS CROSS SECTION TABLES
   for (unsigned i_nuc = 0; i_nuc < xs_to_read_.size(); ++i_nuc)
@@ -108,9 +131,6 @@ void MgxsInterface::add_mgxs(
     fatal_error(
       fmt::format("Data for {} does not exist in provided MGXS Library", name));
   }
-
-  if (name == "void")
-    simulation::mg_void_index = size();
 
   nuclides_.emplace_back(
     xs_grp, temperature, num_energy_groups_, num_delayed_groups_);

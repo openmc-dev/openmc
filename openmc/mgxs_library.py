@@ -11,7 +11,7 @@ import openmc
 import openmc.mgxs
 from openmc.mgxs import SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM
 from .checkvalue import check_type, check_value, check_greater_than, \
-    check_iterable_type, check_less_than, check_filetype_version, PathLike
+    check_iterable_type, check_length, check_less_than, check_filetype_version, PathLike
 
 ROOM_TEMPERATURE_KELVIN = 294.0
 
@@ -327,6 +327,8 @@ class XSdata:
 
     @temperatures.setter
     def temperatures(self, temperatures):
+        if self._is_void:
+          check_length('temperatures', temperatures, 1, 1)
 
         check_iterable_type('temperatures', temperatures, Real)
         self._temperatures = np.array(temperatures)

@@ -22,7 +22,6 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
-#include "openmc/simulation.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -398,8 +397,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
       for (std::string mat : mats) {
         if (mat.compare("void") == 0) {
           material_.push_back(MATERIAL_VOID);
-          if (!settings::run_CE && simulation::mg_void_index < 0)
-            warning("Void data is not available in the "
+          if (!settings::run_CE && mg::void_velocities_.empty())
+            warning("Void inverse-velocity data is not available in the "
                     "multi-group nuclear data library. "
                     "Time related calculation results might be wrong!");
         } else {

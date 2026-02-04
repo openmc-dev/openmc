@@ -307,7 +307,6 @@ double keff_std;
 double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
-int32_t mg_void_index {-1};
 double log_spacing;
 int n_lost_particles {0};
 bool need_depletion_rx {false};

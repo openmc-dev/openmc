@@ -68,8 +68,8 @@ double Particle::speed() const
   } else {
     auto mat = this->material();
     if (mat == MATERIAL_VOID) {
-      if (simulation::mg_void_index > -1) {
-        mat = simulation::mg_void_index;
+      if (!mg::void_velocities_.empty()) {
+        return mg::void_velocities_[this->g()];
       } else {
         return 0.0;
       }
@@ -240,9 +240,6 @@ void Particle::event_calculate_xs()
     macro_xs().absorption = 0.0;
     macro_xs().fission = 0.0;
     macro_xs().nu_fission = 0.0;
-    if (!settings::run_CE && simulation::mg_void_index > -1) {
-      data::mg.macro_xs_[simulation::mg_void_index].calculate_xs(*this);
-    }
   }
 }
 

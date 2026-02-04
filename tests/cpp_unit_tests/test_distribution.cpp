@@ -1,4 +1,6 @@
 #include "openmc/distribution.h"
+#include "openmc/distribution_spatial.h"
+#include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -79,6 +81,18 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
     REQUIRE(dist.alias()[i] == correct_alias[i]);
   }
 }
+
+TEST_CASE("Test construction of SpatialBox with parameters")
+{
+  openmc::Position ll {-1, -2, -3};
+  openmc::Position ur {30, 15, 5};
+  openmc::SpatialBox box(ll, ur);
+
+  REQUIRE(box.lower_left() == openmc::Position {-1, -2, -3});
+  REQUIRE(box.upper_right() == openmc::Position {30, 15, 5});
+  REQUIRE_FALSE(box.only_fissionable());
+}
+
 TEST_CASE("Test Normal distribution")
 {
   // Test untruncated normal distribution

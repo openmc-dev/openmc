@@ -82,29 +82,6 @@ void MgxsInterface::init()
                 "supported by OpenMC.");
   }
 
-  // Read void velocities
-  if (object_exists(file_id, "void")) {
-    auto void_grp = open_group(file_id, "void");
-    // Determine the available temperatures
-    hid_t kT_group = open_group(void_grp, "kTs");
-    size_t num_temps = get_num_datasets(kT_group);
-    char** dset_names = new char*[num_temps];
-    for (int i = 0; i < num_temps; i++) {
-      dset_names[i] = new char[151];
-    }
-    get_datasets(kT_group, dset_names);
-    if (num_temps > 1)
-      fatal_error("Multigroup void data must have only one dummy temperature");
-    auto xsdata_grp = open_group(void_grp, dset_names[0]);
-    vector<size_t> shape {1, num_energy_groups_};
-    xt::xtensor<double, 2> inverse_velocity = xt::zeros<double>(shape);
-    read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
-    auto velocity = 1.0 / inverse_velocity;
-    for (double v : velocity) {
-      void_velocities_.push_back(v);
-    }
-  }
-
   // ==========================================================================
   // READ ALL MGXS CROSS SECTION TABLES
   for (unsigned i_nuc = 0; i_nuc < xs_to_read_.size(); ++i_nuc)
@@ -258,6 +235,29 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   if (xs_names_.empty()) {
     fatal_error("At least one MGXS data set must be present in mgxs "
                 "library file!");
+  }
+
+  // Read void velocities
+  if (object_exists(file_id, "void")) {
+    auto void_grp = open_group(file_id, "void");
+    // Determine the available temperatures
+    hid_t kT_group = open_group(void_grp, "kTs");
+    size_t num_temps = get_num_datasets(kT_group);
+    char** dset_names = new char*[num_temps];
+    for (int i = 0; i < num_temps; i++) {
+      dset_names[i] = new char[151];
+    }
+    get_datasets(kT_group, dset_names);
+    if (num_temps > 1)
+      fatal_error("Multigroup void data must have only one dummy temperature");
+    auto xsdata_grp = open_group(void_grp, dset_names[0]);
+    vector<size_t> shape {1, num_energy_groups_};
+    xt::xtensor<double, 2> inverse_velocity = xt::zeros<double>(shape);
+    read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
+    auto velocity = 1.0 / inverse_velocity;
+    for (double v : velocity) {
+      void_velocities_.push_back(v);
+    }
   }
 
   // Close MGXS HDF5 file

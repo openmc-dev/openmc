@@ -20,6 +20,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
 #include "openmc/xml_interface.h"

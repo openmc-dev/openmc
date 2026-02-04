@@ -40,7 +40,7 @@ def model():
 
     return model
 
-def test_equivalt_void_specification(model, run_in_tmpdir):
+def test_equivalent_void_specification(model, run_in_tmpdir):
     sp_file = model.run()
     with openmc.StatePoint(sp_file) as sp:
         tally1 = sp.tallies[1]

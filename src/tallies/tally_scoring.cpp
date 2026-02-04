@@ -2437,7 +2437,8 @@ void score_tracklength_tally_general(
           if (p.material() != MATERIAL_VOID) {
             const auto& mat = model::materials[p.material()];
             auto j = mat->mat_nuclide_index_[i_nuclide];
-            atom_density = mat->atom_density(j, p.density_mult());
+            if (j != C_NONE)
+              atom_density = mat->atom_density(j, p.density_mult());
           }
           if (atom_density > 0) {
             if (!tally.multiply_density())
@@ -2566,7 +2567,8 @@ void score_collision_tally(Particle& p)
           if (p.material() != MATERIAL_VOID) {
             const auto& mat = model::materials[p.material()];
             auto j = mat->mat_nuclide_index_[i_nuclide];
-            atom_density = mat->atom_density(j, p.density_mult());
+            if (j != C_NONE)
+              atom_density = mat->atom_density(j, p.density_mult());
           }
           if (atom_density > 0) {
             if (!tally.multiply_density())

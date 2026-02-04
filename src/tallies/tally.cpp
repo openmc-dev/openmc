@@ -637,18 +637,27 @@ void Tally::set_scores(const vector<std::string>& scores)
             bool positron_present =
               contains(particles, ParticleType::positron());
             if (!positron_present || !electron_present) {
-              if (!electron_present)
-                warning(fmt::format(
-                  "Tally {} contains heating score with photon bin but "
-                  "without electron bin.",
-                  id_));
-              if (!positron_present)
-                warning(fmt::format(
-                  "Tally {} contains heating score with photon bin but "
-                  "without positron bin.",
-                  id_));
-              warning("Forgetting to specify charged particles in particle "
-                      "filter when using heating score is a common gotcha.");
+              std::string missing_bins;
+              if (!electron_present) {
+                missing_bins += "electron bin";
+                if (!positron_present)
+                  missing_bins += "and positron bin";
+              } else {
+                missing_bins += "positron bin";
+              }
+              std::string other_bins;
+              for (auto b : particles) {
+                if ((b != ParticleType::photon()) &&
+                    (b != ParticleType::electron()) &&
+                    (b != ParticleType::positron()))
+                  other_bins += fmt::format("'{}', ", b.str());
+              }
+
+              warning(fmt::format(
+                "Tally {} contains heating score with photon bin but "
+                "without {}. Try adding to the particle filter: "
+                "openmc.ParticleFilter([{}'photon', 'electron', 'positron']) ",
+                id_, missing_bins, other_bins));
             }
           }
         }

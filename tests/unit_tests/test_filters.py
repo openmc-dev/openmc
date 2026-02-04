@@ -319,9 +319,9 @@ def test_energy_filter():
         openmc.EnergyFilter([-1.2, 0.25, 0.5])
 
 
-def test_secondary_energy_filter():
+def test_particle_production_filter():
     energy_bins = [1e3, 1e4, 1e5, 1e6]
-    f = openmc.SecondaryEnergyFilter('photon', energy_bins)
+    f = openmc.ParticleProductionFilter('photon', energy_bins)
 
     assert f.particle == openmc.ParticleType.PHOTON
     assert f.num_bins == 3
@@ -334,7 +334,7 @@ def test_secondary_energy_filter():
     # to_xml_element()
     elem = f.to_xml_element()
     assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'secondaryenergy'
+    assert elem.attrib['type'] == 'particleproduction'
     assert elem.find('particle').text == 'photon'
     assert elem.find('bins').text.split()[0] == str(energy_bins[0])
 
@@ -347,8 +347,8 @@ def test_secondary_energy_filter():
     # pandas output
     df = f.get_pandas_dataframe(data_size=3, stride=1)
     assert df.shape[0] == 3
-    assert "secondaryenergy low [eV]" in df.columns
-    assert "secondaryenergy high [eV]" in df.columns
+    assert "particleproduction low [eV]" in df.columns
+    assert "particleproduction high [eV]" in df.columns
 
 
 def test_weight():

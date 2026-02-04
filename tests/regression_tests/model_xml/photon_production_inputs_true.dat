@@ -47,7 +47,7 @@
     <filter id="3" type="energy">
       <bins>0.0 20000000.0</bins>
     </filter>
-    <filter id="4" type="secondaryenergy">
+    <filter id="4" type="particleproduction">
       <bins>0.0 100000.0 300000.0 500000.0 2000000.0 20000000.0</bins>
       <particle>photon</particle>
     </filter>

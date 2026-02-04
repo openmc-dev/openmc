@@ -171,7 +171,7 @@ Tally::Tally(pugi::xml_node node)
                filt_type == FilterType::ZERNIKE ||
                filt_type == FilterType::ZERNIKE_RADIAL) {
       estimator_ = TallyEstimator::COLLISION;
-    } else if (filt_type == FilterType::SECONDARY_ENERGY) {
+    } else if (filt_type == FilterType::PARTICLE_PRODUCTION) {
       estimator_ = TallyEstimator::ANALOG;
     }
   }

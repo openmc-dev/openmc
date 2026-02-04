@@ -124,8 +124,6 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<CollisionFilter>(id);
   } else if (type == "energyout") {
     return Filter::create<EnergyoutFilter>(id);
-  } else if (type == "secondaryenergy") {
-    return Filter::create<SecondaryEnergyFilter>(id);
   } else if (type == "legendre") {
     return Filter::create<LegendreFilter>(id);
   } else if (type == "material") {
@@ -148,6 +146,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<ParentNuclideFilter>(id);
   } else if (type == "particle") {
     return Filter::create<ParticleFilter>(id);
+  } else if (type == "particleproduction") {
+    return Filter::create<ParticleProductionFilter>(id);
   } else if (type == "polar") {
     return Filter::create<PolarFilter>(id);
   } else if (type == "surface") {

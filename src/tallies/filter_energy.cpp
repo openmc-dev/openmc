@@ -118,10 +118,10 @@ std::string EnergyoutFilter::text_label(int bin) const
 }
 
 //==============================================================================
-// SecondaryEnergyFilter implementation
+// ParticleProductionFilter implementation
 //==============================================================================
 
-void SecondaryEnergyFilter::get_all_bins(
+void ParticleProductionFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   int start_idx = p.secondary_bank_index();
@@ -143,20 +143,20 @@ void SecondaryEnergyFilter::get_all_bins(
   }
 }
 
-std::string SecondaryEnergyFilter::text_label(int bin) const
+std::string ParticleProductionFilter::text_label(int bin) const
 {
   return fmt::format("Secondary {}, Energy [{}, {})", secondary_type_.str(),
     bins_.at(bin), bins_.at(bin + 1));
 }
 
-void SecondaryEnergyFilter::from_xml(pugi::xml_node node)
+void ParticleProductionFilter::from_xml(pugi::xml_node node)
 {
   EnergyFilter::from_xml(node);
   std::string p = get_node_value(node, "particle");
   secondary_type_ = ParticleType {p};
 }
 
-void SecondaryEnergyFilter::to_statepoint(hid_t filter_group) const
+void ParticleProductionFilter::to_statepoint(hid_t filter_group) const
 {
   EnergyFilter::to_statepoint(filter_group);
   write_dataset(filter_group, "particle", secondary_type_.str());

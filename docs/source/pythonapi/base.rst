@@ -132,7 +132,7 @@ Constructing Tallies
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
-   openmc.SecondaryEnergyFilter
+   openmc.ParticleProductionFilter
    openmc.MuFilter
    openmc.MuSurfaceFilter
    openmc.PolarFilter

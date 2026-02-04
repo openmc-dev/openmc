@@ -71,7 +71,7 @@ def model():
     ene_filter = openmc.EnergyFilter([0.0, 20e6])  # incident neutron energy
 
     # Track source energies of secondary gammas
-    ene2_filter = openmc.SecondaryEnergyFilter(
+    ene2_filter = openmc.ParticleProductionFilter(
         'photon', [0.0, 100e3, 300e3, 500e3, 2e6, 20e6])
 
     neutron_only = openmc.ParticleFilter(['neutron'])

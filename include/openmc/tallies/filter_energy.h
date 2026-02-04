@@ -83,13 +83,13 @@ public:
 //! in conjunction with the "events" score.
 //==============================================================================
 
-class SecondaryEnergyFilter : public EnergyFilter {
+class ParticleProductionFilter : public EnergyFilter {
 public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type_str() const override { return "secondaryenergy"; }
-  FilterType type() const override { return FilterType::SECONDARY_ENERGY; }
+  std::string type_str() const override { return "particleproduction"; }
+  FilterType type() const override { return FilterType::PARTICLE_PRODUCTION; }
 
   void get_all_bins(const Particle& p, TallyEstimator estimator,
     FilterMatch& match) const override;

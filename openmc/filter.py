@@ -1748,14 +1748,14 @@ class EnergyoutFilter(EnergyFilter):
     """
 
 
-class SecondaryEnergyFilter(EnergyFilter):
+class ParticleProductionFilter(EnergyFilter):
     """Bins tally events based on energy of secondary particles.
 
-    This filter bins the energies of secondary particles (e.g., photons or
-    electrons) produced in a reaction. This is useful for constructing
-    production matrices or analyzing secondary particle spectra. Note that
-    unlike other energy filters, the weight that is applied is equal to the
-    weight of the secondary particle. Thus, to obtain secondary particle
+    This filter bins the energies of secondary particles (e.g., photons,
+    electrons, or recoils) produced in a reaction. This is useful for
+    constructing production matrices or analyzing secondary particle spectra.
+    Note that unlike other energy filters, the weight that is applied is equal
+    to the weight of the secondary particle. Thus, to obtain secondary particle
     production, it should be used in conjunction with the "events" score.
 
     The incident particle type can be filtered using :class:`ParticleFilter`.

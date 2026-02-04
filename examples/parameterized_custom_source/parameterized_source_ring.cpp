@@ -1,5 +1,5 @@
-#include <cmath> // for M_PI
-#include <memory> // for unique_ptr
+#include <cmath>
+#include <memory>
 #include <unordered_map>
 
 #include "openmc/particle.h"

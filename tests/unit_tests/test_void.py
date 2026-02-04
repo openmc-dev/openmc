@@ -5,6 +5,7 @@ import pytest
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
     model = openmc.model.Model()
 
     zn = openmc.Material()

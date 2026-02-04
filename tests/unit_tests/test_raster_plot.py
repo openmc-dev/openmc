@@ -121,6 +121,21 @@ def test_raster_plot_different_bases(run_in_tmpdir):
         assert prop_data.shape == (25, 25, 2)
 
 
+def test_raster_plot_oriented_spans(run_in_tmpdir):
+    """Test raster_plot with oriented span vectors."""
+    model = pwr_pin_cell()
+
+    geom_data, prop_data = model.raster_plot(
+        origin=(0, 0, 0),
+        u_span=(1.0, 0.0, 0.0),
+        v_span=(0.0, 0.0, 1.0),
+        pixels=(25, 25)
+    )
+
+    assert geom_data.shape == (25, 25, 3)
+    assert prop_data.shape == (25, 25, 2)
+
+
 def test_raster_plot_level(run_in_tmpdir):
     """Test raster_plot with specific universe level."""
     model = pwr_pin_cell()

@@ -338,7 +338,6 @@ def raster_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
         Filter for bin index lookup
     include_properties : bool, optional
         Whether to compute temperature/density
-
     Returns
     -------
     geom_data : numpy.ndarray
@@ -355,7 +354,7 @@ def raster_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
         raise ValueError("pixels must be a length-2 sequence.")
 
     if width is not None and (u_span is not None or v_span is not None):
-        raise ValueError("width is mutually exclusive with u_span/v_span/axes.")
+        raise ValueError("width is mutually exclusive with u_span/v_span.")
 
     if u_span is not None or v_span is not None:
         if u_span is None or v_span is None:

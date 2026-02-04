@@ -1112,6 +1112,8 @@ class Model:
         width: Sequence[float] | None = None,
         pixels: int | Sequence[int] = 40000,
         basis: str = 'xy',
+        u_span: Sequence[float] | None = None,
+        v_span: Sequence[float] | None = None,
         color_overlaps: bool = False,
         level: int = -1,
         filter: openmc.Filter | None = None,
@@ -1144,6 +1146,12 @@ class Model:
             total and the image aspect ratio based on the width argument.
         basis : {'xy', 'yz', 'xz'}, optional
             Basis of the plot.
+        u_span : Sequence[float], optional
+            Full-width span vector for an oriented slice (3 values). Mutually
+            exclusive with width.
+        v_span : Sequence[float], optional
+            Full-height span vector for an oriented slice (3 values). Mutually
+            exclusive with width.
         color_overlaps : bool, optional
             Whether to assign unique IDs (-3) to overlapping regions. If False,
             overlapping regions will be assigned the ID of the lowest-numbered
@@ -1170,8 +1178,23 @@ class Model:
         """
         import openmc.lib
 
-        origin, width, pixels = self._set_plot_defaults(
-            origin, width, pixels, basis)
+        if width is not None and (u_span is not None or v_span is not None):
+            raise ValueError("width is mutually exclusive with u_span/v_span.")
+
+        if u_span is not None or v_span is not None:
+            if u_span is None or v_span is None:
+                raise ValueError("Both u_span and v_span must be provided.")
+            if origin is None:
+                origin = (0.0, 0.0, 0.0)
+            if isinstance(pixels, int):
+                u_norm = np.linalg.norm(u_span)
+                v_norm = np.linalg.norm(v_span)
+                aspect_ratio = u_norm / v_norm
+                pixels_y = math.sqrt(pixels / aspect_ratio)
+                pixels = (int(pixels / pixels_y), int(pixels_y))
+        else:
+            origin, width, pixels = self._set_plot_defaults(
+                origin, width, pixels, basis)
 
         # Silence output by default. Also set arguments to start in volume
         # calculation mode to avoid loading cross sections
@@ -1190,8 +1213,16 @@ class Model:
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             geom_data, property_data = openmc.lib.raster_plot(
-                origin, width, basis, pixels, color_overlaps, level, filter,
-                include_properties
+                origin=origin,
+                width=width,
+                basis=basis,
+                u_span=u_span,
+                v_span=v_span,
+                pixels=pixels,
+                color_overlaps=color_overlaps,
+                level=level,
+                filter=filter,
+                include_properties=include_properties,
             )
 
         # If filter was temporarily added, remove it

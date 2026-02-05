@@ -15,9 +15,9 @@
 #include <png.h>
 #endif
 
+#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
-#include "openmc/cell.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
@@ -126,11 +126,11 @@ extern "C" int openmc_plot_geometry()
 
 void PlottableInterface::write_image(const ImageData& data) const
 {
-  #ifdef USE_LIBPNG
-    output_png(path_plot(), data);
-  #else
-    output_ppm(path_plot(), data);
-  #endif
+#ifdef USE_LIBPNG
+  output_png(path_plot(), data);
+#else
+  output_ppm(path_plot(), data);
+#endif
 }
 
 void Plot::create_output() const
@@ -1066,12 +1066,11 @@ RayTracePlot::RayTracePlot(pugi::xml_node node) : PlottableInterface(node)
       check_for_node(node, "field_of_view"))
     fatal_error("orthographic_width and field_of_view are mutually exclusive "
                 "parameters.");
-
-
 }
 
-void RayTracePlot::update_view() {
-    // Get centerline vector for camera-to-model. We create vectors around this
+void RayTracePlot::update_view()
+{
+  // Get centerline vector for camera-to-model. We create vectors around this
   // that form a pixel array, and then trace rays along that.
   auto up = up_ / up_.norm();
   Direction looking_direction = look_at_ - camera_position_;

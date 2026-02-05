@@ -339,6 +339,9 @@ private:
   // Energy distribution(s): either 1 for all r, or one per r point
   vector<unique_ptr<Distribution>> energy_dists_;
 
+  // Angular distribution (isotropic)
+  UPtrAngle angle_;
+
   // Tokamak geometry parameters
   double major_radius_;    //!< Major radius R0 [cm]
   double minor_radius_;    //!< Minor radius a [cm]
@@ -358,9 +361,9 @@ private:
   vector<double> radial_cdf_; //!< CDF for radial sampling (on r_over_a_ grid)
 
   // Precomputed Bernstein basis functions for poloidal angle sampling.
-  // Using the factorization f(r_tilde, alpha) = R* x J* where:
-  //   R* = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2  (Bernstein quadratic)
-  //   J* = J0*(1-r) + J1*r                      (Bernstein linear)
+  // Using the factorization f(r_tilde, alpha) = R_tilde x J_tilde where:
+  //   R_tilde = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2  (Bernstein quadratic)
+  //   J_tilde = b3*(1-r) + b4*r                      (Bernstein linear)
   // The product gives 6 non-negative basis functions g_k(alpha) with
   // weights w_k(r_tilde) that are products of Bernstein polynomials.
   // CDFs are computed on [0, pi] exploiting up-down symmetry.

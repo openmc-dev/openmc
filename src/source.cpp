@@ -687,7 +687,6 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   }
 
   // Validate inputs
-  // 1. r_over_a and emission_rate must match in length and have at least 2 points
   if (emission_rate_.size() != r_over_a_.size()) {
     fatal_error(
       "TokamakSource: emission_rate and r_over_a must have the same length.");
@@ -696,8 +695,6 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
     fatal_error(
       "TokamakSource: At least 2 radial points are required for profiles.");
   }
-
-  // 2. r_over_a must start at 0, end at 1, and be monotonically increasing
   if (r_over_a_.front() != 0.0) {
     fatal_error("TokamakSource: r_over_a must start at 0.");
   }
@@ -709,15 +706,11 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
       fatal_error("TokamakSource: r_over_a must be strictly increasing.");
     }
   }
-
-  // 3. emission_rate values cannot be negative
   for (size_t i = 0; i < emission_rate_.size(); ++i) {
     if (emission_rate_[i] < 0.0) {
       fatal_error("TokamakSource: emission_rate values cannot be negative.");
     }
   }
-
-  // 4. major and minor radius must be > 0 and minor < major
   if (major_radius_ <= 0.0) {
     fatal_error("TokamakSource: major_radius must be > 0.");
   }
@@ -727,19 +720,13 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   if (minor_radius_ >= major_radius_) {
     fatal_error("TokamakSource: minor_radius must be less than major_radius.");
   }
-
-  // 5. elongation must be > 0
   if (elongation_ <= 0.0) {
     fatal_error("TokamakSource: elongation must be > 0.");
   }
-
-  // 6. triangularity must be on [-1, 1]
   if (triangularity_ < -1.0 || triangularity_ > 1.0) {
     fatal_error(
       "TokamakSource: triangularity must be in the range [-1, 1].");
   }
-
-  // 7. shafranov_shift must be >= 0 and < minor_radius / 2
   if (shafranov_shift_ < 0.0) {
     fatal_error("TokamakSource: shafranov_shift must be >= 0.");
   }
@@ -747,18 +734,12 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
     fatal_error(
       "TokamakSource: shafranov_shift must be less than half the minor radius.");
   }
-
-  // 8. phi_extent must be <= 2*pi
   if (phi_extent_ <= 0.0 || phi_extent_ > 2.0 * M_PI) {
     fatal_error("TokamakSource: phi_extent must be > 0 and <= 2*pi.");
   }
-
-  // 9. n_alpha must be > 2
   if (n_alpha_ <= 2) {
     fatal_error("TokamakSource: n_alpha must be > 2.");
   }
-
-  // 10. energy_dists must be length 1 or same length as r_over_a
   if (energy_dists_.empty()) {
     fatal_error("TokamakSource: At least one energy distribution is required.");
   }
@@ -770,6 +751,9 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   // Compute normalized geometry parameters
   epsilon_ = minor_radius_ / major_radius_;
   delta_tilde_ = shafranov_shift_ / minor_radius_;
+
+  // Initialize isotropic angular distribution
+  angle_ = UPtrAngle{new Isotropic()};
 
   precompute_sampling_cdfs();
 }
@@ -793,9 +777,9 @@ void TokamakSource::precompute_sampling_cdfs()
   //
   // where the Bessel function coefficients are:
   //   c0 = J_0(delta) + J_2(delta)
-  //   c1 = c0 / (J_1(2*delta) + J_3(2*delta))
+  //   c1 = (J_1(2*delta) + J_3(2*delta)) / c0
   //
-  // For delta -> 0, c0 -> 2 and c1 -> 2, giving the circular cross-section limit.
+  // For delta -> 0, c0 -> 1 and c1 -> 0, giving the circular cross-section limit.
 
   // Compute Bessel function coefficients
   double c0, c1;
@@ -810,7 +794,7 @@ void TokamakSource::precompute_sampling_cdfs()
     double J1_2d = std::cyl_bessel_j(1, 2.0 * delta);
     double J3_2d = std::cyl_bessel_j(3, 2.0 * delta);
     c0 = J0_d + J2_d;
-    c1 = (std::abs(c0) > 1e-10) ? (J1_2d + J3_2d) / c0 : 0.0;
+    c1 = (J1_2d + J3_2d) / c0;
   }
 
   // Coefficients for the radial polynomial: A*r - B*r^2 - C*r^3
@@ -839,15 +823,16 @@ void TokamakSource::precompute_sampling_cdfs()
     radial_cdf_[i] = radial_cdf_[i - 1] + avg * dr;
   }
 
-  // Normalize CDF
+  // Normalize CDF 
   double total = radial_cdf_[n_r - 1];
   if (total <= 0.0) {
     fatal_error(
       "TokamakSource: Integrated emission rate is zero or negative. "
       "Check emission_rate profile.");
   }
+  double inv_total = 1.0 / total;
   for (size_t i = 0; i < n_r; ++i) {
-    radial_cdf_[i] /= total;
+    radial_cdf_[i] *= inv_total;
   }
 
   //==========================================================================
@@ -993,10 +978,10 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
 
   // Compute Bernstein weight functions
   double w0 = one_minus_r * one_minus_r * one_minus_r;  // (1-r)^3
-  double w1 = 2.0 * r * one_minus_r * one_minus_r;      // 2*r*(1-r)^2
-  double w2 = r * r * one_minus_r;                      // r^2*(1-r)
   double w3 = r * one_minus_r * one_minus_r;            // r*(1-r)^2
-  double w4 = 2.0 * r * r * one_minus_r;                // 2*r^2*(1-r)
+  double w1 = 2.0 * w3;                                 // 2*r*(1-r)^2
+  double w2 = r * r * one_minus_r;                      // r^2*(1-r)
+  double w4 = 2.0 * w2;                                 // 2*r^2*(1-r)
   double w5 = r * r * r;                                // r^3
 
   // Compute mixture weights: m_k = w_k(r) * I_hat_k
@@ -1007,11 +992,6 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   double m4 = w4 * poloidal_integrals_[4];
   double m5 = w5 * poloidal_integrals_[5];
   double total = m0 + m1 + m2 + m3 + m4 + m5;
-
-  if (total <= 0.0) {
-    // Fallback to uniform if something is wrong
-    return M_PI * prn(seed) + (prn(seed) < 0.5 ? 0.0 : M_PI);
-  }
 
   // Sample component from categorical distribution
   // Order optimized for small r (core-weighted): 0, 1, 3, 2, 4, 5
@@ -1138,10 +1118,7 @@ SourceSite TokamakSource::sample(uint64_t* seed) const
   site.r = flux_to_cartesian(r, alpha, phi);
 
   // 5. Sample isotropic direction
-  double mu = 2.0 * prn(seed) - 1.0;
-  double phi_dir = 2.0 * M_PI * prn(seed);
-  double sin_theta = std::sqrt(1.0 - mu * mu);
-  site.u = {sin_theta * std::cos(phi_dir), sin_theta * std::sin(phi_dir), mu};
+  site.u = angle_->sample(seed).first;
 
   // 6. Sample energy from distribution(s)
   site.E = sample_energy(r_norm, seed);

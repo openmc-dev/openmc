@@ -272,7 +272,8 @@ void WeightWindows::set_mesh(const Mesh* mesh)
   set_mesh(model::mesh_map[mesh->id_]);
 }
 
-std::pair<bool, WeightWindow> WeightWindows::get_weight_window(const Particle& p) const
+std::pair<bool, WeightWindow> WeightWindows::get_weight_window(
+  const Particle& p) const
 {
   // check for particle type
   if (particle_type_ != p.type()) {
@@ -294,7 +295,7 @@ std::pair<bool, WeightWindow> WeightWindows::get_weight_window(const Particle& p
   if (mesh_bin < 0)
     return {false, {}};
 
-   // get the mesh bin in energy group
+  // get the mesh bin in energy group
   int energy_bin =
     lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
 

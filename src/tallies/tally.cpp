@@ -215,7 +215,7 @@ Tally::Tally(pugi::xml_node node)
                       "number of inactive cycles.");
         }
         settings::ifp_on = true;
-      } else {
+      } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
         fatal_error(
           "Iterated Fission Probability can only be used in an eigenvalue "
           "calculation.");
@@ -289,12 +289,12 @@ Tally::Tally(pugi::xml_node node)
       const auto& f = model::tally_filters[particle_filter_index].get();
       auto pf = dynamic_cast<ParticleFilter*>(f);
       for (auto p : pf->particles()) {
-        if (p != ParticleType::neutron) {
+        if (!p.is_neutron()) {
           warning(fmt::format(
             "Particle filter other than NEUTRON used with "
             "photon transport turned off. All tallies for particle type {}"
             " will have no scores",
-            static_cast<int>(p)));
+            p.str()));
         }
       }
     }

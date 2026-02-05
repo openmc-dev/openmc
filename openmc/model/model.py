@@ -23,7 +23,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params, _BASIS_INDICES
+from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
 from openmc.utility_funcs import change_directory
 
 
@@ -546,6 +546,13 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
+    def _link_geometry_to_filters(self):
+        """Establishes a link between distribcell filters and the geometry"""
+        for tally in self.tallies:
+            for f in tally.filters:
+                if isinstance(f, openmc.DistribcellFilter):
+                    f._geometry = self.geometry
+
     def export_to_xml(self, directory: PathLike = '.', remove_surfs: bool = False,
                       nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to separate XML files.
@@ -586,6 +593,8 @@ class Model:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
+
+        self._link_geometry_to_filters()
 
     def export_to_model_xml(self, path: PathLike = 'model.xml', remove_surfs: bool = False,
                             nuclides_to_ignore: Iterable[str] | None = None):
@@ -665,6 +674,8 @@ class Model:
                     plots_element, level=1, trailing_indent=False)
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
+
+        self._link_geometry_to_filters()
 
     def import_properties(self, filename: PathLike):
         """Import physical properties
@@ -1026,6 +1037,7 @@ class Model:
         width: Sequence[float] | None = None,
         pixels: int | Sequence[int] = 40000,
         basis: str = 'xy',
+        color_overlaps: bool = False,
         **init_kwargs
     ) -> np.ndarray:
         """Generate an ID map for domains based on the plot parameters
@@ -1054,6 +1066,10 @@ class Model:
             total and the image aspect ratio based on the width argument.
         basis : {'xy', 'yz', 'xz'}, optional
             Basis of the plot.
+        color_overlaps : bool, optional
+            Whether to assign unique IDs (-3) to overlapping regions. If False,
+            overlapping regions will be assigned the ID of the lowest-numbered
+            cell that occupies that region. Defaults to False.
         **init_kwargs
             Keyword arguments passed to :meth:`Model.init_lib`.
 
@@ -1078,6 +1094,7 @@ class Model:
         plot_obj.h_res = pixels[0]
         plot_obj.v_res = pixels[1]
         plot_obj.basis = basis
+        plot_obj.color_overlaps = color_overlaps
 
         # Silence output by default. Also set arguments to start in volume
         # calculation mode to avoid loading cross sections
@@ -1097,13 +1114,12 @@ class Model:
         color_by: str = 'cell',
         colors: dict | None = None,
         seed: int | None = None,
-        openmc_exec: PathLike = 'openmc',
         axes=None,
         legend: bool = False,
         axis_units: str = 'cm',
         outline: bool | str = False,
         show_overlaps: bool = False,
-        overlap_color: Sequence[int] | str | None = None,
+        overlap_color: Sequence[int] | str = (255, 0, 0),
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,
@@ -1115,7 +1131,6 @@ class Model:
 
         .. versionadded:: 0.15.1
         """
-        import matplotlib.image as mpimg
         import matplotlib.patches as mpatches
         import matplotlib.pyplot as plt
 
@@ -1146,124 +1161,117 @@ class Model:
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
         # Determine whether any materials contains macroscopic data and if so,
-        # set energy mode accordingly
-        _energy_mode = self.settings._energy_mode
+        # set energy mode accordingly and check that mg cross sections path is accessible
         for mat in self.geometry.get_all_materials().values():
             if mat._macroscopic is not None:
                 self.settings.energy_mode = 'multi-group'
+                if 'mg_cross_sections' not in openmc.config:
+                    raise RuntimeError("'mg_cross_sections' path must be set in "
+                                       "openmc.config before plotting.")
                 break
 
-        with TemporaryDirectory() as tmpdir:
-            _plot_seed = self.settings.plot_seed
-            if seed is not None:
-                self.settings.plot_seed = seed
+        # Get ID map from the C API
+        id_map = self.id_map(
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            color_overlaps=show_overlaps
+        )
 
-            # Create plot object matching passed arguments
-            plot = openmc.Plot()
-            plot.origin = origin
-            plot.width = width
-            plot.pixels = pixels
-            plot.basis = basis
+        # Generate colors if not provided
+        if colors is None and seed is not None:
+            # Use the colorize method to generate random colors
+            plot = openmc.SlicePlot()
             plot.color_by = color_by
-            plot.show_overlaps = show_overlaps
-            if overlap_color is not None:
-                plot.overlap_color = overlap_color
-            if colors is not None:
-                plot.colors = colors
-            self.plots.append(plot)
+            plot.colorize(self.geometry, seed=seed)
+            colors = plot.colors
 
-            # Run OpenMC in geometry plotting mode
-            self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+        # Convert ID map to RGB image
+        img = id_map_to_rgb(
+            id_map=id_map,
+            color_by=color_by,
+            colors=colors,
+            overlap_color=overlap_color
+        )
 
-            # Undo changes to model
-            self.plots.pop()
-            self.settings._plot_seed = _plot_seed
-            self.settings._energy_mode = _energy_mode
+        # Create a figure sized such that the size of the axes within
+        # exactly matches the number of pixels specified
+        if axes is None:
+            px = 1/plt.rcParams['figure.dpi']
+            fig, axes = plt.subplots()
+            axes.set_xlabel(xlabel)
+            axes.set_ylabel(ylabel)
+            params = fig.subplotpars
+            width_px = pixels[0]*px/(params.right - params.left)
+            height_px = pixels[1]*px/(params.top - params.bottom)
+            fig.set_size_inches(width_px, height_px)
 
-            # Read image from file
-            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
-            if not img_path.is_file():
-                img_path = img_path.with_suffix('.ppm')
-            img = mpimg.imread(str(img_path))
+        if outline:
+            # Combine R, G, B values into a single int for contour detection
+            rgb = (img * 256).astype(int)
+            image_value = (rgb[..., 0] << 16) + \
+                (rgb[..., 1] << 8) + (rgb[..., 2])
 
-            # Create a figure sized such that the size of the axes within
-            # exactly matches the number of pixels specified
-            if axes is None:
-                px = 1/plt.rcParams['figure.dpi']
-                fig, axes = plt.subplots()
-                axes.set_xlabel(xlabel)
-                axes.set_ylabel(ylabel)
-                params = fig.subplotpars
-                width = pixels[0]*px/(params.right - params.left)
-                height = pixels[1]*px/(params.top - params.bottom)
-                fig.set_size_inches(width, height)
+            # Set default arguments for contour()
+            if contour_kwargs is None:
+                contour_kwargs = {}
+            contour_kwargs.setdefault('colors', 'k')
+            contour_kwargs.setdefault('linestyles', 'solid')
+            contour_kwargs.setdefault('algorithm', 'serial')
 
-            if outline:
-                # Combine R, G, B values into a single int
-                rgb = (img * 256).astype(int)
-                image_value = (rgb[..., 0] << 16) + \
-                    (rgb[..., 1] << 8) + (rgb[..., 2])
+            axes.contour(
+                image_value,
+                origin="upper",
+                levels=np.unique(image_value),
+                extent=(x_min, x_max, y_min, y_max),
+                **contour_kwargs
+            )
 
-                # Set default arguments for contour()
-                if contour_kwargs is None:
-                    contour_kwargs = {}
-                contour_kwargs.setdefault('colors', 'k')
-                contour_kwargs.setdefault('linestyles', 'solid')
-                contour_kwargs.setdefault('algorithm', 'serial')
+            # If only showing outline, set the axis limits and aspect explicitly
+            if outline == 'only':
+                axes.set_xlim(x_min, x_max)
+                axes.set_ylim(y_min, y_max)
+                axes.set_aspect('equal')
 
-                axes.contour(
-                    image_value,
-                    origin="upper",
-                    levels=np.unique(image_value),
-                    extent=(x_min, x_max, y_min, y_max),
-                    **contour_kwargs
-                )
+        # Add legend showing which colors represent which material or cell
+        if legend:
+            if colors is None or len(colors) == 0:
+                raise ValueError("Must pass 'colors' dictionary if you "
+                                 "are adding a legend via legend=True.")
 
-            # add legend showing which colors represent which material
-            # or cell if that was requested
-            if legend:
-                if plot.colors == {}:
-                    raise ValueError("Must pass 'colors' dictionary if you "
-                                     "are adding a legend via legend=True.")
+            if color_by == "cell":
+                expected_key_type = openmc.Cell
+            else:
+                expected_key_type = openmc.Material
 
-                if color_by == "cell":
-                    expected_key_type = openmc.Cell
+            patches = []
+            for key, color in colors.items():
+                if isinstance(key, int):
+                    raise TypeError(
+                        "Cannot use IDs in colors dict for auto legend.")
+                elif not isinstance(key, expected_key_type):
+                    raise TypeError(
+                        "Color dict key type does not match color_by")
+
+                # this works whether we're doing cells or materials
+                label = key.name if key.name != '' else key.id
+
+                # matplotlib takes RGB on 0-1 scale rather than 0-255
+                if len(color) == 3 and not isinstance(color, str):
+                    scaled_color = (
+                        color[0]/255, color[1]/255, color[2]/255)
                 else:
-                    expected_key_type = openmc.Material
+                    scaled_color = color
 
-                patches = []
-                for key, color in plot.colors.items():
+                key_patch = mpatches.Patch(color=scaled_color, label=label)
+                patches.append(key_patch)
 
-                    if isinstance(key, int):
-                        raise TypeError(
-                            "Cannot use IDs in colors dict for auto legend.")
-                    elif not isinstance(key, expected_key_type):
-                        raise TypeError(
-                            "Color dict key type does not match color_by")
+            axes.legend(handles=patches, **legend_kwargs)
 
-                    # this works whether we're doing cells or materials
-                    label = key.name if key.name != '' else key.id
-
-                    # matplotlib takes RGB on 0-1 scale rather than 0-255. at
-                    # this point PlotBase has already checked that 3-tuple
-                    # based colors are already valid, so if the length is three
-                    # then we know it just needs to be converted to the 0-1
-                    # format.
-                    if len(color) == 3 and not isinstance(color, str):
-                        scaled_color = (
-                            color[0]/255, color[1]/255, color[2]/255)
-                    else:
-                        scaled_color = color
-
-                    key_patch = mpatches.Patch(color=scaled_color, label=label)
-                    patches.append(key_patch)
-
-                axes.legend(handles=patches, **legend_kwargs)
-
-            # Plot image and return the axes
-            if outline != 'only':
-                axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
-
+        # Plot image and return the axes
+        if outline != 'only':
+            axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
         if n_samples:
             # Sample external source particles
@@ -1276,8 +1284,8 @@ class Model:
             tol = plane_tolerance
             for particle in particles:
                 if (slice_value - tol < particle.r[z] < slice_value + tol):
-                    xs.append(particle.r[x])
-                    ys.append(particle.r[y])
+                    xs.append(particle.r[x] * axis_scaling_factor[axis_units])
+                    ys.append(particle.r[y] * axis_scaling_factor[axis_units])
             axes.scatter(xs, ys, **source_kwargs)
 
         return axes
@@ -1687,20 +1695,16 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
-    def _generate_infinite_medium_mgxs(
+    def _auto_generate_mgxs_lib(
         self,
+        model: openmc.model.model,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
-        mgxs_path: PathLike,
-        correction: str | None,
-        directory: PathLike,
-    ):
-        """Generate a MGXS library by running multiple OpenMC simulations, each
-        representing an infinite medium simulation of a single isolated
-        material. A discrete source is used to sample particles, with an equal
-        strength spread across each of the energy groups. This is a highly naive
-        method that ignores all spatial self shielding effects and all resonance
-        shielding effects between materials.
+        correction: str | none,
+        directory: pathlike,
+    ) -> openmc.mgxs.Library:
+        """
+        Automatically generate a multi-group cross section libray from a model
+        with the specified group structure.
 
         Parameters
         ----------
@@ -1715,9 +1719,195 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+
+        Returns
+        -------
+        mgxs_lib : openmc.mgxs.Library
+            OpenMC MGXS Library object
         """
-        warnings.warn("The infinite medium method of generating MGXS may hang "
-                      "if a material has a k-infinity > 1.0.")
+
+        # Initialize MGXS library with a finished OpenMC geometry object
+        mgxs_lib = openmc.mgxs.Library(model.geometry)
+
+        # Pick energy group structure
+        mgxs_lib.energy_groups = groups
+
+        # Disable transport correction
+        mgxs_lib.correction = correction
+
+        # Specify needed cross sections for random ray
+        if correction == 'P0':
+            mgxs_lib.mgxs_types = [
+                'nu-transport', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
+                'kappa-fission'
+            ]
+        elif correction is None:
+            mgxs_lib.mgxs_types = [
+                'total', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi',
+                'kappa-fission'
+            ]
+
+        # Specify a "material" domain type for the cross section tally filters
+        mgxs_lib.domain_type = "material"
+
+        # Specify the domains over which to compute multi-group cross sections
+        mgxs_lib.domains = model.geometry.get_all_materials().values()
+
+        # Do not compute cross sections on a nuclide-by-nuclide basis
+        mgxs_lib.by_nuclide = False
+
+        # Check the library - if no errors are raised, then the library is satisfactory.
+        mgxs_lib.check_library_for_openmc_mgxs()
+
+        # Construct all tallies needed for the multi-group cross section library
+        mgxs_lib.build_library()
+
+        # Create a "tallies.xml" file for the MGXS Library
+        mgxs_lib.add_to_tallies(model.tallies, merge=True)
+
+        # Run
+        statepoint_filename = model.run(cwd=directory)
+
+        # Load MGXS
+        with openmc.StatePoint(statepoint_filename) as sp:
+            mgxs_lib.load_from_statepoint(sp)
+
+        return mgxs_lib
+
+    def _create_mgxs_sources(
+        self,
+        groups: openmc.mgxs.EnergyGroups,
+        spatial_dist: openmc.stats.Spatial,
+        source_energy: openmc.stats.Univariate | None = None,
+    ) -> list[openmc.IndependentSource]:
+        """Create a list of independent sources to use with MGXS generation.
+
+        Note that in all cases, a discrete source that is uniform over all
+        energy groups is created (strength = 0.01) to ensure that total cross
+        sections are generated for all energy groups. In the case that the user
+        has provided a source_energy distribution as an argument, an additional
+        source (strength = 0.99) is created using that energy distribution. If
+        the user has not provided a source_energy distribution, but the model
+        has sources defined, and all of those sources are of IndependentSource
+        type, then additional sources are created based on the model's existing
+        sources, keeping their energy distributions but replacing their
+        spatial/angular distributions, with their combined strength being 0.99.
+        If the user has not provided a source_energy distribution and no sources
+        are defined on the model and the run mode is 'eigenvalue', then a
+        default Watt spectrum source (strength = 0.99) is added.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        spatial_dist : openmc.stats.Spatial
+            Spatial distribution to use for all sources.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model.
+
+        Returns
+        -------
+        list[openmc.IndependentSource]
+            A list of independent sources to use for MGXS generation.
+        """
+        # Make a discrete source that is uniform over the bins of the group structure
+        midpoints = []
+        strengths = []
+        for i in range(groups.num_groups):
+            bounds = groups.get_group_bounds(i+1)
+            midpoints.append((bounds[0] + bounds[1]) / 2.0)
+            strengths.append(1.0)
+
+        uniform_energy = openmc.stats.Discrete(x=midpoints, p=strengths)
+        uniform_distribution = openmc.IndependentSource(spatial_dist, energy=uniform_energy, strength=0.01)
+        sources = [uniform_distribution]
+
+        # If the user provided an energy distribution, use that
+        if source_energy is not None:
+            user_energy = openmc.IndependentSource(
+                space=spatial_dist, energy=source_energy, strength=0.99)
+            sources.append(user_energy)
+
+        # If the user did not provide an energy distribution, create sources
+        # based on what is in their model, keeping the energy spectrum but
+        # replacing the spatial/angular distributions. We only do this if ALL
+        # sources are of IndependentSource type, as we can't pull the energy
+        # distribution from e.g. CompiledSource or FileSource types.
+        else:
+            if self.settings.source is not None:
+                for src in self.settings.source:
+                    if not isinstance(src, openmc.IndependentSource):
+                        break
+                else:
+                    n_user_sources = len(self.settings.source)
+                    for src in self.settings.source:
+                        # Create a new IndependentSource with adjusted strength, space, and angle
+                        user_source = openmc.IndependentSource(
+                            space=spatial_dist,
+                            energy=src.energy,
+                            strength=0.99 / n_user_sources
+                        )
+                        sources.append(user_source)
+            else:
+                # No user sources defined. If we are in eigenvalue mode, then use the default Watt spectrum.
+                if self.settings.run_mode == 'eigenvalue':
+                    watt_energy = openmc.stats.Watt()
+                    watt_source = openmc.IndependentSource(
+                        space=spatial_dist, energy=watt_energy, strength=0.99)
+                    sources.append(watt_source)
+
+        return sources
+
+    def _generate_infinite_medium_mgxs(
+        self,
+        groups: openmc.mgxs.EnergyGroups,
+        nparticles: int,
+        mgxs_path: PathLike,
+        correction: str | None,
+        directory: PathLike,
+        source_energy: openmc.stats.Univariate | None = None,
+    ):
+        """Generate a MGXS library by running multiple OpenMC simulations, each
+        representing an infinite medium simulation of a single isolated
+        material. A discrete source is used to sample particles, with an equal
+        strength spread across each of the energy groups. This is a highly naive
+        method that ignores all spatial self shielding effects and all resonance
+        shielding effects between materials.
+
+        Note that in all cases, a discrete source that is uniform over all
+        energy groups is created (strength = 0.01) to ensure that total cross
+        sections are generated for all energy groups. In the case that the user
+        has provided a source_energy distribution as an argument, an additional
+        source (strength = 0.99) is created using that energy distribution. If
+        the user has not provided a source_energy distribution, but the model
+        has sources defined, and all of those sources are of IndependentSource
+        type, then additional sources are created based on the model's existing
+        sources, keeping their energy distributions but replacing their
+        spatial/angular distributions, with their combined strength being 0.99.
+        If the user has not provided a source_energy distribution and no sources
+        are defined on the model and the run mode is 'eigenvalue', then a
+        default Watt spectrum source (strength = 0.99) is added.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        mgxs_path : str
+            Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model.
+        """
         mgxs_sets = []
         for material in self.materials:
             model = openmc.Model()
@@ -1728,20 +1918,16 @@ class Model:
             # Settings
             model.settings.batches = 100
             model.settings.particles = nparticles
+
+            model.settings.source = self._create_mgxs_sources(
+                groups,
+                spatial_dist=openmc.stats.Point(),
+                source_energy=source_energy
+            )
+
             model.settings.run_mode = 'fixed source'
+            model.settings.create_fission_neutrons = False
 
-            # Make a discrete source that is uniform over the bins of the group structure
-            n_groups = groups.num_groups
-            midpoints = []
-            strengths = []
-            for i in range(n_groups):
-                bounds = groups.get_group_bounds(i+1)
-                midpoints.append((bounds[0] + bounds[1]) / 2.0)
-                strengths.append(1.0)
-
-            energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-            model.settings.source = openmc.IndependentSource(
-                space=openmc.stats.Point(), energy=energy_distribution)
             model.settings.output = {'summary': True, 'tallies': False}
 
             # Geometry
@@ -1753,52 +1939,8 @@ class Model:
             model.geometry.root_universe = infinite_universe
 
             # Add MGXS Tallies
-
-            # Initialize MGXS library with a finished OpenMC geometry object
-            mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-            # Pick energy group structure
-            mgxs_lib.energy_groups = groups
-
-            # Disable transport correction
-            mgxs_lib.correction = correction
-
-            # Specify needed cross sections for random ray
-            if correction == 'P0':
-                mgxs_lib.mgxs_types = [
-                    'nu-transport', 'absorption', 'nu-fission', 'fission',
-                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-                ]
-            elif correction is None:
-                mgxs_lib.mgxs_types = [
-                    'total', 'absorption', 'nu-fission', 'fission',
-                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-                ]
-
-            # Specify a "cell" domain type for the cross section tally filters
-            mgxs_lib.domain_type = "material"
-
-            # Specify the cell domains over which to compute multi-group cross sections
-            mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-            # Do not compute cross sections on a nuclide-by-nuclide basis
-            mgxs_lib.by_nuclide = False
-
-            # Check the library - if no errors are raised, then the library is satisfactory.
-            mgxs_lib.check_library_for_openmc_mgxs()
-
-            # Construct all tallies needed for the multi-group cross section library
-            mgxs_lib.build_library()
-
-            # Create a "tallies.xml" file for the MGXS Library
-            mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-            # Run
-            statepoint_filename = model.run(cwd=directory)
-
-            # Load MGXS
-            with openmc.StatePoint(statepoint_filename) as sp:
-                mgxs_lib.load_from_statepoint(sp)
+            mgxs_lib = self._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
 
             # Create a MGXS File which can then be written to disk
             mgxs_set = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
@@ -1891,6 +2033,7 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        source_energy: openmc.stats.Univariate | None = None,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -1915,6 +2058,23 @@ class Model:
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model. In all cases, a discrete source that
+            is uniform over all energy groups is created (strength = 0.01) to
+            ensure that total cross sections are generated for all energy
+            groups. In the case that the user has provided a source_energy
+            distribution as an argument, an additional source (strength = 0.99)
+            is created using that energy distribution. If the user has not
+            provided a source_energy distribution, but the model has sources
+            defined, and all of those sources are of IndependentSource type,
+            then additional sources are created based on the model's existing
+            sources, keeping their energy distributions but replacing their
+            spatial/angular distributions, with their combined strength being
+            0.99. If the user has not provided a source_energy distribution and
+            no sources are defined on the model and the run mode is
+            'eigenvalue', then a default Watt spectrum source (strength = 0.99)
+            is added.
         """
         model = openmc.Model()
         model.materials = self.materials
@@ -1924,70 +2084,26 @@ class Model:
         model.settings.inactive = 100
         model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
-        model.settings.run_mode = self.settings.run_mode
 
         # Stochastic slab geometry
         model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
             model.materials)
 
-        # Make a discrete source that is uniform over the bins of the group structure
-        n_groups = groups.num_groups
-        midpoints = []
-        strengths = []
-        for i in range(n_groups):
-            bounds = groups.get_group_bounds(i+1)
-            midpoints.append((bounds[0] + bounds[1]) / 2.0)
-            strengths.append(1.0)
+        # Define the sources
+        model.settings.source = self._create_mgxs_sources(
+            groups,
+            spatial_dist=spatial_distribution,
+            source_energy=source_energy
+        )
 
-        energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-        model.settings.source = [openmc.IndependentSource(
-            space=spatial_distribution, energy=energy_distribution, strength=1.0)]
+        model.settings.run_mode = 'fixed source'
+        model.settings.create_fission_neutrons = False
 
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
-
-        # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-        # Pick energy group structure
-        mgxs_lib.energy_groups = groups
-
-        # Disable transport correction
-        mgxs_lib.correction = correction
-
-       # Specify needed cross sections for random ray
-        if correction == 'P0':
-            mgxs_lib.mgxs_types = ['nu-transport', 'absorption', 'nu-fission', 'fission',
-                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
-        elif correction is None:
-            mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
-
-        # Specify a "cell" domain type for the cross section tally filters
-        mgxs_lib.domain_type = "material"
-
-        # Specify the cell domains over which to compute multi-group cross sections
-        mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-        # Do not compute cross sections on a nuclide-by-nuclide basis
-        mgxs_lib.by_nuclide = False
-
-        # Check the library - if no errors are raised, then the library is satisfactory.
-        mgxs_lib.check_library_for_openmc_mgxs()
-
-        # Construct all tallies needed for the multi-group cross section library
-        mgxs_lib.build_library()
-
-        # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-        # Run
-        statepoint_filename = model.run(cwd=directory)
-
-        # Load MGXS
-        with openmc.StatePoint(statepoint_filename) as sp:
-            mgxs_lib.load_from_statepoint(sp)
+        mgxs_lib = self._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
 
         names = [mat.name for mat in mgxs_lib.domains]
 
@@ -2037,52 +2153,8 @@ class Model:
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
-
-        # Initialize MGXS library with a finished OpenMC geometry object
-        mgxs_lib = openmc.mgxs.Library(model.geometry)
-
-        # Pick energy group structure
-        mgxs_lib.energy_groups = groups
-
-        # Disable transport correction
-        mgxs_lib.correction = correction
-
-        # Specify needed cross sections for random ray
-        if correction == 'P0':
-            mgxs_lib.mgxs_types = [
-                'nu-transport', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-            ]
-        elif correction is None:
-            mgxs_lib.mgxs_types = [
-                'total', 'absorption', 'nu-fission', 'fission',
-                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
-            ]
-
-        # Specify a "cell" domain type for the cross section tally filters
-        mgxs_lib.domain_type = "material"
-
-        # Specify the cell domains over which to compute multi-group cross sections
-        mgxs_lib.domains = model.geometry.get_all_materials().values()
-
-        # Do not compute cross sections on a nuclide-by-nuclide basis
-        mgxs_lib.by_nuclide = False
-
-        # Check the library - if no errors are raised, then the library is satisfactory.
-        mgxs_lib.check_library_for_openmc_mgxs()
-
-        # Construct all tallies needed for the multi-group cross section library
-        mgxs_lib.build_library()
-
-        # Create a "tallies.xml" file for the MGXS Library
-        mgxs_lib.add_to_tallies(model.tallies, merge=True)
-
-        # Run
-        statepoint_filename = model.run(cwd=directory)
-
-        # Load MGXS
-        with openmc.StatePoint(statepoint_filename) as sp:
-            mgxs_lib.load_from_statepoint(sp)
+        mgxs_lib = self._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
 
         names = [mat.name for mat in mgxs_lib.domains]
 
@@ -2099,6 +2171,7 @@ class Model:
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
+        source_energy: openmc.stats.Univariate | None = None,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2121,6 +2194,24 @@ class Model:
         correction : str, optional
             Transport correction to apply to the MGXS. Options are None and
             "P0".
+        source_energy : openmc.stats.Univariate, optional
+            Energy distribution to use when generating MGXS data, replacing any
+            existing sources in the model. In all cases, a discrete source that
+            is uniform over all energy groups is created (strength = 0.01) to
+            ensure that total cross sections are generated for all energy
+            groups. In the case that the user has provided a source_energy
+            distribution as an argument, an additional source (strength = 0.99)
+            is created using that energy distribution. If the user has not
+            provided a source_energy distribution, but the model has sources
+            defined, and all of those sources are of IndependentSource type,
+            then additional sources are created based on the model's existing
+            sources, keeping their energy distributions but replacing their
+            spatial/angular distributions, with their combined strength being
+            0.99. If the user has not provided a source_energy distribution and
+            no sources are defined on the model and the run mode is
+            'eigenvalue', then a default Watt spectrum source (strength = 0.99)
+            is added. Note that this argument is only used when using the
+            "stochastic_slab" or "infinite_medium" MGXS generation methods.
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
@@ -2150,13 +2241,13 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')
@@ -2489,5 +2580,3 @@ class SearchResult:
     def total_batches(self) -> int:
         """Total number of active batches used across all evaluations."""
         return sum(self.batches)
-
-

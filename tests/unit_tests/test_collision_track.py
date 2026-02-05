@@ -5,6 +5,7 @@ import openmc
 import pytest
 import h5py
 import numpy as np
+import shutil
 
 from tests.testing_harness import CollisionTrackTestHarness as ctt
 
@@ -109,6 +110,7 @@ def test_particle_location(run_in_tmpdir, model):
                 assert False
 
 
+@pytest.mark.skipif(shutil.which("mcpl-config") is None, reason="MCPL is not available.")
 def test_format_similarity(run_in_tmpdir, model):
     model.settings.collision_track = {"max_collisions": 200, "reactions": ['elastic'],
                                       "cell_ids": [1, 2], "mcpl": False}

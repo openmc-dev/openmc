@@ -379,17 +379,17 @@ class FluxCollapseHelper(ReactionRateHelper):
             nuclides_direct = self._rate_tally.nuclides
             shape = (len(nuclides_direct), len(self._reactions_direct))
             rx_rates = self.rate_tally_means[mat_index].reshape(shape)
+            direct_rx_index = {score: i for i, score in enumerate(self._reactions_direct)}
+            direct_nuc_index = {nuc: i for i, nuc in enumerate(nuclides_direct)}
 
         mat = self._materials[mat_index]
 
         for name, i_nuc in zip(self.nuclides, nuc_index):
             for mt, score, i_rx in zip(self._mts, self._scores, react_index):
                 if score in self._reactions_direct and name in nuclides_direct:
-                    # Determine index in rx_rates
-                    i_rx_direct = self._reactions_direct.index(score)
-                    i_nuc_direct = nuclides_direct.index(name)
-
                     # Get reaction rate from tally
+                    i_rx_direct = direct_rx_index[score]
+                    i_nuc_direct = direct_nuc_index[name]
                     self._results_cache[i_nuc, i_rx] = rx_rates[i_nuc_direct, i_rx_direct]
                 else:
                     # Use flux to collapse reaction rate (per N)

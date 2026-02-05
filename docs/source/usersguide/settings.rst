@@ -272,6 +272,12 @@ option::
   settings.source = [src1, src2]
   settings.uniform_source_sampling = True
 
+Additionally, sampling from an :class:`openmc.IndependentSource` may be biased
+for local or global variance reduction by modifying the
+:attr:`~openmc.IndependentSource.bias` attribute of each of its four main
+distributions. Further discussion of source biasing can be found in
+:ref:`source_biasing`.
+
 Finally, the :attr:`IndependentSource.particle` attribute can be used to
 indicate the source should be composed of particles other than neutrons. For
 example, the following would generate a photon source::
@@ -394,7 +400,7 @@ below.
     {
       openmc::SourceSite particle;
       // weight
-      particle.particle = openmc::ParticleType::neutron;
+      particle.particle = openmc::ParticleType::neutron();
       particle.wgt = 1.0;
       // position
       double angle = 2.0 * M_PI * openmc::prn(seed);
@@ -471,7 +477,7 @@ parameters to the source class when it is created:
     {
       openmc::SourceSite particle;
       // weight
-      particle.particle = openmc::ParticleType::neutron;
+      particle.particle = openmc::ParticleType::neutron();
       particle.wgt = 1.0;
       // position
       particle.r.x = 0.0;

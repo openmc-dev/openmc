@@ -1,4 +1,6 @@
 #include "openmc/distribution.h"
+#include "openmc/distribution_spatial.h"
+#include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -28,7 +30,7 @@ TEST_CASE("Test alias method sampling of a discrete distribution")
   int counter = 0;
 
   for (size_t i = 0; i < n_samples; i++) {
-    auto sample = dist.sample(&seed);
+    auto sample = dist.sample(&seed).first;
     std += sample * sample / n_samples;
     dist_mean += sample;
 
@@ -61,7 +63,7 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
   // Initialize discrete distribution and seed
   openmc::Discrete dist(energy);
   uint64_t seed = openmc::init_seed(0, 0);
-  auto sample = dist.sample(&seed);
+  auto sample = dist.sample(&seed).first;
 
   // Assertions
   REQUIRE(dist.x().size() == 3);
@@ -78,4 +80,15 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
       dist.prob()[i], Catch::Matchers::WithinAbs(correct_prob[i], 1e-12));
     REQUIRE(dist.alias()[i] == correct_alias[i]);
   }
+}
+
+TEST_CASE("Test construction of SpatialBox with parameters")
+{
+  openmc::Position ll {-1, -2, -3};
+  openmc::Position ur {30, 15, 5};
+  openmc::SpatialBox box(ll, ur);
+
+  REQUIRE(box.lower_left() == openmc::Position {-1, -2, -3});
+  REQUIRE(box.upper_right() == openmc::Position {30, 15, 5});
+  REQUIRE_FALSE(box.only_fissionable());
 }

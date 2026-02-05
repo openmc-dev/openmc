@@ -12,7 +12,7 @@
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -148,11 +148,11 @@ protected:
 
 private:
   // Data members
-  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
-  UPtrSpace space_;                               //!< Spatial distribution
-  UPtrAngle angle_;                               //!< Angular distribution
-  UPtrDist energy_;                               //!< Energy distribution
-  UPtrDist time_;                                 //!< Time distribution
+  ParticleType particle_; //!< Type of particle emitted
+  UPtrSpace space_;       //!< Spatial distribution
+  UPtrAngle angle_;       //!< Angular distribution
+  UPtrDist energy_;       //!< Energy distribution
+  UPtrDist time_;         //!< Time distribution
 };
 
 //==============================================================================
@@ -217,8 +217,8 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return (sampled position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
 private:
   int32_t mesh_index_ {C_NONE}; //!< Index in global meshes array

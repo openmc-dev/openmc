@@ -22,6 +22,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
+#include "openmc/particle_type.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -554,7 +555,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
   return 0;
 }
 
-hid_t h5banktype()
+hid_t h5banktype(bool memory)
 {
   // Create compound type for position
   hid_t postype = H5Tcreate(H5T_COMPOUND, sizeof(struct Position));
@@ -569,7 +570,10 @@ hid_t h5banktype()
   // - openmc/statepoint.py
   // - docs/source/io_formats/statepoint.rst
   // - docs/source/io_formats/source.rst
-  hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct SourceSite));
+  auto n = sizeof(SourceSite);
+  if (!memory)
+    n = 2 * sizeof(struct Position) + 3 * sizeof(double) + 3 * sizeof(int);
+  hid_t banktype = H5Tcreate(H5T_COMPOUND, n);
   H5Tinsert(banktype, "r", HOFFSET(SourceSite, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(SourceSite, u), postype);
   H5Tinsert(banktype, "E", HOFFSET(SourceSite, E), H5T_NATIVE_DOUBLE);
@@ -629,6 +633,7 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
   if (mpi::master || parallel) {
     file_id = file_open(filename_.c_str(), 'w', true);
     write_attribute(file_id, "filetype", "source");
+    write_attribute(file_id, "version", VERSION_STATEPOINT);
   }
 
   // Get pointer to source bank and write to file
@@ -641,17 +646,19 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
 void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index)
 {
-  hid_t banktype = h5banktype();
+  hid_t membanktype = h5banktype(true);
+  hid_t filebanktype = h5banktype(false);
 
 #ifdef OPENMC_MPI
-  write_bank_dataset("source_bank", group_id, source_bank, bank_index, banktype,
-    mpi::source_site);
+  write_bank_dataset("source_bank", group_id, source_bank, bank_index,
+    membanktype, filebanktype, mpi::source_site);
 #else
-  write_bank_dataset(
-    "source_bank", group_id, source_bank, bank_index, banktype);
+  write_bank_dataset("source_bank", group_id, source_bank, bank_index,
+    membanktype, filebanktype);
 #endif
 
-  H5Tclose(banktype);
+  H5Tclose(membanktype);
+  H5Tclose(filebanktype);
 }
 
 // Determine member names of a compound HDF5 datatype
@@ -672,7 +679,17 @@ std::string dtype_member_names(hid_t dtype_id)
 void read_source_bank(
   hid_t group_id, vector<SourceSite>& sites, bool distribute)
 {
-  hid_t banktype = h5banktype();
+  bool legacy_particle_codes = true;
+  if (attribute_exists(group_id, "version")) {
+    array<int, 2> version;
+    read_attribute(group_id, "version", version);
+    if (version[0] > VERSION_STATEPOINT[0] ||
+        (version[0] == VERSION_STATEPOINT[0] && version[1] >= 2)) {
+      legacy_particle_codes = false;
+    }
+  }
+
+  hid_t banktype = h5banktype(true);
 
   // Open the dataset
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
@@ -733,6 +750,12 @@ void read_source_bank(
     H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
+
+  if (legacy_particle_codes) {
+    for (auto& site : sites) {
+      site.particle = legacy_particle_index_to_type(site.particle.pdg_number());
+    }
+  }
 }
 
 void write_unstructured_mesh_results()

@@ -884,9 +884,39 @@ void TokamakSource::precompute_sampling_cdfs()
   //==========================================================================
   // POLOIDAL CDFs (for conditional sampling of alpha given r)
   //==========================================================================
-  // The conditional distribution P(alpha | r) uses a Bernstein factorization:
-  //   f(r_tilde, alpha) = R_tilde x J_tilde
-  // where R_tilde and J_tilde are expressed in Bernstein form:
+  // The conditional distribution P(alpha | r) is a mixture:
+  //   P(alpha | r) ~ sum_k w_k(r) * I_hat_k * p_k(alpha)
+  // where:
+  //   - w_k(r) are the "dynamic" Bernstein weight functions (depend on r)
+  //   - I_hat_k are the "static" normalized integrals (precomputed constants)
+  //   - p_k(alpha) are the normalized basis distributions (precomputed CDFs)
+  //
+  // The static weights I_hat_k = I_k / (2*pi*c0) are:
+  //   I_hat_0 = 1 + eps*Dt
+  //   I_hat_1 = 1 + eps*Dt - (3/16)*c1*eps
+  //   I_hat_2 = 1 - (3/8)*c1*eps
+  //   I_hat_3 = 1 + eps*Dt
+  //   I_hat_4 = 1 + (1/2)*eps*Dt - (3/16)*c1*eps
+  //   I_hat_5 = 1 - eps*Dt - (3/8)*c1*eps
+
+  // Compute static weights analytically
+  poloidal_integrals_[0] = 1.0 + eps * Dt;
+  poloidal_integrals_[1] = 1.0 + eps * Dt - 0.1875 * c1 * eps;  // 3/16 = 0.1875
+  poloidal_integrals_[2] = 1.0 - 0.375 * c1 * eps;              // 3/8 = 0.375
+  poloidal_integrals_[3] = 1.0 + eps * Dt;
+  poloidal_integrals_[4] = 1.0 + 0.5 * eps * Dt - 0.1875 * c1 * eps;
+  poloidal_integrals_[5] = 1.0 - eps * Dt - 0.375 * c1 * eps;
+
+  // Build the alpha grid on [0, pi] (half domain due to up-down symmetry)
+  int n_alpha = n_alpha_;
+  poloidal_alpha_grid_.resize(n_alpha);
+  double dalpha = M_PI / (n_alpha - 1);
+  for (int i = 0; i < n_alpha; ++i) {
+    poloidal_alpha_grid_[i] = i * dalpha;
+  }
+
+  // Compute basis function values g_k(alpha) for building CDFs
+  // Using Bernstein form:
   //   R_tilde = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2
   //   J_tilde = b3*(1-r) + b4*r
   // with:
@@ -897,34 +927,11 @@ void TokamakSource::precompute_sampling_cdfs()
   //               + (delta/4)*(cos(alpha - delta*sin(alpha))
   //                          - cos(3*alpha + delta*sin(alpha)))
   //   b4(alpha) = b3(alpha) - 2*Dt*cos(alpha)
-  //
-  // The product gives 6 terms with non-negative basis functions g_k(alpha):
-  //   k=0: g0 = b0*b3,  w0 = (1-r)^3
-  //   k=1: g1 = b1*b3,  w1 = 2*r*(1-r)^2
-  //   k=2: g2 = b2*b3,  w2 = r^2*(1-r)
-  //   k=3: g3 = b0*b4,  w3 = r*(1-r)^2
-  //   k=4: g4 = b1*b4,  w4 = 2*r^2*(1-r)
-  //   k=5: g5 = b2*b4,  w5 = r^3
-  //
-  // Exploiting up-down symmetry: g_k(2*pi - alpha) = g_k(alpha), so we only
-  // need to compute CDFs on [0, pi] and randomly flip at sample time.
-
-  int n_alpha = n_alpha_;
-  poloidal_alpha_grid_.resize(n_alpha);
-  for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
-    poloidal_cdfs_[k].resize(n_alpha);
-    poloidal_integrals_[k] = 0.0;
-  }
-
-  // Build the alpha grid on [0, pi] (half domain due to symmetry)
-  double dalpha = M_PI / (n_alpha - 1);
-  for (int i = 0; i < n_alpha; ++i) {
-    poloidal_alpha_grid_[i] = i * dalpha;
-  }
 
   array<vector<double>, N_POLOIDAL_BASIS> basis;
   for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
     basis[k].resize(n_alpha);
+    poloidal_cdfs_[k].resize(n_alpha);
   }
 
   for (int i = 0; i < n_alpha; ++i) {
@@ -953,18 +960,9 @@ void TokamakSource::precompute_sampling_cdfs()
     basis[5][i] = b2 * b4; // w5 = r^3
   }
 
-  // Compute integrals and build CDFs for each basis function
-  // Note: integrals are over [0, pi], but due to symmetry the full integral
-  // over [0, 2*pi] is 2x this value. We use the half-integral for mixture
-  // weights since the factor of 2 cancels when normalizing.
+  // Build normalized CDFs for each basis function p_k(alpha)
   for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
-    // Integrate using trapezoidal rule
-    for (int i = 0; i < n_alpha; ++i) {
-      double w = (i == 0 || i == n_alpha - 1) ? 0.5 : 1.0;
-      poloidal_integrals_[k] += w * basis[k][i] * dalpha;
-    }
-
-    // Build CDF
+    // Build CDF using trapezoidal integration
     poloidal_cdfs_[k][0] = 0.0;
     for (int i = 1; i < n_alpha; ++i) {
       double avg = 0.5 * (basis[k][i - 1] + basis[k][i]);
@@ -1008,14 +1006,16 @@ double TokamakSource::sample_r_over_a(uint64_t* seed) const
 double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
 {
   // Sample from the conditional distribution P(alpha | r_tilde) using
-  // mixture sampling with 6 precomputed Bernstein basis CDFs.
+  // mixture sampling with 6 precomputed basis CDFs.
   //
-  // The conditional is: P(alpha | r) ~ sum_k w_k(r) * g_k(alpha)
-  // where w_k(r) are the Bernstein weight functions and g_k(alpha) are
-  // the basis functions with precomputed CDFs.
+  // The conditional is: P(alpha | r) ~ sum_k w_k(r) * I_hat_k * p_k(alpha)
+  // where:
+  //   - w_k(r) are the "dynamic" Bernstein weight functions (computed here)
+  //   - I_hat_k are the "static" normalized integrals (precomputed in poloidal_integrals_)
+  //   - p_k(alpha) are the normalized basis distributions (precomputed CDFs)
   //
   // Algorithm:
-  // 1. Compute mixture weights: m_k = w_k(r) * I_k where I_k = integral of g_k
+  // 1. Compute mixture weights: m_k = w_k(r) * I_hat_k
   // 2. Sample component k from categorical distribution on {m_k}
   // 3. Sample alpha from CDF_k using inverse transform
 
@@ -1030,7 +1030,7 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   double w4 = 2.0 * r * r * one_minus_r;                // 2*r^2*(1-r)
   double w5 = r * r * r;                                // r^3
 
-  // Compute mixture weights (unnormalized)
+  // Compute mixture weights: m_k = w_k(r) * I_hat_k
   double m0 = w0 * poloidal_integrals_[0];
   double m1 = w1 * poloidal_integrals_[1];
   double m2 = w2 * poloidal_integrals_[2];

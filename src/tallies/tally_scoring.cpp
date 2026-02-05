@@ -903,10 +903,9 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_EVENTS:
-// Simply count the number of scoring events
-#pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
-      continue;
+      // Simply count the number of scoring events
+      score = 1.0;
+      break;
 
     case ELASTIC:
       if (!p.type().is_neutron())
@@ -1513,10 +1512,9 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_EVENTS:
-// Simply count the number of scoring events
-#pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
-      continue;
+      // Simply count the number of scoring events
+      score = 1.0;
+      break;
 
     case ELASTIC:
       if (!p.type().is_neutron())
@@ -2291,10 +2289,9 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_EVENTS:
-// Simply count the number of scoring events
-#pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
-      continue;
+      // Simply count the number of scoring events
+      score = 1.0;
+      break;
 
     default:
       continue;

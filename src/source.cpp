@@ -651,73 +651,6 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 // TokamakSource implementation
 //==============================================================================
 
-TokamakSource::TokamakSource(const vector<double>& r_over_a,
-  const vector<double>& emission_rate,
-  vector<unique_ptr<Distribution>> energy_dists, double major_radius,
-  double minor_radius, double elongation, double triangularity,
-  double shafranov_shift, double phi_start, double phi_extent, int n_alpha)
-  : r_over_a_(r_over_a),
-    emission_rate_(emission_rate),
-    energy_dists_(std::move(energy_dists)),
-    major_radius_(major_radius),
-    minor_radius_(minor_radius),
-    elongation_(elongation),
-    triangularity_(triangularity),
-    shafranov_shift_(shafranov_shift),
-    phi_start_(phi_start),
-    phi_extent_(phi_extent),
-    n_alpha_(n_alpha)
-{
-  // Validate inputs
-  if (emission_rate_.size() != r_over_a_.size()) {
-    fatal_error(
-      "TokamakSource: emission_rate and r_over_a must have the same length.");
-  }
-  if (r_over_a_.size() < 2) {
-    fatal_error(
-      "TokamakSource: At least 2 radial points are required for profiles.");
-  }
-  if (minor_radius_ <= 0.0 || major_radius_ <= 0.0) {
-    fatal_error("TokamakSource: major_radius and minor_radius must be > 0.");
-  }
-  if (elongation_ <= 0.0) {
-    fatal_error("TokamakSource: elongation must be > 0.");
-  }
-  if (triangularity_ < -1.0 || triangularity_ > 1.0) {
-    fatal_error(
-      "TokamakSource: triangularity (delta) must be in the range [-1, 1].");
-  }
-  if (shafranov_shift_ / minor_radius_ >= 0.5) {
-    fatal_error(
-      "TokamakSource: Shafranov shift must be less than half the minor radius "
-      "(Delta/a < 0.5).");
-  }
-  if (phi_extent_ <= 0.0) {
-    fatal_error("TokamakSource: phi_extent must be > 0.");
-  }
-  if (n_alpha_ < 3) {
-    fatal_error("TokamakSource: n_alpha must be at least 3.");
-  }
-  if (energy_dists_.empty()) {
-    fatal_error("TokamakSource: At least one energy distribution is required.");
-  }
-  // Energy distributions must be either 1 (for all r) or match r_over_a size
-  if (energy_dists_.size() != 1 && energy_dists_.size() != r_over_a_.size()) {
-    fatal_error("TokamakSource: energy distributions must be either 1 (for all "
-                "r) or match the number of r_over_a points.");
-  }
-
-  // Ensure r_over_a is sorted
-  for (size_t i = 1; i < r_over_a_.size(); ++i) {
-    if (r_over_a_[i] <= r_over_a_[i - 1]) {
-      fatal_error("TokamakSource: r_over_a must be strictly increasing.");
-    }
-  }
-
-  // Precompute sampling CDFs
-  precompute_sampling_cdfs();
-}
-
 TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
 {
   // Read geometry parameters
@@ -754,6 +687,7 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   }
 
   // Validate inputs
+  // 1. r_over_a and emission_rate must match in length and have at least 2 points
   if (emission_rate_.size() != r_over_a_.size()) {
     fatal_error(
       "TokamakSource: emission_rate and r_over_a must have the same length.");
@@ -762,55 +696,90 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
     fatal_error(
       "TokamakSource: At least 2 radial points are required for profiles.");
   }
-  if (minor_radius_ <= 0.0 || major_radius_ <= 0.0) {
-    fatal_error("TokamakSource: major_radius and minor_radius must be > 0.");
-  }
-  if (elongation_ <= 0.0) {
-    fatal_error("TokamakSource: elongation must be > 0.");
-  }
-  if (triangularity_ < -1.0 || triangularity_ > 1.0) {
-    fatal_error(
-      "TokamakSource: triangularity (delta) must be in the range [-1, 1].");
-  }
-  if (shafranov_shift_ / minor_radius_ >= 0.5) {
-    fatal_error(
-      "TokamakSource: Shafranov shift must be less than half the minor radius "
-      "(Delta/a < 0.5).");
-  }
-  if (phi_extent_ <= 0.0) {
-    fatal_error("TokamakSource: phi_extent must be > 0.");
-  }
-  if (n_alpha_ < 3) {
-    fatal_error("TokamakSource: n_alpha must be at least 3.");
-  }
-  if (energy_dists_.empty()) {
-    fatal_error("TokamakSource: At least one energy distribution is required.");
-  }
-  // Energy distributions must be either 1 (for all r) or match r_over_a size
-  if (energy_dists_.size() != 1 && energy_dists_.size() != r_over_a_.size()) {
-    fatal_error("TokamakSource: energy distributions must be either 1 (for all "
-                "r) or match the number of r_over_a points.");
-  }
 
-  // Ensure r_over_a is sorted
+  // 2. r_over_a must start at 0, end at 1, and be monotonically increasing
+  if (r_over_a_.front() != 0.0) {
+    fatal_error("TokamakSource: r_over_a must start at 0.");
+  }
+  if (r_over_a_.back() != 1.0) {
+    fatal_error("TokamakSource: r_over_a must end at 1.");
+  }
   for (size_t i = 1; i < r_over_a_.size(); ++i) {
     if (r_over_a_[i] <= r_over_a_[i - 1]) {
       fatal_error("TokamakSource: r_over_a must be strictly increasing.");
     }
   }
 
-  // Precompute sampling CDFs
+  // 3. emission_rate values cannot be negative
+  for (size_t i = 0; i < emission_rate_.size(); ++i) {
+    if (emission_rate_[i] < 0.0) {
+      fatal_error("TokamakSource: emission_rate values cannot be negative.");
+    }
+  }
+
+  // 4. major and minor radius must be > 0 and minor < major
+  if (major_radius_ <= 0.0) {
+    fatal_error("TokamakSource: major_radius must be > 0.");
+  }
+  if (minor_radius_ <= 0.0) {
+    fatal_error("TokamakSource: minor_radius must be > 0.");
+  }
+  if (minor_radius_ >= major_radius_) {
+    fatal_error("TokamakSource: minor_radius must be less than major_radius.");
+  }
+
+  // 5. elongation must be > 0
+  if (elongation_ <= 0.0) {
+    fatal_error("TokamakSource: elongation must be > 0.");
+  }
+
+  // 6. triangularity must be on [-1, 1]
+  if (triangularity_ < -1.0 || triangularity_ > 1.0) {
+    fatal_error(
+      "TokamakSource: triangularity must be in the range [-1, 1].");
+  }
+
+  // 7. shafranov_shift must be >= 0 and < minor_radius / 2
+  if (shafranov_shift_ < 0.0) {
+    fatal_error("TokamakSource: shafranov_shift must be >= 0.");
+  }
+  if (shafranov_shift_ >= 0.5 * minor_radius_) {
+    fatal_error(
+      "TokamakSource: shafranov_shift must be less than half the minor radius.");
+  }
+
+  // 8. phi_extent must be <= 2*pi
+  if (phi_extent_ <= 0.0 || phi_extent_ > 2.0 * M_PI) {
+    fatal_error("TokamakSource: phi_extent must be > 0 and <= 2*pi.");
+  }
+
+  // 9. n_alpha must be > 2
+  if (n_alpha_ <= 2) {
+    fatal_error("TokamakSource: n_alpha must be > 2.");
+  }
+
+  // 10. energy_dists must be length 1 or same length as r_over_a
+  if (energy_dists_.empty()) {
+    fatal_error("TokamakSource: At least one energy distribution is required.");
+  }
+  if (energy_dists_.size() != 1 && energy_dists_.size() != r_over_a_.size()) {
+    fatal_error("TokamakSource: energy distributions must be either 1 (for all "
+                "r) or match the number of r_over_a points.");
+  }
+
+  // Compute normalized geometry parameters
+  epsilon_ = minor_radius_ / major_radius_;
+  delta_tilde_ = shafranov_shift_ / minor_radius_;
+
   precompute_sampling_cdfs();
 }
 
 void TokamakSource::precompute_sampling_cdfs()
 {
-  // Compute normalized geometry parameters
-  double eps = minor_radius_ / major_radius_;      // Inverse aspect ratio (epsilon)
-  double Dt = shafranov_shift_ / minor_radius_;    // Normalized Shafranov shift
+  // Use precomputed normalized geometry parameters
+  double eps = epsilon_;       // Inverse aspect ratio (a/R0)
+  double Dt = delta_tilde_;    // Normalized Shafranov shift (Delta/a)
   double delta = triangularity_;
-  epsilon_ = eps;
-  delta_tilde_ = Dt;
 
   //==========================================================================
   // RADIAL CDF (computed first since it's simpler and sampled first)

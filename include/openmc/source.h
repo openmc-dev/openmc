@@ -293,25 +293,6 @@ public:
   // Constructors
   explicit TokamakSource(pugi::xml_node node);
 
-  //! Construct from emission profile and geometry parameters
-  //! \param r_over_a Normalized minor radius coordinates (r/a)
-  //! \param emission_rate Emission rate S(r) at each r/a point [arb. units]
-  //! \param energy_dists Energy distribution(s): 1 for all r, or N for each r
-  //! \param major_radius Major radius R0 [cm]
-  //! \param minor_radius Minor radius a [cm]
-  //! \param elongation Plasma elongation kappa
-  //! \param triangularity Plasma triangularity delta
-  //! \param shafranov_shift Shafranov shift Delta [cm]
-  //! \param phi_start Starting toroidal angle [rad], default 0
-  //! \param phi_extent Toroidal angle extent [rad], default 2*pi
-  //! \param n_alpha Number of poloidal angle grid points, default 101
-  TokamakSource(const vector<double>& r_over_a,
-    const vector<double>& emission_rate,
-    vector<unique_ptr<Distribution>> energy_dists, double major_radius,
-    double minor_radius, double elongation, double triangularity,
-    double shafranov_shift, double phi_start = 0.0,
-    double phi_extent = 2.0 * M_PI, int n_alpha = 101);
-
   //! Sample from the tokamak source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site

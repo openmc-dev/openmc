@@ -625,9 +625,9 @@ class WeightWindowGenerator:
         if t is None:
             self._targets = t
         else:
-            cv.check_type('CADIS target tallies', t, [openmc.Tallies, list])
+            cv.check_type('CADIS target tallies', t, (openmc.Tallies, list))
             cv.check_greater_than('CADIS target tallies', len(t), 0)
-            if isinstance(t, list):
+            if not isinstance(t, openmc.Tallies):
                 for tally_id in t:
                     if not isinstance(tally_id, int):
                         raise TypeError(

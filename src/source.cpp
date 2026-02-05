@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm> // for lower_bound, max, distance
+#include <cmath>     // for cyl_bessel_j (Bessel functions)
 #include <utility>   // for move
 
 #ifdef HAS_DYNAMIC_LINKING
@@ -802,59 +803,111 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   precompute_sampling_cdfs();
 }
 
-double TokamakSource::interpolate_emission_rate(double r_norm) const
-{
-  // Linear interpolation on the emission rate profile
-  if (r_norm <= r_over_a_.front())
-    return emission_rate_.front();
-  if (r_norm >= r_over_a_.back())
-    return emission_rate_.back();
-
-  // Find the interval
-  auto it = std::lower_bound(r_over_a_.begin(), r_over_a_.end(), r_norm);
-  size_t i = std::distance(r_over_a_.begin(), it);
-  if (i > 0)
-    --i;
-
-  // Linear interpolation
-  double t = (r_norm - r_over_a_[i]) / (r_over_a_[i + 1] - r_over_a_[i]);
-  return emission_rate_[i] + t * (emission_rate_[i + 1] - emission_rate_[i]);
-}
-
 void TokamakSource::precompute_sampling_cdfs()
 {
   // Compute normalized geometry parameters
-  epsilon_ = minor_radius_ / major_radius_;      // Inverse aspect ratio
-  delta_tilde_ = shafranov_shift_ / minor_radius_; // Normalized Shafranov shift
+  double eps = minor_radius_ / major_radius_;      // Inverse aspect ratio (epsilon)
+  double Dt = shafranov_shift_ / minor_radius_;    // Normalized Shafranov shift
+  double delta = triangularity_;
+  epsilon_ = eps;
+  delta_tilde_ = Dt;
 
-  // Precompute Bernstein basis functions for the poloidal distribution.
-  // The joint PDF is proportional to f(r_tilde, alpha) = R* x J* where:
-  //   R* = 1 + eps*Dt + eps*cos(psi)*r - eps*Dt*r^2
-  //   J* = A(alpha) - 2*Dt*r*cos(alpha)
-  // with psi = alpha + delta*sin(alpha), Dt = Delta/a, eps = a/R0,
-  // and A(alpha) = cos(delta*sin(alpha)) + (delta/2)*sin(2*alpha)*sin(psi).
+  //==========================================================================
+  // RADIAL CDF (computed first since it's simpler and sampled first)
+  //==========================================================================
+  // The marginal radial PDF is obtained by analytically integrating the joint
+  // distribution f(r_tilde, alpha) over alpha. The result is:
   //
-  // Converting to Bernstein form:
-  //   R* = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2
-  //   J* = J0*(1-r) + J1*r
-  // where:
-  //   b0 = 1 + eps*Dt
-  //   b1 = 1 + eps*Dt + eps*cos(psi)/2
-  //   b2 = 1 + eps*cos(psi)
-  //   J0 = A(alpha)
-  //   J1 = A(alpha) - 2*Dt*cos(alpha)
+  //   p(r_tilde) ~ S(r_tilde) * [(1 + eps*Dt)*r_tilde
+  //                              - (3/8)*c1*eps*r_tilde^2
+  //                              - 2*eps*Dt*r_tilde^3]
   //
-  // The product R* x J* gives 6 terms with non-negative basis functions:
-  //   g0 = b0*J0,  w0 = (1-r)^3
-  //   g1 = b0*J1,  w1 = (1-r)^2*r
-  //   g2 = b1*J0,  w2 = 2*(1-r)^2*r
-  //   g3 = b1*J1,  w3 = 2*(1-r)*r^2
-  //   g4 = b2*J0,  w4 = (1-r)*r^2
-  //   g5 = b2*J1,  w5 = r^3
+  // where the Bessel function coefficients are:
+  //   c0 = J_0(delta) + J_2(delta)
+  //   c1 = c0 / (J_1(2*delta) + J_3(2*delta))
   //
-  // Exploiting up-down symmetry: the basis functions satisfy g_k(2*pi - alpha)
-  // = g_k(alpha), so we only need to compute CDFs on [0, pi] and randomly flip
-  // to [pi, 2*pi] at sample time.
+  // For delta -> 0, c0 -> 2 and c1 -> 2, giving the circular cross-section limit.
+
+  // Compute Bessel function coefficients
+  double c0, c1;
+  if (std::abs(delta) < 1e-10) {
+    // Limiting case for circular cross-section (delta -> 0)
+    // J_0(0) = 1, J_2(0) = 0, J_1(0) = 0, J_3(0) = 0
+    c0 = 1.0;
+    c1 = 0.0;
+  } else {
+    double J0_d = std::cyl_bessel_j(0, delta);
+    double J2_d = std::cyl_bessel_j(2, delta);
+    double J1_2d = std::cyl_bessel_j(1, 2.0 * delta);
+    double J3_2d = std::cyl_bessel_j(3, 2.0 * delta);
+    c0 = J0_d + J2_d;
+    c1 = (std::abs(c0) > 1e-10) ? (J1_2d + J3_2d) / c0 : 0.0;
+  }
+
+  // Coefficients for the radial polynomial: A*r - B*r^2 - C*r^3
+  double A = 1.0 + eps * Dt;
+  double B = 0.375 * c1 * eps;  // 3/8 * c1 * eps
+  double C = 2.0 * eps * Dt;
+
+  // Build the radial CDF on the user-provided r_over_a grid
+  const size_t n_r = r_over_a_.size();
+  radial_cdf_.resize(n_r);
+  vector<double> radial_pdf(n_r);
+
+  for (size_t i = 0; i < n_r; ++i) {
+    double r = r_over_a_[i];
+    double S = emission_rate_[i];
+    // p(r) ~ S(r) * [A*r - B*r^2 - C*r^3]
+    double geometric_factor = A * r - B * r * r - C * r * r * r;
+    radial_pdf[i] = S * std::max(0.0, geometric_factor);
+  }
+
+  // Integrate to get CDF using trapezoidal rule on irregular grid
+  radial_cdf_[0] = 0.0;
+  for (size_t i = 1; i < n_r; ++i) {
+    double dr = r_over_a_[i] - r_over_a_[i - 1];
+    double avg = 0.5 * (radial_pdf[i - 1] + radial_pdf[i]);
+    radial_cdf_[i] = radial_cdf_[i - 1] + avg * dr;
+  }
+
+  // Normalize CDF
+  double total = radial_cdf_[n_r - 1];
+  if (total <= 0.0) {
+    fatal_error(
+      "TokamakSource: Integrated emission rate is zero or negative. "
+      "Check emission_rate profile.");
+  }
+  for (size_t i = 0; i < n_r; ++i) {
+    radial_cdf_[i] /= total;
+  }
+
+  //==========================================================================
+  // POLOIDAL CDFs (for conditional sampling of alpha given r)
+  //==========================================================================
+  // The conditional distribution P(alpha | r) uses a Bernstein factorization:
+  //   f(r_tilde, alpha) = R_tilde x J_tilde
+  // where R_tilde and J_tilde are expressed in Bernstein form:
+  //   R_tilde = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2
+  //   J_tilde = b3*(1-r) + b4*r
+  // with:
+  //   b0(alpha) = 1 + eps*Dt
+  //   b1(alpha) = b0 + (eps/2)*cos(psi),  psi = alpha + delta*sin(alpha)
+  //   b2(alpha) = 1 + eps*cos(psi)
+  //   b3(alpha) = cos(delta*sin(alpha))
+  //               + (delta/4)*(cos(alpha - delta*sin(alpha))
+  //                          - cos(3*alpha + delta*sin(alpha)))
+  //   b4(alpha) = b3(alpha) - 2*Dt*cos(alpha)
+  //
+  // The product gives 6 terms with non-negative basis functions g_k(alpha):
+  //   k=0: g0 = b0*b3,  w0 = (1-r)^3
+  //   k=1: g1 = b1*b3,  w1 = 2*r*(1-r)^2
+  //   k=2: g2 = b2*b3,  w2 = r^2*(1-r)
+  //   k=3: g3 = b0*b4,  w3 = r*(1-r)^2
+  //   k=4: g4 = b1*b4,  w4 = 2*r^2*(1-r)
+  //   k=5: g5 = b2*b4,  w5 = r^3
+  //
+  // Exploiting up-down symmetry: g_k(2*pi - alpha) = g_k(alpha), so we only
+  // need to compute CDFs on [0, pi] and randomly flip at sample time.
 
   int n_alpha = n_alpha_;
   poloidal_alpha_grid_.resize(n_alpha);
@@ -869,11 +922,6 @@ void TokamakSource::precompute_sampling_cdfs()
     poloidal_alpha_grid_[i] = i * dalpha;
   }
 
-  // Precompute basis function values
-  double eps = epsilon_;
-  double Dt = delta_tilde_;
-  double delta = triangularity_;
-
   array<vector<double>, N_POLOIDAL_BASIS> basis;
   for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
     basis[k].resize(n_alpha);
@@ -883,30 +931,26 @@ void TokamakSource::precompute_sampling_cdfs()
     double alpha = poloidal_alpha_grid_[i];
     double sin_alpha = std::sin(alpha);
     double cos_alpha = std::cos(alpha);
-    double psi = alpha + delta * sin_alpha;
-    double sin_psi = std::sin(psi);
+    double delta_sin_alpha = delta * sin_alpha;
+    double psi = alpha + delta_sin_alpha;
     double cos_psi = std::cos(psi);
 
-    // A(alpha) = cos(delta*sin(alpha)) + (delta/2)*sin(2*alpha)*sin(psi)
-    double A = std::cos(delta * sin_alpha) +
-               0.5 * delta * std::sin(2.0 * alpha) * sin_psi;
-
-    // Bernstein coefficients for R*
+    // Bernstein coefficients b0-b4
     double b0 = 1.0 + eps * Dt;
-    double b1 = 1.0 + eps * Dt + 0.5 * eps * cos_psi;
+    double b1 = b0 + 0.5 * eps * cos_psi;
     double b2 = 1.0 + eps * cos_psi;
+    double b3 = std::cos(delta_sin_alpha) +
+                0.25 * delta * (std::cos(alpha - delta_sin_alpha) -
+                                std::cos(3.0 * alpha + delta_sin_alpha));
+    double b4 = b3 - 2.0 * Dt * cos_alpha;
 
-    // Linear coefficients for J*
-    double J0 = A;
-    double J1 = A - 2.0 * Dt * cos_alpha;
-
-    // 6 basis functions g_k(alpha) = b_i * J_j
-    basis[0][i] = b0 * J0; // (1-r)^3
-    basis[1][i] = b0 * J1; // (1-r)^2 * r
-    basis[2][i] = b1 * J0; // 2*(1-r)^2 * r
-    basis[3][i] = b1 * J1; // 2*(1-r) * r^2
-    basis[4][i] = b2 * J0; // (1-r) * r^2
-    basis[5][i] = b2 * J1; // r^3
+    // 6 basis functions g_k(alpha) = b_i * b_j
+    basis[0][i] = b0 * b3; // w0 = (1-r)^3
+    basis[1][i] = b1 * b3; // w1 = 2*r*(1-r)^2
+    basis[2][i] = b2 * b3; // w2 = r^2*(1-r)
+    basis[3][i] = b0 * b4; // w3 = r*(1-r)^2
+    basis[4][i] = b1 * b4; // w4 = 2*r^2*(1-r)
+    basis[5][i] = b2 * b4; // w5 = r^3
   }
 
   // Compute integrals and build CDFs for each basis function
@@ -936,76 +980,6 @@ void TokamakSource::precompute_sampling_cdfs()
       }
     }
   }
-
-  // Precompute radial CDF
-  // The marginal distribution in r_tilde is obtained by integrating
-  // f(r, alpha) over alpha. With the Bernstein factorization:
-  //   f = sum_k w_k(r) * g_k(alpha)
-  // where w_k are the Bernstein weight functions and g_k are the basis functions.
-  // The marginal is: P(r) ~ S(r) * r * sum_k w_k(r) * I_k
-  // where I_k = integral of g_k(alpha) over [0, 2*pi].
-  //
-  // The weight functions are:
-  //   w0 = (1-r)^3,           w1 = (1-r)^2*r,      w2 = 2*(1-r)^2*r
-  //   w3 = 2*(1-r)*r^2,       w4 = (1-r)*r^2,      w5 = r^3
-
-  constexpr int n_r = 201;
-  radial_cdf_grid_.resize(n_r);
-  radial_cdf_.resize(n_r);
-
-  double r_min = r_over_a_.front();
-  double r_max = r_over_a_.back();
-  double dr = (r_max - r_min) / (n_r - 1);
-
-  for (int i = 0; i < n_r; ++i) {
-    radial_cdf_grid_[i] = r_min + i * dr;
-  }
-
-  // Compute unnormalized PDF values using Bernstein weights
-  vector<double> radial_pdf(n_r);
-
-  for (int i = 0; i < n_r; ++i) {
-    double r = radial_cdf_grid_[i]; // r_tilde = r/a
-    double S = interpolate_emission_rate(r);
-    double one_minus_r = 1.0 - r;
-
-    // Compute Bernstein weight functions
-    double w0 = one_minus_r * one_minus_r * one_minus_r;        // (1-r)^3
-    double w1 = one_minus_r * one_minus_r * r;                  // (1-r)^2 * r
-    double w2 = 2.0 * one_minus_r * one_minus_r * r;            // 2*(1-r)^2 * r
-    double w3 = 2.0 * one_minus_r * r * r;                      // 2*(1-r) * r^2
-    double w4 = one_minus_r * r * r;                            // (1-r) * r^2
-    double w5 = r * r * r;                                      // r^3
-
-    // Sum weighted integrals
-    double weighted_sum = w0 * poloidal_integrals_[0] +
-                          w1 * poloidal_integrals_[1] +
-                          w2 * poloidal_integrals_[2] +
-                          w3 * poloidal_integrals_[3] +
-                          w4 * poloidal_integrals_[4] +
-                          w5 * poloidal_integrals_[5];
-
-    // Include the r_tilde factor from the Jacobian (absorbed into f)
-    radial_pdf[i] = S * r * std::max(0.0, weighted_sum);
-  }
-
-  // Integrate to get CDF using trapezoidal rule
-  radial_cdf_[0] = 0.0;
-  for (int i = 1; i < n_r; ++i) {
-    double avg = 0.5 * (radial_pdf[i - 1] + radial_pdf[i]);
-    radial_cdf_[i] = radial_cdf_[i - 1] + avg * dr;
-  }
-
-  // Normalize CDF
-  double total = radial_cdf_[n_r - 1];
-  if (total <= 0.0) {
-    fatal_error(
-      "TokamakSource: Integrated emission rate is zero or negative. "
-      "Check emission_rate profile.");
-  }
-  for (int i = 0; i < n_r; ++i) {
-    radial_cdf_[i] /= total;
-  }
 }
 
 double TokamakSource::sample_r_over_a(uint64_t* seed) const
@@ -1017,15 +991,15 @@ double TokamakSource::sample_r_over_a(uint64_t* seed) const
   size_t i = std::distance(radial_cdf_.begin(), it);
 
   if (i == 0)
-    return radial_cdf_grid_.front();
+    return r_over_a_.front();
   if (i >= radial_cdf_.size())
-    return radial_cdf_grid_.back();
+    return r_over_a_.back();
 
   // Linear interpolation within the interval
   double cdf_lo = radial_cdf_[i - 1];
   double cdf_hi = radial_cdf_[i];
-  double r_lo = radial_cdf_grid_[i - 1];
-  double r_hi = radial_cdf_grid_[i];
+  double r_lo = r_over_a_[i - 1];
+  double r_hi = r_over_a_[i];
 
   double t = (xi - cdf_lo) / (cdf_hi - cdf_lo);
   return r_lo + t * (r_hi - r_lo);
@@ -1050,10 +1024,10 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
 
   // Compute Bernstein weight functions
   double w0 = one_minus_r * one_minus_r * one_minus_r;  // (1-r)^3
-  double w1 = one_minus_r * one_minus_r * r;            // (1-r)^2 * r
-  double w2 = 2.0 * one_minus_r * one_minus_r * r;      // 2*(1-r)^2 * r
-  double w3 = 2.0 * one_minus_r * r * r;                // 2*(1-r) * r^2
-  double w4 = one_minus_r * r * r;                      // (1-r) * r^2
+  double w1 = 2.0 * r * one_minus_r * one_minus_r;      // 2*r*(1-r)^2
+  double w2 = r * r * one_minus_r;                      // r^2*(1-r)
+  double w3 = r * one_minus_r * one_minus_r;            // r*(1-r)^2
+  double w4 = 2.0 * r * r * one_minus_r;                // 2*r^2*(1-r)
   double w5 = r * r * r;                                // r^3
 
   // Compute mixture weights (unnormalized)
@@ -1071,20 +1045,20 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   }
 
   // Sample component from categorical distribution
-  // Order optimized for small r (core-weighted): 0, 2, 1, 3, 4, 5
-  // since w2 = 2*w1 and w3 = 2*w4, components 2 and 3 should be checked
-  // before 1 and 4 respectively for faster average termination.
+  // Order optimized for small r (core-weighted): 0, 1, 3, 2, 4, 5
+  // since w1 = 2*w3 and w4 = 2*w2, components 1 and 4 should be checked
+  // before 3 and 2 respectively for faster average termination.
   double xi = prn(seed) * total;
   int component;
   double cumsum = m0;
   if (xi < cumsum) {
     component = 0;
-  } else if ((cumsum += m2) > xi) {
-    component = 2;
   } else if ((cumsum += m1) > xi) {
     component = 1;
   } else if ((cumsum += m3) > xi) {
     component = 3;
+  } else if ((cumsum += m2) > xi) {
+    component = 2;
   } else if ((cumsum += m4) > xi) {
     component = 4;
   } else {

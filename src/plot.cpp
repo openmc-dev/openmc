@@ -1096,6 +1096,7 @@ WireframeRayTracePlot::WireframeRayTracePlot(pugi::xml_node node)
   set_wireframe_thickness(node);
   set_wireframe_ids(node);
   set_wireframe_color(node);
+  update_view();
 }
 
 void WireframeRayTracePlot::set_wireframe_color(pugi::xml_node plot_node)
@@ -1395,7 +1396,6 @@ ImageData WireframeRayTracePlot::create_image() const
   }
 
   return data;
-  write_image(data);
 }
 
 void WireframeRayTracePlot::create_output() const
@@ -1541,6 +1541,7 @@ SolidRayTracePlot::SolidRayTracePlot(pugi::xml_node node) : RayTracePlot(node)
   set_opaque_ids(node);
   set_diffuse_fraction(node);
   set_light_position(node);
+  update_view();
 }
 
 void SolidRayTracePlot::print_info() const

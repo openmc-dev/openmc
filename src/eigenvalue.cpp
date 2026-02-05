@@ -63,22 +63,6 @@ void calculate_generation_keff(bool is_kq)
   auto& k_generation =
     is_kq ? simulation::kq_generation : simulation::k_generation;
 
-  //   if (settings::run_mode == RunMode::FIXED_SOURCE &&
-  //       settings::calculate_subcritical_k) {
-  //     // For fixed source mode, we don't subtract previous generation values
-  //     simulation::keff_generation[0] =
-  //       gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
-  //     simulation::keff_generation[1] =
-  //       gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE);
-  //   } else {
-  //     simulation::keff_generation[0] =
-  //       gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
-  //       simulation::keff_generation[0];
-  //     simulation::keff_generation[1] =
-  //       gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) -
-  //       simulation::keff_generation[1];
-  //   }
-
   keff_generation[0] =
     gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) - keff_generation[0];
   keff_generation[1] =
@@ -455,7 +439,6 @@ void calculate_average_keff(bool is_kq)
 
     // Determine mean
     keff = k_sum[0] / n;
-
     if (n > 1) {
       double t_value;
       if (settings::confidence_intervals) {
@@ -491,7 +474,10 @@ void calculate_average_keff(bool is_kq)
   }
 }
 
-int openmc_get_keff(double* k_combined)
+int get_combined_k_from_tallies(double* k_combined, double keff,
+  double keff_std,
+  xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> gt,
+  double k_col_abs, double k_col_tra, double k_abs_tra)
 {
   k_combined[0] = 0.0;
   k_combined[1] = 0.0;
@@ -500,8 +486,8 @@ int openmc_get_keff(double* k_combined)
   // there is a N-3 term in a denominator.
   if (simulation::n_realizations <= 3 ||
       settings::solver_type == SolverType::RANDOM_RAY) {
-    k_combined[0] = simulation::keff;
-    k_combined[1] = simulation::keff_std;
+    k_combined[0] = keff;
+    k_combined[1] = keff_std;
     if (simulation::n_realizations <= 1) {
       k_combined[1] = std::numeric_limits<double>::infinity();
     }
@@ -512,8 +498,6 @@ int openmc_get_keff(double* k_combined)
   int64_t n = simulation::n_realizations;
 
   // Copy estimates of k-effective and its variance (not variance of the mean)
-  const auto& gt = simulation::global_tallies;
-
   array<double, 3> kv {};
   xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
@@ -530,9 +514,9 @@ int openmc_get_keff(double* k_combined)
     (n - 1);
 
   // Calculate covariances based on sums with Bessel's correction
-  cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
-  cov(0, 2) = (simulation::k_col_tra - n * kv[0] * kv[2]) / (n - 1);
-  cov(1, 2) = (simulation::k_abs_tra - n * kv[1] * kv[2]) / (n - 1);
+  cov(0, 1) = (k_col_abs - n * kv[0] * kv[1]) / (n - 1);
+  cov(0, 2) = (k_col_tra - n * kv[0] * kv[2]) / (n - 1);
+  cov(1, 2) = (k_abs_tra - n * kv[1] * kv[2]) / (n - 1);
   cov(1, 0) = cov(0, 1);
   cov(2, 0) = cov(0, 2);
   cov(2, 1) = cov(1, 2);
@@ -650,6 +634,20 @@ int openmc_get_keff(double* k_combined)
   return 0;
 }
 
+int openmc_get_keff(double* k_combined)
+{
+  return get_combined_k_from_tallies(k_combined, simulation::k,
+    simulation::k_std, simulation::global_tallies, simulation::k_col_abs,
+    simulation::k_col_tra, simulation::k_abs_tra);
+}
+
+int openmc_get_kq(double* kq_combined)
+{
+  return get_combined_k_from_tallies(kq_combined, simulation::kq,
+    simulation::kq_std, simulation::global_tallies_first_gen,
+    simulation::kq_col_abs, simulation::kq_col_tra, simulation::kq_abs_tra);
+}
+
 void shannon_entropy()
 {
   // Get source weight in each mesh bin
@@ -754,6 +752,7 @@ void write_eigenvalue_hdf5(hid_t group)
   }
   auto n = simulation::k_generation.size();
   xt::xtensor<double, 2> k_generation({n, 2});
+  xt::xtensor<double, 2> kq_generation({n, 2});
   for (int i = 0; i < n; ++i) {
     double k, k_std;
     if (settings::run_mode == RunMode::FIXED_SOURCE &&
@@ -764,6 +763,9 @@ void write_eigenvalue_hdf5(hid_t group)
         simulation::k_generation[i][0], simulation::k_generation[i][1]);
       k = k0;
       k_std = k1;
+
+      kq_generation(i, 0) = simulation::kq_generation[i][0];
+      kq_generation(i, 1) = simulation::kq_generation[i][1];
     } else {
       k = simulation::k_generation[i][0];
       k_std = simulation::k_generation[i][1];
@@ -776,13 +778,18 @@ void write_eigenvalue_hdf5(hid_t group)
   openmc_get_keff(k_combined.data());
   if (settings::run_mode == RunMode::FIXED_SOURCE &&
       settings::calculate_subcritical_k) {
-    // Temporary fix until formula for combined estimator can be implemented
-    // correctly
     auto [k0, k1] = convert_m_to_k(k_combined[0], k_combined[1]);
     k_combined[0] = k0;
     k_combined[1] = k1;
   }
   write_dataset(group, "k_combined", k_combined);
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    write_dataset(group, "kq_generation", kq_generation);
+    array<double, 2> kq_combined;
+    openmc_get_kq(kq_combined.data());
+    write_dataset(group, "kq_combined", kq_combined);
+  }
 }
 
 void read_eigenvalue_hdf5(hid_t group)

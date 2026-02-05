@@ -1107,6 +1107,35 @@ void accumulate_tallies()
       gt(i, TallyResult::SUM) += val;
       gt(i, TallyResult::SUM_SQ) += val * val;
     }
+    if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+      auto& gt = simulation::global_tallies_first_gen;
+      if (mpi::master || !settings::reduce_tallies) {
+        if (mpi::master || !settings::reduce_tallies) {
+
+          auto& gt_first_gen = simulation::global_tallies_first_gen;
+          // Accumulate products of different estimators of k
+          double kq_col =
+            gt_first_gen(GlobalTally::K_COLLISION, TallyResult::VALUE) /
+            simulation::total_weight;
+          double kq_abs =
+            gt_first_gen(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
+            simulation::total_weight;
+          double kq_tra =
+            gt_first_gen(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
+            simulation::total_weight;
+          simulation::kq_col_abs += kq_col * kq_abs;
+          simulation::kq_col_tra += kq_col * kq_tra;
+          simulation::kq_abs_tra += kq_abs * kq_tra;
+        }
+      }
+      for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
+        double val = gt(i, TallyResult::VALUE) / simulation::total_weight;
+        gt(i, TallyResult::VALUE) = 0.0;
+        gt(i, TallyResult::SUM) += val;
+        gt(i, TallyResult::SUM_SQ) += val * val;
+      }
+    }
   }
 
   // Accumulate results for each tally

@@ -316,6 +316,9 @@ double kq_std;
 double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
+double kq_col_abs {0.0};
+double kq_col_tra {0.0};
+double kq_abs_tra {0.0};
 double log_spacing;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
@@ -890,7 +893,7 @@ void transport_history_based_single_particle(Particle& p)
     // Check for first generation completion
     if (!p.alive() && tally_first_generation) {
       if (settings::calculate_subcritical_k) {
-// Protect global updates with atomic to prevent data races
+        // Protect global updates with atomic to prevent data races
 #pragma omp atomic
         global_tally_absorption_first_gen += p.keff_tally_absorption();
 #pragma omp atomic

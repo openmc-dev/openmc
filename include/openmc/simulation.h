@@ -31,8 +31,8 @@ extern "C" double keff;       //!< average k over batches
 extern "C" double keff_std;   //!< standard deviation of average k
 extern "C" double
   k; //!< average k over batches, used for subcritical multiplication problems
-extern "C" double k_std;     //!< standard deviation of average k, used for
-                             //!< subcritical multiplication problems
+extern "C" double k_std; //!< standard deviation of average k, used for
+                         //!< subcritical multiplication problems
 extern "C" double
   kq; //!< average kq over batches, used for subcritical multiplication problems
 extern "C" double kq_std;    //!< standard deviation of average kq, used for
@@ -41,9 +41,14 @@ extern "C" double k_col_abs; //!< sum over batches of k_collision * k_absorption
 extern "C" double
   k_col_tra; //!< sum over batches of k_collision * k_tracklength
 extern "C" double
-  k_abs_tra;               //!< sum over batches of k_absorption * k_tracklength
-extern double log_spacing; //!< lethargy spacing for energy grid searches
-extern "C" int n_lost_particles;   //!< cumulative number of lost particles
+  k_abs_tra; //!< sum over batches of k_absorption * k_tracklength
+extern "C" double
+  kq_col_abs; //!< sum over batches of kq_collision * kq_absorption
+extern "C" double
+  kq_col_tra; //!< sum over batches of kq_collision * kq_tracklength
+extern "C" double kq_abs_tra;
+extern double log_spacing;       //!< lethargy spacing for energy grid searches
+extern "C" int n_lost_particles; //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;      //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers;  //!< have tally triggers been satisfied?

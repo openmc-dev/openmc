@@ -22,7 +22,7 @@ namespace openmc {
 namespace simulation {
 
 extern array<double, 2>
-  keff_generation;             //!<  Single-generation k on each processor
+  keff_generation; //!<  Single-generation k on each processor
 extern array<double, 2>
   kq_generation_val;           //!<  Single-generation kq on each processor
 extern array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
@@ -67,6 +67,11 @@ void calculate_average_keff(bool is_kq);
 //! \param[out] k_combined Estimate of k-effective and its standard deviation
 //! \return Error status
 extern "C" int openmc_get_keff(double* k_combined);
+extern "C" int openmc_get_kq(double* kq_combined);
+int get_combined_k_from_tallies(double* k_combined, double keff,
+  double keff_std,
+  xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies,
+  double k_col_abs, double k_col_tra, double k_abs_tra);
 
 //! Sample/redistribute source sites from accumulated fission sites
 void synchronize_bank();

@@ -81,9 +81,12 @@ class StatePoint:
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
+    kq_generation : numpy.ndarray
+        Estimate of kq for each batch/generation
     keff : uncertainties.UFloat
         Combined estimator for k-effective
-
+    kq : uncertainties.UFloat
+        Combined estimator for kq
         .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
@@ -293,11 +296,32 @@ class StatePoint:
                 raise ValueError(f'k_generation shape ({arr.shape}) must be either 1d or 2d')
         else:
             return None
+        
+    @property
+    def kq_generation(self):
+        if 'kq_generation' in self._f:
+            arr = self._f['kq_generation'][()]
+            if arr.ndim==1:
+                return arr
+            elif arr.ndim==2:
+                return uarray(arr[:,0],arr[:,1])
+            else:
+                raise ValueError(f'kq_generation shape ({arr.shape}) must be either 1d or 2d')
+        else:
+            return None
 
     @property
     def keff(self):
         if 'k_combined' in self._f:
             return ufloat(*self._f['k_combined'][()])
+        else:
+            return None
+        
+    
+    @property
+    def kq(self):
+        if 'kq_combined' in self._f:
+            return ufloat(*self._f['kq_combined'][()])
         else:
             return None
 

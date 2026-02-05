@@ -83,11 +83,15 @@ class StatePoint:
         Estimate of k-effective for each batch/generation
     kq_generation : numpy.ndarray
         Estimate of kq for each batch/generation
+    ks_generation : numpy.ndarray
+        Estimate of ks for each batch/generation
     keff : uncertainties.UFloat
         Combined estimator for k-effective
+        .. versionadded:: 0.13.1
     kq : uncertainties.UFloat
         Combined estimator for kq
-        .. versionadded:: 0.13.1
+    ks : uncertainaties.UFloat
+        Combined estimator for ks
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
     multiplication : uncertainties.UFloat
@@ -311,17 +315,30 @@ class StatePoint:
             return None
 
     @property
+    def ks_generation(self):
+        if self.calculate_subcritical_k:
+            return 1 + self.kq_generation - self.kq_generation/self.k_generation
+        else:
+            return None
+    
+    @property
     def keff(self):
         if 'k_combined' in self._f:
             return ufloat(*self._f['k_combined'][()])
         else:
             return None
         
-    
     @property
     def kq(self):
         if 'kq_combined' in self._f:
             return ufloat(*self._f['kq_combined'][()])
+        else:
+            return None
+    
+    @property
+    def ks(self):
+        if self.calculate_subcritical_k:
+            return 1 + self.kq - self.kq/self.keff 
         else:
             return None
 
@@ -430,7 +447,7 @@ class StatePoint:
         return self._f['source_bank'][()] if self.source_present else None
         
     @property
-    def source_efficiency(self):
+    def source_effectiveness(self):
         if self.run_mode == 'eigenvalue':
             k_gen = self.k_generation
             k_inactive = k_gen[:self.n_inactive]

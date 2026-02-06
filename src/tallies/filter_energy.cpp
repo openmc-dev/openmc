@@ -134,17 +134,18 @@ void ParticleProductionFilter::get_all_bins(
     // Find which particle-type slot this secondary belongs to
     auto it = type_to_index_.find(site.particle.pdg_number());
     if (it != type_to_index_.end()) {
-      int pt = it->second;
+      int particle_idx = it->second;
       if (bins_.empty()) {
         // No energy binning, just particle type
-        match.bins_.push_back(pt);
+        match.bins_.push_back(particle_idx);
         match.weights_.push_back(site.wgt);
       } else {
         // Bin the energy
         if (site.E >= bins_.front() && site.E <= bins_.back()) {
-          int n_ebins = static_cast<int>(bins_.size()) - 1;
-          auto ebin = lower_bound_index(bins_.begin(), bins_.end(), site.E);
-          match.bins_.push_back(pt * n_ebins + ebin);
+          int n_energies = static_cast<int>(bins_.size()) - 1;
+          auto energy_idx =
+            lower_bound_index(bins_.begin(), bins_.end(), site.E);
+          match.bins_.push_back(particle_idx * n_energies + energy_idx);
           match.weights_.push_back(site.wgt);
         }
       }
@@ -157,11 +158,12 @@ std::string ParticleProductionFilter::text_label(int bin) const
   if (bins_.empty()) {
     return fmt::format("Secondary {}", secondary_types_.at(bin).str());
   } else {
-    int n_ebins = static_cast<int>(bins_.size()) - 1;
-    int pt_idx = bin / n_ebins;
-    int e_idx = bin % n_ebins;
+    int n_energies = static_cast<int>(bins_.size()) - 1;
+    int particle_idx = bin / n_energies;
+    int energy_idx = bin % n_energies;
     return fmt::format("Secondary {}, Energy [{}, {})",
-      secondary_types_.at(pt_idx).str(), bins_.at(e_idx), bins_.at(e_idx + 1));
+      secondary_types_.at(particle_idx).str(), bins_.at(energy_idx),
+      bins_.at(energy_idx + 1));
   }
 }
 

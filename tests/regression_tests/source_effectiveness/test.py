@@ -37,7 +37,7 @@ class SourceTestHarness(PyAPITestHarness):
             # Write out g*.
             outstr += 'g*:\n'
             form = '{0:12.6E} {1:12.6E}\n'
-            g_star = sp.source_efficiency 
+            g_star = sp.source_effectiveness 
             outstr += form.format(g_star.n, g_star.s)
         return outstr   
 

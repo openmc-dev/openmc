@@ -132,22 +132,21 @@ void ParticleProductionFilter::get_all_bins(
     const auto& site = p.secondary_bank(bank_idx);
 
     // Find which particle-type slot this secondary belongs to
-    for (int pt = 0; pt < secondary_types_.size(); ++pt) {
-      if (site.particle == secondary_types_[pt]) {
-        if (bins_.empty()) {
-          // No energy binning, just particle type
-          match.bins_.push_back(pt);
+    auto it = type_to_index_.find(site.particle.pdg_number());
+    if (it != type_to_index_.end()) {
+      int pt = it->second;
+      if (bins_.empty()) {
+        // No energy binning, just particle type
+        match.bins_.push_back(pt);
+        match.weights_.push_back(site.wgt);
+      } else {
+        // Bin the energy
+        if (site.E >= bins_.front() && site.E <= bins_.back()) {
+          int n_ebins = static_cast<int>(bins_.size()) - 1;
+          auto ebin = lower_bound_index(bins_.begin(), bins_.end(), site.E);
+          match.bins_.push_back(pt * n_ebins + ebin);
           match.weights_.push_back(site.wgt);
-        } else {
-          // Bin the energy
-          if (site.E >= bins_.front() && site.E <= bins_.back()) {
-            int n_ebins = static_cast<int>(bins_.size()) - 1;
-            auto ebin = lower_bound_index(bins_.begin(), bins_.end(), site.E);
-            match.bins_.push_back(pt * n_ebins + ebin);
-            match.weights_.push_back(site.wgt);
-          }
         }
-        break; // A secondary can only match one type
       }
     }
   }
@@ -177,7 +176,9 @@ void ParticleProductionFilter::from_xml(pugi::xml_node node)
   // Read particle types (required)
   auto names = get_node_array<std::string>(node, "particles");
   for (const auto& name : names) {
+    int idx = secondary_types_.size();
     secondary_types_.emplace_back(name);
+    type_to_index_[secondary_types_.back().pdg_number()] = idx;
   }
 
   // Compute total bins

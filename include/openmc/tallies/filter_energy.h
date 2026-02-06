@@ -1,6 +1,8 @@
 #ifndef OPENMC_TALLIES_FILTER_ENERGY_H
 #define OPENMC_TALLIES_FILTER_ENERGY_H
 
+#include <unordered_map>
+
 #include "openmc/particle.h"
 #include "openmc/span.h"
 #include "openmc/tallies/filter.h"
@@ -103,6 +105,9 @@ public:
 protected:
   vector<ParticleType>
     secondary_types_; //!< Types of secondary particles to filter
+
+  //! Map from PDG number to index in secondary_types_
+  std::unordered_map<int32_t, int> type_to_index_;
 };
 
 } // namespace openmc

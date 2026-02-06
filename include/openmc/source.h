@@ -77,6 +77,23 @@ public:
   //! \return Sampled site
   virtual SourceSite sample(uint64_t* seed) const = 0;
 
+  //! Sample one or more source sites (without applying constraints)
+  //
+  //! For most sources this returns a single site. CorrelatedSource overrides
+  //! this to return multiple correlated sites.
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Vector of sampled sites
+  virtual vector<SourceSite> sample_sites(uint64_t* seed) const
+  {
+    return {sample(seed)};
+  }
+
+  //! Sample one or more source sites and apply constraints
+  //
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Vector of sampled sites
+  vector<SourceSite> sample_sites_with_constraints(uint64_t* seed) const;
+
   static unique_ptr<Source> create(pugi::xml_node node);
 
 protected:
@@ -251,17 +268,47 @@ private:
 };
 
 //==============================================================================
+//! Source that emits multiple correlated particles per source event
+//!
+//! All particles share the same position and time, but each has its own
+//! particle type, energy, and angular distributions. Used for simulating
+//! correlated emissions such as Co-60 summation peaks.
+//==============================================================================
+
+class CorrelatedSource : public Source {
+public:
+  // Constructors
+  explicit CorrelatedSource(pugi::xml_node node);
+
+  //! Sample a single source site (returns first correlated particle)
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+  //! Sample all correlated source sites
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Vector of sampled sites sharing the same position and time
+  vector<SourceSite> sample_sites(uint64_t* seed) const override;
+
+private:
+  UPtrSpace space_;                              //!< Shared spatial distribution
+  UPtrDist time_;                                //!< Shared time distribution
+  vector<unique_ptr<IndependentSource>> sources_; //!< Sub-source distributions
+  vector<double> probabilities_; //!< Emission probability per sub-source
+};
+
+//==============================================================================
 // Functions
 //==============================================================================
 
 //! Initialize source bank from file/distribution
 extern "C" void initialize_source();
 
-//! Sample a site from all external source distributions in proportion to their
-//! source strength
+//! Sample one or more sites from all external source distributions in
+//! proportion to their source strength
 //! \param[inout] seed Pseudorandom seed pointer
-//! \return Sampled source site
-SourceSite sample_external_source(uint64_t* seed);
+//! \return Vector of sampled source sites (multiple for correlated sources)
+vector<SourceSite> sample_external_source(uint64_t* seed);
 
 void free_memory_source();
 

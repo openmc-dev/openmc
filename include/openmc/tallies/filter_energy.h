@@ -101,7 +101,8 @@ public:
   void to_statepoint(hid_t filter_group) const override;
 
 protected:
-  ParticleType secondary_type_; //!< Type of secondary particle to filter
+  vector<ParticleType>
+    secondary_types_; //!< Types of secondary particles to filter
 };
 
 } // namespace openmc

@@ -129,14 +129,25 @@ void ParticleProductionFilter::get_all_bins(
 
   // Loop over secondary bank entries
   for (int bank_idx = start_idx; bank_idx < end_idx; bank_idx++) {
-    // Check if this is the correct type of secondary, then match its energy if
-    // it's the right type
     const auto& site = p.secondary_bank(bank_idx);
-    if (site.particle == secondary_type_) {
-      if (site.E >= bins_.front() && site.E <= bins_.back()) {
-        auto bin = lower_bound_index(bins_.begin(), bins_.end(), site.E);
-        match.bins_.push_back(bin);
-        match.weights_.push_back(site.wgt);
+
+    // Find which particle-type slot this secondary belongs to
+    for (int pt = 0; pt < secondary_types_.size(); ++pt) {
+      if (site.particle == secondary_types_[pt]) {
+        if (bins_.empty()) {
+          // No energy binning, just particle type
+          match.bins_.push_back(pt);
+          match.weights_.push_back(site.wgt);
+        } else {
+          // Bin the energy
+          if (site.E >= bins_.front() && site.E <= bins_.back()) {
+            int n_ebins = static_cast<int>(bins_.size()) - 1;
+            auto ebin = lower_bound_index(bins_.begin(), bins_.end(), site.E);
+            match.bins_.push_back(pt * n_ebins + ebin);
+            match.weights_.push_back(site.wgt);
+          }
+        }
+        break; // A secondary can only match one type
       }
     }
   }
@@ -144,21 +155,54 @@ void ParticleProductionFilter::get_all_bins(
 
 std::string ParticleProductionFilter::text_label(int bin) const
 {
-  return fmt::format("Secondary {}, Energy [{}, {})", secondary_type_.str(),
-    bins_.at(bin), bins_.at(bin + 1));
+  if (bins_.empty()) {
+    return fmt::format("Secondary {}", secondary_types_.at(bin).str());
+  } else {
+    int n_ebins = static_cast<int>(bins_.size()) - 1;
+    int pt_idx = bin / n_ebins;
+    int e_idx = bin % n_ebins;
+    return fmt::format("Secondary {}, Energy [{}, {})",
+      secondary_types_.at(pt_idx).str(), bins_.at(e_idx), bins_.at(e_idx + 1));
+  }
 }
 
 void ParticleProductionFilter::from_xml(pugi::xml_node node)
 {
-  EnergyFilter::from_xml(node);
-  std::string p = get_node_value(node, "particle");
-  secondary_type_ = ParticleType {p};
+  // Read energy bins if present (optional)
+  if (check_for_node(node, "bins")) {
+    auto bins = get_node_array<double>(node, "bins");
+    this->set_bins(bins);
+  }
+
+  // Read particle types (required)
+  auto names = get_node_array<std::string>(node, "particles");
+  for (const auto& name : names) {
+    secondary_types_.emplace_back(name);
+  }
+
+  // Compute total bins
+  if (bins_.empty()) {
+    n_bins_ = secondary_types_.size();
+  } else {
+    n_bins_ = secondary_types_.size() * (bins_.size() - 1);
+  }
 }
 
 void ParticleProductionFilter::to_statepoint(hid_t filter_group) const
 {
-  EnergyFilter::to_statepoint(filter_group);
-  write_dataset(filter_group, "particle", secondary_type_.str());
+  Filter::to_statepoint(filter_group);
+
+  // Write energy bins if present
+  if (!bins_.empty()) {
+    write_dataset(filter_group, "bins", bins_);
+  }
+
+  // Write particle types
+  vector<std::string> names;
+  for (const auto& pt : secondary_types_) {
+    names.push_back(pt.str());
+  }
+  write_dataset(filter_group, "particles", names);
 }
 
 //==============================================================================

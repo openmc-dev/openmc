@@ -114,7 +114,8 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   if (material != MATERIAL_VOID) {
     double inverse_k_eff = 1.0 / k_eff_;
     const int material_offset = (material * ntemperature_ + temp) * negroups_;
-    const int scatter_offset = (material * ntemperature_ + temp) * negroups_ * negroups_;
+    const int scatter_offset =
+      (material * ntemperature_ + temp) * negroups_ * negroups_;
     for (int g_out = 0; g_out < negroups_; g_out++) {
       double sigma_t = sigma_t_[material_offset + g_out] * density_mult;
       double scatter_source = 0.0;

@@ -782,6 +782,8 @@ void TokamakSource::precompute_sampling_cdfs()
   // For delta -> 0, c0 -> 1 and c1 -> 0, giving the circular cross-section limit.
 
   // Compute Bessel function coefficients
+  // Note: std::cyl_bessel_j requires non-negative argument, but Bessel functions
+  // of integer order n satisfy: J_n(-x) = (-1)^n * J_n(x)
   double c0, c1;
   if (std::abs(delta) < 1e-10) {
     // Limiting case for circular cross-section (delta -> 0)
@@ -789,10 +791,14 @@ void TokamakSource::precompute_sampling_cdfs()
     c0 = 1.0;
     c1 = 0.0;
   } else {
-    double J0_d = std::cyl_bessel_j(0, delta);
-    double J2_d = std::cyl_bessel_j(2, delta);
-    double J1_2d = std::cyl_bessel_j(1, 2.0 * delta);
-    double J3_2d = std::cyl_bessel_j(3, 2.0 * delta);
+    double abs_delta = std::abs(delta);
+    double sign_delta = (delta >= 0) ? 1.0 : -1.0;
+    // J_0(-x) = J_0(x), J_2(-x) = J_2(x) (even order)
+    double J0_d = std::cyl_bessel_j(0, abs_delta);
+    double J2_d = std::cyl_bessel_j(2, abs_delta);
+    // J_1(-x) = -J_1(x), J_3(-x) = -J_3(x) (odd order)
+    double J1_2d = sign_delta * std::cyl_bessel_j(1, 2.0 * abs_delta);
+    double J3_2d = sign_delta * std::cyl_bessel_j(3, 2.0 * abs_delta);
     c0 = J0_d + J2_d;
     c1 = (J1_2d + J3_2d) / c0;
   }

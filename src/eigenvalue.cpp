@@ -740,16 +740,6 @@ double ufs_get_weight(const Particle& p)
 
 void write_eigenvalue_hdf5(hid_t group)
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    write_dataset(group, "n_inactive", settings::n_inactive);
-    write_dataset(group, "generations_per_batch", settings::gen_per_batch);
-    if (settings::entropy_on) {
-      write_dataset(group, "entropy", simulation::entropy);
-    }
-    write_dataset(group, "k_col_abs", simulation::k_col_abs);
-    write_dataset(group, "k_col_tra", simulation::k_col_tra);
-    write_dataset(group, "k_abs_tra", simulation::k_abs_tra);
-  }
   auto n = simulation::k_generation.size();
   xt::xtensor<double, 2> k_generation({n, 2});
   xt::xtensor<double, 2> kq_generation({n, 2});
@@ -773,7 +763,18 @@ void write_eigenvalue_hdf5(hid_t group)
     k_generation(i, 0) = k;
     k_generation(i, 1) = k_std;
   }
+  write_dataset(group, "n_inactive", settings::n_inactive);
+  write_dataset(group, "generations_per_batch", settings::gen_per_batch);
   write_dataset(group, "k_generation", k_generation);
+  if (settings::entropy_on) {
+    write_dataset(group, "entropy", simulation::entropy);
+  }
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    write_dataset(group, "k_col_abs", simulation::k_col_abs);
+    write_dataset(group, "k_col_tra", simulation::k_col_tra);
+    write_dataset(group, "k_abs_tra", simulation::k_abs_tra);
+  }
+
   array<double, 2> k_combined;
   openmc_get_keff(k_combined.data());
   if (settings::run_mode == RunMode::FIXED_SOURCE &&

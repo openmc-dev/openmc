@@ -179,12 +179,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   // Determine the expected number of neutrons produced
   double nu_t {0};
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    double nu_t = p.wgt() / simulation::keff * weight *
-                  p.neutron_xs(i_nuclide).nu_fission /
-                  p.neutron_xs(i_nuclide).total;
+    nu_t = p.wgt() / simulation::keff * weight *
+           p.neutron_xs(i_nuclide).nu_fission / p.neutron_xs(i_nuclide).total;
   } else {
-    double nu_t = p.wgt() * weight * p.neutron_xs(i_nuclide).nu_fission /
-                  p.neutron_xs(i_nuclide).total;
+    nu_t = p.wgt() * weight * p.neutron_xs(i_nuclide).nu_fission /
+           p.neutron_xs(i_nuclide).total;
   }
 
   // Sample the number of neutrons produced

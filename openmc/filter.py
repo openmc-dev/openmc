@@ -25,9 +25,8 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
-    'particleproduction', 'cellinstance',
-    'collision', 'time', 'parentnuclide', 'weight', 'meshborn', 'meshsurface',
-    'meshmaterial',
+    'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
+    'weight', 'meshborn', 'meshsurface', 'meshmaterial',
 )
 
 _CURRENT_NAMES = (
@@ -1787,7 +1786,7 @@ class ParticleProductionFilter(Filter):
         energy_high)``. When no energies are specified, each element is a
         particle name string.
     num_bins : int
-        Total number of filter bins (n_particles, n_energy_bins)
+        Total number of filter bins
     num_energy_bins : int
         Number of energy bins (1 if no energies specified)
     shape : tuple of int

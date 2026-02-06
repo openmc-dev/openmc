@@ -323,7 +323,7 @@ def test_particle_production_filter():
     energy_bins = [1e3, 1e4, 1e5, 1e6]
 
     # --- Single particle with energy bins ---
-    f = openmc.ParticleProductionFilter('photon', energies=energy_bins)
+    f = openmc.ParticleProductionFilter('photon', energy_bins)
 
     # particles getter always returns a list
     assert isinstance(f.particles, list)
@@ -362,8 +362,7 @@ def test_particle_production_filter():
     assert ('particleproduction', 'energy high [eV]') in df.columns
 
     # --- Multiple particles with energy bins ---
-    f2 = openmc.ParticleProductionFilter(
-        ['photon', 'neutron'], energies=energy_bins)
+    f2 = openmc.ParticleProductionFilter(['photon', 'neutron'], energy_bins)
     assert len(f2.particles) == 2
     assert f2.num_bins == 6  # 2 particles * 3 energy bins
     assert f2.shape == (2, 3)

@@ -8,11 +8,11 @@ import pytest
 
 
 def test_id():
-    for i in range(-10,1):
+    for i in range(-10, 1):
         with pytest.raises(ValueError):
             openmc.Plane(a=1, b=2, c=-1, d=3, surface_id=i)
-    
-    
+
+
 def assert_infinite_bb(s):
     ll, ur = (-s).bounding_box
     assert np.all(np.isinf(ll))

@@ -38,7 +38,7 @@ class IDManagerMixin:
     'used_ids' as they are used in the 'id' property that is supplied here.
 
     """
-    
+
     min_id = 0
 
     @property

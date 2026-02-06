@@ -19,10 +19,12 @@ def test_contains():
     c = openmc.Cell()
     assert (10.0, -4., 2.0) in c
 
+
 def test_id():
     openmc.Cell(cell_id=0)
     with pytest.raises(ValueError):
-        openmc.Cell(cell_id=-1) 
+        openmc.Cell(cell_id=-1)
+
 
 def test_repr(cell_with_lattice):
     cells, mats, univ, lattice = cell_with_lattice

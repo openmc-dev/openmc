@@ -48,10 +48,12 @@ def test_bounding_box():
     u = openmc.Universe()
     assert_unbounded(u)
 
+
 def test_id():
     openmc.Universe(universe_id=0)
     with pytest.raises(ValueError):
-        openmc.Universe(universe_id=-1)        
+        openmc.Universe(universe_id=-1)
+
 
 def test_plot(run_in_tmpdir, sphere_model):
 

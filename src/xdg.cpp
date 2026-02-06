@@ -185,7 +185,7 @@ Position XDGMesh::vertex(int id) const
 
 std::vector<int> XDGMesh::connectivity(int id) const
 {
-  auto conn = xdg_->mesh_manager()->connectivity(bin_to_mesh_id(id));
+  auto conn = xdg_->mesh_manager()->element_connectivity(bin_to_mesh_id(id));
   for (auto& c : conn) {
     c = xdg_->mesh_manager()->vertex_index(c);
   }

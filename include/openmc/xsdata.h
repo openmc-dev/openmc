@@ -120,10 +120,11 @@ public:
   //!   the incoming particle.
   //! @param n_pol Number of polar angles.
   //! @param n_azi Number of azimuthal angles.
+  //! @param energy_bins energy bins of XsData
   void from_hdf5(hid_t xsdata_grp, bool fissionable,
     AngleDistributionType scatter_format,
     AngleDistributionType final_scatter_format, int order_data,
-    bool is_isotropic, int n_pol, int n_azi);
+    bool is_isotropic, int n_pol, int n_azi, const vector<double>& energy_bins);
 
   //! \brief Combines the microscopic data to a macroscopic object.
   //!

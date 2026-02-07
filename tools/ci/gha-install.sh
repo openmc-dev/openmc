@@ -36,6 +36,9 @@ pip install mcpl
 if [[ $MPI == 'y' ]]; then
     pip install --no-binary=mpi4py mpi4py
 
+    # h5py install with setuptools 81 currently fails
+    pip install 'setuptools<81'
+
     export CC=mpicc
     export HDF5_MPI=ON
     export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich

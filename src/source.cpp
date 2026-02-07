@@ -1000,9 +1000,9 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   double total = m0 + m1 + m2 + m3 + m4 + m5;
 
   // Sample component from categorical distribution
-  // Order optimized for small r (core-weighted): 0, 1, 3, 2, 4, 5
-  // since w1 = 2*w3 and w4 = 2*w2, components 1 and 4 should be checked
-  // before 3 and 2 respectively for faster average termination.
+  // Order optimized for peaked emission profiles: 0, 1, 4, 5, 3, 2
+  // Components 0, 1, 4 have highest expected weights for H-mode profiles
+  // Components 3, 2 consistently have lowest expected weights
   double xi = prn(seed) * total;
   int component;
   double cumsum = m0;
@@ -1010,14 +1010,14 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
     component = 0;
   } else if ((cumsum += m1) > xi) {
     component = 1;
-  } else if ((cumsum += m3) > xi) {
-    component = 3;
-  } else if ((cumsum += m2) > xi) {
-    component = 2;
   } else if ((cumsum += m4) > xi) {
     component = 4;
-  } else {
+  } else if ((cumsum += m5) > xi) {
     component = 5;
+  } else if ((cumsum += m3) > xi) {
+    component = 3;
+  } else {
+    component = 2;
   }
 
   // Sample alpha from the selected CDF using inverse transform

@@ -291,8 +291,8 @@ public:
   vector<SourceSite> sample_sites(uint64_t* seed) const override;
 
 private:
-  UPtrSpace space_;                              //!< Shared spatial distribution
-  UPtrDist time_;                                //!< Shared time distribution
+  UPtrSpace space_; //!< Shared spatial distribution
+  UPtrDist time_;   //!< Shared time distribution
   vector<unique_ptr<IndependentSource>> sources_; //!< Sub-source distributions
   vector<double> probabilities_; //!< Emission probability per sub-source
 };

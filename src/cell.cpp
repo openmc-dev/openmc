@@ -20,7 +20,6 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
-#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
 #include "openmc/xml_interface.h"
@@ -398,10 +397,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
       for (std::string mat : mats) {
         if (mat.compare("void") == 0) {
           material_.push_back(MATERIAL_VOID);
-          if (!settings::run_CE && data::mg.void_velocities_.empty())
-            warning("Void inverse-velocity data is not available in the "
-                    "multi-group nuclear data library. "
-                    "Time related calculation results might be wrong!");
         } else {
           material_.push_back(std::stoi(mat));
         }

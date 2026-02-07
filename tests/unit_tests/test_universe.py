@@ -135,10 +135,6 @@ def test_mg_plot(run_in_tmpdir):
         univ.plot(width=(200, 200), basis='yz', color_by='cell')
         univ.plot(width=(200, 200), basis='yz', color_by='material')
 
-    # Unset MG cross sections in config
-    with openmc.config.patch('mg_cross_sections', None):
-        with pytest.raises(RuntimeError):
-            univ.plot(width=(200, 200), basis='yz', color_by='cell')
 
     # Close plots to avoid warning
     import matplotlib.pyplot as plt

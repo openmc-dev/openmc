@@ -168,10 +168,7 @@ class _Config(MutableMapping):
 
         """
         previous_value = self.get(key)
-        if value is None:
-            del self[key]
-        else:
-            self[key] = value
+        self[key] = value
         try:
             yield
         finally:

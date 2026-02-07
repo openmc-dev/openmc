@@ -39,10 +39,13 @@ if [[ $MPI == 'y' ]]; then
     export CC=mpicc
     export HDF5_MPI=ON
     export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich
-    pip install h5py
-    pip uninstall h5py --yes
-    export H5PY_SETUP_REQUIRES=0
-    pip install --no-binary=h5py h5py --no-build-isolation
+    pip download -d . h5py --no-binary h5py
+    h5path=$(echo h5py*.tar.gz)
+    tar -xvf $h5path
+    cd h5py*
+    sed -i 's/3.1../4.0.0/g' _custom_build/backend.py
+    pip install .
+    cd -
 fi
 
 # Build and install OpenMC executable

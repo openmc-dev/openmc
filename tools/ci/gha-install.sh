@@ -40,7 +40,7 @@ if [[ $MPI == 'y' ]]; then
     export HDF5_MPI=ON
     export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich
     pip install h5py
-    pip uninstall h5py
+    pip uninstall h5py --yes
     export H5PY_SETUP_REQUIRES=0
     pip install --no-binary=h5py h5py --no-build-isolation
 fi

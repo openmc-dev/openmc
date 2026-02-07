@@ -39,6 +39,7 @@ if [[ $MPI == 'y' ]]; then
     export CC=mpicc
     export HDF5_MPI=ON
     export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich
+    export H5PY_SETUP_REQUIRES=0
     pip download -d . h5py --no-binary h5py
     h5path=$(echo h5py*.tar.gz)
     tar -xvf $h5path

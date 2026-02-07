@@ -97,8 +97,18 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
 
   if (!object_exists(xsdata_grp, "inverse-velocity")) {
-    warning("Inverse-velocity is not available in XsData "
-            "Time related calculation results might be wrong!");
+    vector<double> inv_vel;
+    for (int i = 0; i < energy_bins_.size() - 1; ++i) {
+      double e_min = energy_bins_[i];
+      double e_max = energy_bins_[i + 1];
+      double inv_v = (std::acosh(1 + e_max / MASS_NEUTRON_EV) -
+                       std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_max) -
+                       std::acosh(1 + e_min / MASS_NEUTRON_EV) +
+                       std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_min)) /
+                     std::log(e_max / e_min) / C_LIGHT;
+      inv_vel.push_back(inv_v);
+    }
+    inverse_velocity = xt::adapt(inv_vel);
   }
 
   // Get scattering data

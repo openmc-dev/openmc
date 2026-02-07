@@ -95,10 +95,10 @@ public:
   //!
   //! @param xs_id HDF5 group id for the cross section data.
   //! @param temperature Temperatures to read.
-  //! @param num_group number of energy groups
+  //! @param energy_bins energy bins
   //! @param num_delay number of delayed groups
-  Mgxs(hid_t xs_id, const vector<double>& temperature, int num_group,
-    int num_delay);
+  Mgxs(hid_t xs_id, const vector<double>& temperature,
+    const vector<double>& energy_bins, int num_delay);
 
   //! \brief Constructor that initializes and populates all data to build a
   //!   macroscopic cross section from microscopic cross sections.

@@ -109,7 +109,7 @@ void MgxsInterface::add_mgxs(
   }
 
   nuclides_.emplace_back(
-    xs_grp, temperature, energy_groups_, num_delayed_groups_);
+    xs_grp, temperature, energy_bins_, num_delayed_groups_);
   close_group(xs_grp);
 }
 

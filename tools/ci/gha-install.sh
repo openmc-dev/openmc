@@ -43,8 +43,10 @@ if [[ $MPI == 'y' ]]; then
     pip download -d . h5py --no-binary h5py
     h5path=$(echo h5py*.tar.gz)
     tar -xvf $h5path
+    rm $h5path
     cd h5py*
     sed -i 's/3.1../4.0.0/g' _custom_build/backend.py
+    unset H5PY_SETUP_REQUIRES
     pip install .
     cd -
 fi

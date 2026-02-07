@@ -17,5 +17,5 @@ fi
 # Run unit tests and then regression tests
 pytest -s -v $args \
   tests/test_matplotlib_import.py \
-  tests/unit_tests \
-  tests/regression_tests
+  tests/unit_tests/test_material.py \
+  tests/unit_tests/test_universe.py

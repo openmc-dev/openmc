@@ -15,7 +15,7 @@ if [[ $EVENT == 'y' ]]; then
 fi
 
 # Run unit tests and then regression tests
-pytest -v $args \
+pytest -s -v $args \
   tests/test_matplotlib_import.py \
   tests/unit_tests \
   tests/regression_tests

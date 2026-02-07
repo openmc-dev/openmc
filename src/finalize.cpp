@@ -14,6 +14,7 @@
 #include "openmc/material.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/plot.h"
@@ -163,6 +164,7 @@ int openmc_finalize()
   data::energy_min = {0.0, 0.0, 0.0, 0.0};
   data::temperature_min = 0.0;
   data::temperature_max = INFTY;
+  data::mg = {};
   model::root_universe = -1;
   model::plotter_seed = 1;
   openmc::openmc_set_seed(DEFAULT_SEED);

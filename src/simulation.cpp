@@ -583,8 +583,12 @@ void initialize_history(Particle& p, int64_t index_source)
                  simulation::work_index[mpi::rank] + index_source;
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
-    auto site = sample_external_source(&seed);
-    p.from_source(&site);
+    auto sites = sample_external_source(&seed);
+    p.from_source(&sites[0]);
+    // For correlated sources, add extra particles to secondary bank
+    for (size_t i = 1; i < sites.size(); ++i) {
+      p.secondary_bank().push_back(sites[i]);
+    }
   }
   p.current_work() = index_source;
 

@@ -203,6 +203,8 @@ class SourceBase(ABC):
                 return FileSource.from_xml_element(elem)
             elif source_type == 'mesh':
                 return MeshSource.from_xml_element(elem, meshes)
+            elif source_type == 'correlated':
+                return CorrelatedSource.from_xml_element(elem, meshes)
             else:
                 raise ValueError(
                     f'Source type {source_type} is not recognized')
@@ -656,6 +658,195 @@ class MeshSource(SourceBase):
             e) for e in elem.iterchildren('source')]
         constraints = cls._get_constraints(elem)
         return cls(mesh, sources, constraints=constraints)
+
+
+class CorrelatedSource(SourceBase):
+    """A source that emits multiple correlated particles per source event.
+
+    All particles share the same spatial position and time, but each has
+    independent particle type, energy, and angular distributions. This is
+    useful for simulating correlated emissions such as Co-60 summation peaks.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    space : openmc.stats.Spatial, optional
+        Shared spatial distribution for all emitted particles
+    time : openmc.stats.Univariate, optional
+        Shared time distribution for all emitted particles
+    sources : list of openmc.IndependentSource
+        Sub-sources defining particle type, energy, and angle for each
+        correlated particle. Must contain at least 2 sources.
+    strength : float
+        Strength of the source
+    probabilities : list of float, optional
+        Emission probability for each sub-source, values in (0, 1].
+        Default is 1.0 (always emit) for every sub-source.
+    constraints : dict, optional
+        Constraints on sampled source particles.
+
+    Attributes
+    ----------
+    space : openmc.stats.Spatial or None
+        Shared spatial distribution
+    time : openmc.stats.Univariate or None
+        Shared time distribution
+    sources : list of openmc.IndependentSource
+        Sub-source distributions
+    probabilities : list of float
+        Emission probability per sub-source
+    strength : float
+        Strength of the source
+    type : str
+        Indicator of source type: 'correlated'
+
+    """
+
+    def __init__(
+        self,
+        space: openmc.stats.Spatial | None = None,
+        time: openmc.stats.Univariate | None = None,
+        sources: list[IndependentSource] | None = None,
+        strength: float = 1.0,
+        probabilities: list[float] | None = None,
+        constraints: dict[str, Any] | None = None
+    ):
+        super().__init__(strength=strength, constraints=constraints)
+
+        self._space = None
+        self._time = None
+        self._sources = []
+        self._probabilities = None
+
+        if space is not None:
+            self.space = space
+        if time is not None:
+            self.time = time
+        if sources is not None:
+            self.sources = sources
+        if probabilities is not None:
+            self.probabilities = probabilities
+
+    @property
+    def type(self) -> str:
+        return 'correlated'
+
+    @property
+    def space(self):
+        return self._space
+
+    @space.setter
+    def space(self, space):
+        cv.check_type('spatial distribution', space, Spatial)
+        self._space = space
+
+    @property
+    def time(self):
+        return self._time
+
+    @time.setter
+    def time(self, time):
+        cv.check_type('time distribution', time, Univariate)
+        self._time = time
+
+    @property
+    def sources(self):
+        return self._sources
+
+    @sources.setter
+    def sources(self, sources):
+        cv.check_type('sub-sources', sources, list)
+        for s in sources:
+            cv.check_type('sub-source', s, IndependentSource)
+        if len(sources) < 2:
+            raise ValueError('A correlated source must have at least 2 '
+                             'sub-sources.')
+        self._sources = list(sources)
+
+    @property
+    def probabilities(self):
+        return self._probabilities
+
+    @probabilities.setter
+    def probabilities(self, probabilities):
+        cv.check_type('probabilities', probabilities, list)
+        for p in probabilities:
+            cv.check_type('probability', p, Real)
+            if p <= 0.0 or p > 1.0:
+                raise ValueError(
+                    f'Probability {p} is not in the range (0, 1].')
+        if self._sources and len(probabilities) != len(self._sources):
+            raise ValueError(
+                f'Length of probabilities ({len(probabilities)}) must match '
+                f'number of sub-sources ({len(self._sources)}).')
+        self._probabilities = list(probabilities)
+
+    def populate_xml_element(self, element):
+        """Add necessary source information to an XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
+        if self.space is not None:
+            element.append(self.space.to_xml_element())
+        if self.time is not None:
+            element.append(self.time.to_xml_element('time'))
+        probs = self.probabilities
+        for i, src in enumerate(self.sources):
+            sub_elem = src.to_xml_element()
+            if probs is not None and probs[i] != 1.0:
+                sub_elem.set("probability", str(probs[i]))
+            element.append(sub_elem)
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> CorrelatedSource:
+        """Generate correlated source from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict, optional
+            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
+            values
+
+        Returns
+        -------
+        openmc.CorrelatedSource
+            Source generated from XML element
+
+        """
+        constraints = cls._get_constraints(elem)
+        source = cls(constraints=constraints)
+
+        strength = get_text(elem, 'strength')
+        if strength is not None:
+            source.strength = float(strength)
+
+        space = elem.find('space')
+        if space is not None:
+            source.space = Spatial.from_xml_element(space, meshes)
+
+        time = elem.find('time')
+        if time is not None:
+            source.time = Univariate.from_xml_element(time)
+
+        sub_sources = []
+        probabilities = []
+        for e in elem.iterchildren('source'):
+            sub_sources.append(IndependentSource.from_xml_element(e))
+            prob_str = e.get('probability')
+            probabilities.append(float(prob_str) if prob_str is not None else 1.0)
+        if sub_sources:
+            source.sources = sub_sources
+            if any(p != 1.0 for p in probabilities):
+                source.probabilities = probabilities
+
+        return source
 
 
 def Source(*args, **kwargs):

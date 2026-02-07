@@ -127,8 +127,13 @@ def test_mg_plot(run_in_tmpdir):
     h2o_xsdata.set_scatter_matrix(scatter_matrix)
     mg_library = openmc.MGXSLibrary(groups)
     mg_library.add_xsdatas([h2o_xsdata])
+    import os
+    os.system('ls .')
     mgxs_path = Path.cwd() / 'mgxs.h5'
+    os.system('ls .')
+    mgxs_path.unlink(missing_ok=True)
     mg_library.export_to_hdf5(mgxs_path)
+    os.system('ls .')    
 
     # Set MG cross sections in config and plot
     with openmc.config.patch('mg_cross_sections', mgxs_path):

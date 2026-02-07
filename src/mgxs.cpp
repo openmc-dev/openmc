@@ -271,9 +271,9 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
 
 //==============================================================================
 
-Mgxs::Mgxs(
-  hid_t xs_id, const vector<double>& temperature, int num_group, int num_delay)
-  : num_groups(num_group), num_delayed_groups(num_delay)
+Mgxs::Mgxs(hid_t xs_id, const vector<double>& temperature,
+  const vector<double>& energy_bins, int num_delay)
+  : num_groups(energy_bins.size()), num_delayed_groups(num_delay)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
@@ -296,7 +296,8 @@ Mgxs::Mgxs(
     hid_t xsdata_grp = open_group(xs_id, temp_str.c_str());
 
     xs[t].from_hdf5(xsdata_grp, fissionable, scatter_format,
-      final_scatter_format, order_data, is_isotropic, n_pol, n_azi);
+      final_scatter_format, order_data, is_isotropic, n_pol, n_azi,
+      energy_bins);
     close_group(xsdata_grp);
 
   } // end temperature loop

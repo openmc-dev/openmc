@@ -81,7 +81,7 @@ XsData::XsData(bool fissionable, AngleDistributionType scatter_format,
 void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   AngleDistributionType scatter_format,
   AngleDistributionType final_scatter_format, int order_data, bool is_isotropic,
-  int n_pol, int n_azi)
+  int n_pol, int n_azi, const vector<double>& energy_bins)
 {
   // Reconstruct the dimension information so it doesn't need to be passed
   size_t n_ang = n_pol * n_azi;

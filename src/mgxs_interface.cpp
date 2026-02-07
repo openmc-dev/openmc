@@ -258,6 +258,17 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
     for (double v : velocity) {
       void_velocities_.push_back(v);
     }
+  } else {
+    for (int i = 0; i < energy_bins_.size() - 1; ++i) {
+      double e_min = energy_bins_[i];
+      double e_max = energy_bins_[i + 1];
+      double v = C_LIGHT * std::log(e_max / e_min) /
+                 (std::acosh(1 + e_max / MASS_NEUTRON_EV) -
+                   std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_max) -
+                   std::acosh(1 + e_min / MASS_NEUTRON_EV) +
+                   std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_min));
+      void_velocities_.push_back(v);
+    }
   }
 
   // Close MGXS HDF5 file

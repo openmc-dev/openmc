@@ -77,6 +77,14 @@ Source::Source(pugi::xml_node node)
     }
   }
 
+  // Check for source activity rate
+  if (check_for_node(node, "activity")) {
+    activity_ = std::stod(get_node_value(node, "activity"));
+    if (activity_ <= 0.0) {
+      fatal_error("Source activity must be positive.");
+    }
+  }
+
   // Check for additional defined constraints
   read_constraints(node);
 }

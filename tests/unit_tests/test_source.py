@@ -125,6 +125,30 @@ def test_source_dlopen():
     assert 'library' in elem.attrib
 
 
+def test_activity_independent_source_roundtrip():
+    """Test XML round-trip for IndependentSource with activity."""
+    src = openmc.IndependentSource(
+        energy=openmc.stats.Discrete([1.0e6], [1.0]),
+        strength=2.0,
+        activity=1.0e6
+    )
+    elem = src.to_xml_element()
+    assert elem.get('activity') == str(1.0e6)
+
+    new_src = openmc.IndependentSource.from_xml_element(elem)
+    assert new_src.activity == approx(1.0e6)
+    assert new_src.strength == approx(2.0)
+
+
+def test_activity_none_by_default():
+    """Test that activity is None by default."""
+    src = openmc.IndependentSource()
+    assert src.activity is None
+    elem = src.to_xml_element()
+    assert elem.get('activity') is None
+
+
+
 def test_source_xml_roundtrip():
     # Create a source and write to an XML element
     space = openmc.stats.Box([-5., -5., -5.], [5., 5., 5.])

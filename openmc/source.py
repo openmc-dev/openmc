@@ -30,6 +30,9 @@ class SourceBase(ABC):
     ----------
     strength : float
         Strength of the source
+    activity : float or None
+        Activity rate of the source in Bq. When set, each history is assigned
+        a unique timestamp sampled from a Poisson process with this rate.
     constraints : dict
         Constraints on sampled source particles. Valid keys include 'domains',
         'time_bounds', 'energy_bounds', 'fissionable', and 'rejection_strategy'.
@@ -50,6 +53,8 @@ class SourceBase(ABC):
         Indicator of source type.
     strength : float
         Strength of the source
+    activity : float or None
+        Activity rate of the source in Bq
     constraints : dict
         Constraints on sampled source particles. Valid keys include
         'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
@@ -60,10 +65,12 @@ class SourceBase(ABC):
     def __init__(
         self,
         strength: float | None = 1.0,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None,
+        activity: float | None = None
     ):
         self.strength = strength
         self.constraints = constraints
+        self.activity = activity
 
     @property
     def strength(self):
@@ -75,6 +82,17 @@ class SourceBase(ABC):
         if strength is not None:
             cv.check_greater_than('source strength', strength, 0.0, True)
         self._strength = strength
+
+    @property
+    def activity(self):
+        return self._activity
+
+    @activity.setter
+    def activity(self, activity):
+        cv.check_type('source activity', activity, Real, none_ok=True)
+        if activity is not None:
+            cv.check_greater_than('source activity', activity, 0.0)
+        self._activity = activity
 
     @property
     def constraints(self) -> dict[str, Any]:
@@ -138,6 +156,8 @@ class SourceBase(ABC):
         element.set("type", self.type)
         if self.strength is not None:
             element.set("strength", str(self.strength))
+        if self.activity is not None:
+            element.set("activity", str(self.activity))
         self.populate_xml_element(element)
         constraints = self.constraints
         if constraints:
@@ -323,14 +343,16 @@ class IndependentSource(SourceBase):
         particle: str | int | ParticleType = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material |
                           openmc.Universe] | None = None,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None,
+        activity: float | None = None
     ):
         if domains is not None:
             warnings.warn("The 'domains' arguments has been replaced by the "
                           "'constraints' argument.", FutureWarning)
             constraints = {'domains': domains}
 
-        super().__init__(strength=strength, constraints=constraints)
+        super().__init__(strength=strength, constraints=constraints,
+                         activity=activity)
 
         self._space = None
         self._angle = None
@@ -455,6 +477,10 @@ class IndependentSource(SourceBase):
         strength = get_text(elem, 'strength')
         if strength is not None:
             source.strength = float(strength)
+
+        activity = elem.get('activity')
+        if activity is not None:
+            source.activity = float(activity)
 
         particle = get_text(elem, 'particle')
         if particle is not None:

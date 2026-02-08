@@ -322,6 +322,7 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
 vector<int64_t> work_index;
+vector<double> decay_times;
 
 } // namespace simulation
 
@@ -356,6 +357,48 @@ void allocate_banks()
   }
 }
 
+void compute_decay_times()
+{
+  // Sum activities across all external sources
+  double total_activity = 0.0;
+  for (const auto& src : model::external_sources) {
+    total_activity += src->activity();
+  }
+
+  // If no activity is set, clear decay times and return
+  if (total_activity <= 0.0) {
+    simulation::decay_times.clear();
+    return;
+  }
+
+  // Mean inter-arrival time in seconds
+  double mean_dt = 1.0 / total_activity;
+
+  // Compute global start index for this MPI rank
+  int64_t global_start = simulation::work_index[mpi::rank];
+
+  // Use a deterministic seed based on batch number
+  uint64_t seed = init_seed(simulation::current_batch, STREAM_SOURCE);
+
+  // Generate exponential inter-arrival times sequentially from the start
+  // to ensure reproducibility across MPI ranks
+  double cumulative_time = 0.0;
+
+  // Skip to this rank's starting index
+  for (int64_t i = 0; i < global_start; ++i) {
+    double dt = -mean_dt * std::log(1.0 - prn(&seed));
+    cumulative_time += dt;
+  }
+
+  // Compute decay times for this rank's particles
+  simulation::decay_times.resize(simulation::work_per_rank);
+  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+    double dt = -mean_dt * std::log(1.0 - prn(&seed));
+    cumulative_time += dt;
+    simulation::decay_times[i] = cumulative_time;
+  }
+}
+
 void initialize_batch()
 {
   // Increment current batch
@@ -368,6 +411,11 @@ void initialize_batch()
     } else {
       write_message(6, "Simulating batch {}", simulation::current_batch);
     }
+  }
+
+  // Pre-compute decay times for activity-based timing (fixed-source only)
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    compute_decay_times();
   }
 
   // Reset total starting particle weight used for normalizing tallies
@@ -585,6 +633,12 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
+    // Override particle time with decay time if activity is set
+    if (!simulation::decay_times.empty()) {
+      double decay_time = simulation::decay_times[index_source - 1];
+      p.time() = decay_time;
+      p.time_last() = decay_time;
+    }
   }
   p.current_work() = index_source;
 
@@ -799,6 +853,7 @@ void free_memory_simulation()
 {
   simulation::k_generation.clear();
   simulation::entropy.clear();
+  simulation::decay_times.clear();
 }
 
 void transport_history_based_single_particle(Particle& p)

@@ -94,6 +94,22 @@ void MgxsInterface::init()
 
 //==============================================================================
 
+void MgxsInterface::clear()
+{
+  xs_names_.clear();
+  xs_to_read_.clear();
+  xs_temps_to_read_.clear();
+  cross_sections_path_.clear();
+  nuclides_.clear();
+  macro_xs_.clear();
+  energy_bins_.clear();
+  energy_bin_avg_.clear();
+  rev_energy_bins_.clear();
+  nuc_temps_.clear();
+}
+
+//==============================================================================
+
 void MgxsInterface::add_mgxs(
   hid_t file_id, const std::string& name, const vector<double>& temperature)
 {

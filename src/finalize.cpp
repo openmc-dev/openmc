@@ -14,6 +14,7 @@
 #include "openmc/material.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/plot.h"
@@ -44,6 +45,7 @@ void free_memory()
   free_memory_settings();
   free_memory_thermal();
   library_clear();
+  data::mg.clear();
   nuclides_clear();
   free_memory_source();
   free_memory_mesh();

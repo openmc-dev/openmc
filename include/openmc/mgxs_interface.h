@@ -28,6 +28,9 @@ public:
   // read have been specified.
   void init();
 
+  // Clear object
+  void clear();
+
   // Set which nuclides and temperatures are to be read
   void set_nuclides_and_temperatures(
     vector<std::string> xs_to_read, vector<vector<double>> xs_temps);

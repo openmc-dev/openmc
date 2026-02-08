@@ -1106,7 +1106,7 @@ class Model:
 
         return ids
 
-    def raster_plot(
+    def slice_plot(
         self,
         origin: Sequence[float] | None = None,
         width: Sequence[float] | None = None,
@@ -1212,7 +1212,7 @@ class Model:
             self.tallies.append(temp_tally)
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            geom_data, property_data = openmc.lib.raster_plot(
+            geom_data, property_data = openmc.lib.slice_plot(
                 origin=origin,
                 width=width,
                 basis=basis,

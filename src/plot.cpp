@@ -2019,10 +2019,9 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
   return 0;
 }
 
-extern "C" int openmc_raster_plot(const double origin[3],
-  const double u_span[3], const double v_span[3], const size_t pixels[2],
-  bool color_overlaps, int level, int32_t filter_index, int32_t* geom_data,
-  double* property_data)
+extern "C" int openmc_slice_plot(const double origin[3], const double u_span[3],
+  const double v_span[3], const size_t pixels[2], bool color_overlaps,
+  int level, int32_t filter_index, int32_t* geom_data, double* property_data)
 {
   // Validate span vectors
   Position u_span_pos {u_span[0], u_span[1], u_span[2]};
@@ -2053,7 +2052,7 @@ extern "C" int openmc_raster_plot(const double origin[3],
   }
 
   try {
-    // Create a temporary SlicePlotBase object to reuse get_raster_map logic
+    // Create a temporary SlicePlotBase object to reuse get_map logic
     SlicePlotBase plot_params;
     plot_params.origin_ = Position {origin[0], origin[1], origin[2]};
     plot_params.u_span_ = u_span_pos;

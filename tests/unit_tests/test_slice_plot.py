@@ -3,10 +3,10 @@ import openmc
 from openmc.examples import pwr_pin_cell
 
 
-def test_raster_plot_basic(run_in_tmpdir):
-    """Test basic raster_plot functionality."""
+def test_slice_plot_basic(run_in_tmpdir):
+    """Test basic slice_plot functionality."""
     model = pwr_pin_cell()
-    geom_data, prop_data = model.raster_plot(
+    geom_data, prop_data = model.slice_plot(
         origin=(0, 0, 0),
         width=(1.0, 1.0),
         pixels=(100, 100),
@@ -24,10 +24,10 @@ def test_raster_plot_basic(run_in_tmpdir):
     assert np.any(prop_data[:, :, 0] > 0)   # Valid temperatures
 
 
-def test_raster_plot_no_properties(run_in_tmpdir):
-    """Test raster_plot without property data."""
+def test_slice_plot_no_properties(run_in_tmpdir):
+    """Test slice_plot without property data."""
     model = pwr_pin_cell()
-    geom_data, prop_data = model.raster_plot(
+    geom_data, prop_data = model.slice_plot(
         origin=(0, 0, 0),
         width=(1.0, 1.0),
         pixels=(50, 50),
@@ -39,13 +39,13 @@ def test_raster_plot_no_properties(run_in_tmpdir):
     assert prop_data is None
 
 
-def test_raster_plot_with_filter(run_in_tmpdir):
-    """Test raster_plot with a cell filter."""
+def test_slice_plot_with_filter(run_in_tmpdir):
+    """Test slice_plot with a cell filter."""
     model = pwr_pin_cell()
     cell_ids = [c.id for c in model.geometry.get_all_cells().values()]
     cell_filter = openmc.CellFilter(cell_ids)
 
-    geom_data, _ = model.raster_plot(
+    geom_data, _ = model.slice_plot(
         origin=(0, 0, 0),
         width=(1.0, 1.0),
         pixels=(50, 50),
@@ -62,10 +62,10 @@ def test_raster_plot_with_filter(run_in_tmpdir):
     assert np.any(filter_bins[valid_cells] >= 0)
 
 
-def test_raster_plot_overlaps(run_in_tmpdir):
-    """Test raster_plot with overlap detection."""
+def test_slice_plot_overlaps(run_in_tmpdir):
+    """Test slice_plot with overlap detection."""
     model = pwr_pin_cell()
-    geom_data, _ = model.raster_plot(
+    geom_data, _ = model.slice_plot(
         origin=(0, 0, 0),
         width=(1.0, 1.0),
         pixels=(50, 50),
@@ -79,13 +79,13 @@ def test_raster_plot_overlaps(run_in_tmpdir):
     # Note: This test may pass without finding overlaps if geometry is correct
 
 
-def test_raster_plot_overlaps_with_filter(run_in_tmpdir):
+def test_slice_plot_overlaps_with_filter(run_in_tmpdir):
     """Test that overlaps don't overwrite filter bin data."""
     model = pwr_pin_cell()
     cell_ids = [c.id for c in model.geometry.get_all_cells().values()]
     cell_filter = openmc.CellFilter(cell_ids)
 
-    geom_data, _ = model.raster_plot(
+    geom_data, _ = model.slice_plot(
         origin=(0, 0, 0),
         width=(1.0, 1.0),
         pixels=(50, 50),
@@ -105,12 +105,12 @@ def test_raster_plot_overlaps_with_filter(run_in_tmpdir):
             "Filter bins should be preserved even where overlaps are detected"
 
 
-def test_raster_plot_different_bases(run_in_tmpdir):
-    """Test raster_plot with different basis planes."""
+def test_slice_plot_different_bases(run_in_tmpdir):
+    """Test slice_plot with different basis planes."""
     model = pwr_pin_cell()
 
     for basis in ['xy', 'xz', 'yz']:
-        geom_data, prop_data = model.raster_plot(
+        geom_data, prop_data = model.slice_plot(
             origin=(0, 0, 0),
             width=(1.0, 1.0),
             pixels=(25, 25),
@@ -121,11 +121,11 @@ def test_raster_plot_different_bases(run_in_tmpdir):
         assert prop_data.shape == (25, 25, 2)
 
 
-def test_raster_plot_oriented_spans(run_in_tmpdir):
-    """Test raster_plot with oriented span vectors."""
+def test_slice_plot_oriented_spans(run_in_tmpdir):
+    """Test slice_plot with oriented span vectors."""
     model = pwr_pin_cell()
 
-    geom_data, prop_data = model.raster_plot(
+    geom_data, prop_data = model.slice_plot(
         origin=(0, 0, 0),
         u_span=(1.0, 0.0, 0.0),
         v_span=(0.0, 0.0, 1.0),
@@ -136,10 +136,10 @@ def test_raster_plot_oriented_spans(run_in_tmpdir):
     assert prop_data.shape == (25, 25, 2)
 
 
-def test_raster_plot_level(run_in_tmpdir):
-    """Test raster_plot with specific universe level."""
+def test_slice_plot_level(run_in_tmpdir):
+    """Test slice_plot with specific universe level."""
     model = pwr_pin_cell()
-    geom_data, _ = model.raster_plot(
+    geom_data, _ = model.slice_plot(
         origin=(0, 0, 0),
         width=(1.0, 1.0),
         pixels=(50, 50),

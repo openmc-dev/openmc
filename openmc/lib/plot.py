@@ -293,7 +293,7 @@ def property_map(plot):
     return prop_data
 
 
-_dll.openmc_raster_plot.argtypes = [
+_dll.openmc_slice_plot.argtypes = [
     POINTER(c_double * 3),   # origin
     POINTER(c_double * 3),   # u_span
     POINTER(c_double * 3),   # v_span
@@ -304,11 +304,11 @@ _dll.openmc_raster_plot.argtypes = [
     POINTER(c_int32),        # geom_data
     POINTER(c_double),       # property_data (can be None)
 ]
-_dll.openmc_raster_plot.restype = c_int
-_dll.openmc_raster_plot.errcheck = _error_handler
+_dll.openmc_slice_plot.restype = c_int
+_dll.openmc_slice_plot.errcheck = _error_handler
 
 
-def raster_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
+def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
                 pixels=None, color_overlaps=False, level=-1, filter=None,
                 include_properties=True):
     """Generate a 2D raster of geometry and property data for plotting.
@@ -426,7 +426,7 @@ def raster_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
         property_data = None
         prop_ptr = None
 
-    _dll.openmc_raster_plot(
+    _dll.openmc_slice_plot(
         origin_arr,
         u_span_arr,
         v_span_arr,

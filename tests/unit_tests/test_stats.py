@@ -632,6 +632,7 @@ def test_combine_distributions():
     assert isinstance(mixed, openmc.stats.Mixture)
     assert len(mixed.distribution) == 2
     assert len(mixed.probability) == 2
+    assert mixed == openmc.stats.combine_distributions([mixed], [1.0])
 
     # Single tabular returns a tabular distribution with scaled probabilities
     t_single = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])

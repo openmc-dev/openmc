@@ -1,5 +1,6 @@
 #include "openmc/random_ray/random_ray_simulation.h"
 
+#include "openmc/capi.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
@@ -21,49 +22,6 @@ namespace openmc {
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-void openmc_run_random_ray()
-{
-  //////////////////////////////////////////////////////////
-  // Run forward simulation
-  //////////////////////////////////////////////////////////
-
-  if (mpi::master) {
-    if (FlatSourceDomain::adjoint_) {
-      FlatSourceDomain::adjoint_ = false;
-      openmc::print_adjoint_header();
-      FlatSourceDomain::adjoint_ = true;
-    }
-  }
-
-  // Initialize OpenMC general data structures
-  openmc_simulation_init();
-
-  // Validate that inputs meet requirements for random ray mode
-  if (mpi::master)
-    validate_random_ray_inputs();
-
-  // Initialize Random Ray Simulation Object
-  RandomRaySimulation sim;
-
-  // Initialize fixed sources, if present
-  sim.apply_fixed_sources_and_mesh_domains();
-
-  // Run initial random ray simulation
-  sim.simulate();
-
-  //////////////////////////////////////////////////////////
-  // Run adjoint simulation (if enabled)
-  //////////////////////////////////////////////////////////
-
-  if (sim.adjoint_needed_) {
-    // Setup for adjoint simulation
-    sim.prepare_adjoint_simulation();
-
-    // Run adjoint simulation
-    sim.simulate();
-  }
-}
 
 // Enforces restrictions on inputs in random ray mode.  While there are
 // many features that don't make sense in random ray mode, and are therefore
@@ -281,17 +239,6 @@ void validate_random_ray_inputs()
       "quality FW-CADIS weight windows. We recommend you use flat source mode "
       "when generating weight windows with an overlaid mesh tally.");
   }
-}
-
-void openmc_reset_random_ray()
-{
-  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
-  FlatSourceDomain::volume_normalized_flux_tallies_ = false;
-  FlatSourceDomain::adjoint_ = false;
-  FlatSourceDomain::mesh_domain_map_.clear();
-  RandomRay::ray_source_.reset();
-  RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
-  RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
 }
 
 void print_adjoint_header()
@@ -670,4 +617,62 @@ void RandomRaySimulation::print_results_random_ray(
   }
 }
 
+void openmc_finalize_random_ray()
+{
+  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+  FlatSourceDomain::volume_normalized_flux_tallies_ = false;
+  FlatSourceDomain::adjoint_ = false;
+  FlatSourceDomain::mesh_domain_map_.clear();
+  RandomRay::ray_source_.reset();
+  RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
+  RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+}
+
 } // namespace openmc
+
+//==============================================================================
+// C API functions
+//==============================================================================
+
+void openmc_run_random_ray()
+{
+  //////////////////////////////////////////////////////////
+  // Run forward simulation
+  //////////////////////////////////////////////////////////
+
+  if (openmc::mpi::master) {
+    if (openmc::FlatSourceDomain::adjoint_) {
+      openmc::FlatSourceDomain::adjoint_ = false;
+      openmc::print_adjoint_header();
+      openmc::FlatSourceDomain::adjoint_ = true;
+    }
+  }
+
+  // Initialize OpenMC general data structures
+  openmc_simulation_init();
+
+  // Validate that inputs meet requirements for random ray mode
+  if (openmc::mpi::master)
+    openmc::validate_random_ray_inputs();
+
+  // Initialize Random Ray Simulation Object
+  openmc::RandomRaySimulation sim;
+
+  // Initialize fixed sources, if present
+  sim.apply_fixed_sources_and_mesh_domains();
+
+  // Run initial random ray simulation
+  sim.simulate();
+
+  //////////////////////////////////////////////////////////
+  // Run adjoint simulation (if enabled)
+  //////////////////////////////////////////////////////////
+
+  if (sim.adjoint_needed_) {
+    // Setup for adjoint simulation
+    sim.prepare_adjoint_simulation();
+
+    // Run adjoint simulation
+    sim.simulate();
+  }
+}

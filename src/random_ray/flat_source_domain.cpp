@@ -112,19 +112,19 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
   double density_mult = srh.density_mult();
   if (material != MATERIAL_VOID) {
     double inverse_k_eff = 1.0 / k_eff_;
+    int material_offset = material * negroups_;
+    int scatter_offset = material * negroups_ * negroups_;
     for (int g_out = 0; g_out < negroups_; g_out++) {
-      double sigma_t = sigma_t_[material * negroups_ + g_out] * density_mult;
+      double sigma_t = sigma_t_[material_offset + g_out] * density_mult;
       double scatter_source = 0.0;
       double fission_source = 0.0;
 
       for (int g_in = 0; g_in < negroups_; g_in++) {
         double scalar_flux = srh.scalar_flux_old(g_in);
-        double sigma_s = sigma_s_[material * negroups_ * negroups_ +
-                                  g_out * negroups_ + g_in] *
-                         density_mult;
-        double nu_sigma_f =
-          nu_sigma_f_[material * negroups_ + g_in] * density_mult;
-        double chi = chi_[material * negroups_ + g_out];
+        double sigma_s =
+          sigma_s_[scatter_offset + g_out * negroups_ + g_in] * density_mult;
+        double nu_sigma_f = nu_sigma_f_[material_offset + g_in] * density_mult;
+        double chi = chi_[material_offset + g_out];
 
         scatter_source += sigma_s * scalar_flux;
         if (settings::create_fission_neutrons) {
@@ -1277,6 +1277,7 @@ void FlatSourceDomain::set_adjoint_sources()
 void FlatSourceDomain::transpose_scattering_matrix()
 {
   // Transpose the inner two dimensions for each material
+#pragma omp parallel for
   for (int m = 0; m < n_materials_; ++m) {
     int material_offset = m * negroups_ * negroups_;
     for (int i = 0; i < negroups_; ++i) {

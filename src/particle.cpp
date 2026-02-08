@@ -95,6 +95,9 @@ bool Particle::create_secondary(
     return false;
   }
 
+  // Increment number of secondaries created (for ParticleProductionFilter)
+  n_secondaries()++;
+
   auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
   bank.wgt = wgt;
@@ -344,6 +347,7 @@ void Particle::event_cross_surface()
 
 void Particle::event_collide()
 {
+
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
@@ -391,6 +395,11 @@ void Particle::event_collide()
   n_bank() = 0;
   bank_second_E() = 0.0;
   wgt_bank() = 0.0;
+
+  // Clear number of secondaries in this collision. This is
+  // distinct from the number of created neutrons n_bank() above!
+  n_secondaries() = 0;
+
   zero_delayed_bank();
 
   // Reset fission logical

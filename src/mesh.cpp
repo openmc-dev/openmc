@@ -3669,8 +3669,15 @@ void LibMesh::initialize()
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
   libMesh::Point ll = bbox_.min();
   libMesh::Point ur = bbox_.max();
-  lower_left_ = {ll(0), ll(1), ll(2)};
-  upper_right_ = {ur(0), ur(1), ur(2)};
+  if (length_multiplier_ > 0.0) {
+    lower_left_ = {length_multiplier_ * ll(0), length_multiplier_ * ll(1),
+      length_multiplier_ * ll(2)};
+    upper_right_ = {length_multiplier_ * ur(0), length_multiplier_ * ur(1),
+      length_multiplier_ * ur(2)};
+  } else {
+    lower_left_ = {ll(0), ll(1), ll(2)};
+    upper_right_ = {ur(0), ur(1), ur(2)};
+  }
 }
 
 // Sample position within a tet for LibMesh type tets
@@ -3684,7 +3691,12 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  return this->sample_tet(tet_verts, seed);
+  Position sampled_position = this->sample_tet(tet_verts, seed);
+  if (length_multiplier_ > 0.0) {
+    return length_multiplier_ * sampled_position;
+  } else {
+    return sampled_position;
+  }
 }
 
 Position LibMesh::centroid(int bin) const

@@ -40,7 +40,7 @@ if [[ $MPI == 'y' ]]; then
     export HDF5_MPI=ON
     export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich
     # h5py install with setuptools 81 currently fails
-    pip install 'setuptools<81'
+    pip install 'setuptools<81' Cython packaging pkgconfig
     pip install --no-build-isolation --no-binary=h5py h5py
 fi
 

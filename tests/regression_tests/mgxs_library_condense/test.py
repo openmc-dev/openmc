@@ -48,7 +48,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.load_from_statepoint(sp)
 
         # Build a condensed 1-group MGXS Library
-        one_group = openmc.mgxs.EnergyGroups([0., 20.e6])
+        one_group = openmc.mgxs.EnergyGroups([1e-5, 20.e6])
         condense_lib = self.mgxs_lib.get_condensed_library(one_group)
 
         # Build a string from Pandas Dataframe for each 1-group MGXS

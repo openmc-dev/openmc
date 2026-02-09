@@ -88,6 +88,7 @@ Classes
    SpatialLegendreFilter
    SphericalHarmonicsFilter
    SphericalMesh
+   SolidRayTracePlot
    SurfaceFilter
    Tally
    TemporarySession

@@ -56,13 +56,14 @@ double compute_cov_M_kq(int i, int j)
 {
   // Number of active generations
   int N = settings::n_particles;
+  int idx = static_cast<int>(GlobalTally::K_TRACKLENGTH);
 
   // Note before conversion, k_generation is M
   auto [mean_m, m_std] = simulation::k_generation.back();
   double mean_kq = simulation::kq_generation.back()[0];
 
   double sum_k_kq =
-    simulation::k_kq_products[0][0] - simulation::k_kq_product[0][0];
+    simulation::k_kq_products[idx][idx] - simulation::k_kq_product[idx][idx];
   return (sum_k_kq - mean_m * mean_kq) / (N - 1);
 }
 

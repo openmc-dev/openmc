@@ -317,7 +317,13 @@ class StatePoint:
     @property
     def ks_generation(self):
         if 'ks_generation' in self._f: 
-            return uarray(*self._f['ks_generation'][()])
+            arr = self._f['ks_generation'][()]
+            if arr.ndim==1:
+                return arr
+            elif arr.ndim==2:
+                return uarray(arr[:,0],arr[:,1])
+            else:
+                raise ValueError(f'ks_generation shape ({arr.shape}) must be either 1d or 2d')
         else:
             return None
     

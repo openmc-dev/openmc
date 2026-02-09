@@ -11,6 +11,7 @@ from pathlib import PurePath
 import re
 
 from .data import gnds_name
+from .function import Tabulated1D
 from endf.records import (
     float_endf,
     py_float_endf,
@@ -19,10 +20,21 @@ from endf.records import (
     get_cont_record,
     get_head_record,
     get_list_record,
-    get_tab1_record,
+    get_tab1_record as _get_tab1_record,
     get_tab2_record,
     get_intg_record,
 )
+
+
+def get_tab1_record(file_obj):
+    """Return data from a TAB1 record in an ENDF-6 file.
+
+    This wraps the endf package's get_tab1_record to return an
+    openmc.data.Tabulated1D (which has HDF5 support and is a Function1D)
+    instead of endf.Tabulated1D.
+    """
+    params, tab = _get_tab1_record(file_obj)
+    return params, Tabulated1D(tab.x, tab.y, tab.breakpoints, tab.interpolation)
 
 
 _LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',

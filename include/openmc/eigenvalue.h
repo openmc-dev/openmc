@@ -46,6 +46,7 @@ void calculate_generation_keff();
 void calculate_generation_keff(KeffType type);
 
 std::pair<double, double> convert_m_to_k(double m, double m_std);
+std::pair<double, double> convert_k_to_m(double k, double k_std);
 
 //! Calculate mean/standard deviation of keff during active generations
 //!
@@ -69,8 +70,8 @@ void calculate_average_keff(KeffType type);
 //! \return Error status
 extern "C" int openmc_get_keff(double* k_combined);
 extern "C" int openmc_get_kq(double* kq_combined);
-int get_combined_k_from_tallies(double* k_combined, double keff,
-  double keff_std,
+int get_combined_k_from_tallies(double* k_combined,
+  std::array<double, 3>& k_combined_weights, double keff, double keff_std,
   xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies,
   double k_col_abs, double k_col_tra, double k_abs_tra);
 

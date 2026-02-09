@@ -316,8 +316,8 @@ class StatePoint:
 
     @property
     def ks_generation(self):
-        if self.calculate_subcritical_k:
-            return 1 + self.kq_generation - self.kq_generation/self.k_generation
+        if 'ks_generation' in self._f: 
+            return uarray(*self._f['ks_generation'][()])
         else:
             return None
     
@@ -337,8 +337,8 @@ class StatePoint:
     
     @property
     def ks(self):
-        if self.calculate_subcritical_k:
-            return 1 + self.kq - self.kq/self.keff 
+        if 'ks_combined' in self._f:
+            return ufloat(*self._f['ks_combined'][()])
         else:
             return None
 

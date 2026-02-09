@@ -342,7 +342,11 @@ vector<int64_t> work_index;
 
 // k estimator × kq estimator products
 std::array<std::array<double, N_K_EST>, N_K_EST> k_kq_products;
-double k_kq_product;
+std::array<std::array<double, N_K_EST>, N_K_EST> k_kq_product;
+
+// Combined k estimator weights
+std::array<double, 3> k_combined_weights;
+std::array<double, 3> kq_combined_weights;
 
 } // namespace simulation
 
@@ -426,7 +430,7 @@ void finalize_batch()
 {
   // Reduce tallies onto master process and accumulate
   simulation::time_tallies.start();
-  simulation::k_kq_product = simulation::k_kq_products[0][0];
+  simulation::k_kq_product = simulation::k_kq_products;
   accumulate_tallies();
   simulation::time_tallies.stop();
 

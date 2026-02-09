@@ -1108,12 +1108,18 @@ void accumulate_tallies()
     }
 
     // Accumulate results for global tallies
+    double k_vals[3];
+    double kq_vals[3];
     for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
       double val = gt(i, TallyResult::VALUE) / simulation::total_weight;
+      if (i < 3) {
+        k_vals[i] = val;
+      }
       gt(i, TallyResult::VALUE) = 0.0;
       gt(i, TallyResult::SUM) += val;
       gt(i, TallyResult::SUM_SQ) += val * val;
     }
+
     // Accumulate subcritical multiplication tallies
     if (settings::run_mode == RunMode::FIXED_SOURCE &&
         settings::calculate_subcritical_k) {
@@ -1136,14 +1142,14 @@ void accumulate_tallies()
       for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
         double val_first_gen =
           gt_first_gen(i, TallyResult::VALUE) / simulation::total_weight;
+        if (i < 3) {
+          kq_vals[i] = val_first_gen;
+        }
         gt_first_gen(i, TallyResult::VALUE) = 0.0;
         gt_first_gen(i, TallyResult::SUM) += val_first_gen;
         gt_first_gen(i, TallyResult::SUM_SQ) += val_first_gen * val_first_gen;
       }
     }
-    auto& gt_first_gen = simulation::global_tallies_first_gen;
-    double k_vals[3] = {k_tra, k_col, k_abs};
-    double kq_vals[3] = {kq_tra, kq_col, kq_abs};
 
     for (int i = 0; i < simulation::N_K_EST; ++i) {
       for (int j = 0; j < simulation::N_K_EST; ++j) {

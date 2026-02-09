@@ -68,18 +68,21 @@ extern const RegularMesh* ufs_mesh;
 extern vector<array<double, 2>> k_generation;
 extern vector<array<double, 2>> kq_generation;
 extern vector<array<double, 2>> ks_generation;
-extern double k_kq_product;
 extern vector<int64_t> work_index;
 
 enum class KEstimator : int {
-  TRACKLENGTH = 0,
-  COLLISION = 1,
-  ABSORPTION = 2,
+  K_COLLISION = 0,
+  K_ABSORPTION = 1,
+  K_TRACKLENGTH = 2,
   N_ESTIMATORS
 };
 
 constexpr int N_K_EST = static_cast<int>(KEstimator::N_ESTIMATORS);
 extern std::array<std::array<double, N_K_EST>, N_K_EST> k_kq_products;
+extern std::array<std::array<double, N_K_EST>, N_K_EST> k_kq_product;
+
+extern std::array<double, 3> k_combined_weights;
+extern std::array<double, 3> kq_combined_weights;
 
 } // namespace simulation
 

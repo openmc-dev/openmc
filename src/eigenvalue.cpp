@@ -61,7 +61,8 @@ double compute_cov_M_kq(int i, int j)
   auto [mean_m, m_std] = simulation::k_generation.back();
   double mean_kq = simulation::kq_generation.back()[0];
 
-  double sum_k_kq = simulation::k_kq_products[0][0] - simulation::k_kq_product;
+  double sum_k_kq =
+    simulation::k_kq_products[0][0] - simulation::k_kq_product[0][0];
   return (sum_k_kq - mean_m * mean_kq) / (N - 1);
 }
 
@@ -150,6 +151,13 @@ std::pair<double, double> convert_m_to_k(double m, double m_std)
   double k = 1.0 - 1.0 / m;
   double k_std = m_std / (m * m);
   return {k, k_std};
+}
+
+std::pair<double, double> convert_k_to_m(double k, double k_std)
+{
+  double m = 1.0 / (1.0 - k);
+  double m_std = k_std / std::pow(1.0 - k, 2);
+  return {m, m_std};
 }
 
 void synchronize_bank()
@@ -539,8 +547,8 @@ void calculate_average_keff(KeffType type)
   }
 }
 
-int get_combined_k_from_tallies(double* k_combined, double keff,
-  double keff_std,
+int get_combined_k_from_tallies(double* k_combined,
+  std::array<double, 3>& k_combined_weights, double keff, double keff_std,
   xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> gt,
   double k_col_abs, double k_col_tra, double k_abs_tra)
 {
@@ -660,8 +668,12 @@ int get_combined_k_from_tallies(double* k_combined, double keff,
       S[2] += (cov(k, k) + cov(i, j) - cov(j, k) - cov(i, k)) * kv[l] * kv[j];
 
       // Add to sum for combined k-effective
+      k_combined_weights[l] += f;
       k_combined[0] += f * kv[l];
       g += f;
+    }
+    for (auto& w : k_combined_weights) {
+      w /= g;
     }
 
     // Complete calculations of S sums
@@ -701,16 +713,45 @@ int get_combined_k_from_tallies(double* k_combined, double keff,
 
 int openmc_get_keff(double* k_combined)
 {
-  return get_combined_k_from_tallies(k_combined, simulation::k,
-    simulation::k_std, simulation::global_tallies, simulation::k_col_abs,
-    simulation::k_col_tra, simulation::k_abs_tra);
+  return get_combined_k_from_tallies(k_combined, simulation::k_combined_weights,
+    simulation::k, simulation::k_std, simulation::global_tallies,
+    simulation::k_col_abs, simulation::k_col_tra, simulation::k_abs_tra);
 }
 
 int openmc_get_kq(double* kq_combined)
 {
-  return get_combined_k_from_tallies(kq_combined, simulation::kq,
-    simulation::kq_std, simulation::global_tallies_first_gen,
-    simulation::kq_col_abs, simulation::kq_col_tra, simulation::kq_abs_tra);
+  return get_combined_k_from_tallies(kq_combined,
+    simulation::kq_combined_weights, simulation::kq, simulation::kq_std,
+    simulation::global_tallies_first_gen, simulation::kq_col_abs,
+    simulation::kq_col_tra, simulation::kq_abs_tra);
+}
+
+int openmc_get_ks(double* ks_combined, double* k_combined, double* kq_combined)
+{
+  ks_combined[0] = 1.0 - kq_combined[0] / (k_combined[0] - 1.0);
+  double total_cov {0.0};
+  array<double, simulation::N_K_EST> M;
+  array<double, simulation::N_K_EST> kq;
+  int N = settings::n_particles;
+  int n = simulation::n_realizations;
+  for (int i = 0; i < simulation::N_K_EST; ++i) {
+    for (int j = 0; j < simulation::N_K_EST; ++j) {
+      double cov =
+        (simulation::k_kq_products[i][j] -
+          n * simulation::global_tallies(i, TallyResult::SUM) *
+            simulation::global_tallies_first_gen(j, TallyResult::SUM) /
+            std::pow(n, 2)) /
+        (n - 1);
+      total_cov += simulation::k_combined_weights[i] *
+                   simulation::kq_combined_weights[j] * cov;
+    }
+  }
+  ks_combined[1] =
+    std::sqrt(std::pow(kq_combined[1], 2) / (std::pow(k_combined[0] - 1, 2)) +
+              std::pow(kq_combined[0] * k_combined[1], 2) /
+                std::pow(k_combined[0] - 1, 4) -
+              2 * kq_combined[0] / std::pow(k_combined[0] - 1, 3) * total_cov);
+  return 0;
 }
 
 void shannon_entropy()
@@ -808,6 +849,7 @@ void write_eigenvalue_hdf5(hid_t group)
   auto n = simulation::k_generation.size();
   xt::xtensor<double, 2> k_generation({n, 2});
   xt::xtensor<double, 2> kq_generation({n, 2});
+  xt::xtensor<double, 2> ks_generation({n, 2});
   for (int i = 0; i < n; ++i) {
     double k, k_std;
     if (settings::run_mode == RunMode::FIXED_SOURCE &&
@@ -821,6 +863,9 @@ void write_eigenvalue_hdf5(hid_t group)
 
       kq_generation(i, 0) = simulation::kq_generation[i][0];
       kq_generation(i, 1) = simulation::kq_generation[i][1];
+
+      ks_generation(i, 0) = simulation::ks_generation[i][0];
+      ks_generation(i, 1) = simulation::ks_generation[i][1];
     } else {
       k = simulation::k_generation[i][0];
       k_std = simulation::k_generation[i][1];
@@ -855,6 +900,15 @@ void write_eigenvalue_hdf5(hid_t group)
     array<double, 2> kq_combined;
     openmc_get_kq(kq_combined.data());
     write_dataset(group, "kq_combined", kq_combined);
+    array<double, 2> ks_combined;
+
+    // Convert back to m for calculation of ks
+    std::tie(k_combined[0], k_combined[1]) =
+      convert_k_to_m(k_combined[0], k_combined[1]);
+    openmc_get_ks(ks_combined.data(), k_combined.data(), kq_combined.data());
+    fmt::print("ks_combined: {} +/- {}\n", ks_combined[0], ks_combined[1]);
+    write_dataset(group, "ks_generation", ks_generation);
+    write_dataset(group, "ks_combined", ks_combined);
   }
 }
 

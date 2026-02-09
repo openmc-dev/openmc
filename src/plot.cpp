@@ -211,8 +211,12 @@ void read_plots_xml()
 void read_plots_xml(pugi::xml_node root)
 {
   for (auto node : root.children("plot")) {
-    std::string id_string = get_node_value(node, "id", true);
-    int id = std::stoi(id_string);
+    int id {C_NONE};
+    if (check_for_node(node, "id")) {
+      id = std::stoi(get_node_value(node, "id", true));
+    }
+    std::string plot_desc = id == C_NONE ? "<auto>" : std::to_string(id);
+
     if (check_for_node(node, "type")) {
       std::string type_str = get_node_value(node, "type", true);
       if (type_str == "slice") {
@@ -227,12 +231,12 @@ void read_plots_xml(pugi::xml_node root)
       } else if (type_str == "solid_raytrace") {
         model::plots.emplace_back(std::make_unique<SolidRayTracePlot>(node));
       } else {
-        fatal_error(
-          fmt::format("Unsupported plot type '{}' in plot {}", type_str, id));
+        fatal_error(fmt::format(
+          "Unsupported plot type '{}' in plot {}", type_str, plot_desc));
       }
       model::plot_map[model::plots.back()->id()] = model::plots.size() - 1;
     } else {
-      fatal_error(fmt::format("Must specify plot type in plot {}", id));
+      fatal_error(fmt::format("Must specify plot type in plot {}", plot_desc));
     }
   }
 }
@@ -290,18 +294,42 @@ ImageData Plot::create_image() const
 
 void PlottableInterface::set_id(pugi::xml_node plot_node)
 {
-  // Copy data into plots
+  int id {C_NONE};
   if (check_for_node(plot_node, "id")) {
-    id_ = std::stoi(get_node_value(plot_node, "id"));
-  } else {
-    fatal_error("Must specify plot id in plots XML file.");
+    id = std::stoi(get_node_value(plot_node, "id"));
   }
 
-  // Check to make sure 'id' hasn't been used
-  if (model::plot_map.find(id_) != model::plot_map.end()) {
-    fatal_error(
-      fmt::format("Two or more plots use the same unique ID: {}", id_));
+  try {
+    set_id(id);
+  } catch (const std::runtime_error& e) {
+    fatal_error(e.what());
   }
+}
+
+void PlottableInterface::set_id(int id)
+{
+  if (id < 0 && id != C_NONE) {
+    throw std::runtime_error {fmt::format("Invalid plot ID: {}", id)};
+  }
+
+  if (id == C_NONE) {
+    id = 0;
+    for (const auto& p : model::plots) {
+      id = std::max(id, p->id());
+    }
+    ++id;
+  }
+
+  if (id_ == id)
+    return;
+
+  // Check to make sure this ID doesn't already exist
+  if (model::plot_map.find(id) != model::plot_map.end()) {
+    throw std::runtime_error {
+      fmt::format("Two or more plots use the same unique ID: {}", id)};
+  }
+
+  id_ = id;
 }
 
 // Checks if png or ppm is already present
@@ -1927,6 +1955,63 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
   return 0;
 }
 
+extern "C" int openmc_get_plot_index(int32_t id, int32_t* index)
+{
+  auto it = model::plot_map.find(id);
+  if (it == model::plot_map.end()) {
+    set_errmsg("No plot exists with ID=" + std::to_string(id) + ".");
+    return OPENMC_E_INVALID_ID;
+  }
+
+  *index = it->second;
+  return 0;
+}
+
+extern "C" int openmc_plot_get_id(int32_t index, int32_t* id)
+{
+  if (index < 0 || index >= model::plots.size()) {
+    set_errmsg("Index in plots array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *id = model::plots[index]->id();
+  return 0;
+}
+
+extern "C" int openmc_plot_set_id(int32_t index, int32_t id)
+{
+  if (index < 0 || index >= model::plots.size()) {
+    set_errmsg("Index in plots array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  if (id < 0 && id != C_NONE) {
+    set_errmsg("Invalid plot ID.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  auto* plot = model::plots[index].get();
+  int32_t old_id = plot->id();
+  if (id == old_id)
+    return 0;
+
+  model::plot_map.erase(old_id);
+  try {
+    plot->set_id(id);
+  } catch (const std::runtime_error& e) {
+    model::plot_map[old_id] = index;
+    set_errmsg(e.what());
+    return OPENMC_E_INVALID_ID;
+  }
+  model::plot_map[plot->id()] = index;
+  return 0;
+}
+
+extern "C" size_t plots_size()
+{
+  return model::plots.size();
+}
+
 int map_phong_domain_id(
   const SolidRayTracePlot* plot, int32_t id, int32_t* index_out)
 {
@@ -1959,20 +2044,53 @@ int map_phong_domain_id(
   return OPENMC_E_INVALID_TYPE;
 }
 
-extern "C" int openmc_solidraytrace_plot_create(void** plot)
+int get_solidraytrace_plot_by_index(int32_t index, SolidRayTracePlot** plot)
 {
   if (!plot) {
-    set_errmsg(
-      "Null output pointer passed to openmc_solidraytrace_plot_create");
+    set_errmsg("Null output pointer passed to get_solidraytrace_plot_by_index");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (index < 0 || index >= model::plots.size()) {
+    set_errmsg("Index in plots array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  auto* plottable = model::plots[index].get();
+  auto* solid_plot = dynamic_cast<SolidRayTracePlot*>(plottable);
+  if (!solid_plot) {
+    set_errmsg("Plot at index=" + std::to_string(index) +
+               " is not a solid raytrace plot.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  *plot = solid_plot;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_create(int32_t* index)
+{
+  if (!index) {
+    set_errmsg("Null output pointer passed to openmc_solidraytrace_plot_create");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
   try {
-    auto* new_plot = new SolidRayTracePlot();
+    auto new_plot = std::make_unique<SolidRayTracePlot>();
+    new_plot->set_id();
+    int32_t new_plot_id = new_plot->id();
     new_plot->color_by_ = PlottableInterface::PlotColorBy::mats;
     new_plot->pixels()[0] = 400;
     new_plot->pixels()[1] = 400;
-    *plot = new_plot;
+#ifdef USE_LIBPNG
+    new_plot->path_plot() = fmt::format("plot_{}.png", new_plot_id);
+#else
+    new_plot->path_plot() = fmt::format("plot_{}.ppm", new_plot_id);
+#endif
+    int32_t new_plot_index = model::plots.size();
+    model::plots.emplace_back(std::move(new_plot));
+    model::plot_map[new_plot_id] = new_plot_index;
+    *index = new_plot_index;
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_ALLOCATE;
@@ -1981,42 +2099,77 @@ extern "C" int openmc_solidraytrace_plot_create(void** plot)
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_free(void* plot)
+extern "C" int openmc_solidraytrace_plot_get_pixels(
+  int32_t index, int32_t* width, int32_t* height)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg("Invalid plot pointer passed to openmc_solidraytrace_plot_free");
+  if (!width || !height) {
+    set_errmsg(
+      "Invalid arguments passed to openmc_solidraytrace_plot_get_pixels");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  delete plt;
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  *width = plt->pixels()[0];
+  *height = plt->pixels()[1];
   return 0;
 }
 
 extern "C" int openmc_solidraytrace_plot_set_pixels(
-  void* plot, int32_t width, int32_t height)
+  int32_t index, int32_t width, int32_t height)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt || width <= 0 || height <= 0) {
+  if (width <= 0 || height <= 0) {
     set_errmsg(
       "Invalid arguments passed to openmc_solidraytrace_plot_set_pixels");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->pixels()[0] = width;
   plt->pixels()[1] = height;
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_color_by(
-  void* plot, int32_t color_by)
+extern "C" int openmc_solidraytrace_plot_get_color_by(
+  int32_t index, int32_t* color_by)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
+  if (!color_by) {
     set_errmsg(
-      "Invalid plot pointer passed to openmc_solidraytrace_plot_set_color_by");
+      "Invalid arguments passed to openmc_solidraytrace_plot_get_color_by");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  if (plt->color_by_ == PlottableInterface::PlotColorBy::mats) {
+    *color_by = 0;
+  } else if (plt->color_by_ == PlottableInterface::PlotColorBy::cells) {
+    *color_by = 1;
+  } else {
+    set_errmsg("Unsupported color_by for SolidRayTracePlot");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_color_by(
+  int32_t index, int32_t color_by)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   if (color_by == 0) {
     plt->color_by_ = PlottableInterface::PlotColorBy::mats;
@@ -2030,27 +2183,23 @@ extern "C" int openmc_solidraytrace_plot_set_color_by(
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_default_colors(void* plot)
+extern "C" int openmc_solidraytrace_plot_set_default_colors(int32_t index)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg("Invalid plot pointer passed to "
-               "openmc_solidraytrace_plot_set_default_colors");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->set_default_colors();
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_all_opaque(void* plot)
+extern "C" int openmc_solidraytrace_plot_set_all_opaque(int32_t index)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg("Invalid plot pointer passed to "
-               "openmc_solidraytrace_plot_set_all_opaque");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->opaque_ids().clear();
   if (plt->color_by_ == PlottableInterface::PlotColorBy::mats) {
@@ -2071,145 +2220,233 @@ extern "C" int openmc_solidraytrace_plot_set_all_opaque(void* plot)
   return OPENMC_E_INVALID_TYPE;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_visibility(
-  void* plot, int32_t id, bool visible)
+extern "C" int openmc_solidraytrace_plot_set_opaque(
+  int32_t index, int32_t id, bool visible)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg("Invalid plot pointer passed to "
-               "openmc_solidraytrace_plot_set_visibility");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
-  int32_t index = -1;
-  int err = map_phong_domain_id(plt, id, &index);
+  int32_t domain_index = -1;
+  err = map_phong_domain_id(plt, id, &domain_index);
   if (err)
     return err;
 
   if (visible) {
-    plt->opaque_ids().insert(index);
+    plt->opaque_ids().insert(domain_index);
   } else {
-    plt->opaque_ids().erase(index);
+    plt->opaque_ids().erase(domain_index);
   }
 
   return 0;
 }
 
 extern "C" int openmc_solidraytrace_plot_set_color(
-  void* plot, int32_t id, uint8_t r, uint8_t g, uint8_t b)
+  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg(
-      "Invalid plot pointer passed to openmc_solidraytrace_plot_set_color");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  int32_t index = -1;
-  int err = map_phong_domain_id(plt, id, &index);
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
   if (err)
     return err;
 
-  if (index < 0 || static_cast<size_t>(index) >= plt->colors_.size()) {
+  int32_t domain_index = -1;
+  err = map_phong_domain_id(plt, id, &domain_index);
+  if (err)
+    return err;
+
+  if (domain_index < 0 ||
+      static_cast<size_t>(domain_index) >= plt->colors_.size()) {
     set_errmsg("Color index out of range for SolidRayTracePlot");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  plt->colors_[index] = RGBColor(r, g, b);
+  plt->colors_[domain_index] = RGBColor(r, g, b);
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_camera_position(
+  int32_t index, double* x, double* y, double* z)
+{
+  if (!x || !y || !z) {
+    set_errmsg("Invalid arguments passed to "
+               "openmc_solidraytrace_plot_get_camera_position");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  const auto& camera_position = plt->camera_position();
+  *x = camera_position.x;
+  *y = camera_position.y;
+  *z = camera_position.z;
   return 0;
 }
 
 extern "C" int openmc_solidraytrace_plot_set_camera_position(
-  void* plot, double x, double y, double z)
+  int32_t index, double x, double y, double z)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg("Invalid plot pointer passed to "
-               "openmc_solidraytrace_plot_set_camera_position");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->camera_position() = {x, y, z};
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_look_at(
-  void* plot, double x, double y, double z)
+extern "C" int openmc_solidraytrace_plot_get_look_at(
+  int32_t index, double* x, double* y, double* z)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
+  if (!x || !y || !z) {
     set_errmsg(
-      "Invalid plot pointer passed to openmc_solidraytrace_plot_set_look_at");
+      "Invalid arguments passed to openmc_solidraytrace_plot_get_look_at");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  const auto& look_at = plt->look_at();
+  *x = look_at.x;
+  *y = look_at.y;
+  *z = look_at.z;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_look_at(
+  int32_t index, double x, double y, double z)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->look_at() = {x, y, z};
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_up(
-  void* plot, double x, double y, double z)
+extern "C" int openmc_solidraytrace_plot_get_up(
+  int32_t index, double* x, double* y, double* z)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg(
-      "Invalid plot pointer passed to openmc_solidraytrace_plot_set_up");
+  if (!x || !y || !z) {
+    set_errmsg("Invalid arguments passed to openmc_solidraytrace_plot_get_up");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  const auto& up = plt->up();
+  *x = up.x;
+  *y = up.y;
+  *z = up.z;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_up(
+  int32_t index, double x, double y, double z)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->up() = {x, y, z};
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_light_position(
-  void* plot, double x, double y, double z)
+extern "C" int openmc_solidraytrace_plot_get_light_position(
+  int32_t index, double* x, double* y, double* z)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg("Invalid plot pointer passed to "
-               "openmc_solidraytrace_plot_set_light_position");
+  if (!x || !y || !z) {
+    set_errmsg("Invalid arguments passed to "
+               "openmc_solidraytrace_plot_get_light_position");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  const auto& light_position = plt->light_location();
+  *x = light_position.x;
+  *y = light_position.y;
+  *z = light_position.z;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_light_position(
+  int32_t index, double x, double y, double z)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->light_location() = {x, y, z};
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_fov(void* plot, double fov)
+extern "C" int openmc_solidraytrace_plot_get_fov(int32_t index, double* fov)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg(
-      "Invalid plot pointer passed to openmc_solidraytrace_plot_set_fov");
+  if (!fov) {
+    set_errmsg("Invalid arguments passed to openmc_solidraytrace_plot_get_fov");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  *fov = plt->horizontal_field_of_view();
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_fov(int32_t index, double fov)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->horizontal_field_of_view() = fov;
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_update_view(void* plot)
+extern "C" int openmc_solidraytrace_plot_update_view(int32_t index)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg(
-      "Invalid plot pointer passed to openmc_solidraytrace_plot_update_view");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   plt->update_view();
   return 0;
 }
 
 extern "C" int openmc_solidraytrace_plot_create_image(
-  void* plot, uint8_t* data_out, int32_t width, int32_t height)
+  int32_t index, uint8_t* data_out, int32_t width, int32_t height)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt || !data_out || width <= 0 || height <= 0) {
+  if (!data_out || width <= 0 || height <= 0) {
     set_errmsg(
       "Invalid arguments passed to openmc_solidraytrace_plot_create_image");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   if (plt->pixels()[0] != width || plt->pixels()[1] != height) {
     set_errmsg(
@@ -2238,41 +2475,62 @@ extern "C" int openmc_solidraytrace_plot_create_image(
 }
 
 extern "C" int openmc_solidraytrace_plot_get_color(
-  void* plot, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b)
+  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt || !r || !g || !b) {
+  if (!r || !g || !b) {
     set_errmsg(
       "Invalid arguments passed to openmc_solidraytrace_plot_get_color");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  int32_t index = -1;
-  int err = map_phong_domain_id(plt, id, &index);
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
   if (err)
     return err;
 
-  if (index < 0 || static_cast<size_t>(index) >= plt->colors_.size()) {
+  int32_t domain_index = -1;
+  err = map_phong_domain_id(plt, id, &domain_index);
+  if (err)
+    return err;
+
+  if (domain_index < 0 ||
+      static_cast<size_t>(domain_index) >= plt->colors_.size()) {
     set_errmsg("Color index out of range for SolidRayTracePlot");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  const auto& color = plt->colors_[index];
+  const auto& color = plt->colors_[domain_index];
   *r = color.red;
   *g = color.green;
   *b = color.blue;
   return 0;
 }
 
-extern "C" int openmc_solidraytrace_plot_set_diffuse_fraction(
-  void* plot, double diffuse_fraction)
+extern "C" int openmc_solidraytrace_plot_get_diffuse_fraction(
+  int32_t index, double* diffuse_fraction)
 {
-  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
-  if (!plt) {
-    set_errmsg("Invalid plot pointer passed to "
-               "openmc_solidraytrace_plot_set_diffuse_fraction");
+  if (!diffuse_fraction) {
+    set_errmsg("Invalid arguments passed to "
+               "openmc_solidraytrace_plot_get_diffuse_fraction");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  *diffuse_fraction = plt->diffuse_fraction();
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_diffuse_fraction(
+  int32_t index, double diffuse_fraction)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
 
   if (diffuse_fraction < 0.0 || diffuse_fraction > 1.0) {
     set_errmsg("Diffuse fraction must be between 0 and 1");

@@ -1,8 +1,11 @@
+from collections.abc import Mapping
 from ctypes import (c_bool, c_int, c_size_t, c_int32,
-                    c_double, c_uint8, c_void_p,
-                    Structure, POINTER, byref)
+                    c_double, c_uint8, Structure, POINTER)
+from weakref import WeakValueDictionary
 
+from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
+from .core import _FortranObjectWithID
 from .error import _error_handler
 
 import numpy as np
@@ -260,144 +263,279 @@ def property_map(plot):
     _dll.openmc_property_map(plot, prop_data.ctypes.data_as(POINTER(c_double)))
     return prop_data
 
-_dll.openmc_solidraytrace_plot_create.argtypes = [POINTER(c_void_p)]
+_dll.openmc_get_plot_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_plot_index.restype = c_int
+_dll.openmc_get_plot_index.errcheck = _error_handler
+
+_dll.openmc_plot_get_id.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_plot_get_id.restype = c_int
+_dll.openmc_plot_get_id.errcheck = _error_handler
+
+_dll.openmc_plot_set_id.argtypes = [c_int32, c_int32]
+_dll.openmc_plot_set_id.restype = c_int
+_dll.openmc_plot_set_id.errcheck = _error_handler
+
+_dll.plots_size.restype = c_size_t
+
+_dll.openmc_solidraytrace_plot_create.argtypes = [POINTER(c_int32)]
 _dll.openmc_solidraytrace_plot_create.restype = c_int
 _dll.openmc_solidraytrace_plot_create.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_free.argtypes = [c_void_p]
-_dll.openmc_solidraytrace_plot_free.restype = c_int
-_dll.openmc_solidraytrace_plot_free.errcheck = _error_handler
+_dll.openmc_solidraytrace_plot_get_pixels.argtypes = [
+    c_int32, POINTER(c_int32), POINTER(c_int32)]
+_dll.openmc_solidraytrace_plot_get_pixels.restype = c_int
+_dll.openmc_solidraytrace_plot_get_pixels.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_pixels.argtypes = [c_void_p, c_int32, c_int32]
+_dll.openmc_solidraytrace_plot_set_pixels.argtypes = [c_int32, c_int32, c_int32]
 _dll.openmc_solidraytrace_plot_set_pixels.restype = c_int
 _dll.openmc_solidraytrace_plot_set_pixels.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_color_by.argtypes = [c_void_p, c_int32]
+_dll.openmc_solidraytrace_plot_get_color_by.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_solidraytrace_plot_get_color_by.restype = c_int
+_dll.openmc_solidraytrace_plot_get_color_by.errcheck = _error_handler
+
+_dll.openmc_solidraytrace_plot_set_color_by.argtypes = [c_int32, c_int32]
 _dll.openmc_solidraytrace_plot_set_color_by.restype = c_int
 _dll.openmc_solidraytrace_plot_set_color_by.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_default_colors.argtypes = [c_void_p]
+_dll.openmc_solidraytrace_plot_set_default_colors.argtypes = [c_int32]
 _dll.openmc_solidraytrace_plot_set_default_colors.restype = c_int
 _dll.openmc_solidraytrace_plot_set_default_colors.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_all_opaque.argtypes = [c_void_p]
+_dll.openmc_solidraytrace_plot_set_all_opaque.argtypes = [c_int32]
 _dll.openmc_solidraytrace_plot_set_all_opaque.restype = c_int
 _dll.openmc_solidraytrace_plot_set_all_opaque.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_visibility.argtypes = [c_void_p, c_int32, c_bool]
-_dll.openmc_solidraytrace_plot_set_visibility.restype = c_int
-_dll.openmc_solidraytrace_plot_set_visibility.errcheck = _error_handler
+_dll.openmc_solidraytrace_plot_set_opaque.argtypes = [c_int32, c_int32, c_bool]
+_dll.openmc_solidraytrace_plot_set_opaque.restype = c_int
+_dll.openmc_solidraytrace_plot_set_opaque.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_color.argtypes = [c_void_p, c_int32, c_uint8, c_uint8, c_uint8]
+_dll.openmc_solidraytrace_plot_set_color.argtypes = [c_int32, c_int32, c_uint8, c_uint8, c_uint8]
 _dll.openmc_solidraytrace_plot_set_color.restype = c_int
 _dll.openmc_solidraytrace_plot_set_color.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_camera_position.argtypes = [c_void_p, c_double, c_double, c_double]
+_dll.openmc_solidraytrace_plot_get_camera_position.argtypes = [
+    c_int32, POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+_dll.openmc_solidraytrace_plot_get_camera_position.restype = c_int
+_dll.openmc_solidraytrace_plot_get_camera_position.errcheck = _error_handler
+
+_dll.openmc_solidraytrace_plot_set_camera_position.argtypes = [c_int32, c_double, c_double, c_double]
 _dll.openmc_solidraytrace_plot_set_camera_position.restype = c_int
 _dll.openmc_solidraytrace_plot_set_camera_position.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_look_at.argtypes = [c_void_p, c_double, c_double, c_double]
+_dll.openmc_solidraytrace_plot_get_look_at.argtypes = [
+    c_int32, POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+_dll.openmc_solidraytrace_plot_get_look_at.restype = c_int
+_dll.openmc_solidraytrace_plot_get_look_at.errcheck = _error_handler
+
+_dll.openmc_solidraytrace_plot_set_look_at.argtypes = [c_int32, c_double, c_double, c_double]
 _dll.openmc_solidraytrace_plot_set_look_at.restype = c_int
 _dll.openmc_solidraytrace_plot_set_look_at.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_up.argtypes = [c_void_p, c_double, c_double, c_double]
+_dll.openmc_solidraytrace_plot_get_up.argtypes = [
+    c_int32, POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+_dll.openmc_solidraytrace_plot_get_up.restype = c_int
+_dll.openmc_solidraytrace_plot_get_up.errcheck = _error_handler
+
+_dll.openmc_solidraytrace_plot_set_up.argtypes = [c_int32, c_double, c_double, c_double]
 _dll.openmc_solidraytrace_plot_set_up.restype = c_int
 _dll.openmc_solidraytrace_plot_set_up.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_light_position.argtypes = [c_void_p, c_double, c_double, c_double]
+_dll.openmc_solidraytrace_plot_get_light_position.argtypes = [
+    c_int32, POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+_dll.openmc_solidraytrace_plot_get_light_position.restype = c_int
+_dll.openmc_solidraytrace_plot_get_light_position.errcheck = _error_handler
+
+_dll.openmc_solidraytrace_plot_set_light_position.argtypes = [c_int32, c_double, c_double, c_double]
 _dll.openmc_solidraytrace_plot_set_light_position.restype = c_int
 _dll.openmc_solidraytrace_plot_set_light_position.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_fov.argtypes = [c_void_p, c_double]
+_dll.openmc_solidraytrace_plot_get_fov.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_solidraytrace_plot_get_fov.restype = c_int
+_dll.openmc_solidraytrace_plot_get_fov.errcheck = _error_handler
+
+_dll.openmc_solidraytrace_plot_set_fov.argtypes = [c_int32, c_double]
 _dll.openmc_solidraytrace_plot_set_fov.restype = c_int
 _dll.openmc_solidraytrace_plot_set_fov.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_update_view.argtypes = [c_void_p]
+_dll.openmc_solidraytrace_plot_update_view.argtypes = [c_int32]
 _dll.openmc_solidraytrace_plot_update_view.restype = c_int
 _dll.openmc_solidraytrace_plot_update_view.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_create_image.argtypes = [c_void_p, POINTER(c_uint8), c_int32, c_int32]
+_dll.openmc_solidraytrace_plot_create_image.argtypes = [c_int32, POINTER(c_uint8), c_int32, c_int32]
 _dll.openmc_solidraytrace_plot_create_image.restype = c_int
 _dll.openmc_solidraytrace_plot_create_image.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_get_color.argtypes = [c_void_p, c_int32,
+_dll.openmc_solidraytrace_plot_get_color.argtypes = [c_int32, c_int32,
                                              POINTER(c_uint8), POINTER(c_uint8), POINTER(c_uint8)]
 _dll.openmc_solidraytrace_plot_get_color.restype = c_int
 _dll.openmc_solidraytrace_plot_get_color.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_diffuse_fraction.argtypes = [c_void_p, c_double]
+_dll.openmc_solidraytrace_plot_get_diffuse_fraction.argtypes = [
+    c_int32, POINTER(c_double)]
+_dll.openmc_solidraytrace_plot_get_diffuse_fraction.restype = c_int
+_dll.openmc_solidraytrace_plot_get_diffuse_fraction.errcheck = _error_handler
+
+_dll.openmc_solidraytrace_plot_set_diffuse_fraction.argtypes = [c_int32, c_double]
 _dll.openmc_solidraytrace_plot_set_diffuse_fraction.restype = c_int
 _dll.openmc_solidraytrace_plot_set_diffuse_fraction.errcheck = _error_handler
 
 
-class SolidRayTracePlot:
-    """C API wrapper for ray-traced solid plot generation."""
+class SolidRayTracePlot(_FortranObjectWithID):
+    """Solid ray-traced plot stored internally."""
+
     COLOR_BY_MATERIAL = 0
     COLOR_BY_CELL = 1
+    __instances = WeakValueDictionary()
 
-    def __init__(self):
-        self._ptr = c_void_p()
-        _dll.openmc_solidraytrace_plot_create(byref(self._ptr))
-        self._width = None
-        self._height = None
+    def __new__(cls, uid=None, new=True, index=None):
+        mapping = plots
+        if index is None:
+            if new:
+                if uid is not None and uid in mapping:
+                    raise AllocationError(
+                        f'A plot with ID={uid} has already been allocated.'
+                    )
+                index = c_int32()
+                _dll.openmc_solidraytrace_plot_create(index)
+                index = index.value
+            else:
+                index = mapping[uid]._index
 
-    def __del__(self):
-        if getattr(self, "_ptr", None):
-            try:
-                _dll.openmc_solidraytrace_plot_free(self._ptr)
-            except Exception:
-                # Avoid raising from garbage collection
-                pass
-            self._ptr = None
+        if index not in cls.__instances:
+            instance = super().__new__(cls)
+            instance._index = index
+            if uid is not None:
+                instance.id = uid
+            cls.__instances[index] = instance
 
-    def set_pixels(self, width, height):
-        _dll.openmc_solidraytrace_plot_set_pixels(self._ptr, int(width), int(height))
-        self._width = int(width)
-        self._height = int(height)
+        return cls.__instances[index]
 
-    def set_color_by(self, color_by):
-        _dll.openmc_solidraytrace_plot_set_color_by(self._ptr, int(color_by))
+    def __init__(self, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+
+    @property
+    def id(self):
+        plot_id = c_int32()
+        _dll.openmc_plot_get_id(self._index, plot_id)
+        return plot_id.value
+
+    @id.setter
+    def id(self, plot_id):
+        _dll.openmc_plot_set_id(self._index, plot_id)
+
+    @staticmethod
+    def _get_xyz(getter, index):
+        x = c_double()
+        y = c_double()
+        z = c_double()
+        getter(index, x, y, z)
+        return (x.value, y.value, z.value)
+
+    @staticmethod
+    def _set_xyz(setter, index, xyz):
+        x, y, z = xyz
+        setter(index, float(x), float(y), float(z))
+
+    @property
+    def pixels(self):
+        width = c_int32()
+        height = c_int32()
+        _dll.openmc_solidraytrace_plot_get_pixels(self._index, width, height)
+        return (width.value, height.value)
+
+    @pixels.setter
+    def pixels(self, pixels):
+        width, height = pixels
+        _dll.openmc_solidraytrace_plot_set_pixels(
+            self._index, int(width), int(height))
+
+    @property
+    def color_by(self):
+        color_by = c_int32()
+        _dll.openmc_solidraytrace_plot_get_color_by(self._index, color_by)
+        return color_by.value
+
+    @color_by.setter
+    def color_by(self, color_by):
+        _dll.openmc_solidraytrace_plot_set_color_by(self._index, int(color_by))
 
     def set_default_colors(self):
-        _dll.openmc_solidraytrace_plot_set_default_colors(self._ptr)
+        _dll.openmc_solidraytrace_plot_set_default_colors(self._index)
 
     def set_all_opaque(self):
-        _dll.openmc_solidraytrace_plot_set_all_opaque(self._ptr)
+        _dll.openmc_solidraytrace_plot_set_all_opaque(self._index)
 
     def set_visibility(self, domain_id, visible):
-        _dll.openmc_solidraytrace_plot_set_visibility(self._ptr, int(domain_id), bool(visible))
+        _dll.openmc_solidraytrace_plot_set_opaque(
+            self._index, int(domain_id), bool(visible)
+        )
 
     def set_color(self, domain_id, color):
         r, g, b = [int(c) for c in color]
-        _dll.openmc_solidraytrace_plot_set_color(self._ptr, int(domain_id), r, g, b)
+        _dll.openmc_solidraytrace_plot_set_color(
+            self._index, int(domain_id), r, g, b)
 
-    def set_camera_position(self, x, y, z):
-        _dll.openmc_solidraytrace_plot_set_camera_position(self._ptr, float(x), float(y), float(z))
+    @property
+    def camera_position(self):
+        return self._get_xyz(_dll.openmc_solidraytrace_plot_get_camera_position,
+                             self._index)
 
-    def set_look_at(self, x, y, z):
-        _dll.openmc_solidraytrace_plot_set_look_at(self._ptr, float(x), float(y), float(z))
+    @camera_position.setter
+    def camera_position(self, position):
+        self._set_xyz(_dll.openmc_solidraytrace_plot_set_camera_position,
+                      self._index, position)
 
-    def set_up(self, x, y, z):
-        _dll.openmc_solidraytrace_plot_set_up(self._ptr, float(x), float(y), float(z))
+    @property
+    def look_at(self):
+        return self._get_xyz(_dll.openmc_solidraytrace_plot_get_look_at,
+                             self._index)
 
-    def set_light_position(self, x, y, z):
-        _dll.openmc_solidraytrace_plot_set_light_position(self._ptr, float(x), float(y), float(z))
+    @look_at.setter
+    def look_at(self, position):
+        self._set_xyz(_dll.openmc_solidraytrace_plot_set_look_at,
+                      self._index, position)
 
-    def set_fov(self, fov):
-        _dll.openmc_solidraytrace_plot_set_fov(self._ptr, float(fov))
+    @property
+    def up(self):
+        return self._get_xyz(_dll.openmc_solidraytrace_plot_get_up, self._index)
+
+    @up.setter
+    def up(self, direction):
+        self._set_xyz(_dll.openmc_solidraytrace_plot_set_up, self._index,
+                      direction)
+
+    @property
+    def light_position(self):
+        return self._get_xyz(_dll.openmc_solidraytrace_plot_get_light_position,
+                             self._index)
+
+    @light_position.setter
+    def light_position(self, position):
+        self._set_xyz(_dll.openmc_solidraytrace_plot_set_light_position,
+                      self._index, position)
+
+    @property
+    def fov(self):
+        fov = c_double()
+        _dll.openmc_solidraytrace_plot_get_fov(self._index, fov)
+        return fov.value
+
+    @fov.setter
+    def fov(self, fov):
+        _dll.openmc_solidraytrace_plot_set_fov(self._index, float(fov))
 
     def update_view(self):
-        _dll.openmc_solidraytrace_plot_update_view(self._ptr)
+        _dll.openmc_solidraytrace_plot_update_view(self._index)
 
     def create_image(self):
-        if self._width is None or self._height is None:
-            raise RuntimeError("SolidRayTracePlot pixels must be set before create_image")
-        image = np.zeros((self._height, self._width, 3), dtype=np.uint8)
+        width, height = self.pixels
+        image = np.zeros((height, width, 3), dtype=np.uint8)
         _dll.openmc_solidraytrace_plot_create_image(
-            self._ptr,
+            self._index,
             image.ctypes.data_as(POINTER(c_uint8)),
-            self._width,
-            self._height
+            width,
+            height
         )
         return image
 
@@ -405,8 +543,65 @@ class SolidRayTracePlot:
         r = c_uint8()
         g = c_uint8()
         b = c_uint8()
-        _dll.openmc_solidraytrace_plot_get_color(self._ptr, int(domain_id), r, g, b)
+        _dll.openmc_solidraytrace_plot_get_color(
+            self._index, int(domain_id), r, g, b)
         return int(r.value), int(g.value), int(b.value)
 
+    @property
+    def diffuse_fraction(self):
+        value = c_double()
+        _dll.openmc_solidraytrace_plot_get_diffuse_fraction(self._index, value)
+        return value.value
+
+    @diffuse_fraction.setter
+    def diffuse_fraction(self, value):
+        _dll.openmc_solidraytrace_plot_set_diffuse_fraction(
+            self._index, float(value))
+
+    # Backward-compatible setter aliases
+    def set_pixels(self, width, height):
+        self.pixels = (width, height)
+
+    def set_color_by(self, color_by):
+        self.color_by = color_by
+
+    def set_camera_position(self, x, y, z):
+        self.camera_position = (x, y, z)
+
+    def set_look_at(self, x, y, z):
+        self.look_at = (x, y, z)
+
+    def set_up(self, x, y, z):
+        self.up = (x, y, z)
+
+    def set_light_position(self, x, y, z):
+        self.light_position = (x, y, z)
+
+    def set_fov(self, fov):
+        self.fov = fov
+
     def set_diffuse_fraction(self, value):
-        _dll.openmc_solidraytrace_plot_set_diffuse_fraction(self._ptr, float(value))
+        self.diffuse_fraction = value
+
+
+class _PlotMapping(Mapping):
+    def __getitem__(self, key):
+        index = c_int32()
+        try:
+            _dll.openmc_get_plot_index(key, index)
+        except (AllocationError, InvalidIDError) as e:
+            raise KeyError(str(e))
+        return SolidRayTracePlot(index=index.value)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield SolidRayTracePlot(index=i).id
+
+    def __len__(self):
+        return _dll.plots_size()
+
+    def __repr__(self):
+        return repr(dict(self))
+
+
+plots = _PlotMapping()

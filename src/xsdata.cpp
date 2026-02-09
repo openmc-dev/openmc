@@ -97,18 +97,19 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
 
   if (!object_exists(xsdata_grp, "inverse-velocity")) {
-    vector<double> inv_vel;
-    for (int i = 0; i < energy_bins.size() - 1; ++i) {
+    xt::xarray<double> inv_vel = xt::zeros<double>({energy_groups});
+    for (int i = 0; i < energy_groups; ++i) {
       double e_min = energy_bins[i];
       double e_max = energy_bins[i + 1];
-      double inv_v = (std::acosh(1 + e_max / MASS_NEUTRON_EV) -
-                       std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_max) -
-                       std::acosh(1 + e_min / MASS_NEUTRON_EV) +
-                       std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_min)) /
-                     std::log(e_max / e_min) / C_LIGHT;
-      inv_vel.push_back(inv_v);
+      inv_vel[i] = (std::acosh(1 + e_max / MASS_NEUTRON_EV) -
+                     std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_max) -
+                     std::acosh(1 + e_min / MASS_NEUTRON_EV) +
+                     std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_min)) /
+                   std::log(e_max / e_min) / C_LIGHT;
     }
-    inverse_velocity = xt::adapt(inv_vel);
+    for (int j = 0; j < n_ang; ++j) {
+      xt::view(inverse_velocity, j, xt::all()) = inv_vel;
+    }
   }
 
   // Get scattering data

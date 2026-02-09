@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_event.h"
+#include "openmc/tallies/filter_reaction.h"
 
 #include <fmt/core.h>
 
@@ -10,10 +10,10 @@
 namespace openmc {
 
 //==============================================================================
-// EventFilter implementation
+// ReactionFilter implementation
 //==============================================================================
 
-void EventFilter::from_xml(pugi::xml_node node)
+void ReactionFilter::from_xml(pugi::xml_node node)
 {
   // Read bins as reaction name strings
   auto bins_str = get_node_array<std::string>(node, "bins");
@@ -28,7 +28,7 @@ void EventFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins_mt);
 }
 
-void EventFilter::set_bins(span<const int> bins)
+void ReactionFilter::set_bins(span<const int> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -44,7 +44,7 @@ void EventFilter::set_bins(span<const int> bins)
   n_bins_ = bins_.size();
 }
 
-void EventFilter::get_all_bins(
+void ReactionFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get the event MT number from the particle
@@ -58,7 +58,7 @@ void EventFilter::get_all_bins(
   }
 }
 
-void EventFilter::to_statepoint(hid_t filter_group) const
+void ReactionFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
 
@@ -71,7 +71,7 @@ void EventFilter::to_statepoint(hid_t filter_group) const
   write_dataset(filter_group, "bins", names);
 }
 
-std::string EventFilter::text_label(int bin) const
+std::string ReactionFilter::text_label(int bin) const
 {
   return reaction_name(bins_[bin]);
 }

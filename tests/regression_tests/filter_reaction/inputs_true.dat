@@ -51,7 +51,7 @@
     </source>
   </settings>
   <tallies>
-    <filter id="1" type="event">
+    <filter id="1" type="reaction">
       <bins>(n,elastic) (n,fission) (n,gamma)</bins>
     </filter>
     <tally id="1">

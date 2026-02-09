@@ -416,7 +416,6 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_distribcell.cpp
   src/tallies/filter_energy.cpp
   src/tallies/filter_energyfunc.cpp
-  src/tallies/filter_event.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
   src/tallies/filter_materialfrom.cpp
@@ -430,6 +429,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_particle.cpp
   src/tallies/filter_particle_production.cpp
   src/tallies/filter_polar.cpp
+  src/tallies/filter_reaction.cpp
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp
   src/tallies/filter_surface.cpp

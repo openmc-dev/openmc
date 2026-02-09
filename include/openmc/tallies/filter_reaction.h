@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLIES_FILTER_EVENT_H
-#define OPENMC_TALLIES_FILTER_EVENT_H
+#ifndef OPENMC_TALLIES_FILTER_REACTION_H
+#define OPENMC_TALLIES_FILTER_REACTION_H
 
 #include <unordered_map>
 
@@ -13,18 +13,18 @@ namespace openmc {
 //! Bins tally events based on the reaction type (MT number).
 //==============================================================================
 
-class EventFilter : public Filter {
+class ReactionFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
 
-  ~EventFilter() = default;
+  ~ReactionFilter() = default;
 
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type_str() const override { return "event"; }
-  FilterType type() const override { return FilterType::EVENT; }
+  std::string type_str() const override { return "reaction"; }
+  FilterType type() const override { return FilterType::REACTION; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -54,4 +54,4 @@ protected:
 
 } // namespace openmc
 
-#endif // OPENMC_TALLIES_FILTER_EVENT_H
+#endif // OPENMC_TALLIES_FILTER_REACTION_H

@@ -4,12 +4,12 @@ from tests.testing_harness import PyAPITestHarness
 import openmc
 
 
-def test_filter_event():
+def test_filter_reaction():
     model = pwr_pin_cell()
 
-    # Create a tally with event filter
+    # Create a tally with reaction filter
     tally = openmc.Tally()
-    tally.filters = [openmc.EventFilter(
+    tally.filters = [openmc.ReactionFilter(
         ['(n,elastic)', '(n,fission)', '(n,gamma)']
     )]
     tally.scores = ['flux']

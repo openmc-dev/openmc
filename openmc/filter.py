@@ -23,11 +23,11 @@ from ._xml import get_elem_list, get_text
 
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
-    'energyout', 'event', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell',
+    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell',
     'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre',
     'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
     'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
-    'weight', 'meshborn', 'meshsurface', 'meshmaterial',
+    'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )
 
 _CURRENT_NAMES = (
@@ -1416,7 +1416,7 @@ class CollisionFilter(Filter):
             cv.check_greater_than('filter value', x, 0, equality=True)
 
 
-class EventFilter(Filter):
+class ReactionFilter(Filter):
     """Bins tally events based on the reaction type (MT number).
 
     .. versionadded:: 0.15.4
@@ -1463,7 +1463,7 @@ class EventFilter(Filter):
                     raise ValueError(f"Unknown reaction name '{b}'")
                 normalized.append(b)
             else:
-                raise TypeError(f"Expected str or int for event filter "
+                raise TypeError(f"Expected str or int for reaction filter "
                                 f"bin, got {type(b)}")
         self._bins = np.array(normalized, dtype=str)
 

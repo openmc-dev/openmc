@@ -2071,7 +2071,8 @@ int get_solidraytrace_plot_by_index(int32_t index, SolidRayTracePlot** plot)
 extern "C" int openmc_solidraytrace_plot_create(int32_t* index)
 {
   if (!index) {
-    set_errmsg("Null output pointer passed to openmc_solidraytrace_plot_create");
+    set_errmsg(
+      "Null output pointer passed to openmc_solidraytrace_plot_create");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 

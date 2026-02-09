@@ -236,7 +236,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
     fatal_error("At least one MGXS data set must be present in mgxs "
                 "library file!");
   }
-   
+
   // Read void velocities
   bool void_velocities_exist = false;
   if (object_exists(file_id, "void")) {

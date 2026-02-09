@@ -583,6 +583,13 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     std::find(filter_types.begin(), filter_types.end(), FilterType::MESH) -
     filter_types.begin();
 
+  // get a fully reshaped view of the tally according to tally ordering of
+  // filters
+  auto tally_values = xt::reshape_view(results_arr, shape);
+
+  // get a that is (particle, energy, mesh, scores, values)
+  auto transposed_view = xt::transpose(tally_values, transpose);
+
   // determine the dimension and index of the particle data
   int particle_idx = 0;
   if (tally->has_filter(FilterType::PARTICLE)) {
@@ -606,41 +613,13 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     particle_idx = p_it - particles.begin();
   }
 
-  // Compute strides for the reshaped 5D layout (filter dims, scores, results)
-  // shape = {f0_bins, f1_bins, f2_bins, n_scores, results_dim}
-  std::array<int, 5> strides;
-  strides[4] = 1;
-  for (int i = 3; i >= 0; --i)
-    strides[i] = strides[i + 1] * shape[i + 1];
-
-  // Helper lambda: compute flat index from logical (particle, energy, mesh)
-  // into results_arr, accounting for the transpose mapping
-  auto get_result = [&](int p, int e, int m, int score, int result_type)
-    -> double {
-    // Map logical indices to physical filter positions
-    std::array<int, 5> idx = {0, 0, 0, score, result_type};
-    idx[transpose[0]] = p;
-    idx[transpose[1]] = e;
-    idx[transpose[2]] = m;
-    // Compute flat filter_bin from the first 3 filter dimensions
-    int filter_bin = idx[0] * shape[1] * shape[2] + idx[1] * shape[2] + idx[2];
-    return results_arr(filter_bin, score, result_type);
-  };
-
-  // Extract 2D sum and sum_sq arrays for (energy, mesh) at given particle and
-  // score
-  int sum_idx = static_cast<int>(TallyResult::SUM);
-  int sum_sq_idx = static_cast<int>(TallyResult::SUM_SQ);
-  xt::xtensor<double, 2> sum({static_cast<std::size_t>(e_bins),
-    static_cast<std::size_t>(mesh_bins)});
-  xt::xtensor<double, 2> sum_sq({static_cast<std::size_t>(e_bins),
-    static_cast<std::size_t>(mesh_bins)});
-  for (int e = 0; e < e_bins; e++) {
-    for (int64_t m = 0; m < mesh_bins; m++) {
-      sum(e, m) = get_result(particle_idx, e, m, score_index, sum_idx);
-      sum_sq(e, m) = get_result(particle_idx, e, m, score_index, sum_sq_idx);
-    }
-  }
+  // down-select data based on particle and score
+  auto sum = xt::dynamic_view(
+    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
+                       static_cast<int>(TallyResult::SUM)});
+  auto sum_sq = xt::dynamic_view(
+    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
+                       static_cast<int>(TallyResult::SUM_SQ)});
   int n = tally->n_realizations_;
 
   //////////////////////////////////////////////

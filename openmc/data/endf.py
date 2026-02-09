@@ -69,8 +69,6 @@ SUM_RULES = {1: [2, 3],
              106: list(range(750, 800)),
              107: list(range(800, 850))}
 
-ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]) ?(\d+)')
-
 
 def get_evaluations(filename):
     """Return a list of all evaluations within an ENDF file.

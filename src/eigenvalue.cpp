@@ -733,7 +733,6 @@ int openmc_get_ks(double* ks_combined, double* k_combined, double* kq_combined)
   double total_cov {0.0};
   array<double, simulation::N_K_EST> M;
   array<double, simulation::N_K_EST> kq;
-  int N = settings::n_particles;
   int n = simulation::n_realizations;
   for (int i = 0; i < simulation::N_K_EST; ++i) {
     for (int j = 0; j < simulation::N_K_EST; ++j) {
@@ -742,7 +741,7 @@ int openmc_get_ks(double* ks_combined, double* k_combined, double* kq_combined)
           n * simulation::global_tallies(i, TallyResult::SUM) *
             simulation::global_tallies_first_gen(j, TallyResult::SUM) /
             std::pow(n, 2)) /
-        (n - 1);
+        (n * (n - 1)); // Note extra division by n to get standard error
       total_cov += simulation::k_combined_weights[i] *
                    simulation::kq_combined_weights[j] * cov;
     }
@@ -900,10 +899,11 @@ void write_eigenvalue_hdf5(hid_t group)
     write_dataset(group, "kq_generation", kq_generation);
     array<double, 2> kq_combined;
     openmc_get_kq(kq_combined.data());
+    fmt::print("kq_combined: {} +/- {}\n", kq_combined[0], kq_combined[1]);
     write_dataset(group, "kq_combined", kq_combined);
-    array<double, 2> ks_combined;
 
     // Convert back to m for calculation of ks
+    array<double, 2> ks_combined;
     std::tie(k_combined[0], k_combined[1]) =
       convert_k_to_m(k_combined[0], k_combined[1]);
     openmc_get_ks(ks_combined.data(), k_combined.data(), kq_combined.data());

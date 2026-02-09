@@ -857,8 +857,13 @@ Calculating Subcritical Multiplication Factors
 ----------------------------------------------
 In addition to the standard effective multiplication factor, :math:`k_{eff}`, calculated using eigenvalue
 mode, OpenMC can also calculate subcritical multiplication factors: :math:`k`, :math:`k_q`, and :math:`k_s`
-in fixed source mode. Please see :ref:`methods_subcritical-multiplication` for theoretical details on
-subcritical multiplication factors. To enable the calculation of subcritical multiplication factors in
+in fixed source mode or eigenvalue mode, but note these values are only strictly well-defined for fixed source simulations. 
+Please see :ref:`methods_subcritical-multiplication` for theoretical details on
+subcritical multiplication factors. 
+
+Fixed Source Mode
+-----------------
+To enable the calculation of subcritical multiplication factors in
 fixed source mode, set
 
 .. code-block:: python
@@ -868,3 +873,17 @@ fixed source mode, set
 this will enable printing of :math:`k`, :math:`k_q`, and :math:`k_s` both generation-wise and cumulative
 averages throughout the simulation analogous to eigenvalue mode. The generation statistics as well as
 combined estimates for :math:`k`, :math:`k_q`, and :math:`k_s` will also be stored in the statepoint file.
+To print out all of the subcritical multiplication factors during the transport calculation, set
+
+.. code-block:: python
+
+    settings.print_all_k_factors = True
+
+Eigenvalue Mode
+---------------
+These quantities may also be computed using the eigensolver if `settings.source` is set to the source
+distribution for your corresponding fixed source problem. These quantities are computed by default, and there's not need
+to set `settings.calculate_subcritical_k` to True. The generation statistics as well as combined estimates for :math:`k`,
+:math:`k_q`, and :math:`k_s` will be stored in the statepoint file. In addition, the source effectiveness factor will also
+be computed, since :math:`k_{eff}` is available. Please interpret these values with caution, as they are only strictly 
+well-defined when :math:`k_{eff} < 1`.

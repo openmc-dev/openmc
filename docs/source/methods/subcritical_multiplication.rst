@@ -74,6 +74,20 @@ subcritciality, while :math:`k_q` is maximized to achieve optimal multiplication
 It is therefore necessary to perform fixed source simulations to accurately determine 
 subcritical multiplication and the flux distribution in ADS's.
 
+Source Effectiveness
+--------------------
+In addition, one may quantify the relative effectiveness of a source by the amount of
+multiplication it induces relative to the fundamental mode of the system. This is given
+by the source effectiveness factor :math:`g^*` (or :math:`\phi^*`), defined as [Ye]_:
+
+.. math::
+   M = \frac{g^*}{1 - k_{eff}}
+
+which corrects for the error in the multiplicity one would get from using the
+fundamental mode multiplication factor. As :math:`k_{eff} \to 1`, :math:`g^* \to 1`, 
+since as the system approaches criticality, the importance of the source diminishes
+relative to subsequent fisison neutrons.
+
 .. _methods_subcritical-multiplication-estimating:
 
 -----------------------------------------------------------------------
@@ -84,7 +98,7 @@ The total fission production can be tallied and estiamted using standard collisi
 and track-length estimators over a neutron history, giving :math:`M-1`, which can be used to
 compute :math:`k`.
 
-To estimate :math:`k_q`, we may use its interpretation interpretation as the multiplication
+To estimate :math:`k_q`, we may use its interpretation as the multiplication
 factor of source neutrons. For a given source history, we may tally the neutron production
 estimators, and simply stop before simulating any of the secondary fission neutrons. This gives
 an estimate of the neutron production due to source neutrons alone, which can be used to compute
@@ -101,3 +115,7 @@ an estimate of the neutron production due to source neutrons alone, which can be
 
 .. [Forget] Forget, Benoit. "An Efficient Subcritical Multiplication Mode for 
    Monte Carlo Solvers." *Nuclear Science and Engineering* (2025): 1-11.
+
+.. [Ye] Ye, Bin, Chao-Wen Yang, and Chun Zheng. "Measurement of k eff by delayed 
+   neutron multiplication in subcritical systems." Nuclear Science and 
+   Techniques 29.2 (2018): 29.

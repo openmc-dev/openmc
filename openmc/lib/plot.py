@@ -382,7 +382,44 @@ _dll.openmc_solidraytrace_plot_set_diffuse_fraction.errcheck = _error_handler
 
 
 class SolidRayTracePlot(_FortranObjectWithID):
-    """Solid ray-traced plot stored internally."""
+    """Solid ray-traced plot stored internally.
+
+    This class exposes a solid ray-traced plot that is stored internally in
+    the OpenMC library. To obtain a view of an existing plot with a given ID,
+    use the :data:`openmc.lib.plots` mapping.
+
+    Parameters
+    ----------
+    uid : int or None
+        Unique ID of the plot
+    new : bool
+        When `index` is None, this argument controls whether a new object is
+        created or a view of an existing object is returned.
+    index : int or None
+        Index in the internal plots array.
+
+    Attributes
+    ----------
+    id : int
+        Unique ID of the plot.
+    pixels : tuple of int
+        Plot image dimensions as ``(width, height)``.
+    color_by : int
+        Coloring mode. Use :attr:`COLOR_BY_MATERIAL` or
+        :attr:`COLOR_BY_CELL`.
+    camera_position : tuple of float
+        Camera position as ``(x, y, z)``.
+    look_at : tuple of float
+        Point the camera is aimed at as ``(x, y, z)``.
+    up : tuple of float
+        Up direction as ``(x, y, z)``.
+    light_position : tuple of float
+        Position of the light source as ``(x, y, z)``.
+    fov : float
+        Horizontal field-of-view angle in degrees.
+    diffuse_fraction : float
+        Fraction of reflected light treated as diffuse (0 to 1).
+    """
 
     COLOR_BY_MATERIAL = 0
     COLOR_BY_CELL = 1

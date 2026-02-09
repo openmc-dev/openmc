@@ -126,6 +126,12 @@ Data
 
    :type: dict
 
+.. data:: plots
+
+   Mapping of plot ID to :class:`openmc.lib.SolidRayTracePlot` instances.
+
+   :type: dict
+
 .. data:: nuclides
 
    Mapping of nuclide name to :class:`openmc.lib.Nuclide` instances.

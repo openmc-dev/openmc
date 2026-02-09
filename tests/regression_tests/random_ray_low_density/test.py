@@ -25,7 +25,7 @@ def test_random_ray_low_density():
 
     void_sigma_a = 4.0e-6
     void_sigma_s = 3.0e-4
-    void_mat_data = openmc.XSdata('approx void', groups)
+    void_mat_data = openmc.XSdata('void', groups)
     void_mat_data.order = 0
     void_mat_data.set_total([void_sigma_a + void_sigma_s])
     void_mat_data.set_absorption([void_sigma_a])

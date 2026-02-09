@@ -236,8 +236,9 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
     fatal_error("At least one MGXS data set must be present in mgxs "
                 "library file!");
   }
-
+   
   // Read void velocities
+  bool void_velocities_exist = false;
   if (object_exists(file_id, "void")) {
     auto void_grp = open_group(file_id, "void");
     // Determine the available temperatures
@@ -251,14 +252,18 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
     if (num_temps > 1)
       fatal_error("Multigroup void data must have only one dummy temperature");
     auto xsdata_grp = open_group(void_grp, dset_names[0]);
-    vector<size_t> shape {1, static_cast<size_t>(num_energy_groups_)};
-    xt::xtensor<double, 2> inverse_velocity = xt::zeros<double>(shape);
-    read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
-    auto velocity = 1.0 / inverse_velocity;
-    for (double v : velocity) {
-      void_velocities_.push_back(v);
+    if (object_exists(xsdata_grp, "inverse-velocity")) {
+      vector<size_t> shape {1, static_cast<size_t>(num_energy_groups_)};
+      xt::xtensor<double, 2> inverse_velocity = xt::zeros<double>(shape);
+      read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
+      auto velocity = 1.0 / inverse_velocity;
+      for (double v : velocity) {
+        void_velocities_.push_back(v);
+      }
+      void_velocities_exist = true;
     }
-  } else {
+  }
+  if (!void_velocities_exist) {
     for (int i = 0; i < energy_bins_.size() - 1; ++i) {
       double e_min = energy_bins_[i];
       double e_max = energy_bins_[i + 1];

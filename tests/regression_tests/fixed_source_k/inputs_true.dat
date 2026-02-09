@@ -33,5 +33,6 @@
       <enable>false</enable>
     </tabular_legendre>
     <calculate_subcritical_k>true</calculate_subcritical_k>
+    <print_all_k_factors>true</print_all_k_factors>
   </settings>
   </model>

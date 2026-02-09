@@ -10,6 +10,7 @@
 #include "openmc/vector.h"
 
 #include <cstdint>
+#include <sys/types.h>
 
 namespace openmc {
 
@@ -35,7 +36,11 @@ extern "C" double k_std; //!< standard deviation of average k, used for
                          //!< subcritical multiplication problems
 extern "C" double
   kq; //!< average kq over batches, used for subcritical multiplication problems
-extern "C" double kq_std;    //!< standard deviation of average kq, used for
+extern "C" double kq_std; //!< standard deviation of average kq, used for
+                          //!< subcritical multiplication problems
+extern "C" double
+  ks; //!< average ks over batches, used for subcritical multiplication problems
+extern "C" double ks_std;    //!< standard deviation of average ks, used for
                              //!< subcritical multiplication problems
 extern "C" double k_col_abs; //!< sum over batches of k_collision * k_absorption
 extern "C" double
@@ -62,7 +67,19 @@ extern const RegularMesh* ufs_mesh;
 
 extern vector<array<double, 2>> k_generation;
 extern vector<array<double, 2>> kq_generation;
+extern vector<array<double, 2>> ks_generation;
+extern double k_kq_product;
 extern vector<int64_t> work_index;
+
+enum class KEstimator : int {
+  TRACKLENGTH = 0,
+  COLLISION = 1,
+  ABSORPTION = 2,
+  N_ESTIMATORS
+};
+
+constexpr int N_K_EST = static_cast<int>(KEstimator::N_ESTIMATORS);
+extern std::array<std::array<double, N_K_EST>, N_K_EST> k_kq_products;
 
 } // namespace simulation
 

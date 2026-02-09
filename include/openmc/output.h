@@ -5,6 +5,7 @@
 #define OPENMC_OUTPUT_H
 
 #include <string>
+#include <xtensor/xsort.hpp>
 
 #include "openmc/particle.h"
 
@@ -48,6 +49,8 @@ void print_columns();
 
 //! Display information about a generation of neutrons
 void print_generation();
+void print_generation_values(int idx, int n, std::string batch_and_gen,
+  array<double, 2> k_gen, double k, double k_std);
 
 //! Display time elapsed for various stages of a run
 void print_runtime();

@@ -131,6 +131,7 @@ std::unordered_set<int> statepoint_batch;
 double source_rejection_fraction {0.05};
 double free_gas_threshold {400.0};
 bool calculate_subcritical_k {false};
+bool print_all_k_factors {false};
 std::unordered_set<int> source_write_surf_id;
 CollisionTrackConfig collision_track_config {};
 int64_t ssw_max_particles;
@@ -688,6 +689,21 @@ void read_settings_xml(pugi::xml_node root)
     } else {
       fatal_error("The 'calculate_subcritical_k' setting is only valid in "
                   "fixed source mode.");
+    }
+  }
+
+  if (check_for_node(root, "print_all_k_factors")) {
+    if (run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+      if (solver_type != SolverType::MONTE_CARLO) {
+        fatal_error("The 'print_all_k_factors' setting is only valid in "
+                    "fixed source mode with the Monte Carlo solver.");
+      }
+      print_all_k_factors = get_node_value_bool(root, "print_all_k_factors");
+    } else {
+      fatal_error(
+        "The 'print_all_k_factors' setting is only valid in "
+        "fixed source mode with calculate_subcritical_k set to true.");
     }
   }
 

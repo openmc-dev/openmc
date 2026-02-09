@@ -1082,18 +1082,25 @@ void accumulate_tallies()
   // Accumulate on master only unless run is not reduced then do it on all
   if (mpi::master || !settings::reduce_tallies) {
     auto& gt = simulation::global_tallies;
+    double k_col = 0.0;
+    double k_abs = 0.0;
+    double k_tra = 0.0;
+
+    double kq_col = 0.0;
+    double kq_abs = 0.0;
+    double kq_tra = 0.0;
 
     if (settings::run_mode == RunMode::EIGENVALUE ||
         (settings::run_mode == RunMode::FIXED_SOURCE &&
           settings::calculate_subcritical_k)) {
       if (simulation::current_batch > settings::n_inactive) {
         // Accumulate products of different estimators of k
-        double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /
-                       simulation::total_weight;
-        double k_abs = gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
-                       simulation::total_weight;
-        double k_tra = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
-                       simulation::total_weight;
+        k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /
+                simulation::total_weight;
+        k_abs = gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
+                simulation::total_weight;
+        k_tra = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
+                simulation::total_weight;
         simulation::k_col_abs += k_col * k_abs;
         simulation::k_col_tra += k_col * k_tra;
         simulation::k_abs_tra += k_abs * k_tra;
@@ -1107,21 +1114,18 @@ void accumulate_tallies()
       gt(i, TallyResult::SUM) += val;
       gt(i, TallyResult::SUM_SQ) += val * val;
     }
+    // Accumulate subcritical multiplication tallies
     if (settings::run_mode == RunMode::FIXED_SOURCE &&
         settings::calculate_subcritical_k) {
-      auto& gt = simulation::global_tallies_first_gen;
+      auto& gt_first_gen = simulation::global_tallies_first_gen;
       if (mpi::master || !settings::reduce_tallies) {
         if (mpi::master || !settings::reduce_tallies) {
-
-          auto& gt_first_gen = simulation::global_tallies_first_gen;
           // Accumulate products of different estimators of k
-          double kq_col =
-            gt_first_gen(GlobalTally::K_COLLISION, TallyResult::VALUE) /
-            simulation::total_weight;
-          double kq_abs =
-            gt_first_gen(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
-            simulation::total_weight;
-          double kq_tra =
+          kq_col = gt_first_gen(GlobalTally::K_COLLISION, TallyResult::VALUE) /
+                   simulation::total_weight;
+          kq_abs = gt_first_gen(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
+                   simulation::total_weight;
+          kq_tra =
             gt_first_gen(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
             simulation::total_weight;
           simulation::kq_col_abs += kq_col * kq_abs;
@@ -1130,10 +1134,20 @@ void accumulate_tallies()
         }
       }
       for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
-        double val = gt(i, TallyResult::VALUE) / simulation::total_weight;
-        gt(i, TallyResult::VALUE) = 0.0;
-        gt(i, TallyResult::SUM) += val;
-        gt(i, TallyResult::SUM_SQ) += val * val;
+        double val_first_gen =
+          gt_first_gen(i, TallyResult::VALUE) / simulation::total_weight;
+        gt_first_gen(i, TallyResult::VALUE) = 0.0;
+        gt_first_gen(i, TallyResult::SUM) += val_first_gen;
+        gt_first_gen(i, TallyResult::SUM_SQ) += val_first_gen * val_first_gen;
+      }
+    }
+    auto& gt_first_gen = simulation::global_tallies_first_gen;
+    double k_vals[3] = {k_tra, k_col, k_abs};
+    double kq_vals[3] = {kq_tra, kq_col, kq_abs};
+
+    for (int i = 0; i < simulation::N_K_EST; ++i) {
+      for (int j = 0; j < simulation::N_K_EST; ++j) {
+        simulation::k_kq_products[i][j] += k_vals[i] * kq_vals[j];
       }
     }
   }

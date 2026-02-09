@@ -405,31 +405,50 @@ void print_generation()
     k_gen[0] = k0;
     k_gen[1] = k1;
   }
+
+  double k, k_std;
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      settings::calculate_subcritical_k) {
+    // convert from multiplication factor to subcritical k
+    auto [k0, k1] = convert_m_to_k(simulation::k, simulation::k_std);
+    k = k0;
+    k_std = k1;
+  } else {
+    k = simulation::k;
+    k_std = simulation::k_std;
+  }
+
+  if (settings::print_all_k_factors) {
+    print_generation_values(idx, n, batch_and_gen + "  k:", k_gen, k, k_std);
+    array<double, 2> kq_gen;
+    array<double, 2> ks_gen;
+    kq_gen = simulation::kq_generation[idx];
+    ks_gen = simulation::ks_generation[idx];
+    std::string spaces(batch_and_gen.size(), ' ');
+    print_generation_values(
+      idx, n, spaces + "kq:", kq_gen, simulation::kq, simulation::kq_std);
+    print_generation_values(
+      idx, n, spaces + "ks:", ks_gen, simulation::ks, simulation::ks_std);
+  } else {
+    print_generation_values(idx, n, batch_and_gen, k_gen, k, k_std);
+  }
+}
+
+void print_generation_values(int idx, int n, std::string batch_and_gen,
+  array<double, 2> k_gen, double k, double k_std)
+{
   fmt::print("  {:>9}   {:8.5f} +/-{:8.5f}", batch_and_gen, k_gen[0], k_gen[1]);
 
   // write out entropy info
   if (settings::entropy_on) {
     fmt::print("   {:8.5f}", simulation::entropy[idx]);
   }
-
   if (n > 1) {
-    double k, k_std;
-    if (settings::run_mode == RunMode::FIXED_SOURCE &&
-        settings::calculate_subcritical_k) {
-      // convert from multiplication factor to subcritical k
-      auto [k0, k1] = convert_m_to_k(simulation::k, simulation::k_std);
-      k = k0;
-      k_std = k1;
-    } else {
-      k = simulation::k;
-      k_std = simulation::k_std;
-    }
     fmt::print("   {:8.5f} +/-{:8.5f}", k, k_std);
   }
   fmt::print("\n");
   std::fflush(stdout);
 }
-
 //==============================================================================
 
 void show_time(const char* label, double secs, int indent_level)

@@ -171,7 +171,8 @@ extern double free_gas_threshold;        //!< Threshold multiplier for free gas
                                          //!< scattering treatment
 extern bool calculate_subcritical_k;     //!< Calculate subcritical k in fixed
                                          //!< source mode
-
+extern bool
+  print_all_k_factors; //!< Print k-effective for all batches and generations
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows
 extern int max_secondaries;       //!< maximum number of secondaries in the bank

@@ -4,6 +4,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/collision_track.h"
+#include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -309,10 +310,12 @@ int current_gen;
 bool initialized {false};
 double keff {1.0};
 double keff_std;
-double k {1.0};
+double k;
 double k_std;
-double kq {1.0};
+double kq;
 double kq_std;
+double ks;
+double ks_std;
 double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
@@ -334,7 +337,12 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<array<double, 2>> k_generation;
 vector<array<double, 2>> kq_generation;
+vector<array<double, 2>> ks_generation;
 vector<int64_t> work_index;
+
+// k estimator × kq estimator products
+std::array<std::array<double, N_K_EST>, N_K_EST> k_kq_products;
+double k_kq_product;
 
 } // namespace simulation
 
@@ -418,6 +426,7 @@ void finalize_batch()
 {
   // Reduce tallies onto master process and accumulate
   simulation::time_tallies.start();
+  simulation::k_kq_product = simulation::k_kq_products[0][0];
   accumulate_tallies();
   simulation::time_tallies.stop();
 
@@ -626,9 +635,20 @@ void finalize_generation()
     calculate_average_keff();
     if (settings::run_mode == RunMode::FIXED_SOURCE &&
         settings::calculate_subcritical_k) {
-      calculate_generation_keff(true);
-      calculate_average_keff(true);
+      calculate_generation_keff(KeffType::kq);
+      calculate_average_keff(KeffType::kq);
+      calculate_generation_keff(KeffType::ks);
+      calculate_average_keff(KeffType::ks);
     }
+
+    // fmt::print("Kq {} Kq std {}\n", simulation::kq, simulation::kq_std);
+    // fmt::print("Kq_generation {} Kq std {}\n",
+    // simulation::kq_generation_val[0],
+    //   simulation::kq_generation_val[1]);
+    // fmt::print("Ks {} Ks std {}\n", simulation::ks, simulation::ks_std);
+    // fmt::print("Ks_generation {} Ks std {}\n",
+    //   simulation::ks_generation.back()[0],
+    //   simulation::ks_generation.back()[1]);
 
     // Write generation output
     if (mpi::master && settings::verbosity >= 7) {
@@ -861,6 +881,38 @@ void broadcast_results()
   simulation::k_col_abs = temp[0];
   simulation::k_col_tra = temp[1];
   simulation::k_abs_tra = temp[2];
+
+  // These guys are needed so that non-master processes can calculate the
+  // combined estimate of kq
+  double temp[] {
+    simulation::kq_col_abs, simulation::kq_col_tra, simulation::kq_abs_tra};
+  MPI_Bcast(temp, 3, MPI_DOUBLE, 0, mpi::intracomm);
+  simulation::kq_col_abs = temp[0];
+  simulation::kq_col_tra = temp[1];
+  simulation::kq_abs_tra = temp[2];
+
+  double temp[simulation::N_K_EST * simulation::N_K_EST];
+
+  if (mpi::master) {
+    int idx = 0;
+    for (int i = 0; i < simulation::N_K_EST; ++i) {
+      for (int j = 0; j < simulation::N_K_EST; ++j) {
+        temp[idx++] = simulation::k_kq_products[i][j];
+      }
+    }
+  }
+
+  MPI_Bcast(temp, simulation::N_K_EST * simulation::N_K_EST, MPI_DOUBLE, 0,
+    mpi::intracomm);
+
+  if (!mpi::master) {
+    int idx = 0;
+    for (int i = 0; i < simulation::N_K_EST; ++i) {
+      for (int j = 0; j < simulation::N_K_EST; ++j) {
+        simulation::k_kq_products[i][j] = temp[idx++];
+      }
+    }
+  }
 }
 
 #endif

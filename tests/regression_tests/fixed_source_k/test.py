@@ -113,6 +113,7 @@ def slab_model():
     model.settings.batches = 20
     model.settings.run_mode = 'fixed source'
     model.settings.calculate_subcritical_k = True
+    model.settings.print_all_k_factors = True
 
     space = openmc.stats.Box([0,-1000,-1000],[10,1000,1000])
     model.settings.source = openmc.IndependentSource(

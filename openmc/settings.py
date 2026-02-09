@@ -371,6 +371,8 @@ class Settings:
     calculate_subcritical_k : bool
         Indicate whether to calculate and report the subcritical multiplication
         factor k in fixed source simulations
+    print_all_k_factors : bool
+        In subcritical multipliction factor calculations, indicate whether to print all k factors (k, ks, kq) during the transport calculation
     """
 
     def __init__(self, **kwargs):
@@ -384,6 +386,7 @@ class Settings:
         self._particles = None
         self._keff_trigger = None
         self._calculate_subcritical_k = False
+        self._print_all_k_factors = False
 
         # Energy mode subelement
         self._energy_mode = None
@@ -1413,6 +1416,18 @@ class Settings:
             raise ValueError("calculate_subcritical_k can only be set when "
                              "run_mode is 'fixed source'")
         self._calculate_subcritical_k = calculate_subcritical_k
+    
+    @property
+    def print_all_k_factors(self) -> bool:
+        return self._print_all_k_factors
+    
+    @print_all_k_factors.setter
+    def print_all_k_factors(self, print_all_k_factors: bool):
+        cv.check_type('print all k factors', print_all_k_factors, bool)
+        if not self._run_mode == RunMode.FIXED_SOURCE or not self._calculate_subcritical_k:
+            raise ValueError("print_all_k_factors can only be set when "
+                             "run_mode is 'fixed source' and calculate_subcritical_k is True")
+        self._print_all_k_factors = print_all_k_factors
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1950,6 +1965,11 @@ class Settings:
         if self._calculate_subcritical_k:
             elem = ET.SubElement(root, "calculate_subcritical_k")
             elem.text = str(self._calculate_subcritical_k).lower()
+    
+    def _create_print_all_k_factors_subelement(self, root):
+        if self._print_all_k_factors:
+            elem = ET.SubElement(root, "print_all_k_factors")
+            elem.text = str(self._print_all_k_factors).lower()
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -2422,6 +2442,11 @@ class Settings:
         if text is not None:
             self.calculate_subcritical_k = text in ('true', '1')
 
+    def _print_all_k_factors_from_xml_element(self, root):
+        text = get_text(root, 'print_all_k_factors')
+        if text is not None:
+            self.print_all_k_factors = text in ('true', '1')
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2495,6 +2520,7 @@ class Settings:
         self._create_source_rejection_fraction_subelement(element)
         self._create_free_gas_threshold_subelement(element)
         self._create_calculate_subcritical_k_subelement(element)
+        self._create_print_all_k_factors_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)

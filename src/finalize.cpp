@@ -209,6 +209,10 @@ int openmc_reset()
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;
   simulation::k_abs_tra = 0.0;
+  simulation::kq_col_abs = 0.0;
+  simulation::kq_col_tra = 0.0;
+  simulation::kq_abs_tra = 0.0;
+  simulation::k_kq_products.fill({});
   simulation::k_sum = {0.0, 0.0};
   simulation::satisfy_triggers = false;
 

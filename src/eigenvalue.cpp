@@ -24,8 +24,9 @@
 
 #include <algorithm> // for min
 #include <cmath>     // for sqrt, abs, pow
-#include <iterator>  // for back_inserter
-#include <limits>    //for infinity
+#include <fmt/ostream.h>
+#include <iterator> // for back_inserter
+#include <limits>   //for infinity
 #include <string>
 
 namespace openmc {
@@ -38,8 +39,10 @@ namespace simulation {
 
 array<double, 2> keff_generation;
 array<double, 2> kq_generation_val;
+array<double, 2> ks_generation_val;
 array<double, 2> k_sum;
 array<double, 2> kq_sum;
+array<double, 2> ks_sum;
 vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
 
@@ -48,44 +51,86 @@ xt::xtensor<double, 1> source_frac;
 //==============================================================================
 // Non-member functions
 //==============================================================================
-void calculate_generation_keff()
+
+double compute_cov_M_kq(int i, int j)
 {
-  calculate_generation_keff(false);
+  // Number of active generations
+  int N = settings::n_particles;
+
+  // Note before conversion, k_generation is M
+  auto [mean_m, m_std] = simulation::k_generation.back();
+  double mean_kq = simulation::kq_generation.back()[0];
+
+  double sum_k_kq = simulation::k_kq_products[0][0] - simulation::k_kq_product;
+  return (sum_k_kq - mean_m * mean_kq) / (N - 1);
 }
 
-void calculate_generation_keff(bool is_kq)
+void calculate_generation_ks()
+{
+  auto [m, m_std] = simulation::k_generation.back();
+  auto [kq, kq_std] = simulation::kq_generation.back();
+  double ks_mean = 1 - kq / (m - 1);
+  double cov_M_kq = compute_cov_M_kq(0, 0);
+  double rho = cov_M_kq / (m_std * kq_std);
+  double ks_std =
+    std::sqrt(std::pow(kq_std, 2) / std::pow(m - 1, 2) +
+              std::pow(kq, 2) * std::pow(m_std, 2) / std::pow(m - 1, 4) -
+              2 * kq / std::pow(m - 1, 3) * rho * m_std * kq_std);
+  simulation::ks_generation.push_back({ks_mean, ks_std});
+}
+
+void calculate_generation_keff()
+{
+  calculate_generation_keff(KeffType::k);
+}
+
+void calculate_generation_keff(KeffType type)
 {
   // Initialize variables
-  auto& gt =
-    is_kq ? simulation::global_tallies_first_gen : simulation::global_tallies;
-  auto& keff_generation =
-    is_kq ? simulation::kq_generation_val : simulation::keff_generation;
-  auto& k_generation =
-    is_kq ? simulation::kq_generation : simulation::k_generation;
+  xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> gt;
+  array<double, 2>* keff_generation_ptr;
+  vector<array<double, 2>>* k_generation_ptr;
+  switch (type) {
+  case KeffType::k:
+    gt = simulation::global_tallies;
+    keff_generation_ptr = &simulation::keff_generation;
+    k_generation_ptr = &simulation::k_generation;
+    break;
+  case KeffType::kq:
+    gt = simulation::global_tallies_first_gen;
+    keff_generation_ptr = &simulation::kq_generation_val;
+    k_generation_ptr = &simulation::kq_generation;
+    break;
+  case KeffType::ks:
+    calculate_generation_ks();
+    return;
+  }
 
-  keff_generation[0] =
-    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) - keff_generation[0];
-  keff_generation[1] =
-    gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) - keff_generation[1];
+  (*keff_generation_ptr)[0] =
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+    (*keff_generation_ptr)[0];
+  (*keff_generation_ptr)[1] =
+    gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) -
+    (*keff_generation_ptr)[1];
 
   array<double, 2> keff_reduced;
 #ifdef OPENMC_MPI
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Combine values across all processors
-    MPI_Allreduce(&keff_generation[0], &keff_reduced[0], 1, MPI_DOUBLE, MPI_SUM,
-      mpi::intracomm);
-    MPI_Allreduce(&keff_generation[1], &keff_reduced[1], 1, MPI_DOUBLE, MPI_SUM,
-      mpi::intracomm);
+    MPI_Allreduce(&(*keff_generation_ptr)[0], &keff_reduced[0], 1, MPI_DOUBLE,
+      MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(&(*keff_generation_ptr)[1], &keff_reduced[1], 1, MPI_DOUBLE,
+      MPI_SUM, mpi::intracomm);
   } else {
     // If using random ray, MPI parallelism is provided by domain replication.
     // As such, all fluxes will be reduced at the end of each transport sweep,
     // such that all ranks have identical scalar flux vectors, and will all
     // independently compute the same value of k. Thus, there is no need to
     // perform any additional MPI reduction here.
-    keff_reduced = keff_generation;
+    keff_reduced = *keff_generation_ptr;
   }
 #else
-  keff_reduced = keff_generation;
+  keff_reduced = *keff_generation_ptr;
 #endif
 
   // Normalize single batch estimate of k
@@ -97,7 +142,7 @@ void calculate_generation_keff(bool is_kq)
   double k_mean = keff_reduced[0];
   double k_std = std::sqrt(
     (keff_reduced[1] - std::pow(k_mean, 2)) / (settings::n_particles - 1));
-  k_generation.push_back({k_mean, k_std});
+  k_generation_ptr->push_back({k_mean, k_std});
 }
 
 std::pair<double, double> convert_m_to_k(double m, double m_std)
@@ -401,10 +446,10 @@ void synchronize_bank()
 
 void calculate_average_keff()
 {
-  calculate_average_keff(false);
+  calculate_average_keff(KeffType::k);
 }
 
-void calculate_average_keff(bool is_kq)
+void calculate_average_keff(KeffType type)
 {
   // Determine overall generation and number of active generations
   int i = overall_generation() - 1;
@@ -418,27 +463,47 @@ void calculate_average_keff(bool is_kq)
   // Initialize variables
   double keff;
   double keff_std;
-  auto& gt =
-    is_kq ? simulation::global_tallies_first_gen : simulation::global_tallies;
-  auto& keff_generation =
-    is_kq ? simulation::kq_generation_val : simulation::keff_generation;
-  auto& k_generation =
-    is_kq ? simulation::kq_generation : simulation::k_generation;
-  auto& k_sum = is_kq ? simulation::kq_sum : simulation::k_sum;
-  auto& k = is_kq ? simulation::kq : simulation::k;
-  auto& k_std = is_kq ? simulation::kq_std : simulation::k_std;
+
+  array<double, 2>* keff_generation_ptr;
+  vector<array<double, 2>>* k_generation_ptr;
+  array<double, 2>* k_sum_ptr;
+  double* k_ptr;
+  double* k_std_ptr;
+  switch (type) {
+  case KeffType::k:
+    keff_generation_ptr = &simulation::keff_generation;
+    k_generation_ptr = &simulation::k_generation;
+    k_sum_ptr = &simulation::k_sum;
+    k_ptr = &simulation::k;
+    k_std_ptr = &simulation::k_std;
+    break;
+  case KeffType::kq:
+    keff_generation_ptr = &simulation::kq_generation_val;
+    k_generation_ptr = &simulation::kq_generation;
+    k_sum_ptr = &simulation::kq_sum;
+    k_ptr = &simulation::kq;
+    k_std_ptr = &simulation::kq_std;
+    break;
+  case KeffType::ks:
+    keff_generation_ptr = &simulation::ks_generation_val;
+    k_generation_ptr = &simulation::ks_generation;
+    k_sum_ptr = &simulation::ks_sum;
+    k_ptr = &simulation::ks;
+    k_std_ptr = &simulation::ks_std;
+    break;
+  }
 
   if (n <= 0) {
     // For inactive generations, use current generation k as estimate for next
     // generation
-    keff = k_generation[i][0];
+    keff = (*k_generation_ptr)[i][0];
   } else {
     // Sample mean of keff
-    k_sum[0] += k_generation[i][0];
-    k_sum[1] += std::pow(k_generation[i][0], 2);
+    (*k_sum_ptr)[0] += (*k_generation_ptr)[i][0];
+    (*k_sum_ptr)[1] += std::pow((*k_generation_ptr)[i][0], 2);
 
     // Determine mean
-    keff = k_sum[0] / n;
+    keff = (*k_sum_ptr)[0] / n;
     if (n > 1) {
       double t_value;
       if (settings::confidence_intervals) {
@@ -450,8 +515,8 @@ void calculate_average_keff(bool is_kq)
       }
 
       // Standard deviation of the sample mean of k
-      keff_std =
-        t_value * std::sqrt((k_sum[1] / n - std::pow(keff, 2)) / (n - 1));
+      keff_std = t_value *
+                 std::sqrt(((*k_sum_ptr)[1] / n - std::pow(keff, 2)) / (n - 1));
 
       // In some cases (such as an infinite medium problem), random ray
       // may estimate k exactly and in an unvarying manner between iterations.
@@ -464,9 +529,9 @@ void calculate_average_keff(bool is_kq)
       }
     }
   }
-  k = keff;
-  k_std = keff_std;
-  if (settings::run_mode == RunMode::EIGENVALUE and !is_kq) {
+  (*k_ptr) = keff;
+  (*k_std_ptr) = keff_std;
+  if (settings::run_mode == RunMode::EIGENVALUE and type == KeffType::k) {
     // Only set simulation::keff for eigenvalue mode, since it's used to bias
     // physics
     simulation::keff = keff;

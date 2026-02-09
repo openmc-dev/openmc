@@ -41,8 +41,9 @@ void calculate_generation_keff();
 
 //! Collect/normalize the tracklength keff from each process
 //!
-//! \param[in] is_kq  If true, operate on kq tallies instead of keff
-void calculate_generation_keff(bool is_kq);
+//! Depending on KeffType, this function will calculate either the kq or ks
+//! generation keff
+void calculate_generation_keff(KeffType type);
 
 std::pair<double, double> convert_m_to_k(double m, double m_std);
 
@@ -52,7 +53,7 @@ std::pair<double, double> convert_m_to_k(double m, double m_std);
 //! the mean and standard deviation of the mean of k-effective over active
 //! generations. It also broadcasts the value from the master process.
 void calculate_average_keff();
-void calculate_average_keff(bool is_kq);
+void calculate_average_keff(KeffType type);
 
 //! Calculates a minimum variance estimate of k-effective
 //!

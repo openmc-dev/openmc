@@ -169,7 +169,7 @@ def create_macro_dict(xs_micro):
 def create_openmc_2mg_libs(names):
     """Built a micro/macro two group openmc MGXS libraries"""
     # Initialized library params
-    group_edges = [0.0, 0.625, 20.0e6]
+    group_edges = [1e-5, 0.625, 20.0e6]
     groups = openmc.mgxs.EnergyGroups(group_edges=group_edges)
     mg_cross_sections_file_micro = openmc.MGXSLibrary(groups)
     mg_cross_sections_file_macro = openmc.MGXSLibrary(groups)

@@ -12,7 +12,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super().__init__(*args, **kwargs)
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[1e-5, 0.625, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)

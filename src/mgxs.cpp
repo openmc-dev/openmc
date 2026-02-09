@@ -273,7 +273,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
 
 Mgxs::Mgxs(hid_t xs_id, const vector<double>& temperature,
   const vector<double>& energy_bins, int num_delay)
-  : num_groups(energy_bins.size()), num_delayed_groups(num_delay)
+  : num_groups(energy_bins.size() - 1), num_delayed_groups(num_delay)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
@@ -374,7 +374,7 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
           }
         }
       } // end switch
-    }   // end microscopic temperature loop
+    } // end microscopic temperature loop
 
     // Now combine the microscopic data at each relevant temperature
     // We will do this by treating the multiple temperatures of a nuclide as

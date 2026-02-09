@@ -28,6 +28,7 @@ enum class FilterType {
   ENERGY_FUNCTION,
   ENERGY,
   ENERGY_OUT,
+  EVENT,
   LEGENDRE,
   MATERIAL,
   MATERIALFROM,

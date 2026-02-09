@@ -20,6 +20,7 @@
 #include "openmc/tallies/filter_distribcell.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_energyfunc.h"
+#include "openmc/tallies/filter_event.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_material.h"
 #include "openmc/tallies/filter_materialfrom.h"
@@ -125,6 +126,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<CollisionFilter>(id);
   } else if (type == "energyout") {
     return Filter::create<EnergyoutFilter>(id);
+  } else if (type == "event") {
+    return Filter::create<EventFilter>(id);
   } else if (type == "legendre") {
     return Filter::create<LegendreFilter>(id);
   } else if (type == "material") {

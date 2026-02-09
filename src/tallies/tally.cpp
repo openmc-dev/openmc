@@ -173,6 +173,10 @@ Tally::Tally(pugi::xml_node node)
       estimator_ = TallyEstimator::COLLISION;
     } else if (filt_type == FilterType::PARTICLE_PRODUCTION) {
       estimator_ = TallyEstimator::ANALOG;
+    } else if (filt_type == FilterType::EVENT) {
+      if (estimator_ == TallyEstimator::TRACKLENGTH) {
+        estimator_ = TallyEstimator::COLLISION;
+      }
     }
   }
 

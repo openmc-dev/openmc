@@ -16,7 +16,9 @@
     </material>
   </materials>
   <geometry>
-    <cell id="1" name="Fuel" material="1" region="-1" temperature="395.0" universe="0"/>
+    <cell id="1" name="Fuel" material="1" region="-1" universe="0">
+      <temperature>395.0</temperature>
+    </cell>
     <cell id="2" name="Cladding" material="2" region="1 -2" universe="0"/>
     <cell id="3" name="Water" material="3" region="2 3 -4 5 -6" universe="0"/>
     <surface id="1" name="Fuel OR" type="z-cylinder" coeffs="0 0 0.39218"/>

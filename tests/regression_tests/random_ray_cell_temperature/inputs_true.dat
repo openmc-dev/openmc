@@ -12,9 +12,15 @@
     </material>
   </materials>
   <geometry>
-    <cell id="1" name="fuel inner a" material="1" region="-2" temperature="395.0 395.0 395.0 395.0 395.0 395.0 395.0 395.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0" universe="1"/>
-    <cell id="2" name="fuel inner b" material="1" region="2 -3" temperature="395.0 395.0 395.0 395.0 395.0 395.0 395.0 395.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0" universe="1"/>
-    <cell id="3" name="fuel inner c" material="1" region="3 -1" temperature="395.0 395.0 395.0 395.0 395.0 395.0 395.0 395.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0" universe="1"/>
+    <cell id="1" name="fuel inner a" material="1" region="-2" universe="1">
+      <temperature>395.0 395.0 395.0 395.0 395.0 395.0 395.0 395.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0</temperature>
+    </cell>
+    <cell id="2" name="fuel inner b" material="1" region="2 -3" universe="1">
+      <temperature>395.0 395.0 395.0 395.0 395.0 395.0 395.0 395.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0</temperature>
+    </cell>
+    <cell id="3" name="fuel inner c" material="1" region="3 -1" universe="1">
+      <temperature>395.0 395.0 395.0 395.0 395.0 395.0 395.0 395.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0 295.0</temperature>
+    </cell>
     <cell id="4" name="moderator inner a" material="2" region="1 -4" universe="1"/>
     <cell id="5" name="moderator outer b" material="2" region="4 -5" universe="1"/>
     <cell id="6" name="moderator outer c" material="2" region="5" universe="1"/>

@@ -10,7 +10,7 @@ from tests.testing_harness import PyAPITestHarness
 
 def create_library():
     # Instantiate the energy group data and file object
-    groups = openmc.mgxs.EnergyGroups(group_edges=[0.0, 0.625, 20.0e6])
+    groups = openmc.mgxs.EnergyGroups(group_edges=[1e-5, 0.625, 20.0e6])
     n_dg = 2
 
     mg_cross_sections_file = openmc.MGXSLibrary(groups)

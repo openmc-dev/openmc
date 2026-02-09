@@ -285,6 +285,7 @@ enum class MgxsType {
   PROMPT_NU_FISSION,
   DELAYED_NU_FISSION,
   NU_FISSION,
+  CHI,
   CHI_PROMPT,
   CHI_DELAYED
 };

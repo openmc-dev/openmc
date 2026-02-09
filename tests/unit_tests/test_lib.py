@@ -900,17 +900,14 @@ def test_id_map(lib_init):
                              [(2, 0, 2), (1, 0, 1), (2, 0, 2)],
                              [(3, 0, 3), (2, 0, 2), (3, 0, 3)]], dtype='int32')
 
-    # create a plot object
-    s = openmc.lib.plot._PlotBase()
-    s.width = 1.26
-    s.height = 1.26
-    s.v_res = 3
-    s.h_res = 3
-    s.origin = (0.0, 0.0, 0.0)
-    s.basis = 'xy'
-    s.level = -1
-
-    ids = openmc.lib.plot.id_map(s)
+    with pytest.warns(FutureWarning, match="deprecated"):
+        ids = openmc.lib.plot.id_map(
+            origin=(0.0, 0.0, 0.0),
+            width=(1.26, 1.26),
+            basis='xy',
+            pixels=(3, 3),
+            level=-1
+        )
     assert np.array_equal(expected_ids, ids)
 
 
@@ -920,17 +917,14 @@ def test_property_map(lib_init):
          [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
          [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
 
-    # create a plot object
-    s = openmc.lib.plot._PlotBase()
-    s.width = 1.26
-    s.height = 1.26
-    s.v_res = 3
-    s.h_res = 3
-    s.origin = (0.0, 0.0, 0.0)
-    s.basis = 'xy'
-    s.level = -1
-
-    properties = openmc.lib.plot.property_map(s)
+    with pytest.warns(FutureWarning, match="deprecated"):
+        properties = openmc.lib.plot.property_map(
+            origin=(0.0, 0.0, 0.0),
+            width=(1.26, 1.26),
+            basis='xy',
+            pixels=(3, 3),
+            level=-1
+        )
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 

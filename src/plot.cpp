@@ -948,21 +948,37 @@ void Plot::draw_mesh_lines(ImageData& data) const
   rgb = meshlines_color_;
 
   int ax1, ax2;
+  Position expected_u {};
+  Position expected_v {};
   switch (basis_) {
   case PlotBasis::xy:
     ax1 = 0;
     ax2 = 1;
+    expected_u = {width_[0], 0.0, 0.0};
+    expected_v = {0.0, width_[1], 0.0};
     break;
   case PlotBasis::xz:
     ax1 = 0;
     ax2 = 2;
+    expected_u = {width_[0], 0.0, 0.0};
+    expected_v = {0.0, 0.0, width_[1]};
     break;
   case PlotBasis::yz:
     ax1 = 1;
     ax2 = 2;
+    expected_u = {0.0, width_[0], 0.0};
+    expected_v = {0.0, 0.0, width_[1]};
     break;
   default:
     UNREACHABLE();
+  }
+
+  // Meshlines rely on axis-aligned indexing in global coordinates.
+  constexpr double rel_tol {1e-12};
+  double span_tol = rel_tol * (1.0 + u_span_.norm() + v_span_.norm());
+  if ((u_span_ - expected_u).norm() > span_tol ||
+      (v_span_ - expected_v).norm() > span_tol) {
+    fatal_error("Meshlines are only supported for axis-aligned slice plots.");
   }
 
   Position ll_plot {origin_};
@@ -1094,9 +1110,7 @@ void Plot::create_voxel() const
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
   SlicePlotBase pltbase;
-  pltbase.width_ = width_;
   pltbase.origin_ = origin_;
-  pltbase.basis_ = PlotBasis::xy;
   pltbase.u_span_ = {width_.x, 0.0, 0.0};
   pltbase.v_span_ = {0.0, width_.y, 0.0};
   pltbase.pixels() = pixels();
@@ -1882,6 +1896,12 @@ void PhongRay::on_intersection()
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 {
+  static bool warned {false};
+  if (!warned) {
+    warning("openmc_id_map is deprecated and will be removed in a future "
+            "release. Use openmc_slice_plot.");
+    warned = true;
+  }
 
   auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
   if (!plt) {
@@ -1903,6 +1923,12 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 
 extern "C" int openmc_property_map(const void* plot, double* data_out)
 {
+  static bool warned {false};
+  if (!warned) {
+    warning("openmc_property_map is deprecated and will be removed in a future "
+            "release. Use openmc_slice_plot.");
+    warned = true;
+  }
 
   auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
   if (!plt) {
@@ -1960,8 +1986,6 @@ extern "C" int openmc_slice_plot(const double origin[3], const double u_span[3],
     plot_params.origin_ = Position {origin[0], origin[1], origin[2]};
     plot_params.u_span_ = u_span_pos;
     plot_params.v_span_ = v_span_pos;
-    plot_params.width_ = Position {u_norm, v_norm, 0.0};
-    plot_params.basis_ = SlicePlotBase::PlotBasis::xy;
     plot_params.pixels_[0] = pixels[0];
     plot_params.pixels_[1] = pixels[1];
     plot_params.slice_color_overlaps_ = color_overlaps;

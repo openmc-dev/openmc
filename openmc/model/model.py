@@ -1130,23 +1130,21 @@ class Model:
         origin, width, pixels = self._set_plot_defaults(
             origin, width, pixels, basis)
 
-        # initialize the openmc.lib.plot._PlotBase object
-        plot_obj = openmc.lib.plot._PlotBase()
-        plot_obj.origin = origin
-        plot_obj.width = width[0]
-        plot_obj.height = width[1]
-        plot_obj.h_res = pixels[0]
-        plot_obj.v_res = pixels[1]
-        plot_obj.basis = basis
-        plot_obj.color_overlaps = color_overlaps
-
         # Silence output by default. Also set arguments to start in volume
         # calculation mode to avoid loading cross sections
         init_kwargs.setdefault('output', False)
         init_kwargs.setdefault('args', ['-c'])
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            ids = openmc.lib.id_map(plot_obj)
+            ids, _ = openmc.lib.slice_plot(
+                origin=origin,
+                width=width,
+                basis=basis,
+                pixels=pixels,
+                color_overlaps=color_overlaps,
+                level=-1,
+                include_properties=False,
+            )
 
         return ids
 

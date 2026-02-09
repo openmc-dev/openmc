@@ -9,7 +9,7 @@
 #include "openmc/secondary_correlated.h"
 #include "openmc/vector.h"
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 #include <hdf5.h>
 
 namespace openmc {

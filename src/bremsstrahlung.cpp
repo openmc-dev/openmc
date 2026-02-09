@@ -6,7 +6,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 
-#include "xtensor/xmath.hpp"
+#include "openmc/tensor.h"
 
 namespace openmc {
 

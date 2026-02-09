@@ -30,7 +30,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #ifdef OPENMC_MPI
 #include <mpi.h>

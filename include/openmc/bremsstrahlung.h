@@ -3,7 +3,7 @@
 
 #include "openmc/particle.h"
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 namespace openmc {
 

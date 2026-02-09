@@ -9,7 +9,7 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/bounding_box.h"
 #include "openmc/error.h"

@@ -6,7 +6,7 @@
 
 #include <cstdint> // for int64_t
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 #include <hdf5.h>
 
 #include "openmc/array.h"

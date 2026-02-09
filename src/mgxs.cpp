@@ -5,10 +5,7 @@
 #include <cstdlib>
 #include <sstream>
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xsort.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/error.h"

@@ -5,7 +5,7 @@
 #define OPENMC_SECONDARY_CORRELATED_H
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/angle_energy.h"
 #include "openmc/distribution.h"

@@ -7,8 +7,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "xtensor/xmanipulation.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 #ifdef USE_LIBPNG

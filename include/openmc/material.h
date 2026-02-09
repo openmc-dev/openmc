@@ -6,7 +6,7 @@
 
 #include "openmc/span.h"
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 #include <hdf5.h>
 
 #include "openmc/bremsstrahlung.h"

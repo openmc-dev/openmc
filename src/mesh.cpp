@@ -16,13 +16,7 @@
 #include "mpi.h"
 #endif
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xeval.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xsort.hpp"
-#include "xtensor/xtensor.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h> // for fmt
 
 #include "openmc/capi.h"

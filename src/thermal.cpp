@@ -3,12 +3,7 @@
 #include <algorithm> // for sort, move, min, max, find
 #include <cmath>     // for round, sqrt, abs
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xsort.hpp"
-#include "xtensor/xtensor.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/constants.h"

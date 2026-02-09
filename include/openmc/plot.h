@@ -7,7 +7,7 @@
 #include <unordered_set>
 
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
+#include "openmc/tensor.h"
 
 #include "hdf5.h"
 #include "openmc/cell.h"

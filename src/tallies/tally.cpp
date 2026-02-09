@@ -35,9 +35,7 @@
 #include "openmc/tallies/filter_time.h"
 #include "openmc/xml_interface.h"
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xbuilder.hpp" // for empty_like
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include <algorithm> // for max, set_union

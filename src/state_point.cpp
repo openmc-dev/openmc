@@ -4,8 +4,7 @@
 #include <cstdint> // for int64_t
 #include <string>
 
-#include "xtensor/xbuilder.hpp" // for empty_like
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
@@ -918,13 +917,19 @@ void write_tally_results_nr(hid_t file_id)
       write_attribute(file_id, "tallies_present", 1);
     }
 
-    // Get view of accumulated tally values
-    auto values_view = xt::view(t->results_, xt::all(), xt::all(),
-      xt::range(static_cast<int>(TallyResult::SUM),
-        static_cast<int>(TallyResult::SUM_SQ) + 1));
+    // Extract sub-range indices for SUM and SUM_SQ
+    std::size_t k_start = static_cast<std::size_t>(TallyResult::SUM);
+    std::size_t k_end = static_cast<std::size_t>(TallyResult::SUM_SQ) + 1;
+    std::size_t n_k = k_end - k_start;
+    std::size_t dim0 = t->results_.shape(0);
+    std::size_t dim1 = t->results_.shape(1);
 
-    // Make copy of tally values in contiguous array
-    xt::xtensor<double, 3> values = values_view;
+    // Make copy of accumulated tally values in contiguous array
+    xt::xtensor<double, 3> values({dim0, dim1, n_k});
+    for (std::size_t i = 0; i < dim0; ++i)
+      for (std::size_t j = 0; j < dim1; ++j)
+        for (std::size_t k = 0; k < n_k; ++k)
+          values(i, j, k) = t->results_(i, j, k_start + k);
 
     if (mpi::master) {
       // Open group for tally
@@ -942,15 +947,18 @@ void write_tally_results_nr(hid_t file_id)
       // regular TallyResults array
       if (simulation::current_batch == settings::n_max_batches ||
           simulation::satisfy_triggers) {
-        values_view = values;
+        for (std::size_t i = 0; i < dim0; ++i)
+          for (std::size_t j = 0; j < dim1; ++j)
+            for (std::size_t k = 0; k < n_k; ++k)
+              t->results_(i, j, k_start + k) = values(i, j, k);
       }
 
       // Put in temporary tally result
       xt::xtensor<double, 3> results_copy = xt::zeros_like(t->results_);
-      auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
-        xt::range(static_cast<int>(TallyResult::SUM),
-          static_cast<int>(TallyResult::SUM_SQ) + 1));
-      copy_view = values;
+      for (std::size_t i = 0; i < dim0; ++i)
+        for (std::size_t j = 0; j < dim1; ++j)
+          for (std::size_t k = 0; k < n_k; ++k)
+            results_copy(i, j, k_start + k) = values(i, j, k);
 
       // Write reduced tally results to file
       auto shape = results_copy.shape();

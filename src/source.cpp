@@ -10,7 +10,7 @@
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
 #endif
 
-#include "xtensor/xadapt.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"

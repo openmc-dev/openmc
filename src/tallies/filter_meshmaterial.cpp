@@ -1,5 +1,6 @@
 #include "openmc/tallies/filter_meshmaterial.h"
 
+#include <cassert>
 #include <utility> // for move
 
 #include <fmt/core.h>

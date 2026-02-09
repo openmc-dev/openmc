@@ -32,7 +32,7 @@
 
 #include <algorithm> // for max, min, max_element
 #include <cmath>     // for sqrt, exp, log, abs, copysign
-#include <xtensor/xview.hpp>
+#include "openmc/tensor.h"
 
 namespace openmc {
 

@@ -4,8 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "hdf5.h"

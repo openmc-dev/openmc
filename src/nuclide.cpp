@@ -17,8 +17,7 @@
 
 #include <fmt/core.h>
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include <algorithm> // for sort, min_element
 #include <cassert>

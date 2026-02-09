@@ -4,7 +4,7 @@
 #ifndef OPENMC_SCATTDATA_H
 #define OPENMC_SCATTDATA_H
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/constants.h"
 #include "openmc/vector.h"

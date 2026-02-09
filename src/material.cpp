@@ -8,9 +8,7 @@
 #include <string>
 #include <unordered_set>
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xoperation.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/capi.h"
 #include "openmc/container_util.h"

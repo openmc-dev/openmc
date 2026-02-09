@@ -4,8 +4,7 @@
 #include <cmath>
 #include <numeric>
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/constants.h"
 #include "openmc/error.h"

@@ -13,11 +13,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xoperation.hpp"
-#include "xtensor/xslice.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include <cmath>
 #include <fmt/core.h>

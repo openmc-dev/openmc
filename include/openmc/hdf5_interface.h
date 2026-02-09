@@ -11,8 +11,7 @@
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xarray.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/array.h"
 #include "openmc/error.h"
@@ -497,11 +496,12 @@ inline void write_dataset(
 }
 
 // Template for xarray, xtensor, etc.
-template<typename D>
+template<typename Container,
+  typename = std::enable_if_t<xt::is_xt_container<std::decay_t<Container>>::value>>
 inline void write_dataset(
-  hid_t obj_id, const char* name, const xt::xcontainer<D>& arr)
+  hid_t obj_id, const char* name, const Container& arr)
 {
-  using T = typename D::value_type;
+  using T = typename std::decay_t<Container>::value_type;
   auto s = arr.shape();
   vector<hsize_t> dims {s.cbegin(), s.cend()};
   write_dataset_lowlevel(obj_id, dims.size(), dims.data(), name,

@@ -5,7 +5,7 @@
 #define OPENMC_DISTRIBUTION_ENERGY_H
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/constants.h"
 #include "openmc/endf.h"

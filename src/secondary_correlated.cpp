@@ -5,8 +5,7 @@
 #include <cstddef>  // for size_t
 #include <iterator> // for back_inserter
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"

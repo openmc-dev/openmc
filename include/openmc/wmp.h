@@ -2,7 +2,7 @@
 #define OPENMC_WMP_H
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include <complex>
 #include <string>

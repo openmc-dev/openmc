@@ -295,6 +295,8 @@ private:
   UPtrDist time_;   //!< Shared time distribution
   vector<unique_ptr<IndependentSource>> sources_; //!< Sub-source distributions
   vector<double> probabilities_; //!< Emission probability per sub-source
+  double prob_at_least_one_; //!< P(>=1 emission) = 1 - prod(1-p_i)
+  vector<double> first_success_cdf_; //!< CDF for "first success" distribution
 };
 
 //==============================================================================

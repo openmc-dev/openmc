@@ -722,6 +722,23 @@ CoincidentSource::CoincidentSource(pugi::xml_node node) : Source(node)
   if (sources_.size() < 2) {
     fatal_error("A coincident source must have at least 2 sub-sources.");
   }
+
+  // Precompute P(>=1 emission) and the "first success" CDF for direct
+  // conditional sampling when all probabilities are < 1.
+  double prod_complement = 1.0;
+  for (double p : probabilities_)
+    prod_complement *= (1.0 - p);
+  prob_at_least_one_ = 1.0 - prod_complement;
+
+  // Build CDF: q_i = p_i * prod_{j<i}(1 - p_j)
+  first_success_cdf_.resize(sources_.size());
+  double cumulative = 0.0;
+  double running_complement = 1.0;
+  for (size_t i = 0; i < sources_.size(); ++i) {
+    cumulative += probabilities_[i] * running_complement;
+    first_success_cdf_[i] = cumulative / prob_at_least_one_;
+    running_complement *= (1.0 - probabilities_[i]);
+  }
 }
 
 SourceSite CoincidentSource::sample(uint64_t* seed) const
@@ -738,14 +755,38 @@ vector<SourceSite> CoincidentSource::sample_sites(uint64_t* seed) const
   // Sample shared time once
   auto [time, time_wgt] = time_->sample(seed);
 
-  // Build a site for each sub-source, applying emission probabilities
+  // Build a site for each sub-source, applying emission probabilities.
+  // To guarantee at least one particle, we use direct conditional sampling:
+  // pick a guaranteed "first success" source, then roll the rest normally.
+  // Weights are scaled by P(>=1) to remain unbiased.
   vector<SourceSite> sites;
   sites.reserve(sources_.size());
 
+  // Determine the guaranteed source via the first-success CDF
+  size_t guaranteed = 0;
+  if (prob_at_least_one_ < 1.0) {
+    double xi = prn(seed);
+    for (size_t i = 0; i < sources_.size(); ++i) {
+      if (xi < first_success_cdf_[i]) {
+        guaranteed = i;
+        break;
+      }
+    }
+  }
+
   for (size_t i = 0; i < sources_.size(); ++i) {
-    // Roll against emission probability for this sub-source
-    if (prn(seed) >= probabilities_[i])
-      continue;
+    if (prob_at_least_one_ < 1.0) {
+      // Sources before the guaranteed one "already failed"
+      if (i < guaranteed)
+        continue;
+      // Sources after the guaranteed one roll normally
+      if (i > guaranteed && prn(seed) >= probabilities_[i])
+        continue;
+    } else {
+      // At least one source has probability 1, so roll all normally
+      if (prn(seed) >= probabilities_[i])
+        continue;
+    }
 
     // Sample from the sub-source to get particle type, energy, angle
     SourceSite site = sources_[i]->sample(seed);
@@ -754,19 +795,9 @@ vector<SourceSite> CoincidentSource::sample_sites(uint64_t* seed) const
     site.r = r;
     site.time = time;
 
-    // Apply shared spatial and time weights
-    site.wgt *= (r_wgt * time_wgt);
+    // Apply shared spatial and time weights, scaled by P(>=1)
+    site.wgt *= (r_wgt * time_wgt * prob_at_least_one_);
 
-    sites.push_back(site);
-  }
-
-  // If all rolls failed, push first sub-source with zero weight so the
-  // history can still initialize
-  if (sites.empty()) {
-    SourceSite site = sources_[0]->sample(seed);
-    site.r = r;
-    site.time = time;
-    site.wgt = 0.0;
     sites.push_back(site);
   }
 

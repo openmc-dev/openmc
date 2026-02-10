@@ -585,7 +585,7 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto sites = sample_external_source(&seed);
     p.from_source(&sites[0]);
-    // For correlated sources, add extra particles to secondary bank
+    // For coincident sources, add extra particles to secondary bank
     for (size_t i = 1; i < sites.size(); ++i) {
       p.secondary_bank().push_back(sites[i]);
     }

@@ -203,8 +203,8 @@ class SourceBase(ABC):
                 return FileSource.from_xml_element(elem)
             elif source_type == 'mesh':
                 return MeshSource.from_xml_element(elem, meshes)
-            elif source_type == 'correlated':
-                return CorrelatedSource.from_xml_element(elem, meshes)
+            elif source_type == 'coincident':
+                return CoincidentSource.from_xml_element(elem, meshes)
             else:
                 raise ValueError(
                     f'Source type {source_type} is not recognized')
@@ -660,12 +660,12 @@ class MeshSource(SourceBase):
         return cls(mesh, sources, constraints=constraints)
 
 
-class CorrelatedSource(SourceBase):
-    """A source that emits multiple correlated particles per source event.
+class CoincidentSource(SourceBase):
+    """A source that emits multiple coincident particles per source event.
 
     All particles share the same spatial position and time, but each has
     independent particle type, energy, and angular distributions. This is
-    useful for simulating correlated emissions such as Co-60 summation peaks.
+    useful for simulating coincident emissions such as Co-60 summation peaks.
 
     .. versionadded:: 0.15.1
 
@@ -677,7 +677,7 @@ class CorrelatedSource(SourceBase):
         Shared time distribution for all emitted particles
     sources : list of openmc.IndependentSource
         Sub-sources defining particle type, energy, and angle for each
-        correlated particle. Must contain at least 2 sources.
+        coincident particle. Must contain at least 2 sources.
     strength : float
         Strength of the source
     probabilities : list of float, optional
@@ -699,7 +699,7 @@ class CorrelatedSource(SourceBase):
     strength : float
         Strength of the source
     type : str
-        Indicator of source type: 'correlated'
+        Indicator of source type: 'coincident'
 
     """
 
@@ -730,7 +730,7 @@ class CorrelatedSource(SourceBase):
 
     @property
     def type(self) -> str:
-        return 'correlated'
+        return 'coincident'
 
     @property
     def space(self):
@@ -760,7 +760,7 @@ class CorrelatedSource(SourceBase):
         for s in sources:
             cv.check_type('sub-source', s, IndependentSource)
         if len(sources) < 2:
-            raise ValueError('A correlated source must have at least 2 '
+            raise ValueError('A coincident source must have at least 2 '
                              'sub-sources.')
         self._sources = list(sources)
 
@@ -803,8 +803,8 @@ class CorrelatedSource(SourceBase):
             element.append(sub_elem)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> CorrelatedSource:
-        """Generate correlated source from an XML element
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> CoincidentSource:
+        """Generate coincident source from an XML element
 
         Parameters
         ----------
@@ -816,7 +816,7 @@ class CorrelatedSource(SourceBase):
 
         Returns
         -------
-        openmc.CorrelatedSource
+        openmc.CoincidentSource
             Source generated from XML element
 
         """

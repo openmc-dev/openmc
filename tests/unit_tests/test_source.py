@@ -125,8 +125,8 @@ def test_source_dlopen():
     assert 'library' in elem.attrib
 
 
-def test_correlated_source_xml_roundtrip():
-    # Create a correlated source (e.g., Co-60 two-gamma emission)
+def test_coincident_source_xml_roundtrip():
+    # Create a coincident source (e.g., Co-60 two-gamma emission)
     gamma1 = openmc.IndependentSource(
         energy=openmc.stats.Discrete([1.17e6], [1.0]),
         angle=openmc.stats.Isotropic(),
@@ -139,7 +139,7 @@ def test_correlated_source_xml_roundtrip():
     )
     space = openmc.stats.Point((1.0, 2.0, 3.0))
     time = openmc.stats.Discrete([0.0], [1.0])
-    src = openmc.CorrelatedSource(
+    src = openmc.CoincidentSource(
         space=space,
         time=time,
         sources=[gamma1, gamma2],
@@ -151,8 +151,8 @@ def test_correlated_source_xml_roundtrip():
 
     # Read back from XML element
     new_src = openmc.SourceBase.from_xml_element(elem)
-    assert isinstance(new_src, openmc.CorrelatedSource)
-    assert new_src.type == 'correlated'
+    assert isinstance(new_src, openmc.CoincidentSource)
+    assert new_src.type == 'coincident'
     assert new_src.strength == approx(5.0)
 
     # Check spatial distribution preserved
@@ -174,8 +174,8 @@ def test_correlated_source_xml_roundtrip():
         np.testing.assert_allclose(new.energy.p, orig.energy.p)
 
 
-def test_correlated_source_probabilities_roundtrip():
-    # Create a correlated source with emission probabilities
+def test_coincident_source_probabilities_roundtrip():
+    # Create a coincident source with emission probabilities
     gamma1 = openmc.IndependentSource(
         energy=openmc.stats.Discrete([1.17e6], [1.0]),
         angle=openmc.stats.Isotropic(),
@@ -186,7 +186,7 @@ def test_correlated_source_probabilities_roundtrip():
         angle=openmc.stats.Isotropic(),
         particle='photon'
     )
-    src = openmc.CorrelatedSource(
+    src = openmc.CoincidentSource(
         space=openmc.stats.Point((0, 0, 0)),
         sources=[gamma1, gamma2],
         probabilities=[1.0, 0.5]
@@ -195,7 +195,7 @@ def test_correlated_source_probabilities_roundtrip():
     # Write to XML and read back
     elem = src.to_xml_element()
     new_src = openmc.SourceBase.from_xml_element(elem)
-    assert isinstance(new_src, openmc.CorrelatedSource)
+    assert isinstance(new_src, openmc.CoincidentSource)
     assert new_src.probabilities == [1.0, 0.5]
     assert len(new_src.sources) == 2
 
@@ -205,11 +205,11 @@ def test_correlated_source_probabilities_roundtrip():
     assert sub_elems[1].get('probability') == '0.5'
 
 
-def test_correlated_source_probabilities_default():
+def test_coincident_source_probabilities_default():
     # Without probabilities, they should be None
     gamma1 = openmc.IndependentSource(particle='photon')
     gamma2 = openmc.IndependentSource(particle='photon')
-    src = openmc.CorrelatedSource(
+    src = openmc.CoincidentSource(
         space=openmc.stats.Point(),
         sources=[gamma1, gamma2]
     )
@@ -221,17 +221,17 @@ def test_correlated_source_probabilities_default():
     assert new_src.probabilities is None
 
 
-def test_correlated_source_validation():
+def test_coincident_source_validation():
     # Must have at least 2 sub-sources
     gamma1 = openmc.IndependentSource(particle='photon')
     with pytest.raises(ValueError, match='at least 2'):
-        openmc.CorrelatedSource(sources=[gamma1])
+        openmc.CoincidentSource(sources=[gamma1])
 
 
-def test_correlated_source_probabilities_validation():
+def test_coincident_source_probabilities_validation():
     gamma1 = openmc.IndependentSource(particle='photon')
     gamma2 = openmc.IndependentSource(particle='photon')
-    src = openmc.CorrelatedSource(
+    src = openmc.CoincidentSource(
         space=openmc.stats.Point(),
         sources=[gamma1, gamma2]
     )

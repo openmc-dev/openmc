@@ -95,8 +95,8 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
       return make_unique<CompiledSourceWrapper>(node);
     } else if (source_type == "mesh") {
       return make_unique<MeshSource>(node);
-    } else if (source_type == "correlated") {
-      return make_unique<CorrelatedSource>(node);
+    } else if (source_type == "coincident") {
+      return make_unique<CoincidentSource>(node);
     } else {
       fatal_error(fmt::format("Invalid source type '{}' found.", source_type));
     }
@@ -669,14 +669,14 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 }
 
 //==============================================================================
-// CorrelatedSource implementation
+// CoincidentSource implementation
 //==============================================================================
 
-CorrelatedSource::CorrelatedSource(pugi::xml_node node) : Source(node)
+CoincidentSource::CoincidentSource(pugi::xml_node node) : Source(node)
 {
-  // Correlated sources are only valid for fixed-source simulations
+  // Coincident sources are only valid for fixed-source simulations
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    fatal_error("Correlated sources cannot be used in eigenvalue mode.");
+    fatal_error("Coincident sources cannot be used in eigenvalue mode.");
   }
 
   // Read shared spatial distribution
@@ -713,24 +713,24 @@ CorrelatedSource::CorrelatedSource(pugi::xml_node node) : Source(node)
       sources_.emplace_back(ptr);
     } else {
       fatal_error(
-        "Sub-sources of a correlated source must be IndependentSource.");
+        "Sub-sources of a coincident source must be IndependentSource.");
     }
     probabilities_.push_back(prob);
   }
 
   // Validate at least 2 sub-sources
   if (sources_.size() < 2) {
-    fatal_error("A correlated source must have at least 2 sub-sources.");
+    fatal_error("A coincident source must have at least 2 sub-sources.");
   }
 }
 
-SourceSite CorrelatedSource::sample(uint64_t* seed) const
+SourceSite CoincidentSource::sample(uint64_t* seed) const
 {
   auto sites = sample_sites(seed);
   return sites[0];
 }
 
-vector<SourceSite> CorrelatedSource::sample_sites(uint64_t* seed) const
+vector<SourceSite> CoincidentSource::sample_sites(uint64_t* seed) const
 {
   // Sample shared position once
   auto [r, r_wgt] = space_->sample(seed);

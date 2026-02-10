@@ -79,8 +79,8 @@ public:
 
   //! Sample one or more source sites (without applying constraints)
   //
-  //! For most sources this returns a single site. CorrelatedSource overrides
-  //! this to return multiple correlated sites.
+  //! For most sources this returns a single site. CoincidentSource overrides
+  //! this to return multiple coincident sites.
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Vector of sampled sites
   virtual vector<SourceSite> sample_sites(uint64_t* seed) const
@@ -268,24 +268,24 @@ private:
 };
 
 //==============================================================================
-//! Source that emits multiple correlated particles per source event
+//! Source that emits multiple coincident particles per source event
 //!
 //! All particles share the same position and time, but each has its own
 //! particle type, energy, and angular distributions. Used for simulating
-//! correlated emissions such as Co-60 summation peaks.
+//! coincident emissions such as Co-60 summation peaks.
 //==============================================================================
 
-class CorrelatedSource : public Source {
+class CoincidentSource : public Source {
 public:
   // Constructors
-  explicit CorrelatedSource(pugi::xml_node node);
+  explicit CoincidentSource(pugi::xml_node node);
 
-  //! Sample a single source site (returns first correlated particle)
+  //! Sample a single source site (returns first coincident particle)
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
   SourceSite sample(uint64_t* seed) const override;
 
-  //! Sample all correlated source sites
+  //! Sample all coincident source sites
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Vector of sampled sites sharing the same position and time
   vector<SourceSite> sample_sites(uint64_t* seed) const override;
@@ -307,7 +307,7 @@ extern "C" void initialize_source();
 //! Sample one or more sites from all external source distributions in
 //! proportion to their source strength
 //! \param[inout] seed Pseudorandom seed pointer
-//! \return Vector of sampled source sites (multiple for correlated sources)
+//! \return Vector of sampled source sites (multiple for coincident sources)
 vector<SourceSite> sample_external_source(uint64_t* seed);
 
 void free_memory_source();

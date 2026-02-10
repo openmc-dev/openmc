@@ -1893,8 +1893,8 @@ double CylindricalMesh::find_r_crossing(
   const double inv_denominator = 1.0 / denominator;
 
   const double p = (u.x * r.x + u.y * r.y) * inv_denominator;
-  double c = r.x * r.x + r.y * r.y - r0 * r0;
-  double D = p * p - c * inv_denominator;
+  double R = std::sqrt(r.x * r.x + r.y * r.y);
+  double D = p * p - (R - r0) * (R + r0) * inv_denominator;
 
   if (D < 0.0)
     return INFTY;
@@ -1902,7 +1902,7 @@ double CylindricalMesh::find_r_crossing(
   D = std::sqrt(D);
 
   // the solution -p - D is always smaller as -p + D : Check this one first
-  if (std::abs(c) <= RADIAL_MESH_TOL)
+  if (xt::isclose(R, r0, RADIAL_MESH_TOL, RADIAL_MESH_TOL))
     return INFTY;
 
   if (-p - D > l)
@@ -2178,10 +2178,10 @@ double SphericalMesh::find_r_crossing(
   if (r0 == 0.0)
     return INFTY;
   const double p = r.dot(u);
-  double c = r.dot(r) - r0 * r0;
-  double D = p * p - c;
+  double R = r.norm();
+  double D = p * p - (R - r0) * (R + r0);
 
-  if (std::abs(c) <= RADIAL_MESH_TOL)
+  if (xt::isclose(R, r0, RADIAL_MESH_TOL, RADIAL_MESH_TOL))
     return INFTY;
 
   if (D >= 0.0) {

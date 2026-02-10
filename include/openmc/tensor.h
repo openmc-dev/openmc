@@ -156,14 +156,6 @@ public:
   // Assignment operators
 
   template<typename U>
-  xtensor_view_1d& operator=(const xtensor_view_1d<U>& other)
-  {
-    for (std::size_t i = 0; i < size_; ++i)
-      data_[i * stride_] = other(i);
-    return *this;
-  }
-
-  template<typename U>
   xtensor_view_1d& operator=(const xarray<U>& other)
   {
     for (std::size_t i = 0; i < size_; ++i)
@@ -196,21 +188,6 @@ public:
   {
     for (std::size_t i = 0; i < size_; ++i)
       data_[i * stride_] += o.data()[i];
-    return *this;
-  }
-
-  template<typename U>
-  xtensor_view_1d& operator+=(const xtensor_view_1d<U>& o)
-  {
-    for (std::size_t i = 0; i < size_; ++i)
-      data_[i * stride_] += o(i);
-    return *this;
-  }
-
-  xtensor_view_1d& operator/=(value_type val)
-  {
-    for (std::size_t i = 0; i < size_; ++i)
-      data_[i * stride_] /= val;
     return *this;
   }
 
@@ -486,14 +463,6 @@ public:
     return *this;
   }
 
-  template<typename Container>
-  auto operator=(const Container& other) ->
-    std::enable_if_t<!std::is_arithmetic<Container>::value, xtensor_view_flat&>
-  {
-    std::copy(other.data(), other.data() + size_, data_);
-    return *this;
-  }
-
 private:
   //--------------------------------------------------------------------------
   // Data members
@@ -550,15 +519,6 @@ public:
     data_.assign(compute_size(), val);
   }
 
-  xtensor(
-    openmc::vector<stored_type>&& data, const std::array<std::size_t, N>& shape)
-    : data_(std::move(data)), shape_(shape)
-  {}
-
-  xtensor(const openmc::vector<stored_type>& data,
-    const std::array<std::size_t, N>& shape)
-    : data_(data), shape_(shape)
-  {}
 
   //! 1D initializer_list constructor (N==1 only, T != size_t to avoid ambiguity)
   template<std::size_t M = N, typename TT = T,
@@ -599,11 +559,6 @@ public:
 
   //--------------------------------------------------------------------------
   // Factory methods
-
-  static xtensor from_shape(const std::array<std::size_t, N>& shape)
-  {
-    return xtensor(shape);
-  }
 
   static xtensor from_shape(std::initializer_list<std::size_t> shape)
   {
@@ -699,37 +654,11 @@ public:
     data_.resize(compute_size());
   }
 
-  void resize(const std::array<std::size_t, N>& shape)
-  {
-    shape_ = shape;
-    data_.resize(compute_size());
-  }
-
-  void resize(const openmc::vector<std::size_t>& shape)
-  {
-    for (std::size_t i = 0; i < N && i < shape.size(); ++i)
-      shape_[i] = shape[i];
-    data_.resize(compute_size());
-  }
-
-  void resize(const openmc::vector<unsigned long long>& shape)
-  {
-    for (std::size_t i = 0; i < N && i < shape.size(); ++i)
-      shape_[i] = static_cast<std::size_t>(shape[i]);
-    data_.resize(compute_size());
-  }
-
   void fill(T val) { std::fill(data_.begin(), data_.end(), val); }
 
   //--------------------------------------------------------------------------
   // Compound assignment operators (scalar)
 
-  xtensor& operator+=(T val)
-  {
-    for (auto& x : data_)
-      x += val;
-    return *this;
-  }
   xtensor& operator-=(T val)
   {
     for (auto& x : data_)
@@ -758,33 +687,6 @@ public:
       data_[i] += o.data_[i];
     return *this;
   }
-  xtensor& operator-=(const xtensor& o)
-  {
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      data_[i] -= o.data_[i];
-    return *this;
-  }
-  xtensor& operator*=(const xtensor& o)
-  {
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      data_[i] *= o.data_[i];
-    return *this;
-  }
-  xtensor& operator/=(const xtensor& o)
-  {
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      data_[i] /= o.data_[i];
-    return *this;
-  }
-
-  template<typename U>
-  xtensor& operator+=(const xtensor_view_1d<U>& o)
-  {
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      data_[i] += o(i);
-    return *this;
-  }
-
   //--------------------------------------------------------------------------
   // Element-wise binary operators (tensor op tensor, same shape)
 
@@ -800,13 +702,6 @@ public:
     xtensor r(shape_);
     for (std::size_t i = 0; i < data_.size(); ++i)
       r.data_[i] = data_[i] - o.data_[i];
-    return r;
-  }
-  xtensor operator*(const xtensor& o) const
-  {
-    xtensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data_[i] = data_[i] * o.data_[i];
     return r;
   }
   xtensor operator/(const xtensor& o) const
@@ -841,22 +736,6 @@ public:
       r.data_[i] = data_[i] * val;
     return r;
   }
-  xtensor operator/(T val) const
-  {
-    xtensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data_[i] = data_[i] / val;
-    return r;
-  }
-
-  xtensor operator-() const
-  {
-    xtensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data_[i] = -data_[i];
-    return r;
-  }
-
   //--------------------------------------------------------------------------
   // Element-wise comparison operators (return bool tensor)
 
@@ -942,13 +821,6 @@ xtensor<T, N> operator*(T val, const xtensor<T, N>& arr)
   return arr * val;
 }
 
-template<typename T, std::size_t N,
-  typename = std::enable_if_t<std::is_arithmetic<T>::value>>
-xtensor<T, N> operator+(T val, const xtensor<T, N>& arr)
-{
-  return arr + val;
-}
-
 // Mixed-type arithmetic: xtensor<T1> op xtensor<T2>
 // Returns xtensor<double, N> (used for int*double mesh arithmetic in mesh.cpp)
 template<typename T1, typename T2, std::size_t N,
@@ -1027,16 +899,6 @@ public:
     for (std::size_t i = 0; i < N; ++i)
       shape_.push_back(t.shape()[i]);
     data_.assign(t.data(), t.data() + t.size());
-  }
-
-  explicit xarray(const openmc::vector<unsigned long long>& shape)
-  {
-    for (auto d : shape)
-      shape_.push_back(static_cast<std::size_t>(d));
-    std::size_t total = 1;
-    for (auto d : shape_)
-      total *= d;
-    data_.resize(total);
   }
 
   //--------------------------------------------------------------------------
@@ -1122,57 +984,8 @@ public:
   }
 
   //--------------------------------------------------------------------------
-  // Compound assignment operators (scalar)
-
-  xarray& operator+=(T val)
-  {
-    for (auto& x : data_)
-      x += val;
-    return *this;
-  }
-  xarray& operator-=(T val)
-  {
-    for (auto& x : data_)
-      x -= val;
-    return *this;
-  }
-  xarray& operator*=(T val)
-  {
-    for (auto& x : data_)
-      x *= val;
-    return *this;
-  }
-  xarray& operator/=(T val)
-  {
-    for (auto& x : data_)
-      x /= val;
-    return *this;
-  }
-
-  //--------------------------------------------------------------------------
   // Element-wise binary operators (xarray op scalar)
 
-  xarray operator*(T val) const
-  {
-    xarray r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data_[i] = data_[i] * val;
-    return r;
-  }
-  xarray operator/(T val) const
-  {
-    xarray r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data_[i] = data_[i] / val;
-    return r;
-  }
-  xarray operator+(T val) const
-  {
-    xarray r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data_[i] = data_[i] + val;
-    return r;
-  }
   xarray operator-(T val) const
   {
     xarray r(shape_);
@@ -1180,43 +993,15 @@ public:
       r.data_[i] = data_[i] - val;
     return r;
   }
-  xarray operator-() const
-  {
-    xarray r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data_[i] = -data_[i];
-    return r;
-  }
 
   //--------------------------------------------------------------------------
   // Element-wise comparison operators (return bool xarray)
 
-  xarray<bool> operator>(T val) const
-  {
-    xarray<bool> r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data()[i] = data_[i] > val;
-    return r;
-  }
-  xarray<bool> operator<(T val) const
-  {
-    xarray<bool> r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data()[i] = data_[i] < val;
-    return r;
-  }
   xarray<bool> operator<=(T val) const
   {
     xarray<bool> r(shape_);
     for (std::size_t i = 0; i < data_.size(); ++i)
       r.data()[i] = data_[i] <= val;
-    return r;
-  }
-  xarray<bool> operator>=(T val) const
-  {
-    xarray<bool> r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
-      r.data()[i] = data_[i] >= val;
     return r;
   }
 
@@ -1250,13 +1035,6 @@ private:
   openmc::vector<storage_type<T>> data_;
   openmc::vector<std::size_t> shape_;
 };
-
-// scalar op xarray
-template<typename T>
-xarray<T> operator*(T val, const xarray<T>& arr)
-{
-  return arr * val;
-}
 
 // xtensor converting constructor from xarray (defined after xarray is complete)
 template<typename T, std::size_t N>
@@ -1304,16 +1082,6 @@ xtensor<double, N> operator/(const xtensor<T1, N>& a, const xarray<T2>& b)
 {
   xtensor<double, N> r(a.shape());
   for (std::size_t i = 0; i < a.size(); ++i)
-    r.data()[i] = static_cast<double>(a.data()[i]) /
-                  static_cast<double>(b.data()[i]);
-  return r;
-}
-
-template<typename T1, typename T2, std::size_t N>
-xtensor<double, N> operator/(const xarray<T1>& a, const xtensor<T2, N>& b)
-{
-  xtensor<double, N> r(b.shape());
-  for (std::size_t i = 0; i < b.size(); ++i)
     r.data()[i] = static_cast<double>(a.data()[i]) /
                   static_cast<double>(b.data()[i]);
   return r;
@@ -1398,22 +1166,6 @@ xarray<T> adapt(const openmc::vector<T>& vec, const ShapeType& shape)
   return result;
 }
 
-// Adapt std::array with explicit shape (copy)
-template<typename T, std::size_t M, typename ShapeType>
-xarray<T> adapt(const std::array<T, M>& arr, const ShapeType& shape)
-{
-  openmc::vector<std::size_t> s;
-  std::size_t total = 1;
-  for (auto d : shape) {
-    auto dim = static_cast<std::size_t>(d);
-    s.push_back(dim);
-    total *= dim;
-  }
-  xarray<T> result(s);
-  std::copy(arr.data(), arr.data() + std::min(total, M), result.data());
-  return result;
-}
-
 // Adapt vector with initializer_list shape (for brace-init-list deduction)
 template<typename T>
 xarray<T> adapt(const openmc::vector<T>& vec, std::initializer_list<int> shape)
@@ -1469,22 +1221,6 @@ xarray<T> adapt(
   return result;
 }
 
-// Adapt const pointer with shape into xarray (copy)
-template<typename T, typename ShapeType>
-xarray<T> adapt(const T* ptr, const ShapeType& shape)
-{
-  openmc::vector<std::size_t> s;
-  std::size_t total = 1;
-  for (auto d : shape) {
-    auto dim = static_cast<std::size_t>(d);
-    s.push_back(dim);
-    total *= dim;
-  }
-  xarray<T> result(s);
-  std::copy(ptr, ptr + total, result.data());
-  return result;
-}
-
 //==============================================================================
 // Construction helpers: zeros, zeros_like, full_like, empty, empty_like
 //==============================================================================
@@ -1504,30 +1240,6 @@ xarray<T> zeros(const openmc::vector<std::size_t>& shape)
   return xarray<T>(shape, T(0));
 }
 
-// zeros with vector of any int type
-template<typename T, typename I,
-  typename = std::enable_if_t<std::is_integral<I>::value &&
-    !std::is_same<I, std::size_t>::value>>
-xarray<T> zeros(const openmc::vector<I>& shape)
-{
-  openmc::vector<std::size_t> s;
-  for (auto d : shape)
-    s.push_back(static_cast<std::size_t>(d));
-  return xarray<T>(s, T(0));
-}
-
-template<typename T>
-xtensor<T, 2> zeros(const std::array<std::size_t, 2>& shape)
-{
-  return xtensor<T, 2>(shape, T(0));
-}
-
-template<typename T>
-xtensor<T, 3> zeros(const std::array<std::size_t, 3>& shape)
-{
-  return xtensor<T, 3>(shape, T(0));
-}
-
 template<typename T>
 xarray<T> empty(std::initializer_list<std::size_t> shape)
 {
@@ -1543,18 +1255,6 @@ xarray<T> empty(std::initializer_list<int> shape)
   for (auto d : shape)
     s.push_back(static_cast<std::size_t>(d));
   return xarray<T>(s);
-}
-
-template<typename T>
-xtensor<T, 2> empty(const std::array<std::size_t, 2>& shape)
-{
-  return xtensor<T, 2>(shape);
-}
-
-template<typename T>
-xtensor<T, 3> empty(const std::array<std::size_t, 3>& shape)
-{
-  return xtensor<T, 3>(shape);
 }
 
 // empty with std::array<int, N> shape
@@ -1584,12 +1284,6 @@ template<typename T, std::size_t N, typename V>
 xtensor<T, N> full_like(const xtensor<T, N>& o, V val)
 {
   return xtensor<T, N>(o.shape(), static_cast<T>(val));
-}
-
-template<typename T>
-xarray<T> empty_like(const xarray<T>& o)
-{
-  return xarray<T>(o.shape());
 }
 
 template<typename T>
@@ -1714,26 +1408,6 @@ xtensor_view_2d<const T> view(
     a.shape()[1] * a.shape()[2], a.shape()[2]};
 }
 
-// view(3D tensor, range, all, int) -> 2D view (subset of rows)
-template<typename T>
-xtensor_view_2d<T> view(
-  xtensor<T, 3>& a, xrange_type r, xall_type, std::size_t k)
-{
-  auto start = resolve_end(r.start, a.shape()[0]);
-  auto stop = resolve_end(r.stop, a.shape()[0]);
-  return {a.data() + start * a.shape()[1] * a.shape()[2] + k, stop - start,
-    a.shape()[1], a.shape()[1] * a.shape()[2], a.shape()[2]};
-}
-template<typename T>
-xtensor_view_2d<const T> view(
-  const xtensor<T, 3>& a, xrange_type r, xall_type, std::size_t k)
-{
-  auto start = resolve_end(r.start, a.shape()[0]);
-  auto stop = resolve_end(r.stop, a.shape()[0]);
-  return {a.data() + start * a.shape()[1] * a.shape()[2] + k, stop - start,
-    a.shape()[1], a.shape()[1] * a.shape()[2], a.shape()[2]};
-}
-
 // view(fixed_2D, all, int) -> 1D column view
 template<typename T, typename Shape>
 xtensor_view_1d<T> view(xtensor_fixed<T, Shape>& a, xall_type, std::size_t col)
@@ -1775,22 +1449,6 @@ xtensor_view_1d<const T> view(const xarray<T>& a, std::size_t row)
   return {a.data() + row * a.shape()[1], a.shape()[1], 1};
 }
 
-// view(xarray, range) -> 1D view for 1D xarray
-template<typename T>
-xtensor_view_1d<T> view(xarray<T>& a, xrange_type r)
-{
-  auto start = resolve_end(r.start, a.shape()[0]);
-  auto stop = resolve_end(r.stop, a.shape()[0]);
-  return {a.data() + start, stop - start, 1};
-}
-template<typename T>
-xtensor_view_1d<const T> view(const xarray<T>& a, xrange_type r)
-{
-  auto start = resolve_end(r.start, a.shape()[0]);
-  auto stop = resolve_end(r.stop, a.shape()[0]);
-  return {a.data() + start, stop - start, 1};
-}
-
 // view(2D tensor, row, xall_type) -> 1D row view (entire row)
 template<typename T>
 xtensor_view_1d<T> view(xtensor<T, 2>& a, std::size_t row, xall_type)
@@ -1799,36 +1457,6 @@ xtensor_view_1d<T> view(xtensor<T, 2>& a, std::size_t row, xall_type)
 }
 template<typename T>
 xtensor_view_1d<const T> view(const xtensor<T, 2>& a, std::size_t row, xall_type)
-{
-  return {a.data() + row * a.shape()[1], a.shape()[1], 1};
-}
-
-// view(2D tensor, row, range) -> 1D view of row subset
-template<typename T>
-xtensor_view_1d<T> view(xtensor<T, 2>& a, std::size_t row, xrange_type r)
-{
-  auto cols = a.shape()[1];
-  auto start = resolve_end(r.start, cols);
-  auto stop = resolve_end(r.stop, cols);
-  return {a.data() + row * cols + start, stop - start, 1};
-}
-template<typename T>
-xtensor_view_1d<const T> view(const xtensor<T, 2>& a, std::size_t row, xrange_type r)
-{
-  auto cols = a.shape()[1];
-  auto start = resolve_end(r.start, cols);
-  auto stop = resolve_end(r.stop, cols);
-  return {a.data() + row * cols + start, stop - start, 1};
-}
-
-// view(2D xarray, row, xall_type) -> 1D row view (entire row)
-template<typename T>
-xtensor_view_1d<T> view(xarray<T>& a, std::size_t row, xall_type)
-{
-  return {a.data() + row * a.shape()[1], a.shape()[1], 1};
-}
-template<typename T>
-xtensor_view_1d<const T> view(const xarray<T>& a, std::size_t row, xall_type)
 {
   return {a.data() + row * a.shape()[1], a.shape()[1], 1};
 }
@@ -1901,15 +1529,6 @@ sum_proxy<T> sum(const xtensor_view_1d<T>& v)
   T s = T(0);
   for (std::size_t i = 0; i < v.size(); ++i)
     s += v(i);
-  return {s};
-}
-
-template<typename T>
-sum_proxy<T> sum(const xarray<T>& a)
-{
-  T s = T(0);
-  for (std::size_t i = 0; i < a.size(); ++i)
-    s += a.data()[i];
   return {s};
 }
 
@@ -2042,15 +1661,6 @@ bool any(const xtensor<bool, N>& a)
   return false;
 }
 
-template<typename T, std::size_t N>
-bool any(const xtensor<T, N>& a)
-{
-  for (std::size_t i = 0; i < a.size(); ++i)
-    if (a.data()[i])
-      return true;
-  return false;
-}
-
 // any/all for xarray
 template<typename T>
 bool any(const xarray<T>& a)
@@ -2061,27 +1671,9 @@ bool any(const xarray<T>& a)
   return false;
 }
 
-template<typename T>
-bool all(const xarray<T>& a)
-{
-  for (std::size_t i = 0; i < a.size(); ++i)
-    if (!a.data()[i])
-      return false;
-  return true;
-}
-
 // all (for bool tensors)
 template<std::size_t N>
 bool all(const xtensor<bool, N>& a)
-{
-  for (std::size_t i = 0; i < a.size(); ++i)
-    if (!a.data()[i])
-      return false;
-  return true;
-}
-
-template<typename T, std::size_t N>
-bool all(const xtensor<T, N>& a)
 {
   for (std::size_t i = 0; i < a.size(); ++i)
     if (!a.data()[i])
@@ -2122,15 +1714,6 @@ xtensor<T, N> log(const xtensor<T, N>& a)
   return r;
 }
 
-template<typename T>
-xarray<T> log(const xarray<T>& a)
-{
-  xarray<T> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
-    r.data()[i] = std::log(a.data()[i]);
-  return r;
-}
-
 template<typename T, std::size_t N>
 xtensor<T, N> abs(const xtensor<T, N>& a)
 {
@@ -2149,17 +1732,6 @@ xarray<T> abs(const xarray<T>& a)
   return r;
 }
 
-// where(condition, true_val, false_val) - tensor condition
-template<typename T, std::size_t N, typename U, typename V>
-xtensor<T, N> where(const xtensor<bool, N>& cond, U true_val, V false_val)
-{
-  xtensor<T, N> r(cond.shape());
-  for (std::size_t i = 0; i < cond.size(); ++i)
-    r.data()[i] = cond.data()[i] ? static_cast<T>(true_val)
-                                 : static_cast<T>(false_val);
-  return r;
-}
-
 // where with tensor true_val and scalar false_val
 template<typename T, std::size_t N, typename V>
 xtensor<T, N> where(
@@ -2169,29 +1741,6 @@ xtensor<T, N> where(
   for (std::size_t i = 0; i < cond.size(); ++i)
     r.data()[i] = cond.data()[i] ? true_val.data()[i]
                                  : static_cast<T>(false_val);
-  return r;
-}
-
-// where with scalar true_val and tensor false_val
-template<typename T, std::size_t N, typename U>
-xtensor<T, N> where(
-  const xtensor<bool, N>& cond, U true_val, const xtensor<T, N>& false_val)
-{
-  xtensor<T, N> r(cond.shape());
-  for (std::size_t i = 0; i < cond.size(); ++i)
-    r.data()[i] = cond.data()[i] ? static_cast<T>(true_val)
-                                 : false_val.data()[i];
-  return r;
-}
-
-// where with tensor true_val and tensor false_val
-template<typename T, std::size_t N>
-xtensor<T, N> where(const xtensor<bool, N>& cond,
-  const xtensor<T, N>& true_val, const xtensor<T, N>& false_val)
-{
-  xtensor<T, N> r(cond.shape());
-  for (std::size_t i = 0; i < cond.size(); ++i)
-    r.data()[i] = cond.data()[i] ? true_val.data()[i] : false_val.data()[i];
   return r;
 }
 
@@ -2217,12 +1766,6 @@ xtensor<T, N> nan_to_num(const xtensor<T, N>& a, T nan_val = T(0),
 // eval: returns a copy (materializes lazy expressions)
 template<typename T, std::size_t N>
 xtensor<T, N> eval(const xtensor<T, N>& a)
-{
-  return a;
-}
-
-template<typename T>
-xarray<T> eval(const xarray<T>& a)
 {
   return a;
 }
@@ -2256,20 +1799,6 @@ auto xtuple(const A& a, const B& b)
   return h;
 }
 
-// xtuple for 3 args
-template<typename A, typename B, typename C>
-auto xtuple(const A& a, const B& b, const C& c)
-  -> xtuple_holder<std::remove_const_t<std::remove_pointer_t<decltype(a.data())>>>
-{
-  using T = std::remove_const_t<std::remove_pointer_t<decltype(a.data())>>;
-  xtuple_holder<T> h {};
-  h.entries[0] = {a.data(), a.size()};
-  h.entries[1] = {b.data(), b.size()};
-  h.entries[2] = {c.data(), c.size()};
-  h.count = 3;
-  return h;
-}
-
 template<typename T>
 xtensor<T, 1> concatenate(const xtuple_holder<T>& tup)
 {
@@ -2285,16 +1814,6 @@ xtensor<T, 1> concatenate(const xtuple_holder<T>& tup)
     pos += tup.entries[i].size;
   }
   return result;
-}
-
-// flip (reverse 1D tensor)
-template<typename T>
-xtensor<T, 1> flip(const xtensor<T, 1>& a)
-{
-  xtensor<T, 1> r({a.size()});
-  for (std::size_t i = 0; i < a.size(); ++i)
-    r.data()[i] = a.data()[a.size() - 1 - i];
-  return r;
 }
 
 // flip 2D along axis 0

@@ -405,6 +405,13 @@ def test_particle_production_filter():
     assert new_f3.energies is None
     assert len(new_f3.particles) == 3
 
+    # --- Energies from group structure name ---
+    f4 = openmc.ParticleProductionFilter('photon', energies='CCFE-709')
+    expected = openmc.mgxs.GROUP_STRUCTURES['CCFE-709']
+    assert np.allclose(f4.energies, expected)
+    assert f4.num_energy_bins == len(expected) - 1
+    assert f4.num_bins == len(expected) - 1
+
 
 def test_weight():
     f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])

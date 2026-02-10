@@ -1767,10 +1767,12 @@ class ParticleProductionFilter(Filter):
     ----------
     particles : str, int, openmc.ParticleType, or iterable thereof
         Type(s) of secondary particle(s) to tally ('photon', 'neutron', etc.)
-    energies : Iterable of Real, optional
-        A list of energy boundaries in [eV]; each successive pair defines a
-        bin. If not provided, the filter tallies total secondary particle
-        production without energy binning.
+    energies : Iterable of Real or str, optional
+        A list of energy boundaries in [eV]; each successive pair defines a bin.
+        Alternatively, the name of the group structure can be given as a string
+        (must be a key in :data:`openmc.mgxs.GROUP_STRUCTURES`). If not
+        provided, the filter tallies total secondary particle production without
+        energy binning.
     filter_id : int, optional
         Unique identifier for the filter
 
@@ -1781,8 +1783,8 @@ class ParticleProductionFilter(Filter):
     energies : numpy.ndarray or None
         Energy boundaries in [eV], or None if no energy binning
     bins : list
-        A list of bins; each element fully describes one bin. When energies
-        are specified, each element is a tuple ``(particle, energy_low,
+        A list of bins; each element fully describes one bin. When energies are
+        specified, each element is a tuple ``(particle, energy_low,
         energy_high)``. When no energies are specified, each element is a
         particle name string.
     num_bins : int
@@ -1826,6 +1828,11 @@ class ParticleProductionFilter(Filter):
     def energies(self, energies):
         if energies is None:
             self._energies = None
+        elif isinstance(energies, str):
+            cv.check_value('energies', energies,
+                           openmc.mgxs.GROUP_STRUCTURES.keys())
+            self._energies = np.array(
+                openmc.mgxs.GROUP_STRUCTURES[energies.upper()])
         else:
             energies = np.asarray(energies, dtype=float)
             cv.check_length('energies', energies, 2)

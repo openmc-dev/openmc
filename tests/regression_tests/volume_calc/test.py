@@ -81,7 +81,7 @@ class VolumeTest(PyAPITestHarness):
 
         # Create the MGXS file if necessary
         if not self.is_ce:
-            groups = openmc.mgxs.EnergyGroups(group_edges=[1e-5, 20.e6])
+            groups = openmc.mgxs.EnergyGroups(group_edges=[0., 20.e6])
             mg_xs_file = openmc.MGXSLibrary(groups)
 
             nu = [2.]

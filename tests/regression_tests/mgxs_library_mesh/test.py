@@ -32,7 +32,7 @@ def model():
     model.settings.particles = 1000
 
     # Initialize a one-group structure
-    energy_groups = openmc.mgxs.EnergyGroups([1e-5, 20.e6])
+    energy_groups = openmc.mgxs.EnergyGroups([0, 20.e6])
 
     # Initialize MGXS Library for a few cross section types
     # for one material-filled cell in the geometry

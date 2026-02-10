@@ -583,27 +583,14 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     std::find(filter_types.begin(), filter_types.end(), FilterType::MESH) -
     filter_types.begin();
 
-  // Compute 5D row-major strides for the reshaped tally data
-  std::array<size_t, 5> src_shape;
-  for (int i = 0; i < 5; i++)
-    src_shape[i] = static_cast<size_t>(shape[i]);
-  std::array<size_t, 5> src_strides;
-  src_strides[4] = 1;
-  for (int i = 3; i >= 0; i--)
-    src_strides[i] = src_strides[i + 1] * src_shape[i + 1];
-
-  // determine the dimension and index of the particle data
+  // determine the index of the particle within its filter
   int particle_idx = 0;
   if (tally->has_filter(FilterType::PARTICLE)) {
-    // get the particle filter
     auto pf = tally->get_filter<ParticleFilter>();
     const auto& particles = pf->particles();
 
-    // find the index of the particle that matches these weight windows
     auto p_it =
       std::find(particles.begin(), particles.end(), this->particle_type_);
-    // if the particle filter doesn't have particle data for the particle
-    // used on this weight windows instance, report an error
     if (p_it == particles.end()) {
       auto msg = fmt::format("Particle type '{}' not present on Filter {} for "
                              "Tally {} used to update WeightWindows {}",
@@ -611,36 +598,44 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       fatal_error(msg);
     }
 
-    // use the index of the particle in the filter to down-select data later
     particle_idx = p_it - particles.begin();
   }
 
-  // Extract 2D slices of tally mean and sum-of-squares for the selected
-  // particle type and score. The tally data is logically reshaped to 5D
-  // (filter dims, scores, result values) and transposed so that the
-  // energy and mesh dimensions are in positions 1 and 2.
+  // The tally results array is 3D: (n_filter_combos, n_scores, n_result_types).
+  // The first dimension is a row-major flattening of up to 3 filter dimensions
+  // (particle, energy, mesh) whose storage order depends on which filters the
+  // tally has. We need to map our desired indices (particle, energy, mesh)
+  // into the correct flat filter combination index.
+  //
+  // transpose[i] tells us which storage position holds dimension i:
+  //   i=0 -> particle, i=1 -> energy, i=2 -> mesh
+  // shape[j] gives the number of bins for filter storage position j.
+
+  // Row-major strides for the 3 filter dimensions
+  const int stride0 = shape[1] * shape[2];
+  const int stride1 = shape[2];
+
   xt::xtensor<double, 2> sum(
     {static_cast<size_t>(e_bins), static_cast<size_t>(mesh_bins)});
   xt::xtensor<double, 2> sum_sq(
     {static_cast<size_t>(e_bins), static_cast<size_t>(mesh_bins)});
-  const int sum_val = static_cast<int>(TallyResult::SUM);
-  const int sum_sq_val = static_cast<int>(TallyResult::SUM_SQ);
+
+  const int i_sum = static_cast<int>(TallyResult::SUM);
+  const int i_sum_sq = static_cast<int>(TallyResult::SUM_SQ);
+
   for (int e = 0; e < e_bins; e++) {
     for (int64_t m = 0; m < mesh_bins; m++) {
-      // Map transposed (particle, energy, mesh, score, result) indices
-      // back to the original filter ordering using the transpose permutation
-      std::array<int, 5> tidx = {
-        particle_idx, e, static_cast<int>(m), score_index, sum_val};
-      size_t off = 0;
-      for (int d = 0; d < 5; d++)
-        off += tidx[d] * src_strides[transpose[d]];
-      sum(e, m) = results_arr.data()[off];
+      // Place particle, energy, and mesh indices into their storage positions
+      std::array<int, 3> idx = {0, 0, 0};
+      idx[transpose[0]] = particle_idx;
+      idx[transpose[1]] = e;
+      idx[transpose[2]] = static_cast<int>(m);
 
-      tidx[4] = sum_sq_val;
-      off = 0;
-      for (int d = 0; d < 5; d++)
-        off += tidx[d] * src_strides[transpose[d]];
-      sum_sq(e, m) = results_arr.data()[off];
+      // Compute flat filter combination index (row-major over filter dims)
+      int flat = idx[0] * stride0 + idx[1] * stride1 + idx[2];
+
+      sum(e, m) = results_arr(flat, score_index, i_sum);
+      sum_sq(e, m) = results_arr(flat, score_index, i_sum_sq);
     }
   }
   int n = tally->n_realizations_;

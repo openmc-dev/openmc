@@ -855,26 +855,8 @@ xtensor<T, N> operator+(T val, const xtensor<T, N>& arr)
   return arr + val;
 }
 
-template<typename T, std::size_t N>
-xtensor<T, N> operator-(T val, const xtensor<T, N>& arr)
-{
-  xtensor<T, N> r(arr.shape());
-  for (std::size_t i = 0; i < arr.size(); ++i)
-    r.data()[i] = val - arr.data()[i];
-  return r;
-}
-
-template<typename T, std::size_t N>
-xtensor<T, N> operator/(T val, const xtensor<T, N>& arr)
-{
-  xtensor<T, N> r(arr.shape());
-  for (std::size_t i = 0; i < arr.size(); ++i)
-    r.data()[i] = val / arr.data()[i];
-  return r;
-}
-
 // Mixed-type arithmetic: xtensor<T1> op xtensor<T2>
-// Returns xtensor<double, N> for common cases (int*double, double/int, etc.)
+// Returns xtensor<double, N> (used for int*double mesh arithmetic in mesh.cpp)
 template<typename T1, typename T2, std::size_t N,
   typename = std::enable_if_t<!std::is_same<T1, T2>::value>>
 xtensor<double, N> operator*(
@@ -895,30 +877,6 @@ xtensor<double, N> operator/(
   xtensor<double, N> r(a.shape());
   for (std::size_t i = 0; i < a.size(); ++i)
     r.data()[i] = static_cast<double>(a.data()[i]) /
-                  static_cast<double>(b.data()[i]);
-  return r;
-}
-
-template<typename T1, typename T2, std::size_t N,
-  typename = std::enable_if_t<!std::is_same<T1, T2>::value>>
-xtensor<double, N> operator+(
-  const xtensor<T1, N>& a, const xtensor<T2, N>& b)
-{
-  xtensor<double, N> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
-    r.data()[i] = static_cast<double>(a.data()[i]) +
-                  static_cast<double>(b.data()[i]);
-  return r;
-}
-
-template<typename T1, typename T2, std::size_t N,
-  typename = std::enable_if_t<!std::is_same<T1, T2>::value>>
-xtensor<double, N> operator-(
-  const xtensor<T1, N>& a, const xtensor<T2, N>& b)
-{
-  xtensor<double, N> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
-    r.data()[i] = static_cast<double>(a.data()[i]) -
                   static_cast<double>(b.data()[i]);
   return r;
 }
@@ -1194,7 +1152,7 @@ xtensor<T, N>& xtensor<T, N>::operator=(const xarray<T>& other)
 }
 
 // Mixed-type arithmetic: xarray<T1> op xtensor<T2, N>
-// These handle cases like xarray<int> * xtensor<double, 1>
+// (used for xarray<int> * xtensor<double,1> mesh arithmetic in mesh.cpp)
 template<typename T1, typename T2, std::size_t N>
 xtensor<double, N> operator*(const xarray<T1>& a, const xtensor<T2, N>& b)
 {
@@ -1231,26 +1189,6 @@ xtensor<double, N> operator/(const xarray<T1>& a, const xtensor<T2, N>& b)
   xtensor<double, N> r(b.shape());
   for (std::size_t i = 0; i < b.size(); ++i)
     r.data()[i] = static_cast<double>(a.data()[i]) /
-                  static_cast<double>(b.data()[i]);
-  return r;
-}
-
-template<typename T1, typename T2, std::size_t N>
-xtensor<double, N> operator+(const xarray<T1>& a, const xtensor<T2, N>& b)
-{
-  xtensor<double, N> r(b.shape());
-  for (std::size_t i = 0; i < b.size(); ++i)
-    r.data()[i] = static_cast<double>(a.data()[i]) +
-                  static_cast<double>(b.data()[i]);
-  return r;
-}
-
-template<typename T1, typename T2, std::size_t N>
-xtensor<double, N> operator+(const xtensor<T1, N>& a, const xarray<T2>& b)
-{
-  xtensor<double, N> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
-    r.data()[i] = static_cast<double>(a.data()[i]) +
                   static_cast<double>(b.data()[i]);
   return r;
 }
@@ -1494,12 +1432,6 @@ template<typename T, std::size_t N>
 xtensor<T, N> empty_like(const xtensor<T, N>& o)
 {
   return xtensor<T, N>(o.shape());
-}
-
-template<typename T, std::size_t N>
-xtensor<T, N> ones_like(const xtensor<T, N>& o)
-{
-  return xtensor<T, N>(o.shape(), T(1));
 }
 
 // full_like: create tensor with same shape, filled with value
@@ -2048,15 +1980,6 @@ xarray<T> log(const xarray<T>& a)
 }
 
 template<typename T, std::size_t N>
-xtensor<T, N> exp(const xtensor<T, N>& a)
-{
-  xtensor<T, N> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
-    r.data()[i] = std::exp(a.data()[i]);
-  return r;
-}
-
-template<typename T, std::size_t N>
 xtensor<T, N> abs(const xtensor<T, N>& a)
 {
   xtensor<T, N> r(a.shape());
@@ -2255,20 +2178,6 @@ struct is_xt_container<xarray<T>> : std::true_type {};
 
 template<typename T, typename S>
 struct is_xt_container<xtensor_fixed<T, S>> : std::true_type {};
-
-// Compatibility types (unused but referenced in some template code)
-template<typename CP, typename... Args>
-using xbuffer_adaptor = openmc::vector<std::remove_pointer_t<std::remove_reference_t<CP>>>;
-
-template<typename EC, std::size_t N, typename... Args>
-using xtensor_adaptor = xtensor<typename EC::value_type, N>;
-
-// noalias: no-op passthrough (xtensor optimization hint)
-template<typename T>
-T& noalias(T& x)
-{
-  return x;
-}
 
 } // namespace xt
 

@@ -256,12 +256,6 @@ double distance_to_time_boundary(double time, double speed);
 //! Determine which tallies should be active
 void setup_active_tallies();
 
-// Alias for the type returned by xt::adapt(...). N is the dimension of the
-// multidimensional array
-template<std::size_t N>
-using adaptor_type =
-  xt::xtensor_adaptor<xt::xbuffer_adaptor<double*&, xt::no_ownership>, N>;
-
 #ifdef OPENMC_MPI
 //! Collect all tally results onto master process
 void reduce_tally_results();

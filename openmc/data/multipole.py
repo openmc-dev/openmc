@@ -1046,7 +1046,15 @@ class WindowedMultipole(EqualityMixin):
         return cls.from_multipole(mp_data, **wmp_options)
 
     @classmethod
-    def from_multipole(cls, mp_data, search=None, log=False, **kwargs):
+    def from_multipole(
+        cls,
+        mp_data,
+        search=None,
+        log=False,
+        search_n_win=20,
+        search_cf_orders=None,
+        **kwargs,
+    ):
         """Generate windowed multipole neutron data from multipole data.
 
         Parameters
@@ -1058,8 +1066,14 @@ class WindowedMultipole(EqualityMixin):
             Defaults to True if no windowing parameters are specified.
         log : bool or int, optional
             Whether to print running logs (use int for verbosity control)
+        search_n_win : int, optional
+            Number of window sizes to consider in the search grid when
+            ``search`` is True.
+        search_cf_orders : iterable of int, optional
+            Curve-fit orders to consider in the search grid when ``search`` is
+            True. Defaults to integers from 10 down to 2.
         **kwargs
-            Keyword arguments passed to :func:`openmc.data.multipole._windowing`
+            Keyword arguments passed to :func:`openmc.data.multipole._windowing`.
 
         Returns
         -------
@@ -1090,12 +1104,17 @@ class WindowedMultipole(EqualityMixin):
         # search optimal WMP from a range of window sizes and CF orders
         if log:
             print("Start searching ...")
+        if search_cf_orders is None:
+            search_cf_orders = range(10, 1, -1)
+
         n_poles = sum([p.size for p in mp_data["poles"]])
         n_win_min = max(5, n_poles // 20)
         n_win_max = 2000 if n_poles < 2000 else 8000
         best_wmp = best_metric = None
-        for n_w in np.unique(np.linspace(n_win_min, n_win_max, 20, dtype=int)):
-            for n_cf in range(10, 1, -1):
+        for n_w in np.unique(
+            np.linspace(n_win_min, n_win_max, search_n_win, dtype=int)
+        ):
+            for n_cf in search_cf_orders:
                 if log:
                     print(f"Testing N_win={n_w} N_cf={n_cf}")
 

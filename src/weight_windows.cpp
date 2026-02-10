@@ -473,11 +473,11 @@ void WeightWindows::set_bounds(
   lower_ww_ = xt::empty<double>(shape);
   upper_ww_ = xt::empty<double>(shape);
 
-  // set new weight window values
-  xt::view(lower_ww_, xt::all()) =
-    xt::adapt(lower_bounds.data(), lower_ww_.shape());
-  xt::view(upper_ww_, xt::all()) =
-    xt::adapt(upper_bounds.data(), upper_ww_.shape());
+  // Copy weight window values from input spans into the tensors
+  std::copy(lower_bounds.data(), lower_bounds.data() + lower_ww_.size(),
+    lower_ww_.data());
+  std::copy(upper_bounds.data(), upper_bounds.data() + upper_ww_.size(),
+    upper_ww_.data());
 }
 
 void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
@@ -488,11 +488,11 @@ void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
   lower_ww_ = xt::empty<double>(shape);
   upper_ww_ = xt::empty<double>(shape);
 
-  // set new weight window values
-  xt::view(lower_ww_, xt::all()) =
-    xt::adapt(lower_bounds.data(), lower_ww_.shape());
-  xt::view(upper_ww_, xt::all()) =
-    xt::adapt(lower_bounds.data(), upper_ww_.shape());
+  // Copy lower bounds into both arrays, then scale upper by ratio
+  std::copy(lower_bounds.data(), lower_bounds.data() + lower_ww_.size(),
+    lower_ww_.data());
+  std::copy(lower_bounds.data(), lower_bounds.data() + upper_ww_.size(),
+    upper_ww_.data());
   upper_ww_ *= ratio;
 }
 
@@ -583,12 +583,14 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     std::find(filter_types.begin(), filter_types.end(), FilterType::MESH) -
     filter_types.begin();
 
-  // get a fully reshaped view of the tally according to tally ordering of
-  // filters
-  auto tally_values = xt::reshape_view(results_arr, shape);
-
-  // get a that is (particle, energy, mesh, scores, values)
-  auto transposed_view = xt::transpose(tally_values, transpose);
+  // Compute 5D row-major strides for the reshaped tally data
+  std::array<size_t, 5> src_shape;
+  for (int i = 0; i < 5; i++)
+    src_shape[i] = static_cast<size_t>(shape[i]);
+  std::array<size_t, 5> src_strides;
+  src_strides[4] = 1;
+  for (int i = 3; i >= 0; i--)
+    src_strides[i] = src_strides[i + 1] * src_shape[i + 1];
 
   // determine the dimension and index of the particle data
   int particle_idx = 0;
@@ -613,13 +615,34 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     particle_idx = p_it - particles.begin();
   }
 
-  // down-select data based on particle and score
-  auto sum = xt::dynamic_view(
-    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
-                       static_cast<int>(TallyResult::SUM)});
-  auto sum_sq = xt::dynamic_view(
-    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
-                       static_cast<int>(TallyResult::SUM_SQ)});
+  // Extract 2D slices of tally mean and sum-of-squares for the selected
+  // particle type and score. The tally data is logically reshaped to 5D
+  // (filter dims, scores, result values) and transposed so that the
+  // energy and mesh dimensions are in positions 1 and 2.
+  xt::xtensor<double, 2> sum(
+    {static_cast<size_t>(e_bins), static_cast<size_t>(mesh_bins)});
+  xt::xtensor<double, 2> sum_sq(
+    {static_cast<size_t>(e_bins), static_cast<size_t>(mesh_bins)});
+  const int sum_val = static_cast<int>(TallyResult::SUM);
+  const int sum_sq_val = static_cast<int>(TallyResult::SUM_SQ);
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      // Map transposed (particle, energy, mesh, score, result) indices
+      // back to the original filter ordering using the transpose permutation
+      std::array<int, 5> tidx = {
+        particle_idx, e, static_cast<int>(m), score_index, sum_val};
+      size_t off = 0;
+      for (int d = 0; d < 5; d++)
+        off += tidx[d] * src_strides[transpose[d]];
+      sum(e, m) = results_arr.data()[off];
+
+      tidx[4] = sum_sq_val;
+      off = 0;
+      for (int d = 0; d < 5; d++)
+        off += tidx[d] * src_strides[transpose[d]];
+      sum_sq(e, m) = results_arr.data()[off];
+    }
+  }
   int n = tally->n_realizations_;
 
   //////////////////////////////////////////////

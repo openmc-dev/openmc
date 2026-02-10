@@ -97,9 +97,10 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   scatter_from_hdf5(
     xsdata_grp, n_ang, scatter_format, final_scatter_format, order_data);
 
-  // Check absorption to ensure it is not 0 since it is often the
-  // denominator in tally methods
-  xt::filtration(absorption, xt::equal(absorption, 0.)) = 1.e-10;
+  // Replace zero absorption values with a small number to avoid
+  // division by zero in tally methods
+  for (size_t i = 0; i < absorption.size(); i++)
+    if (absorption.data()[i] == 0.0) absorption.data()[i] = 1.e-10;
 
   // Get or calculate the total x/s
   if (object_exists(xsdata_grp, "total")) {
@@ -112,8 +113,10 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
     }
   }
 
-  // Fix if total is 0, since it is in the denominator when tallying
-  xt::filtration(total, xt::equal(total, 0.)) = 1.e-10;
+  // Replace zero total cross sections with a small number to avoid
+  // division by zero in tally methods
+  for (size_t i = 0; i < total.size(); i++)
+    if (total.data()[i] == 0.0) total.data()[i] = 1.e-10;
 }
 
 //==============================================================================
@@ -127,14 +130,26 @@ void XsData::fission_vector_beta_from_hdf5(
   xt::xtensor<double, 2> temp_chi({n_ang, n_g_}, 0.);
   read_nd_vector(xsdata_grp, "chi", temp_chi, true);
 
-  // Normalize chi by summing over the outgoing groups for each incoming angle
-  temp_chi /= xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
+  // Normalize chi so it sums to 1 over outgoing groups for each angle
+  for (size_t a = 0; a < n_ang; a++) {
+    double s = 0.0;
+    for (size_t g = 0; g < n_g_; g++) s += temp_chi(a, g);
+    for (size_t g = 0; g < n_g_; g++) temp_chi(a, g) /= s;
+  }
 
-  // Now every incoming group in prompt_chi and delayed_chi is the normalized
-  // chi we just made
-  chi_prompt = xt::view(temp_chi, xt::all(), xt::newaxis(), xt::all());
-  chi_delayed =
-    xt::view(temp_chi, xt::all(), xt::newaxis(), xt::newaxis(), xt::all());
+  // Replicate the energy spectrum across all incoming groups — the
+  // spectrum is independent of the incoming neutron energy
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t gin = 0; gin < n_g_; gin++)
+      for (size_t gout = 0; gout < n_g_; gout++)
+        chi_prompt(a, gin, gout) = temp_chi(a, gout);
+
+  // Same spectrum for delayed neutrons, replicated across delayed groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t d = 0; d < n_dg_; d++)
+      for (size_t gin = 0; gin < n_g_; gin++)
+        for (size_t gout = 0; gout < n_g_; gout++)
+          chi_delayed(a, d, gin, gout) = temp_chi(a, gout);
 
   // Get nu-fission
   xt::xtensor<double, 2> temp_nufiss({n_ang, n_g_}, 0.);
@@ -151,23 +166,35 @@ void XsData::fission_vector_beta_from_hdf5(
     xt::xtensor<double, 2> temp_beta({n_ang, n_dg_}, 0.);
     read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
-    // Set prompt_nu_fission = (1. - beta_total)*nu_fission
-    prompt_nu_fission = temp_nufiss * (1. - xt::sum(temp_beta, {1}));
+    // prompt_nu_fission = (1 - sum_of_beta) * nu_fission
+    auto beta_sum = xt::sum(temp_beta, {1});
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t g = 0; g < n_g_; g++)
+        prompt_nu_fission(a, g) = temp_nufiss(a, g) * (1.0 - beta_sum(a));
 
-    // Set delayed_nu_fission as beta * nu_fission
-    delayed_nu_fission =
-      xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis()) *
-      xt::view(temp_nufiss, xt::all(), xt::newaxis(), xt::all());
+    // Delayed nu-fission is the outer product of the delayed neutron
+    // fraction (beta) and the fission production rate (nu-fission)
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t d = 0; d < n_dg_; d++)
+        for (size_t g = 0; g < n_g_; g++)
+          delayed_nu_fission(a, d, g) = temp_beta(a, d) * temp_nufiss(a, g);
   } else if (beta_ndims == ndim_target + 1) {
     xt::xtensor<double, 3> temp_beta({n_ang, n_dg_, n_g_}, 0.);
     read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
-    // Set prompt_nu_fission = (1. - beta_total)*nu_fission
-    prompt_nu_fission = temp_nufiss * (1. - xt::sum(temp_beta, {1}));
+    // prompt_nu_fission = (1 - sum_of_beta) * nu_fission
+    // Here beta is energy-dependent, so sum over delayed groups (axis 1)
+    auto beta_sum = xt::sum(temp_beta, {1});
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t g = 0; g < n_g_; g++)
+        prompt_nu_fission(a, g) = temp_nufiss(a, g) * (1.0 - beta_sum(a, g));
 
-    // Set delayed_nu_fission as beta * nu_fission
-    delayed_nu_fission =
-      temp_beta * xt::view(temp_nufiss, xt::all(), xt::newaxis(), xt::all());
+    // Delayed nu-fission: beta is already energy-dependent [n_ang, n_dg, n_g],
+    // so scale each delayed group's beta by the total nu-fission for that group
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t d = 0; d < n_dg_; d++)
+        for (size_t g = 0; g < n_g_; g++)
+          delayed_nu_fission(a, d, g) = temp_beta(a, d, g) * temp_nufiss(a, g);
   }
 }
 
@@ -179,22 +206,38 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   xt::xtensor<double, 2> temp_chi_p({n_ang, n_g_}, 0.);
   read_nd_vector(xsdata_grp, "chi-prompt", temp_chi_p, true);
 
-  // Normalize chi by summing over the outgoing groups for each incoming angle
-  temp_chi_p /= xt::view(xt::sum(temp_chi_p, {1}), xt::all(), xt::newaxis());
+  // Normalize prompt chi so it sums to 1 over outgoing groups for each angle
+  for (size_t a = 0; a < n_ang; a++) {
+    double s = 0.0;
+    for (size_t g = 0; g < n_g_; g++) s += temp_chi_p(a, g);
+    for (size_t g = 0; g < n_g_; g++) temp_chi_p(a, g) /= s;
+  }
 
   // Get chi-delayed
   xt::xtensor<double, 3> temp_chi_d({n_ang, n_dg_, n_g_}, 0.);
   read_nd_vector(xsdata_grp, "chi-delayed", temp_chi_d, true);
 
-  // Normalize chi by summing over the outgoing groups for each incoming angle
-  temp_chi_d /=
-    xt::view(xt::sum(temp_chi_d, {2}), xt::all(), xt::all(), xt::newaxis());
+  // Normalize delayed chi so it sums to 1 over outgoing groups for each
+  // angle and delayed group
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t d = 0; d < n_dg_; d++) {
+      double s = 0.0;
+      for (size_t g = 0; g < n_g_; g++) s += temp_chi_d(a, d, g);
+      for (size_t g = 0; g < n_g_; g++) temp_chi_d(a, d, g) /= s;
+    }
 
-  // Now assign the prompt and delayed chis by replicating for each incoming
-  // group
-  chi_prompt = xt::view(temp_chi_p, xt::all(), xt::newaxis(), xt::all());
-  chi_delayed =
-    xt::view(temp_chi_d, xt::all(), xt::all(), xt::newaxis(), xt::all());
+  // Replicate the prompt spectrum across all incoming groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t gin = 0; gin < n_g_; gin++)
+      for (size_t gout = 0; gout < n_g_; gout++)
+        chi_prompt(a, gin, gout) = temp_chi_p(a, gout);
+
+  // Replicate the delayed spectrum across all incoming groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t d = 0; d < n_dg_; d++)
+      for (size_t gin = 0; gin < n_g_; gin++)
+        for (size_t gout = 0; gout < n_g_; gout++)
+          chi_delayed(a, d, gin, gout) = temp_chi_d(a, d, gout);
 
   // Get prompt and delayed nu-fission directly
   read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
@@ -210,11 +253,18 @@ void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   xt::xtensor<double, 2> temp_chi({n_ang, n_g_}, 0.);
   read_nd_vector(xsdata_grp, "chi", temp_chi, true);
 
-  // Normalize chi by summing over the outgoing groups for each incoming angle
-  temp_chi /= xt::view(xt::sum(temp_chi, {1}), xt::all(), xt::newaxis());
+  // Normalize chi so it sums to 1 over outgoing groups for each angle
+  for (size_t a = 0; a < n_ang; a++) {
+    double s = 0.0;
+    for (size_t g = 0; g < n_g_; g++) s += temp_chi(a, g);
+    for (size_t g = 0; g < n_g_; g++) temp_chi(a, g) /= s;
+  }
 
-  // Now every incoming group in self.chi is the normalized chi we just made
-  chi_prompt = xt::view(temp_chi, xt::all(), xt::newaxis(), xt::all());
+  // Replicate the energy spectrum across all incoming groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t gin = 0; gin < n_g_; gin++)
+      for (size_t gout = 0; gout < n_g_; gout++)
+        chi_prompt(a, gin, gout) = temp_chi(a, gout);
 
   // Get nu-fission directly
   read_nd_vector(xsdata_grp, "nu-fission", prompt_nu_fission, true);
@@ -242,62 +292,93 @@ void XsData::fission_matrix_beta_from_hdf5(
     xt::xtensor<double, 2> temp_beta({n_ang, n_dg_}, 0.);
     read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
-    xt::xtensor<double, 1> temp_beta_sum({n_ang}, 0.);
-    temp_beta_sum = xt::sum(temp_beta, {1});
+    auto beta_sum = xt::sum(temp_beta, {1});
+    auto matrix_gout_sum = xt::sum(temp_matrix, {2});
 
-    // prompt_nu_fission is the sum of this matrix over outgoing groups and
-    // multiplied by (1 - beta_sum)
-    prompt_nu_fission = xt::sum(temp_matrix, {2}) * (1. - temp_beta_sum);
+    // prompt_nu_fission = sum_gout(matrix) * (1 - beta_total)
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t g = 0; g < n_g_; g++)
+        prompt_nu_fission(a, g) = matrix_gout_sum(a, g) * (1.0 - beta_sum(a));
 
-    // Store chi-prompt
-    chi_prompt =
-      xt::view(1.0 - temp_beta_sum, xt::all(), xt::newaxis(), xt::newaxis()) *
-      temp_matrix;
+    // chi_prompt = (1 - beta_total) * nu-fission matrix (unnormalized)
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t gin = 0; gin < n_g_; gin++)
+        for (size_t gout = 0; gout < n_g_; gout++)
+          chi_prompt(a, gin, gout) =
+            (1.0 - beta_sum(a)) * temp_matrix(a, gin, gout);
 
-    // delayed_nu_fission is the sum of this matrix over outgoing groups and
-    // multiplied by beta
-    delayed_nu_fission =
-      xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis()) *
-      xt::view(xt::sum(temp_matrix, {2}), xt::all(), xt::newaxis(), xt::all());
+    // Delayed nu-fission is the outer product of the delayed neutron
+    // fraction (beta) and the total fission rate summed over outgoing groups
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t d = 0; d < n_dg_; d++)
+        for (size_t g = 0; g < n_g_; g++)
+          delayed_nu_fission(a, d, g) =
+            temp_beta(a, d) * matrix_gout_sum(a, g);
 
-    // Store chi-delayed
-    chi_delayed =
-      xt::view(temp_beta, xt::all(), xt::all(), xt::newaxis(), xt::newaxis()) *
-      xt::view(temp_matrix, xt::all(), xt::newaxis(), xt::all(), xt::all());
+    // chi_delayed = beta * nu-fission matrix, expanded across delayed groups
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t d = 0; d < n_dg_; d++)
+        for (size_t gin = 0; gin < n_g_; gin++)
+          for (size_t gout = 0; gout < n_g_; gout++)
+            chi_delayed(a, d, gin, gout) =
+              temp_beta(a, d) * temp_matrix(a, gin, gout);
 
   } else if (beta_ndims == ndim_target + 1) {
     xt::xtensor<double, 3> temp_beta({n_ang, n_dg_, n_g_}, 0.);
     read_nd_vector(xsdata_grp, "beta", temp_beta, true);
 
-    xt::xtensor<double, 2> temp_beta_sum({n_ang, n_g_}, 0.);
-    temp_beta_sum = xt::sum(temp_beta, {1});
+    auto beta_sum = xt::sum(temp_beta, {1});
+    auto matrix_gout_sum = xt::sum(temp_matrix, {2});
 
-    // prompt_nu_fission is the sum of this matrix over outgoing groups and
-    // multiplied by (1 - beta_sum)
-    prompt_nu_fission = xt::sum(temp_matrix, {2}) * (1. - temp_beta_sum);
+    // prompt_nu_fission = sum_gout(matrix) * (1 - beta_total)
+    // Here beta is energy-dependent, so beta_sum is 2D [n_ang, n_g]
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t g = 0; g < n_g_; g++)
+        prompt_nu_fission(a, g) =
+          matrix_gout_sum(a, g) * (1.0 - beta_sum(a, g));
 
-    // Store chi-prompt
-    chi_prompt =
-      xt::view(1.0 - temp_beta_sum, xt::all(), xt::all(), xt::newaxis()) *
-      temp_matrix;
+    // chi_prompt = (1 - beta_sum) * nu-fission matrix (unnormalized)
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t gin = 0; gin < n_g_; gin++)
+        for (size_t gout = 0; gout < n_g_; gout++)
+          chi_prompt(a, gin, gout) =
+            (1.0 - beta_sum(a, gin)) * temp_matrix(a, gin, gout);
 
-    // delayed_nu_fission is the sum of this matrix over outgoing groups and
-    // multiplied by beta
-    delayed_nu_fission = temp_beta * xt::view(xt::sum(temp_matrix, {2}),
-                                       xt::all(), xt::newaxis(), xt::all());
+    // Delayed nu-fission: beta is energy-dependent [n_ang, n_dg, n_g],
+    // scale by total fission rate summed over outgoing groups
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t d = 0; d < n_dg_; d++)
+        for (size_t g = 0; g < n_g_; g++)
+          delayed_nu_fission(a, d, g) =
+            temp_beta(a, d, g) * matrix_gout_sum(a, g);
 
-    // Store chi-delayed
-    chi_delayed =
-      xt::view(temp_beta, xt::all(), xt::all(), xt::all(), xt::newaxis()) *
-      xt::view(temp_matrix, xt::all(), xt::newaxis(), xt::all(), xt::all());
+    // chi_delayed = beta * nu-fission matrix, expanded across delayed groups
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t d = 0; d < n_dg_; d++)
+        for (size_t gin = 0; gin < n_g_; gin++)
+          for (size_t gout = 0; gout < n_g_; gout++)
+            chi_delayed(a, d, gin, gout) =
+              temp_beta(a, d, gin) * temp_matrix(a, gin, gout);
   }
 
-  // Normalize both chis
-  chi_prompt /=
-    xt::view(xt::sum(chi_prompt, {2}), xt::all(), xt::all(), xt::newaxis());
+  // Normalize chi_prompt so it sums to 1 over outgoing groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t gin = 0; gin < n_g_; gin++) {
+      double s = 0.0;
+      for (size_t gout = 0; gout < n_g_; gout++) s += chi_prompt(a, gin, gout);
+      for (size_t gout = 0; gout < n_g_; gout++) chi_prompt(a, gin, gout) /= s;
+    }
 
-  chi_delayed /= xt::view(
-    xt::sum(chi_delayed, {3}), xt::all(), xt::all(), xt::all(), xt::newaxis());
+  // Normalize chi_delayed so it sums to 1 over outgoing groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t d = 0; d < n_dg_; d++)
+      for (size_t gin = 0; gin < n_g_; gin++) {
+        double s = 0.0;
+        for (size_t gout = 0; gout < n_g_; gout++)
+          s += chi_delayed(a, d, gin, gout);
+        for (size_t gout = 0; gout < n_g_; gout++)
+          chi_delayed(a, d, gin, gout) /= s;
+      }
 }
 
 void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
@@ -311,10 +392,12 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // prompt_nu_fission is the sum over outgoing groups
   prompt_nu_fission = xt::sum(temp_matrix_p, {2});
 
-  // chi_prompt is this matrix but normalized over outgoing groups, which we
-  // have already stored in prompt_nu_fission
-  chi_prompt = temp_matrix_p /
-               xt::view(prompt_nu_fission, xt::all(), xt::all(), xt::newaxis());
+  // chi_prompt is the nu-fission matrix normalized over outgoing groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t gin = 0; gin < n_g_; gin++)
+      for (size_t gout = 0; gout < n_g_; gout++)
+        chi_prompt(a, gin, gout) = temp_matrix_p(a, gin, gout) /
+                                   prompt_nu_fission(a, gin);
 
   // Get the delayed nu-fission matrix
   xt::xtensor<double, 4> temp_matrix_d({n_ang, n_dg_, n_g_, n_g_}, 0.);
@@ -323,10 +406,13 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // delayed_nu_fission is the sum over outgoing groups
   delayed_nu_fission = xt::sum(temp_matrix_d, {3});
 
-  // chi_prompt is this matrix but normalized over outgoing groups, which we
-  // have already stored in prompt_nu_fission
-  chi_delayed = temp_matrix_d / xt::view(delayed_nu_fission, xt::all(),
-                                  xt::all(), xt::all(), xt::newaxis());
+  // chi_delayed is the delayed nu-fission matrix normalized over outgoing groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t d = 0; d < n_dg_; d++)
+      for (size_t gin = 0; gin < n_g_; gin++)
+        for (size_t gout = 0; gout < n_g_; gout++)
+          chi_delayed(a, d, gin, gout) = temp_matrix_d(a, d, gin, gout) /
+                                         delayed_nu_fission(a, d, gin);
 }
 
 void XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
@@ -341,10 +427,12 @@ void XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // prompt_nu_fission is the sum over outgoing groups
   prompt_nu_fission = xt::sum(temp_matrix, {2});
 
-  // chi_prompt is this matrix but normalized over outgoing groups, which we
-  // have already stored in prompt_nu_fission
-  chi_prompt = temp_matrix /
-               xt::view(prompt_nu_fission, xt::all(), xt::all(), xt::newaxis());
+  // chi_prompt is the nu-fission matrix normalized over outgoing groups
+  for (size_t a = 0; a < n_ang; a++)
+    for (size_t gin = 0; gin < n_g_; gin++)
+      for (size_t gout = 0; gout < n_g_; gout++)
+        chi_prompt(a, gin, gout) = temp_matrix(a, gin, gout) /
+                                   prompt_nu_fission(a, gin);
 }
 
 //==============================================================================
@@ -522,24 +610,62 @@ void XsData::combine(
       kappa_fission += scalar * that->kappa_fission;
       fission += scalar * that->fission;
       delayed_nu_fission += scalar * that->delayed_nu_fission;
-      chi_prompt += scalar *
-                    xt::view(xt::sum(that->prompt_nu_fission, {1}), xt::all(),
-                      xt::newaxis(), xt::newaxis()) *
-                    that->chi_prompt;
-      chi_delayed += scalar *
-                     xt::view(xt::sum(that->delayed_nu_fission, {2}), xt::all(),
-                       xt::all(), xt::newaxis(), xt::newaxis()) *
-                     that->chi_delayed;
+      // Accumulate chi_prompt weighted by total prompt nu-fission
+      // (summed over energy groups) for this constituent
+      {
+        auto pnf_sum = xt::sum(that->prompt_nu_fission, {1});
+        size_t n_ang = chi_prompt.shape()[0];
+        size_t n_g = chi_prompt.shape()[1];
+        for (size_t a = 0; a < n_ang; a++)
+          for (size_t gin = 0; gin < n_g; gin++)
+            for (size_t gout = 0; gout < n_g; gout++)
+              chi_prompt(a, gin, gout) += scalar * pnf_sum(a) *
+                                          that->chi_prompt(a, gin, gout);
+      }
+      // Accumulate chi_delayed weighted by total delayed nu-fission
+      // (summed over energy groups) for this constituent
+      {
+        auto dnf_sum = xt::sum(that->delayed_nu_fission, {2});
+        size_t n_ang = chi_delayed.shape()[0];
+        size_t n_dg = chi_delayed.shape()[1];
+        size_t n_g = chi_delayed.shape()[2];
+        for (size_t a = 0; a < n_ang; a++)
+          for (size_t d = 0; d < n_dg; d++)
+            for (size_t gin = 0; gin < n_g; gin++)
+              for (size_t gout = 0; gout < n_g; gout++)
+                chi_delayed(a, d, gin, gout) += scalar * dnf_sum(a, d) *
+                                                that->chi_delayed(a, d, gin, gout);
+      }
     }
     decay_rate += scalar * that->decay_rate;
   }
 
-  // Ensure the chi_prompt and chi_delayed are normalized to 1 for each
-  // azimuthal angle and delayed group (for chi_delayed)
-  chi_prompt /=
-    xt::view(xt::sum(chi_prompt, {2}), xt::all(), xt::all(), xt::newaxis());
-  chi_delayed /= xt::view(
-    xt::sum(chi_delayed, {3}), xt::all(), xt::all(), xt::all(), xt::newaxis());
+  // Normalize chi_prompt so it sums to 1 over outgoing groups
+  {
+    size_t n_ang = chi_prompt.shape()[0];
+    size_t n_g = chi_prompt.shape()[1];
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t gin = 0; gin < n_g; gin++) {
+        double s = 0.0;
+        for (size_t gout = 0; gout < n_g; gout++) s += chi_prompt(a, gin, gout);
+        for (size_t gout = 0; gout < n_g; gout++) chi_prompt(a, gin, gout) /= s;
+      }
+  }
+  // Normalize chi_delayed so it sums to 1 over outgoing groups
+  {
+    size_t n_ang = chi_delayed.shape()[0];
+    size_t n_dg = chi_delayed.shape()[1];
+    size_t n_g = chi_delayed.shape()[2];
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t d = 0; d < n_dg; d++)
+        for (size_t gin = 0; gin < n_g; gin++) {
+          double s = 0.0;
+          for (size_t gout = 0; gout < n_g; gout++)
+            s += chi_delayed(a, d, gin, gout);
+          for (size_t gout = 0; gout < n_g; gout++)
+            chi_delayed(a, d, gin, gout) /= s;
+        }
+  }
 
   // Allow the ScattData object to combine itself
   for (size_t a = 0; a < total.shape()[0]; a++) {

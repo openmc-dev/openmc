@@ -917,13 +917,18 @@ void write_tally_results_nr(hid_t file_id)
       write_attribute(file_id, "tallies_present", 1);
     }
 
-    // Get view of accumulated tally values
-    auto values_view = xt::view(t->results_, xt::all(), xt::all(),
-      xt::range(static_cast<int>(TallyResult::SUM),
-        static_cast<int>(TallyResult::SUM_SQ) + 1));
-
-    // Make copy of tally values in contiguous array
-    xt::xtensor<double, 3> values = values_view;
+    // Copy the SUM and SUM_SQ columns from the tally results into a
+    // contiguous array for MPI reduction
+    const int r_start = static_cast<int>(TallyResult::SUM);
+    const int r_end = static_cast<int>(TallyResult::SUM_SQ) + 1;
+    const size_t r_count = r_end - r_start;
+    const size_t ni = t->results_.shape()[0];
+    const size_t nj = t->results_.shape()[1];
+    xt::xtensor<double, 3> values({ni, nj, r_count});
+    for (size_t i = 0; i < ni; i++)
+      for (size_t j = 0; j < nj; j++)
+        for (size_t r = 0; r < r_count; r++)
+          values(i, j, r) = t->results_(i, j, r_start + r);
 
     if (mpi::master) {
       // Open group for tally
@@ -937,19 +942,22 @@ void write_tally_results_nr(hid_t file_id)
         MPI_SUM, 0, mpi::intracomm);
 #endif
 
-      // At the end of the simulation, store the results back in the
-      // regular TallyResults array
+      // At the end of the simulation, store the reduced results back
+      // into the tally results array
       if (simulation::current_batch == settings::n_max_batches ||
           simulation::satisfy_triggers) {
-        values_view = values;
+        for (size_t i = 0; i < ni; i++)
+          for (size_t j = 0; j < nj; j++)
+            for (size_t r = 0; r < r_count; r++)
+              t->results_(i, j, r_start + r) = values(i, j, r);
       }
 
-      // Put in temporary tally result
+      // Put reduced values into a full-sized copy for writing to HDF5
       xt::xtensor<double, 3> results_copy = xt::zeros_like(t->results_);
-      auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
-        xt::range(static_cast<int>(TallyResult::SUM),
-          static_cast<int>(TallyResult::SUM_SQ) + 1));
-      copy_view = values;
+      for (size_t i = 0; i < ni; i++)
+        for (size_t j = 0; j < nj; j++)
+          for (size_t r = 0; r < r_count; r++)
+            results_copy(i, j, r_start + r) = values(i, j, r);
 
       // Write reduced tally results to file
       auto shape = results_copy.shape();

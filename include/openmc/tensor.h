@@ -40,8 +40,13 @@ struct xshape {};
 
 //==============================================================================
 // Slice/view helper types
+//
+// These are sentinel types used as arguments to view() to select rows,
+// columns, or subranges of a tensor.  xt::all() selects an entire axis,
+// xt::range(start, stop) selects a half-open subrange.
 //==============================================================================
 
+//! Sentinel returned by xt::all(); tells view() to keep the full axis.
 struct xall_type {};
 
 inline xall_type all()
@@ -49,6 +54,7 @@ inline xall_type all()
   return {};
 }
 
+//! Half-open index range [start, stop) returned by xt::range().
 struct xrange_type {
   std::ptrdiff_t start;
   std::ptrdiff_t stop;
@@ -60,15 +66,20 @@ inline xrange_type range(std::ptrdiff_t start, std::ptrdiff_t stop)
 }
 
 namespace placeholders {
+//! Placeholder for "end of axis" in xt::range(), e.g. range(1, xt::placeholders::_).
 constexpr std::ptrdiff_t _ = std::numeric_limits<std::ptrdiff_t>::max();
 }
 
-// Ownership tags for adapt()
+//! Ownership tag for adapt(): data is copied, caller retains ownership.
 struct no_ownership {};
+//! Ownership tag for adapt(): data is copied then delete[]'d.
 struct acquire_ownership {};
 
 //==============================================================================
-// xshape traits for xtensor_fixed
+// xshape traits (internal)
+//
+// Extracts compile-time dimension sizes from an xshape<D0, D1> parameter
+// for use by xtensor_fixed.
 //==============================================================================
 
 namespace detail {
@@ -85,7 +96,12 @@ struct xshape_traits<xshape<D0, D1>> {
 } // namespace detail
 
 //==============================================================================
-// Storage type: avoids std::vector<bool> specialization
+// Storage type mapping
+//
+// std::vector<bool> is a bit-packed specialization that returns proxy objects
+// instead of real references, which breaks generic code.  storage_type_map
+// redirects bool to unsigned char so that xtensor<bool, N> stores one byte
+// per element with normal reference semantics.
 //==============================================================================
 
 template<typename T>
@@ -100,7 +116,12 @@ template<typename T>
 using storage_type = typename storage_type_map<T>::type;
 
 //==============================================================================
-// 1D view: a strided view into a contiguous buffer
+// xtensor_view_1d: a read/write view of one row or column of a tensor.
+//
+// Returned by view(tensor, index, all()) or view(tensor, all(), index).
+// Holds a pointer, element count, and stride into the parent tensor's
+// storage — no allocation or copy.  Supports element access, assignment
+// (from tensors, views, or scalars), compound arithmetic, and iteration.
 //==============================================================================
 
 template<typename T>
@@ -191,7 +212,8 @@ public:
     return *this;
   }
 
-  // Strided iterator
+  //! Iterator that steps by stride_ through the parent buffer, enabling
+  //! range-for loops and STL algorithms over non-contiguous view elements.
   class const_iterator {
     const T* ptr_;
     std::size_t stride_;
@@ -351,7 +373,11 @@ public:
 };
 
 //==============================================================================
-// 2D view: a strided 2D view into a contiguous buffer
+// xtensor_view_2d: a read/write view of a 2D slice of a higher-dimensional
+// tensor.
+//
+// Returned by view(3D_tensor, index, all(), all()).  Holds a pointer and
+// strides into the parent tensor's storage — no allocation or copy.
 //==============================================================================
 
 template<typename T>
@@ -404,7 +430,11 @@ public:
 };
 
 //==============================================================================
-// Flat view: wraps all elements for bulk assignment
+// xtensor_view_flat: a view of all elements of a tensor as a flat sequence.
+//
+// Returned by view(tensor, all()).  Used for bulk operations that treat the
+// entire tensor as a 1D array, e.g. assigning from a raw buffer or filling
+// with a scalar.  No allocation or copy.
 //==============================================================================
 
 template<typename T>
@@ -433,7 +463,12 @@ public:
 };
 
 //==============================================================================
-// xtensor<T, N>: N-dimensional tensor backed by openmc::vector
+// xtensor<T, N>: fixed-rank N-dimensional tensor.
+//
+// The primary data type in this header.  Stores elements in a contiguous
+// row-major openmc::vector<storage_type<T>> with a compile-time rank N.
+// Provides multi-dimensional operator() indexing, element-wise arithmetic,
+// and view() accessors for extracting rows, columns, and slices.
 //==============================================================================
 
 template<typename T, std::size_t N>
@@ -882,7 +917,11 @@ xtensor<double, N> operator/(
 }
 
 //==============================================================================
-// xarray<T>: dynamic-dimension tensor backed by openmc::vector
+// xarray<T>: dynamic-rank tensor.
+//
+// Like xtensor but the number of dimensions is determined at runtime.
+// Used when the rank is not known at compile time (e.g. data read from
+// HDF5 files whose dimensionality varies).
 //==============================================================================
 
 template<typename T>
@@ -1194,7 +1233,11 @@ xtensor<double, N> operator/(const xarray<T1>& a, const xtensor<T2, N>& b)
 }
 
 //==============================================================================
-// xtensor_fixed<T, xshape<Dims...>>: fixed-size tensor
+// xtensor_fixed<T, xshape<Dims...>>: compile-time-sized 2D tensor.
+//
+// Both the rank and the dimensions are template parameters, so the storage
+// is a plain C array with no heap allocation.  Used for small, fixed-size
+// matrices (e.g. tally result accumulators).
 //==============================================================================
 
 template<typename T, typename Shape>
@@ -1229,7 +1272,8 @@ public:
 };
 
 //==============================================================================
-// adapt() functions
+// adapt(): create a tensor by copying data from an existing raw pointer or
+// std::vector.  Several overloads handle different ownership semantics.
 //==============================================================================
 
 // Adapt a std::vector into a 1D xtensor (copy)
@@ -1341,7 +1385,7 @@ xarray<T> adapt(const T* ptr, const ShapeType& shape)
 }
 
 //==============================================================================
-// Construction helpers
+// Construction helpers: zeros, zeros_like, full_like, empty, empty_like
 //==============================================================================
 
 template<typename T>
@@ -1463,7 +1507,12 @@ xtensor<T, 1> linspace(T start, T stop, std::size_t n)
 }
 
 //==============================================================================
-// view() functions
+// view(): extract rows, columns, slices, or flat views from tensors.
+//
+// Returns lightweight view objects (xtensor_view_1d, _2d, or _flat) that
+// reference the parent tensor's storage without copying.  Overloads are
+// selected by argument types: int pins an axis, all() keeps it, range()
+// selects a subrange.
 //==============================================================================
 
 // Resolve a range endpoint: if == placeholders::_, use dim as the end
@@ -1727,7 +1776,8 @@ xtensor_view_1d<const T> col(const xtensor<T, 2>& a, std::size_t j)
 // Math / reduction functions
 //==============================================================================
 
-// sum - returns a callable proxy that yields the scalar when called with ()
+//! Wrapper returned by sum() that supports both xt::sum(x)() (call operator)
+//! and implicit conversion to scalar, matching the xtensor API convention.
 template<typename T>
 struct sum_proxy {
   T value;
@@ -1855,7 +1905,7 @@ xtensor<T, 3> sum(const xtensor<T, 4>& a, std::initializer_list<int> axes)
   }
 }
 
-// prod - returns a callable proxy (like sum_proxy) for prod(...)() pattern
+//! Wrapper returned by prod(), analogous to sum_proxy.
 template<typename T>
 struct prod_proxy {
   T value;
@@ -1938,7 +1988,8 @@ bool all(const xtensor<T, N>& a)
   return true;
 }
 
-// argmin - returns a subscriptable proxy for argmin(...)[0] pattern
+//! Wrapper returned by argmin() that supports both argmin(x)[0] (subscript)
+//! and implicit conversion to size_t/int, matching the xtensor API convention.
 struct argmin_result {
   std::size_t value;
   std::size_t operator[](std::size_t) const { return value; }
@@ -2079,7 +2130,8 @@ xarray<T> eval(const xarray<T>& a)
 // concatenate & xtuple
 //==============================================================================
 
-// Generic xtuple_holder that stores (pointer, size) pairs for any container type
+//! Holds references to up to 10 tensors for concatenate().
+//! Created by xt::xtuple(a, b, ...) and consumed by xt::concatenate().
 template<typename T>
 struct xtuple_holder {
   struct entry {
@@ -2163,10 +2215,11 @@ xtensor<T, 2> flip(const xtensor<T, 2>& a, std::size_t axis = 0)
 }
 
 //==============================================================================
-// Compatibility stubs
+// Type traits
 //==============================================================================
 
-// is_xt_container trait for SFINAE in write_dataset
+//! Type trait that is true for xtensor, xarray, and xtensor_fixed.
+//! Used by hdf5_interface.h to select the correct write_dataset overload.
 template<typename T>
 struct is_xt_container : std::false_type {};
 

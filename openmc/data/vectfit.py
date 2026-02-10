@@ -533,6 +533,11 @@ def identify_poles(
     compute_dk_matrix(
         dk_matrix, eval_points, poles, conj_index, num_poles, num_polys, tol_high
     )
+    # For relaxed vector fitting, include the constant term in the sigma(s)
+    # function even when no polynomial terms are requested. This ensures the
+    # constrained system is well-posed when n_polys == 0.
+    if num_polys == 0:
+        dk_matrix[:, num_poles] = 1.0 + 0j
 
     scale_factor = (
         np.sqrt(

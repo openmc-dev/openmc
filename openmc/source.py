@@ -756,12 +756,12 @@ class CoincidentSource(SourceBase):
 
     @sources.setter
     def sources(self, sources):
-        cv.check_type('sub-sources', sources, list)
-        for s in sources:
-            cv.check_type('sub-source', s, IndependentSource)
-        if len(sources) < 2:
-            raise ValueError('A coincident source must have at least 2 '
-                             'sub-sources.')
+        cv.check_type('sub-sources', sources, Iterable, IndependentSource)
+        if self._probabilities is not None:
+            n = len(self._probabilities)
+            cv.check_length('sub-sources', sources, n, n)
+        else:
+            cv.check_length('sub-sources', sources, 2)
         self._sources = list(sources)
 
     @property
@@ -770,16 +770,16 @@ class CoincidentSource(SourceBase):
 
     @probabilities.setter
     def probabilities(self, probabilities):
-        cv.check_type('probabilities', probabilities, list)
+        cv.check_type('probabilities', probabilities, Iterable, Real)
+        if self._sources is not None:
+            n = len(self._sources)
+            cv.check_length('probabilities', probabilities, n, n)
+        else:
+            cv.check_length('probabilities', probabilities, 2)
+
         for p in probabilities:
-            cv.check_type('probability', p, Real)
-            if p <= 0.0 or p > 1.0:
-                raise ValueError(
-                    f'Probability {p} is not in the range (0, 1].')
-        if self._sources and len(probabilities) != len(self._sources):
-            raise ValueError(
-                f'Length of probabilities ({len(probabilities)}) must match '
-                f'number of sub-sources ({len(self._sources)}).')
+            cv.check_less_than('probability', p, 1.0, equality=True)
+            cv.check_greater_than('probability', p, 0.0)
         self._probabilities = list(probabilities)
 
     def populate_xml_element(self, element):
@@ -839,8 +839,7 @@ class CoincidentSource(SourceBase):
         probabilities = []
         for e in elem.iterchildren('source'):
             sub_sources.append(IndependentSource.from_xml_element(e))
-            prob_str = e.get('probability')
-            probabilities.append(float(prob_str) if prob_str is not None else 1.0)
+            probabilities.append(float(e.get('probability', 1.0)))
         if sub_sources:
             source.sources = sub_sources
             if any(p != 1.0 for p in probabilities):

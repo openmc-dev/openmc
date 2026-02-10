@@ -224,7 +224,7 @@ def test_coincident_source_probabilities_default():
 def test_coincident_source_validation():
     # Must have at least 2 sub-sources
     gamma1 = openmc.IndependentSource(particle='photon')
-    with pytest.raises(ValueError, match='at least 2'):
+    with pytest.raises(ValueError, match='at least of length "2"'):
         openmc.CoincidentSource(sources=[gamma1])
 
 
@@ -237,15 +237,15 @@ def test_coincident_source_probabilities_validation():
     )
 
     # Wrong length
-    with pytest.raises(ValueError, match='Length of probabilities'):
+    with pytest.raises(ValueError, match='must be of length "2"'):
         src.probabilities = [0.5]
 
     # Out of range (0)
-    with pytest.raises(ValueError, match='not in the range'):
+    with pytest.raises(ValueError, match='less than'):
         src.probabilities = [0.0, 0.5]
 
     # Out of range (> 1)
-    with pytest.raises(ValueError, match='not in the range'):
+    with pytest.raises(ValueError, match='greater than'):
         src.probabilities = [1.5, 0.5]
 
 

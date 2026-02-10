@@ -240,11 +240,9 @@ vector<SourceSite> Source::sample_sites_with_constraints(uint64_t* seed) const
     // Sample all sites from the source
     sites = this->sample_sites(seed);
 
-    if (constraints_applied()) {
-      accepted = true;
-    } else {
+    accepted = true;
+    if (!constraints_applied()) {
       // Check whether all sampled sites satisfy constraints
-      accepted = true;
       for (const auto& site : sites) {
         if (!satisfies_spatial_constraints(site.r) ||
             !satisfies_energy_constraints(site.E) ||
@@ -739,6 +737,9 @@ CoincidentSource::CoincidentSource(pugi::xml_node node) : Source(node)
     first_success_cdf_[i] = cumulative / prob_at_least_one_;
     running_complement *= (1.0 - probabilities_[i]);
   }
+
+  // Scaling the source by P(>=1 emission) to sample only interesting histories
+  strength_ *= prob_at_least_one_;
 }
 
 SourceSite CoincidentSource::sample(uint64_t* seed) const
@@ -758,7 +759,6 @@ vector<SourceSite> CoincidentSource::sample_sites(uint64_t* seed) const
   // Build a site for each sub-source, applying emission probabilities.
   // To guarantee at least one particle, we use direct conditional sampling:
   // pick a guaranteed "first success" source, then roll the rest normally.
-  // Weights are scaled by P(>=1) to remain unbiased.
   vector<SourceSite> sites;
   sites.reserve(sources_.size());
 
@@ -774,11 +774,8 @@ vector<SourceSite> CoincidentSource::sample_sites(uint64_t* seed) const
     }
   }
 
-  for (size_t i = 0; i < sources_.size(); ++i) {
+  for (size_t i = guaranteed; i < sources_.size(); ++i) {
     if (prob_at_least_one_ < 1.0) {
-      // Sources before the guaranteed one "already failed"
-      if (i < guaranteed)
-        continue;
       // Sources after the guaranteed one roll normally
       if (i > guaranteed && prn(seed) >= probabilities_[i])
         continue;
@@ -795,8 +792,8 @@ vector<SourceSite> CoincidentSource::sample_sites(uint64_t* seed) const
     site.r = r;
     site.time = time;
 
-    // Apply shared spatial and time weights, scaled by P(>=1)
-    site.wgt *= (r_wgt * time_wgt * prob_at_least_one_);
+    // Apply shared spatial and time weights
+    site.wgt *= (r_wgt * time_wgt);
 
     sites.push_back(site);
   }

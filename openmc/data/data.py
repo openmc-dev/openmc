@@ -202,7 +202,6 @@ DADZ = {
     '(n,5n2p)': (-6, -2),
 }
 
-
 # Values here are from the Committee on Data for Science and Technology
 # (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 

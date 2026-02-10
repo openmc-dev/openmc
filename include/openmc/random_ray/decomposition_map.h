@@ -25,7 +25,7 @@ public:
   // Methods to find rank centres that divide spatial domain up into equal 
   // Voronoi volumes
   void initialize();
-  void generate_rank_centers(); //TODO: put in constructor?
+  void generate_rank_centers();
   void calculate_grid_points(int grid_points_total);
   void initialize_voronoi_centers();
   void calculate_voronoi(vector<Position>& position_sum_per_rank, vector<int>& num_points_per_rank);
@@ -64,13 +64,11 @@ public:
     subdomain_map_;
 
   // Neighbors of each rank's Voronoi cell
-  std::unordered_set<int> my_neighbors;
+  std::unordered_set<int> my_neighbors_;
 
   // Data to estimate rank loads
-  vector<uint64_t> num_base_source_region_RT_tot_; // total number of base source region ray trace operations per base source region
-  vector<uint64_t> num_mesh_bin_RT_tot_; // total number of mesh bin ray trace operations per base source region
-  vector<uint64_t> num_base_source_region_RT_batch_; // number of base source region ray trace operations per base source region for current batch
-  vector<uint64_t> num_mesh_bin_RT_batch_; // number of mesh bin ray trace operations per base source region for current batch
+  vector<uint64_t> num_base_source_region_RT_; // number of base source region ray trace operations per base source region
+  vector<uint64_t> num_mesh_bin_RT_; // number of mesh bin ray trace operations per base source region
   vector<double> ray_tracing_cost_;
   vector<double> volume_base_sr_;
   vector<double> measured_rank_load_fractions_;
@@ -78,9 +76,6 @@ public:
   // Load optimization
   vector<double> rank_weights_;
   double target_load_;
-  double max_load_imbalance_measured_ = 0.0;
-  int cnt_unconverged_optimizations_total_ = 0;
-  int cnt_optimizations_total_ = 0;
 
 private:
   //----------------------------------------------------------------------------
@@ -88,17 +83,14 @@ private:
   SpatialBox* spatial_box_ = nullptr; 
 
   // Voronoi cell calculation
-  vector<Position> grid_points_; //TODO: Should this be only defined in generate_rank_centers?
+  vector<Position> grid_points_;
   int grid_points_per_rank_{125}; // default 5x5x5 grid points per rank
-  vector<Position> rank_centers_; // Centers of each rank's Voronoi cell
+  vector<Position> rank_centers_; // centers of each rank's Voronoi cell
 
   // Load calculation
   vector<double> estimated_rank_load_fractions_;
   vector<double> estimated_rank_load_totals_;
   double estimated_load_sum_;
-  vector<vector<double>> load_history_; // stores values of load per rank for last few batches
-  int load_history_size_ = 10;
-  int history_idx = 0;
 
   // coefficients for load calculation
   double C1_ = 1.0;
@@ -108,10 +100,9 @@ private:
   // Load optimization
   double imbalance_tolerance_ = 0.01; // 1% imbalance tolerance
   double optimization_history_factor_ = 1.0; 
-  int cnt_unconverged_optimizations_ = 0;
 
   // Miscellaneous
-  uint64_t n_base_sr_ = 0;
+  uint64_t n_base_sr_;
   int negroups_;
   double max_domain_length_;
   bool is_linear_;

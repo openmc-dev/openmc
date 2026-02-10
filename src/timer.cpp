@@ -29,13 +29,10 @@ Timer time_event_death;
 Timer time_update_src;
 Timer time_ray_comms;
 Timer time_ray_buffering;
-// Timer time_ray_buffering2;
 Timer time_decomposition_handling;
 Timer time_load_balance;
 Timer time_generate_voronoi_centers;
 Timer time_source_region_exchange;
-Timer time_unpack_data;
-Timer time_calculate_rank_load;
 
 } // namespace simulation
 

@@ -79,6 +79,10 @@ constexpr double MINIMUM_MACRO_XS {1e-6};
 // variable-length vectors.
 constexpr int MAX_N_HANDLES {5};
 
+// Maximum number of load optimization iterations to perform to balance
+// the load between MPI ranks during random ray transport.
+constexpr int ITER_LOAD_BALANCE {5};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 

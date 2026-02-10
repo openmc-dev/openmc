@@ -41,6 +41,12 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain){
     // Reserve space if this is the first ray for this rank
     // This is just a heuristic to reduce reallocations
     if (buffers.count == 0) {
+      buffers.ray_data.reserve(reserved_buffer_size_);
+      buffers.angular_flux.reserve(reserved_buffer_size_ * negroups_);
+      buffers.coord.reserve(reserved_buffer_size_ * n_coord_max);
+      buffers.cell_last.reserve(reserved_buffer_size_ * n_coord_max);
+
+
       buffers.ray_data.reserve(32);
       buffers.angular_flux.reserve(32 * negroups_);
       buffers.coord.reserve(32 * n_coord_max);
@@ -111,7 +117,7 @@ int RayBank::ray_bank_size(){
   return ray_bank_size;
 }
 
-// Tells each rank how many rays to receive from whom
+// Tells each rank how many rays to receive from who and how many rays to send to who
 void RayBank::communicate_message_metadata() {  
 
   // Ensure all values are zero in vector for receiving counts
@@ -127,9 +133,6 @@ void RayBank::communicate_message_metadata() {
   MPI_Alltoall(num_messages_sending_.data(), 1, MPI_INT,
                num_messages_receiving_.data(), 1, MPI_INT,
                mpi::intracomm);
-
-  total_sending_rays_ = accumulate(num_messages_sending_.begin(), 
-                                     num_messages_sending_.end(), 0);
 
   total_receiving_rays_ = accumulate(num_messages_receiving_.begin(), 
                                      num_messages_receiving_.end(), 0);
@@ -159,7 +162,8 @@ void RayBank::communicate_rays(){
     vector<MPI_Request> requests(total_requests);
     int req_idx = 0;
 
-    // Post all non-blocking receives first (better for overlap)
+    // Post all non-blocking receives first to allow for potential overlap 
+    // of communication and packing of send buffers
     int recv_offset = 0;
     for (int sending_rank = 0; sending_rank < mpi::n_procs; sending_rank++) {
       int num_rays_receiving = num_messages_receiving_[sending_rank];
@@ -184,7 +188,7 @@ void RayBank::communicate_rays(){
       recv_offset += num_rays_receiving;
     }
 
-    // Post all non-blocking sends - data is already packed in send-ready format!
+    // Post all non-blocking sends!
     for (auto& [receiving_rank, buffers] : ray_send_buffer_) {
       int num_rays = buffers.count;
       
@@ -198,7 +202,7 @@ void RayBank::communicate_rays(){
         }
       }
       if (has_transported_rays) {
-        mpi::decomp_map.my_neighbors.insert(receiving_rank);
+        mpi::decomp_map.my_neighbors_.insert(receiving_rank);
       }
       
       // Send all 4 data arrays - already packed, no intermediate copying!
@@ -222,7 +226,7 @@ void RayBank::communicate_rays(){
     // Wait for all communication to complete
     MPI_Waitall(req_idx, requests.data(), MPI_STATUSES_IGNORE);
     
-    // Clear send buffers - this frees memory immediately after communication
+    // Clear send buffers
     ray_send_buffer_.clear();
 }
 
@@ -231,8 +235,6 @@ void RayBank::update_my_ray_list(FlatSourceDomain* domain){
   my_ray_list_.resize(received_ray_data_.size());
 
   const int n_coord_max = model::n_coord_levels;
-
-  // printf("  Rank %d: Received %lu rays.\n", mpi::rank, received_ray_data_.size());
 
   // Add re-initialized random ray objects to my_ray_list
   #pragma omp parallel for
@@ -243,25 +245,13 @@ void RayBank::update_my_ray_list(FlatSourceDomain* domain){
                                    &received_angular_flux_data_[i * negroups_],
                                    &received_coord_[i * n_coord_max],
                                    &received_cell_last_[i * n_coord_max]);
-
-      // if (my_ray_list_[i].id() == 5) 
-      // {
-      //   printf("Ray %lu restarted on rank %d at position (%f, %f, %f)\n", 
-      //        my_ray_list_[i].id(), mpi::rank,
-      //        my_ray_list_[i].r().x,
-      //        my_ray_list_[i].r().y,
-      //        my_ray_list_[i].r().z);
-      //   }
     }
-
-  // printf("  Rank %d: Ray bank updated with %lu rays.\n", mpi::rank, my_ray_list_.size());
 
   // Clear received data vectors
   received_ray_data_.resize(0);
   received_angular_flux_data_.resize(0);
   received_coord_.resize(0);
   received_cell_last_.resize(0);
-
 }
 
 bool RayBank::is_any_ray_alive(){

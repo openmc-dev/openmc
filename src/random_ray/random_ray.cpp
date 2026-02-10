@@ -9,7 +9,6 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
-#include "openmc/timer.h" //TODO: temporary?
 #include "openmc/cell.h"
 
 #include "openmc/distribution_spatial.h"
@@ -296,11 +295,10 @@ void RandomRay::event_advance_ray()
   if (mpi::n_procs > 1) {
     // If domain decomposition is being used, update counter for 
     // ray trace operations in source region for load estimation
-    //TODO: This is repeated in attenuate_flux, maybe pass in sr index as argument?
     int64_t sr = domain_->lookup_base_source_region_idx(*this);
     for (int i = 0; i < n_coord(); i++) {
       Cell& c {*model::cells[coord(i).cell()]};
-      mpi::decomp_map.num_base_source_region_RT_batch_[sr] += c.n_surfaces();
+      mpi::decomp_map.num_base_source_region_RT_[sr] += c.n_surfaces();
     }
   }
 
@@ -362,7 +360,7 @@ void RandomRay::event_advance_ray()
 
 void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 {
-    // Lookup base source region index
+  // Lookup base source region index
   int64_t sr = domain_->lookup_base_source_region_idx(*this);
   
   // Initialize values needed to buffer ray for domain decomposition
@@ -400,7 +398,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
     // Loop over all mesh bins and attenuate flux
     for (int b = 0; b < mesh_bins_.size(); b++) {
       if (mpi::n_procs > 1) {
-          mpi::decomp_map.num_mesh_bin_RT_batch_[sr] += 1;
+          mpi::decomp_map.num_mesh_bin_RT_[sr] += 1;
       }
       double physical_length = reduced_distance * mesh_fractional_lengths_[b];
       attenuate_flux_inner(
@@ -862,17 +860,6 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   // set identifier for particle
   id() = data.ray_id;
 
-  // SourceSite site;
-
-  // Set location and direction as in previous subdomain
-  // site.r = data.position;
-
-  // angle
-  // site.u = data.direction;
-
-  // site.E = 0.0;
-  // this->from_source(&site);
-
   // Restore GeometryState scalar fields
   n_coord() = data.n_coord;
   cell_instance() = data.cell_instance;
@@ -898,10 +885,8 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   Position delta_r = data.position - r();
   for (int i = 0; i < n_coord(); i++) {
     this->coord(i).r() += delta_r;
-    // this->coord(i).u() = data.direction; // Overwriting local directions causes problems when checking distance to boundary
   }
 
-  // r() = data.position;
   u() = data.direction;
   
 #ifdef OPENMC_DAGMC_ENABLED
@@ -920,7 +905,6 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   // No need to call exhaustive_find_cell() since we have the full geometry state!
   // Just verify we have valid cell information
   if (lowest_coord().cell() == C_NONE) {
-    // if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost(
       "Received particle " + std::to_string(id()) + " with invalid cell information");
   }
@@ -928,7 +912,6 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   // Set birth cell attribute if not set
   if (cell_born() == C_NONE)
     cell_born() = lowest_coord().cell();
-  // }
 
   // Set ray's angular flux to value before subdomain change
   if (distance_travelled_ > 0.0 || is_active_){
@@ -1128,10 +1111,5 @@ void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_bu
 #endif
 
 }
-
-int RandomRay::get_energy_groups() {
-  return negroups_;
-}
-
 
 } // namespace openmc

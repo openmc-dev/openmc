@@ -13,7 +13,7 @@
 
 namespace openmc {
 
-// Container for MPI exchange //TODO: can we avoid this duplication with RayExchangeData?
+// Container for MPI exchange
 struct RayBufferContainer {
   Position position;
   Direction direction;
@@ -115,7 +115,6 @@ public:
 
   bool has_left_subdomain();
   void pack_ray_for_buffer(double distance_buffer, Position position_buffer);
-  int get_energy_groups();
 
   //----------------------------------------------------------------------------
   // Static data members

@@ -39,12 +39,10 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Private data members
-  int total_sending_rays_;
   int total_receiving_rays_;
   int negroups_;
 
-  // Per-rank send buffers - data is packed directly into these in send-ready format
-  // This eliminates intermediate copying and buffering
+  // Per-rank send buffers for ray data, including geometry state and angular flux
   struct RankSendBuffers {
     vector<RayExchangeData> ray_data;
     vector<float> angular_flux;
@@ -53,6 +51,7 @@ private:
     int count = 0;  // Number of rays buffered for this rank
   };
   std::unordered_map<int, RankSendBuffers> ray_send_buffer_;
+  int reserved_buffer_size_ = 32; // Initial reserved size for send buffers, can be tuned based on expected ray counts
 
   // Vector that contains the number of rays to be received from each rank
   vector<int> num_messages_receiving_;

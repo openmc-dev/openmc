@@ -2137,7 +2137,7 @@ bool FlatSourceDomain::is_geometry_3D()
     SourceRegionKey sr_key_prev {-1, -1};
     bool check_key = false;
 
-    for (int j = 0; j < num_z_points; j++){ //TODO: Should uppermost and lowermost position always be checked?
+    for (int j = 0; j < num_z_points; j++){
       sample.z = sb->lower_left().z + z_length * prn(&seed);
 
       Particle p;
@@ -2151,22 +2151,6 @@ bool FlatSourceDomain::is_geometry_3D()
       if (!found) {
         continue;
       }
-
-      // int i_cell = p.lowest_coord().cell();
-      // int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
-      // SourceRegionKey sr_key {sr, 0};
-
-      // if (RandomRay::mesh_subdivision_enabled_) {
-      //   int mesh_idx = base_source_regions_.mesh(sr);
-
-      //   int mesh_bin;
-      //   if (mesh_idx == C_NONE) {
-      //     mesh_bin = 0;
-      //   } else {
-      //     mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
-      //   }
-      //   sr_key = {sr, mesh_bin};
-      // }
 
       SourceRegionKey sr_key = lookup_source_region_key(p);
 

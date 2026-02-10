@@ -17,6 +17,7 @@
 #include "openmc/weight_windows.h"
 #include "openmc/random_ray/decomposition_map.h"
 #include "openmc/random_ray/ray_bank.h"
+#include "openmc/constants.h"
 // #include <thread>
 // #include <chrono>
 
@@ -400,11 +401,10 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint()
 void RandomRaySimulation::simulate()
 {
 
-  // Initialize subdomains for MPI ranks
-  mpi::decomp_map.initialize();
-
-  // Create ray bank //TODO: Should this just be local object?
-  RayBank RB;
+  if (mpi::n_procs > 1) {
+    // Initialize subdomains for MPI ranks
+    mpi::decomp_map.initialize();
+  }
 
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
@@ -445,13 +445,17 @@ void RandomRaySimulation::simulate()
 
     // Transport sweep over all random rays for the iteration
     if (mpi::n_procs > 1){
+  
+      // Create ray bank to store rays
+      RayBank RB;
 
       transport_sweep_decomp(RB);
 
-      // Check if any new regions discovered and if so, exchange discovered cell data between ranks
+      // Check if any new source regions discovered and if so, exchange discovered cell data between ranks
       if (mpi::decomp_map.any_discovered_source_regions(domain_->discovered_source_regions_)){
         simulation::time_source_region_exchange.start();
         mpi::decomp_map.exchange_sr_info(domain_->discovered_source_regions_);
+        MPI_Barrier(mpi::intracomm);
         simulation::time_source_region_exchange.stop();
       }
 
@@ -460,17 +464,18 @@ void RandomRaySimulation::simulate()
     }
 
     // Add any newly discovered source regions to the main source region
-    // container.
+    // container
     domain_->finalize_discovered_source_regions();
 
     // Normalize scalar flux and update volumes
     domain_->normalize_scalar_flux_and_volumes(
       settings::n_particles * RandomRay::distance_active_);
 
-    if (mpi::n_procs > 1 && simulation::current_batch <= 5) {
+    if (mpi::n_procs > 1 && simulation::current_batch <= ITER_LOAD_BALANCE) {
       // Balance load between MPI ranks by exchanging source regions
       simulation::time_load_balance.start();
       mpi::decomp_map.balance_load(domain_.get());
+      MPI_Barrier(mpi::intracomm);
       simulation::time_load_balance.stop();
     }
 
@@ -554,17 +559,6 @@ void RandomRaySimulation::output_simulation_results()
       double max_load_measured = *std::max_element(mpi::decomp_map.measured_rank_load_fractions_.begin(), mpi::decomp_map.measured_rank_load_fractions_.end());
       max_load_imbalance = (max_load_measured - mpi::decomp_map.target_load_) / mpi::decomp_map.target_load_;
     }
-    // if (mpi::master) {
-    //   MPI_Gather(&time_transport_total, 1, MPI_DOUBLE, measured_rank_load_fractions_.data(), 1, MPI_DOUBLE, 0, mpi::intracomm);
-    //   double measured_load_sum = std::accumulate(measured_rank_load_fractions_.begin(), measured_rank_load_fractions_.end(), 0.0);
-    //   for (int rank = 0; rank < mpi::n_procs; rank++) {
-    //     measured_rank_load_fractions_[rank] = measured_rank_load_fractions_[rank] / measured_load_sum;
-    //   }
-    //   double max_load_measured = *std::max_element(measured_rank_load_fractions_.begin(), measured_rank_load_fractions_.end());
-    //   max_load_imbalance = (max_load_measured - mpi::decomp_map.target_load_) / mpi::decomp_map.target_load_;
-    // } else {
-    //   MPI_Gather(&time_transport_total, 1, MPI_DOUBLE, nullptr, 1, MPI_DOUBLE, 0, mpi::intracomm);
-    // }
   }
 
   // Print random ray results
@@ -678,8 +672,6 @@ void RandomRaySimulation::print_results_random_ray(
     if (mpi::n_procs > 1){
       fmt::print(" MPI Ranks                         = {}\n", mpi::n_procs);
       fmt::print(" Avg Ray Subdomain Crossings       = {}\n", avg_num_communication_rounds);
-      fmt::print(" Number of load optimization calls = {}\n", mpi::decomp_map.cnt_optimizations_total_); //TODO: can be removed if fixed to 5
-      fmt::print("    unconverged optimizations      = {}\n", mpi::decomp_map.cnt_unconverged_optimizations_total_);
       fmt::print(" Maximum Load Imbalance            = {:.2f}%\n", max_load_imbalance*100.0);
     }
 
@@ -738,13 +730,12 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
     if (mpi::n_procs > 1){
       double time_decomp_misc = time_domain_decomposition - time_source_region_exchange.elapsed() - time_generate_voronoi_centers.elapsed() 
-        - time_ray_comms.elapsed() - time_unpack_data.elapsed() - time_load_balance.elapsed();
+        - time_ray_comms.elapsed() - time_load_balance.elapsed();
       show_time("Decomposition handling", time_domain_decomposition, 1);
       show_time("Ray communication", time_ray_comms.elapsed(), 2);
       show_time("Exchanging contested SRs", time_source_region_exchange.elapsed(), 2);
       show_time("Load balancing", time_load_balance.elapsed(), 2);
       show_time("Generating Voronoi centers", time_generate_voronoi_centers.elapsed(), 2);
-      show_time("Reinitialising received rays", time_unpack_data.elapsed(), 2);
       show_time("Other decomposition routines", time_decomp_misc, 2);
     }
     show_time("Other iteration routines", misc_time, 1);
@@ -840,11 +831,13 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
               }
             }
           }
+      MPI_Barrier(mpi::intracomm);
       simulation::time_transport.stop();
 
       // Update ray bank by communicating rays in buffer to new owner ranks and removing terminated ranks
       simulation::time_ray_comms.start();
       RB.update(domain_.get());
+      MPI_Barrier(mpi::intracomm);
       simulation::time_ray_comms.stop();
 
       num_communication_rounds ++;
@@ -854,8 +847,10 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
     double batch_ray_buffering_time = simulation::time_ray_buffering.elapsed() - start_time_ray_buffering;
     double batch_transport_time = simulation::time_transport.elapsed() - start_time_transport - batch_ray_buffering_time;
 
-    //TODO: only calculate load for first 5 batches
-    mpi::decomp_map.calculate_rank_load(domain_.get(), batch_transport_time);
+    // Calculate rank load fractions for load balancing
+    if (simulation::current_batch <= ITER_LOAD_BALANCE) {
+      mpi::decomp_map.calculate_rank_load(domain_.get(), batch_transport_time);
+    }
 
     avg_num_communication_rounds_ += num_communication_rounds;
 

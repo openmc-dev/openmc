@@ -265,7 +265,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   }
   if (!void_velocities_exist) {
     for (int i = 0; i < energy_bins_.size() - 1; ++i) {
-      double e_min = energy_bins_[i];
+      double e_min = std::max(energy_bins_[i], 1e-5);
       double e_max = energy_bins_[i + 1];
       double v = C_LIGHT * std::log(e_max / e_min) /
                  (std::acosh(1 + e_max / MASS_NEUTRON_EV) -

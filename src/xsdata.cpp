@@ -99,7 +99,7 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   if (!object_exists(xsdata_grp, "inverse-velocity")) {
     xt::xarray<double> inv_vel = xt::zeros<double>({energy_groups});
     for (int i = 0; i < energy_groups; ++i) {
-      double e_min = energy_bins[i];
+      double e_min = std::max(energy_bins[i], 1e-5);
       double e_max = energy_bins[i + 1];
       inv_vel[i] = (std::acosh(1 + e_max / MASS_NEUTRON_EV) -
                      std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_max) -

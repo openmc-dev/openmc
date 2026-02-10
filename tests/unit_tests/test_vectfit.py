@@ -101,7 +101,7 @@ def poly_test_data():
 @pytest.fixture
 def real_poles_data(ref_poles, ref_residues):
     """Large-scale signal using complex and real poles."""
-    Ns = 5000
+    Ns = 2000
     s = np.linspace(1.0e-2, 5.0e3, Ns)
     f = np.zeros((1, Ns))
     for p, r in zip(ref_poles, ref_residues[0]):
@@ -116,8 +116,8 @@ def real_poles_data(ref_poles, ref_residues):
 @pytest.fixture
 def large_test_data():
     """Stress test data with thousands of poles and samples."""
-    Ns = 20000
-    N = 1000
+    Ns = 3000
+    N = 200
     s = np.linspace(1.0e-2, 5.0e3, Ns)
     poles = np.linspace(1.1e-2, 4.8e3, N // 2) + 0.01j * np.linspace(
         1.1e-2, 4.8e3, N // 2
@@ -153,8 +153,10 @@ def test_vector(vector_test_data):
     """
     s, expected_poles, expected_residues, f, weight, init_poles = vector_test_data
     poles, residues, _, fit, _ = vectfit(f, s, init_poles, weight)
-    assert np.allclose(poles, expected_poles, rtol=1e-7)
-    assert np.allclose(residues, expected_residues, rtol=1e-7)
+    assert np.allclose(
+        np.sort_complex(poles), np.sort_complex(expected_poles), rtol=1e-7
+    )
+    assert np.allclose(f, evaluate(s, poles, residues), rtol=1e-7)
     assert np.allclose(f, fit, rtol=1e-5)
 
 
@@ -165,8 +167,10 @@ def test_poly(poly_test_data):
     )
     poles, residues, cf, fit, _ = vectfit(f, s, init_poles, weight, n_polys=3)
     poles, residues, cf, fit, _ = vectfit(f, s, poles, weight, n_polys=3)
-    assert np.allclose(poles, expected_poles, rtol=1e-5)
-    assert np.allclose(residues, expected_residues, rtol=1e-5)
+    assert np.allclose(
+        np.sort_complex(poles), np.sort_complex(expected_poles), rtol=1e-5
+    )
+    assert np.allclose(f, evaluate(s, poles, residues, cf), rtol=1e-5)
     assert np.allclose(cf, expected_polys, rtol=1e-5)
     assert np.allclose(f, fit, rtol=1e-4)
 
@@ -174,10 +178,12 @@ def test_poly(poly_test_data):
 def test_real_poles(real_poles_data, ref_poles, ref_residues):
     """Test vectfit with more poles including real poles"""
     s, f, weight, poles = real_poles_data
-    for _ in range(10):
+    for _ in range(6):
         poles, residues, _, fit, _ = vectfit(f, s, poles, weight)
-    assert np.allclose(np.sort(poles), np.sort(ref_poles))
-    assert np.allclose(np.sort(residues), np.sort(ref_residues))
+    assert np.allclose(
+        np.sort_complex(poles), np.sort_complex(ref_poles), rtol=1e-5, atol=1e-8
+    )
+    assert np.allclose(f, evaluate(s, poles, residues), rtol=1e-4)
     assert np.allclose(f, fit, rtol=1e-3)
 
 

@@ -667,7 +667,7 @@ class CoincidentSource(SourceBase):
     independent particle type, energy, and angular distributions. This is
     useful for simulating coincident emissions such as Co-60 summation peaks.
 
-    .. versionadded:: 0.15.1
+    .. versionadded:: 0.15.4
 
     Parameters
     ----------
@@ -675,12 +675,12 @@ class CoincidentSource(SourceBase):
         Shared spatial distribution for all emitted particles
     time : openmc.stats.Univariate, optional
         Shared time distribution for all emitted particles
-    sources : list of openmc.IndependentSource
+    sources : sequence of openmc.IndependentSource
         Sub-sources defining particle type, energy, and angle for each
         coincident particle. Must contain at least 2 sources.
     strength : float
         Strength of the source
-    probabilities : list of float, optional
+    probabilities : sequence of float, optional
         Emission probability for each sub-source, values in (0, 1].
         Default is 1.0 (always emit) for every sub-source.
     constraints : dict, optional

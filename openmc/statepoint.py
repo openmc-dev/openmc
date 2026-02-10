@@ -212,7 +212,7 @@ class StatePoint:
 
     @property
     def entropy(self):
-        if self.run_mode == 'eigenvalue':
+        if 'entropy' in self._f:
             return self._f['entropy'][()]
         else:
             return None
@@ -233,7 +233,7 @@ class StatePoint:
 
     @property
     def generations_per_batch(self):
-        if self.run_mode == 'eigenvalue':
+        if 'generations_per_batch' in self._f:
             return self._f['generations_per_batch'][()]
         else:
             return None
@@ -268,14 +268,14 @@ class StatePoint:
 
     @property
     def k_generation(self):
-        if self.run_mode == 'eigenvalue':
+        if 'k_generation' in self._f:
             return self._f['k_generation'][()]
         else:
             return None
 
     @property
     def keff(self):
-        if self.run_mode == 'eigenvalue':
+        if 'k_combined' in self._f:
             return ufloat(*self._f['k_combined'][()])
         else:
             return None
@@ -290,21 +290,21 @@ class StatePoint:
 
     @property
     def k_col_abs(self):
-        if self.run_mode == 'eigenvalue':
+        if 'k_col_abs' in self._f:
             return self._f['k_col_abs'][()]
         else:
             return None
 
     @property
     def k_col_tra(self):
-        if self.run_mode == 'eigenvalue':
+        if 'k_col_tra' in self._f:
             return self._f['k_col_tra'][()]
         else:
             return None
 
     @property
     def k_abs_tra(self):
-        if self.run_mode == 'eigenvalue':
+        if 'k_abs_tra' in self._f:
             return self._f['k_abs_tra'][()]
         else:
             return None
@@ -329,7 +329,7 @@ class StatePoint:
 
     @property
     def n_inactive(self):
-        if self.run_mode == 'eigenvalue':
+        if 'n_inactive' in self._f:
             return self._f['n_inactive'][()]
         else:
             return None

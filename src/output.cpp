@@ -444,11 +444,11 @@ void print_runtime()
     show_time("Collisions", time_event_collision.elapsed(), 2);
     show_time("Particle death", time_event_death.elapsed(), 2);
   }
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::eigenvalue_like()) {
     show_time("Time in inactive batches", time_inactive.elapsed(), 1);
   }
   show_time("Time in active batches", time_active.elapsed(), 1);
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::eigenvalue_like()) {
     show_time("Time synchronizing fission bank", time_bank.elapsed(), 1);
     show_time("Sampling source sites", time_bank_sample.elapsed(), 2);
     show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
@@ -535,7 +535,7 @@ void print_results()
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::eigenvalue_like()) {
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
       fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
@@ -560,7 +560,7 @@ void print_results()
       warning("Could not compute uncertainties -- only one "
               "active batch simulated!");
 
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::eigenvalue_like()) {
       fmt::print(" k-effective (Collision)    = {:.5f}\n",
         gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n);
       fmt::print(" k-effective (Track-length) = {:.5f}\n",

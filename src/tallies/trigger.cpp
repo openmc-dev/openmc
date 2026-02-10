@@ -126,7 +126,7 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
 
 double check_keff_trigger()
 {
-  if (settings::run_mode != RunMode::EIGENVALUE)
+  if (!settings::eigenvalue_like())
     return 0.0;
 
   double k_combined[2];

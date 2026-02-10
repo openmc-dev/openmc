@@ -42,6 +42,13 @@ int main(int argc, char* argv[])
       break;
     }
     break;
+  case RunMode::SUBCRITICAL_MULTIPLICATION:
+    switch (settings::solver_type) {
+    case SolverType::MONTE_CARLO:
+      err = openmc_run();
+      break;
+    }
+    break;
   case RunMode::PLOTTING:
     err = openmc_plot_geometry();
     break;

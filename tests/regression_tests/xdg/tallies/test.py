@@ -73,7 +73,7 @@ class XDGMeshTallyTest(PyAPITestHarness):
                         reg_mesh_data = self.get_mesh_tally_data(tally)
                     else:
                         xdg_tally = tally
-                        xdg_mesh_data = self.get_mesh_tally_data(tally, True)
+                        xdg_mesh_data = self.get_mesh_tally_data(tally, structured=True)
 
         assert reg_mesh_data is not None
         assert xdg_mesh_data is not None

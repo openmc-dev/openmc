@@ -35,11 +35,24 @@ from typing import Tuple
 import numpy as np
 from scipy.linalg import eigvals, lstsq, norm, qr
 
-def wlstsq(a,b):
-    """Apply lstsq with normalization"""
-    scale = np.nan_to_num(1.0/np.linalg.norm(a, axis=0), posinf=1.0, neginf=1.0)
-    sol = lstsq(a*scale, b)
-    return (sol[0]*scale,sol[1:])
+
+def wlstsq(a, b):
+    """Apply least-squares solve with column normalization.
+
+    Notes
+    -----
+    This routine rescales columns of `a` to improve conditioning. Columns with
+    zero norm are left unscaled to avoid divide-by-zero warnings.
+    """
+    col_norm = np.linalg.norm(a, axis=0)
+    scale = np.ones_like(col_norm, dtype=float)
+    nonzero = col_norm > 0.0
+    scale[nonzero] = 1.0 / col_norm[nonzero]
+    scale = np.nan_to_num(scale, nan=1.0, posinf=1.0, neginf=1.0)
+
+    sol = lstsq(a * scale, b)
+    return (sol[0] * scale, sol[1:])
+
 
 def evaluate(
     eval_points: np.ndarray,

@@ -205,11 +205,7 @@ DADZ = {
 # Values here are from the Committee on Data for Science and Technology
 # (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
-# The value of the Boltzman constant in units of eV / K
-K_BOLTZMANN = 8.617333262e-5
-
 # Unit conversions
-EV_PER_MEV = 1.0e6
 JOULE_PER_EV = 1.602176634e-19
 
 # Avogadro's constant

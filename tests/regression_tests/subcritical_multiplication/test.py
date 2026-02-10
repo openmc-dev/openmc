@@ -32,10 +32,10 @@ class MGXSTestHarness(PyAPITestHarness):
 
             # Write out k_generation
             outstr += 'k_generation:\n'
-            form = '{0:12.6E} {1:12.6E}\n'
+            form = '{0:12.6E}\n'
             k_gen = sp.k_generation
             for kg in k_gen:
-                outstr += form.format(kg.n, kg.s)
+                outstr += form.format(kg)
 
         return outstr   
                        

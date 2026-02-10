@@ -262,7 +262,7 @@ int openmc_weight_windows_set_weight_cutoff(int32_t index, double cutoff);
 int openmc_weight_windows_get_max_split(int32_t index, int* max_split);
 int openmc_weight_windows_set_max_split(int32_t index, int max_split);
 size_t openmc_weight_windows_size();
-size_t plots_size();
+size_t openmc_plots_size();
 int openmc_weight_windows_export(const char* filename = nullptr);
 int openmc_weight_windows_import(const char* filename = nullptr);
 int openmc_zernike_filter_get_order(int32_t index, int* order);

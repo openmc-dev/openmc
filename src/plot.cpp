@@ -2007,7 +2007,7 @@ extern "C" int openmc_plot_set_id(int32_t index, int32_t id)
   return 0;
 }
 
-extern "C" size_t plots_size()
+extern "C" size_t openmc_plots_size()
 {
   return model::plots.size();
 }

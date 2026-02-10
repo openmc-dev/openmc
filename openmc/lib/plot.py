@@ -275,7 +275,7 @@ _dll.openmc_plot_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_plot_set_id.restype = c_int
 _dll.openmc_plot_set_id.errcheck = _error_handler
 
-_dll.plots_size.restype = c_size_t
+_dll.openmc_plots_size.restype = c_size_t
 
 _dll.openmc_solidraytrace_plot_create.argtypes = [POINTER(c_int32)]
 _dll.openmc_solidraytrace_plot_create.restype = c_int
@@ -635,7 +635,7 @@ class _PlotMapping(Mapping):
             yield SolidRayTracePlot(index=i).id
 
     def __len__(self):
-        return _dll.plots_size()
+        return _dll.openmc_plots_size()
 
     def __repr__(self):
         return repr(dict(self))

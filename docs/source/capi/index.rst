@@ -607,7 +607,7 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: size_t plots_size()
+.. c:function:: size_t openmc_plots_size()
 
    Number of plots currently allocated.
 

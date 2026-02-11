@@ -361,7 +361,7 @@ void Nuclide::create_derived(
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
     xs_.emplace_back(
-      openmc::vector<size_t>{grid.energy.size(), 5}, 0.0);
+      vector<size_t>{grid.energy.size(), 5}, 0.0);
   }
 
   reaction_index_.fill(C_NONE);

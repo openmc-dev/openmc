@@ -472,7 +472,7 @@ void read_dataset(
   vector<hsize_t> shape = object_shape(dset);
 
   // Resize tensor and read data directly
-  openmc::vector<std::size_t> tshape(shape.begin(), shape.end());
+  vector<size_t> tshape(shape.begin(), shape.end());
   arr.resize(tshape);
 
   // Read data from dataset

@@ -888,7 +888,7 @@ int Tally::score_index(const std::string& score) const
 
 tensor::Tensor<double> Tally::get_reshaped_data() const
 {
-  openmc::vector<size_t> shape;
+  vector<size_t> shape;
   for (auto f : filters()) {
     shape.push_back(model::tally_filters[f]->n_bins());
   }

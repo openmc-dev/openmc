@@ -2,7 +2,7 @@
 //! \brief Multi-dimensional tensor types for OpenMC.
 //!
 //! Provides Tensor<T> (dynamic-rank), Fixed2D<T,R,C> (stack-allocated),
-//! and lightweight view types. Built on openmc::vector for GPU portability.
+//! and lightweight view types. Built on vector for GPU portability.
 
 #ifndef OPENMC_TENSOR_H
 #define OPENMC_TENSOR_H
@@ -29,7 +29,7 @@ namespace tensor {
 template<typename T>
 class Tensor;
 
-template<typename T, std::size_t R, std::size_t C>
+template<typename T, size_t R, size_t C>
 class Fixed2D;
 
 //==============================================================================
@@ -64,29 +64,29 @@ class View1D {
 public:
   using value_type = std::remove_const_t<T>;
 
-  View1D(T* data, std::size_t size, std::size_t stride = 1)
+  View1D(T* data, size_t size, size_t stride = 1)
     : data_(data), size_(size), stride_(stride)
   {}
 
-  T& operator()(std::size_t i) { return data_[i * stride_]; }
-  const T& operator()(std::size_t i) const { return data_[i * stride_]; }
-  T& operator[](std::size_t i) { return data_[i * stride_]; }
-  const T& operator[](std::size_t i) const { return data_[i * stride_]; }
+  T& operator()(size_t i) { return data_[i * stride_]; }
+  const T& operator()(size_t i) const { return data_[i * stride_]; }
+  T& operator[](size_t i) { return data_[i * stride_]; }
+  const T& operator[](size_t i) const { return data_[i * stride_]; }
 
-  std::size_t size() const { return size_; }
+  size_t size() const { return size_; }
   T* data() { return data_; }
   const T* data() const { return data_; }
-  std::size_t stride() const { return stride_; }
+  size_t stride() const { return stride_; }
 
-  View1D<T> slice(std::size_t start, std::size_t end)
+  View1D<T> slice(size_t start, size_t end)
   {
     return {data_ + start * stride_, end - start, stride_};
   }
-  View1D<const T> slice(std::size_t start, std::size_t end) const
+  View1D<const T> slice(size_t start, size_t end) const
   {
     return {data_ + start * stride_, end - start, stride_};
   }
-  View1D<T> slice(std::size_t start)
+  View1D<T> slice(size_t start)
   {
     return {data_ + start * stride_, size_ - start, stride_};
   }
@@ -96,7 +96,7 @@ public:
   auto operator=(U val) ->
     std::enable_if_t<std::is_arithmetic<U>::value, View1D&>
   {
-    for (std::size_t i = 0; i < size_; ++i)
+    for (size_t i = 0; i < size_; ++i)
       data_[i * stride_] = val;
     return *this;
   }
@@ -105,7 +105,7 @@ public:
   View1D& operator=(std::initializer_list<value_type> vals)
   {
     auto it = vals.begin();
-    for (std::size_t i = 0; i < size_ && it != vals.end(); ++i, ++it)
+    for (size_t i = 0; i < size_ && it != vals.end(); ++i, ++it)
       data_[i * stride_] = *it;
     return *this;
   }
@@ -120,7 +120,7 @@ public:
 
   View1D& operator*=(value_type val)
   {
-    for (std::size_t i = 0; i < size_; ++i)
+    for (size_t i = 0; i < size_; ++i)
       data_[i * stride_] *= val;
     return *this;
   }
@@ -128,7 +128,7 @@ public:
   // Iterators
   class const_iterator {
     const T* ptr_;
-    std::size_t stride_;
+    size_t stride_;
 
   public:
     using iterator_category = std::random_access_iterator_tag;
@@ -137,7 +137,7 @@ public:
     using pointer = const T*;
     using reference = const T&;
 
-    const_iterator(const T* ptr, std::size_t stride)
+    const_iterator(const T* ptr, size_t stride)
       : ptr_(ptr), stride_(stride)
     {}
     const T& operator*() const { return *ptr_; }
@@ -216,7 +216,7 @@ public:
 
   class iterator {
     T* ptr_;
-    std::size_t stride_;
+    size_t stride_;
 
   public:
     using iterator_category = std::random_access_iterator_tag;
@@ -225,7 +225,7 @@ public:
     using pointer = T*;
     using reference = T&;
 
-    iterator(T* ptr, std::size_t stride) : ptr_(ptr), stride_(stride) {}
+    iterator(T* ptr, size_t stride) : ptr_(ptr), stride_(stride) {}
     T& operator*() { return *ptr_; }
     iterator& operator++()
     {
@@ -291,8 +291,8 @@ public:
 
 private:
   T* data_;
-  std::size_t size_;
-  std::size_t stride_;
+  size_t size_;
+  size_t stride_;
 };
 
 //==============================================================================
@@ -302,10 +302,10 @@ private:
 template<typename T>
 class ViewFlat {
 public:
-  ViewFlat(T* data, std::size_t size) : data_(data), size_(size) {}
+  ViewFlat(T* data, size_t size) : data_(data), size_(size) {}
 
-  T& operator()(std::size_t i) { return data_[i]; }
-  const T& operator()(std::size_t i) const { return data_[i]; }
+  T& operator()(size_t i) { return data_[i]; }
+  const T& operator()(size_t i) const { return data_[i]; }
 
   template<typename U>
   auto operator=(U val) ->
@@ -317,7 +317,7 @@ public:
 
   T* data() { return data_; }
   const T* data() const { return data_; }
-  std::size_t size() const { return size_; }
+  size_t size() const { return size_; }
 
   T* begin() { return data_; }
   T* end() { return data_ + size_; }
@@ -326,13 +326,13 @@ public:
 
 private:
   T* data_;
-  std::size_t size_;
+  size_t size_;
 };
 
 //==============================================================================
 // Tensor<T>: dynamic-rank N-dimensional tensor.
 //
-// Stores elements in a contiguous row-major openmc::vector<storage_type<T>>
+// Stores elements in a contiguous row-major vector<storage_type<T>>
 // with a dynamic shape.
 //==============================================================================
 
@@ -341,8 +341,8 @@ class Tensor {
 public:
   using value_type = T;
   using stored_type = storage_type<T>;
-  using iterator = typename openmc::vector<stored_type>::iterator;
-  using const_iterator = typename openmc::vector<stored_type>::const_iterator;
+  using iterator = typename vector<stored_type>::iterator;
+  using const_iterator = typename vector<stored_type>::const_iterator;
 
   //--------------------------------------------------------------------------
   // Constructors
@@ -350,47 +350,47 @@ public:
   Tensor() = default;
 
   //! Construct with shape (uninitialized for arithmetic types via vector resize)
-  explicit Tensor(openmc::vector<std::size_t> shape)
+  explicit Tensor(vector<size_t> shape)
     : shape_(std::move(shape)), data_(compute_size())
   {}
 
   //! Construct with shape and fill value
-  Tensor(openmc::vector<std::size_t> shape, T fill)
+  Tensor(vector<size_t> shape, T fill)
     : shape_(std::move(shape)), data_(compute_size(), fill)
   {}
 
   //! Construct from initializer_list shape
-  explicit Tensor(std::initializer_list<std::size_t> shape)
+  explicit Tensor(std::initializer_list<size_t> shape)
     : shape_(shape), data_(compute_size())
   {}
 
   //! Construct from initializer_list shape with fill
-  Tensor(std::initializer_list<std::size_t> shape, T fill)
+  Tensor(std::initializer_list<size_t> shape, T fill)
     : shape_(shape), data_(compute_size(), fill)
   {}
 
-  //! 1D copy from openmc::vector (disabled when T=size_t to avoid ambiguity)
+  //! 1D copy from vector (disabled when T=size_t to avoid ambiguity)
   template<typename Dummy = T,
-    typename = std::enable_if_t<!std::is_same<Dummy, std::size_t>::value>>
-  explicit Tensor(const openmc::vector<T>& vec)
+    typename = std::enable_if_t<!std::is_same<Dummy, size_t>::value>>
+  explicit Tensor(const vector<T>& vec)
     : shape_({vec.size()}), data_(vec.begin(), vec.end())
   {}
 
   //! 1D copy from std::vector (disabled when T=size_t)
   template<typename Alloc, typename Dummy = T,
-    typename = std::enable_if_t<!std::is_same<Dummy, std::size_t>::value>>
+    typename = std::enable_if_t<!std::is_same<Dummy, size_t>::value>>
   explicit Tensor(const std::vector<T, Alloc>& vec)
     : shape_({vec.size()}), data_(vec.begin(), vec.end())
   {}
 
   //! 1D copy from raw pointer + count
-  Tensor(const T* ptr, std::size_t count)
+  Tensor(const T* ptr, size_t count)
     : shape_({count}), data_(ptr, ptr + count)
   {}
 
   //! Copy from vector with explicit shape
   template<typename Alloc>
-  Tensor(const std::vector<T, Alloc>& vec, openmc::vector<std::size_t> shape)
+  Tensor(const std::vector<T, Alloc>& vec, vector<size_t> shape)
     : shape_(std::move(shape)), data_(vec.begin(), vec.end())
   {}
 
@@ -400,7 +400,7 @@ public:
     : shape_({v.size()})
   {
     data_.resize(v.size());
-    for (std::size_t i = 0; i < v.size(); ++i)
+    for (size_t i = 0; i < v.size(); ++i)
       data_[i] = v(i);
   }
 
@@ -411,7 +411,7 @@ public:
     : shape_(other.shape())
   {
     data_.resize(other.size());
-    for (std::size_t i = 0; i < other.size(); ++i)
+    for (size_t i = 0; i < other.size(); ++i)
       data_[i] = static_cast<stored_type>(other.data()[i]);
   }
 
@@ -425,7 +425,7 @@ public:
   {
     shape_ = other.shape();
     data_.resize(other.size());
-    for (std::size_t i = 0; i < other.size(); ++i)
+    for (size_t i = 0; i < other.size(); ++i)
       data_[i] = static_cast<stored_type>(other.data()[i]);
     return *this;
   }
@@ -435,14 +435,14 @@ public:
   {
     shape_ = {v.size()};
     data_.resize(v.size());
-    for (std::size_t i = 0; i < v.size(); ++i)
+    for (size_t i = 0; i < v.size(); ++i)
       data_[i] = v(i);
     return *this;
   }
 
   //! Assignment from initializer_list of values (1D)
   template<typename Dummy = T,
-    typename = std::enable_if_t<!std::is_same<Dummy, std::size_t>::value>>
+    typename = std::enable_if_t<!std::is_same<Dummy, size_t>::value>>
   Tensor& operator=(std::initializer_list<T> vals)
   {
     shape_ = {vals.size()};
@@ -455,12 +455,12 @@ public:
 
   stored_type* data() { return data_.data(); }
   const stored_type* data() const { return data_.data(); }
-  std::size_t size() const { return data_.size(); }
-  const openmc::vector<std::size_t>& shape() const { return shape_; }
-  std::size_t shape(std::size_t dim) const {
+  size_t size() const { return data_.size(); }
+  const vector<size_t>& shape() const { return shape_; }
+  size_t shape(size_t dim) const {
     return dim < shape_.size() ? shape_[dim] : 0;
   }
-  std::size_t ndim() const { return shape_.size(); }
+  size_t ndim() const { return shape_.size(); }
   bool empty() const { return data_.empty(); }
 
   //--------------------------------------------------------------------------
@@ -469,17 +469,17 @@ public:
   template<typename... Indices>
   stored_type& operator()(Indices... indices)
   {
-    return data_[offset(static_cast<std::size_t>(indices)...)];
+    return data_[offset(static_cast<size_t>(indices)...)];
   }
 
   template<typename... Indices>
   const stored_type& operator()(Indices... indices) const
   {
-    return data_[offset(static_cast<std::size_t>(indices)...)];
+    return data_[offset(static_cast<size_t>(indices)...)];
   }
 
-  stored_type& operator[](std::size_t i) { return data_[i]; }
-  const stored_type& operator[](std::size_t i) const { return data_[i]; }
+  stored_type& operator[](size_t i) { return data_[i]; }
+  const stored_type& operator[](size_t i) const { return data_[i]; }
 
   //--------------------------------------------------------------------------
   // Iterators
@@ -494,23 +494,23 @@ public:
   //--------------------------------------------------------------------------
   // Mutation
 
-  void resize(const openmc::vector<std::size_t>& shape)
+  void resize(const vector<size_t>& shape)
   {
     shape_ = shape;
     data_.resize(compute_size());
   }
 
-  void resize(std::initializer_list<std::size_t> shape)
+  void resize(std::initializer_list<size_t> shape)
   {
     shape_.assign(shape.begin(), shape.end());
     data_.resize(compute_size());
   }
 
-  void resize(const openmc::vector<unsigned long long>& shape)
+  void resize(const vector<unsigned long long>& shape)
   {
     shape_.clear();
     for (auto d : shape)
-      shape_.push_back(static_cast<std::size_t>(d));
+      shape_.push_back(static_cast<size_t>(d));
     data_.resize(compute_size());
   }
 
@@ -519,7 +519,7 @@ public:
   {
     shape_.clear();
     for (auto d : new_shape)
-      shape_.push_back(static_cast<std::size_t>(d));
+      shape_.push_back(static_cast<size_t>(d));
   }
 
   void fill(T val) { std::fill(data_.begin(), data_.end(), val); }
@@ -528,43 +528,43 @@ public:
   // View accessors
 
   //! Row i of a 2D+ tensor (contiguous 1D view)
-  View1D<stored_type> row(std::size_t i)
+  View1D<stored_type> row(size_t i)
   {
     auto cols = shape_[shape_.size() - 1];
     return {data_.data() + i * cols, cols, 1};
   }
-  View1D<const stored_type> row(std::size_t i) const
+  View1D<const stored_type> row(size_t i) const
   {
     auto cols = shape_[shape_.size() - 1];
     return {data_.data() + i * cols, cols, 1};
   }
 
   //! Column j of a 2D tensor (strided 1D view)
-  View1D<stored_type> col(std::size_t j)
+  View1D<stored_type> col(size_t j)
   {
     return {data_.data() + j, shape_[0], shape_[1]};
   }
-  View1D<const stored_type> col(std::size_t j) const
+  View1D<const stored_type> col(size_t j) const
   {
     return {data_.data() + j, shape_[0], shape_[1]};
   }
 
   //! Subrange of a 1D tensor
-  View1D<stored_type> slice(std::size_t start, std::size_t end)
+  View1D<stored_type> slice(size_t start, size_t end)
   {
     return {data_.data() + start, end - start, 1};
   }
-  View1D<const stored_type> slice(std::size_t start, std::size_t end) const
+  View1D<const stored_type> slice(size_t start, size_t end) const
   {
     return {data_.data() + start, end - start, 1};
   }
 
   //! Subrange to end of a 1D tensor
-  View1D<stored_type> slice(std::size_t start)
+  View1D<stored_type> slice(size_t start)
   {
     return {data_.data() + start, data_.size() - start, 1};
   }
-  View1D<const stored_type> slice(std::size_t start) const
+  View1D<const stored_type> slice(size_t start) const
   {
     return {data_.data() + start, data_.size() - start, 1};
   }
@@ -585,25 +585,25 @@ public:
   T sum() const
   {
     T s = T(0);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       s += data_[i];
     return s;
   }
 
   //! Sum along an axis, reducing rank by 1 (defined out-of-line below)
-  Tensor<T> sum(std::size_t axis) const;
+  Tensor<T> sum(size_t axis) const;
 
   T prod() const
   {
     T p = T(1);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       p *= data_[i];
     return p;
   }
 
   bool any() const
   {
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       if (data_[i])
         return true;
     return false;
@@ -611,15 +611,15 @@ public:
 
   bool all() const
   {
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       if (!data_[i])
         return false;
     return true;
   }
 
-  std::size_t argmin() const
+  size_t argmin() const
   {
-    return static_cast<std::size_t>(
+    return static_cast<size_t>(
       std::distance(data_.data(),
         std::min_element(data_.data(), data_.data() + data_.size())));
   }
@@ -627,19 +627,19 @@ public:
   //--------------------------------------------------------------------------
   // Flip
 
-  Tensor flip(std::size_t axis) const
+  Tensor flip(size_t axis) const
   {
     Tensor r(shape_);
     if (shape_.size() == 2) {
       auto s0 = shape_[0];
       auto s1 = shape_[1];
       if (axis == 0) {
-        for (std::size_t i = 0; i < s0; ++i)
-          for (std::size_t j = 0; j < s1; ++j)
+        for (size_t i = 0; i < s0; ++i)
+          for (size_t j = 0; j < s1; ++j)
             r.data_[i * s1 + j] = data_[(s0 - 1 - i) * s1 + j];
       } else {
-        for (std::size_t i = 0; i < s0; ++i)
-          for (std::size_t j = 0; j < s1; ++j)
+        for (size_t i = 0; i < s0; ++i)
+          for (size_t j = 0; j < s1; ++j)
             r.data_[i * s1 + j] = data_[i * s1 + (s1 - 1 - j)];
       }
     }
@@ -679,7 +679,7 @@ public:
 
   Tensor& operator+=(const Tensor& o)
   {
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       data_[i] += o.data_[i];
     return *this;
   }
@@ -690,21 +690,21 @@ public:
   Tensor operator+(const Tensor& o) const
   {
     Tensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data_[i] = data_[i] + o.data_[i];
     return r;
   }
   Tensor operator-(const Tensor& o) const
   {
     Tensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data_[i] = data_[i] - o.data_[i];
     return r;
   }
   Tensor operator/(const Tensor& o) const
   {
     Tensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data_[i] = data_[i] / o.data_[i];
     return r;
   }
@@ -715,21 +715,21 @@ public:
   Tensor operator+(T val) const
   {
     Tensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data_[i] = data_[i] + val;
     return r;
   }
   Tensor operator-(T val) const
   {
     Tensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data_[i] = data_[i] - val;
     return r;
   }
   Tensor operator*(T val) const
   {
     Tensor r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data_[i] = data_[i] * val;
     return r;
   }
@@ -740,63 +740,63 @@ public:
   Tensor<bool> operator<=(T val) const
   {
     Tensor<bool> r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data()[i] = data_[i] <= val;
     return r;
   }
   Tensor<bool> operator<(T val) const
   {
     Tensor<bool> r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data()[i] = data_[i] < val;
     return r;
   }
   Tensor<bool> operator>=(T val) const
   {
     Tensor<bool> r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data()[i] = data_[i] >= val;
     return r;
   }
   Tensor<bool> operator>(T val) const
   {
     Tensor<bool> r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data()[i] = data_[i] > val;
     return r;
   }
   Tensor<bool> operator<(const Tensor& o) const
   {
     Tensor<bool> r(shape_);
-    for (std::size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < data_.size(); ++i)
       r.data()[i] = data_[i] < o.data_[i];
     return r;
   }
 
 private:
-  std::size_t compute_size() const
+  size_t compute_size() const
   {
-    std::size_t s = 1;
+    size_t s = 1;
     for (auto d : shape_)
       s *= d;
     return s;
   }
 
   //! Row-major offset calculations for operator()
-  std::size_t offset(std::size_t i0) const { return i0; }
+  size_t offset(size_t i0) const { return i0; }
 
-  std::size_t offset(std::size_t i0, std::size_t i1) const
+  size_t offset(size_t i0, size_t i1) const
   {
     return i0 * shape_[1] + i1;
   }
 
-  std::size_t offset(std::size_t i0, std::size_t i1, std::size_t i2) const
+  size_t offset(size_t i0, size_t i1, size_t i2) const
   {
     return (i0 * shape_[1] + i1) * shape_[2] + i2;
   }
 
-  std::size_t offset(
-    std::size_t i0, std::size_t i1, std::size_t i2, std::size_t i3) const
+  size_t offset(
+    size_t i0, size_t i1, size_t i2, size_t i3) const
   {
     return ((i0 * shape_[1] + i1) * shape_[2] + i2) * shape_[3] + i3;
   }
@@ -804,8 +804,8 @@ private:
   //--------------------------------------------------------------------------
   // Data members
 
-  openmc::vector<std::size_t> shape_;
-  openmc::vector<storage_type<T>> data_;
+  vector<size_t> shape_;
+  vector<storage_type<T>> data_;
 };
 
 //==============================================================================
@@ -832,7 +832,7 @@ template<typename T1, typename T2,
 Tensor<double> operator*(const Tensor<T1>& a, const Tensor<T2>& b)
 {
   Tensor<double> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
+  for (size_t i = 0; i < a.size(); ++i)
     r.data()[i] =
       static_cast<double>(a.data()[i]) * static_cast<double>(b.data()[i]);
   return r;
@@ -843,7 +843,7 @@ template<typename T1, typename T2,
 Tensor<double> operator/(const Tensor<T1>& a, const Tensor<T2>& b)
 {
   Tensor<double> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
+  for (size_t i = 0; i < a.size(); ++i)
     r.data()[i] =
       static_cast<double>(a.data()[i]) / static_cast<double>(b.data()[i]);
   return r;
@@ -857,7 +857,7 @@ template<typename T>
 template<typename U>
 View1D<T>& View1D<T>::operator=(const Tensor<U>& other)
 {
-  for (std::size_t i = 0; i < size_; ++i)
+  for (size_t i = 0; i < size_; ++i)
     data_[i * stride_] = static_cast<T>(other.data()[i]);
   return *this;
 }
@@ -866,7 +866,7 @@ template<typename T>
 template<typename U>
 View1D<T>& View1D<T>::operator+=(const Tensor<U>& o)
 {
-  for (std::size_t i = 0; i < size_; ++i)
+  for (size_t i = 0; i < size_; ++i)
     data_[i * stride_] += o.data()[i];
   return *this;
 }
@@ -879,23 +879,23 @@ View1D<T>& View1D<T>::operator+=(const Tensor<U>& o)
 //==============================================================================
 
 template<typename T>
-Tensor<T> Tensor<T>::sum(std::size_t axis) const
+Tensor<T> Tensor<T>::sum(size_t axis) const
 {
-  std::size_t ndims = shape_.size();
+  size_t ndims = shape_.size();
 
   if (ndims == 2) {
     // 2D sum along axis -> 1D
     auto s0 = shape_[0], s1 = shape_[1];
     if (axis == 0) {
       Tensor<T> r({s1}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
           r.data()[j] += data_[i * s1 + j];
       return r;
     } else {
       Tensor<T> r({s0}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
           r.data()[i] += data_[i * s1 + j];
       return r;
     }
@@ -904,23 +904,23 @@ Tensor<T> Tensor<T>::sum(std::size_t axis) const
     auto s0 = shape_[0], s1 = shape_[1], s2 = shape_[2];
     if (axis == 0) {
       Tensor<T> r({s1, s2}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
-          for (std::size_t k = 0; k < s2; ++k)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
+          for (size_t k = 0; k < s2; ++k)
             r.data()[j * s2 + k] += data_[(i * s1 + j) * s2 + k];
       return r;
     } else if (axis == 1) {
       Tensor<T> r({s0, s2}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
-          for (std::size_t k = 0; k < s2; ++k)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
+          for (size_t k = 0; k < s2; ++k)
             r.data()[i * s2 + k] += data_[(i * s1 + j) * s2 + k];
       return r;
     } else {
       Tensor<T> r({s0, s1}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
-          for (std::size_t k = 0; k < s2; ++k)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
+          for (size_t k = 0; k < s2; ++k)
             r.data()[i * s1 + j] += data_[(i * s1 + j) * s2 + k];
       return r;
     }
@@ -929,37 +929,37 @@ Tensor<T> Tensor<T>::sum(std::size_t axis) const
     auto s0 = shape_[0], s1 = shape_[1], s2 = shape_[2], s3 = shape_[3];
     if (axis == 3) {
       Tensor<T> r({s0, s1, s2}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
-          for (std::size_t k = 0; k < s2; ++k)
-            for (std::size_t l = 0; l < s3; ++l)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
+          for (size_t k = 0; k < s2; ++k)
+            for (size_t l = 0; l < s3; ++l)
               r.data()[(i * s1 + j) * s2 + k] +=
                 data_[((i * s1 + j) * s2 + k) * s3 + l];
       return r;
     } else if (axis == 2) {
       Tensor<T> r({s0, s1, s3}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
-          for (std::size_t k = 0; k < s2; ++k)
-            for (std::size_t l = 0; l < s3; ++l)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
+          for (size_t k = 0; k < s2; ++k)
+            for (size_t l = 0; l < s3; ++l)
               r.data()[(i * s1 + j) * s3 + l] +=
                 data_[((i * s1 + j) * s2 + k) * s3 + l];
       return r;
     } else if (axis == 1) {
       Tensor<T> r({s0, s2, s3}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
-          for (std::size_t k = 0; k < s2; ++k)
-            for (std::size_t l = 0; l < s3; ++l)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
+          for (size_t k = 0; k < s2; ++k)
+            for (size_t l = 0; l < s3; ++l)
               r.data()[(i * s2 + k) * s3 + l] +=
                 data_[((i * s1 + j) * s2 + k) * s3 + l];
       return r;
     } else {
       Tensor<T> r({s1, s2, s3}, T(0));
-      for (std::size_t i = 0; i < s0; ++i)
-        for (std::size_t j = 0; j < s1; ++j)
-          for (std::size_t k = 0; k < s2; ++k)
-            for (std::size_t l = 0; l < s3; ++l)
+      for (size_t i = 0; i < s0; ++i)
+        for (size_t j = 0; j < s1; ++j)
+          for (size_t k = 0; k < s2; ++k)
+            for (size_t l = 0; l < s3; ++l)
               r.data()[(j * s2 + k) * s3 + l] +=
                 data_[((i * s1 + j) * s2 + k) * s3 + l];
       return r;
@@ -967,33 +967,33 @@ Tensor<T> Tensor<T>::sum(std::size_t axis) const
   }
 
   // Fallback: general case for any rank (should not be reached in practice)
-  openmc::vector<std::size_t> out_shape;
-  for (std::size_t d = 0; d < ndims; ++d)
+  vector<size_t> out_shape;
+  for (size_t d = 0; d < ndims; ++d)
     if (d != axis)
       out_shape.push_back(shape_[d]);
 
   Tensor<T> result(out_shape, T(0));
 
-  openmc::vector<std::size_t> strides(ndims);
+  vector<size_t> strides(ndims);
   strides[ndims - 1] = 1;
   for (int d = static_cast<int>(ndims) - 2; d >= 0; --d)
     strides[d] = strides[d + 1] * shape_[d + 1];
 
-  std::size_t out_ndims = out_shape.size();
-  openmc::vector<std::size_t> out_strides(out_ndims);
+  size_t out_ndims = out_shape.size();
+  vector<size_t> out_strides(out_ndims);
   if (out_ndims > 0) {
     out_strides[out_ndims - 1] = 1;
     for (int d = static_cast<int>(out_ndims) - 2; d >= 0; --d)
       out_strides[d] = out_strides[d + 1] * out_shape[d + 1];
   }
 
-  std::size_t total = data_.size();
-  for (std::size_t flat = 0; flat < total; ++flat) {
-    std::size_t remaining = flat;
-    std::size_t out_flat = 0;
-    std::size_t out_d = 0;
-    for (std::size_t d = 0; d < ndims; ++d) {
-      std::size_t idx = remaining / strides[d];
+  size_t total = data_.size();
+  for (size_t flat = 0; flat < total; ++flat) {
+    size_t remaining = flat;
+    size_t out_flat = 0;
+    size_t out_d = 0;
+    for (size_t d = 0; d < ndims; ++d) {
+      size_t idx = remaining / strides[d];
       remaining %= strides[d];
       if (d != axis) {
         out_flat += idx * out_strides[out_d];
@@ -1010,7 +1010,7 @@ Tensor<T> Tensor<T>::sum(std::size_t axis) const
 // Fixed2D<T, R, C>: compile-time fixed 2D tensor.
 //==============================================================================
 
-template<typename T, std::size_t R, std::size_t C>
+template<typename T, size_t R, size_t C>
 class Fixed2D {
 public:
   using value_type = T;
@@ -1018,20 +1018,20 @@ public:
   template<typename I0, typename I1>
   T& operator()(I0 i, I1 j)
   {
-    return data_[static_cast<std::size_t>(i) * C +
-                 static_cast<std::size_t>(j)];
+    return data_[static_cast<size_t>(i) * C +
+                 static_cast<size_t>(j)];
   }
   template<typename I0, typename I1>
   const T& operator()(I0 i, I1 j) const
   {
-    return data_[static_cast<std::size_t>(i) * C +
-                 static_cast<std::size_t>(j)];
+    return data_[static_cast<size_t>(i) * C +
+                 static_cast<size_t>(j)];
   }
 
   T* data() { return data_; }
   const T* data() const { return data_; }
-  constexpr std::size_t size() const { return R * C; }
-  std::array<std::size_t, 2> shape() const { return {R, C}; }
+  constexpr size_t size() const { return R * C; }
+  std::array<size_t, 2> shape() const { return {R, C}; }
 
   void fill(T val) { std::fill(data_, data_ + R * C, val); }
 
@@ -1041,8 +1041,8 @@ public:
   const T* end() const { return data_ + R * C; }
 
   //! Column view
-  View1D<T> col(std::size_t j) { return {data_ + j, R, C}; }
-  View1D<const T> col(std::size_t j) const { return {data_ + j, R, C}; }
+  View1D<T> col(size_t j) { return {data_ + j, R, C}; }
+  View1D<const T> col(size_t j) const { return {data_ + j, R, C}; }
 
   //! Flat view
   ViewFlat<T> flat() { return {data_, R * C}; }
@@ -1058,14 +1058,14 @@ private:
 
 // zeros
 template<typename T>
-Tensor<T> zeros(std::initializer_list<std::size_t> shape)
+Tensor<T> zeros(std::initializer_list<size_t> shape)
 {
-  openmc::vector<std::size_t> s(shape);
+  vector<size_t> s(shape);
   return Tensor<T>(std::move(s), T(0));
 }
 
 template<typename T>
-Tensor<T> zeros(const openmc::vector<std::size_t>& shape)
+Tensor<T> zeros(const vector<size_t>& shape)
 {
   return Tensor<T>(shape, T(0));
 }
@@ -1086,14 +1086,14 @@ Tensor<T> full_like(const Tensor<T>& o, V val)
 
 // linspace
 template<typename T>
-Tensor<T> linspace(T start, T stop, std::size_t n)
+Tensor<T> linspace(T start, T stop, size_t n)
 {
   Tensor<T> result({n});
   if (n < 2) {
     result[0] = start;
     return result;
   }
-  for (std::size_t i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     result[i] = start + static_cast<T>(i) * (stop - start) /
                           static_cast<T>(n - 1);
   }
@@ -1104,7 +1104,7 @@ Tensor<T> linspace(T start, T stop, std::size_t n)
 template<typename T>
 Tensor<T> concatenate(const Tensor<T>& a, const Tensor<T>& b)
 {
-  std::size_t total = a.size() + b.size();
+  size_t total = a.size() + b.size();
   Tensor<T> result({total});
   std::copy(a.data(), a.data() + a.size(), result.data());
   std::copy(b.data(), b.data() + b.size(), result.data() + a.size());
@@ -1116,7 +1116,7 @@ template<typename T>
 Tensor<T> log(const Tensor<T>& a)
 {
   Tensor<T> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
+  for (size_t i = 0; i < a.size(); ++i)
     r.data()[i] = std::log(a.data()[i]);
   return r;
 }
@@ -1125,7 +1125,7 @@ template<typename T>
 Tensor<T> abs(const Tensor<T>& a)
 {
   Tensor<T> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i)
+  for (size_t i = 0; i < a.size(); ++i)
     r.data()[i] = std::abs(a.data()[i]);
   return r;
 }
@@ -1136,7 +1136,7 @@ Tensor<T> where(
   const Tensor<bool>& cond, const Tensor<T>& true_val, V false_val)
 {
   Tensor<T> r(cond.shape());
-  for (std::size_t i = 0; i < cond.size(); ++i)
+  for (size_t i = 0; i < cond.size(); ++i)
     r.data()[i] = cond.data()[i] ? true_val.data()[i]
                                  : static_cast<T>(false_val);
   return r;
@@ -1149,7 +1149,7 @@ Tensor<T> nan_to_num(const Tensor<T>& a, T nan_val = T(0),
   T neginf_val = std::numeric_limits<T>::lowest())
 {
   Tensor<T> r(a.shape());
-  for (std::size_t i = 0; i < a.size(); ++i) {
+  for (size_t i = 0; i < a.size(); ++i) {
     T val = a.data()[i];
     if (std::isnan(val))
       r.data()[i] = nan_val;
@@ -1173,7 +1173,7 @@ struct is_tensor : std::false_type {};
 template<typename T>
 struct is_tensor<Tensor<T>> : std::true_type {};
 
-template<typename T, std::size_t R, std::size_t C>
+template<typename T, size_t R, size_t C>
 struct is_tensor<Fixed2D<T, R, C>> : std::true_type {};
 
 } // namespace tensor

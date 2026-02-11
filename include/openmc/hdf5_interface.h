@@ -173,7 +173,7 @@ void read_attribute(hid_t obj_id, const char* name, tensor::Tensor<T>& arr)
   auto shape = attribute_shape(obj_id, name);
 
   // Resize tensor and read data directly
-  openmc::vector<std::size_t> tshape(shape.begin(), shape.end());
+  vector<size_t> tshape(shape.begin(), shape.end());
   arr.resize(tshape);
 
   // Read data from attribute
@@ -290,7 +290,7 @@ void read_dataset(hid_t dset, tensor::Tensor<T>& arr, bool indep = false)
   vector<hsize_t> shape = object_shape(dset);
 
   // Resize tensor and read data directly
-  openmc::vector<std::size_t> tshape(shape.begin(), shape.end());
+  vector<size_t> tshape(shape.begin(), shape.end());
   arr.resize(tshape);
 
   // Read data from dataset

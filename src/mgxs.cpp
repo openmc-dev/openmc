@@ -97,17 +97,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
       // Determine the closest temperature value
-      // NOTE: the below block could be replaced with the following line:
-      // auto i_closest = tensor::abs(temps_available - T).argmin();
-      double closest = std::numeric_limits<double>::max();
-      int i_closest = 0;
-      for (int i = 0; i < temps_available.size(); i++) {
-        double diff = std::abs(temps_available[i] - T);
-        if (diff < closest) {
-          closest = diff;
-          i_closest = i;
-        }
-      }
+      auto i_closest = tensor::abs(temps_available - T).argmin();
 
       double temp_actual = temps_available[i_closest];
       if (std::fabs(temp_actual - T) < settings::temperature_tolerance) {

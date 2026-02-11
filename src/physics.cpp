@@ -375,8 +375,8 @@ void sample_photon_reaction(Particle& p)
     // cross sections
     int i_grid = micro.index_grid;
     double f = micro.interp_factor;
-    const auto& xs_lower = xt::row(element.cross_sections_, i_grid);
-    const auto& xs_upper = xt::row(element.cross_sections_, i_grid + 1);
+    const auto& xs_lower = element.cross_sections_.row(i_grid);
+    const auto& xs_upper = element.cross_sections_.row(i_grid + 1);
 
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
       const auto& shell {element.shells_[i_shell]};

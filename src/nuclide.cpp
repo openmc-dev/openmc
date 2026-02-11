@@ -360,8 +360,8 @@ void Nuclide::create_derived(
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
-    array<size_t, 2> shape {grid.energy.size(), 5};
-    xs_.emplace_back(shape, 0.0);
+    xs_.emplace_back(
+      openmc::vector<size_t>{grid.energy.size(), 5}, 0.0);
   }
 
   reaction_index_.fill(C_NONE);
@@ -374,9 +374,7 @@ void Nuclide::create_derived(
     for (int t = 0; t < kTs_.size(); ++t) {
       int j = rx->xs_[t].threshold;
       int n = rx->xs_[t].value.size();
-      auto xs = xt::adapt(rx->xs_[t].value);
-      auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
-
+      auto xs = tensor::Tensor<double>(rx->xs_[t].value);
       for (const auto& p : rx->products_) {
         if (p.particle_.is_photon()) {
           for (int k = 0; k < n; ++k) {
@@ -395,7 +393,7 @@ void Nuclide::create_derived(
               }
             }
 
-            pprod[k] += f * xs[k] * (*p.yield_)(E);
+            xs_[t](j + k, XS_PHOTON_PROD) += f * xs[k] * (*p.yield_)(E);
           }
         }
       }
@@ -405,20 +403,21 @@ void Nuclide::create_derived(
         continue;
 
       // Add contribution to total cross section
-      auto total = xt::view(xs_[t], xt::range(j, j + n), XS_TOTAL);
-      total += xs;
+      for (int k = 0; k < n; ++k)
+        xs_[t](j + k, XS_TOTAL) += xs[k];
 
       // Add contribution to absorption cross section
-      auto absorption = xt::view(xs_[t], xt::range(j, j + n), XS_ABSORPTION);
       if (is_disappearance(rx->mt_)) {
-        absorption += xs;
+        for (int k = 0; k < n; ++k)
+          xs_[t](j + k, XS_ABSORPTION) += xs[k];
       }
 
       if (is_fission(rx->mt_)) {
         fissionable_ = true;
-        auto fission = xt::view(xs_[t], xt::range(j, j + n), XS_FISSION);
-        fission += xs;
-        absorption += xs;
+        for (int k = 0; k < n; ++k)
+          xs_[t](j + k, XS_FISSION) += xs[k];
+        for (int k = 0; k < n; ++k)
+          xs_[t](j + k, XS_ABSORPTION) += xs[k];
 
         // Keep track of fission reactions
         if (t == 0) {
@@ -509,7 +508,7 @@ void Nuclide::init_grid()
   double spacing = std::log(E_max / E_min) / M;
 
   // Create equally log-spaced energy grid
-  auto umesh = xt::linspace(0.0, M * spacing, M + 1);
+  auto umesh = tensor::linspace(0.0, M * spacing, M + 1);
 
   for (auto& grid : grid_) {
     // Resize array for storing grid indices

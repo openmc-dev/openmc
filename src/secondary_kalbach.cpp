@@ -26,11 +26,11 @@ KalbachMann::KalbachMann(hid_t group)
   hid_t dset = open_dataset(group, "energy");
 
   // Get interpolation parameters
-  xt::xarray<int> temp;
+  tensor::Tensor<int> temp;
   read_attribute(dset, "interpolation", temp);
 
-  auto temp_b = xt::view(temp, 0); // view of breakpoints
-  auto temp_i = xt::view(temp, 1); // view of interpolation parameters
+  auto temp_b = temp.row(0); // view of breakpoints
+  auto temp_i = temp.row(1); // view of interpolation parameters
 
   std::copy(temp_b.begin(), temp_b.end(), std::back_inserter(breakpoints_));
   for (const auto i : temp_i)
@@ -51,7 +51,7 @@ KalbachMann::KalbachMann(hid_t group)
   read_attribute(dset, "interpolation", interp);
   read_attribute(dset, "n_discrete_lines", n_discrete);
 
-  xt::xarray<double> eout;
+  tensor::Tensor<double> eout;
   read_dataset(dset, eout);
   close_dataset(dset);
 
@@ -62,7 +62,7 @@ KalbachMann::KalbachMann(hid_t group)
     if (i < n_energy - 1) {
       n = offsets[i + 1] - j;
     } else {
-      n = eout.shape()[1] - j;
+      n = eout.shape(1) - j;
     }
 
     // Assign interpolation scheme and number of discrete lines
@@ -71,11 +71,11 @@ KalbachMann::KalbachMann(hid_t group)
     d.n_discrete = n_discrete[i];
 
     // Copy data
-    d.e_out = xt::view(eout, 0, xt::range(j, j + n));
-    d.p = xt::view(eout, 1, xt::range(j, j + n));
-    d.c = xt::view(eout, 2, xt::range(j, j + n));
-    d.r = xt::view(eout, 3, xt::range(j, j + n));
-    d.a = xt::view(eout, 4, xt::range(j, j + n));
+    d.e_out = eout.row(0).slice(j, j + n);
+    d.p = eout.row(1).slice(j, j + n);
+    d.c = eout.row(2).slice(j, j + n);
+    d.r = eout.row(3).slice(j, j + n);
+    d.a = eout.row(4).slice(j, j + n);
 
     // To get answers that match ACE data, for now we still use the tabulated
     // CDF values that were passed through to the HDF5 library. At a later

@@ -29,7 +29,7 @@ AngleDistribution::AngleDistribution(hid_t group)
   hid_t dset = open_dataset(group, "mu");
   read_attribute(dset, "offsets", offsets);
   read_attribute(dset, "interpolation", interp);
-  xt::xarray<double> temp;
+  tensor::Tensor<double> temp;
   read_dataset(dset, temp);
   close_dataset(dset);
 
@@ -40,13 +40,13 @@ AngleDistribution::AngleDistribution(hid_t group)
     if (i < n_energy - 1) {
       n = offsets[i + 1] - j;
     } else {
-      n = temp.shape()[1] - j;
+      n = temp.shape(1) - j;
     }
 
     // Create and initialize tabular distribution
-    auto xs = xt::view(temp, 0, xt::range(j, j + n));
-    auto ps = xt::view(temp, 1, xt::range(j, j + n));
-    auto cs = xt::view(temp, 2, xt::range(j, j + n));
+    auto xs = temp.row(0).slice(j, j + n);
+    auto ps = temp.row(1).slice(j, j + n);
+    auto cs = temp.row(2).slice(j, j + n);
     vector<double> x {xs.begin(), xs.end()};
     vector<double> p {ps.begin(), ps.end()};
     vector<double> c {cs.begin(), cs.end()};

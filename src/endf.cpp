@@ -152,11 +152,11 @@ Tabulated1D::Tabulated1D(hid_t dset)
   for (const auto i : int_temp)
     int_.push_back(int2interp(i));
 
-  xt::xarray<double> arr;
+  tensor::Tensor<double> arr;
   read_dataset(dset, arr);
 
-  auto xs = xt::view(arr, 0);
-  auto ys = xt::view(arr, 1);
+  auto xs = arr.row(0);
+  auto ys = arr.row(1);
 
   std::copy(xs.begin(), xs.end(), std::back_inserter(x_));
   std::copy(ys.begin(), ys.end(), std::back_inserter(y_));
@@ -228,12 +228,12 @@ double Tabulated1D::operator()(double x) const
 CoherentElasticXS::CoherentElasticXS(hid_t dset)
 {
   // Read 2D array from dataset
-  xt::xarray<double> arr;
+  tensor::Tensor<double> arr;
   read_dataset(dset, arr);
 
   // Get views for Bragg edges and structure factors
-  auto E = xt::view(arr, 0);
-  auto s = xt::view(arr, 1);
+  auto E = arr.row(0);
+  auto s = arr.row(1);
 
   // Copy Bragg edges and partial sums of structure factors
   std::copy(E.begin(), E.end(), std::back_inserter(bragg_edges_));

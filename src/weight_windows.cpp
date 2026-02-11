@@ -260,8 +260,8 @@ WeightWindows* WeightWindows::from_hdf5(
   }
   wws->set_mesh(model::mesh_map[mesh_id]);
 
-  wws->lower_ww_ = xt::empty<double>(wws->bounds_size());
-  wws->upper_ww_ = xt::empty<double>(wws->bounds_size());
+  wws->lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(wws->bounds_size()[0]), static_cast<size_t>(wws->bounds_size()[1])});
+  wws->upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(wws->bounds_size()[0]), static_cast<size_t>(wws->bounds_size()[1])});
 
   read_dataset<double>(ww_group, "lower_ww_bounds", wws->lower_ww_);
   read_dataset<double>(ww_group, "upper_ww_bounds", wws->upper_ww_);
@@ -296,9 +296,9 @@ void WeightWindows::allocate_ww_bounds()
       "Size of weight window bounds is zero for WeightWindows {}", id());
     warning(msg);
   }
-  lower_ww_ = xt::empty<double>(shape);
+  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
   lower_ww_.fill(-1);
-  upper_ww_ = xt::empty<double>(shape);
+  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
   upper_ww_.fill(-1);
 }
 
@@ -443,8 +443,8 @@ void WeightWindows::check_bounds(const T& bounds) const
   }
 }
 
-void WeightWindows::set_bounds(const xt::xtensor<double, 2>& lower_bounds,
-  const xt::xtensor<double, 2>& upper_bounds)
+void WeightWindows::set_bounds(const tensor::Tensor<double>& lower_bounds,
+  const tensor::Tensor<double>& upper_bounds)
 {
 
   this->check_bounds(lower_bounds, upper_bounds);
@@ -455,7 +455,7 @@ void WeightWindows::set_bounds(const xt::xtensor<double, 2>& lower_bounds,
 }
 
 void WeightWindows::set_bounds(
-  const xt::xtensor<double, 2>& lower_bounds, double ratio)
+  const tensor::Tensor<double>& lower_bounds, double ratio)
 {
   this->check_bounds(lower_bounds);
 
@@ -470,8 +470,8 @@ void WeightWindows::set_bounds(
 {
   check_bounds(lower_bounds, upper_bounds);
   auto shape = this->bounds_size();
-  lower_ww_ = xt::empty<double>(shape);
-  upper_ww_ = xt::empty<double>(shape);
+  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
 
   // Copy weight window values from input spans into the tensors
   std::copy(lower_bounds.data(), lower_bounds.data() + lower_ww_.size(),
@@ -485,8 +485,8 @@ void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
   this->check_bounds(lower_bounds);
 
   auto shape = this->bounds_size();
-  lower_ww_ = xt::empty<double>(shape);
-  upper_ww_ = xt::empty<double>(shape);
+  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
 
   // Copy lower bounds into both arrays, then scale upper by ratio
   std::copy(lower_bounds.data(), lower_bounds.data() + lower_ww_.size(),
@@ -505,8 +505,8 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   this->check_tally_update_compatibility(tally);
 
   // Dimensions of weight window arrays
-  int e_bins = lower_ww_.shape()[0];
-  int64_t mesh_bins = lower_ww_.shape()[1];
+  int e_bins = lower_ww_.shape(0);
+  int64_t mesh_bins = lower_ww_.shape(1);
 
   // Initialize weight window arrays to -1.0 by default
 #pragma omp parallel for collapse(2) schedule(static)
@@ -546,7 +546,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
   // Look for the size of the last dimension of the results array
   const auto& results_arr = tally->results();
-  const int results_dim = static_cast<int>(results_arr.shape()[2]);
+  const int results_dim = static_cast<int>(results_arr.shape(2));
   std::array<int, 5> shape = {1, 1, 1, tally->n_scores(), results_dim};
 
   // set the shape for the filters applied on the tally
@@ -615,9 +615,9 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   const int stride0 = shape[1] * shape[2];
   const int stride1 = shape[2];
 
-  xt::xtensor<double, 2> sum(
+  tensor::Tensor<double> sum(
     {static_cast<size_t>(e_bins), static_cast<size_t>(mesh_bins)});
-  xt::xtensor<double, 2> sum_sq(
+  tensor::Tensor<double> sum_sq(
     {static_cast<size_t>(e_bins), static_cast<size_t>(mesh_bins)});
 
   const int i_sum = static_cast<int>(TallyResult::SUM);
@@ -1168,7 +1168,8 @@ extern "C" int openmc_weight_windows_set_bounds(int32_t index,
     return err;
 
   const auto& wws = variance_reduction::weight_windows[index];
-  wws->set_bounds({lower_bounds, size}, {upper_bounds, size});
+  wws->set_bounds(
+    span<const double>(lower_bounds, size), span<const double>(upper_bounds, size));
   return 0;
 }
 

@@ -18,8 +18,8 @@ namespace openmc {
 // ScattData base-class methods
 //==============================================================================
 
-void ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
-  const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_energy,
+void ScattData::base_init(int order, const tensor::Tensor<int>& in_gmin,
+  const tensor::Tensor<int>& in_gmax, const double_2dvec& in_energy,
   const double_2dvec& in_mult)
 {
   size_t groups = in_energy.size();
@@ -62,23 +62,23 @@ void ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
 
 void ScattData::base_combine(size_t max_order, size_t order_dim,
   const vector<ScattData*>& those_scatts, const vector<double>& scalars,
-  xt::xtensor<int, 1>& in_gmin, xt::xtensor<int, 1>& in_gmax,
+  tensor::Tensor<int>& in_gmin, tensor::Tensor<int>& in_gmax,
   double_2dvec& sparse_mult, double_3dvec& sparse_scatter)
 {
   size_t groups = those_scatts[0]->energy.size();
 
   // Now allocate and zero our storage spaces
-  xt::xtensor<double, 3> this_nuscatt_matrix({groups, groups, order_dim}, 0.);
-  xt::xtensor<double, 2> this_nuscatt_P0({groups, groups}, 0.);
-  xt::xtensor<double, 2> this_scatt_P0({groups, groups}, 0.);
-  xt::xtensor<double, 2> this_mult({groups, groups}, 1.);
+  tensor::Tensor<double> this_nuscatt_matrix({groups, groups, order_dim}, 0.);
+  tensor::Tensor<double> this_nuscatt_P0({groups, groups}, 0.);
+  tensor::Tensor<double> this_scatt_P0({groups, groups}, 0.);
+  tensor::Tensor<double> this_mult({groups, groups}, 1.);
 
   // Build the dense scattering and multiplicity matrices
   for (int i = 0; i < those_scatts.size(); i++) {
     ScattData* that = those_scatts[i];
 
     // Build the dense matrix for that object
-    xt::xtensor<double, 3> that_matrix = that->get_matrix(max_order);
+    tensor::Tensor<double> that_matrix = that->get_matrix(max_order);
 
     // Now add that to this for the nu-scatter matrix
     this_nuscatt_matrix += scalars[i] * that_matrix;
@@ -96,7 +96,7 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
 
   // Now we have the dense nuscatt and scatt, we can easily compute the
   // multiplicity matrix by dividing the two and fixing any nans
-  this_mult = xt::nan_to_num(this_nuscatt_P0 / this_scatt_P0);
+  this_mult = tensor::nan_to_num(this_nuscatt_P0 / this_scatt_P0);
 
   // We have the data, now we need to convert to a jagged array and then use
   // the initialize function to store it on the object.
@@ -105,7 +105,7 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
     int gmin_;
     for (gmin_ = 0; gmin_ < groups; gmin_++) {
       bool non_zero = false;
-      for (int l = 0; l < this_nuscatt_matrix.shape()[2]; l++) {
+      for (int l = 0; l < this_nuscatt_matrix.shape(2); l++) {
         if (this_nuscatt_matrix(gin, gmin_, l) != 0.) {
           non_zero = true;
           break;
@@ -117,7 +117,7 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
       bool non_zero = false;
-      for (int l = 0; l < this_nuscatt_matrix.shape()[2]; l++) {
+      for (int l = 0; l < this_nuscatt_matrix.shape(2); l++) {
         if (this_nuscatt_matrix(gin, gmax_, l) != 0.) {
           non_zero = true;
           break;
@@ -142,8 +142,8 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
     sparse_mult[gin].resize(gmax_ - gmin_ + 1);
     int i_gout = 0;
     for (int gout = gmin_; gout <= gmax_; gout++) {
-      sparse_scatter[gin][i_gout].resize(this_nuscatt_matrix.shape()[2]);
-      for (int l = 0; l < this_nuscatt_matrix.shape()[2]; l++) {
+      sparse_scatter[gin][i_gout].resize(this_nuscatt_matrix.shape(2));
+      for (int l = 0; l < this_nuscatt_matrix.shape(2); l++) {
         sparse_scatter[gin][i_gout][l] = this_nuscatt_matrix(gin, gout, l);
       }
       sparse_mult[gin][i_gout] = this_mult(gin, gout);
@@ -226,8 +226,8 @@ double ScattData::get_xs(
 // ScattDataLegendre methods
 //==============================================================================
 
-void ScattDataLegendre::init(const xt::xtensor<int, 1>& in_gmin,
-  const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+void ScattDataLegendre::init(const tensor::Tensor<int>& in_gmin,
+  const tensor::Tensor<int>& in_gmax, const double_2dvec& in_mult,
   const double_3dvec& coeffs)
 {
   size_t groups = coeffs.size();
@@ -238,7 +238,7 @@ void ScattDataLegendre::init(const xt::xtensor<int, 1>& in_gmin,
 
   // Get the scattering cross section value by summing the un-normalized P0
   // coefficient in the variable matrix over all outgoing groups.
-  scattxs = xt::zeros<double>({groups});
+  scattxs = tensor::zeros<double>({groups});
   for (int gin = 0; gin < groups; gin++) {
     int num_groups = in_gmax[gin] - in_gmin[gin] + 1;
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
@@ -385,8 +385,8 @@ void ScattDataLegendre::combine(
 
   size_t groups = those_scatts[0]->energy.size();
 
-  xt::xtensor<int, 1> in_gmin({groups}, 0);
-  xt::xtensor<int, 1> in_gmax({groups}, 0);
+  tensor::Tensor<int> in_gmin({groups}, 0);
+  tensor::Tensor<int> in_gmax({groups}, 0);
   double_3dvec sparse_scatter(groups);
   double_2dvec sparse_mult(groups);
 
@@ -403,12 +403,12 @@ void ScattDataLegendre::combine(
 
 //==============================================================================
 
-xt::xtensor<double, 3> ScattDataLegendre::get_matrix(size_t max_order)
+tensor::Tensor<double> ScattDataLegendre::get_matrix(size_t max_order)
 {
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();
   size_t order_dim = max_order + 1;
-  xt::xtensor<double, 3> matrix({groups, groups, order_dim}, 0.);
+  tensor::Tensor<double> matrix({groups, groups, order_dim}, 0.);
 
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < energy[gin].size(); i_gout++) {
@@ -426,8 +426,8 @@ xt::xtensor<double, 3> ScattDataLegendre::get_matrix(size_t max_order)
 // ScattDataHistogram methods
 //==============================================================================
 
-void ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
-  const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+void ScattDataHistogram::init(const tensor::Tensor<int>& in_gmin,
+  const tensor::Tensor<int>& in_gmax, const double_2dvec& in_mult,
   const double_3dvec& coeffs)
 {
   size_t groups = coeffs.size();
@@ -438,7 +438,7 @@ void ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
 
   // Get the scattering cross section value by summing the distribution
   // over all the histogram bins in angle and outgoing energy groups
-  scattxs = xt::zeros<double>({groups});
+  scattxs = tensor::zeros<double>({groups});
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < matrix[gin].size(); i_gout++) {
       scattxs[gin] += std::accumulate(
@@ -467,7 +467,7 @@ void ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
   ScattData::base_init(order, in_gmin, in_gmax, in_energy, in_mult);
 
   // Build the angular distribution mu values
-  mu = xt::linspace(-1., 1., order + 1);
+  mu = tensor::linspace(-1., 1., order + 1);
   dmu = 2. / order;
 
   // Calculate f(mu) and integrate it so we can avoid rejection sampling
@@ -512,7 +512,7 @@ double ScattDataHistogram::calc_f(int gin, int gout, double mu)
     int imu;
     if (mu == 1.) {
       // use size -2 to have the index one before the end
-      imu = this->mu.shape()[0] - 2;
+      imu = this->mu.shape(0) - 2;
     } else {
       imu = std::floor((mu + 1.) / dmu + 1.) - 1;
     }
@@ -558,13 +558,13 @@ void ScattDataHistogram::sample(
 
 //==============================================================================
 
-xt::xtensor<double, 3> ScattDataHistogram::get_matrix(size_t max_order)
+tensor::Tensor<double> ScattDataHistogram::get_matrix(size_t max_order)
 {
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();
   // We ignore the requested order for Histogram and Tabular representations
   size_t order_dim = get_order();
-  xt::xtensor<double, 3> matrix({groups, groups, order_dim}, 0);
+  tensor::Tensor<double> matrix({groups, groups, order_dim}, 0);
 
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < energy[gin].size(); i_gout++) {
@@ -599,8 +599,8 @@ void ScattDataHistogram::combine(
 
   size_t groups = those_scatts[0]->energy.size();
 
-  xt::xtensor<int, 1> in_gmin({groups}, 0);
-  xt::xtensor<int, 1> in_gmax({groups}, 0);
+  tensor::Tensor<int> in_gmin({groups}, 0);
+  tensor::Tensor<int> in_gmax({groups}, 0);
   double_3dvec sparse_scatter(groups);
   double_2dvec sparse_mult(groups);
 
@@ -619,8 +619,8 @@ void ScattDataHistogram::combine(
 // ScattDataTabular methods
 //==============================================================================
 
-void ScattDataTabular::init(const xt::xtensor<int, 1>& in_gmin,
-  const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+void ScattDataTabular::init(const tensor::Tensor<int>& in_gmin,
+  const tensor::Tensor<int>& in_gmax, const double_2dvec& in_mult,
   const double_3dvec& coeffs)
 {
   size_t groups = coeffs.size();
@@ -630,12 +630,12 @@ void ScattDataTabular::init(const xt::xtensor<int, 1>& in_gmin,
   double_3dvec matrix = coeffs;
 
   // Build the angular distribution mu values
-  mu = xt::linspace(-1., 1., order);
+  mu = tensor::linspace(-1., 1., order);
   dmu = 2. / (order - 1);
 
   // Get the scattering cross section value by integrating the distribution
   // over all mu points and then combining over all outgoing groups
-  scattxs = xt::zeros<double>({groups});
+  scattxs = tensor::zeros<double>({groups});
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < matrix[gin].size(); i_gout++) {
       for (int imu = 1; imu < order; imu++) {
@@ -712,7 +712,7 @@ double ScattDataTabular::calc_f(int gin, int gout, double mu)
     int imu;
     if (mu == 1.) {
       // use size -2 to have the index one before the end
-      imu = this->mu.shape()[0] - 2;
+      imu = this->mu.shape(0) - 2;
     } else {
       imu = std::floor((mu + 1.) / dmu + 1.) - 1;
     }
@@ -733,7 +733,7 @@ void ScattDataTabular::sample(
   sample_energy(gin, gout, i_gout, seed);
 
   // Determine the outgoing cosine bin
-  int NP = this->mu.shape()[0];
+  int NP = this->mu.shape(0);
   double xi = prn(seed);
 
   double c_k = dist[gin][i_gout][0];
@@ -775,13 +775,13 @@ void ScattDataTabular::sample(
 
 //==============================================================================
 
-xt::xtensor<double, 3> ScattDataTabular::get_matrix(size_t max_order)
+tensor::Tensor<double> ScattDataTabular::get_matrix(size_t max_order)
 {
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();
   // We ignore the requested order for Histogram and Tabular representations
   size_t order_dim = get_order();
-  xt::xtensor<double, 3> matrix({groups, groups, order_dim}, 0.);
+  tensor::Tensor<double> matrix({groups, groups, order_dim}, 0.);
 
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < energy[gin].size(); i_gout++) {
@@ -815,8 +815,8 @@ void ScattDataTabular::combine(
 
   size_t groups = those_scatts[0]->energy.size();
 
-  xt::xtensor<int, 1> in_gmin({groups}, 0);
-  xt::xtensor<int, 1> in_gmax({groups}, 0);
+  tensor::Tensor<int> in_gmin({groups}, 0);
+  tensor::Tensor<int> in_gmax({groups}, 0);
   double_3dvec sparse_scatter(groups);
   double_2dvec sparse_mult(groups);
 
@@ -853,7 +853,7 @@ void convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab)
   tab.scattxs = leg.scattxs;
 
   // Build mu and dmu
-  tab.mu = xt::linspace(-1., 1., n_mu);
+  tab.mu = tensor::linspace(-1., 1., n_mu);
   tab.dmu = 2. / (n_mu - 1);
 
   // Calculate f(mu) and integrate it so we can avoid rejection sampling

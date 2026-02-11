@@ -40,11 +40,11 @@ public:
    * below, obviously, values of the CDF are stored. For the xs_values
    * variable, the columns line up with the index of cdf_values.
    */
-  xt::xtensor<double, 2> cdf_values_; // Note: must be row major!
-  xt::xtensor<XSSet, 2> xs_values_;
+  tensor::Tensor<double> cdf_values_; // Note: must be row major!
+  tensor::Tensor<XSSet> xs_values_;
 
   // Number of points in the CDF
-  auto n_cdf() const { return cdf_values_.shape()[1]; }
+  auto n_cdf() const { return cdf_values_.shape(1); }
 
   //! \brief Load the URR data from the provided HDF5 group
   explicit UrrData(hid_t group_id);

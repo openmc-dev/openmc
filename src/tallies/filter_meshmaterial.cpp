@@ -7,6 +7,7 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/tensor.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/material.h"
@@ -162,7 +163,7 @@ void MeshMaterialFilter::to_statepoint(hid_t filter_group) const
   write_dataset(filter_group, "mesh", model::meshes[mesh_]->id_);
 
   size_t n = bins_.size();
-  xt::xtensor<size_t, 2> data({n, 2});
+  tensor::Tensor<size_t> data({n, 2});
   for (int64_t i = 0; i < n; ++i) {
     const auto& x = bins_[i];
     data(i, 0) = x.index_element;

@@ -50,7 +50,7 @@ ThermalScattering::ThermalScattering(
   // Determine temperatures available
   auto dset_names = dataset_names(kT_group);
   auto n = dset_names.size();
-  auto temps_available = xt::empty<double>({n});
+  auto temps_available = tensor::Tensor<double>({n});
   for (int i = 0; i < dset_names.size(); ++i) {
     // Read temperature value
     double T;
@@ -77,7 +77,7 @@ ThermalScattering::ThermalScattering(
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
 
-      auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
+      auto i_closest = tensor::abs(temps_available - T).argmin();
       auto temp_actual = temps_available[i_closest];
       if (std::abs(temp_actual - T) < settings::temperature_tolerance) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(),

@@ -41,12 +41,11 @@ vector<T> get_node_array(
 }
 
 template<typename T>
-xt::xarray<T> get_node_xarray(
+tensor::Tensor<T> get_node_xarray(
   pugi::xml_node node, const char* name, bool lowercase = false)
 {
   vector<T> v = get_node_array<T>(node, name, lowercase);
-  vector<std::size_t> shape = {v.size()};
-  return xt::adapt(v, shape);
+  return tensor::Tensor<T>(v);
 }
 
 std::vector<Position> get_node_position_array(

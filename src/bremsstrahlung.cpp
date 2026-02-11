@@ -16,8 +16,8 @@ namespace openmc {
 
 namespace data {
 
-xt::xtensor<double, 1> ttb_e_grid;
-xt::xtensor<double, 1> ttb_k_grid;
+tensor::Tensor<double> ttb_e_grid;
+tensor::Tensor<double> ttb_k_grid;
 vector<Bremsstrahlung> ttb;
 
 } // namespace data

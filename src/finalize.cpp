@@ -200,7 +200,7 @@ int openmc_reset()
 
   // Reset global tallies
   simulation::n_realizations = 0;
-  xt::view(simulation::global_tallies, xt::all()) = 0.0;
+  simulation::global_tallies.fill(0.0);
 
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;

@@ -276,8 +276,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
           auto& results = tally->results_;
-          write_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.shape()[2], results.data());
+          write_tally_results(tally_group, results.shape(0),
+            results.shape(1), results.shape(2), results.data());
           close_group(tally_group);
         }
       } else {
@@ -516,8 +516,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
           tally->writable_ = false;
         } else {
           auto& results = tally->results_;
-          read_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.shape()[2], results.data());
+          read_tally_results(tally_group, results.shape(0),
+            results.shape(1), results.shape(2), results.data());
 
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
           close_group(tally_group);
@@ -826,7 +826,7 @@ void write_unstructured_mesh_results()
           // construct result vectors
           vector<double> mean_vec(umesh->n_bins()),
             std_dev_vec(umesh->n_bins());
-          for (int j = 0; j < tally->results_.shape()[0]; j++) {
+          for (int j = 0; j < tally->results_.shape(0); j++) {
             // get the volume for this bin
             double volume = umesh->volume(j);
             // compute the mean
@@ -888,7 +888,7 @@ void write_tally_results_nr(hid_t file_id)
 
 #ifdef OPENMC_MPI
   // Reduce global tallies
-  xt::xtensor<double, 2> gt_reduced = xt::empty_like(gt);
+  tensor::Tensor<double> gt_reduced({N_GLOBAL_TALLIES, 3});
   MPI_Reduce(gt.data(), gt_reduced.data(), gt.size(), MPI_DOUBLE, MPI_SUM, 0,
     mpi::intracomm);
 
@@ -922,9 +922,9 @@ void write_tally_results_nr(hid_t file_id)
     const int r_start = static_cast<int>(TallyResult::SUM);
     const int r_end = static_cast<int>(TallyResult::SUM_SQ) + 1;
     const size_t r_count = r_end - r_start;
-    const size_t ni = t->results_.shape()[0];
-    const size_t nj = t->results_.shape()[1];
-    xt::xtensor<double, 3> values({ni, nj, r_count});
+    const size_t ni = t->results_.shape(0);
+    const size_t nj = t->results_.shape(1);
+    tensor::Tensor<double> values({ni, nj, r_count});
     for (size_t i = 0; i < ni; i++)
       for (size_t j = 0; j < nj; j++)
         for (size_t r = 0; r < r_count; r++)
@@ -953,7 +953,7 @@ void write_tally_results_nr(hid_t file_id)
       }
 
       // Put reduced values into a full-sized copy for writing to HDF5
-      xt::xtensor<double, 3> results_copy = xt::zeros_like(t->results_);
+      tensor::Tensor<double> results_copy = tensor::zeros_like(t->results_);
       for (size_t i = 0; i < ni; i++)
         for (size_t j = 0; j < nj; j++)
           for (size_t r = 0; r < r_count; r++)

@@ -71,7 +71,7 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
         continue;
 
       const auto& results = t.results_;
-      for (auto filter_index = 0; filter_index < results.shape()[0];
+      for (auto filter_index = 0; filter_index < results.shape(0);
            ++filter_index) {
         // Compute the tally uncertainty metrics.
         auto uncert_pair =

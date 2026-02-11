@@ -25,9 +25,9 @@ public:
   struct CorrTable {
     int n_discrete;                    //!< Number of discrete lines
     Interpolation interpolation;       //!< Interpolation law
-    xt::xtensor<double, 1> e_out;      //!< Outgoing energies [eV]
-    xt::xtensor<double, 1> p;          //!< Probability density
-    xt::xtensor<double, 1> c;          //!< Cumulative distribution
+    tensor::Tensor<double> e_out;      //!< Outgoing energies [eV]
+    tensor::Tensor<double> p;          //!< Probability density
+    tensor::Tensor<double> c;          //!< Cumulative distribution
     vector<unique_ptr<Tabular>> angle; //!< Angle distribution
   };
 

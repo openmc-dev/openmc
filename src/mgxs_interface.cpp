@@ -249,6 +249,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
       dset_names[i] = new char[151];
     }
     get_datasets(kT_group, dset_names);
+    close_group(kT_group);
     if (num_temps > 1)
       fatal_error("Multigroup void data must have only one dummy temperature");
     auto xsdata_grp = open_group(void_grp, dset_names[0]);
@@ -262,6 +263,8 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
       }
       void_velocities_exist = true;
     }
+    close_group(xsdata_grp);
+    close_group(void_grp);
   }
   if (!void_velocities_exist) {
     for (int i = 0; i < energy_bins_.size() - 1; ++i) {

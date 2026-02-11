@@ -54,7 +54,7 @@ using storage_type = typename storage_type_map<T>::type;
 // View<T>: a non-owning N-dimensional view into a tensor's storage.
 //
 // Holds a base pointer, shape, and strides (in elements).  Supports arbitrary
-// rank: 1D views for rows/slices, 2D views via slice_at(), etc.
+// rank: 1D views for rows/slices, 2D views via select(), etc.
 //==============================================================================
 
 template<typename T>
@@ -131,7 +131,7 @@ public:
   // Sub-view methods
 
   //! Fix one axis at a given index, returning an (N-1)-dimensional view
-  View<T> slice_at(size_t axis, size_t idx)
+  View<T> select(size_t axis, size_t idx)
   {
     vector<size_t> new_shape;
     vector<size_t> new_strides;
@@ -147,7 +147,7 @@ public:
     return {new_data, std::move(new_shape), std::move(new_strides)};
   }
 
-  View<const T> slice_at(size_t axis, size_t idx) const
+  View<const T> select(size_t axis, size_t idx) const
   {
     vector<size_t> new_shape;
     vector<size_t> new_strides;
@@ -163,13 +163,13 @@ public:
     return {new_data, std::move(new_shape), std::move(new_strides)};
   }
 
-  //! Row i (fix first axis) — shorthand for slice_at(0, i)
-  View<T> row(size_t i) { return slice_at(0, i); }
-  View<const T> row(size_t i) const { return slice_at(0, i); }
+  //! Row i (fix first axis) — shorthand for select(0, i)
+  View<T> row(size_t i) { return select(0, i); }
+  View<const T> row(size_t i) const { return select(0, i); }
 
-  //! Column j (fix second axis) — shorthand for slice_at(1, j)
-  View<T> col(size_t j) { return slice_at(1, j); }
-  View<const T> col(size_t j) const { return slice_at(1, j); }
+  //! Column j (fix second axis) — shorthand for select(1, j)
+  View<T> col(size_t j) { return select(1, j); }
+  View<const T> col(size_t j) const { return select(1, j); }
 
   //! 1D subrange [start, end)
   View<T> slice(size_t start, size_t end)
@@ -695,7 +695,7 @@ public:
   // View accessors
 
   //! Fix one axis at a given index, returning an (N-1)-dimensional view
-  View<stored_type> slice_at(size_t axis, size_t idx)
+  View<stored_type> select(size_t axis, size_t idx)
   {
     auto strides = compute_strides();
     vector<size_t> new_shape;
@@ -712,7 +712,7 @@ public:
     return {new_data, std::move(new_shape), std::move(new_strides)};
   }
 
-  View<const stored_type> slice_at(size_t axis, size_t idx) const
+  View<const stored_type> select(size_t axis, size_t idx) const
   {
     auto strides = compute_strides();
     vector<size_t> new_shape;
@@ -730,12 +730,12 @@ public:
   }
 
   //! Row i of a 2D+ tensor (fix first axis)
-  View<stored_type> row(size_t i) { return slice_at(0, i); }
-  View<const stored_type> row(size_t i) const { return slice_at(0, i); }
+  View<stored_type> row(size_t i) { return select(0, i); }
+  View<const stored_type> row(size_t i) const { return select(0, i); }
 
   //! Column j of a 2D tensor (fix second axis)
-  View<stored_type> col(size_t j) { return slice_at(1, j); }
-  View<const stored_type> col(size_t j) const { return slice_at(1, j); }
+  View<stored_type> col(size_t j) { return select(1, j); }
+  View<const stored_type> col(size_t j) const { return select(1, j); }
 
   //! Subrange of a 1D tensor
   View<stored_type> slice(size_t start, size_t end)

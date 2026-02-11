@@ -66,6 +66,22 @@ public:
     : data_(data), shape_(std::move(shape)), strides_(std::move(strides))
   {}
 
+  // Explicitly default copy/move constructors (declaring copy assignment
+  // below would otherwise suppress the implicit move constructor).
+  View(const View&) = default;
+  View(View&&) = default;
+
+  //! Copy assignment: element-wise deep copy (writes through data pointer).
+  //! Without this, the compiler's implicit copy assignment just copies the
+  //! View metadata (pointer, shape, strides) instead of the viewed data.
+  View& operator=(const View& other)
+  {
+    size_t n = size();
+    for (size_t i = 0; i < n; ++i)
+      data_[flat_to_offset(i)] = other[i];
+    return *this;
+  }
+
   //--------------------------------------------------------------------------
   // Indexing
 
@@ -194,6 +210,16 @@ public:
     return *this;
   }
 
+  //! Assignment from another View
+  template<typename U>
+  View& operator=(const View<U>& other)
+  {
+    size_t n = size();
+    for (size_t i = 0; i < n; ++i)
+      data_[flat_to_offset(i)] = other[i];
+    return *this;
+  }
+
   //! Assignment from Tensor (forward-declared, defined after Tensor)
   template<typename U>
   View& operator=(const Tensor<U>& other);
@@ -209,6 +235,25 @@ public:
     for (size_t i = 0; i < n; ++i)
       data_[flat_to_offset(i)] *= val;
     return *this;
+  }
+
+  //! Compound divide by scalar
+  View& operator/=(value_type val)
+  {
+    size_t n = size();
+    for (size_t i = 0; i < n; ++i)
+      data_[flat_to_offset(i)] /= val;
+    return *this;
+  }
+
+  //! Sum of all elements
+  value_type sum() const
+  {
+    value_type s = value_type(0);
+    size_t n = size();
+    for (size_t i = 0; i < n; ++i)
+      s += data_[flat_to_offset(i)];
+    return s;
   }
 
   //--------------------------------------------------------------------------

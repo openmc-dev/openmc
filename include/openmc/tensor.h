@@ -2,7 +2,7 @@
 //! \brief Multi-dimensional tensor types for OpenMC.
 //!
 //! Provides Tensor<T> (dynamic-rank), Fixed2D<T,R,C> (stack-allocated),
-//! and lightweight view types. Built on vector for GPU portability.
+//! and lightweight view types (View1D, ViewFlat).
 
 #ifndef OPENMC_TENSOR_H
 #define OPENMC_TENSOR_H
@@ -873,9 +873,6 @@ View1D<T>& View1D<T>::operator+=(const Tensor<U>& o)
 
 //==============================================================================
 // Tensor<T>::sum(axis) — reduces one dimension
-//
-// Uses explicit nested loops for each rank combination to ensure identical
-// floating-point accumulation order with the Phase 1 implementation.
 //==============================================================================
 
 template<typename T>

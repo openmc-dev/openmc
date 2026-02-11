@@ -1,8 +1,6 @@
 #ifndef OPENMC_TALLIES_FILTER_ENERGY_H
 #define OPENMC_TALLIES_FILTER_ENERGY_H
 
-#include <unordered_map>
-
 #include "openmc/particle.h"
 #include "openmc/span.h"
 #include "openmc/tallies/filter.h"
@@ -73,41 +71,6 @@ public:
     FilterMatch& match) const override;
 
   std::string text_label(int bin) const override;
-};
-
-//==============================================================================
-//! Bins the outgoing energy of secondary particles
-//!
-//! This filter can be used to get the photon production matrix for multigroup
-//! photon transport, the energy distribution of secondary neutrons, etc. Unlike
-//! other energy filters, the weight that is applied is equal to the weight of
-//! the secondary particle. Thus, to get secondary production it should be used
-//! in conjunction with the "events" score.
-//==============================================================================
-
-class ParticleProductionFilter : public EnergyFilter {
-public:
-  //----------------------------------------------------------------------------
-  // Methods
-
-  std::string type_str() const override { return "particleproduction"; }
-  FilterType type() const override { return FilterType::PARTICLE_PRODUCTION; }
-
-  void get_all_bins(const Particle& p, TallyEstimator estimator,
-    FilterMatch& match) const override;
-
-  std::string text_label(int bin) const override;
-
-  void from_xml(pugi::xml_node node) override;
-
-  void to_statepoint(hid_t filter_group) const override;
-
-protected:
-  vector<ParticleType>
-    secondary_types_; //!< Types of secondary particles to filter
-
-  //! Map from PDG number to index in secondary_types_
-  std::unordered_map<int32_t, int> type_to_index_;
 };
 
 } // namespace openmc

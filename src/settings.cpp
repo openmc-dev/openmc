@@ -891,8 +891,7 @@ void read_settings_xml(pugi::xml_node root)
   // Check if the user wants activity-based timing (per-source Poisson
   // timestamps using strength as activity rate in Bq)
   if (check_for_node(root, "activity_based_timing")) {
-    activity_based_timing =
-      get_node_value_bool(root, "activity_based_timing");
+    activity_based_timing = get_node_value_bool(root, "activity_based_timing");
   }
 
   // Check if the user has specified to write surface source

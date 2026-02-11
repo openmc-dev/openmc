@@ -384,7 +384,8 @@ void compute_decay_times()
     int src_idx;
     if (settings::uniform_source_sampling) {
       src_idx = static_cast<int>(prn(&seed) * n_sources);
-      if (src_idx >= n_sources) src_idx = n_sources - 1;
+      if (src_idx >= n_sources)
+        src_idx = n_sources - 1;
     } else {
       src_idx = model::external_sources_probability.sample(&seed);
     }
@@ -397,7 +398,8 @@ void compute_decay_times()
   // per-source seed
   vector<vector<double>> per_source_times(n_sources);
   for (int s = 0; s < n_sources; ++s) {
-    if (n_per_source[s] == 0) continue;
+    if (n_per_source[s] == 0)
+      continue;
 
     double activity = model::external_sources[s]->strength();
     if (activity <= 0.0) {
@@ -420,16 +422,19 @@ void compute_decay_times()
       for (int64_t j = rank_start; j < rank_end; ++j) {
         // Replicate source selection for particles on earlier ranks
         int64_t pid = (simulation::total_gen + overall_generation() - 1) *
-                        settings::n_particles + j + 1;
+                        settings::n_particles +
+                      j + 1;
         uint64_t pseed = init_seed(pid, STREAM_SOURCE);
         int pidx;
         if (settings::uniform_source_sampling) {
           pidx = static_cast<int>(prn(&pseed) * n_sources);
-          if (pidx >= n_sources) pidx = n_sources - 1;
+          if (pidx >= n_sources)
+            pidx = n_sources - 1;
         } else {
           pidx = model::external_sources_probability.sample(&pseed);
         }
-        if (pidx == s) global_skip++;
+        if (pidx == s)
+          global_skip++;
       }
     }
 

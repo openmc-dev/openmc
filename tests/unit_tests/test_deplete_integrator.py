@@ -59,8 +59,9 @@ def test_results_save(run_in_tmpdir):
     burn_list = full_burn_list[2*comm.rank: 2*comm.rank + 2]
     nuc_list = ["na", "nb"]
 
+    name_list = {mat: "" for mat in full_burn_list}
     op.get_results_info.return_value = (
-        vol_dict, nuc_list, burn_list, full_burn_list)
+        vol_dict, nuc_list, burn_list, full_burn_list, name_list)
 
     # Construct end-of-step concentrations
     x1 = [rng.random(2), rng.random(2)]
@@ -130,7 +131,8 @@ def test_results_save_without_rates(run_in_tmpdir):
     vol_dict = {"0": 1.0}
     nuc_list = ["na"]
     burn_list = ["0"]
-    op.get_results_info.return_value = (vol_dict, nuc_list, burn_list, burn_list)
+    name_list = {mat: "" for mat in burn_list}
+    op.get_results_info.return_value = (vol_dict, nuc_list, burn_list, burn_list, name_list)
 
     x = [np.array([1.0])]
     rates = ReactionRates(burn_list, nuc_list, ["ra"])

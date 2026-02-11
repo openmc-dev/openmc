@@ -116,7 +116,7 @@ int openmc_mesh_set_id(int32_t index, int32_t id);
 int openmc_mesh_get_n_elements(int32_t index, size_t* n);
 int openmc_mesh_get_volumes(int32_t index, double* volumes);
 int openmc_mesh_material_volumes(int32_t index, int nx, int ny, int nz,
-  int max_mats, int32_t* materials, double* volumes);
+  int max_mats, int32_t* materials, double* volumes, double* bboxes);
 int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_new_filter(const char* type, int32_t* index);
@@ -140,6 +140,7 @@ int openmc_remove_tally(int32_t index);
 int openmc_reset();
 int openmc_reset_timers();
 int openmc_run();
+void openmc_run_random_ray();
 int openmc_sample_external_source(size_t n, uint64_t* seed, void* sites);
 void openmc_set_seed(int64_t new_seed);
 void openmc_set_stride(uint64_t new_stride);
@@ -201,8 +202,8 @@ int openmc_weight_windows_set_energy_bounds(
   int32_t index, double* e_bounds, size_t e_bounds_size);
 int openmc_weight_windows_get_energy_bounds(
   int32_t index, const double** e_bounds, size_t* e_bounds_size);
-int openmc_weight_windows_set_particle(int32_t index, int particle);
-int openmc_weight_windows_get_particle(int32_t index, int* particle);
+int openmc_weight_windows_set_particle(int32_t index, int32_t particle);
+int openmc_weight_windows_get_particle(int32_t index, int32_t* particle);
 int openmc_weight_windows_get_bounds(int32_t index, const double** lower_bounds,
   const double** upper_bounds, size_t* size);
 int openmc_weight_windows_set_bounds(int32_t index, const double* lower_bounds,
@@ -227,7 +228,7 @@ int openmc_zernike_filter_set_order(int32_t index, int order);
 int openmc_zernike_filter_set_params(
   int32_t index, const double* x, const double* y, const double* r);
 
-int openmc_particle_filter_get_bins(int32_t idx, int bins[]);
+int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[]);
 
 //! Sets the mesh and energy grid for CMFD reweight
 //! \param[in] meshtyally_id id of CMFD Mesh Tally

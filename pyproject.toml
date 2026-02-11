@@ -34,7 +34,6 @@ dependencies = [
     "pandas",
     "lxml",
     "uncertainties",
-    "setuptools",
     "endf",
 ]
 

@@ -132,6 +132,9 @@ _dll.openmc_meshsurface_filter_set_translation.errcheck = _error_handler
 _dll.openmc_new_filter.argtypes = [c_char_p, POINTER(c_int32)]
 _dll.openmc_new_filter.restype = c_int
 _dll.openmc_new_filter.errcheck = _error_handler
+_dll.openmc_particle_filter_get_bins.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_particle_filter_get_bins.restype = c_int
+_dll.openmc_particle_filter_get_bins.errcheck = _error_handler
 _dll.openmc_spatial_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
 _dll.openmc_spatial_legendre_filter_get_order.restype = c_int
 _dll.openmc_spatial_legendre_filter_get_order.errcheck = _error_handler
@@ -402,8 +405,8 @@ class MeshFilter(Filter):
     translation : Iterable of float
         3-D coordinates of the translation vector
     rotation : Iterable of float
-        The rotation matrix or angles of the filter mesh. This can either be 
-        a fully specified 3 x 3 rotation matrix or an Iterable of length 3 
+        The rotation matrix or angles of the filter mesh. This can either be
+        a fully specified 3 x 3 rotation matrix or an Iterable of length 3
         with the angles in degrees about the x, y, and z axes, respectively.
 
     """
@@ -454,7 +457,7 @@ class MeshFilter(Filter):
         else:
             raise ValueError(
                 f'Invalid size of rotation matrix: {rot_size}')
-        
+
     @rotation.setter
     def rotation(self, rotation_data):
         flat_rotation = np.asarray(rotation_data, dtype=float).flatten()
@@ -598,9 +601,9 @@ class ParticleFilter(Filter):
 
     @property
     def bins(self):
-        particle_i = np.zeros((self.n_bins,), dtype=c_int)
+        particle_i = np.zeros((self.n_bins,), dtype=c_int32)
         _dll.openmc_particle_filter_get_bins(
-            self._index, particle_i.ctypes.data_as(POINTER(c_int)))
+            self._index, particle_i.ctypes.data_as(POINTER(c_int32)))
         return [ParticleType(i) for i in particle_i]
 
 

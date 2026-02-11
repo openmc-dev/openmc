@@ -40,6 +40,7 @@ Functions
    reset_timers
    run
    run_in_memory
+   run_random_ray
    sample_external_source
    simulation_finalize
    simulation_init

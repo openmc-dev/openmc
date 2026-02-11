@@ -318,8 +318,8 @@ should be set to:
   they use ``energy`` and ``y``.
 
 :particle:
-  A list of integers indicating the type of particles to tally ('neutron' = 1,
-  'photon' = 2, 'electron' = 3, 'positron' = 4).
+  A list of particle identifiers to tally, specified as strings (e.g.,
+  ``neutron``, ``photon``, ``He4``) or as integer PDG numbers.
 
 ------------------
 ``<mesh>`` Element

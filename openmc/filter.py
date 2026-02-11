@@ -35,7 +35,6 @@ _CURRENT_NAMES = (
     'z-min out', 'z-min in', 'z-max out', 'z-max in'
 )
 
-_PARTICLES = {'neutron', 'photon', 'electron', 'positron'}
 
 
 class FilterMeta(ABCMeta):
@@ -127,9 +126,9 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
     def __gt__(self, other):
         if type(self) is not type(other):
             if self.short_name in _FILTER_TYPES and \
-                other.short_name in _FILTER_TYPES:
+                    other.short_name in _FILTER_TYPES:
                 delta = _FILTER_TYPES.index(self.short_name) - \
-                        _FILTER_TYPES.index(other.short_name)
+                    _FILTER_TYPES.index(other.short_name)
                 return delta > 0
             else:
                 return False
@@ -275,7 +274,6 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         for subclass in cls._recursive_subclasses():
             if filter_type == subclass.short_name.lower():
                 return subclass.from_xml_element(elem, **kwargs)
-
 
     def can_merge(self, other):
         """Determine if filter can be merged with another.
@@ -427,6 +425,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
 class WithIDFilter(Filter):
     """Abstract parent for filters of types with IDs (Cell, Material, etc.)."""
+
     def __init__(self, bins, filter_id=None):
         bins = np.atleast_1d(bins)
 
@@ -630,6 +629,7 @@ class CellInstanceFilter(Filter):
     DistribcellFilter
 
     """
+
     def __init__(self, bins, filter_id=None):
         self.bins = bins
         self.id = filter_id
@@ -735,9 +735,8 @@ class ParticleFilter(Filter):
 
     Parameters
     ----------
-    bins : str, or sequence of str
-        The particles to tally represented as strings ('neutron', 'photon',
-        'electron', 'positron').
+    bins : str, int, openmc.ParticleType, or sequence
+        The particle types to tally represented as names, PDG numbers, or types.
     filter_id : int
         Unique identifier for the filter
 
@@ -751,6 +750,7 @@ class ParticleFilter(Filter):
         The number of filter bins
 
     """
+
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
@@ -763,11 +763,16 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        cv.check_type('bins', bins, Sequence, str)
+        if isinstance(bins, (str, Integral, openmc.ParticleType)):
+            bins = [bins]
+        else:
+            cv.check_type('bins', bins, Sequence,
+                          (str, Integral, openmc.ParticleType))
         bins = np.atleast_1d(bins)
-        for edge in bins:
-            cv.check_value('filter bin', edge, _PARTICLES)
-        self._bins = bins
+        normalized = []
+        for entry in bins:
+            normalized.append(str(openmc.ParticleType(entry)))
+        self._bins = np.array(normalized, dtype=str)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -1100,6 +1105,7 @@ class MeshMaterialFilter(MeshFilter):
         Unique identifier for the filter
 
     """
+
     def __init__(self, mesh: openmc.MeshBase, bins, filter_id=None):
         self.mesh = mesh
         self.bins = bins
@@ -1434,6 +1440,7 @@ class RealFilter(Filter):
         The number of filter bins
 
     """
+
     def __init__(self, values, filter_id=None):
         self.values = np.asarray(values)
         self.bins = np.vstack((self.values[:-1], self.values[1:])).T
@@ -1709,7 +1716,8 @@ class EnergyFilter(RealFilter):
 
         """
 
-        cv.check_value('group_structure', group_structure, openmc.mgxs.GROUP_STRUCTURES.keys())
+        cv.check_value('group_structure', group_structure,
+                       openmc.mgxs.GROUP_STRUCTURES.keys())
         return cls(openmc.mgxs.GROUP_STRUCTURES[group_structure.upper()])
 
 
@@ -1738,6 +1746,82 @@ class EnergyoutFilter(EnergyFilter):
         The number of filter bins
 
     """
+
+
+class ParticleProductionFilter(EnergyFilter):
+    """Bins tally events based on energy of secondary particles.
+
+    This filter bins the energies of secondary particles (e.g., photons,
+    electrons, or recoils) produced in a reaction. This is useful for
+    constructing production matrices or analyzing secondary particle spectra.
+    Note that unlike other energy filters, the weight that is applied is equal
+    to the weight of the secondary particle. Thus, to obtain secondary particle
+    production, it should be used in conjunction with the "events" score.
+
+    The incident particle type can be filtered using :class:`ParticleFilter`.
+
+    .. versionadded:: 0.15.4
+
+    Parameters
+    ----------
+    particle : str, int, openmc.ParticleType
+        Type of secondary particle to tally ('photon', 'neutron', etc.)
+    values : Iterable of Real
+        A list of energy boundaries in [eV]; each successive pair defines a bin.
+    filter_id : int, optional
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        Energy boundaries in [eV]
+    bins : numpy.ndarray
+        Array of (low, high) energy bin pairs
+    num_bins : int
+        Number of filter bins
+    particle : str
+        The secondary particle type this filter applies to
+    """
+
+    def __init__(self, particle, values, filter_id=None):
+        super().__init__(values, filter_id)
+        self.particle = particle
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tParticle', self.particle)
+        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @property
+    def particle(self) -> openmc.ParticleType:
+        return self._particle
+
+    @particle.setter
+    def particle(self, particle):
+        self._particle = openmc.ParticleType(particle)
+
+    def to_xml_element(self):
+        element = super().to_xml_element()
+        subelement = ET.SubElement(element, 'particle')
+        subelement.text = str(self.particle)
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        values = [float(x) for x in get_text(elem, 'bins').split()]
+        particle = get_text(elem, 'particle')
+        return cls(particle, values, filter_id=filter_id)
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        bins = group['bins'][()]
+        particle = group['particle'][()].decode()
+        return cls(particle, bins, filter_id=filter_id)
+
 
 class TimeFilter(RealFilter):
     """Bins tally events based on the particle's time.
@@ -1906,7 +1990,7 @@ class DistribcellFilter(Filter):
         # Make sure there is only 1 bin.
         if not len(bins) == 1:
             msg = (f'Unable to add bins "{bins}" to a DistribcellFilter since '
-                  'only a single distribcell can be used per tally')
+                   'only a single distribcell can be used per tally')
             raise ValueError(msg)
 
         # Check the type and extract the id, if necessary.
@@ -2059,7 +2143,7 @@ class DistribcellFilter(Filter):
         # requests Summary geometric information
         filter_bins = _repeat_and_tile(
             np.arange(self.num_bins), stride, data_size)
-        df = pd.DataFrame({self.short_name.lower() : filter_bins})
+        df = pd.DataFrame({self.short_name.lower(): filter_bins})
 
         # Concatenate with DataFrame of distribcell instance IDs
         if level_df is not None:
@@ -2098,6 +2182,7 @@ class MuFilter(RealFilter):
         The number of filter bins
 
     """
+
     def __init__(self, values, filter_id=None):
         if isinstance(values, Integral):
             values = np.linspace(-1., 1., values + 1)
@@ -2263,6 +2348,7 @@ class DelayedGroupFilter(Filter):
         The number of filter bins
 
     """
+
     def check_bins(self, bins):
         # Check the bin values.
         for g in bins:
@@ -2331,9 +2417,9 @@ class EnergyFunctionFilter(Filter):
     def __gt__(self, other):
         if type(self) is not type(other):
             if self.short_name in _FILTER_TYPES and \
-                other.short_name in _FILTER_TYPES:
+                    other.short_name in _FILTER_TYPES:
                 delta = _FILTER_TYPES.index(self.short_name) - \
-                        _FILTER_TYPES.index(other.short_name)
+                    _FILTER_TYPES.index(other.short_name)
                 return delta > 0
             else:
                 return False
@@ -2343,9 +2429,9 @@ class EnergyFunctionFilter(Filter):
     def __lt__(self, other):
         if type(self) is not type(other):
             if self.short_name in _FILTER_TYPES and \
-                other.short_name in _FILTER_TYPES:
+                    other.short_name in _FILTER_TYPES:
                 delta = _FILTER_TYPES.index(self.short_name) - \
-                        _FILTER_TYPES.index(other.short_name)
+                    _FILTER_TYPES.index(other.short_name)
                 return delta < 0
             else:
                 return False
@@ -2356,14 +2442,16 @@ class EnergyFunctionFilter(Filter):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
         string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
-        string += '{: <16}=\t{}\n'.format('\tInterpolation', self.interpolation)
+        string += '{: <16}=\t{}\n'.format('\tInterpolation',
+                                          self.interpolation)
         return hash(string)
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
         string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
-        string += '{: <16}=\t{}\n'.format('\tInterpolation', self.interpolation)
+        string += '{: <16}=\t{}\n'.format('\tInterpolation',
+                                          self.interpolation)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
@@ -2449,10 +2537,12 @@ class EnergyFunctionFilter(Filter):
     @interpolation.setter
     def interpolation(self, val):
         cv.check_type('interpolation', val, str)
-        cv.check_value('interpolation', val, self.INTERPOLATION_SCHEMES.values())
+        cv.check_value('interpolation', val,
+                       self.INTERPOLATION_SCHEMES.values())
 
         if val == 'quadratic' and len(self.energy) < 3:
-            raise ValueError('Quadratic interpolation requires 3 or more values.')
+            raise ValueError(
+                'Quadratic interpolation requires 3 or more values.')
 
         if val == 'cubic' and len(self.energy) < 4:
             raise ValueError('Cubic interpolation requires 3 or more values.')

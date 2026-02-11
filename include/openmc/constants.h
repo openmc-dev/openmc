@@ -25,16 +25,16 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {18, 1};
-constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr array<int, 2> VERSION_TRACK {3, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 2};
+constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 1};
+constexpr array<int, 2> VERSION_TRACK {3, 1};
 constexpr array<int, 2> VERSION_SUMMARY {6, 1};
 constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 1};
 constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
-constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 0};
+constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 1};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -301,7 +301,7 @@ enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
 enum class TallyEvent { SURFACE, LATTICE, KILL, SCATTER, ABSORB };
 
 // Tally score type -- if you change these, make sure you also update the
-// _SCORES dictionary in openmc/capi/tally.py
+// _SCORES dictionary in openmc/lib/tally.py
 //
 // These are kept as a normal enum and made negative, since variables which
 // store one of these enum values usually also may be responsible for storing

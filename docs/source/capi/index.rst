@@ -601,6 +601,10 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: void openmc_run_random_ray()
+
+   Run a random ray simulation
+
 .. c:function:: int openmc_set_n_batches(int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)
 
    Set number of batches and number of max batches

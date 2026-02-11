@@ -194,11 +194,11 @@ public:
     return *this;
   }
 
-  //! Assignment from Tensor (deferred, defined after Tensor)
+  //! Assignment from Tensor (forward-declared, defined after Tensor)
   template<typename U>
   View& operator=(const Tensor<U>& other);
 
-  //! Compound addition from Tensor (deferred)
+  //! Compound addition from Tensor (forward-declared, defined after Tensor)
   template<typename U>
   View& operator+=(const Tensor<U>& o);
 
@@ -986,7 +986,7 @@ Tensor<double> operator/(const Tensor<T1>& a, const Tensor<T2>& b)
 }
 
 //==============================================================================
-// View deferred method definitions (need Tensor to be complete)
+// View forward-declared method definitions (need Tensor to be complete)
 //==============================================================================
 
 template<typename T>

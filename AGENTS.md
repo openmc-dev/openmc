@@ -236,7 +236,7 @@ When modifying C++ public APIs, update corresponding ctypes signatures in `openm
 - **Docstrings**: numpydoc format for all public functions/methods
 - **Type hints**: Use sparingly, primarily for complex signatures
 - **Path handling**: Use `pathlib.Path` for filesystem operations, accept `str | os.PathLike` in function arguments
-- **Dependencies**: Core dependencies only (numpy, scipy, h5py, pandas, matplotlib, lxml, ipython, uncertainties, setuptools, endf). Other packages must be optional
+- **Dependencies**: Core dependencies only (numpy, scipy, h5py, pandas, matplotlib, lxml, ipython, uncertainties, endf). Other packages must be optional
 - **Python version**: Minimum 3.11 (as of Nov 2025)
 
 ### ID Management Pattern (Python)

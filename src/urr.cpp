@@ -38,7 +38,7 @@ UrrData::UrrData(hid_t group_id)
   xs_values_.resize({n_energy, n_cdf_values});
 
   // Now fill in the values. Using manual loops here since we might
-  // not have fancy xtensor slicing code written for GPU tensors.
+  // not have fancy tensor slicing code written for GPU tensors.
   // The below enum gives how URR tables are laid out in our HDF5 tables.
   enum class URRTableParam {
     CUM_PROB,

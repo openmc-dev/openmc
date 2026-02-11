@@ -766,7 +766,7 @@ std::string StructuredMesh::bin_label(int bin) const
   }
 }
 
-tensor::Tensor<int> StructuredMesh::get_x_shape() const
+tensor::Tensor<int> StructuredMesh::get_shape_tensor() const
 {
   return tensor::Tensor<int>(shape_.data(), static_cast<size_t>(n_dimension_));
 }
@@ -1394,7 +1394,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     fatal_error("Must specify <dimension> on a regular mesh.");
   }
 
-  tensor::Tensor<int> shape = get_node_xarray<int>(node, "dimension");
+  tensor::Tensor<int> shape = get_node_tensor<int>(node, "dimension");
   int n = n_dimension_ = shape.size();
   if (n != 1 && n != 2 && n != 3) {
     fatal_error("Mesh must be one, two, or three dimensions.");
@@ -1404,7 +1404,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   // Check for lower-left coordinates
   if (check_for_node(node, "lower_left")) {
     // Read mesh lower-left corner location
-    lower_left_ = get_node_xarray<double>(node, "lower_left");
+    lower_left_ = get_node_tensor<double>(node, "lower_left");
   } else {
     fatal_error("Must specify <lower_left> on a mesh.");
   }
@@ -1415,11 +1415,11 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
       fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
     }
 
-    width_ = get_node_xarray<double>(node, "width");
+    width_ = get_node_tensor<double>(node, "width");
 
   } else if (check_for_node(node, "upper_right")) {
 
-    upper_right_ = get_node_xarray<double>(node, "upper_right");
+    upper_right_ = get_node_tensor<double>(node, "upper_right");
 
   } else {
     fatal_error("Must specify either <upper_right> or <width> on a mesh.");
@@ -1552,7 +1552,7 @@ std::pair<vector<double>, vector<double>> RegularMesh::plot(
 
 void RegularMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  write_dataset(mesh_group, "dimension", get_x_shape());
+  write_dataset(mesh_group, "dimension", get_shape_tensor());
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
   write_dataset(mesh_group, "width", width_);
@@ -2702,15 +2702,15 @@ extern "C" int openmc_regular_mesh_set_params(
   if (ll && ur) {
     m->lower_left_ = tensor::Tensor<double>(ll, n);
     m->upper_right_ = tensor::Tensor<double>(ur, n);
-    m->width_ = (m->upper_right_ - m->lower_left_) / m->get_x_shape();
+    m->width_ = (m->upper_right_ - m->lower_left_) / m->get_shape_tensor();
   } else if (ll && width) {
     m->lower_left_ = tensor::Tensor<double>(ll, n);
     m->width_ = tensor::Tensor<double>(width, n);
-    m->upper_right_ = m->lower_left_ + m->get_x_shape() * m->width_;
+    m->upper_right_ = m->lower_left_ + m->get_shape_tensor() * m->width_;
   } else if (ur && width) {
     m->upper_right_ = tensor::Tensor<double>(ur, n);
     m->width_ = tensor::Tensor<double>(width, n);
-    m->lower_left_ = m->upper_right_ - m->get_x_shape() * m->width_;
+    m->lower_left_ = m->upper_right_ - m->get_shape_tensor() * m->width_;
   } else {
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2720,7 +2720,7 @@ extern "C" int openmc_regular_mesh_set_params(
 
   // TODO: incorporate this into method in RegularMesh that can be called from
   // here and from constructor
-  m->volume_frac_ = 1.0 / m->get_x_shape().prod();
+  m->volume_frac_ = 1.0 / m->get_shape_tensor().prod();
   m->element_volume_ = 1.0;
   for (int i = 0; i < m->n_dimension_; i++) {
     m->element_volume_ *= m->width_[i];

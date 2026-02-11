@@ -537,16 +537,16 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   ///////////////////////////
   // Extract tally data
   //
-  // At the end of this section, the mean and rel_err array
-  // is a 2D view of tally data (n_e_groups, n_mesh_bins)
+  // At the end of this section, mean and rel_err are
+  // 2D tensors of tally data (n_e_groups, n_mesh_bins)
   //
   ///////////////////////////
 
-  // build a shape for a view of the tally results, this will always be
+  // build a shape for the tally results, this will always be
   // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
-  // Look for the size of the last dimension of the results array
-  const auto& results_arr = tally->results();
-  const int results_dim = static_cast<int>(results_arr.shape(2));
+  // Look for the size of the last dimension of the results tensor
+  const auto& results = tally->results();
+  const int results_dim = static_cast<int>(results.shape(2));
   std::array<int, 5> shape = {1, 1, 1, tally->n_scores(), results_dim};
 
   // set the shape for the filters applied on the tally
@@ -634,8 +634,8 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       // Compute flat filter combination index (row-major over filter dims)
       int flat = idx[0] * stride0 + idx[1] * stride1 + idx[2];
 
-      sum(e, m) = results_arr(flat, score_index, i_sum);
-      sum_sq(e, m) = results_arr(flat, score_index, i_sum_sq);
+      sum(e, m) = results(flat, score_index, i_sum);
+      sum_sq(e, m) = results(flat, score_index, i_sum_sq);
     }
   }
   int n = tally->n_realizations_;

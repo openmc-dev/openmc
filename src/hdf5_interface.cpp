@@ -466,17 +466,17 @@ void read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
 
 template<>
 void read_dataset(
-  hid_t dset, tensor::Tensor<std::complex<double>>& arr, bool indep)
+  hid_t dset, tensor::Tensor<std::complex<double>>& tensor, bool indep)
 {
   // Get shape of dataset
   vector<hsize_t> shape = object_shape(dset);
 
   // Resize tensor and read data directly
   vector<size_t> tshape(shape.begin(), shape.end());
-  arr.resize(tshape);
+  tensor.resize(tshape);
 
   // Read data from dataset
-  read_complex(dset, nullptr, reinterpret_cast<std::complex<double>*>(arr.data()), indep);
+  read_complex(dset, nullptr, reinterpret_cast<std::complex<double>*>(tensor.data()), indep);
 }
 
 void read_double(hid_t obj_id, const char* name, double* buffer, bool indep)

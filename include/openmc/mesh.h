@@ -419,8 +419,8 @@ public:
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
-  //! Get shape as tensor
-  tensor::Tensor<int> get_x_shape() const;
+  //! Get mesh dimensions as a tensor
+  tensor::Tensor<int> get_shape_tensor() const;
 
   double volume(int bin) const override
   {

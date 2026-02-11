@@ -553,7 +553,7 @@ void free_memory_cmfd()
   cmfd::indices.clear();
   cmfd::egrid.clear();
 
-  // Resize xtensors to be empty
+  // Resize tensors to be empty
   cmfd::indexmap.resize({0});
 
   // Set pointers to null

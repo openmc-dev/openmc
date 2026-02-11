@@ -41,7 +41,7 @@ vector<T> get_node_array(
 }
 
 template<typename T>
-tensor::Tensor<T> get_node_xarray(
+tensor::Tensor<T> get_node_tensor(
   pugi::xml_node node, const char* name, bool lowercase = false)
 {
   vector<T> v = get_node_array<T>(node, name, lowercase);

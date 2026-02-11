@@ -89,9 +89,9 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
     fission_from_hdf5(xsdata_grp, n_ang, is_isotropic);
   }
   // Get the non-fission-specific data
-  read_nd_vector(xsdata_grp, "decay-rate", decay_rate);
-  read_nd_vector(xsdata_grp, "absorption", absorption, true);
-  read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
+  read_nd_tensor(xsdata_grp, "decay-rate", decay_rate);
+  read_nd_tensor(xsdata_grp, "absorption", absorption, true);
+  read_nd_tensor(xsdata_grp, "inverse-velocity", inverse_velocity);
 
   // Get scattering data
   scatter_from_hdf5(
@@ -104,7 +104,7 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
 
   // Get or calculate the total x/s
   if (object_exists(xsdata_grp, "total")) {
-    read_nd_vector(xsdata_grp, "total", total);
+    read_nd_tensor(xsdata_grp, "total", total);
   } else {
     for (size_t a = 0; a < n_ang; a++) {
       for (size_t gin = 0; gin < energy_groups; gin++) {
@@ -128,7 +128,7 @@ void XsData::fission_vector_beta_from_hdf5(
 
   // Get chi
   tensor::Tensor<double> temp_chi({n_ang, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "chi", temp_chi, true);
+  read_nd_tensor(xsdata_grp, "chi", temp_chi, true);
 
   // Normalize chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
@@ -153,7 +153,7 @@ void XsData::fission_vector_beta_from_hdf5(
 
   // Get nu-fission
   tensor::Tensor<double> temp_nufiss({n_ang, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "nu-fission", temp_nufiss, true);
+  read_nd_tensor(xsdata_grp, "nu-fission", temp_nufiss, true);
 
   // Get beta (strategy will depend upon the number of dimensions in beta)
   hid_t beta_dset = open_dataset(xsdata_grp, "beta");
@@ -164,7 +164,7 @@ void XsData::fission_vector_beta_from_hdf5(
     ndim_target += 2;
   if (beta_ndims == ndim_target) {
     tensor::Tensor<double> temp_beta({n_ang, n_dg_}, 0.);
-    read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+    read_nd_tensor(xsdata_grp, "beta", temp_beta, true);
 
     // prompt_nu_fission = (1 - sum_of_beta) * nu_fission
     auto beta_sum = temp_beta.sum(1);
@@ -180,7 +180,7 @@ void XsData::fission_vector_beta_from_hdf5(
           delayed_nu_fission(a, d, g) = temp_beta(a, d) * temp_nufiss(a, g);
   } else if (beta_ndims == ndim_target + 1) {
     tensor::Tensor<double> temp_beta({n_ang, n_dg_, n_g_}, 0.);
-    read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+    read_nd_tensor(xsdata_grp, "beta", temp_beta, true);
 
     // prompt_nu_fission = (1 - sum_of_beta) * nu_fission
     // Here beta is energy-dependent, so sum over delayed groups (axis 1)
@@ -204,7 +204,7 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Get chi-prompt
   tensor::Tensor<double> temp_chi_p({n_ang, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "chi-prompt", temp_chi_p, true);
+  read_nd_tensor(xsdata_grp, "chi-prompt", temp_chi_p, true);
 
   // Normalize prompt chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
@@ -215,7 +215,7 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Get chi-delayed
   tensor::Tensor<double> temp_chi_d({n_ang, n_dg_, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "chi-delayed", temp_chi_d, true);
+  read_nd_tensor(xsdata_grp, "chi-delayed", temp_chi_d, true);
 
   // Normalize delayed chi so it sums to 1 over outgoing groups for each
   // angle and delayed group
@@ -240,8 +240,8 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
           chi_delayed(a, d, gin, gout) = temp_chi_d(a, d, gout);
 
   // Get prompt and delayed nu-fission directly
-  read_nd_vector(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
-  read_nd_vector(xsdata_grp, "delayed-nu-fission", delayed_nu_fission, true);
+  read_nd_tensor(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
+  read_nd_tensor(xsdata_grp, "delayed-nu-fission", delayed_nu_fission, true);
 }
 
 void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
@@ -251,7 +251,7 @@ void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Get chi
   tensor::Tensor<double> temp_chi({n_ang, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "chi", temp_chi, true);
+  read_nd_tensor(xsdata_grp, "chi", temp_chi, true);
 
   // Normalize chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
@@ -267,7 +267,7 @@ void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
         chi_prompt(a, gin, gout) = temp_chi(a, gout);
 
   // Get nu-fission directly
-  read_nd_vector(xsdata_grp, "nu-fission", prompt_nu_fission, true);
+  read_nd_tensor(xsdata_grp, "nu-fission", prompt_nu_fission, true);
 }
 
 //==============================================================================
@@ -279,7 +279,7 @@ void XsData::fission_matrix_beta_from_hdf5(
 
   // Get nu-fission matrix
   tensor::Tensor<double> temp_matrix({n_ang, n_g_, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
+  read_nd_tensor(xsdata_grp, "nu-fission", temp_matrix, true);
 
   // Get beta (strategy will depend upon the number of dimensions in beta)
   hid_t beta_dset = open_dataset(xsdata_grp, "beta");
@@ -290,7 +290,7 @@ void XsData::fission_matrix_beta_from_hdf5(
     ndim_target += 2;
   if (beta_ndims == ndim_target) {
     tensor::Tensor<double> temp_beta({n_ang, n_dg_}, 0.);
-    read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+    read_nd_tensor(xsdata_grp, "beta", temp_beta, true);
 
     auto beta_sum = temp_beta.sum(1);
     auto matrix_gout_sum = temp_matrix.sum(2);
@@ -325,7 +325,7 @@ void XsData::fission_matrix_beta_from_hdf5(
 
   } else if (beta_ndims == ndim_target + 1) {
     tensor::Tensor<double> temp_beta({n_ang, n_dg_, n_g_}, 0.);
-    read_nd_vector(xsdata_grp, "beta", temp_beta, true);
+    read_nd_tensor(xsdata_grp, "beta", temp_beta, true);
 
     auto beta_sum = temp_beta.sum(1);
     auto matrix_gout_sum = temp_matrix.sum(2);
@@ -387,7 +387,7 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Get the prompt nu-fission matrix
   tensor::Tensor<double> temp_matrix_p({n_ang, n_g_, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_matrix_p, true);
+  read_nd_tensor(xsdata_grp, "prompt-nu-fission", temp_matrix_p, true);
 
   // prompt_nu_fission is the sum over outgoing groups
   prompt_nu_fission = temp_matrix_p.sum(2);
@@ -401,7 +401,7 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Get the delayed nu-fission matrix
   tensor::Tensor<double> temp_matrix_d({n_ang, n_dg_, n_g_, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "delayed-nu-fission", temp_matrix_d, true);
+  read_nd_tensor(xsdata_grp, "delayed-nu-fission", temp_matrix_d, true);
 
   // delayed_nu_fission is the sum over outgoing groups
   delayed_nu_fission = temp_matrix_d.sum(3);
@@ -422,7 +422,7 @@ void XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Get nu-fission matrix
   tensor::Tensor<double> temp_matrix({n_ang, n_g_, n_g_}, 0.);
-  read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
+  read_nd_tensor(xsdata_grp, "nu-fission", temp_matrix, true);
 
   // prompt_nu_fission is the sum over outgoing groups
   prompt_nu_fission = temp_matrix.sum(2);
@@ -441,8 +441,8 @@ void XsData::fission_from_hdf5(
   hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
 {
   // Get the fission and kappa_fission data xs; these are optional
-  read_nd_vector(xsdata_grp, "fission", fission);
-  read_nd_vector(xsdata_grp, "kappa-fission", kappa_fission);
+  read_nd_tensor(xsdata_grp, "fission", fission);
+  read_nd_tensor(xsdata_grp, "kappa-fission", kappa_fission);
 
   // Get the data; the strategy for doing so depends on if the data is provided
   // as a nu-fission matrix or a set of chi and nu-fission vectors
@@ -490,9 +490,9 @@ void XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 
   // Get the outgoing group boundary indices
   tensor::Tensor<int> gmin({n_ang, n_g_}, 0.);
-  read_nd_vector(scatt_grp, "g_min", gmin, true);
+  read_nd_tensor(scatt_grp, "g_min", gmin, true);
   tensor::Tensor<int> gmax({n_ang, n_g_}, 0.);
-  read_nd_vector(scatt_grp, "g_max", gmax, true);
+  read_nd_tensor(scatt_grp, "g_max", gmax, true);
 
   // Make gmin and gmax start from 0 vice 1 as they do in the library
   gmin -= 1;
@@ -504,7 +504,7 @@ void XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 
   double_4dvec input_scatt(n_ang, double_3dvec(n_g_));
   tensor::Tensor<double> temp_arr({length}, 0.);
-  read_nd_vector(scatt_grp, "scatter_matrix", temp_arr, true);
+  read_nd_tensor(scatt_grp, "scatter_matrix", temp_arr, true);
 
   // Compare the number of orders given with the max order of the problem;
   // strip off the superfluous orders if needed
@@ -536,7 +536,7 @@ void XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   double_3dvec temp_mult(n_ang, double_2dvec(n_g_));
   if (object_exists(scatt_grp, "multiplicity_matrix")) {
     temp_arr.resize({length / order_data});
-    read_nd_vector(scatt_grp, "multiplicity_matrix", temp_arr);
+    read_nd_tensor(scatt_grp, "multiplicity_matrix", temp_arr);
 
     // convert the flat temp_arr to a jagged array for passing to scatt data
     size_t temp_idx = 0;

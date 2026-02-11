@@ -167,17 +167,17 @@ void read_attribute(hid_t obj_id, const char* name, vector<T>& vec)
 
 // Tensor version
 template<typename T>
-void read_attribute(hid_t obj_id, const char* name, tensor::Tensor<T>& arr)
+void read_attribute(hid_t obj_id, const char* name, tensor::Tensor<T>& tensor)
 {
-  // Get shape of attribute array
+  // Get shape of attribute
   auto shape = attribute_shape(obj_id, name);
 
   // Resize tensor and read data directly
   vector<size_t> tshape(shape.begin(), shape.end());
-  arr.resize(tshape);
+  tensor.resize(tshape);
 
   // Read data from attribute
-  read_attr(obj_id, name, H5TypeMap<T>::type_id, arr.data());
+  read_attr(obj_id, name, H5TypeMap<T>::type_id, tensor.data());
 }
 
 // overload for std::string
@@ -284,31 +284,31 @@ void read_dataset(
 }
 
 template<typename T>
-void read_dataset(hid_t dset, tensor::Tensor<T>& arr, bool indep = false)
+void read_dataset(hid_t dset, tensor::Tensor<T>& tensor, bool indep = false)
 {
   // Get shape of dataset
   vector<hsize_t> shape = object_shape(dset);
 
   // Resize tensor and read data directly
   vector<size_t> tshape(shape.begin(), shape.end());
-  arr.resize(tshape);
+  tensor.resize(tshape);
 
   // Read data from dataset
   read_dataset_lowlevel(
-    dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, arr.data());
+    dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, tensor.data());
 }
 
 template<>
 void read_dataset(
-  hid_t dset, tensor::Tensor<std::complex<double>>& arr, bool indep);
+  hid_t dset, tensor::Tensor<std::complex<double>>& tensor, bool indep);
 
 template<typename T>
 void read_dataset(
-  hid_t obj_id, const char* name, tensor::Tensor<T>& arr, bool indep = false)
+  hid_t obj_id, const char* name, tensor::Tensor<T>& tensor, bool indep = false)
 {
-  // Open dataset and read array
+  // Open dataset and read tensor
   hid_t dset = open_dataset(obj_id, name);
-  read_dataset(dset, arr, indep);
+  read_dataset(dset, tensor, indep);
   close_dataset(dset);
 }
 
@@ -325,19 +325,19 @@ inline void read_dataset(
 
 template<typename T>
 inline void read_dataset_as_shape(
-  hid_t obj_id, const char* name, tensor::Tensor<T>& arr, bool indep = false)
+  hid_t obj_id, const char* name, tensor::Tensor<T>& tensor, bool indep = false)
 {
   hid_t dset = open_dataset(obj_id, name);
 
   // Read data directly into pre-shaped tensor
   read_dataset_lowlevel(
-    dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, arr.data());
+    dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, tensor.data());
 
   close_dataset(dset);
 }
 
 template<typename T>
-inline void read_nd_vector(hid_t obj_id, const char* name,
+inline void read_nd_tensor(hid_t obj_id, const char* name,
   tensor::Tensor<T>& result, bool must_have = false)
 {
   if (object_exists(obj_id, name)) {

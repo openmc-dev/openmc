@@ -63,7 +63,6 @@ public:
 
   // Methods that can be overridden
   virtual double strength() const { return strength_; }
-  double activity() const { return activity_; }
 
   //! Sample a source site and apply constraints
   //
@@ -98,7 +97,6 @@ protected:
 
   // Data members
   double strength_ {1.0};                  //!< Source strength
-  double activity_ {0.0};                  //!< Source activity rate [Bq]
   std::unordered_set<int32_t> domain_ids_; //!< Domains to reject from
   DomainType domain_type_;                 //!< Domain type for rejection
   std::pair<double, double> time_bounds_ {-std::numeric_limits<double>::max(),

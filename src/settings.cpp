@@ -87,6 +87,7 @@ bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
+bool activity_based_timing {false};
 
 std::string path_cross_sections;
 std::string path_input;
@@ -885,6 +886,13 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "uniform_source_sampling")) {
     uniform_source_sampling =
       get_node_value_bool(root, "uniform_source_sampling");
+  }
+
+  // Check if the user wants activity-based timing (per-source Poisson
+  // timestamps using strength as activity rate in Bq)
+  if (check_for_node(root, "activity_based_timing")) {
+    activity_based_timing =
+      get_node_value_bool(root, "activity_based_timing");
   }
 
   // Check if the user has specified to write surface source

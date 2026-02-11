@@ -359,43 +359,100 @@ void allocate_banks()
 
 void compute_decay_times()
 {
-  // Sum activities across all external sources
-  double total_activity = 0.0;
-  for (const auto& src : model::external_sources) {
-    total_activity += src->activity();
-  }
-
-  // If no activity is set, clear decay times and return
-  if (total_activity <= 0.0) {
+  // If activity-based timing is not enabled, clear and return
+  if (!settings::activity_based_timing) {
     simulation::decay_times.clear();
     return;
   }
 
-  // Mean inter-arrival time in seconds
-  double mean_dt = 1.0 / total_activity;
+  int n_sources = model::external_sources.size();
+  int64_t n_particles = simulation::work_per_rank;
 
-  // Compute global start index for this MPI rank
-  int64_t global_start = simulation::work_index[mpi::rank];
+  // Pass 1: Determine which source each particle comes from by replicating
+  // the source selection RNG logic from sample_external_source
+  vector<int> source_index(n_particles);
+  vector<int64_t> n_per_source(n_sources, 0);
 
-  // Use a deterministic seed based on batch number
-  uint64_t seed = init_seed(simulation::current_batch, STREAM_SOURCE);
+  for (int64_t i = 0; i < n_particles; ++i) {
+    // Replicate the seed derivation from initialize_history (line 629-632)
+    int64_t id = (simulation::total_gen + overall_generation() - 1) *
+                   settings::n_particles +
+                 simulation::work_index[mpi::rank] + (i + 1);
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
 
-  // Generate exponential inter-arrival times sequentially from the start
-  // to ensure reproducibility across MPI ranks
-  double cumulative_time = 0.0;
-
-  // Skip to this rank's starting index
-  for (int64_t i = 0; i < global_start; ++i) {
-    double dt = -mean_dt * std::log(1.0 - prn(&seed));
-    cumulative_time += dt;
+    // Source selection is the first RNG call in sample_external_source
+    int src_idx;
+    if (settings::uniform_source_sampling) {
+      src_idx = static_cast<int>(prn(&seed) * n_sources);
+      if (src_idx >= n_sources) src_idx = n_sources - 1;
+    } else {
+      src_idx = model::external_sources_probability.sample(&seed);
+    }
+    source_index[i] = src_idx;
+    n_per_source[src_idx]++;
   }
 
-  // Compute decay times for this rank's particles
-  simulation::decay_times.resize(simulation::work_per_rank);
-  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-    double dt = -mean_dt * std::log(1.0 - prn(&seed));
-    cumulative_time += dt;
-    simulation::decay_times[i] = cumulative_time;
+  // Pass 2: For each source, generate cumulative exponential inter-arrival
+  // times with rate = strength (activity in Bq), using a deterministic
+  // per-source seed
+  vector<vector<double>> per_source_times(n_sources);
+  for (int s = 0; s < n_sources; ++s) {
+    if (n_per_source[s] == 0) continue;
+
+    double activity = model::external_sources[s]->strength();
+    if (activity <= 0.0) {
+      // If strength is zero or negative, assign time 0
+      per_source_times[s].assign(n_per_source[s], 0.0);
+      continue;
+    }
+    double mean_dt = 1.0 / activity;
+
+    // Deterministic per-source seed based on batch and source index
+    uint64_t seed = init_seed(
+      simulation::current_batch * (n_sources + 1) + s + 1, STREAM_SOURCE);
+
+    // Compute global start index for this rank's contribution to this source
+    // We need to skip past particles assigned to this source on earlier ranks
+    int64_t global_skip = 0;
+    for (int64_t rank = 0; rank < mpi::rank; ++rank) {
+      int64_t rank_start = simulation::work_index[rank];
+      int64_t rank_end = simulation::work_index[rank + 1];
+      for (int64_t j = rank_start; j < rank_end; ++j) {
+        // Replicate source selection for particles on earlier ranks
+        int64_t pid = (simulation::total_gen + overall_generation() - 1) *
+                        settings::n_particles + j + 1;
+        uint64_t pseed = init_seed(pid, STREAM_SOURCE);
+        int pidx;
+        if (settings::uniform_source_sampling) {
+          pidx = static_cast<int>(prn(&pseed) * n_sources);
+          if (pidx >= n_sources) pidx = n_sources - 1;
+        } else {
+          pidx = model::external_sources_probability.sample(&pseed);
+        }
+        if (pidx == s) global_skip++;
+      }
+    }
+
+    // Generate and skip cumulative times for earlier ranks
+    double cumulative_time = 0.0;
+    for (int64_t k = 0; k < global_skip; ++k) {
+      cumulative_time += -mean_dt * std::log(1.0 - prn(&seed));
+    }
+
+    // Generate times for this rank's particles assigned to this source
+    per_source_times[s].resize(n_per_source[s]);
+    for (int64_t k = 0; k < n_per_source[s]; ++k) {
+      cumulative_time += -mean_dt * std::log(1.0 - prn(&seed));
+      per_source_times[s][k] = cumulative_time;
+    }
+  }
+
+  // Pass 3: Assign per-particle timestamps using per-source counters
+  simulation::decay_times.resize(n_particles);
+  vector<int64_t> source_counter(n_sources, 0);
+  for (int64_t i = 0; i < n_particles; ++i) {
+    int s = source_index[i];
+    simulation::decay_times[i] = per_source_times[s][source_counter[s]++];
   }
 }
 
@@ -633,8 +690,8 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
-    // Override particle time with decay time if activity is set
-    if (!simulation::decay_times.empty()) {
+    // Override particle time with decay time if activity-based timing is on
+    if (settings::activity_based_timing) {
       double decay_time = simulation::decay_times[index_source - 1];
       p.time() = decay_time;
       p.time_last() = decay_time;

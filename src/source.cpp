@@ -10,7 +10,7 @@
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
 #endif
 
-#include "xtensor/xadapt.hpp"
+#include "xtensor/containers/xadapt.hpp"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"

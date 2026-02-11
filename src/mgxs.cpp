@@ -5,10 +5,10 @@
 #include <cstdlib>
 #include <sstream>
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xsort.hpp"
-#include "xtensor/xview.hpp"
+#include "xtensor/containers/xadapt.hpp"
+#include "xtensor/core/xmath.hpp"
+#include "xtensor/misc/xsort.hpp"
+#include "xtensor/views/xview.hpp"
 #include <fmt/core.h>
 
 #include "openmc/error.h"

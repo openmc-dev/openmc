@@ -13,7 +13,7 @@
 #include "openmc/vector.h"
 
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
+#include "xtensor/containers/xtensor.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif

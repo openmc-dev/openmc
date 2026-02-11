@@ -1,9 +1,9 @@
 #include "openmc/eigenvalue.h"
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xtensor.hpp"
-#include "xtensor/xview.hpp"
+#include "xtensor/generators/xbuilder.hpp"
+#include "xtensor/core/xmath.hpp"
+#include "xtensor/containers/xtensor.hpp"
+#include "xtensor/views/xview.hpp"
 
 #include "openmc/array.h"
 #include "openmc/bank.h"

@@ -5,10 +5,10 @@
 #include <cstdlib>
 #include <numeric>
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xindex_view.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xview.hpp"
+#include "xtensor/generators/xbuilder.hpp"
+#include "xtensor/views/xindex_view.hpp"
+#include "xtensor/core/xmath.hpp"
+#include "xtensor/views/xview.hpp"
 
 #include "openmc/constants.h"
 #include "openmc/error.h"

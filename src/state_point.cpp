@@ -4,8 +4,8 @@
 #include <cstdint> // for int64_t
 #include <string>
 
-#include "xtensor/xbuilder.hpp" // for empty_like
-#include "xtensor/xview.hpp"
+#include "xtensor/generators/xbuilder.hpp" // for empty_like
+#include "xtensor/views/xview.hpp"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"

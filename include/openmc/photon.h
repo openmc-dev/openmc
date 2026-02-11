@@ -6,7 +6,7 @@
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
-#include "xtensor/xtensor.hpp"
+#include "xtensor/containers/xtensor.hpp"
 #include <hdf5.h>
 
 #include <string>

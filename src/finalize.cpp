@@ -30,7 +30,7 @@
 #include "openmc/volume_calc.h"
 #include "openmc/weight_windows.h"
 
-#include "xtensor/xview.hpp"
+#include "xtensor/views/xview.hpp"
 
 namespace openmc {
 

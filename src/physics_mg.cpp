@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "xtensor/xarray.hpp"
+#include "xtensor/containers/xarray.hpp"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"

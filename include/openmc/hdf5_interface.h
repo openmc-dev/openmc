@@ -11,8 +11,8 @@
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xarray.hpp"
+#include "xtensor/containers/xadapt.hpp"
+#include "xtensor/containers/xarray.hpp"
 
 #include "openmc/array.h"
 #include "openmc/error.h"

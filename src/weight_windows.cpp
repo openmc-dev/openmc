@@ -6,12 +6,12 @@
 #include <set>
 #include <string>
 
-#include "xtensor/xdynamic_view.hpp"
-#include "xtensor/xindex_view.hpp"
-#include "xtensor/xio.hpp"
-#include "xtensor/xmasked_view.hpp"
-#include "xtensor/xnoalias.hpp"
-#include "xtensor/xview.hpp"
+#include "xtensor/views/xdynamic_view.hpp"
+#include "xtensor/views/xindex_view.hpp"
+#include "xtensor/io/xio.hpp"
+#include "xtensor/views/xmasked_view.hpp"
+#include "xtensor/core/xnoalias.hpp"
+#include "xtensor/views/xview.hpp"
 
 #include "openmc/error.h"
 #include "openmc/file_utils.h"

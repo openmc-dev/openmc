@@ -5,7 +5,7 @@
 #define OPENMC_SECONDARY_KALBACH_H
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
+#include "xtensor/containers/xtensor.hpp"
 
 #include "openmc/angle_energy.h"
 #include "openmc/constants.h"

@@ -9,8 +9,8 @@
 #include "openmc/vector.h"
 
 #include "pugixml.hpp"
-#include "xtensor/xfixed.hpp"
-#include "xtensor/xtensor.hpp"
+#include "xtensor/containers/xfixed.hpp"
+#include "xtensor/containers/xtensor.hpp"
 
 #include <string>
 #include <unordered_map>

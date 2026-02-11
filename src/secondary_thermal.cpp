@@ -5,7 +5,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
-#include "xtensor/xview.hpp"
+#include "xtensor/views/xview.hpp"
 
 #include <cassert>
 #include <cmath> // for log, exp

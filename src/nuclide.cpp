@@ -17,8 +17,8 @@
 
 #include <fmt/core.h>
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xview.hpp"
+#include "xtensor/generators/xbuilder.hpp"
+#include "xtensor/views/xview.hpp"
 
 #include <algorithm> // for sort, min_element
 #include <cassert>

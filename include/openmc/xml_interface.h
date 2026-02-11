@@ -6,8 +6,8 @@
 #include <string>
 
 #include "pugixml.hpp"
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xarray.hpp"
+#include "xtensor/containers/xadapt.hpp"
+#include "xtensor/containers/xarray.hpp"
 
 #include "openmc/position.h"
 #include "openmc/vector.h"

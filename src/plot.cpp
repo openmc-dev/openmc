@@ -7,8 +7,8 @@
 #include <fstream>
 #include <sstream>
 
-#include "xtensor/xmanipulation.hpp"
-#include "xtensor/xview.hpp"
+#include "xtensor/misc/xmanipulation.hpp"
+#include "xtensor/views/xview.hpp"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 #ifdef USE_LIBPNG

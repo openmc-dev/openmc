@@ -17,8 +17,8 @@
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xview.hpp"
+#include "xtensor/containers/xadapt.hpp"
+#include "xtensor/views/xview.hpp"
 #include <fmt/core.h>
 
 #include <algorithm> // for copy

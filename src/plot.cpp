@@ -211,11 +211,10 @@ void read_plots_xml()
 void read_plots_xml(pugi::xml_node root)
 {
   for (auto node : root.children("plot")) {
-    int id {C_NONE};
+    std::string plot_desc = "<auto>";
     if (check_for_node(node, "id")) {
-      id = std::stoi(get_node_value(node, "id", true));
+      plot_desc = get_node_value(node, "id", true);
     }
-    std::string plot_desc = id == C_NONE ? "<auto>" : std::to_string(id);
 
     if (check_for_node(node, "type")) {
       std::string type_str = get_node_value(node, "type", true);
@@ -313,11 +312,10 @@ void PlottableInterface::set_id(int id)
   }
 
   if (id == C_NONE) {
-    id = 0;
+    id = 1;
     for (const auto& p : model::plots) {
-      id = std::max(id, p->id());
+      id = std::max(id, p->id() + 1);
     }
-    ++id;
   }
 
   if (id_ == id)

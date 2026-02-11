@@ -219,7 +219,7 @@ extern vector<double> time_grid;
 
 namespace simulation {
 //! Global tallies (such as k-effective estimators)
-extern tensor::Fixed2D<double, N_GLOBAL_TALLIES, 3>
+extern tensor::StaticTensor2D<double, N_GLOBAL_TALLIES, 3>
   global_tallies;
 
 //! Number of realizations for global tallies

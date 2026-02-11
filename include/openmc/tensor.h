@@ -1,8 +1,8 @@
 //! \file tensor.h
 //! \brief Multi-dimensional tensor types for OpenMC.
 //!
-//! Provides Tensor<T> (dynamic-rank), Fixed2D<T,R,C> (stack-allocated),
-//! and lightweight view types (View1D, ViewFlat).
+//! Provides Tensor<T> (dynamic-rank), StaticTensor2D<T,R,C> (stack-allocated),
+//! and View1D<T> (non-owning 1D view).
 
 #ifndef OPENMC_TENSOR_H
 #define OPENMC_TENSOR_H
@@ -28,7 +28,7 @@ template<typename T>
 class Tensor;
 
 template<typename T, size_t R, size_t C>
-class Fixed2D;
+class StaticTensor2D;
 
 //==============================================================================
 // Storage type mapping
@@ -293,39 +293,6 @@ private:
   size_t stride_;
 };
 
-//==============================================================================
-// ViewFlat<T>: a flat view of all elements of a tensor.
-//==============================================================================
-
-template<typename T>
-class ViewFlat {
-public:
-  ViewFlat(T* data, size_t size) : data_(data), size_(size) {}
-
-  T& operator()(size_t i) { return data_[i]; }
-  const T& operator()(size_t i) const { return data_[i]; }
-
-  template<typename U>
-  auto operator=(U val) ->
-    std::enable_if_t<std::is_arithmetic<U>::value, ViewFlat&>
-  {
-    std::fill(data_, data_ + size_, static_cast<T>(val));
-    return *this;
-  }
-
-  T* data() { return data_; }
-  const T* data() const { return data_; }
-  size_t size() const { return size_; }
-
-  T* begin() { return data_; }
-  T* end() { return data_ + size_; }
-  const T* begin() const { return data_; }
-  const T* end() const { return data_ + size_; }
-
-private:
-  T* data_;
-  size_t size_;
-};
 
 //==============================================================================
 // Tensor<T>: dynamic-rank N-dimensional tensor.
@@ -576,13 +543,13 @@ public:
   }
 
   //! Flat 1D view of all elements
-  ViewFlat<stored_type> flat()
+  View1D<stored_type> flat()
   {
-    return {data_.data(), data_.size()};
+    return {data_.data(), data_.size(), 1};
   }
-  ViewFlat<const stored_type> flat() const
+  View1D<const stored_type> flat() const
   {
-    return {data_.data(), data_.size()};
+    return {data_.data(), data_.size(), 1};
   }
 
   //--------------------------------------------------------------------------
@@ -891,11 +858,11 @@ Tensor<T> Tensor<T>::sum(size_t axis) const
 }
 
 //==============================================================================
-// Fixed2D<T, R, C>: compile-time fixed 2D tensor.
+// StaticTensor2D<T, R, C>: compile-time fixed 2D tensor.
 //==============================================================================
 
 template<typename T, size_t R, size_t C>
-class Fixed2D {
+class StaticTensor2D {
 public:
   using value_type = T;
 
@@ -929,8 +896,8 @@ public:
   View1D<const T> col(size_t j) const { return {data_ + j, R, C}; }
 
   //! Flat view
-  ViewFlat<T> flat() { return {data_, R * C}; }
-  ViewFlat<const T> flat() const { return {data_, R * C}; }
+  View1D<T> flat() { return {data_, R * C, 1}; }
+  View1D<const T> flat() const { return {data_, R * C, 1}; }
 
 private:
   T data_[R * C] = {};
@@ -1049,7 +1016,7 @@ Tensor<T> nan_to_num(const Tensor<T>& a, T nan_val = T(0),
 // Type traits
 //==============================================================================
 
-//! Type trait that is true for Tensor and Fixed2D.
+//! Type trait that is true for Tensor and StaticTensor2D.
 //! Used by hdf5_interface.h to select the correct write_dataset overload.
 template<typename T>
 struct is_tensor : std::false_type {};
@@ -1058,7 +1025,7 @@ template<typename T>
 struct is_tensor<Tensor<T>> : std::true_type {};
 
 template<typename T, size_t R, size_t C>
-struct is_tensor<Fixed2D<T, R, C>> : std::true_type {};
+struct is_tensor<StaticTensor2D<T, R, C>> : std::true_type {};
 
 } // namespace tensor
 } // namespace openmc

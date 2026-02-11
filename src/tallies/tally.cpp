@@ -67,7 +67,7 @@ vector<double> time_grid;
 } // namespace model
 
 namespace simulation {
-tensor::Fixed2D<double, N_GLOBAL_TALLIES, 3> global_tallies;
+tensor::StaticTensor2D<double, N_GLOBAL_TALLIES, 3> global_tallies;
 int32_t n_realizations {0};
 } // namespace simulation
 

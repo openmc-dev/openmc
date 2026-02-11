@@ -452,7 +452,7 @@ inline void write_dataset(
     false, buffer.data());
 }
 
-// Template for Tensor and Fixed2D
+// Template for Tensor and StaticTensor2D
 template<typename Container,
   typename = std::enable_if_t<tensor::is_tensor<std::decay_t<Container>>::value>>
 inline void write_dataset(

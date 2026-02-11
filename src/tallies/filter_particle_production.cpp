@@ -61,8 +61,8 @@ std::string ParticleProductionFilter::text_label(int bin) const
 void ParticleProductionFilter::from_xml(pugi::xml_node node)
 {
   // Read energy bins if present (optional)
-  if (check_for_node(node, "bins")) {
-    auto bins = get_node_array<double>(node, "bins");
+  if (check_for_node(node, "energies")) {
+    auto bins = get_node_array<double>(node, "energies");
     for (int64_t i = 1; i < bins.size(); ++i) {
       if (bins[i] <= bins[i - 1]) {
         throw std::runtime_error {
@@ -94,7 +94,7 @@ void ParticleProductionFilter::to_statepoint(hid_t filter_group) const
 
   // Write energy bins if present
   if (!energy_bins_.empty()) {
-    write_dataset(filter_group, "bins", energy_bins_);
+    write_dataset(filter_group, "energies", energy_bins_);
   }
 
   // Write particle types

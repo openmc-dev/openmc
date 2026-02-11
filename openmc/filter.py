@@ -1887,7 +1887,7 @@ class ParticleProductionFilter(Filter):
         subelement.text = ' '.join(str(p) for p in self.particles)
 
         if self.energies is not None:
-            subelement = ET.SubElement(element, 'bins')
+            subelement = ET.SubElement(element, 'energies')
             subelement.text = ' '.join(str(e) for e in self.energies)
 
         return element
@@ -1897,7 +1897,7 @@ class ParticleProductionFilter(Filter):
         filter_id = int(elem.get('id'))
         particles = get_text(elem, 'particles').split()
 
-        bins_elem = elem.find('bins')
+        bins_elem = elem.find('energies')
         if bins_elem is not None:
             energies = [float(x) for x in bins_elem.text.split()]
         else:
@@ -1914,8 +1914,8 @@ class ParticleProductionFilter(Filter):
                      for b in group['particles'][()]]
 
         # Read energy bins if present
-        if 'bins' in group:
-            energies = group['bins'][()]
+        if 'energies' in group:
+            energies = group['energies'][()]
         else:
             energies = None
 

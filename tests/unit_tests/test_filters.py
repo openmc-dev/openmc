@@ -346,7 +346,7 @@ def test_particle_production_filter():
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'particleproduction'
     assert elem.find('particles').text == 'photon'
-    assert elem.find('bins').text.split()[0] == str(energy_bins[0])
+    assert elem.find('energies').text.split()[0] == str(energy_bins[0])
 
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
@@ -400,7 +400,7 @@ def test_particle_production_filter():
 
     # XML round-trip without energies
     elem3 = f3.to_xml_element()
-    assert elem3.find('bins') is None
+    assert elem3.find('energies') is None
     new_f3 = openmc.Filter.from_xml_element(elem3)
     assert new_f3.energies is None
     assert len(new_f3.particles) == 3

@@ -33,5 +33,6 @@ from .resonance_covariance import *
 from .multipole import *
 from .grid import *
 from .function import *
+from .vectfit import *
 
 from .effective_dose.dose import dose_coefficients

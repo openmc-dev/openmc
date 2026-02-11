@@ -1002,14 +1002,11 @@ void reduce_tally_results()
       // Skip any tallies that are not active
       auto& tally {model::tallies[i_tally]};
 
-      // Copy accumulated tally values (VALUE column) into contiguous array
+      // Extract 2D view of the VALUE column from the 3D results tensor,
+      // then copy into a contiguous array for MPI reduction
       const int val_idx = static_cast<int>(TallyResult::VALUE);
-      const size_t ni = tally->results_.shape(0);
-      const size_t nj = tally->results_.shape(1);
-      tensor::Tensor<double> values({ni, nj});
-      for (size_t i = 0; i < ni; ++i)
-        for (size_t j = 0; j < nj; ++j)
-          values(i, j) = tally->results_(i, j, val_idx);
+      auto val_view = tally->results_.slice_at(2, val_idx);
+      tensor::Tensor<double> values(val_view);
 
       tensor::Tensor<double> values_reduced(values.shape());
 
@@ -1019,13 +1016,9 @@ void reduce_tally_results()
 
       // Transfer values on master and reset on other ranks
       if (mpi::master) {
-        for (size_t i = 0; i < ni; ++i)
-          for (size_t j = 0; j < nj; ++j)
-            tally->results_(i, j, val_idx) = values_reduced(i, j);
+        val_view = values_reduced;
       } else {
-        for (size_t i = 0; i < ni; ++i)
-          for (size_t j = 0; j < nj; ++j)
-            tally->results_(i, j, val_idx) = 0.0;
+        val_view = 0.0;
       }
     }
   }

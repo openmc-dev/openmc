@@ -1,8 +1,8 @@
 //! \file tensor.h
 //! \brief Multi-dimensional tensor types for OpenMC.
 //!
-//! Provides Tensor<T> (dynamic-rank), StaticTensor2D<T,R,C> (stack-allocated),
-//! and View1D<T> (non-owning 1D view).
+//! Provides Tensor<T> (dynamic-rank owning), StaticTensor2D<T,R,C>
+//! (stack-allocated), and View<T> (non-owning N-dimensional view).
 
 #ifndef OPENMC_TENSOR_H
 #define OPENMC_TENSOR_H
@@ -51,82 +51,180 @@ template<typename T>
 using storage_type = typename storage_type_map<T>::type;
 
 //==============================================================================
-// View1D<T>: a read/write view of one row, column, or slice of a tensor.
+// View<T>: a non-owning N-dimensional view into a tensor's storage.
 //
-// Holds a pointer, element count, and stride into the parent tensor's
-// storage — no allocation or copy.
+// Holds a base pointer, shape, and strides (in elements).  Supports arbitrary
+// rank: 1D views for rows/slices, 2D views via slice_at(), etc.
 //==============================================================================
 
 template<typename T>
-class View1D {
+class View {
 public:
   using value_type = std::remove_const_t<T>;
 
-  View1D(T* data, size_t size, size_t stride = 1)
-    : data_(data), size_(size), stride_(stride)
+  View(T* data, vector<size_t> shape, vector<size_t> strides)
+    : data_(data), shape_(std::move(shape)), strides_(std::move(strides))
   {}
 
-  T& operator()(size_t i) { return data_[i * stride_]; }
-  const T& operator()(size_t i) const { return data_[i * stride_]; }
-  T& operator[](size_t i) { return data_[i * stride_]; }
-  const T& operator[](size_t i) const { return data_[i * stride_]; }
+  //--------------------------------------------------------------------------
+  // Indexing
 
-  size_t size() const { return size_; }
+  //! Multi-index element access (1D, 2D, 3D, ...)
+  template<typename... Indices>
+  T& operator()(Indices... indices)
+  {
+    const size_t idx[] = {static_cast<size_t>(indices)...};
+    size_t off = 0;
+    for (size_t d = 0; d < sizeof...(Indices); ++d)
+      off += idx[d] * strides_[d];
+    return data_[off];
+  }
+
+  template<typename... Indices>
+  const T& operator()(Indices... indices) const
+  {
+    const size_t idx[] = {static_cast<size_t>(indices)...};
+    size_t off = 0;
+    for (size_t d = 0; d < sizeof...(Indices); ++d)
+      off += idx[d] * strides_[d];
+    return data_[off];
+  }
+
+  //! Flat logical index (row-major order)
+  T& operator[](size_t i) { return data_[flat_to_offset(i)]; }
+  const T& operator[](size_t i) const { return data_[flat_to_offset(i)]; }
+
+  //--------------------------------------------------------------------------
+  // Shape queries
+
+  size_t size() const
+  {
+    size_t s = 1;
+    for (auto d : shape_)
+      s *= d;
+    return s;
+  }
+  size_t ndim() const { return shape_.size(); }
+  size_t shape(size_t axis) const { return shape_[axis]; }
+  const vector<size_t>& shape_vec() const { return shape_; }
+  const vector<size_t>& strides_vec() const { return strides_; }
   T* data() { return data_; }
   const T* data() const { return data_; }
-  size_t stride() const { return stride_; }
 
-  View1D<T> slice(size_t start, size_t end)
+  //--------------------------------------------------------------------------
+  // Sub-view methods
+
+  //! Fix one axis at a given index, returning an (N-1)-dimensional view
+  View<T> slice_at(size_t axis, size_t idx)
   {
-    return {data_ + start * stride_, end - start, stride_};
-  }
-  View1D<const T> slice(size_t start, size_t end) const
-  {
-    return {data_ + start * stride_, end - start, stride_};
-  }
-  View1D<T> slice(size_t start)
-  {
-    return {data_ + start * stride_, size_ - start, stride_};
+    vector<size_t> new_shape;
+    vector<size_t> new_strides;
+    new_shape.reserve(shape_.size() - 1);
+    new_strides.reserve(shape_.size() - 1);
+    T* new_data = data_ + idx * strides_[axis];
+    for (size_t d = 0; d < shape_.size(); ++d) {
+      if (d != axis) {
+        new_shape.push_back(shape_[d]);
+        new_strides.push_back(strides_[d]);
+      }
+    }
+    return {new_data, std::move(new_shape), std::move(new_strides)};
   }
 
-  // Assignment from scalar
+  View<const T> slice_at(size_t axis, size_t idx) const
+  {
+    vector<size_t> new_shape;
+    vector<size_t> new_strides;
+    new_shape.reserve(shape_.size() - 1);
+    new_strides.reserve(shape_.size() - 1);
+    const T* new_data = data_ + idx * strides_[axis];
+    for (size_t d = 0; d < shape_.size(); ++d) {
+      if (d != axis) {
+        new_shape.push_back(shape_[d]);
+        new_strides.push_back(strides_[d]);
+      }
+    }
+    return {new_data, std::move(new_shape), std::move(new_strides)};
+  }
+
+  //! Row i (fix first axis) — shorthand for slice_at(0, i)
+  View<T> row(size_t i) { return slice_at(0, i); }
+  View<const T> row(size_t i) const { return slice_at(0, i); }
+
+  //! Column j (fix second axis) — shorthand for slice_at(1, j)
+  View<T> col(size_t j) { return slice_at(1, j); }
+  View<const T> col(size_t j) const { return slice_at(1, j); }
+
+  //! 1D subrange [start, end)
+  View<T> slice(size_t start, size_t end)
+  {
+    return {data_ + start * strides_[0], {end - start}, {strides_[0]}};
+  }
+  View<const T> slice(size_t start, size_t end) const
+  {
+    return {data_ + start * strides_[0], {end - start}, {strides_[0]}};
+  }
+
+  //! 1D subrange [start, size)
+  View<T> slice(size_t start)
+  {
+    return {data_ + start * strides_[0], {shape_[0] - start}, {strides_[0]}};
+  }
+
+  //--------------------------------------------------------------------------
+  // Assignment operators
+
+  //! Fill all elements with a scalar
   template<typename U>
   auto operator=(U val) ->
-    std::enable_if_t<std::is_arithmetic<U>::value, View1D&>
+    std::enable_if_t<std::is_arithmetic<U>::value, View&>
   {
-    for (size_t i = 0; i < size_; ++i)
-      data_[i * stride_] = val;
+    size_t n = size();
+    for (size_t i = 0; i < n; ++i)
+      data_[flat_to_offset(i)] = val;
     return *this;
   }
 
-  // Assignment from initializer_list
-  View1D& operator=(std::initializer_list<value_type> vals)
+  //! Assignment from initializer_list (for 1D views)
+  View& operator=(std::initializer_list<value_type> vals)
   {
     auto it = vals.begin();
-    for (size_t i = 0; i < size_ && it != vals.end(); ++i, ++it)
-      data_[i * stride_] = *it;
+    for (size_t i = 0; i < size() && it != vals.end(); ++i, ++it)
+      data_[flat_to_offset(i)] = *it;
     return *this;
   }
 
-  // Assignment from Tensor (deferred, defined after Tensor)
+  //! Assignment from Tensor (deferred, defined after Tensor)
   template<typename U>
-  View1D& operator=(const Tensor<U>& other);
+  View& operator=(const Tensor<U>& other);
 
-  // Compound assignment from Tensor (deferred)
+  //! Compound addition from Tensor (deferred)
   template<typename U>
-  View1D& operator+=(const Tensor<U>& o);
+  View& operator+=(const Tensor<U>& o);
 
-  View1D& operator*=(value_type val)
+  //! Compound multiply by scalar
+  View& operator*=(value_type val)
   {
-    for (size_t i = 0; i < size_; ++i)
-      data_[i * stride_] *= val;
+    size_t n = size();
+    for (size_t i = 0; i < n; ++i)
+      data_[flat_to_offset(i)] *= val;
     return *this;
   }
 
+  //--------------------------------------------------------------------------
   // Iterators
+  //
+  // Lightweight row-major iterator.  Stores a flat logical position and
+  // converts to a physical offset on each dereference via flat_to_offset().
+  // For contiguous 1D views (the common case) the divmod chain reduces to
+  // a single multiply-by-1, which the compiler optimizes away.
+
   class const_iterator {
-    const T* ptr_;
-    size_t stride_;
+    const T* base_;
+    size_t count_;
+    const size_t* shape_;
+    const size_t* strides_;
+    size_t ndim_;
 
   public:
     using iterator_category = std::random_access_iterator_tag;
@@ -135,86 +233,111 @@ public:
     using pointer = const T*;
     using reference = const T&;
 
-    const_iterator(const T* ptr, size_t stride)
-      : ptr_(ptr), stride_(stride)
+    const_iterator(
+      const T* base, size_t count, const View* v)
+      : base_(base)
+      , count_(count)
+      , shape_(v->shape_.data())
+      , strides_(v->strides_.data())
+      , ndim_(v->shape_.size())
     {}
-    const T& operator*() const { return *ptr_; }
+
+    const T& operator*() const { return base_[offset()]; }
+    const T& operator[](difference_type n) const
+    {
+      return base_[offset_of(count_ + n)];
+    }
     const_iterator& operator++()
     {
-      ptr_ += stride_;
+      ++count_;
       return *this;
     }
     const_iterator operator++(int)
     {
       auto tmp = *this;
-      ptr_ += stride_;
+      ++count_;
       return tmp;
     }
     const_iterator& operator--()
     {
-      ptr_ -= stride_;
+      --count_;
       return *this;
     }
     const_iterator operator+(difference_type n) const
     {
-      return const_iterator(ptr_ + n * stride_, stride_);
+      auto tmp = *this;
+      tmp.count_ += n;
+      return tmp;
     }
     const_iterator operator-(difference_type n) const
     {
-      return const_iterator(ptr_ - n * stride_, stride_);
+      auto tmp = *this;
+      tmp.count_ -= n;
+      return tmp;
     }
-    difference_type operator-(const const_iterator& other) const
+    difference_type operator-(const const_iterator& o) const
     {
-      return (ptr_ - other.ptr_) / static_cast<difference_type>(stride_);
-    }
-    bool operator==(const const_iterator& other) const
-    {
-      return ptr_ == other.ptr_;
-    }
-    bool operator!=(const const_iterator& other) const
-    {
-      return ptr_ != other.ptr_;
-    }
-    bool operator<(const const_iterator& other) const
-    {
-      return ptr_ < other.ptr_;
-    }
-    bool operator>(const const_iterator& other) const
-    {
-      return ptr_ > other.ptr_;
-    }
-    bool operator<=(const const_iterator& other) const
-    {
-      return ptr_ <= other.ptr_;
-    }
-    bool operator>=(const const_iterator& other) const
-    {
-      return ptr_ >= other.ptr_;
-    }
-    const T& operator[](difference_type n) const
-    {
-      return *(ptr_ + n * stride_);
+      return static_cast<difference_type>(count_) -
+             static_cast<difference_type>(o.count_);
     }
     const_iterator& operator+=(difference_type n)
     {
-      ptr_ += n * stride_;
+      count_ += n;
       return *this;
     }
     const_iterator& operator-=(difference_type n)
     {
-      ptr_ -= n * stride_;
+      count_ -= n;
       return *this;
     }
-    friend const_iterator operator+(
-      difference_type n, const const_iterator& it)
+    bool operator==(const const_iterator& o) const
+    {
+      return count_ == o.count_;
+    }
+    bool operator!=(const const_iterator& o) const
+    {
+      return count_ != o.count_;
+    }
+    bool operator<(const const_iterator& o) const
+    {
+      return count_ < o.count_;
+    }
+    bool operator>(const const_iterator& o) const
+    {
+      return count_ > o.count_;
+    }
+    bool operator<=(const const_iterator& o) const
+    {
+      return count_ <= o.count_;
+    }
+    bool operator>=(const const_iterator& o) const
+    {
+      return count_ >= o.count_;
+    }
+    friend const_iterator operator+(difference_type n, const const_iterator& it)
     {
       return it + n;
+    }
+
+  private:
+    size_t offset() const { return offset_of(count_); }
+    size_t offset_of(size_t flat) const
+    {
+      size_t off = 0;
+      for (int d = static_cast<int>(ndim_) - 1; d >= 0; --d) {
+        off += (flat % shape_[d]) * strides_[d];
+        flat /= shape_[d];
+      }
+      return off;
     }
   };
 
   class iterator {
-    T* ptr_;
-    size_t stride_;
+    T* base_;
+    size_t count_;
+    const size_t* shape_;
+    const size_t* strides_;
+    size_t ndim_;
 
   public:
     using iterator_category = std::random_access_iterator_tag;
@@ -223,74 +346,97 @@ public:
     using pointer = T*;
     using reference = T&;
 
-    iterator(T* ptr, size_t stride) : ptr_(ptr), stride_(stride) {}
-    T& operator*() { return *ptr_; }
+    iterator(T* base, size_t count, const View* v)
+      : base_(base)
+      , count_(count)
+      , shape_(v->shape_.data())
+      , strides_(v->strides_.data())
+      , ndim_(v->shape_.size())
+    {}
+
+    T& operator*() { return base_[offset()]; }
+    T& operator[](difference_type n) { return base_[offset_of(count_ + n)]; }
     iterator& operator++()
     {
-      ptr_ += stride_;
+      ++count_;
       return *this;
     }
     iterator operator++(int)
     {
       auto tmp = *this;
-      ptr_ += stride_;
+      ++count_;
       return tmp;
     }
     iterator& operator--()
     {
-      ptr_ -= stride_;
+      --count_;
       return *this;
     }
     iterator operator+(difference_type n) const
     {
-      return iterator(ptr_ + n * stride_, stride_);
+      auto tmp = *this;
+      tmp.count_ += n;
+      return tmp;
     }
     iterator operator-(difference_type n) const
     {
-      return iterator(ptr_ - n * stride_, stride_);
+      auto tmp = *this;
+      tmp.count_ -= n;
+      return tmp;
     }
-    difference_type operator-(const iterator& other) const
+    difference_type operator-(const iterator& o) const
     {
-      return (ptr_ - other.ptr_) / static_cast<difference_type>(stride_);
+      return static_cast<difference_type>(count_) -
+             static_cast<difference_type>(o.count_);
     }
-    bool operator==(const iterator& other) const
-    {
-      return ptr_ == other.ptr_;
-    }
-    bool operator!=(const iterator& other) const
-    {
-      return ptr_ != other.ptr_;
-    }
-    bool operator<(const iterator& other) const
-    {
-      return ptr_ < other.ptr_;
-    }
-    T& operator[](difference_type n) { return *(ptr_ + n * stride_); }
     iterator& operator+=(difference_type n)
     {
-      ptr_ += n * stride_;
+      count_ += n;
       return *this;
     }
+    bool operator==(const iterator& o) const { return count_ == o.count_; }
+    bool operator!=(const iterator& o) const { return count_ != o.count_; }
+    bool operator<(const iterator& o) const { return count_ < o.count_; }
     friend iterator operator+(difference_type n, const iterator& it)
     {
       return it + n;
     }
+
+  private:
+    size_t offset() const { return offset_of(count_); }
+    size_t offset_of(size_t flat) const
+    {
+      size_t off = 0;
+      for (int d = static_cast<int>(ndim_) - 1; d >= 0; --d) {
+        off += (flat % shape_[d]) * strides_[d];
+        flat /= shape_[d];
+      }
+      return off;
+    }
   };
 
-  iterator begin() { return iterator(data_, stride_); }
-  iterator end() { return iterator(data_ + size_ * stride_, stride_); }
+  iterator begin() { return {data_, 0, this}; }
+  iterator end() { return {data_, size(), this}; }
   const_iterator begin() const { return cbegin(); }
   const_iterator end() const { return cend(); }
-  const_iterator cbegin() const { return const_iterator(data_, stride_); }
-  const_iterator cend() const
-  {
-    return const_iterator(data_ + size_ * stride_, stride_);
-  }
+  const_iterator cbegin() const { return {data_, 0, this}; }
+  const_iterator cend() const { return {data_, size(), this}; }
 
 private:
+  //! Convert a logical flat index (row-major) to a physical element offset
+  size_t flat_to_offset(size_t flat) const
+  {
+    size_t off = 0;
+    for (int d = static_cast<int>(shape_.size()) - 1; d >= 0; --d) {
+      off += (flat % shape_[d]) * strides_[d];
+      flat /= shape_[d];
+    }
+    return off;
+  }
+
   T* data_;
-  size_t size_;
-  size_t stride_;
+  vector<size_t> shape_;
+  vector<size_t> strides_;
 };
 
 
@@ -359,14 +505,15 @@ public:
     : shape_(std::move(shape)), data_(vec.begin(), vec.end())
   {}
 
-  //! Copy from View1D (makes a 1D tensor)
+  //! Copy from View (preserves view's shape)
   template<typename U>
-  Tensor(const View1D<U>& v)
-    : shape_({v.size()})
+  Tensor(const View<U>& v)
+    : shape_(v.shape_vec())
   {
-    data_.resize(v.size());
-    for (size_t i = 0; i < v.size(); ++i)
-      data_[i] = v(i);
+    size_t n = v.size();
+    data_.resize(n);
+    for (size_t i = 0; i < n; ++i)
+      data_[i] = v[i];
   }
 
   //! Cross-type copy constructor
@@ -395,13 +542,15 @@ public:
     return *this;
   }
 
-  //! Assignment from View1D
-  Tensor& operator=(const View1D<T>& v)
+  //! Assignment from View
+  template<typename U>
+  Tensor& operator=(const View<U>& v)
   {
-    shape_ = {v.size()};
-    data_.resize(v.size());
-    for (size_t i = 0; i < v.size(); ++i)
-      data_[i] = v(i);
+    shape_ = v.shape_vec();
+    size_t n = v.size();
+    data_.resize(n);
+    for (size_t i = 0; i < n; ++i)
+      data_[i] = v[i];
     return *this;
   }
 
@@ -500,56 +649,77 @@ public:
   //--------------------------------------------------------------------------
   // View accessors
 
-  //! Row i of a 2D+ tensor (contiguous 1D view)
-  View1D<stored_type> row(size_t i)
+  //! Fix one axis at a given index, returning an (N-1)-dimensional view
+  View<stored_type> slice_at(size_t axis, size_t idx)
   {
-    auto cols = shape_[shape_.size() - 1];
-    return {data_.data() + i * cols, cols, 1};
-  }
-  View1D<const stored_type> row(size_t i) const
-  {
-    auto cols = shape_[shape_.size() - 1];
-    return {data_.data() + i * cols, cols, 1};
+    auto strides = compute_strides();
+    vector<size_t> new_shape;
+    vector<size_t> new_strides;
+    new_shape.reserve(shape_.size() - 1);
+    new_strides.reserve(shape_.size() - 1);
+    stored_type* new_data = data_.data() + idx * strides[axis];
+    for (size_t d = 0; d < shape_.size(); ++d) {
+      if (d != axis) {
+        new_shape.push_back(shape_[d]);
+        new_strides.push_back(strides[d]);
+      }
+    }
+    return {new_data, std::move(new_shape), std::move(new_strides)};
   }
 
-  //! Column j of a 2D tensor (strided 1D view)
-  View1D<stored_type> col(size_t j)
+  View<const stored_type> slice_at(size_t axis, size_t idx) const
   {
-    return {data_.data() + j, shape_[0], shape_[1]};
+    auto strides = compute_strides();
+    vector<size_t> new_shape;
+    vector<size_t> new_strides;
+    new_shape.reserve(shape_.size() - 1);
+    new_strides.reserve(shape_.size() - 1);
+    const stored_type* new_data = data_.data() + idx * strides[axis];
+    for (size_t d = 0; d < shape_.size(); ++d) {
+      if (d != axis) {
+        new_shape.push_back(shape_[d]);
+        new_strides.push_back(strides[d]);
+      }
+    }
+    return {new_data, std::move(new_shape), std::move(new_strides)};
   }
-  View1D<const stored_type> col(size_t j) const
-  {
-    return {data_.data() + j, shape_[0], shape_[1]};
-  }
+
+  //! Row i of a 2D+ tensor (fix first axis)
+  View<stored_type> row(size_t i) { return slice_at(0, i); }
+  View<const stored_type> row(size_t i) const { return slice_at(0, i); }
+
+  //! Column j of a 2D tensor (fix second axis)
+  View<stored_type> col(size_t j) { return slice_at(1, j); }
+  View<const stored_type> col(size_t j) const { return slice_at(1, j); }
 
   //! Subrange of a 1D tensor
-  View1D<stored_type> slice(size_t start, size_t end)
+  View<stored_type> slice(size_t start, size_t end)
   {
-    return {data_.data() + start, end - start, 1};
+    return {data_.data() + start, {end - start}, {size_t(1)}};
   }
-  View1D<const stored_type> slice(size_t start, size_t end) const
+  View<const stored_type> slice(size_t start, size_t end) const
   {
-    return {data_.data() + start, end - start, 1};
+    return {data_.data() + start, {end - start}, {size_t(1)}};
   }
 
   //! Subrange to end of a 1D tensor
-  View1D<stored_type> slice(size_t start)
+  View<stored_type> slice(size_t start)
   {
-    return {data_.data() + start, data_.size() - start, 1};
+    return {data_.data() + start, {data_.size() - start}, {size_t(1)}};
   }
-  View1D<const stored_type> slice(size_t start) const
+  View<const stored_type> slice(size_t start) const
   {
-    return {data_.data() + start, data_.size() - start, 1};
+    return {data_.data() + start, {data_.size() - start}, {size_t(1)}};
   }
 
   //! Flat 1D view of all elements
-  View1D<stored_type> flat()
+  View<stored_type> flat()
   {
-    return {data_.data(), data_.size(), 1};
+    return {data_.data(), {data_.size()}, {size_t(1)}};
   }
-  View1D<const stored_type> flat() const
+  View<const stored_type> flat() const
   {
-    return {data_.data(), data_.size(), 1};
+    return {data_.data(), {data_.size()}, {size_t(1)}};
   }
 
   //--------------------------------------------------------------------------
@@ -755,6 +925,18 @@ private:
     return s;
   }
 
+  //! Compute row-major strides from shape
+  vector<size_t> compute_strides() const
+  {
+    vector<size_t> strides(shape_.size());
+    if (!shape_.empty()) {
+      strides.back() = 1;
+      for (int d = static_cast<int>(shape_.size()) - 2; d >= 0; --d)
+        strides[d] = strides[d + 1] * shape_[d + 1];
+    }
+    return strides;
+  }
+
   //--------------------------------------------------------------------------
   // Data members
 
@@ -804,24 +986,26 @@ Tensor<double> operator/(const Tensor<T1>& a, const Tensor<T2>& b)
 }
 
 //==============================================================================
-// View1D deferred method definitions (need Tensor to be complete)
+// View deferred method definitions (need Tensor to be complete)
 //==============================================================================
 
 template<typename T>
 template<typename U>
-View1D<T>& View1D<T>::operator=(const Tensor<U>& other)
+View<T>& View<T>::operator=(const Tensor<U>& other)
 {
-  for (size_t i = 0; i < size_; ++i)
-    data_[i * stride_] = static_cast<T>(other.data()[i]);
+  size_t n = size();
+  for (size_t i = 0; i < n; ++i)
+    data_[flat_to_offset(i)] = static_cast<T>(other.data()[i]);
   return *this;
 }
 
 template<typename T>
 template<typename U>
-View1D<T>& View1D<T>::operator+=(const Tensor<U>& o)
+View<T>& View<T>::operator+=(const Tensor<U>& o)
 {
-  for (size_t i = 0; i < size_; ++i)
-    data_[i * stride_] += o.data()[i];
+  size_t n = size();
+  for (size_t i = 0; i < n; ++i)
+    data_[flat_to_offset(i)] += o.data()[i];
   return *this;
 }
 
@@ -891,13 +1075,13 @@ public:
   const T* begin() const { return data_; }
   const T* end() const { return data_ + R * C; }
 
-  //! Column view
-  View1D<T> col(size_t j) { return {data_ + j, R, C}; }
-  View1D<const T> col(size_t j) const { return {data_ + j, R, C}; }
+  //! Column view (1D, strided)
+  View<T> col(size_t j) { return {data_ + j, {R}, {C}}; }
+  View<const T> col(size_t j) const { return {data_ + j, {R}, {C}}; }
 
-  //! Flat view
-  View1D<T> flat() { return {data_, R * C, 1}; }
-  View1D<const T> flat() const { return {data_, R * C, 1}; }
+  //! Flat view (1D, contiguous)
+  View<T> flat() { return {data_, {R * C}, {size_t(1)}}; }
+  View<const T> flat() const { return {data_, {R * C}, {size_t(1)}}; }
 
 private:
   T data_[R * C] = {};

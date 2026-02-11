@@ -1338,41 +1338,29 @@ class Tabular(Univariate):
         x_min = x[:-1]
         x_max = x[1:]
         p_min = p[: x.size - 1]
-        p_max = p[1:]
 
         if self.interpolation == "linear-linear":
             m = np.diff(p) / np.diff(x)
-            mean = (
-                (1.0 / 3.0) * m * np.diff(x**3)
-                + 0.5 * (p_min - m * x_min) * np.diff(x**2)
-            ).sum()
+            mean = ((1.0 / 3.0) * m * np.diff(x**3)
+                    + 0.5 * (p_min - m * x_min) * np.diff(x**2)).sum()
         elif self.interpolation == "linear-log":
             m = np.diff(p) / np.diff(np.log(x))
             mean = (
-                (1.0 / 4.0)
-                * m
-                * x_min**2
-                * ((x_max / x_min) ** 2 * (2 * np.diff(np.log(x)) - 1) + 1)
-                + +0.5 * p_min * np.diff(x**2)
+                (1.0 / 4.0) * m * x_min**2
+                * ((x_max / x_min)**2 * (2 * np.diff(np.log(x)) - 1) + 1)
+                + 0.5 * p_min * np.diff(x**2)
             ).sum()
         elif self.interpolation == "log-linear":
             m = np.diff(np.log(p)) / np.diff(x)
-            mean = (
-                p_min
-                * (
-                    np.diff(x) ** 2
-                    * ((0.5 * exprel2(m * np.diff(x)) * (m * np.diff(x) - 1) + 1))
-                    + np.diff(x) * x_min * exprel(m * np.diff(x))
-                )
+            mean = (p_min * (
+                np.diff(x) ** 2
+                * ((0.5 * exprel2(m * np.diff(x)) * (m * np.diff(x) - 1) + 1))
+                + np.diff(x) * x_min * exprel(m * np.diff(x)))
             ).sum()
         elif self.interpolation == "log-log":
             m = np.diff(np.log(p)) / np.diff(np.log(x))
-            mean = (
-                p_min
-                * x_min**2
-                * np.diff(np.log(x))
-                * exprel((m + 2) * np.diff(np.log(x)))
-            ).sum()
+            mean = (p_min * x_min**2 * np.diff(np.log(x))
+                    * exprel((m + 2) * np.diff(np.log(x)))).sum()
         elif self.interpolation == "histogram":
             mean = (0.5 * (x_min + x_max) * np.diff(x) * p_min).sum()
         else:
@@ -1596,15 +1584,11 @@ class Tabular(Univariate):
             return np.sum(self.p[:-1] * np.diff(self.x) * exprel(m * np.diff(self.x)))
         elif self.interpolation == "log-log":
             m = np.diff(np.log(self.p)) / np.diff(np.log(self.x))
-            return np.sum(
-                self.p[:-1]
-                * self.x[:-1]
-                * np.diff(np.log(self.x))
-                * exprel((m + 1) * np.diff(np.log(self.x)))
-            )
+            return np.sum(self.p[:-1] * self.x[:-1] * np.diff(np.log(self.x))
+                          * exprel((m + 1) * np.diff(np.log(self.x))))
         else:
             raise NotImplementedError(
-                f'integral() not supported for {self.inteprolation} interpolation')
+                f'integral() not supported for {self.interpolation} interpolation')
 
 
 class Legendre(Univariate):

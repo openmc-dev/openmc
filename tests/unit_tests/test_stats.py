@@ -295,6 +295,12 @@ def test_tabular():
     assert_sample_mean(samples, d.mean())
     assert np.all(weights == 1.0)
 
+    # Multiplying the probabilities should preserve the mean but change the integral
+    d2 = openmc.stats.Tabular(x, p*2, interpolation='histogram')
+    assert d2.mean() == pytest.approx(d.mean())
+    assert d2.integral() == pytest.approx(2.0*d.integral())
+
+    # Normalizing should result in an integral of 1
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 

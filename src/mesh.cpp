@@ -6,6 +6,7 @@
 #define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>          // for ceil
 #include <cstddef>        // for size_t
+#include <numeric>        // for accumulate
 #include <string>
 
 #ifdef _MSC_VER

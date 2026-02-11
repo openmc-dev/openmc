@@ -12,11 +12,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <complex>
 #include <cstddef>
 #include <initializer_list>
 #include <limits>
-#include <numeric>
 #include <type_traits>
 
 namespace openmc {

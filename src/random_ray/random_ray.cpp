@@ -10,6 +10,8 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 
+#include <numeric>
+
 #include "openmc/distribution_spatial.h"
 #include "openmc/random_dist.h"
 #include "openmc/source.h"

@@ -18,6 +18,7 @@
 #include "openmc/weight_windows.h"
 
 #include <cstdio>
+#include <numeric>
 
 namespace openmc {
 

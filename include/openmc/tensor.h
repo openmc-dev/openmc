@@ -878,127 +878,27 @@ View1D<T>& View1D<T>::operator+=(const Tensor<U>& o)
 template<typename T>
 Tensor<T> Tensor<T>::sum(size_t axis) const
 {
-  size_t ndims = shape_.size();
-
-  if (ndims == 2) {
-    // 2D sum along axis -> 1D
-    auto s0 = shape_[0], s1 = shape_[1];
-    if (axis == 0) {
-      Tensor<T> r({s1}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          r.data()[j] += data_[i * s1 + j];
-      return r;
-    } else {
-      Tensor<T> r({s0}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          r.data()[i] += data_[i * s1 + j];
-      return r;
-    }
-  } else if (ndims == 3) {
-    // 3D sum along axis -> 2D
-    auto s0 = shape_[0], s1 = shape_[1], s2 = shape_[2];
-    if (axis == 0) {
-      Tensor<T> r({s1, s2}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          for (size_t k = 0; k < s2; ++k)
-            r.data()[j * s2 + k] += data_[(i * s1 + j) * s2 + k];
-      return r;
-    } else if (axis == 1) {
-      Tensor<T> r({s0, s2}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          for (size_t k = 0; k < s2; ++k)
-            r.data()[i * s2 + k] += data_[(i * s1 + j) * s2 + k];
-      return r;
-    } else {
-      Tensor<T> r({s0, s1}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          for (size_t k = 0; k < s2; ++k)
-            r.data()[i * s1 + j] += data_[(i * s1 + j) * s2 + k];
-      return r;
-    }
-  } else if (ndims == 4) {
-    // 4D sum along axis -> 3D
-    auto s0 = shape_[0], s1 = shape_[1], s2 = shape_[2], s3 = shape_[3];
-    if (axis == 3) {
-      Tensor<T> r({s0, s1, s2}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          for (size_t k = 0; k < s2; ++k)
-            for (size_t l = 0; l < s3; ++l)
-              r.data()[(i * s1 + j) * s2 + k] +=
-                data_[((i * s1 + j) * s2 + k) * s3 + l];
-      return r;
-    } else if (axis == 2) {
-      Tensor<T> r({s0, s1, s3}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          for (size_t k = 0; k < s2; ++k)
-            for (size_t l = 0; l < s3; ++l)
-              r.data()[(i * s1 + j) * s3 + l] +=
-                data_[((i * s1 + j) * s2 + k) * s3 + l];
-      return r;
-    } else if (axis == 1) {
-      Tensor<T> r({s0, s2, s3}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          for (size_t k = 0; k < s2; ++k)
-            for (size_t l = 0; l < s3; ++l)
-              r.data()[(i * s2 + k) * s3 + l] +=
-                data_[((i * s1 + j) * s2 + k) * s3 + l];
-      return r;
-    } else {
-      Tensor<T> r({s1, s2, s3}, T(0));
-      for (size_t i = 0; i < s0; ++i)
-        for (size_t j = 0; j < s1; ++j)
-          for (size_t k = 0; k < s2; ++k)
-            for (size_t l = 0; l < s3; ++l)
-              r.data()[(j * s2 + k) * s3 + l] +=
-                data_[((i * s1 + j) * s2 + k) * s3 + l];
-      return r;
-    }
-  }
-
-  // Fallback: general case for any rank (should not be reached in practice)
+  // Build output shape (all dims except the summed axis)
   vector<size_t> out_shape;
-  for (size_t d = 0; d < ndims; ++d)
+  for (size_t d = 0; d < shape_.size(); ++d)
     if (d != axis)
       out_shape.push_back(shape_[d]);
 
+  // Split dimensions into three zones: outer | axis | inner
+  size_t outer_size = 1;
+  for (size_t d = 0; d < axis; ++d)
+    outer_size *= shape_[d];
+  size_t axis_size = shape_[axis];
+  size_t inner_size = 1;
+  for (size_t d = axis + 1; d < shape_.size(); ++d)
+    inner_size *= shape_[d];
+
   Tensor<T> result(out_shape, T(0));
-
-  vector<size_t> strides(ndims);
-  strides[ndims - 1] = 1;
-  for (int d = static_cast<int>(ndims) - 2; d >= 0; --d)
-    strides[d] = strides[d + 1] * shape_[d + 1];
-
-  size_t out_ndims = out_shape.size();
-  vector<size_t> out_strides(out_ndims);
-  if (out_ndims > 0) {
-    out_strides[out_ndims - 1] = 1;
-    for (int d = static_cast<int>(out_ndims) - 2; d >= 0; --d)
-      out_strides[d] = out_strides[d + 1] * out_shape[d + 1];
-  }
-
-  size_t total = data_.size();
-  for (size_t flat = 0; flat < total; ++flat) {
-    size_t remaining = flat;
-    size_t out_flat = 0;
-    size_t out_d = 0;
-    for (size_t d = 0; d < ndims; ++d) {
-      size_t idx = remaining / strides[d];
-      remaining %= strides[d];
-      if (d != axis) {
-        out_flat += idx * out_strides[out_d];
-        ++out_d;
-      }
-    }
-    result.data()[out_flat] += data_[flat];
-  }
+  for (size_t o = 0; o < outer_size; ++o)
+    for (size_t a = 0; a < axis_size; ++a)
+      for (size_t i = 0; i < inner_size; ++i)
+        result.data()[o * inner_size + i] +=
+          data_[(o * axis_size + a) * inner_size + i];
 
   return result;
 }

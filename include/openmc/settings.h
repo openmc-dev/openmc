@@ -102,8 +102,8 @@ extern bool weight_window_checkpoint_surface;   //!< enable weight window check
                                                 //!< upon surface crossing?
 extern bool weight_window_checkpoint_collision; //!< enable weight window check
                                                 //!< upon collision?
-extern bool write_all_tracks;     //!< write track files for every particle?
-extern bool write_initial_source; //!< write out initial source file?
+extern bool write_all_tracks;      //!< write track files for every particle?
+extern bool write_initial_source;  //!< write out initial source file?
 extern bool activity_based_timing; //!< use source strengths as activity rates
                                    //!< for Poisson timestamp generation?
 

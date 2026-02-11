@@ -403,21 +403,17 @@ void Nuclide::create_derived(
         continue;
 
       // Add contribution to total cross section
-      for (int k = 0; k < n; ++k)
-        xs_[t](j + k, XS_TOTAL) += xs[k];
+      xs_[t].col(XS_TOTAL).slice(j, j + n) += xs;
 
       // Add contribution to absorption cross section
       if (is_disappearance(rx->mt_)) {
-        for (int k = 0; k < n; ++k)
-          xs_[t](j + k, XS_ABSORPTION) += xs[k];
+        xs_[t].col(XS_ABSORPTION).slice(j, j + n) += xs;
       }
 
       if (is_fission(rx->mt_)) {
         fissionable_ = true;
-        for (int k = 0; k < n; ++k)
-          xs_[t](j + k, XS_FISSION) += xs[k];
-        for (int k = 0; k < n; ++k)
-          xs_[t](j + k, XS_ABSORPTION) += xs[k];
+        xs_[t].col(XS_FISSION).slice(j, j + n) += xs;
+        xs_[t].col(XS_ABSORPTION).slice(j, j + n) += xs;
 
         // Keep track of fission reactions
         if (t == 0) {

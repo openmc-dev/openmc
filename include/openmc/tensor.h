@@ -469,13 +469,21 @@ public:
   template<typename... Indices>
   stored_type& operator()(Indices... indices)
   {
-    return data_[offset(static_cast<size_t>(indices)...)];
+    const size_t idx[] = {static_cast<size_t>(indices)...};
+    size_t off = 0;
+    for (size_t d = 0; d < sizeof...(Indices); ++d)
+      off = off * shape_[d] + idx[d];
+    return data_[off];
   }
 
   template<typename... Indices>
   const stored_type& operator()(Indices... indices) const
   {
-    return data_[offset(static_cast<size_t>(indices)...)];
+    const size_t idx[] = {static_cast<size_t>(indices)...};
+    size_t off = 0;
+    for (size_t d = 0; d < sizeof...(Indices); ++d)
+      off = off * shape_[d] + idx[d];
+    return data_[off];
   }
 
   stored_type& operator[](size_t i) { return data_[i]; }
@@ -629,20 +637,20 @@ public:
 
   Tensor flip(size_t axis) const
   {
+    size_t outer_size = 1;
+    for (size_t d = 0; d < axis; ++d)
+      outer_size *= shape_[d];
+    size_t axis_size = shape_[axis];
+    size_t inner_size = 1;
+    for (size_t d = axis + 1; d < shape_.size(); ++d)
+      inner_size *= shape_[d];
+
     Tensor r(shape_);
-    if (shape_.size() == 2) {
-      auto s0 = shape_[0];
-      auto s1 = shape_[1];
-      if (axis == 0) {
-        for (size_t i = 0; i < s0; ++i)
-          for (size_t j = 0; j < s1; ++j)
-            r.data_[i * s1 + j] = data_[(s0 - 1 - i) * s1 + j];
-      } else {
-        for (size_t i = 0; i < s0; ++i)
-          for (size_t j = 0; j < s1; ++j)
-            r.data_[i * s1 + j] = data_[i * s1 + (s1 - 1 - j)];
-      }
-    }
+    for (size_t o = 0; o < outer_size; ++o)
+      for (size_t a = 0; a < axis_size; ++a)
+        for (size_t i = 0; i < inner_size; ++i)
+          r.data_[(o * axis_size + (axis_size - 1 - a)) * inner_size + i] =
+            data_[(o * axis_size + a) * inner_size + i];
     return r;
   }
 
@@ -780,25 +788,6 @@ private:
     for (auto d : shape_)
       s *= d;
     return s;
-  }
-
-  //! Row-major offset calculations for operator()
-  size_t offset(size_t i0) const { return i0; }
-
-  size_t offset(size_t i0, size_t i1) const
-  {
-    return i0 * shape_[1] + i1;
-  }
-
-  size_t offset(size_t i0, size_t i1, size_t i2) const
-  {
-    return (i0 * shape_[1] + i1) * shape_[2] + i2;
-  }
-
-  size_t offset(
-    size_t i0, size_t i1, size_t i2, size_t i3) const
-  {
-    return ((i0 * shape_[1] + i1) * shape_[2] + i2) * shape_[3] + i3;
   }
 
   //--------------------------------------------------------------------------

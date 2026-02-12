@@ -86,8 +86,8 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   delete[] dset_names;
   std::sort(temps_available.begin(), temps_available.end());
 
-  // Set the global upper and lower interpolation bounds to avoid errors involving
-  // C-API functions.
+  // Set the global upper and lower interpolation bounds to avoid errors
+  // involving C-API functions.
   for (int i = 0; i < num_temps; ++i) {
     data::temperature_min = std::min(data::temperature_min, temps_available[i]);
     data::temperature_max = std::max(data::temperature_max, temps_available[i]);
@@ -381,7 +381,7 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
           }
         }
       } // end switch
-    }   // end microscopic temperature loop
+    } // end microscopic temperature loop
 
     // Now combine the microscopic data at each relevant temperature
     // We will do this by treating the multiple temperatures of a nuclide as

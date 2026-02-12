@@ -394,7 +394,8 @@ inline void write_attribute(hid_t obj_id, const char* name, Position r)
 // Templates/overloads for write_dataset
 //==============================================================================
 
-// Template for scalars (ensured by SFINAE)
+// Template for scalars. SFINAE guard needed to prevent this template from
+// matching Tensor/vector/string types that have their own overloads below.
 template<typename T>
 inline std::enable_if_t<std::is_scalar<std::decay_t<T>>::value> write_dataset(
   hid_t obj_id, const char* name, T buffer)
@@ -452,7 +453,10 @@ inline void write_dataset(
     false, buffer.data());
 }
 
-// Template for Tensor and StaticTensor2D
+// Template for Tensor and StaticTensor2D. SFINAE guard needed to prevent
+// this template from matching vector/string types that have their own
+// overloads above. Uses a generic Container to avoid duplicating the body
+// for both Tensor<T> and StaticTensor2D<T,R,C>.
 template<typename Container,
   typename = std::enable_if_t<tensor::is_tensor<std::decay_t<Container>>::value>>
 inline void write_dataset(

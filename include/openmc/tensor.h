@@ -60,6 +60,9 @@ using storage_type = typename storage_type_map<T>::type;
 template<typename T>
 class View {
 public:
+  //--------------------------------------------------------------------------
+  // Constructors
+
   View(T* data, vector<size_t> shape, vector<size_t> strides)
     : data_(data), shape_(std::move(shape)), strides_(std::move(strides))
   {}
@@ -68,6 +71,9 @@ public:
   // below would otherwise suppress the implicit move constructor).
   View(const View&) = default;
   View(View&&) = default;
+
+  //--------------------------------------------------------------------------
+  // Assignment operators
 
   //! Copy assignment: element-wise deep copy (writes through data pointer).
   //! Without this, the compiler's implicit copy assignment just copies the
@@ -185,9 +191,6 @@ public:
     return {data_ + start * strides_[0], {shape_[0] - start}, {strides_[0]}};
   }
 
-  //--------------------------------------------------------------------------
-  // Assignment operators
-
   //! Fill all elements with a scalar
   View& operator=(T val)
   {
@@ -220,6 +223,9 @@ public:
   template<typename U>
   View& operator=(const Tensor<U>& other);
 
+  //--------------------------------------------------------------------------
+  // Compound assignment operators
+
   //! Compound addition from Tensor (forward-declared, defined after Tensor)
   template<typename U>
   View& operator+=(const Tensor<U>& o);
@@ -241,6 +247,9 @@ public:
       data_[flat_to_offset(i)] /= val;
     return *this;
   }
+
+  //--------------------------------------------------------------------------
+  // Reductions
 
   //! Sum of all elements
   T sum() const
@@ -896,7 +905,7 @@ private:
 };
 
 //==============================================================================
-// Free operators (scalar op tensor)
+// Non-member operators (scalar op tensor)
 //==============================================================================
 
 template<typename T>
@@ -913,7 +922,7 @@ Tensor<T> operator+(T val, const Tensor<T>& arr)
 
 // Mixed-type arithmetic: Tensor<T1> op Tensor<T2> -> Tensor<double>
 // SFINAE guard needed: without !is_same, Tensor<T> * Tensor<T> would be
-// ambiguous between the member operator* and this free function.
+// ambiguous between the member operator* and this non-member function.
 template<typename T1, typename T2,
   typename = std::enable_if_t<!std::is_same<T1, T2>::value>>
 Tensor<double> operator*(const Tensor<T1>& a, const Tensor<T2>& b)
@@ -938,7 +947,7 @@ Tensor<double> operator/(const Tensor<T1>& a, const Tensor<T2>& b)
 }
 
 //==============================================================================
-// View forward-declared method definitions (need Tensor to be complete)
+// Out-of-line method definitions (require complete types)
 //==============================================================================
 
 template<typename T>
@@ -960,10 +969,6 @@ View<T>& View<T>::operator+=(const Tensor<U>& o)
     data_[flat_to_offset(i)] += o.data()[i];
   return *this;
 }
-
-//==============================================================================
-// Tensor<T>::sum(axis) — reduces one dimension
-//==============================================================================
 
 template<typename T>
 Tensor<T> Tensor<T>::sum(size_t axis) const
@@ -1002,6 +1007,9 @@ class StaticTensor2D {
 public:
   using value_type = T;
 
+  //--------------------------------------------------------------------------
+  // Indexing
+
   //! Templated to accept enum class indices (e.g. GlobalTally, TallyResult)
   //! which don't implicitly convert to integer types.
   template<typename I0, typename I1>
@@ -1015,17 +1023,29 @@ public:
     return data_[static_cast<size_t>(i) * C + static_cast<size_t>(j)];
   }
 
+  //--------------------------------------------------------------------------
+  // Accessors
+
   T* data() { return data_; }
   const T* data() const { return data_; }
   constexpr size_t size() const { return R * C; }
   std::array<size_t, 2> shape() const { return {R, C}; }
 
+  //--------------------------------------------------------------------------
+  // Mutation
+
   void fill(T val) { std::fill(data_, data_ + R * C, val); }
+
+  //--------------------------------------------------------------------------
+  // Iterators
 
   T* begin() { return data_; }
   T* end() { return data_ + R * C; }
   const T* begin() const { return data_; }
   const T* end() const { return data_ + R * C; }
+
+  //--------------------------------------------------------------------------
+  // View accessors
 
   //! Column view (1D, strided)
   View<T> col(size_t j) { return {data_ + j, {R}, {C}}; }
@@ -1036,11 +1056,14 @@ public:
   View<const T> flat() const { return {data_, {R * C}, {size_t(1)}}; }
 
 private:
+  //--------------------------------------------------------------------------
+  // Data members
+
   T data_[R * C] = {};
 };
 
 //==============================================================================
-// Free functions
+// Non-member functions
 //==============================================================================
 
 // zeros

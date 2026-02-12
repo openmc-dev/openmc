@@ -777,6 +777,27 @@ TEST_CASE("StaticTensor2D iteration")
   REQUIRE(sum == 6);
 }
 
+TEST_CASE("StaticTensor2D select")
+{
+  StaticTensor2D<int, 3, 2> t;
+  t(0, 0) = 1; t(0, 1) = 2;
+  t(1, 0) = 3; t(1, 1) = 4;
+  t(2, 0) = 5; t(2, 1) = 6;
+
+  // select(0, i) = row i
+  auto r1 = t.select(0, 1);
+  REQUIRE(r1.size() == 2);
+  REQUIRE(r1[0] == 3);
+  REQUIRE(r1[1] == 4);
+
+  // select(1, j) = column j
+  auto c0 = t.select(1, 0);
+  REQUIRE(c0.size() == 3);
+  REQUIRE(c0[0] == 1);
+  REQUIRE(c0[1] == 3);
+  REQUIRE(c0[2] == 5);
+}
+
 TEST_CASE("StaticTensor2D flat view")
 {
   StaticTensor2D<double, 2, 2> t;

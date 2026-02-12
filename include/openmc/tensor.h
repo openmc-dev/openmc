@@ -955,6 +955,31 @@ public:
   //--------------------------------------------------------------------------
   // View accessors
 
+  //! Select along an axis: select(0, i) returns row i, select(1, j) returns
+  //! column j.
+  template<typename I>
+  View<T> select(size_t axis, I index)
+  {
+    size_t idx = static_cast<size_t>(index);
+    if (axis == 0) {
+      // Row: contiguous, stride 1
+      return {data_ + idx * C, {C}, {size_t(1)}};
+    } else {
+      // Column: strided, stride C
+      return {data_ + idx, {R}, {size_t(C)}};
+    }
+  }
+  template<typename I>
+  View<const T> select(size_t axis, I index) const
+  {
+    size_t idx = static_cast<size_t>(index);
+    if (axis == 0) {
+      return {data_ + idx * C, {C}, {size_t(1)}};
+    } else {
+      return {data_ + idx, {R}, {size_t(C)}};
+    }
+  }
+
   //! Flat view (1D, contiguous)
   View<T> flat() { return {data_, {R * C}, {size_t(1)}}; }
   View<const T> flat() const { return {data_, {R * C}, {size_t(1)}}; }

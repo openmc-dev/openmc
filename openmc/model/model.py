@@ -2582,16 +2582,16 @@ class Model:
             # the dagmc materials with cells.
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():
-              if isinstance(univ, openmc.DAGMCUniverse):
-                  # Ensure settings has valid particles/batches for init_lib validation
-                  # These values are only needed for XML export during initialization
-                  # and won't affect the actual MGXS generation which uses an internal model
-                  self.settings.particles = 1
-                  self.settings.batches = 2
-                  self.init_lib(directory=tmpdir)
-                  self.sync_dagmc_universes()
-                  self.finalize_lib()
-                  break
+                if isinstance(univ, openmc.DAGMCUniverse):
+                    # Ensure settings has valid particles/batches for init_lib validation
+                    # These values are only needed for XML export during initialization
+                    # and won't affect the actual MGXS generation which uses an internal model
+                    self.settings.particles = 1
+                    self.settings.batches = 2
+                    self.init_lib(directory=tmpdir)
+                    self.sync_dagmc_universes()
+                    self.finalize_lib()
+                    break
 
 
             # Make sure all materials have a name, and that the name is a valid HDF5

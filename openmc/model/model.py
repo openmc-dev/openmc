@@ -2593,7 +2593,6 @@ class Model:
                     self.finalize_lib()
                     break
 
-
             # Make sure all materials have a name, and that the name is a valid HDF5
             # dataset name
             for material in self.materials:

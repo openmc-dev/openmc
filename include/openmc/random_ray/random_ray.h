@@ -65,6 +65,7 @@ private:
   vector<double> mesh_fractional_lengths_;
 
   int negroups_;
+  int ntemperature_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
   double distance_travelled_ {0};

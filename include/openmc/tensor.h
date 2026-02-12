@@ -475,8 +475,8 @@ public:
   }
 
   //! Cross-type copy constructor
-  //! SFINAE guard needed: without !is_same, Tensor(const Tensor<T>&) would
-  //! be ambiguous with the compiler-generated implicit copy constructor.
+  //! A SFINAE guard is used here, as without !is_same this would be
+  //! ambiguous with the compiler-generated implicit copy constructor.
   template<typename U,
     typename = std::enable_if_t<!std::is_same<U, T>::value>>
   Tensor(const Tensor<U>& other)
@@ -491,8 +491,8 @@ public:
   // Assignment
 
   //! Cross-type assignment
-  //! SFINAE guard needed: without !is_same, this would be ambiguous with
-  //! the compiler-generated implicit copy assignment operator.
+  //! A SFINAE guard is used here, as without !is_same this would be
+  //! ambiguous with the compiler-generated implicit copy assignment operator.
   template<typename U,
     typename = std::enable_if_t<!std::is_same<U, T>::value>>
   Tensor& operator=(const Tensor<U>& other)
@@ -908,8 +908,8 @@ Tensor<T> operator+(T val, const Tensor<T>& arr)
 }
 
 // Mixed-type arithmetic: Tensor<T1> op Tensor<T2> -> Tensor<double>
-// SFINAE guard needed: without !is_same, Tensor<T> * Tensor<T> would be
-// ambiguous between the member operator* and this non-member function.
+// A SFINAE guard is used here, as without !is_same Tensor<T> * Tensor<T>
+// would be ambiguous between the member operator* and this non-member function.
 template<typename T1, typename T2,
   typename = std::enable_if_t<!std::is_same<T1, T2>::value>>
 Tensor<double> operator*(const Tensor<T1>& a, const Tensor<T2>& b)
@@ -1053,7 +1053,6 @@ private:
 // Non-member functions
 //==============================================================================
 
-// zeros
 template<typename T>
 Tensor<T> zeros(std::initializer_list<size_t> shape)
 {
@@ -1067,21 +1066,19 @@ Tensor<T> zeros(const vector<size_t>& shape)
   return Tensor<T>(shape, T(0));
 }
 
-// zeros_like
 template<typename T>
 Tensor<T> zeros_like(const Tensor<T>& o)
 {
   return Tensor<T>(o.shape(), T(0));
 }
 
-// full_like
 template<typename T, typename V>
 Tensor<T> full_like(const Tensor<T>& o, V val)
 {
   return Tensor<T>(o.shape(), static_cast<T>(val));
 }
 
-// linspace
+//! Return a 1D tensor of n evenly spaced values from start to stop (inclusive)
 template<typename T>
 Tensor<T> linspace(T start, T stop, size_t n)
 {
@@ -1097,7 +1094,7 @@ Tensor<T> linspace(T start, T stop, size_t n)
   return result;
 }
 
-// concatenate (two 1D tensors)
+//! Concatenate two 1D tensors end-to-end
 template<typename T>
 Tensor<T> concatenate(const Tensor<T>& a, const Tensor<T>& b)
 {
@@ -1108,7 +1105,7 @@ Tensor<T> concatenate(const Tensor<T>& a, const Tensor<T>& b)
   return result;
 }
 
-// Element-wise math
+//! Element-wise natural logarithm
 template<typename T>
 Tensor<T> log(const Tensor<T>& a)
 {
@@ -1118,6 +1115,7 @@ Tensor<T> log(const Tensor<T>& a)
   return r;
 }
 
+//! Element-wise absolute value
 template<typename T>
 Tensor<T> abs(const Tensor<T>& a)
 {
@@ -1127,7 +1125,8 @@ Tensor<T> abs(const Tensor<T>& a)
   return r;
 }
 
-// where with tensor true_val and scalar false_val
+//! Element-wise conditional: select from true_val where cond is true,
+//! otherwise use false_val
 template<typename T, typename V>
 Tensor<T> where(
   const Tensor<bool>& cond, const Tensor<T>& true_val, V false_val)
@@ -1139,7 +1138,7 @@ Tensor<T> where(
   return r;
 }
 
-// nan_to_num
+//! Replace NaN/Inf values with finite substitutes
 template<typename T>
 Tensor<T> nan_to_num(const Tensor<T>& a, T nan_val = T(0),
   T posinf_val = std::numeric_limits<T>::max(),

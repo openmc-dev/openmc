@@ -301,7 +301,7 @@ enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
 enum class TallyEvent { SURFACE, LATTICE, KILL, SCATTER, ABSORB };
 
 // Tally score type -- if you change these, make sure you also update the
-// _SCORES dictionary in openmc/capi/tally.py
+// _SCORES dictionary in openmc/lib/tally.py
 //
 // These are kept as a normal enum and made negative, since variables which
 // store one of these enum values usually also may be responsible for storing

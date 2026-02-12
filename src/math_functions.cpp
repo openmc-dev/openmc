@@ -919,6 +919,24 @@ std::complex<double> w_derivative(std::complex<double> z, int order)
   }
 }
 
+double exprel(double x)
+{
+  if (std::abs(x) < 1e-16)
+    return 1.0;
+  else {
+    return std::expm1(x) / x;
+  }
+}
+
+double log1prel(double x)
+{
+  if (std::abs(x) < 1e-16)
+    return 1.0;
+  else {
+    return std::log1p(x) / x;
+  }
+}
+
 // Helper function to get index and interpolation function on an incident energy
 // grid
 void get_energy_index(

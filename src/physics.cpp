@@ -44,6 +44,7 @@ void collision(Particle& p)
 {
   // Add to collision counter for particle
   ++(p.n_collision());
+  p.secondary_bank_index() = p.secondary_bank().size();
 
   // Sample reaction for the material the particle is in
   switch (p.type().pdg_number()) {
@@ -253,6 +254,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       }
     } else {
       p.secondary_bank().push_back(site);
+      p.n_secondaries()++;
     }
 
     // Increment the number of neutrons born delayed

@@ -127,7 +127,6 @@ public:
   size_t ndim() const { return shape_.size(); }
   size_t shape(size_t axis) const { return shape_[axis]; }
   const vector<size_t>& shape_vec() const { return shape_; }
-  const vector<size_t>& strides_vec() const { return strides_; }
   T* data() { return data_; }
   const T* data() const { return data_; }
 
@@ -457,12 +456,6 @@ public:
     : shape_({count}), data_(ptr, ptr + count)
   {}
 
-  //! Copy from vector with explicit shape
-  template<typename Alloc>
-  Tensor(const std::vector<T, Alloc>& vec, vector<size_t> shape)
-    : shape_(std::move(shape)), data_(vec.begin(), vec.end())
-  {}
-
   //! Copy from View (preserves view's shape)
   template<typename U>
   Tensor(const View<U>& v)
@@ -474,35 +467,8 @@ public:
       data_[i] = v[i];
   }
 
-  //! Cross-type copy constructor
-  //! A SFINAE guard is used here, as without !is_same this would be
-  //! ambiguous with the compiler-generated implicit copy constructor.
-  template<typename U,
-    typename = std::enable_if_t<!std::is_same<U, T>::value>>
-  Tensor(const Tensor<U>& other)
-    : shape_(other.shape())
-  {
-    data_.resize(other.size());
-    for (size_t i = 0; i < other.size(); ++i)
-      data_[i] = static_cast<stored_type>(other.data()[i]);
-  }
-
   //--------------------------------------------------------------------------
   // Assignment
-
-  //! Cross-type assignment
-  //! A SFINAE guard is used here, as without !is_same this would be
-  //! ambiguous with the compiler-generated implicit copy assignment operator.
-  template<typename U,
-    typename = std::enable_if_t<!std::is_same<U, T>::value>>
-  Tensor& operator=(const Tensor<U>& other)
-  {
-    shape_ = other.shape();
-    data_.resize(other.size());
-    for (size_t i = 0; i < other.size(); ++i)
-      data_[i] = static_cast<stored_type>(other.data()[i]);
-    return *this;
-  }
 
   //! Assignment from View
   template<typename U>

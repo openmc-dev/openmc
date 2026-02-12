@@ -545,6 +545,8 @@ public:
   }
 
   //! Cross-type copy constructor
+  //! SFINAE guard needed: without !is_same, Tensor(const Tensor<T>&) would
+  //! be ambiguous with the compiler-generated implicit copy constructor.
   template<typename U,
     typename = std::enable_if_t<!std::is_same<U, T>::value>>
   Tensor(const Tensor<U>& other)
@@ -559,6 +561,8 @@ public:
   // Assignment
 
   //! Cross-type assignment
+  //! SFINAE guard needed: without !is_same, this would be ambiguous with
+  //! the compiler-generated implicit copy assignment operator.
   template<typename U,
     typename = std::enable_if_t<!std::is_same<U, T>::value>>
   Tensor& operator=(const Tensor<U>& other)
@@ -662,12 +666,9 @@ public:
     data_.resize(compute_size());
   }
 
-  template<typename ShapeType>
-  void reshape(const ShapeType& new_shape)
+  void reshape(const vector<size_t>& new_shape)
   {
-    shape_.clear();
-    for (auto d : new_shape)
-      shape_.push_back(static_cast<size_t>(d));
+    shape_ = new_shape;
   }
 
   void fill(T val) { std::fill(data_.begin(), data_.end(), val); }
@@ -974,21 +975,21 @@ private:
 // Free operators (scalar op tensor)
 //==============================================================================
 
-template<typename T,
-  typename = std::enable_if_t<std::is_arithmetic<T>::value>>
+template<typename T>
 Tensor<T> operator*(T val, const Tensor<T>& arr)
 {
   return arr * val;
 }
 
-template<typename T,
-  typename = std::enable_if_t<std::is_arithmetic<T>::value>>
+template<typename T>
 Tensor<T> operator+(T val, const Tensor<T>& arr)
 {
   return arr + val;
 }
 
 // Mixed-type arithmetic: Tensor<T1> op Tensor<T2> -> Tensor<double>
+// SFINAE guard needed: without !is_same, Tensor<T> * Tensor<T> would be
+// ambiguous between the member operator* and this free function.
 template<typename T1, typename T2,
   typename = std::enable_if_t<!std::is_same<T1, T2>::value>>
 Tensor<double> operator*(const Tensor<T1>& a, const Tensor<T2>& b)
@@ -1000,6 +1001,7 @@ Tensor<double> operator*(const Tensor<T1>& a, const Tensor<T2>& b)
   return r;
 }
 
+// Same SFINAE guard as operator* above.
 template<typename T1, typename T2,
   typename = std::enable_if_t<!std::is_same<T1, T2>::value>>
 Tensor<double> operator/(const Tensor<T1>& a, const Tensor<T2>& b)
@@ -1076,17 +1078,17 @@ class StaticTensor2D {
 public:
   using value_type = T;
 
+  //! Templated to accept enum class indices (e.g. GlobalTally, TallyResult)
+  //! which don't implicitly convert to integer types.
   template<typename I0, typename I1>
   T& operator()(I0 i, I1 j)
   {
-    return data_[static_cast<size_t>(i) * C +
-                 static_cast<size_t>(j)];
+    return data_[static_cast<size_t>(i) * C + static_cast<size_t>(j)];
   }
   template<typename I0, typename I1>
   const T& operator()(I0 i, I1 j) const
   {
-    return data_[static_cast<size_t>(i) * C +
-                 static_cast<size_t>(j)];
+    return data_[static_cast<size_t>(i) * C + static_cast<size_t>(j)];
   }
 
   T* data() { return data_; }

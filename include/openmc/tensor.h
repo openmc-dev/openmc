@@ -79,10 +79,16 @@ struct Range {
 };
 
 //! Create a Range [start, end)
-inline Range range(size_t start, size_t end) { return {start, end}; }
+inline Range range(size_t start, size_t end)
+{
+  return {start, end};
+}
 
 //! Create a Range [start, <end of axis>)
-inline Range range(size_t start) { return {start, SIZE_MAX}; }
+inline Range range(size_t start)
+{
+  return {start, SIZE_MAX};
+}
 
 namespace detail {
 
@@ -93,13 +99,20 @@ struct SliceArg {
   size_t end;
 };
 
-inline SliceArg to_slice_arg(All) { return {SliceArg::ALL, 0, 0}; }
-inline SliceArg to_slice_arg(Range r) { return {SliceArg::RANGE, r.start, r.end}; }
+inline SliceArg to_slice_arg(All)
+{
+  return {SliceArg::ALL, 0, 0};
+}
+inline SliceArg to_slice_arg(Range r)
+{
+  return {SliceArg::RANGE, r.start, r.end};
+}
 
 template<typename I>
-inline typename std::enable_if<
-  std::is_integral<I>::value || std::is_enum<I>::value, SliceArg>::type
-to_slice_arg(I i)
+inline
+  typename std::enable_if<std::is_integral<I>::value || std::is_enum<I>::value,
+    SliceArg>::type
+  to_slice_arg(I i)
 {
   return {SliceArg::INDEX, static_cast<size_t>(i), 0};
 }
@@ -113,9 +126,8 @@ struct SliceResult {
 
 //! Compute the result of applying slice arguments to shape/strides
 template<typename First, typename... Rest>
-SliceResult compute_slice(
-  const vector<size_t>& shape, const vector<size_t>& strides,
-  First first, Rest... rest)
+SliceResult compute_slice(const vector<size_t>& shape,
+  const vector<size_t>& strides, First first, Rest... rest)
 {
   const size_t n = 1 + sizeof...(Rest);
   SliceArg args[1 + sizeof...(Rest)] = {
@@ -618,8 +630,8 @@ public:
   {
     auto strides = compute_strides();
     auto r = detail::compute_slice(shape_, strides, first, rest...);
-    return {data_.data() + r.ptr_offset, std::move(r.shape),
-      std::move(r.strides)};
+    return {
+      data_.data() + r.ptr_offset, std::move(r.shape), std::move(r.strides)};
   }
 
   template<typename First, typename... Rest>
@@ -627,8 +639,8 @@ public:
   {
     auto strides = compute_strides();
     auto r = detail::compute_slice(shape_, strides, first, rest...);
-    return {data_.data() + r.ptr_offset, std::move(r.shape),
-      std::move(r.strides)};
+    return {
+      data_.data() + r.ptr_offset, std::move(r.shape), std::move(r.strides)};
   }
 
   //! Flat 1D view of all elements

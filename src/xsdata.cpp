@@ -148,8 +148,7 @@ void XsData::fission_vector_beta_from_hdf5(
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++)
-        chi_delayed.slice(a, d, gin) =
-          temp_chi.slice(a);
+        chi_delayed.slice(a, d, gin) = temp_chi.slice(a);
 
   // Get nu-fission
   tensor::Tensor<double> temp_nufiss({n_ang, n_g_}, 0.);
@@ -233,8 +232,7 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++)
-        chi_delayed.slice(a, d, gin) =
-          temp_chi_d.slice(a, d);
+        chi_delayed.slice(a, d, gin) = temp_chi_d.slice(a, d);
 
   // Get prompt and delayed nu-fission directly
   read_nd_tensor(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
@@ -366,8 +364,7 @@ void XsData::fission_matrix_beta_from_hdf5(
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++) {
-        tensor::View<double> row =
-          chi_delayed.slice(a, d, gin);
+        tensor::View<double> row = chi_delayed.slice(a, d, gin);
         row /= row.sum();
       }
 }
@@ -650,8 +647,7 @@ void XsData::combine(
     for (size_t a = 0; a < n_ang; a++)
       for (size_t d = 0; d < n_dg; d++)
         for (size_t gin = 0; gin < n_g; gin++) {
-          tensor::View<double> row =
-            chi_delayed.slice(a, d, gin);
+          tensor::View<double> row = chi_delayed.slice(a, d, gin);
           row /= row.sum();
         }
   }

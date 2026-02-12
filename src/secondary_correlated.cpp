@@ -132,9 +132,12 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
         interp_mu = 1;
 
       auto interp = int2interp(interp_mu);
-      tensor::View<double> xs = mu.slice(0, tensor::range(offset_mu, offset_mu + m));
-      tensor::View<double> ps = mu.slice(1, tensor::range(offset_mu, offset_mu + m));
-      tensor::View<double> cs = mu.slice(2, tensor::range(offset_mu, offset_mu + m));
+      tensor::View<double> xs =
+        mu.slice(0, tensor::range(offset_mu, offset_mu + m));
+      tensor::View<double> ps =
+        mu.slice(1, tensor::range(offset_mu, offset_mu + m));
+      tensor::View<double> cs =
+        mu.slice(2, tensor::range(offset_mu, offset_mu + m));
 
       vector<double> x {xs.begin(), xs.end()};
       vector<double> p {ps.begin(), ps.end()};

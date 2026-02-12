@@ -375,8 +375,7 @@ void sample_photon_reaction(Particle& p)
     // cross sections
     int i_grid = micro.index_grid;
     double f = micro.interp_factor;
-    tensor::View<const double> xs_lower =
-      element.cross_sections_.slice(i_grid);
+    tensor::View<const double> xs_lower = element.cross_sections_.slice(i_grid);
     tensor::View<const double> xs_upper =
       element.cross_sections_.slice(i_grid + 1);
 

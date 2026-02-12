@@ -626,8 +626,8 @@ TEST_CASE("Tensor multi-axis slice")
   REQUIRE(s3.ndim() == 2);
   REQUIRE(s3.shape(0) == 2);
   REQUIRE(s3.shape(1) == 4);
-  REQUIRE(s3(0, 0) == 0);  // t(0,0,0)
-  REQUIRE(s3(1, 3) == 7);  // t(0,1,3)
+  REQUIRE(s3(0, 0) == 0); // t(0,0,0)
+  REQUIRE(s3(1, 3) == 7); // t(0,1,3)
 }
 
 // ============================================================================
@@ -733,8 +733,8 @@ TEST_CASE("View sub-slice")
   Tensor<int> t({6}, 0);
   t = {10, 20, 30, 40, 50, 60};
 
-  auto s = t.slice(range(1, 5));   // [20, 30, 40, 50]
-  auto ss = s.slice(range(1, 3));  // [30, 40]
+  auto s = t.slice(range(1, 5));  // [20, 30, 40, 50]
+  auto ss = s.slice(range(1, 3)); // [30, 40]
   REQUIRE(ss.size() == 2);
   REQUIRE(ss[0] == 30);
   REQUIRE(ss[1] == 40);
@@ -819,9 +819,12 @@ TEST_CASE("StaticTensor2D iteration")
 TEST_CASE("StaticTensor2D slice")
 {
   StaticTensor2D<int, 3, 2> t;
-  t(0, 0) = 1; t(0, 1) = 2;
-  t(1, 0) = 3; t(1, 1) = 4;
-  t(2, 0) = 5; t(2, 1) = 6;
+  t(0, 0) = 1;
+  t(0, 1) = 2;
+  t(1, 0) = 3;
+  t(1, 1) = 4;
+  t(2, 0) = 5;
+  t(2, 1) = 6;
 
   // slice(1) = row 1 (fix axis 0 at 1)
   auto r1 = t.slice(1);

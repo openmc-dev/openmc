@@ -1007,7 +1007,8 @@ void reduce_tally_results()
       // Extract 2D view of the VALUE column from the 3D results tensor,
       // then copy into a contiguous array for MPI reduction
       const int val_idx = static_cast<int>(TallyResult::VALUE);
-      tensor::View<double> val_view = tally->results_.slice(tensor::all, tensor::all, val_idx);
+      tensor::View<double> val_view =
+        tally->results_.slice(tensor::all, tensor::all, val_idx);
       tensor::Tensor<double> values(val_view);
 
       tensor::Tensor<double> values_reduced(values.shape());

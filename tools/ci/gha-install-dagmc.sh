@@ -20,7 +20,7 @@ mkdir MOAB && cd MOAB
 git clone --depth 1 -b $MOAB_BRANCH $MOAB_REPO
 mkdir build && cd build
 cmake ../moab -DENABLE_HDF5=ON -DENABLE_NETCDF=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$MOAB_INSTALL_DIR
-make -j && make -j install
+make -j `nproc` && make -j `nproc` install
 rm -rf $HOME/MOAB/moab $HOME/MOAB/build
 
 # DAGMC Install
@@ -29,7 +29,7 @@ mkdir DAGMC && cd DAGMC
 git clone --depth 1 -b $DAGMC_BRANCH $DAGMC_REPO
 mkdir build && cd build
 cmake ../dagmc -DBUILD_TALLY=ON -DCMAKE_INSTALL_PREFIX=$DAGMC_INSTALL_DIR -DBUILD_STATIC_LIBS=OFF -DMOAB_DIR=$MOAB_INSTALL_DIR
-make -j install
+make -j `nproc` install
 rm -rf $HOME/DAGMC/dagmc $HOME/DAGMC/build
 
 cd $CURRENT_DIR

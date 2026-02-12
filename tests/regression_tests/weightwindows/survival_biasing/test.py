@@ -76,6 +76,6 @@ def model():
     return model
 
 
-def test_weight_windows_survival_biasing(model):
+def test_weight_windows_with_survival_biasing(model):
     harness = HashedPyAPITestHarness('statepoint.5.h5', model)
     harness.main()

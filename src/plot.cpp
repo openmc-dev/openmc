@@ -2078,9 +2078,6 @@ extern "C" int openmc_solidraytrace_plot_create(int32_t* index)
     auto new_plot = std::make_unique<SolidRayTracePlot>();
     new_plot->set_id();
     int32_t new_plot_id = new_plot->id();
-    new_plot->color_by_ = PlottableInterface::PlotColorBy::mats;
-    new_plot->pixels()[0] = 400;
-    new_plot->pixels()[1] = 400;
 #ifdef USE_LIBPNG
     new_plot->path_plot() = fmt::format("plot_{}.png", new_plot_id);
 #else

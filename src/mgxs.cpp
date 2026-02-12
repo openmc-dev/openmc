@@ -29,8 +29,7 @@ void Mgxs::init(const std::string& in_name, double in_awr,
   // Set the metadata
   name = in_name;
   awr = in_awr;
-  // TODO: Remove adapt when in_KTs is a Tensor
-  kTs = tensor::Tensor<double>(in_kTs);
+  kTs = tensor::Tensor<double>(in_kTs.data(), in_kTs.size());
   fissionable = in_fissionable;
   scatter_format = in_scatter_format;
   xs.resize(in_kTs.size());

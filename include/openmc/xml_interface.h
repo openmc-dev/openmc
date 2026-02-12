@@ -45,7 +45,7 @@ tensor::Tensor<T> get_node_tensor(
   pugi::xml_node node, const char* name, bool lowercase = false)
 {
   vector<T> v = get_node_array<T>(node, name, lowercase);
-  return tensor::Tensor<T>(v);
+  return tensor::Tensor<T>(v.data(), v.size());
 }
 
 std::vector<Position> get_node_position_array(

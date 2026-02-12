@@ -525,20 +525,6 @@ public:
     : shape_(shape), data_(compute_size(), fill)
   {}
 
-  //! 1D copy from vector (disabled when T=size_t to avoid ambiguity)
-  template<typename Dummy = T,
-    typename = std::enable_if_t<!std::is_same<Dummy, size_t>::value>>
-  explicit Tensor(const vector<T>& vec)
-    : shape_({vec.size()}), data_(vec.begin(), vec.end())
-  {}
-
-  //! 1D copy from std::vector (disabled when T=size_t)
-  template<typename Alloc, typename Dummy = T,
-    typename = std::enable_if_t<!std::is_same<Dummy, size_t>::value>>
-  explicit Tensor(const std::vector<T, Alloc>& vec)
-    : shape_({vec.size()}), data_(vec.begin(), vec.end())
-  {}
-
   //! 1D copy from raw pointer + count
   Tensor(const T* ptr, size_t count)
     : shape_({count}), data_(ptr, ptr + count)
@@ -600,8 +586,6 @@ public:
   }
 
   //! Assignment from initializer_list of values (1D)
-  template<typename Dummy = T,
-    typename = std::enable_if_t<!std::is_same<Dummy, size_t>::value>>
   Tensor& operator=(std::initializer_list<T> vals)
   {
     shape_ = {vals.size()};

@@ -373,9 +373,9 @@ private:
 
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
   Position camera_position_;               // where camera is
-  Position look_at_;             // point camera is centered looking at
-  std::array<int, 2> pixels_ {100, 100};    // pixel dimension of resulting image
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+  Position look_at_;                     // point camera is centered looking at
+  std::array<int, 2> pixels_ {100, 100}; // pixel dimension of resulting image
+  Direction up_ {0.0, 0.0, 1.0};         // which way is up
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.

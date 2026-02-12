@@ -60,8 +60,6 @@ using storage_type = typename storage_type_map<T>::type;
 template<typename T>
 class View {
 public:
-  using value_type = std::remove_const_t<T>;
-
   View(T* data, vector<size_t> shape, vector<size_t> strides)
     : data_(data), shape_(std::move(shape)), strides_(std::move(strides))
   {}
@@ -202,7 +200,7 @@ public:
   }
 
   //! Assignment from initializer_list (for 1D views)
-  View& operator=(std::initializer_list<value_type> vals)
+  View& operator=(std::initializer_list<T> vals)
   {
     auto it = vals.begin();
     for (size_t i = 0; i < size() && it != vals.end(); ++i, ++it)
@@ -229,7 +227,7 @@ public:
   View& operator+=(const Tensor<U>& o);
 
   //! Compound multiply by scalar
-  View& operator*=(value_type val)
+  View& operator*=(T val)
   {
     size_t n = size();
     for (size_t i = 0; i < n; ++i)
@@ -238,7 +236,7 @@ public:
   }
 
   //! Compound divide by scalar
-  View& operator/=(value_type val)
+  View& operator/=(T val)
   {
     size_t n = size();
     for (size_t i = 0; i < n; ++i)
@@ -247,9 +245,10 @@ public:
   }
 
   //! Sum of all elements
-  value_type sum() const
+  T sum() const
   {
-    value_type s = value_type(0);
+    // remove_const needed so accumulator is mutable when T is const-qualified
+    std::remove_const_t<T> s = 0;
     size_t n = size();
     for (size_t i = 0; i < n; ++i)
       s += data_[flat_to_offset(i)];

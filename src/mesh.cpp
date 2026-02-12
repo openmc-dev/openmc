@@ -1901,10 +1901,11 @@ double CylindricalMesh::find_r_crossing(
 
   D = std::sqrt(D);
 
-  // the solution -p - D is always smaller as -p + D : Check this one first
-  if (xt::isclose(R, r0, RADIAL_MESH_TOL, RADIAL_MESH_TOL))
+  // Particle is already on the shell surface; avoid spurious crossing
+  if (std::abs(R - r0) <= RADIAL_MESH_TOL * (1.0 + std::abs(r0)))
     return INFTY;
 
+  // Check -p - D first because it is always smaller as -p + D
   if (-p - D > l)
     return -p - D;
   if (-p + D > l)
@@ -2181,12 +2182,13 @@ double SphericalMesh::find_r_crossing(
   double R = r.norm();
   double D = p * p - (R - r0) * (R + r0);
 
-  if (xt::isclose(R, r0, RADIAL_MESH_TOL, RADIAL_MESH_TOL))
+  // Particle is already on the shell surface; avoid spurious crossing
+  if (std::abs(R - r0) <= RADIAL_MESH_TOL * (1.0 + std::abs(r0)))
     return INFTY;
 
   if (D >= 0.0) {
     D = std::sqrt(D);
-    // the solution -p - D is always smaller as -p + D : Check this one first
+    // Check -p - D first because it is always smaller as -p + D
     if (-p - D > l)
       return -p - D;
     if (-p + D > l)

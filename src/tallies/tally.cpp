@@ -1031,7 +1031,7 @@ void reduce_tally_results()
   const int val_col = static_cast<int>(TallyResult::VALUE);
 
   // Copy VALUE column into contiguous array for MPI reduction
-  tensor::Tensor<double> gt_values(gt.col(val_col));
+  tensor::Tensor<double> gt_values(gt.select(1,val_col));
   tensor::Tensor<double> gt_values_reduced({size_t{N_GLOBAL_TALLIES}});
 
   // Reduce contiguous data
@@ -1040,9 +1040,9 @@ void reduce_tally_results()
 
   // Transfer values on master and reset on other ranks
   if (mpi::master) {
-    gt.col(val_col) = gt_values_reduced;
+    gt.select(1,val_col) = gt_values_reduced;
   } else {
-    gt.col(val_col) = 0.0;
+    gt.select(1,val_col) = 0.0;
   }
 
   // We also need to determine the total starting weight of particles from the

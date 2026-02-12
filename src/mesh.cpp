@@ -957,7 +957,7 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
   tensor::Tensor<double> vertices({static_cast<size_t>(this->n_vertices()), static_cast<size_t>(3)});
   for (int i = 0; i < this->n_vertices(); i++) {
     auto v = this->vertex(i);
-    vertices.row(i) = {v.x, v.y, v.z};
+    vertices.select(0, i) = {v.x, v.y, v.z};
   }
   write_dataset(mesh_group, "vertices", vertices);
 
@@ -974,18 +974,18 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 
     // write linear tet element
     if (conn.size() == 4) {
-      elem_types.row(i) = static_cast<int>(ElementType::LINEAR_TET);
-      connectivity.row(i) =
+      elem_types.select(0, i) = static_cast<int>(ElementType::LINEAR_TET);
+      connectivity.select(0, i) =
         {conn[0], conn[1], conn[2], conn[3], -1, -1, -1, -1};
       // write linear hex element
     } else if (conn.size() == 8) {
-      elem_types.row(i) = static_cast<int>(ElementType::LINEAR_HEX);
-      connectivity.row(i) = {conn[0], conn[1],
+      elem_types.select(0, i) = static_cast<int>(ElementType::LINEAR_HEX);
+      connectivity.select(0, i) = {conn[0], conn[1],
         conn[2], conn[3], conn[4], conn[5], conn[6], conn[7]};
     } else {
       num_elem_skipped++;
-      elem_types.row(i) = static_cast<int>(ElementType::UNSUPPORTED);
-      connectivity.row(i) = -1;
+      elem_types.select(0, i) = static_cast<int>(ElementType::UNSUPPORTED);
+      connectivity.select(0, i) = -1;
     }
   }
 

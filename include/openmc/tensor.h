@@ -4,7 +4,7 @@
 //! Tensor<T> is the primary type: a dynamic-rank owning container that stores
 //! elements contiguously in row-major order.  View<T> is a lightweight
 //! non-owning reference into a Tensor's storage, returned by methods like
-//! row(), col(), slice(), and flat().  StaticTensor2D<T,R,C> is a small
+//! select(), slice(), and flat().  StaticTensor2D<T,R,C> is a small
 //! stack-allocated 2D array used only for simulation::global_tallies.
 //!
 //! View is declared before Tensor because Tensor's methods return View objects.
@@ -156,14 +156,6 @@ public:
     }
     return {new_data, std::move(new_shape), std::move(new_strides)};
   }
-
-  //! Row i (fix first axis) — shorthand for select(0, i)
-  View<T> row(size_t i) { return select(0, i); }
-  View<const T> row(size_t i) const { return select(0, i); }
-
-  //! Column j (fix second axis) — shorthand for select(1, j)
-  View<T> col(size_t j) { return select(1, j); }
-  View<const T> col(size_t j) const { return select(1, j); }
 
   //! 1D subrange [start, end)
   View<T> slice(size_t start, size_t end)
@@ -604,14 +596,6 @@ public:
     return {new_data, std::move(new_shape), std::move(new_strides)};
   }
 
-  //! Row i of a 2D+ tensor (fix first axis)
-  View<stored_type> row(size_t i) { return select(0, i); }
-  View<const stored_type> row(size_t i) const { return select(0, i); }
-
-  //! Column j of a 2D tensor (fix second axis)
-  View<stored_type> col(size_t j) { return select(1, j); }
-  View<const stored_type> col(size_t j) const { return select(1, j); }
-
   //! Subrange of a 1D tensor
   View<stored_type> slice(size_t start, size_t end)
   {
@@ -996,10 +980,6 @@ public:
 
   //--------------------------------------------------------------------------
   // View accessors
-
-  //! Column view (1D, strided)
-  View<T> col(size_t j) { return {data_ + j, {R}, {C}}; }
-  View<const T> col(size_t j) const { return {data_ + j, {R}, {C}}; }
 
   //! Flat view (1D, contiguous)
   View<T> flat() { return {data_, {R * C}, {size_t(1)}}; }

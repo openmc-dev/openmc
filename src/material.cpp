@@ -696,7 +696,7 @@ void Material::init_bremsstrahlung()
                    1.0595e-3 * std::pow(t, 5) + 7.0568e-5 * std::pow(t, 6) -
                    1.808e-6 * std::pow(t, 7));
         stopping_power_radiative(i) *= r;
-        tensor::View<double> dcs_i = dcs.row(i);
+        tensor::View<double> dcs_i = dcs.select(0, i);
         dcs_i *= r;
       }
     }

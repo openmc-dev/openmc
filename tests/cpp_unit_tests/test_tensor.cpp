@@ -472,7 +472,7 @@ TEST_CASE("Tensor<bool> storage")
 // View (via Tensor accessors)
 // ============================================================================
 
-TEST_CASE("Tensor row view")
+TEST_CASE("Tensor select axis 0 (2D)")
 {
   // [[1, 2, 3], [4, 5, 6]]
   Tensor<int> t({2, 3}, 0);
@@ -481,13 +481,13 @@ TEST_CASE("Tensor row view")
     for (size_t j = 0; j < 3; ++j)
       t(i, j) = v++;
 
-  auto r0 = t.row(0);
+  auto r0 = t.select(0, 0);
   REQUIRE(r0.size() == 3);
   REQUIRE(r0[0] == 1);
   REQUIRE(r0[1] == 2);
   REQUIRE(r0[2] == 3);
 
-  auto r1 = t.row(1);
+  auto r1 = t.select(0, 1);
   REQUIRE(r1[0] == 4);
   REQUIRE(r1[1] == 5);
   REQUIRE(r1[2] == 6);
@@ -497,7 +497,7 @@ TEST_CASE("Tensor row view")
   REQUIRE(t(0, 1) == 99);
 }
 
-TEST_CASE("Tensor col view")
+TEST_CASE("Tensor select axis 1 (2D)")
 {
   // [[1, 2], [3, 4], [5, 6]]
   Tensor<int> t({3, 2}, 0);
@@ -505,13 +505,13 @@ TEST_CASE("Tensor col view")
   t(1, 0) = 3; t(1, 1) = 4;
   t(2, 0) = 5; t(2, 1) = 6;
 
-  auto c0 = t.col(0);
+  auto c0 = t.select(1, 0);
   REQUIRE(c0.size() == 3);
   REQUIRE(c0[0] == 1);
   REQUIRE(c0[1] == 3);
   REQUIRE(c0[2] == 5);
 
-  auto c1 = t.col(1);
+  auto c1 = t.select(1, 1);
   REQUIRE(c1[0] == 2);
   REQUIRE(c1[1] == 4);
   REQUIRE(c1[2] == 6);
@@ -592,7 +592,7 @@ TEST_CASE("Tensor select (general axis)")
 TEST_CASE("View scalar assignment (fill)")
 {
   Tensor<double> t({2, 3}, 0.0);
-  auto r = t.row(0);
+  auto r = t.select(0, 0);
   r = 7.0;
   REQUIRE(t(0, 0) == 7.0);
   REQUIRE(t(0, 1) == 7.0);
@@ -603,7 +603,7 @@ TEST_CASE("View scalar assignment (fill)")
 TEST_CASE("View initializer_list assignment")
 {
   Tensor<double> t({2, 3}, 0.0);
-  auto r = t.row(1);
+  auto r = t.select(0, 1);
   r = {10.0, 20.0, 30.0};
   REQUIRE(t(1, 0) == 10.0);
   REQUIRE(t(1, 1) == 20.0);
@@ -613,11 +613,11 @@ TEST_CASE("View initializer_list assignment")
 TEST_CASE("View copy assignment (deep copy)")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.row(0) = {1.0, 2.0, 3.0};
-  t.row(1) = {4.0, 5.0, 6.0};
+  t.select(0, 0) = {1.0, 2.0, 3.0};
+  t.select(0, 1) = {4.0, 5.0, 6.0};
 
   // Copy row 0 into row 1
-  t.row(1) = t.row(0);
+  t.select(0, 1) = t.select(0, 0);
   REQUIRE(t(1, 0) == 1.0);
   REQUIRE(t(1, 1) == 2.0);
   REQUIRE(t(1, 2) == 3.0);
@@ -626,13 +626,13 @@ TEST_CASE("View copy assignment (deep copy)")
 TEST_CASE("View compound operators")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.row(0) = {1.0, 2.0, 3.0};
+  t.select(0, 0) = {1.0, 2.0, 3.0};
 
-  t.row(0) *= 2.0;
+  t.select(0, 0) *= 2.0;
   REQUIRE(t(0, 0) == 2.0);
   REQUIRE(t(0, 1) == 4.0);
 
-  t.row(0) /= 2.0;
+  t.select(0, 0) /= 2.0;
   REQUIRE(t(0, 0) == 1.0);
   REQUIRE(t(0, 1) == 2.0);
 }
@@ -643,7 +643,7 @@ TEST_CASE("View assignment from tensor")
   Tensor<double> vals({3}, 0.0);
   vals = {7.0, 8.0, 9.0};
 
-  t.row(1) = vals;
+  t.select(0, 1) = vals;
   REQUIRE(t(1, 0) == 7.0);
   REQUIRE(t(1, 1) == 8.0);
   REQUIRE(t(1, 2) == 9.0);
@@ -652,11 +652,11 @@ TEST_CASE("View assignment from tensor")
 TEST_CASE("View compound addition from tensor")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.row(0) = {1.0, 2.0, 3.0};
+  t.select(0, 0) = {1.0, 2.0, 3.0};
   Tensor<double> vals({3}, 0.0);
   vals = {10.0, 20.0, 30.0};
 
-  t.row(0) += vals;
+  t.select(0, 0) += vals;
   REQUIRE(t(0, 0) == 11.0);
   REQUIRE(t(0, 1) == 22.0);
   REQUIRE(t(0, 2) == 33.0);
@@ -665,20 +665,20 @@ TEST_CASE("View compound addition from tensor")
 TEST_CASE("View sum")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.row(0) = {1.0, 2.0, 3.0};
-  t.row(1) = {4.0, 5.0, 6.0};
+  t.select(0, 0) = {1.0, 2.0, 3.0};
+  t.select(0, 1) = {4.0, 5.0, 6.0};
 
-  REQUIRE(t.row(0).sum() == 6.0);
-  REQUIRE(t.row(1).sum() == 15.0);
+  REQUIRE(t.select(0, 0).sum() == 6.0);
+  REQUIRE(t.select(0, 1).sum() == 15.0);
 }
 
 TEST_CASE("View iteration")
 {
   Tensor<int> t({2, 3}, 0);
-  t.row(0) = {1, 2, 3};
+  t.select(0, 0) = {1, 2, 3};
 
   int sum = 0;
-  for (auto val : t.row(0))
+  for (auto val : t.select(0, 0))
     sum += val;
   REQUIRE(sum == 6);
 }
@@ -698,10 +698,10 @@ TEST_CASE("View sub-slice")
 TEST_CASE("Tensor from View")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.row(0) = {1.0, 2.0, 3.0};
+  t.select(0, 0) = {1.0, 2.0, 3.0};
 
   // Construct a new tensor from a view (copies data)
-  Tensor<double> t2(t.row(0));
+  Tensor<double> t2(t.select(0, 0));
   REQUIRE(t2.size() == 3);
   REQUIRE(t2[0] == 1.0);
   REQUIRE(t2[2] == 3.0);
@@ -724,11 +724,11 @@ TEST_CASE("Const tensor produces const views")
       t(i, j) = v++;
 
   const Tensor<double>& ct = t;
-  auto r = ct.row(0); // View<const double>
+  auto r = ct.select(0, 0); // View<const double>
   REQUIRE(r[0] == 1.0);
   REQUIRE(r[2] == 3.0);
 
-  auto c = ct.col(1);
+  auto c = ct.select(1, 1);
   REQUIRE(c[0] == 2.0);
   REQUIRE(c[1] == 5.0);
 }
@@ -769,20 +769,6 @@ TEST_CASE("StaticTensor2D iteration")
   for (auto val : t)
     sum += val;
   REQUIRE(sum == 6);
-}
-
-TEST_CASE("StaticTensor2D col view")
-{
-  StaticTensor2D<int, 3, 2> t;
-  t(0, 0) = 1; t(0, 1) = 2;
-  t(1, 0) = 3; t(1, 1) = 4;
-  t(2, 0) = 5; t(2, 1) = 6;
-
-  auto c = t.col(0);
-  REQUIRE(c.size() == 3);
-  REQUIRE(c[0] == 1);
-  REQUIRE(c[1] == 3);
-  REQUIRE(c[2] == 5);
 }
 
 TEST_CASE("StaticTensor2D flat view")

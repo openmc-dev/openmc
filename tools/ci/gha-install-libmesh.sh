@@ -15,7 +15,7 @@ if [[ $MPI == 'y' ]]; then
 else
     ../libmesh/configure --prefix=$HOME/LIBMESH --enable-exodus --disable-netcdf-4 --disable-eigen --disable-lapack --disable-mpi
 fi
-make -j4 install
+make -j install
 rm -rf $HOME/LIBMESH/build
 
 popd

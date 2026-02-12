@@ -7,7 +7,10 @@ from math import sqrt, log
 from warnings import warn
 
 from endf.data import (ATOMIC_NUMBER, ATOMIC_SYMBOL, ELEMENT_SYMBOL,
-                       EV_PER_MEV, K_BOLTZMANN)
+                       EV_PER_MEV, K_BOLTZMANN, gnds_name, zam)
+
+gnds_name.__module__ = __name__
+zam.__module__ = __name__
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
@@ -216,9 +219,6 @@ NEUTRON_MASS = 1.00866491595
 
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS: dict[str, float] = {}
-
-# Regex for GNDS nuclide names (used in zam function)
-_GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 # Used in half_life function as a cache
 _HALF_LIFE: dict[str, float] = {}
@@ -456,33 +456,6 @@ def water_density(temperature, pressure=0.1013):
     return coeff / pi / gamma1_pi
 
 
-def gnds_name(Z, A, m=0):
-    """Return nuclide name using GNDS convention
-
-    .. versionchanged:: 0.14.0
-        Function name changed from ``gnd_name`` to ``gnds_name``
-
-    Parameters
-    ----------
-    Z : int
-        Atomic number
-    A : int
-        Mass number
-    m : int, optional
-        Metastable state
-
-    Returns
-    -------
-    str
-        Nuclide name in GNDS convention, e.g., 'Am242_m1'
-
-    """
-    if m > 0:
-        return f'{ATOMIC_SYMBOL[Z]}{A}_m{m}'
-    return f'{ATOMIC_SYMBOL[Z]}{A}'
-
-
-
 def _get_element_symbol(element: str) -> str:
     if len(element) > 2:
         symbol = ELEMENT_SYMBOL.get(element.lower())
@@ -525,28 +498,3 @@ def isotopes(element: str) -> list[tuple[str, float]]:
     return result
 
 
-def zam(name):
-    """Return tuple of (atomic number, mass number, metastable state)
-
-    Parameters
-    ----------
-    name : str
-        Name of nuclide using GNDS convention, e.g., 'Am242_m1'
-
-    Returns
-    -------
-    3-tuple of int
-        Atomic number, mass number, and metastable state
-
-    """
-    try:
-        symbol, A, state = _GNDS_NAME_RE.fullmatch(name).groups()
-    except AttributeError:
-        raise ValueError(f"'{name}' does not appear to be a nuclide name in "
-                         "GNDS format")
-
-    if symbol not in ATOMIC_NUMBER:
-        raise ValueError(f"'{symbol}' is not a recognized element symbol")
-
-    metastable = int(state[2:]) if state else 0
-    return (ATOMIC_NUMBER[symbol], int(A), metastable)

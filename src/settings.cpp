@@ -88,7 +88,6 @@ bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 
-
 std::string path_cross_sections;
 std::string path_input;
 std::string path_output;

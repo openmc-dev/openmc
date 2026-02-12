@@ -95,6 +95,13 @@ double t_percentile(double p, int df)
   return t;
 }
 
+double standard_normal_cdf(double z)
+{
+  // Use the complementary error function to compute the standard normal CDF
+  // Phi(z) = 0.5 * (1 + erf(z / sqrt(2))) = 0.5 * erfc(-z / sqrt(2))
+  return 0.5 * std::erfc(-z / std::sqrt(2.0));
+}
+
 void calc_pn_c(int n, double x, double pnx[])
 {
   pnx[0] = 1.;

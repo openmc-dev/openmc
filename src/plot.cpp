@@ -73,7 +73,8 @@ void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
 
 void IdData::set_overlap(size_t y, size_t x)
 {
-  for (size_t k = 0; k < data_.shape(2); ++k) data_(y, x, k) = OVERLAP;
+  for (size_t k = 0; k < data_.shape(2); ++k)
+    data_(y, x, k) = OVERLAP;
 }
 
 PropertyData::PropertyData(size_t h_res, size_t v_res)
@@ -1250,7 +1251,8 @@ ImageData WireframeRayTracePlot::create_image() const
   // This array marks where the initial wireframe was drawn. We convolve it with
   // a filter that gets adjusted with the wireframe thickness in order to
   // thicken the lines.
-  tensor::Tensor<int> wireframe_initial({static_cast<size_t>(width), static_cast<size_t>(height)}, 0);
+  tensor::Tensor<int> wireframe_initial(
+    {static_cast<size_t>(width), static_cast<size_t>(height)}, 0);
 
   /* Holds all of the track segments for the current rendered line of pixels.
    * old_segments holds a copy of this_line_segments from the previous line.

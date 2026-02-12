@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "pugixml.hpp"
 #include "openmc/tensor.h"
+#include "pugixml.hpp"
 
 #include "hdf5.h"
 #include "openmc/cell.h"
@@ -142,7 +142,6 @@ public:
   RGBColor overlap_color_ {RED}; // Plot overlap color
   vector<RGBColor> colors_;      // Plot colors
 };
-
 
 struct IdData {
   // Constructor

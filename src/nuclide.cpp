@@ -360,8 +360,7 @@ void Nuclide::create_derived(
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
-    xs_.emplace_back(
-      vector<size_t>{grid.energy.size(), 5}, 0.0);
+    xs_.emplace_back(vector<size_t> {grid.energy.size(), 5}, 0.0);
   }
 
   reaction_index_.fill(C_NONE);
@@ -374,7 +373,8 @@ void Nuclide::create_derived(
     for (int t = 0; t < kTs_.size(); ++t) {
       int j = rx->xs_[t].threshold;
       int n = rx->xs_[t].value.size();
-      auto xs = tensor::Tensor<double>(rx->xs_[t].value.data(), rx->xs_[t].value.size());
+      auto xs = tensor::Tensor<double>(
+        rx->xs_[t].value.data(), rx->xs_[t].value.size());
       for (const auto& p : rx->products_) {
         if (p.particle_.is_photon()) {
           for (int k = 0; k < n; ++k) {

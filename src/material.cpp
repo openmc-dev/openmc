@@ -795,7 +795,8 @@ void Material::init_bremsstrahlung()
     }
 
     // Use logarithm of number yield since it is log-log interpolated
-    ttb->yield = tensor::where(ttb->yield > 0.0, tensor::log(ttb->yield), -500.0);
+    ttb->yield =
+      tensor::where(ttb->yield > 0.0, tensor::log(ttb->yield), -500.0);
   }
 }
 

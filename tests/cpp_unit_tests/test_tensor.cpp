@@ -293,9 +293,12 @@ TEST_CASE("Tensor flip 2D")
 {
   // [[1, 2], [3, 4], [5, 6]]
   Tensor<int> t({3, 2}, 0);
-  t(0, 0) = 1; t(0, 1) = 2;
-  t(1, 0) = 3; t(1, 1) = 4;
-  t(2, 0) = 5; t(2, 1) = 6;
+  t(0, 0) = 1;
+  t(0, 1) = 2;
+  t(1, 0) = 3;
+  t(1, 1) = 4;
+  t(2, 0) = 5;
+  t(2, 1) = 6;
 
   // Flip axis 0 reverses rows -> [[5,6],[3,4],[1,2]]
   Tensor<int> f = t.flip(0);
@@ -501,9 +504,12 @@ TEST_CASE("Tensor select axis 1 (2D)")
 {
   // [[1, 2], [3, 4], [5, 6]]
   Tensor<int> t({3, 2}, 0);
-  t(0, 0) = 1; t(0, 1) = 2;
-  t(1, 0) = 3; t(1, 1) = 4;
-  t(2, 0) = 5; t(2, 1) = 6;
+  t(0, 0) = 1;
+  t(0, 1) = 2;
+  t(1, 0) = 3;
+  t(1, 1) = 4;
+  t(2, 0) = 5;
+  t(2, 1) = 6;
 
   auto c0 = t.select(1, 0);
   REQUIRE(c0.size() == 3);
@@ -688,8 +694,8 @@ TEST_CASE("View sub-slice")
   Tensor<int> t({6}, 0);
   t = {10, 20, 30, 40, 50, 60};
 
-  auto s = t.slice(1, 5);      // [20, 30, 40, 50]
-  auto ss = s.slice(1, 3);     // [30, 40]
+  auto s = t.slice(1, 5);  // [20, 30, 40, 50]
+  auto ss = s.slice(1, 3); // [30, 40]
   REQUIRE(ss.size() == 2);
   REQUIRE(ss[0] == 30);
   REQUIRE(ss[1] == 40);
@@ -774,8 +780,10 @@ TEST_CASE("StaticTensor2D iteration")
 TEST_CASE("StaticTensor2D flat view")
 {
   StaticTensor2D<double, 2, 2> t;
-  t(0, 0) = 1.0; t(0, 1) = 2.0;
-  t(1, 0) = 3.0; t(1, 1) = 4.0;
+  t(0, 0) = 1.0;
+  t(0, 1) = 2.0;
+  t(1, 0) = 3.0;
+  t(1, 1) = 4.0;
 
   auto f = t.flat();
   REQUIRE(f.size() == 4);
@@ -891,9 +899,9 @@ TEST_CASE("nan_to_num")
 
   auto r = nan_to_num(t);
   REQUIRE(r[0] == 1.0);
-  REQUIRE(r[1] == 0.0); // NaN -> 0
+  REQUIRE(r[1] == 0.0);                                   // NaN -> 0
   REQUIRE(r[2] == std::numeric_limits<double>::max());    // +inf -> max
-  REQUIRE(r[3] == std::numeric_limits<double>::lowest());  // -inf -> lowest
+  REQUIRE(r[3] == std::numeric_limits<double>::lowest()); // -inf -> lowest
 }
 
 // ============================================================================

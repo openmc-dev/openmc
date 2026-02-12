@@ -28,8 +28,8 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
   tensor::Tensor<int> temp;
   read_attribute(dset, "interpolation", temp);
 
-  tensor::View<int> temp_b = temp.select(0,0); // breakpoints
-  tensor::View<int> temp_i = temp.select(0,1); // interpolation parameters
+  tensor::View<int> temp_b = temp.select(0, 0); // breakpoints
+  tensor::View<int> temp_i = temp.select(0, 1); // interpolation parameters
 
   std::copy(temp_b.begin(), temp_b.end(), std::back_inserter(breakpoints_));
   for (const auto i : temp_i)
@@ -74,9 +74,9 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
     d.n_discrete = n_discrete[i];
 
     // Copy data
-    d.e_out = eout.select(0,0).slice(j, j + n);
-    d.p = eout.select(0,1).slice(j, j + n);
-    d.c = eout.select(0,2).slice(j, j + n);
+    d.e_out = eout.select(0, 0).slice(j, j + n);
+    d.p = eout.select(0, 1).slice(j, j + n);
+    d.c = eout.select(0, 2).slice(j, j + n);
 
     // To get answers that match ACE data, for now we still use the tabulated
     // CDF values that were passed through to the HDF5 library. At a later
@@ -132,9 +132,9 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
         interp_mu = 1;
 
       auto interp = int2interp(interp_mu);
-      tensor::View<double> xs = mu.select(0,0).slice(offset_mu, offset_mu + m);
-      tensor::View<double> ps = mu.select(0,1).slice(offset_mu, offset_mu + m);
-      tensor::View<double> cs = mu.select(0,2).slice(offset_mu, offset_mu + m);
+      tensor::View<double> xs = mu.select(0, 0).slice(offset_mu, offset_mu + m);
+      tensor::View<double> ps = mu.select(0, 1).slice(offset_mu, offset_mu + m);
+      tensor::View<double> cs = mu.select(0, 2).slice(offset_mu, offset_mu + m);
 
       vector<double> x {xs.begin(), xs.end()};
       vector<double> p {ps.begin(), ps.end()};

@@ -241,7 +241,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // non-zero
       auto n_nuc =
         settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
-      tensor::Tensor<double> atoms({static_cast<size_t>(n_nuc), size_t{2}}, 0.0);
+      tensor::Tensor<double> atoms(
+        {static_cast<size_t>(n_nuc), size_t {2}}, 0.0);
 
 #ifdef OPENMC_MPI
       if (mpi::master) {
@@ -451,7 +452,7 @@ void VolumeCalculation::to_hdf5(
     }
 
     // Create array of total # of atoms with uncertainty for each nuclide
-    tensor::Tensor<double> atom_data({static_cast<size_t>(n_nuc), size_t{2}});
+    tensor::Tensor<double> atom_data({static_cast<size_t>(n_nuc), size_t {2}});
     for (size_t k = 0; k < static_cast<size_t>(n_nuc); ++k) {
       atom_data(k, 0) = result.atoms[k];
       atom_data(k, 1) = result.uncertainty[k];

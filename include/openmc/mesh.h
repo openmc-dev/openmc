@@ -8,8 +8,8 @@
 #include <unordered_map>
 
 #include "hdf5.h"
-#include "pugixml.hpp"
 #include "openmc/tensor.h"
+#include "pugixml.hpp"
 
 #include "openmc/bounding_box.h"
 #include "openmc/error.h"

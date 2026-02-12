@@ -458,9 +458,9 @@ inline void write_dataset(
 // overloads above. A generic Container parameter avoids duplicating the body
 // for both Tensor<T> and StaticTensor2D<T,R,C>.
 template<typename Container,
-  typename = std::enable_if_t<tensor::is_tensor<std::decay_t<Container>>::value>>
-inline void write_dataset(
-  hid_t obj_id, const char* name, const Container& arr)
+  typename =
+    std::enable_if_t<tensor::is_tensor<std::decay_t<Container>>::value>>
+inline void write_dataset(hid_t obj_id, const char* name, const Container& arr)
 {
   using T = typename std::decay_t<Container>::value_type;
   auto s = arr.shape();

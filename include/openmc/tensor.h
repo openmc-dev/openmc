@@ -283,11 +283,8 @@ public:
     using reference = decltype(*std::declval<Ptr>());
 
     view_iterator(Ptr base, size_t count, const View* v)
-      : base_(base)
-      , count_(count)
-      , shape_(v->shape_.data())
-      , strides_(v->strides_.data())
-      , ndim_(v->shape_.size())
+      : base_(base), count_(count), shape_(v->shape_.data()),
+        strides_(v->strides_.data()), ndim_(v->shape_.size())
     {}
 
     reference operator*() const { return base_[offset()]; }
@@ -338,30 +335,12 @@ public:
       count_ -= n;
       return *this;
     }
-    bool operator==(const view_iterator& o) const
-    {
-      return count_ == o.count_;
-    }
-    bool operator!=(const view_iterator& o) const
-    {
-      return count_ != o.count_;
-    }
-    bool operator<(const view_iterator& o) const
-    {
-      return count_ < o.count_;
-    }
-    bool operator>(const view_iterator& o) const
-    {
-      return count_ > o.count_;
-    }
-    bool operator<=(const view_iterator& o) const
-    {
-      return count_ <= o.count_;
-    }
-    bool operator>=(const view_iterator& o) const
-    {
-      return count_ >= o.count_;
-    }
+    bool operator==(const view_iterator& o) const { return count_ == o.count_; }
+    bool operator!=(const view_iterator& o) const { return count_ != o.count_; }
+    bool operator<(const view_iterator& o) const { return count_ < o.count_; }
+    bool operator>(const view_iterator& o) const { return count_ > o.count_; }
+    bool operator<=(const view_iterator& o) const { return count_ <= o.count_; }
+    bool operator>=(const view_iterator& o) const { return count_ >= o.count_; }
     friend view_iterator operator+(difference_type n, const view_iterator& it)
     {
       return it + n;
@@ -407,7 +386,6 @@ private:
   vector<size_t> strides_;
 };
 
-
 //==============================================================================
 // Tensor<T>: dynamic-rank N-dimensional tensor.
 //
@@ -428,7 +406,8 @@ public:
 
   Tensor() = default;
 
-  //! Construct with shape (uninitialized for arithmetic types via vector resize)
+  //! Construct with shape (uninitialized for arithmetic types via vector
+  //! resize)
   explicit Tensor(vector<size_t> shape)
     : shape_(std::move(shape)), data_(compute_size())
   {}
@@ -449,14 +428,12 @@ public:
   {}
 
   //! 1D copy from raw pointer + count
-  Tensor(const T* ptr, size_t count)
-    : shape_({count}), data_(ptr, ptr + count)
+  Tensor(const T* ptr, size_t count) : shape_({count}), data_(ptr, ptr + count)
   {}
 
   //! Copy from View (preserves view's shape)
   template<typename U>
-  explicit Tensor(const View<U>& v)
-    : shape_(v.shape_vec())
+  explicit Tensor(const View<U>& v) : shape_(v.shape_vec())
   {
     size_t n = v.size();
     data_.resize(n);
@@ -494,7 +471,8 @@ public:
   const stored_type* data() const { return data_.data(); }
   size_t size() const { return data_.size(); }
   const vector<size_t>& shape() const { return shape_; }
-  size_t shape(size_t dim) const {
+  size_t shape(size_t dim) const
+  {
     return dim < shape_.size() ? shape_[dim] : 0;
   }
   size_t ndim() const { return shape_.size(); }
@@ -551,10 +529,7 @@ public:
     data_.resize(compute_size());
   }
 
-  void reshape(const vector<size_t>& new_shape)
-  {
-    shape_ = new_shape;
-  }
+  void reshape(const vector<size_t>& new_shape) { shape_ = new_shape; }
 
   void fill(T val) { std::fill(data_.begin(), data_.end(), val); }
 
@@ -671,9 +646,8 @@ public:
   //! Flat index of the minimum element
   size_t argmin() const
   {
-    return static_cast<size_t>(
-      std::distance(data_.data(),
-        std::min_element(data_.data(), data_.data() + data_.size())));
+    return static_cast<size_t>(std::distance(data_.data(),
+      std::min_element(data_.data(), data_.data() + data_.size())));
   }
 
   //! Reverse element order along an axis (e.g. flip(0) reverses rows)
@@ -1031,8 +1005,8 @@ Tensor<T> linspace(T start, T stop, size_t n)
     return result;
   }
   for (size_t i = 0; i < n; ++i) {
-    result[i] = start + static_cast<T>(i) * (stop - start) /
-                          static_cast<T>(n - 1);
+    result[i] =
+      start + static_cast<T>(i) * (stop - start) / static_cast<T>(n - 1);
   }
   return result;
 }
@@ -1076,8 +1050,8 @@ Tensor<T> where(
 {
   Tensor<T> r(cond.shape());
   for (size_t i = 0; i < cond.size(); ++i)
-    r.data()[i] = cond.data()[i] ? true_val.data()[i]
-                                 : static_cast<T>(false_val);
+    r.data()[i] =
+      cond.data()[i] ? true_val.data()[i] : static_cast<T>(false_val);
   return r;
 }
 

@@ -100,7 +100,8 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   // Replace zero absorption values with a small number to avoid
   // division by zero in tally methods
   for (size_t i = 0; i < absorption.size(); i++)
-    if (absorption.data()[i] == 0.0) absorption.data()[i] = 1.e-10;
+    if (absorption.data()[i] == 0.0)
+      absorption.data()[i] = 1.e-10;
 
   // Get or calculate the total x/s
   if (object_exists(xsdata_grp, "total")) {
@@ -116,7 +117,8 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   // Replace zero total cross sections with a small number to avoid
   // division by zero in tally methods
   for (size_t i = 0; i < total.size(); i++)
-    if (total.data()[i] == 0.0) total.data()[i] = 1.e-10;
+    if (total.data()[i] == 0.0)
+      total.data()[i] = 1.e-10;
 }
 
 //==============================================================================
@@ -146,7 +148,8 @@ void XsData::fission_vector_beta_from_hdf5(
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++)
-        chi_delayed.select(0, a).select(0, d).select(0, gin) = temp_chi.select(0, a);
+        chi_delayed.select(0, a).select(0, d).select(0, gin) =
+          temp_chi.select(0, a);
 
   // Get nu-fission
   tensor::Tensor<double> temp_nufiss({n_ang, n_g_}, 0.);
@@ -230,7 +233,8 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++)
-        chi_delayed.select(0, a).select(0, d).select(0, gin) = temp_chi_d.select(0, a).select(0, d);
+        chi_delayed.select(0, a).select(0, d).select(0, gin) =
+          temp_chi_d.select(0, a).select(0, d);
 
   // Get prompt and delayed nu-fission directly
   read_nd_tensor(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
@@ -303,8 +307,7 @@ void XsData::fission_matrix_beta_from_hdf5(
     for (size_t a = 0; a < n_ang; a++)
       for (size_t d = 0; d < n_dg_; d++)
         for (size_t g = 0; g < n_g_; g++)
-          delayed_nu_fission(a, d, g) =
-            temp_beta(a, d) * matrix_gout_sum(a, g);
+          delayed_nu_fission(a, d, g) = temp_beta(a, d) * matrix_gout_sum(a, g);
 
     // chi_delayed = beta * nu-fission matrix, expanded across delayed groups
     for (size_t a = 0; a < n_ang; a++)
@@ -363,7 +366,8 @@ void XsData::fission_matrix_beta_from_hdf5(
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++) {
-        tensor::View<double> row = chi_delayed.select(0, a).select(0, d).select(0, gin);
+        tensor::View<double> row =
+          chi_delayed.select(0, a).select(0, d).select(0, gin);
         row /= row.sum();
       }
 }
@@ -383,8 +387,8 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   for (size_t a = 0; a < n_ang; a++)
     for (size_t gin = 0; gin < n_g_; gin++)
       for (size_t gout = 0; gout < n_g_; gout++)
-        chi_prompt(a, gin, gout) = temp_matrix_p(a, gin, gout) /
-                                   prompt_nu_fission(a, gin);
+        chi_prompt(a, gin, gout) =
+          temp_matrix_p(a, gin, gout) / prompt_nu_fission(a, gin);
 
   // Get the delayed nu-fission matrix
   tensor::Tensor<double> temp_matrix_d({n_ang, n_dg_, n_g_, n_g_}, 0.);
@@ -393,13 +397,14 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // delayed_nu_fission is the sum over outgoing groups
   delayed_nu_fission = temp_matrix_d.sum(3);
 
-  // chi_delayed is the delayed nu-fission matrix normalized over outgoing groups
+  // chi_delayed is the delayed nu-fission matrix normalized over outgoing
+  // groups
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++)
         for (size_t gout = 0; gout < n_g_; gout++)
-          chi_delayed(a, d, gin, gout) = temp_matrix_d(a, d, gin, gout) /
-                                         delayed_nu_fission(a, d, gin);
+          chi_delayed(a, d, gin, gout) =
+            temp_matrix_d(a, d, gin, gout) / delayed_nu_fission(a, d, gin);
 }
 
 void XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
@@ -418,8 +423,8 @@ void XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   for (size_t a = 0; a < n_ang; a++)
     for (size_t gin = 0; gin < n_g_; gin++)
       for (size_t gout = 0; gout < n_g_; gout++)
-        chi_prompt(a, gin, gout) = temp_matrix(a, gin, gout) /
-                                   prompt_nu_fission(a, gin);
+        chi_prompt(a, gin, gout) =
+          temp_matrix(a, gin, gout) / prompt_nu_fission(a, gin);
 }
 
 //==============================================================================
@@ -606,8 +611,8 @@ void XsData::combine(
         for (size_t a = 0; a < n_ang; a++)
           for (size_t gin = 0; gin < n_g; gin++)
             for (size_t gout = 0; gout < n_g; gout++)
-              chi_prompt(a, gin, gout) += scalar * pnf_sum(a) *
-                                          that->chi_prompt(a, gin, gout);
+              chi_prompt(a, gin, gout) +=
+                scalar * pnf_sum(a) * that->chi_prompt(a, gin, gout);
       }
       // Accumulate chi_delayed weighted by total delayed nu-fission
       // (summed over energy groups) for this constituent
@@ -620,8 +625,8 @@ void XsData::combine(
           for (size_t d = 0; d < n_dg; d++)
             for (size_t gin = 0; gin < n_g; gin++)
               for (size_t gout = 0; gout < n_g; gout++)
-                chi_delayed(a, d, gin, gout) += scalar * dnf_sum(a, d) *
-                                                that->chi_delayed(a, d, gin, gout);
+                chi_delayed(a, d, gin, gout) +=
+                  scalar * dnf_sum(a, d) * that->chi_delayed(a, d, gin, gout);
       }
     }
     decay_rate += scalar * that->decay_rate;
@@ -645,7 +650,8 @@ void XsData::combine(
     for (size_t a = 0; a < n_ang; a++)
       for (size_t d = 0; d < n_dg; d++)
         for (size_t gin = 0; gin < n_g; gin++) {
-          tensor::View<double> row = chi_delayed.select(0, a).select(0, d).select(0, gin);
+          tensor::View<double> row =
+            chi_delayed.select(0, a).select(0, d).select(0, gin);
           row /= row.sum();
         }
   }

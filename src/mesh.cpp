@@ -954,7 +954,8 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
 
   // write vertex coordinates
-  tensor::Tensor<double> vertices({static_cast<size_t>(this->n_vertices()), static_cast<size_t>(3)});
+  tensor::Tensor<double> vertices(
+    {static_cast<size_t>(this->n_vertices()), static_cast<size_t>(3)});
   for (int i = 0; i < this->n_vertices(); i++) {
     auto v = this->vertex(i);
     vertices.select(0, i) = {v.x, v.y, v.z};
@@ -965,8 +966,10 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 
   // write element types and connectivity
   vector<double> volumes;
-  tensor::Tensor<int> connectivity({static_cast<size_t>(this->n_bins()), static_cast<size_t>(8)});
-  tensor::Tensor<int> elem_types({static_cast<size_t>(this->n_bins()), static_cast<size_t>(1)});
+  tensor::Tensor<int> connectivity(
+    {static_cast<size_t>(this->n_bins()), static_cast<size_t>(8)});
+  tensor::Tensor<int> elem_types(
+    {static_cast<size_t>(this->n_bins()), static_cast<size_t>(1)});
   for (int i = 0; i < this->n_bins(); i++) {
     auto conn = this->connectivity(i);
 
@@ -975,13 +978,13 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
     // write linear tet element
     if (conn.size() == 4) {
       elem_types.select(0, i) = static_cast<int>(ElementType::LINEAR_TET);
-      connectivity.select(0, i) =
-        {conn[0], conn[1], conn[2], conn[3], -1, -1, -1, -1};
+      connectivity.select(0, i) = {
+        conn[0], conn[1], conn[2], conn[3], -1, -1, -1, -1};
       // write linear hex element
     } else if (conn.size() == 8) {
       elem_types.select(0, i) = static_cast<int>(ElementType::LINEAR_HEX);
-      connectivity.select(0, i) = {conn[0], conn[1],
-        conn[2], conn[3], conn[4], conn[5], conn[6], conn[7]};
+      connectivity.select(0, i) = {
+        conn[0], conn[1], conn[2], conn[3], conn[4], conn[5], conn[6], conn[7]};
     } else {
       num_elem_skipped++;
       elem_types.select(0, i) = static_cast<int>(ElementType::UNSUPPORTED);

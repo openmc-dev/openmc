@@ -7,11 +7,11 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
-#include "openmc/tensor.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/mesh.h"
+#include "openmc/tensor.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {

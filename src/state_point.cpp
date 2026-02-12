@@ -276,8 +276,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
           auto& results = tally->results_;
-          write_tally_results(tally_group, results.shape(0),
-            results.shape(1), results.shape(2), results.data());
+          write_tally_results(tally_group, results.shape(0), results.shape(1),
+            results.shape(2), results.data());
           close_group(tally_group);
         }
       } else {
@@ -516,8 +516,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
           tally->writable_ = false;
         } else {
           auto& results = tally->results_;
-          read_tally_results(tally_group, results.shape(0),
-            results.shape(1), results.shape(2), results.data());
+          read_tally_results(tally_group, results.shape(0), results.shape(1),
+            results.shape(2), results.data());
 
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
           close_group(tally_group);

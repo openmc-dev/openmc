@@ -169,7 +169,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     read_dataset(tgroup, "xs", xs);
 
     auto cross_section =
-      cross_sections_.select(1,i).slice(static_cast<size_t>(shell.threshold));
+      cross_sections_.select(1, i).slice(static_cast<size_t>(shell.threshold));
     cross_section = tensor::where(xs > 0, tensor::log(xs), 0);
 
     if (object_exists(tgroup, "transitions")) {
@@ -184,7 +184,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
         read_dataset(tgroup, "transitions", matrix);
 
         // Transition probability normalization
-        double norm = tensor::Tensor<double>(matrix.select(1,3)).sum();
+        double norm = tensor::Tensor<double>(matrix.select(1, 3)).sum();
 
         shell.transitions.resize(n_transition);
         for (int j = 0; j < n_transition; ++j) {
@@ -304,7 +304,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
         double y = std::exp(
           std::log(dcs_(i_grid, i)) +
           f * (std::log(dcs_(i_grid + 1, i)) - std::log(dcs_(i_grid, i))));
-        tensor::View<double> col_i = dcs.select(1,i);
+        tensor::View<double> col_i = dcs.select(1, i);
         col_i(0) = y;
         for (int j = i_grid + 1; j < n_e; ++j) {
           col_i(j - i_grid) = dcs_(j, i);
@@ -324,7 +324,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     }
 
     // Calculate the radiative stopping power
-    stopping_power_radiative_ = tensor::Tensor<double>({data::ttb_e_grid.size()});
+    stopping_power_radiative_ =
+      tensor::Tensor<double>({data::ttb_e_grid.size()});
     for (int i = 0; i < data::ttb_e_grid.size(); ++i) {
       // Integrate over reduced photon energy
       double c = 0.0;
@@ -351,11 +352,12 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   double limit = std::exp(-499.0);
   energy_ = tensor::log(energy_);
   coherent_ = tensor::where(coherent_ > limit, tensor::log(coherent_), -900.0);
-  incoherent_ = tensor::where(incoherent_ > limit, tensor::log(incoherent_), -900.0);
+  incoherent_ =
+    tensor::where(incoherent_ > limit, tensor::log(incoherent_), -900.0);
   photoelectric_total_ = tensor::where(
     photoelectric_total_ > limit, tensor::log(photoelectric_total_), -900.0);
-  pair_production_total_ = tensor::where(
-    pair_production_total_ > limit, tensor::log(pair_production_total_), -900.0);
+  pair_production_total_ = tensor::where(pair_production_total_ > limit,
+    tensor::log(pair_production_total_), -900.0);
   heating_ = tensor::where(heating_ > limit, tensor::log(heating_), -900.0);
 }
 
@@ -507,7 +509,7 @@ void PhotonInteraction::compton_doppler(
     c = prn(seed) * c_max;
 
     // Determine pz corresponding to sampled cdf value
-    tensor::View<const double> cdf_shell = profile_cdf_.select(0,shell);
+    tensor::View<const double> cdf_shell = profile_cdf_.select(0, shell);
     int i = lower_bound_index(cdf_shell.cbegin(), cdf_shell.cend(), c);
     double pz_l = data::compton_profile_pz(i);
     double pz_r = data::compton_profile_pz(i + 1);
@@ -603,8 +605,8 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
   // Calculate microscopic photoelectric cross section
   xs.photoelectric = 0.0;
-  tensor::View<const double> xs_lower = cross_sections_.select(0,i_grid);
-  tensor::View<const double> xs_upper = cross_sections_.select(0,i_grid + 1);
+  tensor::View<const double> xs_lower = cross_sections_.select(0, i_grid);
+  tensor::View<const double> xs_upper = cross_sections_.select(0, i_grid + 1);
 
   for (int i = 0; i < xs_upper.size(); ++i)
     if (xs_lower(i) != 0)

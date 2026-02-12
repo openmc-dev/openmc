@@ -260,8 +260,12 @@ WeightWindows* WeightWindows::from_hdf5(
   }
   wws->set_mesh(model::mesh_map[mesh_id]);
 
-  wws->lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(wws->bounds_size()[0]), static_cast<size_t>(wws->bounds_size()[1])});
-  wws->upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(wws->bounds_size()[0]), static_cast<size_t>(wws->bounds_size()[1])});
+  wws->lower_ww_ =
+    tensor::Tensor<double>({static_cast<size_t>(wws->bounds_size()[0]),
+      static_cast<size_t>(wws->bounds_size()[1])});
+  wws->upper_ww_ =
+    tensor::Tensor<double>({static_cast<size_t>(wws->bounds_size()[0]),
+      static_cast<size_t>(wws->bounds_size()[1])});
 
   read_dataset<double>(ww_group, "lower_ww_bounds", wws->lower_ww_);
   read_dataset<double>(ww_group, "upper_ww_bounds", wws->upper_ww_);
@@ -296,9 +300,11 @@ void WeightWindows::allocate_ww_bounds()
       "Size of weight window bounds is zero for WeightWindows {}", id());
     warning(msg);
   }
-  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  lower_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
   lower_ww_.fill(-1);
-  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  upper_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
   upper_ww_.fill(-1);
 }
 
@@ -470,8 +476,10 @@ void WeightWindows::set_bounds(
 {
   check_bounds(lower_bounds, upper_bounds);
   auto shape = this->bounds_size();
-  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
-  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  lower_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  upper_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
 
   // Copy weight window values from input spans into the tensors
   std::copy(lower_bounds.data(), lower_bounds.data() + lower_ww_.size(),
@@ -485,8 +493,10 @@ void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
   this->check_bounds(lower_bounds);
 
   auto shape = this->bounds_size();
-  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
-  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  lower_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  upper_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
 
   // Copy lower bounds into both arrays, then scale upper by ratio
   std::copy(lower_bounds.data(), lower_bounds.data() + lower_ww_.size(),
@@ -1168,8 +1178,8 @@ extern "C" int openmc_weight_windows_set_bounds(int32_t index,
     return err;
 
   const auto& wws = variance_reduction::weight_windows[index];
-  wws->set_bounds(
-    span<const double>(lower_bounds, size), span<const double>(upper_bounds, size));
+  wws->set_bounds(span<const double>(lower_bounds, size),
+    span<const double>(upper_bounds, size));
   return 0;
 }
 

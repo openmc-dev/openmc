@@ -7,9 +7,9 @@
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
-#include "openmc/tensor.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/tensor.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {

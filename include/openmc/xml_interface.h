@@ -5,8 +5,8 @@
 #include <sstream> // for stringstream
 #include <string>
 
-#include "pugixml.hpp"
 #include "openmc/tensor.h"
+#include "pugixml.hpp"
 
 #include "openmc/position.h"
 #include "openmc/vector.h"

@@ -8,8 +8,8 @@
 #include "openmc/tallies/trigger.h"
 #include "openmc/vector.h"
 
-#include "pugixml.hpp"
 #include "openmc/tensor.h"
+#include "pugixml.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -219,8 +219,7 @@ extern vector<double> time_grid;
 
 namespace simulation {
 //! Global tallies (such as k-effective estimators)
-extern tensor::StaticTensor2D<double, N_GLOBAL_TALLIES, 3>
-  global_tallies;
+extern tensor::StaticTensor2D<double, N_GLOBAL_TALLIES, 3> global_tallies;
 
 //! Number of realizations for global tallies
 extern "C" int32_t n_realizations;

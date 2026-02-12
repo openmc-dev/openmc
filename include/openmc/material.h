@@ -5,8 +5,8 @@
 #include <unordered_map>
 
 #include "openmc/span.h"
-#include "pugixml.hpp"
 #include "openmc/tensor.h"
+#include "pugixml.hpp"
 #include <hdf5.h>
 
 #include "openmc/bremsstrahlung.h"

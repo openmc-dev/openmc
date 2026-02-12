@@ -476,7 +476,8 @@ void read_dataset(
   tensor.resize(tshape);
 
   // Read data from dataset
-  read_complex(dset, nullptr, reinterpret_cast<std::complex<double>*>(tensor.data()), indep);
+  read_complex(dset, nullptr,
+    reinterpret_cast<std::complex<double>*>(tensor.data()), indep);
 }
 
 void read_double(hid_t obj_id, const char* name, double* buffer, bool indep)

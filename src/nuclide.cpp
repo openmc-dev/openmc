@@ -403,17 +403,17 @@ void Nuclide::create_derived(
         continue;
 
       // Add contribution to total cross section
-      xs_[t].select(1, XS_TOTAL).slice(j, j + n) += xs;
+      xs_[t].slice(tensor::range(j, j + n), XS_TOTAL) += xs;
 
       // Add contribution to absorption cross section
       if (is_disappearance(rx->mt_)) {
-        xs_[t].select(1, XS_ABSORPTION).slice(j, j + n) += xs;
+        xs_[t].slice(tensor::range(j, j + n), XS_ABSORPTION) += xs;
       }
 
       if (is_fission(rx->mt_)) {
         fissionable_ = true;
-        xs_[t].select(1, XS_FISSION).slice(j, j + n) += xs;
-        xs_[t].select(1, XS_ABSORPTION).slice(j, j + n) += xs;
+        xs_[t].slice(tensor::range(j, j + n), XS_FISSION) += xs;
+        xs_[t].slice(tensor::range(j, j + n), XS_ABSORPTION) += xs;
 
         // Keep track of fission reactions
         if (t == 0) {

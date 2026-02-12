@@ -1007,7 +1007,7 @@ void reduce_tally_results()
       // Extract 2D view of the VALUE column from the 3D results tensor,
       // then copy into a contiguous array for MPI reduction
       const int val_idx = static_cast<int>(TallyResult::VALUE);
-      tensor::View<double> val_view = tally->results_.select(2, val_idx);
+      tensor::View<double> val_view = tally->results_.slice(tensor::all, tensor::all, val_idx);
       tensor::Tensor<double> values(val_view);
 
       tensor::Tensor<double> values_reduced(values.shape());
@@ -1033,7 +1033,7 @@ void reduce_tally_results()
   const int val_col = static_cast<int>(TallyResult::VALUE);
 
   // Copy VALUE column into contiguous array for MPI reduction
-  tensor::Tensor<double> gt_values(gt.select(1, val_col));
+  tensor::Tensor<double> gt_values(gt.slice(tensor::all, val_col));
   tensor::Tensor<double> gt_values_reduced({size_t {N_GLOBAL_TALLIES}});
 
   // Reduce contiguous data
@@ -1042,9 +1042,9 @@ void reduce_tally_results()
 
   // Transfer values on master and reset on other ranks
   if (mpi::master) {
-    gt.select(1, val_col) = gt_values_reduced;
+    gt.slice(tensor::all, val_col) = gt_values_reduced;
   } else {
-    gt.select(1, val_col) = 0.0;
+    gt.slice(tensor::all, val_col) = 0.0;
   }
 
   // We also need to determine the total starting weight of particles from the

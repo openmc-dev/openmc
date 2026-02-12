@@ -696,7 +696,7 @@ void Material::init_bremsstrahlung()
                    1.0595e-3 * std::pow(t, 5) + 7.0568e-5 * std::pow(t, 6) -
                    1.808e-6 * std::pow(t, 7));
         stopping_power_radiative(i) *= r;
-        tensor::View<double> dcs_i = dcs.select(0, i);
+        tensor::View<double> dcs_i = dcs.slice(i);
         dcs_i *= r;
       }
     }
@@ -1181,7 +1181,7 @@ void Material::add_nuclide(const std::string& name, double density)
 
   // Create copy of atom_density_ array with one extra entry
   tensor::Tensor<double> atom_density = tensor::zeros<double>({n});
-  atom_density.slice(0, n - 1) = atom_density_;
+  atom_density.slice(tensor::range(0, n - 1)) = atom_density_;
   atom_density(n - 1) = density;
   atom_density_ = atom_density;
 

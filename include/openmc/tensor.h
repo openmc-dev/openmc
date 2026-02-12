@@ -3,9 +3,13 @@
 //!
 //! Tensor<T> is the primary type: a dynamic-rank owning container that stores
 //! elements contiguously in row-major order.  View<T> is a lightweight
-//! non-owning reference into a Tensor's storage, returned by methods like
-//! select(), slice(), and flat().  StaticTensor2D<T,R,C> is a small
-//! stack-allocated 2D array used only for simulation::global_tallies.
+//! non-owning reference into a Tensor's storage, returned by the slice()
+//! method and flat().  StaticTensor2D<T,R,C> is a small stack-allocated 2D
+//! array used only for simulation::global_tallies.
+//!
+//! Slicing follows numpy conventions: each axis takes an index (rank-reducing),
+//! All (keep entire axis), or Range (keep sub-range).  For example,
+//! arr.slice(0, all, range(2, 5)) is equivalent to numpy's arr[0, :, 2:5].
 //!
 //! View is declared before Tensor because Tensor's methods return View objects.
 
@@ -56,10 +60,107 @@ template<typename T>
 using storage_type = typename storage_type_map<T>::type;
 
 //==============================================================================
+// Slice argument types
+//
+// Used with the variadic slice() method on Tensor, View, and StaticTensor2D.
+// Each argument corresponds to one axis: a plain integer fixes that axis at
+// a single index (rank-reducing), All keeps the entire axis, and Range keeps
+// a sub-range.
+//==============================================================================
+
+//! Keep an entire axis (equivalent to numpy's ':' or xtensor's xt::all())
+struct All {};
+constexpr All all {};
+
+//! Sub-range along an axis [start, end)
+struct Range {
+  size_t start;
+  size_t end; // SIZE_MAX means "to end of axis"
+};
+
+//! Create a Range [start, end)
+inline Range range(size_t start, size_t end) { return {start, end}; }
+
+//! Create a Range [start, <end of axis>)
+inline Range range(size_t start) { return {start, SIZE_MAX}; }
+
+namespace detail {
+
+//! Internal: normalized representation of a per-axis slice argument
+struct SliceArg {
+  enum Kind { INDEX, ALL, RANGE } kind;
+  size_t start;
+  size_t end;
+};
+
+inline SliceArg to_slice_arg(All) { return {SliceArg::ALL, 0, 0}; }
+inline SliceArg to_slice_arg(Range r) { return {SliceArg::RANGE, r.start, r.end}; }
+
+template<typename I>
+inline typename std::enable_if<
+  std::is_integral<I>::value || std::is_enum<I>::value, SliceArg>::type
+to_slice_arg(I i)
+{
+  return {SliceArg::INDEX, static_cast<size_t>(i), 0};
+}
+
+//! Result of a slice computation: pointer offset + new shape/strides
+struct SliceResult {
+  size_t ptr_offset;
+  vector<size_t> shape;
+  vector<size_t> strides;
+};
+
+//! Compute the result of applying slice arguments to shape/strides
+template<typename First, typename... Rest>
+SliceResult compute_slice(
+  const vector<size_t>& shape, const vector<size_t>& strides,
+  First first, Rest... rest)
+{
+  const size_t n = 1 + sizeof...(Rest);
+  SliceArg args[1 + sizeof...(Rest)] = {
+    to_slice_arg(first), to_slice_arg(rest)...};
+
+  size_t offset = 0;
+  vector<size_t> new_shape;
+  vector<size_t> new_strides;
+
+  for (size_t a = 0; a < n; ++a) {
+    switch (args[a].kind) {
+    case SliceArg::INDEX:
+      offset += args[a].start * strides[a];
+      break;
+    case SliceArg::ALL:
+      new_shape.push_back(shape[a]);
+      new_strides.push_back(strides[a]);
+      break;
+    case SliceArg::RANGE: {
+      offset += args[a].start * strides[a];
+      size_t end = (args[a].end == SIZE_MAX) ? shape[a] : args[a].end;
+      new_shape.push_back(end - args[a].start);
+      new_strides.push_back(strides[a]);
+      break;
+    }
+    }
+  }
+
+  // Trailing axes not covered by arguments are implicitly All.
+  // This matches numpy: a[i] on a 2D array returns a 1D row.
+  for (size_t a = n; a < shape.size(); ++a) {
+    new_shape.push_back(shape[a]);
+    new_strides.push_back(strides[a]);
+  }
+
+  return {offset, std::move(new_shape), std::move(new_strides)};
+}
+
+} // namespace detail
+
+//==============================================================================
 // View<T>: a non-owning N-dimensional view into a tensor's storage.
 //
 // Holds a base pointer, shape, and strides (in elements).  Supports arbitrary
-// rank: 1D views for rows/slices, 2D views via select(), etc.
+// rank and multi-axis slicing via the variadic slice() method.
 //==============================================================================
 
 template<typename T>
@@ -124,53 +225,23 @@ public:
   //--------------------------------------------------------------------------
   // View accessors
 
-  //! Fix one axis at a given index, returning an (N-1)-dimensional view
-  View<T> select(size_t axis, size_t idx)
+  //! Multi-axis slice.  Each argument corresponds to one axis and is either:
+  //!   - an integer (fixes that axis, rank-reducing)
+  //!   - All (keeps entire axis)
+  //!   - Range (keeps sub-range along that axis)
+  //! Example: v.slice(0, all, range(2, 5)) == numpy v[0, :, 2:5]
+  template<typename First, typename... Rest>
+  View<T> slice(First first, Rest... rest)
   {
-    vector<size_t> new_shape;
-    vector<size_t> new_strides;
-    new_shape.reserve(shape_.size() - 1);
-    new_strides.reserve(shape_.size() - 1);
-    T* new_data = data_ + idx * strides_[axis];
-    for (size_t d = 0; d < shape_.size(); ++d) {
-      if (d != axis) {
-        new_shape.push_back(shape_[d]);
-        new_strides.push_back(strides_[d]);
-      }
-    }
-    return {new_data, std::move(new_shape), std::move(new_strides)};
+    auto r = detail::compute_slice(shape_, strides_, first, rest...);
+    return {data_ + r.ptr_offset, std::move(r.shape), std::move(r.strides)};
   }
 
-  View<const T> select(size_t axis, size_t idx) const
+  template<typename First, typename... Rest>
+  View<const T> slice(First first, Rest... rest) const
   {
-    vector<size_t> new_shape;
-    vector<size_t> new_strides;
-    new_shape.reserve(shape_.size() - 1);
-    new_strides.reserve(shape_.size() - 1);
-    const T* new_data = data_ + idx * strides_[axis];
-    for (size_t d = 0; d < shape_.size(); ++d) {
-      if (d != axis) {
-        new_shape.push_back(shape_[d]);
-        new_strides.push_back(strides_[d]);
-      }
-    }
-    return {new_data, std::move(new_shape), std::move(new_strides)};
-  }
-
-  //! 1D subrange [start, end)
-  View<T> slice(size_t start, size_t end)
-  {
-    return {data_ + start * strides_[0], {end - start}, {strides_[0]}};
-  }
-  View<const T> slice(size_t start, size_t end) const
-  {
-    return {data_ + start * strides_[0], {end - start}, {strides_[0]}};
-  }
-
-  //! 1D subrange [start, size)
-  View<T> slice(size_t start)
-  {
-    return {data_ + start * strides_[0], {shape_[0] - start}, {strides_[0]}};
+    auto r = detail::compute_slice(shape_, strides_, first, rest...);
+    return {data_ + r.ptr_offset, std::move(r.shape), std::move(r.strides)};
   }
 
   //--------------------------------------------------------------------------
@@ -537,58 +608,27 @@ public:
   // View accessors
 
   //! Fix one axis at a given index, returning an (N-1)-dimensional view
-  View<stored_type> select(size_t axis, size_t idx)
+  //! Multi-axis slice.  Each argument corresponds to one axis and is either:
+  //!   - an integer (fixes that axis, rank-reducing)
+  //!   - All (keeps entire axis)
+  //!   - Range (keeps sub-range along that axis)
+  //! Example: t.slice(0, all, range(2, 5)) == numpy t[0, :, 2:5]
+  template<typename First, typename... Rest>
+  View<stored_type> slice(First first, Rest... rest)
   {
     auto strides = compute_strides();
-    vector<size_t> new_shape;
-    vector<size_t> new_strides;
-    new_shape.reserve(shape_.size() - 1);
-    new_strides.reserve(shape_.size() - 1);
-    stored_type* new_data = data_.data() + idx * strides[axis];
-    for (size_t d = 0; d < shape_.size(); ++d) {
-      if (d != axis) {
-        new_shape.push_back(shape_[d]);
-        new_strides.push_back(strides[d]);
-      }
-    }
-    return {new_data, std::move(new_shape), std::move(new_strides)};
+    auto r = detail::compute_slice(shape_, strides, first, rest...);
+    return {data_.data() + r.ptr_offset, std::move(r.shape),
+      std::move(r.strides)};
   }
 
-  View<const stored_type> select(size_t axis, size_t idx) const
+  template<typename First, typename... Rest>
+  View<const stored_type> slice(First first, Rest... rest) const
   {
     auto strides = compute_strides();
-    vector<size_t> new_shape;
-    vector<size_t> new_strides;
-    new_shape.reserve(shape_.size() - 1);
-    new_strides.reserve(shape_.size() - 1);
-    const stored_type* new_data = data_.data() + idx * strides[axis];
-    for (size_t d = 0; d < shape_.size(); ++d) {
-      if (d != axis) {
-        new_shape.push_back(shape_[d]);
-        new_strides.push_back(strides[d]);
-      }
-    }
-    return {new_data, std::move(new_shape), std::move(new_strides)};
-  }
-
-  //! Subrange of a 1D tensor
-  View<stored_type> slice(size_t start, size_t end)
-  {
-    return {data_.data() + start, {end - start}, {size_t(1)}};
-  }
-  View<const stored_type> slice(size_t start, size_t end) const
-  {
-    return {data_.data() + start, {end - start}, {size_t(1)}};
-  }
-
-  //! Subrange to end of a 1D tensor
-  View<stored_type> slice(size_t start)
-  {
-    return {data_.data() + start, {data_.size() - start}, {size_t(1)}};
-  }
-  View<const stored_type> slice(size_t start) const
-  {
-    return {data_.data() + start, {data_.size() - start}, {size_t(1)}};
+    auto r = detail::compute_slice(shape_, strides, first, rest...);
+    return {data_.data() + r.ptr_offset, std::move(r.shape),
+      std::move(r.strides)};
   }
 
   //! Flat 1D view of all elements
@@ -955,29 +995,22 @@ public:
   //--------------------------------------------------------------------------
   // View accessors
 
-  //! Select along an axis: select(0, i) returns row i, select(1, j) returns
-  //! column j.
-  template<typename I>
-  View<T> select(size_t axis, I index)
+  //! Multi-axis slice (same interface as Tensor/View).
+  template<typename First, typename... Rest>
+  View<T> slice(First first, Rest... rest)
   {
-    size_t idx = static_cast<size_t>(index);
-    if (axis == 0) {
-      // Row: contiguous, stride 1
-      return {data_ + idx * C, {C}, {size_t(1)}};
-    } else {
-      // Column: strided, stride C
-      return {data_ + idx, {R}, {size_t(C)}};
-    }
+    vector<size_t> sh = {R, C};
+    vector<size_t> st = {C, 1};
+    auto r = detail::compute_slice(sh, st, first, rest...);
+    return {data_ + r.ptr_offset, std::move(r.shape), std::move(r.strides)};
   }
-  template<typename I>
-  View<const T> select(size_t axis, I index) const
+  template<typename First, typename... Rest>
+  View<const T> slice(First first, Rest... rest) const
   {
-    size_t idx = static_cast<size_t>(index);
-    if (axis == 0) {
-      return {data_ + idx * C, {C}, {size_t(1)}};
-    } else {
-      return {data_ + idx, {R}, {size_t(C)}};
-    }
+    vector<size_t> sh = {R, C};
+    vector<size_t> st = {C, 1};
+    auto r = detail::compute_slice(sh, st, first, rest...);
+    return {data_ + r.ptr_offset, std::move(r.shape), std::move(r.strides)};
   }
 
   //! Flat view (1D, contiguous)

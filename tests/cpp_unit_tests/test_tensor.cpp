@@ -475,7 +475,7 @@ TEST_CASE("Tensor<bool> storage")
 // View (via Tensor accessors)
 // ============================================================================
 
-TEST_CASE("Tensor select axis 0 (2D)")
+TEST_CASE("Tensor slice axis 0 (2D)")
 {
   // [[1, 2, 3], [4, 5, 6]]
   Tensor<int> t({2, 3}, 0);
@@ -484,13 +484,13 @@ TEST_CASE("Tensor select axis 0 (2D)")
     for (size_t j = 0; j < 3; ++j)
       t(i, j) = v++;
 
-  auto r0 = t.select(0, 0);
+  auto r0 = t.slice(0);
   REQUIRE(r0.size() == 3);
   REQUIRE(r0[0] == 1);
   REQUIRE(r0[1] == 2);
   REQUIRE(r0[2] == 3);
 
-  auto r1 = t.select(0, 1);
+  auto r1 = t.slice(1);
   REQUIRE(r1[0] == 4);
   REQUIRE(r1[1] == 5);
   REQUIRE(r1[2] == 6);
@@ -500,7 +500,7 @@ TEST_CASE("Tensor select axis 0 (2D)")
   REQUIRE(t(0, 1) == 99);
 }
 
-TEST_CASE("Tensor select axis 1 (2D)")
+TEST_CASE("Tensor slice axis 1 (2D)")
 {
   // [[1, 2], [3, 4], [5, 6]]
   Tensor<int> t({3, 2}, 0);
@@ -511,13 +511,13 @@ TEST_CASE("Tensor select axis 1 (2D)")
   t(2, 0) = 5;
   t(2, 1) = 6;
 
-  auto c0 = t.select(1, 0);
+  auto c0 = t.slice(all, 0);
   REQUIRE(c0.size() == 3);
   REQUIRE(c0[0] == 1);
   REQUIRE(c0[1] == 3);
   REQUIRE(c0[2] == 5);
 
-  auto c1 = t.select(1, 1);
+  auto c1 = t.slice(all, 1);
   REQUIRE(c1[0] == 2);
   REQUIRE(c1[1] == 4);
   REQUIRE(c1[2] == 6);
@@ -527,20 +527,20 @@ TEST_CASE("Tensor select axis 1 (2D)")
   REQUIRE(t(0, 1) == 77);
 }
 
-TEST_CASE("Tensor slice view")
+TEST_CASE("Tensor slice with range")
 {
   Tensor<int> t({6}, 0);
   t = {10, 20, 30, 40, 50, 60};
 
-  // slice(start, end)
-  auto s = t.slice(1, 4);
+  // range(start, end)
+  auto s = t.slice(range(1, 4));
   REQUIRE(s.size() == 3);
   REQUIRE(s[0] == 20);
   REQUIRE(s[1] == 30);
   REQUIRE(s[2] == 40);
 
-  // slice(start) to end
-  auto s2 = t.slice(3);
+  // range(start) to end
+  auto s2 = t.slice(range(3));
   REQUIRE(s2.size() == 3);
   REQUIRE(s2[0] == 40);
   REQUIRE(s2[2] == 60);
@@ -564,7 +564,7 @@ TEST_CASE("Tensor flat view")
   REQUIRE(f[5] == 6);
 }
 
-TEST_CASE("Tensor select (general axis)")
+TEST_CASE("Tensor slice on 3D")
 {
   // 2x3x4 tensor
   Tensor<int> t({2, 3, 4}, 0);
@@ -574,21 +574,60 @@ TEST_CASE("Tensor select (general axis)")
       for (size_t k = 0; k < 4; ++k)
         t(i, j, k) = v++;
 
-  // select(0, 1) -> fix first axis at 1 -> 3x4 view
-  auto s = t.select(0, 1);
+  // slice(1) -> fix axis 0 at 1 -> 3x4 view
+  auto s = t.slice(1);
   REQUIRE(s.size() == 12);
   // t(1,0,0) = 12, t(1,0,1) = 13, ...
   REQUIRE(s(0, 0) == 12);
   REQUIRE(s(0, 1) == 13);
   REQUIRE(s(2, 3) == 23);
 
-  // select(1, 2) -> fix second axis at 2 -> 2x4 view
-  auto s2 = t.select(1, 2);
+  // slice(all, 2) -> fix axis 1 at 2 -> 2x4 view
+  auto s2 = t.slice(all, 2);
   REQUIRE(s2.size() == 8);
   // t(0,2,0)=8, t(0,2,1)=9, t(1,2,0)=20
   REQUIRE(s2(0, 0) == 8);
   REQUIRE(s2(0, 1) == 9);
   REQUIRE(s2(1, 0) == 20);
+}
+
+TEST_CASE("Tensor multi-axis slice")
+{
+  // 2x3x4 tensor with sequential values
+  Tensor<int> t({2, 3, 4}, 0);
+  int v = 0;
+  for (size_t i = 0; i < 2; ++i)
+    for (size_t j = 0; j < 3; ++j)
+      for (size_t k = 0; k < 4; ++k)
+        t(i, j, k) = v++;
+
+  // slice(1, 2) -> fix axes 0 and 1 -> 1D view of 4 elements
+  // Equivalent to numpy t[1, 2, :] -> t(1,2,0..3) = [20, 21, 22, 23]
+  auto s = t.slice(1, 2);
+  REQUIRE(s.size() == 4);
+  REQUIRE(s[0] == 20);
+  REQUIRE(s[1] == 21);
+  REQUIRE(s[3] == 23);
+
+  // slice(all, 1, range(1, 3)) -> keep axis 0, fix axis 1, range on axis 2
+  // Equivalent to numpy t[:, 1, 1:3]
+  // t(0,1,1)=5, t(0,1,2)=6, t(1,1,1)=17, t(1,1,2)=18
+  auto s2 = t.slice(all, 1, range(1, 3));
+  REQUIRE(s2.size() == 4);
+  REQUIRE(s2.ndim() == 2);
+  REQUIRE(s2(0, 0) == 5);
+  REQUIRE(s2(0, 1) == 6);
+  REQUIRE(s2(1, 0) == 17);
+  REQUIRE(s2(1, 1) == 18);
+
+  // slice(0, range(0, 2)) -> fix axis 0 at 0, range on axis 1
+  // Equivalent to numpy t[0, 0:2, :] -> shape (2, 4)
+  auto s3 = t.slice(0, range(0, 2));
+  REQUIRE(s3.ndim() == 2);
+  REQUIRE(s3.shape(0) == 2);
+  REQUIRE(s3.shape(1) == 4);
+  REQUIRE(s3(0, 0) == 0);  // t(0,0,0)
+  REQUIRE(s3(1, 3) == 7);  // t(0,1,3)
 }
 
 // ============================================================================
@@ -598,7 +637,7 @@ TEST_CASE("Tensor select (general axis)")
 TEST_CASE("View scalar assignment (fill)")
 {
   Tensor<double> t({2, 3}, 0.0);
-  auto r = t.select(0, 0);
+  auto r = t.slice(0);
   r = 7.0;
   REQUIRE(t(0, 0) == 7.0);
   REQUIRE(t(0, 1) == 7.0);
@@ -609,7 +648,7 @@ TEST_CASE("View scalar assignment (fill)")
 TEST_CASE("View initializer_list assignment")
 {
   Tensor<double> t({2, 3}, 0.0);
-  auto r = t.select(0, 1);
+  auto r = t.slice(1);
   r = {10.0, 20.0, 30.0};
   REQUIRE(t(1, 0) == 10.0);
   REQUIRE(t(1, 1) == 20.0);
@@ -619,11 +658,11 @@ TEST_CASE("View initializer_list assignment")
 TEST_CASE("View copy assignment (deep copy)")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.select(0, 0) = {1.0, 2.0, 3.0};
-  t.select(0, 1) = {4.0, 5.0, 6.0};
+  t.slice(0) = {1.0, 2.0, 3.0};
+  t.slice(1) = {4.0, 5.0, 6.0};
 
   // Copy row 0 into row 1
-  t.select(0, 1) = t.select(0, 0);
+  t.slice(1) = t.slice(0);
   REQUIRE(t(1, 0) == 1.0);
   REQUIRE(t(1, 1) == 2.0);
   REQUIRE(t(1, 2) == 3.0);
@@ -632,13 +671,13 @@ TEST_CASE("View copy assignment (deep copy)")
 TEST_CASE("View compound operators")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.select(0, 0) = {1.0, 2.0, 3.0};
+  t.slice(0) = {1.0, 2.0, 3.0};
 
-  t.select(0, 0) *= 2.0;
+  t.slice(0) *= 2.0;
   REQUIRE(t(0, 0) == 2.0);
   REQUIRE(t(0, 1) == 4.0);
 
-  t.select(0, 0) /= 2.0;
+  t.slice(0) /= 2.0;
   REQUIRE(t(0, 0) == 1.0);
   REQUIRE(t(0, 1) == 2.0);
 }
@@ -649,7 +688,7 @@ TEST_CASE("View assignment from tensor")
   Tensor<double> vals({3}, 0.0);
   vals = {7.0, 8.0, 9.0};
 
-  t.select(0, 1) = vals;
+  t.slice(1) = vals;
   REQUIRE(t(1, 0) == 7.0);
   REQUIRE(t(1, 1) == 8.0);
   REQUIRE(t(1, 2) == 9.0);
@@ -658,11 +697,11 @@ TEST_CASE("View assignment from tensor")
 TEST_CASE("View compound addition from tensor")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.select(0, 0) = {1.0, 2.0, 3.0};
+  t.slice(0) = {1.0, 2.0, 3.0};
   Tensor<double> vals({3}, 0.0);
   vals = {10.0, 20.0, 30.0};
 
-  t.select(0, 0) += vals;
+  t.slice(0) += vals;
   REQUIRE(t(0, 0) == 11.0);
   REQUIRE(t(0, 1) == 22.0);
   REQUIRE(t(0, 2) == 33.0);
@@ -671,20 +710,20 @@ TEST_CASE("View compound addition from tensor")
 TEST_CASE("View sum")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.select(0, 0) = {1.0, 2.0, 3.0};
-  t.select(0, 1) = {4.0, 5.0, 6.0};
+  t.slice(0) = {1.0, 2.0, 3.0};
+  t.slice(1) = {4.0, 5.0, 6.0};
 
-  REQUIRE(t.select(0, 0).sum() == 6.0);
-  REQUIRE(t.select(0, 1).sum() == 15.0);
+  REQUIRE(t.slice(0).sum() == 6.0);
+  REQUIRE(t.slice(1).sum() == 15.0);
 }
 
 TEST_CASE("View iteration")
 {
   Tensor<int> t({2, 3}, 0);
-  t.select(0, 0) = {1, 2, 3};
+  t.slice(0) = {1, 2, 3};
 
   int sum = 0;
-  for (auto val : t.select(0, 0))
+  for (auto val : t.slice(0))
     sum += val;
   REQUIRE(sum == 6);
 }
@@ -694,8 +733,8 @@ TEST_CASE("View sub-slice")
   Tensor<int> t({6}, 0);
   t = {10, 20, 30, 40, 50, 60};
 
-  auto s = t.slice(1, 5);  // [20, 30, 40, 50]
-  auto ss = s.slice(1, 3); // [30, 40]
+  auto s = t.slice(range(1, 5));   // [20, 30, 40, 50]
+  auto ss = s.slice(range(1, 3));  // [30, 40]
   REQUIRE(ss.size() == 2);
   REQUIRE(ss[0] == 30);
   REQUIRE(ss[1] == 40);
@@ -704,10 +743,10 @@ TEST_CASE("View sub-slice")
 TEST_CASE("Tensor from View")
 {
   Tensor<double> t({2, 3}, 0.0);
-  t.select(0, 0) = {1.0, 2.0, 3.0};
+  t.slice(0) = {1.0, 2.0, 3.0};
 
   // Construct a new tensor from a view (copies data)
-  Tensor<double> t2(t.select(0, 0));
+  Tensor<double> t2(t.slice(0));
   REQUIRE(t2.size() == 3);
   REQUIRE(t2[0] == 1.0);
   REQUIRE(t2[2] == 3.0);
@@ -730,11 +769,11 @@ TEST_CASE("Const tensor produces const views")
       t(i, j) = v++;
 
   const Tensor<double>& ct = t;
-  auto r = ct.select(0, 0); // View<const double>
+  auto r = ct.slice(0); // View<const double>
   REQUIRE(r[0] == 1.0);
   REQUIRE(r[2] == 3.0);
 
-  auto c = ct.select(1, 1);
+  auto c = ct.slice(all, 1);
   REQUIRE(c[0] == 2.0);
   REQUIRE(c[1] == 5.0);
 }
@@ -777,21 +816,21 @@ TEST_CASE("StaticTensor2D iteration")
   REQUIRE(sum == 6);
 }
 
-TEST_CASE("StaticTensor2D select")
+TEST_CASE("StaticTensor2D slice")
 {
   StaticTensor2D<int, 3, 2> t;
   t(0, 0) = 1; t(0, 1) = 2;
   t(1, 0) = 3; t(1, 1) = 4;
   t(2, 0) = 5; t(2, 1) = 6;
 
-  // select(0, i) = row i
-  auto r1 = t.select(0, 1);
+  // slice(1) = row 1 (fix axis 0 at 1)
+  auto r1 = t.slice(1);
   REQUIRE(r1.size() == 2);
   REQUIRE(r1[0] == 3);
   REQUIRE(r1[1] == 4);
 
-  // select(1, j) = column j
-  auto c0 = t.select(1, 0);
+  // slice(all, 0) = column 0 (fix axis 1 at 0)
+  auto c0 = t.slice(all, 0);
   REQUIRE(c0.size() == 3);
   REQUIRE(c0[0] == 1);
   REQUIRE(c0[1] == 3);

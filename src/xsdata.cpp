@@ -134,7 +134,7 @@ void XsData::fission_vector_beta_from_hdf5(
 
   // Normalize chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
-    tensor::View<double> row = temp_chi.select(0, a);
+    tensor::View<double> row = temp_chi.slice(a);
     row /= row.sum();
   }
 
@@ -142,14 +142,14 @@ void XsData::fission_vector_beta_from_hdf5(
   // spectrum is independent of the incoming neutron energy
   for (size_t a = 0; a < n_ang; a++)
     for (size_t gin = 0; gin < n_g_; gin++)
-      chi_prompt.select(0, a).select(0, gin) = temp_chi.select(0, a);
+      chi_prompt.slice(a, gin) = temp_chi.slice(a);
 
   // Same spectrum for delayed neutrons, replicated across delayed groups
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++)
-        chi_delayed.select(0, a).select(0, d).select(0, gin) =
-          temp_chi.select(0, a);
+        chi_delayed.slice(a, d, gin) =
+          temp_chi.slice(a);
 
   // Get nu-fission
   tensor::Tensor<double> temp_nufiss({n_ang, n_g_}, 0.);
@@ -208,7 +208,7 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Normalize prompt chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
-    tensor::View<double> row = temp_chi_p.select(0, a);
+    tensor::View<double> row = temp_chi_p.slice(a);
     row /= row.sum();
   }
 
@@ -220,21 +220,21 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // angle and delayed group
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++) {
-      tensor::View<double> row = temp_chi_d.select(0, a).select(0, d);
+      tensor::View<double> row = temp_chi_d.slice(a, d);
       row /= row.sum();
     }
 
   // Replicate the prompt spectrum across all incoming groups
   for (size_t a = 0; a < n_ang; a++)
     for (size_t gin = 0; gin < n_g_; gin++)
-      chi_prompt.select(0, a).select(0, gin) = temp_chi_p.select(0, a);
+      chi_prompt.slice(a, gin) = temp_chi_p.slice(a);
 
   // Replicate the delayed spectrum across all incoming groups
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++)
-        chi_delayed.select(0, a).select(0, d).select(0, gin) =
-          temp_chi_d.select(0, a).select(0, d);
+        chi_delayed.slice(a, d, gin) =
+          temp_chi_d.slice(a, d);
 
   // Get prompt and delayed nu-fission directly
   read_nd_tensor(xsdata_grp, "prompt-nu-fission", prompt_nu_fission, true);
@@ -252,14 +252,14 @@ void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Normalize chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
-    tensor::View<double> row = temp_chi.select(0, a);
+    tensor::View<double> row = temp_chi.slice(a);
     row /= row.sum();
   }
 
   // Replicate the energy spectrum across all incoming groups
   for (size_t a = 0; a < n_ang; a++)
     for (size_t gin = 0; gin < n_g_; gin++)
-      chi_prompt.select(0, a).select(0, gin) = temp_chi.select(0, a);
+      chi_prompt.slice(a, gin) = temp_chi.slice(a);
 
   // Get nu-fission directly
   read_nd_tensor(xsdata_grp, "nu-fission", prompt_nu_fission, true);
@@ -358,7 +358,7 @@ void XsData::fission_matrix_beta_from_hdf5(
   // Normalize chi_prompt so it sums to 1 over outgoing groups
   for (size_t a = 0; a < n_ang; a++)
     for (size_t gin = 0; gin < n_g_; gin++) {
-      tensor::View<double> row = chi_prompt.select(0, a).select(0, gin);
+      tensor::View<double> row = chi_prompt.slice(a, gin);
       row /= row.sum();
     }
 
@@ -367,7 +367,7 @@ void XsData::fission_matrix_beta_from_hdf5(
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++) {
         tensor::View<double> row =
-          chi_delayed.select(0, a).select(0, d).select(0, gin);
+          chi_delayed.slice(a, d, gin);
         row /= row.sum();
       }
 }
@@ -558,8 +558,8 @@ void XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
       final_scatter_format == AngleDistributionType::TABULAR) {
     for (size_t a = 0; a < n_ang; a++) {
       ScattDataLegendre legendre_scatt;
-      tensor::Tensor<int> in_gmin(gmin.select(0, a));
-      tensor::Tensor<int> in_gmax(gmax.select(0, a));
+      tensor::Tensor<int> in_gmin(gmin.slice(a));
+      tensor::Tensor<int> in_gmax(gmax.slice(a));
 
       legendre_scatt.init(in_gmin, in_gmax, temp_mult[a], input_scatt[a]);
 
@@ -573,8 +573,8 @@ void XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
     // We are sticking with the current representation
     // Initialize the ScattData object with this data
     for (size_t a = 0; a < n_ang; a++) {
-      tensor::Tensor<int> in_gmin(gmin.select(0, a));
-      tensor::Tensor<int> in_gmax(gmax.select(0, a));
+      tensor::Tensor<int> in_gmin(gmin.slice(a));
+      tensor::Tensor<int> in_gmax(gmax.slice(a));
       scatter[a]->init(in_gmin, in_gmax, temp_mult[a], input_scatt[a]);
     }
   }
@@ -638,7 +638,7 @@ void XsData::combine(
     size_t n_g = chi_prompt.shape(1);
     for (size_t a = 0; a < n_ang; a++)
       for (size_t gin = 0; gin < n_g; gin++) {
-        tensor::View<double> row = chi_prompt.select(0, a).select(0, gin);
+        tensor::View<double> row = chi_prompt.slice(a, gin);
         row /= row.sum();
       }
   }
@@ -651,7 +651,7 @@ void XsData::combine(
       for (size_t d = 0; d < n_dg; d++)
         for (size_t gin = 0; gin < n_g; gin++) {
           tensor::View<double> row =
-            chi_delayed.select(0, a).select(0, d).select(0, gin);
+            chi_delayed.slice(a, d, gin);
           row /= row.sum();
         }
   }

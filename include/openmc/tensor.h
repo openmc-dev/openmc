@@ -115,7 +115,7 @@ public:
   const T& operator[](size_t i) const { return data_[flat_to_offset(i)]; }
 
   //--------------------------------------------------------------------------
-  // Shape queries
+  // Accessors
 
   size_t size() const
   {
@@ -132,7 +132,7 @@ public:
   const T* data() const { return data_; }
 
   //--------------------------------------------------------------------------
-  // Sub-view methods
+  // View accessors
 
   //! Fix one axis at a given index, returning an (N-1)-dimensional view
   View<T> select(size_t axis, size_t idx)
@@ -222,9 +222,6 @@ public:
   //! Assignment from Tensor (forward-declared, defined after Tensor)
   template<typename U>
   View& operator=(const Tensor<U>& other);
-
-  //--------------------------------------------------------------------------
-  // Compound assignment operators
 
   //! Compound addition from Tensor (forward-declared, defined after Tensor)
   template<typename U>
@@ -683,8 +680,9 @@ public:
   }
 
   //--------------------------------------------------------------------------
-  // Reductions
+  // Reductions and transforms
 
+  //! Sum of all elements
   T sum() const
   {
     T s = T(0);
@@ -696,6 +694,7 @@ public:
   //! Sum along an axis, reducing rank by 1 (defined out-of-line below)
   Tensor<T> sum(size_t axis) const;
 
+  //! Product of all elements
   T prod() const
   {
     T p = T(1);
@@ -704,6 +703,7 @@ public:
     return p;
   }
 
+  //! True if any element is nonzero
   bool any() const
   {
     for (size_t i = 0; i < data_.size(); ++i)
@@ -712,6 +712,7 @@ public:
     return false;
   }
 
+  //! True if all elements are nonzero
   bool all() const
   {
     for (size_t i = 0; i < data_.size(); ++i)
@@ -720,6 +721,7 @@ public:
     return true;
   }
 
+  //! Flat index of the minimum element
   size_t argmin() const
   {
     return static_cast<size_t>(
@@ -727,9 +729,7 @@ public:
         std::min_element(data_.data(), data_.data() + data_.size())));
   }
 
-  //--------------------------------------------------------------------------
-  // Flip
-
+  //! Reverse element order along an axis (e.g. flip(0) reverses rows)
   Tensor flip(size_t axis) const
   {
     size_t outer_size = 1;
@@ -750,7 +750,7 @@ public:
   }
 
   //--------------------------------------------------------------------------
-  // Compound assignment operators (scalar)
+  // Operators
 
   Tensor& operator+=(T val)
   {
@@ -776,19 +776,12 @@ public:
       x /= val;
     return *this;
   }
-
-  //--------------------------------------------------------------------------
-  // Compound assignment operators (tensor)
-
   Tensor& operator+=(const Tensor& o)
   {
     for (size_t i = 0; i < data_.size(); ++i)
       data_[i] += o.data_[i];
     return *this;
   }
-
-  //--------------------------------------------------------------------------
-  // Element-wise binary operators (tensor op tensor)
 
   Tensor operator+(const Tensor& o) const
   {
@@ -812,9 +805,6 @@ public:
     return r;
   }
 
-  //--------------------------------------------------------------------------
-  // Element-wise binary operators (tensor op scalar)
-
   Tensor operator+(T val) const
   {
     Tensor r(shape_);
@@ -836,9 +826,6 @@ public:
       r.data_[i] = data_[i] * val;
     return r;
   }
-
-  //--------------------------------------------------------------------------
-  // Element-wise comparison operators (return Tensor<bool>)
 
   Tensor<bool> operator<=(T val) const
   {

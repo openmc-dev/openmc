@@ -273,25 +273,30 @@ option::
   settings.uniform_source_sampling = True
 
 When source strengths represent physical activity rates in Bq, the
-:attr:`Settings.activity_based_timing` attribute can be used to assign each
-particle a timestamp from an independent per-source Poisson process. Each
-source's strength is treated as its decay rate, and particles receive ordered
-timestamps with exponentially-distributed inter-arrival times::
+:class:`openmc.stats.PoissonProcess` distribution can be assigned to a source's
+time distribution to generate per-source Poisson timestamps. Each source
+generates an independent ordered sequence of exponentially-distributed
+inter-arrival times at the given rate::
 
   src1 = openmc.IndependentSource()
   src1.strength = 1.0e6   # 1 MBq
+  src1.time = openmc.stats.PoissonProcess(rate=1.0e6)
   ...
 
   src2 = openmc.IndependentSource()
   src2.strength = 5.0e5   # 0.5 MBq
+  src2.time = openmc.stats.PoissonProcess(rate=5.0e5)
   ...
 
   settings.source = [src1, src2]
-  settings.activity_based_timing = True
 
-This is only used in fixed-source mode. The assigned timestamps override any
-time distribution set on the source and can be tallied using
-:class:`openmc.TimeFilter`.
+As a convenience, :meth:`IndependentSource.set_activity` sets the time
+distribution to a Poisson process using the source strength as the rate::
+
+  src1.set_activity()  # uses src1.strength as rate
+
+This is only used in fixed-source mode. The assigned timestamps can be tallied
+using :class:`openmc.TimeFilter`.
 
 Additionally, sampling from an :class:`openmc.IndependentSource` may be biased
 for local or global variance reduction by modifying the

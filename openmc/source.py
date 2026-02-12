@@ -412,6 +412,19 @@ class IndependentSource(SourceBase):
     def particle(self, particle):
         self._particle = ParticleType(particle)
 
+    def set_activity(self, rate=None):
+        """Set time distribution to a Poisson process.
+
+        Parameters
+        ----------
+        rate : float, optional
+            Activity rate in Bq. If not provided, uses the source strength.
+
+        """
+        if rate is None:
+            rate = self.strength
+        self.time = openmc.stats.PoissonProcess(rate)
+
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
 

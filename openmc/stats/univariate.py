@@ -113,6 +113,8 @@ class Univariate(EqualityMixin, ABC):
             return Legendre.from_xml_element(elem)
         elif distribution == 'mixture':
             return Mixture.from_xml_element(elem)
+        elif distribution == 'poisson':
+            return PoissonProcess.from_xml_element(elem)
 
     @abstractmethod
     def _sample_unbiased(self, n_samples: int = 1, seed: int | None = None):
@@ -1946,6 +1948,92 @@ def combine_distributions(
                            dist.interpolation, bias=dist.bias)
         else:
             return Mixture(cont_probs, cont_dists)
+
+
+class PoissonProcess(Univariate):
+    """Poisson process distribution for activity-based timing.
+
+    Samples inter-arrival times from an exponential distribution with rate
+    parameter ``rate`` (in Bq). Each sample returns ``(-1/rate) * ln(1-U)``
+    where ``U`` is a uniform random variate.
+
+    Parameters
+    ----------
+    rate : float
+        Activity rate in Bq (decays per second)
+
+    Attributes
+    ----------
+    rate : float
+        Activity rate in Bq
+
+    """
+
+    def __init__(self, rate: float):
+        self.rate = rate
+        super().__init__(bias=None)
+
+    def __len__(self):
+        return 1
+
+    @property
+    def rate(self):
+        return self._rate
+
+    @rate.setter
+    def rate(self, rate):
+        cv.check_type('Poisson process rate', rate, Real)
+        cv.check_greater_than('Poisson process rate', rate, 0.0)
+        self._rate = rate
+
+    @property
+    def support(self):
+        return (0.0, float('inf'))
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        rng = np.random.RandomState(seed)
+        return rng.exponential(1.0 / self.rate, n_samples)
+
+    def evaluate(self, x):
+        x = np.asarray(x, dtype=float)
+        return np.where(x >= 0, self.rate * np.exp(-self.rate * x), 0.0)
+
+    def to_xml_element(self, element_name: str):
+        """Return XML representation of the Poisson process distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing Poisson process distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "poisson")
+        element.set("parameters", str(self.rate))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate Poisson process distribution from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.PoissonProcess
+            Poisson process distribution generated from XML element
+
+        """
+        params = get_elem_list(elem, "parameters", float)
+        return cls(params[0])
 
 
 def check_bias_support(parent: Univariate, bias: Univariate | None):

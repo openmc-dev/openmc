@@ -394,6 +394,27 @@ private:
   double integral_;       //!< Integral of distribution
 };
 
+//==============================================================================
+//! Poisson process distribution (exponential inter-arrival times)
+//==============================================================================
+
+class PoissonProcess : public Distribution {
+public:
+  explicit PoissonProcess(pugi::xml_node node);
+  PoissonProcess(double rate) : rate_ {rate} {};
+
+  double rate() const { return rate_; }
+
+protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  double sample_unbiased(uint64_t* seed) const override;
+
+private:
+  double rate_; //!< Activity rate in Bq
+};
+
 } // namespace openmc
 
 #endif // OPENMC_DISTRIBUTION_H

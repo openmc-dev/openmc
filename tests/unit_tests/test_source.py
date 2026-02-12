@@ -125,20 +125,44 @@ def test_source_dlopen():
     assert 'library' in elem.attrib
 
 
-def test_activity_based_timing_setting_roundtrip():
-    """Test XML round-trip for activity_based_timing setting."""
-    settings = openmc.Settings()
-    settings.activity_based_timing = True
-    settings.particles = 100
-    settings.batches = 1
-    settings.run_mode = 'fixed source'
-    elem = settings.to_xml_element()
-    text = elem.find('activity_based_timing')
-    assert text is not None
-    assert text.text == 'true'
+def test_poisson_process_xml_roundtrip():
+    """Test XML round-trip for PoissonProcess distribution."""
+    rate = 1.0e6
+    dist = openmc.stats.PoissonProcess(rate)
+    elem = dist.to_xml_element('time')
 
-    new_settings = openmc.Settings.from_xml_element(elem)
-    assert new_settings.activity_based_timing is True
+    assert elem.get('type') == 'poisson'
+    assert float(elem.get('parameters')) == rate
+
+    new_dist = openmc.stats.Univariate.from_xml_element(elem)
+    assert isinstance(new_dist, openmc.stats.PoissonProcess)
+    assert new_dist.rate == rate
+
+
+def test_poisson_process_on_source():
+    """Test setting PoissonProcess as time distribution on a source."""
+    src = openmc.IndependentSource(strength=1.0e6)
+    src.time = openmc.stats.PoissonProcess(1.0e6)
+    elem = src.to_xml_element()
+
+    new_src = openmc.IndependentSource.from_xml_element(elem)
+    assert isinstance(new_src.time, openmc.stats.PoissonProcess)
+    assert new_src.time.rate == 1.0e6
+
+
+def test_set_activity():
+    """Test IndependentSource.set_activity() convenience method."""
+    # Using explicit rate
+    src = openmc.IndependentSource(strength=500.0)
+    src.set_activity(rate=1.0e6)
+    assert isinstance(src.time, openmc.stats.PoissonProcess)
+    assert src.time.rate == 1.0e6
+
+    # Using strength as default rate
+    src2 = openmc.IndependentSource(strength=2.0e6)
+    src2.set_activity()
+    assert isinstance(src2.time, openmc.stats.PoissonProcess)
+    assert src2.time.rate == 2.0e6
 
 
 def test_source_xml_roundtrip():

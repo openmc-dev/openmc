@@ -1418,18 +1418,6 @@ particles.
 
   *Default*: False
 
--------------------------------------
-``<activity_based_timing>`` Element
--------------------------------------
-
-The ``<activity_based_timing>`` element indicates whether to treat each source's
-strength as an activity rate in Bq and assign each particle a timestamp from a
-per-source Poisson process. When enabled, each source generates an independent
-ordered sequence of exponentially-distributed inter-arrival times at rate equal
-to its strength. This is only used in fixed-source mode.
-
-  *Default*: False
-
 ------------------------
 ``<ufs_mesh>`` Element
 ------------------------

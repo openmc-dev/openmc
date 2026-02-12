@@ -327,9 +327,6 @@ class Settings:
     uniform_source_sampling : bool
         Whether to sampling among multiple sources uniformly, applying their
         strengths as weights to sampled particles.
-    activity_based_timing : bool
-        Whether to use source strengths as activity rates (Bq) for generating
-        per-source Poisson timestamps assigned to each particle.
     ufs_mesh : openmc.RegularMesh
         Mesh to be used for redistributing source sites via the uniform fission
         site (UFS) method.
@@ -396,7 +393,6 @@ class Settings:
         self._plot_seed = None
         self._ptables = None
         self._uniform_source_sampling = None
-        self._activity_based_timing = None
         self._seed = None
         self._stride = None
         self._survival_biasing = None
@@ -679,15 +675,6 @@ class Settings:
     def uniform_source_sampling(self, uniform_source_sampling: bool):
         cv.check_type('strength as weights', uniform_source_sampling, bool)
         self._uniform_source_sampling = uniform_source_sampling
-
-    @property
-    def activity_based_timing(self) -> bool:
-        return self._activity_based_timing
-
-    @activity_based_timing.setter
-    def activity_based_timing(self, activity_based_timing: bool):
-        cv.check_type('activity-based timing', activity_based_timing, bool)
-        self._activity_based_timing = activity_based_timing
 
     @property
     def plot_seed(self):
@@ -1511,11 +1498,6 @@ class Settings:
             element = ET.SubElement(root, "uniform_source_sampling")
             element.text = str(self._uniform_source_sampling).lower()
 
-    def _create_activity_based_timing_subelement(self, root):
-        if self._activity_based_timing is not None:
-            element = ET.SubElement(root, "activity_based_timing")
-            element.text = str(self._activity_based_timing).lower()
-
     def _create_sourcepoint_subelement(self, root):
         if self._sourcepoint:
             element = ET.SubElement(root, "source_point")
@@ -2122,11 +2104,6 @@ class Settings:
         if text is not None:
             self.uniform_source_sampling = text in ('true', '1')
 
-    def _activity_based_timing_from_xml_element(self, root):
-        text = get_text(root, 'activity_based_timing')
-        if text is not None:
-            self.activity_based_timing = text in ('true', '1')
-
     def _plot_seed_from_xml_element(self, root):
         text = get_text(root, 'plot_seed')
         if text is not None:
@@ -2450,7 +2427,6 @@ class Settings:
         self._create_max_order_subelement(element)
         self._create_photon_transport_subelement(element)
         self._create_uniform_source_sampling_subelement(element)
-        self._create_activity_based_timing_subelement(element)
         self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
@@ -2565,7 +2541,6 @@ class Settings:
         settings._max_order_from_xml_element(elem)
         settings._photon_transport_from_xml_element(elem)
         settings._uniform_source_sampling_from_xml_element(elem)
-        settings._activity_based_timing_from_xml_element(elem)
         settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)

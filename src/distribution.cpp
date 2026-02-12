@@ -640,6 +640,20 @@ double Mixture::sample_unbiased(uint64_t* seed) const
 }
 
 //==============================================================================
+// PoissonProcess implementation
+//==============================================================================
+
+PoissonProcess::PoissonProcess(pugi::xml_node node)
+{
+  rate_ = std::stod(get_node_value(node, "parameters"));
+}
+
+double PoissonProcess::sample_unbiased(uint64_t* seed) const
+{
+  return -std::log(1.0 - prn(seed)) / rate_;
+}
+
+//==============================================================================
 // Helper function
 //==============================================================================
 
@@ -669,6 +683,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {
     dist = UPtrDist {new Mixture(node)};
+  } else if (type == "poisson") {
+    dist = UPtrDist {new PoissonProcess(node)};
   } else if (type == "muir") {
     openmc::fatal_error(
       "'muir' distributions are now specified using the openmc.stats.muir() "

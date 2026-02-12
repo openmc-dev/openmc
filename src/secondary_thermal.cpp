@@ -222,7 +222,7 @@ IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
         }
 
         // Copy outgoing angles
-        auto mu_j = d.mu.row(j);
+        tensor::View<double> mu_j = d.mu.row(j);
         std::copy(adist->x().begin(), adist->x().end(), mu_j.begin());
       }
     }

@@ -28,8 +28,8 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
   tensor::Tensor<int> temp;
   read_attribute(dset, "interpolation", temp);
 
-  auto temp_b = temp.row(0); // breakpoints
-  auto temp_i = temp.row(1); // interpolation parameters
+  tensor::View<int> temp_b = temp.row(0); // breakpoints
+  tensor::View<int> temp_i = temp.row(1); // interpolation parameters
 
   std::copy(temp_b.begin(), temp_b.end(), std::back_inserter(breakpoints_));
   for (const auto i : temp_i)
@@ -132,9 +132,9 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
         interp_mu = 1;
 
       auto interp = int2interp(interp_mu);
-      auto xs = mu.row(0).slice(offset_mu, offset_mu + m);
-      auto ps = mu.row(1).slice(offset_mu, offset_mu + m);
-      auto cs = mu.row(2).slice(offset_mu, offset_mu + m);
+      tensor::View<double> xs = mu.row(0).slice(offset_mu, offset_mu + m);
+      tensor::View<double> ps = mu.row(1).slice(offset_mu, offset_mu + m);
+      tensor::View<double> cs = mu.row(2).slice(offset_mu, offset_mu + m);
 
       vector<double> x {xs.begin(), xs.end()};
       vector<double> p {ps.begin(), ps.end()};

@@ -304,7 +304,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
         double y = std::exp(
           std::log(dcs_(i_grid, i)) +
           f * (std::log(dcs_(i_grid + 1, i)) - std::log(dcs_(i_grid, i))));
-        auto col_i = dcs.col(i);
+        tensor::View<double> col_i = dcs.col(i);
         col_i(0) = y;
         for (int j = i_grid + 1; j < n_e; ++j) {
           col_i(j - i_grid) = dcs_(j, i);
@@ -507,7 +507,7 @@ void PhotonInteraction::compton_doppler(
     c = prn(seed) * c_max;
 
     // Determine pz corresponding to sampled cdf value
-    auto cdf_shell = profile_cdf_.row(shell);
+    tensor::View<const double> cdf_shell = profile_cdf_.row(shell);
     int i = lower_bound_index(cdf_shell.cbegin(), cdf_shell.cend(), c);
     double pz_l = data::compton_profile_pz(i);
     double pz_r = data::compton_profile_pz(i + 1);
@@ -603,8 +603,8 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
   // Calculate microscopic photoelectric cross section
   xs.photoelectric = 0.0;
-  const auto xs_lower = cross_sections_.row(i_grid);
-  const auto xs_upper = cross_sections_.row(i_grid + 1);
+  tensor::View<const double> xs_lower = cross_sections_.row(i_grid);
+  tensor::View<const double> xs_upper = cross_sections_.row(i_grid + 1);
 
   for (int i = 0; i < xs_upper.size(); ++i)
     if (xs_lower(i) != 0)

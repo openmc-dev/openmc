@@ -132,7 +132,7 @@ void XsData::fission_vector_beta_from_hdf5(
 
   // Normalize chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
-    auto row = temp_chi.row(a);
+    tensor::View<double> row = temp_chi.row(a);
     row /= row.sum();
   }
 
@@ -205,7 +205,7 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Normalize prompt chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
-    auto row = temp_chi_p.row(a);
+    tensor::View<double> row = temp_chi_p.row(a);
     row /= row.sum();
   }
 
@@ -217,7 +217,7 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // angle and delayed group
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++) {
-      auto row = temp_chi_d.select(0, a).row(d);
+      tensor::View<double> row = temp_chi_d.select(0, a).row(d);
       row /= row.sum();
     }
 
@@ -248,7 +248,7 @@ void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Normalize chi so it sums to 1 over outgoing groups for each angle
   for (size_t a = 0; a < n_ang; a++) {
-    auto row = temp_chi.row(a);
+    tensor::View<double> row = temp_chi.row(a);
     row /= row.sum();
   }
 
@@ -355,7 +355,7 @@ void XsData::fission_matrix_beta_from_hdf5(
   // Normalize chi_prompt so it sums to 1 over outgoing groups
   for (size_t a = 0; a < n_ang; a++)
     for (size_t gin = 0; gin < n_g_; gin++) {
-      auto row = chi_prompt.select(0, a).row(gin);
+      tensor::View<double> row = chi_prompt.select(0, a).row(gin);
       row /= row.sum();
     }
 
@@ -363,7 +363,7 @@ void XsData::fission_matrix_beta_from_hdf5(
   for (size_t a = 0; a < n_ang; a++)
     for (size_t d = 0; d < n_dg_; d++)
       for (size_t gin = 0; gin < n_g_; gin++) {
-        auto row = chi_delayed.select(0, a).select(0, d).row(gin);
+        tensor::View<double> row = chi_delayed.select(0, a).select(0, d).row(gin);
         row /= row.sum();
       }
 }
@@ -633,7 +633,7 @@ void XsData::combine(
     size_t n_g = chi_prompt.shape(1);
     for (size_t a = 0; a < n_ang; a++)
       for (size_t gin = 0; gin < n_g; gin++) {
-        auto row = chi_prompt.select(0, a).row(gin);
+        tensor::View<double> row = chi_prompt.select(0, a).row(gin);
         row /= row.sum();
       }
   }
@@ -645,7 +645,7 @@ void XsData::combine(
     for (size_t a = 0; a < n_ang; a++)
       for (size_t d = 0; d < n_dg; d++)
         for (size_t gin = 0; gin < n_g; gin++) {
-          auto row = chi_delayed.select(0, a).select(0, d).row(gin);
+          tensor::View<double> row = chi_delayed.select(0, a).select(0, d).row(gin);
           row /= row.sum();
         }
   }

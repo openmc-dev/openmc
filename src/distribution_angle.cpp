@@ -44,9 +44,9 @@ AngleDistribution::AngleDistribution(hid_t group)
     }
 
     // Create and initialize tabular distribution
-    auto xs = temp.row(0).slice(j, j + n);
-    auto ps = temp.row(1).slice(j, j + n);
-    auto cs = temp.row(2).slice(j, j + n);
+    tensor::View<double> xs = temp.row(0).slice(j, j + n);
+    tensor::View<double> ps = temp.row(1).slice(j, j + n);
+    tensor::View<double> cs = temp.row(2).slice(j, j + n);
     vector<double> x {xs.begin(), xs.end()};
     vector<double> p {ps.begin(), ps.end()};
     vector<double> c {cs.begin(), cs.end()};

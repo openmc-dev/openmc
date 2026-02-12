@@ -553,8 +553,8 @@ void XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
       final_scatter_format == AngleDistributionType::TABULAR) {
     for (size_t a = 0; a < n_ang; a++) {
       ScattDataLegendre legendre_scatt;
-      tensor::Tensor<int> in_gmin = gmin.row(a);
-      tensor::Tensor<int> in_gmax = gmax.row(a);
+      tensor::Tensor<int> in_gmin(gmin.row(a));
+      tensor::Tensor<int> in_gmax(gmax.row(a));
 
       legendre_scatt.init(in_gmin, in_gmax, temp_mult[a], input_scatt[a]);
 
@@ -568,8 +568,8 @@ void XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
     // We are sticking with the current representation
     // Initialize the ScattData object with this data
     for (size_t a = 0; a < n_ang; a++) {
-      tensor::Tensor<int> in_gmin = gmin.row(a);
-      tensor::Tensor<int> in_gmax = gmax.row(a);
+      tensor::Tensor<int> in_gmin(gmin.row(a));
+      tensor::Tensor<int> in_gmax(gmax.row(a));
       scatter[a]->init(in_gmin, in_gmax, temp_mult[a], input_scatt[a]);
     }
   }

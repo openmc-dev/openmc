@@ -1,8 +1,13 @@
 //! \file tensor.h
 //! \brief Multi-dimensional tensor types for OpenMC.
 //!
-//! Provides Tensor<T> (dynamic-rank owning), StaticTensor2D<T,R,C>
-//! (stack-allocated), and View<T> (non-owning N-dimensional view).
+//! Tensor<T> is the primary type: a dynamic-rank owning container that stores
+//! elements contiguously in row-major order.  View<T> is a lightweight
+//! non-owning reference into a Tensor's storage, returned by methods like
+//! row(), col(), slice(), and flat().  StaticTensor2D<T,R,C> is a small
+//! stack-allocated 2D array used only for simulation::global_tallies.
+//!
+//! View is declared before Tensor because Tensor's methods return View objects.
 
 #ifndef OPENMC_TENSOR_H
 #define OPENMC_TENSOR_H
@@ -71,20 +76,6 @@ public:
   // below would otherwise suppress the implicit move constructor).
   View(const View&) = default;
   View(View&&) = default;
-
-  //--------------------------------------------------------------------------
-  // Assignment operators
-
-  //! Copy assignment: element-wise deep copy (writes through data pointer).
-  //! Without this, the compiler's implicit copy assignment just copies the
-  //! View metadata (pointer, shape, strides) instead of the viewed data.
-  View& operator=(const View& other)
-  {
-    size_t n = size();
-    for (size_t i = 0; i < n; ++i)
-      data_[flat_to_offset(i)] = other[i];
-    return *this;
-  }
 
   //--------------------------------------------------------------------------
   // Indexing
@@ -188,6 +179,20 @@ public:
   View<T> slice(size_t start)
   {
     return {data_ + start * strides_[0], {shape_[0] - start}, {strides_[0]}};
+  }
+
+  //--------------------------------------------------------------------------
+  // Assignment operators
+
+  //! Copy assignment: element-wise deep copy (writes through data pointer).
+  //! Without this, the compiler's implicit copy assignment just copies the
+  //! View metadata (pointer, shape, strides) instead of the viewed data.
+  View& operator=(const View& other)
+  {
+    size_t n = size();
+    for (size_t i = 0; i < n; ++i)
+      data_[flat_to_offset(i)] = other[i];
+    return *this;
   }
 
   //! Fill all elements with a scalar
@@ -458,7 +463,7 @@ public:
 
   //! Copy from View (preserves view's shape)
   template<typename U>
-  Tensor(const View<U>& v)
+  explicit Tensor(const View<U>& v)
     : shape_(v.shape_vec())
   {
     size_t n = v.size();
@@ -551,14 +556,6 @@ public:
   void resize(std::initializer_list<size_t> shape)
   {
     shape_.assign(shape.begin(), shape.end());
-    data_.resize(compute_size());
-  }
-
-  void resize(const vector<unsigned long long>& shape)
-  {
-    shape_.clear();
-    for (auto d : shape)
-      shape_.push_back(static_cast<size_t>(d));
     data_.resize(compute_size());
   }
 

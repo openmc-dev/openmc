@@ -256,13 +256,18 @@ public:
   //--------------------------------------------------------------------------
   // Iterators
   //
-  // Lightweight row-major iterator.  Stores a flat logical position and
-  // converts to a physical offset on each dereference via flat_to_offset().
-  // For contiguous 1D views (the common case) the divmod chain reduces to
-  // a single multiply-by-1, which the compiler optimizes away.
+  // Lightweight row-major iterator parameterized on pointer type (Ptr).
+  // Stores a flat logical position and converts to a physical offset on each
+  // dereference via divmod over shape/strides.  For contiguous 1D views (the
+  // common case) the divmod chain reduces to a single multiply-by-1, which
+  // the compiler optimizes away.
+  //
+  // view_iterator<T*>       = mutable iterator  (from non-const View)
+  // view_iterator<const T*> = read-only iterator (from const View)
 
-  class const_iterator {
-    const T* base_;
+  template<typename Ptr>
+  class view_iterator {
+    Ptr base_;
     size_t count_;
     const size_t* shape_;
     const size_t* strides_;
@@ -272,11 +277,10 @@ public:
     using iterator_category = std::random_access_iterator_tag;
     using value_type = std::remove_const_t<T>;
     using difference_type = std::ptrdiff_t;
-    using pointer = const T*;
-    using reference = const T&;
+    using pointer = Ptr;
+    using reference = decltype(*std::declval<Ptr>());
 
-    const_iterator(
-      const T* base, size_t count, const View* v)
+    view_iterator(Ptr base, size_t count, const View* v)
       : base_(base)
       , count_(count)
       , shape_(v->shape_.data())
@@ -284,79 +288,79 @@ public:
       , ndim_(v->shape_.size())
     {}
 
-    const T& operator*() const { return base_[offset()]; }
-    const T& operator[](difference_type n) const
+    reference operator*() const { return base_[offset()]; }
+    reference operator[](difference_type n) const
     {
       return base_[offset_of(count_ + n)];
     }
-    const_iterator& operator++()
+    view_iterator& operator++()
     {
       ++count_;
       return *this;
     }
-    const_iterator operator++(int)
+    view_iterator operator++(int)
     {
       auto tmp = *this;
       ++count_;
       return tmp;
     }
-    const_iterator& operator--()
+    view_iterator& operator--()
     {
       --count_;
       return *this;
     }
-    const_iterator operator+(difference_type n) const
+    view_iterator operator+(difference_type n) const
     {
       auto tmp = *this;
       tmp.count_ += n;
       return tmp;
     }
-    const_iterator operator-(difference_type n) const
+    view_iterator operator-(difference_type n) const
     {
       auto tmp = *this;
       tmp.count_ -= n;
       return tmp;
     }
-    difference_type operator-(const const_iterator& o) const
+    difference_type operator-(const view_iterator& o) const
     {
       return static_cast<difference_type>(count_) -
              static_cast<difference_type>(o.count_);
     }
-    const_iterator& operator+=(difference_type n)
+    view_iterator& operator+=(difference_type n)
     {
       count_ += n;
       return *this;
     }
-    const_iterator& operator-=(difference_type n)
+    view_iterator& operator-=(difference_type n)
     {
       count_ -= n;
       return *this;
     }
-    bool operator==(const const_iterator& o) const
+    bool operator==(const view_iterator& o) const
     {
       return count_ == o.count_;
     }
-    bool operator!=(const const_iterator& o) const
+    bool operator!=(const view_iterator& o) const
     {
       return count_ != o.count_;
     }
-    bool operator<(const const_iterator& o) const
+    bool operator<(const view_iterator& o) const
     {
       return count_ < o.count_;
     }
-    bool operator>(const const_iterator& o) const
+    bool operator>(const view_iterator& o) const
     {
       return count_ > o.count_;
     }
-    bool operator<=(const const_iterator& o) const
+    bool operator<=(const view_iterator& o) const
     {
       return count_ <= o.count_;
     }
-    bool operator>=(const const_iterator& o) const
+    bool operator>=(const view_iterator& o) const
     {
       return count_ >= o.count_;
     }
-    friend const_iterator operator+(difference_type n, const const_iterator& it)
+    friend view_iterator operator+(difference_type n, const view_iterator& it)
     {
       return it + n;
     }
@@ -374,88 +378,8 @@ public:
     }
   };
 
-  class iterator {
-    T* base_;
-    size_t count_;
-    const size_t* shape_;
-    const size_t* strides_;
-    size_t ndim_;
-
-  public:
-    using iterator_category = std::random_access_iterator_tag;
-    using value_type = std::remove_const_t<T>;
-    using difference_type = std::ptrdiff_t;
-    using pointer = T*;
-    using reference = T&;
-
-    iterator(T* base, size_t count, const View* v)
-      : base_(base)
-      , count_(count)
-      , shape_(v->shape_.data())
-      , strides_(v->strides_.data())
-      , ndim_(v->shape_.size())
-    {}
-
-    T& operator*() { return base_[offset()]; }
-    T& operator[](difference_type n) { return base_[offset_of(count_ + n)]; }
-    iterator& operator++()
-    {
-      ++count_;
-      return *this;
-    }
-    iterator operator++(int)
-    {
-      auto tmp = *this;
-      ++count_;
-      return tmp;
-    }
-    iterator& operator--()
-    {
-      --count_;
-      return *this;
-    }
-    iterator operator+(difference_type n) const
-    {
-      auto tmp = *this;
-      tmp.count_ += n;
-      return tmp;
-    }
-    iterator operator-(difference_type n) const
-    {
-      auto tmp = *this;
-      tmp.count_ -= n;
-      return tmp;
-    }
-    difference_type operator-(const iterator& o) const
-    {
-      return static_cast<difference_type>(count_) -
-             static_cast<difference_type>(o.count_);
-    }
-    iterator& operator+=(difference_type n)
-    {
-      count_ += n;
-      return *this;
-    }
-    bool operator==(const iterator& o) const { return count_ == o.count_; }
-    bool operator!=(const iterator& o) const { return count_ != o.count_; }
-    bool operator<(const iterator& o) const { return count_ < o.count_; }
-    friend iterator operator+(difference_type n, const iterator& it)
-    {
-      return it + n;
-    }
-
-  private:
-    size_t offset() const { return offset_of(count_); }
-    size_t offset_of(size_t flat) const
-    {
-      size_t off = 0;
-      for (int d = static_cast<int>(ndim_) - 1; d >= 0; --d) {
-        off += (flat % shape_[d]) * strides_[d];
-        flat /= shape_[d];
-      }
-      return off;
-    }
-  };
+  using iterator = view_iterator<T*>;
+  using const_iterator = view_iterator<const T*>;
 
   iterator begin() { return {data_, 0, this}; }
   iterator end() { return {data_, size(), this}; }

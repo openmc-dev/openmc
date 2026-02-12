@@ -189,9 +189,7 @@ public:
   // Assignment operators
 
   //! Fill all elements with a scalar
-  template<typename U>
-  auto operator=(U val) ->
-    std::enable_if_t<std::is_arithmetic<U>::value, View&>
+  View& operator=(T val)
   {
     size_t n = size();
     for (size_t i = 0; i < n; ++i)

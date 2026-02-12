@@ -47,8 +47,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))
     subprocess.check_call(cmake_cmd)
-    subprocess.check_call(['make', '-j'])
-    subprocess.check_call(['sudo', 'make', '-j', 'install'])
+    subprocess.check_call(['make'])
+    subprocess.check_call(['sudo', 'make', 'install'])
 
 def main():
     # Convert Travis matrix environment variables into arguments for install()

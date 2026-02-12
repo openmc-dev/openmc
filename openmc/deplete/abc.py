@@ -736,6 +736,8 @@ class Integrator(ABC):
         results = deplete(
             self._solver, self.chain, n, rates, dt, i, matrix_func,
             self.transfer_rates, self.external_source_rates)
+        # filter-out negative atom densities (non-physical)
+        results = [np.maximum(r, 0.0) for r in results]
         return time.time() - start, results
 
     @abstractmethod

@@ -394,8 +394,7 @@ inline void write_attribute(hid_t obj_id, const char* name, Position r)
 // Templates/overloads for write_dataset
 //==============================================================================
 
-// Template for scalars. A SFINAE guard is used here to prevent this template
-// from matching Tensor/vector/string types that have their own overloads below.
+// Template for scalars (ensured by SFINAE)
 template<typename T>
 inline std::enable_if_t<std::is_scalar<std::decay_t<T>>::value> write_dataset(
   hid_t obj_id, const char* name, T buffer)

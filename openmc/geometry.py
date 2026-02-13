@@ -34,6 +34,8 @@ class Geometry:
     surface_precision : int
         Number of decimal places to round to for comparing the coefficients of
         surfaces for considering them topologically equivalent.
+    temperatures_from_h5: str
+        File name to import cell temperatures
 
     """
 
@@ -41,12 +43,14 @@ class Geometry:
         self,
         root: openmc.UniverseBase | Iterable[openmc.Cell] | None = None,
         merge_surfaces: bool = False,
-        surface_precision: int = 10
+        surface_precision: int = 10,
+        temperature_from_h5: str | None = None
     ):
         self._root_universe = None
         self._offsets = {}
         self.merge_surfaces = merge_surfaces
         self.surface_precision = surface_precision
+        self.temperature_from_h5 = temperature_from_h5
         if root is not None:
             if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root
@@ -88,6 +92,15 @@ class Geometry:
         check_less_than('surface_precision', surface_precision, 16)
         check_greater_than('surface_precision', surface_precision, 0)
         self._surface_precision = surface_precision
+
+    @property
+    def temperature_from_h5(self) -> str:
+        return self._temperature_from_h5
+
+    @temperature_from_h5.setter
+    def temperature_from_h5(self, temperature_from_h5):
+        check_type('temperature from h5', temperature_from_h5, str)
+        self._temperature_from_h5 = temperature_from_h5
 
     def add_volume_information(self, volume_calc):
         """Add volume information from a stochastic volume calculation.
@@ -132,6 +145,8 @@ class Geometry:
 
         # Create XML representation
         element = ET.Element("geometry")
+        if self.temperature_from_h5 is not None:
+            element.set("temperature_from_h5", self.temperature_from_h5)
         self.root_universe.create_xml_subelement(element)
 
         # Sort the elements in the file
@@ -199,6 +214,8 @@ class Geometry:
                 universes[univ_id] = univ
             return universes[univ_id]
 
+        temperature_from_h5 = get_text(e, "temperature_from_h5")
+
         # Get surfaces
         surfaces = {}
         periodic = {}
@@ -256,7 +273,7 @@ class Geometry:
         # child of any other object
         for u in universes.values():
             if not child_of[u]:
-                return cls(u)
+                return cls(u, temperature_from_h5=temperature_from_h5)
         else:
             raise ValueError('Error determining root universe.')
 

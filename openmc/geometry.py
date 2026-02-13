@@ -147,6 +147,9 @@ class Geometry:
         element = ET.Element("geometry")
         if self.temperature_from_h5 is not None:
             element.set("temperature_from_h5", self.temperature_from_h5)
+        else:
+            element.set("temperature_from_h5", "")
+
         self.root_universe.create_xml_subelement(element)
 
         # Sort the elements in the file

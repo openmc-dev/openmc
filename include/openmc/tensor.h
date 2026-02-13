@@ -21,8 +21,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <climits>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <limits>
 #include <type_traits>

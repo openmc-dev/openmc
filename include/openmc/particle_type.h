@@ -80,7 +80,7 @@ public:
   constexpr bool is_nucleus() const
   {
     // PDG nuclear codes are >= 1000000000 (100ZZZAAAI format)
-    return pdg_number_ >= 1000000000;
+    return pdg_number_ >= 1000000000 || pdg_number_ == PDG_PROTON;
   }
 
   // Get transport index (0-3 for transportable particles, C_NONE otherwise)

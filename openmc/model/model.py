@@ -2583,12 +2583,10 @@ class Model:
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():
                 if isinstance(univ, openmc.DAGMCUniverse):
-                    # Ensure settings has valid particles/batches for init_lib validation
-                    # These values are only needed for XML export during initialization
-                    # and won't affect the actual MGXS generation which uses an internal model
-                    self.settings.particles = 1
-                    self.settings.batches = 2
-                    self.init_lib(directory=tmpdir)
+                    # Initialize in volume calculation mode (non-transport mode)
+                    # This avoids loading cross sections and doesn't require
+                    # valid transport settings like particles/batches
+                    self.init_lib(args=['-c'], directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()
                     break

@@ -2584,7 +2584,7 @@ class Model:
             for univ in self.geometry.get_all_universes().values():
                 if isinstance(univ, openmc.DAGMCUniverse):
                     # Initialize in volume calculation mode (non-transport mode)
-                    # This avoids loading cross sections and doesn't require
+                    # This mode doesn't require
                     # valid transport settings like particles/batches
                     self.init_lib(args=['-c'], directory=tmpdir)
                     self.sync_dagmc_universes()

@@ -2589,10 +2589,10 @@ class Model:
                     original_run_mode = self.settings.run_mode
                     self.settings.run_mode = 'plot' 
                     self.init_lib(directory=tmpdir)
-                    # Restore original run mode
-                    self.settings.run_mode = original_run_mode
                     self.sync_dagmc_universes()
                     self.finalize_lib()
+                    # Restore original run mode
+                    self.settings.run_mode = original_run_mode
                     break
 
             # Make sure all materials have a name, and that the name is a valid HDF5

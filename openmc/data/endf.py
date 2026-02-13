@@ -12,6 +12,7 @@ import re
 
 from .data import gnds_name
 from .function import Tabulated1D
+from endf.material import _LIBRARY, _SUBLIBRARY
 from endf.incident_neutron import SUM_RULES
 from endf.records import (
     float_endf,
@@ -36,33 +37,6 @@ def get_tab1_record(file_obj):
     """
     params, tab = _get_tab1_record(file_obj)
     return params, Tabulated1D(tab.x, tab.y, tab.breakpoints, tab.interpolation)
-
-
-_LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
-            4: 'ENDF/B High Energy', 5: 'CENDL', 6: 'JENDL',
-            17: 'TENDL', 18: 'ROSFOND', 21: 'SG-21', 31: 'INDL/V',
-            32: 'INDL/A', 33: 'FENDL', 34: 'IRDF', 35: 'BROND',
-            36: 'INGDB-90', 37: 'FENDL/A', 41: 'BROND'}
-
-_SUBLIBRARY = {
-    0: 'Photo-nuclear data',
-    1: 'Photo-induced fission product yields',
-    3: 'Photo-atomic data',
-    4: 'Radioactive decay data',
-    5: 'Spontaneous fission product yields',
-    6: 'Atomic relaxation data',
-    10: 'Incident-neutron data',
-    11: 'Neutron-induced fission product yields',
-    12: 'Thermal neutron scattering data',
-    19: 'Neutron standards',
-    113: 'Electro-atomic data',
-    10010: 'Incident-proton data',
-    10011: 'Proton-induced fission product yields',
-    10020: 'Incident-deuteron data',
-    10030: 'Incident-triton data',
-    20030: 'Incident-helion (3He) data',
-    20040: 'Incident-alpha data'
-}
 
 
 def get_evaluations(filename):

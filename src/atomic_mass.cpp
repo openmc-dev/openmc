@@ -2,7 +2,7 @@
 
 namespace openmc {
 
-// Atomic masses from AME2020 and CODATA 2018
+// Atomic masses in [u] from AME2020 and CODATA 2018
 std::unordered_map<int32_t, double> ATOMIC_MASS = {
   {11, MASS_ELECTRON},
   {22, 0.0},

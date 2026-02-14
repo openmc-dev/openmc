@@ -62,7 +62,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  // Get particle mass
+  // Get particle mass in [u]
   double mass() const
   {
     int32_t p = std::abs(pdg_number_);

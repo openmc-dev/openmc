@@ -21,7 +21,7 @@ constexpr double MASS_DEUTRON {2.013553212745};    // mass of a deutron in amu
 constexpr double MASS_HELION {3.014932247175};     // mass of a helion in amu
 constexpr double MASS_ALPHA {4.001506179127};      // mass of an alpha in amu
 
-extern std::unordered_map<int32_t, double> atomic_mass;
+extern std::unordered_map<int32_t, double> ATOMIC_MASS;
 
 } // namespace openmc
 

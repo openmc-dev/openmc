@@ -66,8 +66,8 @@ public:
   double mass() const
   {
     int32_t p = std::abs(pdg_number_);
-    if (atomic_mass.count(p)) {
-      return atomic_mass[p];
+    if (ATOMIC_MASS.count(p)) {
+      return ATOMIC_MASS[p];
     } else {
       fatal_error("Unknown mass for particle " + str());
     }

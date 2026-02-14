@@ -2,7 +2,8 @@
 
 namespace openmc {
 
-std::unordered_map<int32_t, double> atomic_mass = {
+// Atomic masses from AME2020 and CODATA 2018
+std::unordered_map<int32_t, double> ATOMIC_MASS = {
   {11, MASS_ELECTRON},
   {22, 0.0},
   {2112, MASS_NEUTRON},
@@ -10,7 +11,6 @@ std::unordered_map<int32_t, double> atomic_mass = {
   {1000010020, MASS_DEUTRON},
   {1000020030, MASS_HELION},
   {1000020040, MASS_ALPHA},
-  // atomic masses from nubase2020
   {1000010030, 3.01604928132},
   {1000030030, 3.030775},
   {1000010040, 4.026431867},

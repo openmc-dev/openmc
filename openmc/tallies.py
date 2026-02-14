@@ -12,11 +12,11 @@ import lxml.etree as ET
 import h5py
 import numpy as np
 import pandas as pd
-import scipy.sparse as sps
 from scipy.stats import chi2, norm
 
 import openmc
 import openmc.checkvalue as cv
+from ._sparse_compat import lil_array
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
@@ -50,6 +50,18 @@ class Tally(IDManagerMixin):
         will automatically be assigned
     name : str, optional
         Name of the tally. If not specified, the name is the empty string.
+    scores : list of str, optional
+        List of scores, e.g. ['flux', 'fission']
+    filters : list of openmc.Filter, optional
+        List of filters for the tally
+    nuclides : list of str, optional
+        List of nuclides to score results for
+    estimator : {'analog', 'tracklength', 'collision'}, optional
+        Type of estimator for the tally
+    triggers : list of openmc.Trigger, optional
+        List of tally triggers
+    derivative : openmc.TallyDerivative, optional
+        A material perturbation derivative to apply to all scores in the tally
 
     Attributes
     ----------
@@ -124,7 +136,9 @@ class Tally(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, tally_id=None, name=''):
+    def __init__(self, tally_id=None, name='', scores=None, filters=None,
+                 nuclides=None, estimator=None, triggers=None,
+                 derivative=None):
         # Initialize Tally class attributes
         self.id = tally_id
         self.name = name
@@ -154,6 +168,19 @@ class Tally(IDManagerMixin):
 
         self._sp_filename = None
         self._results_read = False
+
+        if filters is not None:
+            self.filters = filters
+        if nuclides is not None:
+            self.nuclides = nuclides
+        if scores is not None:
+            self.scores = scores
+        if estimator is not None:
+            self.estimator = estimator
+        if triggers is not None:
+            self.triggers = triggers
+        if derivative is not None:
+            self.derivative = derivative
 
     def __eq__(self, other):
         if other.id != self.id:
@@ -290,7 +317,7 @@ class Tally(IDManagerMixin):
 
     @property
     def num_nuclides(self):
-        return len(self._nuclides)
+        return max(len(self._nuclides), 1)
 
     @property
     def scores(self):
@@ -393,6 +420,11 @@ class Tally(IDManagerMixin):
             group = f[f'tallies/tally {self.id}']
             self._num_realizations = int(group['n_realizations'][()])
 
+            for filt in self.filters:
+                if isinstance(filt, openmc.DistribcellFilter):
+                    filter_group = f[f'tallies/filters/filter {filt.id}']
+                    filt._num_bins = int(filter_group['n_bins'][()])
+
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
@@ -430,10 +462,10 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
-                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
-                self._sum_third = sps.lil_matrix(self._sum_third.flatten(), self._sum_third.shape)
-                self._sum_fourth = sps.lil_matrix(self.sum_fourth.flatten(), self._sum_fourth.shape)
+                self._sum = lil_array(self._sum.flatten(), self._sum.shape)
+                self._sum_sq = lil_array(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum_third = lil_array(self._sum_third.flatten(), self._sum_third.shape)
+                self._sum_fourth = lil_array(self._sum_fourth.flatten(), self._sum_fourth.shape)
 
             # Read simulation time (needed for figure of merit)
             self._simulation_time = f["runtime"]["simulation"][()]
@@ -529,8 +561,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._mean = sps.lil_matrix(self._mean.flatten(),
-                                            self._mean.shape)
+                self._mean = lil_array(self._mean.flatten(), self._mean.shape)
 
         if self.sparse:
             return np.reshape(self._mean.toarray(), self.shape)
@@ -551,8 +582,7 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
-                                               self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.flatten(), self._std_dev.shape)
 
             self.with_batch_statistics = True
 
@@ -583,7 +613,7 @@ class Tally(IDManagerMixin):
             self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
 
             if self.sparse:
-                self._vov = sps.lil_matrix(self._vov.flatten(), self._vov.shape)
+                self._vov = lil_array(self._vov.flatten(), self._vov.shape)
 
         if self.sparse:
             return np.reshape(self._vov.toarray(), self.shape)
@@ -958,22 +988,17 @@ class Tally(IDManagerMixin):
         # Convert NumPy arrays to SciPy sparse LIL matrices
         if sparse and not self.sparse:
             if self._sum is not None:
-                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
+                self._sum = lil_array(self._sum.flatten(), self._sum.shape)
             if self._sum_sq is not None:
-                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
-                                              self._sum_sq.shape)
+                self._sum_sq = lil_array(self._sum_sq.flatten(), self._sum_sq.shape)
             if self._sum_third is not None:
-                self._sum_third = sps.lil_matrix(self._sum_third.flatten(),
-                                                 self._sum_third.shape)
+                self._sum_third = lil_array(self._sum_third.flatten(), self._sum_third.shape)
             if self._sum_fourth is not None:
-                self._sum_fourth = sps.lil_matrix(self._sum_fourth.flatten(),
-                                                  self._sum_fourth.shape)
+                self._sum_fourth = lil_array(self._sum_fourth.flatten(), self._sum_fourth.shape)
             if self._mean is not None:
-                self._mean = sps.lil_matrix(self._mean.flatten(),
-                                            self._mean.shape)
+                self._mean = lil_array(self._mean.flatten(), self._mean.shape)
             if self._std_dev is not None:
-                self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
-                                               self._std_dev.shape)
+                self._std_dev = lil_array(self._std_dev.flatten(), self._std_dev.shape)
 
             self._sparse = True
 
@@ -1984,7 +2009,7 @@ class Tally(IDManagerMixin):
 
         # Expand the columns into Pandas MultiIndices for readability
         if pd.__version__ >= '0.16':
-            columns = copy.deepcopy(df.columns.values)
+            columns = copy.deepcopy(list(df.columns.values))
 
             # Convert all elements in columns list to tuples
             for i, column in enumerate(columns):
@@ -3704,43 +3729,17 @@ class Tallies(cv.CheckedList):
             if possible. Defaults to False.
 
         """
-        if not isinstance(tally, Tally):
-            msg = f'Unable to add a non-Tally "{tally}" to the Tallies instance'
-            raise TypeError(msg)
-
         if merge:
-            merged = False
-
             # Look for a tally to merge with this one
             for i, tally2 in enumerate(self):
-
                 # If a mergeable tally is found
                 if tally2.can_merge(tally):
                     # Replace tally2 with the merged tally
                     merged_tally = tally2.merge(tally)
                     self[i] = merged_tally
-                    merged = True
-                    break
+                    return
 
-            # If no mergeable tally was found, simply add this tally
-            if not merged:
-                super().append(tally)
-
-        else:
-            super().append(tally)
-
-    def insert(self, index, item):
-        """Insert tally before index
-
-        Parameters
-        ----------
-        index : int
-            Index in list
-        item : openmc.Tally
-            Tally to insert
-
-        """
-        super().insert(index, item)
+        super().append(tally)
 
     def merge_tallies(self):
         """Merge any mergeable tallies together. Note that n-way merges are

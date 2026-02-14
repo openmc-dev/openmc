@@ -40,6 +40,7 @@ Functions
    reset_timers
    run
    run_in_memory
+   run_random_ray
    sample_external_source
    simulation_finalize
    simulation_init
@@ -87,6 +88,7 @@ Classes
    SpatialLegendreFilter
    SphericalHarmonicsFilter
    SphericalMesh
+   SolidRayTracePlot
    SurfaceFilter
    Tally
    TemporarySession
@@ -121,6 +123,12 @@ Data
 .. data:: meshes
 
    Mapping of mesh ID to :class:`openmc.lib.Mesh` instances.
+
+   :type: dict
+
+.. data:: plots
+
+   Mapping of plot ID to :class:`openmc.lib.SolidRayTracePlot` instances.
 
    :type: dict
 

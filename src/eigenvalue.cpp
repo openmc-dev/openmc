@@ -192,7 +192,7 @@ void synchronize_bank()
   // TODO: protect for MPI_Exscan at rank 0
 
   // Allocate space for bank_position if this hasn't been done yet
-  vector<int64_t> bank_position(mpi::n_procs);
+  std::vector<int64_t> bank_position(mpi::n_procs);
   MPI_Allgather(&start, 1, MPI_INT64_T, bank_position.data(), 1, MPI_INT64_T,
     mpi::intracomm);
 #else
@@ -248,9 +248,12 @@ void synchronize_bank()
 
         if (settings::ifp_on) {
           // Send IFP data
-          send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
-            temp_delayed_groups, send_delayed_groups, temp_lifetimes,
-            send_lifetimes);
+          if (is_beta_effective_or_both())
+            send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+              temp_delayed_groups, send_delayed_groups);
+          if (is_generation_time_or_both())
+            send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+              temp_lifetimes, send_lifetimes);
         }
       }
 
@@ -285,8 +288,8 @@ void synchronize_bank()
   if (start >= bank_position[mpi::n_procs - 1]) {
     neighbor = mpi::n_procs - 1;
   } else {
-    neighbor = upper_bound_index(
-      bank_position.begin(), bank_position.end(), start);
+    neighbor =
+      upper_bound_index(bank_position.begin(), bank_position.end(), start);
   }
 
   // Resize IFP receive buffers
@@ -316,8 +319,12 @@ void synchronize_bank()
 
       if (settings::ifp_on) {
         // Receive IFP data
-        receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
-          recv_delayed_groups, recv_lifetimes, deserialization_info);
+        if (is_beta_effective_or_both())
+          receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+            recv_delayed_groups, deserialization_info);
+        if (is_generation_time_or_both())
+          receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+            recv_lifetimes, deserialization_info);
       }
 
     } else {
@@ -348,8 +355,12 @@ void synchronize_bank()
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
   if (settings::ifp_on) {
-    deserialize_ifp_info(ifp_n_generation, deserialization_info,
-      recv_delayed_groups, recv_lifetimes);
+    if (is_beta_effective_or_both())
+      deserialize_ifp_info(ifp_n_generation, recv_delayed_groups,
+        simulation::ifp_source_delayed_group_bank, deserialization_info);
+    if (is_generation_time_or_both())
+      deserialize_ifp_info(ifp_n_generation, recv_lifetimes,
+        simulation::ifp_source_lifetime_bank, deserialization_info);
   }
 
 #else
@@ -403,6 +414,16 @@ void calculate_average_keff()
         t_value *
         std::sqrt(
           (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
+
+      // In some cases (such as an infinite medium problem), random ray
+      // may estimate k exactly and in an unvarying manner between iterations.
+      // In this case, the floating point roundoff between the division and the
+      // power operations may cause an extremely small negative value to occur
+      // inside the sqrt operation, leading to NaN. If this occurs, we check for
+      // it and set the std dev to zero.
+      if (!std::isfinite(simulation::keff_std)) {
+        simulation::keff_std = 0.0;
+      }
     }
   }
 }

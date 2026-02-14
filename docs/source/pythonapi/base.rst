@@ -132,6 +132,7 @@ Constructing Tallies
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
+   openmc.ParticleProductionFilter
    openmc.MuFilter
    openmc.MuSurfaceFilter
    openmc.PolarFilter
@@ -176,7 +177,8 @@ Geometry Plotting
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Plot
+   openmc.SlicePlot
+   openmc.VoxelPlot
    openmc.WireframeRayTracePlot
    openmc.SolidRayTracePlot
    openmc.Plots

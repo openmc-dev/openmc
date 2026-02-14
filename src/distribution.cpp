@@ -8,6 +8,7 @@
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
@@ -15,6 +16,74 @@
 #include "openmc/xml_interface.h"
 
 namespace openmc {
+
+//==============================================================================
+// Helper function for computing importance weights from biased sampling
+//==============================================================================
+
+vector<double> compute_importance_weights(
+  const vector<double>& p, const vector<double>& b)
+{
+  std::size_t n = p.size();
+
+  // Normalize original probabilities
+  double sum_p = std::accumulate(p.begin(), p.end(), 0.0);
+  vector<double> p_norm(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    p_norm[i] = p[i] / sum_p;
+  }
+
+  // Normalize bias probabilities
+  double sum_b = std::accumulate(b.begin(), b.end(), 0.0);
+  vector<double> b_norm(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    b_norm[i] = b[i] / sum_b;
+  }
+
+  // Compute importance weights
+  vector<double> weights(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    weights[i] = (b_norm[i] == 0.0) ? INFTY : p_norm[i] / b_norm[i];
+  }
+  return weights;
+}
+
+std::pair<double, double> Distribution::sample(uint64_t* seed) const
+{
+  if (bias_) {
+    // Sample from the bias distribution and compute importance weight
+    double val = bias_->sample_unbiased(seed);
+    double wgt = this->evaluate(val) / bias_->evaluate(val);
+    return {val, wgt};
+  } else {
+    // Unbiased sampling: return sampled value with weight 1.0
+    double val = sample_unbiased(seed);
+    return {val, 1.0};
+  }
+}
+
+// PDF evaluation not supported for all distribution types
+double Distribution::evaluate(double x) const
+{
+  throw std::runtime_error(
+    "PDF evaluation not implemented for this distribution type.");
+}
+
+void Distribution::read_bias_from_xml(pugi::xml_node node)
+{
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+
+    if (check_for_node(bias_node, "bias")) {
+      openmc::fatal_error(
+        "Distribution has a bias distribution with its own bias distribution. "
+        "Please ensure bias distributions do not have their own bias.");
+    }
+
+    UPtrDist bias = distribution_from_xml(bias_node);
+    this->set_bias(std::move(bias));
+  }
+}
 
 //==============================================================================
 // DiscreteIndex implementation
@@ -36,7 +105,6 @@ DiscreteIndex::DiscreteIndex(span<const double> p)
 void DiscreteIndex::assign(span<const double> p)
 {
   prob_.assign(p.begin(), p.end());
-
   this->init_alias();
 }
 
@@ -115,24 +183,55 @@ void DiscreteIndex::normalize()
 // Discrete implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node) : di_(node)
+Discrete::Discrete(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
-
   std::size_t n = params.size() / 2;
 
+  // First half is x values, second half is probabilities
   x_.assign(params.begin(), params.begin() + n);
+  const double* p = params.data() + n;
+
+  // Check for bias
+  if (check_for_node(node, "bias")) {
+    // Get bias probabilities
+    auto bias_params = get_node_array<double>(node, "bias");
+    if (bias_params.size() != n) {
+      openmc::fatal_error(
+        "Size mismatch: Attempted to bias Discrete distribution with " +
+        std::to_string(n) + " probability entries using a bias with " +
+        std::to_string(bias_params.size()) +
+        " entries. Please ensure distributions have the same size.");
+    }
+
+    // Compute importance weights
+    vector<double> p_vec(p, p + n);
+    weight_ = compute_importance_weights(p_vec, bias_params);
+
+    // Initialize DiscreteIndex with bias probabilities for sampling
+    di_.assign(bias_params);
+  } else {
+    // Unbiased case: weight_ stays empty
+    di_.assign({p, n});
+  }
 }
 
 Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
 {
-
   x_.assign(x, x + n);
 }
 
-double Discrete::sample(uint64_t* seed) const
+std::pair<double, double> Discrete::sample(uint64_t* seed) const
 {
-  return x_[di_.sample(seed)];
+  size_t idx = di_.sample(seed);
+  double wgt = weight_.empty() ? 1.0 : weight_[idx];
+  return {x_[idx], wgt};
+}
+
+double Discrete::sample_unbiased(uint64_t* seed) const
+{
+  size_t idx = di_.sample(seed);
+  return x_[idx];
 }
 
 //==============================================================================
@@ -149,11 +248,24 @@ Uniform::Uniform(pugi::xml_node node)
 
   a_ = params.at(0);
   b_ = params.at(1);
+
+  read_bias_from_xml(node);
 }
 
-double Uniform::sample(uint64_t* seed) const
+double Uniform::sample_unbiased(uint64_t* seed) const
 {
   return a_ + prn(seed) * (b_ - a_);
+}
+
+double Uniform::evaluate(double x) const
+{
+  if (x <= a()) {
+    return 0.0;
+  } else if (x >= b()) {
+    return 0.0;
+  } else {
+    return 1 / (b() - a());
+  }
 }
 
 //==============================================================================
@@ -175,9 +287,24 @@ PowerLaw::PowerLaw(pugi::xml_node node)
   offset_ = std::pow(a, n + 1);
   span_ = std::pow(b, n + 1) - offset_;
   ninv_ = 1 / (n + 1);
+
+  read_bias_from_xml(node);
 }
 
-double PowerLaw::sample(uint64_t* seed) const
+double PowerLaw::evaluate(double x) const
+{
+  if (x <= a()) {
+    return 0.0;
+  } else if (x >= b()) {
+    return 0.0;
+  } else {
+    int pwr = n() + 1;
+    double norm = pwr / span_;
+    return norm * std::pow(std::fabs(x), n());
+  }
+}
+
+double PowerLaw::sample_unbiased(uint64_t* seed) const
 {
   return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
@@ -189,11 +316,19 @@ double PowerLaw::sample(uint64_t* seed) const
 Maxwell::Maxwell(pugi::xml_node node)
 {
   theta_ = std::stod(get_node_value(node, "parameters"));
+
+  read_bias_from_xml(node);
 }
 
-double Maxwell::sample(uint64_t* seed) const
+double Maxwell::sample_unbiased(uint64_t* seed) const
 {
   return maxwell_spectrum(theta_, seed);
+}
+
+double Maxwell::evaluate(double x) const
+{
+  double c = (2.0 / SQRT_PI) * std::pow(theta_, -1.5);
+  return c * std::sqrt(x) * std::exp(-x / theta_);
 }
 
 //==============================================================================
@@ -209,31 +344,111 @@ Watt::Watt(pugi::xml_node node)
 
   a_ = params.at(0);
   b_ = params.at(1);
+
+  read_bias_from_xml(node);
 }
 
-double Watt::sample(uint64_t* seed) const
+double Watt::sample_unbiased(uint64_t* seed) const
 {
   return watt_spectrum(a_, b_, seed);
+}
+
+double Watt::evaluate(double x) const
+{
+  double c =
+    2.0 / (std::sqrt(PI * b_) * std::pow(a_, 1.5) * std::exp(a_ * b_ / 4.0));
+  return c * std::exp(-x / a_) * std::sinh(std::sqrt(b_ * x));
 }
 
 //==============================================================================
 // Normal implementation
 //==============================================================================
+
+Normal::Normal(double mean_value, double std_dev, double lower, double upper)
+  : mean_value_ {mean_value}, std_dev_ {std_dev}, lower_ {lower}, upper_ {upper}
+{
+  compute_normalization();
+}
+
 Normal::Normal(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
-  if (params.size() != 2) {
+  if (params.size() != 2 && params.size() != 4) {
     openmc::fatal_error("Normal energy distribution must have two "
-                        "parameters specified.");
+                        "parameters (mean, std_dev) or four parameters "
+                        "(mean, std_dev, lower, upper) specified.");
   }
 
   mean_value_ = params.at(0);
   std_dev_ = params.at(1);
+
+  // Optional truncation bounds
+  if (params.size() == 4) {
+    lower_ = params.at(2);
+    upper_ = params.at(3);
+  } else {
+    lower_ = -INFTY;
+    upper_ = INFTY;
+  }
+
+  compute_normalization();
+  read_bias_from_xml(node);
 }
 
-double Normal::sample(uint64_t* seed) const
+void Normal::compute_normalization()
 {
-  return normal_variate(mean_value_, std_dev_, seed);
+  // Validate bounds
+  if (lower_ >= upper_) {
+    openmc::fatal_error(
+      "Normal distribution lower bound must be less than upper bound.");
+  }
+
+  // Check if truncation bounds are finite
+  is_truncated_ = (lower_ > -INFTY || upper_ < INFTY);
+
+  if (is_truncated_) {
+    double alpha = (lower_ - mean_value_) / std_dev_;
+    double beta = (upper_ - mean_value_) / std_dev_;
+    double cdf_diff = standard_normal_cdf(beta) - standard_normal_cdf(alpha);
+
+    if (cdf_diff <= 0.0) {
+      openmc::fatal_error(
+        "Normal distribution truncation bounds exclude entire distribution.");
+    }
+    norm_factor_ = 1.0 / cdf_diff;
+  } else {
+    norm_factor_ = 1.0;
+  }
+}
+
+double Normal::sample_unbiased(uint64_t* seed) const
+{
+  if (!is_truncated_) {
+    return normal_variate(mean_value_, std_dev_, seed);
+  }
+
+  // Rejection sampling for truncated normal
+  double x;
+  do {
+    x = normal_variate(mean_value_, std_dev_, seed);
+  } while (x < lower_ || x > upper_);
+  return x;
+}
+
+double Normal::evaluate(double x) const
+{
+  // Return 0 outside truncation bounds
+  if (x < lower_ || x > upper_) {
+    return 0.0;
+  }
+
+  // Standard normal PDF value
+  double pdf = (1.0 / (std::sqrt(2.0 * PI) * std_dev_)) *
+               std::exp(-std::pow((x - mean_value_), 2.0) /
+                        (2.0 * std::pow(std_dev_, 2.0)));
+
+  // Apply normalization for truncation
+  return pdf * norm_factor_;
 }
 
 //==============================================================================
@@ -248,6 +463,10 @@ Tabular::Tabular(pugi::xml_node node)
       interp_ = Interpolation::histogram;
     } else if (temp == "linear-linear") {
       interp_ = Interpolation::lin_lin;
+    } else if (temp == "log-linear") {
+      interp_ = Interpolation::log_lin;
+    } else if (temp == "log-log") {
+      interp_ = Interpolation::log_log;
     } else {
       openmc::fatal_error(
         "Unsupported interpolation type for distribution: " + temp);
@@ -266,6 +485,8 @@ Tabular::Tabular(pugi::xml_node node)
   const double* x = params.data();
   const double* p = x + n;
   init(x, p, n);
+
+  read_bias_from_xml(node);
 }
 
 Tabular::Tabular(const double* x, const double* p, int n, Interpolation interp,
@@ -282,13 +503,6 @@ void Tabular::init(
   std::copy(x, x + n, std::back_inserter(x_));
   std::copy(p, p + n, std::back_inserter(p_));
 
-  // Check interpolation parameter
-  if (interp_ != Interpolation::histogram &&
-      interp_ != Interpolation::lin_lin) {
-    openmc::fatal_error("Only histogram and linear-linear interpolation "
-                        "for tabular distribution is supported.");
-  }
-
   // Calculate cumulative distribution function
   if (c) {
     std::copy(c, c + n, std::back_inserter(c_));
@@ -300,6 +514,18 @@ void Tabular::init(
         c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]);
       } else if (interp_ == Interpolation::lin_lin) {
         c_[i] = c_[i - 1] + 0.5 * (p_[i - 1] + p_[i]) * (x_[i] - x_[i - 1]);
+      } else if (interp_ == Interpolation::log_lin) {
+        double m = std::log(p_[i] / p_[i - 1]) / (x_[i] - x_[i - 1]);
+        c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]) *
+                              exprel(m * (x_[i] - x_[i - 1]));
+      } else if (interp_ == Interpolation::log_log) {
+        double m = std::log((x_[i] * p_[i]) / (x_[i - 1] * p_[i - 1])) /
+                   std::log(x_[i] / x_[i - 1]);
+        c_[i] = c_[i - 1] + x_[i - 1] * p_[i - 1] *
+                              std::log(x_[i] / x_[i - 1]) *
+                              exprel(m * std::log(x_[i] / x_[i - 1]));
+      } else {
+        UNREACHABLE();
       }
     }
   }
@@ -314,7 +540,7 @@ void Tabular::init(
   }
 }
 
-double Tabular::sample(uint64_t* seed) const
+double Tabular::sample_unbiased(uint64_t* seed) const
 {
   // Sample value of CDF
   double c = prn(seed);
@@ -340,7 +566,7 @@ double Tabular::sample(uint64_t* seed) const
     } else {
       return x_i;
     }
-  } else {
+  } else if (interp_ == Interpolation::lin_lin) {
     // Linear-linear interpolation
     double x_i1 = x_[i + 1];
     double p_i1 = p_[i + 1];
@@ -353,6 +579,52 @@ double Tabular::sample(uint64_t* seed) const
              (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
                m;
     }
+  } else if (interp_ == Interpolation::log_lin) {
+    // Log-linear interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    double m = std::log(p_i1 / p_i) / (x_i1 - x_i);
+    double f = (c - c_i) / p_i;
+    return x_i + f * log1prel(m * f);
+  } else if (interp_ == Interpolation::log_log) {
+    // Log-Log interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    double m = std::log((x_i1 * p_i1) / (x_i * p_i)) / std::log(x_i1 / x_i);
+    double f = (c - c_i) / (p_i * x_i);
+    return x_i * std::exp(f * log1prel(m * f));
+  } else {
+    UNREACHABLE();
+  }
+}
+
+double Tabular::evaluate(double x) const
+{
+  int i;
+
+  if (interp_ == Interpolation::histogram) {
+    i = std::upper_bound(x_.begin(), x_.end(), x) - x_.begin() - 1;
+    if (i < 0 || i >= static_cast<int>(p_.size())) {
+      return 0.0;
+    } else {
+      return p_[i];
+    }
+  } else {
+    i = std::lower_bound(x_.begin(), x_.end(), x) - x_.begin() - 1;
+
+    if (i < 0 || i >= static_cast<int>(p_.size()) - 1) {
+      return 0.0;
+    } else {
+      double x0 = x_[i];
+      double x1 = x_[i + 1];
+      double p0 = p_[i];
+      double p1 = p_[i + 1];
+
+      double t = (x - x0) / (x1 - x0);
+      return (1 - t) * p0 + t * p1;
+    }
   }
 }
 
@@ -360,7 +632,7 @@ double Tabular::sample(uint64_t* seed) const
 // Equiprobable implementation
 //==============================================================================
 
-double Equiprobable::sample(uint64_t* seed) const
+double Equiprobable::sample_unbiased(uint64_t* seed) const
 {
   std::size_t n = x_.size();
 
@@ -372,13 +644,27 @@ double Equiprobable::sample(uint64_t* seed) const
   return xl + ((n - 1) * r - i) * (xr - xl);
 }
 
+double Equiprobable::evaluate(double x) const
+{
+  double x_min = *std::min_element(x_.begin(), x_.end());
+  double x_max = *std::max_element(x_.begin(), x_.end());
+
+  if (x < x_min || x > x_max) {
+    return 0.0;
+  } else {
+    return 1.0 / (x_max - x_min);
+  }
+}
+
 //==============================================================================
 // Mixture implementation
 //==============================================================================
 
 Mixture::Mixture(pugi::xml_node node)
 {
-  double cumsum = 0.0;
+  vector<double> probabilities;
+
+  // First pass: collect distributions and their probabilities
   for (pugi::xml_node pair : node.children("pair")) {
     // Check that required data exists
     if (!pair.attribute("probability"))
@@ -386,39 +672,60 @@ Mixture::Mixture(pugi::xml_node node)
     if (!pair.child("dist"))
       fatal_error("Mixture pair element does not have a distribution.");
 
-    // cummulative sum of probabilities
+    // Get probability and distribution
     double p = std::stod(pair.attribute("probability").value());
-
-    // Save cummulative probability and distribution
     auto dist = distribution_from_xml(pair.child("dist"));
-    cumsum += p * dist->integral();
 
-    distribution_.push_back(std::make_pair(cumsum, std::move(dist)));
+    // Weight probability by the distribution's integral
+    double weighted_prob = p * dist->integral();
+    probabilities.push_back(weighted_prob);
+    distribution_.push_back(std::move(dist));
   }
 
-  // Save integral of distribution
-  integral_ = cumsum;
+  // Save sum of weighted probabilities
+  integral_ = std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
 
-  // Normalize cummulative probabilities to 1
-  for (auto& pair : distribution_) {
-    pair.first /= cumsum;
+  std::size_t n = probabilities.size();
+
+  // Check for bias
+  if (check_for_node(node, "bias")) {
+    // Get bias probabilities
+    auto bias_params = get_node_array<double>(node, "bias");
+    if (bias_params.size() != n) {
+      openmc::fatal_error(
+        "Size mismatch: Attempted to bias Mixture distribution with " +
+        std::to_string(n) + " components using a bias with " +
+        std::to_string(bias_params.size()) +
+        " entries. Please ensure distributions have the same size.");
+    }
+
+    // Compute importance weights
+    weight_ = compute_importance_weights(probabilities, bias_params);
+
+    // Initialize DiscreteIndex with bias probabilities for sampling
+    di_.assign(bias_params);
+  } else {
+    // Unbiased case: weight_ stays empty
+    di_.assign(probabilities);
   }
 }
 
-double Mixture::sample(uint64_t* seed) const
+std::pair<double, double> Mixture::sample(uint64_t* seed) const
 {
-  // Sample value of CDF
-  const double p = prn(seed);
-
-  // find matching distribution
-  const auto it = std::lower_bound(distribution_.cbegin(), distribution_.cend(),
-    p, [](const DistPair& pair, double p) { return pair.first < p; });
-
-  // This should not happen. Catch it
-  assert(it != distribution_.cend());
+  size_t idx = di_.sample(seed);
 
   // Sample the chosen distribution
-  return it->second->sample(seed);
+  auto [val, sub_wgt] = distribution_[idx]->sample(seed);
+
+  // Multiply by component selection weight
+  double mix_wgt = weight_.empty() ? 1.0 : weight_[idx];
+  return {val, mix_wgt * sub_wgt};
+}
+
+double Mixture::sample_unbiased(uint64_t* seed) const
+{
+  size_t idx = di_.sample(seed);
+  return distribution_[idx]->sample(seed).first;
 }
 
 //==============================================================================

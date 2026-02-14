@@ -1277,7 +1277,13 @@ void read_settings_xml(pugi::xml_node root)
         "Shared secondary bank is not supported in eigenvalue calculations. "
         "Particle local secondary banks will be used instead.");
     } else if (run_mode == RunMode::FIXED_SOURCE) {
-      settings::use_shared_secondary_bank = true;
+      if (settings::event_based) {
+        warning(
+          "Shared secondary bank is not supported in event-based mode. "
+          "Particle local secondary banks will be used instead.");
+      } else {
+        settings::use_shared_secondary_bank = true;
+      }
     }
   }
 }

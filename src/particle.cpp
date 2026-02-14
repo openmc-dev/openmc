@@ -187,7 +187,6 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
-  //current_work() = src->current_work;
 }
 
 void Particle::event_calculate_xs()

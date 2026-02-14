@@ -42,9 +42,6 @@ vector<vector<double>> ifp_fission_lifetime_bank;
 // used to efficiently sort the fission bank after each iteration.
 vector<int64_t> progeny_per_particle;
 
-// A shared bank for secondary particles generated during transport
-vector<SourceSite> global_secondary_bank;
-
 } // namespace simulation
 
 //==============================================================================
@@ -78,20 +75,6 @@ void init_fission_bank(int64_t max)
 // Society, Volume 65, Page 235.
 void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
 {
-  // Debugging Sanity Check
-  // TODO: delete this after debugging
-  int64_t n_progeny = 0;
-  for (int i = 0; i < simulation::progeny_per_particle.size(); i++) {
-    n_progeny += simulation::progeny_per_particle[i];
-  }
-  int64_t bank_size = bank.size();
-  if (n_progeny != bank_size) {
-    fatal_error(fmt::format(
-      "Discrepancy detected in sort_bank: total progeny count ({}) does not "
-      "match bank size ({}). This may indicate a bug.",
-      n_progeny, bank_size));
-  }
-
   // Ensure we don't read off the end of the array if we ran with 0 particles
   if (simulation::progeny_per_particle.size() == 0) {
     return;
@@ -142,14 +125,6 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
     copy_ifp_data_to_fission_banks(
       sorted_ifp_delayed_group_bank.data(), sorted_ifp_lifetime_bank.data());
   }
-
-  // Set the parent_id fields to something larger per rank
-  // TODO: DELETE THIS AFTER DEBUGGING
-  /*
-  for (int64_t i = 0; i < bank.size(); i++) {
-    bank[i].parent_id += mpi::rank * 10000000;
-  }
-    */
 }
 
 // This function redistributes SourceSite particles across MPI ranks to

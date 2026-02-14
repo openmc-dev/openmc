@@ -85,10 +85,11 @@ const RGBColor BLACK {0, 0, 0};
  * \class PlottableInterface
  * \brief Interface for plottable objects.
  *
- * PlottableInterface classes must have a unique ID in the plots.xml file.
- * They guarantee the ability to create output in some form. This interface
- * is designed to be implemented by classes that produce plot-relevant data
- * which can be visualized.
+ * PlottableInterface classes must have unique IDs. If no ID (or -1) is
+ * provided, the next available ID is assigned automatically. They guarantee
+ * the ability to create output in some form. This interface is designed to be
+ * implemented by classes that produce plot-relevant data which can be
+ * visualized.
  */
 
 typedef xt::xtensor<RGBColor, 2> ImageData;
@@ -100,7 +101,7 @@ public:
 
 private:
   void set_id(pugi::xml_node plot_node);
-  int id_; // unique plot ID
+  int id_ {C_NONE}; // unique plot ID
 
   void set_bg_color(pugi::xml_node plot_node);
   void set_universe(pugi::xml_node plot_node);
@@ -131,18 +132,19 @@ public:
   const std::string& path_plot() const { return path_plot_; }
   std::string& path_plot() { return path_plot_; }
   int id() const { return id_; }
+  void set_id(int id = C_NONE);
   int level() const { return level_; }
   PlotColorBy color_by() const { return color_by_; }
 
   // Public color-related data
   PlottableInterface(pugi::xml_node plot_node);
   virtual ~PlottableInterface() = default;
-  int level_ {-1};               // Universe level to plot
-  bool color_overlaps_ {false};  // Show overlapping cells?
-  PlotColorBy color_by_;         // Plot coloring (cell/material)
-  RGBColor not_found_ {WHITE};   // Plot background color
-  RGBColor overlap_color_ {RED}; // Plot overlap color
-  vector<RGBColor> colors_;      // Plot colors
+  int level_ {-1};                           // Universe level to plot
+  bool color_overlaps_ {false};              // Show overlapping cells?
+  PlotColorBy color_by_ {PlotColorBy::mats}; // Plot coloring (cell/material)
+  RGBColor not_found_ {WHITE};               // Plot background color
+  RGBColor overlap_color_ {RED};             // Plot overlap color
+  vector<RGBColor> colors_;                  // Plot colors
 };
 
 struct IdData {
@@ -386,9 +388,9 @@ private:
 
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
   Position camera_position_;               // where camera is
-  Position look_at_;             // point camera is centered looking at
-  std::array<int, 2> pixels_;    // pixel dimension of resulting image
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+  Position look_at_;                     // point camera is centered looking at
+  std::array<int, 2> pixels_ {100, 100}; // pixel dimension of resulting image
+  Direction up_ {0.0, 0.0, 1.0};         // which way is up
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.

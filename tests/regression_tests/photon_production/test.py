@@ -72,7 +72,7 @@ def model():
 
     # Track source energies of secondary gammas
     ene2_filter = openmc.ParticleProductionFilter(
-        'photon', [0.0, 100e3, 300e3, 500e3, 2e6, 20e6])
+        ['neutron', 'photon'], [0.0, 100e3, 300e3, 500e3, 2e6, 20e6])
 
     neutron_only = openmc.ParticleFilter(['neutron'])
     tally_gam_ene = openmc.Tally()

@@ -31,6 +31,7 @@
 #include "openmc/tallies/filter_musurface.h"
 #include "openmc/tallies/filter_parent_nuclide.h"
 #include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter_particle_production.h"
 #include "openmc/tallies/filter_polar.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_sptl_legendre.h"

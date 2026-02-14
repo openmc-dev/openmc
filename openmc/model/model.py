@@ -2179,7 +2179,8 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for m in range(len(self.materials)):
-                mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups))
+                mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups,
+                                               temperatures=temperatures))
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][m])
@@ -2460,7 +2461,7 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for mat in self.materials:
-                mgxs_sets.append(openmc.XSdata(mat.name, groups))
+                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures=temperatures))
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
@@ -2627,7 +2628,7 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for mat in self.materials:
-                mgxs_sets.append(openmc.XSdata(mat.name, groups))
+                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures=temperatures))
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])

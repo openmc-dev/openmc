@@ -41,6 +41,7 @@ public:
   uint64_t transport_history_based_single_ray();
   SourceSite sample_prng();
   SourceSite sample_halton();
+  SourceSite sample_s2();
 
   //----------------------------------------------------------------------------
   // Static data members

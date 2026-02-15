@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+  </materials>
+  <geometry>
+    <cell id="1" material="void" region="1 -2 4 -5 6 -7" universe="1"/>
+    <cell id="2" material="void" region="2 -3 4 -5 6 -7" universe="1"/>
+    <cell id="3" material="void" region="1 -2 4 -5 7 -8" universe="1"/>
+    <cell id="4" material="void" region="2 -3 4 -5 7 -8" universe="1"/>
+    <surface id="1" type="x-plane" boundary="vacuum" coeffs="0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="1"/>
+    <surface id="3" type="x-plane" boundary="vacuum" coeffs="2"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="0"/>
+    <surface id="5" type="y-plane" boundary="vacuum" coeffs="1"/>
+    <surface id="6" type="z-plane" boundary="vacuum" coeffs="0"/>
+    <surface id="7" type="z-plane" coeffs="1"/>
+    <surface id="8" type="z-plane" boundary="vacuum" coeffs="2"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>20</particles>
+    <batches>5</batches>
+    <source type="independent" strength="0.8" particle="neutron">
+      <space type="point">
+        <parameters>0.5 0.5 1.5</parameters>
+      </space>
+      <angle type="monodirectional" reference_uvw="0.0 0.0 -1.0"/>
+    </source>
+    <source type="independent" strength="0.2" particle="neutron">
+      <space type="point">
+        <parameters>1.5 0.5 1.5</parameters>
+      </space>
+      <angle type="monodirectional" reference_uvw="0.0 0.0 -1.0"/>
+    </source>
+    <surf_source_write>
+      <surface_ids>7</surface_ids>
+      <max_particles>300</max_particles>
+      <cellto>1</cellto>
+    </surf_source_write>
+    <seed>1</seed>
+  </settings>
+  </model>

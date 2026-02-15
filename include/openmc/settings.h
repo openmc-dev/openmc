@@ -183,6 +183,11 @@ extern SSWCellType ssw_cell_type; //!< Type of option for the cell
                                   //!< argument of surface source write
 extern double surface_grazing_cutoff; //!< surface flux cosine cutoff
 extern double surface_grazing_ratio;  //!< surface flux substitution ratio
+
+extern vector<int64_t> ssw_cell_ids; //!< Cell ids for the surface source
+                                     //!< write setting
+extern SSWCellType ssw_cell_type;    //!< Type of option for the cell
+                                     //!< argument of surface source write
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures
 extern double

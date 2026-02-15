@@ -25,6 +25,7 @@ reflective and periodic Boundary Conditions (BC):
 - model_2: cylindrical core in 1 box (vacuum BC),
 - model_3: cylindrical core in 1 box (reflective BC),
 - model_4: cylindrical core in 1 box (periodic BC).
+- model_5: 2*2 array of boxes
 
 Two models including DAGMC geometries are also used, based on the mesh file 'dagmc.h5m'
 available from tests/regression_tests/dagmc/legacy:
@@ -79,6 +80,9 @@ case-19   model_3  Multiple   cellto (root universe)     R      None
 case-20   model_4  1          No                         P+R    Particles crossing the declared
                                                                 periodic surface
 case-21   model_4  1          cell (root universe)       P+R    None
+case-22   model_5  1          cellfrom (multiple)        T      particles crossing the declared 
+                                                                surface that come from multiple 
+                                                                cells   
 ========  =======  =========  =========================  =====  ===================================
 
 *: BC stands for Boundary Conditions, T for Transmission, R for Reflective, and V for Vacuum.
@@ -603,6 +607,56 @@ def model_4():
 
     return model
 
+@pytest.fixture
+def model_5():
+    """2*1*2 array of boxes"""
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    # =============================================================================
+    # Materials
+    # =============================================================================
+
+    # =============================================================================
+    # Geometry
+    # =============================================================================
+
+    x1 = openmc.XPlane(x0=0, boundary_type='vacuum')
+    x2 = openmc.XPlane(x0=1, boundary_type='vacuum')
+    x3 = openmc.XPlane(x0=2, boundary_type='vacuum')
+    y1 = openmc.YPlane(y0=0, boundary_type='vacuum')
+    y2 = openmc.YPlane(y0=1, boundary_type='vacuum')
+    z1 = openmc.ZPlane(z0=0, boundary_type='vacuum')
+    z2 = openmc.ZPlane(z0=1, boundary_type='transmission')
+    z3 = openmc.ZPlane(z0=2, boundary_type='vacuum')
+
+    box_11 = openmc.Cell(region = +x1 & -x2 & +y1 & -y2 & +z1 & -z2) 
+    box_12 = openmc.Cell(region = +x2 & -x3 & +y1 & -y2 & +z1 & -z2) 
+    box_21 = openmc.Cell(region = +x1 & -x2 & +y1 & -y2 & +z2 & -z3)
+    box_22 = openmc.Cell(region = +x2 & -x3 & +y1 & -y2 & +z2 & -z3)
+
+    root = openmc.Universe(cells=(box_11, box_12, box_21, box_22))
+    model.geometry = openmc.Geometry(root)
+
+    # =============================================================================
+    # Settings
+    # =============================================================================
+
+    model.settings = openmc.Settings()
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 20
+    model.settings.batches = 5
+    model.settings.seed = 1
+
+    point_1 = openmc.stats.Point((0.5,0.5,1.5))
+    point_2 = openmc.stats.Point((1.5,0.5,1.5))
+    direction = openmc.stats.Monodirectional((0,0,-1))
+    source_1 = openmc.IndependentSource(space=point_1, angle=direction, strength=0.8)
+    source_2 = openmc.IndependentSource(space=point_2, angle=direction, strength=0.2)
+    model.settings.source = [source_1, source_2]
+
+    return model
+
 
 def return_surface_source_data(filepath):
     """Read a surface source file and return a sorted array composed
@@ -754,19 +808,19 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         (
             "case-04",
             "model_1",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 2},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [2]},
         ),
         (
             "case-05",
             "model_1",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [3]},
         ),
-        ("case-06", "model_1", {"max_particles": 300, "cell": 2}),
-        ("case-07", "model_1", {"max_particles": 300, "cell": 3}),
-        ("case-08", "model_1", {"max_particles": 300, "cellfrom": 2}),
-        ("case-09", "model_1", {"max_particles": 300, "cellto": 2}),
-        ("case-10", "model_1", {"max_particles": 300, "cellfrom": 3}),
-        ("case-11", "model_1", {"max_particles": 300, "cellto": 3}),
+        ("case-06", "model_1", {"max_particles": 300, "cell": [2]}),
+        ("case-07", "model_1", {"max_particles": 300, "cell": [3]}),
+        ("case-08", "model_1", {"max_particles": 300, "cellfrom": [2]}),
+        ("case-09", "model_1", {"max_particles": 300, "cellto": [2]}),
+        ("case-10", "model_1", {"max_particles": 300, "cellfrom": [3]}),
+        ("case-11", "model_1", {"max_particles": 300, "cellto": [3]}),
         (
             "case-12",
             "model_2",
@@ -775,17 +829,17 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         (
             "case-13",
             "model_2",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [3]},
         ),
         (
             "case-14",
             "model_2",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": 3},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": [3]},
         ),
         (
             "case-15",
             "model_2",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": 3},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": [3]},
         ),
         (
             "case-16",
@@ -795,17 +849,17 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         (
             "case-17",
             "model_3",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [3]},
         ),
         (
             "case-18",
             "model_3",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": 3},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": [3]},
         ),
         (
             "case-19",
             "model_3",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": 3},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": [3]},
         ),
         (
             "case-20",
@@ -815,7 +869,22 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         (
             "case-21",
             "model_4",
-            {"max_particles": 300, "surface_ids": [4], "cell": 3},
+            {"max_particles": 300, "surface_ids": [4], "cell": [3]},
+        ),
+        (
+            "case-22",
+            "model_5",
+            {"max_particles": 300, "surface_ids": [7], "cellto": [1]},
+        ),
+        (
+            "case-23",
+            "model_5",
+            {"max_particles": 300, "surface_ids": [7], "cellto": [2]},
+        ),
+        (
+            "case-24",
+            "model_5",
+            {"max_particles": 300, "surface_ids": [7], "cellto": [1, 2]},
         ),
     ],
 )
@@ -848,7 +917,7 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
     model_1.settings.surf_source_write = {
         "max_particles": 200,
         "surface_ids": [1, 2, 3],
-        "cellfrom": 2,
+        "cellfrom": [2],
     }
     harness = SurfaceSourceWriteTestHarness(
         "statepoint.5.h5", model=model_1, workdir="case-a01"
@@ -863,13 +932,13 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
         (
             "case-e01",
             "model_1",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 2},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [2]},
         ),
-        ("case-e02", "model_1", {"max_particles": 300, "cell": 3}),
+        ("case-e02", "model_1", {"max_particles": 300, "cell": [3]}),
         (
             "case-e03",
             "model_2",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [3]},
         ),
     ],
 )
@@ -1083,21 +1152,21 @@ def model_dagmc_2():
     [
         ("case-d01", "model_dagmc_1", {"max_particles": 300}),
         ("case-d02", "model_dagmc_1", {"max_particles": 300, "surface_ids": [1]}),
-        ("case-d03", "model_dagmc_1", {"max_particles": 300, "cell": 2}),
+        ("case-d03", "model_dagmc_1", {"max_particles": 300, "cell": [2]}),
         (
             "case-d04",
             "model_dagmc_1",
-            {"max_particles": 300, "surface_ids": [1], "cell": 2},
+            {"max_particles": 300, "surface_ids": [1], "cell": [2]},
         ),
-        ("case-d05", "model_dagmc_1", {"max_particles": 300, "cellfrom": 2}),
-        ("case-d06", "model_dagmc_1", {"max_particles": 300, "cellto": 2}),
+        ("case-d05", "model_dagmc_1", {"max_particles": 300, "cellfrom": [2]}),
+        ("case-d06", "model_dagmc_1", {"max_particles": 300, "cellto": [2]}),
         (
             "case-d07",
             "model_dagmc_2",
             {
                 "max_particles": 300,
                 "surface_ids": [101, 102, 103, 104, 105, 106],
-                "cell": 7,
+                "cell": [7],
             },
         ),
         (
@@ -1106,7 +1175,7 @@ def model_dagmc_2():
             {
                 "max_particles": 300,
                 "surface_ids": [101, 102, 103, 104, 105, 106],
-                "cell": 8,
+                "cell": [8],
             },
         ),
     ],

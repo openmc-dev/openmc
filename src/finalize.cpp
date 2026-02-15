@@ -130,7 +130,6 @@ int openmc_finalize()
   settings::source_rejection_fraction = 0.05;
   settings::source_separate = false;
   settings::source_write = true;
-  settings::ssw_cell_id = C_NONE;
   settings::ssw_cell_type = SSWCellType::None;
   settings::ssw_max_particles = 0;
   settings::ssw_max_files = 1;

@@ -134,7 +134,7 @@ std::unordered_set<int> source_write_surf_id;
 CollisionTrackConfig collision_track_config {};
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
-int64_t ssw_cell_id {C_NONE};
+vector<int64_t> ssw_cell_ids;
 SSWCellType ssw_cell_type {SSWCellType::None};
 double surface_grazing_cutoff {0.001};
 double surface_grazing_ratio {0.5};
@@ -936,23 +936,36 @@ void read_settings_xml(pugi::xml_node root)
     }
     // Get cell information
     if (check_for_node(node_ssw, "cell")) {
-      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cell"));
+      if (!ssw_cell_ids.empty()) {
+        fatal_error(
+          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+      }
+      auto temp = get_node_array<int64_t>(node_ssw, "cell");
+      for (const auto& cell_id : temp) {
+        ssw_cell_ids.push_back(cell_id);
+      }
       ssw_cell_type = SSWCellType::Both;
     }
     if (check_for_node(node_ssw, "cellfrom")) {
-      if (ssw_cell_id != C_NONE) {
+      if (!ssw_cell_ids.empty()) {
         fatal_error(
           "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
       }
-      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellfrom"));
+      auto temp = get_node_array<int64_t>(node_ssw, "cellfrom");
+      for (const auto& cell_id : temp) {
+        ssw_cell_ids.push_back(cell_id);
+      }
       ssw_cell_type = SSWCellType::From;
     }
     if (check_for_node(node_ssw, "cellto")) {
-      if (ssw_cell_id != C_NONE) {
+      if (!ssw_cell_ids.empty()) {
         fatal_error(
           "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
       }
-      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellto"));
+      auto temp = get_node_array<int64_t>(node_ssw, "cellto");
+      for (const auto& cell_id : temp) {
+        ssw_cell_ids.push_back(cell_id);
+      }
       ssw_cell_type = SSWCellType::To;
     }
   }
@@ -1294,6 +1307,7 @@ void free_memory_settings()
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
+  settings::ssw_cell_ids.clear();
   settings::res_scat_nuclides.clear();
 }
 

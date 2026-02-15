@@ -280,13 +280,13 @@ class Settings:
                    process (int)
         :max_source_files: Maximum number of surface source files to be created (int)
         :mcpl: Output in the form of an MCPL-file (bool)
-        :cell: Cell ID used to determine if particles crossing identified
+        :cell: List of cell IDs used to determine if particles crossing identified
                surfaces are to be banked. Particles coming from or going to this
                declared cell will be banked (int)
-        :cellfrom: Cell ID used to determine if particles crossing identified
+        :cellfrom: List of cell IDs used to determine if particles crossing identified
                    surfaces are to be banked. Particles coming from this
                    declared cell will be banked (int)
-        :cellto: Cell ID used to determine if particles crossing identified
+        :cellto: List of cell IDs used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
                  cell will be banked (int)
     surface_grazing_cutoff : float
@@ -881,23 +881,24 @@ class Settings:
                 ("surface_ids", "max_particles", "max_source_files",
                  "mcpl", "cell", "cellfrom", "cellto"),
             )
-            if key == "surface_ids":
-                cv.check_type(
-                    "surface ids for source banking", value, Iterable, Integral
-                )
-                for surf_id in value:
-                    cv.check_greater_than(
-                        "surface id for source banking", surf_id, 0)
+            if key in ("surface_ids", "cell", "cellfrom", "cellto"):
+                name = {
+                    "surface_ids": "surface id(s) for source banking",
+                    "cell": "Cell ID(s) for source banking (from or to)",
+                    "cellfrom": "Cell ID(s) for source banking (from only)",
+                    "cellto": "Cell ID(s) for source banking (to only)",
+                }[key]
+
+                cv.check_type(name, value, Iterable, Integral)
+                for x in value:
+                    cv.check_greater_than(name, x, 0)
 
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
-            elif key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
+            elif key in ("max_particles", "max_source_files"):
                 name = {
                     "max_particles": "maximum particle banks on surfaces per process",
                     "max_source_files": "maximun surface source files to be written",
-                    "cell": "Cell ID for source banking (from or to)",
-                    "cellfrom": "Cell ID for source banking (from only)",
-                    "cellto": "Cell ID for source banking (to only)",
                 }[key]
                 cv.check_type(name, value, Integral)
                 cv.check_greater_than(name, value, 0)
@@ -1569,18 +1570,29 @@ class Settings:
     def _create_surf_source_write_subelement(self, root):
         if self._surf_source_write:
             element = ET.SubElement(root, "surf_source_write")
+
             if "surface_ids" in self._surf_source_write:
                 subelement = ET.SubElement(element, "surface_ids")
                 subelement.text = " ".join(
                     str(x) for x in self._surf_source_write["surface_ids"]
                 )
-            if "mcpl" in self._surf_source_write:
-                subelement = ET.SubElement(element, "mcpl")
-                subelement.text = str(self._surf_source_write["mcpl"]).lower()
-            for key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
+
+            for key in ("max_particles", "max_source_files"):
                 if key in self._surf_source_write:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(self._surf_source_write[key])
+
+            for key in ("cell", "cellfrom", "cellto"):
+                if key in self._surf_source_write:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = " ".join(
+                        str(x) for x in self._surf_source_write[key]
+                    )
+
+            if "mcpl" in self._surf_source_write:
+                subelement = ET.SubElement(element, "mcpl")
+                subelement.text = str(self._surf_source_write["mcpl"]).lower()
+                
 
     def _create_collision_track_subelement(self, root):
         if self._collision_track:
@@ -2089,14 +2101,14 @@ class Settings:
         if elem is None:
             return
         for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cell', 'cellto', 'cellfrom'):
-            if key == 'surface_ids':
+            if key in ('surface_ids', 'cell', 'cellto', 'cellfrom'):
                 value = get_elem_list(elem, key, int)
             else:
                 value = get_text(elem, key)
             if value is not None:
                 if key == 'mcpl':
                     value = value in ('true', '1')
-                elif key in ('max_particles', 'max_source_files', 'cell', 'cellfrom', 'cellto'):
+                elif key in ('max_particles', 'max_source_files'):
                     value = int(value)
                 self.surf_source_write[key] = value
 

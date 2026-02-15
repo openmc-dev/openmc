@@ -33,6 +33,7 @@ namespace openmc {
 namespace model {
 std::unordered_map<int32_t, int32_t> cell_map;
 vector<unique_ptr<Cell>> cells;
+std::string temperatures_from_h5 = "";
 
 } // namespace model
 
@@ -407,30 +408,33 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
   }
 
-  // Read the temperature element which may be distributed like materials.
-  if (check_for_node(cell_node, "temperature")) {
-    sqrtkT_ = get_node_array<double>(cell_node, "temperature");
-    sqrtkT_.shrink_to_fit();
+  if (model::temperature_from_h5 == "") {
 
-    // Make sure this is a material-filled cell.
-    if (material_.size() == 0) {
-      fatal_error(fmt::format(
-        "Cell {} was specified with a temperature but no material. Temperature"
-        "specification is only valid for cells filled with a material.",
-        id_));
-    }
+    // Read the temperature element which may be distributed like materials.
+    if (check_for_node(cell_node, "temperature")) {
+      sqrtkT_ = get_node_array<double>(cell_node, "temperature");
+      sqrtkT_.shrink_to_fit();
 
-    // Make sure all temperatures are non-negative.
-    for (auto T : sqrtkT_) {
-      if (T < 0) {
+      // Make sure this is a material-filled cell.
+      if (material_.size() == 0) {
         fatal_error(fmt::format(
-          "Cell {} was specified with a negative temperature", id_));
+          "Cell {} was specified with a temperature but no material. Temperature"
+          "specification is only valid for cells filled with a material.",
+          id_));
       }
-    }
 
-    // Convert to sqrt(k*T).
-    for (auto& T : sqrtkT_) {
-      T = std::sqrt(K_BOLTZMANN * T);
+      // Make sure all temperatures are non-negative.
+      for (auto T : sqrtkT_) {
+        if (T < 0) {
+          fatal_error(fmt::format(
+            "Cell {} was specified with a negative temperature", id_));
+        }
+      }
+
+      // Convert to sqrt(k*T).
+      for (auto& T : sqrtkT_) {
+        T = std::sqrt(K_BOLTZMANN * T);
+      }
     }
   }
 

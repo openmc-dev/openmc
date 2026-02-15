@@ -48,6 +48,7 @@ class UniversePartitioner;
 namespace model {
 extern std::unordered_map<int32_t, int32_t> cell_map;
 extern vector<unique_ptr<Cell>> cells;
+extern std::string temperatures_from_h5;
 
 } // namespace model
 

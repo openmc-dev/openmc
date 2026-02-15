@@ -59,6 +59,9 @@ void read_geometry_xml(pugi::xml_node root)
   std::unordered_map<int, double> albedo_map;
   std::unordered_map<int, int> periodic_sense_map;
 
+  // confirm XML structure and whether we expect to find this here
+  model::temperature_from_h5 = get_node_value(root, "temperature_from_h5");
+
   read_surfaces(root, periodic_pairs, albedo_map, periodic_sense_map);
   read_cells(root);
   prepare_boundary_conditions(periodic_pairs, albedo_map, periodic_sense_map);
@@ -84,6 +87,10 @@ void read_geometry_xml(pugi::xml_node root)
 
   // if the root universe is DAGMC geometry, make sure the model is well-formed
   check_dagmc_root_univ();
+
+  if (model::temperature_from_h5 != "") {
+    openmc_properties_import(model::temperature_from_h5, true, false);
+  }
 }
 
 //==============================================================================

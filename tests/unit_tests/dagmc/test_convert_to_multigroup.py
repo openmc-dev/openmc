@@ -15,7 +15,8 @@ pytestmark = pytest.mark.skipif(
 def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
     """Test that convert_to_multigroup works with DAGMC model without
     setting particles/batches beforehand."""
-
+    openmc.reset_auto_ids()
+    
     mat = openmc.Material(name="mat")
     mat.add_nuclide("Fe56", 1.0)
     mat.set_density("g/cm3", 7.0)

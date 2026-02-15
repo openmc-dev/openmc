@@ -88,8 +88,10 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
 
   // Set the global upper and lower interpolation bounds to avoid errors
   // involving C-API functions.
-  data::temperature_min = std::min(data::temperature_min, *temps_available.begin());
-  data::temperature_max = std::max(data::temperature_max, *temps_available.end());
+  data::temperature_min =
+    std::min(data::temperature_min, *temps_available.begin());
+  data::temperature_max =
+    std::max(data::temperature_max, *temps_available.end());
 
   // If only one temperature is available, lets just use nearest temperature
   // interpolation

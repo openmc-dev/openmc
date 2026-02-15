@@ -70,13 +70,22 @@ vector<double> time_grid;
 
 namespace simulation {
 xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>>
+  global_tallies_first_gen;
 int32_t n_realizations {0};
 } // namespace simulation
 
 double global_tally_absorption;
 double global_tally_collision;
 double global_tally_tracklength;
+double global_tally_tracklength_sq;
 double global_tally_leakage;
+
+// Tallies for first generation quantities
+double global_tally_absorption_first_gen;
+double global_tally_collision_first_gen;
+double global_tally_tracklength_first_gen;
+double global_tally_tracklength_sq_first_gen;
 
 //==============================================================================
 // Tally object implementation
@@ -1073,16 +1082,25 @@ void accumulate_tallies()
   // Accumulate on master only unless run is not reduced then do it on all
   if (mpi::master || !settings::reduce_tallies) {
     auto& gt = simulation::global_tallies;
+    double k_col = 0.0;
+    double k_abs = 0.0;
+    double k_tra = 0.0;
 
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    double kq_col = 0.0;
+    double kq_abs = 0.0;
+    double kq_tra = 0.0;
+
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) {
       if (simulation::current_batch > settings::n_inactive) {
         // Accumulate products of different estimators of k
-        double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /
-                       simulation::total_weight;
-        double k_abs = gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
-                       simulation::total_weight;
-        double k_tra = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
-                       simulation::total_weight;
+        k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /
+                simulation::total_weight;
+        k_abs = gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
+                simulation::total_weight;
+        k_tra = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
+                simulation::total_weight;
         simulation::k_col_abs += k_col * k_abs;
         simulation::k_col_tra += k_col * k_tra;
         simulation::k_abs_tra += k_abs * k_tra;
@@ -1090,11 +1108,53 @@ void accumulate_tallies()
     }
 
     // Accumulate results for global tallies
+    double k_vals[3];
+    double kq_vals[3];
     for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
       double val = gt(i, TallyResult::VALUE) / simulation::total_weight;
+      if (i < 3) {
+        k_vals[i] = val;
+      }
       gt(i, TallyResult::VALUE) = 0.0;
       gt(i, TallyResult::SUM) += val;
       gt(i, TallyResult::SUM_SQ) += val * val;
+    }
+
+    // Accumulate subcritical multiplication tallies
+    if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::calculate_subcritical_k) {
+      auto& gt_first_gen = simulation::global_tallies_first_gen;
+      if (mpi::master || !settings::reduce_tallies) {
+        if (mpi::master || !settings::reduce_tallies) {
+          // Accumulate products of different estimators of k
+          kq_col = gt_first_gen(GlobalTally::K_COLLISION, TallyResult::VALUE) /
+                   simulation::total_weight;
+          kq_abs = gt_first_gen(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
+                   simulation::total_weight;
+          kq_tra =
+            gt_first_gen(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
+            simulation::total_weight;
+          simulation::kq_col_abs += kq_col * kq_abs;
+          simulation::kq_col_tra += kq_col * kq_tra;
+          simulation::kq_abs_tra += kq_abs * kq_tra;
+        }
+      }
+      for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
+        double val_first_gen =
+          gt_first_gen(i, TallyResult::VALUE) / simulation::total_weight;
+        if (i < 3) {
+          kq_vals[i] = val_first_gen;
+        }
+        gt_first_gen(i, TallyResult::VALUE) = 0.0;
+        gt_first_gen(i, TallyResult::SUM) += val_first_gen;
+        gt_first_gen(i, TallyResult::SUM_SQ) += val_first_gen * val_first_gen;
+      }
+    }
+
+    for (int i = 0; i < simulation::N_K_EST; ++i) {
+      for (int j = 0; j < simulation::N_K_EST; ++j) {
+        simulation::k_kq_products[i][j] += k_vals[i] * kq_vals[j];
+      }
     }
   }
 
@@ -1551,8 +1611,8 @@ extern "C" int openmc_tally_get_n_realizations(int32_t index, int32_t* n)
   return 0;
 }
 
-//! \brief Returns a pointer to a tally results array along with its shape.
-//! This allows a user to obtain in-memory tally results from Python directly.
+//! \brief Returns a pointer to a tally results array along with its shape. This
+//! allows a user to obtain in-memory tally results from Python directly.
 extern "C" int openmc_tally_results(
   int32_t index, double** results, size_t* shape)
 {

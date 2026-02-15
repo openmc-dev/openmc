@@ -275,7 +275,10 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
+  if ((settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) &&
+      type().is_neutron()) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -337,7 +340,10 @@ void Particle::event_collide()
 {
 
   // Score collision estimate of keff
-  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
+  if ((settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::calculate_subcritical_k)) &&
+      type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
   }
 
@@ -497,8 +503,11 @@ void Particle::event_death()
   global_tally_absorption += keff_tally_absorption();
 #pragma omp atomic
   global_tally_collision += keff_tally_collision();
+  double val = keff_tally_tracklength();
 #pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength();
+  global_tally_tracklength += val;
+#pragma omp atomic
+  global_tally_tracklength_sq += val * val;
 #pragma omp atomic
   global_tally_leakage += keff_tally_leakage();
 

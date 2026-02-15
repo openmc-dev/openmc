@@ -4,11 +4,13 @@
 #ifndef OPENMC_SIMULATION_H
 #define OPENMC_SIMULATION_H
 
+#include "openmc/array.h"
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
 #include <cstdint>
+#include <sys/types.h>
 
 namespace openmc {
 
@@ -28,13 +30,30 @@ extern "C" int current_gen;   //!< current fission generation
 extern "C" bool initialized;  //!< has simulation been initialized?
 extern "C" double keff;       //!< average k over batches
 extern "C" double keff_std;   //!< standard deviation of average k
+extern "C" double
+  k; //!< average k over batches, used for subcritical multiplication problems
+extern "C" double k_std; //!< standard deviation of average k, used for
+                         //!< subcritical multiplication problems
+extern "C" double
+  kq; //!< average kq over batches, used for subcritical multiplication problems
+extern "C" double kq_std; //!< standard deviation of average kq, used for
+                          //!< subcritical multiplication problems
+extern "C" double
+  ks; //!< average ks over batches, used for subcritical multiplication problems
+extern "C" double ks_std;    //!< standard deviation of average ks, used for
+                             //!< subcritical multiplication problems
 extern "C" double k_col_abs; //!< sum over batches of k_collision * k_absorption
 extern "C" double
   k_col_tra; //!< sum over batches of k_collision * k_tracklength
 extern "C" double
-  k_abs_tra;               //!< sum over batches of k_absorption * k_tracklength
-extern double log_spacing; //!< lethargy spacing for energy grid searches
-extern "C" int n_lost_particles;   //!< cumulative number of lost particles
+  k_abs_tra; //!< sum over batches of k_absorption * k_tracklength
+extern "C" double
+  kq_col_abs; //!< sum over batches of kq_collision * kq_absorption
+extern "C" double
+  kq_col_tra; //!< sum over batches of kq_collision * kq_tracklength
+extern "C" double kq_abs_tra;
+extern double log_spacing;       //!< lethargy spacing for energy grid searches
+extern "C" int n_lost_particles; //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;      //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers;  //!< have tally triggers been satisfied?
@@ -46,8 +65,24 @@ extern int64_t work_per_rank;      //!< number of particles per MPI rank
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 
-extern vector<double> k_generation;
+extern vector<array<double, 2>> k_generation;
+extern vector<array<double, 2>> kq_generation;
+extern vector<array<double, 2>> ks_generation;
 extern vector<int64_t> work_index;
+
+enum class KEstimator : int {
+  K_COLLISION = 0,
+  K_ABSORPTION = 1,
+  K_TRACKLENGTH = 2,
+  N_ESTIMATORS
+};
+
+constexpr int N_K_EST = static_cast<int>(KEstimator::N_ESTIMATORS);
+extern std::array<std::array<double, N_K_EST>, N_K_EST> k_kq_products;
+extern std::array<std::array<double, N_K_EST>, N_K_EST> k_kq_product;
+
+extern std::array<double, 3> k_combined_weights;
+extern std::array<double, 3> kq_combined_weights;
 
 } // namespace simulation
 

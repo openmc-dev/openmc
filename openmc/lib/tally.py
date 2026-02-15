@@ -127,11 +127,11 @@ def global_tallies():
     """
     ptr = POINTER(c_double)()
     _dll.openmc_global_tallies(ptr)
-    array = as_array(ptr, (4, 3))
+    array = as_array(ptr, (5, 3))
 
     # Get sum, sum-of-squares, and number of realizations
-    sum_ = array[:, 1]
-    sum_sq = array[:, 2]
+    sum_ = array[:4, 1]
+    sum_sq = array[:4, 2]
     n = num_realizations()
 
     # Determine mean

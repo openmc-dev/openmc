@@ -21,8 +21,12 @@ namespace openmc {
 
 namespace simulation {
 
-extern double keff_generation; //!<  Single-generation k on each processor
+extern array<double, 2>
+  keff_generation; //!<  Single-generation k on each processor
+extern array<double, 2>
+  kq_generation_val;           //!<  Single-generation kq on each processor
 extern array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
+extern array<double, 2> kq_sum;
 extern vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
@@ -32,8 +36,17 @@ extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 // Non-member functions
 //==============================================================================
 
-//! Collect/normalize the tracklength keff from each process
+//! Collect/normalize the tracklength keff from each process (keff)
 void calculate_generation_keff();
+
+//! Collect/normalize the tracklength keff from each process
+//!
+//! Depending on KeffType, this function will calculate either the kq or ks
+//! generation keff
+void calculate_generation_keff(KeffType type);
+
+std::pair<double, double> convert_m_to_k(double m, double m_std);
+std::pair<double, double> convert_k_to_m(double k, double k_std);
 
 //! Calculate mean/standard deviation of keff during active generations
 //!
@@ -41,6 +54,7 @@ void calculate_generation_keff();
 //! the mean and standard deviation of the mean of k-effective over active
 //! generations. It also broadcasts the value from the master process.
 void calculate_average_keff();
+void calculate_average_keff(KeffType type);
 
 //! Calculates a minimum variance estimate of k-effective
 //!
@@ -55,6 +69,11 @@ void calculate_average_keff();
 //! \param[out] k_combined Estimate of k-effective and its standard deviation
 //! \return Error status
 extern "C" int openmc_get_keff(double* k_combined);
+extern "C" int openmc_get_kq(double* kq_combined);
+int get_combined_k_from_tallies(double* k_combined,
+  std::array<double, 3>& k_combined_weights, double keff, double keff_std,
+  xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies,
+  double k_col_abs, double k_col_tra, double k_abs_tra);
 
 //! Sample/redistribute source sites from accumulated fission sites
 void synchronize_bank();

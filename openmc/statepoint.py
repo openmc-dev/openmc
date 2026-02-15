@@ -36,6 +36,8 @@ class StatePoint:
 
     Attributes
     ----------
+    calculate_subcritical_k : bool
+        Whether subcritical multiplication factors were calculated in fixed source mode
     cmfd_on : bool
         Indicate whether CMFD is active
     cmfd_balance : numpy.ndarray
@@ -79,12 +81,21 @@ class StatePoint:
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
+    kq_generation : numpy.ndarray
+        Estimate of kq for each batch/generation
+    ks_generation : numpy.ndarray
+        Estimate of ks for each batch/generation
     keff : uncertainties.UFloat
         Combined estimator for k-effective
-
         .. versionadded:: 0.13.1
+    kq : uncertainties.UFloat
+        Combined estimator for kq
+    ks : uncertainaties.UFloat
+        Combined estimator for ks
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
+    multiplication : uncertainties.UFloat
+        Estimator for multiplication of initial source neutrons 
     n_batches : int
         Number of batches
     n_inactive : int
@@ -111,6 +122,8 @@ class StatePoint:
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
         the position, direction, energy, weight, delayed group, surface ID and
         particle type of the source site, respectively.
+    source_effectiveness : uncertainties.UFloat
+        Source effectiveness factor.        
     source_present : bool
         Indicate whether source sites are present
     sparse : bool
@@ -168,6 +181,15 @@ class StatePoint:
 
     def __exit__(self, *exc):
         self.close()
+
+    @property
+    def calculate_subcritical_k(self):
+        """Indicate whether subcritical multiplication was calculated."""
+        # If we are in fixed source mode and k_generation exists, 
+        # then calculate_subcritical_k was True during the simulation.
+        if self.run_mode == 'fixed source' and 'k_generation' in self._f:
+            return True
+        return False
 
     @property
     def cmfd_on(self):
@@ -247,8 +269,8 @@ class StatePoint:
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
-            gt['sum'] = data[:,1]
-            gt['sum_sq'] = data[:,2]
+            gt['sum'] = data[:,0]
+            gt['sum_sq'] = data[:,1]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations
@@ -268,15 +290,61 @@ class StatePoint:
 
     @property
     def k_generation(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['k_generation'][()]
+        if 'k_generation' in self._f:
+            arr = self._f['k_generation'][()]
+            if arr.ndim==1:
+                return arr
+            elif arr.ndim==2:
+                return uarray(arr[:,0],arr[:,1])
+            else:
+                raise ValueError(f'k_generation shape ({arr.shape}) must be either 1d or 2d')
+        else:
+            return None
+        
+    @property
+    def kq_generation(self):
+        if 'kq_generation' in self._f:
+            arr = self._f['kq_generation'][()]
+            if arr.ndim==1:
+                return arr
+            elif arr.ndim==2:
+                return uarray(arr[:,0],arr[:,1])
+            else:
+                raise ValueError(f'kq_generation shape ({arr.shape}) must be either 1d or 2d')
         else:
             return None
 
     @property
+    def ks_generation(self):
+        if 'ks_generation' in self._f: 
+            arr = self._f['ks_generation'][()]
+            if arr.ndim==1:
+                return arr
+            elif arr.ndim==2:
+                return uarray(arr[:,0],arr[:,1])
+            else:
+                raise ValueError(f'ks_generation shape ({arr.shape}) must be either 1d or 2d')
+        else:
+            return None
+    
+    @property
     def keff(self):
-        if self.run_mode == 'eigenvalue':
+        if 'k_combined' in self._f:
             return ufloat(*self._f['k_combined'][()])
+        else:
+            return None
+        
+    @property
+    def kq(self):
+        if 'kq_combined' in self._f:
+            return ufloat(*self._f['kq_combined'][()])
+        else:
+            return None
+    
+    @property
+    def ks(self):
+        if 'ks_combined' in self._f:
+            return ufloat(*self._f['ks_combined'][()])
         else:
             return None
 
@@ -322,6 +390,19 @@ class StatePoint:
             self._meshes_read = True
 
         return self._meshes
+        
+    @property
+    def multiplication(self):
+        if self.run_mode == 'eigenvalue':
+            k_gen = self.k_generation
+            k_inactive = k_gen[:self.n_inactive]
+            cumprod = np.cumprod(k_inactive)
+            cumprod[-1] *= 1/(1-self.keff)
+            return 1.0+np.sum(cumprod)
+        elif self.calculate_subcritical_k:
+            return 1/(1 - self.keff)
+        else:
+            return None        
 
     @property
     def n_batches(self):
@@ -370,6 +451,15 @@ class StatePoint:
     @property
     def source(self):
         return self._f['source_bank'][()] if self.source_present else None
+        
+    @property
+    def source_effectiveness(self):
+        if self.run_mode == 'eigenvalue':
+            k_gen = self.k_generation
+            k_inactive = k_gen[:self.n_inactive]
+            return np.prod(k_inactive/self.keff)
+        else:
+            return None          
 
     @property
     def source_present(self):

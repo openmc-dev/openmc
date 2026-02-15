@@ -2583,11 +2583,11 @@ class Model:
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():
                 if isinstance(univ, openmc.DAGMCUniverse):
-                    # Initialize in plotting mode (non-transport mode)
+                    # Initialize in stochastic volume mode (non-transport mode)
                     # This mode doesn't require
                     # valid transport settings like particles/batches
                     original_run_mode = self.settings.run_mode
-                    self.settings.run_mode = 'plot' 
+                    self.settings.run_mode = 'volume' 
                     self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()

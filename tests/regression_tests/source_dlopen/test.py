@@ -14,16 +14,18 @@ from tests.testing_harness import PyAPITestHarness
 def compile_source(request):
     """Compile the external source"""
 
-    # Get build directory and write CMakeLists.txt file
-    openmc_dir = Path(str(request.config.rootdir)) / 'build'
+    # Get cmake_dir from openmc config command
+    result = subprocess.run(['openmc', 'config', '--cmake-dir'], capture_output=True, text=True, check=True)
+    cmake_dir = result.stdout.strip()
+
     with open('CMakeLists.txt', 'w') as f:
-        f.write(textwrap.dedent("""
+        f.write(textwrap.dedent(f"""
             cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
             project(openmc_sources CXX)
             add_library(source SHARED source_sampling.cpp)
-            find_package(OpenMC REQUIRED HINTS {})
+            find_package(OpenMC REQUIRED HINTS {cmake_dir})
             target_link_libraries(source OpenMC::libopenmc)
-            """.format(openmc_dir)))
+            """))
 
     # Create temporary build directory and change to there
     local_builddir = Path('build')

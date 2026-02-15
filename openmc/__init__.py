@@ -35,6 +35,7 @@ from openmc.search import *
 from openmc.polynomial import *
 from openmc.tracks import *
 from .config import *
+from .paths import *
 
 # Import a few names from the model module
 from openmc.model import Model, SearchResult

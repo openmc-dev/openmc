@@ -169,7 +169,7 @@ def test_properties_temperature(lib_init):
     assert cell.get_temperature() == pytest.approx(300.0)
 
     # Import properties and check that temperature is restored
-    openmc.lib.import_properties('properties.h5')
+    openmc.lib.import_properties('properties.h5', True, True)
     assert cell.get_temperature() == pytest.approx(200.0)
 
 
@@ -197,7 +197,7 @@ def test_properties_cell_density(lib_init):
     assert cell.get_density() == pytest.approx(3.0)
 
     # Import properties and check that density is restored
-    openmc.lib.import_properties('properties.h5')
+    openmc.lib.import_properties('properties.h5', True, True)
     assert cell.get_density() == pytest.approx(orig_density)
 
 
@@ -213,7 +213,7 @@ def test_properties_fail_cell(lib_init):
     # The number of cells was changed in the previous test, so the properties
     # file is no longer valid
     with pytest.raises(exc.GeometryError, match="Number of cells"):
-        openmc.lib.import_properties("properties.h5")
+        openmc.lib.import_properties("properties.h5", True, True)
 
 
 def test_material_mapping(lib_init):
@@ -267,7 +267,7 @@ def test_properties_density(lib_init):
     assert m.get_density() == pytest.approx(orig_density*2)
 
     # Import properties and check that density was restored
-    openmc.lib.import_properties('properties.h5')
+    openmc.lib.import_properties('properties.h5', True, True)
     assert m.get_density() == pytest.approx(orig_density)
 
     with pytest.raises(ValueError):
@@ -293,7 +293,7 @@ def test_properties_fail_material(lib_init):
     # The number of materials was changed in the previous test, so the properties
     # file is no longer valid
     with pytest.raises(exc.GeometryError, match="Number of materials"):
-        openmc.lib.import_properties("properties.h5")
+        openmc.lib.import_properties("properties.h5", True, True)
 
 
 def test_nuclide_mapping(lib_init):

@@ -190,7 +190,7 @@ extern "C" int openmc_properties_export(const char* filename)
   return 0;
 }
 
-extern "C" int openmc_properties_import(const char* filename)
+extern "C" int openmc_properties_import(const char* filename, const bool import_cells, const bool import_materials)
 {
   // Display output message
   auto msg = fmt::format("Importing properties from {}...", filename);
@@ -212,48 +212,51 @@ extern "C" int openmc_properties_import(const char* filename)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  // Make sure number of cells matches
-  auto geom_group = open_group(file, "geometry");
-  int32_t n;
-  read_attribute(geom_group, "n_cells", n);
-  if (n != openmc::model::cells.size()) {
-    close_group(geom_group);
-    file_close(file);
-    set_errmsg(fmt::format(
-      "Number of cells in {} doesn't match current model.", filename));
-    return OPENMC_E_GEOMETRY;
-  }
-
-  // Read cell properties
-  auto cells_group = open_group(geom_group, "cells");
-  try {
-    for (const auto& c : model::cells) {
-      c->import_properties_hdf5(cells_group);
+  if (import_cells) {
+    // Make sure number of cells matches
+    auto geom_group = open_group(file, "geometry");
+    int32_t n;
+    read_attribute(geom_group, "n_cells", n);
+    if (n != openmc::model::cells.size()) {
+      close_group(geom_group);
+      file_close(file);
+      set_errmsg(fmt::format(
+        "Number of cells in {} doesn't match current model.", filename));
+      return OPENMC_E_GEOMETRY;
     }
-  } catch (const std::exception& e) {
-    set_errmsg(e.what());
-    return OPENMC_E_UNASSIGNED;
-  }
-  close_group(cells_group);
-  close_group(geom_group);
 
-  // Make sure number of cells matches
-  auto materials_group = open_group(file, "materials");
-  read_attribute(materials_group, "n_materials", n);
-  if (n != openmc::model::materials.size()) {
+    // Read cell properties
+    auto cells_group = open_group(geom_group, "cells");
+    try {
+      for (const auto& c : model::cells) {
+        c->import_properties_hdf5(cells_group);
+      }
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
+      return OPENMC_E_UNASSIGNED;
+    }
+    close_group(cells_group);
+    close_group(geom_group);
+  }
+
+  if (import_materials) {
+    // Make sure number of cells matches
+    auto materials_group = open_group(file, "materials");
+    read_attribute(materials_group, "n_materials", n);
+    if (n != openmc::model::materials.size()) {
+      close_group(materials_group);
+      file_close(file);
+      set_errmsg(fmt::format(
+        "Number of materials in {} doesn't match current model.", filename));
+      return OPENMC_E_GEOMETRY;
+    }
+
+    // Read material properties
+    for (const auto& mat : model::materials) {
+      mat->import_properties_hdf5(materials_group);
+    }
     close_group(materials_group);
-    file_close(file);
-    set_errmsg(fmt::format(
-      "Number of materials in {} doesn't match current model.", filename));
-    return OPENMC_E_GEOMETRY;
   }
-
-  // Read material properties
-  for (const auto& mat : model::materials) {
-    mat->import_properties_hdf5(materials_group);
-  }
-  close_group(materials_group);
-
   // Terminate access to the file.
   file_close(file);
   return 0;

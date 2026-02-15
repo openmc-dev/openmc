@@ -304,7 +304,7 @@ def import_properties(filename):
     openmc.lib.export_properties
 
     """
-    _dll.openmc_properties_import(filename.encode())
+    _dll.openmc_properties_import(filename.encode(), True, True)
 
 
 def init(args=None, intracomm=None, output=True):

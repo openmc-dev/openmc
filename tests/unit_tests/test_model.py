@@ -260,7 +260,7 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     openmc.lib.export_properties(output=False)
 
     # Import properties to existing model
-    model.import_properties("properties.h5")
+    model.import_properties("properties.h5", True, True)
 
     # Check to see that values are assigned to the C and python representations
     # First python

@@ -207,7 +207,7 @@ class Settings:
             default is 'False'.
         :sample_method:
             Sampling method for the ray starting location and direction of
-            travel. Options are `prng` (default), `halton`, or `s2` `s2`
+            travel. Options are `prng` (default), `halton`, or `s2`. `s2`
             modifies the `prng` sampling method such that rays are sampled
             with directions (-1, 0, 0) or (1, 0, 0). This is used for verification
             against analytic transport benchmarks which are often derivied with

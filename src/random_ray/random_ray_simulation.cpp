@@ -578,15 +578,15 @@ void RandomRaySimulation::print_results_random_ray(
     fmt::print(" Source Shape                      = {}\n", shape);
     std::string sample_method;
     switch (RandomRay::sample_method_) {
-      case RandomRaySampleMethod::PRNG:
-        sample_method = "PRNG";
-        break;
-      case RandomRaySampleMethod::HALTON:
-        sample_method = "Halton";
-        break;
-      case RandomRaySampleMethod::S2:
-        sample_method = "PRNG S2";
-        break;
+    case RandomRaySampleMethod::PRNG:
+      sample_method = "PRNG";
+      break;
+    case RandomRaySampleMethod::HALTON:
+      sample_method = "Halton";
+      break;
+    case RandomRaySampleMethod::S2:
+      sample_method = "PRNG S2";
+      break;
     }
     fmt::print(" Sample Method                     = {}\n", sample_method);
 

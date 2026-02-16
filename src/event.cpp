@@ -1,6 +1,8 @@
 #include "openmc/event.h"
 
+#include "openmc/error.h"
 #include "openmc/material.h"
+#include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
 
@@ -136,7 +138,13 @@ void process_surface_crossing_events()
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_cross_surface();
-    if (!p.local_secondary_bank().empty()) {
+    p.n_event()++;
+    if (p.n_event() == settings::max_particle_events) {
+      warning("Particle " + std::to_string(p.id()) +
+              " underwent maximum number of events.");
+      p.wgt() = 0.0;
+    }
+    if (!p.alive() && !p.local_secondary_bank().empty()) {
       SourceSite& site = p.local_secondary_bank().back();
       p.event_revive_from_secondary(site);
       p.local_secondary_bank().pop_back();
@@ -159,7 +167,13 @@ void process_collision_events()
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_collide();
-    if (!p.local_secondary_bank().empty()) {
+    p.n_event()++;
+    if (p.n_event() == settings::max_particle_events) {
+      warning("Particle " + std::to_string(p.id()) +
+              " underwent maximum number of events.");
+      p.wgt() = 0.0;
+    }
+    if (!p.alive() && !p.local_secondary_bank().empty()) {
       SourceSite& site = p.local_secondary_bank().back();
       p.event_revive_from_secondary(site);
       p.local_secondary_bank().pop_back();

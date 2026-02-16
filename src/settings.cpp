@@ -54,6 +54,7 @@ bool confidence_intervals {false};
 bool create_delayed_neutrons {true};
 bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
+bool dnp_drift_on {false};
 bool entropy_on {false};
 bool event_based {false};
 bool ifp_on {false};
@@ -154,6 +155,9 @@ int trigger_batch_interval {1};
 int verbosity {-1};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+
+double dnp_drift_external_travel_time {0.0};
+bool dnp_drift_recycling_on {false};
 
 } // namespace settings
 
@@ -863,8 +867,24 @@ void read_settings_xml(pugi::xml_node root)
         "Temperature values should be given for the temperature field.");
     }
 
+    // Mapping representation
+    std::string mapping;
+    if (check_for_node(node_tf, "mapping")) {
+      mapping = get_node_value(node_tf, "mapping");
+    } else {
+      fatal_error(
+        "A mapping representation must be given for the velocity field.");
+    }
+
+    // Nodal evaluation
+    std::string nodal_evaluation = "interpolation";
+    if (check_for_node(node_tf, "nodal_evaluation")) {
+      nodal_evaluation = get_node_value(node_tf, "nodal_evaluation");
+    }
+
     // Instantiate the temperature field
-    simulation::temperature_field = TemperatureField(tf_mesh_ptr, tf_values);
+    simulation::temperature_field =
+      TemperatureField(tf_mesh_ptr, tf_values, mapping, nodal_evaluation);
   }
 
   // Uniform fission source weighting mesh
@@ -1216,6 +1236,194 @@ void read_settings_xml(pugi::xml_node root)
     auto range = get_node_array<double>(root, "temperature_range");
     temperature_range[0] = range.at(0);
     temperature_range[1] = range.at(1);
+  }
+
+  // Explicit transport of Delayed Neutron Precursor (DNP)
+  if (check_for_node(root, "dnp_drift")) {
+    dnp_drift_on = true;
+    auto node_dnp_drift = root.child("dnp_drift");
+
+    // Mesh
+    Mesh* mesh_ptr;
+    if (check_for_node(node_dnp_drift, "field_mesh")) {
+      int temp = std::stoi(get_node_value(node_dnp_drift, "field_mesh"));
+      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+        fatal_error(fmt::format(
+          "Mesh {} specified for the velocity field does not exist.", temp));
+      }
+      mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
+    } else {
+      fatal_error("A mesh must be given for the velocity field.");
+    }
+
+    // Values
+    vector<Direction> vf_values;
+    if (check_for_node(node_dnp_drift, "field_values")) {
+      auto temp = get_node_array<double>(node_dnp_drift, "field_values");
+      if (temp.size() % 3 != 0) {
+        fatal_error("The number of values must be a multiple of 3.");
+      }
+      for (size_t i = 0; i + 2 < temp.size(); i += 3) {
+        Direction d = Direction(temp[i], temp[i+1], temp[i+2]);
+        vf_values.push_back(d);
+      }
+    } else {
+      fatal_error(
+        "Values must be given for the velocity field.");
+    }
+
+    // Mapping representation
+    std::string field_mapping;
+    if (check_for_node(node_dnp_drift, "field_mapping")) {
+      field_mapping = get_node_value(node_dnp_drift, "field_mapping");
+    } else {
+      fatal_error(
+        "A mapping representation must be given for the velocity field.");
+    }
+
+    // Nodal evaluation
+    std::string nodal_evaluation = "interpolation";
+    if (check_for_node(node_dnp_drift, "nodal_evaluation")) {
+      nodal_evaluation = get_node_value(node_dnp_drift, "nodal_evaluation");
+    }
+
+    // Velocity field
+    simulation::velocity_field =
+      VelocityField(mesh_ptr, vf_values, field_mapping, nodal_evaluation);
+
+    // Boundary conditions map
+    if (check_for_node(node_dnp_drift, "boundary_map")) {
+      BCMap bc_map;
+      auto node_boundary = node_dnp_drift.child("boundary_map");
+
+      if (check_for_node(node_boundary, "inlet")) {
+        bc_map[BCType::INLET] = get_node_array<int>(node_boundary, "inlet");
+      } else {
+        fatal_error("Inlet boundary conditions must be declared.");
+      }
+
+      if (check_for_node(node_boundary, "outlet")) {
+        bc_map[BCType::OUTLET] = get_node_array<int>(node_boundary, "outlet");
+      } else {
+        fatal_error("Outlet boundary conditions must be declared.");
+      }
+
+      if (check_for_node(node_boundary, "wall")) {
+        bc_map[BCType::WALL] = get_node_array<int>(node_boundary, "wall");
+      } else {
+        fatal_error("Wall boundary conditions must be declared.");
+      }
+
+      simulation::velocity_field.bc_map() = bc_map;
+
+    } else {
+      fatal_error("Boundary conditions must be declared.");
+    }
+
+    // Integrator
+    if (check_for_node(node_dnp_drift, "integrator")) {
+      std::string integration_method =
+        get_node_value(node_dnp_drift, "integrator");
+
+      // Runge Kutta 4
+      if (integration_method == "RK4") {
+
+        // Time step
+        double dt;
+        if (!check_for_node(node_dnp_drift, "integrator_dt")) {
+          fatal_error("The attribute 'integrator_dt' is not declared in the "
+                      "DNP drift settings.");
+        } else {
+          dt = std::stod(get_node_value(node_dnp_drift, "integrator_dt"));
+        }
+
+        // Convergence criteria
+        double conv;
+        if (!check_for_node(node_dnp_drift, "convergence_criteria")) {
+          fatal_error("The attribute 'convergence_criteria' is not declared in "
+                      "the DNP drift settings.");
+        } else {
+          conv =
+            std::stod(get_node_value(node_dnp_drift, "convergence_criteria"));
+        }
+
+        // Instantiate integrator
+        simulation::streamline_integrator = new RK4StreamlineIntegrator(dt, conv);
+
+      // Undefined integration method
+      } else {
+        fatal_error(
+          fmt::format("Integrator '{}' not implemented", integration_method));
+      }
+    } else {
+      fatal_error("An integrator should be defined in the DNP drift settings.");
+    }
+
+    // Recycle precursor when reaching an outlet?
+    if (check_for_node(node_dnp_drift, "recycling")) {
+      dnp_drift_recycling_on =
+        get_node_value_bool(node_dnp_drift, "recycling");
+      if (dnp_drift_recycling_on) {
+        if (!check_for_node(node_dnp_drift, "external_travel_time")) {
+          fatal_error("The external travel time is not declared in "
+                      "the DNP drift settings.");
+        } else {
+          dnp_drift_external_travel_time =
+            std::stod(get_node_value(node_dnp_drift, "external_travel_time"));
+        }
+      }
+    }
+  }
+
+  // Add physical group information to mesh
+  if (check_for_node(root, "mesh_physical_group")) {
+    
+    auto node_physical_group = root.child("mesh_physical_group");
+
+    // Mesh pointer
+    Mesh* mesh_ptr;
+    if (check_for_node(node_physical_group, "mesh")) {
+      int temp = std::stoi(get_node_value(node_physical_group, "mesh"));
+      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+        fatal_error(fmt::format(
+          "Mesh {} specified for the physical groups does not exist.", temp));
+      }
+      mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
+    } else {
+      fatal_error("A mesh must be given for the velocity field.");
+    }
+
+    // Face IDs
+    vector<int> face_ids;
+    if (check_for_node(node_physical_group, "face_ids")) {
+      face_ids = get_node_array<int>(node_physical_group, "face_ids");
+    } else {
+      fatal_error("Surface IDs must be declared.");
+    }
+
+    // Physical groups
+    vector<int> physical_groups;
+    if (check_for_node(node_physical_group, "physical_groups")) {
+      physical_groups =
+        get_node_array<int>(node_physical_group, "physical_groups");
+    } else {
+      fatal_error("Physical_groups must be declared.");
+    }
+
+    // Check for consistency
+    if (face_ids.size() != physical_groups.size()) {
+      fatal_error(
+        "The lists of face IDs and physical groups must have the same size!");
+    }
+
+    // Create the physical group map
+    PGMap pg_map;
+    for (size_t i = 0; i < face_ids.size(); i++) {
+      pg_map[physical_groups[i]].push_back(face_ids[i]);
+    }
+
+    // Save the map in the mesh
+    mesh_ptr->pg_map() = pg_map;
   }
 
   // Check for tabular_legendre options

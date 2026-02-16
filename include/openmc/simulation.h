@@ -7,6 +7,7 @@
 #include "openmc/field.h"
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
+#include "openmc/streamline_integrator.h"
 #include "openmc/vector.h"
 
 #include <cstdint>
@@ -48,6 +49,8 @@ extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 
 extern TemperatureField temperature_field;
+extern VelocityField velocity_field;
+extern StreamlineIntegrator* streamline_integrator;
 
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;

@@ -21,6 +21,7 @@
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
+#include "openmc/streamline_integrator.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
@@ -324,6 +325,8 @@ const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 TemperatureField temperature_field;
+VelocityField velocity_field;
+StreamlineIntegrator* streamline_integrator;
 
 vector<double> k_generation;
 vector<int64_t> work_index;

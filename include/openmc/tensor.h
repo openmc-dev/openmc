@@ -219,12 +219,6 @@ public:
   T& operator[](size_t i) { return data_[flat_to_offset(i)]; }
   const T& operator[](size_t i) const { return data_[flat_to_offset(i)]; }
 
-  //! First and last element
-  T& front() { return data_[0]; }
-  const T& front() const { return data_[0]; }
-  T& back() { return data_[size() - 1]; }
-  const T& back() const { return data_[size() - 1]; }
-
   //--------------------------------------------------------------------------
   // Accessors
 
@@ -593,6 +587,12 @@ public:
 
   stored_type& operator[](size_t i) { return data_[i]; }
   const stored_type& operator[](size_t i) const { return data_[i]; }
+
+  //! First and last element
+  stored_type& front() { return data_.front(); }
+  const stored_type& front() const { return data_.front(); }
+  stored_type& back() { return data_.back(); }
+  const stored_type& back() const { return data_.back(); }
 
   //--------------------------------------------------------------------------
   // Iterators

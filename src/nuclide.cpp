@@ -360,7 +360,7 @@ void Nuclide::create_derived(
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
-    xs_.emplace_back(vector<size_t> {grid.energy.size(), 5}, 0.0);
+    xs_.push_back(tensor::zeros<double>({grid.energy.size(), 5}));
   }
 
   reaction_index_.fill(C_NONE);

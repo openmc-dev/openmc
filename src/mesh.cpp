@@ -1097,7 +1097,7 @@ tensor::Tensor<double> StructuredMesh::count_sites(
   vector<std::size_t> shape = {m};
 
   // Create array of zeros
-  tensor::Tensor<double> cnt(shape, 0.0);
+  auto cnt = tensor::zeros<double>(shape);
   bool outside_ = false;
 
   for (int64_t i = 0; i < length; i++) {
@@ -1117,7 +1117,7 @@ tensor::Tensor<double> StructuredMesh::count_sites(
   }
 
   // Create reduced count data
-  tensor::Tensor<double> counts(shape, 0.0);
+  auto counts = tensor::zeros<double>(shape);
   int total = cnt.size();
 
 #ifdef OPENMC_MPI
@@ -1570,7 +1570,7 @@ tensor::Tensor<double> RegularMesh::count_sites(
   vector<std::size_t> shape = {m};
 
   // Create array of zeros
-  tensor::Tensor<double> cnt(shape, 0.0);
+  auto cnt = tensor::zeros<double>(shape);
   bool outside_ = false;
 
   for (int64_t i = 0; i < length; i++) {
@@ -1590,7 +1590,7 @@ tensor::Tensor<double> RegularMesh::count_sites(
   }
 
   // Create reduced count data
-  tensor::Tensor<double> counts(shape, 0.0);
+  auto counts = tensor::zeros<double>(shape);
   int total = cnt.size();
 
 #ifdef OPENMC_MPI

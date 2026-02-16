@@ -86,7 +86,7 @@ tensor::Tensor<double> count_bank_sites(
   std::size_t cnt_size = cmfd::nx * cmfd::ny * cmfd::nz * cmfd::ng;
 
   // Create array of zeros
-  tensor::Tensor<double> cnt({cnt_size}, 0.0);
+  tensor::Tensor<double> cnt = tensor::zeros<double>({cnt_size});
   bool outside_ = false;
 
   auto bank_size = simulation::source_bank.size();
@@ -113,7 +113,7 @@ tensor::Tensor<double> count_bank_sites(
   }
 
   int total = cnt.size();
-  tensor::Tensor<double> counts({cnt_size}, 0.0);
+  tensor::Tensor<double> counts = tensor::zeros<double>({cnt_size});
 
 #ifdef OPENMC_MPI
   // collect values from all processors
@@ -143,13 +143,13 @@ extern "C" void openmc_cmfd_reweight(
   std::size_t src_size = cmfd::nx * cmfd::ny * cmfd::nz * cmfd::ng;
 
   // count bank sites for CMFD mesh, store bins in bank_bins for reweighting
-  tensor::Tensor<int> bank_bins({bank_size}, 0);
+  tensor::Tensor<int> bank_bins = tensor::zeros<int>({bank_size});
   bool sites_outside;
   tensor::Tensor<double> sourcecounts =
     count_bank_sites(bank_bins, &sites_outside);
 
   // Compute CMFD weightfactors
-  tensor::Tensor<double> weightfactors({src_size}, 1.);
+  tensor::Tensor<double> weightfactors = tensor::ones<double>({src_size});
   if (mpi::master) {
     if (sites_outside) {
       fatal_error("Source sites outside of the CMFD mesh");

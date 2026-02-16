@@ -241,8 +241,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // non-zero
       auto n_nuc =
         settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
-      tensor::Tensor<double> atoms(
-        {static_cast<size_t>(n_nuc), size_t {2}}, 0.0);
+      auto atoms = tensor::zeros<double>(
+        {static_cast<size_t>(n_nuc), size_t {2}});
 
 #ifdef OPENMC_MPI
       if (mpi::master) {

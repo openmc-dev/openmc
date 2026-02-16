@@ -85,10 +85,10 @@ inline Range range(size_t start, size_t end)
   return {start, end};
 }
 
-//! Create a Range [start, <end of axis>)
-inline Range range(size_t start)
+//! Create a Range [0, end)
+inline Range range(size_t end)
 {
-  return {start, SIZE_MAX};
+  return {0, end};
 }
 
 namespace detail {
@@ -1052,6 +1052,19 @@ template<typename T>
 Tensor<T> zeros(const vector<size_t>& shape)
 {
   return Tensor<T>(shape, T(0));
+}
+
+template<typename T>
+Tensor<T> ones(std::initializer_list<size_t> shape)
+{
+  vector<size_t> s(shape);
+  return Tensor<T>(std::move(s), T(1));
+}
+
+template<typename T>
+Tensor<T> ones(const vector<size_t>& shape)
+{
+  return Tensor<T>(shape, T(1));
 }
 
 template<typename T>

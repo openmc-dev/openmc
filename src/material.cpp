@@ -644,9 +644,9 @@ void Material::init_bremsstrahlung()
     ttb->yield = tensor::zeros<double>({n_e});
 
     // Allocate temporary arrays
-    tensor::Tensor<double> stopping_power_collision({n_e}, 0.0);
-    tensor::Tensor<double> stopping_power_radiative({n_e}, 0.0);
-    tensor::Tensor<double> dcs({n_e, n_k}, 0.0);
+    auto stopping_power_collision = tensor::zeros<double>({n_e});
+    auto stopping_power_radiative = tensor::zeros<double>({n_e});
+    auto dcs = tensor::zeros<double>({n_e, n_k});
 
     double Z_eq_sq = 0.0;
     double sum_density = 0.0;
@@ -706,8 +706,8 @@ void Material::init_bremsstrahlung()
       stopping_power_collision + stopping_power_radiative;
 
     // Loop over photon energies
-    tensor::Tensor<double> f({n_e}, 0.0);
-    tensor::Tensor<double> z({n_e}, 0.0);
+    auto f = tensor::zeros<double>({n_e});
+    auto z = tensor::zeros<double>({n_e});
     for (int i = 0; i < n_e - 1; ++i) {
       double w = data::ttb_e_grid(i);
 

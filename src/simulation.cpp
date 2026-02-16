@@ -253,7 +253,11 @@ int openmc_next_batch(int* status)
 
     // Transport loop
     if (settings::event_based) {
-      transport_event_based();
+      if (settings::use_shared_secondary_bank) {
+        transport_event_based_shared_secondary();
+      } else {
+        transport_event_based();
+      }
     } else {
       if (settings::use_shared_secondary_bank) {
         transport_history_based_shared_secondary();
@@ -976,6 +980,161 @@ void transport_history_based_shared_secondary()
     simulation::simulation_particles_completed += alive_secondary;
   } // End of loop over secondary generations
   
+  // Reset work so that fission bank etc works correctly
+  calculate_work(settings::n_particles);
+}
+
+void transport_event_based_shared_secondary()
+{
+  SharedArray<SourceSite> shared_secondary_bank_read;
+  SharedArray<SourceSite> shared_secondary_bank_write;
+
+  if (mpi::master) {
+    write_message(fmt::format(" Primogenitor            particles: {}",
+                    settings::n_particles),
+      6);
+  }
+
+  simulation::progeny_per_particle.resize(simulation::work_per_rank);
+
+  // Phase 1: Transport primary particles using event-based processing and
+  // deposit first generation of secondaries in the shared secondary bank
+  int64_t remaining_work = simulation::work_per_rank;
+  int64_t source_offset = 0;
+
+  while (remaining_work > 0) {
+    int64_t n_particles =
+      std::min(remaining_work, settings::max_particles_in_flight);
+
+    process_init_events(n_particles, source_offset);
+
+    // Event-based transport loop
+    while (true) {
+      int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
+        simulation::calculate_nonfuel_xs_queue.size(),
+        simulation::advance_particle_queue.size(),
+        simulation::surface_crossing_queue.size(),
+        simulation::collision_queue.size()});
+
+      if (max == 0) {
+        break;
+      } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+        process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+      } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+      } else if (max == simulation::advance_particle_queue.size()) {
+        process_advance_particle_events();
+      } else if (max == simulation::surface_crossing_queue.size()) {
+        process_surface_crossing_events();
+      } else if (max == simulation::collision_queue.size()) {
+        process_collision_events();
+      }
+    }
+
+    process_death_events(n_particles);
+
+    // Collect secondaries from all particle buffers into shared bank
+    for (int64_t i = 0; i < n_particles; i++) {
+      for (auto& site : simulation::particles[i].local_secondary_bank()) {
+        shared_secondary_bank_write.thread_unsafe_append(site);
+      }
+    }
+
+    remaining_work -= n_particles;
+    source_offset += n_particles;
+  }
+
+  simulation::simulation_particles_completed += settings::n_particles;
+
+  // Phase 2: Now that the secondary bank has been populated, enter loop over
+  // all secondary generations
+  int n_generation_depth = 1;
+  int64_t alive_secondary = 1;
+  while (alive_secondary) {
+
+    // Sort the shared secondary bank by parent ID then progeny ID to
+    // ensure reproducibility.
+    sort_bank(shared_secondary_bank_write, false);
+
+    // Synchronize the shared secondary bank amongst all MPI ranks, such
+    // that each MPI rank has an approximately equal number of secondary
+    // particles.
+    alive_secondary =
+      synchronize_global_secondary_bank(shared_secondary_bank_write);
+
+    // Recalculate work for each MPI rank based on number of alive secondary
+    // particles
+    calculate_work(alive_secondary);
+
+    if (mpi::master) {
+      write_message(fmt::format(" Secondary generation {:<2} particles: {}",
+                      n_generation_depth, alive_secondary),
+        6);
+    }
+
+    shared_secondary_bank_read = std::move(shared_secondary_bank_write);
+    shared_secondary_bank_write = SharedArray<SourceSite>();
+    simulation::progeny_per_particle.resize(shared_secondary_bank_read.size());
+
+    // Ensure particle buffer is large enough for this secondary generation
+    int64_t sec_buffer_length = std::min(
+      static_cast<int64_t>(shared_secondary_bank_read.size()),
+      settings::max_particles_in_flight);
+    if (sec_buffer_length >
+        static_cast<int64_t>(simulation::particles.size())) {
+      init_event_queues(sec_buffer_length);
+    }
+
+    // Transport secondary particles using event-based processing
+    int64_t sec_remaining = shared_secondary_bank_read.size();
+    int64_t sec_offset = 0;
+
+    while (sec_remaining > 0) {
+      int64_t n_particles =
+        std::min(sec_remaining, settings::max_particles_in_flight);
+
+      process_init_secondary_events(
+        n_particles, sec_offset, shared_secondary_bank_read);
+
+      // Event-based transport loop
+      while (true) {
+        int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
+          simulation::calculate_nonfuel_xs_queue.size(),
+          simulation::advance_particle_queue.size(),
+          simulation::surface_crossing_queue.size(),
+          simulation::collision_queue.size()});
+
+        if (max == 0) {
+          break;
+        } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+          process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+        } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+          process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+        } else if (max == simulation::advance_particle_queue.size()) {
+          process_advance_particle_events();
+        } else if (max == simulation::surface_crossing_queue.size()) {
+          process_surface_crossing_events();
+        } else if (max == simulation::collision_queue.size()) {
+          process_collision_events();
+        }
+      }
+
+      process_death_events(n_particles);
+
+      // Collect secondaries from all particle buffers into shared bank
+      for (int64_t i = 0; i < n_particles; i++) {
+        for (auto& site : simulation::particles[i].local_secondary_bank()) {
+          shared_secondary_bank_write.thread_unsafe_append(site);
+        }
+      }
+
+      sec_remaining -= n_particles;
+      sec_offset += n_particles;
+    } // End of subiteration loop over secondary particles
+    n_generation_depth++;
+    simulation::simulation_particles_completed += alive_secondary;
+  } // End of loop over secondary generations
+
   // Reset work so that fission bank etc works correctly
   calculate_work(settings::n_particles);
 }

@@ -1,5 +1,6 @@
 #include "openmc/event.h"
 
+#include "openmc/bank.h"
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/settings.h"
@@ -144,10 +145,12 @@ void process_surface_crossing_events()
               " underwent maximum number of events.");
       p.wgt() = 0.0;
     }
-    if (!p.alive() && !p.local_secondary_bank().empty()) {
-      SourceSite& site = p.local_secondary_bank().back();
-      p.event_revive_from_secondary(site);
-      p.local_secondary_bank().pop_back();
+    if (!settings::use_shared_secondary_bank) {
+      if (!p.alive() && !p.local_secondary_bank().empty()) {
+        SourceSite& site = p.local_secondary_bank().back();
+        p.event_revive_from_secondary(site);
+        p.local_secondary_bank().pop_back();
+      }
     }
     if (p.alive())
       dispatch_xs_event(buffer_idx);
@@ -173,10 +176,12 @@ void process_collision_events()
               " underwent maximum number of events.");
       p.wgt() = 0.0;
     }
-    if (!p.alive() && !p.local_secondary_bank().empty()) {
-      SourceSite& site = p.local_secondary_bank().back();
-      p.event_revive_from_secondary(site);
-      p.local_secondary_bank().pop_back();
+    if (!settings::use_shared_secondary_bank) {
+      if (!p.alive() && !p.local_secondary_bank().empty()) {
+        SourceSite& site = p.local_secondary_bank().back();
+        p.event_revive_from_secondary(site);
+        p.local_secondary_bank().pop_back();
+      }
     }
     if (p.alive())
       dispatch_xs_event(buffer_idx);
@@ -196,6 +201,22 @@ void process_death_events(int64_t n_particles)
     p.event_death();
   }
   simulation::time_event_death.stop();
+}
+
+void process_init_secondary_events(int64_t n_particles, int64_t offset,
+  SharedArray<SourceSite>& shared_secondary_bank)
+{
+  simulation::time_event_init.start();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    initialize_history(simulation::particles[i], offset + i + 1, true);
+    SourceSite& site = shared_secondary_bank[offset + i];
+    simulation::particles[i].event_revive_from_secondary(site);
+    if (simulation::particles[i].alive()) {
+      dispatch_xs_event(i);
+    }
+  }
+  simulation::time_event_init.stop();
 }
 
 } // namespace openmc

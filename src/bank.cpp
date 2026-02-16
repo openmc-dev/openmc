@@ -202,7 +202,7 @@ int64_t synchronize_global_secondary_bank(
 
   // Calculate target size for each rank
   // First 'remainder' ranks get base_count + 1, rest get base_count
-  SharedArray<int64_t> target_sizes(mpi::n_procs);
+  vector<int64_t> target_sizes(mpi::n_procs);
   for (int i = 0; i < mpi::n_procs; ++i) {
     target_sizes[i] = base_count + (i < remainder ? 1 : 0);
   }
@@ -223,45 +223,27 @@ int64_t synchronize_global_secondary_bank(
     cumulative_target[i + 1] = cumulative_target[i] + target_sizes[i];
   }
 
-  // Determine send amounts from this rank to others
+  // Determine send and receive amounts for each rank
   int64_t my_start = cumulative_before[mpi::rank];
   int64_t my_end = cumulative_before[mpi::rank + 1];
-
-  for (int dest = 0; dest < mpi::n_procs; ++dest) {
-    int64_t dest_start = cumulative_target[dest];
-    int64_t dest_end = cumulative_target[dest + 1];
-
-    // Calculate overlap between my current range and destination's
-    // target range
-    int64_t overlap_start = std::max(my_start, dest_start);
-    int64_t overlap_end = std::min(my_end, dest_end);
-
-    if (overlap_start < overlap_end) {
-      int64_t count = overlap_end - overlap_start;
-      send_counts[dest] =
-        static_cast<int>(count); // Count of SourceSite objects
-      send_displs[dest] = static_cast<int>(
-        overlap_start - my_start); // Displacement in SourceSite objects
-    }
-  }
-  // Determine receive amounts from other ranks
   int64_t my_target_start = cumulative_target[mpi::rank];
   int64_t my_target_end = cumulative_target[mpi::rank + 1];
 
-  for (int src = 0; src < mpi::n_procs; ++src) {
-    int64_t src_start = cumulative_before[src];
-    int64_t src_end = cumulative_before[src + 1];
+  for (int r = 0; r < mpi::n_procs; ++r) {
+    // Send: overlap between my current range and rank r's target range
+    int64_t send_overlap_start = std::max(my_start, cumulative_target[r]);
+    int64_t send_overlap_end = std::min(my_end, cumulative_target[r + 1]);
+    if (send_overlap_start < send_overlap_end) {
+      send_counts[r] = static_cast<int>(send_overlap_end - send_overlap_start);
+      send_displs[r] = static_cast<int>(send_overlap_start - my_start);
+    }
 
-    // Calculate overlap between source's current range and my target
-    // range
-    int64_t overlap_start = std::max(src_start, my_target_start);
-    int64_t overlap_end = std::min(src_end, my_target_end);
-
-    if (overlap_start < overlap_end) {
-      int64_t count = overlap_end - overlap_start;
-      recv_counts[src] = static_cast<int>(count); // Count of SourceSite objects
-      recv_displs[src] = static_cast<int>(
-        overlap_start - my_target_start); // Displacement in SourceSite objects
+    // Recv: overlap between rank r's current range and my target range
+    int64_t recv_overlap_start = std::max(cumulative_before[r], my_target_start);
+    int64_t recv_overlap_end = std::min(cumulative_before[r + 1], my_target_end);
+    if (recv_overlap_start < recv_overlap_end) {
+      recv_counts[r] = static_cast<int>(recv_overlap_end - recv_overlap_start);
+      recv_displs[r] = static_cast<int>(recv_overlap_start - my_target_start);
     }
   }
 

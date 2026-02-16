@@ -112,6 +112,15 @@ void process_collision_events();
 //! \param n_particles The number of particles in the particle buffer
 void process_death_events(int64_t n_particles);
 
+//! Initialize secondary particles from a shared secondary bank for
+//! event-based transport
+//
+//! \param n_particles The number of particles to initialize
+//! \param offset The offset index in the shared secondary bank
+//! \param shared_secondary_bank The shared secondary bank to read from
+void process_init_secondary_events(int64_t n_particles, int64_t offset,
+  SharedArray<SourceSite>& shared_secondary_bank);
+
 } // namespace openmc
 
 #endif // OPENMC_EVENT_H

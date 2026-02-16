@@ -108,6 +108,10 @@ void transport_history_based_shared_secondary();
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
 
+//! Simulate all particle histories using event-based parallelism, with
+//! a shared secondary particle bank
+void transport_event_based_shared_secondary();
+
 } // namespace openmc
 
 #endif // OPENMC_SIMULATION_H

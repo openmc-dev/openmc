@@ -831,7 +831,6 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
               }
             }
           }
-      MPI_Barrier(mpi::intracomm);
       simulation::time_transport.stop();
 
       // Update ray bank by communicating rays in buffer to new owner ranks and removing terminated ranks

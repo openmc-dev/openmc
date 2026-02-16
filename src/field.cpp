@@ -22,6 +22,18 @@ double Field::distance_to_next_boundary(
 // TemperatureField implementation
 // -----------------------------------------------------------
 
+TemperatureField::TemperatureField(Mesh* mesh_ptr, std::vector<double> values,
+  std::string mapping, std::string nodal_evaluation)
+{
+  set_mesh(mesh_ptr);
+  set_mapping(mapping);
+  set_nodal_evaluation(nodal_evaluation);
+
+  std::unique_ptr<FieldData<double>> data =
+    std::make_unique<SimpleFieldData<double>>(values);
+  set_data(std::move(data));
+}
+
 double TemperatureField::get_temperature(int bin)
 {
   if (bin >= 0 && bin < values().size()) {

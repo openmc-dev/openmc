@@ -539,11 +539,17 @@ TEST_CASE("Tensor slice with range")
   REQUIRE(s[1] == 30);
   REQUIRE(s[2] == 40);
 
-  // range(start) to end
+  // range(end) from start — range(3) means [0, 3)
   auto s2 = t.slice(range(3));
   REQUIRE(s2.size() == 3);
-  REQUIRE(s2[0] == 40);
-  REQUIRE(s2[2] == 60);
+  REQUIRE(s2[0] == 10);
+  REQUIRE(s2[2] == 30);
+
+  // range(start, SIZE_MAX) to end
+  auto s3 = t.slice(range(3, 6));
+  REQUIRE(s3.size() == 3);
+  REQUIRE(s3[0] == 40);
+  REQUIRE(s3[2] == 60);
 
   // Write through slice
   s[0] = 99;

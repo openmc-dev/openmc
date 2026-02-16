@@ -178,7 +178,8 @@ void XsData::fission_vector_beta_from_hdf5(
         for (size_t g = 0; g < n_g_; g++)
           delayed_nu_fission(a, d, g) = temp_beta(a, d) * temp_nufiss(a, g);
   } else if (beta_ndims == ndim_target + 1) {
-    tensor::Tensor<double> temp_beta = tensor::zeros<double>({n_ang, n_dg_, n_g_});
+    tensor::Tensor<double> temp_beta =
+      tensor::zeros<double>({n_ang, n_dg_, n_g_});
     read_nd_tensor(xsdata_grp, "beta", temp_beta, true);
 
     // prompt_nu_fission = (1 - sum_of_beta) * nu_fission
@@ -212,7 +213,8 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   }
 
   // Get chi-delayed
-  tensor::Tensor<double> temp_chi_d = tensor::zeros<double>({n_ang, n_dg_, n_g_});
+  tensor::Tensor<double> temp_chi_d =
+    tensor::zeros<double>({n_ang, n_dg_, n_g_});
   read_nd_tensor(xsdata_grp, "chi-delayed", temp_chi_d, true);
 
   // Normalize delayed chi so it sums to 1 over outgoing groups for each
@@ -271,7 +273,8 @@ void XsData::fission_matrix_beta_from_hdf5(
   // Data is provided as nu-fission and chi with a beta for delayed info
 
   // Get nu-fission matrix
-  tensor::Tensor<double> temp_matrix = tensor::zeros<double>({n_ang, n_g_, n_g_});
+  tensor::Tensor<double> temp_matrix =
+    tensor::zeros<double>({n_ang, n_g_, n_g_});
   read_nd_tensor(xsdata_grp, "nu-fission", temp_matrix, true);
 
   // Get beta (strategy will depend upon the number of dimensions in beta)
@@ -316,7 +319,8 @@ void XsData::fission_matrix_beta_from_hdf5(
               temp_beta(a, d) * temp_matrix(a, gin, gout);
 
   } else if (beta_ndims == ndim_target + 1) {
-    tensor::Tensor<double> temp_beta = tensor::zeros<double>({n_ang, n_dg_, n_g_});
+    tensor::Tensor<double> temp_beta =
+      tensor::zeros<double>({n_ang, n_dg_, n_g_});
     read_nd_tensor(xsdata_grp, "beta", temp_beta, true);
 
     auto beta_sum = temp_beta.sum(1);
@@ -374,7 +378,8 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // Data is provided separately as prompt + delayed nu-fission and chi
 
   // Get the prompt nu-fission matrix
-  tensor::Tensor<double> temp_matrix_p = tensor::zeros<double>({n_ang, n_g_, n_g_});
+  tensor::Tensor<double> temp_matrix_p =
+    tensor::zeros<double>({n_ang, n_g_, n_g_});
   read_nd_tensor(xsdata_grp, "prompt-nu-fission", temp_matrix_p, true);
 
   // prompt_nu_fission is the sum over outgoing groups
@@ -388,7 +393,8 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
           temp_matrix_p(a, gin, gout) / prompt_nu_fission(a, gin);
 
   // Get the delayed nu-fission matrix
-  tensor::Tensor<double> temp_matrix_d = tensor::zeros<double>({n_ang, n_dg_, n_g_, n_g_});
+  tensor::Tensor<double> temp_matrix_d =
+    tensor::zeros<double>({n_ang, n_dg_, n_g_, n_g_});
   read_nd_tensor(xsdata_grp, "delayed-nu-fission", temp_matrix_d, true);
 
   // delayed_nu_fission is the sum over outgoing groups
@@ -410,7 +416,8 @@ void XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // Therefore, the code only considers the data as prompt.
 
   // Get nu-fission matrix
-  tensor::Tensor<double> temp_matrix = tensor::zeros<double>({n_ang, n_g_, n_g_});
+  tensor::Tensor<double> temp_matrix =
+    tensor::zeros<double>({n_ang, n_g_, n_g_});
   read_nd_tensor(xsdata_grp, "nu-fission", temp_matrix, true);
 
   // prompt_nu_fission is the sum over outgoing groups

@@ -68,9 +68,12 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
   size_t groups = those_scatts[0]->energy.size();
 
   // Now allocate and zero our storage spaces
-  tensor::Tensor<double> this_nuscatt_matrix = tensor::zeros<double>({groups, groups, order_dim});
-  tensor::Tensor<double> this_nuscatt_P0 = tensor::zeros<double>({groups, groups});
-  tensor::Tensor<double> this_scatt_P0 = tensor::zeros<double>({groups, groups});
+  tensor::Tensor<double> this_nuscatt_matrix =
+    tensor::zeros<double>({groups, groups, order_dim});
+  tensor::Tensor<double> this_nuscatt_P0 =
+    tensor::zeros<double>({groups, groups});
+  tensor::Tensor<double> this_scatt_P0 =
+    tensor::zeros<double>({groups, groups});
   tensor::Tensor<double> this_mult = tensor::ones<double>({groups, groups});
 
   // Build the dense scattering and multiplicity matrices
@@ -408,7 +411,8 @@ tensor::Tensor<double> ScattDataLegendre::get_matrix(size_t max_order)
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();
   size_t order_dim = max_order + 1;
-  tensor::Tensor<double> matrix = tensor::zeros<double>({groups, groups, order_dim});
+  tensor::Tensor<double> matrix =
+    tensor::zeros<double>({groups, groups, order_dim});
 
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < energy[gin].size(); i_gout++) {
@@ -781,7 +785,8 @@ tensor::Tensor<double> ScattDataTabular::get_matrix(size_t max_order)
   size_t groups = energy.size();
   // We ignore the requested order for Histogram and Tabular representations
   size_t order_dim = get_order();
-  tensor::Tensor<double> matrix = tensor::zeros<double>({groups, groups, order_dim});
+  tensor::Tensor<double> matrix =
+    tensor::zeros<double>({groups, groups, order_dim});
 
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < energy[gin].size(); i_gout++) {

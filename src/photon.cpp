@@ -168,8 +168,10 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_dataset(dset);
     read_dataset(tgroup, "xs", xs);
 
-    auto cross_section = cross_sections_.slice(
-      tensor::range(static_cast<size_t>(shell.threshold), cross_sections_.shape(0)), i);
+    auto cross_section =
+      cross_sections_.slice(tensor::range(static_cast<size_t>(shell.threshold),
+                              cross_sections_.shape(0)),
+        i);
     cross_section = tensor::where(xs > 0, tensor::log(xs), 0);
 
     if (object_exists(tgroup, "transitions")) {
@@ -315,8 +317,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
       tensor::Tensor<double> frst({static_cast<size_t>(1)});
       frst(0) = cutoff;
-      tensor::Tensor<double> rest(
-        electron_energy.slice(tensor::range(i_grid + 1, electron_energy.size())));
+      tensor::Tensor<double> rest(electron_energy.slice(
+        tensor::range(i_grid + 1, electron_energy.size())));
       electron_energy = tensor::concatenate(frst, rest);
     }
 

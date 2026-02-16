@@ -370,6 +370,7 @@ list(APPEND libopenmc_SOURCES
   src/distribution_energy.cpp
   src/distribution_multi.cpp
   src/distribution_spatial.cpp
+  src/dnp_drift.cpp
   src/eigenvalue.cpp
   src/endf.cpp
   src/error.cpp

@@ -1038,6 +1038,7 @@ void transport_event_based_shared_secondary()
       for (auto& site : simulation::particles[i].local_secondary_bank()) {
         shared_secondary_bank_write.thread_unsafe_append(site);
       }
+      simulation::particles[i].local_secondary_bank().clear();
     }
 
     remaining_work -= n_particles;
@@ -1126,6 +1127,7 @@ void transport_event_based_shared_secondary()
         for (auto& site : simulation::particles[i].local_secondary_bank()) {
           shared_secondary_bank_write.thread_unsafe_append(site);
         }
+        simulation::particles[i].local_secondary_bank().clear();
       }
 
       sec_remaining -= n_particles;

@@ -147,6 +147,9 @@ private:
 //! Base mesh class
 //==============================================================================
 
+// Physical groups map type
+using PGMap = std::unordered_map<int, std::vector<int>>;
+
 class Mesh {
 public:
   // Constructors and destructor
@@ -192,6 +195,32 @@ public:
   //! \param[out] bins Surface bins that were crossed
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
+
+  //! Determine which surface bins were crossed by a particle
+  //
+  //! \param[in] r0 Previous position of the particle
+  //! \param[in] r1 Current position of the particle
+  //! \param[in] u Particle direction
+  //! \param[out] physical_group Physical group
+  //! \return Last intersection registered with the mesh
+  virtual Position departure_from_mesh(Position r0, Position r1,
+    const Direction& u, int& physical_group) const = 0;
+
+  // TODO - document
+  virtual void randomly_place_on_physical_group(
+    Position& pa, int& cell, uint64_t* seed, vector<int> physical_groups) = 0;
+
+  // TODO - document
+  virtual Position normalize_position(const Position& r)
+  {
+    fatal_error("Not implemented!");
+  }
+
+  //! Retrieve connectivity of a mesh element
+  //
+  //! \param[in] element ID
+  //! \return element connectivity as IDs of the vertices
+  virtual std::vector<int> connectivity(int id) const = 0;
 
   //! Distance to the next boundary.
   //! If the initial position is outside the mesh, the distance
@@ -302,6 +331,25 @@ public:
   int id_ {-1};                        //!< Mesh ID
   std::string name_;                   //!< User-specified name
   int n_dimension_ {-1};               //!< Number of dimensions
+
+  // Physical groups map accessors
+  PGMap& pg_map() { return pg_map_; }
+  const PGMap& pg_map() const { return pg_map_; }
+
+  //! Returns the physical group associated with a given face ID.
+  //
+  //! \param[in] face_id Face ID
+  //! \return Physical group
+  int get_physical_group(int face_id) const;
+
+  //! Returns face IDs corresponding to a given physical group.
+  //
+  //! \param[in] group Physical group
+  //! \return Face IDs
+  const std::vector<int>& get_face_ids(int group) const;
+
+private:
+  PGMap pg_map_; //!< Physical groups map linking physical group to face IDs
 };
 
 class StructuredMesh : public Mesh {
@@ -348,6 +396,17 @@ public:
 
   double distance_to_next_boundary(
     int current_bin, Position r, Direction u, int& bin_next) const override;
+
+  Position departure_from_mesh(Position r0, Position r1, const Direction& u,
+    int& physical_group) const override;
+
+  void randomly_place_on_physical_group(Position& pa, int& cell, uint64_t* seed,
+    vector<int> physical_groups) override
+  {}
+
+  std::vector<int> connectivity(int id) const override {
+    fatal_error("Not implemented!");
+  };
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -564,6 +623,177 @@ public:
   double volume_frac_;           //!< Volume fraction of each mesh element
   double element_volume_;        //!< Volume of each mesh element
   tensor::Tensor<double> width_; //!< Width of each mesh element
+
+  double face_area(int face_id) {
+  
+    // Only implemented in 3D
+    if (n_dimension_ != 3) {
+      fatal_error("Not implemented yet!");
+    }
+
+    int face_local_id = face_id % 6;
+    int normal_id = face_local_id / 2;
+
+    double area = 0.;
+    if (normal_id == 0) {
+      area = width_[1] * width_[2];
+    } else if (normal_id == 1) {
+      area = width_[0] * width_[2];
+    } else if (normal_id == 2) {
+      area = width_[0] * width_[1];
+    }
+
+    return area;
+  }
+
+  void randomly_place_on_physical_group(
+    Position& pa, int& cell, uint64_t* seed, vector<int> physical_groups) override
+  {
+    // Only implemented in 3D
+    if (n_dimension_ != 3) {
+      fatal_error("Not implemented yet!");
+    }
+
+    // Retrieve the face IDs from the physical groups
+    vector<int> face_ids;
+    for (auto g : physical_groups) {
+      vector<int> temp = get_face_ids(g);
+      face_ids.insert(face_ids.end(), temp.begin(), temp.end());
+    }
+
+    // Retrieve the face area of each face and calculate the total
+    double total_area = 0.;
+    vector<double> areas;
+    for (auto s : face_ids) {
+      double area = face_area(s);
+      areas.push_back(area);
+      total_area += area;
+    }
+
+    // Randomly select a face (weighted by surface area)
+    int selected_face_id;
+    double random_limit = total_area * prn(seed);
+    double incremental_area = 0.;
+    for (int i = 0; i < face_ids.size(); i++) {
+      incremental_area += areas[i];
+      if ((random_limit - incremental_area) <= 1.0E-13) {
+        selected_face_id = face_ids[i];
+        break;
+      }
+    }
+
+    // Sample a new position on the selected face
+    pa = sample_on_face(selected_face_id, seed);
+
+    // Returns cell as well
+    cell = selected_face_id / (2 * n_dimension_);
+  }
+
+  // face_id is on the ID system where the inward flag is not taken into account
+  Position sample_on_face(int face_id, uint64_t* seed)
+  {
+    // Only implemented in 3D
+    if (n_dimension_ != 3) {
+      fatal_error("Not implemented yet!");
+    }
+
+    int bin_id = face_id / (2 * n_dimension_);
+    MeshIndex ijk = get_indices_from_bin(bin_id);
+
+    int face_local_id = face_id % (2 * n_dimension_);
+    int normal_id = face_local_id / 2;
+    int max_value = face_local_id % 2;
+
+    Position p = Position();
+
+    int dimensions[] = {0, 1, 2};
+
+    for (int i : dimensions) {
+      if (i == normal_id) {
+        if (max_value) {
+          p[i] = positive_grid_boundary(ijk, i);
+        } else {
+          p[i] = negative_grid_boundary(ijk, i);
+        }
+      } else {
+        p[i] = negative_grid_boundary(ijk, i) + width_(i) * prn(seed);
+      }
+    }
+
+    return p;
+  }
+
+  int return_vertex_unique_id(MeshIndex ijk, int local_vertex_idx) const
+  {
+    switch (local_vertex_idx) {
+    case 0:
+      ijk[0]--;
+      ijk[1]--;
+      ijk[2]--;
+      break;
+    case 1:
+      ijk[1]--;
+      ijk[2]--;
+      break;
+    case 2:
+      ijk[0]--;
+      ijk[2]--;
+      break;
+    case 3:
+      ijk[2]--;
+      break;
+    case 4:
+      ijk[0]--;
+      ijk[1]--;
+      break;
+    case 5:
+      ijk[1]--;
+      break;
+    case 6:
+      ijk[0]--;
+      break;
+    case 7:
+      break;
+    default:
+      fatal_error("Local vertex index out of bound!");
+    }
+
+    return ijk[0] + ijk[1] * (shape_[0] + 1) +
+           ijk[2] * (shape_[0] + 1) * (shape_[1] + 1);
+  }
+
+  std::vector<int> connectivity(int id) const override
+  {
+    MeshIndex ijk = get_indices_from_bin(id);
+
+    vector<int> v;
+    for (int i = 0; i < 8; i++) {
+      v.push_back(return_vertex_unique_id(ijk, i));
+    }
+
+    return v;
+  }
+
+  Position normalize_position(const Position& r) override
+  {
+    int bin = get_bin(r);
+    MeshIndex ijk = get_indices_from_bin(bin);
+  
+    // Retrieve dimensions
+    double xmin = negative_grid_boundary(ijk, 0);
+    double xmax = positive_grid_boundary(ijk, 0);
+    double ymin = negative_grid_boundary(ijk, 1);
+    double ymax = positive_grid_boundary(ijk, 1);
+    double zmin = negative_grid_boundary(ijk, 2);
+    double zmax = positive_grid_boundary(ijk, 2);
+
+    // Normalize
+    double p_x = (r[0] - xmin) / (xmax - xmin);
+    double p_y = (r[1] - ymin) / (ymax - ymin);
+    double p_z = (r[2] - zmin) / (zmax - zmin);
+
+    return Position(p_x, p_y, p_z);
+  }
 };
 
 class RectilinearMesh : public StructuredMesh {
@@ -766,6 +996,13 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
+  Position departure_from_mesh(Position r0, Position r1, const Direction& u,
+    int& physical_group) const override;
+
+  void randomly_place_on_physical_group(Position& pa, int& cell, uint64_t* seed,
+    vector<int> physical_groups) override
+  {}
+
   void to_hdf5_inner(hid_t group) const override;
 
   std::string bin_label(int bin) const override;
@@ -804,12 +1041,6 @@ public:
   //! \param[in] vertex ID
   //! \return vertex coordinates
   virtual Position vertex(int id) const = 0;
-
-  //! Retrieve connectivity of a mesh element
-  //
-  //! \param[in] element ID
-  //! \return element connectivity as IDs of the vertices
-  virtual std::vector<int> connectivity(int id) const = 0;
 
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;

@@ -750,6 +750,35 @@ void Mesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
+int Mesh::get_physical_group(int face_id) const
+{
+  if (!pg_map().empty()) {
+    for (auto& pair : pg_map()) {
+      const std::vector<int>& vec = pair.second;
+      if (std::find(vec.begin(), vec.end(), face_id) != vec.end()) {
+        return pair.first;
+      }
+    }
+    fatal_error("Not found!");
+  } else {
+    fatal_error("Empty map for physical groups!");
+  }
+}
+
+const std::vector<int>& Mesh::get_face_ids(int group) const
+{
+  if (!pg_map().empty()) {
+    auto it = pg_map().find(group);
+    if (it != pg_map().end()) {
+      return it->second;
+    } else {
+      fatal_error("Key not found!");
+    }
+  } else {
+    fatal_error("Empty map for physical groups!");
+  }
+}
+
 //==============================================================================
 // Structured Mesh implementation
 //==============================================================================
@@ -942,6 +971,12 @@ void UnstructuredMesh::surface_bins_crossed(
   Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
   fatal_error("Unstructured mesh surface tallies are not implemented.");
+}
+
+Position UnstructuredMesh::departure_from_mesh(
+  Position r0, Position r1, const Direction& u, int& physical_group) const
+{
+  fatal_error("Not implemented.");
 }
 
 std::string UnstructuredMesh::bin_label(int bin) const
@@ -1326,6 +1361,66 @@ void StructuredMesh::surface_bins_crossed(
 
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
+}
+
+// Returns information corresponding to the last time the mesh is crossed
+Position StructuredMesh::departure_from_mesh(
+  Position r0, Position r1, const Direction& u, int& physical_group) const
+{
+  vector<int> surface_ids;
+  vector<double> segment_lengths;
+
+  // Helper tally class.
+  // stores a pointer to the mesh class and a reference to the bins parameter.
+  // Performs the actual tally through the surface method.
+  struct DepartureAggregator {
+    DepartureAggregator(
+      const StructuredMesh* _mesh, vector<int>& _bins, vector<double>& _lengths)
+      : mesh(_mesh), bins(_bins), lengths(_lengths)
+    {}
+    // Returns surface ID without the inward information
+    // This is different from the other representation with the inward
+    // information
+    void surface(const MeshIndex& ijk, int k, bool max, bool inward) const
+    {
+      int i_bin =
+        2 * mesh->n_dimension_ * mesh->get_bin_from_indices(ijk) + 2 * k;
+      if (max)
+        i_bin += 1;
+      bins.push_back(i_bin);
+    }
+    void track(const MeshIndex& idx, double l) const { lengths.push_back(l); }
+
+    const StructuredMesh* mesh;
+    vector<int>& bins;
+    vector<double>& lengths;
+  };
+
+  // Perform the mesh raytrace with the helper class.
+  raytrace_mesh(
+    r0, r1, u, DepartureAggregator(this, surface_ids, segment_lengths));
+
+  // Consistency check
+  if (surface_ids.size() == 0) {
+    fatal_error("Inconsistency in raytrace results.");
+  }
+
+  // Retrieve ID from the last surface
+  int surface_id = surface_ids.back();
+
+  // Calculate total length travelled from r0 to intersection
+  double total_length = 0.0;
+  for (auto l : segment_lengths) {
+    total_length += l;
+  }
+
+  // Calculate intersection
+  Position intersection = r0 + (r1 - r0) * total_length;
+
+  // Translate surface ID in physical group
+  physical_group = get_physical_group(surface_id);
+
+  return intersection;
 }
 
 double StructuredMesh::distance_to_next_boundary(

@@ -244,12 +244,16 @@ T SlicePlotBase::get_map(int32_t filter_index) const
   Position start =
     origin_ - 0.5 * u_span_ + 0.5 * v_span_ + 0.5 * u_step - 0.5 * v_step;
 
-  Direction dir = u_span_.cross(v_span_);
-  double dir_norm = dir.norm();
-  if (dir_norm == 0.0) {
+  // Validate that span vectors define a valid plane
+  Position cross = u_span_.cross(v_span_);
+  if (cross.norm() == 0.0) {
     fatal_error("Slice span vectors are invalid (zero area).");
   }
-  dir /= dir_norm;
+
+  // Use an arbitrary direction that is not aligned with any coordinate axis.
+  // The direction has no physical meaning for plotting but is used by
+  // Surface::sense() to break ties when a pixel is coincident with a surface.
+  Direction dir = {1.0 / std::sqrt(2.0), 1.0 / std::sqrt(2.0), 0.0};
 
 #pragma omp parallel
   {

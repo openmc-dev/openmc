@@ -404,7 +404,8 @@ public:
     vector<int> physical_groups) override
   {}
 
-  std::vector<int> connectivity(int id) const override {
+  std::vector<int> connectivity(int id) const override
+  {
     fatal_error("Not implemented!");
   };
 
@@ -624,8 +625,9 @@ public:
   double element_volume_;        //!< Volume of each mesh element
   tensor::Tensor<double> width_; //!< Width of each mesh element
 
-  double face_area(int face_id) {
-  
+  double face_area(int face_id)
+  {
+
     // Only implemented in 3D
     if (n_dimension_ != 3) {
       fatal_error("Not implemented yet!");
@@ -646,8 +648,8 @@ public:
     return area;
   }
 
-  void randomly_place_on_physical_group(
-    Position& pa, int& cell, uint64_t* seed, vector<int> physical_groups) override
+  void randomly_place_on_physical_group(Position& pa, int& cell, uint64_t* seed,
+    vector<int> physical_groups) override
   {
     // Only implemented in 3D
     if (n_dimension_ != 3) {
@@ -778,7 +780,7 @@ public:
   {
     int bin = get_bin(r);
     MeshIndex ijk = get_indices_from_bin(bin);
-  
+
     // Retrieve dimensions
     double xmin = negative_grid_boundary(ijk, 0);
     double xmax = positive_grid_boundary(ijk, 0);

@@ -1264,12 +1264,11 @@ void read_settings_xml(pugi::xml_node root)
         fatal_error("The number of values must be a multiple of 3.");
       }
       for (size_t i = 0; i + 2 < temp.size(); i += 3) {
-        Direction d = Direction(temp[i], temp[i+1], temp[i+2]);
+        Direction d = Direction(temp[i], temp[i + 1], temp[i + 2]);
         vf_values.push_back(d);
       }
     } else {
-      fatal_error(
-        "Values must be given for the velocity field.");
+      fatal_error("Values must be given for the velocity field.");
     }
 
     // Mapping representation
@@ -1348,9 +1347,10 @@ void read_settings_xml(pugi::xml_node root)
         }
 
         // Instantiate integrator
-        simulation::streamline_integrator = new RK4StreamlineIntegrator(dt, conv);
+        simulation::streamline_integrator =
+          new RK4StreamlineIntegrator(dt, conv);
 
-      // Undefined integration method
+        // Undefined integration method
       } else {
         fatal_error(
           fmt::format("Integrator '{}' not implemented", integration_method));
@@ -1361,8 +1361,7 @@ void read_settings_xml(pugi::xml_node root)
 
     // Recycle precursor when reaching an outlet?
     if (check_for_node(node_dnp_drift, "recycling")) {
-      dnp_drift_recycling_on =
-        get_node_value_bool(node_dnp_drift, "recycling");
+      dnp_drift_recycling_on = get_node_value_bool(node_dnp_drift, "recycling");
       if (dnp_drift_recycling_on) {
         if (!check_for_node(node_dnp_drift, "external_travel_time")) {
           fatal_error("The external travel time is not declared in "
@@ -1377,7 +1376,7 @@ void read_settings_xml(pugi::xml_node root)
 
   // Add physical group information to mesh
   if (check_for_node(root, "mesh_physical_group")) {
-    
+
     auto node_physical_group = root.child("mesh_physical_group");
 
     // Mesh pointer

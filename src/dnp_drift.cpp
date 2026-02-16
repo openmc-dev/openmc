@@ -106,7 +106,8 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
       _adjust_time(t_n, t_n_minus_1, y_n_minus_1, y_n, intersection);
       y_n = intersection;
 
-      // If decay time occurs before intersection, stop when decay time is reached
+      // If decay time occurs before intersection, stop when decay time is
+      // reached
       if (t_n > decay_time) {
         _adjust_position(y_n, y_n_minus_1, t_n, t_n - t_n_minus_1, decay_time);
         t_n = decay_time;
@@ -141,8 +142,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
       case Actions::PLACE_AT_INLET:
         if (decay_time > t_n + settings::dnp_drift_external_travel_time) {
           // The DNP has time to reenter the modeled part of the system
-          simulation::velocity_field.randomly_place_on_inlet(
-            y_n, cell_n, seed);
+          simulation::velocity_field.randomly_place_on_inlet(y_n, cell_n, seed);
           t_n += settings::dnp_drift_external_travel_time;
           cell_n_minus_1 = -1;
           y_n_minus_1 = Position();

@@ -9,10 +9,10 @@
 
 namespace openmc {
 
-template <typename T>
-class Field ;
+template<typename T>
+class Field;
 
-template <typename T>
+template<typename T>
 class FieldData {
 public:
   virtual T evaluate(int bin, Position r) const = 0;
@@ -20,43 +20,31 @@ public:
   virtual std::any values() const = 0;
 };
 
-template <typename T>
+template<typename T>
 class SimpleFieldData : public FieldData<T> {
 public:
-  SimpleFieldData(std::vector<T> values) {
-    values_ = values;
-  }
+  SimpleFieldData(std::vector<T> values) { values_ = values; }
 
-  T evaluate(int bin, Position r) const {
-    return values_[bin];
-  }
+  T evaluate(int bin, Position r) const { return values_[bin]; }
 
-  int size() {  return values_.size(); }
+  int size() { return values_.size(); }
 
-  std::any values() const override {
-    return values_;
-  }
+  std::any values() const override { return values_; }
 
 private:
   std::vector<T> values_;
 };
 
-template <typename T>
+template<typename T>
 class NestedFieldData : public FieldData<T> {
 public:
-  NestedFieldData(std::vector<Field<T>> values) {
-    values_ = values; 
-  }
+  NestedFieldData(std::vector<Field<T>> values) { values_ = values; }
 
-  T evaluate(int bin, Position r) const {
-    return values_[bin].evaluate(r);
-  }
+  T evaluate(int bin, Position r) const { return values_[bin].evaluate(r); }
 
-  int size() {  return values_.size(); }
+  int size() { return values_.size(); }
 
-  std::any values() const override {
-    return values_;
-  }
+  std::any values() const override { return values_; }
 
 private:
   std::vector<Field<T>> values_;
@@ -73,14 +61,15 @@ enum class NodalEvaluation {
   CLOSEST        // Determine value using closest point
 };
 
-template <typename T>
+template<typename T>
 class Field {
 public:
   // Constructors
   Field() = default;
 
   // Set mesh pointer
-  void set_mesh(Mesh* value) {
+  void set_mesh(Mesh* value)
+  {
     if (value != nullptr) {
       mesh_ = value;
     } else {
@@ -89,7 +78,8 @@ public:
   }
 
   // Set mapping
-  void set_mapping(std::string value) {
+  void set_mapping(std::string value)
+  {
     if (value == "nodal") {
       mapping_ = FieldMapping::NODAL;
     } else if (value == "cell") {
@@ -100,23 +90,25 @@ public:
   }
 
   // Set nodal evaluation method
-  void set_nodal_evaluation(std::string value) {
+  void set_nodal_evaluation(std::string value)
+  {
     if (value == "interpolation") {
       nodal_evaluation_ = NodalEvaluation::INTERPOLATION;
     } else if (value == "closest") {
       nodal_evaluation_ = NodalEvaluation::CLOSEST;
     } else {
-      fatal_error(
-        fmt::format("Unrecognized nodal evaluation type: {}", value));
+      fatal_error(fmt::format("Unrecognized nodal evaluation type: {}", value));
     }
   }
 
   // Set data
-  void set_data(std::unique_ptr<FieldData<T>> data) {
+  void set_data(std::unique_ptr<FieldData<T>> data)
+  {
     // Values/mesh consistency check
     // Check for nodal representation
     if (mapping() == FieldMapping::NODAL) {
-      // TODO - check consistency compared to total number of expected unique vertices
+      // TODO - check consistency compared to total number of expected unique
+      // vertices
     }
     // Check for cell-based representation
     if (mapping() == FieldMapping::CELL) {
@@ -136,15 +128,16 @@ public:
     if (nodal_evaluation() == NodalEvaluation::INTERPOLATION) {
       return interpolate(bin, r);
     } else if (nodal_evaluation() == NodalEvaluation::CLOSEST) {
-      //return closest_value(bin, r);
-      // TODO - remove the nodal evaluation option
+      // return closest_value(bin, r);
+      //  TODO - remove the nodal evaluation option
     } else {
       fatal_error("Not implemented!");
     }
   }
 
   // Interpolate the field at a given position
-  T interpolate(int bin, Position r) {
+  T interpolate(int bin, Position r)
+  {
 
     Position n_r = mesh_ptr()->normalize_position(r);
     std::vector<int> v = mesh_ptr()->connectivity(bin);
@@ -168,9 +161,7 @@ public:
   //
   //! \param[in] r Position
   //! \return Mesh bin
-  int get_mesh_bin(Position r) {
-    return mesh_ptr()->get_bin(r);
-  }
+  int get_mesh_bin(Position r) { return mesh_ptr()->get_bin(r); }
 
   //! Evaluate the field at a given position
   //
@@ -287,11 +278,7 @@ public:
 };
 
 // Boundary conditions type
-enum class BCType {
-  INLET,
-  OUTLET,
-  WALL
-};
+enum class BCType { INLET, OUTLET, WALL };
 
 // Boundary conditions map type
 using BCMap = std::unordered_map<BCType, std::vector<int>>;

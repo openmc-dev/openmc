@@ -280,7 +280,7 @@ class Settings:
                    process (int)
         :max_source_files: Maximum number of surface source files to be created (int)
         :mcpl: Output in the form of an MCPL-file (bool)
-        :cell: List of cell IDs used to determine if particles crossing identified
+        :cells: List of cell IDs used to determine if particles crossing identified
                surfaces are to be banked. Particles coming from or going to this
                declared cell will be banked (int)
         :cellfrom: List of cell IDs used to determine if particles crossing identified
@@ -297,6 +297,8 @@ class Settings:
         Surface flux cosine substitution ratio. If not specified, the default
         value is 0.5. For more information, see the surface tally section in the
         theory manual.
+        :directions: List of directions corresponding to cells. 
+        Acceptable entries are: "from", "to", or "both" (str)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -879,20 +881,22 @@ class Settings:
                 "surface source writing key",
                 key,
                 ("surface_ids", "max_particles", "max_source_files",
-                 "mcpl", "cell", "cellfrom", "cellto"),
+                 "mcpl", "cells", "directions"),
             )
-            if key in ("surface_ids", "cell", "cellfrom", "cellto"):
+            if key in ("surface_ids", "cells"):
                 name = {
                     "surface_ids": "surface id(s) for source banking",
-                    "cell": "Cell ID(s) for source banking (from or to)",
-                    "cellfrom": "Cell ID(s) for source banking (from only)",
-                    "cellto": "Cell ID(s) for source banking (to only)",
+                    "cells": "Cell ID(s) for source banking",
                 }[key]
-
                 cv.check_type(name, value, Iterable, Integral)
                 for x in value:
                     cv.check_greater_than(name, x, 0)
-
+            elif key == "directions":
+                cv.check_type("directions corresponding to cells (from, to or both)", value, Iterable, str)
+                for direction in value:
+                    if (direction not in ["from", "to", "both"]):
+                        msg = "allowed values for direction: 'from', 'to', 'both' "
+                        raise ValueError(msg)
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
             elif key in ("max_particles", "max_source_files"):
@@ -1582,7 +1586,7 @@ class Settings:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(self._surf_source_write[key])
 
-            for key in ("cell", "cellfrom", "cellto"):
+            for key in ("cells", "directions"):
                 if key in self._surf_source_write:
                     subelement = ET.SubElement(element, key)
                     subelement.text = " ".join(
@@ -2100,9 +2104,11 @@ class Settings:
         elem = root.find('surf_source_write')
         if elem is None:
             return
-        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cell', 'cellto', 'cellfrom'):
-            if key in ('surface_ids', 'cell', 'cellto', 'cellfrom'):
+        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cells', 'directions'):
+            if key in ['surface_ids', 'cells']:
                 value = get_elem_list(elem, key, int)
+            elif key == 'directions':
+                value = get_elem_list(elem, key, str)
             else:
                 value = get_text(elem, key)
             if value is not None:
@@ -2111,6 +2117,7 @@ class Settings:
                 elif key in ('max_particles', 'max_source_files'):
                     value = int(value)
                 self.surf_source_write[key] = value
+
 
     def _collision_track_from_xml_element(self, root):
         elem = root.find('collision_track')

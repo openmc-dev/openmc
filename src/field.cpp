@@ -22,12 +22,11 @@ double Field::distance_to_next_boundary(
 // TemperatureField implementation
 // -----------------------------------------------------------
 
-TemperatureField::TemperatureField(Mesh* mesh_ptr, std::vector<double> values,
-  std::string mapping, std::string nodal_evaluation)
+TemperatureField::TemperatureField(
+  Mesh* mesh_ptr, std::vector<double> values, std::string mapping)
 {
   set_mesh(mesh_ptr);
   set_mapping(mapping);
-  set_nodal_evaluation(nodal_evaluation);
 
   std::unique_ptr<FieldData<double>> data =
     std::make_unique<SimpleFieldData<double>>(values);
@@ -65,12 +64,11 @@ int TemperatureField::get_bin(const Position& r)
 // VelocityField implementation
 // -----------------------------------------------------------
 
-VelocityField::VelocityField(Mesh* mesh_ptr, std::vector<Direction> values,
-  std::string mapping, std::string nodal_evaluation)
+VelocityField::VelocityField(
+  Mesh* mesh_ptr, std::vector<Direction> values, std::string mapping)
 {
   set_mesh(mesh_ptr);
   set_mapping(mapping);
-  set_nodal_evaluation(nodal_evaluation);
 
   std::unique_ptr<FieldData<Direction>> data =
     std::make_unique<SimpleFieldData<Direction>>(values);

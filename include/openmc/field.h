@@ -55,12 +55,6 @@ enum class FieldMapping {
   CELL   // Cell-based representation (value defined for each cell)
 };
 
-enum class NodalEvaluation {
-  UNDEFINED,     // Undefined evaluation
-  INTERPOLATION, // Determine value using interpolation
-  CLOSEST        // Determine value using closest point
-};
-
 template<typename T>
 class Field {
 public:
@@ -89,18 +83,6 @@ public:
     }
   }
 
-  // Set nodal evaluation method
-  void set_nodal_evaluation(std::string value)
-  {
-    if (value == "interpolation") {
-      nodal_evaluation_ = NodalEvaluation::INTERPOLATION;
-    } else if (value == "closest") {
-      nodal_evaluation_ = NodalEvaluation::CLOSEST;
-    } else {
-      fatal_error(fmt::format("Unrecognized nodal evaluation type: {}", value));
-    }
-  }
-
   // Set data
   void set_data(std::unique_ptr<FieldData<T>> data)
   {
@@ -123,17 +105,7 @@ public:
   }
 
   // Evaluate a field value inside a mesh cell (nodal representation)
-  T evaluate_inside_cell(int bin, Position r)
-  {
-    if (nodal_evaluation() == NodalEvaluation::INTERPOLATION) {
-      return interpolate(bin, r);
-    } else if (nodal_evaluation() == NodalEvaluation::CLOSEST) {
-      // return closest_value(bin, r);
-      //  TODO - remove the nodal evaluation option
-    } else {
-      fatal_error("Not implemented!");
-    }
-  }
+  T evaluate_inside_cell(int bin, Position r) { return interpolate(bin, r); }
 
   // Interpolate the field at a given position
   T interpolate(int bin, Position r)
@@ -195,10 +167,6 @@ public:
   FieldMapping mapping() { return mapping_; }
   const FieldMapping mapping() const { return mapping_; }
 
-  // Nodal evaluation
-  NodalEvaluation nodal_evaluation() { return nodal_evaluation_; }
-  const NodalEvaluation nodal_evaluation() const { return nodal_evaluation_; }
-
   // Mesh pointer accessor
   Mesh* mesh_ptr() const
   {
@@ -221,9 +189,7 @@ public:
   T value(int bin, Position r) const { return data().evaluate(bin, r); }
 
 private:
-  FieldMapping mapping_; //!< Relationship between values and mesh
-  NodalEvaluation nodal_evaluation_ =
-    NodalEvaluation::UNDEFINED;        //!< Nodal evaluation method
+  FieldMapping mapping_;               //!< Relationship between values and mesh
   Mesh* mesh_;                         //!< Pointer to the geometric mesh
   std::unique_ptr<FieldData<T>> data_; //!< Data associated with the mesh
 };
@@ -232,8 +198,8 @@ class TemperatureField : public Field<double> {
 public:
   // Constructors
   TemperatureField() : Field<double>() {};
-  TemperatureField(Mesh* mesh_ptr, std::vector<double> values,
-    std::string mapping, std::string nodal_evaluation);
+  TemperatureField(
+    Mesh* mesh_ptr, std::vector<double> values, std::string mapping);
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
@@ -278,8 +244,8 @@ class VelocityField : public Field<Direction> {
 public:
   // Constructors
   VelocityField() : Field<Direction>() {};
-  VelocityField(Mesh* mesh_ptr, std::vector<Direction> values,
-    std::string mapping, std::string nodal_evaluation);
+  VelocityField(
+    Mesh* mesh_ptr, std::vector<Direction> values, std::string mapping);
 
   Position find_departure_from_mesh(
     Position pa, Position pb, BCType& crossed_boundary);

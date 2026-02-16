@@ -876,15 +876,9 @@ void read_settings_xml(pugi::xml_node root)
         "A mapping representation must be given for the velocity field.");
     }
 
-    // Nodal evaluation
-    std::string nodal_evaluation = "interpolation";
-    if (check_for_node(node_tf, "nodal_evaluation")) {
-      nodal_evaluation = get_node_value(node_tf, "nodal_evaluation");
-    }
-
     // Instantiate the temperature field
     simulation::temperature_field =
-      TemperatureField(tf_mesh_ptr, tf_values, mapping, nodal_evaluation);
+      TemperatureField(tf_mesh_ptr, tf_values, mapping);
   }
 
   // Uniform fission source weighting mesh
@@ -1280,15 +1274,9 @@ void read_settings_xml(pugi::xml_node root)
         "A mapping representation must be given for the velocity field.");
     }
 
-    // Nodal evaluation
-    std::string nodal_evaluation = "interpolation";
-    if (check_for_node(node_dnp_drift, "nodal_evaluation")) {
-      nodal_evaluation = get_node_value(node_dnp_drift, "nodal_evaluation");
-    }
-
     // Velocity field
     simulation::velocity_field =
-      VelocityField(mesh_ptr, vf_values, field_mapping, nodal_evaluation);
+      VelocityField(mesh_ptr, vf_values, field_mapping);
 
     // Boundary conditions map
     if (check_for_node(node_dnp_drift, "boundary_map")) {

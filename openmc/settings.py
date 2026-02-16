@@ -179,6 +179,9 @@ class Settings:
        Initial seed for randomly generated plot colors.
     ptables : bool
         Determine whether probability tables are used.
+    properties_file : Pathlike
+        Location of the properties file to load cell temperatures/densities
+        and materials
     random_ray : dict
         Options for configuring the random ray solver. Acceptable keys are:
 
@@ -392,6 +395,7 @@ class Settings:
         self._photon_transport = None
         self._plot_seed = None
         self._ptables = None
+        self._properties_file = None
         self._uniform_source_sampling = None
         self._seed = None
         self._stride = None
@@ -1017,6 +1021,18 @@ class Settings:
                     cv.check_type('temperature', T, Real)
 
         self._temperature = temperature
+
+    @property
+    def properties_file(self) -> PathLike | None:
+        return self._properties_file
+
+    @properties_file.setter
+    def properties_file(self, value: PathLike | None):
+        if value is None:
+            self._properties_file = None
+        else:
+            cv.check_type('weight windows file', value, PathLike)
+            self._properties_file = input_path(value)
 
     @property
     def trace(self) -> Iterable:
@@ -1708,6 +1724,12 @@ class Settings:
                 else:
                     element.text = str(value)
 
+    def _create_properties_file_element(self, root):
+        if self.properties_file is not None:
+            element = ET.Element("properties_file")
+            element.text = str(self.properties_file)
+            root.append(element)
+
     def _create_trace_subelement(self, root):
         if self._trace is not None:
             element = ET.SubElement(root, "trace")
@@ -2205,6 +2227,11 @@ class Settings:
         if text is not None:
             self.temperature['multipole'] = text in ('true', '1')
 
+    def _properties_file_from_xml_element(self, root):
+        text = get_text(root, 'properties_file')
+        if text is not None:
+            self.properties_file = text
+
     def _trace_from_xml_element(self, root):
         text = get_elem_list(root, "trace", int)
         if text is not None:
@@ -2440,6 +2467,7 @@ class Settings:
         self._create_ifp_n_generation_subelement(element)
         self._create_tabular_legendre_subelements(element)
         self._create_temperature_subelements(element)
+        self._create_properties_file_element(element)
         self._create_trace_subelement(element)
         self._create_track_subelement(element)
         self._create_ufs_mesh_subelement(element, mesh_memo)
@@ -2554,6 +2582,7 @@ class Settings:
         settings._ifp_n_generation_from_xml_element(elem)
         settings._tabular_legendre_from_xml_element(elem)
         settings._temperature_from_xml_element(elem)
+        settings._properties_file_from_xml_element(elem)
         settings._trace_from_xml_element(elem)
         settings._track_from_xml_element(elem)
         settings._ufs_mesh_from_xml_element(elem, meshes)

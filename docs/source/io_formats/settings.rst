@@ -1340,6 +1340,16 @@ despite not being bounded on both sides.
 
   *Default*: 10 K
 
+.. _properties_file:
+
+--------------------------------------
+``<properties_file>`` Element
+--------------------------------------
+
+  The ``properties_file`` element has no attributes and contains the path to
+  an HDF5 properties file to load during simulation initialization.
+
+
 .. _trace:
 
 -------------------

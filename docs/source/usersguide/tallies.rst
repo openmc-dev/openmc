@@ -340,6 +340,15 @@ The following tables show all valid scores:
     |                      |kinetics parameters using the iterated fission     |
     |                      |probability (IFP) method.                          |
     +----------------------+---------------------------------------------------+
+    |migration-area        |The migration-area score is used to evaluate       |
+    |                      |diffusion coefficients and transport cross sections|
+    |                      |in infinite geometry.                              |
+    |                      |The migration area score can only be used with     |
+    |                      |a ParticleFilter or with an EnergyFilter.          |
+    |                      |It also cannot be used in the same run as a        |
+    |                      |MeshBornFilter for non vacuum boundary conditions. |
+    |                      |For more information, see Liu_.                    |
+    +----------------------+---------------------------------------------------+
 
 .. _usersguide_tally_normalization:
 
@@ -404,3 +413,5 @@ There are several slight variations on this procedure:
 
 Note that the only difference between these and the above procedures is in how
 :math:`H'` is estimated.
+
+.. _Liu: https://doi.org/10.1016/j.anucene.2017.10.039

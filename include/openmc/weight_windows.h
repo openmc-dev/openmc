@@ -17,7 +17,7 @@
 
 namespace openmc {
 
-enum class WeightWindowUpdateMethod { MAGIC, FW_CADIS, CADIS };
+enum class WeightWindowUpdateMethod { MAGIC, FW_CADIS };
 
 //==============================================================================
 // Constants
@@ -236,7 +236,7 @@ public:
                            // update weight windows
   double ratio_ {5.0};     //<! ratio of lower to upper weight window bounds
 
-  // CADIS target tallies
+  // Local FW-CADIS target tallies
   std::vector<size_t> targets_;
 };
 

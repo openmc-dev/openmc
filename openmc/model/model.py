@@ -269,7 +269,7 @@ class Model:
     # TODO: This should also be incorporated into lower-level calls in 
     # settings.py, but it requires information about the tallies currently
     # on the active Model
-    def _assign_cadis_tally_IDs(self):
+    def _assign_fw_cadis_tally_IDs(self):
         # Verify that all tallies assigned as targets on WeightWindowGenerators 
         # exist within model.tallies. If this is the case, convert the .targets 
         # attribute of each WeightWindowGenerator to a sequence of tally IDs.
@@ -291,7 +291,7 @@ class Model:
                     
                     if id_next == None:
                         raise RuntimeError(
-                            f'CADIS target tally {tal.id} not found on model.tallies!')
+                            f'Local FW-CADIS target tally {tal.id} not found on model.tallies!')
                     else:
                         id_vec.append(id_next)
 
@@ -607,7 +607,7 @@ class Model:
         if not d.is_dir():
             d.mkdir(parents=True, exist_ok=True)
 
-        self._assign_cadis_tally_IDs()
+        self._assign_fw_cadis_tally_IDs()
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
 
@@ -666,8 +666,8 @@ class Model:
                           "set the Geometry.merge_surfaces attribute instead.")
             self.geometry.merge_surfaces = True
 
-        # Link CADIS WeightWindowGenerator target tallies, if present
-        self._assign_cadis_tally_IDs()
+        # Link FW-CADIS WeightWindowGenerator target tallies, if present
+        self._assign_fw_cadis_tally_IDs()
 
         # provide a memo to track which meshes have been written
         mesh_memo = set()

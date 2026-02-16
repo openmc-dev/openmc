@@ -30,11 +30,11 @@ RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_ {false};
-bool FlatSourceDomain::cadis_ {false};
+bool FlatSourceDomain::fw_cadis_local_ {false};
 double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
   FlatSourceDomain::mesh_domain_map_;
-std::vector<size_t> FlatSourceDomain::cadis_targets_;
+std::vector<size_t> FlatSourceDomain::fw_cadis_local_targets_;
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
@@ -1259,7 +1259,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
   // set its adjoint source to zero. This adds negligible bias to the adjoint
   // flux solution, as the true total adjoint source contribution from small
   // regions is likely to be negligible.
-  if (!cadis_) {
+  if (!fw_cadis_local_) {
 #pragma omp parallel for
     for (int64_t sr = 0; sr < n_source_regions(); sr++) {
       if (source_regions_.is_small(sr)) {
@@ -1290,7 +1290,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
     }
   }
 
-  if (cadis_) {
+  if (fw_cadis_local_) {
 // Only external sources that have a non-mesh type tally task should remain
 // non-zero. Everything else gets zero'd out.
 #pragma omp parallel for
@@ -1303,24 +1303,26 @@ void FlatSourceDomain::set_fw_adjoint_sources()
 
       // If there is an adjoint source term here, then we need to check it.
 
-      // We will track if ANY group has a valid CADIS source term
+      // We will track if ANY group has a valid local FW-CADIS source term
       bool has_any_sources = false;
 
       // Now, loop over groups
       for (int g = 0; g < negroups_; g++) {
 
         // If there are no tally tasks associated with this source element
-        // then it is not a CADIS source, so we continue to the next group
+        // then it is not a local FW-CADIS source, so we continue to the next 
+        // group
         if (source_regions_.tally_task(sr, g).empty()) {
           source_regions_.external_source(sr, g) = 0.0;
           continue;
         }
 
         // If there are tally tasks, we can through them and check if
-        // any of them are CADIS targets and have a non-mesh filter type.
+        // any of them are local FW-CADIS targets and have a non-mesh filter 
+        // type.
 
-        // We track if ANY of the tasks are CADIS target tallies
-        bool cadis_target_region = false;
+        // We track if ANY of the tasks are local FW-CADIS target tallies
+        bool local_fw_cadis_target_region = false;
 
         // Now we loop through
         for (const auto& task : source_regions_.tally_task(sr, g)) {
@@ -1328,39 +1330,40 @@ void FlatSourceDomain::set_fw_adjoint_sources()
           const auto t_id = tally.id();
 
           // Skip non-target tallies
-          if (std::find(cadis_targets_.begin(), cadis_targets_.end(), t_id) ==
-              cadis_targets_.end()) {
+          if (std::find(fw_cadis_local_targets_.begin(), 
+              fw_cadis_local_targets_.end(), t_id) ==
+              fw_cadis_local_targets_.end()) {
             continue;
           }
 
           auto filter_types = tally.filter_types();
 
           // For each tally, we loop through the filter types array.
-          // If any of them have a CADIS-compatible filter type,
-          // then this source element is a valid CADIS source
+          // If any of them have a FW-CADIS-compatible filter type,
+          // then this source element is a valid local FW-CADIS source 
           for (const auto& filter_type : filter_types) {
             if (filter_type == FilterType::CELL ||
                 filter_type == FilterType::CELL_INSTANCE ||
                 filter_type == FilterType::DISTRIBCELL ||
                 filter_type == FilterType::UNIVERSE ||
                 filter_type == FilterType::MATERIAL) {
-              cadis_target_region = true;
+              local_fw_cadis_target_region = true;
               break;
             }
           }
           // If a target tally doesn't have any compatible filters, error
-          if (!cadis_target_region) {
-            fatal_error("CADIS target tally with ID " + std::to_string(t_id) +
-                        " does not have any "
-                        "CADIS-compatible filters.");
+          if (!local_fw_cadis_target_region) {
+            fatal_error("Local FW-CADIS target tally with ID " + 
+                        std::to_string(t_id) + " does not have any "
+                        "FW-CADIS-compatible filters.");
           }
         }
 
-        // If ANY of the tasks is a CADIS target,
+        // If ANY of the tasks is a local FW-CADIS target,
         // Then we keep the source term and set that this
-        // source region has a valid CADIS source term.
+        // source region has a valid FW-CADIS source term.
         // Otherwise, we zero out the source term.
-        if (cadis_target_region) {
+        if (local_fw_cadis_target_region) {
           has_any_sources = true;
           // print external source term
           fmt::print("External source term for source region {} group {}: {}\n",
@@ -1370,7 +1373,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         }
       } // End loop over groups
 
-      // If there were any valid CADIS source terms for any
+      // If there were any valid FW-CADIS source terms for any
       // of the groups, then the SR as a whole counts as a source
       if (has_any_sources) {
         source_regions_.external_source_present(sr) = 1;
@@ -1378,7 +1381,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         source_regions_.external_source_present(sr) = 0;
       }
     } // End loop over source regions
-  } // End CADIS logic
+  } // End local FW-CADIS logic
 }
 
 void FlatSourceDomain::set_local_adjoint_sources()

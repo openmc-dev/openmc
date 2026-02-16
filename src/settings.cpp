@@ -1258,13 +1258,13 @@ void read_settings_xml(pugi::xml_node root)
         break;
       }
     }
-    // If any weight window generators have CADIS target tallies, user-defined
-    // adjoint sources cannot be used at the same time.
+    // If any weight window generators have local FW-CADIS target tallies, 
+    // user-defined adjoint sources cannot be used at the same time.
     if (!model::adjoint_sources.empty()) {
       for (const auto& wwg : variance_reduction::weight_windows_generators) {
         if (!wwg->targets_.empty()) {
-          fatal_error("Cannot use both user-defined adjoint sources and CADIS "
-                      "target tallies at the same time.");
+          fatal_error("Cannot use both user-defined adjoint sources and " 
+                      "FW-CADIS target tallies at the same time.");
         }
       }
     }

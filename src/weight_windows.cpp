@@ -876,21 +876,13 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
       fatal_error("FW-CADIS can only be run in random ray solver mode.");
     }
     FlatSourceDomain::adjoint_ = true;
-  } else if (method_string == "cadis") {
-    method_ = WeightWindowUpdateMethod::CADIS;
-    if (settings::solver_type != SolverType::RANDOM_RAY) {
-      fatal_error("CADIS can only be run in random ray solver mode.");
-    }
-    FlatSourceDomain::adjoint_ = true;
-    FlatSourceDomain::cadis_ = true;
     if (check_for_node(node, "targets")) {
+      FlatSourceDomain::fw_cadis_local_ = true;
       targets_ = get_node_array<size_t>(node, "targets");
-      FlatSourceDomain::cadis_targets_.insert(
-        std::end(FlatSourceDomain::cadis_targets_), std::begin(targets_),
+      FlatSourceDomain::fw_cadis_local_targets_.insert(
+        std::end(FlatSourceDomain::fw_cadis_local_targets_), 
+        std::begin(targets_),
         std::end(targets_));
-    } else {
-      fatal_error("CADIS method requires target tallies be specified to "
-                  "WeightWindowGenerator.");
     }
   } else {
     fatal_error(fmt::format(

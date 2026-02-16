@@ -497,10 +497,10 @@ class WeightWindowGenerator:
         maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic', 'fw_cadis', 'cadis'}
+    method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
     targets : :class:`openmc.Tallies`
-        Target tallies for local variance reduction via CADIS.
+        Target tallies for local variance reduction via FW-CADIS.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -518,10 +518,10 @@ class WeightWindowGenerator:
         energies in [eV] for a single bin
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic', 'fw_cadis', 'cadis'}
+    method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
     targets : :class:`openmc.Tallies`
-        Target tallies for local variance reduction via CADIS.
+        Target tallies for local variance reduction via FW-CADIS.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -608,7 +608,7 @@ class WeightWindowGenerator:
     @method.setter
     def method(self, m: str):
         cv.check_type('generation method', m, str)
-        cv.check_value('generation method', m, ('magic', 'fw_cadis', 'cadis'))
+        cv.check_value('generation method', m, ('magic', 'fw_cadis'))
         self._method = m
         if self._update_parameters is not None:
             try:
@@ -625,8 +625,8 @@ class WeightWindowGenerator:
         if t is None:
             self._targets = t
         else:
-            cv.check_type('CADIS target tallies', t, (openmc.Tallies, list))
-            cv.check_greater_than('CADIS target tallies', len(t), 0)
+            cv.check_type('Local FW-CADIS target tallies', t, (openmc.Tallies, list))
+            cv.check_greater_than('Local FW-CADIS target tallies', len(t), 0)
             if not isinstance(t, openmc.Tallies):
                 for tally_id in t:
                     if not isinstance(tally_id, int):
@@ -661,7 +661,7 @@ class WeightWindowGenerator:
         return self._update_parameters
 
     def _check_update_parameters(self, params: dict):
-        if self.method == 'magic' or self.method == 'fw_cadis'  or self.method == 'cadis':
+        if self.method == 'magic' or self.method == 'fw_cadis':
             check_params = self._WWG_PARAMS
 
         for key, val in params.items():
@@ -704,7 +704,7 @@ class WeightWindowGenerator:
         update_parameters : dict
             The update parameters as-read from the XML node (keys: str, values: str)
         """
-        if method == 'magic' or method == 'fw_cadis'  or method == 'cadis':
+        if method == 'magic' or method == 'fw_cadis':
             check_params = cls._WWG_PARAMS
 
         for param, param_type in check_params.items():
@@ -732,15 +732,15 @@ class WeightWindowGenerator:
         method_elem = ET.SubElement(element, 'method')
         method_elem.text = self.method
         if self.targets is not None:
-            if self.method != 'cadis':
+            if self.method != 'fw_cadis':
                 raise ValueError(
-                    "CADIS update method is required in order to use " \
+                    "FW-CADIS update method is required in order to use " \
                     "target tallies for WeightWindowGenerator.")
             elif isinstance(self.targets, openmc.Tallies):
                 raise RuntimeError(
-                    "CADIS target tallies must be checked to ensure they are" \
+                    "FW-CADIS target tallies must be checked to ensure they are" \
                     "present on model.tallies. Use model.export_to_xml() or " \
-                    "model.export_to_model_xml() to link CADIS target tallies.")
+                    "model.export_to_model_xml() to link FW-CADIS target tallies.")
             else:
                 targets_elem = ET.SubElement(element, 'targets')
                 targets_elem.text = ' '.join(str(tally_id) for tally_id in self.targets)
@@ -783,9 +783,9 @@ class WeightWindowGenerator:
         wwg.method = get_text(elem, 'method')
         targets_elem = elem.find('targets')
         if targets_elem is not None:
-            if wwg.method != 'cadis':
+            if wwg.method != 'fw_cadis':
                 raise ValueError(
-                    "CADIS update method is required in order to use " \
+                    "FW-CADIS update method is required in order to use " \
                     "target tallies for WeightWindowGenerator.")
             else:
                 wwg.targets = get_elem_list(elem, "targets")

@@ -77,7 +77,7 @@ public:
   // Static Data members
   static bool volume_normalized_flux_tallies_;
   static bool adjoint_; // If the user wants outputs based on the adjoint flux
-  static bool cadis_;
+  static bool fw_cadis_local_;
   static double
     diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization
                                  // for transport corrected MGXS data
@@ -86,7 +86,7 @@ public:
   static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
     mesh_domain_map_;
 
-  static std::vector<size_t> cadis_targets_;
+  static std::vector<size_t> fw_cadis_local_targets_;
 
   //----------------------------------------------------------------------------
   // Static data members

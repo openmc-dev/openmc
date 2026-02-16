@@ -7,35 +7,20 @@
 
 namespace openmc {
 
-ScalarField::ScalarField(
-  Mesh* mesh_ptr, vector<double> values, const std::string& field_type)
-{
-  this->field_type_ = field_type;
+// -----------------------------------------------------------
+// Field implementation
+// -----------------------------------------------------------
 
-  if (mesh_ptr != nullptr) {
-    this->mesh_ptr_ = mesh_ptr;
-  } else {
-    fatal_error(fmt::format("No mesh found for {}!", field_type));
-  }
-
-  if (this->mesh_ptr_->n_bins() != values.size()) {
-    fatal_error(
-      fmt::format("The number of bins in the mesh is not consistent with the "
-                  "number of values declared in {}!",
-        field_type));
-  }
-
-  for (double v : values) {
-    this->values_.push_back(v);
-  }
-}
-
-double ScalarField::distance_to_next_boundary(
+double Field::distance_to_next_boundary(
   int current_bin, const Position& r, const Direction& u, int& bin_next)
 {
   return this->mesh_ptr()->distance_to_next_boundary(
     current_bin, r, u, bin_next);
 }
+
+// -----------------------------------------------------------
+// TemperatureField implementation
+// -----------------------------------------------------------
 
 double TemperatureField::get_temperature(int bin)
 {
@@ -64,6 +49,54 @@ int TemperatureField::get_bin(const Position& r)
   }
 }
 
+// -----------------------------------------------------------
+// VelocityField implementation
+// -----------------------------------------------------------
+
+VelocityField::VelocityField(Mesh* mesh_ptr, std::vector<Direction> values,
+  std::string mapping, std::string nodal_evaluation)
+{
+  set_mesh(mesh_ptr);
+  set_mapping(mapping);
+  set_nodal_evaluation(nodal_evaluation);
+
+  std::unique_ptr<FieldData<Direction>> data =
+    std::make_unique<SimpleFieldData<Direction>>(values);
+  set_data(std::move(data));
+}
+
+Position VelocityField::find_departure_from_mesh(
+  Position pa, Position pb, BCType& crossed_boundary)
+{
+  int physical_group;
+  Position intersection = mesh_ptr()->departure_from_mesh(
+    pb, pa, (pa - pb) / (pa.distance(pb)), physical_group);
+  crossed_boundary = get_boundary_condition(physical_group);
+  return intersection;
+}
+
+void VelocityField::randomly_place_on_inlet(
+  Position& pa, int& cell, uint64_t* seed)
+{
+  mesh_ptr()->randomly_place_on_physical_group(
+    pa, cell, seed, bc_map_[BCType::INLET]);
+}
+
+BCType VelocityField::get_boundary_condition(int physical_group)
+{
+  if (!bc_map_.empty()) {
+    for (auto& pair : bc_map_) {
+      std::vector<int>& vec = pair.second;
+      if (std::find(vec.begin(), vec.end(), physical_group) != vec.end()) {
+        return pair.first;
+      }
+    }
+    fatal_error("Not found!");
+  } else {
+    fatal_error("Empty map for boundary conditions in the velocity field!");
+  }
+}
+
 //==============================================================================
 // C API
 //==============================================================================
@@ -78,6 +111,5 @@ extern "C" int openmc_temperature_field_set_temperature(
 
   simulation::temperature_field.value(index) = temperature;
   return 0;
-}
 
 } // namespace openmc

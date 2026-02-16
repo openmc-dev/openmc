@@ -88,6 +88,17 @@ struct Position {
     return {y * other.z - z * other.y, z * other.x - x * other.z,
       x * other.y - y * other.x};
   }
+  inline double distance_sqrd(Position other) const
+  {
+    double dx = x - other.x;
+    double dy = y - other.y;
+    double dz = z - other.z;
+    return dx * dx + dy * dy + dz * dz;
+  }
+  inline double distance(Position other) const
+  {
+    return std::sqrt(distance_sqrd(other));
+  }
 
   //! Reflect a direction across a normal vector
   //! \param[in] other Vector to reflect across

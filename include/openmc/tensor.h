@@ -219,6 +219,12 @@ public:
   T& operator[](size_t i) { return data_[flat_to_offset(i)]; }
   const T& operator[](size_t i) const { return data_[flat_to_offset(i)]; }
 
+  //! First and last element
+  T& front() { return data_[0]; }
+  const T& front() const { return data_[0]; }
+  T& back() { return data_[size() - 1]; }
+  const T& back() const { return data_[size() - 1]; }
+
   //--------------------------------------------------------------------------
   // Accessors
 

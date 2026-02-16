@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" depletable="true">
+      <density value="5.0" units="g/cm3"/>
+      <nuclide name="U235" ao="0.2"/>
+      <nuclide name="U238" ao="0.8"/>
+      <nuclide name="O16" ao="3.0"/>
+      <nuclide name="H1" ao="2.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-2 1 -4 3 -6 5" universe="1"/>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="2" type="x-plane" boundary="reflective" coeffs="10.0"/>
+    <surface id="3" type="y-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="4" type="y-plane" boundary="reflective" coeffs="10.0"/>
+    <surface id="5" type="z-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="6" type="z-plane" boundary="reflective" coeffs="10.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>4000</particles>
+    <batches>20</batches>
+    <inactive>2</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>0.0 0.0 0.0 10.0 10.0 10.0</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+    <dnp_drift>
+      <field_mapping>cell</field_mapping>
+      <field_mesh>1</field_mesh>
+      <field_values>1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 </field_values>
+      <boundary_map>
+        <inlet> 1 </inlet>
+        <outlet> 2 </outlet>
+        <wall> 3 4 </wall>
+      </boundary_map>
+      <integrator>RK4</integrator>
+      <integrator_dt>0.1</integrator_dt>
+      <convergence_criteria>0.005</convergence_criteria>
+      <recycling>true</recycling>
+      <external_travel_time>2.0</external_travel_time>
+    </dnp_drift>
+    <mesh_physical_group>
+      <mesh>1</mesh>
+      <face_ids> 0 24 12 36 7 31 19 43 15 39 21 45 2 26 8 32 4 16 10 22 29 41 35 47</face_ids>
+      <physical_groups> 1 1 1 1 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3</physical_groups>
+    </mesh_physical_group>
+    <mesh id="1">
+      <dimension>2 2 2</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <upper_right>10.0 10.0 10.0</upper_right>
+    </mesh>
+    <temperature_method>interpolation</temperature_method>
+  </settings>
+</model>

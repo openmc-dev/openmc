@@ -138,6 +138,7 @@ vector<int64_t> ssw_cell_ids;
 SSWCellType ssw_cell_type {SSWCellType::None};
 double surface_grazing_cutoff {0.001};
 double surface_grazing_ratio {0.5};
+std::unordered_map<int64_t, SSWCellType> ssw_cells;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -935,38 +936,22 @@ void read_settings_xml(pugi::xml_node root)
       surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
     }
     // Get cell information
-    if (check_for_node(node_ssw, "cell")) {
-      if (!ssw_cell_ids.empty()) {
-        fatal_error(
-          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+    if (check_for_node(node_ssw, "cells")) {
+      auto ids = get_node_array<int64_t>(node_ssw, "cells");
+      if (check_for_node(node_ssw, "directions")) {
+        auto directions = get_node_array<std::string>(node_ssw, "directions");
+        if (directions.size() != ids.size()) {
+          fatal_error("'directions' must have the same length as 'cells'");
+        }
+        for (std::size_t i {0}; i < ids.size(); ++i) {
+          SSWCellType direction = ssw_cell_type_from_string(directions[i]);
+          ssw_cells.emplace(ids[i], direction);
+        }
+      } else {
+        for (std::size_t i {0}; i < ids.size(); ++i) {
+          ssw_cells.emplace(ids[i], SSWCellType::Both);
+        }
       }
-      auto temp = get_node_array<int64_t>(node_ssw, "cell");
-      for (const auto& cell_id : temp) {
-        ssw_cell_ids.push_back(cell_id);
-      }
-      ssw_cell_type = SSWCellType::Both;
-    }
-    if (check_for_node(node_ssw, "cellfrom")) {
-      if (!ssw_cell_ids.empty()) {
-        fatal_error(
-          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
-      }
-      auto temp = get_node_array<int64_t>(node_ssw, "cellfrom");
-      for (const auto& cell_id : temp) {
-        ssw_cell_ids.push_back(cell_id);
-      }
-      ssw_cell_type = SSWCellType::From;
-    }
-    if (check_for_node(node_ssw, "cellto")) {
-      if (!ssw_cell_ids.empty()) {
-        fatal_error(
-          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
-      }
-      auto temp = get_node_array<int64_t>(node_ssw, "cellto");
-      for (const auto& cell_id : temp) {
-        ssw_cell_ids.push_back(cell_id);
-      }
-      ssw_cell_type = SSWCellType::To;
     }
   }
 
@@ -1307,8 +1292,19 @@ void free_memory_settings()
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
-  settings::ssw_cell_ids.clear();
+  settings::ssw_cells.clear();
   settings::res_scat_nuclides.clear();
+}
+
+SSWCellType ssw_cell_type_from_string(std::string_view s)
+{
+  if (s == "from")
+    return SSWCellType::From;
+  if (s == "to")
+    return SSWCellType::To;
+  if (s == "both")
+    return SSWCellType::Both;
+  throw std::invalid_argument("direction must be 'from', 'to', or 'both'");
 }
 
 //==============================================================================

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "pugixml.hpp"
@@ -188,6 +189,10 @@ extern vector<int64_t> ssw_cell_ids; //!< Cell ids for the surface source
                                      //!< write setting
 extern SSWCellType ssw_cell_type;    //!< Type of option for the cell
                                      //!< argument of surface source write
+extern std::unordered_map<int64_t, SSWCellType>
+  ssw_cells; //!< Cell ids and directions
+             //!< for the surface source write setting
+
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures
 extern double
@@ -219,6 +224,8 @@ void read_settings_xml();
 void read_settings_xml(pugi::xml_node root);
 
 void free_memory_settings();
+
+SSWCellType ssw_cell_type_from_string(std::string_view s);
 
 } // namespace openmc
 

@@ -897,16 +897,15 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
 
   bool add_site = true;
   // If a cell/cellfrom/cellto parameter is defined
-  if (!settings::ssw_cell_ids.empty()) {
-    for (auto& b : settings::ssw_cell_ids) {
+  if (!settings::ssw_cells.empty()) {
+    for (auto& cell : settings::ssw_cells) {
       add_site = true;
       // Retrieve cell index and storage type
-      int cell_idx = model::cell_map[b];
-
+      int cell_idx = model::cell_map[cell.first];
+      SSWCellType direction = cell.second;
       if (surf.bc_) {
         // Leave if cellto with vacuum boundary condition
-        if (surf.bc_->type() == "vacuum" &&
-            settings::ssw_cell_type == SSWCellType::To) {
+        if (surf.bc_->type() == "vacuum" && direction == SSWCellType::To) {
           add_site = false;
           continue;
         }
@@ -956,13 +955,13 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
 
         // If cellfrom and the cell before crossing is not the cell of
         // interest
-        if (settings::ssw_cell_type == SSWCellType::From && !exited) {
+        if (direction == SSWCellType::From && !exited) {
           add_site = false;
           continue;
         }
 
         // If cellto and the cell after crossing is not the cell of interest
-        if (settings::ssw_cell_type == SSWCellType::To && !entered) {
+        if (direction == SSWCellType::To && !entered) {
           add_site = false;
           continue;
         }

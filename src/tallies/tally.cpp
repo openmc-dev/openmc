@@ -270,6 +270,7 @@ Tally::Tally(pugi::xml_node node)
         case SCORE_FLUX:
         case SCORE_TOTAL:
         case SCORE_SCATTER:
+        case SCORE_MIGRATION:
         case SCORE_NU_SCATTER:
         case SCORE_ABSORPTION:
         case SCORE_FISSION:
@@ -540,12 +541,17 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool surface_present = false;
   bool meshsurface_present = false;
   bool non_cell_energy_present = false;
+  bool non_particle_energy_present = false;
   for (auto i_filt : filters_) {
     const auto* filt {model::tally_filters[i_filt].get()};
     // Checking for only cell and energy filters for pulse-height tally
     if (!(filt->type() == FilterType::CELL ||
           filt->type() == FilterType::ENERGY)) {
       non_cell_energy_present = true;
+    }
+    if (!(filt->type() == FilterType::PARTICLE ||
+          filt->type() == FilterType::ENERGY)) {
+      non_particle_energy_present = true;
     }
     if (filt->type() == FilterType::LEGENDRE) {
       legendre_present = true;
@@ -599,6 +605,19 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_PROMPT_NU_FISSION:
       if (energyout_present)
         estimator_ = TallyEstimator::ANALOG;
+      break;
+
+    case SCORE_MIGRATION:
+      if (estimator_ != TallyEstimator::TRACKLENGTH)
+        fatal_error(
+          "Migration-area can only be tallies with tracklength estimator");
+      if (non_particle_energy_present)
+        fatal_error("Cannot tally migration area with filters other than "
+                    "energy filter and particle filter");
+      for (auto i_nuclide : nuclides_) {
+        if (i_nuclide != NUCLIDE_NONE)
+          fatal_error("Cannot tally migration area with nuclides.");
+      }
       break;
 
     case SCORE_NU_SCATTER:
@@ -1150,6 +1169,9 @@ void setup_active_tallies()
   model::active_pulse_height_tallies.clear();
   model::time_grid.clear();
 
+  bool meshborn_present = false;
+  simulation::migration_present = false;
+
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
 
@@ -1157,6 +1179,12 @@ void setup_active_tallies()
       model::active_tallies.push_back(i);
       bool mesh_present = (tally.get_filter<MeshFilter>() ||
                            tally.get_filter<MeshMaterialFilter>());
+      if (tally.get_filter<MeshBornFilter>())
+        meshborn_present = true;
+      for (auto score : tally.scores_) {
+        if (score == SCORE_MIGRATION)
+          simulation::migration_present = true;
+      }
       auto time_filter = tally.get_filter<TimeFilter>();
       switch (tally.type_) {
 
@@ -1192,6 +1220,10 @@ void setup_active_tallies()
       }
     }
   }
+  if (meshborn_present && simulation::migration_present &&
+      simulation::nonvacuum_boundary_present)
+    fatal_error("Cannot score migration-area in the same simulation as a "
+                "MeshBorn filter and a non vacuum b.c.");
 }
 
 void free_memory_tally()

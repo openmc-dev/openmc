@@ -17,6 +17,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
 
@@ -1175,6 +1176,8 @@ void read_surfaces(pugi::xml_node node,
   std::unordered_map<int, double>& albedo_map,
   std::unordered_map<int, int>& periodic_sense_map)
 {
+  simulation::nonvacuum_boundary_present = false;
+
   // Count the number of surfaces
   int n_surfaces = 0;
   for (pugi::xml_node surf_node : node.children("surface")) {
@@ -1245,6 +1248,8 @@ void read_surfaces(pugi::xml_node node,
       // Check for a periodic surface
       if (check_for_node(surf_node, "boundary")) {
         std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
+        if (surf_bc != "vacuum")
+          simulation::nonvacuum_boundary_present = true;
         if (surf_bc == "periodic") {
           periodic_sense_map[model::surfaces.back()->id_] = 0;
           // Check for surface albedo. Skip sanity check as it is already done

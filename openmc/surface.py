@@ -59,6 +59,21 @@ class SurfaceCoefficient:
         instance._coefficients[self.value] = value
 
 
+class PositiveSurfaceCoefficient(SurfaceCoefficient):
+    """Descriptor class for positive surface coefficients.
+
+    Parameters
+    -----------
+    value : float or str
+        Value of the coefficient (float) or the name of the coefficient that
+        it is equivalent to (str).
+
+    """
+    def __set__(self, instance, value):
+        super().__set__(instance, value)
+        check_greater_than(f'{self.value} coefficient', value, 0.0)
+
+
 def _future_kwargs_warning_helper(cls, *args, **kwargs):
     # Warn if Surface parameters are passed by position, not by keyword
     argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
@@ -1261,7 +1276,7 @@ class Cylinder(QuadricMixin, Surface):
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
-    r = SurfaceCoefficient('r')
+    r = PositiveSurfaceCoefficient('r')
     dx = SurfaceCoefficient('dx')
     dy = SurfaceCoefficient('dy')
     dz = SurfaceCoefficient('dz')
@@ -1427,7 +1442,7 @@ class XCylinder(QuadricMixin, Surface):
     x0 = SurfaceCoefficient(0.)
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
-    r = SurfaceCoefficient('r')
+    r = PositiveSurfaceCoefficient('r')
     dx = SurfaceCoefficient(1.)
     dy = SurfaceCoefficient(0.)
     dz = SurfaceCoefficient(0.)
@@ -1525,7 +1540,7 @@ class YCylinder(QuadricMixin, Surface):
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient(0.)
     z0 = SurfaceCoefficient('z0')
-    r = SurfaceCoefficient('r')
+    r = PositiveSurfaceCoefficient('r')
     dx = SurfaceCoefficient(0.)
     dy = SurfaceCoefficient(1.)
     dz = SurfaceCoefficient(0.)
@@ -1623,7 +1638,7 @@ class ZCylinder(QuadricMixin, Surface):
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient(0.)
-    r = SurfaceCoefficient('r')
+    r = PositiveSurfaceCoefficient('r')
     dx = SurfaceCoefficient(0.)
     dy = SurfaceCoefficient(0.)
     dz = SurfaceCoefficient(1.)
@@ -1723,7 +1738,7 @@ class Sphere(QuadricMixin, Surface):
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
-    r = SurfaceCoefficient('r')
+    r = PositiveSurfaceCoefficient('r')
 
     def _get_base_coeffs(self):
         x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
@@ -1849,7 +1864,7 @@ class Cone(QuadricMixin, Surface):
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
-    r2 = SurfaceCoefficient('r2')
+    r2 = PositiveSurfaceCoefficient('r2')
     dx = SurfaceCoefficient('dx')
     dy = SurfaceCoefficient('dy')
     dz = SurfaceCoefficient('dz')
@@ -1985,7 +2000,7 @@ class XCone(QuadricMixin, Surface):
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
-    r2 = SurfaceCoefficient('r2')
+    r2 = PositiveSurfaceCoefficient('r2')
     dx = SurfaceCoefficient(1.)
     dy = SurfaceCoefficient(0.)
     dz = SurfaceCoefficient(0.)
@@ -2087,7 +2102,7 @@ class YCone(QuadricMixin, Surface):
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
-    r2 = SurfaceCoefficient('r2')
+    r2 = PositiveSurfaceCoefficient('r2')
     dx = SurfaceCoefficient(0.)
     dy = SurfaceCoefficient(1.)
     dz = SurfaceCoefficient(0.)
@@ -2189,7 +2204,7 @@ class ZCone(QuadricMixin, Surface):
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
-    r2 = SurfaceCoefficient('r2')
+    r2 = PositiveSurfaceCoefficient('r2')
     dx = SurfaceCoefficient(0.)
     dy = SurfaceCoefficient(0.)
     dz = SurfaceCoefficient(1.)
@@ -2292,9 +2307,9 @@ class TorusMixin:
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
-    a = SurfaceCoefficient('a')
-    b = SurfaceCoefficient('b')
-    c = SurfaceCoefficient('c')
+    a = PositiveSurfaceCoefficient('a')
+    b = PositiveSurfaceCoefficient('b')
+    c = PositiveSurfaceCoefficient('c')
 
     def translate(self, vector, inplace=False):
         surf = self if inplace else self.clone()

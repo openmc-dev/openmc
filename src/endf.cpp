@@ -88,6 +88,79 @@ bool is_inelastic_scatter(int mt)
   }
 }
 
+bool mt_matches(int event_mt, int target_mt)
+{
+  // Direct match
+  if (event_mt == target_mt)
+    return true;
+
+  // Define summation rules: each key MT is the sum of its component MTs
+  struct SumRule {
+    int mt;
+    int begin; // first component MT
+    int end;   // one-past-last component MT (0 if using explicit list)
+    const int* components;
+    int n_components;
+  };
+
+  // Explicit component lists for non-contiguous ranges
+  static constexpr int comp_1[] = {2, 3};
+  static constexpr int comp_3[] = {4, 5, 11, 16, 17, 22, 23, 24, 25, 27, 28, 29,
+    30, 32, 33, 34, 35, 36, 37, 41, 42, 44, 45, 152, 153, 154, 156, 157, 158,
+    159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173,
+    174, 175, 176, 177, 178, 179, 180, 181, 183, 184, 185, 186, 187, 188, 189,
+    190, 194, 195, 196, 198, 199, 200};
+  static constexpr int comp_18[] = {19, 20, 21, 38};
+  static constexpr int comp_27[] = {18, 101};
+  static constexpr int comp_101[] = {102, 103, 104, 105, 106, 107, 108, 109,
+    111, 112, 113, 114, 115, 116, 117, 155, 182, 191, 192, 193, 197};
+  static constexpr int comp_501[] = {502, 504, 516, 522};
+  static constexpr int comp_516[] = {515, 517};
+
+  // Table of all summation rules. Contiguous ranges use begin/end;
+  // explicit lists use components/n_components.
+  static constexpr SumRule rules[] = {
+    {1, 0, 0, comp_1, 2},
+    {3, 0, 0, comp_3, 65},
+    {4, 50, 92, nullptr, 0},
+    {16, 875, 892, nullptr, 0},
+    {18, 0, 0, comp_18, 4},
+    {27, 0, 0, comp_27, 2},
+    {101, 0, 0, comp_101, 21},
+    {103, 600, 650, nullptr, 0},
+    {104, 650, 700, nullptr, 0},
+    {105, 700, 750, nullptr, 0},
+    {106, 750, 800, nullptr, 0},
+    {107, 800, 850, nullptr, 0},
+    {501, 0, 0, comp_501, 4},
+    {516, 0, 0, comp_516, 2},
+    {522, 534, 573, nullptr, 0},
+  };
+
+  // Find the rule for target_mt
+  for (const auto& rule : rules) {
+    if (rule.mt != target_mt)
+      continue;
+
+    if (rule.components) {
+      // Explicit component list
+      for (int i = 0; i < rule.n_components; ++i) {
+        if (mt_matches(event_mt, rule.components[i]))
+          return true;
+      }
+    } else {
+      // Contiguous range [begin, end)
+      for (int mt = rule.begin; mt < rule.end; ++mt) {
+        if (mt_matches(event_mt, mt))
+          return true;
+      }
+    }
+    return false;
+  }
+
+  return false;
+}
+
 unique_ptr<Function1D> read_function(hid_t group, const char* name)
 {
   hid_t obj_id = open_object(group, name);

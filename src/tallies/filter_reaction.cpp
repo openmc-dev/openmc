@@ -3,6 +3,7 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
+#include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/reaction.h"
 #include "openmc/xml_interface.h"
@@ -48,13 +49,14 @@ void ReactionFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get the event MT number from the particle
-  int mt = p.event_mt();
+  int event_mt = p.event_mt();
 
-  // Find matching bin
-  auto it = map_.find(mt);
-  if (it != map_.end()) {
-    match.bins_.push_back(it->second);
-    match.weights_.push_back(1.0);
+  // Check each bin, considering summation rules
+  for (int64_t i = 0; i < bins_.size(); ++i) {
+    if (mt_matches(event_mt, bins_[i])) {
+      match.bins_.push_back(i);
+      match.weights_.push_back(1.0);
+    }
   }
 }
 

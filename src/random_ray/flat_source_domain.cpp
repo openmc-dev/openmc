@@ -21,6 +21,7 @@
 #include <cmath>
 #include <cstdio>
 #include <deque>
+#include <numeric>
 
 namespace openmc {
 
@@ -69,8 +70,7 @@ FlatSourceDomain::FlatSourceDomain()
 
       // Create a new 2D tensor with the same size as the first
       // two dimensions of the 3D tensor
-      tally_volumes_[i] =
-        xt::xtensor<double, 2>::from_shape({shape[0], shape[1]});
+      tally_volumes_[i] = tensor::Tensor<double>({shape[0], shape[1]});
     }
   }
 

@@ -4,8 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "hdf5.h"
@@ -466,22 +465,19 @@ void read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
 }
 
 template<>
-void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep)
+void read_dataset(
+  hid_t dset, tensor::Tensor<std::complex<double>>& tensor, bool indep)
 {
   // Get shape of dataset
   vector<hsize_t> shape = object_shape(dset);
 
-  // Allocate new array to read data into
-  std::size_t size = 1;
-  for (const auto x : shape)
-    size *= x;
-  vector<std::complex<double>> buffer(size);
+  // Resize tensor and read data directly
+  vector<size_t> tshape(shape.begin(), shape.end());
+  tensor.resize(tshape);
 
-  // Read data from attribute
-  read_complex(dset, nullptr, buffer.data(), indep);
-
-  // Adapt into xarray
-  arr = xt::adapt(buffer, shape);
+  // Read data from dataset
+  read_complex(dset, nullptr,
+    reinterpret_cast<std::complex<double>*>(tensor.data()), indep);
 }
 
 void read_double(hid_t obj_id, const char* name, double* buffer, bool indep)

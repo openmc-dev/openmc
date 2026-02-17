@@ -5,8 +5,8 @@
 #include <unordered_map>
 
 #include "openmc/span.h"
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
 #include <hdf5.h>
 
 #include "openmc/bremsstrahlung.h"
@@ -189,7 +189,7 @@ public:
   vector<int> nuclide_;                 //!< Indices in nuclides vector
   vector<int> element_;                 //!< Indices in elements vector
   NCrystalMat ncrystal_mat_;            //!< NCrystal material object
-  xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
+  tensor::Tensor<double> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]
   double charge_density_;               //!< Total charge density in [e/b-cm]

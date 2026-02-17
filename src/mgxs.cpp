@@ -5,10 +5,7 @@
 #include <cstdlib>
 #include <sstream>
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xsort.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/error.h"
@@ -32,8 +29,7 @@ void Mgxs::init(const std::string& in_name, double in_awr,
   // Set the metadata
   name = in_name;
   awr = in_awr;
-  // TODO: Remove adapt when in_KTs is an xtensor
-  kTs = xt::adapt(in_kTs);
+  kTs = tensor::Tensor<double>(in_kTs.data(), in_kTs.size());
   fissionable = in_fissionable;
   scatter_format = in_scatter_format;
   xs.resize(in_kTs.size());
@@ -72,7 +68,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   }
   get_datasets(kT_group, dset_names);
   vector<size_t> shape = {num_temps};
-  xt::xarray<double> temps_available(shape);
+  tensor::Tensor<double> temps_available(shape);
   for (int i = 0; i < num_temps; i++) {
     read_double(kT_group, dset_names[i], &temps_available[i], true);
 
@@ -100,19 +96,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
       // Determine the closest temperature value
-      // NOTE: the below block could be replaced with the following line,
-      // though this gives a runtime error if using LLVM 20 or newer,
-      // likely due to a bug in xtensor.
-      // auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
-      double closest = std::numeric_limits<double>::max();
-      int i_closest = 0;
-      for (int i = 0; i < temps_available.size(); i++) {
-        double diff = std::abs(temps_available[i] - T);
-        if (diff < closest) {
-          closest = diff;
-          i_closest = i;
-        }
-      }
+      auto i_closest = tensor::abs(temps_available - T).argmin();
 
       double temp_actual = temps_available[i_closest];
       if (std::fabs(temp_actual - T) < settings::temperature_tolerance) {
@@ -347,7 +331,7 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
     for (int m = 0; m < micros.size(); m++) {
       switch (settings::temperature_method) {
       case TemperatureMethod::NEAREST: {
-        micro_t[m] = xt::argmin(xt::abs(micros[m]->kTs - temp_desired))[0];
+        micro_t[m] = tensor::abs(micros[m]->kTs - temp_desired).argmin();
         auto temp_actual = micros[m]->kTs[micro_t[m]];
 
         if (std::abs(temp_actual - temp_desired) >=
@@ -360,7 +344,7 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
       case TemperatureMethod::INTERPOLATION:
         // Get a list of bounding temperatures for each actual temperature
         // present in the model
-        for (int k = 0; k < micros[m]->kTs.shape()[0] - 1; k++) {
+        for (int k = 0; k < micros[m]->kTs.shape(0) - 1; k++) {
           if ((micros[m]->kTs[k] <= temp_desired) &&
               (temp_desired < micros[m]->kTs[k + 1])) {
             micro_t[m] = k;
@@ -473,7 +457,7 @@ double Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
         val = xs_t->delayed_nu_fission(a, *dg, gin);
       } else {
         val = 0.;
-        for (int d = 0; d < xs_t->delayed_nu_fission.shape()[1]; d++) {
+        for (int d = 0; d < xs_t->delayed_nu_fission.shape(1); d++) {
           val += xs_t->delayed_nu_fission(a, d, gin);
         }
       }
@@ -505,7 +489,7 @@ double Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
       } else {
         // provide an outgoing group-wise sum
         val = 0.;
-        for (int g = 0; g < xs_t->chi_prompt.shape()[2]; g++) {
+        for (int g = 0; g < xs_t->chi_prompt.shape(2); g++) {
           val += xs_t->chi_prompt(a, gin, g);
         }
       }
@@ -525,13 +509,13 @@ double Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
       } else {
         if (dg != nullptr) {
           val = 0.;
-          for (int g = 0; g < xs_t->delayed_nu_fission.shape()[2]; g++) {
+          for (int g = 0; g < xs_t->delayed_nu_fission.shape(2); g++) {
             val += xs_t->delayed_nu_fission(a, *dg, gin, g);
           }
         } else {
           val = 0.;
-          for (int g = 0; g < xs_t->delayed_nu_fission.shape()[2]; g++) {
-            for (int d = 0; d < xs_t->delayed_nu_fission.shape()[3]; d++) {
+          for (int g = 0; g < xs_t->delayed_nu_fission.shape(2); g++) {
+            for (int d = 0; d < xs_t->delayed_nu_fission.shape(3); d++) {
               val += xs_t->delayed_nu_fission(a, d, gin, g);
             }
           }
@@ -679,7 +663,7 @@ bool Mgxs::equiv(const Mgxs& that)
 
 int Mgxs::get_temperature_index(double sqrtkT) const
 {
-  return xt::argmin(xt::abs(kTs - sqrtkT * sqrtkT))[0];
+  return tensor::abs(kTs - sqrtkT * sqrtkT).argmin();
 }
 
 //==============================================================================

@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
@@ -22,7 +22,7 @@ namespace openmc {
 
 class Mgxs {
 private:
-  xt::xtensor<double, 1> kTs; // temperature in eV (k * T)
+  tensor::Tensor<double> kTs; // temperature in eV (k * T)
   AngleDistributionType
     scatter_format;       // flag for if this is legendre, histogram, or tabular
   int num_groups;         // number of energy groups

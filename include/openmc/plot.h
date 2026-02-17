@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
 
 #include "hdf5.h"
 #include "openmc/cell.h"
@@ -88,6 +88,8 @@ const RGBColor BLACK {0, 0, 0};
  * is designed to be implemented by classes that produce plot-relevant data
  * which can be visualized.
  */
+
+typedef tensor::Tensor<RGBColor> ImageData;
 class PlottableInterface {
 private:
   void set_id(pugi::xml_node plot_node);
@@ -129,7 +131,7 @@ public:
   vector<RGBColor> colors_;      // Plot colors
 };
 
-typedef xt::xtensor<RGBColor, 2> ImageData;
+typedef tensor::Tensor<RGBColor> ImageData;
 
 struct IdData {
   // Constructor
@@ -140,7 +142,7 @@ struct IdData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
+  tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
 };
 
 struct PropertyData {
@@ -152,7 +154,7 @@ struct PropertyData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+  tensor::Tensor<double> data_; //!< 2D array of temperature & density data
 };
 
 //===============================================================================

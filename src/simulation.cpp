@@ -30,7 +30,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #ifdef OPENMC_MPI
 #include <mpi.h>
@@ -431,7 +431,7 @@ void finalize_batch()
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
-    xt::view(simulation::global_tallies, xt::all()) = 0.0;
+    simulation::global_tallies.fill(0.0);
     simulation::n_realizations = 0;
   }
 

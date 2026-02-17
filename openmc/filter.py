@@ -1461,7 +1461,7 @@ class ReactionFilter(Filter):
             elif isinstance(b, str):
                 if b not in REACTION_MT:
                     raise ValueError(f"Unknown reaction name '{b}'")
-                normalized.append(b)
+                normalized.append(REACTION_NAME[REACTION_MT[b]])
             else:
                 raise TypeError(f"Expected str or int for reaction filter "
                                 f"bin, got {type(b)}")

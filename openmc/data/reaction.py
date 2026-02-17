@@ -65,6 +65,8 @@ REACTION_NAME.update({i: f'(n,a{i - 800})' for i in range(800, 849)})
 REACTION_NAME.update({i: f'(n,2n{i - 875})' for i in range(875, 891)})
 
 REACTION_MT = {name: mt for mt, name in REACTION_NAME.items()}
+REACTION_MT['total'] = 1
+REACTION_MT['elastic'] = 2
 REACTION_MT['fission'] = 18
 
 FISSION_MTS = (18, 19, 20, 21, 38)

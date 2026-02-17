@@ -36,6 +36,12 @@ def test_reaction_filter_single_bin_mt():
     assert f.bins[0] == '(n,elastic)'
 
 
+def test_reaction_filter_single_bin_naming():
+    f = openmc.ReactionFilter('total')
+    assert len(f.bins) == 1
+    assert f.bins[0] == '(n,total)'
+
+
 def test_reaction_filter_invalid_mt():
     with pytest.raises(ValueError, match="No known reaction"):
         openmc.ReactionFilter([999999])

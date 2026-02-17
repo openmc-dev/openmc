@@ -18,7 +18,7 @@ def test_filter_reaction():
     # Create a tally with reaction filter
     tally = openmc.Tally()
     tally.filters = [openmc.ReactionFilter(
-        ['(n,elastic)', '(n,2n)', '(n,fission)', '(n,gamma)']
+        ['(n,elastic)', '(n,2n)', '(n,fission)', '(n,gamma)', 'total']
     )]
     tally.scores = ['flux']
     model.tallies = openmc.Tallies([tally])

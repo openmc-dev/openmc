@@ -96,10 +96,11 @@ bool mt_matches(int event_mt, int target_mt)
 
   // Check if event_mt is a component of target_mt summation reaction
   switch (target_mt) {
-  case 1:
-    return event_mt == 2 || mt_matches(event_mt, 3);
+  case TOTAL_XS:
+  case SCORE_TOTAL:
+    return event_mt == ELASTIC || mt_matches(event_mt, N_NONELASTIC);
 
-  case 3: {
+  case N_NONELASTIC: {
     static constexpr int components[] = {4, 5, 11, 16, 17, 22, 23, 24, 25, 27,
       28, 29, 30, 32, 33, 34, 35, 36, 37, 41, 42, 44, 45, 152, 153, 154, 156,
       157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171,
@@ -112,52 +113,52 @@ bool mt_matches(int event_mt, int target_mt)
     return false;
   }
 
-  case 4:
+  case N_LEVEL:
     // Inelastic scattering levels
-    return event_mt >= 50 && event_mt < 92;
+    return event_mt >= 50 && event_mt <= N_NC;
 
-  case 16:
+  case N_2N:
     // (n,2n) to excited states
-    return event_mt >= 875 && event_mt < 892;
+    return event_mt >= N_2N0 && event_mt <= N_2NC;
 
-  case 18:
+  case N_FISSION:
     return is_fission(event_mt);
 
   case 27:
     return is_fission(event_mt) || is_disappearance(event_mt);
 
-  case 101: {
+  case N_DISAPPEAR: {
     return is_disappearance(event_mt);
   }
 
-  case 103:
+  case N_P:
     // (n,p) to excited states
-    return event_mt >= 600 && event_mt < 650;
+    return event_mt >= N_P0 && event_mt <= N_PC;
 
-  case 104:
+  case N_D:
     // (n,d) to excited states
-    return event_mt >= 650 && event_mt < 700;
+    return event_mt >= N_D0 && event_mt <= N_DC;
 
-  case 105:
+  case N_T:
     // (n,t) to excited states
-    return event_mt >= 700 && event_mt < 750;
+    return event_mt >= N_T0 && event_mt <= N_TC;
 
-  case 106:
+  case N_3HE:
     // (n,3He) to excited states
-    return event_mt >= 750 && event_mt < 800;
+    return event_mt >= N_3HE0 && event_mt <= N_3HEC;
 
-  case 107:
+  case N_A:
     // (n,alpha) to excited states
-    return event_mt >= 800 && event_mt < 850;
+    return event_mt >= N_A0 && event_mt <= N_AC;
 
   case 501:
     return event_mt == 502 || event_mt == 504 || mt_matches(event_mt, 516) ||
            mt_matches(event_mt, 522);
 
-  case 516:
-    return event_mt == 515 || event_mt == 517;
+  case PAIR_PROD:
+    return event_mt == PAIR_PROD_ELEC || event_mt == PAIR_PROD_NUC;
 
-  case 522:
+  case PHOTOELECTRIC:
     return event_mt >= 534 && event_mt < 573;
 
   default:

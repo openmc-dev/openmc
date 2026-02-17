@@ -17,7 +17,7 @@
   </settings>
   <tallies>
     <filter id="1" type="reaction">
-      <bins>(n,elastic) (n,2n) (n,fission) (n,gamma)</bins>
+      <bins>(n,elastic) (n,2n) (n,fission) (n,gamma) (n,total)</bins>
     </filter>
     <tally id="1">
       <filters>1</filters>

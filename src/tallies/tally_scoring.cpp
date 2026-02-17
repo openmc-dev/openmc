@@ -20,6 +20,7 @@
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
 
+#include <numeric>
 #include <string>
 
 namespace openmc {
@@ -328,10 +329,10 @@ double score_neutron_heating(const Particle& p, const Tally& tally, double flux,
 //! Helper function to obtain reaction Q value for photons and charged particles
 double get_reaction_q_value(const Particle& p)
 {
-  if (p.type() == ParticleType::photon && p.event_mt() == PAIR_PROD) {
+  if (p.type().is_photon() && p.event_mt() == PAIR_PROD) {
     // pair production
     return -2 * MASS_ELECTRON_EV;
-  } else if (p.type() == ParticleType::positron) {
+  } else if (p.type() == ParticleType::positron()) {
     // positron annihilation
     return 2 * MASS_ELECTRON_EV;
   } else {
@@ -344,7 +345,7 @@ double get_reaction_q_value(const Particle& p)
 double score_particle_heating(const Particle& p, const Tally& tally,
   double flux, int rxn_bin, int i_nuclide, double atom_density)
 {
-  if (p.type() == ParticleType::neutron)
+  if (p.type().is_neutron())
     return score_neutron_heating(
       p, tally, flux, rxn_bin, i_nuclide, atom_density);
   if (i_nuclide == -1 || i_nuclide == p.event_nuclide() ||
@@ -584,8 +585,6 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
   // Get the pre-collision energy of the particle.
   auto E = p.E_last();
 
-  using Type = ParticleType;
-
   for (auto i = 0; i < tally.scores_.size(); ++i) {
     auto score_bin = tally.scores_[i];
     auto score_index = start_index + i;
@@ -598,9 +597,9 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
     case SCORE_TOTAL:
       if (i_nuclide >= 0) {
-        if (p.type() == Type::neutron) {
+        if (p.type().is_neutron()) {
           score = p.neutron_xs(i_nuclide).total * atom_density * flux;
-        } else if (p.type() == Type::photon) {
+        } else if (p.type().is_photon()) {
           score = p.photon_xs(i_nuclide).total * atom_density * flux;
         }
       } else {
@@ -609,7 +608,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_INVERSE_VELOCITY:
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       // Score inverse velocity in units of s/cm.
@@ -617,11 +616,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_SCATTER:
-      if (p.type() != Type::neutron && p.type() != Type::photon)
+      if (!p.type().is_neutron() && !p.type().is_photon())
         continue;
 
       if (i_nuclide >= 0) {
-        if (p.type() == Type::neutron) {
+        if (p.type().is_neutron()) {
           const auto& micro = p.neutron_xs(i_nuclide);
           score = (micro.total - micro.absorption) * atom_density * flux;
         } else {
@@ -629,7 +628,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           score = (micro.coherent + micro.incoherent) * atom_density * flux;
         }
       } else {
-        if (p.type() == Type::neutron) {
+        if (p.type().is_neutron()) {
           score = (p.macro_xs().total - p.macro_xs().absorption) * flux;
         } else {
           score = (p.macro_xs().coherent + p.macro_xs().incoherent) * flux;
@@ -638,11 +637,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_ABSORPTION:
-      if (p.type() != Type::neutron && p.type() != Type::photon)
+      if (!p.type().is_neutron() && !p.type().is_photon())
         continue;
 
       if (i_nuclide >= 0) {
-        if (p.type() == Type::neutron) {
+        if (p.type().is_neutron()) {
           score = p.neutron_xs(i_nuclide).absorption * atom_density * flux;
         } else {
           const auto& xs = p.photon_xs(i_nuclide);
@@ -650,7 +649,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
             (xs.total - xs.coherent - xs.incoherent) * atom_density * flux;
         }
       } else {
-        if (p.type() == Type::neutron) {
+        if (p.type().is_neutron()) {
           score = p.macro_xs().absorption * flux;
         } else {
           score =
@@ -806,7 +805,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           // this loop.
           for (auto d = 1; d < rxn.products_.size(); ++d) {
             const auto& product = rxn.products_[d];
-            if (product.particle_ != Type::neutron)
+            if (!product.particle_.is_neutron())
               continue;
 
             auto yield = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
@@ -860,7 +859,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                 // this loop.
                 for (auto d = 1; d < rxn.products_.size(); ++d) {
                   const auto& product = rxn.products_[d];
-                  if (product.particle_ != Type::neutron)
+                  if (!product.particle_.is_neutron())
                     continue;
 
                   auto yield =
@@ -905,13 +904,12 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_EVENTS:
-// Simply count the number of scoring events
-#pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
-      continue;
+      // Simply count the number of scoring events
+      score = 1.0;
+      break;
 
     case ELASTIC:
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       if (i_nuclide >= 0) {
@@ -943,7 +941,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
     case SCORE_IFP_TIME_NUM:
       if (settings::ifp_on) {
-        if ((p.type() == Type::neutron) && (p.fission())) {
+        if (p.type().is_neutron() && p.fission()) {
           if (is_generation_time_or_both()) {
             const auto& lifetimes =
               simulation::ifp_source_lifetime_bank[p.current_work() - 1];
@@ -957,7 +955,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
     case SCORE_IFP_BETA_NUM:
       if (settings::ifp_on) {
-        if ((p.type() == Type::neutron) && (p.fission())) {
+        if (p.type().is_neutron() && p.fission()) {
           if (is_beta_effective_or_both()) {
             const auto& delayed_groups =
               simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
@@ -982,7 +980,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
     case SCORE_IFP_DENOM:
       if (settings::ifp_on) {
-        if ((p.type() == Type::neutron) && (p.fission())) {
+        if (p.type().is_neutron() && p.fission()) {
           int ifp_data_size;
           if (is_beta_effective_or_both()) {
             ifp_data_size = static_cast<int>(
@@ -1012,7 +1010,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       if (!simulation::need_depletion_rx)
         goto default_case;
 
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       int m;
@@ -1045,7 +1043,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
     case INCOHERENT:
     case PHOTOELECTRIC:
     case PAIR_PROD:
-      if (p.type() != Type::photon)
+      if (!p.type().is_photon())
         continue;
 
       if (i_nuclide >= 0) {
@@ -1075,7 +1073,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
       // The default block is really only meant for redundant neutron reactions
       // (e.g. 444, 901)
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       // Any other cross section has to be calculated on-the-fly
@@ -1129,8 +1127,6 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
                             p.neutron_xs(p.event_nuclide()).total
                         : 0.0;
 
-  using Type = ParticleType;
-
   for (auto i = 0; i < tally.scores_.size(); ++i) {
     auto score_bin = tally.scores_[i];
     auto score_index = start_index + i;
@@ -1141,7 +1137,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       // All events score to a flux bin. We actually use a collision estimator
       // in place of an analog one since there is no way to count 'events'
       // exactly for the flux
-      if (p.type() == Type::neutron || p.type() == Type::photon) {
+      if (p.type().is_neutron() || p.type().is_photon()) {
         score = flux * p.wgt_last() / p.macro_xs().total;
       } else {
         score = 0.;
@@ -1155,7 +1151,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_INVERSE_VELOCITY:
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       // All events score to an inverse velocity bin. We actually use a
@@ -1165,7 +1161,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_SCATTER:
-      if (p.type() != Type::neutron && p.type() != Type::photon)
+      if (!p.type().is_neutron() && !p.type().is_photon())
         continue;
 
       // Skip any event where the particle didn't scatter
@@ -1177,7 +1173,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_NU_SCATTER:
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       // Only analog estimators are available.
@@ -1202,7 +1198,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_ABSORPTION:
-      if (p.type() != Type::neutron && p.type() != Type::photon)
+      if (!p.type().is_neutron() && !p.type().is_photon())
         continue;
 
       if (settings::survival_biasing) {
@@ -1431,7 +1427,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
             // this loop.
             for (auto d = 1; d < rxn.products_.size(); ++d) {
               const auto& product = rxn.products_[d];
-              if (product.particle_ != Type::neutron)
+              if (!product.particle_.is_neutron())
                 continue;
 
               auto yield = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
@@ -1517,13 +1513,12 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_EVENTS:
-// Simply count the number of scoring events
-#pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
-      continue;
+      // Simply count the number of scoring events
+      score = 1.0;
+      break;
 
     case ELASTIC:
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       // Check if event MT matches
@@ -1552,7 +1547,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       if (!simulation::need_depletion_rx)
         goto default_case;
 
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       // Check if the event MT matches
@@ -1565,7 +1560,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case INCOHERENT:
     case PHOTOELECTRIC:
     case PAIR_PROD:
-      if (p.type() != Type::photon)
+      if (!p.type().is_photon())
         continue;
 
       if (score_bin == PHOTOELECTRIC) {
@@ -1592,7 +1587,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
 
       // The default block is really only meant for redundant neutron reactions
       // (e.g. 444, 901)
-      if (p.type() != Type::neutron)
+      if (!p.type().is_neutron())
         continue;
 
       // Any other score is assumed to be a MT number. Thus, we just need
@@ -2295,10 +2290,9 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_EVENTS:
-// Simply count the number of scoring events
-#pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
-      continue;
+      // Simply count the number of scoring events
+      score = 1.0;
+      break;
 
     default:
       continue;
@@ -2316,10 +2310,7 @@ void score_analog_tally_ce(Particle& p)
   // Since electrons/positrons are not transported, we assign a flux of zero.
   // Note that the heating score does NOT use the flux and will be non-zero for
   // electrons/positrons.
-  double flux =
-    (p.type() == ParticleType::neutron || p.type() == ParticleType::photon)
-      ? 1.0
-      : 0.0;
+  double flux = (p.type().is_neutron() || p.type().is_photon()) ? 1.0 : 0.0;
 
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2447,7 +2438,7 @@ void score_tracklength_tally_general(
             if (j == C_NONE) {
               // Determine log union grid index
               if (i_log_union == C_NONE) {
-                int neutron = static_cast<int>(ParticleType::neutron);
+                int neutron = ParticleType::neutron().transport_index();
                 i_log_union = std::log(p.E() / data::energy_min[neutron]) /
                               simulation::log_spacing;
               }
@@ -2544,7 +2535,7 @@ void score_collision_tally(Particle& p)
 {
   // Determine the collision estimate of the flux
   double flux = 0.0;
-  if (p.type() == ParticleType::neutron || p.type() == ParticleType::photon) {
+  if (p.type().is_neutron() || p.type().is_photon()) {
     flux = p.wgt_last() / p.macro_xs().total;
   }
 
@@ -2578,7 +2569,7 @@ void score_collision_tally(Particle& p)
           if (j == C_NONE) {
             // Determine log union grid index
             if (i_log_union == C_NONE) {
-              int neutron = static_cast<int>(ParticleType::neutron);
+              int neutron = ParticleType::neutron().transport_index();
               i_log_union = std::log(p.E() / data::energy_min[neutron]) /
                             simulation::log_spacing;
             }

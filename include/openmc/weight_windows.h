@@ -10,7 +10,7 @@
 #include "openmc/constants.h"
 #include "openmc/memory.h"
 #include "openmc/mesh.h"
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/span.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/vector.h"
@@ -143,10 +143,10 @@ public:
 
   const vector<double>& energy_bounds() const { return energy_bounds_; }
 
-  void set_bounds(const xt::xtensor<double, 2>& lower_ww_bounds,
-    const xt::xtensor<double, 2>& upper_bounds);
+  void set_bounds(const tensor::Tensor<double>& lower_ww_bounds,
+    const tensor::Tensor<double>& upper_bounds);
 
-  void set_bounds(const xt::xtensor<double, 2>& lower_bounds, double ratio);
+  void set_bounds(const tensor::Tensor<double>& lower_bounds, double ratio);
 
   void set_bounds(
     span<const double> lower_bounds, span<const double> upper_bounds);
@@ -182,25 +182,24 @@ public:
 
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
 
-  const xt::xtensor<double, 2>& lower_ww_bounds() const { return lower_ww_; }
-  xt::xtensor<double, 2>& lower_ww_bounds() { return lower_ww_; }
+  const tensor::Tensor<double>& lower_ww_bounds() const { return lower_ww_; }
+  tensor::Tensor<double>& lower_ww_bounds() { return lower_ww_; }
 
-  const xt::xtensor<double, 2>& upper_ww_bounds() const { return upper_ww_; }
-  xt::xtensor<double, 2>& upper_ww_bounds() { return upper_ww_; }
+  const tensor::Tensor<double>& upper_ww_bounds() const { return upper_ww_; }
+  tensor::Tensor<double>& upper_ww_bounds() { return upper_ww_; }
 
   ParticleType particle_type() const { return particle_type_; }
 
 private:
   //----------------------------------------------------------------------------
   // Data members
-  int32_t id_;    //!< Unique ID
-  int64_t index_; //!< Index into weight windows vector
-  ParticleType particle_type_ {
-    ParticleType::neutron};      //!< Particle type to apply weight windows to
+  int32_t id_;                   //!< Unique ID
+  int64_t index_;                //!< Index into weight windows vector
+  ParticleType particle_type_;   //!< Particle type to apply weight windows to
   vector<double> energy_bounds_; //!< Energy boundaries [eV]
-  xt::xtensor<double, 2> lower_ww_; //!< Lower weight window bounds (shape:
+  tensor::Tensor<double> lower_ww_; //!< Lower weight window bounds (shape:
                                     //!< energy_bins, mesh_bins (k, j, i))
-  xt::xtensor<double, 2>
+  tensor::Tensor<double>
     upper_ww_; //!< Upper weight window bounds (shape: energy_bins, mesh_bins)
   double survival_ratio_ {3.0}; //!< Survival weight ratio
   double max_lb_ratio_ {1.0}; //!< Maximum lower bound to particle weight ratio

@@ -211,7 +211,7 @@ class OpenMCOperator(TransportOperator):
                            "section data.")
                     warn(msg)
             if mat.depletable:
-                burnable_mats.add(str(mat.id))
+                burnable_mats.add((str(mat.id), mat.name))
                 if mat.volume is None:
                     if mat.name is None:
                         msg = ("Volume not specified for depletable material "
@@ -229,8 +229,11 @@ class OpenMCOperator(TransportOperator):
                 "No depletable materials were found in the model.")
 
         # Sort the sets
-        burnable_mats = sorted(burnable_mats, key=int)
+        burnable_mats = sorted(burnable_mats, key=lambda x: int(x[0]))
         model_nuclides = sorted(model_nuclides)
+
+        # Store material names for later use
+        burnable_mats, self.name_list = zip(*burnable_mats)
 
         # Construct a global nuclide dictionary, burned first
         nuclides = list(self.chain.nuclide_dict)
@@ -541,6 +544,8 @@ class OpenMCOperator(TransportOperator):
             A list of all material IDs to be burned.  Used for sorting the simulation.
         full_burn_list : list
             List of all burnable material IDs
+        name_list : list of str
+            Material names corresponding to materials in burn_list
 
         """
         nuc_list = self.number.burnable_nuclides
@@ -554,4 +559,4 @@ class OpenMCOperator(TransportOperator):
         volume_list = comm.allgather(volume)
         volume = {k: v for d in volume_list for k, v in d.items()}
 
-        return volume, nuc_list, burn_list, self.burnable_mats
+        return volume, nuc_list, burn_list, self.burnable_mats, self.name_list

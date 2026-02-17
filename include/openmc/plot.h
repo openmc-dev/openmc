@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
 
 #include "hdf5.h"
 #include "openmc/cell.h"
@@ -83,19 +83,27 @@ const RGBColor BLACK {0, 0, 0};
  * \class PlottableInterface
  * \brief Interface for plottable objects.
  *
- * PlottableInterface classes must have a unique ID in the plots.xml file.
- * They guarantee the ability to create output in some form. This interface
- * is designed to be implemented by classes that produce plot-relevant data
- * which can be visualized.
+ * PlottableInterface classes must have unique IDs. If no ID (or -1) is
+ * provided, the next available ID is assigned automatically. They guarantee
+ * the ability to create output in some form. This interface is designed to be
+ * implemented by classes that produce plot-relevant data which can be
+ * visualized.
  */
+
+typedef tensor::Tensor<RGBColor> ImageData;
 class PlottableInterface {
+public:
+  PlottableInterface() = default;
+
+  void set_default_colors();
+
 private:
   void set_id(pugi::xml_node plot_node);
-  int id_; // unique plot ID
+  int id_ {C_NONE}; // unique plot ID
 
   void set_bg_color(pugi::xml_node plot_node);
   void set_universe(pugi::xml_node plot_node);
-  void set_default_colors(pugi::xml_node plot_node);
+  void set_color_by(pugi::xml_node plot_node);
   void set_user_colors(pugi::xml_node plot_node);
   void set_overlap_color(pugi::xml_node plot_node);
   void set_mask(pugi::xml_node plot_node);
@@ -107,8 +115,14 @@ protected:
 public:
   enum class PlotColorBy { cells = 0, mats = 1 };
 
+  // Generates image data based on plot parameters and returns it
+  virtual ImageData create_image() const = 0;
+
   // Creates the output image named path_plot_
   virtual void create_output() const = 0;
+
+  // Write populated image data to file
+  void write_image(const ImageData& data) const;
 
   // Print useful info to the terminal
   virtual void print_info() const = 0;
@@ -116,20 +130,20 @@ public:
   const std::string& path_plot() const { return path_plot_; }
   std::string& path_plot() { return path_plot_; }
   int id() const { return id_; }
+  void set_id(int id = C_NONE);
   int level() const { return level_; }
+  PlotColorBy color_by() const { return color_by_; }
 
   // Public color-related data
   PlottableInterface(pugi::xml_node plot_node);
   virtual ~PlottableInterface() = default;
-  int level_;                    // Universe level to plot
-  bool color_overlaps_;          // Show overlapping cells?
-  PlotColorBy color_by_;         // Plot coloring (cell/material)
-  RGBColor not_found_ {WHITE};   // Plot background color
-  RGBColor overlap_color_ {RED}; // Plot overlap color
-  vector<RGBColor> colors_;      // Plot colors
+  int level_ {-1};                           // Universe level to plot
+  bool color_overlaps_ {false};              // Show overlapping cells?
+  PlotColorBy color_by_ {PlotColorBy::mats}; // Plot coloring (cell/material)
+  RGBColor not_found_ {WHITE};               // Plot background color
+  RGBColor overlap_color_ {RED};             // Plot overlap color
+  vector<RGBColor> colors_;                  // Plot colors
 };
-
-typedef xt::xtensor<RGBColor, 2> ImageData;
 
 struct IdData {
   // Constructor
@@ -140,7 +154,7 @@ struct IdData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
+  tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
 };
 
 struct PropertyData {
@@ -152,7 +166,7 @@ struct PropertyData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+  tensor::Tensor<double> data_; //!< 2D array of temperature & density data
 };
 
 //===============================================================================
@@ -165,6 +179,11 @@ public:
   T get_map() const;
 
   enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
+
+  // Accessors
+
+  const std::array<size_t, 3>& pixels() const { return pixels_; }
+  std::array<size_t, 3>& pixels() { return pixels_; }
 
   // Members
 public:
@@ -270,11 +289,11 @@ private:
 public:
   // Add mesh lines to ImageData
   void draw_mesh_lines(ImageData& data) const;
-  void create_image() const;
+  ImageData create_image() const override;
   void create_voxel() const;
 
-  virtual void create_output() const;
-  virtual void print_info() const;
+  void create_output() const override;
+  void print_info() const override;
 
   PlotType type_;                 //!< Plot type (Slice/Voxel)
   int meshlines_width_;           //!< Width of lines added to the plot
@@ -294,17 +313,32 @@ public:
  */
 class RayTracePlot : public PlottableInterface {
 public:
+  RayTracePlot() = default;
   RayTracePlot(pugi::xml_node plot);
 
   // Standard getters. No setting since it's done from XML.
   const Position& camera_position() const { return camera_position_; }
+  Position& camera_position() { return camera_position_; }
   const Position& look_at() const { return look_at_; }
+  Position& look_at() { return look_at_; }
+
   const double& horizontal_field_of_view() const
   {
     return horizontal_field_of_view_;
   }
+  double& horizontal_field_of_view() { return horizontal_field_of_view_; }
 
-  virtual void print_info() const;
+  void print_info() const override;
+
+  const std::array<int, 2>& pixels() const { return pixels_; }
+  std::array<int, 2>& pixels() { return pixels_; }
+
+  const Direction& up() const { return up_; }
+  Direction& up() { return up_; }
+
+  //! brief Updates the cached camera-to-model matrix after changes to
+  //! camera parameters.
+  void update_view();
 
 protected:
   Direction camera_x_axis() const
@@ -330,8 +364,6 @@ protected:
    */
   std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
 
-  std::array<int, 2> pixels_; // pixel dimension of resulting image
-
 private:
   void set_look_at(pugi::xml_node node);
   void set_camera_position(pugi::xml_node node);
@@ -341,9 +373,9 @@ private:
 
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
   Position camera_position_;               // where camera is
-  Position look_at_; // point camera is centered looking at
-
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+  Position look_at_;                     // point camera is centered looking at
+  std::array<int, 2> pixels_ {100, 100}; // pixel dimension of resulting image
+  Direction up_ {0.0, 0.0, 1.0};         // which way is up
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
@@ -377,8 +409,9 @@ class WireframeRayTracePlot : public RayTracePlot {
 public:
   WireframeRayTracePlot(pugi::xml_node plot);
 
-  virtual void create_output() const;
-  virtual void print_info() const;
+  ImageData create_image() const override;
+  void create_output() const override;
+  void print_info() const override;
 
 private:
   void set_opacities(pugi::xml_node node);
@@ -434,10 +467,22 @@ class SolidRayTracePlot : public RayTracePlot {
   friend class PhongRay;
 
 public:
+  SolidRayTracePlot() = default;
+
   SolidRayTracePlot(pugi::xml_node plot);
 
-  virtual void create_output() const;
-  virtual void print_info() const;
+  ImageData create_image() const override;
+  void create_output() const override;
+  void print_info() const override;
+
+  const std::unordered_set<int>& opaque_ids() const { return opaque_ids_; }
+  std::unordered_set<int>& opaque_ids() { return opaque_ids_; }
+
+  const Position& light_location() const { return light_location_; }
+  Position& light_location() { return light_location_; }
+
+  const double& diffuse_fraction() const { return diffuse_fraction_; }
+  double& diffuse_fraction() { return diffuse_fraction_; }
 
 private:
   void set_opaque_ids(pugi::xml_node node);
@@ -496,7 +541,7 @@ public:
     : Ray(r, u), plot_(plot), line_segments_(line_segments)
   {}
 
-  virtual void on_intersection() override;
+  void on_intersection() override;
 
 private:
   /* Store a reference to the plot object which is running this ray, in order
@@ -519,7 +564,7 @@ public:
     result_color_ = plot_.not_found_;
   }
 
-  virtual void on_intersection() override;
+  void on_intersection() override;
 
   const RGBColor& result_color() { return result_color_; }
 

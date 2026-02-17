@@ -14,7 +14,9 @@
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" region="-1" density="10.0 20.0 10.0 20.0" universe="1"/>
+    <cell id="1" material="1" region="-1" universe="1">
+      <density>10.0 20.0 10.0 20.0</density>
+    </cell>
     <cell id="2" material="2" region="1" universe="1"/>
     <cell id="3" fill="2" region="2 -3 4 -5" universe="3"/>
     <lattice id="2">

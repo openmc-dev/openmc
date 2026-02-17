@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "xtensor/xarray.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
@@ -27,6 +27,7 @@ void collision_mg(Particle& p)
 {
   // Add to the collision counter for the particle
   p.n_collision()++;
+  p.secondary_bank_index() = p.secondary_bank().size();
 
   // Sample the reaction type
   sample_reaction(p);
@@ -136,7 +137,7 @@ void create_fission_sites(Particle& p)
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
-    site.particle = ParticleType::neutron;
+    site.particle = ParticleType::neutron();
     site.time = p.time();
     site.wgt = 1. / weight;
 
@@ -171,7 +172,7 @@ void create_fission_sites(Particle& p)
       site.time -= std::log(prn(p.current_seed())) / decay_rate;
 
       // Reject site if it exceeds time cutoff
-      double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      double t_cutoff = settings::time_cutoff[site.particle.transport_index()];
       if (site.time > t_cutoff) {
         continue;
       }
@@ -200,6 +201,7 @@ void create_fission_sites(Particle& p)
       }
     } else {
       p.secondary_bank().push_back(site);
+      p.n_secondaries()++;
     }
 
     // Set the delayed group on the particle as well

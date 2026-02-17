@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import lxml.etree as ET
 import numpy as np
 import openmc
@@ -45,6 +47,12 @@ def test_bounding_box():
 
     u = openmc.Universe()
     assert_unbounded(u)
+
+
+def test_id():
+    openmc.Universe(universe_id=0)
+    with pytest.raises(ValueError):
+        openmc.Universe(universe_id=-1)
 
 
 def test_plot(run_in_tmpdir, sphere_model):
@@ -98,6 +106,43 @@ def test_plot(run_in_tmpdir, sphere_model):
             legend=True,
             pixels=100,
         )
+
+    # Close plots to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close('all')
+
+
+def test_mg_plot(run_in_tmpdir):
+    # Create a simple universe with macroscopic data
+    h2o_data = openmc.Macroscopic('LWTR')
+    water = openmc.Material(name='Water')
+    water.set_density('macro', 1.0)
+    water.add_macroscopic(h2o_data)
+    sph = openmc.Sphere(r=10, boundary_type="vacuum")
+    cell = openmc.Cell(region=-sph, fill=water)
+    univ = openmc.Universe(cells=[cell])
+
+    # Create MGXS library and export to HDF5
+    groups = openmc.mgxs.EnergyGroups([1e-5, 20.0e6])
+    h2o_xsdata = openmc.XSdata('LWTR', groups)
+    h2o_xsdata.order = 0
+    h2o_xsdata.set_total([1.0])
+    h2o_xsdata.set_absorption([0.5])
+    scatter_matrix = np.array([[[0.5]]])
+    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
+    h2o_xsdata.set_scatter_matrix(scatter_matrix)
+    mg_library = openmc.MGXSLibrary(groups)
+    mg_library.add_xsdatas([h2o_xsdata])
+    mgxs_path = Path.cwd() / 'mgxs.h5'
+    mg_library.export_to_hdf5(mgxs_path)
+
+    # Set MG cross sections in config and plot
+    with openmc.config.patch('mg_cross_sections', mgxs_path):
+        univ.plot(width=(200, 200), basis='yz', color_by='cell')
+        univ.plot(width=(200, 200), basis='yz', color_by='material')
+
+    with pytest.raises(RuntimeError):
+        univ.plot(width=(200, 200), basis='yz', color_by='cell')
 
     # Close plots to avoid warning
     import matplotlib.pyplot as plt

@@ -14,6 +14,7 @@
 #include "openmc/timer.h"
 #include "openmc/vector.h"
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 

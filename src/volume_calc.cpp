@@ -21,8 +21,7 @@
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include <algorithm> // for copy
@@ -263,12 +262,13 @@ void VolumeCalculation::execute(CalcResults& master_results) const
 
       // Compute nuclides
       for (int i_domain = 0; i_domain < n_domains; ++i_domain) {
-        // Create 2D array to store atoms/uncertainty for each nuclide. Later,
+        // Create 2D array to store atoms/uncertainty for each nuclide. Later
         // this is compressed into vectors storing only those nuclides that are
         // non-zero
         auto n_nuc =
           settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
-        xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
+        auto atoms =
+          tensor::zeros<double>({static_cast<size_t>(n_nuc), size_t {2}});
 
         for (int j = 0; j < master_results.vol_tallies[i_domain].size(); ++j) {
           const int i_material = master_results.vol_tallies[i_domain][j].index;
@@ -439,9 +439,11 @@ void VolumeCalculation::to_hdf5(
     }
 
     // Create array of total # of atoms with uncertainty for each nuclide
-    xt::xtensor<double, 2> atom_data({n_nuc, 2});
-    xt::view(atom_data, xt::all(), 0) = xt::adapt(result.atoms);
-    xt::view(atom_data, xt::all(), 1) = xt::adapt(result.uncertainty);
+    tensor::Tensor<double> atom_data({static_cast<size_t>(n_nuc), size_t {2}});
+    for (size_t k = 0; k < static_cast<size_t>(n_nuc); ++k) {
+      atom_data(k, 0) = result.atoms[k];
+      atom_data(k, 1) = result.uncertainty[k];
+    }
 
     // Write results
     write_dataset(group_id, "nuclides", nucnames);

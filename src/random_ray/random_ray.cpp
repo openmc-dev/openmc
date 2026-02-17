@@ -10,6 +10,8 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 
+#include <numeric>
+
 #include "openmc/distribution_spatial.h"
 #include "openmc/random_dist.h"
 #include "openmc/source.h"
@@ -432,11 +434,13 @@ void RandomRay::attenuate_flux_flat_source(
 
   // Get material
   int material = srh.material();
+  int temp = srh.temperature_idx();
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
     float sigma_t =
-      domain_->sigma_t_[material * negroups_ + g] * srh.density_mult();
+      domain_->sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      srh.density_mult();
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
@@ -531,6 +535,7 @@ void RandomRay::attenuate_flux_linear_source(
   n_event()++;
 
   int material = srh.material();
+  int temp = srh.temperature_idx();
 
   Position& centroid = srh.centroid();
   Position midpoint = r + u() * (distance / 2.0);
@@ -560,7 +565,8 @@ void RandomRay::attenuate_flux_linear_source(
 
     // Compute tau, the optical thickness of the ray segment
     float sigma_t =
-      domain_->sigma_t_[material * negroups_ + g] * srh.density_mult();
+      domain_->sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      srh.density_mult();
     float tau = sigma_t * distance;
 
     // If tau is very small, set it to zero to avoid numerical issues.
@@ -765,6 +771,7 @@ void RandomRay::attenuate_flux_linear_source_void(
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 {
   domain_ = domain;
+  ntemperature_ = domain->ntemperature_;
 
   // Reset particle event counter
   n_event() = 0;

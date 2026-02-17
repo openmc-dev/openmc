@@ -34,12 +34,10 @@ void ReactionFilter::set_bins(span<const int> bins)
   // Clear existing bins
   bins_.clear();
   bins_.reserve(bins.size());
-  map_.clear();
 
   // Copy bins and build lookup map
   for (int64_t i = 0; i < bins.size(); ++i) {
     bins_.push_back(bins[i]);
-    map_[bins[i]] = i;
   }
 
   n_bins_ = bins_.size();

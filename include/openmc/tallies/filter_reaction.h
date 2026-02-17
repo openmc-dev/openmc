@@ -1,8 +1,6 @@
 #ifndef OPENMC_TALLIES_FILTER_REACTION_H
 #define OPENMC_TALLIES_FILTER_REACTION_H
 
-#include <unordered_map>
-
 #include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
@@ -47,9 +45,6 @@ protected:
 
   //! MT numbers to match
   vector<int> bins_;
-
-  //! Map from MT value to bin index
-  std::unordered_map<int, int> map_;
 };
 
 } // namespace openmc

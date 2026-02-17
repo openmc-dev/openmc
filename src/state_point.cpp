@@ -339,13 +339,17 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   bool parallel = false;
 #endif
 
-  // Write the source bank if desired
-  if (write_source_) {
-    if (mpi::master || parallel)
-      file_id = file_open(filename_, 'a', true);
-    write_source_bank(file_id, simulation::source_bank, simulation::work_index);
-    if (mpi::master || parallel)
-      file_close(file_id);
+  // Write the source bank if desired and available
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      settings::solver_type == SolverType::MONTE_CARLO) {
+    if (write_source_) {
+      if (mpi::master || parallel)
+        file_id = file_open(filename_, 'a', true);
+      write_source_bank(
+        file_id, simulation::source_bank, simulation::work_index);
+      if (mpi::master || parallel)
+        file_close(file_id);
+    }
   }
 
 #if defined(OPENMC_LIBMESH_ENABLED) || defined(OPENMC_DAGMC_ENABLED)

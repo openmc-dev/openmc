@@ -460,7 +460,7 @@ def test_global_tallies(lib_run):
 def test_statepoint(lib_run):
     openmc.lib.statepoint_write('test_sp.h5')
     assert os.path.exists('test_sp.h5')
-
+        
 
 def test_source_bank(lib_run):
     source = openmc.lib.source_bank()
@@ -1122,11 +1122,48 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     openmc.lib.finalize()
 
 
+def test_statepoint_write_source_in_fixed_mode(run_in_tmpdir, mpi_intracomm):
+    model = openmc.Model()    
+    model.materials = openmc.Materials()
+
+    nitrogen = openmc.Material(name='Air')
+    nitrogen.add_nuclide('N14', 1.0, 'wo')
+    nitrogen.set_density('g/cm3', 1.205E-50)
+    nitrogen.temperature = 293
+
+    model.materials.append(nitrogen)
+
+    sphere = openmc.Sphere(r=10, boundary_type='vacuum')
+
+    cell = openmc.Cell(region = -sphere, fill=nitrogen)
+
+    root = openmc.Universe(cells=[cell])
+    
+    model.geometry = openmc.Geometry(root)
+
+    src = openmc.IndependentSource()
+    src.space = openmc.stats.Point((0,0,0))
+
+    model.settings = openmc.Settings()
+    model.settings.source = src
+    model.settings.batches = 10
+    model.settings.particles = 1000
+    model.settings.run_mode = 'fixed source'
+
+    model.export_to_xml() 
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.run()
+    openmc.lib.statepoint_write(write_source=True)
+    openmc.lib.finalize()
+    
+
 def test_random_ray(random_ray_pincell_model, mpi_intracomm):
     openmc.lib.finalize()
     openmc.lib.init(intracomm=mpi_intracomm)
     openmc.lib.simulation_init()
     openmc.lib.run_random_ray()
+    openmc.lib.statepoint_write(write_source=True)
     keff = openmc.lib.keff()
 
     assert keff[0]==pytest.approx(1.3236826574065745)

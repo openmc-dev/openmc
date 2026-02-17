@@ -460,7 +460,7 @@ def test_global_tallies(lib_run):
 def test_statepoint(lib_run):
     openmc.lib.statepoint_write('test_sp.h5')
     assert os.path.exists('test_sp.h5')
-        
+
 
 def test_source_bank(lib_run):
     source = openmc.lib.source_bank()

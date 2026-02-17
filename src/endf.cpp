@@ -97,7 +97,7 @@ bool mt_matches(int event_mt, int target_mt)
   // Check if event_mt is a component of target_mt summation reaction
   switch (target_mt) {
   case 1:
-    return mt_matches(event_mt, 2) || mt_matches(event_mt, 3);
+    return event_mt == 2 || mt_matches(event_mt, 3);
 
   case 3: {
     static constexpr int components[] = {4, 5, 11, 16, 17, 22, 23, 24, 25, 27,
@@ -114,90 +114,51 @@ bool mt_matches(int event_mt, int target_mt)
 
   case 4:
     // Inelastic scattering levels
-    for (int mt = 50; mt < 92; ++mt) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return event_mt >= 50 && event_mt < 92;
 
   case 16:
     // (n,2n) to excited states
-    for (int mt = 875; mt < 892; ++mt) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return event_mt >= 875 && event_mt < 892;
 
   case 18:
-    return mt_matches(event_mt, 19) || mt_matches(event_mt, 20) ||
-           mt_matches(event_mt, 21) || mt_matches(event_mt, 38);
+    return is_fission(event_mt);
 
   case 27:
-    return mt_matches(event_mt, 18) || mt_matches(event_mt, 101);
+    return is_fission(event_mt) || is_disappearance(event_mt);
 
   case 101: {
-    static constexpr int components[] = {102, 103, 104, 105, 106, 107, 108, 109,
-      111, 112, 113, 114, 115, 116, 117, 155, 182, 191, 192, 193, 197};
-    for (int mt : components) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return is_disappearance(event_mt);
   }
 
   case 103:
     // (n,p) to excited states
-    for (int mt = 600; mt < 650; ++mt) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return event_mt >= 600 && event_mt < 650;
 
   case 104:
     // (n,d) to excited states
-    for (int mt = 650; mt < 700; ++mt) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return event_mt >= 650 && event_mt < 700;
 
   case 105:
     // (n,t) to excited states
-    for (int mt = 700; mt < 750; ++mt) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return event_mt >= 700 && event_mt < 750;
 
   case 106:
     // (n,3He) to excited states
-    for (int mt = 750; mt < 800; ++mt) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return event_mt >= 750 && event_mt < 800;
 
   case 107:
     // (n,alpha) to excited states
-    for (int mt = 800; mt < 850; ++mt) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return event_mt >= 800 && event_mt < 850;
 
   case 501:
-    return mt_matches(event_mt, 502) || mt_matches(event_mt, 504) ||
-           mt_matches(event_mt, 516) || mt_matches(event_mt, 522);
+    return event_mt == 502 || event_mt == 504 || mt_matches(event_mt, 516) ||
+           mt_matches(event_mt, 522);
 
   case 516:
-    return mt_matches(event_mt, 515) || mt_matches(event_mt, 517);
+    return event_mt == 515 || event_mt == 517;
 
   case 522:
-    for (int mt = 534; mt < 573; ++mt) {
-      if (mt_matches(event_mt, mt))
-        return true;
-    }
-    return false;
+    return event_mt >= 534 && event_mt < 573;
 
   default:
     return false;

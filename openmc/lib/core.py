@@ -77,7 +77,7 @@ _dll.openmc_plot_geometry.errcheck = _error_handler
 _dll.openmc_properties_export.argtypes = [c_char_p]
 _dll.openmc_properties_export.restype = c_int
 _dll.openmc_properties_export.errcheck = _error_handler
-_dll.openmc_properties_import.argtypes = [c_char_p]
+_dll.openmc_properties_import.argtypes = [c_char_p, c_bool, c_bool]
 _dll.openmc_properties_import.restype = c_int
 _dll.openmc_properties_import.errcheck = _error_handler
 _dll.openmc_run.restype = c_int
@@ -304,7 +304,7 @@ def import_properties(filename):
     openmc.lib.export_properties
 
     """
-    _dll.openmc_properties_import(filename.encode())
+    _dll.openmc_properties_import(filename.encode(), True, True)
 
 
 def init(args=None, intracomm=None, output=True):

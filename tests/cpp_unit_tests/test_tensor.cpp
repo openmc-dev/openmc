@@ -394,9 +394,9 @@ TEST_CASE("Tensor compound arithmetic with tensor")
 
   a = {1.0, 2.0, 3.0};
   b -= a;
-  REQUIRE(a[0] == 9.0);
-  REQUIRE(a[1] == 18.0);
-  REQUIRE(a[2] == 27.0);
+  REQUIRE(b[0] == 9.0);
+  REQUIRE(b[1] == 18.0);
+  REQUIRE(b[2] == 27.0);
 
   b = {10.0, 20.0, 30.0};
   a *= b;
@@ -406,9 +406,9 @@ TEST_CASE("Tensor compound arithmetic with tensor")
 
   a = {1.0, 2.0, 3.0};
   b /= a;
-  REQUIRE(a[0] == 10.0);
-  REQUIRE(a[1] == 10.0);
-  REQUIRE(a[2] == 10.0);
+  REQUIRE(b[0] == 10.0);
+  REQUIRE(b[1] == 10.0);
+  REQUIRE(b[2] == 10.0);
 }
 
 TEST_CASE("Tensor comparison operators")

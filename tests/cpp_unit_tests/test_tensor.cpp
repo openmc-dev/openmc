@@ -350,6 +350,9 @@ TEST_CASE("Tensor element-wise arithmetic")
 
   c = a / b;
   REQUIRE(c[0] == 0.25);
+
+  c = a * b;
+  REQUIRE(c[0] == 4.0);
 }
 
 TEST_CASE("Tensor scalar arithmetic")
@@ -378,7 +381,7 @@ TEST_CASE("Tensor scalar arithmetic")
   REQUIRE(b[0] == 11.0);
 }
 
-TEST_CASE("Tensor compound addition with tensor")
+TEST_CASE("Tensor compound arithmetic with tensor")
 {
   Tensor<double> a({3}, 0.0);
   Tensor<double> b({3}, 0.0);
@@ -388,6 +391,24 @@ TEST_CASE("Tensor compound addition with tensor")
   REQUIRE(a[0] == 11.0);
   REQUIRE(a[1] == 22.0);
   REQUIRE(a[2] == 33.0);
+
+  a = {1.0, 2.0, 3.0};
+  b -= a;
+  REQUIRE(a[0] == 9.0);
+  REQUIRE(a[1] == 18.0);
+  REQUIRE(a[2] == 27.0);
+
+  b = {10.0, 20.0, 30.0};
+  a *= b;
+  REQUIRE(a[0] == 10.0);
+  REQUIRE(a[1] == 40.0);
+  REQUIRE(a[2] == 90.0);
+
+  a = {1.0, 2.0, 3.0};
+  b /= a;
+  REQUIRE(a[0] == 10.0);
+  REQUIRE(a[1] == 10.0);
+  REQUIRE(a[2] == 10.0);
 }
 
 TEST_CASE("Tensor comparison operators")

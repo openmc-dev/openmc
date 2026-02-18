@@ -762,6 +762,12 @@ public:
       data_[i] += o.data_[i];
     return *this;
   }
+  Tensor& operator-=(const Tensor& o)
+  {
+    for (size_t i = 0; i < data_.size(); ++i)
+      data_[i] -= o.data_[i];
+    return *this;
+  }
   Tensor& operator*=(const Tensor& o)
   {
     for (size_t i = 0; i < data_.size(); ++i)

@@ -182,6 +182,10 @@ class Settings:
     properties_file : Pathlike
         Location of the properties file to load cell temperatures/densities
         and materials
+    read_temperatures_from_properties : bool
+        Whether to read cell temperatures from the properties file
+    read_densities_from_properties : bool
+        Whether to read densities from the properties file
     random_ray : dict
         Options for configuring the random ray solver. Acceptable keys are:
 
@@ -396,6 +400,8 @@ class Settings:
         self._plot_seed = None
         self._ptables = None
         self._properties_file = None
+        self._read_temperatures_from_properties = None
+        self._read_densities_from_properties = None
         self._uniform_source_sampling = None
         self._seed = None
         self._stride = None
@@ -1031,8 +1037,30 @@ class Settings:
         if value is None:
             self._properties_file = None
         else:
-            cv.check_type('weight windows file', value, PathLike)
+            cv.check_type('properties file', value, PathLike)
             self._properties_file = input_path(value)
+            self.read_temperatures_from_properties = True
+            self.read_densities_from_properties = True
+
+    @property
+    def read_temperatures_from_properties(self) -> bool:
+        return self._read_temperatures_from_properties
+
+    @read_temperatures_from_properties.setter
+    def read_temperatures_from_properties(self, read_temperatures_from_properties : bool):
+        cv.check_type('Whether read temperatures from properties ',
+                      read_temperatures_from_properties, bool)
+        self._read_temperatures_from_properties = read_temperatures_from_properties
+
+    @property
+    def read_densities_from_properties(self) -> bool:
+        return self._read_densities_from_properties
+
+    @read_densities_from_properties.setter
+    def read_densities_from_properties(self, read_densities_from_properties : bool):
+        cv.check_type('Whether read temperatures from properties ',
+                      read_densities_from_properties, bool)
+        self._read_densities_from_properties = read_densities_from_properties
 
     @property
     def trace(self) -> Iterable:
@@ -1725,11 +1753,24 @@ class Settings:
                     element.text = str(value)
 
     def _create_properties_file_element(self, root):
-        if self.properties_file is not None:
-            element = ET.Element("properties_file")
-            element.text = str(self.properties_file)
-            root.append(element)
+        if ((self.read_densities_from_properties or
+             self.read_temperatures_from_properties) and
+            self.properties_file is None):
+            # build warning that no properties file is specified
+            msg = (f'Flag to read densities or temperatures was set without providing ' 
+                   'a properties file.')
+            warnings.warn(msg)
 
+        if self.properties_file is not None:
+            element = ET.Element("properties")
+            subelement = ET.SubElement(element, "filepath")
+            subelement.text = str(self.properties_file)
+            subelement = ET.SubElement(element, "temperatures")
+            subelement.text = str(self.read_temperatures_from_properties).lower()
+            subelement = ET.SubElement(element, "densities")
+            subelement.text = str(self.read_densities_from_properties).lower()
+            root.append(element)
+        
     def _create_trace_subelement(self, root):
         if self._trace is not None:
             element = ET.SubElement(root, "trace")
@@ -2228,9 +2269,25 @@ class Settings:
             self.temperature['multipole'] = text in ('true', '1')
 
     def _properties_file_from_xml_element(self, root):
-        text = get_text(root, 'properties_file')
-        if text is not None:
-            self.properties_file = text
+        elem = root.find('properties')
+        if elem is not None:
+            self.properties_file = get_text(elem, 'filepath')
+            text = get_text(elem, 'temperatures')
+            self.read_temperatures_from_properties = text in ('true', '1')
+            text = get_text(elem, 'densities')
+            self.read_densities_from_properties = text in ('true', '1')
+
+    # def _weight_window_checkpoints_from_xml_element(self, root):
+    #     elem = root.find('weight_window_checkpoints')
+    #     if elem is None:
+    #         return
+    #     for key in ('collision', 'surface'):
+    #         value = get_text(elem, key)
+    #         if value is not None:
+    #             value = value in ('true', '1')
+    #             self.weight_window_checkpoints[key] = value
+
+
 
     def _trace_from_xml_element(self, root):
         text = get_elem_list(root, "trace", int)

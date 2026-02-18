@@ -125,6 +125,49 @@ int openmc_nuclide_name(int index, const char** name);
 int openmc_plot_geometry();
 int openmc_id_map(const void* slice, int32_t* data_out);
 int openmc_property_map(const void* slice, double* data_out);
+int openmc_get_plot_index(int32_t id, int32_t* index);
+int openmc_plot_get_id(int32_t index, int32_t* id);
+int openmc_plot_set_id(int32_t index, int32_t id);
+int openmc_solidraytrace_plot_create(int32_t* index);
+int openmc_solidraytrace_plot_get_pixels(
+  int32_t index, int32_t* width, int32_t* height);
+int openmc_solidraytrace_plot_set_pixels(
+  int32_t index, int32_t width, int32_t height);
+int openmc_solidraytrace_plot_get_color_by(int32_t index, int32_t* color_by);
+int openmc_solidraytrace_plot_set_color_by(int32_t index, int32_t color_by);
+int openmc_solidraytrace_plot_set_default_colors(int32_t index);
+int openmc_solidraytrace_plot_set_all_opaque(int32_t index);
+int openmc_solidraytrace_plot_set_opaque(
+  int32_t index, int32_t id, bool visible);
+int openmc_solidraytrace_plot_set_color(
+  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b);
+int openmc_solidraytrace_plot_get_camera_position(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_camera_position(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_look_at(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_look_at(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_up(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_up(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_light_position(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_light_position(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_fov(int32_t index, double* fov);
+int openmc_solidraytrace_plot_set_fov(int32_t index, double fov);
+int openmc_solidraytrace_plot_update_view(int32_t index);
+int openmc_solidraytrace_plot_create_image(
+  int32_t index, uint8_t* data_out, int32_t width, int32_t height);
+int openmc_solidraytrace_plot_get_color(
+  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b);
+int openmc_solidraytrace_plot_get_diffuse_fraction(
+  int32_t index, double* diffuse_fraction);
+int openmc_solidraytrace_plot_set_diffuse_fraction(
+  int32_t index, double diffuse_fraction);
 int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
   double** grid_y, int* ny, double** grid_z, int* nz);
 int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
@@ -219,6 +262,7 @@ int openmc_weight_windows_set_weight_cutoff(int32_t index, double cutoff);
 int openmc_weight_windows_get_max_split(int32_t index, int* max_split);
 int openmc_weight_windows_set_max_split(int32_t index, int max_split);
 size_t openmc_weight_windows_size();
+size_t openmc_plots_size();
 int openmc_weight_windows_export(const char* filename = nullptr);
 int openmc_weight_windows_import(const char* filename = nullptr);
 int openmc_zernike_filter_get_order(int32_t index, int* order);

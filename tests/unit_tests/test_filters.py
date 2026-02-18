@@ -321,12 +321,22 @@ def test_energy_filter():
 
 def test_particle_production_filter():
     energy_bins = [1e3, 1e4, 1e5, 1e6]
+
+    # --- Single particle with energy bins ---
     f = openmc.ParticleProductionFilter('photon', energy_bins)
 
-    assert f.particle == openmc.ParticleType.PHOTON
+    # particles getter always returns a list
+    assert isinstance(f.particles, list)
+    assert len(f.particles) == 1
+    assert f.particles[0] == openmc.ParticleType.PHOTON
+
+    assert f.num_energy_bins == 3
     assert f.num_bins == 3
-    assert f.bins.shape == (3, 2)
-    assert np.allclose(f.values, energy_bins)
+    assert f.shape == (1, 3)
+    assert len(f.bins) == 3
+    # Each bin is (particle_name, e_low, e_high)
+    assert f.bins[0] == ('photon', 1e3, 1e4)
+    assert f.bins[2] == ('photon', 1e5, 1e6)
 
     # __repr__ check
     repr(f)
@@ -335,20 +345,72 @@ def test_particle_production_filter():
     elem = f.to_xml_element()
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'particleproduction'
-    assert elem.find('particle').text == 'photon'
-    assert elem.find('bins').text.split()[0] == str(energy_bins[0])
+    assert elem.find('particles').text == 'photon'
+    assert elem.find('energies').text.split()[0] == str(energy_bins[0])
 
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
     assert new_f.id == f.id
-    assert new_f.particle == f.particle
-    assert np.allclose(new_f.bins, f.bins)
+    assert new_f.particles == f.particles
+    assert np.allclose(new_f.energies, f.energies)
 
-    # pandas output
+    # pandas output (with energy bins -> 3 MultiIndex columns)
     df = f.get_pandas_dataframe(data_size=3, stride=1)
     assert df.shape[0] == 3
-    assert "particleproduction low [eV]" in df.columns
-    assert "particleproduction high [eV]" in df.columns
+    assert ('particleproduction', 'particle') in df.columns
+    assert ('particleproduction', 'energy low [eV]') in df.columns
+    assert ('particleproduction', 'energy high [eV]') in df.columns
+
+    # --- Multiple particles with energy bins ---
+    f2 = openmc.ParticleProductionFilter(['photon', 'neutron'], energy_bins)
+    assert len(f2.particles) == 2
+    assert f2.num_bins == 6  # 2 particles * 3 energy bins
+    assert f2.shape == (2, 3)
+    assert len(f2.bins) == 6
+    # First 3 bins are photon, next 3 are neutron
+    assert f2.bins[0] == ('photon', 1e3, 1e4)
+    assert f2.bins[3] == ('neutron', 1e3, 1e4)
+
+    df2 = f2.get_pandas_dataframe(data_size=6, stride=1)
+    assert df2.shape[0] == 6
+    assert list(df2[('particleproduction', 'particle')]) == \
+        ['photon'] * 3 + ['neutron'] * 3
+
+    # XML round-trip
+    elem2 = f2.to_xml_element()
+    new_f2 = openmc.Filter.from_xml_element(elem2)
+    assert len(new_f2.particles) == 2
+    assert np.allclose(new_f2.energies, energy_bins)
+
+    # --- Multiple particles without energy bins ---
+    f3 = openmc.ParticleProductionFilter(['photon', 'neutron', 'electron'])
+    assert f3.energies is None
+    assert f3.num_bins == 3
+    assert f3.num_energy_bins == 1
+    assert f3.shape == (3, 1)
+    assert f3.bins == ['photon', 'neutron', 'electron']
+
+    repr(f3)
+
+    df3 = f3.get_pandas_dataframe(data_size=3, stride=1)
+    assert df3.shape[0] == 3
+    assert ('particleproduction', 'particle') in df3.columns
+    # Should not have energy columns
+    assert ('particleproduction', 'energy low [eV]') not in df3.columns
+
+    # XML round-trip without energies
+    elem3 = f3.to_xml_element()
+    assert elem3.find('energies') is None
+    new_f3 = openmc.Filter.from_xml_element(elem3)
+    assert new_f3.energies is None
+    assert len(new_f3.particles) == 3
+
+    # --- Energies from group structure name ---
+    f4 = openmc.ParticleProductionFilter('photon', energies='CCFE-709')
+    expected = openmc.mgxs.GROUP_STRUCTURES['CCFE-709']
+    assert np.allclose(f4.energies, expected)
+    assert f4.num_energy_bins == len(expected) - 1
+    assert f4.num_bins == len(expected) - 1
 
 
 def test_weight():

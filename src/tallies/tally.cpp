@@ -35,9 +35,7 @@
 #include "openmc/tallies/filter_time.h"
 #include "openmc/xml_interface.h"
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xbuilder.hpp" // for empty_like
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include <algorithm> // for max, set_union
@@ -69,7 +67,7 @@ vector<double> time_grid;
 } // namespace model
 
 namespace simulation {
-xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+tensor::StaticTensor2D<double, N_GLOBAL_TALLIES, 3> global_tallies;
 int32_t n_realizations {0};
 } // namespace simulation
 
@@ -806,9 +804,11 @@ void Tally::init_results()
 {
   int n_scores = scores_.size() * nuclides_.size();
   if (higher_moments_) {
-    results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
+    results_ = tensor::Tensor<double>({static_cast<size_t>(n_filter_bins_),
+      static_cast<size_t>(n_scores), size_t {5}});
   } else {
-    results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+    results_ = tensor::Tensor<double>({static_cast<size_t>(n_filter_bins_),
+      static_cast<size_t>(n_scores), size_t {3}});
   }
 }
 
@@ -816,7 +816,7 @@ void Tally::reset()
 {
   n_realizations_ = 0;
   if (results_.size() != 0) {
-    xt::view(results_, xt::all()) = 0.0;
+    results_.fill(0.0);
   }
 }
 
@@ -851,9 +851,9 @@ void Tally::accumulate()
     if (higher_moments_) {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
-      for (int i = 0; i < results_.shape()[0]; ++i) {
+      for (int i = 0; i < results_.shape(0); ++i) {
         // score bins (flux, total reaction rate, fission reaction rate, etc.)
-        for (int j = 0; j < results_.shape()[1]; ++j) {
+        for (int j = 0; j < results_.shape(1); ++j) {
           double val = results_(i, j, TallyResult::VALUE) * norm;
           double val2 = val * val;
           results_(i, j, TallyResult::VALUE) = 0.0;
@@ -866,9 +866,9 @@ void Tally::accumulate()
     } else {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
-      for (int i = 0; i < results_.shape()[0]; ++i) {
+      for (int i = 0; i < results_.shape(0); ++i) {
         // score bins (flux, total reaction rate, fission reaction rate, etc.)
-        for (int j = 0; j < results_.shape()[1]; ++j) {
+        for (int j = 0; j < results_.shape(1); ++j) {
           double val = results_(i, j, TallyResult::VALUE) * norm;
           results_(i, j, TallyResult::VALUE) = 0.0;
           results_(i, j, TallyResult::SUM) += val;
@@ -888,18 +888,18 @@ int Tally::score_index(const std::string& score) const
   return -1;
 }
 
-xt::xarray<double> Tally::get_reshaped_data() const
+tensor::Tensor<double> Tally::get_reshaped_data() const
 {
-  std::vector<uint64_t> shape;
+  vector<size_t> shape;
   for (auto f : filters()) {
     shape.push_back(model::tally_filters[f]->n_bins());
   }
 
   // add number of scores and nuclides to tally
-  shape.push_back(results_.shape()[1]);
-  shape.push_back(results_.shape()[2]);
+  shape.push_back(results_.shape(1));
+  shape.push_back(results_.shape(2));
 
-  xt::xarray<double> reshaped_results = results_;
+  tensor::Tensor<double> reshaped_results = results_;
   reshaped_results.reshape(shape);
   return reshaped_results;
 }
@@ -1004,13 +1004,14 @@ void reduce_tally_results()
       // Skip any tallies that are not active
       auto& tally {model::tallies[i_tally]};
 
-      // Get view of accumulated tally values
-      auto values_view = xt::view(tally->results_, xt::all(), xt::all(),
-        static_cast<int>(TallyResult::VALUE));
+      // Extract 2D view of the VALUE column from the 3D results tensor,
+      // then copy into a contiguous array for MPI reduction
+      const int val_idx = static_cast<int>(TallyResult::VALUE);
+      tensor::View<double> val_view =
+        tally->results_.slice(tensor::all, tensor::all, val_idx);
+      tensor::Tensor<double> values(val_view);
 
-      // Make copy of tally values in contiguous array
-      xt::xtensor<double, 2> values = values_view;
-      xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
+      tensor::Tensor<double> values_reduced(values.shape());
 
       // Reduce contiguous set of tally results
       MPI_Reduce(values.data(), values_reduced.data(), values.size(),
@@ -1018,9 +1019,9 @@ void reduce_tally_results()
 
       // Transfer values on master and reset on other ranks
       if (mpi::master) {
-        values_view = values_reduced;
+        val_view = values_reduced;
       } else {
-        values_view = 0.0;
+        val_view = 0.0;
       }
     }
   }
@@ -1028,14 +1029,13 @@ void reduce_tally_results()
   // Note that global tallies are *always* reduced even when no_reduce option
   // is on.
 
-  // Get view of global tally values
+  // Get reference to global tallies
   auto& gt = simulation::global_tallies;
-  auto gt_values_view =
-    xt::view(gt, xt::all(), static_cast<int>(TallyResult::VALUE));
+  const int val_col = static_cast<int>(TallyResult::VALUE);
 
-  // Make copy of values in contiguous array
-  xt::xtensor<double, 1> gt_values = gt_values_view;
-  xt::xtensor<double, 1> gt_values_reduced = xt::empty_like(gt_values);
+  // Copy VALUE column into contiguous array for MPI reduction
+  tensor::Tensor<double> gt_values(gt.slice(tensor::all, val_col));
+  tensor::Tensor<double> gt_values_reduced({size_t {N_GLOBAL_TALLIES}});
 
   // Reduce contiguous data
   MPI_Reduce(gt_values.data(), gt_values_reduced.data(), N_GLOBAL_TALLIES,
@@ -1043,9 +1043,9 @@ void reduce_tally_results()
 
   // Transfer values on master and reset on other ranks
   if (mpi::master) {
-    gt_values_view = gt_values_reduced;
+    gt.slice(tensor::all, val_col) = gt_values_reduced;
   } else {
-    gt_values_view = 0.0;
+    gt.slice(tensor::all, val_col) = 0.0;
   }
 
   // We also need to determine the total starting weight of particles from the

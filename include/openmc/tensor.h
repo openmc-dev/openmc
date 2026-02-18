@@ -762,6 +762,18 @@ public:
       data_[i] += o.data_[i];
     return *this;
   }
+  Tensor& operator*=(const Tensor& o)
+  {
+    for (size_t i = 0; i < data_.size(); ++i)
+      data_[i] *= o.data_[i];
+    return *this;
+  }
+  Tensor& operator/=(const Tensor& o)
+  {
+    for (size_t i = 0; i < data_.size(); ++i)
+      data_[i] /= o.data_[i];
+    return *this;
+  }
 
   Tensor operator+(const Tensor& o) const
   {
@@ -782,6 +794,13 @@ public:
     Tensor r(shape_);
     for (size_t i = 0; i < data_.size(); ++i)
       r.data_[i] = data_[i] / o.data_[i];
+    return r;
+  }
+  Tensor operator*(const Tensor& o) const
+  {
+    Tensor r(shape_);
+    for (size_t i = 0; i < data_.size(); ++i)
+      r.data_[i] = data_[i] * o.data_[i];
     return r;
   }
 

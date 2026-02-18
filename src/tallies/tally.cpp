@@ -2,6 +2,7 @@
 
 #include "openmc/array.h"
 #include "openmc/capi.h"
+#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
@@ -634,19 +635,28 @@ void Tally::set_scores(const vector<std::string>& scores)
                     "other than CellFilter and EnergyFilter");
       }
       type_ = TallyType::PULSE_HEIGHT;
-
-      // Collecting indices of all cells covered by the filters in the pulse
-      // height tally in global variable pulse_height_cells
-      for (const auto& i_filt : filters_) {
-        auto cell_filter =
-          dynamic_cast<CellFilter*>(model::tally_filters[i_filt].get());
-        if (cell_filter) {
-          const auto& cells = cell_filter->cells();
-          for (int i = 0; i < cell_filter->n_bins(); i++) {
-            int cell_index = cells[i];
-            if (!contains(model::pulse_height_cells, cell_index)) {
-              model::pulse_height_cells.push_back(cell_index);
+      if (cell_present) {
+        // Collecting indices of all cells covered by the filters in the pulse
+        // height tally in global variable pulse_height_cells
+        for (const auto& i_filt : filters_) {
+          auto cell_filter =
+            dynamic_cast<CellFilter*>(model::tally_filters[i_filt].get());
+          if (cell_filter) {
+            const auto& cells = cell_filter->cells();
+            for (int i = 0; i < cell_filter->n_bins(); i++) {
+              int cell_index = cells[i];
+              if (!contains(model::pulse_height_cells, cell_index)) {
+                model::pulse_height_cells.push_back(cell_index);
+              }
             }
+          }
+        }
+      } else {
+        // The pulse height tally covers all of the geometry
+        for (int cell_index = 0; cell_index < model::cells.size();
+             ++cell_index) {
+          if (!contains(model::pulse_height_cells, cell_index)) {
+            model::pulse_height_cells.push_back(cell_index);
           }
         }
       }

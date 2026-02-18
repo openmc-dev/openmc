@@ -805,7 +805,7 @@ class IncidentNeutron(EqualityMixin):
             # Helper function to get a cross section from an ENDF file on a
             # given energy grid
             def get_file3_xs(ev, mt, E):
-                file_obj = StringIO(ev.section[3, mt])
+                file_obj = StringIO(ev.section_text[3, mt])
                 get_head_record(file_obj)
                 _, xs = get_tab1_record(file_obj)
                 return xs(E)

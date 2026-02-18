@@ -36,6 +36,21 @@ std::string get_node_value(
   return value;
 }
 
+std::string get_node_path(
+  pugi::xml_node node, const char* name, bool lowercase, bool strip)
+{
+
+  std::string filename = get_node_value(node, name, lowercase, strip);
+
+  if (!file_exists(filename)) {
+    set_errmsg(fmt::format("File '{}' does not exist.", filename));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  return filename;
+}
+
+
 bool get_node_value_bool(pugi::xml_node node, const char* name)
 {
   if (node.attribute(name)) {

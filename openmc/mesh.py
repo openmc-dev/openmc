@@ -236,12 +236,12 @@ class MeshBase(IDManagerMixin, ABC):
             self._name = name
         else:
             self._name = ''
-            
+
     @property
     @abstractmethod
     def lower_left(self):
         pass
-        
+
     @property
     @abstractmethod
     def upper_right(self):
@@ -255,7 +255,7 @@ class MeshBase(IDManagerMixin, ABC):
     @abstractmethod
     def indices(self):
         pass
-        
+
     @property
     @abstractmethod
     def n_elements(self):
@@ -539,6 +539,11 @@ class StructuredMesh(MeshBase):
 
     @property
     @abstractmethod
+    def _axis_labels(self):
+        pass
+
+    @property
+    @abstractmethod
     def _grids(self):
         pass
 
@@ -636,7 +641,7 @@ class StructuredMesh(MeshBase):
         s0 = (slice(0, -1),)*ndim + (slice(None),)
         s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
-    
+
     @property
     def n_elements(self):
         return np.prod(self.dimension)
@@ -994,6 +999,10 @@ class RegularMesh(StructuredMesh):
             return len(self._dimension)
         else:
             return None
+
+    @property
+    def _axis_labels(self):
+        return ('x', 'y', 'z')[:self.n_dimension]
 
     @property
     def lower_left(self):
@@ -1476,6 +1485,10 @@ class RectilinearMesh(StructuredMesh):
         return 3
 
     @property
+    def _axis_labels(self):
+        return ('x', 'y', 'z')
+
+    @property
     def x_grid(self):
         return self._x_grid
 
@@ -1708,6 +1721,10 @@ class CylindricalMesh(StructuredMesh):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def _axis_labels(self):
+        return ('r', 'phi', 'z')
 
     @property
     def origin(self):
@@ -2155,6 +2172,10 @@ class SphericalMesh(StructuredMesh):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def _axis_labels(self):
+        return ('r', 'theta', 'phi')
 
     @property
     def origin(self):
@@ -2670,6 +2691,10 @@ class UnstructuredMesh(MeshBase):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def _axis_labels(self):
+        return ('element',)
 
     @property
     @require_statepoint_data

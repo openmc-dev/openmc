@@ -502,7 +502,11 @@ private:
 class Ray : public GeometryState {
 
 public:
+  // Initialize from location and diretion
   Ray(Position r, Direction u) { init_from_r_u(r, u); }
+
+  // Initialize from known geometry state
+  Ray(GeometryState& p) : GeometryState(p) {};
 
   // Called at every surface intersection within the model
   virtual void on_intersection() = 0;

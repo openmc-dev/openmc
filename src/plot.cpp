@@ -1413,9 +1413,9 @@ ImageData WireframeRayTracePlot::create_image() const
         if (wireframe_thickness_ == 1)
           data(horiz, vert) = wireframe_color_;
         for (int i = -wireframe_thickness_ / 2; i < wireframe_thickness_ / 2;
-          ++i)
+             ++i)
           for (int j = -wireframe_thickness_ / 2; j < wireframe_thickness_ / 2;
-            ++j)
+               ++j)
             if (i * i + j * j < wireframe_thickness_ * wireframe_thickness_) {
 
               // Check if wireframe pixel is out of bounds

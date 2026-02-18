@@ -14,6 +14,7 @@ from .data import gnds_name
 from .function import Tabulated1D
 from endf.material import _LIBRARY, _SUBLIBRARY
 from endf.incident_neutron import SUM_RULES
+from endf import Tabulated2D
 from endf.records import (
     float_endf,
     py_float_endf,
@@ -225,24 +226,3 @@ class Evaluation:
                          self.target['mass_number'],
                          self.target['isomeric_state'])
 
-
-class Tabulated2D:
-    """Metadata for a two-dimensional function.
-
-    This is a dummy class that is not really used other than to store the
-    interpolation information for a two-dimensional function. Once we refactor
-    to adopt GNDS-like data containers, this will probably be removed or
-    extended.
-
-    Parameters
-    ----------
-    breakpoints : Iterable of int
-        Breakpoints for interpolation regions
-    interpolation : Iterable of int
-        Interpolation scheme identification number, e.g., 3 means y is linear in
-        ln(x).
-
-    """
-    def __init__(self, breakpoints, interpolation):
-        self.breakpoints = breakpoints
-        self.interpolation = interpolation

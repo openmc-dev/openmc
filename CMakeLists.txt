@@ -38,6 +38,7 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
+option(OPENMC_ENABLE_FMA_CONTRACTION "Enable FMA contraction"                        OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
 message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
@@ -48,6 +49,7 @@ message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 message(STATUS "OPENMC_FORCE_VENDORED_LIBS ${OPENMC_FORCE_VENDORED_LIBS}")
+message(STATUS "OPENMC_ENABLE_FMA_CONTRACTION ${OPENMC_ENABLE_FMA_CONTRACTION}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -205,6 +207,19 @@ endif()
 if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
+endif()
+
+# FMA contraction is typically enabled by default at most compiler optimization
+# levels. Explicitly turning off FMA contraction greatly improves cross-system
+# and cross-compiler bit-wise reproducibility, as different compilers have
+# different policies for deciding which operations to contract to FMA
+# instructions. This is important for consistency in regression testing. A user
+# may wish to run with default FMA contraction policies to (potentially) improve
+# performance on floating point heavy workloads, though at the cost of
+# simulations potentially giving different results with different compilers and
+# systems.
+if(NOT OPENMC_ENABLE_FMA_CONTRACTION)
+  list(APPEND cxxflags -ffp-contract=off)
 endif()
 
 # Show flags being used

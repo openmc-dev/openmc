@@ -14,7 +14,6 @@ from .data import gnds_name
 from .function import Tabulated1D
 from endf.material import _LIBRARY, _SUBLIBRARY
 from endf.incident_neutron import SUM_RULES
-from endf import Tabulated2D
 from endf.records import (
     float_endf,
     py_float_endf,

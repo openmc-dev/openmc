@@ -502,6 +502,12 @@ void read_separate_xml_files()
   read_plots_xml();
 
   finalize_variance_reduction();
+
+  if (!settings::properties_file.empty()) {
+    openmc_properties_import(settings::properties_file, 
+      settings::read_temperatures_from_properties,
+      settings::read_densities_from_properties);
+  }
 }
 
 void initial_output()

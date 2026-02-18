@@ -1672,7 +1672,7 @@ void Ray::trace()
   if (lowest_coord().cell() == C_NONE) {
     // The geometry position of the particle is either unknown or outside of the
     // edge of the model.
-    if (p.lowest_coord().universe() == C_NONE) {
+    if (lowest_coord().universe() == C_NONE) {
       // Attempt to initialize the particle. We may have to
       // enter a loop to move it up to the edge of the model.
       inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);

@@ -9,6 +9,7 @@
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/tensor.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -108,7 +109,7 @@ void CellInstanceFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   size_t n = cell_instances_.size();
-  xt::xtensor<size_t, 2> data({n, 2});
+  tensor::Tensor<size_t> data({n, 2});
   for (int64_t i = 0; i < n; ++i) {
     const auto& x = cell_instances_[i];
     data(i, 0) = model::cells[x.index_cell]->id_;

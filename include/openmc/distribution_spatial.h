@@ -167,6 +167,7 @@ private:
 class SpatialBox : public SpatialDistribution {
 public:
   explicit SpatialBox(pugi::xml_node node, bool fission = false);
+  SpatialBox(Position lower_left, Position upper_right, bool fission = false);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer

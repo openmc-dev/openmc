@@ -18,6 +18,7 @@
 #include "openmc/weight_windows.h"
 
 #include <cstdio>
+#include <numeric>
 
 namespace openmc {
 
@@ -63,8 +64,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 
       // Create a new 2D tensor with the same size as the first
       // two dimensions of the 3D tensor
-      tally_volumes_[i] =
-        xt::xtensor<double, 2>::from_shape({shape[0], shape[1]});
+      tally_volumes_[i] = tensor::Tensor<double>({shape[0], shape[1]});
     }
   }
 
@@ -109,22 +109,24 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 
   // Add scattering + fission source
   int material = srh.material();
+  int temp = srh.temperature_idx();
   double density_mult = srh.density_mult();
   if (material != MATERIAL_VOID) {
     double inverse_k_eff = 1.0 / k_eff_;
+    const int material_offset = (material * ntemperature_ + temp) * negroups_;
+    const int scatter_offset =
+      (material * ntemperature_ + temp) * negroups_ * negroups_;
     for (int g_out = 0; g_out < negroups_; g_out++) {
-      double sigma_t = sigma_t_[material * negroups_ + g_out] * density_mult;
+      double sigma_t = sigma_t_[material_offset + g_out] * density_mult;
       double scatter_source = 0.0;
       double fission_source = 0.0;
 
       for (int g_in = 0; g_in < negroups_; g_in++) {
         double scalar_flux = srh.scalar_flux_old(g_in);
-        double sigma_s = sigma_s_[material * negroups_ * negroups_ +
-                                  g_out * negroups_ + g_in] *
-                         density_mult;
-        double nu_sigma_f =
-          nu_sigma_f_[material * negroups_ + g_in] * density_mult;
-        double chi = chi_[material * negroups_ + g_out];
+        double sigma_s =
+          sigma_s_[scatter_offset + g_out * negroups_ + g_in] * density_mult;
+        double nu_sigma_f = nu_sigma_f_[material_offset + g_in] * density_mult;
+        double chi = chi_[material_offset + g_out];
 
         scatter_source += sigma_s * scalar_flux;
         if (settings::create_fission_neutrons) {
@@ -193,6 +195,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
   int material = source_regions_.material(sr);
+  int temp = source_regions_.temperature_idx(sr);
   if (material == MATERIAL_VOID) {
     source_regions_.scalar_flux_new(sr, g) /= volume;
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -201,8 +204,9 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
         source_regions_.volume_sq(sr);
     }
   } else {
-    double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g] *
-                     source_regions_.density_mult(sr);
+    double sigma_t =
+      sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      source_regions_.density_mult(sr);
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
   }
@@ -328,6 +332,7 @@ void FlatSourceDomain::compute_k_eff()
     }
 
     int material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     if (material == MATERIAL_VOID) {
       continue;
     }
@@ -336,8 +341,9 @@ void FlatSourceDomain::compute_k_eff()
     double sr_fission_source_new = 0;
 
     for (int g = 0; g < negroups_; g++) {
-      double nu_sigma_f = nu_sigma_f_[material * negroups_ + g] *
-                          source_regions_.density_mult(sr);
+      double nu_sigma_f =
+        nu_sigma_f_[(material * ntemperature_ + temp) * negroups_ + g] *
+        source_regions_.density_mult(sr);
       sr_fission_source_old +=
         nu_sigma_f * source_regions_.scalar_flux_old(sr, g);
       sr_fission_source_new +=
@@ -560,6 +566,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 #pragma omp parallel for reduction(+ : simulation_external_source_strength)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     double volume = source_regions_.volume(sr) * simulation_volume_;
     for (int g = 0; g < negroups_; g++) {
       // For non-void regions, we store the external source pre-divided by
@@ -567,8 +574,8 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
       // to get the total source strength in the expected units.
       double sigma_t = 1.0;
       if (material != MATERIAL_VOID) {
-        sigma_t =
-          sigma_t_[material * negroups_ + g] * source_regions_.density_mult(sr);
+        sigma_t = sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+                  source_regions_.density_mult(sr);
       }
       simulation_external_source_strength +=
         source_regions_.external_source(sr, g) * sigma_t * volume;
@@ -624,9 +631,9 @@ void FlatSourceDomain::random_ray_tally()
     // source strength.
     double volume = source_regions_.volume(sr) * simulation_volume_;
 
-    int material = source_regions_.material(sr);
+    double material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     double density_mult = source_regions_.density_mult(sr);
-
     for (int g = 0; g < negroups_; g++) {
       double flux =
         source_regions_.scalar_flux_new(sr, g) * source_normalization_factor;
@@ -643,21 +650,27 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_TOTAL:
           if (material != MATERIAL_VOID) {
             score =
-              flux * volume * sigma_t_[material * negroups_ + g] * density_mult;
+              flux * volume *
+              sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+              density_mult;
           }
           break;
 
         case SCORE_FISSION:
           if (material != MATERIAL_VOID) {
             score =
-              flux * volume * sigma_f_[material * negroups_ + g] * density_mult;
+              flux * volume *
+              sigma_f_[(material * ntemperature_ + temp) * negroups_ + g] *
+              density_mult;
           }
           break;
 
         case SCORE_NU_FISSION:
           if (material != MATERIAL_VOID) {
-            score = flux * volume * nu_sigma_f_[material * negroups_ + g] *
-                    density_mult;
+            score =
+              flux * volume *
+              nu_sigma_f_[(material * ntemperature_ + temp) * negroups_ + g] *
+              density_mult;
           }
           break;
 
@@ -666,8 +679,10 @@ void FlatSourceDomain::random_ray_tally()
           break;
 
         case SCORE_KAPPA_FISSION:
-          score = flux * volume * kappa_fission_[material * negroups_ + g] *
-                  density_mult;
+          score =
+            flux * volume *
+            kappa_fission_[(material * ntemperature_ + temp) * negroups_ + g] *
+            density_mult;
           break;
 
         default:
@@ -925,12 +940,14 @@ void FlatSourceDomain::output_to_vtk() const
         float total_fission = 0.0;
         if (fsr >= 0) {
           int mat = source_regions_.material(fsr);
+          int temp = source_regions_.temperature_idx(fsr);
           if (mat != MATERIAL_VOID) {
             for (int g = 0; g < negroups_; g++) {
               int64_t source_element = fsr * negroups_ + g;
               float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
-              double sigma_f = sigma_f_[mat * negroups_ + g] *
-                               source_regions_.density_mult(fsr);
+              double sigma_f =
+                sigma_f_[(mat * ntemperature_ + temp) * negroups_ + g] *
+                source_regions_.density_mult(fsr);
               total_fission += sigma_f * flux;
             }
           }
@@ -944,6 +961,7 @@ void FlatSourceDomain::output_to_vtk() const
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         int64_t fsr = voxel_indices[i];
         int mat = source_regions_.material(fsr);
+        int temp = source_regions_.temperature_idx(fsr);
         float total_external = 0.0f;
         if (fsr >= 0) {
           for (int g = 0; g < negroups_; g++) {
@@ -951,7 +969,7 @@ void FlatSourceDomain::output_to_vtk() const
             // multiply it back to get the true external source.
             double sigma_t = 1.0;
             if (mat != MATERIAL_VOID) {
-              sigma_t = sigma_t_[mat * negroups_ + g] *
+              sigma_t = sigma_t_[(mat * ntemperature_ + temp) * negroups_ + g] *
                         source_regions_.density_mult(fsr);
             }
             total_external += source_regions_.external_source(fsr, g) * sigma_t;
@@ -1131,67 +1149,74 @@ void FlatSourceDomain::flatten_xs()
 {
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single angle data.
-  const int t = 0;
+  // TODO: Currently assumes we are only using single angle data.
   const int a = 0;
 
   n_materials_ = data::mg.macro_xs_.size();
+  ntemperature_ = 1;
+  for (int i = 0; i < n_materials_; i++) {
+    ntemperature_ =
+      std::max(ntemperature_, data::mg.macro_xs_[i].n_temperature_points());
+  }
+
   for (int i = 0; i < n_materials_; i++) {
     auto& m = data::mg.macro_xs_[i];
-    for (int g_out = 0; g_out < negroups_; g_out++) {
-      if (m.exists_in_model) {
-        double sigma_t =
-          m.get_xs(MgxsType::TOTAL, g_out, NULL, NULL, NULL, t, a);
-        sigma_t_.push_back(sigma_t);
+    for (int t = 0; t < ntemperature_; t++) {
+      for (int g_out = 0; g_out < negroups_; g_out++) {
+        if (m.exists_in_model && t < m.n_temperature_points()) {
+          double sigma_t =
+            m.get_xs(MgxsType::TOTAL, g_out, NULL, NULL, NULL, t, a);
+          sigma_t_.push_back(sigma_t);
 
-        if (sigma_t < MINIMUM_MACRO_XS) {
-          Material* mat = model::materials[i].get();
-          warning(fmt::format(
-            "Material \"{}\" (id: {}) has a group {} total cross section "
-            "({:.3e}) below the minimum threshold "
-            "({:.3e}). Material will be treated as pure void.",
-            mat->name(), mat->id(), g_out, sigma_t, MINIMUM_MACRO_XS));
-        }
+          if (sigma_t < MINIMUM_MACRO_XS) {
+            Material* mat = model::materials[i].get();
+            warning(fmt::format(
+              "Material \"{}\" (id: {}) has a group {} total cross section "
+              "({:.3e}) below the minimum threshold "
+              "({:.3e}). Material will be treated as pure void.",
+              mat->name(), mat->id(), g_out, sigma_t, MINIMUM_MACRO_XS));
+          }
 
-        double nu_sigma_f =
-          m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a);
-        nu_sigma_f_.push_back(nu_sigma_f);
+          double nu_sigma_f =
+            m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a);
+          nu_sigma_f_.push_back(nu_sigma_f);
 
-        double sigma_f =
-          m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a);
-        sigma_f_.push_back(sigma_f);
+          double sigma_f =
+            m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a);
+          sigma_f_.push_back(sigma_f);
 
-        double chi =
-          m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a);
-        if (!std::isfinite(chi)) {
-          // MGXS interface may return NaN in some cases, such as when material
-          // is fissionable but has very small sigma_f.
-          chi = 0.0;
-        }
-        chi_.push_back(chi);
+          double chi =
+            m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a);
+          if (!std::isfinite(chi)) {
+            // MGXS interface may return NaN in some cases, such as when
+            // material is fissionable but has very small sigma_f.
+            chi = 0.0;
+          }
+          chi_.push_back(chi);
 
-        double kappa_fission =
-          m.get_xs(MgxsType::KAPPA_FISSION, g_out, NULL, NULL, NULL, t, a);
-        kappa_fission_.push_back(kappa_fission);
+          double kappa_fission =
+            m.get_xs(MgxsType::KAPPA_FISSION, g_out, NULL, NULL, NULL, t, a);
+          kappa_fission_.push_back(kappa_fission);
 
-        for (int g_in = 0; g_in < negroups_; g_in++) {
-          double sigma_s =
-            m.get_xs(MgxsType::NU_SCATTER, g_in, &g_out, NULL, NULL, t, a);
-          sigma_s_.push_back(sigma_s);
-          // For transport corrected XS data, diagonal elements may be negative.
-          // In this case, set a flag to enable transport stabilization for the
-          // simulation.
-          if (g_out == g_in && sigma_s < 0.0)
-            is_transport_stabilization_needed_ = true;
-        }
-      } else {
-        sigma_t_.push_back(0);
-        nu_sigma_f_.push_back(0);
-        sigma_f_.push_back(0);
-        chi_.push_back(0);
-        kappa_fission_.push_back(0);
-        for (int g_in = 0; g_in < negroups_; g_in++) {
-          sigma_s_.push_back(0);
+          for (int g_in = 0; g_in < negroups_; g_in++) {
+            double sigma_s =
+              m.get_xs(MgxsType::NU_SCATTER, g_in, &g_out, NULL, NULL, t, a);
+            sigma_s_.push_back(sigma_s);
+            // For transport corrected XS data, diagonal elements may be
+            // negative. In this case, set a flag to enable transport
+            // stabilization for the simulation.
+            if (g_out == g_in && sigma_s < 0.0)
+              is_transport_stabilization_needed_ = true;
+          }
+        } else {
+          sigma_t_.push_back(0);
+          nu_sigma_f_.push_back(0);
+          sigma_f_.push_back(0);
+          chi_.push_back(0);
+          kappa_fission_.push_back(0);
+          for (int g_in = 0; g_in < negroups_; g_in++) {
+            sigma_s_.push_back(0);
+          }
         }
       }
     }
@@ -1263,12 +1288,14 @@ void FlatSourceDomain::set_adjoint_sources()
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     if (material == MATERIAL_VOID) {
       continue;
     }
     for (int g = 0; g < negroups_; g++) {
       double sigma_t =
-        sigma_t_[material * negroups_ + g] * source_regions_.density_mult(sr);
+        sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+        source_regions_.density_mult(sr);
       source_regions_.external_source(sr, g) /= sigma_t;
     }
   }
@@ -1277,16 +1304,19 @@ void FlatSourceDomain::set_adjoint_sources()
 void FlatSourceDomain::transpose_scattering_matrix()
 {
   // Transpose the inner two dimensions for each material
+#pragma omp parallel for
   for (int m = 0; m < n_materials_; ++m) {
-    int material_offset = m * negroups_ * negroups_;
-    for (int i = 0; i < negroups_; ++i) {
-      for (int j = i + 1; j < negroups_; ++j) {
-        // Calculate indices of the elements to swap
-        int idx1 = material_offset + i * negroups_ + j;
-        int idx2 = material_offset + j * negroups_ + i;
+    for (int t = 0; t < ntemperature_; t++) {
+      int material_offset = (m * ntemperature_ + t) * negroups_ * negroups_;
+      for (int i = 0; i < negroups_; ++i) {
+        for (int j = i + 1; j < negroups_; ++j) {
+          // Calculate indices of the elements to swap
+          int idx1 = material_offset + i * negroups_ + j;
+          int idx2 = material_offset + j * negroups_ + i;
 
-        // Swap the elements to transpose the matrix
-        std::swap(sigma_s_[idx1], sigma_s_[idx2]);
+          // Swap the elements to transpose the matrix
+          std::swap(sigma_s_[idx1], sigma_s_[idx2]);
+        }
       }
     }
   }
@@ -1506,18 +1536,26 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   int gs_i_cell = gs.lowest_coord().cell();
   Cell& cell = *model::cells[gs_i_cell];
   int material = cell.material(gs.cell_instance());
+  int temp = 0;
 
   // If material total XS is extremely low, just set it to void to avoid
   // problems with 1/Sigma_t
-  for (int g = 0; g < negroups_; g++) {
-    double sigma_t = sigma_t_[material * negroups_ + g];
-    if (sigma_t < MINIMUM_MACRO_XS) {
-      material = MATERIAL_VOID;
-      break;
+  if (material != MATERIAL_VOID) {
+    temp = data::mg.macro_xs_[material].get_temperature_index(
+      cell.sqrtkT(gs.cell_instance()));
+    for (int g = 0; g < negroups_; g++) {
+      double sigma_t =
+        sigma_t_[(material * ntemperature_ + temp) * negroups_ + g];
+      if (sigma_t < MINIMUM_MACRO_XS) {
+        material = MATERIAL_VOID;
+        temp = 0;
+        break;
+      }
     }
   }
 
   handle.material() = material;
+  handle.temperature_idx() = temp;
 
   handle.density_mult() = cell.density_mult(gs.cell_instance());
 
@@ -1550,7 +1588,8 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     if (material != C_NONE) {
       for (int g = 0; g < negroups_; g++) {
         double sigma_t =
-          sigma_t_[material * negroups_ + g] * handle.density_mult();
+          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+          handle.density_mult();
         handle.external_source(g) /= sigma_t;
       }
     }
@@ -1625,6 +1664,7 @@ void FlatSourceDomain::apply_transport_stabilization()
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     double density_mult = source_regions_.density_mult(sr);
     if (material == MATERIAL_VOID) {
       continue;
@@ -1633,10 +1673,14 @@ void FlatSourceDomain::apply_transport_stabilization()
       // Only apply stabilization if the diagonal (in-group) scattering XS is
       // negative
       double sigma_s =
-        sigma_s_[material * negroups_ * negroups_ + g * negroups_ + g] *
+        sigma_s_[((material * ntemperature_ + temp) * negroups_ + g) *
+                   negroups_ +
+                 g] *
         density_mult;
       if (sigma_s < 0.0) {
-        double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
+        double sigma_t =
+          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+          density_mult;
         double phi_new = source_regions_.scalar_flux_new(sr, g);
         double phi_old = source_regions_.scalar_flux_old(sr, g);
 

@@ -1433,20 +1433,25 @@ class RegularMesh(StructuredMesh):
 
         """
         ndim = self.n_dimension
+        if len(coords) < ndim:
+            raise ValueError(
+                f"coords must have at least {ndim} values for a "
+                f"{ndim}D mesh, got {len(coords)}"
+            )
         lower_left = np.array(self.lower_left)
         upper_right = np.array(self.upper_right)
         dimension = np.array(self.dimension)
-        
+
         # Calculate spacing for each dimension
         spacing = (upper_right - lower_left) / dimension
-        
+
         # Calculate indices for each coordinate
         coords_array = np.array(coords)
         indices = np.floor((coords_array - lower_left) / spacing).astype(int)
-        
+
         # Clamp indices to valid range [0, dimension-1]
         indices = np.clip(indices, 0, dimension - 1)
-        
+
         return tuple(int(i) for i in indices[:ndim])
 
 

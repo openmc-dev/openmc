@@ -1672,6 +1672,17 @@ following sub-elements/attributes:
   The ``weight_windows_file`` element has no attributes and contains the path to
   a weight windows HDF5 file to load during simulation initialization.
 
+----------------------------------------
+``<shared_secondary_bank>`` Element
+----------------------------------------
+
+  The ``shared_secondary_bank`` element indicates whether to use a shared
+  secondary particle bank. When enabled, secondary particles are collected into
+  a global bank, sorted for reproducibility, and load-balanced across MPI ranks
+  between generations. If not specified, the shared secondary bank is enabled
+  automatically for fixed-source simulations with weight windows active, and
+  disabled otherwise.
+
 -------------------------------
 ``<weight_windows_on>`` Element
 -------------------------------

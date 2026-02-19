@@ -1270,8 +1270,12 @@ void read_settings_xml(pugi::xml_node root)
       get_node_value_bool(root, "use_decay_photons");
   }
 
-  // If weight windows are on, also enable shared secondary bank.
-  if (settings::weight_windows_on) {
+  // If weight windows are on, also enable shared secondary bank (unless
+  // explicitly disabled by user).
+  if (check_for_node(root, "shared_secondary_bank")) {
+    settings::use_shared_secondary_bank =
+      get_node_value_bool(root, "shared_secondary_bank");
+  } else if (settings::weight_windows_on) {
     if (run_mode == RunMode::EIGENVALUE) {
       warning(
         "Shared secondary bank is not supported in eigenvalue calculations. "

@@ -1138,13 +1138,16 @@ void Material::export_properties_hdf5(hid_t group) const
   close_group(material_group);
 }
 
-void Material::import_properties_hdf5(hid_t group)
+void Material::import_properties_hdf5(hid_t group,
+  bool read_densities_from_properties)
 {
-  hid_t material_group = open_group(group, "material " + std::to_string(id_));
-  double density;
-  read_attribute(material_group, "atom_density", density);
-  this->set_density(density, "atom/b-cm");
-  close_group(material_group);
+  if (read_densities_from_properties) {
+    hid_t material_group = open_group(group, "material " + std::to_string(id_));
+    double density;
+    read_attribute(material_group, "atom_density", density);
+    this->set_density(density, "atom/b-cm");
+    close_group(material_group);
+  }
 }
 
 void Material::add_nuclide(const std::string& name, double density)

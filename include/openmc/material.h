@@ -76,7 +76,8 @@ public:
 
   //! Import physical properties from HDF5
   //! \param[in] group  HDF5 group to read from
-  void import_properties_hdf5(hid_t group);
+  void import_properties_hdf5(hid_t group,
+    bool read_densities_from_properties);
 
   //! Add nuclide to the material
   //

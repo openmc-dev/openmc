@@ -808,19 +808,19 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         (
             "case-04",
             "model_1",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [2]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 2},
         ),
         (
             "case-05",
             "model_1",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [3]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
         ),
-        ("case-06", "model_1", {"max_particles": 300, "cell": [2]}),
-        ("case-07", "model_1", {"max_particles": 300, "cell": [3]}),
-        ("case-08", "model_1", {"max_particles": 300, "cellfrom": [2]}),
-        ("case-09", "model_1", {"max_particles": 300, "cellto": [2]}),
-        ("case-10", "model_1", {"max_particles": 300, "cellfrom": [3]}),
-        ("case-11", "model_1", {"max_particles": 300, "cellto": [3]}),
+        ("case-06", "model_1", {"max_particles": 300, "cell": 2}),
+        ("case-07", "model_1", {"max_particles": 300, "cell": 3}),
+        ("case-08", "model_1", {"max_particles": 300, "cellfrom": 2}),
+        ("case-09", "model_1", {"max_particles": 300, "cellto": 2}),
+        ("case-10", "model_1", {"max_particles": 300, "cellfrom": 3}),
+        ("case-11", "model_1", {"max_particles": 300, "cellto": 3}),
         (
             "case-12",
             "model_2",
@@ -829,17 +829,17 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         (
             "case-13",
             "model_2",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [3]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
         ),
         (
             "case-14",
             "model_2",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": [3]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": 3},
         ),
         (
             "case-15",
             "model_2",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": [3]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": 3},
         ),
         (
             "case-16",
@@ -849,17 +849,17 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         (
             "case-17",
             "model_3",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [3]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
         ),
         (
             "case-18",
             "model_3",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": [3]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": 3},
         ),
         (
             "case-19",
             "model_3",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": [3]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": 3},
         ),
         (
             "case-20",
@@ -869,22 +869,22 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         (
             "case-21",
             "model_4",
-            {"max_particles": 300, "surface_ids": [4], "cell": [3]},
+            {"max_particles": 300, "surface_ids": [4], "cell": 3},
         ),
         (
             "case-22",
             "model_5",
-            {"max_particles": 300, "surface_ids": [7], "cellto": [1]},
+            {"max_particles": 300, "surface_ids": [7], "cellto": 1},
         ),
         (
             "case-23",
             "model_5",
-            {"max_particles": 300, "surface_ids": [7], "cellto": [2]},
+            {"max_particles": 300, "surface_ids": [7], "cellto": 2},
         ),
         (
             "case-24",
             "model_5",
-            {"max_particles": 300, "surface_ids": [7], "cellto": [1, 2]},
+            {"max_particles": 300, "surface_ids": [7], "cells": [1, 2], "directions": ["to", "to"]},
         ),
     ],
 )
@@ -917,7 +917,7 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
     model_1.settings.surf_source_write = {
         "max_particles": 200,
         "surface_ids": [1, 2, 3],
-        "cellfrom": [2],
+        "cellfrom": 2,
     }
     harness = SurfaceSourceWriteTestHarness(
         "statepoint.5.h5", model=model_1, workdir="case-a01"
@@ -932,13 +932,13 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
         (
             "case-e01",
             "model_1",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [2]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 2},
         ),
         ("case-e02", "model_1", {"max_particles": 300, "cell": [3]}),
         (
             "case-e03",
             "model_2",
-            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": [3]},
+            {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
         ),
     ],
 )

@@ -25,13 +25,13 @@ def geometry():
     "parameter",
     [
         {"max_particles": 200},
-        {"max_particles": 200, "cell": [1]},
-        {"max_particles": 200, "cellto": [1]},
-        {"max_particles": 200, "cellfrom": [1]},
+        {"max_particles": 200, "cell": 1},
+        {"max_particles": 200, "cellto": 1},
+        {"max_particles": 200, "cellfrom": 1},
         {"max_particles": 200, "surface_ids": [2]},
-        {"max_particles": 200, "surface_ids": [2], "cell": [1]},
-        {"max_particles": 200, "surface_ids": [2], "cellto": [1]},
-        {"max_particles": 200, "surface_ids": [2], "cellfrom": [1]},
+        {"max_particles": 200, "surface_ids": [2], "cell": 1},
+        {"max_particles": 200, "surface_ids": [2], "cellto": 1},
+        {"max_particles": 200, "surface_ids": [2], "cellfrom": 1},
         {"max_particles": 200, "surface_ids": [2], "max_source_files": 1},
     ],
 )
@@ -108,11 +108,11 @@ ERROR_MSG_2 = "'cell', 'cellfrom' and 'cellto' cannot be used at the same time."
 @pytest.mark.parametrize(
     "parameter, error",
     [
-        ({"cell": [1]}, ERROR_MSG_1),
-        ({"max_particles": 200, "cell": [1], "cellto": [1]}, ERROR_MSG_2),
-        ({"max_particles": 200, "cell": [1], "cellfrom": [1]}, ERROR_MSG_2),
-        ({"max_particles": 200, "cellto": [1], "cellfrom": [1]}, ERROR_MSG_2),
-        ({"max_particles": 200, "cell": [1], "cellto": [1], "cellfrom": [1]}, ERROR_MSG_2),
+        ({"cell": 1}, ERROR_MSG_1),
+        ({"max_particles": 200, "cell": 1, "cellto": 1}, ERROR_MSG_2),
+        ({"max_particles": 200, "cell": 1, "cellfrom": 1}, ERROR_MSG_2),
+        ({"max_particles": 200, "cellto": 1, "cellfrom": 1}, ERROR_MSG_2),
+        ({"max_particles": 200, "cell": 1, "cellto": 1, "cellfrom": 1}, ERROR_MSG_2),
     ],
 )
 def test_exceptions(parameter, error, run_in_tmpdir, geometry):
@@ -161,8 +161,8 @@ def model():
 @pytest.mark.parametrize(
     "parameter",
     [
-        {"max_particles": 200, "cellto": [2], "surface_ids": [2]},
-        {"max_particles": 200, "cellfrom": [2], "surface_ids": [2]},
+        {"max_particles": 200, "cellto": 2, "surface_ids": [2]},
+        {"max_particles": 200, "cellfrom": 2, "surface_ids": [2]},
     ],
 )
 def test_particle_direction(parameter, run_in_tmpdir, model):
@@ -249,8 +249,8 @@ def model_dagmc(request):
 @pytest.mark.parametrize(
     "parameter",
     [
-        {"max_particles": 200, "cellto": [1]},
-        {"max_particles": 200, "cellfrom": [1]},
+        {"max_particles": 200, "cellto": 1},
+        {"max_particles": 200, "cellfrom": 1},
     ],
 )
 def test_particle_direction_dagmc(parameter, run_in_tmpdir, model_dagmc):

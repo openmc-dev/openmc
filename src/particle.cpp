@@ -895,11 +895,14 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
     return;
   }
 
-  bool add_site = true;
-  // If a cell/cellfrom/cellto parameter is defined
+  bool add_site =
+    true; // this insures that a site is added if 'cells' is not defined
+
+  // If 'cells' is defined
   if (!settings::ssw_cells.empty()) {
     for (auto& cell : settings::ssw_cells) {
-      add_site = true;
+      add_site = true; // we assume the cell-direction pair is valid until it
+                       // gets rejected
       // Retrieve cell index and storage type
       int cell_idx = model::cell_map[cell.first];
       SSWCellType direction = cell.second;
@@ -966,6 +969,8 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
           continue;
         }
       }
+      // if any cell-direction pair survived all the checks we terminate the
+      // loop
       if (add_site) {
         break;
       }

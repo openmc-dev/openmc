@@ -881,7 +881,7 @@ class Settings:
                 "surface source writing key",
                 key,
                 ("surface_ids", "max_particles", "max_source_files",
-                 "mcpl", "cells", "directions"),
+                 "mcpl", "cells", "directions", "cell", "cellfrom", "cellto"),
             )
             if key in ("surface_ids", "cells"):
                 name = {
@@ -899,10 +899,13 @@ class Settings:
                         raise ValueError(msg)
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
-            elif key in ("max_particles", "max_source_files"):
+            elif key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
                 name = {
                     "max_particles": "maximum particle banks on surfaces per process",
                     "max_source_files": "maximun surface source files to be written",
+                    "cell": "Cell ID for source banking (from or to)",
+                    "cellfrom": "Cell ID for source banking (from only)",
+                    "cellto": "Cell ID for source banking (to only)",
                 }[key]
                 cv.check_type(name, value, Integral)
                 cv.check_greater_than(name, value, 0)
@@ -1581,7 +1584,7 @@ class Settings:
                     str(x) for x in self._surf_source_write["surface_ids"]
                 )
 
-            for key in ("max_particles", "max_source_files"):
+            for key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
                 if key in self._surf_source_write:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(self._surf_source_write[key])
@@ -2104,7 +2107,7 @@ class Settings:
         elem = root.find('surf_source_write')
         if elem is None:
             return
-        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cells', 'directions'):
+        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cells', 'directions', 'cell', 'cellto', 'cellfrom'):
             if key in ['surface_ids', 'cells']:
                 value = get_elem_list(elem, key, int)
             elif key == 'directions':
@@ -2114,7 +2117,7 @@ class Settings:
             if value is not None:
                 if key == 'mcpl':
                     value = value in ('true', '1')
-                elif key in ('max_particles', 'max_source_files'):
+                elif key in ('max_particles', 'max_source_files', 'cell', 'cellfrom', 'cellto'):
                     value = int(value)
                 self.surf_source_write[key] = value
 

@@ -138,6 +138,7 @@ vector<int64_t> ssw_cell_ids;
 SSWCellType ssw_cell_type {SSWCellType::None};
 double surface_grazing_cutoff {0.001};
 double surface_grazing_ratio {0.5};
+int64_t ssw_cell_id {C_NONE};
 std::unordered_map<int64_t, SSWCellType> ssw_cells;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
@@ -937,6 +938,13 @@ void read_settings_xml(pugi::xml_node root)
     }
     // Get cell information
     if (check_for_node(node_ssw, "cells")) {
+      // raise an error if the new syntax is mixed with the old syntax
+      if (check_for_node(node_ssw, "cell") ||
+          check_for_node(node_ssw, "cellfrom") ||
+          check_for_node(node_ssw, "cellto")) {
+        fatal_error("'cells' cannot be used at the same time with 'cell', "
+                    "'cellfrom' or 'cellto'.");
+      }
       auto ids = get_node_array<int64_t>(node_ssw, "cells");
       if (check_for_node(node_ssw, "directions")) {
         auto directions = get_node_array<std::string>(node_ssw, "directions");
@@ -947,10 +955,41 @@ void read_settings_xml(pugi::xml_node root)
           SSWCellType direction = ssw_cell_type_from_string(directions[i]);
           ssw_cells.emplace(ids[i], direction);
         }
-      } else {
+      } else { // default behavior if 'directions' is not defined
         for (std::size_t i {0}; i < ids.size(); ++i) {
           ssw_cells.emplace(ids[i], SSWCellType::Both);
         }
+      }
+    } else {
+      if (check_for_node(node_ssw, "directions")) {
+        fatal_error("'directions' cannot be used if 'cells' is not defined.");
+      }
+      // old syntax will be deprecated in the future
+      if (check_for_node(node_ssw, "cell")) {
+        warning("'cell' is deprecated and will be removed in the future. Use "
+                "'cells' and 'directions' instead.");
+        ssw_cell_id = std::stoll(get_node_value(node_ssw, "cell"));
+        ssw_cells.emplace(ssw_cell_id, SSWCellType::Both);
+      }
+      if (check_for_node(node_ssw, "cellfrom")) {
+        warning("'cellfrom' is deprecated and will be removed in the future. "
+                "Use 'cells' and 'directions' instead.");
+        if (ssw_cell_id != C_NONE) {
+          fatal_error(
+            "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+        }
+        ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellfrom"));
+        ssw_cells.emplace(ssw_cell_id, SSWCellType::From);
+      }
+      if (check_for_node(node_ssw, "cellto")) {
+        warning("'cellto' is deprecated and will be removed in the future. Use "
+                "'cells' and 'directions' instead.");
+        if (ssw_cell_id != C_NONE) {
+          fatal_error(
+            "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+        }
+        ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellto"));
+        ssw_cells.emplace(ssw_cell_id, SSWCellType::To);
       }
     }
   }

@@ -35,7 +35,8 @@
     <surf_source_write>
       <surface_ids>7</surface_ids>
       <max_particles>300</max_particles>
-      <cellto>1 2</cellto>
+      <cells>1 2</cells>
+      <directions>to to</directions>
     </surf_source_write>
     <seed>1</seed>
   </settings>

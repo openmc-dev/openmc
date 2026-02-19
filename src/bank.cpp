@@ -260,6 +260,8 @@ int64_t synchronize_global_secondary_bank(
   shared_secondary_bank = std::move(new_bank);
 
   return total;
+#else
+  return local_size;
 #endif
 }
 

@@ -1417,7 +1417,7 @@ class RegularMesh(StructuredMesh):
         return root_cell, cells
 
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
-        """Finds the index of the mesh voxel at the specified x, y, z coordinates.
+        """Finds the index of the mesh voxel at the specified x,y,z coordinates.
 
         .. versionadded:: 0.15.4
 
@@ -1429,7 +1429,7 @@ class RegularMesh(StructuredMesh):
         Returns
         -------
         tuple
-            Mesh indices matching the dimensionality of the mesh (1-based indexing)
+            Mesh indices matching the dimensionality of the mesh
 
         """
         ndim = self.n_dimension
@@ -1444,8 +1444,8 @@ class RegularMesh(StructuredMesh):
         coords_array = np.array(coords)
         indices = ((coords_array - lower_left) / spacing).astype(int)
         
-        # Clamp indices to valid range [0, dimension-1] and convert to 1-based
-        indices = np.clip(indices, 0, dimension - 1) + 1
+        # Clamp indices to valid range [0, dimension-1]
+        indices = np.clip(indices, 0, dimension - 1)
         
         return tuple(int(i) for i in indices[:ndim])
 

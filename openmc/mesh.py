@@ -1442,7 +1442,7 @@ class RegularMesh(StructuredMesh):
         
         # Calculate indices for each coordinate
         coords_array = np.array(coords)
-        indices = ((coords_array - lower_left) / spacing).astype(int)
+        indices = np.floor((coords_array - lower_left) / spacing).astype(int)
         
         # Clamp indices to valid range [0, dimension-1]
         indices = np.clip(indices, 0, dimension - 1)

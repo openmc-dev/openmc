@@ -542,6 +542,22 @@ class StructuredMesh(MeshBase):
     def _grids(self):
         pass
 
+    @abstractmethod
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        """Finds the index of the mesh voxel at the specified coordinates.
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            The x, y, z axis coordinates
+
+        Returns
+        -------
+        tuple
+            Mesh indices matching the dimensionality of the mesh
+
+        """
+
     @property
     def vertices(self):
         """Return coordinates of mesh vertices in Cartesian coordinates. Also
@@ -1446,7 +1462,7 @@ class RegularMesh(StructuredMesh):
         spacing = (upper_right - lower_left) / dimension
 
         # Calculate indices for each coordinate
-        coords_array = np.array(coords)
+        coords_array = np.array(coords[:ndim])
         indices = np.floor((coords_array - lower_left) / spacing).astype(int)
 
         # Clamp indices to valid range [0, dimension-1]
@@ -1660,6 +1676,11 @@ class RectilinearMesh(StructuredMesh):
         subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
+
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        raise NotImplementedError(
+            "get_indices_at_coords is not yet implemented for RectilinearMesh"
+        )
 
 
 class CylindricalMesh(StructuredMesh):
@@ -2481,6 +2502,11 @@ class SphericalMesh(StructuredMesh):
         arr[..., 1] = y + origin[1]
         arr[..., 2] = z + origin[2]
         return arr
+
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        raise NotImplementedError(
+            "get_indices_at_coords is not yet implemented for SphericalMesh"
+        )
 
 
 def require_statepoint_data(func):

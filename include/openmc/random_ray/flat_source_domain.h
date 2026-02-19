@@ -178,10 +178,10 @@ protected:
   // Volumes for each tally and bin/score combination. This intermediate data
   // structure is used when tallying quantities that must be normalized by
   // volume (i.e., flux). The vector is index by tally index, while the inner 2D
-  // xtensor is indexed by bin index and score index in a similar manner to the
+  // tensor is indexed by bin index and score index in a similar manner to the
   // results tensor in the Tally class, though without the third dimension, as
   // SUM and SUM_SQ do not need to be tracked.
-  vector<xt::xtensor<double, 2>> tally_volumes_;
+  vector<tensor::Tensor<double>> tally_volumes_;
 
 }; // class FlatSourceDomain
 

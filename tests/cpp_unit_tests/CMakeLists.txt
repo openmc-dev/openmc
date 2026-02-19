@@ -7,6 +7,7 @@ set(TEST_NAMES
   test_mcpl_stat_sum
   test_mesh
   test_region
+  test_tensor
   # Add additional unit test files here
 )
 

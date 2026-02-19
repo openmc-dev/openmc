@@ -48,20 +48,16 @@ double Particle::speed() const
   if (settings::run_CE) {
     // Determine mass in eV/c^2
     double mass;
-    switch (this->type().pdg_number()) {
+    switch (type().pdg_number()) {
     case PDG_NEUTRON:
       mass = MASS_NEUTRON_EV;
-      break;
-    case PDG_PHOTON:
-      mass = 0.0;
-      break;
     case PDG_ELECTRON:
     case PDG_POSITRON:
       mass = MASS_ELECTRON_EV;
-      break;
     default:
-      fatal_error("Unsupported particle for speed calculation.");
+      mass = this->type().mass() * AMU_EV;
     }
+
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);

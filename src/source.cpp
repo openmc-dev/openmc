@@ -10,7 +10,7 @@
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
 #endif
 
-#include "xtensor/xadapt.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
@@ -400,8 +400,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     auto p = particle_.transport_index();
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
     if (energy_ptr) {
-      auto energies = xt::adapt(energy_ptr->x());
-      if (xt::any(energies > data::energy_max[p])) {
+      auto energies =
+        tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
+      if ((energies > data::energy_max[p]).any()) {
         fatal_error("Source energy above range of energies of at least "
                     "one cross section table");
       }

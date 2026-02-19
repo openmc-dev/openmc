@@ -60,13 +60,8 @@ void EnergyFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.g() != C_NONE && matches_transport_groups_) {
-    if (estimator == TallyEstimator::TRACKLENGTH) {
-      match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
-    } else {
-      match.bins_.push_back(data::mg.num_energy_groups_ - p.g_last() - 1);
-    }
+    match.bins_.push_back(data::mg.num_energy_groups_ - p.g_last() - 1);
     match.weights_.push_back(1.0);
-
   } else {
     // Get the pre-collision energy of the particle.
     auto E = p.E_last();
@@ -115,50 +110,6 @@ std::string EnergyoutFilter::text_label(int bin) const
 {
   return fmt::format(
     "Outgoing Energy [{}, {})", bins_.at(bin), bins_.at(bin + 1));
-}
-
-//==============================================================================
-// ParticleProductionFilter implementation
-//==============================================================================
-
-void ParticleProductionFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
-{
-  int start_idx = p.secondary_bank_index();
-  int end_idx = start_idx + p.n_secondaries();
-
-  // Loop over secondary bank entries
-  for (int bank_idx = start_idx; bank_idx < end_idx; bank_idx++) {
-    // Check if this is the correct type of secondary, then match its energy if
-    // it's the right type
-    const auto& site = p.local_secondary_bank(bank_idx);
-    if (site.particle == secondary_type_) {
-      if (site.E >= bins_.front() && site.E <= bins_.back()) {
-        auto bin = lower_bound_index(bins_.begin(), bins_.end(), site.E);
-        match.bins_.push_back(bin);
-        match.weights_.push_back(site.wgt);
-      }
-    }
-  }
-}
-
-std::string ParticleProductionFilter::text_label(int bin) const
-{
-  return fmt::format("Secondary {}, Energy [{}, {})", secondary_type_.str(),
-    bins_.at(bin), bins_.at(bin + 1));
-}
-
-void ParticleProductionFilter::from_xml(pugi::xml_node node)
-{
-  EnergyFilter::from_xml(node);
-  std::string p = get_node_value(node, "particle");
-  secondary_type_ = ParticleType {p};
-}
-
-void ParticleProductionFilter::to_statepoint(hid_t filter_group) const
-{
-  EnergyFilter::to_statepoint(filter_group);
-  write_dataset(filter_group, "particle", secondary_type_.str());
 }
 
 //==============================================================================

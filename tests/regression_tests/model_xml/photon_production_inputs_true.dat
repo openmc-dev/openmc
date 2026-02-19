@@ -48,8 +48,8 @@
       <bins>0.0 20000000.0</bins>
     </filter>
     <filter id="4" type="particleproduction">
-      <bins>0.0 100000.0 300000.0 500000.0 2000000.0 20000000.0</bins>
-      <particle>photon</particle>
+      <particles>neutron photon</particles>
+      <energies>0.0 100000.0 300000.0 500000.0 2000000.0 20000000.0</energies>
     </filter>
     <tally id="1">
       <filters>1 2</filters>

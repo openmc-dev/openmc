@@ -890,8 +890,7 @@ void Particle::update_neutron_xs(
 //==============================================================================
 void add_surf_source_to_bank(Particle& p, const Surface& surf)
 {
-  if (simulation::current_batch <= settings::n_inactive ||
-      simulation::surf_source_bank.full()) {
+  if (simulation::current_batch <= settings::n_inactive) {
     return;
   }
 

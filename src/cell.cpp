@@ -234,45 +234,51 @@ void Cell::export_properties_hdf5(hid_t group) const
   close_group(cell_group);
 }
 
-void Cell::import_properties_hdf5(hid_t group)
+void Cell::import_properties_hdf5(hid_t group,
+  bool read_temperatures_from_properties,
+  bool read_densities_from_properties)
 {
   auto cell_group = open_group(group, fmt::format("cell {}", id_));
 
-  // Read temperatures from file
-  vector<double> temps;
-  read_dataset(cell_group, "temperature", temps);
+  if (read_temperatures_from_properties) {
+    // Read temperatures from file
+    vector<double> temps;
+    read_dataset(cell_group, "temperature", temps);
 
-  // Ensure number of temperatures makes sense
-  auto n_temps = temps.size();
-  if (n_temps > 1 && n_temps != n_instances()) {
-    fatal_error(fmt::format(
-      "Number of temperatures for cell {} doesn't match number of instances",
-      id_));
-  }
-
-  // Modify temperatures for the cell
-  sqrtkT_.clear();
-  sqrtkT_.resize(temps.size());
-  for (int64_t i = 0; i < temps.size(); ++i) {
-    this->set_temperature(temps[i], i);
-  }
-
-  // Read densities
-  if (object_exists(cell_group, "density")) {
-    vector<double> density;
-    read_dataset(cell_group, "density", density);
-
-    // Ensure number of densities makes sense
-    auto n_density = density.size();
-    if (n_density > 1 && n_density != n_instances()) {
-      fatal_error(fmt::format("Number of densities for cell {} "
-                              "doesn't match number of instances",
+    // Ensure number of temperatures makes sense
+    auto n_temps = temps.size();
+    if (n_temps > 1 && n_temps != n_instances()) {
+      fatal_error(fmt::format(
+        "Number of temperatures for cell {} doesn't match number of instances",
         id_));
     }
 
-    // Set densities.
-    for (int32_t i = 0; i < n_density; ++i) {
-      this->set_density(density[i], i);
+    // Modify temperatures for the cell
+    sqrtkT_.clear();
+    sqrtkT_.resize(temps.size());
+    for (int64_t i = 0; i < temps.size(); ++i) {
+      this->set_temperature(temps[i], i);
+    }
+  }
+  
+  if (read_densities_from_properties) {}
+    // Read densities
+    if (object_exists(cell_group, "density")) {
+      vector<double> density;
+      read_dataset(cell_group, "density", density);
+
+      // Ensure number of densities makes sense
+      auto n_density = density.size();
+      if (n_density > 1 && n_density != n_instances()) {
+        fatal_error(fmt::format("Number of densities for cell {} "
+                                "doesn't match number of instances",
+          id_));
+      }
+
+      // Set densities.
+      for (int32_t i = 0; i < n_density; ++i) {
+        this->set_density(density[i], i);
+      }
     }
   }
 

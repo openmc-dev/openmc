@@ -732,7 +732,7 @@ void reset_source_rejection_counters()
 //==============================================================================
 
 extern "C" int openmc_sample_external_source(
-  size_t n, uint64_t* seed, void* sites)
+  size_t n, uint64_t* seed, void* sites, int threads)
 {
   if (!sites || !seed) {
     set_errmsg("Received null pointer.");
@@ -745,8 +745,15 @@ extern "C" int openmc_sample_external_source(
   }
 
   auto sites_array = static_cast<SourceSite*>(sites);
+
+  // Derive independent per-particle seeds from the base seed so that
+  // each iteration has its own RNG state for thread-safe parallel sampling.
+  uint64_t base_seed = *seed;
+
+#pragma omp parallel for schedule(static) num_threads(threads)
   for (size_t i = 0; i < n; ++i) {
-    sites_array[i] = sample_external_source(seed);
+    uint64_t particle_seed = init_seed(base_seed + i, STREAM_SOURCE);
+    sites_array[i] = sample_external_source(&particle_seed);
   }
   return 0;
 }

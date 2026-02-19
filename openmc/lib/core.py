@@ -110,7 +110,7 @@ _dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
                                             POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
 _dll.openmc_global_bounding_box.errcheck = _error_handler
-_dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
+_dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite), c_int]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
 
@@ -494,7 +494,8 @@ def run_random_ray(output=True):
 
 def sample_external_source(
         n_samples: int = 1000,
-        prn_seed: int | None = None
+        prn_seed: int | None = None,
+        n_threads: int = 1
 ) -> openmc.ParticleList:
     """Sample external source and return source particles.
 
@@ -507,6 +508,10 @@ def sample_external_source(
     prn_seed : int
         Pseudorandom number generator (PRNG) seed; if None, one will be
         generated randomly.
+    n_threads : int
+        Number of OpenMP threads to use for parallel sampling. Defaults to 1
+        (serial). Each sample gets an independent RNG stream derived from
+        the base seed, so results are deterministic regardless of thread count.
 
     Returns
     -------
@@ -516,12 +521,15 @@ def sample_external_source(
     """
     if n_samples <= 0:
         raise ValueError("Number of samples must be positive")
+    if n_threads < 1:
+        raise ValueError("Number of threads must be at least 1")
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
     # Call into C API to sample source
     sites_array = (_SourceSite * n_samples)()
-    _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
+    _dll.openmc_sample_external_source(
+        c_size_t(n_samples), c_uint64(prn_seed), sites_array, c_int(n_threads))
 
     # Convert to list of SourceParticle and return
     return openmc.ParticleList([openmc.SourceParticle(

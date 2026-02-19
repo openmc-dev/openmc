@@ -235,8 +235,7 @@ void Cell::export_properties_hdf5(hid_t group) const
 }
 
 void Cell::import_properties_hdf5(hid_t group,
-  bool read_temperatures_from_properties,
-  bool read_densities_from_properties)
+  bool read_temperatures_from_properties, bool read_densities_from_properties)
 {
   auto cell_group = open_group(group, fmt::format("cell {}", id_));
 
@@ -260,8 +259,8 @@ void Cell::import_properties_hdf5(hid_t group,
       this->set_temperature(temps[i], i);
     }
   }
-  
-  if (read_densities_from_properties) {}
+
+  if (read_densities_from_properties) {
     // Read densities
     if (object_exists(cell_group, "density")) {
       vector<double> density;

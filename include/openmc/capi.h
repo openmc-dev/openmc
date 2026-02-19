@@ -319,8 +319,7 @@ int openmc_properties_export(const char* filename);
 //! \param[in] filename Filename to read from
 // \return Error code
 int openmc_properties_import(const char* filename,
-        bool read_temperatures_from_properties,
-        bool read_densities_from_properties);
+  bool read_temperatures_from_properties, bool read_densities_from_properties);
 
 // Error codes
 extern int OPENMC_E_UNASSIGNED;

@@ -50,7 +50,6 @@ std::string get_node_path(
   return filename;
 }
 
-
 bool get_node_value_bool(pugi::xml_node node, const char* name)
 {
   if (node.attribute(name)) {

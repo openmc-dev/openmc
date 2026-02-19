@@ -742,10 +742,10 @@ void read_settings_xml(pugi::xml_node root)
     xml_node node_props = root.child("properties");
 
     properties_file = get_node_path(node_props, "filepath");
-    read_temperatures_from_properties = get_node_value_bool(node_props, 
-      "temperatures");
-    read_densities_from_properties = get_node_value_bool(node_props, 
-      "densities");    
+    read_temperatures_from_properties =
+      get_node_value_bool(node_props, "temperatures");
+    read_densities_from_properties =
+      get_node_value_bool(node_props, "densities");
   }
 
   // Particle trace

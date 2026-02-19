@@ -1138,8 +1138,8 @@ void Material::export_properties_hdf5(hid_t group) const
   close_group(material_group);
 }
 
-void Material::import_properties_hdf5(hid_t group,
-  bool read_densities_from_properties)
+void Material::import_properties_hdf5(
+  hid_t group, bool read_densities_from_properties)
 {
   if (read_densities_from_properties) {
     hid_t material_group = open_group(group, "material " + std::to_string(id_));

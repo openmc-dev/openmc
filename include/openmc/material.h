@@ -76,8 +76,7 @@ public:
 
   //! Import physical properties from HDF5
   //! \param[in] group  HDF5 group to read from
-  void import_properties_hdf5(hid_t group,
-    bool read_densities_from_properties);
+  void import_properties_hdf5(hid_t group, bool read_densities_from_properties);
 
   //! Add nuclide to the material
   //
@@ -231,7 +230,7 @@ private:
 
   bool depletable_ {false}; //!< Is the material depletable?
   bool fissionable_ {
-    false}; //!< Does this material contain fissionable nuclides
+    false};                 //!< Does this material contain fissionable nuclides
   //! \brief Default temperature for cells containing this material.
   //!
   //! A negative value indicates no default temperature was specified.

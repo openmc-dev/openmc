@@ -54,6 +54,10 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 3: "(n,nonelastic)",
                  198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 203: '(n,Xp)',
                  204: '(n,Xd)', 205: '(n,Xt)', 206: '(n,X3He)', 207: '(n,Xa)',
                  301: 'heating', 444: 'damage-energy',
+                 501: 'photon-total', 502: 'coherent-scatter',
+                 504: 'incoherent-scatter', 516: 'pair-production-electron',
+                 517: 'pair-production', 518: 'pair-production-nuclear',
+                 522: 'photoelectric',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)', 891: '(n,2nc)', 901: 'heating-local'}
 REACTION_NAME.update({i: f'(n,n{i - 50})' for i in range(51, 91)})

@@ -37,6 +37,9 @@
 
 namespace openmc {
 
+std::atomic<int64_t> source_n_accept {0};
+std::atomic<int64_t> source_n_reject {0};
+
 namespace {
 
 void validate_particle_type(ParticleType type, const std::string& context)
@@ -191,8 +194,7 @@ void check_rejection_fraction(int64_t n_reject, int64_t n_accept)
 SourceSite Source::sample_with_constraints(uint64_t* seed) const
 {
   bool accepted = false;
-  static int64_t n_reject = 0;
-  static int64_t n_accept = 0;
+  int64_t n_local_reject = 0;
   SourceSite site;
 
   while (!accepted) {
@@ -207,9 +209,14 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
       if (!accepted) {
-        // Increment number of rejections and check against minimum fraction
-        ++n_reject;
-        check_rejection_fraction(n_reject, n_accept);
+        ++n_local_reject;
+
+        // Check per-particle rejection limit
+        if (n_local_reject >= settings::max_source_rejections_per_sample) {
+          fatal_error("Exceeded maximum number of source rejections per "
+                      "sample. Please check your source definition or increase "
+                      "Settings.max_source_rejections_per_sample.");
+        }
 
         // For the "kill" strategy, accept particle but set weight to 0 so that
         // it is terminated immediately
@@ -221,8 +228,14 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
     }
   }
 
-  // Increment number of accepted samples
-  ++n_accept;
+  // Flush local rejection count and increment accept count atomically
+  if (n_local_reject > 0) {
+    source_n_reject += n_local_reject;
+  }
+  ++source_n_accept;
+
+  // Periodically check overall rejection fraction
+  check_rejection_fraction(source_n_reject, source_n_accept);
 
   return site;
 }
@@ -368,8 +381,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
-  static int64_t n_reject = 0;
-  static int64_t n_accept = 0;
+  int64_t n_local_reject = 0;
 
   while (!accepted) {
 
@@ -383,8 +395,12 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Check for rejection
     if (!accepted) {
-      ++n_reject;
-      check_rejection_fraction(n_reject, n_accept);
+      ++n_local_reject;
+      if (n_local_reject >= settings::max_source_rejections_per_sample) {
+        fatal_error("Exceeded maximum number of source rejections per "
+                    "sample. Please check your source definition or increase "
+                    "Settings.max_source_rejections_per_sample.");
+      }
     }
   }
 
@@ -419,8 +435,12 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
           (satisfies_energy_constraints(site.E)))
         break;
 
-      n_reject++;
-      check_rejection_fraction(n_reject, n_accept);
+      ++n_local_reject;
+      if (n_local_reject >= settings::max_source_rejections_per_sample) {
+        fatal_error("Exceeded maximum number of source rejections per "
+                    "sample. Please check your source definition or increase "
+                    "Settings.max_source_rejections_per_sample.");
+      }
     }
 
     // Sample particle creation time
@@ -430,8 +450,14 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     site.wgt *= (E_wgt * time_wgt);
   }
 
-  // Increment number of accepted samples
-  ++n_accept;
+  // Flush local rejection count and increment accept count atomically
+  if (n_local_reject > 0) {
+    source_n_reject += n_local_reject;
+  }
+  ++source_n_accept;
+
+  // Periodically check overall rejection fraction
+  check_rejection_fraction(source_n_reject, source_n_accept);
 
   return site;
 }
@@ -692,6 +718,13 @@ SourceSite sample_external_source(uint64_t* seed)
 void free_memory_source()
 {
   model::external_sources.clear();
+  reset_source_rejection_counters();
+}
+
+void reset_source_rejection_counters()
+{
+  source_n_accept = 0;
+  source_n_reject = 0;
 }
 
 //==============================================================================

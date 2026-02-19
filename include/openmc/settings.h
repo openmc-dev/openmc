@@ -167,6 +167,8 @@ extern std::unordered_set<int>
 extern CollisionTrackConfig collision_track_config;
 extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
+extern int64_t max_source_rejections_per_sample; //!< Maximum number of
+                                                 //!< rejections per sample
 extern double free_gas_threshold;        //!< Threshold multiplier for free gas
                                          //!< scattering treatment
 

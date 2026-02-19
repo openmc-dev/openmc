@@ -1416,6 +1416,39 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        """Finds the index of the mesh voxel at the specified x, y, z coordinates.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            The x, y, z axis coordinates
+
+        Returns
+        -------
+        tuple
+            Mesh indices matching the dimensionality of the mesh (1-based indexing)
+
+        """
+        ndim = self.n_dimension
+        lower_left = np.array(self.lower_left)
+        upper_right = np.array(self.upper_right)
+        dimension = np.array(self.dimension)
+        
+        # Calculate spacing for each dimension
+        spacing = (upper_right - lower_left) / dimension
+        
+        # Calculate indices for each coordinate
+        coords_array = np.array(coords)
+        indices = ((coords_array - lower_left) / spacing).astype(int)
+        
+        # Clamp indices to valid range [0, dimension-1] and convert to 1-based
+        indices = np.clip(indices, 0, dimension - 1) + 1
+        
+        return tuple(int(i) for i in indices[:ndim])
+
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "

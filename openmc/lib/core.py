@@ -49,11 +49,10 @@ _source_site_dtype = np.dtype([
     ('progeny_id', '<i8'),
 ])
 
-#: Maximum number of source sites to sample per C API call.  Requests
-#: for more sites are automatically split into batches of this size so
-#: that the ctypes buffer stays bounded (default 1 000 000 ≈ 104 MB).
-#: Adjust via ``openmc.lib.SOURCE_SAMPLE_BATCH_SIZE = <int>``.
-SOURCE_SAMPLE_BATCH_SIZE: int = 1_000_000
+# Maximum number of source sites to sample per C API call.  Requests for
+# more sites are automatically split into batches of this size so that the
+# intermediate ctypes buffer stays bounded (~104 MB at the default value).
+_SOURCE_SAMPLE_BATCH_SIZE: int = 1_000_000
 
 # Cached buffer for source site sampling to avoid repeated large allocations
 _source_site_buffer = None
@@ -575,7 +574,7 @@ def sample_external_source(
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
-    batch_size = min(n_samples, SOURCE_SAMPLE_BATCH_SIZE)
+    batch_size = min(n_samples, _SOURCE_SAMPLE_BATCH_SIZE)
 
     # Pre-allocate the output container.  For ``as_array`` mode we create
     # a single numpy array and fill it in slices; for the ParticleList

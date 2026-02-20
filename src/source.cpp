@@ -195,7 +195,7 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
 {
   bool accepted = false;
   int64_t n_local_reject = 0;
-  SourceSite site;
+  SourceSite site {};
 
   while (!accepted) {
     // Sample a source site without considering constraints yet
@@ -374,7 +374,7 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 
 SourceSite IndependentSource::sample(uint64_t* seed) const
 {
-  SourceSite site;
+  SourceSite site {};
   site.particle = particle_;
   double r_wgt = 1.0;
   double E_wgt = 1.0;

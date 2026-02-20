@@ -49,6 +49,12 @@ _source_site_dtype = np.dtype([
     ('progeny_id', '<i8'),
 ])
 
+#: Maximum number of source sites to sample per C API call.  Requests
+#: for more sites are automatically split into batches of this size so
+#: that the ctypes buffer stays bounded (default 1 000 000 ≈ 104 MB).
+#: Adjust via ``openmc.lib.SOURCE_SAMPLE_BATCH_SIZE = <int>``.
+SOURCE_SAMPLE_BATCH_SIZE: int = 1_000_000
+
 # Cached buffer for source site sampling to avoid repeated large allocations
 _source_site_buffer = None
 _source_site_buffer_size = 0
@@ -569,29 +575,54 @@ def sample_external_source(
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
-    # Reuse a cached ctypes buffer when possible to avoid repeated
-    # allocation and zero-initialization of large arrays.  The buffer
-    # is kept at module level and only reallocated when a larger size
-    # is requested.
-    sites_array = _get_source_site_buffer(n_samples)
-    _dll.openmc_sample_external_source(
-        c_size_t(n_samples), c_uint64(prn_seed), sites_array, c_int(n_threads))
+    batch_size = min(n_samples, SOURCE_SAMPLE_BATCH_SIZE)
+
+    # Pre-allocate the output container.  For ``as_array`` mode we create
+    # a single numpy array and fill it in slices; for the ParticleList
+    # path we accumulate SourceParticle objects across batches.
+    if as_array:
+        result = np.empty(n_samples, dtype=_source_site_dtype)
+    else:
+        particles = []
+
+    for offset in range(0, n_samples, batch_size):
+        n_batch = min(batch_size, n_samples - offset)
+
+        # Reuse the module-level ctypes buffer (allocated once at the
+        # batch size, then reused for every subsequent batch).
+        sites_array = _get_source_site_buffer(n_batch)
+
+        # Each batch's base seed is shifted by ``offset`` so that
+        # particle *i* within a batch gets
+        #   init_seed(prn_seed + offset + i, STREAM_SOURCE)
+        # which is identical to the seed it would receive in an
+        # unbatched call.  Results are therefore deterministic
+        # regardless of batch size.
+        _dll.openmc_sample_external_source(
+            c_size_t(n_batch),
+            c_uint64(prn_seed + offset),
+            sites_array,
+            c_int(n_threads),
+        )
+
+        if as_array:
+            result[offset:offset + n_batch] = np.frombuffer(
+                sites_array, dtype=_source_site_dtype, count=n_batch
+            )
+        else:
+            particles.extend(
+                openmc.SourceParticle(
+                    r=site.r, u=site.u, E=site.E, time=site.time,
+                    wgt=site.wgt, delayed_group=site.delayed_group,
+                    surf_id=site.surf_id,
+                    particle=openmc.ParticleType(site.particle),
+                )
+                for site in sites_array[:n_batch]
+            )
 
     if as_array:
-        # Interpret the ctypes buffer as a numpy structured array and copy
-        # it so the caller owns the data (the buffer is reused across calls).
-        return np.frombuffer(
-            sites_array, dtype=_source_site_dtype, count=n_samples
-        ).copy()
-
-    # Convert to list of SourceParticle and return
-    return openmc.ParticleList([openmc.SourceParticle(
-            r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
-            delayed_group=site.delayed_group, surf_id=site.surf_id,
-            particle=openmc.ParticleType(site.particle)
-        )
-        for site in sites_array[:n_samples]
-    ])
+        return result
+    return openmc.ParticleList(particles)
 
 
 def simulation_init():

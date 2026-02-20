@@ -207,6 +207,10 @@ The following tables show all valid scores:
     +------------------------+-------------------------------------------------+
     |photoelectric           |Photoelectric absorption reaction rate.          |
     +------------------------+-------------------------------------------------+
+    |photoelectric-*S*       |Subshell photoelectric absorption rate for the   |
+    |                        |*S* shell. For example, "photoelectric-N3" is the|
+    |                        |rate for the N3 subshell.                        |
+    +------------------------+-------------------------------------------------+
     |pair-production         |Pair production reaction rate (total).           |
     +------------------------+-------------------------------------------------+
     |pair-production-electron|Pair production reaction rate in the electron    |

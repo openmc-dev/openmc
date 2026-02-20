@@ -68,6 +68,15 @@ REACTION_NAME.update({i: f'(n,3He{i - 750})' for i in range(750, 799)})
 REACTION_NAME.update({i: f'(n,a{i - 800})' for i in range(800, 849)})
 REACTION_NAME.update({i: f'(n,2n{i - 875})' for i in range(875, 891)})
 
+_SUBSHELLS = ('K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
+              'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2', 'O3',
+              'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2', 'P3', 'P4',
+              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'Q1', 'Q2', 'Q3')
+REACTION_NAME.update(
+    {534 + i: f'photoelectric-{shell}'
+     for i, shell in enumerate(_SUBSHELLS)}
+)
+
 REACTION_MT = {name: mt for mt, name in REACTION_NAME.items()}
 REACTION_MT['total'] = 1
 REACTION_MT['elastic'] = 2

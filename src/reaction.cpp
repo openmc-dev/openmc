@@ -347,7 +347,7 @@ void initialize_maps()
   // Create photoelectric subshells
   for (int mt = 534; mt <= 572; ++mt) {
     REACTION_NAME_MAP[mt] =
-      fmt::format("photoelectric, {} subshell", SUBSHELLS[mt - 534]);
+      fmt::format("photoelectric-{}", SUBSHELLS[mt - 534]);
   }
 
   // Invert name map to create type map

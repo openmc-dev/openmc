@@ -31,7 +31,7 @@ from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates, ExternalSourceRates
-from .reactivity_control import ReactivityController
+from .keff_search_control import KeffSearchControl
 
 
 __all__ = [
@@ -618,8 +618,8 @@ class Integrator(ABC):
         External source rates for the depletion system.
 
         .. versionadded:: 0.15.3
-    reactivity_control : openmc.deplete.ReactivityController
-        Instance of ReactivityController class to perform reactivity control during
+    keff_search_control : openmc.deplete._KeffSearchControl
+        Instance of _KeffSearchControl class to perform keff search during
         transport-depletion simulation.
 
         .. versionadded:: 0.15.4
@@ -690,7 +690,7 @@ class Integrator(ABC):
 
         self.transfer_rates = None
         self.external_source_rates = None
-        self._reactivity_control = None
+        self._keff_search_control = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -737,13 +737,13 @@ class Integrator(ABC):
         self._solver = func
 
     @property
-    def reactivity_control(self):
-        return self._reactivity_control
+    def keff_search_control(self):
+        return self._keff_search_control
 
-    @reactivity_control.setter
-    def reactivity_control(self, reactivity_control):
-        check_type('reactivity control', reactivity_control, ReactivityController)
-        self._reactivity_control = reactivity_control
+    @keff_search_control.setter
+    def keff_search_control(self, keff_search_control):
+        check_type('keff search control', keff_search_control, KeffSearchControl)
+        self._keff_search_control = keff_search_control
 
     def _timed_deplete(self, n, rates, dt, i=None, matrix_func=None):
         start = time.time()
@@ -853,12 +853,12 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
-    def _get_bos_from_reactivity_control(self, step_index, bos_conc):
-        """Get BOS from reactivity control."""
+    def _get_bos_from_keff_search_control(self, step_index, bos_conc):
+        """Get BOS from keff search control."""
         x = deepcopy(bos_conc)
         # Get new vector after keff criticality control
-        x, root = self._reactivity_control.search_for_keff(x, step_index)
-        return x, root
+        x, keff_search_root = self._keff_search_control.search_for_keff(x, step_index)
+        return x, keff_search_root
 
     def integrate(
             self,
@@ -900,19 +900,19 @@ class Integrator(ABC):
 
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
-                    # Update geometry/material according to reactivity control
-                    if self._reactivity_control is not None and source_rate != 0.0:
-                        n, root = self._get_bos_from_reactivity_control(i, n)
+                    # Update geometry/material according to keff search control
+                    if self._keff_search_control is not None and source_rate != 0.0:
+                        n, keff_search_root = self._get_bos_from_keff_search_control(i, n)
                     else:
-                        root = None
+                        keff_search_root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
                     n, res = self._get_bos_data_from_restart(source_rate, n)
-                    # Get root from reactivity control
-                    if self._reactivity_control:
-                        root = self.operator.prev_res[-1].reac_cont
+                    # Get keff search root from keff search control
+                    if self._keff_search_control:
+                        n, keff_search_root = self._get_bos_from_keff_search_control(i, n)
                     else:
-                        root = None
+                        keff_search_root = None
                 # Solve Bateman equations over time interval
                 proc_time, n_end = self(n, res.rates, dt, source_rate, i)
 
@@ -925,7 +925,7 @@ class Integrator(ABC):
                     self._i_res + i,
                     proc_time,
                     write_rates=write_rates,
-                    root=root,
+                    keff_search_root=keff_search_root,
                     path=path
                 )
 
@@ -939,10 +939,10 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
-            if self._reactivity_control is not None and source_rate != 0.0:
-                n, root = self._get_bos_from_reactivity_control(i+1, n)
+            if self._keff_search_control is not None and source_rate != 0.0:
+                n, keff_search_root = self._get_bos_from_keff_search_control(i+1, n)
             else:
-                root = None
+                keff_search_root = None
             res_final = self.operator(n, source_rate if final_step else 0.0)
             StepResult.save(
                 self.operator,
@@ -953,7 +953,7 @@ class Integrator(ABC):
                 self._i_res + len(self),
                 proc_time,
                 write_rates=write_rates,
-                root=root,
+                keff_search_root=keff_search_root,
                 path=path
             )
             self.operator.write_bos_data(len(self) + self._i_res)
@@ -1086,18 +1086,18 @@ class Integrator(ABC):
 
         self.transfer_rates.set_redox(material, buffer, oxidation_states, timesteps)
 
-    def add_reactivity_control(
+    def add_keff_search_control(
         self,
         function: Callable,
         x0: float,
         x1: float,
         bracket: list[float],
-        **kwargs
+        **search_kwargs
     ):
-        """Add reactivity control to the integrator scheme.
+        """Add keff search to the integrator scheme.
 
-        This method creates a :class:`openmc.deplete.ReactivityController` that
-        performs keff searches during depletion to maintain a target reactivity
+        This method creates a :class:`openmc.deplete._KeffSearchControl` that
+        performs keff searches during depletion to maintain a target keff
         by adjusting a model parameter through the provided function.
 
         .. important::
@@ -1131,7 +1131,7 @@ class Integrator(ABC):
             :meth:`openmc.Model.keff_search`, which enforce hard limits on the
             parameter range. If the keff search converges to a value outside this
             bracket, it will be clamped to the nearest bracket bound with a warning.
-        **kwargs
+        **search_kwargs
             Additional keyword arguments passed to
             :meth:`openmc.Model.keff_search`. Common options include:
 
@@ -1149,11 +1149,11 @@ class Integrator(ABC):
 
         Examples
         --------
-        Add reactivity control that adjusts a control rod position:
+        Add keff search that adjusts a control rod position:
 
         >>> def adjust_rod_position(position):
         ...     openmc.lib.cells[rod_cell.id].translation = [0, 0, position]
-        >>> integrator.add_reactivity_control(
+        >>> integrator.add_keff_search_control(
         ...     adjust_rod_position,
         ...     x0=0.0,
         ...     x1=5.0,
@@ -1162,7 +1162,7 @@ class Integrator(ABC):
         ...     k_tol=1e-4
         ... )
 
-        Add reactivity control that adjusts material density:
+        Add keff search that adjusts material density:
 
         >>> def adjust_material_density(density_factor):
         ...     # Get the material from openmc.lib
@@ -1174,7 +1174,7 @@ class Integrator(ABC):
         ...     new_densities = densities * density_factor
         ...     # Update the material densities
         ...     lib_mat.set_densities(nuclides, new_densities)
-        >>> integrator.add_reactivity_control(
+        >>> integrator.add_keff_search_control(
         ...     adjust_material_density,
         ...     x0=0.8,
         ...     x1=1.2,
@@ -1185,13 +1185,13 @@ class Integrator(ABC):
         .. versionadded:: 0.15.4
 
         """
-        self._reactivity_control = ReactivityController(
+        self._keff_search_control = KeffSearchControl(
             self.operator, 
             function, 
             x0,
             x1,
             bracket,
-            **kwargs)
+            **search_kwargs)
 
 @add_params
 class SIIntegrator(Integrator):

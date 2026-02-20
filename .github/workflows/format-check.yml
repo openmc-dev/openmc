@@ -44,4 +44,5 @@ jobs:
           echo "Some files failed the formatting check."
           echo "See job summary and file annotations for details."
           echo "To request inline suggestions on the next PR update, add the 'cpp-format-suggest' label to this pull request."
+          echo "This workflow can be triggered by re-running it or pushing a new commit to the pull request."
           exit 1

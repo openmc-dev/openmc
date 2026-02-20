@@ -33,6 +33,39 @@ class _SourceSite(Structure):
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
 
+# Numpy dtype matching _SourceSite memory layout (104 bytes) for zero-copy
+# interpretation of the ctypes buffer as a numpy structured array.
+_source_site_dtype = np.dtype([
+    ('r', '<f8', (3,)),
+    ('u', '<f8', (3,)),
+    ('E', '<f8'),
+    ('time', '<f8'),
+    ('wgt', '<f8'),
+    ('delayed_group', '<i4'),
+    ('surf_id', '<i4'),
+    ('particle', '<i4'),
+    ('parent_nuclide', '<i4'),
+    ('parent_id', '<i8'),
+    ('progeny_id', '<i8'),
+])
+
+# Cached buffer for source site sampling to avoid repeated large allocations
+_source_site_buffer = None
+_source_site_buffer_size = 0
+
+def _get_source_site_buffer(n):
+    """Return a ctypes SourceSite array of at least *n* elements.
+
+    The buffer is cached at module level and only reallocated when a
+    larger size is needed, avoiding the cost of allocating and
+    zero-initializing large arrays on every sampling call.
+    """
+    global _source_site_buffer, _source_site_buffer_size
+    if n > _source_site_buffer_size:
+        _source_site_buffer = (_SourceSite * n)()
+        _source_site_buffer_size = n
+    return _source_site_buffer
+
 
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous
@@ -495,8 +528,9 @@ def run_random_ray(output=True):
 def sample_external_source(
         n_samples: int = 1000,
         prn_seed: int | None = None,
-        n_threads: int = 1
-) -> openmc.ParticleList:
+        n_threads: int = 1,
+        as_array: bool = False
+) -> openmc.ParticleList | np.ndarray:
     """Sample external source and return source particles.
 
     .. versionadded:: 0.13.1
@@ -512,11 +546,20 @@ def sample_external_source(
         Number of OpenMP threads to use for parallel sampling. Defaults to 1
         (serial). Each sample gets an independent RNG stream derived from
         the base seed, so results are deterministic regardless of thread count.
+    as_array : bool
+        If True, return a numpy structured array instead of a
+        :class:`~openmc.ParticleList`.  The array has fields ``'r'`` (float64,
+        shape 3), ``'u'`` (float64, shape 3), ``'E'`` (float64), ``'time'``
+        (float64), ``'wgt'`` (float64), ``'delayed_group'`` (int32),
+        ``'surf_id'`` (int32), and ``'particle'`` (int32).  This avoids the
+        overhead of constructing individual :class:`~openmc.SourceParticle`
+        objects and is substantially faster for large sample counts.
 
     Returns
     -------
-    openmc.ParticleList
-        List of sampled source particles
+    openmc.ParticleList or numpy.ndarray
+        List of sampled source particles, or a structured array when
+        *as_array* is True.
 
     """
     if n_samples <= 0:
@@ -526,18 +569,30 @@ def sample_external_source(
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
-    # Call into C API to sample source
-    sites_array = (_SourceSite * n_samples)()
+    # Reuse a cached ctypes buffer when possible to avoid repeated
+    # allocation and zero-initialization of large arrays.  The buffer
+    # is kept at module level and only reallocated when a larger size
+    # is requested.
+    sites_array = _get_source_site_buffer(n_samples)
     _dll.openmc_sample_external_source(
         c_size_t(n_samples), c_uint64(prn_seed), sites_array, c_int(n_threads))
 
+    if as_array:
+        # Interpret the ctypes buffer as a numpy structured array and copy
+        # it so the caller owns the data (the buffer is reused across calls).
+        return np.frombuffer(
+            sites_array, dtype=_source_site_dtype, count=n_samples
+        ).copy()
+
     # Convert to list of SourceParticle and return
     return openmc.ParticleList([openmc.SourceParticle(
-            r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
-            delayed_group=site.delayed_group, surf_id=site.surf_id,
-            particle=openmc.ParticleType(site.particle)
+            r=sites_array[i].r, u=sites_array[i].u, E=sites_array[i].E,
+            time=sites_array[i].time, wgt=sites_array[i].wgt,
+            delayed_group=sites_array[i].delayed_group,
+            surf_id=sites_array[i].surf_id,
+            particle=openmc.ParticleType(sites_array[i].particle)
         )
-        for site in sites_array
+        for i in range(n_samples)
     ])
 
 

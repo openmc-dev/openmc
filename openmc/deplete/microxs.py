@@ -182,7 +182,8 @@ def get_microxs_and_flux(
         rr_tally = openmc.Tally(name='MicroXS RR')
         # Use 1-group energy filter for RR in flux mode
         if reaction_rate_mode == 'flux':
-            rr_energy_filter = openmc.EnergyFilter([energies[0], energies[-1]])
+            rr_energy_filter = openmc.EnergyFilter(
+                [energy_filter.values[0], energy_filter.values[-1]])
         else:
             rr_energy_filter = energy_filter
         rr_tally.filters = [domain_filter, rr_energy_filter]

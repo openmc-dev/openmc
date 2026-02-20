@@ -6,12 +6,15 @@ to a custom file with new depletion_chain node
 
 from os import remove
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
-from openmc.deplete import MicroXS
+import openmc
+from openmc.deplete import MicroXS, get_microxs_and_flux
 import numpy as np
 
 ONE_GROUP_XS = Path(__file__).parents[1] / "micro_xs_simple.csv"
+CHAIN_FILE = Path(__file__).parents[1] / "chain_simple.xml"
 
 
 def test_from_array():
@@ -124,3 +127,54 @@ def test_microxs_zero_flux():
 
     # All microscopic cross sections should be zero
     assert np.all(microxs.data == 0.0)
+
+
+def test_hybrid_tally_setup(simple_model):
+    """In hybrid mode a 1-group RR tally is added alongside the flux tally."""
+    # Create a simple model with one material and a few nuclides for testing
+    model = openmc.Model()
+    mat = openmc.Material(components={'U235': 1.0, 'O16': 2.0})
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(region=-sphere, fill=mat)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.batches = 2
+    model.settings.particles = 10
+
+    # Define 2-group energy structure for the test
+    energies = [0., 0.625, 2.0e7]
+
+    # Function to replace Model.run and capture the tallies that were created
+    captured = {}
+    def capture_run(**kwargs):
+        captured['tallies'] = list(model.tallies)
+        raise StopIteration
+
+    # Call get_microxs_and_flux but replace Model.run with a function that
+    # captures the tallies and raises StopIteration to exit early
+    with patch.object(model, 'run', side_effect=capture_run):
+        with pytest.raises(StopIteration):
+            get_microxs_and_flux(
+                model, [mat],
+                nuclides=['U235', 'O16'],
+                reactions=['fission', '(n,gamma)'],
+                energies=energies,
+                reaction_rate_mode='flux',
+                reaction_rate_opts={'nuclides': ['U235'], 'reactions': ['fission']},
+                chain_file=CHAIN_FILE,
+            )
+
+    # Check that both tallies were created with the expected properties
+    tally_names = [t.name for t in captured['tallies']]
+    assert 'MicroXS flux' in tally_names
+    assert 'MicroXS RR' in tally_names
+
+    # Check that the RR tally has the expected nuclides and reactions
+    rr = next(t for t in captured['tallies'] if t.name == 'MicroXS RR')
+    assert rr.nuclides == ['U235']
+    assert rr.scores == ['fission']
+
+    # RR tally must use a 1-group energy filter spanning the full energy range
+    ef = next(f for f in rr.filters if isinstance(f, openmc.EnergyFilter))
+    assert len(ef.values) == 2
+    assert ef.values[0] == pytest.approx(energies[0])
+    assert ef.values[-1] == pytest.approx(energies[-1])

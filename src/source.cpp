@@ -228,14 +228,16 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
     }
   }
 
-  // Flush local rejection count and increment accept count atomically
-  if (n_local_reject > 0) {
-    source_n_reject += n_local_reject;
+  // Update global rejection counters only when constraints were actually
+  // checked.  When constraints_applied() is true, no rejection is possible
+  // so the reject counter and fraction check can be skipped entirely.
+  if (!constraints_applied()) {
+    if (n_local_reject > 0) {
+      source_n_reject += n_local_reject;
+    }
+    check_rejection_fraction(source_n_reject, source_n_accept);
   }
   ++source_n_accept;
-
-  // Periodically check overall rejection fraction
-  check_rejection_fraction(source_n_reject, source_n_accept);
 
   return site;
 }

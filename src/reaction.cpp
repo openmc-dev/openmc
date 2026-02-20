@@ -354,6 +354,18 @@ void initialize_maps()
   for (const auto& kv : REACTION_NAME_MAP) {
     REACTION_TYPE_MAP[kv.second] = kv.first;
   }
+
+  // Alternate names
+  REACTION_TYPE_MAP["elastic"] = ELASTIC;
+  REACTION_TYPE_MAP["fission"] = N_FISSION;
+  REACTION_TYPE_MAP["n2n"] = N_2N;
+  REACTION_TYPE_MAP["n3n"] = N_3N;
+  REACTION_TYPE_MAP["n4n"] = N_4N;
+  REACTION_TYPE_MAP["H1-production"] = N_XP;
+  REACTION_TYPE_MAP["H2-production"] = N_XD;
+  REACTION_TYPE_MAP["H3-production"] = N_XT;
+  REACTION_TYPE_MAP["He3-production"] = N_X3HE;
+  REACTION_TYPE_MAP["He4-production"] = N_XA;
 }
 
 std::string reaction_name(int mt)
@@ -373,8 +385,8 @@ std::string reaction_name(int mt)
 
 int reaction_tally_mt(std::string name)
 {
-  // (n,total) and photon-total map to the special SCORE_TOTAL score
-  if (name == "(n,total)" || name == "photon-total")
+  // All "total" scores should map to the special SCORE_TOTAL
+  if (name == "total" || name == "(n,total)" || name == "photon-total")
     return SCORE_TOTAL;
 
   // Delegate everything else to reaction_mt()
@@ -391,37 +403,7 @@ int reaction_mt(const std::string& name)
   auto it = REACTION_TYPE_MAP.find(name);
   if (it != REACTION_TYPE_MAP.end()) {
     int mt = it->second;
-    // If the map returned a negative score enum, convert to the
-    // corresponding positive ENDF MT number
-    if (mt == SCORE_TOTAL)
-      return TOTAL_XS;
-    if (mt >= 1)
-      return mt;
-  }
-
-  // Alternate names
-  if (name == "total") {
-    return TOTAL_XS;
-  } else if (name == "elastic") {
-    return ELASTIC;
-  } else if (name == "fission") {
-    return N_FISSION;
-  } else if (name == "n2n") {
-    return N_2N;
-  } else if (name == "n3n") {
-    return N_3N;
-  } else if (name == "n4n") {
-    return N_4N;
-  } else if (name == "H1-production") {
-    return N_XP;
-  } else if (name == "H2-production") {
-    return N_XD;
-  } else if (name == "H3-production") {
-    return N_XT;
-  } else if (name == "He3-production") {
-    return N_X3HE;
-  } else if (name == "He4-production") {
-    return N_XA;
+    return mt;
   }
 
   // Assume the given string is an MT number

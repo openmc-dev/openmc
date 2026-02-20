@@ -97,7 +97,6 @@ bool mt_matches(int event_mt, int target_mt)
   // Check if event_mt is a component of target_mt summation reaction
   switch (target_mt) {
   case TOTAL_XS:
-  case SCORE_TOTAL:
     return event_mt == ELASTIC || mt_matches(event_mt, N_NONELASTIC);
 
   case N_NONELASTIC: {

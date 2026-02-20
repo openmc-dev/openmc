@@ -894,27 +894,24 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
     return;
   }
 
-  bool add_site =
-    true; // this insures that a site is added if 'cells' is not defined
+  bool add_site = true; // add the site if 'cells' is not defined
 
   // If 'cells' is defined
   if (!settings::ssw_cells.empty()) {
     for (auto& cell : settings::ssw_cells) {
-      add_site = true; // we assume the cell-direction pair is valid until it
-                       // gets rejected
+      add_site = false; // we assume the cell-direction pair is invalid till it
+                        // passes all the tests
       // Retrieve cell index and storage type
       int cell_idx = model::cell_map[cell.first];
       SSWCellType direction = cell.second;
       if (surf.bc_) {
         // Leave if cellto with vacuum boundary condition
         if (surf.bc_->type() == "vacuum" && direction == SSWCellType::To) {
-          add_site = false;
           continue;
         }
 
         // Leave if other boundary condition than vacuum
         if (surf.bc_->type() != "vacuum") {
-          add_site = false;
           continue;
         }
       }
@@ -938,41 +935,35 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
       // Vacuum boundary conditions: return if cell is not exited
       if (surf.bc_) {
         if (surf.bc_->type() == "vacuum" && !exited) {
-          add_site = false;
           continue;
         }
       } else {
 
         // If we both enter and exit the cell of interest
         if (entered && exited) {
-          add_site = false;
           continue;
         }
 
         // If we did not enter nor exit the cell of interest
         if (!entered && !exited) {
-          add_site = false;
           continue;
         }
 
         // If cellfrom and the cell before crossing is not the cell of
         // interest
         if (direction == SSWCellType::From && !exited) {
-          add_site = false;
           continue;
         }
 
         // If cellto and the cell after crossing is not the cell of interest
         if (direction == SSWCellType::To && !entered) {
-          add_site = false;
           continue;
         }
       }
-      // if any cell-direction pair survived all the checks we terminate the
-      // loop
-      if (add_site) {
-        break;
-      }
+      // if the cell-direction pair survived all the checks we add the site and
+      // terminate the loop
+      add_site = true;
+      break;
     }
   }
 

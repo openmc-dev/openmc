@@ -196,10 +196,6 @@ public:
 
   void setup(const std::string& path, const std::string& parameters);
 
-  // Compiled sources handle their own spatial sampling internally, so
-  // constraints are considered already applied (skip exhaustive_find_cell)
-  bool constraints_applied() const override { return true; }
-
 protected:
   // Defer implementation to custom source library
   SourceSite sample(uint64_t* seed) const override

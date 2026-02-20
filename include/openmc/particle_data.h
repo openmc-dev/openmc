@@ -567,6 +567,8 @@ private:
 
   int n_event_ {0};
 
+  int64_t n_tracks_ {0}; //!< number of tracks in this particle history
+
   int n_split_ {0};
   double ww_factor_ {0.0};
 
@@ -753,6 +755,9 @@ public:
   // Particle-specific factor for on-the-fly weight window adjustment
   double ww_factor() const { return ww_factor_; }
   double& ww_factor() { return ww_factor_; }
+
+  // Number of tracks in this particle history
+  int64_t& n_tracks() { return n_tracks_; }
 
   // Number of progeny produced by this particle
   int64_t& n_progeny() { return n_progeny_; }

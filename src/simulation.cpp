@@ -626,6 +626,9 @@ void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
   // Reset particle event counter
   p.n_event() = 0;
 
+  // Initialize track counter (1 for this primary/secondary track)
+  p.n_tracks() = 1;
+
   // Reset split counter
   p.n_split() = 0;
 

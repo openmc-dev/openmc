@@ -458,6 +458,7 @@ void Particle::event_revive_from_secondary(SourceSite& site)
   from_source(&site);
 
   n_event() = 0;
+  n_tracks()++;
   n_split() = site.n_split;
   bank_second_E() = 0.0;
 
@@ -521,6 +522,12 @@ void Particle::event_death()
 
   if (!model::active_pulse_height_tallies.empty()) {
     score_pulse_height_tally(*this, model::active_pulse_height_tallies);
+  }
+
+  // Accumulate track count for this particle history
+  if (!settings::use_shared_secondary_bank) {
+#pragma omp atomic
+    simulation::simulation_particles_completed += n_tracks();
   }
 
   // Record the number of progeny created by this particle.

@@ -214,6 +214,7 @@ int openmc_reset()
   settings::cmfd_run = false;
 
   simulation::n_lost_particles = 0;
+  simulation::simulation_particles_completed = 0;
 
   return 0;
 }

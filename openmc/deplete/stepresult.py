@@ -57,6 +57,8 @@ class StepResult:
     proc_time : int
         Average time spent depleting a material across all
         materials and processes
+    keff_search_root : float
+        The root returned by the keff search control.
 
     """
     def __init__(self):

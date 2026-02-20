@@ -371,63 +371,14 @@ std::string reaction_name(int mt)
   }
 }
 
-int reaction_type(std::string name)
+int reaction_tally_mt(std::string name)
 {
-  // Initialize remainder of name map and all of type map
-  if (REACTION_TYPE_MAP.empty())
-    initialize_maps();
-
-  // (n,total) exists in REACTION_TYPE_MAP for MT=1, but we need this to return
-  // the special SCORE_TOTAL score
-  if (name == "(n,total)")
+  // (n,total) and photon-total map to the special SCORE_TOTAL score
+  if (name == "(n,total)" || name == "photon-total")
     return SCORE_TOTAL;
 
-  // Check if type map has an entry for this reaction name
-  auto it = REACTION_TYPE_MAP.find(name);
-  if (it != REACTION_TYPE_MAP.end()) {
-    return it->second;
-  }
-
-  // Alternate names for several reactions
-  if (name == "elastic") {
-    return ELASTIC;
-  } else if (name == "n2n") {
-    return N_2N;
-  } else if (name == "n3n") {
-    return N_3N;
-  } else if (name == "n4n") {
-    return N_4N;
-  } else if (name == "H1-production") {
-    return N_XP;
-  } else if (name == "H2-production") {
-    return N_XD;
-  } else if (name == "H3-production") {
-    return N_XT;
-  } else if (name == "He3-production") {
-    return N_X3HE;
-  } else if (name == "He4-production") {
-    return N_XA;
-  }
-
-  // Assume the given string is a reaction MT number.  Make sure it's a natural
-  // number then return.
-  int MT = 0;
-  try {
-    MT = std::stoi(name);
-  } catch (const std::invalid_argument& ex) {
-    throw std::invalid_argument(
-      "Invalid tally score \"" + name +
-      "\". See the docs "
-      "for details: "
-      "https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
-  }
-  if (MT < 1)
-    throw std::invalid_argument(
-      "Invalid tally score \"" + name +
-      "\". See the docs "
-      "for details: "
-      "https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
-  return MT;
+  // Delegate everything else to reaction_mt()
+  return reaction_mt(name);
 }
 
 int reaction_mt(const std::string& name)

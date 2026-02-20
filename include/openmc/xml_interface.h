@@ -18,11 +18,11 @@ inline bool check_for_node(pugi::xml_node node, const char* name)
   return node.attribute(name) || node.child(name);
 }
 
-std::string get_node_value(pugi::xml_node node, const char* name,
-  bool lowercase = false, bool strip = false);
+std::string get_node_value(
+  pugi::xml_node node, const char* name, bool lowercase = false, bool strip = false);
 
 std::string get_node_path(pugi::xml_node node, const char* name, 
-  bool lowercase, bool strip)
+  bool lowercase, bool strip = false);
 
 bool get_node_value_bool(pugi::xml_node node, const char* name);
 

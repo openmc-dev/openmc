@@ -2539,7 +2539,7 @@ extern "C" int openmc_solidraytrace_plot_set_diffuse_fraction(
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  plt->diffuse_fraction() = diffuse_fraction;
+  plt->diffuse_fraction() =  diffuse_fraction;
   return 0;
 }
 

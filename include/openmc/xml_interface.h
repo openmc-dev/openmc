@@ -21,6 +21,9 @@ inline bool check_for_node(pugi::xml_node node, const char* name)
 std::string get_node_value(pugi::xml_node node, const char* name,
   bool lowercase = false, bool strip = false);
 
+std::string get_node_path(pugi::xml_node node, const char* name, 
+  bool lowercase, bool strip)
+
 bool get_node_value_bool(pugi::xml_node node, const char* name);
 
 template<typename T>

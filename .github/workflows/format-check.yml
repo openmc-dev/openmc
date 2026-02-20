@@ -38,11 +38,23 @@ jobs:
           step-summary: true
           extensions: 'cpp,h'
 
+      - name: Comment with suggestion instructions
+        if: steps.linter.outputs.checks-failed > 0 && !contains(github.event.pull_request.labels.*.name, 'cpp-format-suggest')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body: "C++ formatting checks failed. Add the `cpp-format-suggest` label to this PR for inline formatting suggestions on the next run."
+            });
+
       - name: Failure Check
         if: steps.linter.outputs.checks-failed > 0
         run: |
           echo "Some files failed the formatting check."
           echo "See job summary and file annotations for details."
-          echo "To request inline suggestions on the next PR update, add the 'cpp-format-suggest' label to this pull request."
-          echo "This workflow can be triggered by re-running it or pushing a new commit to the pull request."
           exit 1

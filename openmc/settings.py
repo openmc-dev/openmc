@@ -1360,7 +1360,13 @@ class Settings:
                 cv.check_greater_than('diagonal stabilization rho',
                                       value, 0.0, True)
             elif key == 'adjoint_source':
-                cv.check_type('adjoint source', value, SourceBase)
+                if not isinstance(value, MutableSequence):
+                    value = [value]
+                for source in value:
+                    if not isinstance(source, SourceBase):
+                        raise ValueError(
+                            f'Invalid adjoint source type: {type(source)}. '
+                            'Expected openmc.SourceBase.')
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1917,10 +1923,10 @@ class Settings:
                             root.append(mesh.to_xml_element())
                             if mesh_memo is not None:    
                                 mesh_memo.add(mesh.id)
-                elif key == 'adjoint_source' and isinstance(value, SourceBase):
+                elif key == 'adjoint_source':
                     subelement = ET.SubElement(element, 'adjoint_source')
-                    adj_source_element = value.to_xml_element()
-                    subelement.append(adj_source_element)
+                    for source in value:
+                        subelement.append(source.to_xml_element())
                 elif isinstance(value, bool):
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value).lower()

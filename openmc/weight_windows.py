@@ -499,7 +499,7 @@ class WeightWindowGenerator:
         Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
-    targets : :class:`openmc.Tallies`
+    targets : :class:`openmc.Tallies` or iterable of int
         Target tallies for local variance reduction via FW-CADIS.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
@@ -520,7 +520,7 @@ class WeightWindowGenerator:
         Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
-    targets : :class:`openmc.Tallies`
+    targets : :class:`openmc.Tallies` or numpy.ndarray
         Target tallies for local variance reduction via FW-CADIS.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
@@ -541,7 +541,7 @@ class WeightWindowGenerator:
         energy_bounds: Sequence[float] | None = None,
         particle_type: str = 'neutron',
         method: str = 'magic',
-        targets: openmc.Tallies | list[int] | None = None,
+        targets: openmc.Tallies | Iterable[int] | None = None,
         max_realizations: int = 1,
         update_interval: int = 1,
         on_the_fly: bool = True
@@ -625,15 +625,11 @@ class WeightWindowGenerator:
         if t is None:
             self._targets = t
         else:
-            cv.check_type('Local FW-CADIS target tallies', t, (openmc.Tallies, list))
+            cv.check_type('Local FW-CADIS target tallies', t, Iterable)
             cv.check_greater_than('Local FW-CADIS target tallies', len(t), 0)
             if not isinstance(t, openmc.Tallies):
-                for tally_id in t:
-                    if not isinstance(tally_id, int):
-                        raise TypeError(
-                            "Tally IDs passed to WeightWindowGenerator " \
-                            "must be of type int")
-                    
+                cv.check_iterable_type('Local FW-CADIS target tallies', t, int)
+                t = np.asarray(list(t), dtype=int)
             self._targets = t
 
     @property

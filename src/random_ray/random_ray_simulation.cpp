@@ -310,6 +310,58 @@ void validate_random_ray_inputs()
     }
   }
 
+  // Validate adjoint sources
+  ///////////////////////////////////////////////////////////////////
+  if (FlatSourceDomain::adjoint_ && !model::adjoint_sources.empty()) {
+    for (int i = 0; i < model::adjoint_sources.size(); i++) {
+      Source* s = model::adjoint_sources[i].get();
+
+      // Check for independent source
+      IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+
+      if (!is) {
+        fatal_error(
+          "Only IndependentSource adjoint source types are allowed in "
+          "random ray mode");
+      }
+
+      // Check for isotropic source
+      UnitSphereDistribution* angle_dist = is->angle();
+      Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
+      if (!id) {
+        fatal_error(
+          "Invalid source definition -- only isotropic adjoint sources are "
+          "allowed in random ray mode.");
+      }
+
+      // Validate that a domain ID was specified OR that it is a point source
+      auto sp = dynamic_cast<SpatialPoint*>(is->space());
+      if (is->domain_ids().size() == 0 && !sp) {
+        fatal_error("Adjoint sources must be point source or spatially "
+                    "constrained by domain id (cell, material, or universe) in "
+                    "random ray mode.");
+      } else if (is->domain_ids().size() > 0 && sp) {
+        // If both a domain constraint and a non-default point source location
+        // are specified, notify user that domain constraint takes precedence.
+        if (sp->r().x == 0.0 && sp->r().y == 0.0 && sp->r().z == 0.0) {
+          warning("Adjoint source has both a domain constraint and a point "
+                  "type spatial distribution. The domain constraint takes "
+                  "precedence in random ray mode -- point source coordinate "
+                  "will be ignored.");
+        }
+      }
+
+      // Check that a discrete energy distribution was used
+      Distribution* d = is->energy();
+      Discrete* dd = dynamic_cast<Discrete*>(d);
+      if (!dd) {
+        fatal_error(
+          "Only discrete (multigroup) energy distributions are allowed for "
+          "adjoint sources in random ray mode.");
+      }
+    }
+  }
+
   // Validate plotting files
   ///////////////////////////////////////////////////////////////////
   for (int p = 0; p < model::plots.size(); p++) {

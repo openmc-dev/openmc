@@ -276,13 +276,16 @@ class Model:
         if len(self.settings.weight_window_generators) == 0:
             return
         
+        # List of valid tally IDs
+        reference_tally_ids = np.asarray([tal.id for tal in self.tallies])
+        
         for wwg in self.settings.weight_window_generators:
             # Only proceeds if the "targets" attribute is an openmc.Tallies, 
             # which means it hasn't been checked against model.tallies.
             if isinstance(wwg.targets, openmc.Tallies):
                 id_vec = []
                 for tal in wwg.targets:
-                    # check against model tallies
+                    # check against model tallies for equivalence
                     id_next = None
                     for reference_tal in self.tallies:
                         if tal == reference_tal:
@@ -296,6 +299,12 @@ class Model:
                         id_vec.append(id_next)
 
                 wwg.targets = id_vec
+
+            elif isinstance(wwg.targets, np.ndarray):
+                invalid = wwg.targets[~np.isin(wwg.targets, reference_tally_ids)]
+                if len(invalid) > 0:
+                    raise RuntimeError(
+                        f'Local FW-CADIS target tally IDs {invalid} not found on model.tallies!')
 
     @classmethod
     def from_xml(

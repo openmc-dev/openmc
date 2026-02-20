@@ -928,6 +928,8 @@ as::
 which will greatly improve the quality of the linear source term in 2D
 simulations.
 
+.. _usersguide_random_ray_run_modes:
+
 ---------------------------------
 Fixed Source and Eigenvalue Modes
 ---------------------------------
@@ -1057,22 +1059,47 @@ The adjoint flux random ray solver mode can be enabled as::
 
     settings.random_ray['adjoint'] = True
 
-When enabled, OpenMC will first run a forward transport simulation followed by
-an adjoint transport simulation. The purpose of the forward solve is to compute
-the adjoint external source when an external source is present in the
-simulation. Simulation settings (e.g., number of rays, batches, etc.) will be
-identical for both simulations. At the conclusion of the run, all results (e.g.,
-tallies, plots, etc.) will be derived from the adjoint flux rather than the
-forward flux but are not labeled any differently. The initial forward flux
-solution will not be stored or available in the final statepoint file. Those
-wishing to do analysis requiring both the forward and adjoint solutions will
-need to run two separate simulations and load both statepoint files.
+When enabled, OpenMC will first run a forward transport simulation if there are 
+no user-specified adjoint sources present, followed by an adjoint transport 
+simulation. Fixed adjoint sources can be specified on the 
+:attr:`openmc.Settings.random_ray` dictionary as follows::
+
+    # Geometry definition
+    ...
+    detector_cell = openmc.Cell(fill=detector_mat, name='cell where detector will be')
+    ...
+    # Define fixed adjoint neutron source
+    strengths = [1.0]
+    midpoints = [1.0e-4]
+    energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+
+    adj_source = openmc.IndependentSource(
+        energy=energy_distribution, 
+        constraints={'domains': [detector_cell]}
+    )
+
+    # Add to random_ray dict
+    settings.random_ray['adjoint_source'] = adj_source
+
+The same constraints apply to the user-defined adjoint source as to the forward 
+source, described in the :ref:`Fixed Source and Eigenvalue section 
+<usersguide_random_ray_run_modes>`. If this source is not provided, a forward 
+solve must take place to compute the adjoint external source when an external 
+forward source is present in the problem. Simulation settings (e.g., number of 
+rays, batches, etc.) will be identical for both calculations. At the 
+conclusion of the run, all results (e.g., tallies, plots, etc.) will be 
+derived from the adjoint flux rather than the forward flux but are not labeled 
+any differently. The initial forward flux solution will not be stored or 
+available in the final statepoint file. Those wishing to do analysis requiring 
+both the forward and adjoint solutions will need to run two separate 
+simulations and load both statepoint files.
 
 .. note::
-    When adjoint mode is selected, OpenMC will always perform a full forward
-    solve and then run a full adjoint solve immediately afterwards. Statepoint
-    and tally results will be derived from the adjoint flux, but will not be
-    labeled any differently.
+    Use of the automated 
+    :ref:`FW-CADIS weight window generator<usersguide_fw_cadis>` is not 
+    currently compatible with user-defined adjoint sources. Instead, the 
+    initial forward calculation is used to assign "forward-weighted" adjoint 
+    sources to the tally regions of interest.
 
 ---------------------------------------
 Putting it All Together: Example Inputs

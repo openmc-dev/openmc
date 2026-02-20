@@ -357,7 +357,6 @@ void initialize_maps()
 
   // Alternate names
   REACTION_TYPE_MAP["elastic"] = ELASTIC;
-  REACTION_TYPE_MAP["fission"] = N_FISSION;
   REACTION_TYPE_MAP["n2n"] = N_2N;
   REACTION_TYPE_MAP["n3n"] = N_3N;
   REACTION_TYPE_MAP["n4n"] = N_4N;
@@ -388,6 +387,10 @@ int reaction_tally_mt(std::string name)
   // All "total" scores should map to the special SCORE_TOTAL
   if (name == "total" || name == "(n,total)" || name == "photon-total")
     return SCORE_TOTAL;
+
+  // All fission scores should map to the special SCORE_FISSION
+  if (name == "fission" || name == "(n,fission)")
+    return SCORE_FISSION;
 
   // Delegate everything else to reaction_mt()
   return reaction_mt(name);

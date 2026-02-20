@@ -230,7 +230,7 @@ private:
 
   bool depletable_ {false}; //!< Is the material depletable?
   bool fissionable_ {
-    false};                 //!< Does this material contain fissionable nuclides
+    false}; //!< Does this material contain fissionable nuclides
   //! \brief Default temperature for cells containing this material.
   //!
   //! A negative value indicates no default temperature was specified.

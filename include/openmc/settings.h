@@ -169,8 +169,8 @@ extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
 extern int64_t max_source_rejections_per_sample; //!< Maximum number of
                                                  //!< rejections per sample
-extern double free_gas_threshold;        //!< Threshold multiplier for free gas
-                                         //!< scattering treatment
+extern double free_gas_threshold; //!< Threshold multiplier for free gas
+                                  //!< scattering treatment
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows

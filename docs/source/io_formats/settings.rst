@@ -1062,6 +1062,16 @@ variable and whose sub-elements/attributes are as follows:
 
   *Default*: None
 
+------------------------------------------------
+``<max_source_rejections_per_sample>`` Element
+------------------------------------------------
+
+The ``<max_source_rejections_per_sample>`` element specifies the maximum number
+of rejection attempts allowed when sampling a single source site with
+constraints. If this limit is exceeded, the simulation will abort with an error.
+
+   *Default*: 10000
+
 ---------------------------------------
 ``<source_rejection_fraction>`` Element
 ---------------------------------------

@@ -1,7 +1,5 @@
-import numpy as np
 import pytest
 import openmc
-from openmc.data.reaction import REACTION_NAME
 
 
 def test_reaction_filter_construction_with_strings():
@@ -80,3 +78,10 @@ def test_reaction_filter_repr():
 
 def test_reaction_filter_short_name():
     assert openmc.ReactionFilter.short_name == 'Reaction'
+
+
+def test_reaction_filter_total_warning():
+    """Test that using 'total' emits a warning about ambiguity."""
+    with pytest.warns(UserWarning, match="ambiguous"):
+        f = openmc.ReactionFilter(['total'])
+    assert f.bins[0] == '(n,total)'

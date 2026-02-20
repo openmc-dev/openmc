@@ -1459,6 +1459,12 @@ class ReactionFilter(Filter):
                     raise ValueError(f"No known reaction for MT={b}")
                 normalized.append(REACTION_NAME[int(b)])
             elif isinstance(b, str):
+                if b == 'total':
+                    warnings.warn(
+                        "The reaction name 'total' is ambiguous. Use "
+                        "'(n,total)' for neutron total cross section or "
+                        "'photon-total' for photon total. Interpreting as"
+                        "'(n,total)'.")
                 if b not in REACTION_MT:
                     raise ValueError(f"Unknown reaction name '{b}'")
                 normalized.append(REACTION_NAME[REACTION_MT[b]])

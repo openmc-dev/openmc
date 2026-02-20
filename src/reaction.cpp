@@ -309,6 +309,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {N_XA, "(n,Xa)"},
   {HEATING, "heating"},
   {DAMAGE_ENERGY, "damage-energy"},
+  {PHOTON_TOTAL, "photon-total"},
   {COHERENT, "coherent-scatter"},
   {INCOHERENT, "incoherent-scatter"},
   {PAIR_PROD_ELEC, "pair-production-electron"},
@@ -426,6 +427,61 @@ int reaction_type(std::string name)
       "\". See the docs "
       "for details: "
       "https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
+  return MT;
+}
+
+int reaction_mt(const std::string& name)
+{
+  // Initialize maps if needed
+  if (REACTION_TYPE_MAP.empty())
+    initialize_maps();
+
+  // Look up directly in type map (no score indirection)
+  auto it = REACTION_TYPE_MAP.find(name);
+  if (it != REACTION_TYPE_MAP.end()) {
+    int mt = it->second;
+    // If the map returned a negative score enum, convert to the
+    // corresponding positive ENDF MT number
+    if (mt == SCORE_TOTAL)
+      return TOTAL_XS;
+    if (mt >= 1)
+      return mt;
+  }
+
+  // Alternate names
+  if (name == "total") {
+    return TOTAL_XS;
+  } else if (name == "elastic") {
+    return ELASTIC;
+  } else if (name == "fission") {
+    return N_FISSION;
+  } else if (name == "n2n") {
+    return N_2N;
+  } else if (name == "n3n") {
+    return N_3N;
+  } else if (name == "n4n") {
+    return N_4N;
+  } else if (name == "H1-production") {
+    return N_XP;
+  } else if (name == "H2-production") {
+    return N_XD;
+  } else if (name == "H3-production") {
+    return N_XT;
+  } else if (name == "He3-production") {
+    return N_X3HE;
+  } else if (name == "He4-production") {
+    return N_XA;
+  }
+
+  // Assume the given string is an MT number
+  int MT = 0;
+  try {
+    MT = std::stoi(name);
+  } catch (const std::invalid_argument& ex) {
+    throw std::invalid_argument("Unknown reaction name \"" + name + "\".");
+  }
+  if (MT < 1)
+    throw std::invalid_argument("Unknown reaction name \"" + name + "\".");
   return MT;
 }
 

@@ -23,7 +23,7 @@ void ReactionFilter::from_xml(pugi::xml_node node)
   vector<int> bins_mt;
   bins_mt.reserve(bins_str.size());
   for (const auto& name : bins_str) {
-    bins_mt.push_back(reaction_type(name));
+    bins_mt.push_back(reaction_mt(name));
   }
 
   this->set_bins(bins_mt);

@@ -5,6 +5,12 @@ on:
   workflow_dispatch:
 
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
     branches:
       - develop
       - master
@@ -12,6 +18,9 @@ on:
 jobs:
   cpp-linter:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: cpp-linter/cpp-linter-action@v2
@@ -23,10 +32,16 @@ jobs:
           files-changed-only: true
           tidy-checks: '-*'
           version: '15' # clang-format version
+          format-review: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'cpp-format-suggest') }}
+          passive-reviews: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'cpp-format-suggest') }}
           file-annotations: true
           step-summary: true
           extensions: 'cpp,h'
 
       - name: Failure Check
         if: steps.linter.outputs.checks-failed > 0
-        run: echo "Some files failed the formatting check! See job summary and file annotations for more info" && exit 1
+        run: |
+          echo "Some files failed the formatting check."
+          echo "See job summary and file annotations for details."
+          echo "To request inline suggestions on the next PR update, add the 'cpp-format-suggest' label to this pull request."
+          exit 1

@@ -721,9 +721,12 @@ class CylindricalIndependent(Spatial):
         element.append(self.r.to_xml_element('r'))
         element.append(self.phi.to_xml_element('phi'))
         element.append(self.z.to_xml_element('z'))
-        element.set("origin", ' '.join(map(str, self.origin)))
-        element.set("r_dir", ' '.join(map(str, self.r_dir)))
-        element.set("z_dir", ' '.join(map(str, self.z_dir)))
+        if not np.allclose(self.origin, [0., 0., 0.]):
+            element.set("origin", ' '.join(map(str, self.origin)))
+        if not np.allclose(self.r_dir, [1., 0., 0.]):
+            element.set("r_dir", ' '.join(map(str, self.r_dir)))
+        if not np.allclose(self.z_dir, [0., 0., 1.]):
+            element.set("z_dir", ' '.join(map(str, self.z_dir)))
         return element
 
     @classmethod
@@ -744,7 +747,7 @@ class CylindricalIndependent(Spatial):
         r = Univariate.from_xml_element(elem.find('r'))
         phi = Univariate.from_xml_element(elem.find('phi'))
         z = Univariate.from_xml_element(elem.find('z'))
-        origin = get_elem_list(elem, "origin", float)
+        origin = get_elem_list(elem, "origin", float) or [0.0, 0.0, 0.0]
         r_dir = get_elem_list(elem, "r_dir", float) or [1.0, 0.0, 0.0]
         z_dir = get_elem_list(elem, "z_dir", float) or [0.0, 0.0, 1.0]
         return cls(r, phi, z, origin=origin, r_dir=r_dir, z_dir=z_dir)

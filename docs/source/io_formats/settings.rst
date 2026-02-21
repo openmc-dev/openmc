@@ -542,6 +542,31 @@ generator during generation of colors in plots.
 
   *Default*: 1
 
+
+.. _properties_file:
+
+--------------------------------------
+``<properties_file>`` Element
+--------------------------------------
+
+  The ``properties_file`` element indicates whether temperatures and densities 
+  should be read from the properties file instead of from the XML file. It contains
+  the following parameters:
+
+    :filepath:
+      The path to the properties file to be used to read temperatures and/or densities
+
+    :temperatures:
+       Boolean to indicate whether or not to read cell temperatures from the properties file.
+
+       *Default*: True
+
+    :densities:
+       Boolean to indicate whether or not to read cell or material densities from the properties file.
+
+       *Default*: True
+
+
 ---------------------
 ``<ptables>`` Element
 ---------------------
@@ -1339,16 +1364,6 @@ the desired temperature of 695K is within the tolerance of the actual data
 despite not being bounded on both sides.
 
   *Default*: 10 K
-
-.. _properties_file:
-
---------------------------------------
-``<properties_file>`` Element
---------------------------------------
-
-  The ``properties_file`` element has no attributes and contains the path to
-  an HDF5 properties file to load during simulation initialization.
-
 
 .. _trace:
 

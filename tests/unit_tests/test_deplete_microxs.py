@@ -129,7 +129,7 @@ def test_microxs_zero_flux():
     assert np.all(microxs.data == 0.0)
 
 
-def test_hybrid_tally_setup(simple_model):
+def test_hybrid_tally_setup():
     """In hybrid mode a 1-group RR tally is added alongside the flux tally."""
     # Create a simple model with one material and a few nuclides for testing
     model = openmc.Model()

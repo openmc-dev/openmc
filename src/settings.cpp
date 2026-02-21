@@ -953,7 +953,12 @@ void read_settings_xml(pugi::xml_node root)
         }
         for (std::size_t i {0}; i < ids.size(); ++i) {
           SSWCellType direction = ssw_cell_type_from_string(directions[i]);
-          ssw_cells.emplace(ids[i], direction);
+          auto [it, inserted] = ssw_cells.emplace(ids[i], direction);
+          //check for duplicate keys with different values
+          if (!inserted && it->second != direction) {
+            // the union of different values will always be 'Both'
+            it->second = SSWCellType::Both;
+          }
         }
       } else { // default behavior if 'directions' is not defined
         for (std::size_t i {0}; i < ids.size(); ++i) {

@@ -68,7 +68,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     nt = Path(outdir) / 'neutron_transport'
     assert (nt / 'fluxes.npy').exists()
     assert (nt / 'micros.h5').exists()
-    assert (nt / 'mesh_material_volumes.npz').exists()
+    assert (nt / 'mesh_material_volumes_0.npz').exists()
     act = Path(outdir) / 'activation'
     assert (act / 'depletion_results.h5').exists()
     pt = Path(outdir) / 'photon_transport'
@@ -78,7 +78,8 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     # Basic results structure checks
     assert len(r2s.results['fluxes']) == 2
     assert len(r2s.results['micros']) == 2
-    assert len(r2s.results['mesh_material_volumes']) == 2
+    assert len(r2s.results['mesh_material_volumes']) == 1
+    assert len(r2s.results['mesh_material_volumes'][0]) == 2
     assert len(r2s.results['activation_materials']) == 2
     assert len(r2s.results['depletion_results']) == 2
 
@@ -93,7 +94,8 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     r2s_loaded.load_results(outdir)
     assert len(r2s_loaded.results['fluxes']) == 2
     assert len(r2s_loaded.results['micros']) == 2
-    assert len(r2s_loaded.results['mesh_material_volumes']) == 2
+    assert len(r2s_loaded.results['mesh_material_volumes']) == 1
+    assert len(r2s_loaded.results['mesh_material_volumes'][0]) == 2
     assert len(r2s_loaded.results['activation_materials']) == 2
     assert len(r2s_loaded.results['depletion_results']) == 2
 

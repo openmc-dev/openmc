@@ -13,11 +13,11 @@ from .results import Results
 from ..checkvalue import PathLike
 from ..mpi import comm
 from openmc.lib import TemporarySession
-from openmc.utility_funcs import change_directory
 
 
 def get_activation_materials(
-    model: openmc.Model, mmv: openmc.MeshMaterialVolumes
+    model: openmc.Model,
+    mmv_list: list[openmc.MeshMaterialVolumes]
 ) -> openmc.Materials:
     """Get a list of activation materials for each mesh element/material.
 
@@ -31,35 +31,35 @@ def get_activation_materials(
     ----------
     model : openmc.Model
         The full model containing the geometry and materials.
-    mmv : openmc.MeshMaterialVolumes
-        The mesh material volumes object containing the materials and their
-        volumes for each mesh element.
+    mmv_list : list of openmc.MeshMaterialVolumes
+        List of mesh material volumes objects, one per mesh, containing the
+        materials and their volumes for each mesh element.
 
     Returns
     -------
     openmc.Materials
         A list of materials, each corresponding to a unique mesh element and
-        material combination.
+        material combination across all meshes.
 
     """
-    # Get the material ID, volume, and element index for each element-material
-    # combination
-    mat_ids = mmv._materials[mmv._materials > -1]
-    volumes = mmv._volumes[mmv._materials > -1]
-    elems, _ = np.where(mmv._materials > -1)
-
     # Get all materials in the model
     material_dict = model._get_all_materials()
 
     # Create a new activation material for each element-material combination
+    # across all meshes
     materials = openmc.Materials()
-    for elem, mat_id, vol in zip(elems, mat_ids, volumes):
-        mat = material_dict[mat_id]
-        new_mat = mat.clone()
-        new_mat.depletable = True
-        new_mat.name = f'Element {elem}, Material {mat_id}'
-        new_mat.volume = vol
-        materials.append(new_mat)
+    for mesh_idx, mmv in enumerate(mmv_list):
+        mat_ids = mmv._materials[mmv._materials > -1]
+        volumes = mmv._volumes[mmv._materials > -1]
+        elems, _ = np.where(mmv._materials > -1)
+
+        for elem, mat_id, vol in zip(elems, mat_ids, volumes):
+            mat = material_dict[mat_id]
+            new_mat = mat.clone()
+            new_mat.depletable = True
+            new_mat.name = f'Mesh {mesh_idx}, Element {elem}, Material {mat_id}'
+            new_mat.volume = vol
+            materials.append(new_mat)
 
     return materials
 
@@ -70,7 +70,9 @@ class R2SManager:
     This class is responsible for managing the materials and sources needed for
     mesh-based or cell-based R2S calculations. It provides methods to get
     activation materials and decay photon sources based on the mesh/cells and
-    materials in the OpenMC model.
+    materials in the OpenMC model. Multiple meshes can be specified as domains,
+    in which case each element--material combination of each mesh is treated as
+    an activation region (meshes are assumed to be non-overlapping).
 
     This class supports the use of a different models for the neutron and photon
     transport calculation. However, for cell-based calculations, it assumes that
@@ -83,17 +85,20 @@ class R2SManager:
     ----------
     neutron_model : openmc.Model
         The OpenMC model to use for neutron transport.
-    domains : openmc.MeshBase or Sequence[openmc.Cell]
-        The mesh or a sequence of cells that represent the spatial units over
-        which the R2S calculation will be performed.
+    domains : openmc.MeshBase or Sequence[openmc.MeshBase] or Sequence[openmc.Cell]
+        The mesh(es) or a sequence of cells that represent the spatial units
+        over which the R2S calculation will be performed. When a single
+        :class:`~openmc.MeshBase` or a sequence of meshes is given, each
+        element--material combination across all meshes is treated as an
+        activation region.
     photon_model : openmc.Model, optional
         The OpenMC model to use for photon transport calculations. If None, a
         shallow copy of the neutron_model will be created and used.
 
     Attributes
     ----------
-    domains : openmc.MeshBase or Sequence[openmc.Cell]
-        The mesh or a sequence of cells that represent the spatial units over
+    domains : list of openmc.MeshBase or Sequence[openmc.Cell]
+        The meshes or a sequence of cells that represent the spatial units over
         which the R2S calculation will be performed.
     neutron_model : openmc.Model
         The OpenMC model used for neutron transport.
@@ -101,7 +106,7 @@ class R2SManager:
         The OpenMC model used for photon transport calculations.
     method : {'mesh-based', 'cell-based'}
         Indicates whether the R2S calculation uses mesh elements ('mesh-based')
-        as the spatial discetization or a list of a cells ('cell-based').
+        as the spatial discretization or a list of cells ('cell-based').
     results : dict
         A dictionary that stores results from the R2S calculation.
 
@@ -109,7 +114,7 @@ class R2SManager:
     def __init__(
         self,
         neutron_model: openmc.Model,
-        domains: openmc.MeshBase | Sequence[openmc.Cell],
+        domains: openmc.MeshBase | Sequence[openmc.MeshBase] | Sequence[openmc.Cell],
         photon_model: openmc.Model | None = None,
     ):
         self.neutron_model = neutron_model
@@ -126,9 +131,14 @@ class R2SManager:
             self.photon_model = photon_model
         if isinstance(domains, openmc.MeshBase):
             self.method = 'mesh-based'
+            self.domains = [domains]
+        elif isinstance(domains, Sequence) and len(domains) > 0 and \
+                isinstance(domains[0], openmc.MeshBase):
+            self.method = 'mesh-based'
+            self.domains = list(domains)
         else:
             self.method = 'cell-based'
-        self.domains = domains
+            self.domains = domains
         self.results = {}
 
     def run(
@@ -243,11 +253,13 @@ class R2SManager:
     ):
         """Run the neutron transport step.
 
-        This step computes the material volume fractions on the mesh, creates a
-        mesh-material filter, and retrieves the fluxes and microscopic cross
-        sections for each mesh/material combination. This step will populate the
-        'fluxes' and 'micros' keys in the results dictionary. For a mesh-based
-        calculation, it will also populate the 'mesh_material_volumes' key.
+        This step computes the material volume fractions on each mesh, creates
+        mesh-material filters, and retrieves the fluxes and microscopic cross
+        sections for each mesh/material combination via a single transport
+        solve. This step will populate the 'fluxes' and 'micros' keys in the
+        results dictionary. For a mesh-based calculation, it will also populate
+        the 'mesh_material_volumes' key (a list of
+        :class:`~openmc.MeshMaterialVolumes`, one per mesh).
 
         Parameters
         ----------
@@ -266,19 +278,28 @@ class R2SManager:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         if self.method == 'mesh-based':
-            # Compute material volume fractions on the mesh
+            # Compute material volume fractions on each mesh
             if mat_vol_kwargs is None:
                 mat_vol_kwargs = {}
             mat_vol_kwargs.setdefault('bounding_boxes', True)
-            self.results['mesh_material_volumes'] = mmv = comm.bcast(
-                self.domains.material_volumes(self.neutron_model, **mat_vol_kwargs))
 
-            # Save results to file
-            if comm.rank == 0:
-                mmv.save(output_dir / 'mesh_material_volumes.npz')
+            mmv_list = []
+            domain_filters = []
+            for i, mesh in enumerate(self.domains):
+                mmv = comm.bcast(
+                    mesh.material_volumes(self.neutron_model, **mat_vol_kwargs))
+                mmv_list.append(mmv)
 
-            # Create mesh-material filter based on what combos were found
-            domains = openmc.MeshMaterialFilter.from_volumes(self.domains, mmv)
+                # Save results to file
+                if comm.rank == 0:
+                    mmv.save(output_dir / f'mesh_material_volumes_{i}.npz')
+
+                # Create mesh-material filter for this mesh
+                domain_filters.append(
+                    openmc.MeshMaterialFilter.from_volumes(mesh, mmv))
+
+            self.results['mesh_material_volumes'] = mmv_list
+            domains = domain_filters
         else:
             domains: Sequence[openmc.Cell] = self.domains
 
@@ -357,8 +378,9 @@ class R2SManager:
 
         if self.method == 'mesh-based':
             # Get unique material for each (mesh, material) combination
-            mmv = self.results['mesh_material_volumes']
-            self.results['activation_materials'] = get_activation_materials(self.neutron_model, mmv)
+            mmv_list = self.results['mesh_material_volumes']
+            self.results['activation_materials'] = get_activation_materials(
+                self.neutron_model, mmv_list)
         else:
             # Create unique material for each cell
             activation_mats = openmc.Materials()
@@ -468,12 +490,20 @@ class R2SManager:
         # photon model if it is different from the neutron model to account for
         # potential material changes
         if self.method == 'mesh-based' and different_photon_model:
-            self.results['mesh_material_volumes_photon'] = photon_mmv = comm.bcast(
-                self.domains.material_volumes(self.photon_model, **mat_vol_kwargs))
+            if mat_vol_kwargs is None:
+                mat_vol_kwargs = {}
+            photon_mmv_list = []
+            for i, mesh in enumerate(self.domains):
+                photon_mmv = comm.bcast(
+                    mesh.material_volumes(self.photon_model, **mat_vol_kwargs))
+                photon_mmv_list.append(photon_mmv)
 
-            # Save photon MMV results to file
-            if comm.rank == 0:
-                photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
+                # Save photon MMV results to file
+                if comm.rank == 0:
+                    photon_mmv.save(
+                        output_dir / f'mesh_material_volumes_{i}.npz')
+
+            self.results['mesh_material_volumes_photon'] = photon_mmv_list
 
         if comm.rank == 0:
             tally_ids = [tally.id for tally in self.photon_model.tallies]
@@ -543,7 +573,7 @@ class R2SManager:
     ) -> list[openmc.IndependentSource]:
         """Create decay photon source for a mesh-based calculation.
 
-        For each mesh element-material combination, an
+        For each mesh element-material combination across all meshes, an
         :class:`~openmc.IndependentSource` is created with a
         :class:`~openmc.stats.Box` spatial distribution based on the bounding
         box of the material within the mesh element. A material constraint is
@@ -575,52 +605,56 @@ class R2SManager:
         index_mat = 0
 
         # Get various results from previous steps
-        mat_vols = self.results['mesh_material_volumes']
+        mmv_list = self.results['mesh_material_volumes']
         materials = self.results['activation_materials']
         results = self.results['depletion_results']
-        photon_mat_vols = self.results.get('mesh_material_volumes_photon')
+        photon_mmv_list = self.results.get('mesh_material_volumes_photon')
 
-        # Total number of mesh elements
-        n_elements = mat_vols.num_elements
+        for mesh_idx, mat_vols in enumerate(mmv_list):
+            photon_mat_vols = photon_mmv_list[mesh_idx] \
+                if photon_mmv_list is not None else None
 
-        for index_elem in range(n_elements):
-            # Determine which materials exist in the photon model for this element
-            if photon_mat_vols is not None:
-                photon_materials = {
-                    mat_id
-                    for mat_id, _ in photon_mat_vols.by_element(index_elem)
-                    if mat_id is not None
-                }
+            # Total number of mesh elements for this mesh
+            n_elements = mat_vols.num_elements
 
-            for mat_id, _, bbox in mat_vols.by_element(index_elem, include_bboxes=True):
-                # Skip void volume
-                if mat_id is None:
-                    continue
+            for index_elem in range(n_elements):
+                # Determine which materials exist in the photon model for this element
+                if photon_mat_vols is not None:
+                    photon_materials = {
+                        mat_id
+                        for mat_id, _ in photon_mat_vols.by_element(index_elem)
+                        if mat_id is not None
+                    }
 
-                # Skip if this material doesn't exist in photon model
-                if photon_mat_vols is not None and mat_id not in photon_materials:
+                for mat_id, _, bbox in mat_vols.by_element(index_elem, include_bboxes=True):
+                    # Skip void volume
+                    if mat_id is None:
+                        continue
+
+                    # Skip if this material doesn't exist in photon model
+                    if photon_mat_vols is not None and mat_id not in photon_materials:
+                        index_mat += 1
+                        continue
+
+                    # Get activated material composition
+                    original_mat = materials[index_mat]
+                    activated_mat = results[time_index].get_material(str(original_mat.id))
+
+                    # Create decay photon source
+                    energy = activated_mat.get_decay_photon_energy()
+                    if energy is not None:
+                        strength = energy.integral()
+                        space = openmc.stats.Box(*bbox)
+                        sources.append(openmc.IndependentSource(
+                            space=space,
+                            energy=energy,
+                            particle='photon',
+                            strength=strength,
+                            constraints={'domains': [mat_dict[mat_id]]}
+                        ))
+
+                    # Increment index of activated material
                     index_mat += 1
-                    continue
-
-                # Get activated material composition
-                original_mat = materials[index_mat]
-                activated_mat = results[time_index].get_material(str(original_mat.id))
-
-                # Create decay photon source
-                energy = activated_mat.get_decay_photon_energy()
-                if energy is not None:
-                    strength = energy.integral()
-                    space = openmc.stats.Box(*bbox)
-                    sources.append(openmc.IndependentSource(
-                        space=space,
-                        energy=energy,
-                        particle='photon',
-                        strength=strength,
-                        constraints={'domains': [mat_dict[mat_id]]}
-                    ))
-
-                # Increment index of activated material
-                index_mat += 1
 
         return sources
 
@@ -638,10 +672,13 @@ class R2SManager:
         # Load neutron transport results
         neutron_dir = path / 'neutron_transport'
         if self.method == 'mesh-based':
-            mmv_file = neutron_dir / 'mesh_material_volumes.npz'
-            if mmv_file.exists():
-                self.results['mesh_material_volumes'] = \
-                    openmc.MeshMaterialVolumes.from_npz(mmv_file)
+            mmv_files = sorted(neutron_dir.glob('mesh_material_volumes*.npz'),
+                               key=lambda p: int(p.stem.split('_')[-1])
+                               if p.stem[-1].isdigit() else 0)
+            if mmv_files:
+                self.results['mesh_material_volumes'] = [
+                    openmc.MeshMaterialVolumes.from_npz(f) for f in mmv_files
+                ]
         fluxes_file = neutron_dir / 'fluxes.npy'
         if fluxes_file.exists():
             self.results['fluxes'] = list(np.load(fluxes_file, allow_pickle=True))
@@ -665,10 +702,15 @@ class R2SManager:
 
         # Load photon mesh material volumes if they exist (for mesh-based calculations)
         if self.method == 'mesh-based':
-            photon_mmv_file = photon_dir / 'mesh_material_volumes.npz'
-            if photon_mmv_file.exists():
-                self.results['mesh_material_volumes_photon'] = \
-                    openmc.MeshMaterialVolumes.from_npz(photon_mmv_file)
+            photon_mmv_files = sorted(
+                photon_dir.glob('mesh_material_volumes*.npz'),
+                key=lambda p: int(p.stem.split('_')[-1])
+                if p.stem[-1].isdigit() else 0)
+            if photon_mmv_files:
+                self.results['mesh_material_volumes_photon'] = [
+                    openmc.MeshMaterialVolumes.from_npz(f)
+                    for f in photon_mmv_files
+                ]
 
         # Load tally IDs from JSON file
         tally_ids_path = photon_dir / 'tally_ids.json'

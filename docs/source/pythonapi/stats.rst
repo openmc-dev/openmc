@@ -67,3 +67,4 @@ Spatial Distributions
    :template: myfunction.rst
 
    openmc.stats.spherical_uniform
+   openmc.stats.cylindrical_uniform

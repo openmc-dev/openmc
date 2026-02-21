@@ -54,24 +54,6 @@ _source_site_dtype = np.dtype([
 # intermediate ctypes buffer stays bounded (~104 MB at the default value).
 _SOURCE_SAMPLE_BATCH_SIZE: int = 1_000_000
 
-# Cached buffer for source site sampling to avoid repeated large allocations
-_source_site_buffer = None
-_source_site_buffer_size = 0
-
-def _get_source_site_buffer(n):
-    """Return a ctypes SourceSite array of at least *n* elements.
-
-    The buffer is cached at module level and only reallocated when a
-    larger size is needed, avoiding the cost of allocating and
-    zero-initializing large arrays on every sampling call.
-    """
-    global _source_site_buffer, _source_site_buffer_size
-    if n > _source_site_buffer_size:
-        _source_site_buffer = (_SourceSite * n)()
-        _source_site_buffer_size = n
-    return _source_site_buffer
-
-
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous
 _array_1d_int = np.ctypeslib.ndpointer(dtype=np.int32, ndim=1,
@@ -576,6 +558,9 @@ def sample_external_source(
 
     batch_size = min(n_samples, _SOURCE_SAMPLE_BATCH_SIZE)
 
+    # Allocate the ctypes buffer once; it is reused for every batch.
+    sites_array = (_SourceSite * batch_size)()
+
     # Pre-allocate the output container.  For ``as_array`` mode we create
     # a single numpy array and fill it in slices; for the ParticleList
     # path we accumulate SourceParticle objects across batches.
@@ -586,10 +571,6 @@ def sample_external_source(
 
     for offset in range(0, n_samples, batch_size):
         n_batch = min(batch_size, n_samples - offset)
-
-        # Reuse the module-level ctypes buffer (allocated once at the
-        # batch size, then reused for every subsequent batch).
-        sites_array = _get_source_site_buffer(n_batch)
 
         # Each batch's base seed is shifted by ``offset`` so that
         # particle *i* within a batch gets

@@ -298,6 +298,15 @@ class Settings:
         value is 0.5. For more information, see the surface tally section in the
         theory manual.
         :directions: List of directions corresponding to cells. 
+        :cell: Cell ID used to determine if particles crossing identified
+               surfaces are to be banked. Particles coming from or going to this
+               declared cell will be banked (int)
+        :cellfrom: Cell ID used to determine if particles crossing identified
+                   surfaces are to be banked. Particles coming from this
+                   declared cell will be banked (int)
+        :cellto: Cell ID used to determine if particles crossing identified
+                 surfaces are to be banked. Particles going to this declared
+                 cell will be banked (int)
         Acceptable entries are: "from", "to", or "both" (str)
     survival_biasing : bool
         Indicate whether survival biasing is to be used

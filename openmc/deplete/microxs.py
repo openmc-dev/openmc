@@ -572,28 +572,34 @@ class MicroXS:
             if rx not in self._index_rx:
                 new_reactions.append(rx)
 
-        # Allocate and fill from self
+        # Allocate and fill from self (self's nuclides/reactions map to the
+        # first indices of new_nuclides/new_reactions by construction)
         groups = self.data.shape[2]
         data = np.zeros((len(new_nuclides), len(new_reactions), groups))
         idx_n = {nuc: i for i, nuc in enumerate(new_nuclides)}
         idx_r = {rx: i for i, rx in enumerate(new_reactions)}
 
-        for i_nuc, nuc in enumerate(self.nuclides):
-            i_out_nuc = idx_n[nuc]
-            for i_rx, rx in enumerate(self.reactions):
-                i_out_rx = idx_r[rx]
-                data[i_out_nuc, i_out_rx] = self.data[i_nuc, i_rx]
+        n_self = len(self.nuclides)
+        r_self = len(self.reactions)
+        data[:n_self, :r_self] = self.data
+
+        # Build destination index arrays for other's nuclides/reactions
+        dst_n = np.array([idx_n[nuc] for nuc in other.nuclides])
+        dst_r = np.array([idx_r[rx] for rx in other.reactions])
 
         # Copy from other, respecting precedence
-        for i_nuc, nuc in enumerate(other.nuclides):
-            i_out_nuc = idx_n[nuc]
-            for i_rx, rx in enumerate(other.reactions):
-                i_out_rx = idx_r[rx]
-                if prefer == 'other':
-                    data[i_out_nuc, i_out_rx] = other.data[i_nuc, i_rx]
-                elif (nuc not in self._index_nuc) or (rx not in self._index_rx):
-                    # Only copy when the pair doesn't exist in self
-                    data[i_out_nuc, i_out_rx] = other.data[i_nuc, i_rx]
+        if prefer == 'other':
+            data[np.ix_(dst_n, dst_r)] = other.data
+        else:
+            # Copy only entries where nuc or rx is absent from self
+            nuc_is_new = np.array(
+                [nuc not in self._index_nuc for nuc in other.nuclides])
+            rx_is_new = np.array(
+                [rx not in self._index_rx for rx in other.reactions])
+            mask = nuc_is_new[:, np.newaxis] | rx_is_new[np.newaxis, :]
+            src_i, src_j = np.where(mask)
+            if src_i.size:
+                data[dst_n[src_i], dst_r[src_j]] = other.data[src_i, src_j]
 
         return MicroXS(data, new_nuclides, new_reactions)
 

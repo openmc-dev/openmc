@@ -178,3 +178,76 @@ def test_hybrid_tally_setup(simple_model):
     assert len(ef.values) == 2
     assert ef.values[0] == pytest.approx(energies[0])
     assert ef.values[-1] == pytest.approx(energies[-1])
+
+# ---------------------------------------------------------------------------
+# Tests for MicroXS.merge()
+# ---------------------------------------------------------------------------
+
+def _make_microxs(nuclides, reactions, values, groups=1):
+    """Helper: build a MicroXS from a flat list of values (nuclide-major order)."""
+    data = np.array(values, dtype=float).reshape(
+        len(nuclides), len(reactions), groups)
+    return MicroXS(data, nuclides, reactions)
+
+
+def test_merge_disjoint():
+    """Merging two MicroXS with no overlapping nuclides or reactions."""
+    m1 = _make_microxs(['U235', 'U238'], ['fission', '(n,gamma)'],
+                        [1., 2., 3., 4.])
+    m2 = _make_microxs(['Pu239'], ['(n,2n)'], [5.])
+
+    merged = m1.merge(m2)
+
+    assert merged.nuclides == ['U235', 'U238', 'Pu239']
+    assert merged.reactions == ['fission', '(n,gamma)', '(n,2n)']
+    assert merged.data.shape == (3, 3, 1)
+
+    # Self data preserved
+    assert merged['U235', 'fission'] == pytest.approx([1.])
+    assert merged['U238', '(n,gamma)'] == pytest.approx([4.])
+    # New data from other
+    assert merged['Pu239', '(n,2n)'] == pytest.approx([5.])
+    # Cross-terms that had no data should be zero
+    assert merged['U235', '(n,2n)'] == pytest.approx([0.])
+    assert merged['Pu239', 'fission'] == pytest.approx([0.])
+
+
+def test_merge_prefer_other():
+    """prefer='other': other overwrites shared entries, adds new ones."""
+    # m1: U235 and U238, reactions fission and (n,gamma)
+    m1 = _make_microxs(['U235', 'U238'], ['fission', '(n,gamma)'],
+                        [1., 2., 3., 4.])
+    # m2: only U235, reactions fission (overlap) and (n,2n) (new)
+    m2 = _make_microxs(['U235'], ['fission', '(n,2n)'], [9., 5.])
+
+    merged = m1.merge(m2)
+
+    # Nuclide/reaction sets
+    assert set(merged.nuclides) == {'U235', 'U238'}
+    assert set(merged.reactions) == {'fission', '(n,gamma)', '(n,2n)'}
+
+    # U235/fission overwritten by m2
+    assert merged['U235', 'fission'] == pytest.approx([9.])
+    # U235/(n,gamma) untouched
+    assert merged['U235', '(n,gamma)'] == pytest.approx([2.])
+    # New reaction added from m2
+    assert merged['U235', '(n,2n)'] == pytest.approx([5.])
+    # U238 data preserved
+    assert merged['U238', 'fission'] == pytest.approx([3.])
+    assert merged['U238', '(n,gamma)'] == pytest.approx([4.])
+    # U238/(n,2n) not in either → zero
+    assert merged['U238', '(n,2n)'] == pytest.approx([0.])
+
+
+def test_merge_prefer_self():
+    """prefer='self': shared pairs keep self's value; new entries use other's value."""
+    m1 = _make_microxs(['U235', 'U238'], ['fission', '(n,gamma)'],
+                        [1., 2., 3., 4.])
+    m2 = _make_microxs(['U235'], ['fission', '(n,2n)'], [9., 5.])
+
+    merged = m1.merge(m2, prefer='self')
+
+    # U235/fission: self wins
+    assert merged['U235', 'fission'] == pytest.approx([1.])
+    # U235/(n,2n): other used
+    assert merged['U235', '(n,2n)'] == pytest.approx([5.])

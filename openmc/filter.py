@@ -13,6 +13,7 @@ import pandas as pd
 import openmc
 import openmc.checkvalue as cv
 from .cell import Cell
+from .data.reaction import REACTION_NAME, REACTION_MT
 from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
@@ -22,11 +23,11 @@ from ._xml import get_elem_list, get_text
 
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
-    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
-    'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
+    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell',
+    'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre',
+    'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
     'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
-    'weight', 'meshborn', 'meshsurface', 'meshmaterial',
+    'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )
 
 _CURRENT_NAMES = (
@@ -1413,6 +1414,80 @@ class CollisionFilter(Filter):
             # Values should be integers
             cv.check_type('filter value', x, Integral)
             cv.check_greater_than('filter value', x, 0, equality=True)
+
+
+class ReactionFilter(Filter):
+    """Bins tally events based on the reaction type (MT number).
+
+    .. versionadded:: 0.15.4
+
+    Parameters
+    ----------
+    bins : str, int, or iterable thereof
+        The reaction types to tally. Can be reaction name strings
+        (e.g., ``'(n,elastic)'``, ``'(n,gamma)'``) or integer MT numbers
+        (e.g., 2, 102). Integer MT values are automatically converted to their
+        canonical string representation.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : numpy.ndarray of str
+        Reaction name strings
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    def __init__(self, bins, filter_id=None):
+        self.bins = bins
+        self.id = filter_id
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        if isinstance(bins, (str, Integral)):
+            bins = [bins]
+        elif not isinstance(bins, list):
+            bins = list(bins)
+        normalized = []
+        for b in bins:
+            if isinstance(b, Integral):
+                if int(b) not in REACTION_NAME:
+                    raise ValueError(f"No known reaction for MT={b}")
+                normalized.append(REACTION_NAME[int(b)])
+            elif isinstance(b, str):
+                if b == 'total':
+                    warnings.warn(
+                        "The reaction name 'total' is ambiguous. Use "
+                        "'(n,total)' for neutron total cross section or "
+                        "'photon-total' for photon total. Interpreting as"
+                        "'(n,total)'.")
+                if b not in REACTION_MT:
+                    raise ValueError(f"Unknown reaction name '{b}'")
+                normalized.append(REACTION_NAME[REACTION_MT[b]])
+            else:
+                raise TypeError(f"Expected str or int for reaction filter "
+                                f"bin, got {type(b)}")
+        self._bins = np.array(normalized, dtype=str)
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + "' instead")
+        bins = [b.decode() for b in group['bins'][()]]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        return cls(bins, filter_id=filter_id)
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", str) or []
+        return cls(bins, filter_id=filter_id)
 
 
 class RealFilter(Filter):

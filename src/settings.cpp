@@ -964,7 +964,7 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_ct, "reactions")) {
       auto temp = get_node_array<std::string>(node_ct, "reactions");
       for (const auto& b : temp) {
-        int reaction_int = reaction_type(b);
+        int reaction_int = reaction_mt(b);
         if (reaction_int > 0) {
           collision_track_config.mt_numbers.insert(reaction_int);
         }

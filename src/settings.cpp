@@ -743,8 +743,7 @@ void read_settings_xml(pugi::xml_node root)
 
     properties_file = get_node_value(node_props, "filepath");
     if (!file_exists(properties_file)) {
-      set_errmsg(fmt::format("File '{}' does not exist.", properties_file));
-      return OPENMC_E_INVALID_ARGUMENT;
+      fatal_error(fmt::format("File '{}' does not exist.", properties_file));
     }
     read_temperatures_from_properties =
       get_node_value_bool(node_props, "temperatures");

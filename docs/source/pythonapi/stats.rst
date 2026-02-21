@@ -68,4 +68,3 @@ Spatial Distributions
 
    openmc.stats.spherical_uniform
    openmc.stats.cylindrical_uniform
-   openmc.stats.ring_uniform

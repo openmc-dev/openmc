@@ -611,9 +611,9 @@ class CylindricalIndependent(Spatial):
         coordinates (x0, y0, z0) of the center of the cylindrical reference
         frame. Defaults to (0.0, 0.0, 0.0)
     r_dir : Iterable of float, optional
-        Unit vector of the cylinder r axis at phi=0. Defaults to (1.0, 0.0, 0.0).        
+        Unit vector of the cylinder r axis at phi=0.
     z_dir : Iterable of float, optional
-        Unit vector of the cylinder z axis direction. Defaults to (0.0, 0.0, 1.0).    
+        Unit vector of the cylinder z axis direction.
 
     Attributes
     ----------
@@ -628,13 +628,14 @@ class CylindricalIndependent(Spatial):
         coordinates (x0, y0, z0) of the center of the cylindrical reference
         frame. Defaults to (0.0, 0.0, 0.0)
     r_dir : Iterable of float, optional
-        Unit vector of the cylinder r axis at phi=0. Defaults to (1.0, 0.0, 0.0).        
+        Unit vector of the cylinder r axis at phi=0.
     z_dir : Iterable of float, optional
-        Unit vector of the cylinder z axis direction. Defaults to (0.0, 0.0, 1.0).    
+        Unit vector of the cylinder z axis direction.
 
     """
 
-    def __init__(self, r, phi, z, origin=(0.0, 0.0, 0.0), r_dir=(1.0, 0.0, 0.0), z_dir=(0.0, 0.0, 1.0)):
+    def __init__(self, r, phi, z, origin=(0.0, 0.0, 0.0), r_dir=(1.0, 0.0, 0.0),
+                 z_dir=(0.0, 0.0, 1.0)):
         self.r = r
         self.phi = phi
         self.z = z
@@ -678,7 +679,7 @@ class CylindricalIndependent(Spatial):
         cv.check_type('origin coordinates', origin, Iterable, Real)
         origin = np.asarray(origin)
         self._origin = origin
-        
+
     @property
     def z_dir(self):
         return self._z_dir
@@ -686,10 +687,10 @@ class CylindricalIndependent(Spatial):
     @z_dir.setter
     def z_dir(self, z_dir):
         cv.check_type('z-axis direction', z_dir, Iterable, Real)
-        z_dir = np.asarray(z_dir)
-        norm2 = np.dot(z_dir,z_dir)
-        cv.check_greater_than('z-axis direction magnitude', norm2, 0.0)
-        z_dir /= np.sqrt(norm2)
+        z_dir = np.array(z_dir)
+        norm = np.linalg.norm(z_dir)
+        cv.check_greater_than('z-axis direction magnitude', norm, 0.0)
+        z_dir /= norm
         self._z_dir = z_dir
 
     @property
@@ -699,12 +700,12 @@ class CylindricalIndependent(Spatial):
     @r_dir.setter
     def r_dir(self, r_dir):
         cv.check_type('r-axis direction', r_dir, Iterable, Real)
-        r_dir = np.asarray(r_dir)
-        r_dir -= np.dot(r_dir,self.z_dir)*self.z_dir
-        norm2 = np.dot(r_dir,r_dir)
-        cv.check_greater_than('r-axis direction magnitude', norm2,0.0)
-        r_dir /= np.sqrt(norm2)
-        self._r_dir = r_dir        
+        r_dir = np.array(r_dir)
+        r_dir -= np.dot(r_dir, self.z_dir) * self.z_dir
+        norm = np.linalg.norm(r_dir)
+        cv.check_greater_than('r-axis direction magnitude', norm, 0.0)
+        r_dir /= norm
+        self._r_dir = r_dir
 
     def to_xml_element(self):
         """Return XML representation of the spatial distribution
@@ -1261,42 +1262,41 @@ def spherical_uniform(
 
     return SphericalIndependent(r_dist, cos_thetas_dist, phis_dist, origin)
 
-    
+
 def cylindrical_uniform(
-        r_outer: float,
-        height: float,
-        r_inner: float = 0.0,
-        phis: Sequence[float] = (0., 2*pi),
-        origin: Sequence[float] = (0., 0., 0.),
-        r_dir: Sequence[float] = (1., 0., 0.),
-        z_dir: Sequence[float] = (0., 0., 1.),
-    ):
+    r_outer: float,
+    height: float,
+    r_inner: float = 0.0,
+    phis: Sequence[float] = (0., 2*pi),
+    **kwargs,
+):
     """Return a uniform spatial distribution over a cylindrical shell.
 
     This function provides a uniform spatial distribution over a cylindrical
-    shell between `r_inner` and `r_outer`. Optionally, the range of angles
-    can be restricted by the `phis` arguments.
+    shell between `r_inner` and `r_outer`. When `height` is zero, a delta
+    function is used for the z-distribution, giving a uniform distribution over
+    a flat ring (annulus) at z=0 in the local coordinate frame. Optionally, the
+    range of angles can be restricted by the `phis` argument.
 
+    .. versionadded:: 0.15.4
 
     Parameters
     ----------
     r_outer : float
         Outer radius of the cylindrical shell in [cm]
     height : float
-        Height of the cylindrical shell in [cm]        
+        Height of the cylindrical shell in [cm]. When 0, the distribution is a
+        flat ring at z=0 in the local frame.
     r_inner : float
         Inner radius of the cylindrical shell in [cm]
     phis : iterable of float
-        Starting and ending phi coordinates (azimuthal angle) in
-        radians in a reference frame centered at `origin`        
-    origin: iterable of float
-        Coordinates (x0, y0, z0) of the center of the cylindrical
-        reference frame for the distribution. Defaults to (0.0, 0.0, 0.0)
-    r_dir : iterable of float
-        Direction of the r-axis at phi=0. Defaults to (1.0, 0.0, 0.0)
-    z_dir : 
-        Direction of the z-axis. Defaults to (0.0, 0.0, 1.0)
-    
+        Starting and ending phi coordinates (azimuthal angle) in radians in a
+        reference frame centered at `origin`.
+    **kwargs
+        Keyword arguments passed directly to
+        :class:`~openmc.stats.CylindricalIndependent` (e.g., ``origin``,
+        ``r_dir``, ``z_dir``).
+
     Returns
     -------
     openmc.stats.CylindricalIndependent
@@ -1305,50 +1305,5 @@ def cylindrical_uniform(
 
     r_dist = PowerLaw(r_inner, r_outer, 1)
     phis_dist = Uniform(phis[0], phis[1])
-    z_dist = Uniform(-height/2, height/2)
-    
-    return CylindricalIndependent(r_dist, phis_dist, z_dist, origin, r_dir, z_dir) 
-    
-def ring_uniform(
-        r_outer: float,
-        r_inner: float = 0.0,
-        phis: Sequence[float] = (0., 2*pi),
-        origin: Sequence[float] = (0., 0., 0.),
-        r_dir: Sequence[float] = (1., 0., 0.),
-        z_dir: Sequence[float] = (0., 0., 1.),
-    ):
-    """Return a uniform spatial distribution over a ring.
-
-    This function provides a uniform spatial distribution over a ring
-    shell between `r_inner` and `r_outer`. Optionally, the range of angles
-    can be restricted by the `phis` arguments.
-
-
-    Parameters
-    ----------
-    r_outer : float
-        Outer radius of the ring in [cm]       
-    r_inner : float
-        Inner radius of the ring in [cm]
-    phis : iterable of float
-        Starting and ending phi coordinates (azimuthal angle) in
-        radians in a reference frame centered at `origin`        
-    origin: iterable of float
-        Coordinates (x0, y0, z0) of the center of the cylindrical
-        reference frame for the distribution. Defaults to (0.0, 0.0, 0.0)
-    r_dir : iterable of float
-        Direction of the r-axis at phi=0. Defaults to (1.0, 0.0, 0.0)
-    z_dir : 
-        Direction of the z-axis. Defaults to (0.0, 0.0, 1.0)
-    
-    Returns
-    -------
-    openmc.stats.CylindricalIndependent
-        Uniform distribution over the ring
-    """
-
-    r_dist = PowerLaw(r_inner, r_outer, 1)
-    phis_dist = Uniform(phis[0], phis[1])
-    z_dist = delta_function(np.dot(origin,z_dir))
-    
-    return CylindricalIndependent(r_dist, phis_dist, z_dist, origin, r_dir, z_dir)          
+    z_dist = delta_function(0.0) if height == 0.0 else Uniform(-height/2, height/2)
+    return CylindricalIndependent(r_dist, phis_dist, z_dist, **kwargs)

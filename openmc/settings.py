@@ -300,13 +300,13 @@ class Settings:
         :directions: List of directions corresponding to cells. 
         :cell: Cell ID used to determine if particles crossing identified
                surfaces are to be banked. Particles coming from or going to this
-               declared cell will be banked (int)
+               declared cell will be banked (int) ("cell" will be deprecated in the future, use "cells" instead.)
         :cellfrom: Cell ID used to determine if particles crossing identified
                    surfaces are to be banked. Particles coming from this
-                   declared cell will be banked (int)
+                   declared cell will be banked (int) ("cellfrom" will be deprecated in the future, use "cells" and "directions" instead.)
         :cellto: Cell ID used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
-                 cell will be banked (int)
+                 cell will be banked (int) ("cellto" will be deprecated in the future, use "cells" and "directions" instead.)
         Acceptable entries are: "from", "to", or "both" (str)
     survival_biasing : bool
         Indicate whether survival biasing is to be used

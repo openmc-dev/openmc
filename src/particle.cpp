@@ -958,7 +958,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
           continue;
         }
       }
-      // if the cell-direction pair survived all the checks we add the site and
+      // if a cell-direction pair survived all the checks we add the site and
       // terminate the loop
       add_site = true;
       break;

@@ -6,8 +6,7 @@ import openmc.stats
 
 def test_export_to_xml(run_in_tmpdir):
 
-    tmp_properties_file = Path('properties_test.h5')
-    tmp_properties_file.touch()
+    tmp_properties_file = 'properties_test.h5'
 
     s = openmc.Settings(run_mode='fixed source', batches=1000, seed=17)
     s.generations_per_batch = 10
@@ -49,7 +48,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.tabular_legendre = {'enable': True, 'num_points': 50}
     s.temperature = {'default': 293.6, 'method': 'interpolation',
                      'multipole': True, 'range': (200., 1000.)}
-    s.properties_file = str(tmp_properties_file)
+    s.properties_file = tmp_properties_file
     s.trace = (10, 1, 20)
     s.track = [(1, 1, 1), (2, 1, 1)]
     s.ufs_mesh = mesh
@@ -137,7 +136,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.tabular_legendre == {'enable': True, 'num_points': 50}
     assert s.temperature == {'default': 293.6, 'method': 'interpolation',
                              'multipole': True, 'range': [200., 1000.]}
-    assert s.properties_file == tmp_properties_file
+    assert s.properties_file == Path(tmp_properties_file)
     assert s.read_temperatures_from_properties
     assert s.read_densities_from_properties
     assert s.trace == [10, 1, 20]

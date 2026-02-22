@@ -283,12 +283,20 @@ class Settings:
         :cells: List of cell IDs used to determine if particles crossing identified
                surfaces are to be banked. Particles coming from or going to this
                declared cell will be banked (int)
-        :cellfrom: List of cell IDs used to determine if particles crossing identified
+        :directions: List of directions corresponding to cells. Acceptable entries are: 
+                    "from", "to", or "both" (str)
+        :cell: Cell ID used to determine if particles crossing identified
+               surfaces are to be banked. Particles coming from or going to this
+               declared cell will be banked (int) ("cell" will be deprecated in the future, 
+               use "cells" instead.)
+        :cellfrom: Cell ID used to determine if particles crossing identified
                    surfaces are to be banked. Particles coming from this
-                   declared cell will be banked (int)
-        :cellto: List of cell IDs used to determine if particles crossing identified
+                   declared cell will be banked (int) ("cellfrom" will be deprecated in the future, 
+                   use "cells" and "directions" instead.)
+        :cellto: Cell ID used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
-                 cell will be banked (int)
+                 cell will be banked (int) ("cellto" will be deprecated in the future, 
+                 use "cells" and "directions" instead.)
     surface_grazing_cutoff : float
         Surface flux cosine cutoff. If not specified, the default value is
         0.001. For more information, see the surface tally section in the theory
@@ -297,17 +305,7 @@ class Settings:
         Surface flux cosine substitution ratio. If not specified, the default
         value is 0.5. For more information, see the surface tally section in the
         theory manual.
-        :directions: List of directions corresponding to cells. 
-        :cell: Cell ID used to determine if particles crossing identified
-               surfaces are to be banked. Particles coming from or going to this
-               declared cell will be banked (int) ("cell" will be deprecated in the future, use "cells" instead.)
-        :cellfrom: Cell ID used to determine if particles crossing identified
-                   surfaces are to be banked. Particles coming from this
-                   declared cell will be banked (int) ("cellfrom" will be deprecated in the future, use "cells" and "directions" instead.)
-        :cellto: Cell ID used to determine if particles crossing identified
-                 surfaces are to be banked. Particles going to this declared
-                 cell will be banked (int) ("cellto" will be deprecated in the future, use "cells" and "directions" instead.)
-        Acceptable entries are: "from", "to", or "both" (str)
+
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict

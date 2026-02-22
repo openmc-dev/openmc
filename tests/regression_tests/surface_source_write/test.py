@@ -961,7 +961,7 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
             "model_1",
             {"max_particles": 300, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 2},
         ),
-        ("case-e02", "model_1", {"max_particles": 300, "cell": [3]}),
+        ("case-e02", "model_1", {"max_particles": 300, "cell": 3}),
         (
             "case-e03",
             "model_2",
@@ -1179,21 +1179,21 @@ def model_dagmc_2():
     [
         ("case-d01", "model_dagmc_1", {"max_particles": 300}),
         ("case-d02", "model_dagmc_1", {"max_particles": 300, "surface_ids": [1]}),
-        ("case-d03", "model_dagmc_1", {"max_particles": 300, "cell": [2]}),
+        ("case-d03", "model_dagmc_1", {"max_particles": 300, "cell": 2}),
         (
             "case-d04",
             "model_dagmc_1",
-            {"max_particles": 300, "surface_ids": [1], "cell": [2]},
+            {"max_particles": 300, "surface_ids": [1], "cell": 2},
         ),
-        ("case-d05", "model_dagmc_1", {"max_particles": 300, "cellfrom": [2]}),
-        ("case-d06", "model_dagmc_1", {"max_particles": 300, "cellto": [2]}),
+        ("case-d05", "model_dagmc_1", {"max_particles": 300, "cellfrom": 2}),
+        ("case-d06", "model_dagmc_1", {"max_particles": 300, "cellto": 2}),
         (
             "case-d07",
             "model_dagmc_2",
             {
                 "max_particles": 300,
                 "surface_ids": [101, 102, 103, 104, 105, 106],
-                "cell": [7],
+                "cell": 7,
             },
         ),
         (
@@ -1202,7 +1202,7 @@ def model_dagmc_2():
             {
                 "max_particles": 300,
                 "surface_ids": [101, 102, 103, 104, 105, 106],
-                "cell": [8],
+                "cell": 8,
             },
         ),
     ],
@@ -1238,8 +1238,6 @@ def test_surface_source_multiple_cells(model_5, single_thread, single_process):
             harness._compare_inputs()
             harness._run_openmc()
             harness._test_output_created()
-
-            # count banked particles in surface_source.h5
             return len(return_surface_source_data("surface_source.h5"))
         finally:
             harness._cleanup()

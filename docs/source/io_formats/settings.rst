@@ -1166,11 +1166,12 @@ attributes/sub-elements:
 
 The ``<surf_source_write>`` element triggers OpenMC to bank particles crossing
 certain surfaces and write out the source bank in a separate file called
-``surface_source.h5``. One or multiple surface IDs and one cell ID can be used
-to select the surfaces of interest. If no surface IDs are declared, every surface
-of the model is eligible to bank particles. In that case, a cell ID (using
-either the ``cell``, ``cellfrom`` or ``cellto`` attributes) can be used to select
-every surface of a specific cell. This element has the following
+``surface_source.h5``. One or multiple surface IDs and one or multiple cell IDs can be used
+to select the surfaces of interest. The cell IDs can have direction flags assosciated with them 
+to further filter the banked particles. Allowed directions are ``to``, ``from`` or ``both``. 
+If only one cell ID is used in banking, the ``cell``, ``cellfrom`` or ``cellto`` attributes 
+can be used instead of the ``cells`` and ``directions`` attributes. If no surface IDs are declared, 
+every surface of the model is eligible to bank particles. This element has the following
 attributes/sub-elements:
 
   :surface_ids:
@@ -1206,6 +1207,18 @@ attributes/sub-elements:
 
     .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
 
+  :cells:
+    A list of integers representing the cell IDs used to determine if particles crossing
+    identified surfaces are to be banked. 
+
+    *Default*: None
+
+  :directions:
+    A list of strings representing the directions corresponding to the cell IDs. Allowed values are 
+    ``to``, ``from`` or ``both``. Must have the same length as ``cells``. 
+
+    *Default*: None
+
   :cell:
     An integer representing the cell ID used to determine if particles crossing
     identified surfaces are to be banked. Particles coming from or going to this
@@ -1227,8 +1240,14 @@ attributes/sub-elements:
 
     *Default*: None
 
+.. note:: The ``cell``, ``cellfrom`` or ``cellto`` attributes cannot be
+          used simultaneously with ``cells`` attribute.        
+
 .. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
           used simultaneously.
+
+.. note:: If ``cells`` attribute is defined and ``directions`` attribute is not, 
+          all the directions of in ``cells`` will default to ``both``.  
 
 .. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
           are not eligible to store any particles when using ``cell``, ``cellfrom``

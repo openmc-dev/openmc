@@ -902,16 +902,17 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
       // Leave if other boundary condition than vacuum
       return;
     }
-    add_site = false; // we assume all cell-direction pairs are invalid till one of
-                      // them passes all the tests
+    add_site = false; // we assume all cell-direction pairs are invalid till one
+                      // of them passes all the tests
     for (auto& cell : settings::ssw_cells) {
       // Retrieve cell index and storage type
       int cell_idx = model::cell_map[cell.first];
       SSWCellType direction = cell.second;
-      if (surf.bc_ && surf.bc_->type() == "vacuum" && direction == SSWCellType::To) {
+      if (surf.bc_ && surf.bc_->type() == "vacuum" &&
+          direction == SSWCellType::To) {
         // skip if cellto with vacuum boundary condition
-          continue;
-        }
+        continue;
+      }
 
       // Check if the cell of interest has been exited
       bool exited = false;

@@ -974,10 +974,11 @@ class MeshFilter(Filter):
             A Pandas DataFrame with columns describing the mesh cell indices
             corresponding to each filter bin. Column names depend on the mesh
             type (e.g., x/y/z for RegularMesh, r/phi/z for CylindricalMesh,
-            r/theta/phi for SphericalMesh, or element for UnstructuredMesh).
-            The number of rows in the DataFrame is the same as the total
-            number of bins in the corresponding tally, with the filter bin
-            appropriately tiled to map to the corresponding tally bins.
+            r/theta/phi for SphericalMesh, or element index for
+            UnstructuredMesh). The number of rows in the DataFrame is the same
+            as the total number of bins in the corresponding tally, with the
+            filter bin appropriately tiled to map to the corresponding tally
+            bins.
 
         See also
         --------

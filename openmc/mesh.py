@@ -2694,7 +2694,7 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def _axis_labels(self):
-        return ('element',)
+        return ('element_index',)
 
     @property
     @require_statepoint_data

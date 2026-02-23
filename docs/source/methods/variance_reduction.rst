@@ -139,7 +139,7 @@ Finally, one unique capability of the FW-CADIS weight window generator is to
 produce weight windows for local variance reduction, given a list of the 
 responses of interest. This is controlled by optionally specifying target 
 tallies from the :class:`openmc.model.Model` to the 
-:class:`openmc.WeightWindowGenerator`, as discussed further in the
+:class:`openmc.WeightWindowGenerator`, as illustrated in the
 :ref:`user guide<variance_reduction>`. If target tallies for local variance 
 reduction are supplied, then the adjoint sources are only populated after the 
 initial forward simulation in the source regions associated with those tallies. 

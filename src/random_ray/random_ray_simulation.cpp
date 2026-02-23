@@ -467,7 +467,8 @@ void RandomRaySimulation::prepare_fw_fixed_sources_adjoint()
 {
   // Prepare adjoint fixed sources using forward flux
   domain_->source_regions_.adjoint_reset();
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (settings::run_mode == RunMode::FIXED_SOURCE ||
+      FlatSourceDomain::fw_cadis_local_) {
     domain_->set_fw_adjoint_sources();
   }
 }

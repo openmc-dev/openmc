@@ -1310,7 +1310,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
       for (int g = 0; g < negroups_; g++) {
 
         // If there are no tally tasks associated with this source element
-        // then it is not a local FW-CADIS source, so we continue to the next 
+        // then it is not a local FW-CADIS source, so we continue to the next
         // group
         if (source_regions_.tally_task(sr, g).empty()) {
           source_regions_.external_source(sr, g) = 0.0;
@@ -1318,7 +1318,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         }
 
         // If there are tally tasks, we can through them and check if
-        // any of them are local FW-CADIS targets and have a non-mesh filter 
+        // any of them are local FW-CADIS targets and have a non-mesh filter
         // type.
 
         // We track if ANY of the tasks are local FW-CADIS target tallies
@@ -1330,9 +1330,9 @@ void FlatSourceDomain::set_fw_adjoint_sources()
           const auto t_id = tally.id();
 
           // Skip non-target tallies
-          if (std::find(fw_cadis_local_targets_.begin(), 
-              fw_cadis_local_targets_.end(), t_id) ==
-              fw_cadis_local_targets_.end()) {
+          if (std::find(fw_cadis_local_targets_.begin(),
+                fw_cadis_local_targets_.end(),
+                t_id) == fw_cadis_local_targets_.end()) {
             continue;
           }
 
@@ -1340,7 +1340,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
 
           // For each tally, we loop through the filter types array.
           // If any of them have a FW-CADIS-compatible filter type,
-          // then this source element is a valid local FW-CADIS source 
+          // then this source element is a valid local FW-CADIS source
           for (const auto& filter_type : filter_types) {
             if (filter_type == FilterType::CELL ||
                 filter_type == FilterType::CELL_INSTANCE ||
@@ -1353,8 +1353,9 @@ void FlatSourceDomain::set_fw_adjoint_sources()
           }
           // If a target tally doesn't have any compatible filters, error
           if (!local_fw_cadis_target_region) {
-            fatal_error("Local FW-CADIS target tally with ID " + 
-                        std::to_string(t_id) + " does not have any "
+            fatal_error("Local FW-CADIS target tally with ID " +
+                        std::to_string(t_id) +
+                        " does not have any "
                         "FW-CADIS-compatible filters.");
           }
         }

@@ -1084,8 +1084,8 @@ simulation. Fixed adjoint sources can be specified on the
 The same constraints apply to the user-defined adjoint source as to the forward 
 source, described in the :ref:`Fixed Source and Eigenvalue section 
 <usersguide_random_ray_run_modes>`. If this source is not provided, a forward 
-solve must take place to compute the adjoint external source when an external 
-forward source is present in the problem. Simulation settings (e.g., number of 
+solve must take place to compute the adjoint external source when a forward 
+external source is present in the problem. Simulation settings (e.g., number of 
 rays, batches, etc.) will be identical for both calculations. At the 
 conclusion of the run, all results (e.g., tallies, plots, etc.) will be 
 derived from the adjoint flux rather than the forward flux but are not labeled 

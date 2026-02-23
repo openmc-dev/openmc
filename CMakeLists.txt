@@ -92,6 +92,18 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #===============================================================================
+# Remove NDEBUG from RelWithDebInfo flags so that assert() remains active in
+# the default build mode. CMake normally adds -DNDEBUG for both Release and
+# RelWithDebInfo, which disables C/C++ assert() statements. We keep NDEBUG
+# in Release mode for users who want maximum performance.
+#===============================================================================
+
+foreach(FLAG_VAR CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_RELWITHDEBINFO)
+  string(REPLACE "-DNDEBUG" "" ${FLAG_VAR} "${${FLAG_VAR}}")
+  string(REPLACE "/DNDEBUG" "" ${FLAG_VAR} "${${FLAG_VAR}}")
+endforeach()
+
+#===============================================================================
 # OpenMP for shared-memory parallelism (and GPU support some day!)
 #===============================================================================
 

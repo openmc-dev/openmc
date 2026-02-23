@@ -383,6 +383,15 @@ OPENMC_USE_MPI
   options, please see the `FindMPI.cmake documentation
   <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
+OPENMC_ENABLE_FMA_CONTRACTION
+  Enables floating-point fused multiply-add (FMA) contraction. FMA contraction
+  is turned off by default to improve cross-system and cross-compiler bitwise
+  reproducibility, since different compilers have different policies for
+  deciding which operations to contract to FMA instructions. Turning FMA
+  contraction on may improve performance for floating-point heavy workloads,
+  but simulations may give different results with different compilers and
+  systems. (Default: off)
+
 OPENMC_FORCE_VENDORED_LIBS
   Forces OpenMC to use the submodules located in the vendor directory, as
   opposed to searching the system for already installed versions of those
@@ -415,7 +424,9 @@ Release
 
 RelWithDebInfo
   (Default if no type is specified.) Enable optimization and debug. On most
-  platforms/compilers, this is equivalent to `-O2 -g`.
+  platforms/compilers, this is equivalent to `-O2 -g`. OpenMC removes the
+  ``-DNDEBUG`` flag that CMake normally adds for this build type, so that
+  C/C++ assertions remain active.
 
 Example of configuring for Debug mode:
 

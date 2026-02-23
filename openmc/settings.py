@@ -1048,7 +1048,7 @@ class Settings:
 
     @read_temperatures.setter
     def read_temperatures(self, read_temperatures : bool):
-        cv.check_type('Whether read temperatures from properties ',
+        cv.check_type('read temperatures from properties ',
                       read_temperatures, bool)
         self._read_temperatures = read_temperatures
 
@@ -1058,7 +1058,7 @@ class Settings:
 
     @read_densities.setter
     def read_densities(self, read_densities : bool):
-        cv.check_type('Whether read temperatures from properties ',
+        cv.check_type('read temperatures from properties ',
                       read_densities, bool)
         self._read_densities = read_densities
 
@@ -1757,7 +1757,7 @@ class Settings:
              self.read_temperatures) and
             self.properties_file is None):
             # build warning that no properties file is specified
-            msg = (f'Flag to read densities or temperatures was set without providing ' 
+            msg = ('Flag to read densities or temperatures was set without providing ' 
                    'a properties file.')
             warnings.warn(msg)
 
@@ -2276,18 +2276,6 @@ class Settings:
             self.read_temperatures = text in ('true', '1')
             text = get_text(elem, 'densities')
             self.read_densities = text in ('true', '1')
-
-    # def _weight_window_checkpoints_from_xml_element(self, root):
-    #     elem = root.find('weight_window_checkpoints')
-    #     if elem is None:
-    #         return
-    #     for key in ('collision', 'surface'):
-    #         value = get_text(elem, key)
-    #         if value is not None:
-    #             value = value in ('true', '1')
-    #             self.weight_window_checkpoints[key] = value
-
-
 
     def _trace_from_xml_element(self, root):
         text = get_elem_list(root, "trace", int)

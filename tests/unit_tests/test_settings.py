@@ -137,8 +137,8 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.temperature == {'default': 293.6, 'method': 'interpolation',
                              'multipole': True, 'range': [200., 1000.]}
     assert s.properties_file == Path(tmp_properties_file)
-    assert s.read_temperatures_from_properties
-    assert s.read_densities_from_properties
+    assert s.read_temperatures
+    assert s.read_densities
     assert s.trace == [10, 1, 20]
     assert s.track == [(1, 1, 1), (2, 1, 1)]
     assert isinstance(s.ufs_mesh, openmc.RegularMesh)

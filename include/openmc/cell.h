@@ -196,11 +196,10 @@ public:
 
   //! Import physical properties from HDF5
   //! \param[in] group  HDF5 group to write to
-  //! \param[in] read_temperatures_from_properties whether to read temperatures
-  //! \param[in] read_densities_from_properties whether to read densities
-  void import_properties_hdf5(hid_t group,
-    bool read_temperatures_from_properties,
-    bool read_densities_from_properties);
+  //! \param[in] read_temperatures whether to read temperatures
+  //! \param[in] read_densities whether to read densities
+  void import_properties_hdf5(
+    hid_t group, bool read_temperatures, bool read_densities);
 
   //! Get the BoundingBox for this cell.
   virtual BoundingBox bounding_box() const = 0;

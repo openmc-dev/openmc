@@ -207,6 +207,23 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
+# FMA contraction is typically enabled by default at most compiler optimization
+# levels. Explicitly turning off FMA contraction greatly improves cross-system
+# and cross-compiler bit-wise reproducibility, as different compilers have
+# different policies for deciding which operations to contract to FMA
+# instructions. This is important for consistency in regression testing. A user
+# may wish to run with default FMA contraction policies to (potentially) improve
+# performance on floating point heavy workloads, though at the cost of
+# simulations potentially giving different results with different compilers and
+# systems.
+if(NOT OPENMC_ENABLE_FMA_CONTRACTION)
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag(-ffp-contract=off COMPILER_SUPPORTS_FP_CONTRACT)
+  if(COMPILER_SUPPORTS_FP_CONTRACT)
+    list(APPEND cxxflags -ffp-contract=off)
+  endif()
+endif()
+
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
 
@@ -219,19 +236,6 @@ endif()
 if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
-endif()
-
-# FMA contraction is typically enabled by default at most compiler optimization
-# levels. Explicitly turning off FMA contraction greatly improves cross-system
-# and cross-compiler bit-wise reproducibility, as different compilers have
-# different policies for deciding which operations to contract to FMA
-# instructions. This is important for consistency in regression testing. A user
-# may wish to run with default FMA contraction policies to (potentially) improve
-# performance on floating point heavy workloads, though at the cost of
-# simulations potentially giving different results with different compilers and
-# systems.
-if(NOT OPENMC_ENABLE_FMA_CONTRACTION)
-  list(APPEND cxxflags -ffp-contract=off)
 endif()
 
 # Show flags being used

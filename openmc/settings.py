@@ -1591,6 +1591,10 @@ class Settings:
                     str(x) for x in self._surf_source_write["surface_ids"]
                 )
 
+            if "mcpl" in self._surf_source_write:
+                subelement = ET.SubElement(element, "mcpl")
+                subelement.text = str(self._surf_source_write["mcpl"]).lower()
+
             for key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
                 if key in self._surf_source_write:
                     subelement = ET.SubElement(element, key)
@@ -1602,11 +1606,6 @@ class Settings:
                     subelement.text = " ".join(
                         str(x) for x in self._surf_source_write[key]
                     )
-
-            if "mcpl" in self._surf_source_write:
-                subelement = ET.SubElement(element, "mcpl")
-                subelement.text = str(self._surf_source_write["mcpl"]).lower()
-                
 
     def _create_collision_track_subelement(self, root):
         if self._collision_track:

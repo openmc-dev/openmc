@@ -550,11 +550,11 @@ generator during generation of colors in plots.
 --------------------------------------
 
   The ``properties_file`` element indicates whether temperatures and densities 
-  should be read from the properties file instead of from the XML file. It contains
+  from a properties file should override the properties present in the XML file. It contains
   the following parameters:
 
     :filepath:
-      The path to the properties file to be used to read temperatures and/or densities
+      The path to the properties file
 
     :temperatures:
        Boolean to indicate whether or not to read cell temperatures from the properties file.
@@ -562,7 +562,7 @@ generator during generation of colors in plots.
        *Default*: True
 
     :densities:
-       Boolean to indicate whether or not to read cell or material densities from the properties file.
+       Boolean to indicate whether or not to read cell and material densities from the properties file.
 
        *Default*: True
 

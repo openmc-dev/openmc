@@ -384,14 +384,15 @@ OPENMC_USE_MPI
   <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
 OPENMC_STRICT_FP
-  Disables floating-point FMA contraction and compiler auto-vectorization to
-  improve cross-system and cross-compiler reproducibility. FMA contraction fuses
-  multiply-add into a single instruction with different rounding, and
-  auto-vectorization changes summation order in reductions (e.g., 256-bit AVX on
-  x86 vs. 128-bit NEON on ARM), both of which cause bit-level differences across
-  platforms. This option is used in CI for regression testing. By default (off),
-  the compiler is free to use FMA and vectorization for best performance.
-  (Default: off)
+  Disables compiler optimizations that change floating-point results relative to
+  unoptimized builds, improving cross-platform and cross-optimization-level
+  reproducibility. This disables FMA contraction (``-ffp-contract=off``),
+  auto-vectorization (``-fno-tree-vectorize``), and compiler builtin replacements
+  of math functions like ``pow``, ``exp``, ``log`` (``-fno-builtin``). Without
+  this flag, these optimizations can produce bit-level differences across
+  platforms, compilers, and optimization levels. This option is used in CI for
+  regression testing. By default (off), the compiler is free to use all
+  optimizations for best performance. (Default: off)
 
 OPENMC_FORCE_VENDORED_LIBS
   Forces OpenMC to use the submodules located in the vendor directory, as

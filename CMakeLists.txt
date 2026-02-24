@@ -207,14 +207,15 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# When OPENMC_STRICT_FP is enabled, disable FMA contraction and
-# auto-vectorization to improve cross-system and cross-compiler floating-point
-# reproducibility. FMA contraction fuses multiply-add into a single instruction
-# with different rounding behavior, and auto-vectorization changes summation
-# order in reductions (e.g., AVX uses 256-bit vectors on x86 vs. 128-bit NEON
-# on ARM). Both cause bit-level differences across platforms. Disabling these
-# is important for consistency in regression testing. By default (OFF), the
-# compiler is free to use FMA and vectorization for best performance.
+# When OPENMC_STRICT_FP is enabled, disable compiler optimizations that change
+# floating-point results relative to -O0, improving cross-platform and
+# cross-optimization-level reproducibility for regression testing:
+#   -ffp-contract=off    Prevents FMA contraction (fused multiply-add changes rounding)
+#   -fno-tree-vectorize  Prevents auto-vectorization (changes summation order)
+#   -fno-builtin         Prevents replacing math function calls (pow, exp, log, etc.)
+#                        with builtin versions that may differ from libm
+# By default (OFF), the compiler is free to use all optimizations for best
+# performance.
 if(OPENMC_STRICT_FP)
   include(CheckCXXCompilerFlag)
   check_cxx_compiler_flag(-ffp-contract=off SUPPORTS_FP_CONTRACT_OFF)
@@ -224,6 +225,10 @@ if(OPENMC_STRICT_FP)
   check_cxx_compiler_flag(-fno-tree-vectorize SUPPORTS_NO_TREE_VECTORIZE)
   if(SUPPORTS_NO_TREE_VECTORIZE)
     list(APPEND cxxflags -fno-tree-vectorize)
+  endif()
+  check_cxx_compiler_flag(-fno-builtin SUPPORTS_NO_BUILTIN)
+  if(SUPPORTS_NO_BUILTIN)
+    list(APPEND cxxflags -fno-builtin)
   endif()
 endif()
 

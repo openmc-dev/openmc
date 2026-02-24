@@ -383,14 +383,15 @@ OPENMC_USE_MPI
   options, please see the `FindMPI.cmake documentation
   <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
-OPENMC_ENABLE_FMA_CONTRACTION
-  Enables floating-point fused multiply-add (FMA) contraction. FMA contraction
-  is turned off by default to improve cross-system and cross-compiler bitwise
-  reproducibility, since different compilers have different policies for
-  deciding which operations to contract to FMA instructions. Turning FMA
-  contraction on may improve performance for floating-point heavy workloads,
-  but simulations may give different results with different compilers and
-  systems. (Default: off)
+OPENMC_STRICT_FP
+  Disables floating-point FMA contraction and compiler auto-vectorization to
+  improve cross-system and cross-compiler reproducibility. FMA contraction fuses
+  multiply-add into a single instruction with different rounding, and
+  auto-vectorization changes summation order in reductions (e.g., 256-bit AVX on
+  x86 vs. 128-bit NEON on ARM), both of which cause bit-level differences across
+  platforms. This option is used in CI for regression testing. By default (off),
+  the compiler is free to use FMA and vectorization for best performance.
+  (Default: off)
 
 OPENMC_FORCE_VENDORED_LIBS
   Forces OpenMC to use the submodules located in the vendor directory, as

@@ -43,6 +43,9 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
 
+    # Enable strict FP for cross-platform reproducibility in CI
+    cmake_cmd.append('-DOPENMC_STRICT_FP=on')
+
     # Build and install
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))

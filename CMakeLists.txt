@@ -38,7 +38,7 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
-option(OPENMC_ENABLE_FMA_CONTRACTION "Enable floating point FMA contraction"         OFF)
+option(OPENMC_STRICT_FP "Set strict floating point flags (improves test portability)"OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
 message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
@@ -49,7 +49,7 @@ message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 message(STATUS "OPENMC_FORCE_VENDORED_LIBS ${OPENMC_FORCE_VENDORED_LIBS}")
-message(STATUS "OPENMC_ENABLE_FMA_CONTRACTION ${OPENMC_ENABLE_FMA_CONTRACTION}")
+message(STATUS "OPENMC_STRICT_FP ${OPENMC_STRICT_FP}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -207,20 +207,23 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# FMA contraction is typically enabled by default at most compiler optimization
-# levels. Explicitly turning off FMA contraction greatly improves cross-system
-# and cross-compiler bit-wise reproducibility, as different compilers have
-# different policies for deciding which operations to contract to FMA
-# instructions. This is important for consistency in regression testing. A user
-# may wish to run with default FMA contraction policies to (potentially) improve
-# performance on floating point heavy workloads, though at the cost of
-# simulations potentially giving different results with different compilers and
-# systems.
-if(NOT OPENMC_ENABLE_FMA_CONTRACTION)
+# When OPENMC_STRICT_FP is enabled, disable FMA contraction and
+# auto-vectorization to improve cross-system and cross-compiler floating-point
+# reproducibility. FMA contraction fuses multiply-add into a single instruction
+# with different rounding behavior, and auto-vectorization changes summation
+# order in reductions (e.g., AVX uses 256-bit vectors on x86 vs. 128-bit NEON
+# on ARM). Both cause bit-level differences across platforms. Disabling these
+# is important for consistency in regression testing. By default (OFF), the
+# compiler is free to use FMA and vectorization for best performance.
+if(OPENMC_STRICT_FP)
   include(CheckCXXCompilerFlag)
-  check_cxx_compiler_flag(-ffp-contract=off COMPILER_SUPPORTS_FP_CONTRACT)
-  if(COMPILER_SUPPORTS_FP_CONTRACT)
+  check_cxx_compiler_flag(-ffp-contract=off SUPPORTS_FP_CONTRACT_OFF)
+  if(SUPPORTS_FP_CONTRACT_OFF)
     list(APPEND cxxflags -ffp-contract=off)
+  endif()
+  check_cxx_compiler_flag(-fno-tree-vectorize SUPPORTS_NO_TREE_VECTORIZE)
+  if(SUPPORTS_NO_TREE_VECTORIZE)
+    list(APPEND cxxflags -fno-tree-vectorize)
   endif()
 endif()
 

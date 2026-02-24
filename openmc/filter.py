@@ -972,53 +972,36 @@ class MeshFilter(Filter):
         Returns
         -------
         pandas.DataFrame
-            A Pandas DataFrame with three columns describing the x,y,z mesh
-            cell indices corresponding to each filter bin.  The number of rows
-            in the DataFrame is the same as the total number of bins in the
-            corresponding tally, with the filter bin appropriately tiled to map
-            to the corresponding tally bins.
+            A Pandas DataFrame with columns describing the mesh cell indices
+            corresponding to each filter bin. Column names depend on the mesh
+            type (e.g., x/y/z for RegularMesh, r/phi/z for CylindricalMesh,
+            r/theta/phi for SphericalMesh, or element index for
+            UnstructuredMesh). The number of rows in the DataFrame is the same
+            as the total number of bins in the corresponding tally, with the
+            filter bin appropriately tiled to map to the corresponding tally
+            bins.
 
         See also
         --------
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
         # Initialize dictionary to build Pandas Multi-index column
         filter_dict = {}
 
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
-        # Find mesh dimensions - use 3D indices for simplicity
-        n_dim = len(self.mesh.dimension)
-        if n_dim == 3:
-            nx, ny, nz = self.mesh.dimension
-        elif n_dim == 2:
-            nx, ny = self.mesh.dimension
-            nz = 1
-        else:
-            nx = self.mesh.dimension
-            ny = nz = 1
+        # Determine index base (0-based for unstructured, 1-based otherwise)
+        idx_start = 0 if isinstance(self.mesh, openmc.UnstructuredMesh) else 1
 
-        # Generate multi-index sub-column for x-axis
-        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
-            np.arange(1, nx + 1), stride, data_size)
+        # Generate a multi-index sub-column for each axis
+        for label, dim_size in zip(self.mesh._axis_labels, self.mesh.dimension):
+            filter_dict[mesh_key, label] = _repeat_and_tile(
+                np.arange(idx_start, idx_start + dim_size), stride, data_size)
+            stride *= dim_size
 
-        # Generate multi-index sub-column for y-axis
-        filter_dict[mesh_key, 'y'] = _repeat_and_tile(
-            np.arange(1, ny + 1), nx * stride, data_size)
-
-        # Generate multi-index sub-column for z-axis
-        filter_dict[mesh_key, 'z'] = _repeat_and_tile(
-            np.arange(1, nz + 1), nx * ny * stride, data_size)
-
-        # Initialize a Pandas DataFrame from the mesh dictionary
-        df = pd.concat([df, pd.DataFrame(filter_dict)])
-
-        return df
+        return pd.DataFrame(filter_dict)
 
     def to_xml_element(self):
         """Return XML Element representing the Filter.

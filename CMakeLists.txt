@@ -211,7 +211,6 @@ endif()
 # floating-point results relative to -O0, improving cross-platform and
 # cross-optimization-level reproducibility for regression testing:
 #   -ffp-contract=off    Prevents FMA contraction (fused multiply-add changes rounding)
-#   -fno-tree-vectorize  Prevents auto-vectorization (changes summation order)
 #   -fno-builtin         Prevents replacing math function calls (pow, exp, log, etc.)
 #                        with builtin versions that may differ from libm
 # By default (OFF), the compiler is free to use all optimizations for best
@@ -221,10 +220,6 @@ if(OPENMC_STRICT_FP)
   check_cxx_compiler_flag(-ffp-contract=off SUPPORTS_FP_CONTRACT_OFF)
   if(SUPPORTS_FP_CONTRACT_OFF)
     list(APPEND cxxflags -ffp-contract=off)
-  endif()
-  check_cxx_compiler_flag(-fno-tree-vectorize SUPPORTS_NO_TREE_VECTORIZE)
-  if(SUPPORTS_NO_TREE_VECTORIZE)
-    list(APPEND cxxflags -fno-tree-vectorize)
   endif()
   check_cxx_compiler_flag(-fno-builtin SUPPORTS_NO_BUILTIN)
   if(SUPPORTS_NO_BUILTIN)
@@ -593,6 +588,9 @@ if (OPENMC_ENABLE_PROFILE)
 endif()
 if (OPENMC_ENABLE_COVERAGE)
   target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
+endif()
+if (OPENMC_STRICT_FP)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_STRICT_FP_BUILD)
 endif()
 
 #===============================================================================

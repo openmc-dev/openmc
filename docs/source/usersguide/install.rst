@@ -383,15 +383,19 @@ OPENMC_USE_MPI
   options, please see the `FindMPI.cmake documentation
   <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
+.. _cmake_strict_fp:
+
 OPENMC_STRICT_FP
   Disables compiler optimizations that change floating-point results relative to
   unoptimized builds, improving cross-platform and cross-optimization-level
   reproducibility. This disables FMA contraction (``-ffp-contract=off``) and
   compiler builtin replacements of math functions like ``pow``, ``exp``, ``log``
-  (``-fno-builtin``). Without this flag, these optimizations can produce
-  bit-level differences across platforms, compilers, and optimization levels.
-  This option should be used when running the test suite. By default (off), the
-  compiler is free to use all optimizations for best performance. (Default: off)
+  (``-fno-builtin``). It also keeps C/C++ assertions active by removing the
+  ``-DNDEBUG`` flag from ``RelWithDebInfo`` builds. Without this flag, these
+  optimizations can produce bit-level differences across platforms, compilers,
+  and optimization levels. This option should be used when running the test
+  suite. By default (off), the compiler is free to use all optimizations for
+  best performance. (Default: off)
 
 OPENMC_FORCE_VENDORED_LIBS
   Forces OpenMC to use the submodules located in the vendor directory, as
@@ -425,7 +429,8 @@ Release
 
 RelWithDebInfo
   (Default if no type is specified.) Enable optimization and debug. On most
-  platforms/compilers, this is equivalent to `-O2 -g`. OpenMC removes the
+  platforms/compilers, this is equivalent to `-O2 -g`. When
+  :ref:`OPENMC_STRICT_FP <cmake_strict_fp>` is enabled, OpenMC removes the
   ``-DNDEBUG`` flag that CMake normally adds for this build type, so that
   C/C++ assertions remain active.
 

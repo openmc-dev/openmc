@@ -1682,7 +1682,7 @@ void Ray::trace()
       inside_cell = false;
     }
   } else {
-    // Avaliability of the cell means that the particle is located inside the
+    // Availability of the cell means that the particle is located inside the
     // edge.
     inside_cell = true;
   }

@@ -934,9 +934,6 @@ def test_regular_mesh_get_indices_at_coords():
     # Test lower-left corner maps to first voxel (0, 0, 0)
     assert mesh.get_indices_at_coords([0.0, 0.0, 0.0]) == (0, 0, 0)
 
-    # Test upper-right corner maps to last voxel (9, 9, 9) - clamped
-    assert mesh.get_indices_at_coords([1.0, 1.0, 1.0]) == (9, 9, 9)
-
     # Test centroid of first voxel
     # Voxel 0 spans [0.0, 0.1], so centroid is at 0.05
     assert mesh.get_indices_at_coords([0.05, 0.05, 0.05]) == (0, 0, 0)
@@ -953,24 +950,30 @@ def test_regular_mesh_get_indices_at_coords():
     assert mesh.get_indices_at_coords([0.05, 0.45, 0.95]) == (0, 4, 9)
     assert mesh.get_indices_at_coords([0.95, 0.05, 0.45]) == (9, 0, 4)
 
-    # Test coordinates outside mesh bounds get clamped to edge voxels
-    assert mesh.get_indices_at_coords([-0.5, 0.5, 0.5]) == (0, 5, 5)
-    assert mesh.get_indices_at_coords([1.5, 0.5, 0.5]) == (9, 5, 5)
-    assert mesh.get_indices_at_coords([0.5, -0.5, 0.5]) == (5, 0, 5)
-    assert mesh.get_indices_at_coords([0.5, 1.5, 0.5]) == (5, 9, 5)
-    assert mesh.get_indices_at_coords([0.5, 0.5, -0.5]) == (5, 5, 0)
-    assert mesh.get_indices_at_coords([0.5, 0.5, 1.5]) == (5, 5, 9)
+    # Test coordinates outside mesh bounds raise ValueError
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([-0.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([1.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, -0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 1.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 0.5, -0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 0.5, 1.5])
 
     # Test that results match expected dimensionality (3D mesh returns 3-tuple)
     result = mesh.get_indices_at_coords([0.5, 0.5, 0.5])
     assert isinstance(result, tuple)
     assert len(result) == 3
-    
+
     # Test that indices can be used directly with centroids array
     idx = mesh.get_indices_at_coords([0.95, 0.95, 0.95])
     centroid = mesh.centroids[idx]
     np.testing.assert_array_almost_equal(centroid, [0.95, 0.95, 0.95])
-    
+
     # Test with a 2D mesh
     mesh_2d = openmc.RegularMesh()
     mesh_2d.lower_left = (0, 0)
@@ -980,7 +983,7 @@ def test_regular_mesh_get_indices_at_coords():
     assert isinstance(result_2d, tuple)
     assert len(result_2d) == 2
     assert result_2d == (5, 5)
-    
+
     # Test with a 1D mesh
     mesh_1d = openmc.RegularMesh()
     mesh_1d.lower_left = [0]

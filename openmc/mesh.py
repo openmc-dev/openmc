@@ -1442,20 +1442,23 @@ class RegularMesh(StructuredMesh):
                 f"coords must have at least {ndim} values for a "
                 f"{ndim}D mesh, got {len(coords)}"
             )
+
+        coords_array = np.array(coords[:ndim])
         lower_left = np.array(self.lower_left)
         upper_right = np.array(self.upper_right)
         dimension = np.array(self.dimension)
+
+        if np.any(coords_array < lower_left) or np.any(coords_array > upper_right):
+            raise ValueError(
+                f"coords {tuple(coords_array)} are outside mesh bounds "
+                f"[{tuple(lower_left)}, {tuple(upper_right)}]"
+            )
 
         # Calculate spacing for each dimension
         spacing = (upper_right - lower_left) / dimension
 
         # Calculate indices for each coordinate
-        coords_array = np.array(coords[:ndim])
         indices = np.floor((coords_array - lower_left) / spacing).astype(int)
-
-        # Clamp indices to valid range [0, dimension-1]
-        indices = np.clip(indices, 0, dimension - 1)
-
         return tuple(int(i) for i in indices[:ndim])
 
 

@@ -1903,16 +1903,16 @@ def combine_distributions(
     """Combine distributions with specified probabilities
 
     This function can be used to combine multiple instances of
-    :class:`~openmc.stats.Discrete`, `~openmc.stats.Tabular` and 
-    `~openmc.stats.Mixture` of them. Multiple discrete distributions are merged 
-    into a single distribution and the remainder of the distributions 
-    are put into a :class:`~openmc.stats.Mixture` distribution.
+    :class:`~openmc.stats.Discrete`, :class:`~openmc.stats.Tabular` and
+    :class:`~openmc.stats.Mixture` of them. Multiple discrete distributions are
+    merged into a single distribution and the remainder of the distributions are
+    put into a :class:`~openmc.stats.Mixture` distribution.
 
     .. versionadded:: 0.13.1
 
     Parameters
     ----------
-    dists : sequence of openmc.stats.Discrete, openmc.stats.Tabular or openmc.stats.Mixture of them
+    dists : sequence of openmc.stats.Discrete, openmc.stats.Tabular, or openmc.stats.Mixture
         Distributions to combine
     probs : sequence of float
         Probability (or intensity) of each distribution
@@ -1923,7 +1923,7 @@ def combine_distributions(
     for i, dist in enumerate(dists):
         cv.check_type(f'dists[{i}]', dist, (Discrete, Tabular, Mixture))
         cv.check_type(f'probs[{i}]', probs[i], Real)
-        cv.check_greater_than(f'probs[{i}]', probs[i], 0.0)        
+        cv.check_greater_than(f'probs[{i}]', probs[i], 0.0)
         if isinstance(dist, Mixture):
             for j, d in enumerate(dist.distribution):
                 cv.check_type(f'dists[{i}].distribution[{j}]', d, (Discrete, Tabular))

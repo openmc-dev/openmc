@@ -1925,6 +1925,10 @@ def combine_distributions(
         cv.check_type(f'probs[{i}]', probs[i], Real)
         cv.check_greater_than(f'probs[{i}]', probs[i], 0.0)
         if isinstance(dist, Mixture):
+            if dist.bias is not None:
+                warn("A Mixture distribution with a bias specified was passed "
+                     "to combine_distributions. The bias will be discarded "
+                     "during flattening.")
             for j, d in enumerate(dist.distribution):
                 cv.check_type(f'dists[{i}].distribution[{j}]', d, (Discrete, Tabular))
                 new_probs.append(probs[i]*dist.probability[j])

@@ -291,7 +291,7 @@ class Settings:
                  cell will be banked (int)
     surface_grazing_cutoff : float
         Surface flux cosine cutoff. If not specified, the default
-        value is 0.01.
+        value is 0.001.
     surface_grazing_ratio : float
         Surface flux cosine substitution ratio. If not specified, the default
         value is 0.5.

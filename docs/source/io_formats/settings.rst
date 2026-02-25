@@ -1240,7 +1240,7 @@ attributes/sub-elements:
 
 The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutoff.
 
-  *Default*: 0.01
+  *Default*: 0.001
 
 -----------------------------------
 ``<surface_grazing_ratio>`` Element

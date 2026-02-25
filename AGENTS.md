@@ -229,7 +229,7 @@ When modifying C++ public APIs, update corresponding ctypes signatures in `openm
 - **Include order**: Related header first, then C/C++ stdlib, third-party libs, local headers
 - **Comments**: C++-style (`//`) only, never C-style (`/* */`)
 - **Standard**: C++17 features allowed
-- **Formatting**: Run `clang-format` (version 15) before committing; install via `tools/dev/install-commit-hooks.sh`
+- **Formatting**: Run `clang-format` (version 18) before committing; install via `tools/dev/install-commit-hooks.sh`
 
 ### Python Style
 - **PEP8** compliant
@@ -295,4 +295,4 @@ Check for optional features:
 2. **ID conflicts**: Python objects with duplicate IDs trigger `IDWarning`, use `reset_auto_ids()` between tests
 3. **MPI builds**: Code must work with and without MPI; use `#ifdef OPENMC_MPI` guards
 4. **Path handling**: Use `pathlib.Path` in new Python code, not `os.path`
-5. **Clang-format version**: CI uses version 15; other versions may produce different formatting
+5. **Clang-format version**: CI uses version 18; other versions may produce different formatting

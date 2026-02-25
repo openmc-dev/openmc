@@ -12,8 +12,8 @@
 #include "openmc/tallies/trigger.h"
 #include "openmc/vector.h"
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif

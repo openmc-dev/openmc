@@ -82,12 +82,15 @@ Classes
    Nuclide
    ParentNuclideFilter
    ParticleFilter
+   ParticleProductionFilter
    PolarFilter
+   ReactionFilter
    RectilinearMesh
    RegularMesh
    SpatialLegendreFilter
    SphericalHarmonicsFilter
    SphericalMesh
+   SolidRayTracePlot
    SurfaceFilter
    Tally
    TemporarySession
@@ -122,6 +125,12 @@ Data
 .. data:: meshes
 
    Mapping of mesh ID to :class:`openmc.lib.Mesh` instances.
+
+   :type: dict
+
+.. data:: plots
+
+   Mapping of plot ID to :class:`openmc.lib.SolidRayTracePlot` instances.
 
    :type: dict
 

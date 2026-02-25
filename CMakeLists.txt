@@ -267,23 +267,6 @@ else()
 endif()
 
 #===============================================================================
-# xtensor header-only library
-#===============================================================================
-
-if(OPENMC_FORCE_VENDORED_LIBS)
-  add_subdirectory(vendor/xtl)
-  set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-  add_subdirectory(vendor/xtensor)
-else()
-  find_package_write_status(xtensor)
-  if (NOT xtensor_FOUND)
-    add_subdirectory(vendor/xtl)
-    set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-    add_subdirectory(vendor/xtensor)
-  endif()
-endif()
-
-#===============================================================================
 # Catch2 library
 #===============================================================================
 
@@ -332,6 +315,7 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
+  src/atomic_mass.cpp
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
@@ -426,7 +410,9 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_musurface.cpp
   src/tallies/filter_parent_nuclide.cpp
   src/tallies/filter_particle.cpp
+  src/tallies/filter_particle_production.cpp
   src/tallies/filter_polar.cpp
+  src/tallies/filter_reaction.cpp
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp
   src/tallies/filter_surface.cpp
@@ -496,7 +482,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor fmt::fmt ${CMAKE_DL_LIBS})
+                      fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)

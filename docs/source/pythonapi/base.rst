@@ -149,6 +149,7 @@ Constructing Tallies
    openmc.ZernikeRadialFilter
    openmc.ParentNuclideFilter
    openmc.ParticleFilter
+   openmc.ReactionFilter
    openmc.MeshMaterialVolumes
    openmc.Trigger
    openmc.TallyDerivative

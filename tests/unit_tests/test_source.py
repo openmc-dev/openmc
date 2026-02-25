@@ -35,21 +35,6 @@ def test_source():
     assert src.strength == 1.0
 
 
-def test_spherical_uniform():
-    r_outer = 2.0
-    r_inner = 1.0
-    thetas = (0.0, pi/2)
-    phis = (0.0, pi)
-    origin = (0.0, 1.0, 2.0)
-
-    sph_indep_function = openmc.stats.spherical_uniform(r_outer,
-                                                        r_inner,
-                                                        thetas,
-                                                        phis,
-                                                        origin)
-
-    assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
-
 def test_point_cloud():
     positions = [(1, 0, 2), (0, 1, 0), (0, 0, 3), (4, 9, 2)]
     strengths = [1, 2, 3, 4]

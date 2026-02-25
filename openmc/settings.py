@@ -207,7 +207,11 @@ class Settings:
             default is 'False'.
         :sample_method:
             Sampling method for the ray starting location and direction of
-            travel. Options are `prng` (default) or 'halton`.
+            travel. Options are `prng` (default), `halton`, or `s2`. `s2`
+            modifies the `prng` sampling method such that rays are sampled
+            with directions (-1, 0, 0) or (1, 0, 0). This is used for verification
+            against analytic transport benchmarks which are often derivied with
+            a reduced angular domain.
         :source_region_meshes:
             List of tuples where each tuple contains a mesh and a list of
             domains. Each domain is an instance of openmc.Material, openmc.Cell,
@@ -1351,7 +1355,7 @@ class Settings:
                                 'openmc.Material, openmc.Cell, or openmc.Universe.')
             elif key == 'sample_method':
                 cv.check_value('sample method', value,
-                               ('prng', 'halton'))
+                               ('prng', 'halton', 's2'))
             elif key == 'diagonal_stabilization_rho':
                 cv.check_type('diagonal stabilization rho', value, Real)
                 cv.check_greater_than('diagonal stabilization rho',

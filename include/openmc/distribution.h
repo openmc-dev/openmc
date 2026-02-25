@@ -265,23 +265,29 @@ private:
 };
 
 //==============================================================================
-//! Normal distributions with form 1/2*std_dev*sqrt(pi) exp
-//! (-(e-E0)/2*std_dev)^2
+//! Normal distribution with optional truncation bounds.
+//!
+//! The standard normal PDF is 1/(sqrt(2*pi)*sigma) *
+//! exp(-(x-mu)^2/(2*sigma^2)). When truncated to [lower, upper], the PDF is
+//! renormalized so that it integrates to 1 over the truncation interval.
 //==============================================================================
 
 class Normal : public Distribution {
 public:
   explicit Normal(pugi::xml_node node);
-  Normal(double mean_value, double std_dev)
-    : mean_value_ {mean_value}, std_dev_ {std_dev} {};
+  Normal(double mean_value, double std_dev, double lower = -INFTY,
+    double upper = INFTY);
 
   //! Evaluate probability density, f(x), at a point
   //! \param x Point to evaluate f(x)
-  //! \return f(x)
+  //! \return f(x), accounting for truncation normalization
   double evaluate(double x) const override;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
+  double lower() const { return lower_; }
+  double upper() const { return upper_; }
+  bool is_truncated() const { return is_truncated_; }
 
 protected:
   //! Sample a value (unbiased) from the distribution
@@ -290,8 +296,15 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
-  double mean_value_; //!< middle of distribution [eV]
-  double std_dev_;    //!< standard deviation [eV]
+  double mean_value_;  //!< Mean of distribution
+  double std_dev_;     //!< Standard deviation
+  double lower_;       //!< Lower truncation bound (default: -INFTY)
+  double upper_;       //!< Upper truncation bound (default: +INFTY)
+  bool is_truncated_;  //!< True if bounds are finite
+  double norm_factor_; //!< Normalization factor for truncated distribution
+
+  //! Compute normalization factor for truncated distribution
+  void compute_normalization();
 };
 
 //==============================================================================

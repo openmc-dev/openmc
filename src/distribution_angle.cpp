@@ -2,8 +2,7 @@
 
 #include <cmath> // for abs, copysign
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
@@ -30,7 +29,7 @@ AngleDistribution::AngleDistribution(hid_t group)
   hid_t dset = open_dataset(group, "mu");
   read_attribute(dset, "offsets", offsets);
   read_attribute(dset, "interpolation", interp);
-  xt::xarray<double> temp;
+  tensor::Tensor<double> temp;
   read_dataset(dset, temp);
   close_dataset(dset);
 
@@ -41,13 +40,13 @@ AngleDistribution::AngleDistribution(hid_t group)
     if (i < n_energy - 1) {
       n = offsets[i + 1] - j;
     } else {
-      n = temp.shape()[1] - j;
+      n = temp.shape(1) - j;
     }
 
     // Create and initialize tabular distribution
-    auto xs = xt::view(temp, 0, xt::range(j, j + n));
-    auto ps = xt::view(temp, 1, xt::range(j, j + n));
-    auto cs = xt::view(temp, 2, xt::range(j, j + n));
+    tensor::View<double> xs = temp.slice(0, tensor::range(j, j + n));
+    tensor::View<double> ps = temp.slice(1, tensor::range(j, j + n));
+    tensor::View<double> cs = temp.slice(2, tensor::range(j, j + n));
     vector<double> x {xs.begin(), xs.end()};
     vector<double> p {ps.begin(), ps.end()};
     vector<double> c {cs.begin(), cs.end()};

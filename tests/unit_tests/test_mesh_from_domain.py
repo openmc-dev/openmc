@@ -16,6 +16,17 @@ def test_reg_mesh_from_cell():
     assert np.array_equal(mesh.upper_right, cell.bounding_box[1])
 
 
+def test_reg_mesh_from_bounding_box():
+    """Tests a RegularMesh can be made from a BoundingBox directly."""
+    bb = openmc.BoundingBox([-8, -7, -5], [12, 13, 15])
+
+    mesh = openmc.RegularMesh.from_domain(domain=bb, dimension=[7, 11, 13])
+    assert isinstance(mesh, openmc.RegularMesh)
+    assert np.array_equal(mesh.dimension, (7, 11, 13))
+    assert np.array_equal(mesh.lower_left, bb[0])
+    assert np.array_equal(mesh.upper_right, bb[1])
+
+
 def test_cylindrical_mesh_from_cell():
     """Tests a CylindricalMesh can be made from a Cell and the specified
     dimensions are propagated through."""

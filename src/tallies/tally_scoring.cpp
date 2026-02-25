@@ -2672,12 +2672,10 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
-    auto& cells = model::pulse_height_cells;
-
-    // Find CellFilter in the tally
-    auto cell_filter = tally.get_filter<CellFilter>();
-    if (cell_filter != nullptr)
-      cells = cell_filter->cells();
+    // Find CellFilter in the tally (if any) to determine cells to loop over
+    const auto* cell_filter = tally.get_filter<CellFilter>();
+    const auto& cells =
+      cell_filter ? cell_filter->cells() : model::pulse_height_cells;
 
     for (auto cell_id : cells) {
       // Temporarily change cell of particle

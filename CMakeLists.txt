@@ -591,7 +591,7 @@ if (OPENMC_ENABLE_COVERAGE)
   target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
 endif()
 if (OPENMC_ENABLE_STRICT_FP)
-  target_compile_definitions(libopenmc PRIVATE OPENMC_ENABLE_STRICT_FP_BUILD)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_ENABLE_STRICT_FP)
 endif()
 
 #===============================================================================

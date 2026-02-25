@@ -103,6 +103,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
                       -DBUILD_SHARED_LIBS=OFF \
                       -DENABLE_FORTRAN=OFF \
                       -DENABLE_BLASLAPACK=OFF \
+                      -DENABLE_TESTING=OFF \
         && make 2>/dev/null -j${compile_cores} install \
         && cmake ../moab \
                     -DENABLE_PYMOAB=ON \
@@ -132,6 +133,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
                        -DDOUBLE_DOWN_DIR=${DD_INSTALL_DIR} \
                        -DCMAKE_PREFIX_PATH=${DD_INSTALL_DIR}/lib \
                        -DBUILD_STATIC_LIBS=OFF \
+                       -DBUILD_TESTS=OFF \
         && make 2>/dev/null -j${compile_cores} install \
         && rm -rf ${DAGMC_INSTALL_DIR}/DAGMC ${DAGMC_INSTALL_DIR}/build ; \
     fi

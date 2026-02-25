@@ -75,7 +75,7 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2025 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2026 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
     "         Version | {}.{}.{}{}{}\n",
     VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "",
@@ -295,7 +295,7 @@ void print_version()
     fmt::print("OpenMC version {}.{}.{}{}{}\n", VERSION_MAJOR, VERSION_MINOR,
       VERSION_RELEASE, VERSION_DEV ? "-dev" : "", VERSION_COMMIT_COUNT);
     fmt::print("Commit hash: {}\n", VERSION_COMMIT_HASH);
-    fmt::print("Copyright (c) 2011-2025 MIT, UChicago Argonne LLC, and "
+    fmt::print("Copyright (c) 2011-2026 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
   }

@@ -236,12 +236,12 @@ class MeshBase(IDManagerMixin, ABC):
             self._name = name
         else:
             self._name = ''
-            
+
     @property
     @abstractmethod
     def lower_left(self):
         pass
-        
+
     @property
     @abstractmethod
     def upper_right(self):
@@ -255,7 +255,7 @@ class MeshBase(IDManagerMixin, ABC):
     @abstractmethod
     def indices(self):
         pass
-        
+
     @property
     @abstractmethod
     def n_elements(self):
@@ -544,19 +544,7 @@ class StructuredMesh(MeshBase):
 
     @abstractmethod
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
-        """Finds the index of the mesh voxel at the specified coordinates.
-
-        Parameters
-        ----------
-        coords : Sequence[float]
-            The x, y, z axis coordinates
-
-        Returns
-        -------
-        tuple
-            Mesh indices matching the dimensionality of the mesh
-
-        """
+        pass
 
     @property
     def vertices(self):
@@ -652,7 +640,7 @@ class StructuredMesh(MeshBase):
         s0 = (slice(0, -1),)*ndim + (slice(None),)
         s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
-    
+
     @property
     def n_elements(self):
         return np.prod(self.dimension)
@@ -1433,14 +1421,14 @@ class RegularMesh(StructuredMesh):
         return root_cell, cells
 
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
-        """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+        """Finds the index of the mesh element at the specified coordinates.
 
         .. versionadded:: 0.15.4
 
         Parameters
         ----------
         coords : Sequence[float]
-            The x, y, z axis coordinates
+            Cartesian coordinates of the point.
 
         Returns
         -------
@@ -1870,14 +1858,14 @@ class CylindricalMesh(StructuredMesh):
             self,
             coords: Sequence[float]
         ) -> tuple[int, int, int]:
-        """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+        """Finds the index of the mesh element at the specified coordinates.
 
         .. versionadded:: 0.15.0
 
         Parameters
         ----------
         coords : Sequence[float]
-            The x, y, z axis coordinates
+            Cartesian coordinates of the point.
 
         Returns
         -------

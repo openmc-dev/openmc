@@ -17,7 +17,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"

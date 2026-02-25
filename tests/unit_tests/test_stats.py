@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import openmc
 import openmc.stats
+from openmc.stats.univariate import _INTERPOLATION_SCHEMES
 from scipy.integrate import trapezoid
 
 from tests.unit_tests import assert_sample_mean
@@ -273,7 +274,7 @@ def test_watt():
 @pytest.mark.flaky(reruns=1)
 def test_tabular():
     # test linear-linear sampling
-    x = np.array([0.0, 5.0, 7.0, 10.0])
+    x = np.array([0.001, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0, 6.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     n_samples = 100_000
@@ -281,9 +282,12 @@ def test_tabular():
     assert_sample_mean(samples, d.mean())
     assert np.all(weights == 1.0)
 
-    # test linear-linear normalization
-    d.normalize()
-    assert d.integral() == pytest.approx(1.0)
+    for scheme in _INTERPOLATION_SCHEMES:
+        # test sampling
+        d = openmc.stats.Tabular(x, p, scheme)
+        n_samples = 100_000
+        samples = d.sample(n_samples)[0]
+        assert_sample_mean(samples, d.mean())
 
     # test histogram sampling
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
@@ -291,6 +295,12 @@ def test_tabular():
     assert_sample_mean(samples, d.mean())
     assert np.all(weights == 1.0)
 
+    # Multiplying the probabilities should preserve the mean but change the integral
+    d2 = openmc.stats.Tabular(x, p*2, interpolation='histogram')
+    assert d2.mean() == pytest.approx(d.mean())
+    assert d2.integral() == pytest.approx(2.0*d.integral())
+
+    # Normalizing should result in an integral of 1
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 
@@ -550,6 +560,113 @@ def test_point():
     assert d.xyz == pytest.approx(p)
 
 
+def test_spherical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    thetas = (0.0, pi/2)
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    sph_indep_function = openmc.stats.spherical_uniform(r_outer,
+                                                        r_inner,
+                                                        thetas,
+                                                        phis,
+                                                        origin)
+
+    assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+
+
+def test_cylindrical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    height = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    dist = openmc.stats.cylindrical_uniform(r_outer, height, r_inner, phis,
+                                            origin=origin)
+
+    assert isinstance(dist, openmc.stats.CylindricalIndependent)
+
+    # Check r distribution (PowerLaw with exponent 1 for uniform area sampling)
+    assert isinstance(dist.r, openmc.stats.PowerLaw)
+    assert dist.r.a == pytest.approx(r_inner)
+    assert dist.r.b == pytest.approx(r_outer)
+    assert dist.r.n == pytest.approx(1.0)
+
+    # Check phi distribution
+    assert isinstance(dist.phi, openmc.stats.Uniform)
+    assert dist.phi.a == pytest.approx(phis[0])
+    assert dist.phi.b == pytest.approx(phis[1])
+
+    # Check z distribution (centered on origin along z_dir)
+    assert isinstance(dist.z, openmc.stats.Uniform)
+    assert dist.z.a == pytest.approx(-height / 2)
+    assert dist.z.b == pytest.approx(height / 2)
+
+    # Check origin and default directions
+    np.testing.assert_allclose(dist.origin, origin)
+    np.testing.assert_allclose(dist.r_dir, [1., 0., 0.])
+    np.testing.assert_allclose(dist.z_dir, [0., 0., 1.])
+
+    # XML round-trip preserves all parameters
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+
+
+def test_cylindrical_uniform_tilted():
+    # Test with non-default axis orientation (y-axis as cylinder axis)
+    dist = openmc.stats.cylindrical_uniform(
+        r_outer=3.0, height=2.0, r_dir=(1., 0., 0.), z_dir=(0., 1., 0.)
+    )
+    np.testing.assert_allclose(dist.z_dir, [0., 1., 0.])
+    np.testing.assert_allclose(dist.r_dir, [1., 0., 0.])
+
+    # XML round-trip preserves tilted directions
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+
+
+def test_cylindrical_uniform_ring():
+    # height=0 should produce a flat ring (delta function at z=0)
+    r_outer = 2.0
+    r_inner = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    dist = openmc.stats.cylindrical_uniform(r_outer, 0.0, r_inner, phis,
+                                            origin=origin)
+
+    assert isinstance(dist, openmc.stats.CylindricalIndependent)
+
+    # Check r distribution
+    assert isinstance(dist.r, openmc.stats.PowerLaw)
+    assert dist.r.a == pytest.approx(r_inner)
+    assert dist.r.b == pytest.approx(r_outer)
+    assert dist.r.n == pytest.approx(1.0)
+
+    # Check phi distribution
+    assert isinstance(dist.phi, openmc.stats.Uniform)
+    assert dist.phi.a == pytest.approx(phis[0])
+    assert dist.phi.b == pytest.approx(phis[1])
+
+    # z distribution must be a delta function at 0.0 (local frame)
+    assert isinstance(dist.z, openmc.stats.Discrete)
+    assert dist.z.x[0] == pytest.approx(0.0)
+
+    # XML round-trip
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+
+
 @pytest.mark.flaky(reruns=1)
 def test_normal():
     mean = 10.0
@@ -579,6 +696,92 @@ def test_normal():
     weighted_sample = samples * weights
     assert_sample_mean(weighted_sample, mean)
     assert np.all(weights != 1.0)
+
+
+@pytest.mark.flaky(reruns=1)
+def test_normal_truncated():
+    mean = 10.0
+    std_dev = 2.0
+    lower = 6.0
+    upper = 14.0
+
+    d = openmc.stats.Normal(mean, std_dev, lower, upper)
+
+    # Check attributes
+    assert d.mean_value == pytest.approx(mean)
+    assert d.std_dev == pytest.approx(std_dev)
+    assert d.lower == pytest.approx(lower)
+    assert d.upper == pytest.approx(upper)
+    assert len(d) == 4
+    assert d.support == (lower, upper)
+
+    # Test XML round-trip
+    elem = d.to_xml_element('distribution')
+    assert elem.attrib['type'] == 'normal'
+    params = elem.attrib['parameters'].split()
+    assert len(params) == 4
+
+    d2 = openmc.stats.Normal.from_xml_element(elem)
+    assert d2.mean_value == pytest.approx(mean)
+    assert d2.std_dev == pytest.approx(std_dev)
+    assert d2.lower == pytest.approx(lower)
+    assert d2.upper == pytest.approx(upper)
+
+    # Test PDF evaluation
+    # PDF should be zero outside bounds
+    assert d.evaluate(lower - 1.0) == 0.0
+    assert d.evaluate(upper + 1.0) == 0.0
+
+    # PDF should be positive inside bounds
+    assert d.evaluate(mean) > 0.0
+
+    # PDF should be higher than untruncated at the mean (due to renormalization)
+    d_unbounded = openmc.stats.Normal(mean, std_dev)
+    assert d.evaluate(mean) > d_unbounded.evaluate(mean)
+
+    # Verify that PDF integrates to approximately 1
+    x = np.linspace(lower, upper, 1000)
+    integral = trapezoid(d.evaluate(x), x)
+    assert integral == pytest.approx(1.0, rel=0.01)
+
+    # Sample truncated distribution
+    n_samples = 10_000
+    samples, weights = d.sample(n_samples)
+
+    # All samples should be within bounds
+    assert np.all(samples >= lower)
+    assert np.all(samples <= upper)
+
+    # Weights should all be 1 (no biasing)
+    assert np.all(weights == 1.0)
+
+
+def test_normal_truncated_one_sided():
+    # Test lower-bounded only (positive half-normal centered at 0)
+    d_lower = openmc.stats.Normal(0.0, 1.0, lower=0.0)
+    assert d_lower.lower == 0.0
+    assert d_lower.upper == np.inf
+    assert d_lower.evaluate(-1.0) == 0.0
+    assert d_lower.evaluate(1.0) > 0.0
+
+    # PDF at 0 should be approximately 2 * 0.3989 ≈ 0.798 (half-normal)
+    assert d_lower.evaluate(0.0) == pytest.approx(0.798, rel=0.01)
+
+    # Test upper-bounded only
+    d_upper = openmc.stats.Normal(0.0, 1.0, upper=0.0)
+    assert d_upper.lower == -np.inf
+    assert d_upper.upper == 0.0
+    assert d_upper.evaluate(1.0) == 0.0
+    assert d_upper.evaluate(-1.0) > 0.0
+
+
+def test_normal_truncated_errors():
+    # Invalid bounds (lower >= upper)
+    with pytest.raises(ValueError):
+        openmc.stats.Normal(0.0, 1.0, lower=1.0, upper=0.0)
+
+    with pytest.raises(ValueError):
+        openmc.stats.Normal(0.0, 1.0, lower=1.0, upper=1.0)
 
 
 @pytest.mark.flaky(reruns=1)

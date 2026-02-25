@@ -328,6 +328,8 @@ void get_run_parameters(pugi::xml_node node_base)
         RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
       } else if (temp_str == "halton") {
         RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
+      } else if (temp_str == "s2") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::S2;
       } else {
         fatal_error("Unrecognized sample method: " + temp_str);
       }
@@ -972,7 +974,7 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_ct, "reactions")) {
       auto temp = get_node_array<std::string>(node_ct, "reactions");
       for (const auto& b : temp) {
-        int reaction_int = reaction_type(b);
+        int reaction_int = reaction_mt(b);
         if (reaction_int > 0) {
           collision_track_config.mt_numbers.insert(reaction_int);
         }

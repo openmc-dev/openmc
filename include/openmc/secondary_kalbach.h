@@ -5,7 +5,7 @@
 #define OPENMC_SECONDARY_KALBACH_H
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/angle_energy.h"
 #include "openmc/constants.h"
@@ -37,11 +37,11 @@ private:
   struct KMTable {
     int n_discrete;               //!< Number of discrete lines
     Interpolation interpolation;  //!< Interpolation law
-    xt::xtensor<double, 1> e_out; //!< Outgoing energies [eV]
-    xt::xtensor<double, 1> p;     //!< Probability density
-    xt::xtensor<double, 1> c;     //!< Cumulative distribution
-    xt::xtensor<double, 1> r;     //!< Pre-compound fraction
-    xt::xtensor<double, 1> a;     //!< Parameterized function
+    tensor::Tensor<double> e_out; //!< Outgoing energies [eV]
+    tensor::Tensor<double> p;     //!< Probability density
+    tensor::Tensor<double> c;     //!< Cumulative distribution
+    tensor::Tensor<double> r;     //!< Pre-compound fraction
+    tensor::Tensor<double> a;     //!< Parameterized function
   };
 
   int n_region_;                        //!< Number of interpolation regions

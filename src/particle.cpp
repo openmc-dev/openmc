@@ -48,20 +48,16 @@ double Particle::speed() const
   if (settings::run_CE) {
     // Determine mass in eV/c^2
     double mass;
-    switch (this->type().pdg_number()) {
+    switch (type().pdg_number()) {
     case PDG_NEUTRON:
       mass = MASS_NEUTRON_EV;
-      break;
-    case PDG_PHOTON:
-      mass = 0.0;
-      break;
     case PDG_ELECTRON:
     case PDG_POSITRON:
       mass = MASS_ELECTRON_EV;
-      break;
     default:
-      fatal_error("Unsupported particle for speed calculation.");
+      mass = this->type().mass() * AMU_EV;
     }
+
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
@@ -86,6 +82,9 @@ bool Particle::create_secondary(
   if (E < settings::energy_cutoff[idx]) {
     return false;
   }
+
+  // Increment number of secondaries created (for ParticleProductionFilter)
+  n_secondaries()++;
 
   auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
@@ -337,6 +336,7 @@ void Particle::event_cross_surface()
 
 void Particle::event_collide()
 {
+
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
@@ -384,6 +384,11 @@ void Particle::event_collide()
   n_bank() = 0;
   bank_second_E() = 0.0;
   wgt_bank() = 0.0;
+
+  // Clear number of secondaries in this collision. This is
+  // distinct from the number of created neutrons n_bank() above!
+  n_secondaries() = 0;
+
   zero_delayed_bank();
 
   // Reset fission logical

@@ -30,9 +30,9 @@
 
 #include <fmt/core.h>
 
+#include "openmc/tensor.h"
 #include <algorithm> // for max, min, max_element
 #include <cmath>     // for sqrt, exp, log, abs, copysign
-#include <xtensor/xview.hpp>
 
 namespace openmc {
 
@@ -44,6 +44,7 @@ void collision(Particle& p)
 {
   // Add to collision counter for particle
   ++(p.n_collision());
+  p.secondary_bank_index() = p.secondary_bank().size();
 
   // Sample reaction for the material the particle is in
   switch (p.type().pdg_number()) {
@@ -253,6 +254,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       }
     } else {
       p.secondary_bank().push_back(site);
+      p.n_secondaries()++;
     }
 
     // Increment the number of neutrons born delayed
@@ -373,8 +375,9 @@ void sample_photon_reaction(Particle& p)
     // cross sections
     int i_grid = micro.index_grid;
     double f = micro.interp_factor;
-    const auto& xs_lower = xt::row(element.cross_sections_, i_grid);
-    const auto& xs_upper = xt::row(element.cross_sections_, i_grid + 1);
+    tensor::View<const double> xs_lower = element.cross_sections_.slice(i_grid);
+    tensor::View<const double> xs_upper =
+      element.cross_sections_.slice(i_grid + 1);
 
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
       const auto& shell {element.shells_[i_shell]};

@@ -64,8 +64,17 @@ void collision(Particle& p)
     fatal_error("Unsupported particle PDG for collision sampling.");
   }
 
-  if (settings::weight_window_checkpoint_collision)
-    apply_weight_windows(p);
+  if (settings::weight_windows_on) {
+    auto [ww_found, ww] = search_weight_window(p);
+    if (!ww_found && p.type() == ParticleType::neutron()) {
+      // if the weight window is not valid, apply russian roulette for neutrons
+      // (regardless of weight window collision checkpoint setting)
+      apply_russian_roulette(p);
+    } else if (settings::weight_window_checkpoint_collision) {
+      // if collision checkpointing is on, apply weight window
+      apply_weight_window(p, ww);
+    }
+  }
 
   // Kill particle if energy falls below cutoff
   int type = p.type().transport_index();
@@ -156,18 +165,9 @@ void sample_neutron_reaction(Particle& p)
     advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
-  // Play russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
-    // if survival normalization is on, use normalized weight cutoff and
-    // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
-      }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
-    }
-  }
+  // Play russian roulette if there are no weight windows
+  if (!settings::weight_windows_on)
+    apply_russian_roulette(p);
 }
 
 void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)

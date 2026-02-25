@@ -843,7 +843,7 @@ void FlatSourceDomain::output_to_vtk() const
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
 
           if (variance_reduction::weight_windows.size() == 1) {
-            WeightWindow ww =
+            auto [ww_found, ww] =
               variance_reduction::weight_windows[0]->get_weight_window(p);
             float weight = ww.lower_weight;
             weight_windows[z * Ny * Nx + y * Nx + x] = weight;

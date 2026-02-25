@@ -1276,6 +1276,13 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
+  if (weight_windows_on) {
+    if (!weight_window_checkpoint_surface &&
+        !weight_window_checkpoint_collision)
+      fatal_error(
+        "Weight Windows are enabled but there are no valid checkpoints.");
+  }
+
   if (check_for_node(root, "use_decay_photons")) {
     settings::use_decay_photons =
       get_node_value_bool(root, "use_decay_photons");

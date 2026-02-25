@@ -539,6 +539,11 @@ class StructuredMesh(MeshBase):
 
     @property
     @abstractmethod
+    def _axis_labels(self):
+        pass
+
+    @property
+    @abstractmethod
     def _grids(self):
         pass
 
@@ -1000,6 +1005,10 @@ class RegularMesh(StructuredMesh):
             return None
 
     @property
+    def _axis_labels(self):
+        return ('x', 'y', 'z')[:self.n_dimension]
+
+    @property
     def lower_left(self):
         return self._lower_left
 
@@ -1183,7 +1192,7 @@ class RegularMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: HasBoundingBox,
+        domain: HasBoundingBox | BoundingBox,
         dimension: Sequence[int] | int = 1000,
         mesh_id: int | None = None,
         name: str = ''
@@ -1192,10 +1201,12 @@ class RegularMesh(StructuredMesh):
 
         Parameters
         ----------
-        domain : HasBoundingBox
+        domain : HasBoundingBox | openmc.BoundingBox
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
-            set the lower_left and upper_right and of the mesh instance
+            set the lower_left and upper_right and of the mesh instance.
+            Alternatively, a :class:`openmc.BoundingBox` can be passed
+            directly.
         dimension : Iterable of int | int
             The number of mesh cells in total or number of mesh cells in each
             direction (x, y, z). If a single integer is provided, the domain
@@ -1212,21 +1223,26 @@ class RegularMesh(StructuredMesh):
             RegularMesh instance
 
         """
-        if not hasattr(domain, 'bounding_box'):
-            raise TypeError("Domain must have a bounding_box property")
+        if isinstance(domain, BoundingBox):
+            bb = domain
+        elif hasattr(domain, 'bounding_box'):
+            bb = domain.bounding_box
+        else:
+            raise TypeError("Domain must be a BoundingBox or have a "
+                            "bounding_box property")
 
         mesh = cls(mesh_id=mesh_id, name=name)
-        mesh.lower_left = domain.bounding_box[0]
-        mesh.upper_right = domain.bounding_box[1]
+        mesh.lower_left = bb[0]
+        mesh.upper_right = bb[1]
         if isinstance(dimension, int):
             cv.check_greater_than("dimension", dimension, 1, equality=True)
             # If a single integer is provided, divide the domain into that many
             # mesh cells with roughly equal lengths in each direction
-            ideal_cube_volume = domain.bounding_box.volume / dimension
+            ideal_cube_volume = bb.volume / dimension
             ideal_cube_size = ideal_cube_volume ** (1 / 3)
             dimension = [
                 max(1, int(round(side / ideal_cube_size)))
-                for side in domain.bounding_box.width
+                for side in bb.width
             ]
         mesh.dimension = dimension
 
@@ -1521,6 +1537,10 @@ class RectilinearMesh(StructuredMesh):
         return 3
 
     @property
+    def _axis_labels(self):
+        return ('x', 'y', 'z')
+
+    @property
     def x_grid(self):
         return self._x_grid
 
@@ -1760,6 +1780,10 @@ class CylindricalMesh(StructuredMesh):
         return 3
 
     @property
+    def _axis_labels(self):
+        return ('r', 'phi', 'z')
+
+    @property
     def origin(self):
         return self._origin
 
@@ -1937,7 +1961,7 @@ class CylindricalMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: HasBoundingBox,
+        domain: HasBoundingBox | BoundingBox,
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
@@ -1948,10 +1972,11 @@ class CylindricalMesh(StructuredMesh):
 
         Parameters
         ----------
-        domain : HasBoundingBox
+        domain : HasBoundingBox | openmc.BoundingBox
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
-            set the r_grid, z_grid ranges.
+            set the r_grid, z_grid ranges. Alternatively, a
+            :class:`openmc.BoundingBox` can be passed directly.
         dimension : Iterable of int
             The number of equally spaced mesh cells in each direction (r_grid,
             phi_grid, z_grid)
@@ -1972,11 +1997,13 @@ class CylindricalMesh(StructuredMesh):
             CylindricalMesh instance
 
         """
-        if not hasattr(domain, 'bounding_box'):
-            raise TypeError("Domain must have a bounding_box property")
-
-        # loaded once to avoid recalculating bounding box
-        cached_bb = domain.bounding_box
+        if isinstance(domain, BoundingBox):
+            cached_bb = domain
+        elif hasattr(domain, 'bounding_box'):
+            cached_bb = domain.bounding_box
+        else:
+            raise TypeError("Domain must be a BoundingBox or have a "
+                            "bounding_box property")
 
         if enclose_domain:
             outer_radius = 0.5 * np.linalg.norm(cached_bb.width[:2])
@@ -2207,6 +2234,10 @@ class SphericalMesh(StructuredMesh):
         return 3
 
     @property
+    def _axis_labels(self):
+        return ('r', 'theta', 'phi')
+
+    @property
     def origin(self):
         return self._origin
 
@@ -2319,7 +2350,7 @@ class SphericalMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: HasBoundingBox,
+        domain: HasBoundingBox | BoundingBox,
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
@@ -2331,10 +2362,11 @@ class SphericalMesh(StructuredMesh):
 
         Parameters
         ----------
-        domain : HasBoundingBox
+        domain : HasBoundingBox | openmc.BoundingBox
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
-            set the r_grid, phi_grid, and theta_grid ranges.
+            set the r_grid, phi_grid, and theta_grid ranges. Alternatively, a
+            :class:`openmc.BoundingBox` can be passed directly.
         dimension : Iterable of int
             The number of equally spaced mesh cells in each direction (r_grid,
             phi_grid, theta_grid). Spacing is in angular space (radians) for
@@ -2359,11 +2391,13 @@ class SphericalMesh(StructuredMesh):
             SphericalMesh instance
 
         """
-        if not hasattr(domain, 'bounding_box'):
-            raise TypeError("Domain must have a bounding_box property")
-
-        # loaded once to avoid recalculating bounding box
-        cached_bb = domain.bounding_box
+        if isinstance(domain, BoundingBox):
+            cached_bb = domain
+        elif hasattr(domain, 'bounding_box'):
+            cached_bb = domain.bounding_box
+        else:
+            raise TypeError("Domain must be a BoundingBox or have a "
+                            "bounding_box property")
 
         if enclose_domain:
             outer_radius = 0.5 * np.linalg.norm(cached_bb.width)
@@ -2725,6 +2759,10 @@ class UnstructuredMesh(MeshBase):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def _axis_labels(self):
+        return ('element_index',)
 
     @property
     @require_statepoint_data

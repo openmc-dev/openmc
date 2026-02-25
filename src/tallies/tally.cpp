@@ -171,6 +171,10 @@ Tally::Tally(pugi::xml_node node)
       estimator_ = TallyEstimator::COLLISION;
     } else if (filt_type == FilterType::PARTICLE_PRODUCTION) {
       estimator_ = TallyEstimator::ANALOG;
+    } else if (filt_type == FilterType::REACTION) {
+      if (estimator_ == TallyEstimator::TRACKLENGTH) {
+        estimator_ = TallyEstimator::COLLISION;
+      }
     }
   }
 
@@ -569,7 +573,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     }
 
     // Determine integer code for score
-    int score = reaction_type(score_str);
+    int score = reaction_tally_mt(score_str);
 
     switch (score) {
     case SCORE_FLUX:
@@ -785,7 +789,7 @@ void Tally::init_triggers(pugi::xml_node node)
       } else {
         int i_score = 0;
         for (; i_score < this->scores_.size(); ++i_score) {
-          if (this->scores_[i_score] == reaction_type(score_str))
+          if (this->scores_[i_score] == reaction_tally_mt(score_str))
             break;
         }
         if (i_score == this->scores_.size()) {

@@ -412,6 +412,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_particle.cpp
   src/tallies/filter_particle_production.cpp
   src/tallies/filter_polar.cpp
+  src/tallies/filter_reaction.cpp
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp
   src/tallies/filter_surface.cpp

@@ -184,7 +184,7 @@ def test_my_feature():
     harness.main()
 ```
 
-**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Test results should be generated with `-DOPENMC_STRICT_FP=on` to ensure reproducibility across platforms and optimization levels.
+**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Test results should be generated with `-DOPENMC_ENABLE_STRICT_FP=on` to ensure reproducibility across platforms and optimization levels.
 
 **Critical**: When modifying OpenMC code, regenerate affected test references with `pytest --update` and commit updated reference files.
 

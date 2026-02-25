@@ -385,7 +385,7 @@ OPENMC_USE_MPI
 
 .. _cmake_strict_fp:
 
-OPENMC_STRICT_FP
+OPENMC_ENABLE_STRICT_FP
   Disables compiler optimizations that change floating-point results relative to
   unoptimized builds, improving cross-platform and cross-optimization-level
   reproducibility. This disables FMA contraction (``-ffp-contract=off``) and
@@ -430,7 +430,7 @@ Release
 RelWithDebInfo
   (Default if no type is specified.) Enable optimization and debug. On most
   platforms/compilers, this is equivalent to `-O2 -g`. When
-  :ref:`OPENMC_STRICT_FP <cmake_strict_fp>` is enabled, OpenMC removes the
+  :ref:`OPENMC_ENABLE_STRICT_FP <cmake_strict_fp>` is enabled, OpenMC removes the
   ``-DNDEBUG`` flag that CMake normally adds for this build type, so that
   C/C++ assertions remain active.
 

@@ -18,10 +18,10 @@ def _check_build_environment():
     """Check STRICT_FP and cross section data, collecting any warnings."""
     if not openmc.lib._strict_fp_enabled():
         _environment_warnings.append(
-            "OpenMC was NOT built with -DOPENMC_STRICT_FP=on. "
+            "OpenMC was NOT built with -DOPENMC_ENABLE_STRICT_FP=on. "
             "Regression test results may not match reference values due to "
             "compiler floating-point optimizations. Rebuild with "
-            "-DOPENMC_STRICT_FP=on for reproducible results."
+            "-DOPENMC_ENABLE_STRICT_FP=on for reproducible results."
         )
 
     xs_path = os.environ.get("OPENMC_CROSS_SECTIONS")

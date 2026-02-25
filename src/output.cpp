@@ -44,7 +44,7 @@
 
 namespace openmc {
 
-#ifdef OPENMC_STRICT_FP_BUILD
+#ifdef OPENMC_ENABLE_STRICT_FP_BUILD
 const bool STRICT_FP_ENABLED = true;
 #else
 const bool STRICT_FP_ENABLED = false;
@@ -352,7 +352,7 @@ void print_build_info()
 #ifdef OPENMC_UWUW_ENABLED
   uwuw = y;
 #endif
-#ifdef OPENMC_STRICT_FP_BUILD
+#ifdef OPENMC_ENABLE_STRICT_FP_BUILD
   strict_fp = y;
 #endif
 

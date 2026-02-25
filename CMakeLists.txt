@@ -38,7 +38,7 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
-option(OPENMC_STRICT_FP "Set strict floating point flags (improves test portability)"OFF)
+option(OPENMC_ENABLE_STRICT_FP "Enable strict FP flags to improve test portability"  OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
 message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
@@ -49,7 +49,7 @@ message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 message(STATUS "OPENMC_FORCE_VENDORED_LIBS ${OPENMC_FORCE_VENDORED_LIBS}")
-message(STATUS "OPENMC_STRICT_FP ${OPENMC_STRICT_FP}")
+message(STATUS "OPENMC_ENABLE_STRICT_FP ${OPENMC_ENABLE_STRICT_FP}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -97,7 +97,7 @@ endif()
 # RelWithDebInfo, which disables C/C++ assert() statements.
 #===============================================================================
 
-if(OPENMC_STRICT_FP)
+if(OPENMC_ENABLE_STRICT_FP)
   foreach(FLAG_VAR CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_RELWITHDEBINFO)
     string(REPLACE "-DNDEBUG" "" ${FLAG_VAR} "${${FLAG_VAR}}")
     string(REPLACE "/DNDEBUG" "" ${FLAG_VAR} "${${FLAG_VAR}}")
@@ -208,7 +208,7 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# When OPENMC_STRICT_FP is enabled, disable compiler optimizations that change
+# When OPENMC_ENABLE_STRICT_FP is enabled, disable compiler optimizations that change
 # floating-point results relative to -O0, improving cross-platform and
 # cross-optimization-level reproducibility for regression testing:
 #   -ffp-contract=off    Prevents FMA contraction (fused multiply-add changes rounding)
@@ -216,7 +216,7 @@ endif()
 #                        with builtin versions that may differ from libm
 # By default (OFF), the compiler is free to use all optimizations for best
 # performance.
-if(OPENMC_STRICT_FP)
+if(OPENMC_ENABLE_STRICT_FP)
   include(CheckCXXCompilerFlag)
   check_cxx_compiler_flag(-ffp-contract=off SUPPORTS_FP_CONTRACT_OFF)
   if(SUPPORTS_FP_CONTRACT_OFF)
@@ -590,8 +590,8 @@ endif()
 if (OPENMC_ENABLE_COVERAGE)
   target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
 endif()
-if (OPENMC_STRICT_FP)
-  target_compile_definitions(libopenmc PRIVATE OPENMC_STRICT_FP_BUILD)
+if (OPENMC_ENABLE_STRICT_FP)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_ENABLE_STRICT_FP_BUILD)
 endif()
 
 #===============================================================================

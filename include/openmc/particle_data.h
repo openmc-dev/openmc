@@ -290,8 +290,8 @@ public:
     }
     n_coord_ = 1;
 
-    for (auto& cell : cell_last_) {
-      cell = C_NONE;
+    for (auto& level : coord_last_) {
+      level.reset();
     }
     n_coord_last_ = 1;
   }
@@ -334,6 +334,12 @@ public:
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
   const vector<LocalCoord>& coord() const { return coord_; }
+  vector<LocalCoord>& coord() { return coord_; }
+
+  LocalCoord& coord_last(int i) { return coord_last_[i]; }
+  const LocalCoord& coord_last(int i) const { return coord_last_[i]; }
+  const vector<LocalCoord>& coord_last() const { return coord_last_; }
+  vector<LocalCoord>& coord_last() { return coord_last_; }
 
   // Innermost universe nesting coordinates
   LocalCoord& lowest_coord() { return coord_[n_coord_ - 1]; }
@@ -342,8 +348,12 @@ public:
   // Last coordinates on all nesting levels, before crossing a surface
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
-  int& cell_last(int i) { return cell_last_[i]; }
-  const int& cell_last(int i) const { return cell_last_[i]; }
+
+  int& cell(int i) { return coord_[i].cell(); }
+  const int& cell(int i) const { return coord_[i].cell(); }
+
+  int& cell_last(int i) { return coord_last_[i].cell(); }
+  const int& cell_last(int i) const { return coord_last_[i].cell(); }
 
   // Coordinates at birth
   Position& r_born() { return r_born_; }
@@ -355,10 +365,10 @@ public:
   const Position& r_last_current() const { return r_last_current_; }
 
   // Previous direction and spatial coordinates before a collision
-  Position& r_last() { return r_last_; }
-  const Position& r_last() const { return r_last_; }
-  Position& u_last() { return u_last_; }
-  const Position& u_last() const { return u_last_; }
+  Position& r_last() { return coord_last_[0].r(); }
+  const Position& r_last() const { return coord_last_[0].r(); }
+  Position& u_last() { return coord_last_[0].u(); }
+  const Position& u_last() const { return coord_last_[0].u(); }
 
   // Accessors for position in global coordinates
   Position& r() { return coord_[0].r(); }
@@ -415,19 +425,16 @@ public:
 private:
   int64_t id_ {-1}; //!< Unique ID
 
-  int n_coord_ {1};          //!< number of current coordinate levels
-  int cell_instance_;        //!< offset for distributed properties
-  vector<LocalCoord> coord_; //!< coordinates for all levels
-
-  int n_coord_last_ {1};  //!< number of current coordinates
-  vector<int> cell_last_; //!< coordinates for all levels
+  int n_coord_ {1};               //!< number of current coordinate levels
+  int n_coord_last_ {1};          //!< number of last coordinates
+  int cell_instance_;             //!< offset for distributed properties
+  vector<LocalCoord> coord_;      //!< coordinates for all levels
+  vector<LocalCoord> coord_last_; //!< last coordinates for all levels
 
   Position r_born_;         //!< coordinates at birth
   Position r_last_current_; //!< coordinates of the last collision or
                             //!< reflective/periodic surface crossing for
                             //!< current tallies
-  Position r_last_;         //!< previous coordinates
-  Direction u_last_;        //!< previous direction coordinates
 
   int surface_ {
     SURFACE_NONE}; //!< surface token for surface the particle is currently on

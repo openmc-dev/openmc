@@ -108,11 +108,15 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
       sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
   }
 
-  // Use parent and progeny indices to sort fission bank
+  // Use parent and progeny indices to sort bank
   for (int64_t i = 0; i < bank.size(); i++) {
     const auto& site = bank[i];
     int64_t idx =
       simulation::progeny_per_particle[site.parent_id] + site.progeny_id;
+    if (idx < 0 || idx >= bank.size()) {
+      fatal_error("Mismatch detected between sum of all particle progeny and "
+                  "bank size during sorting.");
+    }
     sorted_bank[idx] = site;
     if (settings::ifp_on && is_fission_bank) {
       copy_ifp_data_from_fission_banks(

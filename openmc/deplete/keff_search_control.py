@@ -110,11 +110,12 @@ class KeffSearchControl:
         return root
 
     def _update_vec(self, x):
-        """Update the atom density vector from the operator's number object.
+        """Update the atom density vector from openmc.lib.materials and AtomNumber object.
         
         This method synchronizes the atom densities across all MPI ranks by
         broadcasting the number object from each rank and updating the x vector
-        with the current atom densities and volumes.
+        with the current atom densities from openmc.lib.materials or AtomNumber object 
+        if the nuclide is not in openmc.lib.materials.
         
         Parameters
         ----------
@@ -133,9 +134,13 @@ class KeffSearchControl:
                 for nuc in number_i.nuclides:
                     if nuc in number_i.burnable_nuclides:
                         nuc_idx = number_i.burnable_nuclides.index(nuc)
-                        atom_density = number_i.get_atom_density(mat, nuc)
-                        volume = number_i.get_mat_volume(mat)
-                        x[mat_idx][nuc_idx] = atom_density * volume
+                        volume = number_i.get_mat_volume(mat) # cm^3
+                        if nuc in openmc.lib.materials[int(mat)].nuclides:
+                            _nuc_idx = openmc.lib.materials[int(mat)].nuclides.index(nuc)
+                            val = 1.0e24 * openmc.lib.materials[int(mat)].densities[_nuc_idx] # atom/cm^3
+                        else:
+                            val = number_i.get_atom_density(mat, nuc) # atom/cm^3
+                        x[mat_idx][nuc_idx] = val * volume
         
             x = comm.bcast(x, root=rank)
         return x

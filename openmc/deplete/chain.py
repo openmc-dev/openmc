@@ -807,37 +807,29 @@ class Chain:
         # Use DOK as intermediate representation
         n = len(self)
         matrix = dok_array((n, n))
+        
+        check_type("mats", mats, (tuple, str))
+        if not isinstance(mats, str):
+            check_type("mats", mats, tuple, str)
+            check_length("mats", mats, 2, 2)
+        
+        # Build transfer terms (nuclide transfer only)
+        if isinstance(mats, str):
+            mat = mats
+            dest_mat = None
+            components = tr_rates.get_components(mat, current_timestep)
+        # Build transfer terms (transfer from one material into another)
+        elif isinstance(mats, tuple):
+            dest_mat, mat = mats
+            components = tr_rates.get_components(mat, current_timestep, dest_mat)    
 
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
-            # Build transfer terms (nuclide transfer only)
-            if isinstance(mats, str):
-                mat = mats
-                components = tr_rates.get_components(mat, current_timestep)
-                if not components:
-                    break
-                if elm in components:
-                    matrix[i, i] = sum(
-                        tr_rates.get_external_rate(mat, elm, current_timestep))
-                elif nuc.name in components:
-                    matrix[i, i] = sum(
-                        tr_rates.get_external_rate(mat, nuc.name, current_timestep))
-                else:
-                    matrix[i, i] = 0.0
-
-            # Build transfer terms (transfer from one material into another)
-            elif isinstance(mats, tuple):
-                dest_mat, mat = mats
-                components = tr_rates.get_components(mat, current_timestep, dest_mat)
-                if elm in components:
-                    matrix[i, i] = tr_rates.get_external_rate(
-                        mat, elm, current_timestep, dest_mat)[0]
-                elif nuc.name in components:
-                    matrix[i, i] = tr_rates.get_external_rate(
-                        mat, nuc.name, current_timestep, dest_mat)[0]
-                else:
-                    matrix[i, i] = 0.0
-
+            if elm in components:
+                matrix[i, i] = sum(tr_rates.get_external_rate(mat, elm, current_timestep, dest_mat))
+            elif nuc.name in components:
+                matrix[i, i] = sum(tr_rates.get_external_rate(mat, nuc.name, current_timestep, dest_mat))
+                
         # Return CSC instead of DOK
         return matrix.tocsc()
 

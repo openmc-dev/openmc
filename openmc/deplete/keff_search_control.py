@@ -84,7 +84,7 @@ class _KeffSearchControl:
         if not result.converged:
             raise ValueError(
                 f"Search for keff failed to converge. "
-                f"Termination reason: {result.termination_reason}"
+                f"Termination reason: {result.flag}"
             )
         
         root = result.root

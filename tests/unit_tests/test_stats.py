@@ -835,6 +835,23 @@ def test_combine_distributions():
     assert isinstance(mixed, openmc.stats.Mixture)
     assert len(mixed.distribution) == 2
     assert len(mixed.probability) == 2
+    assert mixed == openmc.stats.combine_distributions([mixed], [1.0])
+
+    # Mixture combined with another distribution: probabilities should be
+    # correctly scaled when the Mixture is flattened
+    d_a = openmc.stats.delta_function(1.0)
+    d_b = openmc.stats.delta_function(2.0)
+    m = openmc.stats.Mixture([0.3, 0.7], [d_a, d_b])
+    extra = openmc.stats.delta_function(3.0)
+    result = openmc.stats.combine_distributions([m, extra], [0.5, 0.5])
+    assert isinstance(result, openmc.stats.Discrete)
+    assert result.x == pytest.approx([1.0, 2.0, 3.0])
+    assert result.p == pytest.approx([0.5*0.3, 0.5*0.7, 0.5])
+
+    # Passing a Mixture with a bias should warn that the bias is dropped
+    biased_m = openmc.stats.Mixture([0.5, 0.5], [d_a, d_b], bias=[0.8, 0.2])
+    with pytest.warns(UserWarning, match='bias'):
+        openmc.stats.combine_distributions([biased_m], [1.0])
 
     # Single tabular returns a tabular distribution with scaled probabilities
     t_single = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])

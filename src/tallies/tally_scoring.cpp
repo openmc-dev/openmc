@@ -153,22 +153,6 @@ CombFilterBinIter::CombFilterBinIter(FilterBinIter iter1, FilterBinIter end1,
   return;
 }
 
-CombFilterBinIter::CombFilterBinIter(FilterBinIter iter1, FilterBinIter end1,
-  FilterBinIter iter2, FilterBinIter end2, bool end)
-  : iter1_ {iter1}, end1_ {end1}, iter2_ {iter2}, end2_ {end2}
-{
-  // Handle the special case for an iterator that points to the end.
-  if (end) {
-    index_ = -1;
-    return;
-  }
-
-  if (iter1_ == end1_ && iter2_ == end2_) {
-    index_ = -1;
-    return;
-  }
-}
-
 CombFilterBinIter& CombFilterBinIter::operator++()
 {
   if (iter1_ == end1_ && iter2_ == end2_) {
@@ -2769,12 +2753,11 @@ void score_surface_tally(
     auto end2 = FilterBinIter(tally, true, &p_sym.filter_matches());
     auto filter_iter =
       CombFilterBinIter(filter_iter1, end1, filter_iter2, end2);
-    auto end = CombFilterBinIter(filter_iter1, end1, filter_iter2, end2, true);
-    if (filter_iter == end)
+    if (filter_iter.index_ == -1)
       continue;
 
     // Loop over filter bins.
-    for (; filter_iter != end; ++filter_iter) {
+    for (; filter_iter.index_ != -1; ++filter_iter) {
       auto filter_index = filter_iter.index_;
       auto filter_weight1 = filter_iter.weight1_;
       auto filter_weight2 = filter_iter.weight2_;

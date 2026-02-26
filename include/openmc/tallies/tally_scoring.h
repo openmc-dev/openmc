@@ -63,22 +63,6 @@ public:
   CombFilterBinIter(FilterBinIter iter1, FilterBinIter iter2,
     FilterBinIter end1, FilterBinIter end2);
 
-  //! Construct an iterator over all filter bin combinations.
-  //
-  //! \param end if true, the returned iterator indicates the end of a loop.
-  CombFilterBinIter(FilterBinIter iter1, FilterBinIter iter2,
-    FilterBinIter end1, FilterBinIter end2, bool end);
-
-  bool operator==(const CombFilterBinIter& other) const
-  {
-    return index_ == other.index_;
-  }
-
-  bool operator!=(const CombFilterBinIter& other) const
-  {
-    return !(*this == other);
-  }
-
   CombFilterBinIter& operator++();
 
   int index_ {1};

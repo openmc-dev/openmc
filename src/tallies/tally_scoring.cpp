@@ -141,6 +141,89 @@ void FilterBinIter::compute_index_weight()
 }
 
 //==============================================================================
+// CombFilterBinIter implementation
+//==============================================================================
+
+CombFilterBinIter::CombFilterBinIter(FilterBinIter iter1, FilterBinIter end1,
+  FilterBinIter iter2, FilterBinIter end2)
+  : iter1_ {iter1}, end1_ {end1}, iter2_ {iter2}, end2_ {end2}
+{
+  if (iter1_ == end1_ && iter2_ == end2_)
+    index_ = -1;
+  return;
+}
+
+CombFilterBinIter::CombFilterBinIter(FilterBinIter iter1, FilterBinIter end1,
+  FilterBinIter iter2, FilterBinIter end2, bool end)
+  : iter1_ {iter1}, end1_ {end1}, iter2_ {iter2}, end2_ {end2}
+{
+  // Handle the special case for an iterator that points to the end.
+  if (end) {
+    index_ = -1;
+    return;
+  }
+
+  if (iter1_ == end1_ && iter2_ == end2_) {
+    index_ = -1;
+    return;
+  }
+}
+
+CombFilterBinIter& CombFilterBinIter::operator++()
+{
+  if (iter1_ == end1_ && iter2_ == end2_) {
+    index_ = -1;
+    return *this;
+  }
+
+  if (iter1_ == end1_) {
+    ++iter2_;
+    if (iter2_ == end2_) {
+      index_ = -1;
+      return *this;
+    }
+    index_ = iter2_.index_;
+    weight2_ = iter2_.weight_;
+    weight1_ = 0.0;
+  } else if (iter2_ == end2_) {
+    ++iter1_;
+    if (iter1_ == end1_) {
+      index_ = -1;
+      return *this;
+    }
+    index_ = iter1_.index_;
+    weight1_ = iter1_.weight_;
+    weight2_ = 0.0;
+  } else {
+    if (iter1_.index_ == iter2_.index_) {
+      ++iter1_;
+      ++iter2_;
+    } else if (iter1_.index_ < iter2_.index_) {
+      ++iter1_;
+    } else if (iter1_.index_ > iter2_.index_) {
+      ++iter2_;
+    }
+    if (iter1_ == end1_ && iter2_ == end2_) {
+      index_ = -1;
+      return *this;
+    } else if (iter1_ == end1_) {
+      index_ = iter2_.index_;
+      weight2_ = iter2_.weight_;
+      weight1_ = 0.0;
+    } else if (iter2_ == end2_) {
+      index_ = iter1_.index_;
+      weight1_ = iter1_.weight_;
+      weight2_ = 0.0;
+    } else {
+      index_ = std::min(iter1_.index_, iter2_.index_);
+      weight1_ = (iter1_.index_ <= iter2_.index_) ? iter1_.weight_ : 0.0;
+      weight2_ = (iter1_.index_ >= iter2_.index_) ? iter2_.weight_ : 0.0;
+    }
+  }
+  return *this;
+}
+
+//==============================================================================
 // Non-member functions
 //==============================================================================
 
@@ -2663,6 +2746,11 @@ void score_surface_tally(
   auto n = surf.normal(p.r());
   n /= n.norm();
 
+  auto p_sym = p;
+  p_sym.coord() = p.coord_last();
+  p_sym.coord_last() = p.coord();
+  p_sym.surface() = -p.surface();
+
   // Determine absolute cosine of angle between normal and particle direction
   double abs_mu = std::min(std::abs(p.u().dot(n)), 1.0);
 
@@ -2675,24 +2763,32 @@ void score_surface_tally(
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    auto filter_iter1 = FilterBinIter(tally, p);
+    auto end1 = FilterBinIter(tally, true, &p.filter_matches());
+    auto filter_iter2 = FilterBinIter(tally, p_sym);
+    auto end2 = FilterBinIter(tally, true, &p_sym.filter_matches());
+    auto filter_iter =
+      CombFilterBinIter(filter_iter1, end1, filter_iter2, end2);
+    auto end = CombFilterBinIter(filter_iter1, end1, filter_iter2, end2, true);
     if (filter_iter == end)
       continue;
 
     // Loop over filter bins.
     for (; filter_iter != end; ++filter_iter) {
       auto filter_index = filter_iter.index_;
-      auto filter_weight = filter_iter.weight_;
+      auto filter_weight1 = filter_iter.weight1_;
+      auto filter_weight2 = filter_iter.weight2_;
 
       // Loop over scores.
       for (auto score_index = 0; score_index < tally.scores_.size();
            ++score_index) {
         double score = current;
+        double filter_weight = filter_weight1;
 
         auto score_bin = tally.scores_[score_index];
         if (score_bin == SCORE_SURFACE_FLUX) {
           score /= abs_mu;
+          filter_weight = std::max(filter_weight1, filter_weight2);
         }
 #pragma omp atomic
         tally.results_(filter_index, score_index, TallyResult::VALUE) +=

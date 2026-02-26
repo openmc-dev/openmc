@@ -2,6 +2,7 @@
 
 #include "openmc/array.h"
 #include "openmc/capi.h"
+#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
@@ -62,7 +63,7 @@ vector<int> active_collision_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
-vector<int> pulse_height_cells;
+vector<int32_t> pulse_height_cells;
 vector<double> time_grid;
 } // namespace model
 
@@ -632,29 +633,24 @@ void Tally::set_scores(const vector<std::string>& scores)
         estimator_ = TallyEstimator::COLLISION;
       break;
 
-    case SCORE_PULSE_HEIGHT:
+    case SCORE_PULSE_HEIGHT: {
       if (non_cell_energy_present) {
         fatal_error("Pulse-height tallies are not compatible with filters "
                     "other than CellFilter and EnergyFilter");
       }
       type_ = TallyType::PULSE_HEIGHT;
-
-      // Collecting indices of all cells covered by the filters in the pulse
-      // height tally in global variable pulse_height_cells
-      for (const auto& i_filt : filters_) {
-        auto cell_filter =
-          dynamic_cast<CellFilter*>(model::tally_filters[i_filt].get());
-        if (cell_filter) {
-          const auto& cells = cell_filter->cells();
-          for (int i = 0; i < cell_filter->n_bins(); i++) {
-            int cell_index = cells[i];
-            if (!contains(model::pulse_height_cells, cell_index)) {
-              model::pulse_height_cells.push_back(cell_index);
-            }
-          }
-        }
+      // Collect all unique cell indices covered by this tally.
+      // If no CellFilter is present, all cells in the geometry are scored.
+      const auto* cell_filter_ptr = get_filter<CellFilter>();
+      int n = cell_filter_ptr ? cell_filter_ptr->n_bins()
+                              : static_cast<int>(model::cells.size());
+      for (int i = 0; i < n; ++i) {
+        int32_t cell_index = cell_filter_ptr ? cell_filter_ptr->cells()[i] : i;
+        if (!contains(model::pulse_height_cells, cell_index))
+          model::pulse_height_cells.push_back(cell_index);
       }
       break;
+    }
 
     case SCORE_IFP_TIME_NUM:
     case SCORE_IFP_BETA_NUM:

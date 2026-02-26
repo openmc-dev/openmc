@@ -2487,7 +2487,7 @@ void score_timed_tracklength_tally(Particle& p, double total_distance)
 
   // save particle last state
   auto time_last = p.time_last();
-  auto r_last = p.r_last();
+  auto coord_last = p.coord_last();
 
   // move particle back
   p.move_distance(-total_distance);
@@ -2503,7 +2503,7 @@ void score_timed_tracklength_tally(Particle& p, double total_distance)
 
     // Save particle last state for tracklength tallies
     p.time_last() = p.time();
-    p.r_last() = p.r();
+    p.coord_last() = p.coord();
 
     // Advance particle in space and time
     p.move_distance(distance);
@@ -2519,7 +2519,7 @@ void score_timed_tracklength_tally(Particle& p, double total_distance)
   }
 
   p.time_last() = time_last;
-  p.r_last() = r_last;
+  p.coord_last() = coord_last;
 }
 
 void score_tracklength_tally(Particle& p, double distance)

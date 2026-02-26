@@ -530,10 +530,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           if (p.cell_born() == C_NONE)
             p.cell_born() = p.lowest_coord().cell();
 
-          // Initialize last cells from current cell
-          for (int j = 0; j < p.n_coord(); ++j) {
-            p.cell_last(j) = p.coord(j).cell();
-          }
+          // Initialize last coords from current coords
+          p.coord_last() = p.coord();
           p.n_coord_last() = p.n_coord();
 
           while (true) {
@@ -594,9 +592,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
               break;
 
             // cross next geometric surface
-            for (int j = 0; j < p.n_coord(); ++j) {
-              p.cell_last(j) = p.coord(j).cell();
-            }
+            p.coord_last() = p.coord();
             p.n_coord_last() = p.n_coord();
 
             // Set surface that particle is on and adjust coordinate levels

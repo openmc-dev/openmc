@@ -139,8 +139,6 @@ void Particle::from_source(const SourceSite* src)
   u() = src->u;
   r_born() = src->r;
   r_last_current() = src->r;
-  r_last() = src->r;
-  u_last() = src->u;
   if (settings::run_CE) {
     E() = src->E;
     g() = 0;
@@ -170,8 +168,6 @@ void Particle::event_calculate_xs()
   // Store pre-collision particle properties
   wgt_last() = wgt();
   E_last() = E();
-  u_last() = u();
-  r_last() = r();
   time_last() = time();
 
   // Reset event variables
@@ -193,10 +189,8 @@ void Particle::event_calculate_xs()
     if (cell_born() == C_NONE)
       cell_born() = lowest_coord().cell();
 
-    // Initialize last cells from current cell
-    for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell();
-    }
+    // Initialize last coords from current coords
+    coord_last() = coord();
     n_coord_last() = n_coord();
   }
 
@@ -292,10 +286,8 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
-  // Saving previous cell data
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
+  // Saving previous coord data
+  coord_last() = coord();
   n_coord_last() = n_coord();
 
   // Set surface that particle is on and adjust coordinate levels
@@ -466,10 +458,8 @@ void Particle::event_revive_from_secondary()
         if (cell_born() == C_NONE)
           cell_born() = lowest_coord().cell();
 
-        // Initialize last cells from current cell
-        for (int j = 0; j < n_coord(); ++j) {
-          cell_last(j) = coord(j).cell();
-        }
+        // Initialize last coords from current coords
+        coord_last() = coord();
         n_coord_last() = n_coord();
       }
       pht_secondary_particles();

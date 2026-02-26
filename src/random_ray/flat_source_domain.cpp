@@ -447,7 +447,6 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
     // the spatial location of the source region
     Particle p;
     p.r() = source_regions_.position(sr);
-    p.r_last() = source_regions_.position(sr);
     p.u() = {1.0, 0.0, 0.0};
     bool found = exhaustive_find_cell(p);
 
@@ -819,7 +818,6 @@ void FlatSourceDomain::output_to_vtk() const
           sample.x = ll.x + x_delta / 2.0 + x * x_delta;
           Particle p;
           p.r() = sample;
-          p.r_last() = sample;
           p.E() = 1.0;
           p.E_last() = 1.0;
           p.u() = {1.0, 0.0, 0.0};
@@ -1093,7 +1091,6 @@ void FlatSourceDomain::convert_external_sources()
       auto sp = dynamic_cast<SpatialPoint*>(is->space());
       GeometryState gs;
       gs.r() = sp->r();
-      gs.r_last() = sp->r();
       gs.u() = {1.0, 0.0, 0.0};
       bool found = exhaustive_find_cell(gs);
       if (!found) {

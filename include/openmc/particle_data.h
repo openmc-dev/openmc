@@ -311,8 +311,6 @@ public:
     r() = r_a;
     u() = u_a;
     r_last_current() = r_a;
-    r_last() = r_a;
-    u_last() = u_a;
   }
 
   // Unique ID. This is not geometric info, but the
@@ -349,10 +347,8 @@ public:
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
 
-  int& cell(int i) { return coord_[i].cell(); }
   const int& cell(int i) const { return coord_[i].cell(); }
 
-  int& cell_last(int i) { return coord_last_[i].cell(); }
   const int& cell_last(int i) const { return coord_last_[i].cell(); }
 
   // Coordinates at birth
@@ -365,9 +361,7 @@ public:
   const Position& r_last_current() const { return r_last_current_; }
 
   // Previous direction and spatial coordinates before a collision
-  Position& r_last() { return coord_last_[0].r(); }
   const Position& r_last() const { return coord_last_[0].r(); }
-  Position& u_last() { return coord_last_[0].u(); }
   const Position& u_last() const { return coord_last_[0].u(); }
 
   // Accessors for position in global coordinates

@@ -72,8 +72,6 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   // Set particle last attributes
   p.wgt_last() = p.wgt();
   p.r_last_current() = p.r();
-  p.r_last() = p.r();
-  p.u_last() = p.u();
   p.E_last() = p.E();
   p.g_last() = p.g();
   p.time_last() = p.time();

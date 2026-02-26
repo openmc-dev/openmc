@@ -31,28 +31,21 @@ def test_flux_from_two_directions(run_in_tmpdir):
     model.settings.source = src
     
     tally1 = openmc.Tally()
-    tally1.scores = ["surface-flux"]
+    tally1.scores = ["flux"]
     tally1.filters = [openmc.CellFromFilter([cell1])]
     
     tally2 = openmc.Tally()
-    tally2.scores = ["surface-flux"]
-    tally2.filters = [openmc.CellFilter([cell1])]
-    
-    tally3 = openmc.Tally()
-    tally3.scores = ["surface-flux"]
-    tally3.filters = [openmc.CellFilter([cell1]), openmc.CellFromFilter([cell2])]
+    tally2.scores = ["flux"]
+    tally2.filters = [openmc.CellFilter([cell1]), openmc.CellFromFilter([cell2])]
     
     model.tallies.append(tally1)
     model.tallies.append(tally2)
-    model.tallies.append(tally3)
     
     sp_file = model.run()
 
     with openmc.StatePoint(sp_file) as sp:
         tally1_out = sp.get_tally(id=tally1.id)
         tally2_out = sp.get_tally(id=tally2.id)
-        tally3_out = sp.get_tally(id=tally3.id)
         
     assert tally1_out.mean == 1.0
     assert tally2_out.mean == 1.0
-    assert tally3_out.mean == 1.0   

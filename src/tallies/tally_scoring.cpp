@@ -2719,6 +2719,7 @@ void score_surface_tally(
   auto n = surf.normal(p.r());
   n /= n.norm();
 
+  // Construct dual particle to score surface flux in the other direction
   auto p_sym = p;
   p_sym.n_coord() = p.n_coord_last();
   p_sym.n_coord_last() = p.n_coord();
@@ -2728,6 +2729,8 @@ void score_surface_tally(
   for (int j = 0; j < model::n_coord_levels; ++j) {
     p_sym.coord(j).cell() = p.cell_last(j);
   }
+  p_sym.material() = p.material_last();
+  p_sym.material_last() = p.material();
 
   p_sym.surface() = -p.surface();
 

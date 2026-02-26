@@ -270,7 +270,6 @@ Tally::Tally(pugi::xml_node node)
                       "transport on and inverse velocity score");
           break;
         case SCORE_FLUX:
-        case SCORE_SURFACE_FLUX:
         case SCORE_TOTAL:
         case SCORE_SCATTER:
         case SCORE_NU_SCATTER:
@@ -569,6 +568,8 @@ void Tally::set_scores(const vector<std::string>& scores)
     }
   }
   bool surface_types_present =
+    (surface_present || cellfrom_present || materialfrom_present);
+  bool non_meshsurface_types_present =
     (surface_present || cell_present || cellfrom_present || material_present ||
       materialfrom_present);
 
@@ -592,6 +593,12 @@ void Tally::set_scores(const vector<std::string>& scores)
           fatal_error("Cannot tally flux for an individual nuclide.");
       if (energyout_present)
         fatal_error("Cannot tally flux with an outgoing energy filter.");
+      if (surface_types_present) {
+        if (meshsurface_present)
+          fatal_error("OpenMC does not support mesh surface fluxes yet");
+        type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
+      }
       break;
 
     case SCORE_TOTAL:
@@ -622,17 +629,10 @@ void Tally::set_scores(const vector<std::string>& scores)
       }
       break;
 
-    case SCORE_SURFACE_FLUX:
-      if (meshsurface_present)
-        fatal_error("OpenMC does not support mesh surface fluxes yet");
-      type_ = TallyType::SURFACE;
-      estimator_ = TallyEstimator::ANALOG;
-      break;
-
     case SCORE_CURRENT:
       // Check which type of current is desired: mesh or surface currents.
       if (meshsurface_present) {
-        if (surface_types_present)
+        if (non_meshsurface_types_present)
           fatal_error("Cannot tally mesh surface currents in the same tally as "
                       "normal surface currents");
         type_ = TallyType::MESH_SURFACE;
@@ -710,10 +710,9 @@ void Tally::set_scores(const vector<std::string>& scores)
   // Make sure surface tallies contain only surface type scores score.
   if (type_ == TallyType::SURFACE) {
     for (auto sc : scores_)
-      if ((sc != SCORE_CURRENT) && (sc != SCORE_SURFACE_FLUX))
-        fatal_error(
-          "Cannot tally scores other than 'current' or 'surface-flux' "
-          "when using surface filters.");
+      if ((sc != SCORE_CURRENT) && (sc != SCORE_FLUX))
+        fatal_error("Cannot tally scores other than 'current' or 'flux' "
+                    "when using surface filters.");
   }
 }
 

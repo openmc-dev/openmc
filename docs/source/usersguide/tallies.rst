@@ -285,8 +285,7 @@ The following tables show all valid scores:
     |                      |defined in the geometry. It may be used along      |
     |                      |with any other filter, except meshsurface filters. |
     |                      |Surfaces can alternatively be defined with cell    |
-    |                      |from and cell filters thereby resulting in tallying|
-    |                      |partial surface fluxes.                            |
+    |                      |from and cell filters                              |
     |                      |                                                   | 
     |                      |Units are particles per source particle.           |
     +----------------------+---------------------------------------------------+    

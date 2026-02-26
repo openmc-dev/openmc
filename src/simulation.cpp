@@ -984,6 +984,33 @@ void transport_history_based_shared_secondary()
   calculate_work(settings::n_particles);
 }
 
+//! Process event queues until all are empty. Each iteration processes the
+//! longest queue first to maximize vectorization efficiency.
+void process_transport_events()
+{
+  while (true) {
+    int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.size(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.size(),
+      simulation::collision_queue.size()});
+
+    if (max == 0) {
+      break;
+    } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+      process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+    } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+      process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+    } else if (max == simulation::advance_particle_queue.size()) {
+      process_advance_particle_events();
+    } else if (max == simulation::surface_crossing_queue.size()) {
+      process_surface_crossing_events();
+    } else if (max == simulation::collision_queue.size()) {
+      process_collision_events();
+    }
+  }
+}
+
 void transport_event_based_shared_secondary()
 {
   SharedArray<SourceSite> shared_secondary_bank_read;
@@ -1007,30 +1034,7 @@ void transport_event_based_shared_secondary()
       std::min(remaining_work, settings::max_particles_in_flight);
 
     process_init_events(n_particles, source_offset);
-
-    // Event-based transport loop
-    while (true) {
-      int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
-        simulation::calculate_nonfuel_xs_queue.size(),
-        simulation::advance_particle_queue.size(),
-        simulation::surface_crossing_queue.size(),
-        simulation::collision_queue.size()});
-
-      if (max == 0) {
-        break;
-      } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
-      } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
-      } else if (max == simulation::advance_particle_queue.size()) {
-        process_advance_particle_events();
-      } else if (max == simulation::surface_crossing_queue.size()) {
-        process_surface_crossing_events();
-      } else if (max == simulation::collision_queue.size()) {
-        process_collision_events();
-      }
-    }
-
+    process_transport_events();
     process_death_events(n_particles);
 
     // Collect secondaries from all particle buffers into shared bank
@@ -1096,30 +1100,7 @@ void transport_event_based_shared_secondary()
 
       process_init_secondary_events(
         n_particles, sec_offset, shared_secondary_bank_read);
-
-      // Event-based transport loop
-      while (true) {
-        int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
-          simulation::calculate_nonfuel_xs_queue.size(),
-          simulation::advance_particle_queue.size(),
-          simulation::surface_crossing_queue.size(),
-          simulation::collision_queue.size()});
-
-        if (max == 0) {
-          break;
-        } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-          process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
-        } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-          process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
-        } else if (max == simulation::advance_particle_queue.size()) {
-          process_advance_particle_events();
-        } else if (max == simulation::surface_crossing_queue.size()) {
-          process_surface_crossing_events();
-        } else if (max == simulation::collision_queue.size()) {
-          process_collision_events();
-        }
-      }
-
+      process_transport_events();
       process_death_events(n_particles);
 
       // Collect secondaries from all particle buffers into shared bank
@@ -1158,33 +1139,7 @@ void transport_event_based()
 
     // Initialize all particle histories for this subiteration
     process_init_events(n_particles, source_offset);
-
-    // Event-based transport loop
-    while (true) {
-      // Determine which event kernel has the longest queue
-      int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
-        simulation::calculate_nonfuel_xs_queue.size(),
-        simulation::advance_particle_queue.size(),
-        simulation::surface_crossing_queue.size(),
-        simulation::collision_queue.size()});
-
-      // Execute event with the longest queue
-      if (max == 0) {
-        break;
-      } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
-      } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
-      } else if (max == simulation::advance_particle_queue.size()) {
-        process_advance_particle_events();
-      } else if (max == simulation::surface_crossing_queue.size()) {
-        process_surface_crossing_events();
-      } else if (max == simulation::collision_queue.size()) {
-        process_collision_events();
-      }
-    }
-
-    // Execute death event for all particles
+    process_transport_events();
     process_death_events(n_particles);
 
     // Adjust remaining work and source offset variables

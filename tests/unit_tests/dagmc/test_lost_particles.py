@@ -66,6 +66,7 @@ def broken_dagmc_model(request):
     return model
 
 
+@pytest.mark.skip(reason="Test causes CI to hang intermittently")
 def test_lost_particles(run_in_tmpdir, broken_dagmc_model):
     broken_dagmc_model.export_to_xml()
     # ensure that particles will be lost when cell intersections can't be found

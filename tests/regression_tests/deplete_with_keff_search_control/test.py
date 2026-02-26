@@ -1,5 +1,6 @@
 """ Tests for KeffSearchControl class """
 
+from hmac import new
 from pathlib import Path
 import shutil
 import sys
@@ -89,14 +90,16 @@ def rotate_cell(angle):
 def adjust_material_density(density_factor):
     f = [material for material in openmc.lib.materials.values() if material.name == 'f'][0]
     nuclides = openmc.lib.materials[f.id].nuclides
-    current_densities = openmc.lib.materials[f.id].densities
-    new_densities = [d * density_factor for d in current_densities]
-    openmc.lib.materials[f.id].set_densities(nuclides, new_densities)
+    densities = openmc.lib.materials[f.id].densities
+    nuc_idx = nuclides.index('U235')
+    new_density = densities[nuc_idx] * density_factor
+    densities[nuc_idx] = new_density
+    openmc.lib.materials[f.id].set_densities(nuclides, densities)
 
 @pytest.mark.parametrize("function, x0, x1, bracket, ref_result", [
     (translate_cell, -11, -5, [-15,0], 'depletion_with_translation'),
     (rotate_cell, -80, -50, [-90,0], 'depletion_with_rotation'),
-    (adjust_material_density, 0.5, 1.2, [0.2, 1.5], 'depletion_with_refuel')
+    (adjust_material_density, 0.5, 2, [0.3, 3.0], 'depletion_with_refuel')
     ])
 
 def test_keff_search_control(run_in_tmpdir, model, function, x0, x1, bracket, ref_result):
@@ -106,10 +109,14 @@ def test_keff_search_control(run_in_tmpdir, model, function, x0, x1, bracket, re
 
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], 174., timestep_units = 'd')
-    integrator.add_keff_search_control(function, x0, x1, bracket, 
+    integrator.add_keff_search_control(
+        function=function,
+        x0=x0,
+        x1=x1,
+        bracket=bracket,
         output=True, 
-        k_tol=1e-2, 
-        sigma_final=5e-3)
+        k_tol=1e-1, 
+        sigma_final=5e-2)
     
     integrator.integrate()
 

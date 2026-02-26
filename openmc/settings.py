@@ -291,10 +291,10 @@ class Settings:
                  cell will be banked (int)
     surface_grazing_cutoff : float
         Surface flux cosine cutoff. If not specified, the default
-        value is 0.001.
+        value is 0.001. For more information, see the surface tally section in the theory manual.
     surface_grazing_ratio : float
         Surface flux cosine substitution ratio. If not specified, the default
-        value is 0.5.
+        value is 0.5. For more information, see the surface tally section in the theory manual.
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict

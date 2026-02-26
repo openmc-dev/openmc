@@ -509,7 +509,7 @@ void print_runtime()
 
   // Display track rate when weight windows are enabled
   if (settings::weight_windows_on) {
-    double speed_tracks = simulation::simulation_particles_completed /
+    double speed_tracks = simulation::simulation_tracks_completed /
                           time_active.elapsed();
     fmt::print(" {:<33} = {:.6} tracks/second\n",
       "Track Rate (active)", speed_tracks);

@@ -331,7 +331,7 @@ const RegularMesh* ufs_mesh {nullptr};
 vector<double> k_generation;
 vector<int64_t> work_index;
 
-int64_t simulation_particles_completed {0};
+int64_t simulation_tracks_completed {0};
 
 } // namespace simulation
 
@@ -590,7 +590,7 @@ void sample_particle(Particle& p, int64_t index_source)
     int64_t id;
     if (settings::use_shared_secondary_bank) {
       id = simulation::work_index[mpi::rank] + index_source +
-           simulation::simulation_particles_completed;
+           simulation::simulation_tracks_completed;
     } else {
       id = (simulation::total_gen + overall_generation() - 1) *
              settings::n_particles +
@@ -615,7 +615,7 @@ void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
   // set identifier for particle
   if (settings::use_shared_secondary_bank) {
     p.id() = simulation::work_index[mpi::rank] + index_source +
-             simulation::simulation_particles_completed;
+             simulation::simulation_tracks_completed;
   } else {
     p.id() = simulation::work_index[mpi::rank] + index_source;
   }
@@ -886,11 +886,11 @@ void transport_history_based()
 // The shared secondary bank transport algorithm works in two phases. In the
 // first phase, all primary particles are sampled then transported, and their
 // secondary particles are deposited into a shared secondary bank. The second
-// phase occurs in a loop, where all secondary particles in the shared secondary
+// phase occurs in a loop, where all secondary tracks in the shared secondary
 // bank are transported. Any secondary particles generated during this phase are
 // deposited back into the shared secondary bank. The shared secondary bank is
 // sorted for consistent ordering and load balanced across MPI ranks. This loop
-// continues until there are no more secondary particles left to transport.
+// continues until there are no more secondary tracks left to transport.
 void transport_history_based_shared_secondary()
 {
   // Shared secondary banks for reading and writing
@@ -922,7 +922,7 @@ void transport_history_based_shared_secondary()
     }
   }
 
-  simulation::simulation_particles_completed += settings::n_particles;
+  simulation::simulation_tracks_completed += settings::n_particles;
 
   // Phase 2: Now that the secondary bank has been populated, enter loop over
   // all secondary generations
@@ -936,21 +936,21 @@ void transport_history_based_shared_secondary()
 
     // Synchronize the shared secondary bank amongst all MPI ranks, such
     // that each MPI rank has an approximately equal number of secondary
-    // particles. Also reports the total number of secondaries alive across
+    // tracks. Also reports the total number of secondaries alive across
     // all MPI ranks.
     alive_secondary =
       synchronize_global_secondary_bank(shared_secondary_bank_write);
 
     // Recalculate work for each MPI rank based on number of alive secondary
-    // particles
+    // tracks
     calculate_work(alive_secondary);
 
-    // Display the number of secondary particles in this generation. This
+    // Display the number of secondary tracks in this generation. This
     // is useful for user monitoring so as to see if the secondary population is
     // exploding and to determine how many generations of secondaries are being
     // transported.
     if (mpi::master) {
-      write_message(fmt::format(" Secondary generation {:<2} particles: {}",
+      write_message(fmt::format(" Secondary generation {:<2}    tracks: {}",
                       n_generation_depth, alive_secondary),
         6);
     }
@@ -959,7 +959,7 @@ void transport_history_based_shared_secondary()
     shared_secondary_bank_write = SharedArray<SourceSite>();
     simulation::progeny_per_particle.resize(shared_secondary_bank_read.size());
 
-    // Transport all secondary particles from the shared secondary bank
+    // Transport all secondary tracks from the shared secondary bank
 #pragma omp parallel for schedule(runtime)
     for (int64_t i = 1; i <= shared_secondary_bank_read.size(); i++) {
       Particle p;
@@ -975,9 +975,9 @@ void transport_history_based_shared_secondary()
           shared_secondary_bank_write.thread_unsafe_append(site);
         }
       }
-    } // End of transport loop over particles in shared secondary bank
+    } // End of transport loop over tracks in shared secondary bank
     n_generation_depth++;
-    simulation::simulation_particles_completed += alive_secondary;
+    simulation::simulation_tracks_completed += alive_secondary;
   } // End of loop over secondary generations
   
   // Reset work so that fission bank etc works correctly
@@ -1045,7 +1045,7 @@ void transport_event_based_shared_secondary()
     source_offset += n_particles;
   }
 
-  simulation::simulation_particles_completed += settings::n_particles;
+  simulation::simulation_tracks_completed += settings::n_particles;
 
   // Phase 2: Now that the secondary bank has been populated, enter loop over
   // all secondary generations
@@ -1059,16 +1059,16 @@ void transport_event_based_shared_secondary()
 
     // Synchronize the shared secondary bank amongst all MPI ranks, such
     // that each MPI rank has an approximately equal number of secondary
-    // particles.
+    // tracks.
     alive_secondary =
       synchronize_global_secondary_bank(shared_secondary_bank_write);
 
     // Recalculate work for each MPI rank based on number of alive secondary
-    // particles
+    // tracks
     calculate_work(alive_secondary);
 
     if (mpi::master) {
-      write_message(fmt::format(" Secondary generation {:<2} particles: {}",
+      write_message(fmt::format(" Secondary generation {:<2}    tracks: {}",
                       n_generation_depth, alive_secondary),
         6);
     }
@@ -1086,7 +1086,7 @@ void transport_event_based_shared_secondary()
       init_event_queues(sec_buffer_length);
     }
 
-    // Transport secondary particles using event-based processing
+    // Transport secondary tracks using event-based processing
     int64_t sec_remaining = shared_secondary_bank_read.size();
     int64_t sec_offset = 0;
 
@@ -1132,9 +1132,9 @@ void transport_event_based_shared_secondary()
 
       sec_remaining -= n_particles;
       sec_offset += n_particles;
-    } // End of subiteration loop over secondary particles
+    } // End of subiteration loop over secondary tracks
     n_generation_depth++;
-    simulation::simulation_particles_completed += alive_secondary;
+    simulation::simulation_tracks_completed += alive_secondary;
   } // End of loop over secondary generations
 
   // Reset work so that fission bank etc works correctly

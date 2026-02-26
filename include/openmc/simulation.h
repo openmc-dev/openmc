@@ -49,7 +49,7 @@ extern const RegularMesh* ufs_mesh;
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;
 
-extern int64_t simulation_particles_completed; //!< Number of particles completed on this rank
+extern int64_t simulation_tracks_completed; //!< Number of tracks completed on this rank
 
 } // namespace simulation
 
@@ -94,22 +94,23 @@ void broadcast_results();
 
 void free_memory_simulation();
 
-//! Simulate a single particle history (and all generated secondary particles,
-//!  if enabled), from birth to death
+//! Simulate a single particle history from birth to death, inclusive of any
+//! secondary particles. In shared secondary mode, only a single track is
+//! transported and secondaries are deposited into a shared bank instead.
 void transport_history_based_single_particle(Particle& p);
 
 //! Simulate all particle histories using history-based parallelism
 void transport_history_based();
 
-//! Simulate all particle histories using history-based parallelism, with
-//! a shared secondary particle bank
+//! Simulate all particles using history-based parallelism, with a shared
+//! secondary bank
 void transport_history_based_shared_secondary();
 
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
 
-//! Simulate all particle histories using event-based parallelism, with
-//! a shared secondary particle bank
+//! Simulate all particles using event-based parallelism, with a shared
+//! secondary bank
 void transport_event_based_shared_secondary();
 
 } // namespace openmc

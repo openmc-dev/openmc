@@ -527,7 +527,7 @@ void Particle::event_death()
   // Accumulate track count for this particle history
   if (!settings::use_shared_secondary_bank) {
 #pragma omp atomic
-    simulation::simulation_particles_completed += n_tracks();
+    simulation::simulation_tracks_completed += n_tracks();
   }
 
   // Record the number of progeny created by this particle.

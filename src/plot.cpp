@@ -1667,9 +1667,25 @@ void Ray::trace()
   // After phase one is done, we can starting tracing from cell to cell within
   // the model. This step can use neighbor lists to accelerate the ray tracing.
 
-  // Attempt to initialize the particle. We may have to enter a loop to move
-  // it up to the edge of the model.
-  bool inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+  bool inside_cell;
+  // Check for location if the particle is already known
+  if (lowest_coord().cell() == C_NONE) {
+    // The geometry position of the particle is either unknown or outside of the
+    // edge of the model.
+    if (lowest_coord().universe() == C_NONE) {
+      // Attempt to initialize the particle. We may have to
+      // enter a loop to move it up to the edge of the model.
+      inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+    } else {
+      // It has been already calculated that the current position is outside of
+      // the edge of the model.
+      inside_cell = false;
+    }
+  } else {
+    // Availability of the cell means that the particle is located inside the
+    // edge.
+    inside_cell = true;
+  }
 
   // Advance to the boundary of the model
   while (!inside_cell) {
@@ -1750,6 +1766,11 @@ void Ray::trace()
       coord(lev).r() += boundary().distance() * coord(lev).u();
     }
     surface() = boundary().surface();
+    // Initialize last cells from the current cell, because the cell() variable
+    // does not contain the data for the case of a single-segment ray
+    for (int j = 0; j < n_coord(); ++j) {
+      cell_last(j) = coord(j).cell();
+    }
     n_coord_last() = n_coord();
     n_coord() = boundary().coord_level();
     if (boundary().lattice_translation()[0] != 0 ||

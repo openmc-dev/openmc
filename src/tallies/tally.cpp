@@ -2,6 +2,7 @@
 
 #include "openmc/array.h"
 #include "openmc/capi.h"
+#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
@@ -62,7 +63,7 @@ vector<int> active_collision_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
-vector<int> pulse_height_cells;
+vector<int32_t> pulse_height_cells;
 vector<double> time_grid;
 } // namespace model
 
@@ -171,6 +172,10 @@ Tally::Tally(pugi::xml_node node)
       estimator_ = TallyEstimator::COLLISION;
     } else if (filt_type == FilterType::PARTICLE_PRODUCTION) {
       estimator_ = TallyEstimator::ANALOG;
+    } else if (filt_type == FilterType::REACTION) {
+      if (estimator_ == TallyEstimator::TRACKLENGTH) {
+        estimator_ = TallyEstimator::COLLISION;
+      }
     }
   }
 
@@ -569,7 +574,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     }
 
     // Determine integer code for score
-    int score = reaction_type(score_str);
+    int score = reaction_tally_mt(score_str);
 
     switch (score) {
     case SCORE_FLUX:
@@ -628,29 +633,24 @@ void Tally::set_scores(const vector<std::string>& scores)
         estimator_ = TallyEstimator::COLLISION;
       break;
 
-    case SCORE_PULSE_HEIGHT:
+    case SCORE_PULSE_HEIGHT: {
       if (non_cell_energy_present) {
         fatal_error("Pulse-height tallies are not compatible with filters "
                     "other than CellFilter and EnergyFilter");
       }
       type_ = TallyType::PULSE_HEIGHT;
-
-      // Collecting indices of all cells covered by the filters in the pulse
-      // height tally in global variable pulse_height_cells
-      for (const auto& i_filt : filters_) {
-        auto cell_filter =
-          dynamic_cast<CellFilter*>(model::tally_filters[i_filt].get());
-        if (cell_filter) {
-          const auto& cells = cell_filter->cells();
-          for (int i = 0; i < cell_filter->n_bins(); i++) {
-            int cell_index = cells[i];
-            if (!contains(model::pulse_height_cells, cell_index)) {
-              model::pulse_height_cells.push_back(cell_index);
-            }
-          }
-        }
+      // Collect all unique cell indices covered by this tally.
+      // If no CellFilter is present, all cells in the geometry are scored.
+      const auto* cell_filter_ptr = get_filter<CellFilter>();
+      int n = cell_filter_ptr ? cell_filter_ptr->n_bins()
+                              : static_cast<int>(model::cells.size());
+      for (int i = 0; i < n; ++i) {
+        int32_t cell_index = cell_filter_ptr ? cell_filter_ptr->cells()[i] : i;
+        if (!contains(model::pulse_height_cells, cell_index))
+          model::pulse_height_cells.push_back(cell_index);
       }
       break;
+    }
 
     case SCORE_IFP_TIME_NUM:
     case SCORE_IFP_BETA_NUM:
@@ -785,7 +785,7 @@ void Tally::init_triggers(pugi::xml_node node)
       } else {
         int i_score = 0;
         for (; i_score < this->scores_.size(); ++i_score) {
-          if (this->scores_[i_score] == reaction_type(score_str))
+          if (this->scores_[i_score] == reaction_tally_mt(score_str))
             break;
         }
         if (i_score == this->scores_.size()) {

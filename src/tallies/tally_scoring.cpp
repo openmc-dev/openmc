@@ -2771,7 +2771,7 @@ void score_surface_tally(
         double filter_weight = filter_weight1;
 
         auto score_bin = tally.scores_[score_index];
-        if (score_bin == SCORE_SURFACE_FLUX) {
+        if (score_bin == SCORE_FLUX) {
           score /= abs_mu;
           filter_weight = std::max(filter_weight1, filter_weight2);
         }

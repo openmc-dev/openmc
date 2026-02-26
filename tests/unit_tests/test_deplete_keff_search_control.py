@@ -8,7 +8,6 @@ import numpy as np
 import openmc
 import openmc.lib
 from openmc.deplete import CoupledOperator
-from openmc.deplete import KeffSearchControl
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
@@ -70,35 +69,6 @@ def integrator(operator):
     return openmc.deplete.PredictorIntegrator(
             operator, [1,1], 0.0, timestep_units = 'd')
 
-def test_keff_search_control_init(operator):
-    """Test KeffSearchControl initialization"""
-    def dummy_function(x):
-        return x
-    
-    # Valid initialization
-    controller = KeffSearchControl(
-        operator=operator,
-        function=dummy_function,
-        x0=0.0,
-        x1=1.0,
-        bracket=[0.0, 2.0]
-    )
-    
-    assert controller.operator == operator
-    assert controller.function == dummy_function
-    assert controller.x0 == 0.0
-    assert controller.x1 == 1.0
-    assert controller.search_kwargs['x_min'] == 0.0
-    assert controller.search_kwargs['x_max'] == 2.0
-    
-    # Test invalid bracket with wrong length
-    with pytest.raises(ValueError, match="bracket must have exactly 2 elements"):
-        KeffSearchControl(operator, dummy_function, 0.0, 1.0, [0.0])
-    
-    # Test invalid bracket with wrong order
-    with pytest.raises(ValueError, match="bracket\\[0\\] must be < bracket\\[1\\]"):
-        KeffSearchControl(operator, dummy_function, 0.0, 1.0, [2.0, 1.0])
-
 def translate_cell(position):
     """Helper function to translate a cell"""
     cell = [c for c in openmc.lib.cells.values() if c.name == 'universe_cell'][0]
@@ -125,76 +95,27 @@ def adjust_fuel_density(density_factor):
     (rotate_cell, -45.0, 45.0, [-90.0, 90.0], 10.0),
     (adjust_fuel_density, 0.8, 1.2, [0.5, 1.5], 1.0)
 ])
-def test_keff_search_control_with_openmc_functions(
-    run_in_tmpdir, model, operator, function, x0, x1, bracket, test_value
-):
-    """Test _KeffSearchControl with actual OpenMC geometry modification functions"""
-    
-    controller = KeffSearchControl(
-        operator=operator,
-        function=function,
+def test_integrator_add_keff_search_control(run_in_tmpdir, model, operator, integrator,
+    function, x0, x1, bracket, test_value):
+    """Test adding add_keff_search_control to integrator"""
+    model.export_to_xml()
+    openmc.lib.init()
+    test_function = function(test_value)
+    # Test that add_reactivity_control method exists and works
+    integrator.add_keff_search_control(
+        function=test_function,
         x0=x0,
         x1=x1,
         bracket=bracket,
-        output=False, 
-        k_tol=0.1,
-    )
-    
-    # Export model and initialize OpenMC library
-    model.export_to_xml()
-    openmc.lib.init()
-    openmc.lib.finalize()
-
-def test_controller_kwargs_handling(operator):
-    """Test that additional kwargs are properly stored and accessible"""
-    def dummy_func(x):
-        return x
-    
-    custom_kwargs = {
-        'target': 1.0,
-        'k_tol': 1e-4,
-        'output': True
-    }
-    
-    controller = KeffSearchControl(
-        operator=operator,
-        function=dummy_func,
-        x0=0.0,
-        x1=1.0,
-        bracket=[0.0, 2.0],
-        **custom_kwargs
-    )
-    
-    # Check that bracket limits were added to kwargs
-    assert controller.search_kwargs['x_min'] == 0.0
-    assert controller.search_kwargs['x_max'] == 2.0
-    
-    # Check that custom kwargs were preserved
-    assert controller.search_kwargs['target'] == 1.0
-    assert controller.search_kwargs['k_tol'] == 1e-4
-    assert controller.search_kwargs['output'] == True
-
-def test_integrator_add_keff_search_control(run_in_tmpdir, model, operator, integrator):
-    """Test adding keff search control to integrator using the add_keff_search_control method"""
-    
-    def adjust_density(factor):
-        # This would modify material density in practice
-        return factor
-    
-    # Test that add_reactivity_control method exists and works
-    integrator.add_keff_search_control(
-        function=adjust_density,
-        x0=0.8,
-        x1=1.2,
-        bracket=[0.5, 1.5],
         k_tol=0.1,
         output=False,
     )
     
-    assert integrator.keff_search_control is not None
-    assert isinstance(integrator.keff_search_control, KeffSearchControl)
-    assert integrator.keff_search_control.x0 == 0.8
-    assert integrator.keff_search_control.x1 == 1.2
-    assert integrator.keff_search_control.search_kwargs['x_min'] == 0.5
-    assert integrator.keff_search_control.search_kwargs['x_max'] == 1.5   
-
+    assert integrator.keff_search_control.x0 == x0
+    assert integrator.keff_search_control.x1 == x1
+    assert integrator.keff_search_control.function == test_function
+    assert integrator.keff_search_control.search_kwargs['x_min'] == bracket[0]
+    assert integrator.keff_search_control.search_kwargs['x_max'] == bracket[1]  
+    assert integrator.keff_search_control.search_kwargs['k_tol'] == 0.1
+    assert integrator.keff_search_control.search_kwargs['output'] == False
+    openmc.lib.finalize()

@@ -44,6 +44,12 @@
 
 namespace openmc {
 
+#ifdef OPENMC_ENABLE_STRICT_FP
+const bool STRICT_FP_ENABLED = true;
+#else
+const bool STRICT_FP_ENABLED = false;
+#endif
+
 //==============================================================================
 
 void title()
@@ -317,6 +323,7 @@ void print_build_info()
   std::string coverage(n);
   std::string mcpl(n);
   std::string uwuw(n);
+  std::string strict_fp(n);
 
 #ifdef PHDF5
   phdf5 = y;
@@ -345,6 +352,9 @@ void print_build_info()
 #ifdef OPENMC_UWUW_ENABLED
   uwuw = y;
 #endif
+#ifdef OPENMC_ENABLE_STRICT_FP
+  strict_fp = y;
+#endif
 
   // Wraps macro variables in quotes
 #define STRINGIFY(x) STRINGIFY2(x)
@@ -363,6 +373,7 @@ void print_build_info()
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
     fmt::print("UWUW support:          {}\n", uwuw);
+    fmt::print("Strict FP:             {}\n", strict_fp);
   }
 }
 

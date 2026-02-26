@@ -71,7 +71,7 @@ public:
 
 private:
   void compute_index_weight();
-  
+
   FilterBinIter* iter1_;
   FilterBinIter* iter2_;
   FilterBinIter* end1_;

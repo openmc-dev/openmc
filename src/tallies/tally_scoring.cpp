@@ -160,10 +160,10 @@ CombFilterBinIter& CombFilterBinIter::operator++()
     } else if (iter2_ == end2_) {
       ++iter1_;
     } else {
-      if (iter1_->index_ <= iter2_->index_) 
+      if (iter1_->index_ <= iter2_->index_)
         ++iter1_;
-      if (iter1_->index_ >= iter2_->index_) 
-        ++iter2_;  
+      if (iter1_->index_ >= iter2_->index_)
+        ++iter2_;
     }
   }
 
@@ -2718,13 +2718,13 @@ void score_surface_tally(
   auto p_sym = p;
   p_sym.n_coord() = p.n_coord_last();
   p_sym.n_coord_last() = p.n_coord();
-  for (int j = 0 ; j < model::n_coord_levels; ++j) {
+  for (int j = 0; j < model::n_coord_levels; ++j) {
     p_sym.cell_last(j) = p.coord(j).cell();
   }
-  for (int j = 0 ; j < model::n_coord_levels; ++j) {
+  for (int j = 0; j < model::n_coord_levels; ++j) {
     p_sym.coord(j).cell() = p.cell_last(j);
   }
-  
+
   p_sym.surface() = -p.surface();
 
   // Determine absolute cosine of angle between normal and particle direction
@@ -2781,7 +2781,7 @@ void score_surface_tally(
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
     match.bins_present_ = false;
-    
+
   for (auto& match : p_sym.filter_matches())
     match.bins_present_ = false;
 }

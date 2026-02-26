@@ -278,17 +278,6 @@ The following tables show all valid scores:
     |                      |                                                   | 
     |                      |Units are particles per source particle.           |
     +----------------------+---------------------------------------------------+
-    |surface-flux          |It may not be used in conjunction with any other   |
-    |                      |score except current.                              |
-    |                      |Used in combination with surface filters.          |
-    |                      |Net surface fluxes on any surface previously       |
-    |                      |defined in the geometry. It may be used along      |
-    |                      |with any other filter, except meshsurface filters. |
-    |                      |Surfaces can alternatively be defined with cell    |
-    |                      |from and cell filters                              |
-    |                      |                                                   | 
-    |                      |Units are particles per source particle.           |
-    +----------------------+---------------------------------------------------+    
     |events                |Number of scoring events. Units are events per     |
     |                      |source particle.                                   |
     +----------------------+---------------------------------------------------+

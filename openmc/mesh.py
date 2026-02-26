@@ -547,6 +547,10 @@ class StructuredMesh(MeshBase):
     def _grids(self):
         pass
 
+    @abstractmethod
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        pass
+
     @property
     def vertices(self):
         """Return coordinates of mesh vertices in Cartesian coordinates. Also
@@ -1432,6 +1436,47 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        """Finds the index of the mesh element at the specified coordinates.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            Cartesian coordinates of the point.
+
+        Returns
+        -------
+        tuple
+            Mesh indices matching the dimensionality of the mesh
+
+        """
+        ndim = self.n_dimension
+        if len(coords) < ndim:
+            raise ValueError(
+                f"coords must have at least {ndim} values for a "
+                f"{ndim}D mesh, got {len(coords)}"
+            )
+
+        coords_array = np.array(coords[:ndim])
+        lower_left = np.array(self.lower_left)
+        upper_right = np.array(self.upper_right)
+        dimension = np.array(self.dimension)
+
+        if np.any(coords_array < lower_left) or np.any(coords_array > upper_right):
+            raise ValueError(
+                f"coords {tuple(coords_array)} are outside mesh bounds "
+                f"[{tuple(lower_left)}, {tuple(upper_right)}]"
+            )
+
+        # Calculate spacing for each dimension
+        spacing = (upper_right - lower_left) / dimension
+
+        # Calculate indices for each coordinate
+        indices = np.floor((coords_array - lower_left) / spacing).astype(int)
+        return tuple(int(i) for i in indices[:ndim])
+
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
@@ -1643,6 +1688,11 @@ class RectilinearMesh(StructuredMesh):
 
         return element
 
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        raise NotImplementedError(
+            "get_indices_at_coords is not yet implemented for RectilinearMesh"
+        )
+
 
 class CylindricalMesh(StructuredMesh):
     """A 3D cylindrical mesh
@@ -1835,14 +1885,14 @@ class CylindricalMesh(StructuredMesh):
             self,
             coords: Sequence[float]
         ) -> tuple[int, int, int]:
-        """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+        """Finds the index of the mesh element at the specified coordinates.
 
         .. versionadded:: 0.15.0
 
         Parameters
         ----------
         coords : Sequence[float]
-            The x, y, z axis coordinates
+            Cartesian coordinates of the point.
 
         Returns
         -------
@@ -2477,6 +2527,11 @@ class SphericalMesh(StructuredMesh):
         arr[..., 1] = y + origin[1]
         arr[..., 2] = z + origin[2]
         return arr
+
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        raise NotImplementedError(
+            "get_indices_at_coords is not yet implemented for SphericalMesh"
+        )
 
 
 def require_statepoint_data(func):

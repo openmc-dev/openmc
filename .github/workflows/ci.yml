@@ -213,6 +213,7 @@ jobs:
           parallel: true
           flag-name: C++ and Python
           path-to-lcov: coverage.lcov
+          fail-on-error: false
 
   coverage:
     needs: [filter-changes, main]
@@ -225,6 +226,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true
+          fail-on-error: false
 
   ci-pass:
     needs: [filter-changes, main, coverage]

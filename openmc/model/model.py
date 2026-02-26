@@ -2584,9 +2584,16 @@ class Model:
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():
                 if isinstance(univ, openmc.DAGMCUniverse):
+                    # Initialize in stochastic volume mode (non-transport mode)
+                    # This mode doesn't require
+                    # valid transport settings like particles/batches
+                    original_run_mode = self.settings.run_mode
+                    self.settings.run_mode = 'volume' 
                     self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()
+                    # Restore original run mode
+                    self.settings.run_mode = original_run_mode
                     break
 
             # Make sure all materials have a name, and that the name is a valid HDF5

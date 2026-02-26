@@ -45,108 +45,6 @@ openmc::vector<unique_ptr<WeightWindowsGenerator>> weight_windows_generators;
 } // namespace variance_reduction
 
 //==============================================================================
-// Non-member functions
-//==============================================================================
-
-void apply_weight_windows(Particle& p)
-{
-  if (!settings::weight_windows_on)
-    return;
-
-  // WW on photon and neutron only
-  if (!p.type().is_neutron() && !p.type().is_photon())
-    return;
-
-  // skip dead or no energy
-  if (p.E() <= 0 || !p.alive())
-    return;
-
-  bool in_domain = false;
-  // TODO: this is a linear search - should do something more clever
-  WeightWindow weight_window;
-  for (const auto& ww : variance_reduction::weight_windows) {
-    weight_window = ww->get_weight_window(p);
-    if (weight_window.is_valid())
-      break;
-  }
-
-  // If particle has not yet had its birth weight window value set, set it to
-  // the current weight window (or 1.0 if not born in a weight window).
-  if (p.wgt_ww_born() == -1.0) {
-    if (weight_window.is_valid()) {
-      p.wgt_ww_born() =
-        (weight_window.lower_weight + weight_window.upper_weight) / 2;
-    } else {
-      p.wgt_ww_born() = 1.0;
-    }
-  }
-
-  // particle is not in any of the ww domains, do nothing
-  if (!weight_window.is_valid())
-    return;
-
-  // Normalize weight windows based on particle's starting weight
-  // and the value of the weight window the particle was born in.
-  weight_window.scale(p.wgt_born() / p.wgt_ww_born());
-
-  // get the paramters
-  double weight = p.wgt();
-
-  // first check to see if particle should be killed for weight cutoff
-  if (p.wgt() < weight_window.weight_cutoff) {
-    p.wgt() = 0.0;
-    return;
-  }
-
-  // check if particle is far above current weight window
-  // only do this if the factor is not already set on the particle and a
-  // maximum lower bound ratio is specified
-  if (p.ww_factor() == 0.0 && weight_window.max_lb_ratio > 1.0 &&
-      p.wgt() > weight_window.lower_weight * weight_window.max_lb_ratio) {
-    p.ww_factor() =
-      p.wgt() / (weight_window.lower_weight * weight_window.max_lb_ratio);
-  }
-
-  // move weight window closer to the particle weight if needed
-  if (p.ww_factor() > 1.0)
-    weight_window.scale(p.ww_factor());
-
-  // if particle's weight is above the weight window split until they are within
-  // the window
-  if (weight > weight_window.upper_weight) {
-    // do not further split the particle if above the limit
-    if (p.n_split() >= settings::max_history_splits)
-      return;
-
-    double n_split = std::ceil(weight / weight_window.upper_weight);
-    double max_split = weight_window.max_split;
-    n_split = std::min(n_split, max_split);
-
-    p.n_split() += n_split;
-
-    // Create secondaries and divide weight among all particles
-    int i_split = std::round(n_split);
-    for (int l = 0; l < i_split - 1; l++) {
-      p.split(weight / n_split);
-    }
-    // remaining weight is applied to current particle
-    p.wgt() = weight / n_split;
-
-  } else if (weight <= weight_window.lower_weight) {
-    // if the particle weight is below the window, play Russian roulette
-    double weight_survive =
-      std::min(weight * weight_window.max_split, weight_window.survival_weight);
-    russian_roulette(p, weight_survive);
-  } // else particle is in the window, continue as normal
-}
-
-void free_memory_weight_windows()
-{
-  variance_reduction::ww_map.clear();
-  variance_reduction::weight_windows.clear();
-}
-
-//==============================================================================
 // WeightWindowSettings implementation
 //==============================================================================
 
@@ -375,12 +273,20 @@ void WeightWindows::set_mesh(const Mesh* mesh)
   set_mesh(model::mesh_map[mesh->id_]);
 }
 
-WeightWindow WeightWindows::get_weight_window(const Particle& p) const
+std::pair<bool, WeightWindow> WeightWindows::get_weight_window(
+  const Particle& p) const
 {
   // check for particle type
   if (particle_type_ != p.type()) {
-    return {};
+    return {false, {}};
   }
+
+  // particle energy
+  double E = p.E();
+
+  // check to make sure energy is in range, expects sorted energy values
+  if (E < energy_bounds_.front() || E > energy_bounds_.back())
+    return {false, {}};
 
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
@@ -388,14 +294,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 
   // particle is outside the weight window mesh
   if (mesh_bin < 0)
-    return {};
-
-  // particle energy
-  double E = p.E();
-
-  // check to make sure energy is in range, expects sorted energy values
-  if (E < energy_bounds_.front() || E > energy_bounds_.back())
-    return {};
+    return {false, {}};
 
   // get the mesh bin in energy group
   int energy_bin =
@@ -410,7 +309,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   ww.max_lb_ratio = max_lb_ratio_;
   ww.max_split = max_split_;
   ww.weight_cutoff = weight_cutoff_;
-  return ww;
+  return {true, ww};
 }
 
 std::array<int, 2> WeightWindows::bounds_size() const
@@ -1022,6 +921,115 @@ void WeightWindowsGenerator::update() const
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+std::pair<bool, WeightWindow> search_weight_window(const Particle& p)
+{
+  // TODO: this is a linear search - should do something more clever
+  for (const auto& ww : variance_reduction::weight_windows) {
+    auto [ww_found, weight_window] = ww->get_weight_window(p);
+    if (ww_found)
+      return {true, weight_window};
+  }
+  return {false, {}};
+}
+
+void apply_weight_windows(Particle& p)
+{
+  if (!settings::weight_windows_on)
+    return;
+
+  // WW on photon and neutron only
+  if (!p.type().is_neutron() && !p.type().is_photon())
+    return;
+
+  // skip dead or no energy
+  if (p.E() <= 0 || !p.alive())
+    return;
+
+  auto [ww_found, ww] = search_weight_window(p);
+  if (ww_found && ww.is_valid()) {
+    apply_weight_window(p, ww);
+  } else {
+    if (p.wgt_ww_born() == -1.0)
+      p.wgt_ww_born() = 1.0;
+  }
+}
+
+void apply_weight_window(Particle& p, WeightWindow weight_window)
+{
+  if (!weight_window.is_valid())
+    return;
+
+  // skip dead or no energy
+  if (p.E() <= 0 || !p.alive())
+    return;
+
+  // If particle has not yet had its birth weight window value set, set it to
+  // the current weight window.
+  if (p.wgt_ww_born() == -1.0)
+    p.wgt_ww_born() =
+      (weight_window.lower_weight + weight_window.upper_weight) / 2;
+
+  // Normalize weight windows based on particle's starting weight
+  // and the value of the weight window the particle was born in.
+  weight_window.scale(p.wgt_born() / p.wgt_ww_born());
+
+  // get the paramters
+  double weight = p.wgt();
+
+  // first check to see if particle should be killed for weight cutoff
+  if (p.wgt() < weight_window.weight_cutoff) {
+    p.wgt() = 0.0;
+    return;
+  }
+
+  // check if particle is far above current weight window
+  // only do this if the factor is not already set on the particle and a
+  // maximum lower bound ratio is specified
+  if (p.ww_factor() == 0.0 && weight_window.max_lb_ratio > 1.0 &&
+      p.wgt() > weight_window.lower_weight * weight_window.max_lb_ratio) {
+    p.ww_factor() =
+      p.wgt() / (weight_window.lower_weight * weight_window.max_lb_ratio);
+  }
+
+  // move weight window closer to the particle weight if needed
+  if (p.ww_factor() > 1.0)
+    weight_window.scale(p.ww_factor());
+
+  // if particle's weight is above the weight window split until they are within
+  // the window
+  if (weight > weight_window.upper_weight) {
+    // do not further split the particle if above the limit
+    if (p.n_split() >= settings::max_history_splits)
+      return;
+
+    double n_split = std::ceil(weight / weight_window.upper_weight);
+    double max_split = weight_window.max_split;
+    n_split = std::min(n_split, max_split);
+
+    p.n_split() += n_split;
+
+    // Create secondaries and divide weight among all particles
+    int i_split = std::round(n_split);
+    for (int l = 0; l < i_split - 1; l++) {
+      p.split(weight / n_split);
+    }
+    // remaining weight is applied to current particle
+    p.wgt() = weight / n_split;
+
+  } else if (weight <= weight_window.lower_weight) {
+    // if the particle weight is below the window, play Russian roulette
+    double weight_survive =
+      std::min(weight * weight_window.max_split, weight_window.survival_weight);
+    russian_roulette(p, weight_survive);
+  } // else particle is in the window, continue as normal
+}
+
+void free_memory_weight_windows()
+{
+  variance_reduction::ww_map.clear();
+  variance_reduction::weight_windows.clear();
+}
 
 void finalize_variance_reduction()
 {

@@ -4,6 +4,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/geometry.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/mgxs_interface.h"
@@ -144,67 +145,51 @@ void FilterBinIter::compute_index_weight()
 // CombFilterBinIter implementation
 //==============================================================================
 
-CombFilterBinIter::CombFilterBinIter(FilterBinIter iter1, FilterBinIter end1,
-  FilterBinIter iter2, FilterBinIter end2)
+CombFilterBinIter::CombFilterBinIter(FilterBinIter* iter1, FilterBinIter* end1,
+  FilterBinIter* iter2, FilterBinIter* end2)
   : iter1_ {iter1}, end1_ {end1}, iter2_ {iter2}, end2_ {end2}
 {
-  if (iter1_ == end1_ && iter2_ == end2_)
-    index_ = -1;
-  return;
+  compute_index_weight();
 }
 
 CombFilterBinIter& CombFilterBinIter::operator++()
 {
-  if (iter1_ == end1_ && iter2_ == end2_) {
-    index_ = -1;
-    return *this;
+  if (iter1_ != end1_ || iter2_ != end2_) {
+    if (iter1_ == end1_) {
+      ++iter2_;
+    } else if (iter2_ == end2_) {
+      ++iter1_;
+    } else {
+      if (iter1_->index_ <= iter2_->index_) 
+        ++iter1_;
+      if (iter1_->index_ >= iter2_->index_) 
+        ++iter2_;  
+    }
   }
 
-  if (iter1_ == end1_) {
-    ++iter2_;
-    if (iter2_ == end2_) {
-      index_ = -1;
-      return *this;
-    }
-    index_ = iter2_.index_;
-    weight2_ = iter2_.weight_;
-    weight1_ = 0.0;
-  } else if (iter2_ == end2_) {
-    ++iter1_;
-    if (iter1_ == end1_) {
-      index_ = -1;
-      return *this;
-    }
-    index_ = iter1_.index_;
-    weight1_ = iter1_.weight_;
-    weight2_ = 0.0;
+  compute_index_weight();
+  return *this;
+}
+
+void CombFilterBinIter::compute_index_weight()
+{
+  if (iter1_ == end1_ && iter2_ == end2_) {
+    index_ = -1;
+  } else if (iter1_ != end1_ && iter2_ != end2_) {
+    index_ = std::min(iter1_->index_, iter2_->index_);
+    weight1_ = (iter1_->index_ <= iter2_->index_) ? iter1_->weight_ : 0.0;
+    weight2_ = (iter1_->index_ >= iter2_->index_) ? iter2_->weight_ : 0.0;
   } else {
-    if (iter1_.index_ == iter2_.index_) {
-      ++iter1_;
-      ++iter2_;
-    } else if (iter1_.index_ < iter2_.index_) {
-      ++iter1_;
-    } else if (iter1_.index_ > iter2_.index_) {
-      ++iter2_;
-    }
-    if (iter1_ == end1_ && iter2_ == end2_) {
-      index_ = -1;
-      return *this;
-    } else if (iter1_ == end1_) {
-      index_ = iter2_.index_;
-      weight2_ = iter2_.weight_;
+    if (iter1_ == end1_) {
+      index_ = iter2_->index_;
       weight1_ = 0.0;
-    } else if (iter2_ == end2_) {
-      index_ = iter1_.index_;
-      weight1_ = iter1_.weight_;
-      weight2_ = 0.0;
+      weight2_ = iter2_->weight_;
     } else {
-      index_ = std::min(iter1_.index_, iter2_.index_);
-      weight1_ = (iter1_.index_ <= iter2_.index_) ? iter1_.weight_ : 0.0;
-      weight2_ = (iter1_.index_ >= iter2_.index_) ? iter2_.weight_ : 0.0;
+      index_ = iter1_->index_;
+      weight1_ = iter1_->weight_;
+      weight2_ = 0.0;
     }
   }
-  return *this;
 }
 
 //==============================================================================
@@ -2731,8 +2716,15 @@ void score_surface_tally(
   n /= n.norm();
 
   auto p_sym = p;
-  p_sym.coord() = p.coord_last();
-  p_sym.coord_last() = p.coord();
+  p_sym.n_coord() = p.n_coord_last();
+  p_sym.n_coord_last() = p.n_coord();
+  for (int j = 0 ; j < model::n_coord_levels; ++j) {
+    p_sym.cell_last(j) = p.coord(j).cell();
+  }
+  for (int j = 0 ; j < model::n_coord_levels; ++j) {
+    p_sym.coord(j).cell() = p.cell_last(j);
+  }
+  
   p_sym.surface() = -p.surface();
 
   // Determine absolute cosine of angle between normal and particle direction
@@ -2752,7 +2744,7 @@ void score_surface_tally(
     auto filter_iter2 = FilterBinIter(tally, p_sym);
     auto end2 = FilterBinIter(tally, true, &p_sym.filter_matches());
     auto filter_iter =
-      CombFilterBinIter(filter_iter1, end1, filter_iter2, end2);
+      CombFilterBinIter(&filter_iter1, &end1, &filter_iter2, &end2);
     if (filter_iter.index_ == -1)
       continue;
 
@@ -2788,6 +2780,9 @@ void score_surface_tally(
 
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
+    match.bins_present_ = false;
+    
+  for (auto& match : p_sym.filter_matches())
     match.bins_present_ = false;
 }
 

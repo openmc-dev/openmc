@@ -60,8 +60,8 @@ private:
 class CombFilterBinIter {
 public:
   //! Construct an iterator over bins that match two particles states.
-  CombFilterBinIter(FilterBinIter iter1, FilterBinIter iter2,
-    FilterBinIter end1, FilterBinIter end2);
+  CombFilterBinIter(FilterBinIter* iter1, FilterBinIter* iter2,
+    FilterBinIter* end1, FilterBinIter* end2);
 
   CombFilterBinIter& operator++();
 
@@ -70,10 +70,12 @@ public:
   double weight2_ {1.};
 
 private:
-  FilterBinIter iter1_;
-  FilterBinIter iter2_;
-  FilterBinIter end1_;
-  FilterBinIter end2_;
+  void compute_index_weight();
+  
+  FilterBinIter* iter1_;
+  FilterBinIter* iter2_;
+  FilterBinIter* end1_;
+  FilterBinIter* end2_;
 };
 
 //==============================================================================

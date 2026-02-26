@@ -12,7 +12,7 @@ import re
 
 from .data import gnds_name
 from .function import Tabulated1D
-from endf.material import _LIBRARY, _SUBLIBRARY
+from endf.material import _LIBRARY, _SUBLIBRARY, get_materials as get_evaluations
 from endf.incident_neutron import SUM_RULES
 from endf.records import (
     float_endf,
@@ -37,32 +37,6 @@ def get_tab1_record(file_obj):
     """
     params, tab = _get_tab1_record(file_obj)
     return params, Tabulated1D(tab.x, tab.y, tab.breakpoints, tab.interpolation)
-
-
-def get_evaluations(filename):
-    """Return a list of all evaluations within an ENDF file.
-
-    Parameters
-    ----------
-    filename : str
-        Path to ENDF-6 formatted file
-
-    Returns
-    -------
-    list
-        A list of :class:`openmc.data.endf.Evaluation` instances.
-
-    """
-    evaluations = []
-    with open(str(filename), 'r') as fh:
-        while True:
-            pos = fh.tell()
-            line = fh.readline()
-            if line[66:70] == '  -1':
-                break
-            fh.seek(pos)
-            evaluations.append(Evaluation(fh))
-    return evaluations
 
 
 class Evaluation:

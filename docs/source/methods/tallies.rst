@@ -234,25 +234,27 @@ When tallying flux over a surface we use the relationship between current and fl
 
 
 .. math::
-    :label: analog-surface-flux-estimator
+    :label: surface-flux-estimator
     
     \phi_S = \frac{1}{W} \sum_{i \in S} \frac{w_i}{|\mu|}.
     
 Where :math:`\phi_S` is the area integrated flux over surface :math:`S`, :math:`W` is the total starting weight of the particles,
 :math:`w_i` is the weight of the particle as it crosses the surface :math:`S` and :math:`\mu` is the cosine of angle between the particle direction and the surface normal.
 
-This equation diverge when the particle cross the surface almost parallel to it. To remove this divergence OpenMC:
-
+This equation diverge when the particle cross the surface almost parallel to it. To remove this divergence OpenMC scores:
 
 .. math::
-    :label: modified-analog-surface-flux-estimator
+    :label: modified-surface-flux-estimator
     
     \phi_S = \frac{1}{W} \sum_{i \in S} w_i f(\mu).
-    
-     f(\mu) = \begin{cases}
+
+and the function :math:`f` is defined by:
+
+.. math::    
+     f(\mu) := \begin{cases}
       \frac{1.0}{|\mu|} & \text{if } |\mu| > \mu_c \\
       \frac{1.0}{c_{sub}\mu_c}   & \text{else }
-   \end{cases}
+     \end{cases}
  
 Where :math:`\mu_c` is the grazing cosine cutoff and :math:`c_{sub}` is the cosine substitution ratio. The default values for these parameters are 0.001 and 0.5 respectively and recommendations for them for specific cases can be found in a paper by Favorite_.
 

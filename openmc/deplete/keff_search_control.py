@@ -3,7 +3,7 @@ from openmc.mpi import comm
 from typing import Callable
 from warnings import warn
 
-class KeffSearchControl:
+class _KeffSearchControl:
     """Controller for keff search during depletion calculations.
     
     This class performs keff searches to maintain a target keff by adjusting

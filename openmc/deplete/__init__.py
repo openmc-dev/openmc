@@ -17,7 +17,6 @@ from .stepresult import *
 from .results import *
 from .integrators import *
 from .transfer_rates import *
-from .keff_search_control import *
 from .r2s import *
 from . import abc
 from . import cram

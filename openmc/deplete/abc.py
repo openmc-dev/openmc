@@ -31,7 +31,7 @@ from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates, ExternalSourceRates
-from .keff_search_control import KeffSearchControl
+from .keff_search_control import _KeffSearchControl
 
 
 __all__ = [
@@ -742,7 +742,7 @@ class Integrator(ABC):
 
     @keff_search_control.setter
     def keff_search_control(self, keff_search_control):
-        check_type('keff search control', keff_search_control, KeffSearchControl)
+        check_type('keff search control', keff_search_control, _KeffSearchControl)
         self._keff_search_control = keff_search_control
 
     def _timed_deplete(self, n, rates, dt, i=None, matrix_func=None):
@@ -1185,7 +1185,7 @@ class Integrator(ABC):
         .. versionadded:: 0.15.4
 
         """
-        self._keff_search_control = KeffSearchControl(
+        self._keff_search_control = _KeffSearchControl(
             self.operator, 
             function, 
             x0,

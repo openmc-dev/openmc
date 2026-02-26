@@ -94,7 +94,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         && pip install --upgrade numpy \
         && pip install --no-cache-dir setuptools cython \
         # Clone and install MOAB
-        mkdir -p $HOME/MOAB && cd $HOME/MOAB \
+        && mkdir -p $HOME/MOAB && cd $HOME/MOAB \
         && git clone  --single-branch -b ${MOAB_TAG} --depth 1 ${MOAB_REPO} \
         && mkdir build && cd build \
         && cmake ../moab -DCMAKE_BUILD_TYPE=Release \

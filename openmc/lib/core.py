@@ -33,21 +33,9 @@ class _SourceSite(Structure):
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
 
-# Numpy dtype matching _SourceSite memory layout (104 bytes) for zero-copy
+# Numpy dtype derived directly from the ctypes struct for zero-copy
 # interpretation of the ctypes buffer as a numpy structured array.
-_source_site_dtype = np.dtype([
-    ('r', '<f8', (3,)),
-    ('u', '<f8', (3,)),
-    ('E', '<f8'),
-    ('time', '<f8'),
-    ('wgt', '<f8'),
-    ('delayed_group', '<i4'),
-    ('surf_id', '<i4'),
-    ('particle', '<i4'),
-    ('parent_nuclide', '<i4'),
-    ('parent_id', '<i8'),
-    ('progeny_id', '<i8'),
-])
+_source_site_dtype = np.dtype(_SourceSite)
 
 # Maximum number of source sites to sample per C API call.  Requests for
 # more sites are automatically split into batches of this size so that the
@@ -130,7 +118,7 @@ _dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
                                             POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
 _dll.openmc_global_bounding_box.errcheck = _error_handler
-_dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite), c_int]
+_dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
 
@@ -515,7 +503,6 @@ def run_random_ray(output=True):
 def sample_external_source(
         n_samples: int = 1000,
         prn_seed: int | None = None,
-        n_threads: int = 1,
         as_array: bool = False
 ) -> openmc.ParticleList | np.ndarray:
     """Sample external source and return source particles.
@@ -529,10 +516,6 @@ def sample_external_source(
     prn_seed : int
         Pseudorandom number generator (PRNG) seed; if None, one will be
         generated randomly.
-    n_threads : int
-        Number of OpenMP threads to use for parallel sampling. Defaults to 1
-        (serial). Each sample gets an independent RNG stream derived from
-        the base seed, so results are deterministic regardless of thread count.
     as_array : bool
         If True, return a numpy structured array instead of a
         :class:`~openmc.ParticleList`.  The array has fields ``'r'`` (float64,
@@ -551,8 +534,6 @@ def sample_external_source(
     """
     if n_samples <= 0:
         raise ValueError("Number of samples must be positive")
-    if n_threads < 1:
-        raise ValueError("Number of threads must be at least 1")
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
@@ -582,7 +563,6 @@ def sample_external_source(
             c_size_t(n_batch),
             c_uint64(prn_seed + offset),
             sites_array,
-            c_int(n_threads),
         )
 
         if as_array:

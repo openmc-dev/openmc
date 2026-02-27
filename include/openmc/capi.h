@@ -184,8 +184,7 @@ int openmc_reset();
 int openmc_reset_timers();
 int openmc_run();
 void openmc_run_random_ray();
-int openmc_sample_external_source(
-  size_t n, uint64_t* seed, void* sites, int threads);
+int openmc_sample_external_source(size_t n, uint64_t* seed, void* sites);
 void openmc_set_seed(int64_t new_seed);
 void openmc_set_stride(uint64_t new_stride);
 int openmc_set_n_batches(

@@ -1122,13 +1122,6 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p.r == pytest.approx(row['r'])
         assert p.E == pytest.approx(row['E'])
 
-    # Multithreaded sampling should give identical results
-    arr_mt = openmc.lib.sample_external_source(
-        10, prn_seed=3, n_threads=2, as_array=True
-    )
-    for name in arr.dtype.names:
-        assert np.array_equal(arr_mt[name], arr[name])
-
     openmc.lib.finalize()
 
     # Make sure sampling works in volume calculation mode

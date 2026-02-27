@@ -1294,7 +1294,6 @@ class Model:
         self,
         n_samples: int = 1000,
         prn_seed: int | None = None,
-        n_threads: int = 1,
         as_array: bool = False,
         **init_kwargs
     ) -> openmc.ParticleList | np.ndarray:
@@ -1309,8 +1308,6 @@ class Model:
         prn_seed : int
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
-        n_threads : int
-            Number of OpenMP threads to use for parallel sampling.
         as_array : bool
             If True, return a numpy structured array instead of a
             :class:`~openmc.ParticleList`.
@@ -1332,8 +1329,7 @@ class Model:
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.sample_external_source(
-                n_samples=n_samples, prn_seed=prn_seed,
-                n_threads=n_threads, as_array=as_array
+                n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
@@ -2597,7 +2593,7 @@ class Model:
                     # This mode doesn't require
                     # valid transport settings like particles/batches
                     original_run_mode = self.settings.run_mode
-                    self.settings.run_mode = 'volume' 
+                    self.settings.run_mode = 'volume'
                     self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()

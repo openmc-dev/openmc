@@ -892,6 +892,8 @@ void transport_history_based_shared_secondary()
   }
 
   simulation::progeny_per_particle.resize(simulation::work_per_rank);
+  std::fill(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(), 0);
 
   // Phase 1: Transport primary particles and deposit first generation of
   // secondaries in the shared secondary bank
@@ -946,6 +948,8 @@ void transport_history_based_shared_secondary()
     shared_secondary_bank_read = std::move(shared_secondary_bank_write);
     shared_secondary_bank_write = SharedArray<SourceSite>();
     simulation::progeny_per_particle.resize(shared_secondary_bank_read.size());
+    std::fill(simulation::progeny_per_particle.begin(),
+      simulation::progeny_per_particle.end(), 0);
 
     // Transport all secondary tracks from the shared secondary bank
 #pragma omp parallel for schedule(runtime)
@@ -1011,6 +1015,8 @@ void transport_event_based_shared_secondary()
   }
 
   simulation::progeny_per_particle.resize(simulation::work_per_rank);
+  std::fill(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(), 0);
 
   // Phase 1: Transport primary particles using event-based processing and
   // deposit first generation of secondaries in the shared secondary bank
@@ -1068,6 +1074,8 @@ void transport_event_based_shared_secondary()
     shared_secondary_bank_read = std::move(shared_secondary_bank_write);
     shared_secondary_bank_write = SharedArray<SourceSite>();
     simulation::progeny_per_particle.resize(shared_secondary_bank_read.size());
+    std::fill(simulation::progeny_per_particle.begin(),
+      simulation::progeny_per_particle.end(), 0);
 
     // Ensure particle buffer is large enough for this secondary generation
     int64_t sec_buffer_length = std::min(

@@ -52,6 +52,7 @@ Assess each of the following areas, noting any issues found. If an area looks go
 ### Memory and Performance
 - Are there obvious memory leaks or unsafe memory management patterns in C++ code?
 - Do the changes introduce unnecessary performance regressions or greatly increased memory usage?
+- Do the changes introduce dynamic memory allocation (e.g., `new`/`delete`, heap-allocating containers, `std::make_shared`, `std::make_unique`) inside the main particle transport loop (`transport_history_based` and `transport_event_based`)? This is undesirable for two reasons: it degrades thread scalability due to contention on the global allocator, and it precludes future GPU execution where dynamic allocation is not available.
 
 ### Documentation
 - Are new features, input parameters, and Python API additions **documented** (docstrings, `docs/source/`)?

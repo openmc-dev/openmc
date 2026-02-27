@@ -978,33 +978,6 @@ void transport_history_based_shared_secondary()
   calculate_work(settings::n_particles);
 }
 
-//! Process event queues until all are empty. Each iteration processes the
-//! longest queue first to maximize vectorization efficiency.
-void process_transport_events()
-{
-  while (true) {
-    int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
-      simulation::calculate_nonfuel_xs_queue.size(),
-      simulation::advance_particle_queue.size(),
-      simulation::surface_crossing_queue.size(),
-      simulation::collision_queue.size()});
-
-    if (max == 0) {
-      break;
-    } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-      process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
-    } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-      process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
-    } else if (max == simulation::advance_particle_queue.size()) {
-      process_advance_particle_events();
-    } else if (max == simulation::surface_crossing_queue.size()) {
-      process_surface_crossing_events();
-    } else if (max == simulation::collision_queue.size()) {
-      process_collision_events();
-    }
-  }
-}
-
 void transport_event_based()
 {
   int64_t remaining_work = simulation::work_per_rank;

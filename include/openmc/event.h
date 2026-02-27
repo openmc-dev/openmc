@@ -112,6 +112,10 @@ void process_collision_events();
 //! \param n_particles The number of particles in the particle buffer
 void process_death_events(int64_t n_particles);
 
+//! Process event queues until all are empty. Each iteration processes the
+//! longest queue first to maximize vectorization efficiency.
+void process_transport_events();
+
 //! Initialize secondary particles from a shared secondary bank for
 //! event-based transport
 //

@@ -179,6 +179,31 @@ void process_death_events(int64_t n_particles)
   simulation::time_event_death.stop();
 }
 
+void process_transport_events()
+{
+  while (true) {
+    int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.size(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.size(),
+      simulation::collision_queue.size()});
+
+    if (max == 0) {
+      break;
+    } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+      process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+    } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+      process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+    } else if (max == simulation::advance_particle_queue.size()) {
+      process_advance_particle_events();
+    } else if (max == simulation::surface_crossing_queue.size()) {
+      process_surface_crossing_events();
+    } else if (max == simulation::collision_queue.size()) {
+      process_collision_events();
+    }
+  }
+}
+
 void process_init_secondary_events(int64_t n_particles, int64_t offset,
   SharedArray<SourceSite>& shared_secondary_bank)
 {

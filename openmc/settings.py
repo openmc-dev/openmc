@@ -1925,7 +1925,15 @@ class Settings:
                                 mesh_memo.add(mesh.id)
                 elif key == 'adjoint_source':
                     subelement = ET.SubElement(element, 'adjoint_source')
+                    # Check that all entries are valid SourceBase instances, in case 
+                    # the random_ray setter was not used to populate dict entries.
+                    if not isinstance(value, MutableSequence):
+                        value = [value]
                     for source in value:
+                        if not isinstance(source, SourceBase):
+                            raise ValueError(
+                                f'Invalid adjoint source type: {type(source)}. '
+                                'Expected openmc.SourceBase.')
                         subelement.append(source.to_xml_element())
                 elif isinstance(value, bool):
                     subelement = ET.SubElement(element, key)

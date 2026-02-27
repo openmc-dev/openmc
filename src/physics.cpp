@@ -127,7 +127,8 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.local_secondary_bank().size() >= settings::max_secondaries && !settings::use_shared_secondary_bank) {
+      if (p.local_secondary_bank().size() >= settings::max_secondaries &&
+          !settings::use_shared_secondary_bank) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "

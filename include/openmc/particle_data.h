@@ -700,8 +700,14 @@ public:
 
   // secondary particle bank
   SourceSite& local_secondary_bank(int i) { return local_secondary_bank_[i]; }
-  const SourceSite& local_secondary_bank(int i) const { return local_secondary_bank_[i]; }
-  decltype(local_secondary_bank_)& local_secondary_bank() { return local_secondary_bank_; }
+  const SourceSite& local_secondary_bank(int i) const
+  {
+    return local_secondary_bank_[i];
+  }
+  decltype(local_secondary_bank_)& local_secondary_bank()
+  {
+    return local_secondary_bank_;
+  }
 
   // Number of secondaries created in a collision
   int& n_secondaries() { return n_secondaries_; }

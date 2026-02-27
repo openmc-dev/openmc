@@ -980,7 +980,8 @@ void transport_history_based_shared_secondary()
         }
       }
 
-      // Drain thread-local bank into the shared secondary bank (once per thread)
+      // Drain thread-local bank into the shared secondary bank (once per
+      // thread)
 #pragma omp critical(shared_secondary_bank)
       {
         for (auto& site : thread_bank) {
@@ -991,7 +992,7 @@ void transport_history_based_shared_secondary()
     n_generation_depth++;
     simulation::simulation_tracks_completed += alive_secondary;
   } // End of loop over secondary generations
-  
+
   // Reset work so that fission bank etc works correctly
   calculate_work(settings::n_particles);
 }
@@ -1097,9 +1098,9 @@ void transport_event_based_shared_secondary()
       simulation::progeny_per_particle.end(), 0);
 
     // Ensure particle buffer is large enough for this secondary generation
-    int64_t sec_buffer_length = std::min(
-      static_cast<int64_t>(shared_secondary_bank_read.size()),
-      settings::max_particles_in_flight);
+    int64_t sec_buffer_length =
+      std::min(static_cast<int64_t>(shared_secondary_bank_read.size()),
+        settings::max_particles_in_flight);
     if (sec_buffer_length >
         static_cast<int64_t>(simulation::particles.size())) {
       init_event_queues(sec_buffer_length);

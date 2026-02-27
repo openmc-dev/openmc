@@ -177,7 +177,7 @@ void initialize_mpi(MPI_Comm intracomm)
     disp[i] -= disp[0];
   }
 
-   // Block counts for each field
+  // Block counts for each field
   int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   // Types for each field

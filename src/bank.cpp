@@ -244,8 +244,10 @@ int64_t synchronize_global_secondary_bank(
     }
 
     // Recv: overlap between rank r's current range and my target range
-    int64_t recv_overlap_start = std::max(cumulative_before[r], my_target_start);
-    int64_t recv_overlap_end = std::min(cumulative_before[r + 1], my_target_end);
+    int64_t recv_overlap_start =
+      std::max(cumulative_before[r], my_target_start);
+    int64_t recv_overlap_end =
+      std::min(cumulative_before[r + 1], my_target_end);
     if (recv_overlap_start < recv_overlap_end) {
       recv_counts[r] = static_cast<int>(recv_overlap_end - recv_overlap_start);
       recv_displs[r] = static_cast<int>(recv_overlap_start - my_target_start);

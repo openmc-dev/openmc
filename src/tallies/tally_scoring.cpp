@@ -988,8 +988,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                 .size());
           } else {
             ifp_data_size = static_cast<int>(
-              simulation::ifp_source_lifetime_bank[p.current_work()]
-                .size());
+              simulation::ifp_source_lifetime_bank[p.current_work()].size());
           }
           if (ifp_data_size == settings::ifp_n_generation) {
             score = p.wgt_last();

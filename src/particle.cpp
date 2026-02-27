@@ -463,8 +463,7 @@ void Particle::event_revive_from_secondary(SourceSite& site)
   bank_second_E() = 0.0;
 
   // Subtract secondary particle energy from interim pulse-height results
-  if (!model::active_pulse_height_tallies.empty() &&
-      this->type().is_photon()) {
+  if (!model::active_pulse_height_tallies.empty() && this->type().is_photon()) {
     // Since the birth cell of the particle has not been set we
     // have to determine it before the energy of the secondary particle can be
     // removed from the pulse-height of this cell.
@@ -498,8 +497,8 @@ void Particle::event_check_limit_and_revive()
   // If particle has too many events, display warning and kill it
   n_event()++;
   if (n_event() == settings::max_particle_events) {
-    warning(
-      "Particle " + std::to_string(id()) + " underwent maximum number of events.");
+    warning("Particle " + std::to_string(id()) +
+            " underwent maximum number of events.");
     wgt() = 0.0;
   }
 
@@ -551,7 +550,8 @@ void Particle::event_death()
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  if (settings::run_mode == RunMode::EIGENVALUE || settings::use_shared_secondary_bank) {
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      settings::use_shared_secondary_bank) {
     simulation::progeny_per_particle[current_work()] = n_progeny();
   }
 }

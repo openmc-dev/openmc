@@ -46,7 +46,8 @@ void free_memory_bank();
 
 void init_fission_bank(int64_t max);
 
-int64_t synchronize_global_secondary_bank(SharedArray<SourceSite>& shared_secondary_bank);
+int64_t synchronize_global_secondary_bank(
+  SharedArray<SourceSite>& shared_secondary_bank);
 
 } // namespace openmc
 

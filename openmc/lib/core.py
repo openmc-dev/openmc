@@ -33,10 +33,6 @@ class _SourceSite(Structure):
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
 
-# Numpy dtype derived directly from the ctypes struct for zero-copy
-# interpretation of the ctypes buffer as a numpy structured array.
-_source_site_dtype = np.dtype(_SourceSite)
-
 # Maximum number of source sites to sample per C API call.  Requests for
 # more sites are automatically split into batches of this size so that the
 # intermediate ctypes buffer stays bounded (~104 MB at the default value).
@@ -546,7 +542,7 @@ def sample_external_source(
     # a single numpy array and fill it in slices; for the ParticleList
     # path we accumulate SourceParticle objects across batches.
     if as_array:
-        result = np.empty(n_samples, dtype=_source_site_dtype)
+        result = np.empty(n_samples, dtype=_SourceSite)
     else:
         particles = []
 
@@ -567,7 +563,7 @@ def sample_external_source(
 
         if as_array:
             result[offset:offset + n_batch] = np.frombuffer(
-                sites_array, dtype=_source_site_dtype, count=n_batch
+                sites_array, dtype=_SourceSite, count=n_batch
             )
         else:
             particles.extend(

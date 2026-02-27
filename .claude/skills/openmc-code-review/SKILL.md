@@ -80,6 +80,6 @@ Group findings into:
 2. **Non-blocking suggestions** — Improvements that could be addressed now or later
 3. **Questions for the author** — Ambiguities or design choices worth clarifying
 
-**Pre-Submission Fixes** *(self-review mode only)*: Quick wins the author should address before opening a PR — missing tests, undocumented parameters, naming inconsistencies, or anything likely to slow down review.
-
-**Recommended Action**: One of — *Approve*, *Approve with minor suggestions*, *Request changes*, or *Reject* — with a brief justification.
+**Recommended Action**:
+- *Reviewer mode*: One of — *Approve*, *Approve with minor suggestions*, *Request changes*, or *Reject* — with a brief justification.
+- *Self-review mode*: A prioritized list of pre-submission fixes — missing tests, undocumented parameters, naming inconsistencies, or anything else likely to slow down review.

@@ -1332,7 +1332,7 @@ class Model:
                 n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
 
-    def sample_external_source_batched(
+    def iter_external_source_batches(
         self,
         n_samples: int = 1_000_000,
         prn_seed: int | None = None,
@@ -1374,7 +1374,7 @@ class Model:
 
         >>> hist = np.zeros(1000)
         >>> edges = np.linspace(0, 20e6, 1001)
-        >>> for batch in model.sample_external_source_batched(100_000_000):
+        >>> for batch in model.iter_external_source_batches(100_000_000):
         ...     h, _ = np.histogram(batch['E'], bins=edges)
         ...     hist += h
 
@@ -1385,7 +1385,7 @@ class Model:
         init_kwargs.setdefault('args', ['-c'])
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            yield from openmc.lib.sample_external_source_batched(
+            yield from openmc.lib.iter_external_source_batches(
                 n_samples=n_samples, prn_seed=prn_seed,
                 batch_size=batch_size
             )

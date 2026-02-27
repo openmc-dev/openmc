@@ -1123,7 +1123,7 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p.E == pytest.approx(row['E'])
 
     # Test batched generator
-    batches = list(openmc.lib.sample_external_source_batched(
+    batches = list(openmc.lib.iter_external_source_batches(
         25, prn_seed=3, batch_size=10
     ))
     assert len(batches) == 3  # 10 + 10 + 5
@@ -1143,7 +1143,7 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     # Each yielded batch should be an independent copy (not a view into
     # the same buffer).  Verify that advancing the generator does not
     # mutate a previously yielded array.
-    gen = openmc.lib.sample_external_source_batched(
+    gen = openmc.lib.iter_external_source_batches(
         20, prn_seed=7, batch_size=10
     )
     first = next(gen)

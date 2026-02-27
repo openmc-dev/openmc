@@ -581,7 +581,7 @@ def sample_external_source(
     return openmc.ParticleList(particles)
 
 
-def sample_external_source_batched(
+def iter_external_source_batches(
         n_samples: int,
         prn_seed: int | None = None,
         batch_size: int = _SOURCE_SAMPLE_BATCH_SIZE,
@@ -622,7 +622,7 @@ def sample_external_source_batched(
 
     >>> hist = np.zeros(1000)
     >>> edges = np.linspace(0, 20e6, 1001)
-    >>> for batch in openmc.lib.sample_external_source_batched(100_000_000):
+    >>> for batch in openmc.lib.iter_external_source_batches(100_000_000):
     ...     h, _ = np.histogram(batch['E'], bins=edges, weights=batch['wgt'])
     ...     hist += h
 

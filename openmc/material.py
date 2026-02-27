@@ -25,7 +25,7 @@ from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, BARN_PER_CM_SQ, JOULE_PER_EV
-from openmc.data.function import Combination, Tabulated1D
+from openmc.data.function import Tabulated1D
 from openmc.data import mu_en_coefficients, dose_coefficients
 
 
@@ -459,10 +459,10 @@ class Material(IDManagerMixin):
 
         Limitations
         ----------
-        This method does not implement correction from Bremsstrahlung particles which can be 
+        This method does not implement correction from Bremsstrahlung particles which can be
         relevant at close distances.
-        In addition, it computes the gamma contact dose rate only for the unstable nuclides 
-        for which the radiation source specification is present in the chain file. 
+        In addition, it computes the gamma contact dose rate only for the unstable nuclides
+        for which the radiation source specification is present in the chain file.
 
         Returns
         -------
@@ -478,19 +478,35 @@ class Material(IDManagerMixin):
         cv.check_type("build_up", build_up, Real)
         cv.check_greater_than("build_up", build_up, 0.0)
 
-        # photon linear attenuation distribution as a function of energy
-        # distribution values in [cm-1]
-        from openmc.plotter import _calculate_cexs_elem_mat
-
-        mu_e_vals, cexs = _calculate_cexs_elem_mat(
-            this=self,
-            types=[501],
-            incident_particle="photon"
-        )
-        mu_y_vals = np.array(cexs[0])  # total mass attenuation coeffs
-        if mu_y_vals is None:
-            raise ValueError("Cannot compute photon mass attenuation for material")
-        linear_attenuation_dist = Tabulated1D(mu_e_vals, mu_y_vals, breakpoints=[len(mu_e_vals)], interpolation=[5])
+        # Build the material linear attenuation coefficient µ(E) [cm⁻¹] from
+        # pre-tabulated elemental mass attenuation coefficients (cm²/g) weighted
+        # by each nuclide's partial mass density:
+        #   µ(E) = Σ_nuc (µ/ρ)_Z(E) × ρ_nuc
+        # where ρ_nuc = N_nuc [atom/b-cm] × 1e24 × A_nuc [g/mol] / N_A  [g/cm³]
+        mu_e_vals = None
+        mu_y_sum = None
+        for nuc, atom_density_bcm in self.get_nuclide_atom_densities().items():
+            Z = openmc.data.zam(nuc)[0]
+            mu_rho_tab = openmc.data.mass_attenuation_coefficient(Z)
+            # Partial mass density for this nuclide [g/cm³]
+            partial_rho = (
+                atom_density_bcm * 1.0e24
+                * openmc.data.atomic_mass(nuc) / openmc.data.AVOGADRO
+            )
+            if mu_e_vals is None:
+                mu_e_vals = mu_rho_tab.x
+                mu_y_sum = partial_rho * mu_rho_tab.y
+            else:
+                new_e = np.union1d(mu_e_vals, mu_rho_tab.x)
+                old_tab = Tabulated1D(mu_e_vals, mu_y_sum,
+                                      breakpoints=[len(mu_e_vals)], interpolation=[5])
+                mu_y_sum = (np.array(old_tab(new_e))
+                            + partial_rho * np.array(mu_rho_tab(new_e)))
+                mu_e_vals = new_e
+        if mu_e_vals is None:
+            raise ValueError("Material has no nuclides; cannot compute mass attenuation")
+        linear_attenuation_dist = Tabulated1D(mu_e_vals, mu_y_sum,
+                                              breakpoints=[len(mu_e_vals)], interpolation=[5])
 
         # CDR computation
         cdr = {}
@@ -594,32 +610,26 @@ class Material(IDManagerMixin):
                 if len(e_union) < 2:
                     raise ValueError("Not enough overlapping energy points to compute CDR")
 
-                # check for negative denominator valuenters
-                mu_vals_check = np.array(linear_attenuation_dist(e_union))
-                if np.any(mu_vals_check <= 0.0):
-                    zero_vals = e_union[mu_vals_check <= 0.0]
+                # check for non-positive attenuation coefficients
+                mu_vals_union = np.array(linear_attenuation_dist(e_union))
+                if np.any(mu_vals_union <= 0.0):
+                    zero_vals = e_union[mu_vals_union <= 0.0]
                     raise ValueError(
                         f"Mass attenuation coefficient <= 0 at energies: {zero_vals}"
                     )
 
                 if dose_quantity == 'absorbed-air':
                     # units [eV cm3 g-1 atoms-1 s-1]
-                    e_e_dist = Tabulated1D(
-                        e_vals, e_vals, breakpoints=[len(e_vals)], interpolation=[2]
-                    )
-                    integrand_operator = Combination(
-                        functions=[response_f, e_p_dist, e_e_dist, linear_attenuation_dist],
-                        operations=[np.multiply, np.multiply, np.divide],
+                    y_evaluated = (
+                        response_f(e_union) * e_p_dist(e_union)
+                        * e_union / mu_vals_union
                     )
                 elif dose_quantity == 'effective':
                     # units [pSv cm3 atoms-1 s-1]
-                    integrand_operator = Combination(
-                        functions=[response_f, e_p_dist,  linear_attenuation_dist],
-                        operations=[np.multiply,  np.divide],
+                    y_evaluated = (
+                        response_f(e_union) * e_p_dist(e_union)
+                        / mu_vals_union
                     )
-
-
-                y_evaluated = integrand_operator(e_union)
 
                 integrand_function = Tabulated1D(
                     e_union, y_evaluated, breakpoints=[len(e_union)], interpolation=[2]

@@ -139,19 +139,7 @@ void process_surface_crossing_events()
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_cross_surface();
-    p.n_event()++;
-    if (p.n_event() == settings::max_particle_events) {
-      warning("Particle " + std::to_string(p.id()) +
-              " underwent maximum number of events.");
-      p.wgt() = 0.0;
-    }
-    if (!settings::use_shared_secondary_bank) {
-      if (!p.alive() && !p.local_secondary_bank().empty()) {
-        SourceSite& site = p.local_secondary_bank().back();
-        p.event_revive_from_secondary(site);
-        p.local_secondary_bank().pop_back();
-      }
-    }
+    p.event_check_limit_and_revive();
     if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
@@ -170,19 +158,7 @@ void process_collision_events()
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_collide();
-    p.n_event()++;
-    if (p.n_event() == settings::max_particle_events) {
-      warning("Particle " + std::to_string(p.id()) +
-              " underwent maximum number of events.");
-      p.wgt() = 0.0;
-    }
-    if (!settings::use_shared_secondary_bank) {
-      if (!p.alive() && !p.local_secondary_bank().empty()) {
-        SourceSite& site = p.local_secondary_bank().back();
-        p.event_revive_from_secondary(site);
-        p.local_secondary_bank().pop_back();
-      }
-    }
+    p.event_check_limit_and_revive();
     if (p.alive())
       dispatch_xs_event(buffer_idx);
   }

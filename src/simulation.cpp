@@ -856,19 +856,7 @@ void transport_history_based_single_particle(Particle& p)
         p.event_collide();
       }
     }
-    // If particle has too many events, display warning and kill it
-    p.n_event()++;
-    if (p.n_event() == settings::max_particle_events) {
-      warning("Particle " + std::to_string(p.id()) +
-              " underwent maximum number of events.");
-      p.wgt() = 0.0;
-    }
-    if (!p.alive() && !settings::use_shared_secondary_bank &&
-        !p.local_secondary_bank().empty()) {
-      SourceSite& site = p.local_secondary_bank().back();
-      p.event_revive_from_secondary(site);
-      p.local_secondary_bank().pop_back();
-    }
+    p.event_check_limit_and_revive();
   }
   p.event_death();
 }

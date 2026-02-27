@@ -117,7 +117,7 @@ public:
 
   //! Return the number of elements in the container
   int64_t size() { return size_; }
-  const int64_t size() const { return size_; }
+  int64_t size() const { return size_; }
 
   //! Resize the container to contain a specified number of elements. This is
   //! useful in cases where the container is written to in a non-thread safe

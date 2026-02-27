@@ -70,6 +70,7 @@ public:
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary(SourceSite& site);
+  void event_check_limit_and_revive();
   void event_death();
 
   //! pulse-height recording

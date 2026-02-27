@@ -151,6 +151,7 @@ int openmc_finalize()
   settings::weight_windows_on = false;
   settings::write_all_tracks = false;
   settings::write_initial_source = false;
+  settings::use_shared_secondary_bank = false;
 
   simulation::keff = 1.0;
   simulation::need_depletion_rx = false;

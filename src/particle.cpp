@@ -493,6 +493,25 @@ void Particle::event_revive_from_secondary(SourceSite& site)
     add_particle_track(*this);
 }
 
+void Particle::event_check_limit_and_revive()
+{
+  // If particle has too many events, display warning and kill it
+  n_event()++;
+  if (n_event() == settings::max_particle_events) {
+    warning(
+      "Particle " + std::to_string(id()) + " underwent maximum number of events.");
+    wgt() = 0.0;
+  }
+
+  // In non-shared-secondary mode, revive from local secondary bank
+  if (!alive() && !settings::use_shared_secondary_bank &&
+      !local_secondary_bank().empty()) {
+    SourceSite& site = local_secondary_bank().back();
+    event_revive_from_secondary(site);
+    local_secondary_bank().pop_back();
+  }
+}
+
 void Particle::event_death()
 {
 #ifdef OPENMC_DAGMC_ENABLED

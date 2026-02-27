@@ -1005,6 +1005,32 @@ void process_transport_events()
   }
 }
 
+void transport_event_based()
+{
+  int64_t remaining_work = simulation::work_per_rank;
+  int64_t source_offset = 0;
+
+  // To cap the total amount of memory used to store particle object data, the
+  // number of particles in flight at any point in time can bet set. In the case
+  // that the maximum in flight particle count is lower than the total number
+  // of particles that need to be run this iteration, the event-based transport
+  // loop is executed multiple times until all particles have been completed.
+  while (remaining_work > 0) {
+    // Figure out # of particles to run for this subiteration
+    int64_t n_particles =
+      std::min(remaining_work, settings::max_particles_in_flight);
+
+    // Initialize all particle histories for this subiteration
+    process_init_events(n_particles, source_offset);
+    process_transport_events();
+    process_death_events(n_particles);
+
+    // Adjust remaining work and source offset variables
+    remaining_work -= n_particles;
+    source_offset += n_particles;
+  }
+}
+
 void transport_event_based_shared_secondary()
 {
   SharedArray<SourceSite> shared_secondary_bank_read;
@@ -1118,32 +1144,6 @@ void transport_event_based_shared_secondary()
 
   // Reset work so that fission bank etc works correctly
   calculate_work(settings::n_particles);
-}
-
-void transport_event_based()
-{
-  int64_t remaining_work = simulation::work_per_rank;
-  int64_t source_offset = 0;
-
-  // To cap the total amount of memory used to store particle object data, the
-  // number of particles in flight at any point in time can bet set. In the case
-  // that the maximum in flight particle count is lower than the total number
-  // of particles that need to be run this iteration, the event-based transport
-  // loop is executed multiple times until all particles have been completed.
-  while (remaining_work > 0) {
-    // Figure out # of particles to run for this subiteration
-    int64_t n_particles =
-      std::min(remaining_work, settings::max_particles_in_flight);
-
-    // Initialize all particle histories for this subiteration
-    process_init_events(n_particles, source_offset);
-    process_transport_events();
-    process_death_events(n_particles);
-
-    // Adjust remaining work and source offset variables
-    remaining_work -= n_particles;
-    source_offset += n_particles;
-  }
 }
 
 } // namespace openmc

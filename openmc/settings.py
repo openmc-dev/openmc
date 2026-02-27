@@ -254,10 +254,6 @@ class Settings:
         Minimum fraction of source sites that must be accepted when applying
         rejection sampling based on constraints. If not specified, the default
         value is 0.05.
-    max_source_rejections_per_sample : int
-        Maximum number of rejections allowed when sampling a single source
-        particle before raising an error. If not specified, the default
-        value is 1,000,000.
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
 
@@ -394,7 +390,6 @@ class Settings:
         # Source subelement
         self._source = cv.CheckedList(SourceBase, 'source distributions')
         self._source_rejection_fraction = None
-        self._max_source_rejections_per_sample = None
 
         self._confidence_intervals = None
         self._electron_treatment = None
@@ -1395,18 +1390,6 @@ class Settings:
         self._source_rejection_fraction = source_rejection_fraction
 
     @property
-    def max_source_rejections_per_sample(self) -> int | None:
-        return self._max_source_rejections_per_sample
-
-    @max_source_rejections_per_sample.setter
-    def max_source_rejections_per_sample(self, max_source_rejections_per_sample: int):
-        cv.check_type('max_source_rejections_per_sample',
-                      max_source_rejections_per_sample, Integral)
-        cv.check_greater_than('max_source_rejections_per_sample',
-                              max_source_rejections_per_sample, 0)
-        self._max_source_rejections_per_sample = max_source_rejections_per_sample
-
-    @property
     def free_gas_threshold(self) -> float | None:
         return self._free_gas_threshold
 
@@ -1944,11 +1927,6 @@ class Settings:
             element = ET.SubElement(root, "source_rejection_fraction")
             element.text = str(self._source_rejection_fraction)
 
-    def _create_max_source_rejections_per_sample_subelement(self, root):
-        if self._max_source_rejections_per_sample is not None:
-            element = ET.SubElement(root, "max_source_rejections_per_sample")
-            element.text = str(self._max_source_rejections_per_sample)
-
     def _create_free_gas_threshold_subelement(self, root):
         if self._free_gas_threshold is not None:
             element = ET.SubElement(root, "free_gas_threshold")
@@ -2415,11 +2393,6 @@ class Settings:
         if text is not None:
             self.source_rejection_fraction = float(text)
 
-    def _max_source_rejections_per_sample_from_xml_element(self, root):
-        text = get_text(root, 'max_source_rejections_per_sample')
-        if text is not None:
-            self.max_source_rejections_per_sample = int(text)
-
     def _free_gas_threshold_from_xml_element(self, root):
         text = get_text(root, 'free_gas_threshold')
         if text is not None:
@@ -2496,7 +2469,6 @@ class Settings:
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
-        self._create_max_source_rejections_per_sample_subelement(element)
         self._create_free_gas_threshold_subelement(element)
 
         # Clean the indentation in the file to be user-readable
@@ -2610,7 +2582,6 @@ class Settings:
         settings._random_ray_from_xml_element(elem, meshes)
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)
-        settings._max_source_rejections_per_sample_from_xml_element(elem)
         settings._free_gas_threshold_from_xml_element(elem)
 
         return settings

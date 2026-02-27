@@ -26,6 +26,9 @@ namespace openmc {
 // source_rejection_fraction
 constexpr int EXTSRC_REJECT_THRESHOLD {10000};
 
+// Maximum number of source rejections allowed while sampling a single site
+constexpr int64_t MAX_SOURCE_REJECTIONS_PER_SAMPLE {1'000'000};
+
 //==============================================================================
 // Global variables
 //==============================================================================

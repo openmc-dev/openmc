@@ -129,7 +129,6 @@ SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 double source_rejection_fraction {0.05};
-int64_t max_source_rejections_per_sample {1'000'000};
 double free_gas_threshold {400.0};
 std::unordered_set<int> source_write_surf_id;
 CollisionTrackConfig collision_track_config {};
@@ -673,11 +672,6 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "source_rejection_fraction")) {
     source_rejection_fraction =
       std::stod(get_node_value(root, "source_rejection_fraction"));
-  }
-
-  if (check_for_node(root, "max_source_rejections_per_sample")) {
-    max_source_rejections_per_sample =
-      std::stoll(get_node_value(root, "max_source_rejections_per_sample"));
   }
 
   if (check_for_node(root, "free_gas_threshold")) {

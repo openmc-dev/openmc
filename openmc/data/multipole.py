@@ -15,7 +15,7 @@ from . import WMP_VERSION, WMP_VERSION_MAJOR
 from .data import K_BOLTZMANN
 from .neutron import IncidentNeutron
 from .resonance import ResonanceRange
-
+from .vectfit import vectfit, evaluate
 
 # Constants that determine which value to access
 _MP_EA = 0       # Pole
@@ -174,10 +174,6 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         (poles, residues)
 
     """
-
-    # import vectfit package: https://github.com/liangjg/vectfit
-    import vectfit as vf
-
     ne = energy.size
     nmt = len(mts)
     if ce_xs.shape != (nmt, ne):
@@ -194,8 +190,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         test_xs_ref[i] = np.interp(test_energy, energy, ce_xs[i])
 
     if log:
-        print(f"  energy: {energy[0]:.3e} to {energy[-1]:.3e} eV ({ne} points)")
-        print(f"  error tolerance: rtol={rtol}, atol={atol}")
+        print(f"\tenergy: {energy[0]:.3e} to {energy[-1]:.3e} eV ({ne} points)")
+        print(f"\terror tolerance: rtol={rtol}, atol={atol}")
 
     # transform xs (sigma) and energy (E) to f (sigma*E) and s (sqrt(E)) to be
     # compatible with the multipole representation
@@ -251,7 +247,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 print(f"VF iteration {i_vf + 1}/{n_vf_iter}")
 
             # call vf
-            poles, residues, cf, f_fit, rms = vf.vectfit(f, s, poles, weight)
+            poles, residues, *_ = vectfit(f, s, poles, weight)
 
             # convert real pole to conjugate pairs
             n_real_poles = 0
@@ -268,11 +264,11 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             if n_real_poles > 0:
                 if log >= DETAILED_LOGGING:
                     print(f"  # real poles: {n_real_poles}")
-                new_poles, residues, cf, f_fit, rms = \
-                      vf.vectfit(f, s, new_poles, weight, skip_pole=True)
+                new_poles, residues, *_ = \
+                      vectfit(f, s, new_poles, weight, skip_pole_update=True)
 
             # assess the result on test grid
-            test_xs = vf.evaluate(test_s, new_poles, residues) / test_energy
+            test_xs = evaluate(test_s, new_poles, residues) / test_energy
             abserr = np.abs(test_xs - test_xs_ref)
             with np.errstate(invalid='ignore', divide='ignore'):
                 relerr = abserr / test_xs_ref
@@ -388,9 +384,9 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
     return (mp_poles, mp_residues)
 
-
 def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
-                    log=False, path_out=None, mp_filename=None, **kwargs):
+                    log=False, path_out=None, mp_filename=None,
+                    **kwargs):
     r"""Generate multipole data for a nuclide from ENDF.
 
     Parameters
@@ -571,10 +567,6 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
         format.
 
     """
-
-    # import vectfit package: https://github.com/liangjg/vectfit
-    import vectfit as vf
-
     # unpack multipole data
     name = mp_data["name"]
     awr = mp_data["AWR"]
@@ -645,7 +637,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
         # reference xs from multipole form, note the residue terms in the
         # multipole and vector fitting representations differ by a 1j
-        xs_ref = vf.evaluate(energy_sqrt, poles, residues*1j) / energy
+        xs_ref = evaluate(energy_sqrt, poles, residues*1j) / energy
 
         # curve fit matrix
         matrix = np.vstack([energy**(0.5*i - 1) for i in range(n_cf + 1)]).T
@@ -659,7 +651,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
             # calculate the cross sections contributed by the windowed poles
             if rp > lp:
-                xs_wp = vf.evaluate(energy_sqrt, poles[lp:rp],
+                xs_wp = evaluate(energy_sqrt, poles[lp:rp],
                                     residues[:, lp:rp]*1j) / energy
             else:
                 xs_wp = np.zeros_like(xs_ref)
@@ -1054,7 +1046,15 @@ class WindowedMultipole(EqualityMixin):
         return cls.from_multipole(mp_data, **wmp_options)
 
     @classmethod
-    def from_multipole(cls, mp_data, search=None, log=False, **kwargs):
+    def from_multipole(
+        cls,
+        mp_data,
+        search=None,
+        log=False,
+        search_n_win=20,
+        search_cf_orders=None,
+        **kwargs,
+    ):
         """Generate windowed multipole neutron data from multipole data.
 
         Parameters
@@ -1066,8 +1066,14 @@ class WindowedMultipole(EqualityMixin):
             Defaults to True if no windowing parameters are specified.
         log : bool or int, optional
             Whether to print running logs (use int for verbosity control)
+        search_n_win : int, optional
+            Number of window sizes to consider in the search grid when
+            ``search`` is True.
+        search_cf_orders : iterable of int, optional
+            Curve-fit orders to consider in the search grid when ``search`` is
+            True. Defaults to integers from 10 down to 2.
         **kwargs
-            Keyword arguments passed to :func:`openmc.data.multipole._windowing`
+            Keyword arguments passed to :func:`openmc.data.multipole._windowing`.
 
         Returns
         -------
@@ -1098,12 +1104,17 @@ class WindowedMultipole(EqualityMixin):
         # search optimal WMP from a range of window sizes and CF orders
         if log:
             print("Start searching ...")
+        if search_cf_orders is None:
+            search_cf_orders = range(10, 1, -1)
+
         n_poles = sum([p.size for p in mp_data["poles"]])
         n_win_min = max(5, n_poles // 20)
         n_win_max = 2000 if n_poles < 2000 else 8000
         best_wmp = best_metric = None
-        for n_w in np.unique(np.linspace(n_win_min, n_win_max, 20, dtype=int)):
-            for n_cf in range(10, 1, -1):
+        for n_w in np.unique(
+            np.linspace(n_win_min, n_win_max, search_n_win, dtype=int)
+        ):
+            for n_cf in search_cf_orders:
                 if log:
                     print(f"Testing N_win={n_w} N_cf={n_cf}")
 

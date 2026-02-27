@@ -10,7 +10,7 @@
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
 #endif
 
-#include "xtensor/xadapt.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
@@ -36,6 +36,20 @@
 #include "openmc/xml_interface.h"
 
 namespace openmc {
+
+namespace {
+
+void validate_particle_type(ParticleType type, const std::string& context)
+{
+  if (type.is_transportable())
+    return;
+
+  fatal_error(
+    fmt::format("Unsupported source particle type '{}' (PDG {}) in {}.",
+      type.str(), type.pdg_number(), context));
+}
+
+} // namespace
 
 //==============================================================================
 // Global variables
@@ -286,22 +300,15 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
-    auto temp_str = get_node_value(node, "particle", true, true);
-    if (temp_str == "neutron") {
-      particle_ = ParticleType::neutron;
-    } else if (temp_str == "photon") {
-      particle_ = ParticleType::photon;
+    auto temp_str = get_node_value(node, "particle", false, true);
+    particle_ = ParticleType(temp_str);
+    if (particle_ == ParticleType::photon() ||
+        particle_ == ParticleType::electron() ||
+        particle_ == ParticleType::positron()) {
       settings::photon_transport = true;
-    } else if (temp_str == "electron") {
-      particle_ = ParticleType::electron;
-      settings::photon_transport = true;
-    } else if (temp_str == "positron") {
-      particle_ = ParticleType::positron;
-      settings::photon_transport = true;
-    } else {
-      fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }
   }
+  validate_particle_type(particle_, "IndependentSource");
 
   // Check for external source file
   if (check_for_node(node, "file")) {
@@ -392,11 +399,12 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   // Sample energy and time for neutron and photon sources
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
-    auto p = static_cast<int>(particle_);
+    auto p = particle_.transport_index();
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
     if (energy_ptr) {
-      auto energies = xt::adapt(energy_ptr->x());
-      if (xt::any(energies > data::energy_max[p])) {
+      auto energies =
+        tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
+      if ((energies > data::energy_max[p]).any()) {
         fatal_error("Source energy above range of energies of at least "
                     "one cross section table");
       }
@@ -473,6 +481,11 @@ void FileSource::load_sites_from_file(const std::string& path)
 
     // Close file
     file_close(file_id);
+  }
+
+  // Make sure particles in source file have valid types
+  for (const auto& site : this->sites_) {
+    validate_particle_type(site.particle, "FileSource");
   }
 }
 
@@ -585,6 +598,11 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   for (int elem_index = 0; elem_index < sources_.size(); ++elem_index) {
     sources_[elem_index]->set_space(
       std::make_unique<MeshElementSpatial>(mesh_idx, elem_index));
+  }
+
+  // Make sure sources use valid particle types
+  for (const auto& src : sources_) {
+    validate_particle_type(src->particle_type(), "MeshSource");
   }
 
   // the number of source distributions should either be one or equal to the

@@ -12,7 +12,7 @@
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -149,11 +149,11 @@ protected:
 
 private:
   // Data members
-  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
-  UPtrSpace space_;                               //!< Spatial distribution
-  UPtrAngle angle_;                               //!< Angular distribution
-  UPtrDist energy_;                               //!< Energy distribution
-  UPtrDist time_;                                 //!< Time distribution
+  ParticleType particle_; //!< Type of particle emitted
+  UPtrSpace space_;       //!< Spatial distribution
+  UPtrAngle angle_;       //!< Angular distribution
+  UPtrDist energy_;       //!< Energy distribution
+  UPtrDist time_;         //!< Time distribution
 };
 
 //==============================================================================

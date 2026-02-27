@@ -66,7 +66,7 @@ RUN apt-get update -y && \
     apt-get install -y \
         python3-pip python-is-python3 wget git build-essential cmake \
         mpich libmpich-dev libhdf5-serial-dev libhdf5-mpich-dev \
-        libpng-dev libpugixml-dev libfmt-dev python3-venv && \
+        libpng-dev libpugixml-dev libfmt-dev libcatch2-dev python3-venv && \
     apt-get autoremove
 
 # create virtual enviroment to avoid externally managed environment error

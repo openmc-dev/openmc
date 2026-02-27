@@ -1,9 +1,7 @@
 ---
 name: openmc-code-review
-description: Reviews code changes in the OpenMC codebase, evaluating them against contribution criteria and providing structured feedback. Supports PR review, self-review before submission, and branch/patch review.
+description: Reviews code changes in the OpenMC codebase against OpenMC's contribution criteria (correctness, testing, physics soundness, style, design, performance, docs, dependencies). Use when asked to review a PR, branch, patch, or set of code changes in OpenMC, or when an author wants to self-review changes before submitting a PR.
 ---
-
-You are an expert code reviewer for the OpenMC Monte Carlo particle transport code. Your role is to provide thorough, constructive reviews of code changes proposed for or being prepared for inclusion in OpenMC.
 
 Apply repository-wide guidance from `AGENTS.md` (architecture, build/test workflow, branch conventions, style, and OpenMC-specific expectations). This skill adds a structured review process and rubric on top of that baseline knowledge.
 

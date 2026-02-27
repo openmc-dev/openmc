@@ -581,6 +581,77 @@ def sample_external_source(
     return openmc.ParticleList(particles)
 
 
+def sample_external_source_batched(
+        n_samples: int,
+        prn_seed: int | None = None,
+        batch_size: int = _SOURCE_SAMPLE_BATCH_SIZE,
+):
+    """Sample external source, yielding results in batches.
+
+    This generator samples source particles in fixed-size batches and
+    yields each batch as an independent numpy structured array.  Because
+    only one batch is held in memory at a time, total memory usage stays
+    bounded regardless of *n_samples*.
+
+    Each yielded array is a **copy** of the internal sampling buffer, so
+    it remains valid after the generator advances to the next batch.
+
+    .. versionadded:: 0.15.2
+
+    Parameters
+    ----------
+    n_samples : int
+        Total number of source particles to sample.
+    prn_seed : int or None
+        Pseudorandom number generator seed.  If None, one is generated
+        randomly.
+    batch_size : int
+        Number of particles per batch.  Defaults to 1,000,000.
+
+    Yields
+    ------
+    numpy.ndarray
+        Structured array of source particles for one batch with fields
+        ``'r'``, ``'u'``, ``'E'``, ``'time'``, ``'wgt'``,
+        ``'delayed_group'``, ``'surf_id'``, and ``'particle'``.
+        The length of the last batch may be smaller than *batch_size*.
+
+    Examples
+    --------
+    Accumulate an energy histogram without holding all particles in memory:
+
+    >>> hist = np.zeros(1000)
+    >>> edges = np.linspace(0, 20e6, 1001)
+    >>> for batch in openmc.lib.sample_external_source_batched(100_000_000):
+    ...     h, _ = np.histogram(batch['E'], bins=edges, weights=batch['wgt'])
+    ...     hist += h
+
+    """
+    if n_samples <= 0:
+        raise ValueError("Number of samples must be positive")
+    if batch_size <= 0:
+        raise ValueError("Batch size must be positive")
+    if prn_seed is None:
+        prn_seed = getrandbits(63)
+
+    batch_size = min(batch_size, n_samples)
+    sites_array = (_SourceSite * batch_size)()
+
+    for offset in range(0, n_samples, batch_size):
+        n_batch = min(batch_size, n_samples - offset)
+
+        _dll.openmc_sample_external_source(
+            c_size_t(n_batch),
+            c_uint64(prn_seed + offset),
+            sites_array,
+        )
+
+        # Yield a copy so the caller can hold onto it safely.
+        yield np.frombuffer(
+            sites_array, dtype=_SourceSite, count=n_batch
+        ).copy()
+
+
 def simulation_init():
     """Initialize simulation"""
     _dll.openmc_simulation_init()

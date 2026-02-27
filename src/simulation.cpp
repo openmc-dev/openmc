@@ -605,7 +605,9 @@ void sample_particle(Particle& p, int64_t index_source)
 
 void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
 {
-  // set defaults
+  // Note: index_source is 1-based (first particle = 1), but current_work() is
+  // stored as 0-based for direct use as an array index into
+  // progeny_per_particle, source_bank, ifp banks, etc.
   if (!is_secondary) {
     sample_particle(p, index_source);
   }

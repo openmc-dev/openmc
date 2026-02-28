@@ -895,7 +895,7 @@ SourceSite RandomRay::sample_s2()
   site.r = space->sample(current_seed()).first;
 
   // Sample either left or right for S2 (flashlight) transport.
-  site.u = {prn(current_seed()) < 0.5 ? -1 : 1, 0.0, 0.0};
+  site.u = {prn(current_seed()) < 0.5 ? -1.0 : 1.0, 0.0, 0.0};
 
   return site;
 }

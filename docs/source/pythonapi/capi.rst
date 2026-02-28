@@ -83,7 +83,9 @@ Classes
    Nuclide
    ParentNuclideFilter
    ParticleFilter
+   ParticleProductionFilter
    PolarFilter
+   ReactionFilter
    RectilinearMesh
    RegularMesh
    SpatialLegendreFilter

@@ -920,3 +920,76 @@ def test_filter_time_mesh(run_in_tmpdir):
         f"Collision vs tracklength tallies disagree: chi2={chi2_stat:.2f} "
         f">= {crit=:.2f} ({dof=}, {alpha=})"
     )
+
+
+def test_regular_mesh_get_indices_at_coords():
+    """Test get_indices_at_coords method for RegularMesh"""
+    # Create a 10x10x10 mesh from (0,0,0) to (1,1,1)
+    # Each voxel is 0.1 x 0.1 x 0.1
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (0, 0, 0)
+    mesh.upper_right = (1, 1, 1)
+    mesh.dimension = [10, 10, 10]
+
+    # Test lower-left corner maps to first voxel (0, 0, 0)
+    assert mesh.get_indices_at_coords([0.0, 0.0, 0.0]) == (0, 0, 0)
+
+    # Test centroid of first voxel
+    # Voxel 0 spans [0.0, 0.1], so centroid is at 0.05
+    assert mesh.get_indices_at_coords([0.05, 0.05, 0.05]) == (0, 0, 0)
+
+    # Test centroid of last voxel maps correctly
+    # Voxel 9 spans [0.9, 1.0], so centroid is at 0.95
+    assert mesh.get_indices_at_coords([0.95, 0.95, 0.95]) == (9, 9, 9)
+
+    # Test a middle voxel
+    # Voxel 4 spans [0.4, 0.5], so 0.45 should map to it
+    assert mesh.get_indices_at_coords([0.45, 0.45, 0.45]) == (4, 4, 4)
+
+    # Test mixed indices
+    assert mesh.get_indices_at_coords([0.05, 0.45, 0.95]) == (0, 4, 9)
+    assert mesh.get_indices_at_coords([0.95, 0.05, 0.45]) == (9, 0, 4)
+
+    # Test coordinates outside mesh bounds raise ValueError
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([-0.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([1.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, -0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 1.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 0.5, -0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 0.5, 1.5])
+
+    # Test that results match expected dimensionality (3D mesh returns 3-tuple)
+    result = mesh.get_indices_at_coords([0.5, 0.5, 0.5])
+    assert isinstance(result, tuple)
+    assert len(result) == 3
+
+    # Test that indices can be used directly with centroids array
+    idx = mesh.get_indices_at_coords([0.95, 0.95, 0.95])
+    centroid = mesh.centroids[idx]
+    np.testing.assert_array_almost_equal(centroid, [0.95, 0.95, 0.95])
+
+    # Test with a 2D mesh
+    mesh_2d = openmc.RegularMesh()
+    mesh_2d.lower_left = (0, 0)
+    mesh_2d.upper_right = (1, 1)
+    mesh_2d.dimension = [10, 10]
+    result_2d = mesh_2d.get_indices_at_coords([0.5, 0.5, 999.0])
+    assert isinstance(result_2d, tuple)
+    assert len(result_2d) == 2
+    assert result_2d == (5, 5)
+
+    # Test with a 1D mesh
+    mesh_1d = openmc.RegularMesh()
+    mesh_1d.lower_left = [0]
+    mesh_1d.upper_right = [1]
+    mesh_1d.dimension = [10]
+    result_1d = mesh_1d.get_indices_at_coords([0.5, 999.0, 999.0])
+    assert isinstance(result_1d, tuple)
+    assert len(result_1d) == 1
+    assert result_1d == (5,)

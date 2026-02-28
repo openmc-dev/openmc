@@ -2065,31 +2065,48 @@ class Mixture(Univariate):
 
 
 def combine_distributions(
-    dists: Sequence[Discrete | Tabular],
+    dists: Sequence[Discrete | Tabular | Mixture],
     probs: Sequence[float]
 ):
     """Combine distributions with specified probabilities
 
     This function can be used to combine multiple instances of
-    :class:`~openmc.stats.Discrete` and `~openmc.stats.Tabular`. Multiple
-    discrete distributions are merged into a single distribution and the
-    remainder of the distributions are put into a :class:`~openmc.stats.Mixture`
-    distribution.
+    :class:`~openmc.stats.Discrete`, :class:`~openmc.stats.Tabular` and
+    :class:`~openmc.stats.Mixture` of them. Multiple discrete distributions are
+    merged into a single distribution and the remainder of the distributions are
+    put into a :class:`~openmc.stats.Mixture` distribution.
 
     .. versionadded:: 0.13.1
 
     Parameters
     ----------
-    dists : sequence of openmc.stats.Discrete or openmc.stats.Tabular
+    dists : sequence of openmc.stats.Discrete, openmc.stats.Tabular, or openmc.stats.Mixture
         Distributions to combine
     probs : sequence of float
         Probability (or intensity) of each distribution
 
     """
+    new_probs = []
+    new_dists = []
     for i, dist in enumerate(dists):
-        cv.check_type(f'dists[{i}]', dist, (Discrete, Tabular))
+        cv.check_type(f'dists[{i}]', dist, (Discrete, Tabular, Mixture))
         cv.check_type(f'probs[{i}]', probs[i], Real)
         cv.check_greater_than(f'probs[{i}]', probs[i], 0.0)
+        if isinstance(dist, Mixture):
+            if dist.bias is not None:
+                warn("A Mixture distribution with a bias specified was passed "
+                     "to combine_distributions. The bias will be discarded "
+                     "during flattening.")
+            for j, d in enumerate(dist.distribution):
+                cv.check_type(f'dists[{i}].distribution[{j}]', d, (Discrete, Tabular))
+                new_probs.append(probs[i]*dist.probability[j])
+                new_dists.append(d)
+        else:
+            new_probs.append(probs[i])
+            new_dists.append(dist)
+
+    probs = new_probs
+    dists = new_dists
 
     # Get list of discrete/continuous distribution indices
     discrete_index = [i for i, d in enumerate(dists) if isinstance(d, Discrete)]

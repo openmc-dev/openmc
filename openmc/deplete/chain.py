@@ -826,9 +826,12 @@ class Chain:
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
             if elm in components:
-                matrix[i, i] = sum(tr_rates.get_external_rate(mat, elm, current_timestep, dest_mat))
+                key = elm
             elif nuc.name in components:
-                matrix[i, i] = sum(tr_rates.get_external_rate(mat, nuc.name, current_timestep, dest_mat))
+                key = nuc.name
+            else:
+                continue
+            matrix[i, i] = sum(tr_rates.get_external_rate(mat, key, current_timestep, dest_mat))
                 
         # Return CSC instead of DOK
         return matrix.tocsc()

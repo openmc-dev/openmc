@@ -34,5 +34,5 @@ from .multipole import *
 from .grid import *
 from .function import *
 
-from .effective_dose.dose import dose_coefficients
-from .mass_energy_absorption import mu_en_coefficients
+from .dose.dose import dose_coefficients
+from .dose.mass_energy_absorption import mass_energy_absorption_coefficient

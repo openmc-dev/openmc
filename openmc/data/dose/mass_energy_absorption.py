@@ -2,6 +2,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.data import EV_PER_MEV
+from openmc.data.function import Tabulated1D
 
 # Embedded NIST-126 data
 # Air (Dry Near Sea Level) — NIST Standard Reference Database 126 Table 4 (doi: 10.18434/T4D01F)
@@ -57,10 +58,10 @@ _MUEN_TABLES = {
 }
 
 
-def mu_en_coefficients(
+def mass_energy_absorption_coefficient(
     material: str, data_source: str = "nist126"
-) -> tuple[np.ndarray, np.ndarray]:
-    """Return tabulated mass energy-absorption coefficients.
+) -> Tabulated1D:
+    """Return the mass energy-absorption coefficient as a function of energy.
 
     Parameters
     ----------
@@ -71,10 +72,10 @@ def mu_en_coefficients(
 
     Returns
     -------
-    energy : numpy.ndarray
-        Energies [eV]
-    mu_en_coeffs : numpy.ndarray
-        Mass energy-absorption coefficients [cm^2/g]
+    Tabulated1D
+        Mass energy-absorption coefficient [cm^2/g] as a function of photon
+        energy [eV], using log-log interpolation.
+
     """
     cv.check_value("material", material, {"air"})
     cv.check_value("data_source", data_source, {"nist126"})
@@ -83,11 +84,12 @@ def mu_en_coefficients(
     if key not in _MUEN_TABLES:
         available = sorted({m for (ds, m) in _MUEN_TABLES.keys() if ds == data_source})
         raise ValueError(
-            f"'{material}' has no embedded μen/ρ table for data source {data_source}. "
-            f"Available materials for {data_source}: {available}"
+            f"No mass energy-absorption data for '{material}' in data source "
+            f"'{data_source}'. Available materials: {available}"
         )
 
     data = _MUEN_TABLES[key]
     energy = data[:, 0].copy() * EV_PER_MEV  # MeV -> eV
     mu_en_coeffs = data[:, 1].copy()
-    return energy, mu_en_coeffs
+    return Tabulated1D(energy, mu_en_coeffs,
+                       breakpoints=[len(energy)], interpolation=[5])

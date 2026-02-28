@@ -26,7 +26,7 @@ from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
 from openmc.data.data import _get_element_symbol, BARN_PER_CM_SQ, JOULE_PER_EV
 from openmc.data.function import Tabulated1D
-from openmc.data import mu_en_coefficients, dose_coefficients
+from openmc.data import mass_energy_absorption_coefficient, dose_coefficients
 
 
 # Units for density supported by OpenMC
@@ -518,8 +518,8 @@ class Material(IDManagerMixin):
 
         if dose_quantity == 'absorbed-air':
 
-            # mu_en/ rho for air distribution, [eV, cm2/g]
-            response_f_x, response_f_y = mu_en_coefficients("air", data_source="nist126")
+            # mu_en/rho for air [cm2/g] as a function of energy [eV]
+            response_f = mass_energy_absorption_coefficient("air", data_source="nist126")
 
             # converts [eV cm2 barns-1 g-1 s-1] to [Gy hr-1]
             multiplier = (
@@ -535,6 +535,7 @@ class Material(IDManagerMixin):
 
             # effective dose as a function of photon fluence [pSv cm2]
             response_f_x, response_f_y = dose_coefficients("photon", geometry='AP', data_source='icrp116')
+            response_f = Tabulated1D(response_f_x, response_f_y, breakpoints=[len(response_f_x)], interpolation=[5])
 
             # converts [pSv cm2 barns-1 s-1] to [Sv hr-1]
             multiplier = (
@@ -544,8 +545,6 @@ class Material(IDManagerMixin):
                 * sv_per_psv
                 * BARN_PER_CM_SQ
             )
-
-        response_f = Tabulated1D(response_f_x, response_f_y, breakpoints=[len(response_f_x)], interpolation=[5])
 
         for nuc, nuc_atoms_per_bcm in self.get_nuclide_atom_densities().items():
 

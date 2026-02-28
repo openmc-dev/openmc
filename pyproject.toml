@@ -70,7 +70,7 @@ include = ['openmc*']
 exclude = ['tests*']
 
 [tool.setuptools.package-data]
-"openmc.data.effective_dose" = ["**/*.txt"]
+"openmc.data.dose" = ["**/*.txt"]
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
 

@@ -34,6 +34,7 @@ extern "C" double
 extern "C" double
   k_abs_tra;               //!< sum over batches of k_absorption * k_tracklength
 extern double log_spacing; //!< lethargy spacing for energy grid searches
+extern double log_spacing_rcp;
 extern "C" int n_lost_particles;   //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;      //!< batch at which a restart job resumed
@@ -117,6 +118,12 @@ void transport_history_based();
 //! Simulate all particles using history-based parallelism, with a shared
 //! secondary bank
 void transport_history_based_shared_secondary();
+
+//! Simulate a single particle history from birth to death using delta tracking
+void transport_delta_tracking_single_particle(Particle& p);
+
+//! Simulate all particle histories using delta tracking
+void transport_delta_tracking();
 
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();

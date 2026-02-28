@@ -9,6 +9,7 @@
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
+#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
@@ -87,6 +88,8 @@ int openmc_simulation_init()
   if (settings::run_CE) {
     initialize_data();
   }
+
+  if (settings::delta_tracking) create_majorant();
 
   // Determine how much work each process should do
   calculate_work(settings::n_particles);
@@ -279,11 +282,16 @@ int openmc_next_batch(int* status)
       } else {
         transport_event_based();
       }
+      transport_event_based();
     } else {
-      if (settings::use_shared_secondary_bank) {
-        transport_history_based_shared_secondary();
+      if (settings::delta_tracking) {
+        transport_delta_tracking();
       } else {
-        transport_history_based();
+        if (settings::use_shared_secondary_bank) {
+          transport_history_based_shared_secondary();
+        } else {
+          transport_history_based();
+        }
       }
     }
 
@@ -337,6 +345,7 @@ double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
 double log_spacing;
+double log_spacing_rcp;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
@@ -633,8 +642,13 @@ void initialize_generation()
       ufs_count_sites();
 
     // Store current value of tracklength k
-    simulation::keff_generation = simulation::global_tallies(
-      GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    if (settings::delta_tracking) {
+      simulation::keff_generation = simulation::global_tallies(
+        GlobalTally::K_COLLISION, TallyResult::VALUE);
+    } else {
+      simulation::keff_generation = simulation::global_tallies(
+        GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    }
   }
 }
 
@@ -765,6 +779,11 @@ void initialize_particle_track(
     write_message("Simulating Particle {}", p.id());
   }
 
+  // Compute the majorant.
+  if (settings::delta_tracking) {
+    p.update_majorant();
+  }
+
   // Add particle's starting weight to count for normalizing tallies later
   if (!is_secondary) {
 #pragma omp atomic
@@ -838,10 +857,13 @@ void initialize_data()
   // Determine minimum/maximum energy for incident neutron/photon data
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};
+  int neutron = ParticleType::neutron().transport_index();
+  int photon = ParticleType::photon().transport_index();
+  int electron = ParticleType::electron().transport_index();
+  int positron = ParticleType::positron().transport_index();
 
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
-      int neutron = ParticleType::neutron().transport_index();
       data::energy_min[neutron] =
         std::max(data::energy_min[neutron], nuc->grid_[0].energy.front());
       data::energy_max[neutron] =
@@ -852,7 +874,6 @@ void initialize_data()
   if (settings::photon_transport) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
-        int photon = ParticleType::photon().transport_index();
         int n = elem->energy_.size();
         data::energy_min[photon] =
           std::max(data::energy_min[photon], std::exp(elem->energy_(1)));
@@ -865,9 +886,6 @@ void initialize_data()
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
-        int photon = ParticleType::photon().transport_index();
-        int electron = ParticleType::electron().transport_index();
-        int positron = ParticleType::positron().transport_index();
         int n_e = data::ttb_e_grid.size();
 
         const std::vector<int> charged = {electron, positron};
@@ -885,13 +903,16 @@ void initialize_data()
     }
   }
 
+  // set energy recipricals
+  data::energy_min_rcp[neutron] = 1.0 / data::energy_min[neutron];
+  if (settings::photon_transport) data::energy_min_rcp[photon] = 1.0 / data::energy_min[photon];
+
   // Show which nuclide results in lowest energy for neutron transport
   for (const auto& nuc : data::nuclides) {
     // If a nuclide is present in a material that's not used in the model, its
     // grid has not been allocated
     if (nuc->grid_.size() > 0) {
       double max_E = nuc->grid_[0].energy.back();
-      int neutron = ParticleType::neutron().transport_index();
       if (max_E == data::energy_max[neutron]) {
         write_message(7, "Maximum neutron transport energy: {} eV for {}",
           data::energy_max[neutron], nuc->name_);
@@ -908,10 +929,10 @@ void initialize_data()
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = ParticleType::neutron().transport_index();
   simulation::log_spacing =
     std::log(data::energy_max[neutron] / data::energy_min[neutron]) /
     settings::n_log_bins;
+  simulation::log_spacing_rcp = 1.0 / simulation::log_spacing;
 }
 
 #ifdef OPENMC_MPI
@@ -984,6 +1005,34 @@ void transport_history_based()
       initialize_particle_track(p, i_work, false);
       transport_history_based_single_particle(p);
     }
+  }
+}
+
+void transport_delta_tracking_single_particle(Particle& p)
+{
+  p.delta_tracking() = true;
+  p.event_calculate_xs();
+  while (true) {
+    p.event_delta_advance();
+    if (!p.alive())
+      break;
+    p.event_calculate_xs();
+    if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
+      p.event_collide();
+    }
+    p.event_check_limit_and_revive();
+    if (!p.alive())
+      break;
+  }
+  p.event_death();
+}
+
+void transport_delta_tracking() {
+  #pragma omp parallel for schedule(runtime)
+  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+    Particle p;
+    initialize_particle_track(p, i_work, false);
+    transport_delta_tracking_single_particle(p);
   }
 }
 

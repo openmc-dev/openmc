@@ -49,9 +49,16 @@ void calculate_generation_keff()
   const auto& gt = simulation::global_tallies;
 
   // Get keff for this generation by subtracting off the starting value
-  simulation::keff_generation =
-    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
-    simulation::keff_generation;
+  if (settings::delta_tracking) {
+    simulation::keff_generation =
+      gt(GlobalTally::K_COLLISION, TallyResult::VALUE) -
+      simulation::keff_generation;
+  } else {
+    simulation::keff_generation =
+      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+      simulation::keff_generation;
+  }
+
 
   double keff_reduced;
 #ifdef OPENMC_MPI
@@ -448,6 +455,21 @@ int openmc_get_keff(double* k_combined)
   // Copy estimates of k-effective and its variance (not variance of the mean)
   const auto& gt = simulation::global_tallies;
 
+  if (settings::delta_tracking) {
+    array<double, 2> kv {};
+    tensor::Tensor<double> cov = tensor::Tensor<double>({2, 2});
+
+    kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
+    kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
+
+    cov(0, 0) = (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n*kv[0]*kv[0]) / (n -1);
+    cov(1, 1) = (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n*kv[1]*kv[1]) / (n - 1);
+
+    // Calculate covariances based on sums with Bessel's correction
+    cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
+    cov(1, 0) = cov(0, 1);
+  }
+
   array<double, 3> kv {};
   tensor::Tensor<double> cov = tensor::zeros<double>({3, 3});
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
@@ -502,6 +524,14 @@ int openmc_get_keff(double* k_combined)
   } else {
     // No two estimators match, so set boolean to use all three estimators.
     use_three = true;
+  }
+
+  // if delta tracking is enabled, use the collision and absorption
+  // estimators only
+  if (settings::delta_tracking) {
+    i = 0;
+    j = 1;
+    use_three = false;
   }
 
   if (use_three) {

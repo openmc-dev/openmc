@@ -482,7 +482,7 @@ class Settings:
         self._delayed_photon_scaling = None
         self._material_cell_offsets = None
         self._log_grid_bins = None
-
+        self._delta_tracking = None
         self._event_based = None
         self._max_particles_in_flight = None
         self._max_particle_events = None
@@ -1239,6 +1239,15 @@ class Settings:
     def delayed_photon_scaling(self, value: bool):
         cv.check_type('delayed photon scaling', value, bool)
         self._delayed_photon_scaling = value
+
+    @property
+    def delta_tracking(self):
+        return self._delta_tracking
+
+    @delta_tracking.setter
+    def delta_tracking(self, value):
+        cv.check_type('event_based', value, bool)
+        self._delta_tracking = value
 
     @property
     def material_cell_offsets(self) -> bool:
@@ -2002,6 +2011,10 @@ class Settings:
         if self._max_tracks is not None:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
+    def _create_delta_tracking_subelement(self, root):
+        if self._delta_tracking:
+            elem = ET.SubElement(root, "delta_tracking")
+            elem.text = str(self._delta_tracking).lower()
 
     def _create_random_ray_subelement(self, root, mesh_memo=None):
         if self._random_ray:
@@ -2637,6 +2650,7 @@ class Settings:
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
         self._create_free_gas_threshold_subelement(element)
+        self._create_delta_tracking_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)

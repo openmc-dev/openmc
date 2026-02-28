@@ -553,9 +553,13 @@ void print_results()
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
       fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
+      if (settings::delta_tracking) {
+      fmt::print(" k-effective (Track-length)  = (Delta-tracking enabled)\n");
+      } else {
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
       fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
+      }
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
       fmt::print(" k-effective (Absorption)    = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);

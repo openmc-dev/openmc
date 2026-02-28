@@ -15,6 +15,7 @@
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
+#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -153,6 +154,7 @@ void Particle::from_source(const SourceSite* src)
   material() = C_NONE;
   n_collision() = src->n_collision;
   fission() = false;
+  majorant() = 0.0;
   zero_flux_derivs();
   lifetime() = 0.0;
 #ifdef OPENMC_DAGMC_ENABLED
@@ -177,7 +179,8 @@ void Particle::from_source(const SourceSite* src)
     g_last() = static_cast<int>(src->E);
     E() = data::mg.energy_bin_avg_[g()];
   }
-  E_last() = E();
+
+  E_last() = E(); // maybe should be 0.0?
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
@@ -195,6 +198,10 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
+
+  if (delta_tracking()) {
+    update_majorant();
+  }
 }
 
 void Particle::event_calculate_xs()
@@ -219,8 +226,12 @@ void Particle::event_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
-      mark_as_lost(
-        "Could not find the cell containing particle " + std::to_string(id()));
+      if (!delta_tracking()) {
+        wgt() = 0.0;
+      } else {
+        mark_as_lost("Could not find the cell containing particle " +
+                     std::to_string(id()));
+      }
       return;
     }
 
@@ -310,7 +321,7 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
+  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron() && !delta_tracking()) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -322,6 +333,61 @@ void Particle::event_advance()
   // Set particle weight to zero if it hit the time boundary
   if (distance == distance_cutoff) {
     wgt() = 0.0;
+  }
+}
+
+void Particle::event_delta_advance()
+{
+  if (E() != E_last()) {
+    update_majorant();
+  }
+
+  // sample distance to next position
+  double distance;
+  if (type() == ParticleType::electron() || type() == ParticleType::positron()) {
+    distance = 0.0;
+  } else {
+    // calculate majorant value for this energy
+    distance = -std::log(prn(current_seed())) / majorant();
+  }
+
+  // Advance the particle (applying boundary conditions) until it either:
+  // i) Reaches a collision site;
+  // ii) Or leaks out of a vacuum boundary condition.
+  while (distance >= 0 && alive()) {
+    // update distance to problem boundary
+    boundary().distance() = INFTY;
+    boundary().surface() = 0;
+    boundary().coord_level() = 1;
+    for (auto s_idx : model::boundary_surfaces) {
+      const auto& s = model::surfaces[s_idx];
+      double surf_dist = s->distance(r(), u(), false);
+      if (surf_dist < boundary().distance()) {
+        boundary().distance() = surf_dist;
+        boundary().surface() = s_idx + 1;
+        if (s->sense(r(), u())) {
+          boundary().surface() *= -1;
+        }
+      }
+    }
+
+    // We collided before crossing a boundary surface.
+    // Need to advance the particle to the collision site.
+    if (distance < boundary().distance()) {
+      move_distance(distance);
+      break;
+    }
+
+    // Advance particle to the boundary surface.
+    move_distance(boundary().distance());
+    event_cross_surface();
+    distance -= boundary().distance();
+  }
+
+  // Ensure that cross sections will be re-calculated if
+  // the energy has changed.
+  if (E() != E_last()) {
+    material_last() = C_NONE;
   }
 }
 
@@ -389,6 +455,11 @@ void Particle::event_cross_surface()
 
 void Particle::event_collide()
 {
+  // Store pre-collision particle properties
+  wgt_last() = wgt();
+  E_last() = E();
+  u_last() = u();
+  r_last() = r();
 
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
@@ -530,8 +601,8 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
 void Particle::event_check_limit_and_revive()
 {
   // If particle has too many events, display warning and kill it
-  n_event()++;
-  if (n_event() == settings::max_particle_events) {
+  ++n_event();
+  if (n_event() == settings::max_particle_events && !delta_tracking()) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
     wgt() = 0.0;
@@ -573,7 +644,7 @@ void Particle::event_death()
 #pragma omp atomic
       global_tally_collision += k_collision;
     }
-    if (k_tracklength != 0.0) {
+    if (k_tracklength != 0.0 && !settings::delta_tracking) {
 #pragma omp atomic
       global_tally_tracklength += k_tracklength;
     }
@@ -791,10 +862,10 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
-  if (surf.geom_type() != GeometryType::DAG &&
-      !neighbor_list_find_cell(*this)) {
-    mark_as_lost("Couldn't find particle after reflecting from surface " +
-                 std::to_string(surf.id_) + ".");
+  if (surf.geom_type() != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
+    exhaustive_find_cell(*this);
+    this->mark_as_lost("Couldn't find particle after reflecting from surface " +
+                       std::to_string(surf.id_) + ".");
     return;
   }
 
@@ -853,6 +924,11 @@ void Particle::cross_periodic_bc(
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Hit periodic boundary on surface {}", surf.id_);
   }
+}
+
+void Particle::update_majorant()
+{
+  this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
 }
 
 void Particle::mark_as_lost(const char* message)

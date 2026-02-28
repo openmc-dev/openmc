@@ -56,7 +56,7 @@ ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 ENV NJOY_REPO='https://github.com/njoy/NJOY2016'
 
 # Setup environment variables for Docker image
-ENV LD_LIBRARY_PATH=${DAGMC_INSTALL_DIR}/lib:$LD_LIBRARY_PATH \
+ENV LD_LIBRARY_PATH=${DAGMC_INSTALL_DIR}/lib:${LD_LIBRARY_PATH:-} \
     OPENMC_ENDF_DATA=/root/endf-b-vii.1 \
     DEBIAN_FRONTEND=noninteractive
 

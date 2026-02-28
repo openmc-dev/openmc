@@ -1306,7 +1306,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
       }
       for (int g = 0; g < negroups_; g++) {
         double sigma_t =
-          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] * 
+          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
           source_regions_.density_mult(sr);
         source_regions_.external_source(sr, g) /= sigma_t;
         if (!std::isfinite(source_regions_.external_source(sr, g))) {

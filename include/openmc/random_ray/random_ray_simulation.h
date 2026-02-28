@@ -59,7 +59,7 @@ private:
 //============================================================================
 
 void validate_random_ray_inputs();
-void openmc_reset_random_ray();
+void openmc_finalize_random_ray();
 
 } // namespace openmc
 

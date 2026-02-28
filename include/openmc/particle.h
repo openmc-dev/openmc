@@ -71,6 +71,7 @@ public:
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();
+  void event_delta_advance();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary(const SourceSite& site);
@@ -112,6 +113,8 @@ public:
   //! \param message A warning message to display
   virtual void mark_as_lost(const char* message) override;
   using GeometryState::mark_as_lost;
+
+  void update_majorant();
 
   //! create a particle restart HDF5 file
   void write_restart() const;

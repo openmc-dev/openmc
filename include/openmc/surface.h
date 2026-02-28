@@ -28,6 +28,7 @@ class Surface;
 namespace model {
 extern std::unordered_map<int, int> surface_map;
 extern vector<unique_ptr<Surface>> surfaces;
+extern vector<int> boundary_surfaces;
 } // namespace model
 
 //==============================================================================

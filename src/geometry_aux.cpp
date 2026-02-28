@@ -268,6 +268,17 @@ void get_temperatures(
   }
 }
 
+void detect_boundary_surfaces() {
+  for (int i = 0; i < model::surfaces.size(); i++) {
+    // if the surface has a non-transmission boundary condition,
+    // add it to the list of surfaces to track during delta tracking
+    const auto& s = model::surfaces[i];
+    if (s->bc_) {
+      model::boundary_surfaces.push_back(i);
+    }
+  }
+}
+
 //==============================================================================
 
 void finalize_geometry()
@@ -279,6 +290,8 @@ void finalize_geometry()
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
+
+  detect_boundary_surfaces();
 
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);

@@ -24,7 +24,7 @@ from .utility_funcs import input_path
 from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture, Tabular
-from openmc.data.data import _get_element_symbol, BARN_PER_CM_SQ, JOULE_PER_EV
+from openmc.data.data import _get_element_symbol, JOULE_PER_EV
 from openmc.data.function import Tabulated1D
 from openmc.data import mass_energy_absorption_coefficient, dose_coefficients
 
@@ -414,7 +414,12 @@ class Material(IDManagerMixin):
 
 
 
-    def get_photon_contact_dose_rate(self, dose_quantity:str = "absorbed-air", build_up:float = 2.0, by_nuclide: bool = False) -> float | dict[str, float]:
+    def get_photon_contact_dose_rate(
+        self,
+        dose_quantity: str = "absorbed-air",
+        build_up: float = 2.0,
+        by_nuclide: bool = False
+    ) -> float | dict[str, float]:
         """Compute the photon contact dose rate (CDR) produced by radioactive decay
         of the material.
 
@@ -517,7 +522,6 @@ class Material(IDManagerMixin):
         sv_per_psv = 1e-12
 
         if dose_quantity == 'absorbed-air':
-
             # mu_en/rho for air [cm2/g] as a function of energy [eV]
             response_f = mass_energy_absorption_coefficient("air", data_source="nist126")
 
@@ -527,15 +531,16 @@ class Material(IDManagerMixin):
                 * geometry_factor_slab
                 * seconds_per_hour
                 * grams_per_kg
-                * BARN_PER_CM_SQ
+                * 1e24
                 * JOULE_PER_EV
             )
 
         elif dose_quantity == 'effective':
-
             # effective dose as a function of photon fluence [pSv cm2]
-            response_f_x, response_f_y = dose_coefficients("photon", geometry='AP', data_source='icrp116')
-            response_f = Tabulated1D(response_f_x, response_f_y, breakpoints=[len(response_f_x)], interpolation=[5])
+            response_f_x, response_f_y = dose_coefficients(
+                "photon", geometry='AP', data_source='icrp116')
+            response_f = Tabulated1D(response_f_x, response_f_y, breakpoints=[
+                len(response_f_x)], interpolation=[5])
 
             # converts [pSv cm2 barns-1 s-1] to [Sv hr-1]
             multiplier = (
@@ -543,13 +548,11 @@ class Material(IDManagerMixin):
                 * geometry_factor_slab
                 * seconds_per_hour
                 * sv_per_psv
-                * BARN_PER_CM_SQ
+                * 1e24
             )
 
         for nuc, nuc_atoms_per_bcm in self.get_nuclide_atom_densities().items():
-
             cdr_nuc = 0.0
-
             photon_source_per_atom = openmc.data.decay_photon_energy(nuc)
 
             # nuclides with no contribution
@@ -557,34 +560,28 @@ class Material(IDManagerMixin):
                 cdr[nuc] = 0.0
                 continue
 
-            if isinstance(photon_source_per_atom, (Discrete, Tabular)):
-                e_vals = np.array(photon_source_per_atom.x)
-                p_vals = np.array(photon_source_per_atom.p)
-
-                e_lists = [e_vals, response_f.x]
-                e_lists.append(mu_e_vals)
-
-                # clip distributions for values outside the tabulated values
-                left_bound = max(a.min() for a in e_lists)
-                right_bound = min(a.max() for a in e_lists)
-
-                mask = (e_vals >= left_bound) & (e_vals <= right_bound)
-                e_vals = e_vals[mask]
-                p_vals = p_vals[mask]
-
-            else:
+            if not isinstance(photon_source_per_atom, (Discrete, Tabular)):
                 raise ValueError(
                     f"Unknown decay photon energy data type for nuclide {nuc}"
                     f"value returned: {type(photon_source_per_atom)}"
                 )
 
+            e_vals = np.array(photon_source_per_atom.x)
+            p_vals = np.array(photon_source_per_atom.p)
+
+            e_lists = [e_vals, response_f.x]
+            e_lists.append(mu_e_vals)
+
+            # clip distributions for values outside the tabulated values
+            left_bound = max(a.min() for a in e_lists)
+            right_bound = min(a.max() for a in e_lists)
+
+            mask = (e_vals >= left_bound) & (e_vals <= right_bound)
+            e_vals = e_vals[mask]
+            p_vals = p_vals[mask]
+
             if isinstance(photon_source_per_atom, Discrete):
-                mu_vals = np.array(linear_attenuation(e_vals))
-                if np.any(mu_vals <= 0.0):
-                    zero_vals = e_vals[mu_vals <= 0.0]
-                    raise ValueError(
-                        f"Mass attenuation coefficient <= 0 at energies: {zero_vals}"
-                    )
+                mu_vals = linear_attenuation(e_vals)
                 if dose_quantity == 'absorbed-air':
                     # units [eV cm3 g-1 atoms-1 s-1]
                     cdr_nuc += np.sum((response_f(e_vals) / mu_vals) * p_vals * e_vals)
@@ -594,12 +591,10 @@ class Material(IDManagerMixin):
 
 
             elif isinstance(photon_source_per_atom, Tabular):
-
                 # generate the tabulated1D functions
                 e_p_dist = Tabulated1D(
                     e_vals, p_vals, breakpoints=[len(e_vals)], interpolation=[1]
                 )
-
 
                 # limit the computation to the tabulated mu_en_air range
                 e_union = reduce(np.union1d, e_lists)
@@ -608,12 +603,7 @@ class Material(IDManagerMixin):
                     raise ValueError("Not enough overlapping energy points to compute CDR")
 
                 # check for non-positive attenuation coefficients
-                mu_vals_union = np.array(linear_attenuation(e_union))
-                if np.any(mu_vals_union <= 0.0):
-                    zero_vals = e_union[mu_vals_union <= 0.0]
-                    raise ValueError(
-                        f"Mass attenuation coefficient <= 0 at energies: {zero_vals}"
-                    )
+                mu_vals_union = linear_attenuation(e_union)
 
                 if dose_quantity == 'absorbed-air':
                     # units [eV cm3 g-1 atoms-1 s-1]
@@ -633,7 +623,6 @@ class Material(IDManagerMixin):
                 )
 
                 cdr_nuc += integrand_function.integral()[-1]
-
 
             # units air-absorbed dose [eV cm2 barns-1 g-1 s-1]
             # units effective dose [pSv cm2 barns-1 s-1]

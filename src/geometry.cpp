@@ -106,11 +106,11 @@ double cell_importance_at_level(const Particle& p, int level)
                   "levels exist in the geometry.",
         level, p.n_coord()));
   }
-  int i = -1;
+  int j = -1;
   if (p.type().is_neutron())
-    i = 0;
+    j = 0;
   else if (p.type().is_photon())
-    i = 1;
+    j = 1;
   else
     return 1.0;
 
@@ -132,7 +132,7 @@ double cell_importance_at_level(const Particle& p, int level)
         instance += lat.offset(c.distribcell_index_, i_xyz);
       }
     }
-    importance *= c_i.importance(i, instance);
+    importance *= c_i.importance(j, instance);
   }
   return importance;
 }

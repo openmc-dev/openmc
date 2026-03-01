@@ -203,7 +203,7 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       accepted = true;
     } else {
       // Check whether sampled site satisfies constraints
-      accepted = satisfies_spatial_constraints(site.r) &&
+      accepted = satisfies_spatial_constraints(site.r, site.particle) &&
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
       if (!accepted) {
@@ -237,16 +237,23 @@ bool Source::satisfies_time_constraints(double time) const
   return time > time_bounds_.first && time < time_bounds_.second;
 }
 
-bool Source::satisfies_spatial_constraints(Position r) const
+bool Source::satisfies_spatial_constraints(Position r, ParticleType type) const
 {
-  GeometryState geom_state;
-  geom_state.r() = r;
-  geom_state.u() = {0.0, 0.0, 1.0};
+  Particle p;
+  p.r() = r;
+  p.u() = {0.0, 0.0, 1.0};
+  p.type() = type;
 
   // Reject particle if it's not in the geometry at all
   bool found = exhaustive_find_cell(geom_state);
   if (!found)
     return false;
+
+  // Reject particle if it is in an importance zero cell
+  if (type.is_neutron() || type.is_photon()) {
+    if (cell_importance_at_level(p, p.n_coord()) == 0.0)
+      return false;
+  }
 
   // Check the geometry state against specified domains
   bool accepted = true;
@@ -379,7 +386,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     r_wgt = r_wgt_temp;
 
     // Check if sampled position satisfies spatial constraints
-    accepted = satisfies_spatial_constraints(site.r);
+    accepted = satisfies_spatial_constraints(site.r, site.particle);
 
     // Check for rejection
     if (!accepted) {

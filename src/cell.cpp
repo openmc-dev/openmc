@@ -102,13 +102,12 @@ double Cell::temperature(int32_t instance) const
   }
 }
 
-double Cell::importance(int32_t instance) const
+double Cell::importance(int index, int32_t instance) const
 {
   if (instance >= 0) {
-    return importance_.size() == 1 ? importance_.at(0)
-                                   : importance_.at(instance);
+    return importance_[index][importance_[index].size() > 1 ? instance : 0];
   } else {
-    return importance_[0];
+    return importance_[index][0];
   }
 }
 
@@ -348,13 +347,18 @@ void Cell::to_hdf5(hid_t cell_group) const
     write_dataset(group, "lattice", model::lattices[fill_]->id_);
   }
 
-  if (importance_.size() == 1) {
-    if (importance_[0] != 1.0)
-      write_dataset(group, "importance", importance_[0]);
+  if (importance_[0].size() == 1) {
+    if (importance_[0][0] != 1.0)
+      write_dataset(group, "importance_neutron", importance_[0][0]);
   } else {
-    write_dataset(group, "importance", importance_);
+    write_dataset(group, "importance_neutron", importance_[0]);
   }
-
+  if (importance_[1].size() == 1) {
+    if (importance_[1][0] != 1.0)
+      write_dataset(group, "importance_photon", importance_[1][0]);
+  } else {
+    write_dataset(group, "importance_photon", importance_[1]);
+  }
   close_group(group);
 }
 
@@ -490,22 +494,41 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
   }
 
-  if (check_for_node(cell_node, "importance")) {
-    importance_ = get_node_array<double>(cell_node, "importance");
-    importance_.shrink_to_fit();
+  importance_.resize(2);
+  if (check_for_node(cell_node, "importance_neutrom")) {
+    importance_[0] = get_node_array<double>(cell_node, "importance_neutron");
+    importance_[0].shrink_to_fit();
 
     // Make sure all importancs are non-negative and greater than zero.
-    for (auto importance : importance_) {
+    for (auto importance : importance_[0]) {
       if (importance < 0)
         fatal_error(fmt::format(
-          "Cell {} was specified with a negative importance.", id_));
+          "Cell {} was specified with a negative neutron importance.", id_));
       if (!settings::weight_windows_on) {
         if (importance != 1.0 && importance > 0.0)
           simulation::cell_importances = true;
       }
     }
   } else {
-    importance_ = {1.0};
+    importance_[0] = {1.0};
+  }
+
+  if (check_for_node(cell_node, "importance_photon")) {
+    importance_[1] = get_node_array<double>(cell_node, "importance_photon");
+    importance_[1].shrink_to_fit();
+
+    // Make sure all importancs are non-negative and greater than zero.
+    for (auto importance : importance_[1]) {
+      if (importance < 0)
+        fatal_error(fmt::format(
+          "Cell {} was specified with a negative photon importance.", id_));
+      if (!settings::weight_windows_on) {
+        if (importance != 1.0 && importance > 0.0)
+          simulation::cell_importances = true;
+      }
+    }
+  } else {
+    importance_[1] = {1.0};
   }
 
   // Read the region specification.

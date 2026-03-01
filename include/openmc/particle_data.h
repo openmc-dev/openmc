@@ -501,6 +501,7 @@ private:
   int g_ {0};
   int g_last_;
 
+  double importance_last_ {1.0};
   double wgt_ {1.0};
   double wgt_born_ {1.0};
   double wgt_ww_born_ {-1.0};
@@ -609,6 +610,9 @@ public:
   const int& g() const { return g_; }
   int& g_last() { return g_last_; }
   const int& g_last() const { return g_last_; }
+
+  double& importance_last() { return importance_last_; }
+  const double& importance_last() const { return importance_last_; }
 
   // Statistic weight of particle. Setting to zero indicates that the particle
   // is dead.

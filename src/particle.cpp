@@ -298,7 +298,8 @@ void Particle::event_cross_surface()
   }
   n_coord_last() = n_coord();
 
-  auto instance_last = cell_instance();
+  if (simulation::cell_importances && material() != MATERIAL_VOID)
+    importance_last() = cell_importance_at_level(*this, n_coord() - 1);
 
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface();
@@ -320,8 +321,7 @@ void Particle::event_cross_surface()
       add_surf_source_to_bank(*this, *surf);
     }
     this->cross_surface(*surf);
-    double importance =
-      model::cells[coord(n_coord() - 1).cell()]->importance(cell_instance());
+    double importance = cell_importance_at_level(*this, n_coord() - 1);
     if (importance == 0.0) {
       wgt() = 0.0;
       return;
@@ -334,12 +334,10 @@ void Particle::event_cross_surface()
       apply_weight_windows(*this);
     }
     if (simulation::cell_importances) {
-      double importance_last =
-        model::cells[cell_last(n_coord_last() - 1)]->importance(instance_last);
-      if (importance != importance_last) {
-        if (importance < importance_last) {
-          if (importance_last * prn(current_seed()) < importance) {
-            wgt() *= importance_last / importance;
+      if (importance != importance_last()) {
+        if (importance < importance_last()) {
+          if (importance_last() * prn(current_seed()) < importance) {
+            wgt() *= importance_last() / importance;
           } else {
             wgt() = 0.;
             return;
@@ -349,9 +347,9 @@ void Particle::event_cross_surface()
           if (n_split() >= settings::max_history_splits)
             return;
 
-          double num_split =
-            std::min(static_cast<int>(std::ceil(importance / importance_last)),
-              settings::max_history_splits);
+          double num_split = std::min(
+            static_cast<int>(std::ceil(importance / importance_last())),
+            settings::max_history_splits);
           n_split() += num_split;
 
           // Create secondaries and divide weight among all particles

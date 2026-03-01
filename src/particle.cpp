@@ -348,7 +348,7 @@ void Particle::event_cross_surface()
             return;
           double n_s = importance / importance_last();
           int n = static_cast<int>(n_s);
-          if (prn(p.current_seed()) <= n_s - n)
+          if (prn(current_seed()) <= n_s - n)
             ++n;
           n = std::min(n, settings::max_history_splits);
           n_split() += n;

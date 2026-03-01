@@ -245,7 +245,7 @@ bool Source::satisfies_spatial_constraints(Position r, ParticleType type) const
   p.type() = type;
 
   // Reject particle if it's not in the geometry at all
-  bool found = exhaustive_find_cell(geom_state);
+  bool found = exhaustive_find_cell(p);
   if (!found)
     return false;
 
@@ -259,18 +259,17 @@ bool Source::satisfies_spatial_constraints(Position r, ParticleType type) const
   bool accepted = true;
   if (!domain_ids_.empty()) {
     if (domain_type_ == DomainType::MATERIAL) {
-      auto mat_index = geom_state.material();
+      auto mat_index = p.material();
       if (mat_index == MATERIAL_VOID) {
         accepted = false;
       } else {
         accepted = contains(domain_ids_, model::materials[mat_index]->id());
       }
     } else {
-      for (int i = 0; i < geom_state.n_coord(); i++) {
-        auto id =
-          (domain_type_ == DomainType::CELL)
-            ? model::cells[geom_state.coord(i).cell()].get()->id_
-            : model::universes[geom_state.coord(i).universe()].get()->id_;
+      for (int i = 0; i < p.n_coord(); i++) {
+        auto id = (domain_type_ == DomainType::CELL)
+                    ? model::cells[p.coord(i).cell()].get()->id_
+                    : model::universes[p.coord(i).universe()].get()->id_;
         if ((accepted = contains(domain_ids_, id)))
           break;
       }
@@ -280,7 +279,7 @@ bool Source::satisfies_spatial_constraints(Position r, ParticleType type) const
   // Check if spatial site is in fissionable material
   if (accepted && only_fissionable_) {
     // Determine material
-    auto mat_index = geom_state.material();
+    auto mat_index = p.material();
     if (mat_index == MATERIAL_VOID) {
       accepted = false;
     } else {

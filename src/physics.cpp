@@ -9,6 +9,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
+#include "openmc/geometry.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
@@ -140,8 +141,7 @@ void sample_neutron_reaction(Particle& p)
 
   // Create secondary photons
   if (settings::photon_transport) {
-    auto& c = model::cells[p.coord(p.n_coord() - 1).cell()];
-    if (c->importance(1, p.cell_instance()) > 0.0)
+    if (cell_importance_at_level(p, p.n_coord() - 1) > 0.0)
       sample_secondary_photons(p, i_nuclide);
   }
 

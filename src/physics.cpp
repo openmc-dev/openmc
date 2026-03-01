@@ -139,7 +139,9 @@ void sample_neutron_reaction(Particle& p)
 
   // Create secondary photons
   if (settings::photon_transport) {
-    sample_secondary_photons(p, i_nuclide);
+    auto& c = model::cells[p.coord(p.n_coord() - 1).cell()];
+    if (c.importance(1, p.cell_instance()) > 0.0)
+      sample_secondary_photons(p, i_nuclide);
   }
 
   // If survival biasing is being used, the following subroutine adjusts the

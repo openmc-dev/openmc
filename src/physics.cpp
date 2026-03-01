@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/bremsstrahlung.h"
+#include "openmc/cell.h"
 #include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
@@ -140,7 +141,7 @@ void sample_neutron_reaction(Particle& p)
   // Create secondary photons
   if (settings::photon_transport) {
     auto& c = model::cells[p.coord(p.n_coord() - 1).cell()];
-    if (c.importance(1, p.cell_instance()) > 0.0)
+    if (c->importance(1, p.cell_instance()) > 0.0)
       sample_secondary_photons(p, i_nuclide);
   }
 

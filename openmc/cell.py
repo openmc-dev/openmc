@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from math import cos, sin, pi
 from numbers import Real
 
@@ -261,7 +261,7 @@ class Cell(IDManagerMixin):
                         cv.check_greater_than(f'cell importance value[{i}]', val, 0.0, True)
                 else:
                     cv.check_greater_than('cell importance value', value, 0.0, True)
-            self.importance = importance
+            self._importance = importance
                 
         else:
             if isinstance(importance, Iterable):
@@ -270,7 +270,7 @@ class Cell(IDManagerMixin):
                     cv.check_greater_than(f'cell importance[{i}]', val, 0.0, True)
             else:
                 cv.check_greater_than('cell importance', importance, 0.0, True)
-            self.importance = {'neutron': importance, 'photon': importance}
+            self._importance = {'neutron': importance, 'photon': importance}
 
     @property
     def temperature(self):

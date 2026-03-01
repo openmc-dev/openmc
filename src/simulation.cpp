@@ -298,6 +298,7 @@ namespace openmc {
 
 namespace simulation {
 
+bool cell_importances {false};
 int ct_current_file;
 int current_batch;
 int current_gen;

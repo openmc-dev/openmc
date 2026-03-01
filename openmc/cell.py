@@ -69,6 +69,9 @@ class Cell(IDManagerMixin):
     rotation_matrix : numpy.ndarray
         The rotation matrix defined by the angles specified in the
         :attr:`Cell.rotation` property.
+    importance : float or iterable of float
+        Importance of the cell. Defaults to 1.0. Multiple importances can be given
+            to give each distributed cell instance a unique importance.
     temperature : float or iterable of float
         Temperature of the cell in Kelvin.  Multiple temperatures can be given
         to give each distributed cell instance a unique temperature.
@@ -110,6 +113,7 @@ class Cell(IDManagerMixin):
         self.name = name
         self.fill = fill
         self.region = region
+        self._importance = 1.0
         self._rotation = None
         self._rotation_matrix = None
         self._temperature = None
@@ -238,6 +242,30 @@ class Cell(IDManagerMixin):
     @property
     def rotation_matrix(self):
         return self._rotation_matrix
+    
+    @property
+    def importance(self):
+        return self._importance
+
+    @importance.setter
+    def importance(self, importance):
+        # Make sure importances are positive
+        cv.check_type('cell importance', importance, (Iterable, Real))
+        if isinstance(importance, Iterable):
+            cv.check_type('cell importance', importance, Iterable, Real)
+            for val in importance:
+                cv.check_greater_than('cell importance', val, 0.0, True)
+        elif isinstance(importance, Real):
+            cv.check_greater_than('cell importance', importance, 0.0, True)
+
+        # If this cell is filled with a universe or lattice, propagate
+        # importances to all cells contained. Otherwise, simply assign it.
+        if self.fill_type in ('universe', 'lattice'):
+            for c in self.get_all_cells().values():
+                if c.fill_type == 'material':
+                    c.importance = importance
+        else:
+            self.importance = importance
 
     @property
     def temperature(self):
@@ -692,6 +720,13 @@ class Cell(IDManagerMixin):
             else:
                 element.set("density", str(self.density))
 
+        if self.importance != 1.0:
+            if isinstance(self.importance, Iterable):
+                importance_subelement = ET.SubElement(element, "importance")
+                importance_subelement.text = ' '.join(str(val) for val in self.importance)
+            else:
+                element.set("importance", str(self.importance))
+
         if self.translation is not None:
             element.set("translation", ' '.join(map(str, self.translation)))
 
@@ -747,23 +782,16 @@ class Cell(IDManagerMixin):
             c.region = Region.from_expression(region, surfaces)
 
         # Check for other attributes
-        temperature = get_elem_list(elem, 'temperature', float)
-        if temperature is not None:
-            if len(temperature) > 1:
-                c.temperature = temperature
-            else:
-                c.temperature = temperature[0]
-        density = get_elem_list(elem, 'density', float)
-        if density is not None:
-            c.density = density if len(density) > 1 else density[0]
         v = get_text(elem, 'volume')
         if v is not None:
             c.volume = float(v)
-        for key in ('temperature', 'density', 'rotation', 'translation'):
+        for key in ('temperature', 'density', 'importance', 'rotation', 'translation'):
             values = get_elem_list(elem, key, float)
             if values is not None:
                 if key == 'rotation' and len(values) == 9:
                     values = np.array(values).reshape(3, 3)
+                elif len(values) == 1:
+                    values = values[0]
                 setattr(c, key, values)
 
         # Add this cell to appropriate universe

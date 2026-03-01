@@ -22,6 +22,7 @@ constexpr int STATUS_EXIT_ON_TRIGGER {2};
 
 namespace simulation {
 
+extern bool cell_importances; //!< Use cell importances variance reduction
 extern int ct_current_file;   //!< current collision track file index
 extern "C" int current_batch; //!< current batch
 extern "C" int current_gen;   //!< current fission generation

@@ -494,8 +494,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
   }
 
-  importance_.resize(2);
-  if (check_for_node(cell_node, "importance_neutrom")) {
+  if (check_for_node(cell_node, "importance_neutron")) {
     importance_[0] = get_node_array<double>(cell_node, "importance_neutron");
     importance_[0].shrink_to_fit();
 
@@ -509,8 +508,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
           simulation::cell_importances = true;
       }
     }
-  } else {
-    importance_[0] = {1.0};
   }
 
   if (check_for_node(cell_node, "importance_photon")) {
@@ -527,8 +524,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
           simulation::cell_importances = true;
       }
     }
-  } else {
-    importance_[1] = {1.0};
   }
 
   // Read the region specification.

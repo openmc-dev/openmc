@@ -369,7 +369,7 @@ public:
   //! \brief Importance for this cell per particle type
   //!
   //! May be multiple for distribcell.
-  vector<vector<double>> importance_;
+  vector<vector<double>> importance_ {{1.0}, {1.0}};
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;

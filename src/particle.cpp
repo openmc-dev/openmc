@@ -333,7 +333,7 @@ void Particle::event_cross_surface()
     if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);
     }
-    if (simulation::cell_importances) {
+    if (simulation::cell_importances && material() != MATERIAL_VOID) {
       if (importance != importance_last()) {
         if (importance < importance_last()) {
           if (importance_last() * prn(current_seed()) < importance) {
@@ -346,19 +346,19 @@ void Particle::event_cross_surface()
           // do not further split the particle if above the limit
           if (n_split() >= settings::max_history_splits)
             return;
-
-          double num_split = std::min(
-            static_cast<int>(std::ceil(importance / importance_last())),
-            settings::max_history_splits);
-          n_split() += num_split;
+          double n_s = importance / importance_last();
+          int n = static_cast<int>(n_s);
+          if (prn(p.current_seed()) <= n_s - n)
+            ++n;
+          n = std::min(n, settings::max_history_splits);
+          n_split() += n;
 
           // Create secondaries and divide weight among all particles
-          int i_split = std::round(num_split);
-          for (int l = 0; l < i_split - 1; l++) {
-            split(wgt() / num_split);
+          for (int l = 0; l < n - 1; l++) {
+            split(wgt() / n);
           }
           // remaining weight is applied to current particle
-          wgt() /= num_split;
+          wgt() /= n;
         }
       }
     }

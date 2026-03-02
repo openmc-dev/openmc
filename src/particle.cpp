@@ -49,9 +49,11 @@ double Particle::mass() const
   switch (type().pdg_number()) {
   case PDG_NEUTRON:
     return MASS_NEUTRON_EV;
-  case PDG_ELECTRON:                                                              case PDG_POSITRON:
+  case PDG_ELECTRON:
+  case PDG_POSITRON:
     return MASS_ELECTRON_EV;
-  default:                                                                          return this->type().mass() * AMU_EV;
+  default:
+    return this->type().mass() * AMU_EV;
   }
 }
 

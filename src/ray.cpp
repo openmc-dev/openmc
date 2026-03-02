@@ -1,5 +1,7 @@
 #include "openmc/ray.h"
 
+#include "openmc/geometry.h"
+
 namespace openmc {
 
 void Ray::compute_distance()

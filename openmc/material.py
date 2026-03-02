@@ -479,7 +479,7 @@ class Material(IDManagerMixin):
 
         cv.check_type("by_nuclide", by_nuclide, bool)
         cv.check_type("dose_quantity", dose_quantity, str)
-        cv.check_value("dose_quantity", dose_quantity, ['absorbed-air', 'effective'])
+        cv.check_value("dose_quantity", dose_quantity, {'absorbed-air', 'effective'})
         cv.check_type("build_up", build_up, Real)
         cv.check_greater_than("build_up", build_up, 0.0)
 
@@ -525,15 +525,9 @@ class Material(IDManagerMixin):
             # mu_en/rho for air [cm2/g] as a function of energy [eV]
             response_f = mass_energy_absorption_coefficient("air", data_source="nist126")
 
-            # converts [eV cm2 barns-1 g-1 s-1] to [Gy hr-1]
-            multiplier = (
-                build_up
-                * geometry_factor_slab
-                * seconds_per_hour
-                * grams_per_kg
-                * 1e24
-                * JOULE_PER_EV
-            )
+            # Convert [eV cm2 barns-1 g-1 s-1] to [Gy hr-1]
+            multiplier = (build_up * geometry_factor_slab * seconds_per_hour
+                          * grams_per_kg * 1e24 * JOULE_PER_EV)
 
         elif dose_quantity == 'effective':
             # effective dose as a function of photon fluence [pSv cm2]
@@ -542,17 +536,11 @@ class Material(IDManagerMixin):
             response_f = Tabulated1D(response_f_x, response_f_y, breakpoints=[
                 len(response_f_x)], interpolation=[5])
 
-            # converts [pSv cm2 barns-1 s-1] to [Sv hr-1]
-            multiplier = (
-                build_up
-                * geometry_factor_slab
-                * seconds_per_hour
-                * sv_per_psv
-                * 1e24
-            )
+            # Convert [pSv cm2/(b-s)] to [Sv/hr]
+            multiplier = (build_up * geometry_factor_slab * seconds_per_hour
+                          * sv_per_psv * 1e24)
 
         for nuc, nuc_atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            cdr_nuc = 0.0
             photon_source_per_atom = openmc.data.decay_photon_energy(nuc)
 
             # nuclides with no contribution
@@ -566,11 +554,12 @@ class Material(IDManagerMixin):
                     f"value returned: {type(photon_source_per_atom)}"
                 )
 
-            e_vals = np.array(photon_source_per_atom.x)
-            p_vals = np.array(photon_source_per_atom.p)
+            e_vals = photon_source_per_atom.x
+            p_vals = photon_source_per_atom.p
 
-            e_lists = [e_vals, response_f.x]
-            e_lists.append(mu_e_vals)
+            # Construct list of energies from (photon source, response function,
+            # mu_en_air) for clipping to common energy range
+            e_lists = [e_vals, response_f.x, mu_e_vals]
 
             # clip distributions for values outside the tabulated values
             left_bound = max(a.min() for a in e_lists)
@@ -583,12 +572,11 @@ class Material(IDManagerMixin):
             if isinstance(photon_source_per_atom, Discrete):
                 mu_vals = linear_attenuation(e_vals)
                 if dose_quantity == 'absorbed-air':
-                    # units [eV cm3 g-1 atoms-1 s-1]
-                    cdr_nuc += np.sum((response_f(e_vals) / mu_vals) * p_vals * e_vals)
+                    # units [eV cm3/(g atom s)]
+                    cdr_nuc = np.sum((response_f(e_vals) / mu_vals) * p_vals * e_vals)
                 elif dose_quantity == 'effective':
-                    # units [pSv cm3 atoms-1 s-1]
-                    cdr_nuc += np.sum((response_f(e_vals) / mu_vals) * p_vals)
-
+                    # units [pSv cm3/(atom s)]
+                    cdr_nuc = np.sum((response_f(e_vals) / mu_vals) * p_vals)
 
             elif isinstance(photon_source_per_atom, Tabular):
                 # generate the tabulated1D functions
@@ -602,29 +590,21 @@ class Material(IDManagerMixin):
                 if len(e_union) < 2:
                     raise ValueError("Not enough overlapping energy points to compute CDR")
 
-                # check for non-positive attenuation coefficients
                 mu_vals_union = linear_attenuation(e_union)
-
                 if dose_quantity == 'absorbed-air':
-                    # units [eV cm3 g-1 atoms-1 s-1]
-                    y_evaluated = (
-                        response_f(e_union) * e_p_dist(e_union)
-                        * e_union / mu_vals_union
-                    )
+                    # units [eV cm3/(g atom s)]
+                    y_evaluated = (response_f(e_union) * e_p_dist(e_union) * e_union / mu_vals_union)
                 elif dose_quantity == 'effective':
-                    # units [pSv cm3 atoms-1 s-1]
-                    y_evaluated = (
-                        response_f(e_union) * e_p_dist(e_union)
-                        / mu_vals_union
-                    )
+                    # units [pSv cm3/(atom s)]
+                    y_evaluated = (response_f(e_union) * e_p_dist(e_union) / mu_vals_union)
 
                 integrand_function = Tabulated1D(
                     e_union, y_evaluated, breakpoints=[len(e_union)], interpolation=[2]
                 )
 
-                cdr_nuc += integrand_function.integral()[-1]
+                cdr_nuc = integrand_function.integral()[-1]
 
-            # units air-absorbed dose [eV cm2 barns-1 g-1 s-1]
+            # units air-absorbed dose [eV cm2/(g b s)]
             # units effective dose [pSv cm2 barns-1 s-1]
             cdr_nuc *= nuc_atoms_per_bcm
 

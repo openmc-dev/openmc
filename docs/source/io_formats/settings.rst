@@ -721,7 +721,10 @@ attributes/sub-elements:
     is present.
 
   :particle:
-    The source particle type, either ``neutron`` or ``photon``.
+    The source particle type, specified as a PDG number or a string alias (e.g.,
+    ``neutron``/``n``, ``photon``/``gamma``, ``electron``, ``positron``,
+    ``proton``/``p``, ``deuteron``/``d``, ``triton``/``t``, ``alpha``, or GNDS
+    nuclide names like ``Fe57``).
 
     *Default*: neutron
 
@@ -811,6 +814,7 @@ attributes/sub-elements:
 
       For a "cylindrical" distribution, no parameters are specified. Instead,
       the ``r``, ``phi``, ``z``, and ``origin`` elements must be specified.
+      Optionally, the ``r_dir`` and ``z_dir`` elements could be specified.
 
       For a "spherical" distribution, no parameters are specified. Instead,
       the ``r``, ``theta``, ``phi``, and ``origin`` elements must be specified.
@@ -842,6 +846,10 @@ attributes/sub-elements:
       of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
+    :r_dir:
+      For "cylindrical" distributions, this element specifies the direction
+      of the cylinder r-axis at phi=0. Defaults to (1.0, 0.0, 0.0).
+
     :theta:
       For a "spherical" distribution, this element specifies the distribution
       of theta-coordinates. The necessary sub-elements/attributes are those of a
@@ -853,6 +861,10 @@ attributes/sub-elements:
       the distribution of phi-coordinates. The necessary
       sub-elements/attributes are those of a univariate probability
       distribution (see the description in :ref:`univariate`).
+
+    :z_dir:
+      For "cylindrical" distributions, this element specifies the direction
+      of the cylinder z-axis. Defaults to (0.0, 0.0, 1.0).
 
     :origin:
       For "cylindrical and "spherical" distributions, this element specifies
@@ -1537,7 +1549,8 @@ sub-elements/attributes:
     *Default*: None
 
   :particle_type:
-    The particle that the weight windows will apply to (e.g., 'neutron')
+    The particle that the weight windows will apply to, specified as a PDG
+    code or string (e.g., ``neutron``).
 
     *Default*: 'neutron'
 
@@ -1597,7 +1610,8 @@ mesh-based weight windows.
     *Default*: None
 
   :particle_type:
-    The particle that the weight windows will apply to (e.g., 'neutron')
+    The particle that the weight windows will apply to, specified as a PDG
+    code or string (e.g., ``neutron``).
 
     *Default*: neutron
 

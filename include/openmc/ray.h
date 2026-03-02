@@ -9,12 +9,12 @@ namespace openmc {
 // defined regions of the geometry but also outside of it.
 class Ray : public GeometryState {
 
- public:
+public:
   // Initialize from location and direction
   Ray(Position r, Direction u) { init_from_r_u(r, u); }
 
   // Initialize from known geometry state
- Ray(const GeometryState& p) : GeometryState(p) {}
+  Ray(const GeometryState& p) : GeometryState(p) {}
 
   // Called at every surface intersection within the model
   virtual void on_intersection() = 0;
@@ -31,11 +31,11 @@ class Ray : public GeometryState {
   // Sets the dist_ variable
   void compute_distance();
 
- protected:
+protected:
   // Records how far the ray has traveled
   double traversal_distance_ {0.0};
 
- private:
+private:
   // Max intersections before we assume ray tracing is caught in an infinite
   // loop:
   static const int MAX_INTERSECTIONS = 1000000;

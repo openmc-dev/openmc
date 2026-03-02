@@ -99,7 +99,7 @@ void Ray::trace()
     // the particle in that case. Also, just exit
     // if a negative distance was somehow computed.
     if (boundary().distance() == INFTY || boundary().distance() == INFINITY ||
-	boundary().distance() < 0) {
+        boundary().distance() < 0) {
       return;
     }
 
@@ -127,8 +127,8 @@ void Ray::trace()
     n_coord_last() = n_coord();
     n_coord() = boundary().coord_level();
     if (boundary().lattice_translation()[0] != 0 ||
-	boundary().lattice_translation()[1] != 0 ||
-	boundary().lattice_translation()[2] != 0) {
+        boundary().lattice_translation()[1] != 0 ||
+        boundary().lattice_translation()[2] != 0) {
       cross_lattice(*this, boundary(), settings::verbosity >= 10);
     }
 
@@ -147,7 +147,7 @@ void Ray::trace()
     if (call_on_intersection) {
       on_intersection();
       if (stop_)
-	return;
+        return;
     }
 
     if (!inside_cell)

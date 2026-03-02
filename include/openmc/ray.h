@@ -1,8 +1,6 @@
 #ifndef OPENMC_RAY_H
 #define OPENMC_RAY_H
 
-#include "openmc/tensor.h"
-
 namespace openmc {
 
 // Base class that implements ray tracing logic, not necessarily through

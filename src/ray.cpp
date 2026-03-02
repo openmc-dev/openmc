@@ -1,4 +1,4 @@
-#include "openmc/plot.h"
+#include "openmc/ray.h"
 
 namespace openmc {
 

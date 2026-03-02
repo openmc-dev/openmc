@@ -589,9 +589,9 @@ class Material(IDManagerMixin):
                 integrand = (response_f(e_vals) / mu_vals) * p_vals
 
             if isinstance(photon_source_per_atom, Discrete):
-                cdr_nuc = np.sum(integrand)
+                cdr_nuc = float(np.sum(integrand))
             elif isinstance(photon_source_per_atom, Tabular):
-                cdr_nuc = np.trapezoid(integrand, e_vals)
+                cdr_nuc = float(np.trapezoid(integrand, e_vals))
 
             # Compute air-absorbed dose [Gy/h] or effective dose [Sv/h]
             cdr[nuc] = cdr_nuc * nuc_atoms_per_bcm * multiplier

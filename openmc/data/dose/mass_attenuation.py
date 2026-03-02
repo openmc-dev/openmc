@@ -1,8 +1,12 @@
+from pathlib import Path
+
 import numpy as np
+import h5py
 
 import openmc.checkvalue as cv
 from openmc.data import EV_PER_MEV
-from openmc.data.function import Tabulated1D
+from ..data import ATOMIC_NUMBER
+from ..function import Tabulated1D
 
 # Embedded NIST-126 data
 # Air (Dry Near Sea Level) — NIST Standard Reference Database 126 Table 4 (doi: 10.18434/T4D01F)
@@ -90,3 +94,54 @@ def mass_energy_absorption_coefficient(
     mu_en_coeffs = data[:, 1].copy()
     return Tabulated1D(energy, mu_en_coeffs,
                        breakpoints=[len(energy)], interpolation=[5])
+
+
+# Used in mass_attenuation_coefficient function as a cache.
+# Maps atomic number Z (int) -> Tabulated1D of (mu/rho) [cm^2/g] vs E [eV]
+_MASS_ATTENUATION: dict[int, object] = {}
+
+
+def mass_attenuation_coefficient(element):
+    """Return the photon mass attenuation coefficient as a function of energy.
+
+    Data is read from the ``mass_attenuation.h5`` file bundled with OpenMC and
+    cached in memory on first access so that subsequent calls are fast.
+
+    Parameters
+    ----------
+    element : str or int
+        Element symbol (e.g., 'Fe') or atomic number (e.g., 26).
+
+    Returns
+    -------
+    Tabulated1D
+        Mass attenuation coefficient [cm^2/g] as a function of photon energy
+        [eV], using log-log interpolation.
+
+    """
+    if not _MASS_ATTENUATION:
+        data_file = Path(__file__).with_name('mass_attenuation.h5')
+        with h5py.File(data_file, 'r') as f:
+            for key in f:
+                Z_key = int(key)
+                dataset = f[key][()]  # shape (2, N)
+                energies = dataset[0]  # eV
+                mu_rho = dataset[1]    # cm^2/g
+                _MASS_ATTENUATION[Z_key] = Tabulated1D(
+                    energies, mu_rho,
+                    breakpoints=[len(energies)],
+                    interpolation=[5]  # log-log
+                )
+
+    # Resolve element argument to atomic number
+    if isinstance(element, str):
+        if element not in ATOMIC_NUMBER:
+            raise ValueError(f"'{element}' is not a recognized element symbol")
+        Z = ATOMIC_NUMBER[element]
+    else:
+        Z = int(element)
+
+    if Z not in _MASS_ATTENUATION:
+        raise ValueError(f"No mass attenuation data available for Z={Z}")
+
+    return _MASS_ATTENUATION[Z]

@@ -284,10 +284,6 @@ NEUTRON_MASS = 1.00866491595
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS: dict[str, float] = {}
 
-# Used in mass_attenuation_coefficient function as a cache.
-# Maps atomic number Z (int) -> Tabulated1D of (mu/rho) [cm^2/g] vs E [eV]
-_MASS_ATTENUATION: dict[int, object] = {}
-
 # Regex for GNDS nuclide names (used in zam function)
 _GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
@@ -339,55 +335,6 @@ def atomic_mass(isotope):
         isotope = isotope[:isotope.find('_')]
 
     return _ATOMIC_MASS[isotope.lower()]
-
-
-def mass_attenuation_coefficient(element):
-    """Return the photon mass attenuation coefficient as a function of energy.
-
-    Data is read from the ``mass_attenuation.h5`` file bundled with OpenMC and
-    cached in memory on first access so that subsequent calls are fast.
-
-    Parameters
-    ----------
-    element : str or int
-        Element symbol (e.g., 'Fe') or atomic number (e.g., 26).
-
-    Returns
-    -------
-    Tabulated1D
-        Mass attenuation coefficient [cm^2/g] as a function of photon energy
-        [eV], using log-log interpolation.
-
-    """
-    import h5py
-    from openmc.data.function import Tabulated1D
-
-    if not _MASS_ATTENUATION:
-        data_file = os.path.join(os.path.dirname(__file__), 'mass_attenuation.h5')
-        with h5py.File(data_file, 'r') as f:
-            for key in f:
-                Z_key = int(key)
-                dataset = f[key][()]  # shape (2, N)
-                energies = dataset[0]  # eV
-                mu_rho = dataset[1]    # cm^2/g
-                _MASS_ATTENUATION[Z_key] = Tabulated1D(
-                    energies, mu_rho,
-                    breakpoints=[len(energies)],
-                    interpolation=[5]  # log-log
-                )
-
-    # Resolve element argument to atomic number
-    if isinstance(element, str):
-        if element not in ATOMIC_NUMBER:
-            raise ValueError(f"'{element}' is not a recognized element symbol")
-        Z = ATOMIC_NUMBER[element]
-    else:
-        Z = int(element)
-
-    if Z not in _MASS_ATTENUATION:
-        raise ValueError(f"No mass attenuation data available for Z={Z}")
-
-    return _MASS_ATTENUATION[Z]
 
 
 def atomic_weight(element):

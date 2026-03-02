@@ -33,9 +33,7 @@ void CoherentElasticAE::sample(
 {
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
   E_out = E_in;
-
   const auto& energies {xs_.bragg_edges()};
-
   assert(E_in >= energies.front());
 
   const int i = lower_bound_index(energies.begin(), energies.end(), E_in);
@@ -59,7 +57,7 @@ double CoherentElasticAE::sample_energy_and_pdf(
 
   double pdf;
   E_out = E_in;
-  const auto& energies {xs_.bragg_edges()};
+  const auto energies = tensor::Tensor<double>(xs_.bragg_edges().data(), xs_.bragg_edges().size());
   const auto& factors = xs_.factors();
 
   if (E_in < energies.front() || E_in > energies.back()) {
@@ -67,16 +65,10 @@ double CoherentElasticAE::sample_energy_and_pdf(
   }
 
   const int n = upper_bound_index(energies.begin(), energies.end(), E_in);
+  double E = 0.5 * (1 - mu) * E_in;
+  double C = 0.5*E_in/factors[n];
 
-  vector<double> mu_vector;
-  mu_vector.reserve(n);
-
-  std::transform(energies.rbegin() + n - 1, energies.rend(),
-    std::back_inserter(mu_vector),
-    [E_in](double Ei) { return 1 - 2 * Ei / E_in; });
-
-  return get_pdf_discrete(mu_vector, factors_diff_.slice(0, n), mu) /
-         factors[n];
+  return C*get_pdf_discrete(energies.slice(0, n), factors_diff_.slice(0, n), E, 0, E_in);
 }
 
 //==============================================================================

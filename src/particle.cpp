@@ -299,7 +299,7 @@ void Particle::event_cross_surface()
   n_coord_last() = n_coord();
 
   if (simulation::cell_importances && material() != MATERIAL_VOID)
-    importance_last() = cell_importance_at_level(*this, n_coord() - 1);
+    importance_last() = cell_importance_at_level(*this, type(), n_coord() - 1);
 
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface();
@@ -321,7 +321,7 @@ void Particle::event_cross_surface()
       add_surf_source_to_bank(*this, *surf);
     }
     this->cross_surface(*surf);
-    double importance = cell_importance_at_level(*this, n_coord() - 1);
+    double importance = cell_importance_at_level(*this, type(), n_coord() - 1);
     if (importance == 0.0) {
       wgt() = 0.0;
       return;

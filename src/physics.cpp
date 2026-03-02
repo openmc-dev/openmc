@@ -141,7 +141,8 @@ void sample_neutron_reaction(Particle& p)
 
   // Create secondary photons
   if (settings::photon_transport) {
-    if (cell_importance_at_level(p, p.n_coord() - 1) > 0.0)
+    if (cell_importance_at_level(p, ParticleType::photon(), p.n_coord() - 1) >
+        0.0)
       sample_secondary_photons(p, i_nuclide);
   }
 

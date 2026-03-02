@@ -97,7 +97,8 @@ int cell_instance_at_level(const GeometryState& p, int level)
   return instance;
 }
 
-double cell_importance_at_level(const Particle& p, int level)
+double cell_importance_at_level(
+  const GeometryState& p, ParticleType type, int level)
 {
   // throw error if the requested level is too deep for the geometry
   if (level > model::n_coord_levels) {
@@ -107,9 +108,9 @@ double cell_importance_at_level(const Particle& p, int level)
         level, p.n_coord()));
   }
   int j = -1;
-  if (p.type().is_neutron())
+  if (type.is_neutron())
     j = 0;
-  else if (p.type().is_photon())
+  else if (type.is_photon())
     j = 1;
   else
     return 1.0;

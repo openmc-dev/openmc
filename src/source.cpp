@@ -239,37 +239,36 @@ bool Source::satisfies_time_constraints(double time) const
 
 bool Source::satisfies_spatial_constraints(Position r, ParticleType type) const
 {
-  Particle p;
-  p.r() = r;
-  p.u() = {0.0, 0.0, 1.0};
-  p.type() = type;
+  GeometryState geom_state;
+  geom_state.r() = r;
+  geom_state.u() = {0.0, 0.0, 1.0};
 
   // Reject particle if it's not in the geometry at all
-  bool found = exhaustive_find_cell(p);
+  bool found = exhaustive_find_cell(geom_state);
   if (!found)
     return false;
 
-  // Reject particle if it is in an importance zero cell
-  if (type.is_neutron() || type.is_photon()) {
-    if (cell_importance_at_level(p, p.n_coord()) == 0.0)
-      return false;
-  }
+  // Reject particle if it is in a zero importance cell
+  if (cell_importance_at_level(geom_state, type, geom_state.n_coord() - 1) ==
+      0.0)
+    return false;
 
   // Check the geometry state against specified domains
   bool accepted = true;
   if (!domain_ids_.empty()) {
     if (domain_type_ == DomainType::MATERIAL) {
-      auto mat_index = p.material();
+      auto mat_index = geom_state.material();
       if (mat_index == MATERIAL_VOID) {
         accepted = false;
       } else {
         accepted = contains(domain_ids_, model::materials[mat_index]->id());
       }
     } else {
-      for (int i = 0; i < p.n_coord(); i++) {
-        auto id = (domain_type_ == DomainType::CELL)
-                    ? model::cells[p.coord(i).cell()].get()->id_
-                    : model::universes[p.coord(i).universe()].get()->id_;
+      for (int i = 0; i < geom_state.n_coord(); i++) {
+        auto id =
+          (domain_type_ == DomainType::CELL)
+            ? model::cells[geom_state.coord(i).cell()].get()->id_
+            : model::universes[geom_state.coord(i).universe()].get()->id_;
         if ((accepted = contains(domain_ids_, id)))
           break;
       }
@@ -279,7 +278,7 @@ bool Source::satisfies_spatial_constraints(Position r, ParticleType type) const
   // Check if spatial site is in fissionable material
   if (accepted && only_fissionable_) {
     // Determine material
-    auto mat_index = p.material();
+    auto mat_index = geom_state.material();
     if (mat_index == MATERIAL_VOID) {
       accepted = false;
     } else {

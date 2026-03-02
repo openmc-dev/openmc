@@ -38,6 +38,8 @@ public:
 
 private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
+  tensor::Tensor<double>
+    factors_diff_; //!< Differences over elastic scattering factors
 };
 
 //==============================================================================

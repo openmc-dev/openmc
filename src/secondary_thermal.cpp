@@ -17,7 +17,16 @@ namespace openmc {
 // CoherentElasticAE implementation
 //==============================================================================
 
-CoherentElasticAE::CoherentElasticAE(const CoherentElasticXS& xs) : xs_ {xs} {}
+CoherentElasticAE::CoherentElasticAE(const CoherentElasticXS& xs) : xs_ {xs}
+{
+  const auto& factors = xs_.factors();
+  auto n = factors.size();
+  factors_diff_ = tensor::zeros<double>({n});
+  factors_diff_.slice(0) = factors[0];
+  for (int i = 1; i < n; ++i) {
+    factors_diff_.slice(i) = factors[i] - factors[i - 1];
+  }
+}
 
 void CoherentElasticAE::sample(
   double E_in, double& E_out, double& mu, uint64_t* seed) const
@@ -66,14 +75,8 @@ double CoherentElasticAE::sample_energy_and_pdf(
     std::back_inserter(mu_vector),
     [E_in](double Ei) { return 1 - 2 * Ei / E_in; });
 
-  vector<double> weights;
-  weights.reserve(n);
-
-  weights.emplace_back(factors[0] / factors[n]);
-  for (int i = 1; i <= n; ++i) {
-    weights.emplace_back((factors[i] - factors[i - 1]) / factors[n]);
-  }
-  return get_pdf_discrete(mu_vector, weights, mu);
+  return get_pdf_discrete(mu_vector, factors_diff_.slice(0, n), mu) /
+         factors[n];
 }
 
 //==============================================================================

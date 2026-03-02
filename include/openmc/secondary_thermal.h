@@ -9,7 +9,7 @@
 #include "openmc/secondary_correlated.h"
 #include "openmc/vector.h"
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 #include <hdf5.h>
 
 namespace openmc {
@@ -83,7 +83,7 @@ public:
 
 private:
   const vector<double>& energy_;  //!< Energies at which cosines are tabulated
-  xt::xtensor<double, 2> mu_out_; //!< Cosines for each incident energy
+  tensor::Tensor<double> mu_out_; //!< Cosines for each incident energy
 };
 
 //==============================================================================
@@ -109,9 +109,9 @@ public:
 
 private:
   const vector<double>& energy_; //!< Incident energies
-  xt::xtensor<double, 2>
+  tensor::Tensor<double>
     energy_out_; //!< Outgoing energies for each incident energy
-  xt::xtensor<double, 3>
+  tensor::Tensor<double>
     mu_out_;    //!< Outgoing cosines for each incident/outgoing energy
   bool skewed_; //!< Whether outgoing energy distribution is skewed
 };
@@ -139,10 +139,10 @@ private:
   //! Secondary energy/angle distribution
   struct DistEnergySab {
     std::size_t n_e_out;              //!< Number of outgoing energies
-    xt::xtensor<double, 1> e_out;     //!< Outgoing energies
-    xt::xtensor<double, 1> e_out_pdf; //!< Probability density function
-    xt::xtensor<double, 1> e_out_cdf; //!< Cumulative distribution function
-    xt::xtensor<double, 2> mu; //!< Equiprobable angles at each outgoing energy
+    tensor::Tensor<double> e_out;     //!< Outgoing energies
+    tensor::Tensor<double> e_out_pdf; //!< Probability density function
+    tensor::Tensor<double> e_out_cdf; //!< Cumulative distribution function
+    tensor::Tensor<double> mu; //!< Equiprobable angles at each outgoing energy
   };
 
   vector<double> energy_;              //!< Incident energies

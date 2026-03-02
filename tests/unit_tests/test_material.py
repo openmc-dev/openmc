@@ -77,6 +77,13 @@ def test_add_components():
     with pytest.raises(ValueError):
         m.add_components({'H1': 1.0}, percent_type = 'oa')
 
+
+def test_id():
+    openmc.Material(material_id=0)
+    with pytest.raises(ValueError):
+        openmc.Material(material_id=-1)
+
+
 def test_nuclides_to_ignore(run_in_tmpdir):
     """Test nuclides_to_ignore when exporting a material to XML"""
     m = openmc.Material()

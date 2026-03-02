@@ -13,6 +13,7 @@ import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ..tallies import ESTIMATOR_TYPES
 
+ROOM_TEMPERATURE_KELVIN = 294.0
 
 class Library:
     """A multi-energy-group and multi-delayed-group cross section library for
@@ -954,7 +955,7 @@ class Library:
             return pickle.load(f)
 
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
-                   subdomain=None, apply_domain_chi=False):
+                   subdomain=None, apply_domain_chi=False, temperature=ROOM_TEMPERATURE_KELVIN):
         """Generates an openmc.XSdata object describing a multi-group cross section
         dataset for writing to an openmc.MGXSLibrary object.
 
@@ -990,6 +991,9 @@ class Library:
             downstream multigroup solvers that precompute a material-specific
             chi before the transport solve provides group-wise fluxes. Defaults
             to False.
+        temperature : float, optional
+            The temperature to set in the XSdata object. Defaults to 294 K
+            (room temperature).
 
         Returns
         -------
@@ -1036,6 +1040,7 @@ class Library:
         else:
             representation = 'isotropic'
         xsdata = openmc.XSdata(name, self.energy_groups,
+                               temperatures=[temperature],
                                representation=representation)
         xsdata.num_delayed_groups = self.num_delayed_groups
         if self.num_polar > 1 or self.num_azimuthal > 1:
@@ -1053,45 +1058,61 @@ class Library:
         # Now get xs data itself
         if 'nu-transport' in self.mgxs_types and self.correction == 'P0':
             mymgxs = self.get_mgxs(domain, 'nu-transport')
-            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+            xsdata.set_total_mgxs(mymgxs, temperature=temperature,
+                                  xs_type=xs_type,
+                                  nuclide=[nuclide],
                                   subdomain=subdomain)
 
         elif 'transport' in self.mgxs_types and self.correction == 'P0':
             mymgxs = self.get_mgxs(domain, 'transport')
-            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+            xsdata.set_total_mgxs(mymgxs, temperature=temperature,
+                                  xs_type=xs_type,
+                                  nuclide=[nuclide],
                                   subdomain=subdomain)
 
         elif 'total' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'total')
-            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+            xsdata.set_total_mgxs(mymgxs, temperature=temperature,
+                                  xs_type=xs_type,
+                                  nuclide=[nuclide],
                                   subdomain=subdomain)
 
         if 'absorption' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'absorption')
-            xsdata.set_absorption_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_absorption_mgxs(mymgxs,
+                                       temperature=temperature,
+                                       xs_type=xs_type,
                                        nuclide=[nuclide],
                                        subdomain=subdomain)
 
         if 'fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'fission')
-            xsdata.set_fission_mgxs(mymgxs, xs_type=xs_type,
-                                    nuclide=[nuclide], subdomain=subdomain)
+            xsdata.set_fission_mgxs(mymgxs, temperature=temperature,
+                                    xs_type=xs_type,
+                                    nuclide=[nuclide],
+                                    subdomain=subdomain)
 
         if 'kappa-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'kappa-fission')
-            xsdata.set_kappa_fission_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_kappa_fission_mgxs(mymgxs,
+                                          temperature=temperature,
+                                          xs_type=xs_type,
                                           nuclide=[nuclide],
                                           subdomain=subdomain)
 
         if 'inverse-velocity' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'inverse-velocity')
-            xsdata.set_inverse_velocity_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_inverse_velocity_mgxs(mymgxs,
+                                             temperature=temperature,
+                                             xs_type=xs_type,
                                              nuclide=[nuclide],
                                              subdomain=subdomain)
 
         if 'nu-fission matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'nu-fission matrix')
-            xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_nu_fission_mgxs(mymgxs,
+                                       temperature=temperature,
+                                       xs_type=xs_type,
                                        nuclide=[nuclide],
                                        subdomain=subdomain)
 
@@ -1101,7 +1122,9 @@ class Library:
                 nuc = "sum"
             else:
                 nuc = nuclide
-            xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuc],
+            xsdata.set_chi_mgxs(mymgxs, temperature=temperature,
+                                xs_type=xs_type,
+                                nuclide=[nuc],
                                 subdomain=subdomain)
 
         if 'chi-prompt' in self.mgxs_types:
@@ -1110,8 +1133,10 @@ class Library:
                 nuc = "sum"
             else:
                 nuc = nuclide
-            xsdata.set_chi_prompt_mgxs(mymgxs, xs_type=xs_type,
-                                       nuclide=[nuc], subdomain=subdomain)
+            xsdata.set_chi_prompt_mgxs(mymgxs, temperature=temperature,
+                                       xs_type=xs_type,
+                                       nuclide=[nuc],
+                                       subdomain=subdomain)
 
         if 'chi-delayed' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'chi-delayed')
@@ -1119,53 +1144,61 @@ class Library:
                 nuc = "sum"
             else:
                 nuc = nuclide
-            xsdata.set_chi_delayed_mgxs(mymgxs, xs_type=xs_type,
-                                        nuclide=[nuc], subdomain=subdomain)
+            xsdata.set_chi_delayed_mgxs(mymgxs, temperature=temperature,
+                                        xs_type=xs_type,
+                                        nuclide=[nuc],
+                                        subdomain=subdomain)
 
         if 'nu-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'nu-fission')
-            xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_nu_fission_mgxs(mymgxs, temperature=temperature,
+                                       xs_type=xs_type,
                                        nuclide=[nuclide],
                                        subdomain=subdomain)
 
         if 'prompt-nu-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'prompt-nu-fission')
-            xsdata.set_prompt_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_prompt_nu_fission_mgxs(mymgxs, temperature=temperature,
+                                              xs_type=xs_type,
                                               nuclide=[nuclide],
                                               subdomain=subdomain)
 
         if 'prompt-nu-fission matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'prompt-nu-fission matrix')
-            xsdata.set_prompt_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_prompt_nu_fission_mgxs(mymgxs, temperature=temperature,
+                                              xs_type=xs_type,
                                               nuclide=[nuclide],
                                               subdomain=subdomain)
 
         if 'delayed-nu-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'delayed-nu-fission')
-            xsdata.set_delayed_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_delayed_nu_fission_mgxs(mymgxs, temperature=temperature,
+                                               xs_type=xs_type,
                                                nuclide=[nuclide],
                                                subdomain=subdomain)
 
         if 'delayed-nu-fission matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'delayed-nu-fission matrix')
-            xsdata.set_delayed_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_delayed_nu_fission_mgxs(mymgxs, temperature=temperature,
+                                               xs_type=xs_type,
                                                nuclide=[nuclide],
                                                subdomain=subdomain)
 
         if 'beta' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'beta')
-            xsdata.set_beta_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                 subdomain=subdomain)
+            xsdata.set_beta_mgxs(mymgxs, temperature=temperature, xs_type=xs_type,
+                                 nuclide=[nuclide], subdomain=subdomain)
 
         if 'decay-rate' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'decay-rate')
-            xsdata.set_decay_rate_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                subdomain=subdomain)
+            xsdata.set_decay_rate_mgxs(mymgxs, temperature=temperature, xs_type=xs_type,
+                                       nuclide=[nuclide], subdomain=subdomain)
 
         # If multiplicity matrix is available, prefer that
         if 'multiplicity matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
-            xsdata.set_multiplicity_matrix_mgxs(mymgxs, xs_type=xs_type,
+            xsdata.set_multiplicity_matrix_mgxs(mymgxs, temperature=temperature,
+                                                xs_type=xs_type,
                                                 nuclide=[nuclide],
                                                 subdomain=subdomain)
             using_multiplicity = True
@@ -1176,6 +1209,7 @@ class Library:
             scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             xsdata.set_multiplicity_matrix_mgxs(nuscatt_mgxs, scatt_mgxs,
+                                                temperature=temperature,
                                                 xs_type=xs_type,
                                                 nuclide=[nuclide],
                                                 subdomain=subdomain)
@@ -1188,6 +1222,7 @@ class Library:
             nuscatt_mgxs = \
                 self.get_mgxs(domain, 'consistent nu-scatter matrix')
             xsdata.set_multiplicity_matrix_mgxs(nuscatt_mgxs, scatt_mgxs,
+                                                temperature=temperature,
                                                 xs_type=xs_type,
                                                 nuclide=[nuclide],
                                                 subdomain=subdomain)
@@ -1202,7 +1237,8 @@ class Library:
             else:
                 nuscatt_mgxs = \
                     self.get_mgxs(domain, 'consistent nu-scatter matrix')
-            xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
+            xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, temperature=temperature,
+                                           xs_type=xs_type,
                                            nuclide=[nuclide],
                                            subdomain=subdomain)
         else:
@@ -1213,7 +1249,8 @@ class Library:
                 else:
                     nuscatt_mgxs = \
                         self.get_mgxs(domain, 'consistent nu-scatter matrix')
-                xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
+                xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, temperature=temperature,
+                                               xs_type=xs_type,
                                                nuclide=[nuclide],
                                                subdomain=subdomain)
 
@@ -1253,14 +1290,15 @@ class Library:
                       'are ignored since multiplicity or nu-scatter matrices '\
                       'were not tallied for ' + xsdata_name
                 warn(msg, RuntimeWarning)
-                xsdata.set_scatter_matrix_mgxs(scatt_mgxs, xs_type=xs_type,
+                xsdata.set_scatter_matrix_mgxs(scatt_mgxs, temperature=temperature,
+                                               xs_type=xs_type,
                                                nuclide=[nuclide],
                                                subdomain=subdomain)
 
         return xsdata
 
     def create_mg_library(self, xs_type='macro', xsdata_names=None,
-                          apply_domain_chi=False):
+                          apply_domain_chi=False, temperature=ROOM_TEMPERATURE_KELVIN):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC.
 
@@ -1286,6 +1324,9 @@ class Library:
             downstream multigroup solvers that precompute a material-specific
             chi before the transport solve provides group-wise fluxes. Defaults
             to False.
+        temperature : float, optional
+            The temperature to set in the MGXSLibrary object. Defaults to 294 K
+            (room temperature).
 
         Returns
         -------

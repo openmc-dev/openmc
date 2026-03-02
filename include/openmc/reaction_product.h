@@ -10,7 +10,7 @@
 #include "openmc/chain.h"
 #include "openmc/endf.h"
 #include "openmc/memory.h" // for unique_ptr
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/vector.h" // for vector
 
 namespace openmc {

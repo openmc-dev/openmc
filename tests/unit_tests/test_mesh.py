@@ -1,6 +1,8 @@
 from math import pi
 from tempfile import TemporaryDirectory
 from pathlib import Path
+import itertools
+import random
 
 import h5py
 import numpy as np
@@ -692,6 +694,49 @@ def test_mesh_material_volumes_serialize():
     assert new_volumes.by_element(3) == [(2, 1.0)]
 
 
+def test_mesh_material_volumes_serialize_with_bboxes():
+    materials = np.array([
+        [1, -1, -2],
+        [-1, -2, -2],
+        [2, 1, -2],
+        [2, -2, -2]
+    ])
+    volumes = np.array([
+        [0.5, 0.5, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [1.0, 0.0, 0.0]
+    ])
+
+    # (xmin, ymin, zmin, xmax, ymax, zmax)
+    bboxes = np.empty((4, 3, 6))
+    bboxes[..., 0:3] = np.inf
+    bboxes[..., 3:6] = -np.inf
+    bboxes[0, 0] = [-1.0, -2.0, -3.0, 1.0, 2.0, 3.0]    # material 1
+    bboxes[0, 1] = [-5.0, -6.0, -7.0, 5.0, 6.0, 7.0]    # void
+    bboxes[1, 0] = [0.0, 0.0, 0.0, 10.0, 1.0, 2.0]      # void
+    bboxes[2, 0] = [-1.0, -1.0, -1.0, 0.0, 0.0, 0.0]    # material 2
+    bboxes[2, 1] = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0]       # material 1
+    bboxes[3, 0] = [-2.0, -2.0, -2.0, 2.0, 2.0, 2.0]    # material 2
+
+    mmv = openmc.MeshMaterialVolumes(materials, volumes, bboxes)
+    with TemporaryDirectory() as tmpdir:
+        path = f'{tmpdir}/volumes_bboxes.npz'
+        mmv.save(path)
+        loaded = openmc.MeshMaterialVolumes.from_npz(path)
+
+    assert loaded.has_bounding_boxes
+    first = loaded.by_element(0, include_bboxes=True)[0][2]
+    assert isinstance(first, openmc.BoundingBox)
+    np.testing.assert_array_equal(first.lower_left, (-1.0, -2.0, -3.0))
+    np.testing.assert_array_equal(first.upper_right, (1.0, 2.0, 3.0))
+
+    second = loaded.by_element(0, include_bboxes=True)[1][2]
+    assert isinstance(second, openmc.BoundingBox)
+    np.testing.assert_array_equal(second.lower_left, (-5.0, -6.0, -7.0))
+    np.testing.assert_array_equal(second.upper_right, (5.0, 6.0, 7.0))
+
+
 def test_mesh_material_volumes_boundary_conditions(sphere_model):
     """Test the material volumes method using a regular mesh
     that overlaps with a vacuum boundary condition."""
@@ -717,6 +762,53 @@ def test_mesh_material_volumes_boundary_conditions(sphere_model):
     for evaluated, expected in zip(volumes.by_element(0), expected_volumes):
         assert evaluated[0] == expected[0]
         assert evaluated[1] == pytest.approx(expected[1], rel=1e-2)
+
+
+def test_mesh_material_volumes_bounding_boxes():
+    # Create a model with 8 spherical cells at known locations with random radii
+    box = openmc.model.RectangularParallelepiped(
+        -10, 10, -10, 10, -10, 10, boundary_type='vacuum')
+
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+
+    sph_cells = []
+    for x, y, z in itertools.product((-5., 5.), repeat=3):
+        mat_i = mat.clone()
+        sph = openmc.Sphere(x, y, z, r=random.uniform(0.5, 1.5))
+        sph_cells.append(openmc.Cell(region=-sph, fill=mat_i))
+    background = openmc.Cell(region=-box & openmc.Intersection([~c.region for c in sph_cells]))
+
+    model = openmc.Model()
+    model.geometry = openmc.Geometry(sph_cells + [background])
+    model.settings.particles = 1000
+    model.settings.batches = 10
+
+    # Create a one-element mesh that encompasses the entire geometry
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-10., -10., -10.)
+    mesh.upper_right = (10., 10., 10.)
+    mesh.dimension = (1, 1, 1)
+
+    # Run material volume calculation with bounding boxes
+    n_samples = (400, 400, 400)
+    mmv = mesh.material_volumes(model, n_samples, max_materials=10, bounding_boxes=True)
+    assert mmv.has_bounding_boxes
+
+    # Create a mapping of material ID to bounding box
+    bbox_by_mat = {
+        mat_id: bbox
+        for mat_id, vol, bbox in mmv.by_element(0, include_bboxes=True)
+        if mat_id is not None and vol > 0.0
+    }
+
+    # Match the mesh ray spacing used for the bounding box estimator.
+    tol = 0.5 * mesh.bounding_box.width[0] / n_samples[0]
+    for cell in sph_cells:
+        bbox = bbox_by_mat[cell.fill.id]
+        cell_bbox = cell.bounding_box
+        np.testing.assert_allclose(bbox.lower_left, cell_bbox.lower_left, atol=tol)
+        np.testing.assert_allclose(bbox.upper_right, cell_bbox.upper_right, atol=tol)
 
 
 def test_raytrace_mesh_infinite_loop(run_in_tmpdir):
@@ -829,3 +921,76 @@ def test_filter_time_mesh(run_in_tmpdir):
         f"Collision vs tracklength tallies disagree: chi2={chi2_stat:.2f} "
         f">= {crit=:.2f} ({dof=}, {alpha=})"
     )
+
+
+def test_regular_mesh_get_indices_at_coords():
+    """Test get_indices_at_coords method for RegularMesh"""
+    # Create a 10x10x10 mesh from (0,0,0) to (1,1,1)
+    # Each voxel is 0.1 x 0.1 x 0.1
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (0, 0, 0)
+    mesh.upper_right = (1, 1, 1)
+    mesh.dimension = [10, 10, 10]
+
+    # Test lower-left corner maps to first voxel (0, 0, 0)
+    assert mesh.get_indices_at_coords([0.0, 0.0, 0.0]) == (0, 0, 0)
+
+    # Test centroid of first voxel
+    # Voxel 0 spans [0.0, 0.1], so centroid is at 0.05
+    assert mesh.get_indices_at_coords([0.05, 0.05, 0.05]) == (0, 0, 0)
+
+    # Test centroid of last voxel maps correctly
+    # Voxel 9 spans [0.9, 1.0], so centroid is at 0.95
+    assert mesh.get_indices_at_coords([0.95, 0.95, 0.95]) == (9, 9, 9)
+
+    # Test a middle voxel
+    # Voxel 4 spans [0.4, 0.5], so 0.45 should map to it
+    assert mesh.get_indices_at_coords([0.45, 0.45, 0.45]) == (4, 4, 4)
+
+    # Test mixed indices
+    assert mesh.get_indices_at_coords([0.05, 0.45, 0.95]) == (0, 4, 9)
+    assert mesh.get_indices_at_coords([0.95, 0.05, 0.45]) == (9, 0, 4)
+
+    # Test coordinates outside mesh bounds raise ValueError
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([-0.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([1.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, -0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 1.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 0.5, -0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, 0.5, 1.5])
+
+    # Test that results match expected dimensionality (3D mesh returns 3-tuple)
+    result = mesh.get_indices_at_coords([0.5, 0.5, 0.5])
+    assert isinstance(result, tuple)
+    assert len(result) == 3
+
+    # Test that indices can be used directly with centroids array
+    idx = mesh.get_indices_at_coords([0.95, 0.95, 0.95])
+    centroid = mesh.centroids[idx]
+    np.testing.assert_array_almost_equal(centroid, [0.95, 0.95, 0.95])
+
+    # Test with a 2D mesh
+    mesh_2d = openmc.RegularMesh()
+    mesh_2d.lower_left = (0, 0)
+    mesh_2d.upper_right = (1, 1)
+    mesh_2d.dimension = [10, 10]
+    result_2d = mesh_2d.get_indices_at_coords([0.5, 0.5, 999.0])
+    assert isinstance(result_2d, tuple)
+    assert len(result_2d) == 2
+    assert result_2d == (5, 5)
+
+    # Test with a 1D mesh
+    mesh_1d = openmc.RegularMesh()
+    mesh_1d.lower_left = [0]
+    mesh_1d.upper_right = [1]
+    mesh_1d.dimension = [10]
+    result_1d = mesh_1d.get_indices_at_coords([0.5, 999.0, 999.0])
+    assert isinstance(result_1d, tuple)
+    assert len(result_1d) == 1
+    assert result_1d == (5,)

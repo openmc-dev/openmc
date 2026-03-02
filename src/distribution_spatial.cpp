@@ -141,6 +141,41 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     // If no coordinates were specified, default to (0, 0, 0)
     origin_ = {0.0, 0.0, 0.0};
   }
+
+  // Read cylinder z_dir
+  if (check_for_node(node, "z_dir")) {
+    auto z_dir = get_node_array<double>(node, "z_dir");
+    if (z_dir.size() == 3) {
+      z_dir_ = z_dir;
+      z_dir_ /= z_dir_.norm();
+    } else {
+      fatal_error("z_dir for cylindrical source distribution must be length 3");
+    }
+  } else {
+    // If no z_dir was specified, default to (0, 0, 1)
+    z_dir_ = {0.0, 0.0, 1.0};
+  }
+
+  // Read cylinder r_dir
+  if (check_for_node(node, "r_dir")) {
+    auto r_dir = get_node_array<double>(node, "r_dir");
+    if (r_dir.size() == 3) {
+      r_dir_ = r_dir;
+      r_dir_ /= r_dir_.norm();
+    } else {
+      fatal_error("r_dir for cylindrical source distribution must be length 3");
+    }
+  } else {
+    // If no r_dir was specified, default to (1, 0, 0)
+    r_dir_ = {1.0, 0.0, 0.0};
+  }
+
+  if (r_dir_.dot(z_dir_) > 1e-12)
+    fatal_error("r_dir must be perpendicular to z_dir");
+
+  auto phi_dir = z_dir_.cross(r_dir_);
+  phi_dir /= phi_dir.norm();
+  phi_dir_ = phi_dir;
 }
 
 std::pair<Position, double> CylindricalIndependent::sample(uint64_t* seed) const
@@ -148,10 +183,8 @@ std::pair<Position, double> CylindricalIndependent::sample(uint64_t* seed) const
   auto [r, r_wgt] = r_->sample(seed);
   auto [phi, phi_wgt] = phi_->sample(seed);
   auto [z, z_wgt] = z_->sample(seed);
-  double x = r * cos(phi) + origin_.x;
-  double y = r * sin(phi) + origin_.y;
-  z += origin_.z;
-  Position xi {x, y, z};
+  Position xi =
+    r * (cos(phi) * r_dir_ + sin(phi) * phi_dir_) + z * z_dir_ + origin_;
   return {xi, r_wgt * phi_wgt * z_wgt};
 }
 
@@ -425,6 +458,11 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
   lower_left_ = Position {params[0], params[1], params[2]};
   upper_right_ = Position {params[3], params[4], params[5]};
 }
+
+SpatialBox::SpatialBox(Position lower_left, Position upper_right, bool fission)
+  : lower_left_(lower_left), upper_right_(upper_right),
+    only_fissionable_(fission)
+{}
 
 std::pair<Position, double> SpatialBox::sample(uint64_t* seed) const
 {

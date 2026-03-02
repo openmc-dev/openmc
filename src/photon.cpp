@@ -13,11 +13,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xoperation.hpp"
-#include "xtensor/xslice.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include <cmath>
 #include <fmt/core.h>
@@ -33,7 +29,7 @@ constexpr int PhotonInteraction::MAX_STACK_SIZE;
 
 namespace data {
 
-xt::xtensor<double, 1> compton_profile_pz;
+tensor::Tensor<double> compton_profile_pz;
 
 std::unordered_map<std::string, int> element_map;
 vector<unique_ptr<PhotonInteraction>> elements;
@@ -46,8 +42,6 @@ vector<unique_ptr<PhotonInteraction>> elements;
 
 PhotonInteraction::PhotonInteraction(hid_t group)
 {
-  using namespace xt::placeholders;
-
   // Set index of element in global vector
   index_ = data::elements.size();
 
@@ -96,7 +90,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     read_dataset(rgroup, "xs", pair_production_electron_);
     close_group(rgroup);
   } else {
-    pair_production_electron_ = xt::zeros_like(energy_);
+    pair_production_electron_ = tensor::zeros_like(energy_);
   }
 
   // Read pair production
@@ -105,7 +99,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     read_dataset(rgroup, "xs", pair_production_nuclear_);
     close_group(rgroup);
   } else {
-    pair_production_nuclear_ = xt::zeros_like(energy_);
+    pair_production_nuclear_ = tensor::zeros_like(energy_);
   }
 
   // Read photoelectric
@@ -119,7 +113,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     read_dataset(rgroup, "xs", heating_);
     close_group(rgroup);
   } else {
-    heating_ = xt::zeros_like(energy_);
+    heating_ = tensor::zeros_like(energy_);
   }
 
   // Read subshell photoionization cross section and atomic relaxation data
@@ -133,7 +127,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
 
   shells_.resize(n_shell);
-  cross_sections_ = xt::zeros<double>({energy_.size(), n_shell});
+  cross_sections_ = tensor::zeros<double>({energy_.size(), n_shell});
 
   // Create mapping from designator to index
   std::unordered_map<int, int> shell_map;
@@ -168,15 +162,17 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     }
 
     // Read subshell cross section
-    xt::xtensor<double, 1> xs;
+    tensor::Tensor<double> xs;
     dset = open_dataset(tgroup, "xs");
     read_attribute(dset, "threshold_idx", shell.threshold);
     close_dataset(dset);
     read_dataset(tgroup, "xs", xs);
 
     auto cross_section =
-      xt::view(cross_sections_, xt::range(shell.threshold, _), i);
-    cross_section = xt::where(xs > 0, xt::log(xs), 0);
+      cross_sections_.slice(tensor::range(static_cast<size_t>(shell.threshold),
+                              cross_sections_.shape(0)),
+        i);
+    cross_section = tensor::where(xs > 0, tensor::log(xs), 0);
 
     if (object_exists(tgroup, "transitions")) {
       // Determine dimensions of transitions
@@ -186,11 +182,12 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
       int n_transition = dims[0];
       if (n_transition > 0) {
-        xt::xtensor<double, 2> matrix;
+        tensor::Tensor<double> matrix;
         read_dataset(tgroup, "transitions", matrix);
 
         // Transition probability normalization
-        double norm = xt::sum(xt::col(matrix, 3))();
+        double norm =
+          tensor::Tensor<double>(matrix.slice(tensor::all, 3)).sum();
 
         shell.transitions.resize(n_transition);
         for (int j = 0; j < n_transition; ++j) {
@@ -220,7 +217,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
   // Read electron shell PDF and binding energies
   read_dataset(rgroup, "num_electrons", electron_pdf_);
-  electron_pdf_ /= xt::sum(electron_pdf_);
+  electron_pdf_ /= electron_pdf_.sum();
   read_dataset(rgroup, "binding_energy", binding_energy_);
 
   // Read Compton profiles
@@ -238,7 +235,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     auto is_close = [](double a, double b) {
       return std::abs(a - b) / a < FP_REL_PRECISION;
     };
-    subshell_map_ = xt::full_like(binding_energy_, -1);
+    subshell_map_ = tensor::Tensor<int>(binding_energy_.shape(), -1);
     for (int i = 0; i < binding_energy_.size(); ++i) {
       double E_b = binding_energy_[i];
       if (i < n_shell && is_close(E_b, shells_[i].binding_energy)) {
@@ -257,7 +254,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // Create Compton profile CDF
   auto n_profile = data::compton_profile_pz.size();
   auto n_shell_compton = profile_pdf_.shape(0);
-  profile_cdf_ = xt::empty<double>({n_shell_compton, n_profile});
+  profile_cdf_ = tensor::Tensor<double>({n_shell_compton, n_profile});
   for (int i = 0; i < n_shell_compton; ++i) {
     double c = 0.0;
     profile_cdf_(i, 0) = 0.0;
@@ -276,11 +273,11 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     // Read bremsstrahlung scaled DCS
     rgroup = open_group(group, "bremsstrahlung");
     read_dataset(rgroup, "dcs", dcs_);
-    auto n_e = dcs_.shape()[0];
-    auto n_k = dcs_.shape()[1];
+    auto n_e = dcs_.shape(0);
+    auto n_k = dcs_.shape(1);
 
     // Get energy grids used for bremsstrahlung DCS and for stopping powers
-    xt::xtensor<double, 1> electron_energy;
+    tensor::Tensor<double> electron_energy;
     read_dataset(rgroup, "electron_energy", electron_energy);
     if (data::ttb_k_grid.size() == 0) {
       read_dataset(rgroup, "photon_energy", data::ttb_k_grid);
@@ -293,7 +290,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_group(rgroup);
 
     // Truncate the bremsstrahlung data at the cutoff energy
-    int photon = static_cast<int>(ParticleType::photon);
+    int photon = ParticleType::photon().transport_index();
     const auto& E {electron_energy};
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {
@@ -305,12 +302,12 @@ PhotonInteraction::PhotonInteraction(hid_t group)
                  (std::log(E(i_grid + 1)) - std::log(E(i_grid)));
 
       // Interpolate bremsstrahlung DCS at the cutoff energy and truncate
-      xt::xtensor<double, 2> dcs({n_e - i_grid, n_k});
+      tensor::Tensor<double> dcs({n_e - i_grid, n_k});
       for (int i = 0; i < n_k; ++i) {
         double y = std::exp(
           std::log(dcs_(i_grid, i)) +
           f * (std::log(dcs_(i_grid + 1, i)) - std::log(dcs_(i_grid, i))));
-        auto col_i = xt::view(dcs, xt::all(), i);
+        tensor::View<double> col_i = dcs.slice(tensor::all, i);
         col_i(0) = y;
         for (int j = i_grid + 1; j < n_e; ++j) {
           col_i(j - i_grid) = dcs_(j, i);
@@ -318,9 +315,11 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       }
       dcs_ = dcs;
 
-      xt::xtensor<double, 1> frst {cutoff};
-      electron_energy = xt::concatenate(xt::xtuple(
-        frst, xt::view(electron_energy, xt::range(i_grid + 1, n_e))));
+      tensor::Tensor<double> frst({static_cast<size_t>(1)});
+      frst(0) = cutoff;
+      tensor::Tensor<double> rest(electron_energy.slice(
+        tensor::range(i_grid + 1, electron_energy.size())));
+      electron_energy = tensor::concatenate(frst, rest);
     }
 
     // Set incident particle energy grid
@@ -329,7 +328,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     }
 
     // Calculate the radiative stopping power
-    stopping_power_radiative_ = xt::empty<double>({data::ttb_e_grid.size()});
+    stopping_power_radiative_ =
+      tensor::Tensor<double>({data::ttb_e_grid.size()});
     for (int i = 0; i < data::ttb_e_grid.size(); ++i) {
       // Integrate over reduced photon energy
       double c = 0.0;
@@ -354,14 +354,15 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // values below exp(-499) we store the log as -900, for which exp(-900)
   // evaluates to zero.
   double limit = std::exp(-499.0);
-  energy_ = xt::log(energy_);
-  coherent_ = xt::where(coherent_ > limit, xt::log(coherent_), -900.0);
-  incoherent_ = xt::where(incoherent_ > limit, xt::log(incoherent_), -900.0);
-  photoelectric_total_ = xt::where(
-    photoelectric_total_ > limit, xt::log(photoelectric_total_), -900.0);
-  pair_production_total_ = xt::where(
-    pair_production_total_ > limit, xt::log(pair_production_total_), -900.0);
-  heating_ = xt::where(heating_ > limit, xt::log(heating_), -900.0);
+  energy_ = tensor::log(energy_);
+  coherent_ = tensor::where(coherent_ > limit, tensor::log(coherent_), -900.0);
+  incoherent_ =
+    tensor::where(incoherent_ > limit, tensor::log(incoherent_), -900.0);
+  photoelectric_total_ = tensor::where(
+    photoelectric_total_ > limit, tensor::log(photoelectric_total_), -900.0);
+  pair_production_total_ = tensor::where(pair_production_total_ > limit,
+    tensor::log(pair_production_total_), -900.0);
+  heating_ = tensor::where(heating_ > limit, tensor::log(heating_), -900.0);
 }
 
 PhotonInteraction::~PhotonInteraction()
@@ -512,7 +513,7 @@ void PhotonInteraction::compton_doppler(
     c = prn(seed) * c_max;
 
     // Determine pz corresponding to sampled cdf value
-    auto cdf_shell = xt::view(profile_cdf_, shell, xt::all());
+    tensor::View<const double> cdf_shell = profile_cdf_.slice(shell);
     int i = lower_bound_index(cdf_shell.cbegin(), cdf_shell.cend(), c);
     double pz_l = data::compton_profile_pz(i);
     double pz_r = data::compton_profile_pz(i + 1);
@@ -608,8 +609,8 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
   // Calculate microscopic photoelectric cross section
   xs.photoelectric = 0.0;
-  const auto& xs_lower = xt::row(cross_sections_, i_grid);
-  const auto& xs_upper = xt::row(cross_sections_, i_grid + 1);
+  tensor::View<const double> xs_lower = cross_sections_.slice(i_grid);
+  tensor::View<const double> xs_upper = cross_sections_.slice(i_grid + 1);
 
   for (int i = 0; i < xs_upper.size(); ++i)
     if (xs_lower(i) != 0)
@@ -805,7 +806,7 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
     if (shell.transitions.empty()) {
       Direction u = isotropic_direction(p.current_seed());
       double E = shell.binding_energy;
-      p.create_secondary(p.wgt(), u, E, ParticleType::photon);
+      p.create_secondary(p.wgt(), u, E, ParticleType::photon());
       continue;
     }
 
@@ -833,12 +834,13 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
       holes[n_holes++] = transition.secondary_subshell;
 
       // Create auger electron
-      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::electron);
+      p.create_secondary(
+        p.wgt(), u, transition.energy, ParticleType::electron());
     } else {
       // Radiative transition -- get X-ray energy
 
       // Create fluorescent photon
-      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon);
+      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon());
     }
   }
 }

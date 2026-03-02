@@ -23,16 +23,23 @@ double get_pdf_discrete(const vector<double>& mu, double mu_0)
 // CoherentElasticAE implementation
 //==============================================================================
 
-CoherentElasticAE::CoherentElasticAE(const CoherentElasticXS& xs) : xs_ {xs} {}
+CoherentElasticAE::CoherentElasticAE(const CoherentElasticXS& xs) : xs_ {xs}
+{
+  const auto& factors = xs_.factors();
+  auto n = factors.size();
+  factors_diff_ = tensor::zeros<double>({n});
+  factors_diff_.slice(0) = factors[0];
+  for (int i = 1; i < n; ++i) {
+    factors_diff_.slice(i) = factors[i] - factors[i - 1];
+  }
+}
 
 void CoherentElasticAE::sample(
   double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
   E_out = E_in;
-
   const auto& energies {xs_.bragg_edges()};
-
   assert(E_in >= energies.front());
 
   const int i = lower_bound_index(energies.begin(), energies.end(), E_in);
@@ -56,7 +63,8 @@ double CoherentElasticAE::sample_energy_and_pdf(
 
   double pdf;
   E_out = E_in;
-  const auto& energies {xs_.bragg_edges()};
+  const auto energies =
+    tensor::Tensor<double>(xs_.bragg_edges().data(), xs_.bragg_edges().size());
   const auto& factors = xs_.factors();
 
   if (E_in < energies.front() || E_in > energies.back()) {
@@ -64,22 +72,11 @@ double CoherentElasticAE::sample_energy_and_pdf(
   }
 
   const int n = upper_bound_index(energies.begin(), energies.end(), E_in);
+  double E = 0.5 * (1 - mu) * E_in;
+  double C = 0.5 * E_in / factors[n];
 
-  vector<double> mu_vector;
-  mu_vector.reserve(n);
-
-  std::transform(energies.rbegin() + n - 1, energies.rend(),
-    std::back_inserter(mu_vector),
-    [E_in](double Ei) { return 1 - 2 * Ei / E_in; });
-
-  vector<double> weights;
-  weights.reserve(n);
-
-  weights.emplace_back(factors[0] / factors[n]);
-  for (int i = 1; i <= n; ++i) {
-    weights.emplace_back((factors[i] - factors[i - 1]) / factors[n]);
-  }
-  return get_pdf_discrete(mu_vector, weights, mu);
+  return C * get_pdf_discrete(
+               energies.slice(0, n), factors_diff_.slice(0, n), E, 0, E_in);
 }
 
 //==============================================================================
@@ -174,6 +171,7 @@ double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
   get_energy_index(energy_, E_in, i, f);
   // Energy doesn't change in elastic scattering
   E_out = E_in;
+<<<<<<< HEAD
   int n_mu = mu_out_.shape()[1];
 
   std::vector<double> mu_vector;
@@ -185,6 +183,13 @@ double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
   }
 
   return get_pdf_discrete(mu_vector, mu);
+=======
+
+  double pdf = 0.0;
+  pdf += f * get_pdf_discrete(mu_out_.slice(i + 1, tensor::all), mu);
+  pdf += (1 - f) * get_pdf_discrete(mu_out_.slice(i, tensor::all), mu);
+  return pdf;
+>>>>>>> get_pdf
 }
 
 //==============================================================================
@@ -281,6 +286,7 @@ double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
   int j;
   sample_params(E_in, E_out, j, seed);
 
+<<<<<<< HEAD
   int m = mu_out_.shape()[2];
   std::vector<double> mu_vector;
   mu_vector.reserve(m);
@@ -293,6 +299,12 @@ double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
   }
 
   return get_pdf_discrete(mu_vector, mu);
+=======
+  double pdf = 0.0;
+  pdf += f * get_pdf_discrete(mu_out_.slice(i + 1, j, tensor::all), mu);
+  pdf += (1 - f) * get_pdf_discrete(mu_out_.slice(i, j, tensor::all), mu);
+  return pdf;
+>>>>>>> get_pdf
 }
 
 //==============================================================================
@@ -440,6 +452,7 @@ double IncoherentInelasticAE::sample_energy_and_pdf(
 
   int n_mu = distribution_[l].mu.shape()[1];
   const auto& mu_l = distribution_[l].mu;
+<<<<<<< HEAD
   std::vector<double> mu_vector;
 
   for (int k = 0; k < n_mu; ++k) {
@@ -448,6 +461,13 @@ double IncoherentInelasticAE::sample_energy_and_pdf(
   }
 
   return get_pdf_discrete(mu_vector, mu);
+=======
+
+  double pdf = 0.0;
+  pdf += f * get_pdf_discrete(mu_l.slice(j + 1, tensor::all), mu);
+  pdf += (1 - f) * get_pdf_discrete(mu_l.slice(j, tensor::all), mu);
+  return pdf;
+>>>>>>> get_pdf
 }
 
 //==============================================================================

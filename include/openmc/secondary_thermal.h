@@ -38,6 +38,8 @@ public:
 
 private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
+  tensor::Tensor<double>
+    factors_diff_; //!< Differences over elastic scattering factors
 };
 
 //==============================================================================
@@ -200,12 +202,15 @@ struct DoubleVector {
   const double& operator[](size_t index) const { return data; }
 };
 
-template<typename T>
-double get_pdf_discrete(const vector<double>& mu, const T& w, double mu_0)
+template<typename T1, typename T2>
+double get_pdf_discrete(
+  const T1 mu, const T2& w, double mu_0, double a = -1.0, double b = 1.0)
 {
-  // Make sure mu is in range [-1,1]
-  if (std::abs(mu_0) > 1.0)
-    mu_0 = std::copysign(1.0, mu_0);
+  // Make sure mu is in range [a,b]
+  if (mu_0 < a)
+    mu_0 = a;
+  if (mu_0 > b)
+    mu_0 = b;
   double a0;
   double a1;
   double b0;
@@ -215,18 +220,18 @@ double get_pdf_discrete(const vector<double>& mu, const T& w, double mu_0)
   if (mu_0 > mu[0]) {
     ai = lower_bound_index(mu.begin(), mu.end(), mu_0);
     a0 = mu[ai];
-    a1 = (ai > 1) ? mu[ai - 1] : -1.0;
+    a1 = (ai > 1) ? mu[ai - 1] : a;
   } else {
-    a0 = -1.0;
-    a1 = -1.0;
+    a0 = a;
+    a1 = a;
   }
   if (mu_0 < mu[mu.size() - 1]) {
     bi = upper_bound_index(mu.begin(), mu.end(), mu_0);
     b0 = mu[bi];
-    b1 = (bi < mu.size() - 1) ? mu[bi + 1] : 1.0;
+    b1 = (bi < mu.size() - 1) ? mu[bi + 1] : b;
   } else {
-    b0 = 1.0;
-    b1 = 1.0;
+    b0 = b;
+    b1 = b;
   }
 
   //  Calculate Delta_a and Delta_b
@@ -239,6 +244,14 @@ double get_pdf_discrete(const vector<double>& mu, const T& w, double mu_0)
     return w[bi] / (2.0 * delta_b);
   else
     return 0.0;
+}
+
+template<typename T1>
+double get_pdf_discrete(
+  const T1 mu, double mu_0, double a = -1.0, double b = 1.0)
+{
+  DoubleVector w {1.0 / mu.size()};
+  return get_pdf_discrete(mu, w, mu_0, a, b);
 }
 
 } // namespace openmc

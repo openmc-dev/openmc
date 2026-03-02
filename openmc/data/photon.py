@@ -17,7 +17,6 @@ from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
 from .function import Tabulated1D
-from .neutron import IncidentNeutron
 
 
 # Constants
@@ -487,10 +486,6 @@ class IncidentPhoton(EqualityMixin):
     @property
     def name(self):
         return ATOMIC_SYMBOL[self.atomic_number]
-
-    # Copy get_reaction_components from IncidentNeutron since it is the same for
-    # photons
-    get_reaction_components = IncidentNeutron.get_reaction_components
 
     @classmethod
     def from_ace(cls, ace_or_filename):

@@ -525,7 +525,7 @@ class Material(IDManagerMixin):
             # mu_en/rho for air [cm2/g] as a function of energy [eV]
             response_f = mass_energy_absorption_coefficient("air", data_source="nist126")
 
-            # Convert [eV cm2 barns-1 g-1 s-1] to [Gy hr-1]
+            # Factor to convert [eV cm2/(b g s)] to [Gy/h]
             multiplier = (build_up * geometry_factor_slab * seconds_per_hour
                           * grams_per_kg * 1e24 * JOULE_PER_EV)
 
@@ -536,7 +536,7 @@ class Material(IDManagerMixin):
             response_f = Tabulated1D(response_f_x, response_f_y, breakpoints=[
                 len(response_f_x)], interpolation=[5])
 
-            # Convert [pSv cm2/(b-s)] to [Sv/hr]
+            # Convert [pSv cm2/(b-s)] to [Sv/h]
             multiplier = (build_up * geometry_factor_slab * seconds_per_hour
                           * sv_per_psv * 1e24)
 
@@ -576,12 +576,10 @@ class Material(IDManagerMixin):
                 )
 
                 # limit the computation to the tabulated mu_en_air range
-                e_union = reduce(np.union1d, e_lists)
-                e_union = e_union[(e_union >= left_bound) & (e_union <= right_bound)]
-                if len(e_union) < 2:
+                e_vals = reduce(np.union1d, e_lists)
+                e_vals = e_vals[(e_vals >= left_bound) & (e_vals <= right_bound)]
+                if len(e_vals) < 2:
                     raise ValueError("Not enough overlapping energy points to compute CDR")
-
-                e_vals = e_union
                 p_vals = e_p_dist(e_vals)
 
             mu_vals = linear_attenuation(e_vals)
@@ -595,20 +593,10 @@ class Material(IDManagerMixin):
             if isinstance(photon_source_per_atom, Discrete):
                 cdr_nuc = np.sum(y_evaluated)
             elif isinstance(photon_source_per_atom, Tabular):
-                integrand_function = Tabulated1D(
-                    e_vals, y_evaluated, breakpoints=[len(e_vals)], interpolation=[2]
-                )
-                cdr_nuc = integrand_function.integral()[-1]
+                cdr_nuc = np.trapezoid(y_evaluated, e_vals)
 
-            # units air-absorbed dose [eV cm2/(g b s)]
-            # units effective dose [pSv cm2 barns-1 s-1]
-            cdr_nuc *= nuc_atoms_per_bcm
-
-            # units air-absorbed dose [Gy hr-1]
-            # units effective dose [Sv hr-1]
-            cdr_nuc *= multiplier
-
-            cdr[nuc] = cdr_nuc
+            # Compute air-absorbed dose [Gy/h] or effective dose [Sv/h]
+            cdr[nuc] = cdr_nuc * nuc_atoms_per_bcm * multiplier
 
         return cdr if by_nuclide else sum(cdr.values())
 

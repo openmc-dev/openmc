@@ -570,17 +570,16 @@ class Material(IDManagerMixin):
             p_vals = p_vals[mask]
 
             if isinstance(photon_source_per_atom, Tabular):
-                # generate the tabulated1D functions
-                e_p_dist = Tabulated1D(
-                    e_vals, p_vals, breakpoints=[len(e_vals)], interpolation=[1]
-                )
-
                 # limit the computation to the tabulated mu_en_air range
-                e_vals = reduce(np.union1d, e_lists)
-                e_vals = e_vals[(e_vals >= left_bound) & (e_vals <= right_bound)]
-                if len(e_vals) < 2:
+                e_union = reduce(np.union1d, e_lists)
+                e_union = e_union[(e_union >= left_bound) & (e_union <= right_bound)]
+                if len(e_union) < 2:
                     raise ValueError("Not enough overlapping energy points to compute CDR")
-                p_vals = e_p_dist(e_vals)
+
+                # Histogram interpolation: each new point inherits the value of
+                # the nearest original point to its left
+                p_vals = p_vals[np.searchsorted(e_vals, e_union, side='right') - 1]
+                e_vals = e_union
 
             mu_vals = linear_attenuation(e_vals)
             if dose_quantity == 'absorbed-air':

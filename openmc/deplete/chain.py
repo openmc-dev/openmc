@@ -812,16 +812,13 @@ class Chain:
         if not isinstance(mats, str):
             check_type("mats", mats, tuple, str)
             check_length("mats", mats, 2, 2)
-        
-        # Build transfer terms (nuclide transfer only)
-        if isinstance(mats, str):
+            dest_mat, mat = mats
+        else:
             mat = mats
             dest_mat = None
-            components = tr_rates.get_components(mat, current_timestep)
-        # Build transfer terms (transfer from one material into another)
-        elif isinstance(mats, tuple):
-            dest_mat, mat = mats
-            components = tr_rates.get_components(mat, current_timestep, dest_mat)    
+        
+        # Build transfer term 
+        components = tr_rates.get_components(mat, current_timestep, dest_mat)
 
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
@@ -861,14 +858,13 @@ class Chain:
         # Use DOK as intermediate representation
         n = len(self)
         vector = dok_array((n, 1))
+        components = ext_source_rates.get_components(mat, current_timestep)
 
         for i, nuc in enumerate(self.nuclides):
             # Build source term vector
-            if nuc.name in ext_source_rates.get_components(mat, current_timestep):
+            if nuc.name in components:
                 vector[i] = sum(ext_source_rates.get_external_rate(
                     mat, nuc.name, current_timestep))
-            else:
-                vector[i] = 0.0
 
         # Return CSC instead of DOK
         return vector.tocsc()

@@ -13,12 +13,6 @@
 
 namespace openmc {
 
-double get_pdf_discrete(const vector<double>& mu, double mu_0)
-{
-  DoubleVector w {1.0 / mu.size()};
-  return get_pdf_discrete(mu, w, mu_0);
-}
-
 //==============================================================================
 // CoherentElasticAE implementation
 //==============================================================================
@@ -174,17 +168,11 @@ double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
   get_energy_index(energy_, E_in, i, f);
   // Energy doesn't change in elastic scattering
   E_out = E_in;
-  int n_mu = mu_out_.shape()[1];
 
-  std::vector<double> mu_vector;
-  mu_vector.reserve(n_mu);
-
-  for (int k = 0; k < n_mu; ++k) {
-    double mu_k = mu_out_(i, k) + f * (mu_out_(i + 1, k) - mu_out_(i, k));
-    mu_vector.push_back(mu_k);
-  }
-
-  return get_pdf_discrete(mu_vector, mu);
+  double pdf = 0.0;
+  pdf += f * get_pdf_discrete(mu_out_.slice(i + 1, tensor::all), mu);
+  pdf += (1 - f) * get_pdf_discrete(mu_out_.slice(i, tensor::all), mu);
+  return pdf;
 }
 
 //==============================================================================
@@ -281,18 +269,10 @@ double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
   int j;
   sample_params(E_in, E_out, j, seed);
 
-  int m = mu_out_.shape()[2];
-  std::vector<double> mu_vector;
-  mu_vector.reserve(m);
-
-  for (int k = 0; k < m; ++k) {
-    double mu_ijk = mu_out_(i, j, k);
-    double mu_i1jk = mu_out_(i + 1, j, k);
-    double mu_k = (1 - f) * mu_ijk + f * mu_i1jk;
-    mu_vector.push_back(mu_k);
-  }
-
-  return get_pdf_discrete(mu_vector, mu);
+  double pdf = 0.0;
+  pdf += f * get_pdf_discrete(mu_out_.slice(i + 1, j, tensor::all), mu);
+  pdf += (1 - f) * get_pdf_discrete(mu_out_.slice(i, j, tensor::all), mu);
+  return pdf;
 }
 
 //==============================================================================
@@ -440,14 +420,11 @@ double IncoherentInelasticAE::sample_energy_and_pdf(
 
   int n_mu = distribution_[l].mu.shape()[1];
   const auto& mu_l = distribution_[l].mu;
-  std::vector<double> mu_vector;
 
-  for (int k = 0; k < n_mu; ++k) {
-    double mu_k = mu_l(j, k) + f * (mu_l(j + 1, k) - mu_l(j, k));
-    mu_vector.push_back(mu_k);
-  }
-
-  return get_pdf_discrete(mu_vector, mu);
+  double pdf = 0.0;
+  pdf += f * get_pdf_discrete(mu_l.slice(j + 1, tensor::all), mu);
+  pdf += (1 - f) * get_pdf_discrete(mu_l.slice(j, tensor::all), mu);
+  return pdf;
 }
 
 //==============================================================================

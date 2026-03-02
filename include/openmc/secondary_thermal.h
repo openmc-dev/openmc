@@ -200,8 +200,8 @@ struct DoubleVector {
   const double& operator[](size_t index) const { return data; }
 };
 
-template<typename T>
-double get_pdf_discrete(const vector<double>& mu, const T& w, double mu_0)
+template<typename T1, typename T2>
+double get_pdf_discrete(const T1 mu, const T2& w, double mu_0)
 {
   // Make sure mu is in range [-1,1]
   if (std::abs(mu_0) > 1.0)
@@ -239,6 +239,13 @@ double get_pdf_discrete(const vector<double>& mu, const T& w, double mu_0)
     return w[bi] / (2.0 * delta_b);
   else
     return 0.0;
+}
+
+template<typename T1>
+double get_pdf_discrete(const T1 mu, double mu_0)
+{
+  DoubleVector w {1.0 / mu.size()};
+  return get_pdf_discrete(mu, w, mu_0);
 }
 
 } // namespace openmc

@@ -826,7 +826,7 @@ void transport_history_based_single_particle(Particle& p)
 
 double transport_pseudoparticle(Particle& p, double total_distance)
 {
-  double time_cutoff = settings::time_cutoff[static_cast<int>(p.type())];
+  double time_cutoff = settings::time_cutoff[p.type().transport_index()];
   double speed = p.speed();
   p.event_calculate_xs(true);
 

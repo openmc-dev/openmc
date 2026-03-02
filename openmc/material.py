@@ -569,16 +569,7 @@ class Material(IDManagerMixin):
             e_vals = e_vals[mask]
             p_vals = p_vals[mask]
 
-            if isinstance(photon_source_per_atom, Discrete):
-                mu_vals = linear_attenuation(e_vals)
-                if dose_quantity == 'absorbed-air':
-                    # units [eV cm3/(g atom s)]
-                    cdr_nuc = np.sum((response_f(e_vals) / mu_vals) * p_vals * e_vals)
-                elif dose_quantity == 'effective':
-                    # units [pSv cm3/(atom s)]
-                    cdr_nuc = np.sum((response_f(e_vals) / mu_vals) * p_vals)
-
-            elif isinstance(photon_source_per_atom, Tabular):
+            if isinstance(photon_source_per_atom, Tabular):
                 # generate the tabulated1D functions
                 e_p_dist = Tabulated1D(
                     e_vals, p_vals, breakpoints=[len(e_vals)], interpolation=[1]
@@ -590,18 +581,23 @@ class Material(IDManagerMixin):
                 if len(e_union) < 2:
                     raise ValueError("Not enough overlapping energy points to compute CDR")
 
-                mu_vals_union = linear_attenuation(e_union)
-                if dose_quantity == 'absorbed-air':
-                    # units [eV cm3/(g atom s)]
-                    y_evaluated = (response_f(e_union) * e_p_dist(e_union) * e_union / mu_vals_union)
-                elif dose_quantity == 'effective':
-                    # units [pSv cm3/(atom s)]
-                    y_evaluated = (response_f(e_union) * e_p_dist(e_union) / mu_vals_union)
+                e_vals = e_union
+                p_vals = e_p_dist(e_vals)
 
+            mu_vals = linear_attenuation(e_vals)
+            if dose_quantity == 'absorbed-air':
+                # units [eV cm3/(g atom s)]
+                y_evaluated = (response_f(e_vals) / mu_vals) * p_vals * e_vals
+            elif dose_quantity == 'effective':
+                # units [pSv cm3/(atom s)]
+                y_evaluated = (response_f(e_vals) / mu_vals) * p_vals
+
+            if isinstance(photon_source_per_atom, Discrete):
+                cdr_nuc = np.sum(y_evaluated)
+            elif isinstance(photon_source_per_atom, Tabular):
                 integrand_function = Tabulated1D(
-                    e_union, y_evaluated, breakpoints=[len(e_union)], interpolation=[2]
+                    e_vals, y_evaluated, breakpoints=[len(e_vals)], interpolation=[2]
                 )
-
                 cdr_nuc = integrand_function.integral()[-1]
 
             # units air-absorbed dose [eV cm2/(g b s)]

@@ -10,7 +10,7 @@ from ..function import Tabulated1D
 
 # Embedded NIST-126 data
 # Air (Dry Near Sea Level) — NIST Standard Reference Database 126 Table 4 (doi: 10.18434/T4D01F)
-# Columns: Energy (MeV), μen/ρ (cm^2/g)
+# Columns: Energy (MeV), μ_en/ρ (cm^2/g)
 _NIST126_AIR = np.array([
     [1.00000e-03, 3.599e03],
     [1.50000e-03, 1.188e03],
@@ -64,6 +64,12 @@ def mass_energy_absorption_coefficient(
 ) -> Tabulated1D:
     """Return the mass energy-absorption coefficient as a function of energy.
 
+    The mass energy-absorption coefficient, :math:`\mu_\text{en}/\rho`, is
+    defined as the fraction of incident photon energy absorbed in a material per
+    unit mass less the energy carried away by scattered photons. It is obtained
+    from `NIST Standard Reference Database 126
+    <https://doi.org/10.18434/T4D01F>`_: X-Ray Mass Attenuation Coefficients.
+
     Parameters
     ----------
     material : {'air'}
@@ -104,8 +110,11 @@ _MASS_ATTENUATION: dict[int, object] = {}
 def mass_attenuation_coefficient(element):
     """Return the photon mass attenuation coefficient as a function of energy.
 
-    Data is read from the ``mass_attenuation.h5`` file bundled with OpenMC and
-    cached in memory on first access so that subsequent calls are fast.
+    The mass energy-absorption coefficient, :math:`\mu_\text{en}/\rho`, is
+    defined as the fraction of incident photon energy absorbed in a material per
+    unit mass. Values for each element are obtained from `NIST Standard
+    Reference Database 126 <https://doi.org/10.18434/T4D01F>`_: X-Ray Mass
+    Attenuation Coefficients.
 
     Parameters
     ----------
@@ -122,12 +131,9 @@ def mass_attenuation_coefficient(element):
     if not _MASS_ATTENUATION:
         data_file = Path(__file__).with_name('mass_attenuation.h5')
         with h5py.File(data_file, 'r') as f:
-            for key in f:
-                Z_key = int(key)
-                dataset = f[key][()]  # shape (2, N)
-                energies = dataset[0]  # eV
-                mu_rho = dataset[1]    # cm^2/g
-                _MASS_ATTENUATION[Z_key] = Tabulated1D(
+            for key, dataset in f.items():
+                energies, mu_rho = dataset[()]  # shape (2, N)
+                _MASS_ATTENUATION[int(key)] = Tabulated1D(
                     energies, mu_rho,
                     breakpoints=[len(energies)],
                     interpolation=[5]  # log-log

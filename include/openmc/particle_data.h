@@ -3,6 +3,7 @@
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/particle_type.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include "openmc/tallies/filter_match.h"
@@ -29,9 +30,6 @@ constexpr double CACHE_INVALID {-1.0};
 
 //==========================================================================
 // Aliases and type definitions
-
-//! Particle types
-enum class ParticleType { neutron, photon, electron, positron };
 
 //! Saved ("banked") state of a particle
 //! NOTE: This structure's MPI type is built in initialize_mpi() of
@@ -496,7 +494,7 @@ private:
   MacroXS macro_xs_;
   CacheDataMG mg_xs_cache_;
 
-  ParticleType type_ {ParticleType::neutron};
+  ParticleType type_;
 
   double E_;
   double E_last_;
@@ -536,6 +534,11 @@ private:
   int stream_;
 
   vector<SourceSite> secondary_bank_;
+
+  // Keep track of how many secondary particles were created in the collision
+  // and what the starting index is in the secondary bank for this particle
+  int n_secondaries_ {0};
+  int secondary_bank_index_ {0};
 
   int64_t current_work_;
 
@@ -691,7 +694,20 @@ public:
 
   // secondary particle bank
   SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }
+  const SourceSite& secondary_bank(int i) const { return secondary_bank_[i]; }
   decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
+  decltype(secondary_bank_) const& secondary_bank() const
+  {
+    return secondary_bank_;
+  }
+
+  // Number of secondaries created in a collision
+  int& n_secondaries() { return n_secondaries_; }
+  const int& n_secondaries() const { return n_secondaries_; }
+
+  // Starting index in secondary bank for this collision
+  int& secondary_bank_index() { return secondary_bank_index_; }
+  const int& secondary_bank_index() const { return secondary_bank_index_; }
 
   // Current simulation work index
   int64_t& current_work() { return current_work_; }

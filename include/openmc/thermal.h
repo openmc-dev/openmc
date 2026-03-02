@@ -5,7 +5,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"

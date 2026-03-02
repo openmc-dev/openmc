@@ -25,7 +25,7 @@ UrrData::UrrData(hid_t group_id)
   // Read URR tables. The HDF5 format is a little
   // different from how we want it laid out in memory.
   // This array used to be called "prob_".
-  xt::xtensor<double, 3> tmp_prob;
+  tensor::Tensor<double> tmp_prob;
   read_dataset(group_id, "table", tmp_prob);
   auto shape = tmp_prob.shape();
 
@@ -38,7 +38,7 @@ UrrData::UrrData(hid_t group_id)
   xs_values_.resize({n_energy, n_cdf_values});
 
   // Now fill in the values. Using manual loops here since we might
-  // not have fancy xtensor slicing code written for GPU tensors.
+  // not have fancy tensor slicing code written for GPU tensors.
   // The below enum gives how URR tables are laid out in our HDF5 tables.
   enum class URRTableParam {
     CUM_PROB,

@@ -42,7 +42,7 @@ def test_source_file(run_in_tmpdir):
     assert np.all(arr['E'] == n - np.arange(n))
     assert np.all(arr['wgt'] == 1.0)
     assert np.all(arr['delayed_group'] == 0)
-    assert np.all(arr['particle'] == 0)
+    assert np.all(arr['particle'] == 2112)  # PDG number for neutron
 
     # Ensure sites read in are consistent
     sites = openmc.ParticleList.from_hdf5('test_source.h5')
@@ -64,7 +64,7 @@ def test_source_file(run_in_tmpdir):
     dgs = np.array([s.delayed_group for s in sites])
     assert np.all(dgs == 0)
     p_types = np.array([s.particle for s in sites])
-    assert np.all(p_types == 0)
+    assert np.all(p_types == 2112)  # PDG number for neutron
 
     # Ensure a ParticleList item is a SourceParticle
     site = sites[0]

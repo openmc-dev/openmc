@@ -6,7 +6,7 @@
 #include "openmc/search.h"
 #include "openmc/vector.h"
 
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include <cassert>
 #include <cmath> // for log, exp
@@ -134,7 +134,7 @@ void IncoherentElasticAEDiscrete::sample(
   // incoming energies.
 
   // Sample outgoing cosine bin
-  int n_mu = mu_out_.shape()[1];
+  int n_mu = mu_out_.shape(1);
   int k = prn(seed) * n_mu;
 
   // Rather than use the sampled discrete mu directly, it is smeared over
@@ -215,7 +215,7 @@ void IncoherentInelasticAEDiscrete::sample_params(
   // for the second and second to last bins, relative to a normal bin
   // probability of 1). Otherwise, each bin is equally probable.
 
-  int n = energy_out_.shape()[1];
+  int n = energy_out_.shape(1);
   if (!skewed_) {
     // All bins equally likely
     j = prn(seed) * n;
@@ -260,7 +260,7 @@ void IncoherentInelasticAEDiscrete::sample(
   sample_params(E_in, E_out, j, seed);
 
   // Sample outgoing cosine bin
-  int m = mu_out_.shape()[2];
+  int m = mu_out_.shape(2);
   int k = prn(seed) * m;
 
   // Determine outgoing cosine corresponding to E_in[i] and E_in[i+1]
@@ -324,11 +324,11 @@ IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
         // On first pass, allocate space for angles
         if (j == 0) {
           auto n_mu = adist->x().size();
-          d.mu = xt::empty<double>({d.n_e_out, n_mu});
+          d.mu = tensor::Tensor<double>({d.n_e_out, n_mu});
         }
 
         // Copy outgoing angles
-        auto mu_j = xt::view(d.mu, j);
+        tensor::View<double> mu_j = d.mu.slice(j);
         std::copy(adist->x().begin(), adist->x().end(), mu_j.begin());
       }
     }
@@ -401,7 +401,7 @@ void IncoherentInelasticAE::sample(
   sample_params(E_in, E_out, f, l, j, seed);
 
   // Sample outgoing cosine bin
-  int n_mu = distribution_[l].mu.shape()[1];
+  int n_mu = distribution_[l].mu.shape(1);
   std::size_t k = prn(seed) * n_mu;
 
   // Rather than use the sampled discrete mu directly, it is smeared over

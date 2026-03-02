@@ -38,6 +38,7 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
+option(OPENMC_ENABLE_STRICT_FP "Enable strict FP flags to improve test portability"  OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
 message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
@@ -48,6 +49,7 @@ message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 message(STATUS "OPENMC_FORCE_VENDORED_LIBS ${OPENMC_FORCE_VENDORED_LIBS}")
+message(STATUS "OPENMC_ENABLE_STRICT_FP ${OPENMC_ENABLE_STRICT_FP}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -87,6 +89,19 @@ endforeach()
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, defaulting to RelWithDebInfo")
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
+endif()
+
+#===============================================================================
+# When STRICT_FP is enabled, remove NDEBUG from RelWithDebInfo flags so that
+# assert() remains active. CMake normally adds -DNDEBUG for both Release and
+# RelWithDebInfo, which disables C/C++ assert() statements.
+#===============================================================================
+
+if(OPENMC_ENABLE_STRICT_FP)
+  foreach(FLAG_VAR CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_RELWITHDEBINFO)
+    string(REPLACE "-DNDEBUG" "" ${FLAG_VAR} "${${FLAG_VAR}}")
+    string(REPLACE "/DNDEBUG" "" ${FLAG_VAR} "${${FLAG_VAR}}")
+  endforeach()
 endif()
 
 #===============================================================================
@@ -193,6 +208,26 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
+# When OPENMC_ENABLE_STRICT_FP is enabled, disable compiler optimizations that change
+# floating-point results relative to -O0, improving cross-platform and
+# cross-optimization-level reproducibility for regression testing:
+#   -ffp-contract=off    Prevents FMA contraction (fused multiply-add changes rounding)
+#   -fno-builtin         Prevents replacing math function calls (pow, exp, log, etc.)
+#                        with builtin versions that may differ from libm
+# By default (OFF), the compiler is free to use all optimizations for best
+# performance.
+if(OPENMC_ENABLE_STRICT_FP)
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag(-ffp-contract=off SUPPORTS_FP_CONTRACT_OFF)
+  if(SUPPORTS_FP_CONTRACT_OFF)
+    list(APPEND cxxflags -ffp-contract=off)
+  endif()
+  check_cxx_compiler_flag(-fno-builtin SUPPORTS_NO_BUILTIN)
+  if(SUPPORTS_NO_BUILTIN)
+    list(APPEND cxxflags -fno-builtin)
+  endif()
+endif()
+
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
 
@@ -267,23 +302,6 @@ else()
 endif()
 
 #===============================================================================
-# xtensor header-only library
-#===============================================================================
-
-if(OPENMC_FORCE_VENDORED_LIBS)
-  add_subdirectory(vendor/xtl)
-  set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-  add_subdirectory(vendor/xtensor)
-else()
-  find_package_write_status(xtensor)
-  if (NOT xtensor_FOUND)
-    add_subdirectory(vendor/xtl)
-    set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-    add_subdirectory(vendor/xtensor)
-  endif()
-endif()
-
-#===============================================================================
 # Catch2 library
 #===============================================================================
 
@@ -332,6 +350,7 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
+  src/atomic_mass.cpp
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
@@ -372,6 +391,7 @@ list(APPEND libopenmc_SOURCES
   src/particle.cpp
   src/particle_data.cpp
   src/particle_restart.cpp
+  src/particle_type.cpp
   src/photon.cpp
   src/physics.cpp
   src/physics_common.cpp
@@ -426,7 +446,9 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_parent_nuclide.cpp
   src/tallies/filter_particle.cpp
   src/tallies/filter_point.cpp  
+  src/tallies/filter_particle_production.cpp
   src/tallies/filter_polar.cpp
+  src/tallies/filter_reaction.cpp
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp
   src/tallies/filter_surface.cpp
@@ -496,7 +518,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor fmt::fmt ${CMAKE_DL_LIBS})
+                      fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)
@@ -552,6 +574,9 @@ if (OPENMC_ENABLE_PROFILE)
 endif()
 if (OPENMC_ENABLE_COVERAGE)
   target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
+endif()
+if (OPENMC_ENABLE_STRICT_FP)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_ENABLE_STRICT_FP)
 endif()
 
 #===============================================================================

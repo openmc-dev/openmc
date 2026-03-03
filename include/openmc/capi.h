@@ -17,6 +17,8 @@ int openmc_cell_get_fill(
 int openmc_cell_get_id(int32_t index, int32_t* id);
 int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T);
+int openmc_cell_get_density(
+  int32_t index, const int32_t* instance, double* rho);
 int openmc_cell_get_translation(int32_t index, double xyz[]);
 int openmc_cell_get_rotation(int32_t index, double rot[], size_t* n);
 int openmc_cell_get_name(int32_t index, const char** name);
@@ -27,6 +29,8 @@ int openmc_cell_set_fill(
 int openmc_cell_set_id(int32_t index, int32_t id);
 int openmc_cell_set_temperature(
   int32_t index, double T, const int32_t* instance, bool set_contained = false);
+int openmc_cell_set_density(int32_t index, double rho, const int32_t* instance,
+  bool set_contained = false);
 int openmc_cell_set_translation(int32_t index, const double xyz[]);
 int openmc_cell_set_rotation(int32_t index, const double rot[], size_t rot_len);
 int openmc_dagmc_universe_get_cell_ids(
@@ -112,7 +116,7 @@ int openmc_mesh_set_id(int32_t index, int32_t id);
 int openmc_mesh_get_n_elements(int32_t index, size_t* n);
 int openmc_mesh_get_volumes(int32_t index, double* volumes);
 int openmc_mesh_material_volumes(int32_t index, int nx, int ny, int nz,
-  int max_mats, int32_t* materials, double* volumes);
+  int max_mats, int32_t* materials, double* volumes, double* bboxes);
 int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_new_filter(const char* type, int32_t* index);
@@ -121,6 +125,49 @@ int openmc_nuclide_name(int index, const char** name);
 int openmc_plot_geometry();
 int openmc_id_map(const void* slice, int32_t* data_out);
 int openmc_property_map(const void* slice, double* data_out);
+int openmc_get_plot_index(int32_t id, int32_t* index);
+int openmc_plot_get_id(int32_t index, int32_t* id);
+int openmc_plot_set_id(int32_t index, int32_t id);
+int openmc_solidraytrace_plot_create(int32_t* index);
+int openmc_solidraytrace_plot_get_pixels(
+  int32_t index, int32_t* width, int32_t* height);
+int openmc_solidraytrace_plot_set_pixels(
+  int32_t index, int32_t width, int32_t height);
+int openmc_solidraytrace_plot_get_color_by(int32_t index, int32_t* color_by);
+int openmc_solidraytrace_plot_set_color_by(int32_t index, int32_t color_by);
+int openmc_solidraytrace_plot_set_default_colors(int32_t index);
+int openmc_solidraytrace_plot_set_all_opaque(int32_t index);
+int openmc_solidraytrace_plot_set_opaque(
+  int32_t index, int32_t id, bool visible);
+int openmc_solidraytrace_plot_set_color(
+  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b);
+int openmc_solidraytrace_plot_get_camera_position(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_camera_position(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_look_at(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_look_at(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_up(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_up(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_light_position(
+  int32_t index, double* x, double* y, double* z);
+int openmc_solidraytrace_plot_set_light_position(
+  int32_t index, double x, double y, double z);
+int openmc_solidraytrace_plot_get_fov(int32_t index, double* fov);
+int openmc_solidraytrace_plot_set_fov(int32_t index, double fov);
+int openmc_solidraytrace_plot_update_view(int32_t index);
+int openmc_solidraytrace_plot_create_image(
+  int32_t index, uint8_t* data_out, int32_t width, int32_t height);
+int openmc_solidraytrace_plot_get_color(
+  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b);
+int openmc_solidraytrace_plot_get_diffuse_fraction(
+  int32_t index, double* diffuse_fraction);
+int openmc_solidraytrace_plot_set_diffuse_fraction(
+  int32_t index, double diffuse_fraction);
 int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
   double** grid_y, int* ny, double** grid_z, int* nz);
 int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
@@ -136,6 +183,7 @@ int openmc_remove_tally(int32_t index);
 int openmc_reset();
 int openmc_reset_timers();
 int openmc_run();
+void openmc_run_random_ray();
 int openmc_sample_external_source(size_t n, uint64_t* seed, void* sites);
 void openmc_set_seed(int64_t new_seed);
 void openmc_set_stride(uint64_t new_stride);
@@ -197,8 +245,8 @@ int openmc_weight_windows_set_energy_bounds(
   int32_t index, double* e_bounds, size_t e_bounds_size);
 int openmc_weight_windows_get_energy_bounds(
   int32_t index, const double** e_bounds, size_t* e_bounds_size);
-int openmc_weight_windows_set_particle(int32_t index, int particle);
-int openmc_weight_windows_get_particle(int32_t index, int* particle);
+int openmc_weight_windows_set_particle(int32_t index, int32_t particle);
+int openmc_weight_windows_get_particle(int32_t index, int32_t* particle);
 int openmc_weight_windows_get_bounds(int32_t index, const double** lower_bounds,
   const double** upper_bounds, size_t* size);
 int openmc_weight_windows_set_bounds(int32_t index, const double* lower_bounds,
@@ -214,6 +262,7 @@ int openmc_weight_windows_set_weight_cutoff(int32_t index, double cutoff);
 int openmc_weight_windows_get_max_split(int32_t index, int* max_split);
 int openmc_weight_windows_set_max_split(int32_t index, int max_split);
 size_t openmc_weight_windows_size();
+size_t openmc_plots_size();
 int openmc_weight_windows_export(const char* filename = nullptr);
 int openmc_weight_windows_import(const char* filename = nullptr);
 int openmc_zernike_filter_get_order(int32_t index, int* order);
@@ -223,7 +272,7 @@ int openmc_zernike_filter_set_order(int32_t index, int order);
 int openmc_zernike_filter_set_params(
   int32_t index, const double* x, const double* y, const double* r);
 
-int openmc_particle_filter_get_bins(int32_t idx, int bins[]);
+int openmc_particle_filter_get_bins(int32_t idx, int32_t bins[]);
 
 //! Sets the mesh and energy grid for CMFD reweight
 //! \param[in] meshtyally_id id of CMFD Mesh Tally

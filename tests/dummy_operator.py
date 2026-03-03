@@ -243,4 +243,4 @@ class DummyOperator(TransportOperator):
             Maps cell name to index in global geometry.
 
         """
-        return self.volume, self.nuc_list, self.local_mats, self.burnable_mats
+        return self.volume, self.nuc_list, self.local_mats, self.burnable_mats, {"1": ""}

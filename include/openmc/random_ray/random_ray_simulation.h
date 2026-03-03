@@ -19,13 +19,9 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
-  void compute_segment_correction_factors();
   void apply_fixed_sources_and_mesh_domains();
-  void prepare_fixed_sources_adjoint(vector<double>& forward_flux,
-    SourceRegionContainer& forward_source_regions,
-    SourceRegionContainer& forward_base_source_regions,
-    std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
-      forward_source_region_map);
+  void prepare_fixed_sources_adjoint();
+  void prepare_adjoint_simulation();
   void simulate();
   void output_simulation_results() const;
   void instability_check(
@@ -38,15 +34,18 @@ public:
   // Accessors
   FlatSourceDomain* domain() const { return domain_.get(); }
 
+  //----------------------------------------------------------------------------
+  // Public data members
+
+  // Flag for adjoint simulation;
+  bool adjoint_needed_;
+
 private:
   //----------------------------------------------------------------------------
-  // Data members
+  // Private data members
 
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
-
-  // Random ray eigenvalue
-  double k_eff_ {1.0};
 
   // Tracks the average FSR miss rate for analysis and reporting
   double avg_miss_rate_ {0.0};
@@ -58,15 +57,18 @@ private:
   // Number of energy groups
   int negroups_;
 
+  // Toggle for first simulation
+  bool is_first_simulation_;
+
 }; // class RandomRaySimulation
 
 //============================================================================
 //! Non-member functions
 //============================================================================
 
-void openmc_run_random_ray();
 void validate_random_ray_inputs();
-void openmc_reset_random_ray();
+void print_adjoint_header();
+void openmc_finalize_random_ray();
 
 } // namespace openmc
 

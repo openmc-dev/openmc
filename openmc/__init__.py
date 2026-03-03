@@ -38,7 +38,7 @@ from openmc.tracks import *
 from .config import *
 
 # Import a few names from the model module
-from openmc.model import Model
+from openmc.model import Model, SearchResult
 
 from . import examples
 

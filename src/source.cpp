@@ -10,7 +10,7 @@
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
 #endif
 
-#include "xtensor/xadapt.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
@@ -36,6 +36,20 @@
 #include "openmc/xml_interface.h"
 
 namespace openmc {
+
+namespace {
+
+void validate_particle_type(ParticleType type, const std::string& context)
+{
+  if (type.is_transportable())
+    return;
+
+  fatal_error(
+    fmt::format("Unsupported source particle type '{}' (PDG {}) in {}.",
+      type.str(), type.pdg_number(), context));
+}
+
+} // namespace
 
 //==============================================================================
 // Global variables
@@ -246,9 +260,10 @@ bool Source::satisfies_spatial_constraints(Position r) const
       }
     } else {
       for (int i = 0; i < geom_state.n_coord(); i++) {
-        auto id = (domain_type_ == DomainType::CELL)
-                    ? model::cells[geom_state.coord(i).cell]->id_
-                    : model::universes[geom_state.coord(i).universe]->id_;
+        auto id =
+          (domain_type_ == DomainType::CELL)
+            ? model::cells[geom_state.coord(i).cell()].get()->id_
+            : model::universes[geom_state.coord(i).universe()].get()->id_;
         if ((accepted = contains(domain_ids_, id)))
           break;
       }
@@ -283,16 +298,15 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
-    auto temp_str = get_node_value(node, "particle", true, true);
-    if (temp_str == "neutron") {
-      particle_ = ParticleType::neutron;
-    } else if (temp_str == "photon") {
-      particle_ = ParticleType::photon;
+    auto temp_str = get_node_value(node, "particle", false, true);
+    particle_ = ParticleType(temp_str);
+    if (particle_ == ParticleType::photon() ||
+        particle_ == ParticleType::electron() ||
+        particle_ == ParticleType::positron()) {
       settings::photon_transport = true;
-    } else {
-      fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }
   }
+  validate_particle_type(particle_, "IndependentSource");
 
   // Check for external source file
   if (check_for_node(node, "file")) {
@@ -349,6 +363,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
   site.particle = particle_;
+  double r_wgt = 1.0;
+  double E_wgt = 1.0;
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
@@ -358,7 +374,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   while (!accepted) {
 
     // Sample spatial distribution
-    site.r = space_->sample(seed);
+    auto [r, r_wgt_temp] = space_->sample(seed);
+    site.r = r;
+    r_wgt = r_wgt_temp;
 
     // Check if sampled position satisfies spatial constraints
     accepted = satisfies_spatial_constraints(site.r);
@@ -371,16 +389,20 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   }
 
   // Sample angle
-  site.u = angle_->sample(seed);
+  auto [u, u_wgt] = angle_->sample(seed);
+  site.u = u;
+
+  site.wgt = r_wgt * u_wgt;
 
   // Sample energy and time for neutron and photon sources
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
-    auto p = static_cast<int>(particle_);
+    auto p = particle_.transport_index();
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
     if (energy_ptr) {
-      auto energies = xt::adapt(energy_ptr->x());
-      if (xt::any(energies > data::energy_max[p])) {
+      auto energies =
+        tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
+      if ((energies > data::energy_max[p]).any()) {
         fatal_error("Source energy above range of energies of at least "
                     "one cross section table");
       }
@@ -388,7 +410,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     while (true) {
       // Sample energy spectrum
-      site.E = energy_->sample(seed);
+      auto [E, E_wgt_temp] = energy_->sample(seed);
+      site.E = E;
+      E_wgt = E_wgt_temp;
 
       // Resample if energy falls above maximum particle energy
       if (site.E < data::energy_max[p] &&
@@ -400,7 +424,10 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     }
 
     // Sample particle creation time
-    site.time = time_->sample(seed);
+    auto [time, time_wgt] = time_->sample(seed);
+    site.time = time;
+
+    site.wgt *= (E_wgt * time_wgt);
   }
 
   // Increment number of accepted samples
@@ -416,11 +443,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 FileSource::FileSource(pugi::xml_node node) : Source(node)
 {
   auto path = get_node_value(node, "file", false, true);
-  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
-    sites_ = mcpl_source_sites(path);
-  } else {
-    this->load_sites_from_file(path);
-  }
+  load_sites_from_file(path);
 }
 
 FileSource::FileSource(const std::string& path)
@@ -430,30 +453,38 @@ FileSource::FileSource(const std::string& path)
 
 void FileSource::load_sites_from_file(const std::string& path)
 {
-  // Check if source file exists
-  if (!file_exists(path)) {
-    fatal_error(fmt::format("Source file '{}' does not exist.", path));
+  // If MCPL file, use the dedicated file reader
+  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+    sites_ = mcpl_source_sites(path);
+  } else {
+    // Check if source file exists
+    if (!file_exists(path)) {
+      fatal_error(fmt::format("Source file '{}' does not exist.", path));
+    }
+
+    write_message(6, "Reading source file from {}...", path);
+
+    // Open the binary file
+    hid_t file_id = file_open(path, 'r', true);
+
+    // Check to make sure this is a source file
+    std::string filetype;
+    read_attribute(file_id, "filetype", filetype);
+    if (filetype != "source" && filetype != "statepoint") {
+      fatal_error("Specified starting source file not a source file type.");
+    }
+
+    // Read in the source particles
+    read_source_bank(file_id, sites_, false);
+
+    // Close file
+    file_close(file_id);
   }
 
-  // Read the source from a binary file instead of sampling from some
-  // assumed source distribution
-  write_message(6, "Reading source file from {}...", path);
-
-  // Open the binary file
-  hid_t file_id = file_open(path, 'r', true);
-
-  // Check to make sure this is a source file
-  std::string filetype;
-  read_attribute(file_id, "filetype", filetype);
-  if (filetype != "source" && filetype != "statepoint") {
-    fatal_error("Specified starting source file not a source file type.");
+  // Make sure particles in source file have valid types
+  for (const auto& site : this->sites_) {
+    validate_particle_type(site.particle, "FileSource");
   }
-
-  // Read in the source particles
-  read_source_bank(file_id, sites_, false);
-
-  // Close file
-  file_close(file_id);
 }
 
 SourceSite FileSource::sample(uint64_t* seed) const
@@ -531,9 +562,9 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 // MeshElementSpatial implementation
 //==============================================================================
 
-Position MeshElementSpatial::sample(uint64_t* seed) const
+std::pair<Position, double> MeshElementSpatial::sample(uint64_t* seed) const
 {
-  return model::meshes[mesh_index_]->sample_element(elem_index_, seed);
+  return {model::meshes[mesh_index_]->sample_element(elem_index_, seed), 1.0};
 }
 
 //==============================================================================
@@ -565,6 +596,11 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   for (int elem_index = 0; elem_index < sources_.size(); ++elem_index) {
     sources_[elem_index]->set_space(
       std::make_unique<MeshElementSpatial>(mesh_idx, elem_index));
+  }
+
+  // Make sure sources use valid particle types
+  for (const auto& src : sources_) {
+    validate_particle_type(src->particle_type(), "MeshSource");
   }
 
   // the number of source distributions should either be one or equal to the

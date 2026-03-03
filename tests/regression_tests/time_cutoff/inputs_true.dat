@@ -4,13 +4,13 @@
   </materials>
   <geometry>
     <cell id="1" material="void" region="-1" universe="1"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 200" id="1" type="sphere"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 200"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>100</particles>
     <batches>10</batches>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="point">
         <parameters>0.0 0.0 0.0</parameters>
       </space>

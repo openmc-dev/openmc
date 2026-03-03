@@ -40,6 +40,7 @@ Functions
    reset_timers
    run
    run_in_memory
+   run_random_ray
    sample_external_source
    simulation_finalize
    simulation_init
@@ -82,12 +83,15 @@ Classes
    Nuclide
    ParentNuclideFilter
    ParticleFilter
+   ParticleProductionFilter
    PolarFilter
+   ReactionFilter
    RectilinearMesh
    RegularMesh
    SpatialLegendreFilter
    SphericalHarmonicsFilter
    SphericalMesh
+   SolidRayTracePlot
    SurfaceFilter
    Tally
    SensitivityTally
@@ -123,6 +127,12 @@ Data
 .. data:: meshes
 
    Mapping of mesh ID to :class:`openmc.lib.Mesh` instances.
+
+   :type: dict
+
+.. data:: plots
+
+   Mapping of plot ID to :class:`openmc.lib.SolidRayTracePlot` instances.
 
    :type: dict
 

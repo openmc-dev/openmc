@@ -11,7 +11,7 @@ import openmc
 import openmc.mgxs
 from openmc.mgxs import SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM
 from .checkvalue import check_type, check_value, check_greater_than, \
-    check_iterable_type, check_less_than, check_filetype_version
+    check_iterable_type, check_less_than, check_filetype_version, PathLike
 
 ROOM_TEMPERATURE_KELVIN = 294.0
 
@@ -484,7 +484,8 @@ class XSdata:
 
         check_type('temperature', temperature, Real)
 
-        temp_store = self.temperatures.tolist().append(temperature)
+        temp_store = self.temperatures.tolist()
+        temp_store.append(temperature)
         self.temperatures = temp_store
 
         self._total.append(None)
@@ -513,6 +514,75 @@ class XSdata:
     def _set_fissionable(self, array):
         if np.sum(array) > 0:
             self._fissionable = True
+
+    def add_temperature_data(self, other):
+        """This method adds temperature-dependent cross section
+        values from another XSdata object to this XSdata object.
+        Note: if a temperature datapoint from 'other' already exists in this
+        object, it will be overridden.
+
+        Parameters
+        ----------
+        other: openmc.XSdata
+            The other XSdata object to fetch data from
+        """
+
+        # Sanity check to make sure they have the same name, energy group structure,
+        # and delayed group structure
+        check_value('name', other.name, self.name)
+        check_value('energy_groups', other.energy_groups, [self.energy_groups])
+        check_value('delayed_groups', other.num_delayed_groups, [self.num_delayed_groups])
+
+        # Add the temperature data.
+        for temp in other.temperatures:
+            if temp not in self.temperatures:
+                self.add_temperature(temp)
+
+            if np.all(other.absorption[other._temperature_index(temp)] != None):
+              self.set_absorption(other.absorption[other._temperature_index(temp)], temp)
+
+            if np.all(other.beta[other._temperature_index(temp)] != None):
+              self.set_beta(other.beta[other._temperature_index(temp)], temp)
+
+            if np.all(other.chi[other._temperature_index(temp)] != None):
+              self.set_chi(other.chi[other._temperature_index(temp)], temp)
+
+            if np.all(other.chi_delayed[other._temperature_index(temp)] != None):
+              self.set_chi_delayed(other.chi_delayed[other._temperature_index(temp)], temp)
+
+            if np.all(other.chi_prompt[other._temperature_index(temp)] != None):
+              self.set_chi_prompt(other.chi_prompt[other._temperature_index(temp)], temp)
+
+            if np.all(other.decay_rate[other._temperature_index(temp)] != None):
+              self.set_decay_rate(other.decay_rate[other._temperature_index(temp)], temp)
+
+            if np.all(other.delayed_nu_fission[other._temperature_index(temp)] != None):
+              self.set_delayed_nu_fission(other.delayed_nu_fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.fission[other._temperature_index(temp)] != None):
+              self.set_fission(other.fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.inverse_velocity[other._temperature_index(temp)] != None):
+              self.set_inverse_velocity(other.inverse_velocity[other._temperature_index(temp)], temp)
+
+            if np.all(other.kappa_fission[other._temperature_index(temp)] != None):
+              self.set_kappa_fission(other.kappa_fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.multiplicity_matrix[other._temperature_index(temp)] != None):
+              self.set_multiplicity_matrix(other.multiplicity_matrix[other._temperature_index(temp)], temp)
+
+            if np.all(other.nu_fission[other._temperature_index(temp)] != None):
+              self.set_nu_fission(other.nu_fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.prompt_nu_fission[other._temperature_index(temp)] != None):
+              self.set_prompt_nu_fission(other.prompt_nu_fission[other._temperature_index(temp)], temp)
+
+            if np.all(other.scatter_matrix[other._temperature_index(temp)] != None):
+              self.set_scatter_matrix(other.scatter_matrix[other._temperature_index(temp)], temp)
+
+            if np.all(other.fission[other._temperature_index(temp)] != None):
+              self.set_total(other.total[other._temperature_index(temp)], temp)
+
 
     def set_total(self, total, temperature=ROOM_TEMPERATURE_KELVIN):
         """This method sets the cross section for this XSdata object at the
@@ -2506,7 +2576,7 @@ class MGXSLibrary:
 
         Parameters
         ----------
-        filename : str
+        filename : str or PathLike
             Filename of file, default is mgxs.h5.
         libver : {'earliest', 'latest'}
             Compatibility mode for the HDF5 file. 'latest' will produce files
@@ -2514,8 +2584,7 @@ class MGXSLibrary:
 
         """
 
-        check_type('filename', filename, str)
-
+        check_type('filename', filename, (str, PathLike))
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)
         file.attrs['filetype'] = np.bytes_(_FILETYPE_MGXS_LIBRARY)
@@ -2554,21 +2623,21 @@ class MGXSLibrary:
             raise ValueError("Either path or openmc.config['mg_cross_sections']"
                              "must be set")
 
-        check_type('filename', filename, str)
-        file = h5py.File(filename, 'r')
+        check_type('filename', filename, (str, PathLike))
+        with h5py.File(filename, 'r') as file:
 
-        # Check filetype and version
-        check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
-                               _VERSION_MGXS_LIBRARY)
+            # Check filetype and version
+            check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
+                                   _VERSION_MGXS_LIBRARY)
 
-        group_structure = file.attrs['group structure']
-        num_delayed_groups = file.attrs['delayed_groups']
-        energy_groups = openmc.mgxs.EnergyGroups(group_structure)
-        data = cls(energy_groups, num_delayed_groups)
+            group_structure = file.attrs['group structure']
+            num_delayed_groups = file.attrs['delayed_groups']
+            energy_groups = openmc.mgxs.EnergyGroups(group_structure)
+            data = cls(energy_groups, num_delayed_groups)
 
-        for group_name, group in file.items():
-            data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
-                                                    energy_groups,
-                                                    num_delayed_groups))
+            for group_name, group in file.items():
+                data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
+                                                        energy_groups,
+                                                        num_delayed_groups))
 
         return data

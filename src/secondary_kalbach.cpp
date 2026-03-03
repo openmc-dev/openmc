@@ -5,10 +5,10 @@
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
@@ -26,11 +26,11 @@ KalbachMann::KalbachMann(hid_t group)
   hid_t dset = open_dataset(group, "energy");
 
   // Get interpolation parameters
-  xt::xarray<int> temp;
+  tensor::Tensor<int> temp;
   read_attribute(dset, "interpolation", temp);
 
-  auto temp_b = xt::view(temp, 0); // view of breakpoints
-  auto temp_i = xt::view(temp, 1); // view of interpolation parameters
+  tensor::View<int> temp_b = temp.slice(0); // breakpoints
+  tensor::View<int> temp_i = temp.slice(1); // interpolation parameters
 
   std::copy(temp_b.begin(), temp_b.end(), std::back_inserter(breakpoints_));
   for (const auto i : temp_i)
@@ -51,7 +51,7 @@ KalbachMann::KalbachMann(hid_t group)
   read_attribute(dset, "interpolation", interp);
   read_attribute(dset, "n_discrete_lines", n_discrete);
 
-  xt::xarray<double> eout;
+  tensor::Tensor<double> eout;
   read_dataset(dset, eout);
   close_dataset(dset);
 
@@ -62,7 +62,7 @@ KalbachMann::KalbachMann(hid_t group)
     if (i < n_energy - 1) {
       n = offsets[i + 1] - j;
     } else {
-      n = eout.shape()[1] - j;
+      n = eout.shape(1) - j;
     }
 
     // Assign interpolation scheme and number of discrete lines
@@ -71,11 +71,11 @@ KalbachMann::KalbachMann(hid_t group)
     d.n_discrete = n_discrete[i];
 
     // Copy data
-    d.e_out = xt::view(eout, 0, xt::range(j, j + n));
-    d.p = xt::view(eout, 1, xt::range(j, j + n));
-    d.c = xt::view(eout, 2, xt::range(j, j + n));
-    d.r = xt::view(eout, 3, xt::range(j, j + n));
-    d.a = xt::view(eout, 4, xt::range(j, j + n));
+    d.e_out = eout.slice(0, tensor::range(j, j + n));
+    d.p = eout.slice(1, tensor::range(j, j + n));
+    d.c = eout.slice(2, tensor::range(j, j + n));
+    d.r = eout.slice(3, tensor::range(j, j + n));
+    d.a = eout.slice(4, tensor::range(j, j + n));
 
     // To get answers that match ACE data, for now we still use the tabulated
     // CDF values that were passed through to the HDF5 library. At a later
@@ -117,21 +117,10 @@ KalbachMann::KalbachMann(hid_t group)
 void KalbachMann::sample(
   double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
-  // Find energy bin and calculate interpolation factor -- if the energy is
-  // outside the range of the tabulated energies, choose the first or last bins
-  auto n_energy_in = energy_.size();
+  // Find energy bin and calculate interpolation factor
   int i;
   double r;
-  if (E_in < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E_in > energy_[n_energy_in - 1]) {
-    i = n_energy_in - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E_in);
-    r = (E_in - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
+  get_energy_index(energy_, E_in, i, r);
 
   // Sample between the ith and [i+1]th bin
   int l = r > prn(seed) ? i + 1 : i;

@@ -16,6 +16,17 @@ def test_reg_mesh_from_cell():
     assert np.array_equal(mesh.upper_right, cell.bounding_box[1])
 
 
+def test_reg_mesh_from_bounding_box():
+    """Tests a RegularMesh can be made from a BoundingBox directly."""
+    bb = openmc.BoundingBox([-8, -7, -5], [12, 13, 15])
+
+    mesh = openmc.RegularMesh.from_domain(domain=bb, dimension=[7, 11, 13])
+    assert isinstance(mesh, openmc.RegularMesh)
+    assert np.array_equal(mesh.dimension, (7, 11, 13))
+    assert np.array_equal(mesh.lower_left, bb[0])
+    assert np.array_equal(mesh.upper_right, bb[1])
+
+
 def test_cylindrical_mesh_from_cell():
     """Tests a CylindricalMesh can be made from a Cell and the specified
     dimensions are propagated through."""
@@ -147,3 +158,27 @@ def test_reg_mesh_from_geometry():
 def test_error_from_unsupported_object():
     with pytest.raises(TypeError):
         openmc.RegularMesh.from_domain("vacuum energy")
+
+
+def test_regularmesh_from_domain_error_from_small_dimensions():
+    surface = openmc.Sphere(r=20)
+    cell = openmc.Cell(region=-surface)
+    with pytest.raises(
+        ValueError, match='Unable to set "dimension" to "-2" since it is less than "1"'
+    ):
+        openmc.RegularMesh.from_domain(domain=cell, dimension=-2)
+
+
+def test_dimensions_from_domain_dimensions_from_int():
+    region = openmc.model.RectangularParallelepiped(
+        xmin=-100,
+        xmax=150,
+        ymin=-50,
+        ymax=200,
+        zmin=300,
+        zmax=400,
+        boundary_type="vacuum",
+    )
+    cell = openmc.Cell(region=-region)
+    mesh = openmc.RegularMesh.from_domain(domain=cell, dimension=1000)
+    assert mesh.dimension == (14, 14, 5)

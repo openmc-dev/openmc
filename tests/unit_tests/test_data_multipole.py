@@ -8,14 +8,14 @@ import openmc.data
 
 @pytest.fixture(scope='module')
 def u235():
-    directory = pathlib.Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    directory = pathlib.Path(openmc.config.get('cross_sections')).parent
     u235 = directory / 'wmp' / '092235.h5'
     return openmc.data.WindowedMultipole.from_hdf5(u235)
 
 
 @pytest.fixture(scope='module')
 def b10():
-    directory = pathlib.Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    directory = pathlib.Path(openmc.config.get('cross_sections')).parent
     b10 = directory / 'wmp' / '005010.h5'
     return openmc.data.WindowedMultipole.from_hdf5(b10)
 
@@ -48,17 +48,41 @@ def test_export_to_hdf5(tmpdir, u235):
     assert os.path.exists(filename)
 
 
-def test_from_endf():
-    pytest.importorskip('vectfit')
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def test_from_endf(endf_data):
     endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
     assert openmc.data.WindowedMultipole.from_endf(
-            endf_file, log=True, wmp_options={"n_win": 400, "n_cf": 3})
+            endf_file,
+            log=True,
+            # Keep the test lightweight
+            vf_options={
+                "njoy_error": 5e-3,
+                "vf_pieces": 1,
+                "rtol": 5e-2,
+                "atol": 1e-3,
+                "orders": [8, 12],
+                "n_vf_iter": 6,
+            },
+            wmp_options={"n_win": 50, "n_cf": 3, "rtol": 5e-2, "atol": 1e-3},
+        )
 
 
-def test_from_endf_search():
-    pytest.importorskip('vectfit')
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    endf_file = os.path.join(endf_data, 'neutrons', 'n-095_Am_244.endf')
+def test_from_endf_search(endf_data):
+    endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
     assert openmc.data.WindowedMultipole.from_endf(
-            endf_file, log=True, wmp_options={"search": True, 'rtol':1e-2})
+            endf_file,
+            log=True,
+            vf_options={
+                "njoy_error": 5e-3,
+                "vf_pieces": 1,
+                "rtol": 5e-2,
+                "atol": 1e-3,
+                "orders": [8, 12],
+                "n_vf_iter": 6,
+            },
+            wmp_options={
+                "search": True,
+                "rtol": 5e-2,
+                "search_n_win": 3,
+                "search_cf_orders": [5, 3],
+            },
+        )

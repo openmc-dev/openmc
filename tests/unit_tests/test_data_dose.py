@@ -41,3 +41,23 @@ def test_dose_coefficients():
         dose_coefficients('neutron', 'ZZ')
     with raises(ValueError):
         dose_coefficients('neutron', data_source='icrp7000')
+    with raises(ValueError) as excinfo:
+        dose_coefficients("photons", data_source="icrp116")
+    expected_particles = [
+        "electron",
+        "helium",
+        "mu+",
+        "mu-",
+        "neutron",
+        "photon",
+        "photon kerma",
+        "pi+",
+        "pi-",
+        "positron",
+        "proton",
+    ]
+    expected_msg = (
+        "'photons' has no dose data in data source icrp116. "
+        f"Available particles for icrp116 are: {expected_particles}"
+    )
+    assert str(excinfo.value) == expected_msg

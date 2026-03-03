@@ -1,26 +1,26 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="40" name="no-void fuel">
-      <density units="g/cc" value="11"/>
-      <nuclide ao="1.0" name="U235"/>
+    <material id="40" name="no-void fuel" depletable="true">
+      <density value="11" units="g/cc"/>
+      <nuclide name="U235" ao="1.0"/>
     </material>
     <material id="41" name="water">
-      <density units="g/cc" value="1.0"/>
-      <nuclide ao="2.0" name="H1"/>
-      <nuclide ao="1.0" name="O16"/>
+      <density value="1.0" units="g/cc"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
       <sab name="c_H_in_H2O"/>
     </material>
   </materials>
   <geometry>
-    <dagmc_universe filename="../../dagmc/legacy/dagmc.h5m" id="1"/>
+    <dagmc_universe id="1" filename="../../dagmc/legacy/dagmc.h5m"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>100</particles>
     <batches>5</batches>
     <inactive>1</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>-4 -4 -20 4 4 20</parameters>
       </space>

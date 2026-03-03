@@ -20,7 +20,7 @@ void check_dagmc_root_univ();
 
 } // namespace openmc
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 #include "DagMC.hpp"
 #include "dagmcmetadata.hpp"
@@ -216,6 +216,6 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 
-#endif // DAGMC
+#endif // OPENMC_DAGMC_ENABLED
 
 #endif // OPENMC_DAGMC_H

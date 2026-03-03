@@ -3,14 +3,14 @@
   <materials>
   </materials>
   <geometry>
-    <dagmc_universe filename="dagmc.h5m" id="1"/>
+    <dagmc_universe id="1" filename="dagmc.h5m"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>100</particles>
     <batches>5</batches>
     <inactive>0</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>-4 -4 -4 4 4 4</parameters>
       </space>

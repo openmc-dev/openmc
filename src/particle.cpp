@@ -8,6 +8,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
@@ -33,7 +34,7 @@
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
 #endif
 
@@ -45,34 +46,28 @@ namespace openmc {
 
 double Particle::speed() const
 {
-  // Determine mass in eV/c^2
-  double mass;
-  switch (this->type()) {
-  case ParticleType::neutron:
-    mass = MASS_NEUTRON_EV;
-    break;
-  case ParticleType::photon:
-    mass = 0.0;
-    break;
-  case ParticleType::electron:
-  case ParticleType::positron:
-    mass = MASS_ELECTRON_EV;
-    break;
-  }
+  if (settings::run_CE) {
+    // Determine mass in eV/c^2
+    double mass;
+    switch (type().pdg_number()) {
+    case PDG_NEUTRON:
+      mass = MASS_NEUTRON_EV;
+    case PDG_ELECTRON:
+    case PDG_POSITRON:
+      mass = MASS_ELECTRON_EV;
+    default:
+      mass = this->type().mass() * AMU_EV;
+    }
 
-  if (this->E() < 1.0e-9 * mass) {
-    // If the energy is much smaller than the mass, revert to non-relativistic
-    // formula. The 1e-9 criterion is specifically chosen as the point below
-    // which the error from using the non-relativistic formula is less than the
-    // round-off eror when using the relativistic formula (see analysis at
-    // https://gist.github.com/paulromano/da3b473fe3df33de94b265bdff0c7817)
-    return C_LIGHT * std::sqrt(2 * this->E() / mass);
+    // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
+    return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
+           (this->E() + mass);
   } else {
-    // Calculate inverse of Lorentz factor
-    const double inv_gamma = mass / (this->E() + mass);
-
-    // Calculate speed via v = c * sqrt(1 - γ^-2)
-    return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+    auto& macro_xs = data::mg.macro_xs_[this->material()];
+    int macro_t = this->mg_xs_cache().t;
+    int macro_a = macro_xs.get_angle_index(this->u());
+    return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, this->g(), nullptr,
+                   nullptr, nullptr, macro_t, macro_a);
   }
 }
 
@@ -81,9 +76,16 @@ bool Particle::create_secondary(
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
-  if (E < settings::energy_cutoff[static_cast<int>(type)]) {
+  int idx = type.transport_index();
+  if (idx == C_NONE) {
     return false;
   }
+  if (E < settings::energy_cutoff[idx]) {
+    return false;
+  }
+
+  // Increment number of secondaries created (for ParticleProductionFilter)
+  n_secondaries()++;
 
   auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
@@ -109,7 +111,7 @@ void Particle::split(double wgt)
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
 
-  // Convert signed index to a singed surface ID
+  // Convert signed index to a signed surface ID
   if (surface() == SURFACE_NONE) {
     bank.surf_id = SURFACE_NONE;
   } else {
@@ -131,6 +133,9 @@ void Particle::from_source(const SourceSite* src)
   
   initialize_cumulative_sensitivities();  
   lifetime() = 0.0;
+#ifdef OPENMC_DAGMC_ENABLED
+  history().reset();
+#endif
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -156,6 +161,7 @@ void Particle::from_source(const SourceSite* src)
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
+  delayed_group() = src->delayed_group;
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
@@ -190,7 +196,7 @@ void Particle::event_calculate_xs()
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
-  if (lowest_coord().cell == C_NONE) {
+  if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -199,11 +205,11 @@ void Particle::event_calculate_xs()
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
-      cell_born() = lowest_coord().cell;
+      cell_born() = lowest_coord().cell();
 
     // Initialize last cells from current cell
     for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell;
+      cell_last(j) = coord(j).cell();
     }
     n_coord_last() = n_coord();
   }
@@ -218,7 +224,8 @@ void Particle::event_calculate_xs()
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
-      if (material() != material_last() || sqrtkT() != sqrtkT_last()) {
+      if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
+          density_mult() != density_mult_last()) {
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.
@@ -247,38 +254,33 @@ void Particle::event_advance()
   boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
-  if (type() == ParticleType::electron || type() == ParticleType::positron) {
-    collision_distance() = 0.0;
+  if (type() == ParticleType::electron() ||
+      type() == ParticleType::positron()) {
+    collision_distance() = material() == MATERIAL_VOID ? INFINITY : 0.0;
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;
   } else {
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
-  // Select smaller of the two distances
-  double distance = std::min(boundary().distance, collision_distance());
+  double speed = this->speed();
+  double time_cutoff = settings::time_cutoff[type().transport_index()];
+  double distance_cutoff =
+    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
+  // Select smaller of the three distances
+  double distance =
+    std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
   // Advance particle in space and time
-  // Short-term solution until the surface source is revised and we can use
-  // this->move_distance(distance)
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += distance * coord(j).u;
-  }
-  double dt = distance / this->speed();
+  this->move_distance(distance);
+  double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
 
-  // Kill particle if its time exceeds the cutoff
-  bool hit_time_boundary = false;
-  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
-  if (time() > time_cutoff) {
-    double dt = time() - time_cutoff;
-    time() = time_cutoff;
-    lifetime() = time_cutoff;
-
-    double push_back_distance = speed() * dt;
-    this->move_distance(-push_back_distance);
-    hit_time_boundary = true;
+  // Score timed track-length tallies
+  if (!model::active_timed_tracklength_tallies.empty()) {
+    score_timed_tracklength_tally(*this, distance);
   }
 
   // Score track-length tallies
@@ -287,8 +289,7 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      type() == ParticleType::neutron) {
+  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -299,7 +300,7 @@ void Particle::event_advance()
   }
 
   // Set particle weight to zero if it hit the time boundary
-  if (hit_time_boundary) {
+  if (distance == distance_cutoff) {
     wgt() = 0.0;
   }
 }
@@ -308,17 +309,17 @@ void Particle::event_cross_surface()
 {
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell;
+    cell_last(j) = coord(j).cell();
   }
   n_coord_last() = n_coord();
 
   // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface;
-  n_coord() = boundary().coord_level;
+  surface() = boundary().surface();
+  n_coord() = boundary().coord_level();
 
-  if (boundary().lattice_translation[0] != 0 ||
-      boundary().lattice_translation[1] != 0 ||
-      boundary().lattice_translation[2] != 0) {
+  if (boundary().lattice_translation()[0] != 0 ||
+      boundary().lattice_translation()[1] != 0 ||
+      boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
     bool verbose = settings::verbosity >= 10 || trace();
@@ -349,9 +350,9 @@ void Particle::event_cross_surface()
 
 void Particle::event_collide()
 {
+
   // Score collision estimate of keff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      type() == ParticleType::neutron) {
+  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
   }
 
@@ -371,6 +372,11 @@ void Particle::event_collide()
     collision_mg(*this);
   }
 
+  // Collision track feature to recording particle interaction
+  if (settings::collision_track) {
+    collision_track_record(*this);
+  }
+
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
@@ -384,8 +390,7 @@ void Particle::event_collide()
     }
   }
 
-  if (!model::active_pulse_height_tallies.empty() &&
-      type() == ParticleType::photon) {
+  if (!model::active_pulse_height_tallies.empty() && type().is_photon()) {
     pht_collision_energy();
   }
 
@@ -393,6 +398,11 @@ void Particle::event_collide()
   n_bank() = 0;
   bank_second_E() = 0.0;
   wgt_bank() = 0.0;
+
+  // Clear number of secondaries in this collision. This is
+  // distinct from the number of created neutrons n_bank() above!
+  n_secondaries() = 0;
+
   zero_delayed_bank();
 
   // Reset fission logical
@@ -408,14 +418,14 @@ void Particle::event_collide()
   // Set all directions to base level -- right now, after a collision, only
   // the base level directions are changed
   for (int j = 0; j < n_coord() - 1; ++j) {
-    if (coord(j + 1).rotated) {
+    if (coord(j + 1).rotated()) {
       // If next level is rotated, apply rotation matrix
-      const auto& m {model::cells[coord(j).cell]->rotation_};
-      const auto& u {coord(j).u};
-      coord(j + 1).u = u.rotate(m);
+      const auto& m {model::cells[coord(j).cell()]->rotation_};
+      const auto& u {coord(j).u()};
+      coord(j + 1).u() = u.rotate(m);
     } else {
       // Otherwise, copy this level's direction
-      coord(j + 1).u = coord(j).u;
+      coord(j + 1).u() = coord(j).u();
     }
   }
 
@@ -427,6 +437,8 @@ void Particle::event_collide()
   }
   
 #ifdef DAGMC
+
+#ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 }
@@ -459,11 +471,11 @@ void Particle::event_revive_from_secondary()
 
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&
-        this->type() == ParticleType::photon) {
+        this->type().is_photon()) {
       // Since the birth cell of the particle has not been set we
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.
-      if (lowest_coord().cell == C_NONE) {
+      if (lowest_coord().cell() == C_NONE) {
         bool verbose = settings::verbosity >= 10 || trace();
         if (!exhaustive_find_cell(*this, verbose)) {
           mark_as_lost("Could not find the cell containing particle " +
@@ -472,11 +484,11 @@ void Particle::event_revive_from_secondary()
         }
         // Set birth cell attribute
         if (cell_born() == C_NONE)
-          cell_born() = lowest_coord().cell;
+          cell_born() = lowest_coord().cell();
 
         // Initialize last cells from current cell
         for (int j = 0; j < n_coord(); ++j) {
-          cell_last(j) = coord(j).cell;
+          cell_last(j) = coord(j).cell();
         }
         n_coord_last() = n_coord();
       }
@@ -491,7 +503,7 @@ void Particle::event_revive_from_secondary()
 
 void Particle::event_death()
 {
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 
@@ -534,7 +546,7 @@ void Particle::pht_collision_energy()
 
   // determine index of cell in pulse_height_cells
   auto it = std::find(model::pulse_height_cells.begin(),
-    model::pulse_height_cells.end(), lowest_coord().cell);
+    model::pulse_height_cells.end(), lowest_coord().cell());
 
   if (it != model::pulse_height_cells.end()) {
     int index = std::distance(model::pulse_height_cells.begin(), it);
@@ -542,7 +554,7 @@ void Particle::pht_collision_energy()
 
     // If the energy of the particle is below the cutoff, it will not be sampled
     // so its energy is added to the pulse-height in the cell
-    int photon = static_cast<int>(ParticleType::photon);
+    int photon = ParticleType::photon().transport_index();
     if (E() < settings::energy_cutoff[photon]) {
       pht_storage()[index] += E();
     }
@@ -571,13 +583,14 @@ void Particle::cross_surface(const Surface& surf)
   }
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   if (surf.geom_type() == GeometryType::CSG)
     history().reset();
 #endif
 
   // Handle any applicable boundary conditions.
-  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
+  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME) {
     surf.bc_->handle_particle(*this, surf);
     return;
   }
@@ -585,17 +598,18 @@ void Particle::cross_surface(const Surface& surf)
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   // in DAGMC, we know what the next cell should be
   if (surf.geom_type() == GeometryType::DAG) {
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
-                       lowest_coord().universe) -
+                       lowest_coord().universe()) -
                      1;
-    // save material and temp
+    // save material, temperature, and density multiplier
     material_last() = material();
     sqrtkT_last() = sqrtkT();
+    density_mult_last() = density_mult();
     // set new cell value
-    lowest_coord().cell = i_cell;
+    lowest_coord().cell() = i_cell;
     auto& cell = model::cells[i_cell];
 
     cell_instance() = 0;
@@ -604,6 +618,7 @@ void Particle::cross_surface(const Surface& surf)
 
     material() = cell->material(cell_instance());
     sqrtkT() = cell->sqrtkT(cell_instance());
+    density_mult() = cell->density_mult(cell_instance());
     return;
   }
 #endif
@@ -699,7 +714,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   u() = new_u;
 
   // Reassign particle's cell and surface
-  coord(0).cell = cell_last(0);
+  coord(0).cell() = cell_last(0);
   surface() = -surface();
 
   // If a reflective surface is coincident with a lattice or universe
@@ -758,9 +773,7 @@ void Particle::cross_periodic_bc(
   if (!neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after hitting periodic "
                  "boundary on surface " +
-                 std::to_string(surf.id_) +
-                 ". The normal vector "
-                 "of one periodic surface may need to be reversed.");
+                 std::to_string(surf.id_) + ".");
     return;
   }
 
@@ -840,7 +853,7 @@ void Particle::write_restart() const
       break;
     }
     write_dataset(file_id, "id", id());
-    write_dataset(file_id, "type", static_cast<int>(type()));
+    write_dataset(file_id, "type", type().pdg_number());
 
     int64_t i = current_work();
     if (settings::run_mode == RunMode::EIGENVALUE) {
@@ -878,10 +891,12 @@ void Particle::update_neutron_xs(
 
   // If the cache doesn't match, recalculate micro xs
   if (this->E() != micro.last_E || this->sqrtkT() != micro.last_sqrtkT ||
-      i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
+      i_sab != micro.index_sab || sab_frac != micro.sab_frac ||
+      ncrystal_xs != micro.ncrystal_xs) {
     data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, *this);
 
     // If NCrystal is being used, update micro cross section cache
+    micro.ncrystal_xs = ncrystal_xs;
     if (ncrystal_xs >= 0.0) {
       data::nuclides[i_nuclide]->calculate_elastic_xs(*this);
       ncrystal_update_micro(ncrystal_xs, micro);
@@ -892,37 +907,6 @@ void Particle::update_neutron_xs(
 //==============================================================================
 // Non-method functions
 //==============================================================================
-
-std::string particle_type_to_str(ParticleType type)
-{
-  switch (type) {
-  case ParticleType::neutron:
-    return "neutron";
-  case ParticleType::photon:
-    return "photon";
-  case ParticleType::electron:
-    return "electron";
-  case ParticleType::positron:
-    return "positron";
-  }
-  UNREACHABLE();
-}
-
-ParticleType str_to_particle_type(std::string str)
-{
-  if (str == "neutron") {
-    return ParticleType::neutron;
-  } else if (str == "photon") {
-    return ParticleType::photon;
-  } else if (str == "electron") {
-    return ParticleType::electron;
-  } else if (str == "positron") {
-    return ParticleType::positron;
-  } else {
-    throw std::invalid_argument {fmt::format("Invalid particle name: {}", str)};
-  }
-}
-
 void add_surf_source_to_bank(Particle& p, const Surface& surf)
 {
   if (simulation::current_batch <= settings::n_inactive ||
@@ -960,7 +944,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
     // Check if the cell of interest has been entered
     bool entered = false;
     for (int i = 0; i < p.n_coord(); ++i) {
-      if (p.coord(i).cell == cell_idx) {
+      if (p.coord(i).cell() == cell_idx) {
         entered = true;
       }
     }

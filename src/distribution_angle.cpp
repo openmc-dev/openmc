@@ -2,11 +2,11 @@
 
 #include <cmath> // for abs, copysign
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/vector.h" // for vector
@@ -29,7 +29,7 @@ AngleDistribution::AngleDistribution(hid_t group)
   hid_t dset = open_dataset(group, "mu");
   read_attribute(dset, "offsets", offsets);
   read_attribute(dset, "interpolation", interp);
-  xt::xarray<double> temp;
+  tensor::Tensor<double> temp;
   read_dataset(dset, temp);
   close_dataset(dset);
 
@@ -40,13 +40,13 @@ AngleDistribution::AngleDistribution(hid_t group)
     if (i < n_energy - 1) {
       n = offsets[i + 1] - j;
     } else {
-      n = temp.shape()[1] - j;
+      n = temp.shape(1) - j;
     }
 
     // Create and initialize tabular distribution
-    auto xs = xt::view(temp, 0, xt::range(j, j + n));
-    auto ps = xt::view(temp, 1, xt::range(j, j + n));
-    auto cs = xt::view(temp, 2, xt::range(j, j + n));
+    tensor::View<double> xs = temp.slice(0, tensor::range(j, j + n));
+    tensor::View<double> ps = temp.slice(1, tensor::range(j, j + n));
+    tensor::View<double> cs = temp.slice(2, tensor::range(j, j + n));
     vector<double> x {xs.begin(), xs.end()};
     vector<double> p {ps.begin(), ps.end()};
     vector<double> c {cs.begin(), cs.end()};
@@ -64,30 +64,17 @@ AngleDistribution::AngleDistribution(hid_t group)
 
 double AngleDistribution::sample(double E, uint64_t* seed) const
 {
-  // Determine number of incoming energies
-  auto n = energy_.size();
-
-  // Find energy bin and calculate interpolation factor -- if the energy is
-  // outside the range of the tabulated energies, choose the first or last bins
+  // Find energy bin and calculate interpolation factor
   int i;
   double r;
-  if (E < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E > energy_[n - 1]) {
-    i = n - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E);
-    r = (E - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
+  get_energy_index(energy_, E, i, r);
 
   // Sample between the ith and (i+1)th bin
   if (r > prn(seed))
     ++i;
 
   // Sample i-th distribution
-  double mu = distribution_[i]->sample(seed);
+  double mu = distribution_[i]->sample(seed).first;
 
   // Make sure mu is in range [-1,1] and return
   if (std::abs(mu) > 1.0)

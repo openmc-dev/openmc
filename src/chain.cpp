@@ -42,7 +42,7 @@ ChainNuclide::ChainNuclide(pugi::xml_node node)
       branching_ratio =
         std::stod(get_node_value(reaction_node, "branching_ratio"));
     }
-    int mt = reaction_type(rx_name);
+    int mt = reaction_mt(rx_name);
     reaction_products_[mt].push_back({rx_target, branching_ratio});
   }
 
@@ -70,8 +70,8 @@ ChainNuclide::~ChainNuclide()
 void DecayPhotonAngleEnergy::sample(
   double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
-  E_out = photon_energy_->sample(seed);
-  mu = Uniform(-1., 1.).sample(seed);
+  E_out = photon_energy_->sample(seed).first;
+  mu = Uniform(-1., 1.).sample(seed).first;
 }
 
 //==============================================================================

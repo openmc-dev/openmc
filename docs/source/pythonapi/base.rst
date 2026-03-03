@@ -133,6 +133,7 @@ Constructing Tallies
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
+   openmc.ParticleProductionFilter
    openmc.MuFilter
    openmc.MuSurfaceFilter
    openmc.PolarFilter
@@ -149,6 +150,7 @@ Constructing Tallies
    openmc.ZernikeRadialFilter
    openmc.ParentNuclideFilter
    openmc.ParticleFilter
+   openmc.ReactionFilter
    openmc.MeshMaterialVolumes
    openmc.Trigger
    openmc.TallyDerivative
@@ -179,7 +181,8 @@ Geometry Plotting
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Plot
+   openmc.SlicePlot
+   openmc.VoxelPlot
    openmc.WireframeRayTracePlot
    openmc.SolidRayTracePlot
    openmc.Plots
@@ -219,6 +222,9 @@ Post-processing
    :nosignatures:
    :template: myfunction.rst
 
+   openmc.read_collision_track_file
+   openmc.read_collision_track_hdf5
+   openmc.read_collision_track_mcpl
    openmc.voxel_to_vtk
 
 The following classes and functions are used for functional expansion reconstruction.

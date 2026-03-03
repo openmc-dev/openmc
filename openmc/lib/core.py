@@ -7,12 +7,14 @@ import os
 from pathlib import Path
 from random import getrandbits
 from tempfile import TemporaryDirectory
+import traceback as tb
 
 import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from ..mpi import comm
 from openmc.checkvalue import PathLike
 import openmc.lib
 import openmc
@@ -28,7 +30,7 @@ class _SourceSite(Structure):
                 ('delayed_group', c_int),
                 ('fission_nuclide', c_int),
                 ('surf_id', c_int),
-                ('particle', c_int),
+                ('particle', c_int32),
                 ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
@@ -82,6 +84,7 @@ _dll.openmc_properties_import.restype = c_int
 _dll.openmc_properties_import.errcheck = _error_handler
 _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
+_dll.openmc_run_random_ray.restype = None
 _dll.openmc_reset.restype = c_int
 _dll.openmc_reset.errcheck = _error_handler
 _dll.openmc_reset_timers.restype = c_int
@@ -479,6 +482,18 @@ def run(output=True):
         _dll.openmc_run()
 
 
+def run_random_ray(output=True):
+    """Run a random ray simulation
+
+    Parameters
+    ----------
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+    """
+
+    with quiet_dll(output):
+        _dll.openmc_run_random_ray()
+
 def sample_external_source(
         n_samples: int = 1000,
         prn_seed: int | None = None
@@ -634,6 +649,9 @@ class TemporarySession:
     model : openmc.Model, optional
         OpenMC model to use for the session. If None, a minimal working model is
         created.
+    cwd : PathLike, optional
+        Working directory in which to run OpenMC. If None, a temporary directory
+        is created and deleted automatically.
     **init_kwargs
         Keyword arguments to pass to :func:`openmc.lib.init`.
 
@@ -641,10 +659,13 @@ class TemporarySession:
     ----------
     model : openmc.Model
         The OpenMC model used for the session.
+    comm : mpi4py.MPI.Intracomm
+        The MPI intracommunicator used for the session.
 
     """
-    def __init__(self, model=None, **init_kwargs):
-        self.init_kwargs = init_kwargs
+    def __init__(self, model=None, cwd=None, **init_kwargs):
+        self.init_kwargs = dict(init_kwargs)
+        self.cwd = cwd
         if model is None:
             surf = openmc.Sphere(boundary_type="vacuum")
             cell = openmc.Cell(region=-surf)
@@ -654,34 +675,65 @@ class TemporarySession:
                 particles=1, batches=1, output={'summary': False})
         self.model = model
 
+        # Determine MPI intercommunicator
+        self.init_kwargs.setdefault('intracomm', comm)
+        self.comm = self.init_kwargs['intracomm']
+
     def __enter__(self):
         """Initialize the OpenMC library in a temporary directory."""
-        # Make sure OpenMC is not already initialized
-        if openmc.lib.is_initialized:
-            raise RuntimeError("openmc.lib is already initialized.")
+        # If already initialized, the context manager is a no-op
+        self.already_initialized = openmc.lib.is_initialized
+        if self.already_initialized:
+            return self
 
         # Store original working directory
         self.orig_dir = Path.cwd()
 
-        # Set up temporary directory
-        self.tmp_dir = TemporaryDirectory()
-        working_dir = Path(self.tmp_dir.name)
-        working_dir.mkdir(parents=True, exist_ok=True)
-        os.chdir(working_dir)
+        if self.cwd is None:
+            # Set up temporary directory on rank 0
+            if self.comm.rank == 0:
+                self._tmp_dir = TemporaryDirectory()
+                self.cwd = self._tmp_dir.name
 
-        # Export model and initialize OpenMC
-        self.model.export_to_model_xml()
+            # Broadcast the path so that all ranks use the same directory
+            self.cwd = self.comm.bcast(self.cwd)
+
+        # Create and change to specified directory
+        self.cwd = Path(self.cwd)
+        self.cwd.mkdir(parents=True, exist_ok=True)
+        os.chdir(self.cwd)
+
+        # Export model on first rank and initialize OpenMC
+        if self.comm.rank == 0:
+            self.model.export_to_model_xml()
+        self.comm.barrier()
         openmc.lib.init(**self.init_kwargs)
 
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Finalize the OpenMC library and clean up temporary directory."""
+        if self.already_initialized:
+            return
+
+        # If an exception occurred, abort all ranks immediately
+        if exc_type is not None:
+            # Print exception info on the rank that failed
+            tb.print_exception(exc_type, exc_value, traceback)
+            sys.stdout.flush()
+
+            # Abort all MPI processes
+            self.comm.Abort(1)
+
         try:
-            openmc.lib.finalize()
+            finalize()
         finally:
             os.chdir(self.orig_dir)
-            self.tmp_dir.cleanup()
+
+            # Make sure all ranks have finalized before deleting temporary dir
+            self.comm.barrier()
+            if hasattr(self, '_tmp_dir'):
+                self._tmp_dir.cleanup()
 
 
 class _DLLGlobal:

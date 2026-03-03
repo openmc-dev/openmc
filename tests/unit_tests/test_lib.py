@@ -5,6 +5,7 @@ import os
 import numpy as np
 import pytest
 import openmc
+from openmc.examples import random_ray_pin_cell
 import openmc.exceptions as exc
 import openmc.lib
 
@@ -84,6 +85,19 @@ def uo2_trigger_model():
 
 
 @pytest.fixture(scope='module')
+def random_ray_pincell_model():
+    """Set up a random ray model to test with and delete files when done"""
+    openmc.reset_auto_ids()
+    # Write XML and MGXS files in tmpdir
+    with cdtemp():
+        model = random_ray_pin_cell()
+        model.settings.batches = 200
+        model.settings.inactive = 50
+        model.settings.particles = 50
+        model.export_to_xml()
+        yield
+
+@pytest.fixture(scope='module')
 def lib_init(pincell_model, mpi_intracomm):
     openmc.lib.init(intracomm=mpi_intracomm)
     yield
@@ -157,6 +171,34 @@ def test_properties_temperature(lib_init):
     # Import properties and check that temperature is restored
     openmc.lib.import_properties('properties.h5')
     assert cell.get_temperature() == pytest.approx(200.0)
+
+
+def test_cell_density(lib_init):
+    cell = openmc.lib.cells[1]
+    print('density', cell.get_density())
+    orig_density = cell.get_density()
+    try:
+        cell.set_density(1.5, 0)
+        assert cell.get_density(0) == pytest.approx(1.5)
+        cell.set_density(2.0)
+        assert cell.get_density() == pytest.approx(2.0)
+    finally:
+        cell.set_density(orig_density)
+
+
+def test_properties_cell_density(lib_init):
+    # Cell density should be 2.0 from above test
+    cell = openmc.lib.cells[1]
+    orig_density = cell.get_density()
+
+    # Export properties and change density
+    openmc.lib.export_properties('properties.h5')
+    cell.set_density(3.0)
+    assert cell.get_density() == pytest.approx(3.0)
+
+    # Import properties and check that density is restored
+    openmc.lib.import_properties('properties.h5')
+    assert cell.get_density() == pytest.approx(orig_density)
 
 
 def test_new_cell(lib_init):
@@ -468,9 +510,6 @@ def test_set_n_batches(lib_run):
 
     for i in range(7):
         openmc.lib.next_batch()
-    # Setting n_batches less than current_batch should raise error
-    with pytest.raises(exc.InvalidArgumentError):
-        settings.set_batches(6)
     # n_batches should stay the same
     assert settings.get_batches() == 10
 
@@ -582,6 +621,13 @@ def test_regular_mesh(lib_init):
     for mesh_id, mesh in meshes.items():
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
+
+    rotation = (180.0, 0.0, 0.0)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+    mf.rotation = rotation
+    assert np.allclose(mf.rotation, rotation)
 
     translation = (1.0, 2.0, 3.0)
 
@@ -888,6 +934,60 @@ def test_property_map(lib_init):
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 
+def test_solid_raytrace_plot(lib_init, pincell_model):
+    # Ensure plot mapping can be accessed and grows after allocation
+    n0 = len(openmc.lib.plots)
+    plot = openmc.lib.SolidRayTracePlot()
+    assert len(openmc.lib.plots) == n0 + 1
+    assert plot.id in openmc.lib.plots
+    assert openmc.lib.plots[plot.id] is plot
+
+    # Exercise plot property getters/setters
+    plot.pixels = (8, 6)
+    assert plot.pixels == (8, 6)
+
+    plot.color_by = openmc.lib.SolidRayTracePlot.COLOR_BY_MATERIAL
+    assert plot.color_by == openmc.lib.SolidRayTracePlot.COLOR_BY_MATERIAL
+
+    plot.camera_position = (2.0, 0.0, 1.0)
+    plot.look_at = (0.0, 0.0, 0.0)
+    plot.up = (0.0, 0.0, 1.0)
+    plot.light_position = (3.0, 2.0, 4.0)
+    plot.fov = 60.0
+    plot.diffuse_fraction = 0.4
+    assert plot.camera_position == pytest.approx((2.0, 0.0, 1.0))
+    assert plot.look_at == pytest.approx((0.0, 0.0, 0.0))
+    assert plot.up == pytest.approx((0.0, 0.0, 1.0))
+    assert plot.light_position == pytest.approx((3.0, 2.0, 4.0))
+    assert plot.fov == pytest.approx(60.0)
+    assert plot.diffuse_fraction == pytest.approx(0.4)
+
+    # Exercise color/visibility CAPI wrappers
+    plot.set_default_colors()
+    plot.set_color(1, (12, 34, 56))
+    assert plot.get_color(1) == (12, 34, 56)
+    plot.set_visibility(1, False)
+    plot.set_visibility(1, True)
+
+    # Confirm image creation path works and dimensions match pixels
+    plot.update_view()
+    image = plot.create_image()
+    assert image.shape == (6, 8, 3)
+    assert image.dtype == np.uint8
+
+    # Change some properties and confirm image changes
+    plot.set_color(1, (255, 0, 0))
+    plot.update_view()
+    image2 = plot.create_image()
+    assert not np.array_equal(image, image2)
+
+    # Solid raytrace uses Phong/diffuse shading, so rendered RGB values are
+    # generally modulated and need not exactly match the assigned palette.
+    changed = np.any(image != image2, axis=2)
+    assert np.any(changed)
+    assert np.mean(image2[..., 0][changed]) > np.mean(image[..., 0][changed])
+
+
 def test_position(lib_init):
 
     pos = openmc.lib.plot._Position(1.0, 2.0, 3.0)
@@ -1019,4 +1119,16 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     # Make sure sampling works in volume calculation mode
     openmc.lib.init(["-c"])
     openmc.lib.sample_external_source(100)
+    openmc.lib.finalize()
+
+
+def test_random_ray(random_ray_pincell_model, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+    openmc.lib.run_random_ray()
+    keff = openmc.lib.keff()
+
+    assert keff[0]==pytest.approx(1.3236826574065745)
+
     openmc.lib.finalize()

@@ -95,6 +95,13 @@ double t_percentile(double p, int df)
   return t;
 }
 
+double standard_normal_cdf(double z)
+{
+  // Use the complementary error function to compute the standard normal CDF
+  // Phi(z) = 0.5 * (1 + erf(z / sqrt(2))) = 0.5 * erfc(-z / sqrt(2))
+  return 0.5 * std::erfc(-z / std::sqrt(2.0));
+}
+
 void calc_pn_c(int n, double x, double pnx[])
 {
   pnx[0] = 1.;
@@ -916,6 +923,39 @@ std::complex<double> w_derivative(std::complex<double> z, int order)
   default:
     return -2.0 * z * w_derivative(z, order - 1) -
            2.0 * (order - 1) * w_derivative(z, order - 2);
+  }
+}
+
+double exprel(double x)
+{
+  if (std::abs(x) < 1e-16)
+    return 1.0;
+  else {
+    return std::expm1(x) / x;
+  }
+}
+
+double log1prel(double x)
+{
+  if (std::abs(x) < 1e-16)
+    return 1.0;
+  else {
+    return std::log1p(x) / x;
+  }
+}
+
+// Helper function to get index and interpolation function on an incident energy
+// grid
+void get_energy_index(
+  const vector<double>& energies, double E, int& i, double& f)
+{
+  // Get index and interpolation factor for linear-linear energy grid
+  i = 0;
+  f = 0.0;
+  if (E >= energies.front()) {
+    i = lower_bound_index(energies.begin(), energies.end(), E);
+    if (i + 1 < energies.size())
+      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
   }
 }
 

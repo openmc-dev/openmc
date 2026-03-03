@@ -113,8 +113,8 @@ def mass_attenuation_coefficient(element):
     The mass energy-absorption coefficient, :math:`\mu_\text{en}/\rho`, is
     defined as the fraction of incident photon energy absorbed in a material per
     unit mass. Values for each element are obtained from `NIST Standard
-    Reference Database 126 <https://doi.org/10.18434/T4D01F>`_: X-Ray Mass
-    Attenuation Coefficients.
+    Reference Database 8 <https://doi.org/10.18434/T48G6X>`_: XCOM Photon Cross
+    Sections Database.
 
     Parameters
     ----------

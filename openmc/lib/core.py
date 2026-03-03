@@ -535,37 +535,27 @@ def sample_external_source(
 
     batch_size = min(n_samples, _SOURCE_SAMPLE_BATCH_SIZE)
 
-    # Allocate the ctypes buffer once; it is reused for every batch.
-    sites_array = (_SourceSite * batch_size)()
-
-    # Pre-allocate the output container.  For ``as_array`` mode we create
-    # a single numpy array and fill it in slices; for the ParticleList
-    # path we accumulate SourceParticle objects across batches.
-    if as_array:
-        result = np.empty(n_samples, dtype=_SourceSite)
-    else:
+    # Pre-allocate the output container; for the ParticleList path we accumulate
+    # SourceParticle objects across batches.
+    result = np.empty(n_samples, dtype=_SourceSite)
+    if not as_array:
         particles = []
 
     for offset in range(0, n_samples, batch_size):
         n_batch = min(batch_size, n_samples - offset)
 
-        # Each batch's base seed is shifted by ``offset`` so that
-        # particle *i* within a batch gets
-        #   init_seed(prn_seed + offset + i, STREAM_SOURCE)
-        # which is identical to the seed it would receive in an
-        # unbatched call.  Results are therefore deterministic
-        # regardless of batch size.
+        # Get ctypes array that shares buffer
+        result_batch = result[offset:offset + n_batch]
+        sites_array = (_SourceSite * n_batch).from_buffer(result_batch)
+
+        # Sample source particles into the array
         _dll.openmc_sample_external_source(
             c_size_t(n_batch),
             c_uint64(prn_seed + offset),
             sites_array,
         )
 
-        if as_array:
-            result[offset:offset + n_batch] = np.frombuffer(
-                sites_array, dtype=_SourceSite, count=n_batch
-            )
-        else:
+        if not as_array:
             particles.extend(
                 openmc.SourceParticle(
                     r=site.r, u=site.u, E=site.E, time=site.time,

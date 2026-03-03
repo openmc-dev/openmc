@@ -641,6 +641,7 @@ void initialize_history(Particle& p, int64_t index_source)
     add_particle_track(p);
   
   initialize_history_partial(p);
+  initialize_history_in_part(p);
 }
 
 void initialize_history_partial(Particle& p)
@@ -662,6 +663,33 @@ void initialize_history_partial(Particle& p)
 
   // Allocate space for tally filter matches
   p.resize_alloc_filter_matches(model::tally_filters.size());  
+}
+
+void initialize_history_in_part(Particle& p)
+{
+  
+  if (p.type() == ParticleType::photon) return;
+  
+  // for n-p coupled simulation
+  // and sensitivity of photon responses (heating, dose) to neutron cross-sections
+  // initialized variable to store derivatives of neutron transport operator 
+  // needed for photon transport sensitivity to neutron data
+  if (!model::active_tallies.empty())
+  {
+       
+    p.resize_init_cum_sens(model::tally_sens.size());
+    for (int idx=0; idx< model::tally_sens.size();idx++){
+      p.resize_init_cum_sens_vec(idx, model::tally_sens[idx].n_bins_);
+    }
+    
+    p.resize_init_pprod_sens(model::tally_sens.size());
+    for (int idx=0; idx< model::tally_sens.size();idx++){
+      p.resize_init_pprod_sens_vec(idx, model::tally_sens[idx].n_bins_);
+    }
+  }
+
+  // Allocate space for tally filter matches
+  // p.resize_alloc_filter_matches(model::tally_filters.size());  
 }
 
 int overall_generation()

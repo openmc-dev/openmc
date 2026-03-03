@@ -75,6 +75,8 @@ void initialize_history(Particle& p, int64_t index_source);
 //! Helper function for initialize_history() that is called independently elsewhere
 void initialize_history_partial(Particle& p);
 
+void initialize_history_in_part(Particle& p);
+
 //! Finalize a batch
 //!
 //! Handles synchronization and accumulation of tallies, calculation of Shannon

@@ -96,7 +96,6 @@ bool Particle::create_secondary(
   }
   bank.time = time();
   bank_second_E() += bank.E;
-  // if (!model::active_tallies.empty()) score_source_sensitivity(*this);
   return true;
 }
 
@@ -130,7 +129,7 @@ void Particle::from_source(const SourceSite* src)
   fission() = false;
   zero_flux_derivs();
   
-  initialize_cumulative_sensitivities();
+  initialize_cumulative_sensitivities();  
   lifetime() = 0.0;
 
   // Copy attributes from source bank site
@@ -163,6 +162,12 @@ void Particle::from_source(const SourceSite* src)
     int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
+  
+  if (src->particle == ParticleType::neutron) {
+    initialize_cum_sens();
+    initialize_pprod_sens();
+  }
+  
 }
 
 void Particle::event_calculate_xs()
@@ -418,7 +423,7 @@ void Particle::event_collide()
   if (!model::active_tallies.empty()) {
     score_collision_derivative(*this);
     score_collision_sensitivity(*this);  // Score cumulative sensitivity for sensitivity tallies.
-    // score_source_sensitivity(*this);
+    // score_pprod_sensitivity(*this);
   }
   
 #ifdef DAGMC
@@ -476,7 +481,7 @@ void Particle::event_revive_from_secondary()
         n_coord_last() = n_coord();
       }
       pht_secondary_particles();
-    }
+    }    
 
     // Enter new particle in particle track file
     if (write_track())

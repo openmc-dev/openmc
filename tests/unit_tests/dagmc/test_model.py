@@ -91,7 +91,7 @@ def test_dagmc_replace_material_assignment(model):
                 cells_with_41.append(cell.id)
         univ.replace_material_assignment("41", mats["foo"])
         for cell_id in cells_with_41:
-            assert univ.cells[cell_id] == mats["foo"]
+            assert univ.cells[cell_id].fill == mats["foo"]
 
 
 def test_dagmc_add_material_override_with_id(model):
@@ -114,7 +114,7 @@ def test_dagmc_add_material_override_with_id(model):
                 cells_with_41.append(cell.id)
                 univ.add_material_override(cell.id, mats["foo"])
         for cell_id in cells_with_41:
-            assert univ.cells[cell_id] == mats["foo"]
+            assert univ.cells[cell_id].fill == mats["foo"]
 
 
 def test_dagmc_add_material_override_with_cell(model):
@@ -137,7 +137,7 @@ def test_dagmc_add_material_override_with_cell(model):
                 cells_with_41.append(cell.id)
                 univ.add_material_override(cell, mats["foo"])
         for cell_id in cells_with_41:
-            assert univ.cells[cell_id] == mats["foo"]
+            assert univ.cells[cell_id].fill == mats["foo"]
 
 
 def test_model_differentiate_depletable_with_dagmc(model, run_in_tmpdir):
@@ -236,12 +236,24 @@ def test_dagmc_xml(model):
     assert dagmc_ele.get('filename') == str(dag_univ.filename)
     assert dagmc_ele.get('auto_geom_ids') == str(dag_univ.auto_geom_ids).lower()
 
-    override_eles = dagmc_ele.find('material_overrides').findall('cell_override')
-    assert len(override_eles) == 4
+    assert dagmc_ele.find('material_overrides') is None
 
-    for i, override_ele in enumerate(override_eles):
-        cell_id = override_ele.get('id')
-        assert dag_univ.material_overrides[int(cell_id)][0].id == int(override_ele.find('material_ids').text)
+    override_elements = dagmc_ele.findall('cell')
+    assert len(override_elements) == len(dag_univ.cells)
+    xml_cells = {int(elem.get('id')): elem for elem in override_elements}
+    for cell_id, cell in dag_univ.cells.items():
+        assert cell_id in xml_cells
+        xml_cell = xml_cells[cell_id]
+        if cell.fill_type == 'void':
+            assert xml_cell.get('material') == 'void'
+        elif cell.fill_type == 'material':
+            assert xml_cell.get('material') == str(cell.fill.id)
+        elif cell.fill_type == 'distribmat':
+            mat_list = xml_cell.find('material').text.split()
+            expected = ["void" if m is None else str(m.id) for m in cell.fill]
+            assert mat_list == expected
+        else:
+            pytest.fail(f"Unexpected DAGMC cell fill type: {cell.fill_type}")
 
     model.export_to_model_xml()
 
@@ -252,7 +264,53 @@ def test_dagmc_xml(model):
             xml_dagmc_univ = univ
             break
 
-    assert xml_dagmc_univ._material_overrides.keys() == dag_univ._material_overrides.keys()
+    assert xml_dagmc_univ.cells.keys() == dag_univ.cells.keys()
 
-    for xml_mats, model_mats in zip(xml_dagmc_univ._material_overrides.values(), dag_univ._material_overrides.values()):
-        assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])
+    for cell_id, cell in dag_univ.cells.items():
+        xml_cell = xml_dagmc_univ.cells[cell_id]
+        assert xml_cell.fill_type == cell.fill_type
+        if cell.fill_type == 'void':
+            assert xml_cell.fill is None
+        elif cell.fill_type == 'material':
+            assert xml_cell.fill.id == cell.fill.id
+        elif cell.fill_type == 'distribmat':
+            xml_ids = [m.id if m is not None else None for m in xml_cell.fill]
+            model_ids = [m.id if m is not None else None for m in cell.fill]
+            assert xml_ids == model_ids
+        else:
+            pytest.fail(f"Unexpected DAGMC cell fill type: {cell.fill_type}")
+
+
+def test_dagmc_xml_reject_fill_override():
+    mats = {'1': openmc.Material(1), 'void': None}
+    elem = ET.fromstring(
+        '<dagmc_universe id="1" filename="dagmc.h5m">'
+        '<cell id="1" fill="2"/>'
+        '</dagmc_universe>'
+    )
+    with pytest.raises(ValueError, match="only support material fills"):
+        openmc.DAGMCUniverse.from_xml_element(elem, mats)
+
+
+def test_dagmc_xml_reject_region_override():
+    mats = {'1': openmc.Material(1), 'void': None}
+    elem = ET.fromstring(
+        '<dagmc_universe id="1" filename="dagmc.h5m">'
+        '<cell id="1" material="1" region="-1"/>'
+        '</dagmc_universe>'
+    )
+    with pytest.raises(ValueError, match="cannot include a region"):
+        openmc.DAGMCUniverse.from_xml_element(elem, mats)
+
+
+def test_dagmc_xml_reject_legacy_material_overrides():
+    mats = {'1': openmc.Material(1), 'void': None}
+    elem = ET.fromstring(
+        '<dagmc_universe id="1" filename="dagmc.h5m">'
+        '<material_overrides>'
+        '<cell_override id="1"><material_ids>1</material_ids></cell_override>'
+        '</material_overrides>'
+        '</dagmc_universe>'
+    )
+    with pytest.raises(ValueError, match="no longer supported"):
+        openmc.DAGMCUniverse.from_xml_element(elem, mats)

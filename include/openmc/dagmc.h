@@ -202,7 +202,7 @@ private:
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
   std::unordered_map<int32_t, vector<int32_t>>
-    material_overrides_; //!< Map of material overrides
+    material_overrides_; //!< Map of DAGMC cell material overrides
                          //!< keys correspond to the DAGMCCell id
                          //!< values are a list of material ids used
                          //!< for the override

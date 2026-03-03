@@ -76,21 +76,71 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
-  // get material assignment overloading
-  if (check_for_node(node, "material_overrides")) {
-    auto mat_node = node.child("material_overrides");
-    // loop over all subelements (each subelement corresponds to a material)
-    for (pugi::xml_node cell_node : mat_node.children("cell_override")) {
-      // Store assignment reference name
-      int32_t ref_assignment = std::stoi(get_node_value(cell_node, "id"));
+  // Get material assignment overrides from nested DAGMC cell elements.
+  if (node.child("cell")) {
+    for (pugi::xml_node cell_node : node.children("cell")) {
+      if (!check_for_node(cell_node, "id")) {
+        fatal_error(
+          "Must specify id for each DAGMC cell override in <dagmc_universe>.");
+      }
 
-      // Get mat name for each assignement instances
-      vector<int32_t> instance_mats =
-        get_node_array<int32_t>(cell_node, "material_ids");
+      int32_t cell_id = std::stoi(get_node_value(cell_node, "id"));
 
-      // Store mat name for each instances
-      material_overrides_.emplace(ref_assignment, instance_mats);
+      if (check_for_node(cell_node, "region")) {
+        fatal_error(fmt::format(
+          "DAGMC cell {} override cannot specify a region.", cell_id));
+      }
+      if (check_for_node(cell_node, "fill")) {
+        fatal_error(fmt::format(
+          "DAGMC cell {} override currently only supports material fills.",
+          cell_id));
+      }
+      if (check_for_node(cell_node, "universe")) {
+        fatal_error(fmt::format(
+          "DAGMC cell {} override cannot specify a universe.", cell_id));
+      }
+      if (check_for_node(cell_node, "temperature") ||
+          check_for_node(cell_node, "density") ||
+          check_for_node(cell_node, "translation") ||
+          check_for_node(cell_node, "rotation") ||
+          check_for_node(cell_node, "volume")) {
+        fatal_error(fmt::format(
+          "DAGMC cell {} override currently only supports material fills.",
+          cell_id));
+      }
+      if (!check_for_node(cell_node, "material")) {
+        fatal_error(fmt::format(
+          "DAGMC cell {} override must specify material.", cell_id));
+      }
+
+      vector<std::string> mats =
+        get_node_array<std::string>(cell_node, "material", true);
+      if (mats.empty()) {
+        fatal_error(fmt::format(
+          "DAGMC cell {} override has an empty material specification.",
+          cell_id));
+      }
+
+      vector<int32_t> override_mats;
+      override_mats.reserve(mats.size());
+      for (const auto& mat : mats) {
+        if (mat == "void") {
+          override_mats.push_back(MATERIAL_VOID);
+        } else {
+          override_mats.push_back(std::stoi(mat));
+        }
+      }
+
+      auto inserted = material_overrides_.emplace(cell_id, override_mats);
+      if (!inserted.second) {
+        fatal_error(fmt::format(
+          "Duplicate DAGMC cell override specified for cell {}", cell_id));
+      }
     }
+  } else if (check_for_node(node, "material_overrides")) {
+    fatal_error(
+      "DAGMCUniverse <material_overrides> is no longer supported. Use nested "
+      "<cell> elements under <dagmc_universe> instead.");
   }
 
   initialize();
@@ -230,17 +280,15 @@ void DAGUniverse::init_geometry()
     if (mat_str == "graveyard") {
       graveyard = vol_handle;
     }
-    // material void checks
-    if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
+    if (material_overrides_.count(c->id_)) {
+      override_assign_material(c);
+    } else if (mat_str == "void" || mat_str == "vacuum" ||
+               mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
+    } else if (uses_uwuw()) {
+      uwuw_assign_material(vol_handle, c);
     } else {
-      if (material_overrides_.count(c->id_)) {
-        override_assign_material(c);
-      } else if (uses_uwuw()) {
-        uwuw_assign_material(vol_handle, c);
-      } else {
-        legacy_assign_material(mat_str, c);
-      }
+      legacy_assign_material(mat_str, c);
     }
 
     // check for temperature assignment
@@ -638,17 +686,30 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
   // Notify User that an override is being applied on a DAGMCCell
   write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
 
+  const auto& mat_overrides = material_overrides_.at(c->id_);
   if (settings::verbosity >= 10) {
-    auto msg = fmt::format("Assigning DAGMC cell {} material(s) based on "
-                           "override information (see input XML).",
-      c->id_);
+    std::stringstream override_values;
+    for (size_t i = 0; i < mat_overrides.size(); ++i) {
+      if (i > 0) {
+        override_values << " ";
+      }
+      if (mat_overrides[i] == MATERIAL_VOID) {
+        override_values << "void";
+      } else {
+        override_values << mat_overrides[i];
+      }
+    }
+    auto msg = fmt::format("Overriding DAGMC cell {} property 'material' "
+                           "with value(s): {}",
+      c->id_, override_values.str());
     write_message(msg, 10);
   }
 
   // Override the material assignment for each cell instance using the legacy
   // assignement
-  for (auto mat_id : material_overrides_.at(c->id_)) {
-    if (model::material_map.find(mat_id) == model::material_map.end()) {
+  for (auto mat_id : mat_overrides) {
+    if (mat_id != MATERIAL_VOID &&
+        model::material_map.find(mat_id) == model::material_map.end()) {
       fatal_error(fmt::format(
         "Material with ID '{}' not found for DAGMC cell {}", mat_id, c->id_));
     }

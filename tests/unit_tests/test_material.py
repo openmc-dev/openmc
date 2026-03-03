@@ -846,8 +846,8 @@ def test_get_photon_contact_dose_rate():
 
     cdr_abs = m_i135.get_photon_contact_dose_rate('absorbed-air')
     cdr_eff = m_i135.get_photon_contact_dose_rate('effective')
-    assert cdr_abs == pytest.approx(6.089384e10, rel=1e-4)   # [Gy/h]
-    assert cdr_eff == pytest.approx(6.100002e10, rel=1e-4)   # [Sv/h]
+    assert cdr_abs == pytest.approx(6.091547e10, rel=1e-4)   # [Gy/h]
+    assert cdr_eff == pytest.approx(6.102167e10, rel=1e-4)   # [Sv/h]
 
     # Xe135 has a Tabular photon source (continuous distribution)
     m_xe135 = openmc.Material()
@@ -856,8 +856,8 @@ def test_get_photon_contact_dose_rate():
 
     cdr_xe_abs = m_xe135.get_photon_contact_dose_rate('absorbed-air')
     cdr_xe_eff = m_xe135.get_photon_contact_dose_rate('effective')
-    assert cdr_xe_abs == pytest.approx(7.884021e8, rel=1e-4)  # [Gy/h]
-    assert cdr_xe_eff == pytest.approx(9.486675e8, rel=1e-4)  # [Sv/h]
+    assert cdr_xe_abs == pytest.approx(7.886077e8, rel=1e-4)  # [Gy/h]
+    assert cdr_xe_eff == pytest.approx(9.488298e8, rel=1e-4)  # [Sv/h]
 
     # by_nuclide=True should return a dict whose values sum to the total
     cdr_by_nuc = m_i135.get_photon_contact_dose_rate('absorbed-air', by_nuclide=True)

@@ -612,6 +612,7 @@ def test_mesh_get_homogenized_materials():
 
 @pytest.fixture
 def sphere_model():
+    openmc.reset_auto_ids()
     # Model with three materials separated by planes x=0 and z=0
     mats = []
     for i in range(3):

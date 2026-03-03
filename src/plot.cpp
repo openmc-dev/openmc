@@ -1873,7 +1873,8 @@ void PhongRay::on_intersection()
 
     // The crossed surface may be on a higher coordinate level than the
     // innermost local coordinates, so we check the surface's coordinate level
-    // to find the appropriate coordinate level to use for the normal calculation
+    // to find the appropriate coordinate level to use for the normal
+    // calculation
     int surf_level = boundary().coord_level() - 1;
     // ensure surface level is within bounds of current coordinate stack
     surf_level = std::max(0, std::min(surf_level, n_coord() - 1));

@@ -94,6 +94,22 @@ def test_dagmc_replace_material_assignment(model):
             assert univ.cells[cell_id].fill == mats["foo"]
 
 
+def test_dagmc_sync_cell_names(model):
+    dag_univ = None
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            dag_univ = univ
+            break
+
+    assert dag_univ is not None
+
+    for cell_id, cell in dag_univ.cells.items():
+        assert cell.name == openmc.lib.cells[cell_id].name
+
+    assert any(cell.name == "implicit complement"
+               for cell in dag_univ.cells.values())
+
+
 def test_dagmc_add_material_override_with_id(model):
     mats = {}
     mats["foo"] = openmc.Material(name="foo")

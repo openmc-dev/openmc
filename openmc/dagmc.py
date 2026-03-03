@@ -623,7 +623,13 @@ class DAGMCUniverse(openmc.UniverseBase):
                 fill = [mats_per_id[mat.id] for mat in dag_cell.fill if mat]
             else:
                 fill = mats_per_id[dag_cell.fill.id] if dag_cell.fill else None
-            self.add_cell(openmc.DAGMCCell(cell_id=dag_cell_id, fill=fill))
+            name = dag_cell.name
+            if dag_cell_id in self._cells:
+                self._cells[dag_cell_id].name = name
+                self._cells[dag_cell_id].fill = fill
+            else:
+                self.add_cell(
+                    openmc.DAGMCCell(cell_id=dag_cell_id, name=name, fill=fill))
 
     @add_plot_params
     def plot(self, *args, **kwargs):

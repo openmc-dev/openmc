@@ -282,6 +282,9 @@ void DAGUniverse::init_geometry(const MaterialOverrides& material_overrides,
                : dagmc_instance_->id_by_index(3, c->dag_index());
     c->universe_ = this->id_;
     c->fill_ = C_NONE; // no fill, single universe
+    if (dagmc_instance_->is_implicit_complement(vol_handle)) {
+      c->name_ = "implicit complement";
+    }
 
     auto in_map = model::cell_map.find(c->id_);
     if (in_map == model::cell_map.end()) {

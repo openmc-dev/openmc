@@ -40,6 +40,26 @@ vector<T> get_node_array(
   return values;
 }
 
+template<>
+inline vector<bool> get_node_array<bool>(
+  pugi::xml_node node, const char* name, bool lowercase)
+{
+  // Get value of node attribute/child
+  std::string s {get_node_value(node, name, lowercase)};
+
+  // Read values one by one into vector
+  std::stringstream iss {s};
+  std::string value;
+  char first;
+  vector<bool> values;
+  while (iss >> value) {
+    first = value[0];
+    values.push_back((first == '1' || first == 't' || first == 'T' ||
+                      first == 'y' || first == 'Y'));
+  }
+  return values;
+}
+
 template<typename T>
 tensor::Tensor<T> get_node_tensor(
   pugi::xml_node node, const char* name, bool lowercase = false)

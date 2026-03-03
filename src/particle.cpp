@@ -305,7 +305,7 @@ void Particle::event_advance()
     if (!model::active_tallies.empty()) {
       score_track_derivative(*this, distance);
     }
-    split(wgt());
+    split(uncollided_wgt);
 
     this->move_distance(-distance);
     this->time() -= dt;

@@ -314,3 +314,28 @@ def test_dagmc_xml_reject_legacy_material_overrides():
     )
     with pytest.raises(ValueError, match="no longer supported"):
         openmc.DAGMCUniverse.from_xml_element(elem, mats)
+
+
+def test_dagmc_xml_temperature_roundtrip():
+    mat = openmc.Material(1)
+    mats = {'1': mat, 'void': None}
+
+    elem = ET.fromstring(
+        '<dagmc_universe id="10" filename="dagmc.h5m">'
+        '<cell id="7" material="1" temperature="825.0"/>'
+        '</dagmc_universe>'
+    )
+
+    dag_univ = openmc.DAGMCUniverse.from_xml_element(elem, mats)
+    assert dag_univ.cells[7].fill.id == 1
+    assert dag_univ.cells[7].temperature == pytest.approx(825.0)
+
+    root = ET.Element('geometry')
+    dag_univ.create_xml_subelement(root)
+    dagmc_elem = root.find('dagmc_universe')
+    xml_cell = dagmc_elem.find('cell')
+    assert xml_cell.get('temperature') == '825.0'
+
+    dag_univ_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem, mats)
+    assert dag_univ_roundtrip.cells[7].fill.id == 1
+    assert dag_univ_roundtrip.cells[7].temperature == pytest.approx(825.0)

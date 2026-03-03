@@ -509,7 +509,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             if get_text(cell_elem, 'universe') is not None:
                 raise ValueError("DAGMC cell overrides cannot specify a "
                                  "universe.")
-            for tag in ('temperature', 'density', 'translation', 'rotation', 'volume'):
+            for tag in ('density', 'translation', 'rotation', 'volume'):
                 if get_text(cell_elem, tag) is not None:
                     raise ValueError(
                         "DAGMC cell overrides currently only support material "
@@ -526,11 +526,22 @@ class DAGMCUniverse(openmc.UniverseBase):
             else:
                 fill = mat_objs
 
+            temperature = get_elem_list(cell_elem, 'temperature', float)
+            if temperature is not None:
+                if len(temperature) > 1:
+                    cell_temp = temperature
+                else:
+                    cell_temp = temperature[0]
+            else:
+                cell_temp = None
+
             if cell_id in self.cells:
                 raise ValueError(
                     f"Duplicate DAGMC cell override specified for cell {cell_id}.")
-            self.add_cell(openmc.DAGMCCell(
-                cell_id=cell_id, name=name or '', fill=fill))
+            cell = openmc.DAGMCCell(cell_id=cell_id, name=name or '', fill=fill)
+            if cell_temp is not None:
+                cell.temperature = cell_temp
+            self.add_cell(cell)
             self._material_overrides[cell_id] = mat_objs
 
     def _partial_deepcopy(self):
@@ -675,8 +686,13 @@ class DAGMCCell(openmc.Cell):
         if self.fill_type not in ('void', 'material', 'distribmat'):
             raise TypeError("DAGMC cell overrides currently only support "
                             "material fills.")
+        if self.temperature is not None and self.fill_type not in (
+            'material', 'distribmat'
+        ):
+            raise TypeError("DAGMC cell temperature overrides require a "
+                            "material fill.")
         if any(getattr(self, attr) is not None for attr in (
-            'temperature', 'density', 'translation', 'rotation', 'volume'
+            'density', 'translation', 'rotation', 'volume'
         )):
             raise TypeError("DAGMC cell overrides currently only support "
                             "material fills.")

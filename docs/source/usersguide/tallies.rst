@@ -262,7 +262,7 @@ The following tables show all valid scores:
     |Score                 | Description                                       |
     +======================+===================================================+
     |current               |It may not be used in conjunction with any other   |
-    |                      |score except surface-flux.                         |
+    |                      |score except flux.                                 |
     |                      |                                                   |
     |                      |When used in combination with a meshsurface filter:|
     |                      |Partial currents on the boundaries of each cell in |
@@ -275,7 +275,7 @@ The following tables show all valid scores:
     |                      |Surfaces can alternatively be defined with cell    |
     |                      |from and cell filters thereby resulting in tallying|
     |                      |partial currents.                                  |
-    |                      |                                                   | 
+    |                      |                                                   |
     |                      |Units are particles per source particle.           |
     +----------------------+---------------------------------------------------+
     |events                |Number of scoring events. Units are events per     |

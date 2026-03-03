@@ -209,54 +209,67 @@ the change-in-angle), we must use an analog estimator.
 Surface-Integrated Flux and Current
 -----------------------------------
 
-Surface tallies allow you to measure particle behavior as they cross specific boundaries in your geometry.
-Unlike volume tallies, which integrate over a volumetric region, surface tallies capture the current or flux passing through a surface.
-Surface tallies are estimated using analog estimator.
+Surface tallies allow you to measure particle behavior as they cross specific
+boundaries in your geometry. Unlike volume tallies, which integrate over a
+volumetric region, surface tallies capture the current or flux passing through a
+surface. Surface tallies are estimated using an analog estimator.
 
 Current Score
 -------------
 
-When tallying current score we simply count the number of times a particle crosses the surface of interest:
+When tallying the current across a surface, we simply count the weight of
+particles that cross the surface of interest:
 
 
 .. math::
     :label: analog-current-estimator
-    
+
     J = \frac{1}{W} \sum_{i \in S} w_i.
-    
-Where :math:`J` is the area integrated current passing through surface :math:`S`, :math:`W` is the total starting weight of the particles,
-and :math:`w_i` is the weight of the particle as it crosses the surface :math:`S`.
+
+where :math:`J` is the area-integrated current passing through surface
+:math:`S`, :math:`W` is the total starting weight of the particles, and
+:math:`w_i` is the weight of the particle as it crosses the surface :math:`S`.
 
 Flux Score
 ----------
 
-When tallying flux over a surface we use the relationship between current and flux:
+When tallying flux over a surface, we use the relationship between current and
+flux:
 
 
 .. math::
     :label: surface-flux-estimator
-    
-    \phi_S = \frac{1}{W} \sum_{i \in S} \frac{w_i}{|\mu|}.
-    
-Where :math:`\phi_S` is the area integrated flux over surface :math:`S`, :math:`W` is the total starting weight of the particles,
-:math:`w_i` is the weight of the particle as it crosses the surface :math:`S` and :math:`\mu` is the cosine of angle between the particle direction and the surface normal.
 
-This equation diverge when the particle cross the surface almost parallel to it. To remove this divergence OpenMC scores:
+    \phi_S = \frac{1}{W} \sum_{i \in S} \frac{w_i}{|\mu|}.
+
+where :math:`\phi_S` is the area-integrated flux over surface :math:`S`,
+:math:`W` is the total starting weight of the particles, :math:`w_i` is the
+weight of the particle as it crosses the surface :math:`S` and :math:`\mu` is
+the cosine of angle between the particle direction and the surface normal.
+
+This equation diverges when the particle crossing the surface is nearly parallel
+to it (that is, as :math:`\mu` approaches zero). To remove this divergence,
+OpenMC scores:
 
 .. math::
     :label: modified-surface-flux-estimator
-    
+
     \phi_S = \frac{1}{W} \sum_{i \in S} w_i f(\mu).
 
 and the function :math:`f` is defined by:
 
-.. math::    
-     f(\mu) := \begin{cases}
-      \frac{1.0}{|\mu|} & \text{if } |\mu| > \mu_c \\
-      \frac{1.0}{c_{sub}\mu_c}   & \text{else }
+.. math::
+     f(\mu) = \begin{cases}
+      \frac{1}{|\mu|} & |\mu| > \mu_\text{cut} \\
+      \frac{1}{c\mu_\text{cut}} & |\mu| \le \mu_\text{cut}
      \end{cases}
- 
-Where :math:`\mu_c` is the grazing cosine cutoff and :math:`c_{sub}` is the cosine substitution ratio. The default values for these parameters are 0.001 and 0.5 respectively and recommendations for them for specific cases can be found in a paper by Favorite_.
+
+where :math:`\mu_\text{cut}` is the grazing cosine cutoff and :math:`c` is the
+cosine substitution ratio. The parameters :math:`\mu_\text{cut}` and :math:`c`
+can be set by the user via the :attr:`openmc.Settings.surface_grazing_cutoff`
+and :attr:`openmc.Settings.surface_grazing_ratio` attributes, respectively. The
+default values for these parameters are 0.001 and 0.5 as recommended by
+`Favorite, Thomas, and Booth <https://doi.org/10.13182/NSE09-72>`_.
 
 .. _tallies_statistics:
 
@@ -674,8 +687,6 @@ improve the estimate of the percentile.
 .. _following approximation: https://doi.org/10.1080/03610918708812641
 
 .. _Bessel's correction: https://en.wikipedia.org/wiki/Bessel's_correction
-
-.. _Favorite: https://doi.org/10.13182/NSE09-72
 
 .. _random variable: https://en.wikipedia.org/wiki/Random_variable
 

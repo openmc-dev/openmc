@@ -184,7 +184,7 @@ def test_my_feature():
     harness.main()
 ```
 
-**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Test results should be generated with a debug build (`-DCMAKE_BUILD_TYPE=Debug`)
+**Workflow**: Create `test.py` and `__init__.py` in `tests/regression_tests/my_test/`, run `pytest --update` to generate reference files (`inputs_true.dat`, `results_true.dat`, etc.), then verify with `pytest` without `--update`. Test results should be generated with `-DOPENMC_ENABLE_STRICT_FP=on` to ensure reproducibility across platforms and optimization levels.
 
 **Critical**: When modifying OpenMC code, regenerate affected test references with `pytest --update` and commit updated reference files.
 
@@ -229,7 +229,7 @@ When modifying C++ public APIs, update corresponding ctypes signatures in `openm
 - **Include order**: Related header first, then C/C++ stdlib, third-party libs, local headers
 - **Comments**: C++-style (`//`) only, never C-style (`/* */`)
 - **Standard**: C++17 features allowed
-- **Formatting**: Run `clang-format` (version 15) before committing; install via `tools/dev/install-commit-hooks.sh`
+- **Formatting**: Run `clang-format` (version 18) before committing; install via `tools/dev/install-commit-hooks.sh`
 
 ### Python Style
 - **PEP8** compliant
@@ -295,4 +295,4 @@ Check for optional features:
 2. **ID conflicts**: Python objects with duplicate IDs trigger `IDWarning`, use `reset_auto_ids()` between tests
 3. **MPI builds**: Code must work with and without MPI; use `#ifdef OPENMC_MPI` guards
 4. **Path handling**: Use `pathlib.Path` in new Python code, not `os.path`
-5. **Clang-format version**: CI uses version 15; other versions may produce different formatting
+5. **Clang-format version**: CI uses version 18; other versions may produce different formatting

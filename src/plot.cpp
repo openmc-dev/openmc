@@ -7,8 +7,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "xtensor/xmanipulation.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 #ifdef USE_LIBPNG
@@ -76,7 +75,8 @@ void IdData::set_value(size_t y, size_t x, const Particle& p, int level,
 
 void IdData::set_overlap(size_t y, size_t x)
 {
-  xt::view(data_, y, x, xt::all()) = OVERLAP;
+  for (size_t k = 0; k < data_.shape(2); ++k)
+    data_(y, x, k) = OVERLAP;
 }
 
 PropertyData::PropertyData(size_t h_res, size_t v_res, bool /*include_filter*/)
@@ -869,14 +869,14 @@ void output_ppm(const std::string& filename, const ImageData& data)
 
   // Write header
   of << "P6\n";
-  of << data.shape()[0] << " " << data.shape()[1] << "\n";
+  of << data.shape(0) << " " << data.shape(1) << "\n";
   of << "255\n";
   of.close();
 
   of.open(fname, std::ios::binary | std::ios::app);
   // Write color for each pixel
-  for (int y = 0; y < data.shape()[1]; y++) {
-    for (int x = 0; x < data.shape()[0]; x++) {
+  for (int y = 0; y < data.shape(1); y++) {
+    for (int x = 0; x < data.shape(0); x++) {
       RGBColor rgb = data(x, y);
       of << rgb.red << rgb.green << rgb.blue;
     }
@@ -908,8 +908,8 @@ void output_png(const std::string& filename, const ImageData& data)
   png_init_io(png_ptr, fp);
 
   // Write header (8 bit colour depth)
-  int width = data.shape()[0];
-  int height = data.shape()[1];
+  int width = data.shape(0);
+  int height = data.shape(1);
   png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGB,
     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
   png_write_info(png_ptr, info_ptr);
@@ -1112,9 +1112,14 @@ void Plot::create_voxel() const
 
     // select only cell/material ID data and flip the y-axis
     int idx = color_by_ == PlotColorBy::cells ? 0 : 2;
-    xt::xtensor<int32_t, 2> data_slice =
-      xt::view(ids.data_, xt::all(), xt::all(), idx);
-    xt::xtensor<int32_t, 2> data_flipped = xt::flip(data_slice, 0);
+    // Extract 2D slice at index idx from 3D data
+    size_t rows = ids.data_.shape(0);
+    size_t cols = ids.data_.shape(1);
+    tensor::Tensor<int32_t> data_slice({rows, cols});
+    for (size_t r = 0; r < rows; ++r)
+      for (size_t c = 0; c < cols; ++c)
+        data_slice(r, c) = ids.data_(r, c, idx);
+    tensor::Tensor<int32_t> data_flipped = data_slice.flip(0);
 
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, data_flipped.data());
@@ -1360,7 +1365,8 @@ ImageData WireframeRayTracePlot::create_image() const
   // This array marks where the initial wireframe was drawn. We convolve it with
   // a filter that gets adjusted with the wireframe thickness in order to
   // thicken the lines.
-  xt::xtensor<int, 2> wireframe_initial({width, height}, 0);
+  tensor::Tensor<int> wireframe_initial(
+    {static_cast<size_t>(width), static_cast<size_t>(height)}, 0);
 
   /* Holds all of the track segments for the current rendered line of pixels.
    * old_segments holds a copy of this_line_segments from the previous line.
@@ -1749,9 +1755,25 @@ void Ray::trace()
   // After phase one is done, we can starting tracing from cell to cell within
   // the model. This step can use neighbor lists to accelerate the ray tracing.
 
-  // Attempt to initialize the particle. We may have to enter a loop to move
-  // it up to the edge of the model.
-  bool inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+  bool inside_cell;
+  // Check for location if the particle is already known
+  if (lowest_coord().cell() == C_NONE) {
+    // The geometry position of the particle is either unknown or outside of the
+    // edge of the model.
+    if (lowest_coord().universe() == C_NONE) {
+      // Attempt to initialize the particle. We may have to
+      // enter a loop to move it up to the edge of the model.
+      inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+    } else {
+      // It has been already calculated that the current position is outside of
+      // the edge of the model.
+      inside_cell = false;
+    }
+  } else {
+    // Availability of the cell means that the particle is located inside the
+    // edge.
+    inside_cell = true;
+  }
 
   // Advance to the boundary of the model
   while (!inside_cell) {
@@ -1832,6 +1854,11 @@ void Ray::trace()
       coord(lev).r() += boundary().distance() * coord(lev).u();
     }
     surface() = boundary().surface();
+    // Initialize last cells from the current cell, because the cell() variable
+    // does not contain the data for the case of a single-segment ray
+    for (int j = 0; j < n_coord(); ++j) {
+      cell_last(j) = coord(j).cell();
+    }
     n_coord_last() = n_coord();
     n_coord() = boundary().coord_level();
     if (boundary().lattice_translation()[0] != 0 ||

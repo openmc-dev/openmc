@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
 
 #include "hdf5.h"
 #include "openmc/cell.h"
@@ -92,7 +92,7 @@ const RGBColor BLACK {0, 0, 0};
  * visualized.
  */
 
-typedef xt::xtensor<RGBColor, 2> ImageData;
+typedef tensor::Tensor<RGBColor> ImageData;
 class PlottableInterface {
 public:
   PlottableInterface() = default;
@@ -157,8 +157,7 @@ struct IdData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 3> data_; //!< 3D array of cell ID, cell instance,
-                                 //!< and material ID
+  tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
 };
 
 struct PropertyData {
@@ -171,7 +170,7 @@ struct PropertyData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+  tensor::Tensor<double> data_; //!< 2D array of temperature & density data
 };
 
 struct RasterData {
@@ -184,9 +183,9 @@ struct RasterData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 3>
+  tensor::Tensor<int32_t>
     id_data_; //!< [v_res, h_res, 3 or 4]: cell, instance, mat, [filter_bin]
-  xt::xtensor<double, 3>
+  tensor::Tensor<double>
     property_data_;     //!< [v_res, h_res, 2]: temperature, density
   bool include_filter_; //!< Whether filter bin index is included
 };
@@ -521,7 +520,11 @@ private:
 class Ray : public GeometryState {
 
 public:
+  // Initialize from location and direction
   Ray(Position r, Direction u) { init_from_r_u(r, u); }
+
+  // Initialize from known geometry state
+  Ray(const GeometryState& p) : GeometryState(p) {}
 
   // Called at every surface intersection within the model
   virtual void on_intersection() = 0;

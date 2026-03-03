@@ -255,11 +255,12 @@ void Particle::event_advance()
     collision_distance() = INFINITY;
   } else {
     if (simulation::forced_collision &&
-        boundary().distance() <= distance_cutoff) {
-      auto& c = model::cells[coord(n_coord() - 1).cell()];
+        boundary().distance() <= distance_cutoff &&
+        boundary().distance() > TINY_BIT) {
+      auto c_id = coord(n_coord() - 1).cell();
+      auto& c = model::cells[c_id];
       if (c->forced_collision(cell_instance())) {
-        auto& cl = model::cells[cell_last(n_coord_last() - 1)];
-        if (c != cl)
+        if (cell_last(n_coord_last() - 1) != c_id)
           forced_collision = true;
       }
     }
@@ -277,7 +278,7 @@ void Particle::event_advance()
   double dt;
 
   if (forced_collision) {
-    distance = boundary().distance();
+    distance = boundary().distance() - TINY_BIT;
     double uncollided_wgt = wgt() * std::exp(-distance * macro_xs().total);
     double collided_wgt = wgt() * -expm1(-distance * macro_xs().total);
     wgt() = uncollided_wgt;
@@ -305,6 +306,7 @@ void Particle::event_advance()
     if (!model::active_tallies.empty()) {
       score_track_derivative(*this, distance);
     }
+
     split(uncollided_wgt);
 
     this->move_distance(-distance);
@@ -409,6 +411,11 @@ void Particle::event_collide()
 
   // Clear surface component
   surface() = SURFACE_NONE;
+
+  for (int j = 0; j < n_coord(); ++j) {
+    cell_last(j) = coord(j).cell();
+  }
+  n_coord_last() = n_coord();
 
   if (settings::run_CE) {
     collision(*this);

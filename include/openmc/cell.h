@@ -228,6 +228,20 @@ public:
   //! \return Density in [g/cm3]
   double density(int32_t instance = -1) const;
 
+  //! Determine forced collision flag corresponding
+  //! to a specific cell instance, taking into account
+  //! presence of distribcell
+  //! \param[in] instance of the cell
+  //! \return is forced collision enabled
+  bool forced_collision(int32_t instance) const
+  {
+    if (forced_collision_.size() > 1) {
+      return forced_collision_[instance];
+    } else {
+      return forced_collision_[0];
+    }
+  }
+
   //! Set the temperature of a cell instance
   //! \param[in] T Temperature in [K]
   //! \param[in] instance Instance index. If -1 is given, the temperature for
@@ -344,6 +358,11 @@ public:
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
+
+  //! \brief Enable forced collision within this cell.
+  //!
+  //! May be multiple for distribcell.
+  vector<bool> forced_collision_ {false};
 
   //! \brief Material(s) within this cell.
   //!

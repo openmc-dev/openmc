@@ -22,6 +22,7 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -469,6 +470,15 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
           "Cell {} was specified with a density less than or equal to zero",
           id_));
       }
+    }
+  }
+
+  if (check_for_node(cell_node, "forced_collision")) {
+    forced_collision_ = get_node_array<bool>(cell_node, "forced_collision");
+    forced_collision_.shrink_to_fit();
+    for (auto flag : forced_collision_) {
+      if (flag)
+        simulation::forced_collision = true;
     }
   }
 
@@ -1114,6 +1124,8 @@ vector<int32_t> Region::surfaces() const
 
 void read_cells(pugi::xml_node node)
 {
+  simulation::forced_collision = false;
+
   // Count the number of cells.
   int n_cells = 0;
   for (pugi::xml_node cell_node : node.children("cell")) {

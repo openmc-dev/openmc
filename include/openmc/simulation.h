@@ -25,6 +25,7 @@ namespace simulation {
 extern int ct_current_file;   //!< current collision track file index
 extern "C" int current_batch; //!< current batch
 extern "C" int current_gen;   //!< current fission generation
+extern bool forced_collision; //!< is forced collision used in the problem
 extern "C" bool initialized;  //!< has simulation been initialized?
 extern "C" double keff;       //!< average k over batches
 extern "C" double keff_std;   //!< standard deviation of average k

@@ -76,6 +76,10 @@ class Cell(IDManagerMixin):
         Density of the cell in [g/cm3]. Multiple densities can be given to give
         each distributed cell instance a unique density. Densities set here will
         override the density set on materials used to fill the cell.
+    forced_collision : bool or iterable of bool
+        Forced collision flag in the cell. Multiple flags can be given to give
+        each distributed cell instance a unique forced collision flag.
+        Defaults to False.
     translation : Iterable of float
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.
@@ -114,6 +118,7 @@ class Cell(IDManagerMixin):
         self._rotation_matrix = None
         self._temperature = None
         self._density = None
+        self._forced_collision = False
         self._translation = None
         self._paths = None
         self._num_instances = None
@@ -286,6 +291,17 @@ class Cell(IDManagerMixin):
                     c._density = density
         else:
             self._density = density
+
+    @property
+    def forced_collision(self):
+        return self._forced_collision
+
+    @forced_collision.setter
+    def forced_collision(self, forced_collision):
+        cv.check_type('cell forced collision flag', forced_collision, (Iterable, bool))
+        if isinstance(forced_collision, Iterable):
+            cv.check_type('cell forced collision flag', forced_collision, Iterable, bool)
+        self._forced_collision = forced_collision
 
     @property
     def translation(self):
@@ -692,6 +708,15 @@ class Cell(IDManagerMixin):
             else:
                 element.set("density", str(self.density))
 
+        if self.forced_collision:
+            if isinstance(self.density, Iterable):
+                if any(self.forced_collision):
+                    forced_collision_subelement = ET.SubElement(element, "forced_collision")
+                    forced_collision_subelement.text =  ' '.join(str(f)
+                                                                 for f in self.forced_collision)
+            else:
+                element.set("forced_collision", str(self.forced_collision))                
+
         if self.translation is not None:
             element.set("translation", ' '.join(map(str, self.translation)))
 
@@ -747,15 +772,10 @@ class Cell(IDManagerMixin):
             c.region = Region.from_expression(region, surfaces)
 
         # Check for other attributes
-        temperature = get_elem_list(elem, 'temperature', float)
-        if temperature is not None:
-            if len(temperature) > 1:
-                c.temperature = temperature
-            else:
-                c.temperature = temperature[0]
-        density = get_elem_list(elem, 'density', float)
-        if density is not None:
-            c.density = density if len(density) > 1 else density[0]
+        forced_collision = get_elem_list(elem, 'forced_collision', bool)
+        if forced_collision:
+            c.forced_collision = (forced_collision if len(forced_collision) > 1
+                                  else forced_collision[0])
         v = get_text(elem, 'volume')
         if v is not None:
             c.volume = float(v)
@@ -764,6 +784,8 @@ class Cell(IDManagerMixin):
             if values is not None:
                 if key == 'rotation' and len(values) == 9:
                     values = np.array(values).reshape(3, 3)
+                elif len(values) == 1:
+                    values = values[0]
                 setattr(c, key, values)
 
         # Add this cell to appropriate universe

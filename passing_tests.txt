@@ -1,8 +1,8 @@
 # OpenMC passing tests baseline
-# Recorded: 2026-03-04 04:24:40
+# Recorded: 2026-03-04 14:10:38
 # Branch: post_fix_shared_secondary
-# Commit: 540cc6dd4
-# Total passing: 274
+# Commit: 37b10a304
+# Total passing: 276
 tests/regression_tests/adj_cell_rotation/test.py::test_rotation
 tests/regression_tests/albedo_box/test.py::test_albedo_box
 tests/regression_tests/asymmetric_lattice/test.py::test_asymmetric_lattice
@@ -276,4 +276,6 @@ tests/regression_tests/weightwindows/test.py::test_wwinp_spherical
 tests/regression_tests/weightwindows_fw_cadis/test.py::test_random_ray_adjoint_fixed_source
 tests/regression_tests/weightwindows_fw_cadis_mesh/test.py::test_weight_windows_fw_cadis_mesh[flat]
 tests/regression_tests/weightwindows_fw_cadis_mesh/test.py::test_weight_windows_fw_cadis_mesh[linear]
+tests/regression_tests/weightwindows_pulse_height/test.py::test_weightwindows_pulse_height[False-local]
+tests/regression_tests/weightwindows_pulse_height/test.py::test_weightwindows_pulse_height[True-shared]
 tests/regression_tests/white_plane/test.py::test_white_plane

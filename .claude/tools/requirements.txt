@@ -1,0 +1,17 @@
+# Tree-sitter for code parsing (repo map + chunking)
+tree-sitter>=0.23.0
+tree-sitter-python>=0.23.0
+tree-sitter-cpp>=0.23.0
+
+# Vector database
+lancedb>=0.15.0
+pyarrow>=14.0.0
+
+# Embeddings (primary - local, no API key)
+sentence-transformers>=2.7.0
+
+# Embeddings (fallback - zero downloads)
+scikit-learn>=1.4.0
+
+# Utilities
+numpy>=1.26.0

@@ -286,7 +286,7 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
         'with_properties/settings.xml'
     )
     cell = model_with_properties.geometry.get_all_cells()[1]
-    assert cell.temperature == [600.0]
+    assert cell.temperature == 600.0
     assert cell.density == [pytest.approx(10.0, 1e-5)]
     assert cell.fill.get_mass_density() == pytest.approx(5.0)
 

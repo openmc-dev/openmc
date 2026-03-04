@@ -1234,6 +1234,23 @@ attributes/sub-elements:
           are not eligible to store any particles when using ``cell``, ``cellfrom``
           or ``cellto`` attributes. It is recommended to use surface IDs instead.
 
+------------------------------------
+``<surface_grazing_cutoff>`` Element
+------------------------------------
+
+The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutoff.
+
+  *Default*: 0.001
+
+-----------------------------------
+``<surface_grazing_ratio>`` Element
+-----------------------------------
+
+The ``<surface_grazing_ratio>`` element specifies the surface flux cosine 
+substitution ratio.
+
+  *Default*: 0.5
+
 ------------------------------
 ``<survival_biasing>`` Element
 ------------------------------

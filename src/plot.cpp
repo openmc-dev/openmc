@@ -1847,7 +1847,10 @@ void PhongRay::on_intersection()
     // the normal or the diffuse lighting contribution
     reflected_ = true;
     result_color_ = plot_.colors_[hit_id];
-    Direction to_light = plot_.light_location_ - r();
+    // The ray has been advanced slightly past the boundary. Use an
+    // approximation to the actual hit point for stable normal/lighting.
+    Position r_hit = r() - TINY_BIT * u();
+    Direction to_light = plot_.light_location_ - r_hit;
     to_light /= to_light.norm();
 
     // TODO
@@ -1868,12 +1871,22 @@ void PhongRay::on_intersection()
     // Get surface pointer
     const auto& surf = model::surfaces.at(surface_index());
 
-    Direction normal = surf->normal(r_local());
+    // The crossed surface may be on a higher coordinate level than the
+    // innermost local coordinates, so we check the surface's coordinate level
+    // to find the appropriate coordinate level to use for the normal
+    // calculation
+    int surf_level = boundary().coord_level() - 1;
+    // ensure surface level is within bounds of current coordinate stack
+    surf_level = std::max(0, std::min(surf_level, n_coord() - 1));
+
+    Position r_hit_level =
+      coord(surf_level).r() - TINY_BIT * coord(surf_level).u();
+    Direction normal = surf->normal(r_hit_level);
     normal /= normal.norm();
 
-    // Need to apply translations to find the normal vector in
+    // Need to apply rotations to find the normal vector in
     // the base level universe's coordinate system.
-    for (int lev = n_coord() - 2; lev >= 0; --lev) {
+    for (int lev = surf_level - 1; lev >= 0; --lev) {
       if (coord(lev + 1).rotated()) {
         const Cell& c {*model::cells[coord(lev).cell()]};
         normal = normal.inverse_rotate(c.rotation_);

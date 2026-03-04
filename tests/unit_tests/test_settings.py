@@ -21,6 +21,8 @@ def test_export_to_xml(run_in_tmpdir):
     s.statepoint = {'batches': [50, 150, 500, 1000]}
     s.surf_source_read = {'path': 'surface_source_1.h5'}
     s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
+    s.surface_grazing_ratio = 0.7
+    s.surface_grazing_cutoff = 0.1     
     s.confidence_intervals = True
     s.ptables = True
     s.plot_seed = 100
@@ -107,6 +109,8 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
     assert s.surf_source_read['path'].name == 'surface_source_1.h5'
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
+    assert s.surface_grazing_ratio == 0.7
+    assert s.surface_grazing_cutoff == 0.1     
     assert s.confidence_intervals
     assert s.ptables
     assert s.plot_seed == 100

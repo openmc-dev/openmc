@@ -157,7 +157,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[15];
+  MPI_Aint disp[14];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -172,13 +172,12 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.wgt_born, &disp[11]);
   MPI_Get_address(&b.wgt_ww_born, &disp[12]);
   MPI_Get_address(&b.n_split, &disp[13]);
-  MPI_Get_address(&b.current_work, &disp[14]);
-  for (int i = 14; i >= 0; --i) {
+  for (int i = 13; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
   // Block counts for each field
-  int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   // Types for each field
   MPI_Datatype types[] = {
@@ -195,11 +194,10 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_INT64_T, // progeny_id
     MPI_DOUBLE,  // wgt_born
     MPI_DOUBLE,  // wgt_ww_born
-    MPI_INT64_T, // n_split
-    MPI_INT64_T  // current_work
+    MPI_INT64_T  // n_split
   };
 
-  MPI_Type_create_struct(15, blocks, disp, types, &mpi::source_site);
+  MPI_Type_create_struct(14, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 
   CollisionTrackSite bc;

@@ -472,7 +472,6 @@ void Particle::event_revive_from_secondary(SourceSite& site)
 
   n_event() = 0;
   n_tracks()++;
-  n_split() = site.n_split;
   bank_second_E() = 0.0;
 
   // Subtract secondary particle energy from interim pulse-height results.

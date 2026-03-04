@@ -1108,6 +1108,102 @@ extern "C" size_t nuclides_size()
 }
 
 //==============================================================================
+// Covariance loading
+//==============================================================================
+
+void load_nuclide_covariance(const std::string& name)
+{
+
+  // Make sure the nuclide is loaded
+  auto it_nuc = data::nuclide_map.find(name);
+  if (it_nuc == data::nuclide_map.end())
+    return;
+
+  int i_nuclide = it_nuc->second;
+  auto& nuc = data::nuclides[i_nuclide];
+
+  // Find the same neutron library file used for cross sections
+  LibraryKey key {Library::Type::neutron, name};
+  const auto& it_lib = data::library_map.find(key);
+  if (it_lib == data::library_map.end())
+    return;
+
+  int idx = it_lib->second;
+  const auto& filename = data::libraries[idx].path_;
+
+  // Open the standard neutron XS library file
+  hid_t file_id = file_open(filename, 'r');
+  check_data_version(file_id);
+
+  // Open nuclide group: "/Fe56"
+  if (!object_exists(file_id, name.c_str())) {
+    file_close(file_id);
+    return;
+  }
+  hid_t nuc_group = open_group(file_id, name.c_str());
+
+  // Walk: covariance/mf33/cholesky
+  if (!object_exists(nuc_group, "covariance")) {
+    close_group(nuc_group);
+    file_close(file_id);
+    return;
+  }
+  hid_t cov_group = open_group(nuc_group, "covariance");
+
+  if (!object_exists(cov_group, "mf33")) {
+    close_group(cov_group);
+    close_group(nuc_group);
+    file_close(file_id);
+    return;
+  }
+  hid_t mf33_group = open_group(cov_group, "mf33");
+
+  if (!object_exists(mf33_group, "cholesky")) {
+    close_group(mf33_group);
+    close_group(cov_group);
+    close_group(nuc_group);
+    file_close(file_id);
+    return;
+  }
+  hid_t chol_group = open_group(mf33_group, "cholesky");
+
+  write_message(6, "Reading covariance data for {} from {}", name, filename);
+
+  // For each reaction, load diagonal block: cholesky/{MT}/{MT}
+  for (auto& rx : nuc->reactions_) {
+    
+    std::string mt_str = std::to_string(rx->mt_);
+
+    if (!object_exists(chol_group, mt_str.c_str()))
+      continue;
+
+    hid_t mt_group = open_group(chol_group, mt_str.c_str());
+
+    if (object_exists(mt_group, mt_str.c_str())) {
+      // The dataset is 2D (n x n)
+      xt::xtensor<double, 2> L_matrix;
+      read_dataset(mt_group, mt_str.c_str(), L_matrix);
+
+      int n = static_cast<int>(L_matrix.shape(0));
+
+      // Flatten the 2D matrix into the storage vector
+      Reaction::CovData& cov = rx->cholesky_[rx->mt_];
+      cov.L.assign(L_matrix.data(), L_matrix.data() + L_matrix.size());
+      cov.num_groups = n;
+    }
+
+    close_group(mt_group);
+  }
+
+  // Close groups/files
+  close_group(chol_group);
+  close_group(mf33_group);
+  close_group(cov_group);
+  close_group(nuc_group);
+  file_close(file_id);
+}
+
+//==============================================================================
 // C API
 //==============================================================================
 
@@ -1144,6 +1240,10 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
     int i_nuclide = data::nuclide_map.at(name);
     if (settings::temperature_multipole)
       read_multipole_data(i_nuclide);
+
+    // Read covariance data (Cholesky factors) if requested
+    if (settings::load_covariance)
+      load_nuclide_covariance(name);
 
     // Read elemental data, if necessary
     if (settings::photon_transport) {

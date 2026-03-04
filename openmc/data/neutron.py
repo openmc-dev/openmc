@@ -108,6 +108,7 @@ class IncidentNeutron(EqualityMixin):
         self.reactions = {}
         self._urr = {}
         self._resonances = None
+        self._mg_covariance = None
 
     def __contains__(self, mt):
         return mt in self.reactions
@@ -227,6 +228,38 @@ class IncidentNeutron(EqualityMixin):
             cv.check_type('probability table temperature', key, str)
             cv.check_type('probability tables', value, ProbabilityTables)
         self._urr = urr
+
+    @property
+    def mg_covariance(self):
+        """Multigroup cross-section covariance data (your MF=33-derived product).
+
+        Expected schema (dict-like):
+          - energy_bounds: (G+1,) float 
+          - mts:          (N,)   int
+          - matrix:       (...)  float
+          - representation: optional str, e.g. "relative"
+        """
+        return self._mg_covariance
+
+    @mg_covariance.setter
+    def mg_covariance(self, cov):
+        if cov is None:
+            self._mg_covariance = None
+            return
+        cv.check_type('mg_covariance', cov, Mapping)
+        for k in ('energy_bounds', 'mts', 'matrix'):
+            if k not in cov:
+                raise KeyError(f"mg_covariance missing required key '{k}'")
+        self._mg_covariance = cov
+
+    # Optional alias if you already use `data.covariance = ...` somewhere
+    @property
+    def covariance(self):
+        return self._mg_covariance
+    
+    @covariance.setter
+    def covariance(self, cov):
+        self.mg_covariance = cov
 
     @property
     def temperatures(self):
@@ -428,6 +461,79 @@ class IncidentNeutron(EqualityMixin):
             if self.fission_energy is not None:
                 fer_group = g.create_group('fission_energy_release')
                 self.fission_energy.to_hdf5(fer_group)
+            
+            # Write covariance data (per-reaction MF=33 schema)
+            if self._mg_covariance is not None:
+                cov = self._mg_covariance
+                cov_root = g.require_group("covariance")
+
+                # Prefer the shared writer if available (NeutronXSCovariances)
+                if hasattr(cov, "write_mf33_group"):
+                    cov.write_mf33_group(cov_root)
+                else:
+                    # Fallback: write directly from duck-typed attributes
+                    if "mf33" in cov_root:
+                        del cov_root["mf33"]
+                    mf33 = cov_root.create_group("mf33")
+
+                    mf33.attrs["format"] = np.bytes_("openmc.mf33.v1")
+                    mf33.attrs["source"] = np.bytes_("njoy errorr module")
+                    mf33.attrs["relative"] = 1
+                    if getattr(cov, "mat", None) is not None:
+                        mf33.attrs["mat"] = int(cov.mat)
+                    if getattr(cov, "temperature_k", None) is not None:
+                        mf33.attrs["temperature_k"] = float(cov.temperature_k)
+
+                    mf33.create_dataset(
+                        "energy_grid_ev",
+                        data=np.asarray(cov.energy_grid_ev, dtype=np.float64),
+                    )
+
+                    greact = mf33.create_group("reactions")
+                    gchol = mf33.create_group("cholesky")
+
+                    # Grab cached Cholesky factors if available
+                    chol = getattr(cov, "cholesky_factors", None) or {}
+
+                    for mt, sec in cov.reactions.items():
+                        gmt = greact.create_group(str(int(mt)))
+                        gmt.attrs["ZA"] = float(sec.get("ZA", 0.0))
+                        gmt.attrs["AWR"] = float(sec.get("AWR", 0.0))
+
+                        gmt_chol = gchol.create_group(str(int(mt)))
+                        gmt_chol.attrs["ZA"] = float(sec.get("ZA", 0.0))
+                        gmt_chol.attrs["AWR"] = float(sec.get("AWR", 0.0))
+
+                        covs = sec.get("COVS", {})
+                        for mt1, M in covs.items():
+                            M_arr = np.asarray(M, dtype=np.float64)
+                            gmt.create_dataset(
+                                str(int(mt1)),
+                                data=M_arr,
+                                compression="gzip",
+                                shuffle=True,
+                            )
+
+                            # Use cached L or compute on the fly
+                            L = chol.get(mt, {}).get(mt1, None)
+                            if L is None:
+                                import scipy.linalg as _la
+                                try:
+                                    L = _la.cholesky(M_arr, lower=True)
+                                except _la.LinAlgError:
+                                    evals, V = _la.eigh(M_arr)
+                                    max_e = evals.max() if evals.max() > 0 else 1.0
+                                    evals[evals / max_e < 1e-10] = 0.0
+                                    evals[evals < 0.0] = 0.0
+                                    A_tmp = V * np.sqrt(evals)[np.newaxis, :]
+                                    _, R_tmp = _la.qr(A_tmp.T, mode='economic')
+                                    L = R_tmp.T
+                            gmt_chol.create_dataset(
+                                str(int(mt1)),
+                                data=np.asarray(L, dtype=np.float64),
+                                compression="gzip",
+                                shuffle=True,
+                            )
 
     @classmethod
     def from_hdf5(cls, group_or_filename):
@@ -503,6 +609,49 @@ class IncidentNeutron(EqualityMixin):
         if 'fission_energy_release' in group:
             fer_group = group['fission_energy_release']
             data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
+        
+        # Read covariance data (per-reaction MF=33 schema)
+        if 'covariance' in group and 'mf33' in group['covariance']:
+            try:
+                from .xs_covariance import NeutronXSCovariances
+                data._mg_covariance = NeutronXSCovariances._read_mf33_group(
+                    group['covariance']['mf33'], name=name,
+                )
+            except ImportError:
+                # Fallback: read into a lightweight SimpleNamespace
+                import types
+                mf33 = group['covariance']['mf33']
+                ek = np.asarray(mf33['energy_grid_ev'][...], dtype=np.float64)
+                reactions = {}
+                for mt_str, gmt in mf33['reactions'].items():
+                    mt = int(mt_str)
+                    covs = {}
+                    for mt1_str, ds in gmt.items():
+                        covs[int(mt1_str)] = np.asarray(ds[...], dtype=np.float64)
+                    reactions[mt] = {
+                        'ZA': float(gmt.attrs.get('ZA', 0.0)),
+                        'AWR': float(gmt.attrs.get('AWR', 0.0)),
+                        'COVS': covs,
+                    }
+
+                # Read pre-computed Cholesky factors if present
+                chol = None
+                if 'cholesky' in mf33:
+                    chol = {}
+                    for mt_str, gmt_chol in mf33['cholesky'].items():
+                        mt = int(mt_str)
+                        chol[mt] = {}
+                        for mt1_str, ds in gmt_chol.items():
+                            chol[mt][int(mt1_str)] = np.asarray(ds[...], dtype=np.float64)
+
+                obj = types.SimpleNamespace(
+                    energy_grid_ev=ek,
+                    reactions=reactions,
+                    mat=int(mf33.attrs['mat']) if 'mat' in mf33.attrs else None,
+                    temperature_k=float(mf33.attrs['temperature_k']) if 'temperature_k' in mf33.attrs else None,
+                    cholesky_factors=chol,
+                )
+                data._mg_covariance = obj
 
         return data
 

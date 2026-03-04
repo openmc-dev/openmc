@@ -148,6 +148,7 @@ int trigger_batch_interval {1};
 int verbosity {-1};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+bool load_covariance {false};
 
 } // namespace settings
 
@@ -1268,6 +1269,13 @@ void read_settings_xml(pugi::xml_node root)
     settings::use_decay_photons =
       get_node_value_bool(root, "use_decay_photons");
   }
+
+  if (check_for_node(root, "load_covariance")) {
+    settings::load_covariance = 
+      get_node_value_bool(root, "load_covariance");
+  }
+
+
 }
 
 void free_memory_settings()

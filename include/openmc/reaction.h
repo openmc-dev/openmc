@@ -5,6 +5,7 @@
 #define OPENMC_REACTION_H
 
 #include <string>
+#include <unordered_map>
 
 #include "hdf5.h"
 
@@ -64,6 +65,12 @@ public:
   bool redundant_;                   //!< redundant reaction?
   vector<TemperatureXS> xs_;         //!< Cross section at each temperature
   vector<ReactionProduct> products_; //!< Reaction products
+
+  struct CovData {
+  vector<double> L;
+  int num_groups {0};
+  };
+  std::unordered_map<int, CovData> cholesky_;  // MT → Cholesky factor
 };
 
 //==============================================================================

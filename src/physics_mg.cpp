@@ -202,6 +202,7 @@ void create_fission_sites(Particle& p)
     } else {
       site.wgt_born = p.wgt_born();
       site.wgt_ww_born = p.wgt_ww_born();
+      site.n_split = p.n_split();
       p.local_secondary_bank().push_back(site);
       p.n_secondaries()++;
     }

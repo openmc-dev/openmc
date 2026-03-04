@@ -540,6 +540,8 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool legendre_present = false;
   bool cell_present = false;
   bool cellfrom_present = false;
+  bool material_present = false;
+  bool materialfrom_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
   bool non_cell_energy_present = false;
@@ -556,12 +558,21 @@ void Tally::set_scores(const vector<std::string>& scores)
       cellfrom_present = true;
     } else if (filt->type() == FilterType::CELL) {
       cell_present = true;
+    } else if (filt->type() == FilterType::MATERIALFROM) {
+      materialfrom_present = true;
+    } else if (filt->type() == FilterType::MATERIAL) {
+      material_present = true;
     } else if (filt->type() == FilterType::SURFACE) {
       surface_present = true;
     } else if (filt->type() == FilterType::MESH_SURFACE) {
       meshsurface_present = true;
     }
   }
+  bool surface_types_present =
+    (surface_present || cellfrom_present || materialfrom_present);
+  bool non_meshsurface_types_present =
+    (surface_present || cell_present || cellfrom_present || material_present ||
+      materialfrom_present);
 
   // Iterate over the given scores.
   for (auto score_str : scores) {
@@ -583,6 +594,12 @@ void Tally::set_scores(const vector<std::string>& scores)
           fatal_error("Cannot tally flux for an individual nuclide.");
       if (energyout_present)
         fatal_error("Cannot tally flux with an outgoing energy filter.");
+      if (surface_types_present) {
+        if (meshsurface_present)
+          fatal_error("OpenMC does not support mesh surface fluxes yet");
+        type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
+      }
       break;
 
     case SCORE_TOTAL:
@@ -615,16 +632,14 @@ void Tally::set_scores(const vector<std::string>& scores)
 
     case SCORE_CURRENT:
       // Check which type of current is desired: mesh or surface currents.
-      if (surface_present || cell_present || cellfrom_present) {
-        if (meshsurface_present)
+      if (meshsurface_present) {
+        if (non_meshsurface_types_present)
           fatal_error("Cannot tally mesh surface currents in the same tally as "
                       "normal surface currents");
-        type_ = TallyType::SURFACE;
-        estimator_ = TallyEstimator::ANALOG;
-      } else if (meshsurface_present) {
         type_ = TallyType::MESH_SURFACE;
       } else {
-        fatal_error("Cannot tally currents without surface type filters");
+        type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
       }
       break;
 
@@ -681,15 +696,20 @@ void Tally::set_scores(const vector<std::string>& scores)
                     "in multi-group mode");
   }
 
-  // Make sure current scores are not mixed in with volumetric scores.
-  if (type_ == TallyType::SURFACE || type_ == TallyType::MESH_SURFACE) {
-    if (scores_.size() != 1)
-      fatal_error("Cannot tally other scores in the same tally as surface "
-                  "currents.");
+  // Make sure mesh surface tallies contain only current score.
+  if (meshsurface_present) {
+    if ((scores_[0] != SCORE_CURRENT) || (scores_.size() > 1))
+      fatal_error("Cannot tally score other than 'current' when using a "
+                  "mesh-surface filter.");
   }
-  if ((surface_present || meshsurface_present) && scores_[0] != SCORE_CURRENT)
-    fatal_error("Cannot tally score other than 'current' when using a surface "
-                "or mesh-surface filter.");
+
+  // Make sure surface tallies contain only surface type scores score.
+  if (type_ == TallyType::SURFACE) {
+    for (auto sc : scores_)
+      if ((sc != SCORE_CURRENT) && (sc != SCORE_FLUX))
+        fatal_error("Cannot tally scores other than 'current' or 'flux' "
+                    "when using surface filters.");
+  }
 }
 
 void Tally::set_nuclides(pugi::xml_node node)

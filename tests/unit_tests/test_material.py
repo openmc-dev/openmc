@@ -826,3 +826,58 @@ def test_material_from_constructor():
     assert mat2.density == 1e-7
     assert mat2.density_units == "g/cm3"
     assert mat2.nuclides == []
+
+
+def test_get_photon_contact_dose_rate():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # A purely stable material (Fe) should give zero dose
+    m_stable = openmc.Material()
+    m_stable.add_element('Fe', 1.0)
+    m_stable.set_density('g/cm3', 7.87)
+    assert m_stable.get_photon_contact_dose_rate('absorbed-air') == 0.0
+    assert m_stable.get_photon_contact_dose_rate('effective') == 0.0
+
+    # I135 has a Discrete photon source (lines)
+    m_i135 = openmc.Material()
+    m_i135.add_nuclide('I135', 1.0)
+    m_i135.set_density('atom/b-cm', 1.0)
+
+    cdr_abs = m_i135.get_photon_contact_dose_rate('absorbed-air')
+    cdr_eff = m_i135.get_photon_contact_dose_rate('effective')
+    assert cdr_abs == pytest.approx(6.091547e10, rel=1e-4)   # [Gy/h]
+    assert cdr_eff == pytest.approx(6.102167e10, rel=1e-4)   # [Sv/h]
+
+    # Xe135 has a Tabular photon source (continuous distribution)
+    m_xe135 = openmc.Material()
+    m_xe135.add_nuclide('Xe135', 1.0)
+    m_xe135.set_density('atom/b-cm', 1.0)
+
+    cdr_xe_abs = m_xe135.get_photon_contact_dose_rate('absorbed-air')
+    cdr_xe_eff = m_xe135.get_photon_contact_dose_rate('effective')
+    assert cdr_xe_abs == pytest.approx(7.886077e8, rel=1e-4)  # [Gy/h]
+    assert cdr_xe_eff == pytest.approx(9.488298e8, rel=1e-4)  # [Sv/h]
+
+    # by_nuclide=True should return a dict whose values sum to the total
+    cdr_by_nuc = m_i135.get_photon_contact_dose_rate('absorbed-air', by_nuclide=True)
+    assert isinstance(cdr_by_nuc, dict)
+    assert 'I135' in cdr_by_nuc
+    assert sum(cdr_by_nuc.values()) == pytest.approx(cdr_abs)
+
+    # For a mixed material the sum over nuclides must equal the total
+    m_mix = openmc.Material()
+    m_mix.add_nuclide('I135', 0.5)
+    m_mix.add_nuclide('Xe135', 0.5)
+    m_mix.set_density('atom/b-cm', 1.0)
+    cdr_mix_total = m_mix.get_photon_contact_dose_rate('absorbed-air')
+    cdr_mix_nuc = m_mix.get_photon_contact_dose_rate('absorbed-air', by_nuclide=True)
+    assert sum(cdr_mix_nuc.values()) == pytest.approx(cdr_mix_total)
+
+    # Input validation
+    with pytest.raises(ValueError):
+        m_i135.get_photon_contact_dose_rate('invalid-quantity')
+    with pytest.raises(TypeError):
+        m_i135.get_photon_contact_dose_rate('absorbed-air', build_up='two')
+    with pytest.raises(ValueError):
+        m_i135.get_photon_contact_dose_rate('absorbed-air', build_up=-1.0)

@@ -883,9 +883,15 @@ void Particle::write_restart() const
       // re-sample using rng random number seed used to generate source particle
       // Note: current_work() is 0-indexed, but the seed calculation expects
       // a 1-indexed source index, so we add 1.
-      int64_t id = (simulation::total_gen + overall_generation() - 1) *
-                     settings::n_particles +
-                   simulation::work_index[mpi::rank] + i + 1;
+      int64_t id;
+      if (settings::use_shared_secondary_bank) {
+        id = simulation::work_index[mpi::rank] + i + 1 +
+             simulation::simulation_tracks_completed;
+      } else {
+        id = (simulation::total_gen + overall_generation() - 1) *
+               settings::n_particles +
+             simulation::work_index[mpi::rank] + i + 1;
+      }
       uint64_t seed = init_seed(id, STREAM_SOURCE);
       // re-sample source site
       auto site = sample_external_source(&seed);

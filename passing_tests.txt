@@ -1,8 +1,8 @@
 # OpenMC passing tests baseline
-# Recorded: 2026-03-04 04:13:21
+# Recorded: 2026-03-04 04:24:40
 # Branch: post_fix_shared_secondary
-# Commit: a3fb4ac27
-# Total passing: 273
+# Commit: 540cc6dd4
+# Total passing: 274
 tests/regression_tests/adj_cell_rotation/test.py::test_rotation
 tests/regression_tests/albedo_box/test.py::test_albedo_box
 tests/regression_tests/asymmetric_lattice/test.py::test_asymmetric_lattice
@@ -136,6 +136,7 @@ tests/regression_tests/particle_production_fission/test.py::test_particle_produc
 tests/regression_tests/particle_production_fission/test.py::test_particle_production_fission[True-shared]
 tests/regression_tests/particle_restart_eigval/test.py::test_particle_restart_eigval
 tests/regression_tests/particle_restart_fixed/test.py::test_particle_restart_fixed
+tests/regression_tests/particle_restart_fixed_shared_secondary/test.py::test_particle_restart_fixed_shared_secondary
 tests/regression_tests/periodic/test.py::test_periodic
 tests/regression_tests/periodic_6fold/test.py::test_periodic[False-False]
 tests/regression_tests/periodic_6fold/test.py::test_periodic[False-True]

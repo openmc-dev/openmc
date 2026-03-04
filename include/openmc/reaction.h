@@ -68,9 +68,16 @@ public:
 
   struct CovData {
   vector<double> L;
+  vector<double> e_bounds;
   int num_groups {0};
   };
   std::unordered_map<int, CovData> cholesky_;  // MT → Cholesky factor
+
+  //! Apply multigroup perturbation factors to CE cross sections
+  //! \param[in] energy_grid  Nuclide energy grid (the shared CE grid)
+  //! \param[in,out] seed     Random number seed
+  void perturb_xs(const vector<double>& energy_grid, uint64_t* seed);
+
 };
 
 //==============================================================================

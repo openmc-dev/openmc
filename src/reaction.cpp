@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility> // for move
+#include <cmath>
 
 #include <fmt/core.h>
 
@@ -177,6 +178,58 @@ double Reaction::collapse_rate(int64_t i_temp, span<const double> energy,
   }
 
   return xs_flux_sum;
+}
+
+void Reaction::perturb_xs(
+  const vector<double>& energy_grid, uint64_t* seed)
+{
+  // Look up Cholesky factors for this reaction's MT
+  auto it = cholesky_.find(mt_);
+  if (it == cholesky_.end()) return;
+
+  const auto& cov = it->second;
+  int ng = cov.num_groups;
+
+  // 1. Sample z from N(0, I)
+  vector<double> z(ng);
+  for (int g = 0; g < ng; ++g) {
+    double u1 = prn(seed);
+    double u2 = prn(seed);
+    z[g] = std::sqrt(-2.0 * std::log(u1)) * std::cos(2.0 * M_PI * u2);
+  }
+
+  // 2. Correlated perturbations: delta = L * z
+  //    L is stored column-major (lower triangular, ng x ng)
+  vector<double> delta(ng, 0.0);
+  for (int i = 0; i < ng; ++i)
+    for (int j = 0; j <= i; ++j)
+      delta[i] += cov.L[i * ng + j] * z[j];
+
+  // 3. Multiplicative factors per group
+  vector<double> factor(ng);
+  for (int g = 0; g < ng; ++g)
+    factor[g] = 1.0 + delta[g];
+
+  // 4. Apply to every temperature's CE cross section
+  for (auto& txs : xs_) {
+    int n_points = txs.value.size();
+    for (int k = 0; k < n_points; ++k) {
+      // Map CE grid index to energy
+      int i_grid = k + txs.threshold;
+      double E = energy_grid[i_grid];
+
+      // Find which covariance group this energy falls in
+      // e_bounds is sorted ascending, size ng+1
+      int g = lower_bound_index(
+        cov.e_bounds.cbegin(), cov.e_bounds.cend(), E);
+      g = std::min(g, ng - 1);
+
+      txs.value[k] *= factor[g];
+
+      // Keep cross sections non-negative
+      if (txs.value[k] < 0.0) txs.value[k] = 0.0;
+    }
+  }
 }
 
 //==============================================================================

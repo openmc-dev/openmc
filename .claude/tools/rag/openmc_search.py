@@ -140,7 +140,15 @@ def search_related(db, embedder, filepath, top_k):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Semantic search across OpenMC codebase and docs"
+        description="Semantic search across OpenMC codebase and docs",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""examples:
+  %(prog)s "particle random number seed initialization"
+  %(prog)s "how to define tallies" --docs
+  %(prog)s "weight window variance reduction" --all
+  %(prog)s "where is cross section data loaded" --top-k 15
+  %(prog)s --related src/simulation.cpp
+  %(prog)s --related src/particle_restart.cpp --top-k 5""",
     )
     parser.add_argument("query", nargs="?", help="Search query")
     parser.add_argument("--docs", action="store_true",

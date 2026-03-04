@@ -43,31 +43,28 @@ fi
 
 Read the file `.claude/cache/repomap.md` and internalize the codebase structure.
 
-## Step 4: Confirm activation
+## Step 4: Learn the search tool API
+
+Run `--help` to see the full search API:
+
+```bash
+.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py --help
+```
+
+Read and internalize the output so you know all available options (--docs, --all, --related, --top-k, etc.).
+
+## Step 5: Confirm activation
 
 Tell the user the OpenMC index is active and briefly describe what's available:
-- The repo map is loaded (structural overview)
-- Semantic search is ready via: `.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py "query"`
+- The repo map is loaded (structural overview of the codebase)
+- Semantic search is ready (explain the key modes: code search, doc search, related file search)
 
 ## Using semantic search after activation
 
-For the rest of this session, before modifying unfamiliar code or when investigating how a change might affect other parts of the codebase, search for related code:
-
-```bash
-# Search source code
-.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py "your query here"
-
-# Search documentation
-.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py "your query" --docs
-
-# Search both code and docs
-.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py "your query" --all
-
-# Find code related to a specific file
-.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py --related src/somefile.cpp
-```
+For the rest of this session, before modifying unfamiliar code or when investigating how a change might affect other parts of the codebase, use `openmc_search.py` to find related code paths.
 
 ## Subagent guidance
 
 When spawning subagents that will investigate or modify OpenMC code, include in their prompt:
-"The OpenMC search index is available. Read .claude/cache/repomap.md for a structural overview. Use `.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py 'query'` for semantic search."
+
+"The OpenMC search index is available. Read `.claude/cache/repomap.md` for a structural overview of the codebase. For semantic search, first run `.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py --help` to see the full API, then use it to search code, docs, or find related files."

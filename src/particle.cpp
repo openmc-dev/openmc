@@ -102,6 +102,19 @@ bool Particle::create_secondary(
   bank.wgt_ww_born = wgt_ww_born();
   bank.n_split = n_split();
 
+  // In shared secondary mode, subtract secondary photon energy from parent's
+  // pulse-height storage now, since the secondary will be transported as a
+  // separate Particle object and won't have access to the parent's pht_storage.
+  if (settings::use_shared_secondary_bank &&
+      !model::active_pulse_height_tallies.empty() && type.is_photon()) {
+    auto it = std::find(model::pulse_height_cells.begin(),
+      model::pulse_height_cells.end(), lowest_coord().cell());
+    if (it != model::pulse_height_cells.end()) {
+      int index = std::distance(model::pulse_height_cells.begin(), it);
+      pht_storage()[index] -= bank.E;
+    }
+  }
+
   local_secondary_bank().emplace_back(bank);
   return true;
 }
@@ -462,8 +475,11 @@ void Particle::event_revive_from_secondary(SourceSite& site)
   n_split() = site.n_split;
   bank_second_E() = 0.0;
 
-  // Subtract secondary particle energy from interim pulse-height results
-  if (!model::active_pulse_height_tallies.empty() && this->type().is_photon()) {
+  // Subtract secondary particle energy from interim pulse-height results.
+  // In shared secondary mode, this subtraction was already done on the parent
+  // particle during create_secondary(), so skip it here.
+  if (!settings::use_shared_secondary_bank &&
+      !model::active_pulse_height_tallies.empty() && this->type().is_photon()) {
     // Since the birth cell of the particle has not been set we
     // have to determine it before the energy of the secondary particle can be
     // removed from the pulse-height of this cell.

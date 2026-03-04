@@ -450,8 +450,10 @@ void Particle::event_collide()
 
 void Particle::event_revive_from_secondary(SourceSite& site)
 {
-  // Write final position for this particle
-  if (write_track()) {
+  // Write final position for the previous track (skip if this is a freshly
+  // constructed particle with no prior track, e.g., Phase 2 of shared
+  // secondary transport)
+  if (write_track() && n_event() > 0) {
     write_particle_track(*this);
   }
 

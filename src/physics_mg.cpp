@@ -200,6 +200,8 @@ void create_fission_sites(Particle& p)
         break;
       }
     } else {
+      site.wgt_born = p.wgt_born();
+      site.wgt_ww_born = p.wgt_ww_born();
       p.local_secondary_bank().push_back(site);
       p.n_secondaries()++;
     }

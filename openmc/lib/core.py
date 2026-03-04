@@ -82,6 +82,7 @@ _dll.openmc_properties_import.restype = c_int
 _dll.openmc_properties_import.errcheck = _error_handler
 _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
+_dll.openmc_run_random_ray.restype = None
 _dll.openmc_reset.restype = c_int
 _dll.openmc_reset.errcheck = _error_handler
 _dll.openmc_reset_timers.restype = c_int
@@ -478,6 +479,18 @@ def run(output=True):
     with quiet_dll(output):
         _dll.openmc_run()
 
+
+def run_random_ray(output=True):
+    """Run a random ray simulation
+
+    Parameters
+    ----------
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+    """
+
+    with quiet_dll(output):
+        _dll.openmc_run_random_ray()
 
 def sample_external_source(
         n_samples: int = 1000,

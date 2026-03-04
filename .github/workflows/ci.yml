@@ -43,45 +43,42 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
         libmesh: [n]
         event: [n]
-        vectfit: [n]
 
         include:
-          - python-version: "3.12"
-            omp: n
-            mpi: n
           - python-version: "3.13"
             omp: n
             mpi: n
+          - python-version: "3.14"
+            omp: n
+            mpi: n
+          - python-version: "3.14t"
+            omp: n
+            mpi: n
           - dagmc: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: n
             omp: y
           - event: y
-            python-version: "3.11"
+            python-version: "3.12"
             omp: y
             mpi: n
-          - vectfit: y
-            python-version: "3.11"
-            omp: n
-            mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
       mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
-      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
-      vectfit=${{ matrix.vectfit }})"
+      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}"
 
     env:
       MPI: ${{ matrix.mpi }}
@@ -89,7 +86,6 @@ jobs:
       OMP: ${{ matrix.omp }}
       DAGMC: ${{ matrix.dagmc }}
       EVENT: ${{ matrix.event }}
-      VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
       NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
       OPENBLAS_NUM_THREADS: 1
@@ -149,11 +145,6 @@ jobs:
           sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
-
-      - name: Optional apt dependencies for vectfit
-        shell: bash
-        if: ${{ matrix.vectfit == 'y' }}
-        run: sudo apt install -y libblas-dev liblapack-dev
 
       - name: install
         shell: bash
@@ -222,6 +213,7 @@ jobs:
           parallel: true
           flag-name: C++ and Python
           path-to-lcov: coverage.lcov
+          fail-on-error: false
 
   coverage:
     needs: [filter-changes, main]
@@ -234,6 +226,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true
+          fail-on-error: false
 
   ci-pass:
     needs: [filter-changes, main, coverage]

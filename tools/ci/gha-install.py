@@ -9,8 +9,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     os.mkdir('build')
     os.chdir('build')
 
-    # Build in debug mode by default with support for MCPL
-    cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
+    # Build in RelWithDebInfo mode by default with support for MCPL
+    cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DOPENMC_USE_MCPL=on']
 
     # Turn off OpenMP if specified
     if not omp:
@@ -42,6 +42,9 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
 
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
+
+    # Enable strict FP for cross-platform reproducibility in CI
+    cmake_cmd.append('-DOPENMC_ENABLE_STRICT_FP=on')
 
     # Build and install
     cmake_cmd.append('..')

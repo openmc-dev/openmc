@@ -48,20 +48,16 @@ double Particle::speed() const
   if (settings::run_CE) {
     // Determine mass in eV/c^2
     double mass;
-    switch (this->type().pdg_number()) {
+    switch (type().pdg_number()) {
     case PDG_NEUTRON:
       mass = MASS_NEUTRON_EV;
-      break;
-    case PDG_PHOTON:
-      mass = 0.0;
-      break;
     case PDG_ELECTRON:
     case PDG_POSITRON:
       mass = MASS_ELECTRON_EV;
-      break;
     default:
-      fatal_error("Unsupported particle for speed calculation.");
+      mass = this->type().mass() * AMU_EV;
     }
+
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
@@ -306,6 +302,8 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
+  const auto& surf {*model::surfaces[surface_index()].get()};
+
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
@@ -316,15 +314,14 @@ void Particle::event_cross_surface()
     event() = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
-    const auto& surf {model::surfaces[surface_index()].get()};
     // If BC, add particle to surface source before crossing surface
-    if (surf->surf_source_ && surf->bc_) {
-      add_surf_source_to_bank(*this, *surf);
+    if (surf.surf_source_ && surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
     }
-    this->cross_surface(*surf);
+    this->cross_surface(surf);
     // If no BC, add particle to surface source after crossing surface
-    if (surf->surf_source_ && !surf->bc_) {
-      add_surf_source_to_bank(*this, *surf);
+    if (surf.surf_source_ && !surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
     }
     if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);
@@ -333,7 +330,7 @@ void Particle::event_cross_surface()
   }
   // Score cell to cell partial currents
   if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies);
+    score_surface_tally(*this, model::active_surface_tallies, surf);
   }
 }
 
@@ -350,7 +347,7 @@ void Particle::event_collide()
   // pre-collision direction to figure out what mesh surfaces were crossed
 
   if (!model::active_meshsurf_tallies.empty())
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
 
   // Clear surface component
   surface() = SURFACE_NONE;
@@ -652,7 +649,7 @@ void Particle::cross_vacuum_bc(const Surface& surf)
     // physically moving the particle forward slightly
 
     r() += TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
   }
 
   // Score to global leakage tally
@@ -684,13 +681,13 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // with a mesh boundary
 
   if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies);
+    score_surface_tally(*this, model::active_surface_tallies, surf);
   }
 
   if (!model::active_meshsurf_tallies.empty()) {
     Position r {this->r()};
     this->r() -= TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
 
@@ -740,7 +737,7 @@ void Particle::cross_periodic_bc(
   if (!model::active_meshsurf_tallies.empty()) {
     Position r {this->r()};
     this->r() -= TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
 

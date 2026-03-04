@@ -753,8 +753,8 @@ void Mesh::to_hdf5(hid_t group) const
 //==============================================================================
 // Structured Mesh implementation
 //==============================================================================
-
-std::string StructuredMesh::bin_label(int bin) const
+template<typename MeshIndex>
+std::string StructuredMesh<MeshIndex>::bin_label(int bin) const
 {
   MeshIndex ijk = get_indices_from_bin(bin);
 
@@ -767,13 +767,15 @@ std::string StructuredMesh::bin_label(int bin) const
   }
 }
 
-tensor::Tensor<int> StructuredMesh::get_shape_tensor() const
+template<typename MeshIndex>
+tensor::Tensor<int> StructuredMesh<MeshIndex>::get_shape_tensor() const
 {
   return tensor::Tensor<int>(shape_.data(), static_cast<size_t>(n_dimension_));
 }
 
-Position StructuredMesh::sample_element(
-  const MeshIndex& ijk, uint64_t* seed) const
+template<>
+Position StructuredMesh<std::array<int, 3>>::sample_element(
+  const std::array<int, 3>& ijk, uint64_t* seed) const
 {
   // lookup the lower/upper bounds for the mesh element
   double x_min = negative_grid_boundary(ijk, 0);
@@ -1022,7 +1024,8 @@ ElementType UnstructuredMesh::element_type(int bin) const
     return ElementType::UNSUPPORTED;
 }
 
-StructuredMesh::MeshIndex StructuredMesh::get_indices(
+template<typename MeshIndex>
+MeshIndex StructuredMesh<MeshIndex>::get_indices(
   Position r, bool& in_mesh) const
 {
   MeshIndex ijk;
@@ -1036,7 +1039,8 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices(
   return ijk;
 }
 
-int StructuredMesh::get_bin_from_indices(const MeshIndex& ijk) const
+template<typename MeshIndex>
+int StructuredMesh<MeshIndex>::get_bin_from_indices(const MeshIndex& ijk) const
 {
   switch (n_dimension_) {
   case 1:
@@ -1050,7 +1054,8 @@ int StructuredMesh::get_bin_from_indices(const MeshIndex& ijk) const
   }
 }
 
-StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
+template<typename MeshIndex>
+MeshIndex StructuredMesh<MeshIndex>::get_indices_from_bin(int bin) const
 {
   MeshIndex ijk;
   if (n_dimension_ == 1) {
@@ -1066,7 +1071,8 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
   return ijk;
 }
 
-int StructuredMesh::get_bin(Position r) const
+template<typename MeshIndex>
+int StructuredMesh<MeshIndex>::get_bin(Position r) const
 {
   // Determine indices
   bool in_mesh;
@@ -1078,18 +1084,21 @@ int StructuredMesh::get_bin(Position r) const
   return get_bin_from_indices(ijk);
 }
 
-int StructuredMesh::n_bins() const
+template<typename MeshIndex>
+int StructuredMesh<MeshIndex>::n_bins() const
 {
   return std::accumulate(
     shape_.begin(), shape_.begin() + n_dimension_, 1, std::multiplies<>());
 }
 
-int StructuredMesh::n_surface_bins() const
+template<typename MeshIndex>
+int StructuredMesh<MeshIndex>::n_surface_bins() const
 {
   return 4 * n_dimension_ * n_bins();
 }
 
-tensor::Tensor<double> StructuredMesh::count_sites(
+template<typename MeshIndex>
+tensor::Tensor<double> StructuredMesh<MeshIndex>::count_sites(
   const SourceSite* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
@@ -1141,8 +1150,9 @@ tensor::Tensor<double> StructuredMesh::count_sites(
 // raytrace through the mesh. The template class T will do the tallying.
 // A modern optimizing compiler can recognize the noop method of T and
 // eliminate that call entirely.
+template<typename MeshIndex>
 template<class T>
-void StructuredMesh::raytrace_mesh(
+void StructuredMesh<MeshIndex>::raytrace_mesh(
   Position r0, Position r1, const Direction& u, T tally) const
 {
   // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
@@ -1262,8 +1272,9 @@ void StructuredMesh::raytrace_mesh(
   }
 }
 
-void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
-  vector<int>& bins, vector<double>& lengths) const
+template<typename MeshIndex>
+void StructuredMesh<MeshIndex>::bins_crossed(Position r0, Position r1,
+  const Direction& u, vector<int>& bins, vector<double>& lengths) const
 {
 
   // Helper tally class.
@@ -1290,7 +1301,8 @@ void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   raytrace_mesh(r0, r1, u, TrackAggregator(this, bins, lengths));
 }
 
-void StructuredMesh::surface_bins_crossed(
+template<typename MeshIndex>
+void StructuredMesh<MeshIndex>::surface_bins_crossed(
   Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
 
@@ -1799,8 +1811,7 @@ std::string CylindricalMesh::get_mesh_type() const
   return mesh_type;
 }
 
-StructuredMesh::MeshIndex CylindricalMesh::get_indices(
-  Position r, bool& in_mesh) const
+std::array<int, 3> CylindricalMesh::get_indices(Position r, bool& in_mesh) const
 {
   r = local_coords(r);
 
@@ -1816,7 +1827,8 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
       mapped_r[1] += 2 * M_PI;
   }
 
-  MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
+  std::array<int, 3> idx =
+    StructuredMesh<std::array<int, 3>>::get_indices(mapped_r, in_mesh);
 
   idx[1] = sanitize_phi(idx[1]);
 
@@ -2056,7 +2068,7 @@ double CylindricalMesh::volume(const MeshIndex& ijk) const
 //==============================================================================
 
 SphericalMesh::SphericalMesh(pugi::xml_node node)
-  : PeriodicStructuredMesh {node}
+  : PeriodicStructuredMesh<std::array<int, 3>> {node}
 {
   n_dimension_ = 3;
 
@@ -2070,7 +2082,8 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
   }
 }
 
-SphericalMesh::SphericalMesh(hid_t group) : PeriodicStructuredMesh {group}
+SphericalMesh::SphericalMesh(hid_t group)
+  : PeriodicStructuredMesh<std::array<int, 3>> {group}
 {
   n_dimension_ = 3;
 
@@ -2091,8 +2104,7 @@ std::string SphericalMesh::get_mesh_type() const
   return mesh_type;
 }
 
-StructuredMesh::MeshIndex SphericalMesh::get_indices(
-  Position r, bool& in_mesh) const
+std::array<int, 3> SphericalMesh::get_indices(Position r, bool& in_mesh) const
 {
   r = local_coords(r);
 
@@ -2109,7 +2121,8 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
       mapped_r[2] += 2 * M_PI;
   }
 
-  MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
+  std::array<int, 3> idx =
+    StructuredMesh<std::array<int, 3>>::get_indices(mapped_r, in_mesh);
 
   idx[1] = sanitize_theta(idx[1]);
   idx[2] = sanitize_phi(idx[2]);

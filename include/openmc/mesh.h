@@ -302,14 +302,13 @@ struct MeshDistance {
   bool operator<(const MeshDistance& o) const { return distance < o.distance; }
 };
 
+template<typename MeshIndex>
 class StructuredMesh : public Mesh {
 public:
   StructuredMesh() = default;
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
   StructuredMesh(hid_t group) : Mesh {group} {};
   virtual ~StructuredMesh() = default;
-
-  using MeshIndex = std::array<int, 3>;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override
   {
@@ -453,12 +452,14 @@ public:
 protected:
 };
 
-class PeriodicStructuredMesh : public StructuredMesh {
+template<typename MeshIndex>
+class PeriodicStructuredMesh : public StructuredMesh<MeshIndex> {
 
 public:
   PeriodicStructuredMesh() = default;
-  PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
-  PeriodicStructuredMesh(hid_t group) : StructuredMesh {group} {};
+  PeriodicStructuredMesh(pugi::xml_node node)
+    : StructuredMesh<MeshIndex> {node} {};
+  PeriodicStructuredMesh(hid_t group) : StructuredMesh<MeshIndex> {group} {};
 
   Position local_coords(const Position& r) const override
   {
@@ -473,8 +474,9 @@ public:
 //! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
 //==============================================================================
 
-class RegularMesh : public StructuredMesh {
+class RegularMesh : public StructuredMesh<std::array<int, 3>> {
 public:
+  using MeshIndex = std::array<int, 3>;
   // Constructors
   RegularMesh() = default;
   RegularMesh(pugi::xml_node node);
@@ -526,8 +528,9 @@ public:
   tensor::Tensor<double> width_; //!< Width of each mesh element
 };
 
-class RectilinearMesh : public StructuredMesh {
+class RectilinearMesh : public StructuredMesh<std::array<int, 3>> {
 public:
+  using MeshIndex = std::array<int, 3>;
   // Constructors
   RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
@@ -569,8 +572,9 @@ public:
   array<vector<double>, 3> grid_;
 };
 
-class CylindricalMesh : public PeriodicStructuredMesh {
+class CylindricalMesh : public PeriodicStructuredMesh<std::array<int, 3>> {
 public:
+  using MeshIndex = std::array<int, 3>;
   // Constructors
   CylindricalMesh() = default;
   CylindricalMesh(pugi::xml_node node);
@@ -634,8 +638,9 @@ private:
   }
 };
 
-class SphericalMesh : public PeriodicStructuredMesh {
+class SphericalMesh : public PeriodicStructuredMesh<std::array<int, 3>> {
 public:
+  using MeshIndex = std::array<int, 3>;
   // Constructors
   SphericalMesh() = default;
   SphericalMesh(pugi::xml_node node);

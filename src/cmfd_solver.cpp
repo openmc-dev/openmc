@@ -40,7 +40,7 @@ tensor::Tensor<int> indexmap;
 
 int use_all_threads;
 
-StructuredMesh* mesh;
+Mesh* mesh;
 
 vector<double> egrid;
 
@@ -215,7 +215,7 @@ extern "C" void openmc_initialize_mesh_egrid(
   openmc_mesh_filter_get_mesh(meshfilter_index, &mesh_index);
 
   // Get mesh from mesh index
-  cmfd::mesh = dynamic_cast<StructuredMesh*>(model::meshes[mesh_index].get());
+  cmfd::mesh = dynamic_cast<Mesh*>(model::meshes[mesh_index].get());
 
   // Get energy bins from energy index, otherwise use default
   if (energy_index != -1) {

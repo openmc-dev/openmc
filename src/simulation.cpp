@@ -973,8 +973,8 @@ void transport_history_based_shared_secondary()
         SourceSite& site = shared_secondary_bank_read[i - 1];
         p.event_revive_from_secondary(site);
         transport_history_based_single_particle(p);
-        for (auto& site : p.local_secondary_bank()) {
-          thread_bank.push_back(site);
+        for (auto& secondary_site : p.local_secondary_bank()) {
+          thread_bank.push_back(secondary_site);
         }
       }
 
@@ -982,8 +982,8 @@ void transport_history_based_shared_secondary()
       // thread)
 #pragma omp critical(shared_secondary_bank)
       {
-        for (auto& site : thread_bank) {
-          shared_secondary_bank_write.thread_unsafe_append(site);
+        for (auto& secondary_site : thread_bank) {
+          shared_secondary_bank_write.thread_unsafe_append(secondary_site);
         }
       }
     } // End of transport loop over tracks in shared secondary bank

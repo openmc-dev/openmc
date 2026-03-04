@@ -62,6 +62,7 @@ bool output_summary {true};
 bool output_tallies {true};
 bool particle_restart_run {false};
 bool photon_transport {false};
+bool atomic_relaxation {true};
 bool reduce_tallies {true};
 bool res_scat_on {false};
 bool restart_run {false};
@@ -605,6 +606,11 @@ void read_settings_xml(pugi::xml_node root)
       fatal_error("Photon transport is not currently supported in "
                   "multigroup mode");
     }
+  }
+
+  // Check for atomic relaxation
+  if (check_for_node(root, "atomic_relaxation")) {
+    atomic_relaxation = get_node_value_bool(root, "atomic_relaxation");
   }
 
   // Number of bins for logarithmic grid

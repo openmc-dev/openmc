@@ -50,8 +50,8 @@ struct SourceSite {
 
   // Extra attributes that don't show up in source written to file
   int parent_nuclide {-1};
-  int64_t parent_id;
-  int64_t progeny_id;
+  int64_t parent_id {0};
+  int64_t progeny_id {0};
   double wgt_born {1.0};
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
@@ -543,7 +543,7 @@ private:
   int n_secondaries_ {0};
   int secondary_bank_index_ {0};
 
-  int64_t current_work_;
+  int64_t current_work_ {0};
 
   vector<double> flux_derivs_;
 

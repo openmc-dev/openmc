@@ -232,6 +232,9 @@ void Particle::event_calculate_xs()
     macro_xs().fission = 0.0;
     macro_xs().nu_fission = 0.0;
   }
+
+  // Initialize last material from current material
+  material_last() = material();
 }
 
 void Particle::event_advance()
@@ -297,6 +300,9 @@ void Particle::event_cross_surface()
     cell_last(j) = coord(j).cell();
   }
   n_coord_last() = n_coord();
+
+  // Saving previous material data
+  material_last() = material();
 
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface();

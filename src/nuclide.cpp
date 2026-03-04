@@ -1104,7 +1104,6 @@ extern "C" size_t nuclides_size()
 //==============================================================================
 // Covariance loading
 //==============================================================================
-
 void load_nuclide_covariance(const std::string& name)
 {
 
@@ -1175,7 +1174,7 @@ void load_nuclide_covariance(const std::string& name)
 
     if (object_exists(mt_group, mt_str.c_str())) {
       // The dataset is 2D (n x n)
-      xt::xtensor<double, 2> L_matrix;
+      tensor::Tensor<double> L_matrix;
       read_dataset(mt_group, mt_str.c_str(), L_matrix);
 
       int n = static_cast<int>(L_matrix.shape(0));

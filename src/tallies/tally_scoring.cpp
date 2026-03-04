@@ -4,7 +4,6 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
-#include "openmc/geometry.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/mgxs_interface.h"
@@ -138,61 +137,6 @@ void FilterBinIter::compute_index_weight()
     auto i_bin = match.i_bin_;
     index_ += match.bins_[i_bin] * tally_.strides(i);
     weight_ *= match.weights_[i_bin];
-  }
-}
-
-//==============================================================================
-// CombFilterBinIter implementation
-//==============================================================================
-
-CombFilterBinIter::CombFilterBinIter(FilterBinIter iter1, FilterBinIter end1,
-  FilterBinIter iter2, FilterBinIter end2)
-  : iter1_ {iter1}, end1_ {end1}, iter2_ {iter2}, end2_ {end2}
-{
-  compute_index_weight();
-}
-
-CombFilterBinIter& CombFilterBinIter::operator++()
-{
-  if (iter1_ != end1_ || iter2_ != end2_) {
-    if (iter1_ == end1_) {
-      ++iter2_;
-    } else if (iter2_ == end2_) {
-      ++iter1_;
-    } else {
-      if (iter1_.index_ == iter2_.index_) {
-        ++iter1_;
-        ++iter2_;
-      } else if (iter1_.index_ < iter2_.index_) {
-        ++iter1_;
-      } else {
-        ++iter2_;
-      }
-    }
-  }
-
-  compute_index_weight();
-  return *this;
-}
-
-void CombFilterBinIter::compute_index_weight()
-{
-  if (iter1_ == end1_ && iter2_ == end2_) {
-    index_ = -1;
-  } else if (iter1_ != end1_ && iter2_ != end2_) {
-    index_ = std::min(iter1_.index_, iter2_.index_);
-    weight1_ = (iter1_.index_ <= iter2_.index_) ? iter1_.weight_ : 0.0;
-    weight2_ = (iter1_.index_ >= iter2_.index_) ? iter2_.weight_ : 0.0;
-  } else {
-    if (iter1_ == end1_) {
-      index_ = iter2_.index_;
-      weight1_ = 0.0;
-      weight2_ = iter2_.weight_;
-    } else {
-      index_ = iter1_.index_;
-      weight1_ = iter1_.weight_;
-      weight2_ = 0.0;
-    }
   }
 }
 
@@ -2714,66 +2658,47 @@ void score_meshsurface_tally(Particle& p, const vector<int>& tallies)
 void score_surface_tally(
   Particle& p, const vector<int>& tallies, const Surface& surf)
 {
-  double current = p.wgt_last();
+  double wgt = p.wgt_last();
 
+  // Sign for net current: +1 if crossing outward (in direction of normal),
+  // -1 if crossing inward
+  double current_sign = (p.surface() > 0) ? 1.0 : -1.0;
+
+  // Determine absolute cosine of angle between particle direction and surface
+  // normal, needed for the surface-crossing flux estimator.
   auto n = surf.normal(p.r());
   n /= n.norm();
-
-  // Construct dual particle to score surface flux in the other direction
-  auto p_sym = p;
-  p_sym.n_coord() = p.n_coord_last();
-  p_sym.n_coord_last() = p.n_coord();
-  for (int j = 0; j < model::n_coord_levels; ++j) {
-    p_sym.cell_last(j) = p.coord(j).cell();
-  }
-  for (int j = 0; j < model::n_coord_levels; ++j) {
-    p_sym.coord(j).cell() = p.cell_last(j);
-  }
-  p_sym.material() = p.material_last();
-  p_sym.material_last() = p.material();
-
-  p_sym.surface() = -p.surface();
-
-  // Determine absolute cosine of angle between normal and particle direction
   double abs_mu = std::min(std::abs(p.u().dot(n)), 1.0);
-
   if (abs_mu < settings::surface_grazing_cutoff)
     abs_mu = settings::surface_grazing_ratio * settings::surface_grazing_cutoff;
 
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
-    // Initialize an iterator over valid filter bin combinations.  If there are
+    // Initialize an iterator over valid filter bin combinations. If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter1 = FilterBinIter(tally, p);
-    auto end1 = FilterBinIter(tally, true, &p.filter_matches());
-
-    auto filter_iter2 = FilterBinIter(tally, p_sym);
-    auto end2 = FilterBinIter(tally, true, &p_sym.filter_matches());
-
-    if (filter_iter1 == end1 && filter_iter2 == end2)
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    if (filter_iter == end)
       continue;
 
-    auto filter_iter =
-      CombFilterBinIter(filter_iter1, end1, filter_iter2, end2);
-
     // Loop over filter bins.
-    for (; filter_iter.index_ != -1; ++filter_iter) {
+    for (; filter_iter != end; ++filter_iter) {
       auto filter_index = filter_iter.index_;
-      auto filter_weight1 = filter_iter.weight1_;
-      auto filter_weight2 = filter_iter.weight2_;
+      auto filter_weight = filter_iter.weight_;
 
       // Loop over scores.
       for (auto score_index = 0; score_index < tally.scores_.size();
            ++score_index) {
-        double score = current;
-        double filter_weight = filter_weight1;
-
         auto score_bin = tally.scores_[score_index];
-        if (score_bin == SCORE_FLUX) {
-          score /= abs_mu;
-          filter_weight = std::max(filter_weight1, filter_weight2);
+        double score;
+        if (score_bin == SCORE_CURRENT) {
+          // Net current: weight carries the sign of the crossing direction.
+          score = wgt * current_sign;
+        } else {
+          // SCORE_FLUX: surface-crossing estimator phi_S = sum(w / |mu|).
+          score = wgt / abs_mu;
         }
 #pragma omp atomic
         tally.results_(filter_index, score_index, TallyResult::VALUE) +=
@@ -2790,9 +2715,6 @@ void score_surface_tally(
 
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
-
-  for (auto& match : p_sym.filter_matches())
     match.bins_present_ = false;
 }
 

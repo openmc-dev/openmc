@@ -53,32 +53,6 @@ private:
 };
 
 //==============================================================================
-//! An iterator over two FilterBinIters.
-//
-//==============================================================================
-
-class CombFilterBinIter {
-public:
-  //! Construct an iterator over bins that match two particles states.
-  CombFilterBinIter(FilterBinIter iter1, FilterBinIter iter2,
-    FilterBinIter end1, FilterBinIter end2);
-
-  CombFilterBinIter& operator++();
-
-  int index_ {1};
-  double weight1_ {1.};
-  double weight2_ {1.};
-
-private:
-  void compute_index_weight();
-
-  FilterBinIter iter1_;
-  FilterBinIter iter2_;
-  FilterBinIter end1_;
-  FilterBinIter end2_;
-};
-
-//==============================================================================
 // Non-member functions
 //==============================================================================
 

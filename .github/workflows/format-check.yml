@@ -31,7 +31,7 @@ jobs:
           style: file
           files-changed-only: true
           tidy-checks: '-*'
-          version: '15' # clang-format version
+          version: '18' # clang-format version
           format-review: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'cpp-format-suggest') }}
           passive-reviews: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'cpp-format-suggest') }}
           file-annotations: true

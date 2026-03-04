@@ -972,9 +972,7 @@ void transport_history_based_shared_secondary()
         initialize_history(p, i, true);
         SourceSite& site = shared_secondary_bank_read[i - 1];
         p.event_revive_from_secondary(site);
-        if (p.alive()) {
-          transport_history_based_single_particle(p);
-        }
+        transport_history_based_single_particle(p);
         for (auto& site : p.local_secondary_bank()) {
           thread_bank.push_back(site);
         }

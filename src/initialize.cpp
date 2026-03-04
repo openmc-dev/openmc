@@ -118,6 +118,11 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (!read_model_xml())
     read_separate_xml_files();
 
+  if (!settings::properties_file.empty()) {
+    openmc_properties_import(settings::properties_file.c_str(),
+      settings::read_temperatures, settings::read_densities);
+  }
+
   // Reset locale to previous state
   if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
     fatal_error("Cannot reset locale.");
@@ -502,11 +507,6 @@ void read_separate_xml_files()
   read_plots_xml();
 
   finalize_variance_reduction();
-
-  if (!settings::properties_file.empty()) {
-    openmc_properties_import(settings::properties_file.c_str(),
-      settings::read_temperatures, settings::read_densities);
-  }
 }
 
 void initial_output()

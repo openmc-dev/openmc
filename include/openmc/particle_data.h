@@ -569,7 +569,7 @@ private:
 
   int64_t n_tracks_ {0}; //!< number of tracks in this particle history
 
-  int n_split_ {0};
+  int64_t n_split_ {0};
   double ww_factor_ {0.0};
 
   int64_t n_progeny_ {0};
@@ -755,8 +755,8 @@ public:
   int& n_event() { return n_event_; }
 
   // Number of times variance reduction has caused a particle split
-  int n_split() const { return n_split_; }
-  int& n_split() { return n_split_; }
+  int64_t n_split() const { return n_split_; }
+  int64_t& n_split() { return n_split_; }
 
   // Particle-specific factor for on-the-fly weight window adjustment
   double ww_factor() const { return ww_factor_; }

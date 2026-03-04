@@ -110,6 +110,130 @@ def test_source_dlopen():
     assert 'library' in elem.attrib
 
 
+def test_coincident_source_xml_roundtrip():
+    # Create a coincident source (e.g., Co-60 two-gamma emission)
+    gamma1 = openmc.IndependentSource(
+        energy=openmc.stats.Discrete([1.17e6], [1.0]),
+        angle=openmc.stats.Isotropic(),
+        particle='photon'
+    )
+    gamma2 = openmc.IndependentSource(
+        energy=openmc.stats.Discrete([1.33e6], [1.0]),
+        angle=openmc.stats.Isotropic(),
+        particle='photon'
+    )
+    space = openmc.stats.Point((1.0, 2.0, 3.0))
+    time = openmc.stats.Discrete([0.0], [1.0])
+    src = openmc.CoincidentSource(
+        space=space,
+        time=time,
+        sources=[gamma1, gamma2],
+        strength=5.0
+    )
+
+    # Write to XML element
+    elem = src.to_xml_element()
+
+    # Read back from XML element
+    new_src = openmc.SourceBase.from_xml_element(elem)
+    assert isinstance(new_src, openmc.CoincidentSource)
+    assert new_src.type == 'coincident'
+    assert new_src.strength == approx(5.0)
+
+    # Check spatial distribution preserved
+    assert isinstance(new_src.space, openmc.stats.Point)
+    np.testing.assert_allclose(new_src.space.xyz, [1.0, 2.0, 3.0])
+
+    # Check time distribution preserved
+    assert isinstance(new_src.time, openmc.stats.Discrete)
+    np.testing.assert_allclose(new_src.time.x, [0.0])
+    np.testing.assert_allclose(new_src.time.p, [1.0])
+
+    # Check sub-sources preserved
+    assert len(new_src.sources) == 2
+    for i, (orig, new) in enumerate(zip([gamma1, gamma2], new_src.sources)):
+        assert isinstance(new, openmc.IndependentSource)
+        assert new.particle == orig.particle
+        assert isinstance(new.energy, openmc.stats.Discrete)
+        np.testing.assert_allclose(new.energy.x, orig.energy.x)
+        np.testing.assert_allclose(new.energy.p, orig.energy.p)
+
+
+def test_coincident_source_probabilities_roundtrip():
+    # Create a coincident source with emission probabilities
+    gamma1 = openmc.IndependentSource(
+        energy=openmc.stats.Discrete([1.17e6], [1.0]),
+        angle=openmc.stats.Isotropic(),
+        particle='photon'
+    )
+    gamma2 = openmc.IndependentSource(
+        energy=openmc.stats.Discrete([1.33e6], [1.0]),
+        angle=openmc.stats.Isotropic(),
+        particle='photon'
+    )
+    src = openmc.CoincidentSource(
+        space=openmc.stats.Point((0, 0, 0)),
+        sources=[gamma1, gamma2],
+        probabilities=[1.0, 0.5]
+    )
+
+    # Write to XML and read back
+    elem = src.to_xml_element()
+    new_src = openmc.SourceBase.from_xml_element(elem)
+    assert isinstance(new_src, openmc.CoincidentSource)
+    assert new_src.probabilities == [1.0, 0.5]
+    assert len(new_src.sources) == 2
+
+    # Verify the probability attribute is only written when != 1.0
+    sub_elems = list(elem.iterchildren('source'))
+    assert sub_elems[0].get('probability') is None  # 1.0 omitted
+    assert sub_elems[1].get('probability') == '0.5'
+
+
+def test_coincident_source_probabilities_default():
+    # Without probabilities, they should be None
+    gamma1 = openmc.IndependentSource(particle='photon')
+    gamma2 = openmc.IndependentSource(particle='photon')
+    src = openmc.CoincidentSource(
+        space=openmc.stats.Point(),
+        sources=[gamma1, gamma2]
+    )
+    assert src.probabilities is None
+
+    # XML roundtrip should also give None
+    elem = src.to_xml_element()
+    new_src = openmc.SourceBase.from_xml_element(elem)
+    assert new_src.probabilities is None
+
+
+def test_coincident_source_validation():
+    # Must have at least 2 sub-sources
+    gamma1 = openmc.IndependentSource(particle='photon')
+    with pytest.raises(ValueError, match='at least of length "2"'):
+        openmc.CoincidentSource(sources=[gamma1])
+
+
+def test_coincident_source_probabilities_validation():
+    gamma1 = openmc.IndependentSource(particle='photon')
+    gamma2 = openmc.IndependentSource(particle='photon')
+    src = openmc.CoincidentSource(
+        space=openmc.stats.Point(),
+        sources=[gamma1, gamma2]
+    )
+
+    # Wrong length
+    with pytest.raises(ValueError, match='must be of length "2"'):
+        src.probabilities = [0.5]
+
+    # Out of range (0)
+    with pytest.raises(ValueError, match='less than'):
+        src.probabilities = [0.0, 0.5]
+
+    # Out of range (> 1)
+    with pytest.raises(ValueError, match='greater than'):
+        src.probabilities = [1.5, 0.5]
+
+
 def test_source_xml_roundtrip():
     # Create a source and write to an XML element
     space = openmc.stats.Box([-5., -5., -5.], [5., 5., 5.])

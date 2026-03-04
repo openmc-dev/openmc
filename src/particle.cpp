@@ -850,8 +850,8 @@ void Particle::write_restart() const
                      settings::n_particles +
                    simulation::work_index[mpi::rank] + i;
       uint64_t seed = init_seed(id, STREAM_SOURCE);
-      // re-sample source site
-      auto site = sample_external_source(&seed);
+      // re-sample source site (use primary site only)
+      auto site = sample_external_source(&seed)[0];
       write_dataset(file_id, "weight", site.wgt);
       write_dataset(file_id, "energy", site.E);
       write_dataset(file_id, "xyz", site.r);

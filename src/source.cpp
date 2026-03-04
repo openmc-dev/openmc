@@ -95,6 +95,8 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
       return make_unique<CompiledSourceWrapper>(node);
     } else if (source_type == "mesh") {
       return make_unique<MeshSource>(node);
+    } else if (source_type == "coincident") {
+      return make_unique<CoincidentSource>(node);
     } else {
       fatal_error(fmt::format("Invalid source type '{}' found.", source_type));
     }
@@ -225,6 +227,47 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
   ++n_accept;
 
   return site;
+}
+
+vector<SourceSite> Source::sample_sites_with_constraints(uint64_t* seed) const
+{
+  bool accepted = false;
+  static int64_t n_reject = 0;
+  static int64_t n_accept = 0;
+  vector<SourceSite> sites;
+
+  while (!accepted) {
+    // Sample all sites from the source
+    sites = this->sample_sites(seed);
+
+    accepted = true;
+    if (!constraints_applied()) {
+      // Check whether all sampled sites satisfy constraints
+      for (const auto& site : sites) {
+        if (!satisfies_spatial_constraints(site.r) ||
+            !satisfies_energy_constraints(site.E) ||
+            !satisfies_time_constraints(site.time)) {
+          accepted = false;
+          break;
+        }
+      }
+
+      if (!accepted) {
+        ++n_reject;
+        check_rejection_fraction(n_reject, n_accept);
+
+        if (rejection_strategy_ == RejectionStrategy::KILL) {
+          accepted = true;
+          for (auto& site : sites) {
+            site.wgt = 0.0;
+          }
+        }
+      }
+    }
+  }
+
+  ++n_accept;
+  return sites;
 }
 
 bool Source::satisfies_energy_constraints(double E) const
@@ -625,6 +668,140 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 }
 
 //==============================================================================
+// CoincidentSource implementation
+//==============================================================================
+
+CoincidentSource::CoincidentSource(pugi::xml_node node) : Source(node)
+{
+  // Coincident sources are only valid for fixed-source simulations
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    fatal_error("Coincident sources cannot be used in eigenvalue mode.");
+  }
+
+  // Read shared spatial distribution
+  if (check_for_node(node, "space")) {
+    space_ = SpatialDistribution::create(node.child("space"));
+  } else {
+    space_ = UPtrSpace {new SpatialPoint()};
+  }
+
+  // Read shared time distribution
+  if (check_for_node(node, "time")) {
+    pugi::xml_node node_dist = node.child("time");
+    time_ = distribution_from_xml(node_dist);
+  } else {
+    double T[] {0.0};
+    double p[] {1.0};
+    time_ = UPtrDist {new Discrete {T, p, 1}};
+  }
+
+  // Read child <source> elements as sub-sources
+  for (auto source_node : node.children("source")) {
+    // Read emission probability (default 1.0)
+    double prob = 1.0;
+    if (source_node.attribute("probability")) {
+      prob = std::stod(source_node.attribute("probability").value());
+      if (prob <= 0.0 || prob > 1.0) {
+        fatal_error("Sub-source probability must be in (0, 1].");
+      }
+    }
+
+    auto src = Source::create(source_node);
+    if (auto ptr = dynamic_cast<IndependentSource*>(src.get())) {
+      sources_.emplace_back(std::move(ptr));
+    } else {
+      fatal_error(
+        "Sub-sources of a coincident source must be IndependentSource.");
+    }
+    probabilities_.push_back(prob);
+  }
+
+  // Validate at least 2 sub-sources
+  if (sources_.size() < 2) {
+    fatal_error("A coincident source must have at least 2 sub-sources.");
+  }
+
+  // Precompute P(>=1 emission) and the "first success" CDF for direct
+  // conditional sampling when all probabilities are < 1.
+  double prod_complement = 1.0;
+  for (double p : probabilities_)
+    prod_complement *= (1.0 - p);
+  prob_at_least_one_ = 1.0 - prod_complement;
+
+  // Build CDF: q_i = p_i * prod_{j<i}(1 - p_j)
+  first_success_cdf_.resize(sources_.size());
+  double cumulative = 0.0;
+  double running_complement = 1.0;
+  for (size_t i = 0; i < sources_.size(); ++i) {
+    cumulative += probabilities_[i] * running_complement;
+    first_success_cdf_[i] = cumulative / prob_at_least_one_;
+    running_complement *= (1.0 - probabilities_[i]);
+  }
+
+  // Scaling the source by P(>=1 emission) to sample only interesting histories
+  strength_ *= prob_at_least_one_;
+}
+
+SourceSite CoincidentSource::sample(uint64_t* seed) const
+{
+  auto sites = sample_sites(seed);
+  return sites[0];
+}
+
+vector<SourceSite> CoincidentSource::sample_sites(uint64_t* seed) const
+{
+  // Sample shared position once
+  auto [r, r_wgt] = space_->sample(seed);
+
+  // Sample shared time once
+  auto [time, time_wgt] = time_->sample(seed);
+
+  // Build a site for each sub-source, applying emission probabilities.
+  // To guarantee at least one particle, we use direct conditional sampling:
+  // pick a guaranteed "first success" source, then roll the rest normally.
+  vector<SourceSite> sites;
+  sites.reserve(sources_.size());
+
+  // Determine the guaranteed source via the first-success CDF
+  size_t guaranteed = 0;
+  if (prob_at_least_one_ < 1.0) {
+    double xi = prn(seed);
+    for (size_t i = 0; i < sources_.size(); ++i) {
+      if (xi < first_success_cdf_[i]) {
+        guaranteed = i;
+        break;
+      }
+    }
+  }
+
+  for (size_t i = guaranteed; i < sources_.size(); ++i) {
+    if (prob_at_least_one_ < 1.0) {
+      // Sources after the guaranteed one roll normally
+      if (i > guaranteed && prn(seed) >= probabilities_[i])
+        continue;
+    } else {
+      // At least one source has probability 1, so roll all normally
+      if (prn(seed) >= probabilities_[i])
+        continue;
+    }
+
+    // Sample from the sub-source to get particle type, energy, angle
+    SourceSite site = sources_[i]->sample(seed);
+
+    // Override position and time with shared values
+    site.r = r;
+    site.time = time;
+
+    // Apply shared spatial and time weights
+    site.wgt *= (r_wgt * time_wgt);
+
+    sites.push_back(site);
+  }
+
+  return sites;
+}
+
+//==============================================================================
 // Non-member functions
 //==============================================================================
 
@@ -640,8 +817,9 @@ void initialize_source()
                  simulation::work_index[mpi::rank] + i + 1;
     uint64_t seed = init_seed(id, STREAM_SOURCE);
 
-    // sample external source distribution
-    simulation::source_bank[i] = sample_external_source(&seed);
+    // sample external source distribution (store only primary site)
+    auto sites = sample_external_source(&seed);
+    simulation::source_bank[i] = sites[0];
   }
 
   // Write out initial source
@@ -654,7 +832,7 @@ void initialize_source()
   }
 }
 
-SourceSite sample_external_source(uint64_t* seed)
+vector<SourceSite> sample_external_source(uint64_t* seed)
 {
   // Sample from among multiple source distributions
   int i = 0;
@@ -667,26 +845,32 @@ SourceSite sample_external_source(uint64_t* seed)
     }
   }
 
-  // Sample source site from i-th source distribution
-  SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
+  // Sample source sites from i-th source distribution
+  vector<SourceSite> sites {
+    model::external_sources[i]->sample_sites_with_constraints(seed)};
 
   // For uniform source sampling, multiply the weight by the ratio of the actual
   // probability of sampling source i to the biased probability of sampling
   // source i, which is (strength_i / total_strength) / (1 / n)
   if (n_sources > 1 && settings::uniform_source_sampling) {
     double total_strength = model::external_sources_probability.integral();
-    site.wgt *=
+    double wgt_factor =
       model::external_sources[i]->strength() * n_sources / total_strength;
+    for (auto& site : sites) {
+      site.wgt *= wgt_factor;
+    }
   }
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
-    site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
-      data::mg.rev_energy_bins_.end(), site.E);
-    site.E = data::mg.num_energy_groups_ - site.E - 1.;
+    for (auto& site : sites) {
+      site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
+        data::mg.rev_energy_bins_.end(), site.E);
+      site.E = data::mg.num_energy_groups_ - site.E - 1.;
+    }
   }
 
-  return site;
+  return sites;
 }
 
 void free_memory_source()
@@ -713,7 +897,8 @@ extern "C" int openmc_sample_external_source(
 
   auto sites_array = static_cast<SourceSite*>(sites);
   for (size_t i = 0; i < n; ++i) {
-    sites_array[i] = sample_external_source(seed);
+    auto sampled = sample_external_source(seed);
+    sites_array[i] = sampled[0];
   }
   return 0;
 }

@@ -1122,36 +1122,6 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p.r == pytest.approx(row['r'])
         assert p.E == pytest.approx(row['E'])
 
-    # Test batched generator
-    batches = list(openmc.lib.iter_external_source_batches(
-        25, prn_seed=3, batch_size=10
-    ))
-    assert len(batches) == 3  # 10 + 10 + 5
-    assert len(batches[0]) == 10
-    assert len(batches[1]) == 10
-    assert len(batches[2]) == 5
-    for b in batches:
-        assert isinstance(b, np.ndarray)
-        assert b.dtype == arr.dtype
-
-    # Concatenated batched results should match a single call
-    combined = np.concatenate(batches)
-    arr_25 = openmc.lib.sample_external_source(25, prn_seed=3, as_array=True)
-    for name in arr_25.dtype.names:
-        assert np.array_equal(combined[name], arr_25[name])
-
-    # Each yielded batch should be an independent copy (not a view into
-    # the same buffer).  Verify that advancing the generator does not
-    # mutate a previously yielded array.
-    gen = openmc.lib.iter_external_source_batches(
-        20, prn_seed=7, batch_size=10
-    )
-    first = next(gen)
-    first_copy = first.copy()
-    _ = next(gen)  # advance; should not overwrite first
-    for name in first.dtype.names:
-        assert np.array_equal(first[name], first_copy[name])
-
     openmc.lib.finalize()
 
     # Make sure sampling works in volume calculation mode

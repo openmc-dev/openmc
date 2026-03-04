@@ -33,11 +33,6 @@ class _SourceSite(Structure):
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
 
-# Maximum number of source sites to sample per C API call.  Requests for
-# more sites are automatically split into batches of this size so that the
-# intermediate ctypes buffer stays bounded (~104 MB at the default value).
-_SOURCE_SAMPLE_BATCH_SIZE: int = 1_000_000
-
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous
 _array_1d_int = np.ctypeslib.ndpointer(dtype=np.int32, ndim=1,
@@ -533,113 +528,28 @@ def sample_external_source(
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
-    batch_size = min(n_samples, _SOURCE_SAMPLE_BATCH_SIZE)
-
-    # Pre-allocate the output container; for the ParticleList path we accumulate
-    # SourceParticle objects across batches.
+    # Pre-allocate output array and sample all particles in a single C call
     result = np.empty(n_samples, dtype=_SourceSite)
-    if not as_array:
-        particles = []
-
-    for offset in range(0, n_samples, batch_size):
-        n_batch = min(batch_size, n_samples - offset)
-
-        # Get ctypes array that shares buffer
-        result_batch = result[offset:offset + n_batch]
-        sites_array = (_SourceSite * n_batch).from_buffer(result_batch)
-
-        # Sample source particles into the array
-        _dll.openmc_sample_external_source(
-            c_size_t(n_batch),
-            c_uint64(prn_seed + offset),
-            sites_array,
-        )
-
-        if not as_array:
-            particles.extend(
-                openmc.SourceParticle(
-                    r=site.r, u=site.u, E=site.E, time=site.time,
-                    wgt=site.wgt, delayed_group=site.delayed_group,
-                    surf_id=site.surf_id,
-                    particle=openmc.ParticleType(site.particle),
-                )
-                for site in sites_array[:n_batch]
-            )
+    sites_array = (_SourceSite * n_samples).from_buffer(result)
+    _dll.openmc_sample_external_source(
+        c_size_t(n_samples),
+        c_uint64(prn_seed),
+        sites_array,
+    )
 
     if as_array:
         return result
-    return openmc.ParticleList(particles)
 
-
-def iter_external_source_batches(
-        n_samples: int,
-        prn_seed: int | None = None,
-        batch_size: int = _SOURCE_SAMPLE_BATCH_SIZE,
-):
-    """Sample external source, yielding results in batches.
-
-    This generator samples source particles in fixed-size batches and
-    yields each batch as an independent numpy structured array.  Because
-    only one batch is held in memory at a time, total memory usage stays
-    bounded regardless of *n_samples*.
-
-    Each yielded array is a **copy** of the internal sampling buffer, so
-    it remains valid after the generator advances to the next batch.
-
-    .. versionadded:: 0.15.2
-
-    Parameters
-    ----------
-    n_samples : int
-        Total number of source particles to sample.
-    prn_seed : int or None
-        Pseudorandom number generator seed.  If None, one is generated
-        randomly.
-    batch_size : int
-        Number of particles per batch.  Defaults to 1,000,000.
-
-    Yields
-    ------
-    numpy.ndarray
-        Structured array of source particles for one batch with fields
-        ``'r'``, ``'u'``, ``'E'``, ``'time'``, ``'wgt'``,
-        ``'delayed_group'``, ``'surf_id'``, and ``'particle'``.
-        The length of the last batch may be smaller than *batch_size*.
-
-    Examples
-    --------
-    Accumulate an energy histogram without holding all particles in memory:
-
-    >>> hist = np.zeros(1000)
-    >>> edges = np.linspace(0, 20e6, 1001)
-    >>> for batch in openmc.lib.iter_external_source_batches(100_000_000):
-    ...     h, _ = np.histogram(batch['E'], bins=edges, weights=batch['wgt'])
-    ...     hist += h
-
-    """
-    if n_samples <= 0:
-        raise ValueError("Number of samples must be positive")
-    if batch_size <= 0:
-        raise ValueError("Batch size must be positive")
-    if prn_seed is None:
-        prn_seed = getrandbits(63)
-
-    batch_size = min(batch_size, n_samples)
-    sites_array = (_SourceSite * batch_size)()
-
-    for offset in range(0, n_samples, batch_size):
-        n_batch = min(batch_size, n_samples - offset)
-
-        _dll.openmc_sample_external_source(
-            c_size_t(n_batch),
-            c_uint64(prn_seed + offset),
-            sites_array,
+    particles = [
+        openmc.SourceParticle(
+            r=site.r, u=site.u, E=site.E, time=site.time,
+            wgt=site.wgt, delayed_group=site.delayed_group,
+            surf_id=site.surf_id,
+            particle=openmc.ParticleType(site.particle),
         )
-
-        # Yield a copy so the caller can hold onto it safely.
-        yield np.frombuffer(
-            sites_array, dtype=_SourceSite, count=n_batch
-        ).copy()
+        for site in sites_array
+    ]
+    return openmc.ParticleList(particles)
 
 
 def simulation_init():

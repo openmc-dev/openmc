@@ -1332,64 +1332,6 @@ class Model:
                 n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
 
-    def iter_external_source_batches(
-        self,
-        n_samples: int = 1_000_000,
-        prn_seed: int | None = None,
-        batch_size: int = 1_000_000,
-        **init_kwargs
-    ):
-        """Sample external source, yielding results in batches.
-
-        This generator initializes OpenMC (if not already initialized),
-        samples source particles in fixed-size batches, and yields each
-        batch as an independent numpy structured array.  The OpenMC
-        library session is kept alive across yields and cleaned up
-        automatically when the generator is exhausted or closed.
-
-        .. versionadded:: 0.15.2
-
-        Parameters
-        ----------
-        n_samples : int
-            Total number of source particles to sample.
-        prn_seed : int or None
-            Pseudorandom number generator seed.  If None, one is
-            generated randomly.
-        batch_size : int
-            Number of particles per batch.  Defaults to 1,000,000.
-        **init_kwargs
-            Keyword arguments passed to :func:`openmc.lib.init`
-
-        Yields
-        ------
-        numpy.ndarray
-            Structured array of source particles for one batch.
-            The length of the last batch may be smaller than *batch_size*.
-
-        Examples
-        --------
-        Accumulate an energy histogram without holding all particles in
-        memory:
-
-        >>> hist = np.zeros(1000)
-        >>> edges = np.linspace(0, 20e6, 1001)
-        >>> for batch in model.iter_external_source_batches(100_000_000):
-        ...     h, _ = np.histogram(batch['E'], bins=edges)
-        ...     hist += h
-
-        """
-        import openmc.lib
-
-        init_kwargs.setdefault('output', False)
-        init_kwargs.setdefault('args', ['-c'])
-
-        with openmc.lib.TemporarySession(self, **init_kwargs):
-            yield from openmc.lib.iter_external_source_batches(
-                n_samples=n_samples, prn_seed=prn_seed,
-                batch_size=batch_size
-            )
-
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
         """Apply results from a statepoint to tally objects on the Model
 

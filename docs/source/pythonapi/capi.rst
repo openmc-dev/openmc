@@ -42,7 +42,6 @@ Functions
    run_in_memory
    run_random_ray
    sample_external_source
-   iter_external_source_batches
    simulation_finalize
    simulation_init
    source_bank

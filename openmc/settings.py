@@ -289,6 +289,14 @@ class Settings:
         :cellto: Cell ID used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
                  cell will be banked (int)
+    surface_grazing_cutoff : float
+        Surface flux cosine cutoff. If not specified, the default value is
+        0.001. For more information, see the surface tally section in the theory
+        manual.
+    surface_grazing_ratio : float
+        Surface flux cosine substitution ratio. If not specified, the default
+        value is 0.5. For more information, see the surface tally section in the
+        theory manual.
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -399,6 +407,8 @@ class Settings:
         self._uniform_source_sampling = None
         self._seed = None
         self._stride = None
+        self._surface_grazing_cutoff = None
+        self._surface_grazing_ratio = None
         self._survival_biasing = None
         self._free_gas_threshold = None
 
@@ -709,6 +719,27 @@ class Settings:
         cv.check_type('random number generator stride', stride, Integral)
         cv.check_greater_than('random number generator stride', stride, 0)
         self._stride = stride
+
+    @property
+    def surface_grazing_cutoff(self) -> float:
+        return self._surface_grazing_cutoff
+
+    @surface_grazing_cutoff.setter
+    def surface_grazing_cutoff(self, surface_grazing_cutoff: float):
+        cv.check_type('surface grazing cutoff', surface_grazing_cutoff, float)
+        cv.check_greater_than('surface grazing cutoff', surface_grazing_cutoff, 0.0)
+        cv.check_less_than('surface grazing cutoff', surface_grazing_cutoff, 1.0)
+        self._surface_grazing_cutoff = surface_grazing_cutoff
+
+    @property
+    def surface_grazing_ratio(self) -> float:
+        return self._surface_grazing_ratio
+
+    @surface_grazing_ratio.setter
+    def surface_grazing_ratio(self, surface_grazing_ratio: float):
+        cv.check_type('surface grazing ratio', surface_grazing_ratio, float)
+        cv.check_greater_than('surface grazing ratio', surface_grazing_ratio, 0.0)
+        self._surface_grazing_ratio = surface_grazing_ratio
 
     @property
     def survival_biasing(self) -> bool:
@@ -1625,6 +1656,16 @@ class Settings:
             element = ET.SubElement(root, "stride")
             element.text = str(self._stride)
 
+    def _create_surface_grazing_cutoff_subelement(self, root):
+        if self._surface_grazing_cutoff is not None:
+            element = ET.SubElement(root, "surface_grazing_cutoff")
+            element.text = str(self._surface_grazing_cutoff)
+
+    def _create_surface_grazing_ratio_subelement(self, root):
+        if self._surface_grazing_ratio is not None:
+            element = ET.SubElement(root, "surface_grazing_ratio")
+            element.text = str(self._surface_grazing_ratio)
+
     def _create_survival_biasing_subelement(self, root):
         if self._survival_biasing is not None:
             element = ET.SubElement(root, "survival_biasing")
@@ -2128,6 +2169,16 @@ class Settings:
         if text is not None:
             self.stride = int(text)
 
+    def _surface_grazing_cutoff_from_xml_element(self, root):
+        text = get_text(root, 'surface_grazing_cutoff')
+        if text is not None:
+            self.surface_grazing_cutoff = float(text)
+
+    def _surface_grazing_ratio_from_xml_element(self, root):
+        text = get_text(root, 'surface_grazing_ratio')
+        if text is not None:
+            self.surface_grazing_ratio = float(text)
+
     def _survival_biasing_from_xml_element(self, root):
         text = get_text(root, 'survival_biasing')
         if text is not None:
@@ -2435,6 +2486,8 @@ class Settings:
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
         self._create_stride_subelement(element)
+        self._create_surface_grazing_cutoff_subelement(element)
+        self._create_surface_grazing_ratio_subelement(element)
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
@@ -2549,6 +2602,8 @@ class Settings:
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)
         settings._stride_from_xml_element(elem)
+        settings._surface_grazing_cutoff_from_xml_element(elem)
+        settings._surface_grazing_ratio_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)

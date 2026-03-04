@@ -413,11 +413,6 @@ void Particle::event_collide()
   // Clear surface component
   surface() = SURFACE_NONE;
 
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
-  n_coord_last() = n_coord();
-
   if (settings::run_CE) {
     collision(*this);
   } else {

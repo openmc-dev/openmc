@@ -265,7 +265,7 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # Check to see that values are assigned to the C and python representations
     # First python
     cell = model.geometry.get_all_cells()[1]
-    assert cell.temperature == [600.0]
+    assert cell.temperature == 600.0
     assert cell.density == [pytest.approx(10.0, 1e-5)]
     assert cell.fill.get_mass_density() == pytest.approx(5.0)
     # Now C

@@ -7,6 +7,7 @@
 #include "openmc/vector.h"
 
 #include <cstdint>
+#include <limits>
 #include <numeric>
 
 namespace openmc {
@@ -239,8 +240,14 @@ int64_t synchronize_global_secondary_bank(
     int64_t send_overlap_start = std::max(my_start, cumulative_target[r]);
     int64_t send_overlap_end = std::min(my_end, cumulative_target[r + 1]);
     if (send_overlap_start < send_overlap_end) {
-      send_counts[r] = static_cast<int>(send_overlap_end - send_overlap_start);
-      send_displs[r] = static_cast<int>(send_overlap_start - my_start);
+      int64_t count = send_overlap_end - send_overlap_start;
+      int64_t displ = send_overlap_start - my_start;
+      if (count > std::numeric_limits<int>::max() ||
+          displ > std::numeric_limits<int>::max()) {
+        fatal_error("Secondary bank size exceeds MPI_Alltoallv int limit.");
+      }
+      send_counts[r] = static_cast<int>(count);
+      send_displs[r] = static_cast<int>(displ);
     }
 
     // Recv: overlap between rank r's current range and my target range
@@ -249,8 +256,14 @@ int64_t synchronize_global_secondary_bank(
     int64_t recv_overlap_end =
       std::min(cumulative_before[r + 1], my_target_end);
     if (recv_overlap_start < recv_overlap_end) {
-      recv_counts[r] = static_cast<int>(recv_overlap_end - recv_overlap_start);
-      recv_displs[r] = static_cast<int>(recv_overlap_start - my_target_start);
+      int64_t count = recv_overlap_end - recv_overlap_start;
+      int64_t displ = recv_overlap_start - my_target_start;
+      if (count > std::numeric_limits<int>::max() ||
+          displ > std::numeric_limits<int>::max()) {
+        fatal_error("Secondary bank size exceeds MPI_Alltoallv int limit.");
+      }
+      recv_counts[r] = static_cast<int>(count);
+      recv_displs[r] = static_cast<int>(displ);
     }
   }
 

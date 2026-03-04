@@ -291,6 +291,17 @@ public:
   int n_dimension_ {-1};               //!< Number of dimensions
 };
 
+struct MeshDistance {
+  MeshDistance() = default;
+  MeshDistance(int _index, bool _max_surface, double _distance)
+    : next_index {_index}, max_surface {_max_surface}, distance {_distance}
+  {}
+  int next_index {-1};
+  bool max_surface {true};
+  double distance {INFTY};
+  bool operator<(const MeshDistance& o) const { return distance < o.distance; }
+};
+
 class StructuredMesh : public Mesh {
 public:
   StructuredMesh() = default;
@@ -299,20 +310,6 @@ public:
   virtual ~StructuredMesh() = default;
 
   using MeshIndex = std::array<int, 3>;
-
-  struct MeshDistance {
-    MeshDistance() = default;
-    MeshDistance(int _index, bool _max_surface, double _distance)
-      : next_index {_index}, max_surface {_max_surface}, distance {_distance}
-    {}
-    int next_index {-1};
-    bool max_surface {true};
-    double distance {INFTY};
-    bool operator<(const MeshDistance& o) const
-    {
-      return distance < o.distance;
-    }
-  };
 
   Position sample_element(int32_t bin, uint64_t* seed) const override
   {
@@ -615,7 +612,7 @@ private:
     const Position& r, const Direction& u, double l, int shell) const;
   double find_phi_crossing(
     const Position& r, const Direction& u, double l, int shell) const;
-  StructuredMesh::MeshDistance find_z_crossing(
+  MeshDistance find_z_crossing(
     const Position& r, const Direction& u, double l, int shell) const;
 
   bool full_phi_ {false};

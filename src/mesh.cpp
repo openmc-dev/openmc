@@ -1492,9 +1492,8 @@ double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
   return lower_left_[i] + (ijk[i] - 1) * width_[i];
 }
 
-StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
-  double l) const
+MeshDistance RegularMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i,
+  const Position& r0, const Direction& u, double l) const
 {
   MeshDistance d;
   d.next_index = ijk[i];
@@ -1665,9 +1664,8 @@ double RectilinearMesh::negative_grid_boundary(
   return grid_[i][ijk[i] - 1];
 }
 
-StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
-  double l) const
+MeshDistance RectilinearMesh::distance_to_grid_boundary(const MeshIndex& ijk,
+  int i, const Position& r0, const Direction& u, double l) const
 {
   MeshDistance d;
   d.next_index = ijk[i];
@@ -1928,7 +1926,7 @@ double CylindricalMesh::find_phi_crossing(
   return INFTY;
 }
 
-StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(
+MeshDistance CylindricalMesh::find_z_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
   MeshDistance d;
@@ -1949,9 +1947,8 @@ StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(
   return d;
 }
 
-StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
-  double l) const
+MeshDistance CylindricalMesh::distance_to_grid_boundary(const MeshIndex& ijk,
+  int i, const Position& r0, const Direction& u, double l) const
 {
   if (i == 0) {
 
@@ -2276,9 +2273,8 @@ double SphericalMesh::find_phi_crossing(
   return INFTY;
 }
 
-StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
-  double l) const
+MeshDistance SphericalMesh::distance_to_grid_boundary(const MeshIndex& ijk,
+  int i, const Position& r0, const Direction& u, double l) const
 {
 
   if (i == 0) {
@@ -3803,7 +3799,7 @@ void LibMesh::set_score_data(const std::string& var_name,
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-       it++) {
+    it++) {
     if (!(*it)->active()) {
       continue;
     }

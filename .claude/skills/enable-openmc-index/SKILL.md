@@ -8,7 +8,7 @@ allowed-tools: Bash(*), Read
 
 Set up (if needed) and activate the OpenMC codebase tools for this session:
 
-1. **`openmc_search.py`** — RAG semantic search. Chunks code into overlapping fixed-size windows, embeds with the all-MiniLM-L6-v2 model (22M parameters), and searches a LanceDB vector index. Returns code previews with file paths and line numbers. Covers C++, Python, and docs.
+1. **`openmc_search.py`** — RAG semantic search. Chunks code into overlapping fixed-size windows, embeds locally on CPU with the all-MiniLM-L6-v2 model (22M parameters, no GPU or API key needed), and searches a LanceDB vector index. Returns code previews with file paths and line numbers. Covers C++, Python, and docs.
 2. **`openmc_map.py`** — Structural repo map via aider/tree-sitter. Builds a cross-file reference graph, ranks files with PageRank relative to your focus files, then shows the top-ranked files as condensed code skeletons fitted to a token budget. Focus files are excluded (assumes you already have them). Caveat: the graph matches identifiers by name only — common names like `push_back` or `__init__` create false edges in the ranking.
 3. **`openmc_lsp.py`** — LSP (Language Server Protocol) navigation via clangd. Talks to the C++ compiler frontend for symbol resolution. `definition`, `references`, `symbols`, and `related` commands with compiler accuracy — zero false edges. Requires clangd and that OpenMC has been built (for `build/compile_commands.json`).
 

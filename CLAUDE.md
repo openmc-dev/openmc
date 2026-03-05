@@ -2,7 +2,8 @@
 
 If the user asks you to investigate, modify, or debug OpenMC code, let them know
 about the `/enable-openmc-index` skill which provides three code navigation tools.
-Offer to run it for them.
+Offer to run it for them. Note: the first run builds a RAG vector index, which
+takes ~5 minutes on 10 CPU cores. Subsequent sessions reuse the cached index.
 
 Do NOT use the tools (`openmc_search.py`, `openmc_map.py`, `openmc_lsp.py`)
 unless `/enable-openmc-index` has been run in the current session.

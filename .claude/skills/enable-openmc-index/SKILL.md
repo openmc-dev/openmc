@@ -61,8 +61,6 @@ fi
 If clangd is missing, tell the user: "The LSP tool needs clangd. Install with `apt-get install clangd` (or `clangd-15`, `clangd-16`, etc.)."
 If compile_commands.json is missing, tell the user: "The LSP tool needs compile_commands.json. Generate with `cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`."
 
-The LSP tool is optional — the other two tools work without it.
-
 ## Step 4: Learn the tool APIs
 
 Run `--help` for all tools to see their full APIs:

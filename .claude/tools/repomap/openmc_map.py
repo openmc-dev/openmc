@@ -116,18 +116,11 @@ def generate_map(focus_files=None, map_tokens=2048):
                     print(f"Warning: '{f}' not found in indexed files",
                           file=sys.stderr)
 
-    # Aider's RepoMap excludes chat_fnames from the map output (since in
-    # aider's workflow those files are already in the chat). We want the
-    # opposite: show focus files AND their neighbors. So we pass focus files
-    # as mentioned_fnames (to boost their ranking) but keep them in
-    # other_fnames (so they appear in the output).
-    mentioned = set(chat_fnames)
-    other_fnames = all_files  # Include everything
-    repo_map = rm.get_repo_map(
-        [],  # No chat files - we want everything in the output
-        other_fnames,
-        mentioned_fnames=mentioned,
-    )
+    # chat_fnames = files the agent is focused on (already in context).
+    # Aider shows their neighbors/dependencies, not the files themselves,
+    # since the agent already has those open.
+    other_fnames = [f for f in all_files if f not in chat_fnames]
+    repo_map = rm.get_repo_map(chat_fnames, other_fnames)
 
     if not repo_map:
         return "No map generated. Try with different files or a larger --tokens budget."

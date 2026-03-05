@@ -1,4 +1,7 @@
-# Tree-sitter for code parsing (repo map + chunking)
+# Repo map (uses aider's tree-sitter based RepoMap)
+aider-chat>=0.80.0
+
+# Tree-sitter for RAG code chunking
 tree-sitter>=0.23.0
 tree-sitter-python>=0.23.0
 tree-sitter-cpp>=0.23.0

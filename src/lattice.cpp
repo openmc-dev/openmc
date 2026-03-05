@@ -262,27 +262,30 @@ std::pair<double, array<int, 3>> RectLattice::distance(
   double y0 {copysign(0.5 * pitch_[1], u.y)};
   double z0;
 
-  double d = std::min(
-    u.x != 0.0 ? (x0 - x) / u.x : INFTY, u.y != 0.0 ? (y0 - y) / u.y : INFTY);
-  if (is_3d_) {
-    z0 = copysign(0.5 * pitch_[2], u.z);
-    d = std::min(d, u.z != 0.0 ? (z0 - z) / u.z : INFTY);
+  // Evaluate axial distances.
+  double dx = u.x != 0.0 ? (x0 - x) / u.x : INFTY;
+  double dy = u.y != 0.0 ? (y0 - y) / u.y : INFTY;
+  double dz = is_3d_ ? (u.z != 0.0 ? (z0 - z) / u.z : INFTY) : INFTY;
+  
+  double d = dx;
+  array<int, 3> lattice_trans = {0,0,0};
+  lattice_trans[0] =  copysign(1, u.x);
+  
+  if (dy < d) { 
+      d = dy; 
+      lattice_trans[0] =  0;
+      lattice_trans[1] =  copysign(1, u.y);
   }
-
-  // Determine which lattice boundaries are being crossed
-  array<int, 3> lattice_trans = {0, 0, 0};
-  if (u.x != 0.0 && std::abs(x + u.x * d - x0) < FP_PRECISION)
-    lattice_trans[0] = copysign(1, u.x);
-  if (u.y != 0.0 && std::abs(y + u.y * d - y0) < FP_PRECISION)
-    lattice_trans[1] = copysign(1, u.y);
-  if (is_3d_) {
-    if (u.z != 0.0 && std::abs(z + u.z * d - z0) < FP_PRECISION)
-      lattice_trans[2] = copysign(1, u.z);
+  
+  if (is_3d_ && dz < d) { 
+      d = dz;
+      lattice_trans[0] =  0;
+      lattice_trans[1] =  0;
+      lattice_trans[2] =  copysign(1, u.z);
   }
 
   return {d, lattice_trans};
 }
-
 //==============================================================================
 
 void RectLattice::get_indices(

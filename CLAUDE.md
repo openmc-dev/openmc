@@ -51,8 +51,11 @@ reference graph matches identifiers by name only — tree-sitter has no type
 information, so `std::vector::push_back` and `NeighborList::push_back` create
 the same edges. This means files defining common method names (`push_back`,
 `get`, `__init__`, `from_xml`, etc.) get inflated PageRank and appear as
-neighbors when they may not be truly related. For determining which files are
-genuinely connected to a C++ file, use `openmc_lsp.py related` instead.
+neighbors when they may not be truly related. The name-matching can also be
+useful — it surfaces files with identically-named functions that may need
+parallel changes even though they have no typed connection. For precise C++
+file connections, `openmc_lsp.py related` is more reliable; the repo map is
+better for a broad structural overview or for Python code.
 
 ## Additional OpenMC info
 

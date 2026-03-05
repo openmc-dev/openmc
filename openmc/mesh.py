@@ -300,6 +300,8 @@ class MeshBase(IDManagerMixin, ABC):
             return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
+        elif mesh_type == 'hexagonal':
+            return HexagonalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
@@ -2527,6 +2529,232 @@ class SphericalMesh(StructuredMesh):
         arr[..., 1] = y + origin[1]
         arr[..., 2] = z + origin[2]
         return arr
+
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        raise NotImplementedError(
+            "get_indices_at_coords is not yet implemented for SphericalMesh"
+        )
+
+class HexagonalMesh(StructuredMesh):
+    """A 3D hexagonal mesh
+
+    Parameters
+    ----------
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
+    pitch : float
+        Radial pitch of the hexagonal mesh in cm.
+    num_rings : int
+        Number of radial ring positions in the xy-plane
+    orientation : {'x', 'y'}
+        The orientation of the lattice. The 'x' orientation means that each
+        lattice element has two faces that are perpendicular to the x-axis,
+        while the 'y' orientation means that each lattice element has two faces
+        that are perpendicular to the y-axis. By default, the orientation is
+        'y'.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
+    pitch : float
+        Radial pitch of the hexagonal mesh in cm.
+    num_rings : int
+        Number of radial ring positions in the xy-plane
+    orientation : {'x', 'y'}
+        The orientation of the lattice. The 'x' orientation means that each
+        lattice element has two faces that are perpendicular to the x-axis,
+        while the 'y' orientation means that each lattice element has two faces
+        that are perpendicular to the y-axis. By default, the orientation is
+        'y'.    
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
+        (2, 1, 1), ...]
+    lower_left : numpy.ndarray
+        The lower-left corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    upper_right : numpy.ndarray
+        The upper-right corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
+
+    """
+
+    def __init__(
+        self,
+        z_grid: Sequence[float],
+        pitch: float,
+        num_ring: int,
+        orientation: str = 'y',
+        origin: Sequence[float] = (0., 0., 0.),
+        mesh_id: int | None = None,
+        name: str = '',
+    ):
+        super().__init__(mesh_id, name)
+
+        self.z_grid = z_grid
+        self.pitch = pitch
+        self.num_ring = num_ring
+        self.orientation = orientation
+        self.origin = origin
+
+    @property
+    def _axis_labels(self):
+        return ('r', 'i', 'z')
+
+    @property
+    def origin(self):
+        return self._origin
+
+    @origin.setter
+    def origin(self, coords):
+        cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
+        self._origin = np.asarray(coords, dtype=float)
+
+    @property
+    def z_grid(self):
+        return self._z_grid
+
+    @z_grid.setter
+    def z_grid(self, grid):
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
+        cv.check_length('mesh z_grid', grid, 2)
+        cv.check_increasing('mesh z_grid', grid)
+        self._z_grid = np.asarray(grid, dtype=float)
+
+    @property
+    def pitch(self):
+        return self._pitch  
+
+    @pitch.setter
+    def pitch(self, pitch):
+        cv.check_type('mesh radial pitch', pitch, Real)
+        cv.check_greater_than('mesh radial pitch', pitch, 0.0)
+        self._pitch = pitch
+
+    @property
+    def num_rings(self):
+        return self._num_rings
+
+    @num_rings.setter
+    def num_rings(self, num_rings):
+        cv.check_type('mesh num_rings', num_rings, Integral)
+        cv.check_greater_than('mesh num_rings', num_rings, 0)
+        self._num_rings = num_rings
+
+    @property
+    def orientation(self):
+        return self._orientation
+
+    @orientation.setter
+    def orientation(self, orientation):
+        cv.check_value('orientation', orientation.lower(), ('x', 'y'))
+        self._orientation = orientation.lower()
+
+    @property
+    def indices(self):
+        return [(r, i, z) for z in range(self.z_grid.size() - 1)
+                for r in range(self.num_rings)
+                for i in range(max(6*(self.num_rings - 1 - r), 1))]
+
+    def __repr__(self):
+        fmt = '{0: <16}{1}{2}\n'
+        string = super().__repr__()
+        string += fmt.format('\tOrigin', '=\t', self.origin)
+        string += fmt.format('\tPitch', '=\t', self.pitch)
+        string += fmt.format('\tN rings', '=\t', self.num_rings)
+        string += fmt.format('\tOrientation', '=\t', self.orientation)
+        z_grid_str = str(self._z_grid) if self._z_grid is None else len(self._z_grid)
+        string += fmt.format('\tN Z pnts:', '=\t', z_grid_str)
+        if self._z_grid is not None:
+            string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
+            string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
+        # Read and assign mesh properties
+        mesh = cls(
+            z_grid = group['grid'][()],
+            pitch = np.sqrt(3)*group['size'][()],
+            num_rings = group['radius'][()],
+            mesh_id=mesh_id,
+            name=name
+        )
+        if 'origin' in group:
+            mesh.origin = group['origin'][()]
+        if 'orientation' in group:
+            mesh.orientation = group['orientation'][()]
+
+        return mesh
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing mesh data
+
+        """
+
+        element = super().to_xml_element()
+        element.set("type", "hexagonal")
+        element.set("size", str(self.pitch/np.sqrt(3)))
+        element.set("radius", str(self.num_rings))
+        element.set("orientation", str(self.orientation))
+
+        subelement = ET.SubElement(element, "grid")
+        subelement.text = ' '.join(map(str, self.z_grid))
+
+        subelement = ET.SubElement(element, "origin")
+        subelement.text = ' '.join(map(str, self.origin))
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate a spherical mesh from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.SphericalMesh
+            Spherical mesh object
+
+        """
+        mesh_id = int(get_text(elem, 'id'))
+        mesh = cls(
+            mesh_id=mesh_id,
+            z_grid = get_elem_list(elem, "grid", float),
+            pitch = float(get_text(elem, "size"))*np.sqrt(3),
+            num_rings = int(get_text(elem, "radius")),
+            orientation = get_text(elem, "orientation"),
+            origin = get_elem_list(elem, "origin", float) or [0., 0., 0.],
+        )
+
+        return mesh
 
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
         raise NotImplementedError(

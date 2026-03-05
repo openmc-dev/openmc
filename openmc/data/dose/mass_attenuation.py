@@ -62,7 +62,7 @@ _MUEN_TABLES = {
 def mass_energy_absorption_coefficient(
     material: str, data_source: str = "nist126"
 ) -> Tabulated1D:
-    """Return the mass energy-absorption coefficient as a function of energy.
+    r"""Return the mass energy-absorption coefficient as a function of energy.
 
     The mass energy-absorption coefficient, :math:`\mu_\text{en}/\rho`, is
     defined as the fraction of incident photon energy absorbed in a material per
@@ -108,7 +108,7 @@ _MASS_ATTENUATION: dict[int, object] = {}
 
 
 def mass_attenuation_coefficient(element):
-    """Return the photon mass attenuation coefficient as a function of energy.
+    r"""Return the photon mass attenuation coefficient as a function of energy.
 
     The mass energy-absorption coefficient, :math:`\mu_\text{en}/\rho`, is
     defined as the fraction of incident photon energy absorbed in a material per

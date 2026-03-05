@@ -1114,6 +1114,14 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p1.time == p2.time
         assert p1.wgt == p2.wgt
 
+    # as_array should return a numpy structured array with matching values
+    arr = openmc.lib.sample_external_source(10, prn_seed=3, as_array=True)
+    assert isinstance(arr, np.ndarray)
+    assert len(arr) == 10
+    for p, row in zip(particles, arr):
+        assert p.r == pytest.approx(row['r'])
+        assert p.E == pytest.approx(row['E'])
+
     openmc.lib.finalize()
 
     # Make sure sampling works in volume calculation mode

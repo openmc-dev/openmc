@@ -266,22 +266,22 @@ std::pair<double, array<int, 3>> RectLattice::distance(
   double dx = u.x != 0.0 ? (x0 - x) / u.x : INFTY;
   double dy = u.y != 0.0 ? (y0 - y) / u.y : INFTY;
   double dz = is_3d_ ? (u.z != 0.0 ? (z0 - z) / u.z : INFTY) : INFTY;
-  
+
   double d = dx;
-  array<int, 3> lattice_trans = {0,0,0};
-  lattice_trans[0] =  copysign(1, u.x);
-  
-  if (dy < d) { 
-      d = dy; 
-      lattice_trans[0] =  0;
-      lattice_trans[1] =  copysign(1, u.y);
+  array<int, 3> lattice_trans = {0, 0, 0};
+  lattice_trans[0] = copysign(1, u.x);
+
+  if (dy < d) {
+    d = dy;
+    lattice_trans[0] = 0;
+    lattice_trans[1] = copysign(1, u.y);
   }
-  
-  if (is_3d_ && dz < d) { 
-      d = dz;
-      lattice_trans[0] =  0;
-      lattice_trans[1] =  0;
-      lattice_trans[2] =  copysign(1, u.z);
+
+  if (is_3d_ && dz < d) {
+    d = dz;
+    lattice_trans[0] = 0;
+    lattice_trans[1] = 0;
+    lattice_trans[2] = copysign(1, u.z);
   }
 
   return {d, lattice_trans};

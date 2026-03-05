@@ -17,12 +17,13 @@ To rebuild the RAG search index after pulling new code, the user can use
 ### Tool details
 
 **`openmc_search.py`** — RAG semantic search. The codebase (C++, Python, and
-RST docs) is chunked at function/class boundaries using tree-sitter, embedded
-with sentence-transformers, and stored in a local LanceDB vector index. Your
-query is embedded the same way, and the closest chunks are returned with file
-paths, line numbers, and a code preview. Good for finding conceptually related
-code even when naming differs (e.g., "particle RNG seeding" finds code across
-transport, restart, and random ray modes). Returns `--top-k` results (default 10).
+RST docs) is chunked into overlapping fixed-size windows (~1000 chars, 25%
+overlap) so every line of code is searchable. Chunks are embedded with
+sentence-transformers and stored in a local LanceDB vector index. Your query is
+embedded the same way, and the closest chunks are returned with file paths, line
+numbers, and a code preview. Good for finding conceptually related code even
+when naming differs (e.g., "particle RNG seeding" finds code across transport,
+restart, and random ray modes). Returns `--top-k` results (default 10).
 
 **`openmc_lsp.py`** — LSP navigation via clangd. Launches clangd as a subprocess
 and queries it via the Language Server Protocol. Because clangd uses the actual

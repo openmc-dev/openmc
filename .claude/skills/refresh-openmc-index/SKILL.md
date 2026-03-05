@@ -21,7 +21,7 @@ fi
 ## Step 2: Rebuild the RAG index
 
 ```bash
-echo "Rebuilding RAG index (this takes ~3 minutes)..."
+echo "Rebuilding RAG index (takes ~5 minutes on 10 CPU cores)..."
 HF_HUB_DISABLE_TELEMETRY=1 .claude/cache/.venv/bin/python .claude/tools/rag/indexer.py
 ```
 

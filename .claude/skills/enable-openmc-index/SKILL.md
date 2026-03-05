@@ -8,7 +8,7 @@ allowed-tools: Bash(*), Read
 
 Set up (if needed) and activate the OpenMC codebase tools for this session:
 
-1. **`openmc_search.py`** — RAG semantic search. Chunks code at function/class boundaries, embeds with sentence-transformers, searches a LanceDB vector index. Returns code previews with file paths and line numbers. Covers C++, Python, and docs.
+1. **`openmc_search.py`** — RAG semantic search. Chunks code into overlapping fixed-size windows, embeds with sentence-transformers, searches a LanceDB vector index. Returns code previews with file paths and line numbers. Covers C++, Python, and docs.
 2. **`openmc_map.py`** — Structural repo map via aider/tree-sitter. Builds a cross-file reference graph, ranks files with PageRank relative to your focus files, then shows the top-ranked files as condensed code skeletons fitted to a token budget. Focus files are excluded (assumes you already have them). Caveat: the graph matches identifiers by name only — common names like `push_back` or `__init__` create false edges in the ranking.
 3. **`openmc_lsp.py`** — LSP navigation via clangd. Talks to the C++ compiler frontend for symbol resolution. `definition`, `references`, `symbols`, and `related` commands with compiler accuracy — zero false edges. Requires clangd and that OpenMC has been built (for `build/compile_commands.json`).
 
@@ -30,7 +30,7 @@ The semantic search tool needs a pre-built vector index. The other two tools wor
 
 ```bash
 if [ ! -d .claude/cache/rag_index ]; then
-    echo "Building RAG index for the first time (this takes ~3 minutes)..."
+    echo "Building RAG index for the first time (takes ~5 minutes on 10 CPU cores)..."
     HF_HUB_DISABLE_TELEMETRY=1 .claude/cache/.venv/bin/python .claude/tools/rag/indexer.py
     echo "INDEX_BUILT"
 else

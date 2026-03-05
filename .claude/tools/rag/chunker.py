@@ -1,241 +1,95 @@
 """Chunk OpenMC source files and documentation for RAG indexing.
 
-Code files are chunked at the function/class level using tree-sitter.
-RST documentation is chunked by section headers.
+Uses fixed-size overlapping windows so every line of code is searchable.
+Window size is tuned to fit within the MiniLM embedding model's 256-token
+context (~1000 chars). 50% overlap ensures no content falls between chunks.
 """
 
-import re
 from pathlib import Path
 
-import tree_sitter_cpp as tscpp
-import tree_sitter_python as tspy
-from tree_sitter import Language, Parser
-
-CPP_LANG = Language(tscpp.language())
-PY_LANG = Language(tspy.language())
-
-cpp_parser = Parser(CPP_LANG)
-py_parser = Parser(PY_LANG)
-
-MAX_CHUNK_CHARS = 1500
+# ~256 tokens for MiniLM. 1 token ≈ 4 chars for code.
+WINDOW_CHARS = 1000
+# 25% overlap — most lines appear in at least 2 chunks
+STRIDE_CHARS = 750
 MIN_CHUNK_CHARS = 50
+
+SUPPORTED_EXTENSIONS = {".cpp", ".h", ".py", ".rst"}
 
 
 def chunk_file(filepath, openmc_root):
-    """Chunk a single file based on its extension."""
+    """Chunk a single file into overlapping fixed-size windows."""
     filepath = Path(filepath)
+    if filepath.suffix not in SUPPORTED_EXTENSIONS:
+        return []
+
     rel = str(filepath.relative_to(openmc_root))
     try:
         content = filepath.read_text(errors="replace")
     except Exception:
         return []
 
-    if filepath.suffix in (".cpp", ".h"):
-        return _chunk_cpp(rel, content)
-    elif filepath.suffix == ".py":
-        return _chunk_python(rel, content)
-    elif filepath.suffix == ".rst":
-        return _chunk_rst(rel, content)
-    return []
+    if len(content) < MIN_CHUNK_CHARS:
+        return []
 
+    kind = _file_kind(filepath)
+    lines = content.split("\n")
 
-def _chunk_cpp(rel_path, content):
-    """Extract function and class-level chunks from C++ code."""
-    tree = cpp_parser.parse(content.encode())
+    # Build a char-offset → line-number map
+    line_starts = []
+    offset = 0
+    for line in lines:
+        line_starts.append(offset)
+        offset += len(line) + 1  # +1 for newline
+
     chunks = []
-    used_ranges = []
+    start = 0
+    while start < len(content):
+        end = min(start + WINDOW_CHARS, len(content))
 
-    def _extract_node(node, kind_override=None):
-        text = content[node.start_byte:node.end_byte]
-        if len(text) < MIN_CHUNK_CHARS:
-            return
-        # Extract symbol name
-        name = _get_node_name(node)
-        kind = kind_override or node.type
-        for sub in _split_if_large(text):
+        # Snap end to a line boundary to avoid splitting mid-line
+        if end < len(content):
+            newline_pos = content.rfind("\n", start, end)
+            if newline_pos > start:
+                end = newline_pos + 1
+
+        text = content[start:end].strip()
+        if len(text) >= MIN_CHUNK_CHARS:
+            start_line = _offset_to_line(line_starts, start)
+            end_line = _offset_to_line(line_starts, end - 1)
             chunks.append({
-                "text": sub,
-                "filepath": rel_path,
+                "text": text,
+                "filepath": rel,
                 "kind": kind,
-                "symbol": name or "",
-                "start_line": node.start_point[0] + 1,
-                "end_line": node.end_point[0] + 1,
-            })
-        used_ranges.append((node.start_byte, node.end_byte))
-
-    def _visit(node):
-        if node.type in (
-            "function_definition", "class_specifier",
-            "struct_specifier", "enum_specifier",
-        ):
-            _extract_node(node)
-        elif node.type == "namespace_definition":
-            # Visit children inside namespaces
-            for child in node.children:
-                _visit(child)
-        elif node.type == "declaration_list":
-            for child in node.children:
-                _visit(child)
-        else:
-            for child in node.children:
-                if child.type in (
-                    "function_definition", "class_specifier",
-                    "struct_specifier", "namespace_definition",
-                ):
-                    _visit(child)
-
-    for child in tree.root_node.children:
-        _visit(child)
-
-    # Add file header (includes, forward declarations) as a separate chunk
-    header_lines = []
-    for line in content.split("\n")[:50]:
-        if line.strip().startswith("#include") or line.strip().startswith("namespace") \
-           or line.strip().startswith("//") or line.strip().startswith("using") \
-           or line.strip() == "":
-            header_lines.append(line)
-        else:
-            break
-    header = "\n".join(header_lines).strip()
-    if len(header) >= MIN_CHUNK_CHARS:
-        chunks.append({
-            "text": header,
-            "filepath": rel_path,
-            "kind": "file_header",
-            "symbol": Path(rel_path).name,
-            "start_line": 1,
-            "end_line": len(header_lines),
-        })
-
-    return chunks
-
-
-def _chunk_python(rel_path, content):
-    """Extract function and class-level chunks from Python code."""
-    tree = py_parser.parse(content.encode())
-    chunks = []
-
-    for node in tree.root_node.children:
-        if node.type in ("class_definition", "function_definition"):
-            text = content[node.start_byte:node.end_byte]
-            if len(text) < MIN_CHUNK_CHARS:
-                continue
-            name_node = node.child_by_field_name("name")
-            name = name_node.text.decode() if name_node else ""
-            for sub in _split_if_large(text):
-                chunks.append({
-                    "text": sub,
-                    "filepath": rel_path,
-                    "kind": node.type.replace("_definition", ""),
-                    "symbol": name,
-                    "start_line": node.start_point[0] + 1,
-                    "end_line": node.end_point[0] + 1,
-                })
-
-    # Module-level docstring + imports as header
-    header_lines = []
-    for line in content.split("\n")[:40]:
-        stripped = line.strip()
-        if stripped.startswith(("import ", "from ", "#", '"""', "'''", "")) \
-           or stripped == "":
-            header_lines.append(line)
-        elif stripped.startswith(("def ", "class ")):
-            break
-        else:
-            header_lines.append(line)
-    header = "\n".join(header_lines).strip()
-    if len(header) >= MIN_CHUNK_CHARS:
-        chunks.append({
-            "text": header,
-            "filepath": rel_path,
-            "kind": "file_header",
-            "symbol": Path(rel_path).name,
-            "start_line": 1,
-            "end_line": len(header_lines),
-        })
-
-    return chunks
-
-
-def _chunk_rst(rel_path, content):
-    """Chunk RST documentation by section headers."""
-    # RST sections are indicated by underlines of =, -, ~, ^, etc.
-    section_pattern = re.compile(
-        r'^(.+)\n([=\-~^"+]+)\s*$', re.MULTILINE
-    )
-    chunks = []
-
-    # Find all section positions
-    positions = [0]
-    for m in section_pattern.finditer(content):
-        # The section title starts at the beginning of the title line
-        positions.append(m.start())
-    positions.append(len(content))
-
-    for i in range(len(positions) - 1):
-        section = content[positions[i]:positions[i + 1]].strip()
-        if len(section) < MIN_CHUNK_CHARS:
-            continue
-        # Extract title
-        title_match = section_pattern.match(section)
-        title = title_match.group(1).strip() if title_match else ""
-        start_line = content[:positions[i]].count("\n") + 1
-        end_line = content[:positions[i + 1]].count("\n") + 1
-        for sub in _split_if_large(section):
-            chunks.append({
-                "text": sub,
-                "filepath": rel_path,
-                "kind": "doc_section",
-                "symbol": title,
+                "symbol": "",
                 "start_line": start_line,
                 "end_line": end_line,
             })
 
+        start += STRIDE_CHARS
+
     return chunks
 
 
-def _get_node_name(node):
-    """Extract the name from a tree-sitter node."""
-    name_node = node.child_by_field_name("name")
-    if name_node:
-        return name_node.text.decode()
-    # For function_definition, check declarator
-    decl = node.child_by_field_name("declarator")
-    if decl:
-        # Walk down to find the identifier
-        while decl.type not in ("identifier", "qualified_identifier",
-                                "field_identifier", "destructor_name"):
-            found = False
-            for child in decl.children:
-                if child.type in ("function_declarator", "identifier",
-                                  "qualified_identifier", "field_identifier",
-                                  "destructor_name", "template_function"):
-                    decl = child
-                    found = True
-                    break
-            if not found:
-                break
-        return decl.text.decode()
-    return ""
+def _file_kind(filepath):
+    """Map file extension to a kind label."""
+    ext = filepath.suffix
+    if ext in (".cpp", ".h"):
+        return "cpp"
+    elif ext == ".py":
+        return "py"
+    elif ext == ".rst":
+        return "doc"
+    return "other"
 
 
-def _split_if_large(text, max_chars=MAX_CHUNK_CHARS):
-    """Split text into chunks if it exceeds max_chars."""
-    if len(text) <= max_chars:
-        return [text]
-    # Split on line boundaries
-    lines = text.split("\n")
-    chunks = []
-    current = []
-    current_len = 0
-    for line in lines:
-        if current_len + len(line) + 1 > max_chars and current:
-            chunks.append("\n".join(current))
-            current = [line]
-            current_len = len(line)
+def _offset_to_line(line_starts, offset):
+    """Convert a character offset to a 1-based line number."""
+    # Binary search for the line containing this offset
+    lo, hi = 0, len(line_starts) - 1
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if line_starts[mid] <= offset:
+            lo = mid
         else:
-            current.append(line)
-            current_len += len(line) + 1
-    if current:
-        chunks.append("\n".join(current))
-    return chunks
+            hi = mid - 1
+    return lo + 1  # 1-based

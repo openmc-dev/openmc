@@ -67,11 +67,14 @@ not by exact text match.** When you `grep` for `init_particle`, you miss
 search finds both.
 
 Your trained instinct is to reach for `grep` and `Read` — those are excellent
-tools, but they are blind to semantic relationships. Throughout this session,
-**use `openmc_search.py` as your first step when exploring unfamiliar code or
-investigating how a change might affect other parts of the codebase.** Follow
-up with `grep`/`Read` to drill into the specific files it surfaces. Think of
-it as: RAG search for discovery, grep/Read for precision.
+tools for precise symbol lookup, but they are blind to semantic relationships.
+Use each tool for what it's best at:
+- **RAG search**: discovery, exploration, "what else in the codebase relates to
+  this concept?", checking what a change might affect across subsystems
+- **grep/Read**: precise symbol tracing, "every line that writes to `variable_x`"
+
+Don't force RAG searches for exact symbol lookups, and don't rely on grep alone
+for broad exploration.
 
 ## Step 5: Confirm activation
 

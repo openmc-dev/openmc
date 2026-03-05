@@ -27,6 +27,10 @@ naming. The RAG search finds code by semantic meaning, surfacing related code
 across subsystems that you would otherwise miss entirely. Use RAG for discovery,
 then `grep`/`Read` to drill into the specific files it surfaces.
 
+When you already know the exact symbol name and need to trace its usage (e.g.,
+"every line that writes to `progeny_per_particle`"), `grep` is the right tool
+— don't force a RAG search for precise symbol lookups.
+
 ### Tool details
 
 **`openmc_search.py`** — RAG semantic search. The codebase (C++, Python, and

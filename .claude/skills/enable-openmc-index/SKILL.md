@@ -58,7 +58,7 @@ are missing (the LSP tool will report this itself if invoked without them).
 ## When to use each tool
 
 - **`openmc_search.py`**: "What code is conceptually related to X?" — best for broad discovery, cross-cutting concerns, searching docs and Python code
-- **`openmc_lsp.py`**: "What C++ files actually reference this symbol?" — best for precise C++ navigation, zero false positives
+- **`openmc_lsp.py`**: "Where is this C++ symbol defined, who calls it, and what files are connected to this one?" — returns file:line locations with compiler accuracy, zero false positives
 - **`openmc_map.py`**: "What other code surrounds the files I'm working on?" — shows condensed signatures of neighboring files. Be aware its neighbor ranking has false edges from common method names
 
 ## Subagent guidance

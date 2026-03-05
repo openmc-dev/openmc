@@ -1,19 +1,18 @@
 ---
 name: enable-openmc-index
-description: Enable the OpenMC codebase index for this session. Provides semantic code search, structural repo mapping, and LSP-based code navigation. Run this when investigating, modifying, or debugging OpenMC code.
+description: Enable the OpenMC codebase tools for this session. Provides semantic code search, structural repo mapping, and LSP-based C++ code navigation.
 allowed-tools: Bash(*), Read
 ---
 
 # Enable OpenMC Index
 
-Set up (if needed) and activate the OpenMC codebase index for this session. This gives you three tools:
-1. **Semantic search** (`openmc_search.py`) - Find related code across the codebase by concept
-2. **Structural map** (`openmc_map.py`) - See condensed code structure of files and their neighbors
-3. **LSP navigation** (`openmc_lsp.py`) - Compiler-accurate go-to-definition, find-references, and related-file discovery for C++ code (requires clangd and compile_commands.json)
+Set up (if needed) and activate the OpenMC codebase tools for this session:
+
+1. **Semantic search** (`openmc_search.py`) - Find related code by concept across C++, Python, and docs
+2. **Structural map** (`openmc_map.py`) - Condensed code structure of files and their neighbors (C++ and Python)
+3. **LSP navigation** (`openmc_lsp.py`) - Compiler-accurate definition, references, and related-file discovery (C++ only, requires clangd and compile_commands.json)
 
 ## Step 1: Ensure the virtual environment exists
-
-Check if `.claude/cache/.venv/` exists. If not, create it and install dependencies:
 
 ```bash
 if [ ! -d .claude/cache/.venv ]; then
@@ -27,7 +26,7 @@ fi
 
 ## Step 2: Ensure the RAG index exists
 
-Check if `.claude/cache/rag_index/` exists. If not, build it:
+The semantic search tool needs a pre-built vector index. The other two tools work without it.
 
 ```bash
 if [ ! -d .claude/cache/rag_index ]; then
@@ -39,31 +38,9 @@ else
 fi
 ```
 
-Note: The repo map tool (`openmc_map.py`) does NOT need a pre-built index - it generates maps on the fly using tree-sitter. Only the RAG search needs the vector index.
+## Step 3: Learn the tool APIs
 
-## Step 3: Check LSP tool prerequisites
-
-The LSP tool (`openmc_lsp.py`) requires clangd and `compile_commands.json`. Check if they're available:
-
-```bash
-if command -v clangd &>/dev/null || compgen -c clangd- 2>/dev/null | head -1 | grep -q .; then
-    echo "CLANGD_AVAILABLE"
-else
-    echo "CLANGD_MISSING"
-fi
-if [ -f build/compile_commands.json ]; then
-    echo "COMPILE_COMMANDS_AVAILABLE"
-else
-    echo "COMPILE_COMMANDS_MISSING"
-fi
-```
-
-If clangd is missing, tell the user: "The LSP tool needs clangd. Install with `apt-get install clangd` (or `clangd-15`, `clangd-16`, etc.)."
-If compile_commands.json is missing, tell the user: "The LSP tool needs compile_commands.json. Generate with `cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`."
-
-## Step 4: Learn the tool APIs
-
-Run `--help` for all tools to see their full APIs:
+Run `--help` for each tool to learn their full APIs:
 
 ```bash
 .claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py --help
@@ -73,39 +50,16 @@ Run `--help` for all tools to see their full APIs:
 
 Read and internalize the output so you know all available options.
 
-## Step 5: Confirm activation
+## Step 4: Confirm activation
 
-Tell the user the OpenMC index is active and briefly describe the tools:
-- **Semantic search**: Find related code by concept (e.g., "particle seed initialization")
-- **Structural map**: See condensed code structure around specific files
-- **LSP navigation** (if available): Compiler-accurate definition/references/related-files for C++
+Tell the user the tools are active. Mention if clangd or compile_commands.json
+are missing (the LSP tool will report this itself if invoked without them).
 
-## How to use the tools after activation
+## When to use each tool
 
-**Typical workflow:**
-
-1. Use `openmc_search.py` to discover which files are relevant to your task
-2. Use `openmc_lsp.py related` to find files connected by real typed references (C++ only)
-3. Use `openmc_map.py` on those files to see their code structure
-4. Use Read/Grep to dive into the specific code you need to change
-
-**When to use semantic search** (`openmc_search.py`):
-- Investigating how a change might affect other parts of the codebase
-- Finding code that does something conceptually similar but with different naming
-- Discovering cross-cutting concerns across run modes
-- Searching Python code and documentation
-
-**When to use LSP navigation** (`openmc_lsp.py`):
-- Finding exactly where a C++ symbol is defined (`definition`)
-- Finding all callers of a C++ function (`references`)
-- Discovering which C++ files are connected by real typed references (`related`)
-- Best for C++ — uses the compiler's own type system, zero false edges
-
-**When to use the repo map** (`openmc_map.py`):
-- Understanding the structure of unfamiliar files before modifying them
-- Seeing what classes/methods neighbor the code you're working on
-- Getting a condensed overview of a subsystem (pass multiple files)
-- Works for both C++ and Python files
+- **`openmc_search.py`**: Finding code by concept, discovering cross-cutting concerns, searching docs
+- **`openmc_lsp.py`**: Go-to-definition, find-references, discovering which C++ files are connected by real typed references
+- **`openmc_map.py`**: Seeing condensed code structure and class/function signatures of files you're about to modify
 
 ## Subagent guidance
 

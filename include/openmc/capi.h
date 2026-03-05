@@ -318,8 +318,7 @@ int openmc_properties_export(const char* filename);
 //! Import physical properties for model
 //! \param[in] filename Filename to read from
 // \return Error code
-int openmc_properties_import(
-  const char* filename, bool read_temperatures, bool read_densities);
+int openmc_properties_import(const char* filename);
 
 // Error codes
 extern int OPENMC_E_UNASSIGNED;

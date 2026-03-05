@@ -87,8 +87,6 @@ bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
-bool read_temperatures {true};
-bool read_densities {true};
 
 std::string path_cross_sections;
 std::string path_input;
@@ -738,15 +736,10 @@ void read_settings_xml(pugi::xml_node root)
 
   // read properties from file
   if (check_for_node(root, "properties")) {
-    // Get pointer to properties node
-    xml_node node_props = root.child("properties");
-
-    properties_file = get_node_value(node_props, "filepath");
+    properties_file = get_node_value(root, "properties");
     if (!file_exists(properties_file)) {
       fatal_error(fmt::format("File '{}' does not exist.", properties_file));
     }
-    read_temperatures = get_node_value_bool(node_props, "temperatures");
-    read_densities = get_node_value_bool(node_props, "densities");
   }
 
   // Particle trace

@@ -549,22 +549,8 @@ generator during generation of colors in plots.
 ``<properties_file>`` Element
 --------------------------------------
 
-  The ``properties_file`` element indicates whether temperatures and densities 
-  from a properties file should override the properties present in the XML file. It contains
-  the following parameters:
-
-    :filepath:
-      The path to the properties file
-
-    :temperatures:
-       Boolean to indicate whether or not to read cell temperatures from the properties file.
-
-       *Default*: True
-
-    :densities:
-       Boolean to indicate whether or not to read cell and material densities from the properties file.
-
-       *Default*: True
+  The ``properties_file`` element has no attributes and contains the path to 
+  a properties HDF5 file to load cell temperatures/densities and material densities.
 
 
 ---------------------

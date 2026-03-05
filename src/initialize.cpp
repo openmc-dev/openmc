@@ -119,8 +119,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
     read_separate_xml_files();
 
   if (!settings::properties_file.empty()) {
-    openmc_properties_import(settings::properties_file.c_str(),
-      settings::read_temperatures, settings::read_densities);
+    openmc_properties_import(settings::properties_file.c_str());
   }
 
   // Reset locale to previous state

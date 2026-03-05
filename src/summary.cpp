@@ -190,12 +190,8 @@ extern "C" int openmc_properties_export(const char* filename)
   return 0;
 }
 
-extern "C" int openmc_properties_import(
-  const char* filename, bool read_temperatures, bool read_densities)
+extern "C" int openmc_properties_import(const char* filename)
 {
-  if (!read_temperatures && !read_densities)
-    return 0;
-
   // Display output message
   auto msg = fmt::format("Importing properties from {}...", filename);
   write_message(msg, 5);
@@ -232,7 +228,7 @@ extern "C" int openmc_properties_import(
   auto cells_group = open_group(geom_group, "cells");
   try {
     for (const auto& c : model::cells) {
-      c->import_properties_hdf5(cells_group, read_temperatures, read_densities);
+      c->import_properties_hdf5(cells_group);
     }
   } catch (const std::exception& e) {
     set_errmsg(e.what());
@@ -254,7 +250,7 @@ extern "C" int openmc_properties_import(
 
   // Read material properties
   for (const auto& mat : model::materials) {
-    mat->import_properties_hdf5(materials_group, read_densities);
+    mat->import_properties_hdf5(materials_group);
   }
   close_group(materials_group);
 

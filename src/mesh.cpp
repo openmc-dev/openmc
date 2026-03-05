@@ -342,6 +342,8 @@ const std::unique_ptr<Mesh>& Mesh::create(
     model::meshes.push_back(make_unique<CylindricalMesh>(dataset));
   } else if (mesh_type == SphericalMesh::mesh_type) {
     model::meshes.push_back(make_unique<SphericalMesh>(dataset));
+  } else if (mesh_type == HexagonalMesh::mesh_type) {
+    model::meshes.push_back(make_unique<HexagonalMesh>(dataset));
 #ifdef OPENMC_DAGMC_ENABLED
   } else if (mesh_type == UnstructuredMesh::mesh_type &&
              mesh_library == MOABMesh::mesh_lib_type) {
@@ -1161,7 +1163,7 @@ void StructuredMesh::raytrace_mesh(
   Position global_r = r0;
   Position local_r = local_coords(r0);
 
-  const int n = n_dimension_;
+  const int n = n_neighbors_;
 
   // Flag if position is inside the mesh
   bool in_mesh;
@@ -1304,7 +1306,7 @@ void StructuredMesh::surface_bins_crossed(
     void surface(const MeshIndex& ijk, int k, bool max, bool inward) const
     {
       int i_bin =
-        4 * mesh->n_dimension_ * mesh->get_bin_from_indices(ijk) + 4 * k;
+        4 * mesh->n_neighbors_ * mesh->get_bin_from_indices(ijk) + 4 * k;
       if (max)
         i_bin += 2;
       if (inward)
@@ -1400,6 +1402,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
 
   tensor::Tensor<int> shape = get_node_tensor<int>(node, "dimension");
   int n = n_dimension_ = shape.size();
+  n_neighbors_ = n_dimension_;
   if (n != 1 && n != 2 && n != 3) {
     fatal_error("Mesh must be one, two, or three dimensions.");
   }
@@ -1444,6 +1447,7 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
   tensor::Tensor<int> shape;
   read_dataset(group, "dimension", shape);
   int n = n_dimension_ = shape.size();
+  n_neighbors_ = n_dimension_;
   if (n != 1 && n != 2 && n != 3) {
     fatal_error("Mesh must be one, two, or three dimensions.");
   }
@@ -1623,6 +1627,7 @@ double RegularMesh::volume(const MeshIndex& ijk) const
 RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
 {
   n_dimension_ = 3;
+  n_neighbors_ = n_dimension_;
 
   grid_[0] = get_node_array<double>(node, "x_grid");
   grid_[1] = get_node_array<double>(node, "y_grid");
@@ -1636,6 +1641,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
 RectilinearMesh::RectilinearMesh(hid_t group) : StructuredMesh {group}
 {
   n_dimension_ = 3;
+  n_neighbors_ = n_dimension_;
 
   read_dataset(group, "x_grid", grid_[0]);
   read_dataset(group, "y_grid", grid_[1]);
@@ -1771,6 +1777,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
+  n_neighbors_ = n_dimension_;
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
@@ -1784,6 +1791,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
 CylindricalMesh::CylindricalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
   n_dimension_ = 3;
+  n_neighbors_ = n_dimension_;
   read_dataset(group, "r_grid", grid_[0]);
   read_dataset(group, "phi_grid", grid_[1]);
   read_dataset(group, "z_grid", grid_[2]);
@@ -2062,7 +2070,7 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
-
+  n_neighbors_ = n_dimension_;
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "theta_grid");
   grid_[2] = get_node_array<double>(node, "phi_grid");
@@ -2076,7 +2084,7 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
 SphericalMesh::SphericalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
   n_dimension_ = 3;
-
+  n_neighbors_ = n_dimension_;
   read_dataset(group, "r_grid", grid_[0]);
   read_dataset(group, "theta_grid", grid_[1]);
   read_dataset(group, "phi_grid", grid_[2]);
@@ -2382,6 +2390,270 @@ double SphericalMesh::volume(const MeshIndex& ijk) const
 
   return (1.0 / 3.0) * (r_o * r_o * r_o - r_i * r_i * r_i) *
          (std::cos(theta_i) - std::cos(theta_o)) * (phi_o - phi_i);
+}
+
+//==============================================================================
+// HexagonalMesh implementation
+//==============================================================================
+
+HexagonalMesh::HexagonalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
+{
+  n_dimension_ = 3;
+  n_neighbors_ = 4;
+  grid_ = get_node_array<double>(node, "grid");
+  radius_ = std::stoi(get_node_value(node, "radius"));
+  size_ = std::stod(get_node_value(node, "size"));
+  origin_ = get_node_position(node, "origin");
+
+  // Read the orientation.  Default to 'y'.
+  if (check_for_node(node, "orientation")) {
+    std::string orientation = get_node_value(node, "orientation");
+    if (orientation == "x") {
+      orientation_ = Orientation::x;
+    } else if (orientation != "y") {
+      fatal_error("Unrecognized orientation '" + orientation + "'");
+    }
+  }
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
+
+HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
+{
+  n_dimension_ = 3;
+  n_neighbors_ = 4;
+  read_dataset(group, "grid", grid_);
+  read_attribute(group, "radius", radius_);
+  read_attribute(group, "size", size_);
+  read_dataset(group, "origin", origin_);
+
+  if (attribute_exists(group, "orientation")) {
+    std::string orientation;
+    read_attribute(group, "orientation", orientation);
+    if (orientation == "x") {
+      orientation_ = Orientation::x;
+    } else if (orientation != "y") {
+      fatal_error("Unrecognized orientation '" + orientation + "'");
+    }
+  }
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
+
+const std::string HexagonalMesh::mesh_type = "hexagonal";
+
+std::string HexagonalMesh::get_mesh_type() const
+{
+  return mesh_type;
+}
+
+StructuredMesh::MeshIndex HexagonalMesh::get_indices(
+  Position r, bool& in_mesh) const
+{
+  r = local_coords(r);
+
+  double q = q_dual_.dot(r);
+  double r0 = r_dual_.dot(r);
+  double s = -q - r0;
+
+  double q_r = std::round(q);
+  double r_r = std::round(r0);
+  double s_r = std::round(s);
+  std::array<double, 3> diff = {
+    std::abs(q - q_r), std::abs(r0 - r_r), std::abs(s - s_r)};
+  auto max_it = std::max_element(diff.begin(), diff.end());
+  int i = static_cast<int>(std::distance(diff.begin(), max_it));
+
+  if (i == 0)
+    q_r = -s_r - r_r;
+  else if (i == 1)
+    r_r = -q_r - s_r;
+
+  int z_i = get_index_in_z_direction(r.z);
+  int q_i = static_cast<int>(q_r);
+  int r_i = static_cast<int>(r_r);
+  int s_i = -q_i - r_i;
+
+  MeshIndex ijk;
+  in_mesh = true;
+
+  ijk[0] = q_i;
+  ijk[1] = r_i;
+  ijk[2] = z_i;
+
+  if (std::max({std::abs(q_i), std::abs(r_i), std::abs(s_i)}) > radius_)
+    in_mesh = false;
+  if (ijk[2] < 1 || ijk[2] > grid_.size() - 1)
+    in_mesh = false;
+
+  return ijk;
+}
+
+Position HexagonalMesh::sample_element(
+  const MeshIndex& ijk, uint64_t* seed) const
+{
+  double q0 = ijk[0];
+  double r0 = ijk[1];
+  double z = uniform_distribution(grid_[ijk[2] - 1], grid_[ijk[2]], seed);
+  double q, r, s;
+  do {
+    double rad = std::cbrt(uniform_distribution(0.0, std::pow(size_, 3), seed));
+    double phi = uniform_distribution(0.0, 2 * PI, seed);
+    double x = rad * std::cos(phi);
+    double y = rad * std::sin(phi);
+    q = q_dual_[0] * x + q_dual_[1] * y;
+    r = r_dual_[0] * x + r_dual_[1] * y;
+    s = -q - r;
+  } while (std::max({std::abs(q), std::abs(r), std::abs(s)}) > 1);
+
+  return origin_ + size_ * ((q + q0) * q_ + (r + r0) * r_) + z;
+}
+
+StructuredMesh::MeshDistance HexagonalMesh::find_z_crossing(
+  const Position& r, const Direction& u, double l, int shell) const
+{
+  MeshDistance d;
+  d.next_index = shell;
+
+  // Direction of flight is within xy-plane. Will never intersect z.
+  if (std::abs(u.z) < FP_PRECISION)
+    return d;
+
+  d.max_surface = (u.z > 0.0);
+  if (d.max_surface && (shell < grid_.size())) {
+    ++d.next_index;
+    d.distance = (grid_[shell] - r.z) / u.z;
+  } else if (!d.max_surface && (shell > 0)) {
+    --d.next_index;
+    d.distance = (grid_[shell - 1] - r.z) / u.z;
+  }
+  return d;
+}
+
+StructuredMesh::MeshDistance HexagonalMesh::distance_to_grid_boundary(
+  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  double l) const
+{
+  auto r = local_coords(r0);
+  if (i == 3)
+    return find_z_crossing(r, u, l, ijk[2]);
+  r.z = 0.0;
+
+  MeshDistance d;
+  Direction s_ = -q_ - r_;
+  Direction dir;
+  MeshIndex idx = {ijk[0], ijk[1], -ijk[0] - ijk[1]};
+  MeshIndex offset = {0, 0, 0};
+  double distance;
+  d.next_index = idx[i];
+  if (i == 0) {
+    dir = 0.5 * (q_ - r_);
+    ++offset[0];
+    --offset[1];
+  } else if (i == 1) {
+    dir = 0.5 * (r_ - s_);
+    ++offset[1];
+    --offset[2];
+  } else {
+    dir = 0.5 * (s_ - q_);
+    ++offset[2];
+    --offset[0];
+  }
+  dir /= dir.norm();
+  if (std::abs(u.dot(dir)) < FP_PRECISION)
+    return d;
+  d.max_surface = (u.dot(dir) > 0.0);
+  if (d.max_surface) {
+    distance = (idx[0] * q_ + idx[1] * r_ - r).norm() / u.dot(dir);
+    idx[0] += offset[0];
+    idx[1] += offset[1];
+    idx[2] += offset[2];
+  } else {
+    idx[0] -= offset[0];
+    idx[1] -= offset[1];
+    idx[2] -= offset[2];
+    distance = (idx[0] * q_ + idx[1] * r_ - r).norm() / u.dot(dir);
+  }
+  int radius = std::max({std::abs(idx[0]), std::abs(idx[1]), std::abs(idx[2])});
+  if (d.max_surface && radius <= radius_) {
+    ++d.next_index;
+    d.distance = distance;
+  } else if (!d.max_surface && radius <= radius_) {
+    --d.next_index;
+    d.distance = distance;
+  }
+  return d;
+}
+
+int HexagonalMesh::set_grid()
+{
+
+  if (orientation_ == Orientation::y) {
+    q_ = {0.0, -1.0, 0.0};
+    r_ = {0.5 * std::sqrt(3.0), 0.5, 0.0};
+    q_dual_ = {1.0 / std::sqrt(3.0), 2.0 / std::sqrt(3.0), 0.0};
+    r_dual_ = {-1.0, 0.0, 0.0};
+  } else {
+    q_ = {-1.0, 0.0, 0.0};
+    r_ = {0.5, 0.5 * std::sqrt(3.0), 0.0};
+    q_dual_ = {2.0 / std::sqrt(3.0), 1.0 / std::sqrt(3.0), 0.0};
+    r_dual_ = {0.0, -1.0, 0.0};
+  }
+
+  q_ *= size_;
+  r_ *= size_;
+  q_dual_ /= size_;
+  r_dual_ /= size_;
+
+  if (grid_.size() < 2) {
+    set_errmsg("z- grid for hexagonal meshes "
+               "must each have at least 2 points");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  if (std::adjacent_find(grid_.begin(), grid_.end(), std::greater_equal<>()) !=
+      grid_.end()) {
+    set_errmsg("Values in z- grid for "
+               "hexagonal meshes must be sorted and unique.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  return 0;
+}
+
+int HexagonalMesh::get_index_in_z_direction(double z) const
+{
+  return lower_bound_index(grid_.begin(), grid_.end(), z) + 1;
+}
+
+std::pair<vector<double>, vector<double>> HexagonalMesh::plot(
+  Position plot_ll, Position plot_ur) const
+{
+  fatal_error("Plot of hexagonal Mesh not implemented");
+
+  // Figure out which axes lie in the plane of the plot.
+  array<vector<double>, 2> axis_lines;
+  return {axis_lines[0], axis_lines[1]};
+}
+
+void HexagonalMesh::to_hdf5_inner(hid_t mesh_group) const
+{
+  write_dataset(mesh_group, "grid", grid_);
+  if (orientation_ == Orientation::x)
+    write_attribute(mesh_group, "orientation", "x");
+  write_attribute(mesh_group, "radius", radius_);
+  write_attribute(mesh_group, "size", size_);
+  write_dataset(mesh_group, "origin", origin_);
+}
+
+double HexagonalMesh::volume(const MeshIndex& ijk) const
+{
+  double f = 1.5 * std::sqrt(3.0);
+  double z_i = grid_[ijk[2] - 1];
+  double z_o = grid_[ijk[2]];
+  return f * (z_o - z_i) * size_ * size_;
 }
 
 //==============================================================================
@@ -3803,7 +4075,7 @@ void LibMesh::set_score_data(const std::string& var_name,
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-       it++) {
+    it++) {
     if (!(*it)->active()) {
       continue;
     }

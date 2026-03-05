@@ -374,7 +374,11 @@ public:
   //!
   //! \param[in] r Coordinate to get index for
   //! \param[in] i Direction index
-  virtual int get_index_in_direction(double r, int i) const = 0;
+  int get_index_in_direction(double r, int i) const
+  {
+    fatal_error("function is not implemented.");
+    return -1;
+  }
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
@@ -452,6 +456,7 @@ public:
 
   // Data members
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
+  int n_neighbors_ {-1};
 
 protected:
 };
@@ -484,7 +489,7 @@ public:
   RegularMesh(hid_t group);
 
   // Overridden methods
-  int get_index_in_direction(double r, int i) const override;
+  int get_index_in_direction(double r, int i) const;
 
   virtual std::string get_mesh_type() const override;
 
@@ -537,7 +542,7 @@ public:
   RectilinearMesh(hid_t group);
 
   // Overridden methods
-  int get_index_in_direction(double r, int i) const override;
+  int get_index_in_direction(double r, int i) const;
 
   virtual std::string get_mesh_type() const override;
 
@@ -582,7 +587,7 @@ public:
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
-  int get_index_in_direction(double r, int i) const override;
+  int get_index_in_direction(double r, int i) const;
 
   virtual std::string get_mesh_type() const override;
 
@@ -647,7 +652,7 @@ public:
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
-  int get_index_in_direction(double r, int i) const override;
+  int get_index_in_direction(double r, int i) const;
 
   virtual std::string get_mesh_type() const override;
 
@@ -704,6 +709,57 @@ private:
   {
     return sanitize_angular_index(idx, full_phi_, shape_[2]);
   }
+};
+
+class HexagonalMesh : public PeriodicStructuredMesh {
+public:
+  // Constructors
+  HexagonalMesh() = default;
+  HexagonalMesh(pugi::xml_node node);
+  HexagonalMesh(hid_t group);
+
+  // Overridden methods
+  virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
+
+  virtual std::string get_mesh_type() const override;
+
+  static const std::string mesh_type;
+
+  Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
+
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
+
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
+
+  void to_hdf5_inner(hid_t group) const override;
+
+  int set_grid();
+
+  // Data members
+  int radius_;
+  double size_;
+  vector<double> grid_;
+  Direction q_;
+  Direction r_;
+  Direction q_dual_;
+  Direction r_dual_;
+
+private:
+  enum class Orientation {
+    y, //!< Flat side of lattice parallel to y-axis
+    x  //!< Flat side of lattice parallel to x-axis
+  };
+
+  Orientation orientation_ {Orientation::y};
+
+  StructuredMesh::MeshDistance find_z_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+
+  double volume(const MeshIndex& ijk) const override;
+
+  int get_index_in_z_direction(double z) const;
 };
 
 // Abstract class for unstructured meshes

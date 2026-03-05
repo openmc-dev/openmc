@@ -24,13 +24,15 @@ commands give compiler-accurate results with zero false edges. Use this when
 you need to know exactly which files reference a C++ symbol or are connected
 to a C++ file. Requires clangd and `build/compile_commands.json`.
 
-**`openmc_map.py`** — Structural repo map via aider/tree-sitter. Shows condensed
-code skeletons (class/function signatures) of files related to your focus files.
-Useful for seeing the shape of code before modifying it. **Caveat**: the
+**`openmc_map.py`** — Structural repo map via aider/tree-sitter. Given focus files
+you already have open, shows condensed code skeletons (class/function signatures)
+of their *neighbors* — other files that share symbols with them. The focus files
+themselves are excluded (you already have them in context). **Caveat**: the
 underlying graph matches identifiers by name only (tree-sitter has no type
 information), so files defining common method names like `push_back`, `get`,
-`__init__`, or `from_xml` may appear related when they are not. For finding
-which files are truly connected to a C++ file, prefer `openmc_lsp.py related`.
+`__init__`, or `from_xml` may appear as neighbors when they are not truly
+related. For finding which files are genuinely connected to a C++ file, prefer
+`openmc_lsp.py related`.
 
 To rebuild the RAG search index after pulling new code, the user can use
 `/refresh-openmc-index`.

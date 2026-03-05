@@ -18,6 +18,15 @@ tail, or grep. The tools already limit their output size via `--top-k` and
 To rebuild the RAG search index after pulling new code, the user can use
 `/refresh-openmc-index`.
 
+### Important: use RAG search before grep
+
+When exploring unfamiliar code or checking what a change might affect, use
+`openmc_search.py` **before** reaching for `grep` or `Glob`. `grep` only finds
+exact text matches — it cannot find code that does the same thing with different
+naming. The RAG search finds code by semantic meaning, surfacing related code
+across subsystems that you would otherwise miss entirely. Use RAG for discovery,
+then `grep`/`Read` to drill into the specific files it surfaces.
+
 ### Tool details
 
 **`openmc_search.py`** — RAG semantic search. The codebase (C++, Python, and

@@ -50,14 +50,37 @@ Run `--help` for each tool to learn their full APIs:
 
 Read and internalize the output so you know all available options.
 
-## Step 4: Confirm activation
+## Step 4: Demonstrate the RAG tool to yourself
+
+Run this search and read the results carefully:
+
+```bash
+.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py "particle weight adjustment variance reduction"
+```
+
+Notice how the results span multiple files across different subsystems (weight
+windows, random ray, variance reduction) — files you would never find with
+`grep "particle weight"` because they use different terminology for related
+concepts. This is the key advantage: **the RAG search finds code by meaning,
+not by exact text match.** When you `grep` for `init_particle`, you miss
+`initialize_seeds` which does the same thing with a different name. The RAG
+search finds both.
+
+Your trained instinct is to reach for `grep` and `Read` — those are excellent
+tools, but they are blind to semantic relationships. Throughout this session,
+**use `openmc_search.py` as your first step when exploring unfamiliar code or
+investigating how a change might affect other parts of the codebase.** Follow
+up with `grep`/`Read` to drill into the specific files it surfaces. Think of
+it as: RAG search for discovery, grep/Read for precision.
+
+## Step 5: Confirm activation
 
 Tell the user the tools are active. If the LSP tool can't find clangd or
 `build/compile_commands.json`, it will report this itself when invoked.
 
 ## When to use each tool
 
-- **`openmc_search.py`**: "What code is conceptually related to X?" — broad discovery by meaning, cross-cutting concerns, Python and docs
+- **`openmc_search.py`**: "What code is conceptually related to X?" — broad discovery by meaning, cross-cutting concerns, Python and docs. **Use this before grep when exploring unfamiliar code or checking what a change might affect.**
 - **`openmc_lsp.py`**: "Where is this C++ symbol defined, who calls it, and what files are truly connected to this one?" — compiler-accurate file:line locations, zero false positives
 - **`openmc_map.py`**: "Show me the code structure of files neighboring my focus files" — PageRank-ranked code skeletons fitted to a token budget. Neighbor ranking is noisy for common identifiers; use `openmc_lsp.py related` for accurate C++ file connections
 

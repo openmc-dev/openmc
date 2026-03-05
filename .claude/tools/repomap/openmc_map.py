@@ -31,6 +31,19 @@ FILE_PATTERNS = [
     "openmc/**/*.py",
 ]
 
+# Ubiquitous utility files that clutter the map without providing useful
+# structural context. Passed as chat_fnames so aider excludes them from
+# the output (it assumes they're "already in context").
+SUPPRESS_FILES = [
+    "include/openmc/error.h",
+    "src/error.cpp",
+    "include/openmc/position.h",
+    "include/openmc/constants.h",
+    "include/openmc/span.h",
+    "include/openmc/tensor.h",
+    "openmc/checkvalue.py",
+]
+
 
 class TokenCounter:
     """Simple token counter that doesn't need an API model."""
@@ -119,8 +132,11 @@ def generate_map(focus_files=None, map_tokens=2048):
     # chat_fnames = files the agent is focused on (already in context).
     # Aider shows their neighbors/dependencies, not the files themselves,
     # since the agent already has those open.
-    other_fnames = [f for f in all_files if f not in chat_fnames]
-    repo_map = rm.get_repo_map(chat_fnames, other_fnames)
+    # Also suppress ubiquitous utility files that waste token budget.
+    suppress = [f for f in SUPPRESS_FILES if f in all_files and f not in chat_fnames]
+    chat_fnames_with_suppress = chat_fnames + suppress
+    other_fnames = [f for f in all_files if f not in chat_fnames_with_suppress]
+    repo_map = rm.get_repo_map(chat_fnames_with_suppress, other_fnames)
 
     if not repo_map:
         return "No map generated. Try with different files or a larger --tokens budget."

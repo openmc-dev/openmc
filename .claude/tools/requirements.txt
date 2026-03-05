@@ -16,5 +16,8 @@ sentence-transformers>=2.7.0
 # Embeddings (fallback - zero downloads)
 scikit-learn>=1.4.0
 
+# LSP client for clangd-based code navigation
+pygls>=2.0.0
+
 # Utilities
 numpy>=1.26.0

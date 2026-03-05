@@ -80,26 +80,7 @@ def build_index():
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
     db = lancedb.connect(str(INDEX_DIR))
 
-    # Prepare records
-    code_records = []
-    doc_records = []
-    for chunk, emb in zip(all_chunks, all_embeddings):
-        record = {
-            "text": chunk["text"],
-            "filepath": chunk["filepath"],
-            "kind": chunk["kind"],
-            "symbol": chunk.get("symbol", ""),
-            "start_line": chunk.get("start_line", 0),
-            "end_line": chunk.get("end_line", 0),
-            "vector": emb,
-        }
-        if chunk in code_chunks:
-            code_records.append(record)
-        else:
-            doc_records.append(record)
-
-    # The chunk identity comparison above is slow for large lists.
-    # Instead, use index-based separation.
+    # Separate code vs doc records by index (code_chunks come first in all_chunks)
     n_code = len(code_chunks)
     code_records = []
     doc_records = []

@@ -36,8 +36,8 @@ system — namespaces, templates, overloads, and all. Commands:
   Returns `--top-k` files (default 15) with the connecting symbol names.
 
 Zero false edges — if it says two files are connected, they genuinely share
-typed references. Requires clangd and `build/compile_commands.json` (generate
-with `cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`).
+typed references. Requires clangd and `build/compile_commands.json` (automatically
+generated when OpenMC is built with cmake).
 
 **`openmc_map.py`** — Structural repo map via aider/tree-sitter. Tree-sitter
 parses all C++ and Python source files to extract identifier definitions and

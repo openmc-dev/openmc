@@ -8,7 +8,7 @@ C++ type system — no false edges from name collisions.
 
 Requires:
   - clangd (apt-get install clangd, or clangd-15/clangd-16/etc.)
-  - compile_commands.json (cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
+  - build/compile_commands.json (automatically generated when OpenMC is built with cmake)
 
 Usage:
     openmc_lsp.py symbols src/simulation.cpp
@@ -61,8 +61,8 @@ class ClangdClient:
         if not compile_commands_dir:
             compile_commands_dir = self._find_compile_commands()
         if not compile_commands_dir:
-            print("ERROR: compile_commands.json not found. Generate with:\n"
-                  "  cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+            print("ERROR: compile_commands.json not found. Build OpenMC with "
+                  "cmake first (it generates this file automatically).",
                   file=sys.stderr)
             sys.exit(1)
 

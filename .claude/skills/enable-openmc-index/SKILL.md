@@ -10,7 +10,7 @@ Set up (if needed) and activate the OpenMC codebase tools for this session:
 
 1. **`openmc_search.py`** — RAG semantic search. Chunks code at function/class boundaries, embeds with sentence-transformers, searches a LanceDB vector index. Returns code previews with file paths and line numbers. Covers C++, Python, and docs.
 2. **`openmc_map.py`** — Structural repo map via aider/tree-sitter. Builds a cross-file reference graph, ranks files with PageRank relative to your focus files, then shows the top-ranked files as condensed code skeletons fitted to a token budget. Focus files are excluded (assumes you already have them). Caveat: the graph matches identifiers by name only — common names like `push_back` or `__init__` create false edges in the ranking.
-3. **`openmc_lsp.py`** — LSP navigation via clangd. Talks to the C++ compiler frontend for symbol resolution. `definition`, `references`, `symbols`, and `related` commands with compiler accuracy — zero false edges. Requires clangd and compile_commands.json.
+3. **`openmc_lsp.py`** — LSP navigation via clangd. Talks to the C++ compiler frontend for symbol resolution. `definition`, `references`, `symbols`, and `related` commands with compiler accuracy — zero false edges. Requires clangd and that OpenMC has been built (for `build/compile_commands.json`).
 
 ## Step 1: Ensure the virtual environment exists
 
@@ -52,8 +52,8 @@ Read and internalize the output so you know all available options.
 
 ## Step 4: Confirm activation
 
-Tell the user the tools are active. Mention if clangd or compile_commands.json
-are missing (the LSP tool will report this itself if invoked without them).
+Tell the user the tools are active. If the LSP tool can't find clangd or
+`build/compile_commands.json`, it will report this itself when invoked.
 
 ## When to use each tool
 

@@ -8,9 +8,9 @@ allowed-tools: Bash(*), Read
 
 Set up (if needed) and activate the OpenMC codebase tools for this session:
 
-1. **`openmc_search.py`** — RAG semantic search. Embeds your query and searches a vector index. Good for finding conceptually related code even when naming differs. Covers C++, Python, and docs.
-2. **`openmc_map.py`** — Structural repo map via aider/tree-sitter. Given focus files you already have open, shows condensed code skeletons of their *neighbors* — other files that share symbols with them. Useful for seeing surrounding context. Caveat: matches identifiers by name only, so common names like `push_back` or `__init__` create false connections in the neighbor ranking.
-3. **`openmc_lsp.py`** — LSP navigation via clangd. Compiler-accurate `definition`, `references`, and `related` commands for C++. Zero false edges. Requires clangd and compile_commands.json.
+1. **`openmc_search.py`** — RAG semantic search. Chunks code at function/class boundaries, embeds with sentence-transformers, searches a LanceDB vector index. Returns code previews with file paths and line numbers. Covers C++, Python, and docs.
+2. **`openmc_map.py`** — Structural repo map via aider/tree-sitter. Builds a cross-file reference graph, ranks files with PageRank relative to your focus files, then shows the top-ranked files as condensed code skeletons fitted to a token budget. Focus files are excluded (assumes you already have them). Caveat: the graph matches identifiers by name only — common names like `push_back` or `__init__` create false edges in the ranking.
+3. **`openmc_lsp.py`** — LSP navigation via clangd. Talks to the C++ compiler frontend for symbol resolution. `definition`, `references`, `symbols`, and `related` commands with compiler accuracy — zero false edges. Requires clangd and compile_commands.json.
 
 ## Step 1: Ensure the virtual environment exists
 
@@ -57,9 +57,9 @@ are missing (the LSP tool will report this itself if invoked without them).
 
 ## When to use each tool
 
-- **`openmc_search.py`**: "What code is conceptually related to X?" — best for broad discovery, cross-cutting concerns, searching docs and Python code
-- **`openmc_lsp.py`**: "Where is this C++ symbol defined, who calls it, and what files are connected to this one?" — returns file:line locations with compiler accuracy, zero false positives
-- **`openmc_map.py`**: "What other code surrounds the files I'm working on?" — shows condensed signatures of neighboring files. Be aware its neighbor ranking has false edges from common method names
+- **`openmc_search.py`**: "What code is conceptually related to X?" — broad discovery by meaning, cross-cutting concerns, Python and docs
+- **`openmc_lsp.py`**: "Where is this C++ symbol defined, who calls it, and what files are truly connected to this one?" — compiler-accurate file:line locations, zero false positives
+- **`openmc_map.py`**: "Show me the code structure of files neighboring my focus files" — PageRank-ranked code skeletons fitted to a token budget. Neighbor ranking is noisy for common identifiers; use `openmc_lsp.py related` for accurate C++ file connections
 
 ## Subagent guidance
 

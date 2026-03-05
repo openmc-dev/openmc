@@ -39,9 +39,7 @@ def get_db_and_embedder():
 
     db = lancedb.connect(str(INDEX_DIR))
 
-    # For query embedding, we need the same type of embedder used for indexing.
-    # Try sentence-transformers first (matches indexing default).
-    embedder = EmbeddingProvider.create()
+    embedder = EmbeddingProvider()
     return db, embedder
 
 

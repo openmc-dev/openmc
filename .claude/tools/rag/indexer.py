@@ -70,8 +70,8 @@ def build_index():
     # Create embeddings
     all_texts = [c["text"] for c in all_chunks]
     print("Creating embedding provider...")
-    embedder = EmbeddingProvider.create(corpus_texts=all_texts)
-    print(f"  Using {embedder.__class__.__name__} (dim={embedder.dim})")
+    embedder = EmbeddingProvider()
+    print(f"  dim={embedder.dim}")
 
     print("Embedding chunks...")
     all_embeddings = embedder.embed(all_texts)

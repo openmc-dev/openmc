@@ -3,13 +3,6 @@ aider-chat>=0.80.0
 
 # Vector database
 lancedb>=0.15.0
-pyarrow>=14.0.0
 
 # Embeddings (local, no API key)
 sentence-transformers>=2.7.0
-
-# LSP client for clangd-based code navigation
-pygls>=2.0.0
-
-# Utilities
-numpy>=1.26.0

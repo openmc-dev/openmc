@@ -15,7 +15,6 @@ TOOLS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS_DIR / "rag"))
 
 import lancedb
-import pyarrow as pa
 
 from chunker import chunk_file
 from embeddings import EmbeddingProvider

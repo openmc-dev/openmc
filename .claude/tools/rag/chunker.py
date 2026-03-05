@@ -2,7 +2,8 @@
 
 Uses fixed-size overlapping windows so every line of code is searchable.
 Window size is tuned to fit within the MiniLM embedding model's 256-token
-context (~1000 chars). 50% overlap ensures no content falls between chunks.
+context (~1000 chars). 25% overlap ensures most content appears in at least
+two chunks.
 """
 
 from pathlib import Path

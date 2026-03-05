@@ -8,9 +8,9 @@ allowed-tools: Bash(*), Read
 
 Set up (if needed) and activate the OpenMC codebase tools for this session:
 
-1. **Semantic search** (`openmc_search.py`) - Find related code by concept across C++, Python, and docs
-2. **Structural map** (`openmc_map.py`) - Condensed code structure of files and their neighbors (C++ and Python)
-3. **LSP navigation** (`openmc_lsp.py`) - Compiler-accurate definition, references, and related-file discovery (C++ only, requires clangd and compile_commands.json)
+1. **`openmc_search.py`** — RAG semantic search. Embeds your query and searches a vector index. Good for finding conceptually related code even when naming differs. Covers C++, Python, and docs.
+2. **`openmc_map.py`** — Structural repo map via aider/tree-sitter. Shows condensed code skeletons of related files. Useful for seeing the shape of code before modifying it. Caveat: matches identifiers by name only, so common names like `push_back` or `__init__` create false connections.
+3. **`openmc_lsp.py`** — LSP navigation via clangd. Compiler-accurate `definition`, `references`, and `related` commands for C++. Zero false edges. Requires clangd and compile_commands.json.
 
 ## Step 1: Ensure the virtual environment exists
 
@@ -57,9 +57,9 @@ are missing (the LSP tool will report this itself if invoked without them).
 
 ## When to use each tool
 
-- **`openmc_search.py`**: Finding code by concept, discovering cross-cutting concerns, searching docs
-- **`openmc_lsp.py`**: Go-to-definition, find-references, discovering which C++ files are connected by real typed references
-- **`openmc_map.py`**: Seeing condensed code structure and class/function signatures of files you're about to modify
+- **`openmc_search.py`**: "What code is conceptually related to X?" — best for broad discovery, cross-cutting concerns, searching docs and Python code
+- **`openmc_lsp.py`**: "What C++ files actually reference this symbol?" — best for precise C++ navigation, zero false positives
+- **`openmc_map.py`**: "What does this file's code look like?" — best for seeing class/function signatures before modifying unfamiliar code. Be aware its file ranking has false edges from common method names
 
 ## Subagent guidance
 

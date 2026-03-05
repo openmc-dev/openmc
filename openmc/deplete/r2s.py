@@ -9,6 +9,7 @@ import numpy as np
 import openmc
 from . import IndependentOperator, PredictorIntegrator
 from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
+from .pool import _distribute
 from .results import Results
 from ..checkvalue import PathLike
 from ..mpi import comm
@@ -516,29 +517,39 @@ class R2SManager:
         if different_photon_model:
             photon_cells = self.photon_model.geometry.get_all_cells()
 
+        # For cell-based calculations, pre-compute and distribute the eligible
+        # (cell, original_mat) pairs across MPI ranks once, outside the time
+        # loop, since the eligibility check doesn't depend on time.
+        if self.method == 'cell-based':
+            _domain_pairs = []
+            for cell, original_mat in zip(
+                    self.domains, self.results['activation_materials']):
+                if different_photon_model:
+                    if cell.id not in photon_cells or \
+                            cell.fill.id != photon_cells[cell.id].fill.id:
+                        continue
+                _domain_pairs.append((cell, original_mat))
+            _my_domain_pairs = _distribute(_domain_pairs)
+
         for time_index in time_indices:
             # Create decay photon source
             if self.method == 'mesh-based':
                 self.photon_model.settings.source = \
                     self.get_decay_photon_source_mesh(time_index)
             else:
-                sources = []
                 results = self.results['depletion_results']
-                for cell, original_mat in zip(self.domains, self.results['activation_materials']):
-                    # Skip if the cell is not in the photon model or the
-                    # material has changed
-                    if different_photon_model:
-                        if cell.id not in photon_cells or \
-                            cell.fill.id != photon_cells[cell.id].fill.id:
-                            continue
 
+                # Build sources for this rank's assigned cells
+                local_sources = []
+                for cell, original_mat in _my_domain_pairs:
                     # Get bounding box for the cell
                     bounding_box = bounding_boxes[cell.id]
 
                     # Get activated material composition
-                    activated_mat = results[time_index].get_material(str(original_mat.id))
+                    activated_mat = results[time_index].get_material(
+                        str(original_mat.id))
 
-                    # Create decay photon source source
+                    # Create decay photon source
                     space = openmc.stats.Box(*bounding_box)
                     energy = activated_mat.get_decay_photon_energy()
                     strength = energy.integral() if energy is not None else 0.0
@@ -549,8 +560,13 @@ class R2SManager:
                         strength=strength,
                         constraints={'domains': [cell]}
                     )
-                    sources.append(source)
-                self.photon_model.settings.source = sources
+                    local_sources.append(source)
+
+                # Gather sources from all ranks and flatten into a single list
+                all_sources = comm.allgather(local_sources)
+                self.photon_model.settings.source = [
+                    s for rank_sources in all_sources for s in rank_sources
+                ]
 
             # Convert time_index (which may be negative) to a normal index
             if time_index < 0:
@@ -598,18 +614,18 @@ class R2SManager:
         """
         mat_dict = self.neutron_model._get_all_materials()
 
-        # List to hold all sources
-        sources = []
-
-        # Index in the overall list of activated materials
-        index_mat = 0
-
         # Get various results from previous steps
         mmv_list = self.results['mesh_material_volumes']
         materials = self.results['activation_materials']
         results = self.results['depletion_results']
         photon_mmv_list = self.results.get('mesh_material_volumes_photon')
 
+        # Phase 1: Enumerate all processable work items across all mesh
+        # elements and materials. This pass is cheap (no depletion data access)
+        # and records the stable index_mat needed to look up each activated
+        # material in the distributed phase.
+        work_items = []  # list of (index_mat, mat_id, bbox)
+        index_mat = 0
         for mesh_idx, mat_vols in enumerate(mmv_list):
             photon_mat_vols = photon_mmv_list[mesh_idx] \
                 if photon_mmv_list is not None else None
@@ -636,27 +652,34 @@ class R2SManager:
                         index_mat += 1
                         continue
 
-                    # Get activated material composition
-                    original_mat = materials[index_mat]
-                    activated_mat = results[time_index].get_material(str(original_mat.id))
-
-                    # Create decay photon source
-                    energy = activated_mat.get_decay_photon_energy()
-                    if energy is not None:
-                        strength = energy.integral()
-                        space = openmc.stats.Box(*bbox)
-                        sources.append(openmc.IndependentSource(
-                            space=space,
-                            energy=energy,
-                            particle='photon',
-                            strength=strength,
-                            constraints={'domains': [mat_dict[mat_id]]}
-                        ))
-
-                    # Increment index of activated material
+                    work_items.append((index_mat, mat_id, bbox))
                     index_mat += 1
 
-        return sources
+        # Phase 2: Distribute work items across MPI ranks
+        my_items = _distribute(work_items)
+
+        # Phase 3: Each rank builds decay photon sources for its assigned items
+        local_sources = []
+        for item_index_mat, mat_id, bbox in my_items:
+            original_mat = materials[item_index_mat]
+            activated_mat = results[time_index].get_material(str(original_mat.id))
+
+            # Create decay photon source
+            energy = activated_mat.get_decay_photon_energy()
+            if energy is not None:
+                strength = energy.integral()
+                space = openmc.stats.Box(*bbox)
+                local_sources.append(openmc.IndependentSource(
+                    space=space,
+                    energy=energy,
+                    particle='photon',
+                    strength=strength,
+                    constraints={'domains': [mat_dict[mat_id]]}
+                ))
+
+        # Phase 4: Gather sources from all ranks and return the complete list
+        all_sources = comm.allgather(local_sources)
+        return [s for rank_sources in all_sources for s in rank_sources]
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

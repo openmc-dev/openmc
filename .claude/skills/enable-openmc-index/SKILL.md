@@ -46,7 +46,7 @@ Note: The repo map tool (`openmc_map.py`) does NOT need a pre-built index - it g
 The LSP tool (`openmc_lsp.py`) requires clangd and `compile_commands.json`. Check if they're available:
 
 ```bash
-if command -v clangd-15 &>/dev/null || command -v clangd &>/dev/null; then
+if command -v clangd &>/dev/null || compgen -c clangd- 2>/dev/null | head -1 | grep -q .; then
     echo "CLANGD_AVAILABLE"
 else
     echo "CLANGD_MISSING"
@@ -58,7 +58,7 @@ else
 fi
 ```
 
-If clangd is missing, tell the user: "The LSP tool needs clangd. Install with `apt-get install clangd-15`."
+If clangd is missing, tell the user: "The LSP tool needs clangd. Install with `apt-get install clangd` (or `clangd-15`, `clangd-16`, etc.)."
 If compile_commands.json is missing, tell the user: "The LSP tool needs compile_commands.json. Generate with `cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`."
 
 The LSP tool is optional — the other two tools work without it.

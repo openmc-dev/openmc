@@ -7,7 +7,7 @@ Unlike tree-sitter-based tools, this resolves symbols through the actual
 C++ type system — no false edges from name collisions.
 
 Requires:
-  - clangd (apt-get install clangd-15, or similar)
+  - clangd (apt-get install clangd, or clangd-15/clangd-16/etc.)
   - compile_commands.json (cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
 
 Usage:

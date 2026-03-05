@@ -77,7 +77,11 @@ def generate_map(focus_files=None, map_tokens=2048):
 
     os.chdir(OPENMC_ROOT)
 
-    io = InputOutput(yes=True)
+    # Suppress aider's "not a terminal" warning
+    devnull = open(os.devnull, "w")
+    io = InputOutput(yes=True, pretty=False, user_input_color=None,
+                     tool_output_color=None, tool_warning_color=None,
+                     tool_error_color=None)
     model = FakeModel()
 
     rm = RepoMap(
@@ -112,10 +116,18 @@ def generate_map(focus_files=None, map_tokens=2048):
                     print(f"Warning: '{f}' not found in indexed files",
                           file=sys.stderr)
 
-    # other_fnames = files NOT in chat_fnames
-    other_fnames = [f for f in all_files if f not in chat_fnames]
-
-    repo_map = rm.get_repo_map(chat_fnames, other_fnames)
+    # Aider's RepoMap excludes chat_fnames from the map output (since in
+    # aider's workflow those files are already in the chat). We want the
+    # opposite: show focus files AND their neighbors. So we pass focus files
+    # as mentioned_fnames (to boost their ranking) but keep them in
+    # other_fnames (so they appear in the output).
+    mentioned = set(chat_fnames)
+    other_fnames = all_files  # Include everything
+    repo_map = rm.get_repo_map(
+        [],  # No chat files - we want everything in the output
+        other_fnames,
+        mentioned_fnames=mentioned,
+    )
 
     if not repo_map:
         return "No map generated. Try with different files or a larger --tokens budget."
@@ -142,11 +154,17 @@ def main():
 
     args = parser.parse_args()
 
-    # Suppress aider's scanning output
-    repo_map = generate_map(
-        focus_files=args.files if args.files else None,
-        map_tokens=args.tokens,
-    )
+    # Redirect stderr to suppress aider's noisy warnings
+    import io as _io
+    old_stderr = sys.stderr
+    sys.stderr = _io.StringIO()
+    try:
+        repo_map = generate_map(
+            focus_files=args.files if args.files else None,
+            map_tokens=args.tokens,
+        )
+    finally:
+        sys.stderr = old_stderr
     print(repo_map)
 
 

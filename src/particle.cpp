@@ -199,8 +199,7 @@ void Particle::event_calculate_xs()
     }
     n_coord_last() = n_coord();
 
-    if (material_last() != MATERIAL_UNSET)
-      material_last() = material();
+    material_last() = material();
   }
 
   // Write particle track.
@@ -214,9 +213,9 @@ void Particle::event_calculate_xs()
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
       if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
-          density_mult() != density_mult_last()) {
+          density_mult() != density_mult_last() || E() != macro_xs().last_E) {
         // If the material is the same as the last material and the
-        // temperature hasn't changed, we don't need to lookup cross
+        // energy and temperature hasn't changed, we don't need to lookup cross
         // sections again.
         model::materials[material()]->calculate_xs(*this);
       }
@@ -235,10 +234,6 @@ void Particle::event_calculate_xs()
     macro_xs().fission = 0.0;
     macro_xs().nu_fission = 0.0;
   }
-
-  // Initialize last material from current material
-  if (material_last() == MATERIAL_UNSET)
-    material_last() = material();
 }
 
 void Particle::event_advance()
@@ -431,9 +426,8 @@ void Particle::event_collide()
   }
   n_coord_last() = n_coord();
 
-  // Set last material to unset since cross sections will need to be
-  // re-evaluated
-  material_last() = MATERIAL_UNSET;
+  // Saving previous material data
+  material_last() = material();
 
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();

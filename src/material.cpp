@@ -817,6 +817,7 @@ void Material::calculate_xs(Particle& p) const
   p.macro_xs().absorption = 0.0;
   p.macro_xs().fission = 0.0;
   p.macro_xs().nu_fission = 0.0;
+  p.macro_xs().last_E = p.E();
 
   if (p.type().is_neutron()) {
     this->calculate_neutron_xs(p);

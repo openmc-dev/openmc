@@ -210,6 +210,8 @@ struct MacroXS {
   double incoherent;      //!< macroscopic incoherent xs
   double photoelectric;   //!< macroscopic photoelectric xs
   double pair_production; //!< macroscopic pair production xs
+
+  double last_E {0.0}; //!< last evaluated energy in [eV]
 };
 
 //==============================================================================

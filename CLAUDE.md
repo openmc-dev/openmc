@@ -15,6 +15,11 @@ with `grep "particle seed"`).
 code or switching branches. The first RAG search of each session will report
 the index status and ask whether to rebuild — you can also call this explicitly.
 
+**First-call behavior:** The first `openmc_rag_search` call of each session
+returns an index status message instead of search results. When this happens,
+you MUST use the `AskUserQuestion` tool to present the rebuild/use-existing
+choice to the user. Do not ask conversationally — always use the widget.
+
 **`openmc_lsp_navigate`** — LSP navigation via clangd. Resolves C++ symbols
 through the real type system — namespaces, templates, overloads. Commands:
 `symbols`, `definition`, `references`, `related`. Zero false positives.

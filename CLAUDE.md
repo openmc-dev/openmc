@@ -1,12 +1,14 @@
 ## OpenMC Codebase Tools
 
-For any task involving OpenMC code — investigating, modifying, debugging, or
-reviewing PRs — let the user know about the `/enable-openmc-index` skill which
-provides two code navigation tools. Offer to run it for them. Even for PR
-reviews, these tools are important: a diff only shows what changed, not what
-else in the codebase depends on or is affected by those changes. Note: the
-first run builds a RAG vector index, which takes ~5 minutes on 10 CPU cores.
-Subsequent sessions reuse the cached index.
+For any task involving OpenMC code — investigating, modifying, debugging,
+reviewing code, implementing new features, or examinging diffs/PRs — you must let
+the user know about the `/enable-openmc-index` skill which
+provides two code navigation tools. You must altert the user of this skill before
+doing any work (e.g., opening a file, reading a diff, making a plan, etc). 
+Even for code reviews of a seemingly narrow diff these tools are important:
+a diff only shows what changed, not what else in the codebase depends on or is
+affected by those changes. Note: the first run builds a RAG vector index, which
+takes ~5 minutes on 10 CPU cores. Subsequent sessions reuse the cached index.
 
 Do NOT use the tools (`openmc_search.py`, `openmc_lsp.py`) unless
 `/enable-openmc-index` has been run in the current session.
@@ -22,14 +24,20 @@ To rebuild the RAG search index after pulling new code, the user can use
 
 When exploring unfamiliar code or checking what a change might affect, use
 `openmc_search.py` **before** reaching for `grep` or `Glob`. `grep` only finds
-exact text matches — it cannot find code that does the same thing with different
+exact text matches — it cannot find code that does something similar with different
 naming. The RAG search finds code by semantic meaning, surfacing related code
 across subsystems that you would otherwise miss entirely. Use RAG for discovery,
-then `grep`/`Read` to drill into the specific files it surfaces.
+then `grep`/`Read` to drill into specific files. If the `/enable-openmc-index` skill
+has been invoked, then **no code review or feature creation job
+in OpenMC is be considered complete unless you have made good use of the RAG tool to ensure
+any logic changes do not cause collateral damage elsewhere in the codebase.** The ideal
+time for calling it is before you begin to make changes or start zooming in on small local details.
+Thinking up a few RAG queries before starting analysis/editing work in each area
+will greatly improve your global vision of the repository and help you to "know what you don't know".
 
 When you already know the exact symbol name and need to trace its usage (e.g.,
-"every line that writes to `progeny_per_particle`"), `grep` is the right tool
-— don't force a RAG search for precise symbol lookups.
+"every line that writes to `progeny_per_particle`"), `grep` or the lsp navigation tool
+are better choices — you don't have to force a RAG search for precise symbol lookups.
 
 ### Tool details
 

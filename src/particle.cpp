@@ -233,6 +233,7 @@ void Particle::event_calculate_xs()
     macro_xs().absorption = 0.0;
     macro_xs().fission = 0.0;
     macro_xs().nu_fission = 0.0;
+    macro_xs().last_E = E();
   }
 }
 

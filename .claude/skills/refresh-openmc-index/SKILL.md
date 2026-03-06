@@ -1,13 +1,13 @@
 ---
 name: refresh-openmc-index
-description: Rebuild the OpenMC RAG search index. Use after pulling new code or switching branches. The other tools (repo map, LSP) do not need refreshing.
+description: Rebuild the OpenMC RAG search index. Use after pulling new code or switching branches. The LSP tool does not need refreshing.
 allowed-tools: Bash(*)
 ---
 
 # Refresh OpenMC Index
 
 Rebuild the RAG semantic search index from scratch. Only this index needs
-refreshing — the repo map and LSP tools always work on the current code.
+refreshing — the LSP tool always works on the current code.
 
 ## Step 1: Ensure venv exists
 

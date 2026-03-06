@@ -1,6 +1,3 @@
-# Repo map (uses aider's tree-sitter based RepoMap)
-aider-chat>=0.80.0
-
 # Vector database
 lancedb>=0.15.0
 

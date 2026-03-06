@@ -27,6 +27,7 @@ Examples:
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -285,10 +286,8 @@ def find_symbol_on_line(client, filepath, line_1based):
             if col >= 0:
                 return col, text
 
-    # No symbol definition on this line — find the first identifier
-    # (skip leading whitespace and common return types/keywords)
-    import re
-    # Find all C++ identifiers on the line
+    # No symbol definition on this line — find the first meaningful identifier
+    # (skip C++ keywords and types that aren't useful to look up)
     for m in re.finditer(r'[A-Za-z_]\w*', text):
         # Skip common C++ keywords and types that aren't useful to look up
         if m.group() not in {

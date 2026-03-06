@@ -1,6 +1,6 @@
 ---
 name: enable-openmc-index
-description: Enable the OpenMC codebase tools for this session. Provides semantic code search, structural repo mapping, and LSP-based C++ code navigation.
+description: Enable the OpenMC codebase tools for this session. Provides semantic code search and LSP-based C++ code navigation.
 allowed-tools: Bash(*), Read
 ---
 
@@ -9,8 +9,7 @@ allowed-tools: Bash(*), Read
 Set up (if needed) and activate the OpenMC codebase tools for this session:
 
 1. **`openmc_search.py`** — RAG semantic search. Chunks code into overlapping fixed-size windows, embeds locally on CPU with the all-MiniLM-L6-v2 model (22M parameters, no GPU or API key needed), and searches a LanceDB vector index. Returns code previews with file paths and line numbers. Covers C++, Python, and docs.
-2. **`openmc_map.py`** — Structural repo map via aider/tree-sitter. Builds a cross-file reference graph, ranks files with PageRank relative to your focus files, then shows the top-ranked files as condensed code skeletons fitted to a token budget. Focus files are excluded (assumes you already have them). Caveat: the graph matches identifiers by name only — common names like `push_back` or `__init__` create false edges in the ranking.
-3. **`openmc_lsp.py`** — LSP (Language Server Protocol) navigation via clangd. Talks to the C++ compiler frontend for symbol resolution. `definition`, `references`, `symbols`, and `related` commands with compiler accuracy — zero false edges. Requires clangd and that OpenMC has been built (for `build/compile_commands.json`).
+2. **`openmc_lsp.py`** — LSP (Language Server Protocol) navigation via clangd. Talks to the C++ compiler frontend for symbol resolution. `definition`, `references`, `symbols`, and `related` commands with compiler accuracy — zero false edges. Requires clangd and that OpenMC has been built (for `build/compile_commands.json`).
 
 ## Step 1: Ensure the virtual environment exists
 
@@ -26,7 +25,7 @@ fi
 
 ## Step 2: Ensure the RAG index exists
 
-The semantic search tool needs a pre-built vector index. The other two tools work without it.
+The semantic search tool needs a pre-built vector index. The LSP tool works without it.
 
 ```bash
 if [ ! -d .claude/cache/rag_index ]; then
@@ -44,7 +43,6 @@ Run `--help` for each tool to learn their full APIs:
 
 ```bash
 .claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py --help
-.claude/cache/.venv/bin/python .claude/tools/repomap/openmc_map.py --help
 .claude/cache/.venv/bin/python .claude/tools/lsp/openmc_lsp.py --help
 ```
 
@@ -108,7 +106,6 @@ Tell the user the tools are active. If the LSP tool can't find clangd or
 
 - **`openmc_search.py`**: "What code is conceptually related to X?" — broad discovery by meaning, cross-cutting concerns, Python and docs. **Use this before grep when exploring unfamiliar code or checking what a change might affect.**
 - **`openmc_lsp.py`**: "Where is this C++ symbol defined, who calls it, and what files are truly connected to this one?" — compiler-accurate file:line locations, zero false positives
-- **`openmc_map.py`**: "Show me the code structure of files neighboring my focus files" — PageRank-ranked code skeletons fitted to a token budget. Neighbor ranking is noisy for common identifiers; use `openmc_lsp.py related` for accurate C++ file connections
 
 ## Subagent guidance
 
@@ -116,5 +113,4 @@ When spawning subagents that will investigate or modify OpenMC code, include in 
 
 "The OpenMC code index is available. Run `--help` on these tools to see their full API:
 - `.claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py --help` (semantic search)
-- `.claude/cache/.venv/bin/python .claude/tools/repomap/openmc_map.py --help` (structural map)
 - `.claude/cache/.venv/bin/python .claude/tools/lsp/openmc_lsp.py --help` (LSP navigation, C++ only)"

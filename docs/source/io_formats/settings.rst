@@ -16,8 +16,7 @@ cascade, the X-ray fluorescence photons and Auger electrons emitted when an
 inner-shell vacancy is filled, is simulated following photoelectric and
 incoherent (Compton) scattering interactions. Disabling this can speed up
 photon transport calculations where the detailed secondary particle cascade is
-not of interest.  When disabled, the energy of the secondary particles is
-deposited locally at the collision site.
+not of interest.
 
   *Default*: true
 

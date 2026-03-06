@@ -33,7 +33,7 @@ def get_db_and_embedder():
     from embeddings import EmbeddingProvider
 
     if not INDEX_DIR.exists():
-        print("ERROR: No index found. Run /openmc-enable-index first.",
+        print("ERROR: No index found. Run openmc_rag_rebuild() to build one.",
               file=sys.stderr)
         sys.exit(1)
 

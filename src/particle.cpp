@@ -586,12 +586,6 @@ void Particle::cross_surface(const Surface& surf)
     return;
   }
 
-  // Saving previous cell data
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
-  n_coord_last() = n_coord();
-
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 

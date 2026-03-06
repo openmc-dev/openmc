@@ -2,6 +2,7 @@
 #define OPENMC_RAY_H
 
 #include "openmc/particle_data.h"
+#include "openmc/position.h"
 
 namespace openmc {
 
@@ -40,7 +41,6 @@ private:
   // loop:
   static const int MAX_INTERSECTIONS = 1000000;
 
-  bool hit_something_ {false};
   bool stop_ {false};
 
   unsigned event_counter_ {0};

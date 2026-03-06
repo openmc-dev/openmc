@@ -1,6 +1,8 @@
 #include "openmc/ray.h"
 
+#include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 

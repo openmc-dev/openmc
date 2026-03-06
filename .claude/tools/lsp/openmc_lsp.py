@@ -288,19 +288,27 @@ def find_symbol_on_line(client, filepath, line_1based):
             if col >= 0:
                 return col, text
 
-    # No symbol definition on this line — find the first meaningful identifier
-    # (skip C++ keywords and types that aren't useful to look up)
+    # No symbol definition on this line — find the most specific identifier.
+    # For qualified names like Tally::reset(), prefer the method (after ::).
+    cpp_keywords = {
+        'void', 'int', 'double', 'float', 'char', 'bool', 'long',
+        'short', 'unsigned', 'signed', 'const', 'static', 'virtual',
+        'inline', 'extern', 'auto', 'return', 'if', 'else', 'for',
+        'while', 'do', 'switch', 'case', 'break', 'continue',
+        'struct', 'class', 'enum', 'namespace', 'using', 'typedef',
+        'template', 'typename', 'public', 'private', 'protected',
+        'override', 'final', 'explicit', 'noexcept', 'constexpr',
+    }
+
+    # First pass: look for the name after :: (the most specific symbol)
+    for m in re.finditer(r'::(\w+)', text):
+        name = m.group(1)
+        if name not in cpp_keywords:
+            return m.start(1), text
+
+    # Second pass: first non-keyword identifier
     for m in re.finditer(r'[A-Za-z_]\w*', text):
-        # Skip common C++ keywords and types that aren't useful to look up
-        if m.group() not in {
-            'void', 'int', 'double', 'float', 'char', 'bool', 'long',
-            'short', 'unsigned', 'signed', 'const', 'static', 'virtual',
-            'inline', 'extern', 'auto', 'return', 'if', 'else', 'for',
-            'while', 'do', 'switch', 'case', 'break', 'continue',
-            'struct', 'class', 'enum', 'namespace', 'using', 'typedef',
-            'template', 'typename', 'public', 'private', 'protected',
-            'override', 'final', 'explicit', 'noexcept', 'constexpr',
-        }:
+        if m.group() not in cpp_keywords:
             return m.start(), text
     # Last resort: first non-whitespace
     return len(text) - len(text.lstrip()), text

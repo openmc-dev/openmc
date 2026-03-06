@@ -76,7 +76,30 @@ Use each tool for what it's best at:
 Don't force RAG searches for exact symbol lookups, and don't rely on grep alone
 for broad exploration.
 
-## Step 5: Confirm activation
+## Step 5: Demonstrate the LSP tool to yourself
+
+Run this references query and read the results carefully:
+
+```bash
+.claude/cache/.venv/bin/python .claude/tools/lsp/openmc_lsp.py references src/tallies/tally.cpp:835
+```
+
+Line 835 is `Tally::reset()`. The LSP tool uses the C++ compiler frontend to
+resolve this — it returns only references to **this specific** `reset()`, not
+the other 3 classes that also define `void reset()` (Timer, ParticleData,
+SharedArray). Compare with `grep 'reset()'` which returns 62 mixed hits across
+20 files including vendor code. The LSP tool gives you the exact 10 files that
+call or reference `Tally::reset()`, with line numbers — zero false positives.
+
+This is why the LSP tool exists: **`grep` matches text, LSP resolves types.**
+When a common method name like `reset`, `get`, `size`, or `create` is used by
+multiple classes, `grep` gives you a haystack. LSP gives you the needle.
+
+Use each tool for what it's best at:
+- **LSP**: "who calls *this specific* C++ method?" — type-accurate references
+- **grep**: "every line containing this unique string" — fast exact text match
+
+## Step 6: Confirm activation
 
 Tell the user the tools are active. If the LSP tool can't find clangd or
 `build/compile_commands.json`, it will report this itself when invoked.

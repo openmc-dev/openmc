@@ -255,18 +255,63 @@ def cmd_symbols(client, filepath):
         print(f"{indent}{kind_name}: {sym['name']} (line {line + 1})")
 
 
+def find_symbol_on_line(client, filepath, line_1based):
+    """Find the character position of the symbol name on a given line.
+
+    Uses clangd's document symbols to identify what symbol is defined or
+    referenced on the target line, then locates the symbol name in the
+    line text. Falls back to the first identifier on the line if no
+    symbol matches.
+
+    Returns (character_0based, line_text) or (None, None) if the line
+    doesn't exist.
+    """
+    fpath = Path(filepath)
+    if not fpath.is_absolute():
+        fpath = OPENMC_ROOT / fpath
+    file_lines = fpath.read_text().split('\n')
+    line_0 = line_1based - 1
+    if line_0 < 0 or line_0 >= len(file_lines):
+        return None, None
+    text = file_lines[line_0]
+
+    # Try to find a symbol defined on this line via document symbols
+    symbols = client.get_symbols(filepath)
+    flat = flatten_symbols(symbols)
+    for sym, _depth in flat:
+        start = get_symbol_range(sym)
+        if start['line'] == line_0:
+            col = text.find(sym['name'], start['character'])
+            if col >= 0:
+                return col, text
+
+    # No symbol definition on this line — find the first identifier
+    # (skip leading whitespace and common return types/keywords)
+    import re
+    # Find all C++ identifiers on the line
+    for m in re.finditer(r'[A-Za-z_]\w*', text):
+        # Skip common C++ keywords and types that aren't useful to look up
+        if m.group() not in {
+            'void', 'int', 'double', 'float', 'char', 'bool', 'long',
+            'short', 'unsigned', 'signed', 'const', 'static', 'virtual',
+            'inline', 'extern', 'auto', 'return', 'if', 'else', 'for',
+            'while', 'do', 'switch', 'case', 'break', 'continue',
+            'struct', 'class', 'enum', 'namespace', 'using', 'typedef',
+            'template', 'typename', 'public', 'private', 'protected',
+            'override', 'final', 'explicit', 'noexcept', 'constexpr',
+        }:
+            return m.start(), text
+    # Last resort: first non-whitespace
+    return len(text) - len(text.lstrip()), text
+
+
 def cmd_definition(client, filepath, line, character=None):
     """Find the definition of a symbol."""
     if character is None:
-        # Find first non-whitespace identifier on the line
-        fpath = Path(filepath)
-        if not fpath.is_absolute():
-            fpath = OPENMC_ROOT / fpath
-        lines = fpath.read_text().split('\n')
-        if line - 1 < len(lines):
-            text = lines[line - 1]
-            # Skip leading whitespace
-            character = len(text) - len(text.lstrip())
+        character, _ = find_symbol_on_line(client, filepath, line)
+        if character is None:
+            print("Could not determine symbol on that line.")
+            return
 
     result = client.get_definition(filepath, line - 1, character)
     if not result:
@@ -284,13 +329,10 @@ def cmd_definition(client, filepath, line, character=None):
 def cmd_references(client, filepath, line, character=None):
     """Find all references to a symbol."""
     if character is None:
-        fpath = Path(filepath)
-        if not fpath.is_absolute():
-            fpath = OPENMC_ROOT / fpath
-        lines = fpath.read_text().split('\n')
-        if line - 1 < len(lines):
-            text = lines[line - 1]
-            character = len(text) - len(text.lstrip())
+        character, _ = find_symbol_on_line(client, filepath, line)
+        if character is None:
+            print("Could not determine symbol on that line.")
+            return
 
     result = client.get_references(filepath, line - 1, character)
     if not result:

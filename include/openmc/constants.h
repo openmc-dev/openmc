@@ -110,7 +110,7 @@ constexpr array<const char*, 39> SUBSHELLS = {"K", "L1", "L2", "L3", "M1", "M2",
 
 // Void material and nuclide
 // TODO: refactor and remove
-constexpr int MATERIAL_VOID {-1};
+constexpr int MATERIAL_VOID {-2};
 constexpr int NUCLIDE_NONE {-1};
 
 // ============================================================================

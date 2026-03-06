@@ -66,7 +66,7 @@ def two_sphere_model():
     model.settings.particles = 1000
     model.settings.source = src
 
-    return model, cell1, cell2
+    return model, cell1, cell2, mat
 
 def test_energy_balance_simple(two_cell_model, run_in_tmpdir):
     model, xmid, cell1, cell2, *_  = two_cell_model
@@ -132,15 +132,21 @@ def test_current_conservation(two_cell_model, run_in_tmpdir):
 
 def test_cellfrom_heating(run_in_tmpdir, two_sphere_model):
 
-    model, cell1, cell2 = two_sphere_model
+    model, cell1, cell2, mat = two_sphere_model
 
-    tally = openmc.Tally()
-    tally.scores = ['heating']
-    tally.filters = [openmc.CellFromFilter([cell1, cell2]), openmc.CellFilter([cell2])]
+    tally1 = openmc.Tally()
+    tally1.scores = ['heating']
+    tally1.filters = [openmc.CellFromFilter([cell1, cell2]), openmc.CellFilter([cell2])]
 
-    model.tallies = [tally]
+    tally2 = openmc.Tally()
+    tally2.scores = ['heating']
+    tally2.filters = [openmc.MaterialFromFilter([mat]), openmc.MaterialFilter([mat])]
+
+    model.tallies = [tally1, tally2]
 
     model.run(apply_tally_results=True)
 
-    assert np.all(tally.mean > 0)
+    assert np.all(tally1.mean > 0)
+
+    assert tally1.mean[1] == tally2.mean[0] 
     

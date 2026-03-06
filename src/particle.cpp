@@ -182,7 +182,6 @@ void Particle::event_calculate_xs()
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
-  bool update_mat = false;
   if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
@@ -200,7 +199,8 @@ void Particle::event_calculate_xs()
     }
     n_coord_last() = n_coord();
 
-    update_mat = true;
+    if (material_last() != C_NONE)
+      material_last() = material();
   }
 
   // Write particle track.
@@ -237,7 +237,7 @@ void Particle::event_calculate_xs()
   }
 
   // Initialize last material from current material
-  if (update_mat)
+  if (material_last() == C_NONE)
     material_last() = material();
 }
 

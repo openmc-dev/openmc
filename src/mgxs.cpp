@@ -615,6 +615,7 @@ void Mgxs::calculate_xs(Particle& p)
   p.macro_xs().nu_fission =
     fissionable ? xs[temperature].nu_fission(angle, p.g()) * p.density_mult()
                 : 0.;
+  p.macro_xs().last_E = p.E();
 }
 
 //==============================================================================

@@ -97,7 +97,35 @@ Use each tool for what it's best at:
 - **LSP**: "who calls *this specific* C++ method?" — type-accurate references
 - **grep**: "every line containing this unique string" — fast exact text match
 
-## Step 6: Confirm activation
+## Step 6: Learn from previous review failures
+
+An agent reviewed a large OpenMC PR using only diff, grep, and Read. It found
+1 of 11 serious bugs. Here is its own post-mortem analysis of what went wrong:
+
+> **I treated the diff as a closed system.** I verified internal consistency of
+> the changed code obsessively, but never built a global understanding of how
+> the changed code fits into the wider codebase. The diff altered assumptions
+> that code elsewhere silently relied on — but I couldn't see that because I
+> never looked beyond the diff. I couldn't see the forest for the trees.
+>
+> **Why I resisted RAG:** Overconfidence. My internal model was "I can see the
+> diff, I understand the data structures, I can trace the logic." The diff felt
+> self-contained. RAG felt like it would return noisy results about tangentially
+> related code. But in a codebase this large, changes in one subsystem can
+> quietly break invariants that distant subsystems depend on — and you need
+> global awareness to foresee that.
+>
+> **In the post-mortem**, I re-ran the RAG queries I should have run during the
+> review. They directly surfaced the files containing the bugs I missed — files
+> I never thought to open because they weren't in the diff.
+
+The takeaway: **use RAG throughout your work to maintain global awareness.**
+Before diving into details, ask "what else in this codebase depends on the
+behavior being changed?" As you explore each area, keep querying to build your
+mental map of affected subsystems. The diff tells you *what* changed; RAG tells
+you *what else cares*.
+
+## Step 7: Confirm activation
 
 Tell the user the tools are active. If the LSP tool can't find clangd or
 `build/compile_commands.json`, it will report this itself when invoked.

@@ -67,9 +67,10 @@ public:
   vector<ReactionProduct> products_; //!< Reaction products
 
   struct CovData {
-  vector<double> L;
-  vector<double> e_bounds;
-  int num_groups {0};
+  vector<double> L;            //!< Flattened (full_size x effective_rank) factor
+  vector<double> e_bounds;     //!< Energy group boundaries [eV], length = full_size+1
+  int full_size {0};           //!< Original matrix dimension G (number of groups)
+  int effective_rank {0};      //!< Number of columns retained (r <= G)
   };
   std::unordered_map<int, CovData> cholesky_;  // MT → Cholesky factor
 

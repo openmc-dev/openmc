@@ -1162,6 +1162,13 @@ void load_nuclide_covariance(const std::string& name)
 
   write_message(6, "Reading covariance data for {} from {}", name, filename);
 
+  std::vector<double> e_bounds;
+  if (object_exists(mf33_group, "energy_grid_ev")) {
+    read_dataset(mf33_group, "energy_grid_ev", e_bounds);
+  } else {
+    warning(fmt::format("No mf33/energy_grid_ev found for {} in {}", name, filename));
+  }
+
   // For each reaction, load diagonal block: cholesky/{MT}/{MT}
   for (auto& rx : nuc->reactions_) {
     
@@ -1173,17 +1180,41 @@ void load_nuclide_covariance(const std::string& name)
     hid_t mt_group = open_group(chol_group, mt_str.c_str());
 
     if (object_exists(mt_group, mt_str.c_str())) {
-      // The dataset is 2D (n x n)
+      // The dataset is 2D (full_size x effective_rank)
       tensor::Tensor<double> L_matrix;
       read_dataset(mt_group, mt_str.c_str(), L_matrix);
 
-      int n = static_cast<int>(L_matrix.shape(0));
+      // Read metadata attributes written by the Python side
+      hid_t dset_id = open_dataset(mt_group, mt_str.c_str());
 
-      // Flatten the 2D matrix into the storage vector
+      int full_size = static_cast<int>(L_matrix.shape(0));
+      int effective_rank = static_cast<int>(L_matrix.shape(1));
+
+      // Override with stored attributes when available
+      if (attribute_exists(dset_id, "full_size"))
+        read_attribute(dset_id, "full_size", full_size);
+      if (attribute_exists(dset_id, "effective_rank"))
+        read_attribute(dset_id, "effective_rank", effective_rank);
+
+      close_dataset(dset_id);
+
+      // Populate the CovData structure
       Reaction::CovData& cov = rx->cholesky_[rx->mt_];
       cov.L.assign(L_matrix.data(), L_matrix.data() + L_matrix.size());
-      cov.num_groups = n;
-    }
+      cov.full_size = full_size;
+      cov.effective_rank = effective_rank;
+
+      // Attach boundaries so that perturb_xs can map energies
+      if (!e_bounds.empty()) {
+        if (static_cast<int>(e_bounds.size()) == full_size + 1) {
+          cov.e_bounds = e_bounds;
+        } else {
+          warning(fmt::format(
+            "energy_grid_ev size mismatch for {} MT={}: expected {}, got {}",
+            name, rx->mt_, full_size + 1, e_bounds.size()));
+        }
+      }
+  }
 
     close_group(mt_group);
   }

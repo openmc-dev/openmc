@@ -188,27 +188,32 @@ void Reaction::perturb_xs(
   if (it == cholesky_.end()) return;
 
   const auto& cov = it->second;
-  int ng = cov.num_groups;
+  int ng = cov.full_size;     // number of energy groups (rows of L)
+  int r = cov.effective_rank; // number of columns of L
 
   // 1. Sample z from N(0, I)
-  vector<double> z(ng);
-  for (int g = 0; g < ng; ++g) {
-    double u1 = prn(seed);
+  vector<double> z(r);
+  for (int j = 0; j < r; ++j) {
+    double u1 = std::max(prn(seed), 1e-16);
     double u2 = prn(seed);
-    z[g] = std::sqrt(-2.0 * std::log(u1)) * std::cos(2.0 * M_PI * u2);
+    z[j] = std::sqrt(-2.0 * std::log(u1)) * std::cos(2.0 * M_PI * u2);
   }
 
   // 2. Correlated perturbations: delta = L * z
-  //    L is stored column-major (lower triangular, ng x ng)
+  // L is stored row-major with shape (ng * r)
   vector<double> delta(ng, 0.0);
   for (int i = 0; i < ng; ++i)
-    for (int j = 0; j <= i; ++j)
-      delta[i] += cov.L[i * ng + j] * z[j];
+    for (int j = 0; j < r; ++j)
+      delta[i] += cov.L[i * r + j] * z[j];
 
   // 3. Multiplicative factors per group
   vector<double> factor(ng);
-  for (int g = 0; g < ng; ++g)
-    factor[g] = 1.0 + delta[g];
+  for (int g = 0; g < ng; ++g){
+    double f = 1.0 + delta[g];
+    if (f < 0.0) f = 0.0;
+    if (f > 2.0) f = 2.0;
+    factor[g] = f;
+  }
 
   // 4. Apply to every temperature's CE cross section
   for (auto& txs : xs_) {
@@ -220,9 +225,15 @@ void Reaction::perturb_xs(
 
       // Find which covariance group this energy falls in
       // e_bounds is sorted ascending, size ng+1
-      int g = lower_bound_index(
-        cov.e_bounds.cbegin(), cov.e_bounds.cend(), E);
-      g = std::min(g, ng - 1);
+      if (cov.e_bounds.empty()) continue;
+
+      if (E < cov.e_bounds.front() || E >= cov.e_bounds.back()) {
+        continue; // outside MG grid => factor 1
+      }
+
+      auto itb = std::upper_bound(cov.e_bounds.begin(), cov.e_bounds.end(), E);
+      int g = static_cast<int>(itb - cov.e_bounds.begin()) - 1;
+      if (g < 0 || g >= ng) continue;
 
       txs.value[k] *= factor[g];
 

@@ -18,14 +18,16 @@ Everything else is internal parsing.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import scipy.linalg as la
 from .mf33_njoy import generate_errorr_mf33
 
+log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # ERRORR tape33 (ENDF-6 text) parser for MF=33
@@ -172,43 +174,223 @@ def parse_errorr_mf33_text(tape33_text: str, mat: Optional[int] = None) -> Dict[
 # Cholesky factor computation (with eigendecomposition fallback)
 # -----------------------------------------------------------------------------
 
-def _compute_cholesky_factor(cov_matrix: np.ndarray, tol: float = 1e-10) -> np.ndarray:
-    """Compute the lower-triangular Cholesky factor L such that Σ ≈ L L^T.
+@dataclass
+class CholeskyResult:
+    """Container for a Cholesky-like factorization and its diagnostics.
 
-    If the matrix is symmetric positive-definite, standard Cholesky is used.
-    Otherwise, falls back to eigendecomposition with negative-eigenvalue
-    clamping (matching the logic in sampling_algorithm.cpp):
-        1. Eigendecompose: Σ = V diag(λ) V^T
-        2. Zero out eigenvalues with λ/λ_max < tol
-        3. Form A = V diag(√λ)
-        4. QR-decompose A^T = Q R  →  L = R^T
+    Attributes
+    ----------
+    L : np.ndarray
+        Lower-triangular factor, shape (G, r) where r = effective_rank.
+        Satisfies L @ L.T ≈ original covariance (after any regularization).
+    effective_rank : int
+        Number of positive eigenvalues retained.
+    full_size : int
+        Original matrix dimension G.
+    method : str
+        Which path was taken: "cholesky", "eigen_qr", or "zero_matrix".
+    condition_number : float
+        Ratio of largest to smallest *positive* singular value.
+        np.inf when the matrix is singular.
+    negative_eig_mass : float
+        Sum of absolute values of negative eigenvalues (before clamping).
+        Zero means the raw matrix was already PSD.
+    negative_eig_mass_pct : float
+        negative_eig_mass as a percentage of the Frobenius norm.
+    regularization_applied : float
+        The diagonal-loading factor actually used (0.0 if none).
+    nonzero_variance_indices : np.ndarray
+        Integer indices of rows/columns that had non-zero variance.
+    """
+    L: np.ndarray
+    effective_rank: int
+    full_size: int
+    method: str = "eigen_qr"
+    condition_number: float = np.inf
+    negative_eig_mass: float = 0.0
+    negative_eig_mass_pct: float = 0.0
+    regularization_applied: float = 0.0
+    nonzero_variance_indices: np.ndarray = field(default_factory=lambda: np.array([], dtype=int))
+
+
+def _enforce_symmetry(A: np.ndarray) -> np.ndarray:
+    """Force exact symmetry: A_sym = (A + A^T) / 2."""
+    return 0.5 * (A + A.T)
+
+
+def _strip_zero_variance(A: np.ndarray):
+    """Remove rows/columns with zero diagonal (zero variance).
+
+    Returns
+    -------
+    A_reduced : np.ndarray
+        Square sub-matrix with non-zero-variance entries only.
+    nz_indices : np.ndarray
+        Integer indices into the original matrix for the kept rows/cols.
+    """
+    diag = np.diag(A)
+    nz = np.flatnonzero(diag > 0.0)
+    if len(nz) == 0:
+        return np.empty((0, 0), dtype=A.dtype), nz
+    return A[np.ix_(nz, nz)], nz
+
+
+def _regularize(A: np.ndarray, correction: float) -> np.ndarray:
+    """Add scaled diagonal loading: A_reg = A + correction * diag(A)."""
+    D = np.diag(A).copy()
+    return A + np.diag(D * correction)
+
+
+def _compute_diagnostics(eigenvalues: np.ndarray, fro_norm: float) -> dict:
+    """Compute negative-eigenvalue mass and condition number."""
+    eig_neg = eigenvalues[eigenvalues < 0.0]
+    neg_mass = float(-np.sum(eig_neg))
+
+    eig_pos = eigenvalues[eigenvalues > 0.0]
+    if len(eig_pos) >= 2:
+        cond = float(eig_pos.max() / eig_pos.min())
+    elif len(eig_pos) == 1:
+        cond = 1.0
+    else:
+        cond = np.inf
+
+    neg_pct = 100.0 * neg_mass / fro_norm if fro_norm > 0 else 0.0
+    return dict(
+        negative_eig_mass=neg_mass,
+        negative_eig_mass_pct=neg_pct,
+        condition_number=cond,
+    )
+
+
+def compute_cholesky_factor(
+    cov_matrix: np.ndarray,
+    tol: float = 1e-10,
+    regularization: float = 0.0,
+) -> CholeskyResult:
+    """Compute a lower-triangular factor L such that L @ L.T ≈ Sigma.
 
     Parameters
     ----------
     cov_matrix : np.ndarray
-        Square covariance matrix (G x G).
+        Square covariance matrix (G * G).
     tol : float
-        Eigenvalue tolerance: eigenvalues with λ/λ_max < tol are zeroed.
+        Eigenvalue tolerance: eigenvalues with λ / λ_max < tol are
+        zeroed.
+    regularization : float
+        Diagonal-loading fraction (0.0 = none, 0.005 = 0.5 %).
 
     Returns
     -------
-    np.ndarray
-        Lower-triangular factor L (G x G).
+    CholeskyResult
     """
+    G = cov_matrix.shape[0]
+
+    # --- 0. Enforce exact symmetry ---
+    A = _enforce_symmetry(np.asarray(cov_matrix, dtype=np.float64))
+
+    # --- 1. Strip zero-variance rows/columns ---
+    Ar, nz = _strip_zero_variance(A)
+
+    if Ar.size == 0:
+        return CholeskyResult(
+            L=np.zeros((G, 0), dtype=np.float64),
+            effective_rank=0,
+            full_size=G,
+            method="zero_matrix",
+            condition_number=np.inf,
+            nonzero_variance_indices=nz,
+        )
+
+    # --- 2. Optional regularization ---
+    reg_applied = 0.0
+    if regularization > 0.0:
+        Ar = _regularize(Ar, regularization)
+        reg_applied = regularization
+
+    Gr = Ar.shape[0]
+    fro_norm = float(np.linalg.norm(Ar, "fro"))
+
+    # --- 3a. Fast path: standard Cholesky ---
     try:
-        return la.cholesky(cov_matrix, lower=True)
+        Lr = la.cholesky(Ar, lower=True)
+        eig_pos = np.diag(Lr) ** 2
+        cond = float(eig_pos.max() / eig_pos.min()) if eig_pos.min() > 0 else np.inf
+
+        L_full = np.zeros((G, Gr), dtype=np.float64)
+        L_full[nz, :] = Lr
+
+        return CholeskyResult(
+            L=L_full,
+            effective_rank=Gr,
+            full_size=G,
+            method="cholesky",
+            condition_number=cond,
+            negative_eig_mass=0.0,
+            negative_eig_mass_pct=0.0,
+            regularization_applied=reg_applied,
+            nonzero_variance_indices=nz,
+        )
     except la.LinAlgError:
         pass
 
-    eigenvalues, V = la.eigh(cov_matrix)
+    # --- 3b. Fallback: eigendecomposition + QR ---
+    eigenvalues, V = la.eigh(Ar)
+
+    diag_info = _compute_diagnostics(eigenvalues, fro_norm)
+
+    if diag_info["negative_eig_mass"] > 0:
+        log.warning(
+            "Non-PSD block (size %d): negative eigenvalue mass = %.3e "
+            "(%.2f%% of Frobenius norm). Clamping to zero.",
+            Gr,
+            diag_info["negative_eig_mass"],
+            diag_info["negative_eig_mass_pct"],
+        )
+
     max_eig = eigenvalues.max() if eigenvalues.max() > 0 else 1.0
     eigenvalues[eigenvalues / max_eig < tol] = 0.0
     eigenvalues[eigenvalues < 0.0] = 0.0
 
-    A = V * np.sqrt(eigenvalues)[np.newaxis, :]
-    _, R = la.qr(A.T, mode='economic')
-    return R.T
+    pos_mask = eigenvalues > 0.0
+    r = int(pos_mask.sum())
 
+    if r == 0:
+        return CholeskyResult(
+            L=np.zeros((G, 0), dtype=np.float64),
+            effective_rank=0,
+            full_size=G,
+            method="eigen_qr",
+            condition_number=np.inf,
+            negative_eig_mass=diag_info["negative_eig_mass"],
+            negative_eig_mass_pct=diag_info["negative_eig_mass_pct"],
+            regularization_applied=reg_applied,
+            nonzero_variance_indices=nz,
+        )
+
+    V_pos = V[:, pos_mask]
+    sqrt_lam = np.sqrt(eigenvalues[pos_mask])
+    Athin = V_pos * sqrt_lam[np.newaxis, :]
+
+    _, R = la.qr(Athin.T, mode="economic")
+    Lr = R.T
+
+    L_full = np.zeros((G, r), dtype=np.float64)
+    L_full[nz, :] = Lr
+
+    eig_pos_vals = eigenvalues[pos_mask]
+    cond = float(eig_pos_vals.max() / eig_pos_vals.min()) if eig_pos_vals.min() > 0 else np.inf
+
+    return CholeskyResult(
+        L=L_full,
+        effective_rank=r,
+        full_size=G,
+        method="eigen_qr",
+        condition_number=cond,
+        negative_eig_mass=diag_info["negative_eig_mass"],
+        negative_eig_mass_pct=diag_info["negative_eig_mass_pct"],
+        regularization_applied=reg_applied,
+        nonzero_variance_indices=nz,
+    )
 
 # -----------------------------------------------------------------------------
 # Data model + HDF5 I/O
@@ -223,7 +405,7 @@ class NeutronXSCovariances:
     reactions: Dict[int, Dict[str, Any]]    # MT -> parsed dict from ERRORR
     mat: Optional[int] = None
     temperature_k: Optional[float] = None   # what we processed at (single T)
-    cholesky_factors: Optional[Dict[int, Dict[int, np.ndarray]]] = None  # MT -> MT1 -> L
+    cholesky_results: Optional[Dict[int, Dict[int, CholeskyResult]]] = None 
 
     @classmethod
     def from_endf(
@@ -235,6 +417,9 @@ class NeutronXSCovariances:
         mat: Optional[int] = None,
         temperature: float = 293.6,
         name: Optional[str] = None,
+        compute_cholesky: bool = True,
+        eig_tol: float = 1e-10,
+        regularization: float = 0.0,
     ) -> "NeutronXSCovariances":
         res = generate_errorr_mf33(
             endf_path,
@@ -249,13 +434,28 @@ class NeutronXSCovariances:
         reactions = parse_errorr_mf33_text(res["tape33"], mat=mat_used)
 
         # Pre-compute Cholesky factors for all covariance sub-blocks
-        chol: Dict[int, Dict[int, np.ndarray]] = {}
-        for mt, sec in reactions.items():
-            chol[mt] = {}
-            for mt1, M in sec.get("COVS", {}).items():
-                chol[mt][mt1] = _compute_cholesky_factor(
-                    np.asarray(M, dtype=np.float64)
-                )
+        chol: Optional[Dict[int, Dict[int, CholeskyResult]]] = None
+        if compute_cholesky:
+            chol = {}
+            for mt_key, sec in reactions.items():
+                chol[mt_key] = {}
+                for mt1, M in sec.get("COVS", {}).items():
+                    result = compute_cholesky_factor(
+                        np.asarray(M, dtype=np.float64),
+                        tol=eig_tol,
+                        regularization=regularization,
+                    )
+                    chol[mt_key][mt1] = result
+                    log.info(
+                        "  MT %s -> MT1 %s: method=%-9s  rank=%d/%d  "
+                        "cond=%.2e  neg_mass=%.2e%%",
+                        mt_key, mt1,
+                        result.method,
+                        result.effective_rank,
+                        result.full_size,
+                        result.condition_number,
+                        result.negative_eig_mass_pct,
+                    )
 
         if name is None:
             name = Path(endf_path).stem
@@ -266,10 +466,14 @@ class NeutronXSCovariances:
             reactions=reactions,
             mat=mat_used,
             temperature_k=float(temperature),
-            cholesky_factors=chol,
+            cholesky_results=chol,
         )
+    
+    # -----------------------------------------------------------------
+    # HDF5 writing
+    # -----------------------------------------------------------------
 
-    def to_hdf5(self, filename: str | Path) -> None:
+    def to_hdf5(self, filename: str | Path, store_raw_covariance: bool = True) -> None:
         """Write covariances to a standalone HDF5 file.
 
         Layout matches the "covariance/mf33" group that
@@ -282,16 +486,26 @@ class NeutronXSCovariances:
         filename.parent.mkdir(parents=True, exist_ok=True)
 
         with h5py.File(filename, "w") as f:
-            self.write_mf33_group(f)
+            self.write_mf33_group(f, store_raw_covariance=store_raw_covariance)
 
-    def write_mf33_group(self, h5_group) -> None:
+    def write_mf33_group(self, h5_group, store_raw_covariance: bool = True,
+                         eig_tol: float = 1e-10, regularization: float = 0.0,) -> None:
         """Write the "mf33" sub-tree into an already-open HDF5 group.
 
         Parameters
         ----------
         h5_group : h5py.Group
-            Parent group.  A child group called "mf33" will be created
+            Parent group.  A child group called ``mf33`` will be created
             (or replaced) directly under it.
+        store_raw_covariance
+            If True, store full covariance matrices under ``reactions/``.
+            If False, only Cholesky factors are written.
+        eig_tol
+            Eigenvalue tolerance — only used as fallback when
+            ``self.cholesky_results`` is None.
+        regularization
+            Diagonal-loading fraction — only used as fallback when
+            ``self.cholesky_results`` is None.
         """
         if "mf33" in h5_group:
             del h5_group["mf33"]
@@ -300,6 +514,8 @@ class NeutronXSCovariances:
         mf33.attrs["format"] = np.bytes_("openmc.mf33.v1")
         mf33.attrs["source"] = np.bytes_("njoy errorr")
         mf33.attrs["relative"] = 1  # int flag – portable across languages
+        mf33.attrs["store_raw_covariance"] = int(store_raw_covariance)
+        mf33.attrs["cholesky_storage"] = np.bytes_("thin_rank_r")
         if self.mat is not None:
             mf33.attrs["mat"] = int(self.mat)
         if self.temperature_k is not None:
@@ -309,115 +525,65 @@ class NeutronXSCovariances:
             "energy_grid_ev",
             data=np.asarray(self.energy_grid_ev, dtype=np.float64),
         )
+        mf33.create_dataset(
+            "mts",
+            data=np.asarray(sorted(self.reactions.keys()), dtype=np.int32),
+        )
 
-        greact = mf33.create_group("reactions")
+        if store_raw_covariance:
+            greact = mf33.create_group("reactions")
         gchol = mf33.create_group("cholesky")
 
-        # Compute Cholesky factors on-the-fly if not already cached
-        chol = self.cholesky_factors or {}
+        cached = self.cholesky_results or {}
 
         for mt, sec in self.reactions.items():
-            gmt = greact.create_group(str(int(mt)))
-            gmt.attrs["ZA"] = float(sec.get("ZA", 0.0))
-            gmt.attrs["AWR"] = float(sec.get("AWR", 0.0))
+            mt_str = str(int(mt))
 
-            gmt_chol = gchol.create_group(str(int(mt)))
-            gmt_chol.attrs["ZA"] = float(sec.get("ZA", 0.0))
-            gmt_chol.attrs["AWR"] = float(sec.get("AWR", 0.0))
+            if store_raw_covariance:
+                gmt = greact.create_group(mt_str)
+                for attr_name in ("ZA", "AWR"):
+                    if attr_name in sec:
+                        gmt.attrs[attr_name] = float(sec[attr_name])
+
+            gmt_chol = gchol.create_group(mt_str)
+            for attr_name in ("ZA", "AWR"):
+                if attr_name in sec:
+                    gmt_chol.attrs[attr_name] = float(sec[attr_name])
 
             covs: Dict[int, np.ndarray] = sec.get("COVS", {})
             for mt1, M in covs.items():
                 M_arr = np.asarray(M, dtype=np.float64)
-                gmt.create_dataset(
-                    str(int(mt1)),
-                    data=M_arr,
+                ds_name = str(int(mt1))
+
+                # ---- raw covariance (optional) ----
+                if store_raw_covariance:
+                    gmt.create_dataset(
+                        ds_name,
+                        data=M_arr,
+                        compression="gzip",
+                        shuffle=True,
+                    )
+
+                # ---- Cholesky factor (always stored) ----
+                result = cached.get(mt, {}).get(mt1, None)
+                if result is None:
+                    result = compute_cholesky_factor(
+                        M_arr, tol=eig_tol, regularization=regularization,
+                    )
+
+                ds = gmt_chol.create_dataset(
+                    ds_name,
+                    data=result.L,
                     compression="gzip",
                     shuffle=True,
                 )
 
-                # Use cached L if available, otherwise compute
-                L = chol.get(mt, {}).get(mt1, None)
-                if L is None:
-                    L = _compute_cholesky_factor(M_arr)
-                gmt_chol.create_dataset(
-                    str(int(mt1)),
-                    data=np.asarray(L, dtype=np.float64),
-                    compression="gzip",
-                    shuffle=True,
-                )
-
-    @classmethod
-    def from_hdf5(cls, filename: str | Path, name: Optional[str] = None) -> "NeutronXSCovariances":
-        """Read covariances back from an HDF5 file.
-
-        Supports two layouts:
-        - **standalone** file written by :meth:`to_hdf5` (``mf33`` group
-          at root)
-        - **embedded** inside an OpenMC incident-neutron file
-          (``<nuclide>/covariance/mf33``)
-        """
-        import h5py
-
-        filename = Path(filename)
-        with h5py.File(filename, "r") as f:
-            mf33 = cls._find_mf33_group(f)
-            return cls._read_mf33_group(mf33, name=name or filename.stem)
-
-    @staticmethod
-    def _find_mf33_group(f) -> "h5py.Group":
-        """Locate the ``mf33`` group regardless of nesting depth."""
-        # Standalone file: /mf33
-        if "mf33" in f:
-            return f["mf33"]
-        # Embedded: /<nuclide>/covariance/mf33
-        for key in f:
-            g = f[key]
-            if isinstance(g, type(f)) and "covariance" in g:  # h5py.Group
-                cov = g["covariance"]
-                if "mf33" in cov:
-                    return cov["mf33"]
-        raise KeyError("No mf33 group found in HDF5 file.")
-
-    @classmethod
-    def _read_mf33_group(cls, mf33, *, name: str = "") -> "NeutronXSCovariances":
-        """Build an instance from an ``mf33`` h5py.Group."""
-        mat_val = mf33.attrs.get("mat", None)
-        temp_val = mf33.attrs.get("temperature_k", None)
-
-        ek = np.asarray(mf33["energy_grid_ev"][...], dtype=np.float64)
-
-        reactions: Dict[int, Dict[str, Any]] = {}
-        greact = mf33["reactions"]
-        for mt_str, gmt in greact.items():
-            mt = int(mt_str)
-            covs: Dict[int, np.ndarray] = {}
-            for mt1_str, ds in gmt.items():
-                covs[int(mt1_str)] = np.asarray(ds[...], dtype=np.float64)
-
-            reactions[mt] = {
-                "MAT": int(mat_val) if mat_val is not None else 0,
-                "MF": 33,
-                "MT": mt,
-                "ZA": float(gmt.attrs.get("ZA", 0.0)),
-                "AWR": float(gmt.attrs.get("AWR", 0.0)),
-                "COVS": covs,
-            }
-
-        # Read pre-computed Cholesky factors if present
-        chol: Optional[Dict[int, Dict[int, np.ndarray]]] = None
-        if "cholesky" in mf33:
-            chol = {}
-            for mt_str, gmt_chol in mf33["cholesky"].items():
-                mt = int(mt_str)
-                chol[mt] = {}
-                for mt1_str, ds in gmt_chol.items():
-                    chol[mt][int(mt1_str)] = np.asarray(ds[...], dtype=np.float64)
-
-        return cls(
-            name=str(name),
-            energy_grid_ev=ek,
-            reactions=reactions,
-            mat=int(mat_val) if mat_val is not None else None,
-            temperature_k=float(temp_val) if temp_val is not None else None,
-            cholesky_factors=chol,
-        )
+                # Diagnostic metadata
+                ds.attrs["effective_rank"] = result.effective_rank
+                ds.attrs["full_size"] = result.full_size
+                ds.attrs["method"] = np.bytes_(result.method)
+                ds.attrs["condition_number"] = result.condition_number
+                ds.attrs["negative_eig_mass"] = result.negative_eig_mass
+                ds.attrs["negative_eig_mass_pct"] = result.negative_eig_mass_pct
+                ds.attrs["regularization"] = result.regularization_applied
+                ds.attrs["nz_indices"] = result.nonzero_variance_indices

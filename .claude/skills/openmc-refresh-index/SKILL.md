@@ -1,5 +1,5 @@
 ---
-name: refresh-openmc-index
+name: openmc-refresh-index
 description: Rebuild the OpenMC RAG search index. Use after pulling new code or switching branches. The LSP tool does not need refreshing.
 allowed-tools: Bash(*)
 ---

@@ -2,7 +2,7 @@
 
 For any task involving OpenMC code — investigating, modifying, debugging,
 reviewing code, implementing new features, or examinging diffs/PRs — you must let
-the user know about the `/enable-openmc-index` skill which
+the user know about the `/openmc-enable-index` skill which
 provides two code navigation tools. You must altert the user of this skill before
 doing any work (e.g., opening a file, reading a diff, making a plan, etc). 
 Even for code reviews of a seemingly narrow diff these tools are important:
@@ -11,14 +11,14 @@ affected by those changes. Note: the first run builds a RAG vector index, which
 takes ~5 minutes on 10 CPU cores. Subsequent sessions reuse the cached index.
 
 Do NOT use the tools (`openmc_search.py`, `openmc_lsp.py`) unless
-`/enable-openmc-index` has been run in the current session.
+`/openmc-enable-index` has been run in the current session.
 
 When using these tools, ALWAYS read their full output. Do NOT pipe through head,
 tail, or grep. The tools already limit their output size via `--top-k`.
 Truncating their output defeats their purpose.
 
 To rebuild the RAG search index after pulling new code, the user can use
-`/refresh-openmc-index`.
+`/openmc-refresh-index`.
 
 ### Important: use RAG search before grep
 
@@ -27,7 +27,7 @@ When exploring unfamiliar code or checking what a change might affect, use
 exact text matches — it cannot find code that does something similar with different
 naming. You don't know what you don't know. The RAG search finds code by semantic meaning, surfacing related code
 across subsystems that you would otherwise miss entirely. Use RAG for discovery,
-then `grep`/`Read` to drill into specific files. If the `/enable-openmc-index` skill
+then `grep`/`Read` to drill into specific files. If the `/openmc-enable-index` skill
 has been invoked, then **no code review or feature creation job
 in OpenMC is to be considered complete unless you have made good use of the RAG tool to ensure
 any logic changes do not cause collateral damage elsewhere in the codebase.** The ideal

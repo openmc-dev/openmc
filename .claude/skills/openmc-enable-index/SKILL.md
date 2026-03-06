@@ -1,5 +1,5 @@
 ---
-name: enable-openmc-index
+name: openmc-enable-index
 description: Enable the OpenMC codebase tools for this session. Provides semantic code search and LSP-based C++ code navigation.
 allowed-tools: Bash(*), Read
 ---

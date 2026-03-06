@@ -28,7 +28,6 @@ from openmc.data.data import _get_element_symbol, JOULE_PER_EV
 from openmc.data.function import Tabulated1D
 from openmc.data import mass_energy_absorption_coefficient, dose_coefficients
 
-
 # Units for density supported by OpenMC
 DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro')
@@ -338,7 +337,8 @@ class Material(IDManagerMixin):
         units: str = 'Bq',
         volume: float | None = None,
         exclude_nuclides: list[str] | None = None,
-        include_nuclides: list[str] | None = None
+        include_nuclides: list[str] | None = None,
+        chain: Chain | None = None,
     ) -> Univariate | None:
         r"""Return energy distribution of decay photons from unstable nuclides.
 
@@ -359,6 +359,8 @@ class Material(IDManagerMixin):
         include_nuclides : list of str, optional
             Nuclides to include in the photon source calculation. If specified,
             only these nuclides are used.
+        chain : Chain, optional.
+            Chain file to get decay energy from
 
         Returns
         -------
@@ -367,7 +369,9 @@ class Material(IDManagerMixin):
             the total intensity of the photon source in the requested units.
 
         """
+        from openmc.deplete import Chain
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
+        cv.check_type('chain', chain, Chain, none_ok=True)
 
         if exclude_nuclides is not None and include_nuclides is not None:
             raise ValueError("Cannot specify both exclude_nuclides and include_nuclides")
@@ -391,7 +395,7 @@ class Material(IDManagerMixin):
             if include_nuclides is not None and nuc not in include_nuclides:
                 continue
 
-            source_per_atom = openmc.data.decay_photon_energy(nuc)
+            source_per_atom = openmc.data.decay_photon_energy(nuc, chain=chain)
             if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)

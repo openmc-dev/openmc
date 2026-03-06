@@ -186,7 +186,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
         p.r() = {uniform_distribution(lower_left_.x, upper_right_.x, &seed),
           uniform_distribution(lower_left_.y, upper_right_.y, &seed),
           uniform_distribution(lower_left_.z, upper_right_.z, &seed)};
-        constexpr double sqrt3_1 = 1. / std::sqrt(3.);
+        const double sqrt3_1 = 1. / std::sqrt(3.);
         p.u() = {sqrt3_1, sqrt3_1, sqrt3_1};
 
         // TO REVIEWER: THE SWITCH IS TRANSFERED TO score_hit()

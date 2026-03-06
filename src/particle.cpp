@@ -213,7 +213,8 @@ void Particle::event_calculate_xs()
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
       if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
-          density_mult() != density_mult_last() || E() != macro_xs().last_E) {
+          density_mult() != density_mult_last() || E() != macro_xs().last_E ||
+          true) {
         // If the material is the same as the last material and the
         // energy and temperature hasn't changed, we don't need to lookup cross
         // sections again.
@@ -296,10 +297,6 @@ void Particle::event_advance()
 void Particle::event_cross_surface()
 {
 
-  // Saving previous cell data
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
   n_coord_last() = n_coord();
 
   // Set surface that particle is on and adjust coordinate levels
@@ -312,6 +309,11 @@ void Particle::event_cross_surface()
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
+
+    // Saving previous cell data
+    for (int j = 0; j < n_coord(); ++j) {
+      cell_last(j) = coord(j).cell();
+    }
 
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
@@ -584,6 +586,11 @@ void Particle::cross_surface(const Surface& surf)
       settings::run_mode != RunMode::VOLUME) {
     surf.bc_->handle_particle(*this, surf);
     return;
+  }
+
+  // Saving previous cell data
+  for (int j = 0; j < n_coord(); ++j) {
+    cell_last(j) = coord(j).cell();
   }
 
   // ==========================================================================

@@ -174,6 +174,11 @@ void Particle::event_calculate_xs()
   r_last() = r();
   time_last() = time();
 
+  // Reset event variables
+  event() = TallyEvent::KILL;
+  event_nuclide() = NUCLIDE_NONE;
+  event_mt() = REACTION_NONE;
+
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
@@ -187,18 +192,16 @@ void Particle::event_calculate_xs()
     // Set birth cell attribute
     if (cell_born() == C_NONE)
       cell_born() = lowest_coord().cell();
-  }
 
-  // Initialize last cells from current cell
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
-  n_coord_last() = n_coord();
+    // Initialize last cells from current cell
+    for (int j = 0; j < n_coord(); ++j) {
+      cell_last(j) = coord(j).cell();
+    }
+    n_coord_last() = n_coord();
 
-  // Reset event variables
-  event() = TallyEvent::KILL;
-  event_nuclide() = NUCLIDE_NONE;
-  event_mt() = REACTION_NONE;
+    // Initialize last material from current material
+    material_last() = material();
+  }
 
   // Write particle track.
   if (write_track())
@@ -232,9 +235,6 @@ void Particle::event_calculate_xs()
     macro_xs().fission = 0.0;
     macro_xs().nu_fission = 0.0;
   }
-
-  // Initialize last material from current material
-  material_last() = material();
 }
 
 void Particle::event_advance()
@@ -424,6 +424,15 @@ void Particle::event_collide()
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty())
     score_collision_derivative(*this);
+
+  // Saving previous cell data
+  for (int j = 0; j < n_coord(); ++j) {
+    cell_last(j) = coord(j).cell();
+  }
+  n_coord_last() = n_coord();
+
+  // Saving previous material data
+  material_last() = material();
 
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();

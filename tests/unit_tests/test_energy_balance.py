@@ -1,5 +1,6 @@
 import openmc
 import pytest
+import numpy as np
 
 
 @pytest.fixture
@@ -41,6 +42,31 @@ def two_cell_model():
 
     return model, xmid, cell1, cell2, m1, m2
 
+@pytest.fixture
+def two_sphere_model():
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    mat = openmc.Material()
+    mat.add_nuclide('H2', 1.0)
+    mat.set_density('g/cm3', 1.0)
+
+    surf1 = openmc.Sphere(r=0.01)
+    surf2 = openmc.Sphere(r=1000, boundary_type='vacuum')
+    cell1 = openmc.Cell(region=-surf1)
+    cell2 = openmc.Cell(fill=mat, region=+surf1 & -surf2)
+
+    model.geometry = openmc.Geometry([cell1, cell2])
+
+    src = openmc.IndependentSource()
+    src.energy = openmc.stats.Discrete([1e6],[1.0])
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 1
+    model.settings.particles = 1000
+    model.settings.source = src
+
+    return model, cell1, cell2
 
 def test_energy_balance_simple(two_cell_model, run_in_tmpdir):
     model, xmid, cell1, cell2, *_  = two_cell_model
@@ -103,3 +129,18 @@ def test_current_conservation(two_cell_model, run_in_tmpdir):
     assert tally2.mean[0] == pytest.approx(tally4.mean[0])
 
     assert tally3.mean[0] == pytest.approx(tally5.mean[0])
+
+def test_cellfrom_heating(run_in_tmpdir, two_sphere_model):
+
+    model, cell1, cell2 = two_sphere_model
+
+    tally = openmc.Tally()
+    tally.scores = ['heating']
+    tally.filters = [openmc.CellFromFilter([cell1, cell2]), openmc.CellFilter([cell2])]
+
+    model.tallies = [tally]
+
+    model.run(apply_tally_results=True)
+
+    assert np.all(tally.mean > 0)
+    

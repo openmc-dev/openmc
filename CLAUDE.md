@@ -25,11 +25,11 @@ To rebuild the RAG search index after pulling new code, the user can use
 When exploring unfamiliar code or checking what a change might affect, use
 `openmc_search.py` **before** reaching for `grep` or `Glob`. `grep` only finds
 exact text matches — it cannot find code that does something similar with different
-naming. The RAG search finds code by semantic meaning, surfacing related code
+naming. You don't know what you don't know. The RAG search finds code by semantic meaning, surfacing related code
 across subsystems that you would otherwise miss entirely. Use RAG for discovery,
 then `grep`/`Read` to drill into specific files. If the `/enable-openmc-index` skill
 has been invoked, then **no code review or feature creation job
-in OpenMC is be considered complete unless you have made good use of the RAG tool to ensure
+in OpenMC is to be considered complete unless you have made good use of the RAG tool to ensure
 any logic changes do not cause collateral damage elsewhere in the codebase.** The ideal
 time for calling it is before you begin to make changes or start zooming in on small local details.
 Thinking up a few RAG queries before starting analysis/editing work in each area

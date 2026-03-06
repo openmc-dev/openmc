@@ -199,7 +199,7 @@ void Particle::event_calculate_xs()
     }
     n_coord_last() = n_coord();
 
-    if (material_last() != C_NONE)
+    if (material_last() != MATERIAL_UNSET)
       material_last() = material();
   }
 
@@ -237,7 +237,7 @@ void Particle::event_calculate_xs()
   }
 
   // Initialize last material from current material
-  if (material_last() == C_NONE)
+  if (material_last() == MATERIAL_UNSET)
     material_last() = material();
 }
 
@@ -407,10 +407,6 @@ void Particle::event_collide()
   // Save coordinates for tallying purposes
   r_last_current() = r();
 
-  // Set last material to none since cross sections will need to be
-  // re-evaluated
-  material_last() = C_NONE;
-
   // Set all directions to base level -- right now, after a collision, only
   // the base level directions are changed
   for (int j = 0; j < n_coord() - 1; ++j) {
@@ -434,6 +430,10 @@ void Particle::event_collide()
     cell_last(j) = coord(j).cell();
   }
   n_coord_last() = n_coord();
+
+  // Set last material to unset since cross sections will need to be
+  // re-evaluated
+  material_last() = MATERIAL_UNSET;
 
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();

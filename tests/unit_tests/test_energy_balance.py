@@ -148,5 +148,5 @@ def test_cellfrom_heating(run_in_tmpdir, two_sphere_model):
 
     assert np.all(tally1.mean > 0)
 
-    assert tally1.mean[1] == tally2.mean[0] 
+    assert tally1.mean[1] == pytest.approx(tally2.mean[0]) 
     

@@ -69,7 +69,6 @@ def format_results(results, label=""):
         start = r["start_line"]
         end = r["end_line"]
         kind = r["kind"]
-        symbol = r["symbol"]
         dist = r.get("_distance", 0)
 
         header = f"[{i}] {filepath}:{start}-{end} ({kind}, dist={dist:.3f})"

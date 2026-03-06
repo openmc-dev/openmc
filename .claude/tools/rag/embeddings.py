@@ -5,10 +5,7 @@ Requires: pip install sentence-transformers
 
 import os
 
-# Official HuggingFace/transformers knobs for quiet operation.
-# TRANSFORMERS_VERBOSITY: controls transformers' own logging (load reports, etc.)
-# HF_HUB_DISABLE_TELEMETRY: don't phone home
-# TOKENIZERS_PARALLELISM: avoids fork-safety warning
+# Suppress noisy HuggingFace/transformers output.
 # All must be set before importing transformers.
 os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
 os.environ.setdefault("HF_HUB_VERBOSITY", "error")

@@ -33,7 +33,6 @@ def chunk_file(filepath, openmc_root):
         return []
 
     kind = _file_kind(filepath)
-    lines = content.split("\n")
 
     # Build a char-offset → line-number map
     line_starts = []

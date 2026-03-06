@@ -16,7 +16,6 @@
 
 #include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
 
 namespace openmc {
 

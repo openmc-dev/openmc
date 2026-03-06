@@ -295,6 +295,13 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
+
+  // Saving previous cell data
+  for (int j = 0; j < n_coord(); ++j) {
+    cell_last(j) = coord(j).cell();
+  }
+  n_coord_last() = n_coord();
+
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
@@ -305,12 +312,6 @@ void Particle::event_cross_surface()
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
-
-    // Saving previous cell data
-    for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell();
-    }
-    n_coord_last() = n_coord();
 
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);

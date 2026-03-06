@@ -747,15 +747,6 @@ class Cell(IDManagerMixin):
             c.region = Region.from_expression(region, surfaces)
 
         # Check for other attributes
-        temperature = get_elem_list(elem, 'temperature', float)
-        if temperature is not None:
-            if len(temperature) > 1:
-                c.temperature = temperature
-            else:
-                c.temperature = temperature[0]
-        density = get_elem_list(elem, 'density', float)
-        if density is not None:
-            c.density = density if len(density) > 1 else density[0]
         v = get_text(elem, 'volume')
         if v is not None:
             c.volume = float(v)
@@ -764,6 +755,8 @@ class Cell(IDManagerMixin):
             if values is not None:
                 if key == 'rotation' and len(values) == 9:
                     values = np.array(values).reshape(3, 3)
+                elif len(values) == 1:
+                    values = values[0]
                 setattr(c, key, values)
 
         # Add this cell to appropriate universe

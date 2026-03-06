@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import openmc
+import openmc.lib
 from . import IndependentOperator, PredictorIntegrator
 from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
 from .pool import _distribute
@@ -517,10 +518,12 @@ class R2SManager:
         if different_photon_model:
             photon_cells = self.photon_model.geometry.get_all_cells()
 
-        # For cell-based calculations, pre-compute and distribute the eligible
-        # (cell, original_mat) pairs across MPI ranks once, outside the time
-        # loop, since the eligibility check doesn't depend on time.
-        if self.method == 'cell-based':
+        # Determine eligible work items upfront. For cell-based calculations,
+        # pre-compute the eligible (cell, original_mat) pairs since the
+        # eligibility check doesn't depend on time.
+        if self.method == 'mesh-based':
+            work_items = self._get_mesh_work_items()
+        else:
             _domain_pairs = []
             for cell, original_mat in zip(
                     self.domains, self.results['activation_materials']):
@@ -529,45 +532,11 @@ class R2SManager:
                             cell.fill.id != photon_cells[cell.id].fill.id:
                         continue
                 _domain_pairs.append((cell, original_mat))
-            _my_domain_pairs = _distribute(_domain_pairs)
+
+        # Ensure photon transport is enabled in settings
+        self.photon_model.settings.photon_transport = True
 
         for time_index in time_indices:
-            # Create decay photon source
-            if self.method == 'mesh-based':
-                self.photon_model.settings.source = \
-                    self.get_decay_photon_source_mesh(time_index)
-            else:
-                results = self.results['depletion_results']
-
-                # Build sources for this rank's assigned cells
-                local_sources = []
-                for cell, original_mat in _my_domain_pairs:
-                    # Get bounding box for the cell
-                    bounding_box = bounding_boxes[cell.id]
-
-                    # Get activated material composition
-                    activated_mat = results[time_index].get_material(
-                        str(original_mat.id))
-
-                    # Create decay photon source
-                    space = openmc.stats.Box(*bounding_box)
-                    energy = activated_mat.get_decay_photon_energy()
-                    strength = energy.integral() if energy is not None else 0.0
-                    source = openmc.IndependentSource(
-                        space=space,
-                        energy=energy,
-                        particle='photon',
-                        strength=strength,
-                        constraints={'domains': [cell]}
-                    )
-                    local_sources.append(source)
-
-                # Gather sources from all ranks and flatten into a single list
-                all_sources = comm.allgather(local_sources)
-                self.photon_model.settings.source = [
-                    s for rank_sources in all_sources for s in rank_sources
-                ]
-
             # Convert time_index (which may be negative) to a normal index
             if time_index < 0:
                 time_index = len(self.results['depletion_results']) + time_index
@@ -575,6 +544,13 @@ class R2SManager:
             # Run photon transport calculation
             photon_dir = Path(output_dir) / f'time_{time_index}'
             with TemporarySession(self.photon_model, cwd=photon_dir):
+                # Create decay photon sources in C++ memory
+                if self.method == 'mesh-based':
+                    self._create_cpp_sources_mesh(time_index, work_items)
+                else:
+                    self._create_cpp_sources_cells(
+                        time_index, bounding_boxes, _domain_pairs)
+
                 statepoint_path = self.photon_model.run(**run_kwargs)
 
             # Store tally results
@@ -680,6 +656,148 @@ class R2SManager:
         # Phase 4: Gather sources from all ranks and return the complete list
         all_sources = comm.allgather(local_sources)
         return [s for rank_sources in all_sources for s in rank_sources]
+
+    def _get_mesh_work_items(self):
+        """Enumerate mesh-based work items across all meshes.
+
+        Returns a list of (index_mat, mat_id, bbox) tuples for each eligible
+        mesh element--material combination. This is the same enumeration used
+        by :meth:`get_decay_photon_source_mesh` but separated out so it can be
+        called once outside the time loop.
+
+        Returns
+        -------
+        list of tuple
+            Each tuple is (index_mat, mat_id, bbox).
+        """
+        mmv_list = self.results['mesh_material_volumes']
+        photon_mmv_list = self.results.get('mesh_material_volumes_photon')
+
+        work_items = []
+        index_mat = 0
+        for mesh_idx, mat_vols in enumerate(mmv_list):
+            photon_mat_vols = photon_mmv_list[mesh_idx] \
+                if photon_mmv_list is not None else None
+
+            n_elements = mat_vols.num_elements
+            for index_elem in range(n_elements):
+                if photon_mat_vols is not None:
+                    photon_materials = {
+                        mat_id
+                        for mat_id, _ in photon_mat_vols.by_element(index_elem)
+                        if mat_id is not None
+                    }
+
+                for mat_id, _, bbox in mat_vols.by_element(
+                        index_elem, include_bboxes=True):
+                    if mat_id is None:
+                        continue
+                    if photon_mat_vols is not None \
+                            and mat_id not in photon_materials:
+                        index_mat += 1
+                        continue
+                    work_items.append((index_mat, mat_id, bbox))
+                    index_mat += 1
+
+        return work_items
+
+    def _get_region_data(self, time_index, work_items, domain_type):
+        """Extract region data as flat numpy arrays for C++ source creation.
+
+        Parameters
+        ----------
+        time_index : int
+            Index into depletion results for the desired time.
+        work_items : list of tuple
+            For mesh-based: list of (index_mat, mat_id, bbox).
+            For cell-based: list of (cell, original_mat, bbox).
+        domain_type : str
+            Either ``'material'`` or ``'cell'``.
+
+        Returns
+        -------
+        domain_ids : numpy.ndarray of int32
+        lower_left : numpy.ndarray of float64, shape (n, 3)
+        upper_right : numpy.ndarray of float64, shape (n, 3)
+        nuclide_names : list of str
+        atom_densities : numpy.ndarray of float64, shape (n, n_nuclides)
+        volumes : numpy.ndarray of float64, shape (n,)
+        """
+        step_result = self.results['depletion_results'][time_index]
+        materials = self.results['activation_materials']
+
+        nuclide_names = list(step_result.index_nuc.keys())
+        n_nuclides = len(nuclide_names)
+        n_regions = len(work_items)
+
+        domain_ids = np.empty(n_regions, dtype=np.int32)
+        lower_left = np.empty((n_regions, 3), dtype=np.float64)
+        upper_right = np.empty((n_regions, 3), dtype=np.float64)
+        atom_densities = np.empty((n_regions, n_nuclides), dtype=np.float64)
+        volumes_arr = np.empty(n_regions, dtype=np.float64)
+
+        for i, item in enumerate(work_items):
+            if domain_type == 'material':
+                index_mat, mat_id, bbox = item
+                domain_ids[i] = mat_id
+                original_mat = materials[index_mat]
+                mat_key = str(original_mat.id)
+                vol = step_result.volume[mat_key]
+            else:
+                cell, original_mat, bbox = item
+                domain_ids[i] = cell.id
+                mat_key = str(original_mat.id)
+                vol = step_result.volume[mat_key]
+
+            lower_left[i] = bbox[0]
+            upper_right[i] = bbox[1]
+            volumes_arr[i] = vol
+
+            # Get atom counts for this material and convert to atom/b-cm
+            mat_idx = step_result.index_mat[mat_key]
+            atom_counts = step_result.data[mat_idx, :]
+            atom_densities[i, :] = atom_counts / vol * 1e-24
+
+        return (domain_ids, lower_left, upper_right, nuclide_names,
+                atom_densities, volumes_arr)
+
+    def _create_cpp_sources_mesh(self, time_index, work_items):
+        """Create decay photon sources in C++ for mesh-based calculations.
+
+        Parameters
+        ----------
+        time_index : int
+            Index into depletion results.
+        work_items : list of tuple
+            List of (index_mat, mat_id, bbox) from :meth:`_get_mesh_work_items`.
+        """
+        domain_ids, ll, ur, nuc_names, densities, vols = \
+            self._get_region_data(time_index, work_items, 'material')
+        openmc.lib.create_decay_photon_sources(
+            domain_ids, 'material', ll, ur, nuc_names, densities, vols)
+
+    def _create_cpp_sources_cells(self, time_index, bounding_boxes,
+                                  domain_pairs):
+        """Create decay photon sources in C++ for cell-based calculations.
+
+        Parameters
+        ----------
+        time_index : int
+            Index into depletion results.
+        bounding_boxes : dict
+            Mapping of cell ID to :class:`~openmc.BoundingBox`.
+        domain_pairs : list of tuple
+            List of (cell, original_mat) pairs.
+        """
+        # Build work items with bounding boxes
+        work_items = [
+            (cell, original_mat, bounding_boxes[cell.id])
+            for cell, original_mat in domain_pairs
+        ]
+        domain_ids, ll, ur, nuc_names, densities, vols = \
+            self._get_region_data(time_index, work_items, 'cell')
+        openmc.lib.create_decay_photon_sources(
+            domain_ids, 'cell', ll, ur, nuc_names, densities, vols)
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

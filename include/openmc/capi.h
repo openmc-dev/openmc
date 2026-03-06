@@ -320,6 +320,26 @@ int openmc_properties_export(const char* filename);
 // \return Error code
 int openmc_properties_import(const char* filename);
 
+//! Create decay photon sources for R2S calculations
+//!
+//! Clears existing external sources and creates IndependentSource objects
+//! for each spatial region based on the activated nuclide compositions.
+//!
+//! \param n_regions Number of spatial regions
+//! \param domain_ids Material or cell IDs for constraints [n_regions]
+//! \param domain_type "material" or "cell"
+//! \param lower_left Flattened lower-left bbox corners [n_regions * 3]
+//! \param upper_right Flattened upper-right bbox corners [n_regions * 3]
+//! \param n_nuclides Number of nuclides
+//! \param nuclide_names Nuclide name strings [n_nuclides]
+//! \param atom_densities Atom densities [n_regions * n_nuclides] row-major
+//! \param volumes Region volumes in cm^3 [n_regions]
+//! \return Error code (0 on success)
+int openmc_create_decay_photon_sources(int n_regions, const int32_t* domain_ids,
+  const char* domain_type, const double* lower_left, const double* upper_right,
+  int n_nuclides, const char** nuclide_names, const double* atom_densities,
+  const double* volumes);
+
 // Error codes
 extern int OPENMC_E_UNASSIGNED;
 extern int OPENMC_E_ALLOCATE;

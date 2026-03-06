@@ -73,6 +73,16 @@ public:
   // Methods that can be overridden
   virtual double strength() const { return strength_; }
 
+  //! Set the source strength
+  void set_strength(double strength) { strength_ = strength; }
+
+  //! Set the domain type and IDs for source constraints
+  void set_domain(DomainType domain_type, std::unordered_set<int32_t> ids)
+  {
+    domain_type_ = domain_type;
+    domain_ids_ = std::move(ids);
+  }
+
   //! Sample a source site and apply constraints
   //
   //! \param[inout] seed Pseudorandom seed pointer
@@ -137,6 +147,9 @@ public:
 
   // Properties
   ParticleType particle_type() const { return particle_; }
+
+  //! Set the particle type
+  void set_particle(ParticleType p) { particle_ = p; }
 
   // Make observing pointers available
   SpatialDistribution* space() const { return space_.get(); }

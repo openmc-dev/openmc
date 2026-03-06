@@ -112,6 +112,19 @@ _dll.openmc_global_bounding_box.errcheck = _error_handler
 _dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
+_dll.openmc_create_decay_photon_sources.argtypes = [
+    c_int,                 # n_regions
+    POINTER(c_int32),      # domain_ids
+    c_char_p,              # domain_type
+    POINTER(c_double),     # lower_left
+    POINTER(c_double),     # upper_right
+    c_int,                 # n_nuclides
+    POINTER(c_char_p),     # nuclide_names
+    POINTER(c_double),     # atom_densities
+    POINTER(c_double),     # volumes
+]
+_dll.openmc_create_decay_photon_sources.restype = c_int
+_dll.openmc_create_decay_photon_sources.errcheck = _error_handler
 
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
@@ -490,6 +503,70 @@ def run_random_ray(output=True):
 
     with quiet_dll(output):
         _dll.openmc_run_random_ray()
+
+def create_decay_photon_sources(
+    domain_ids: np.ndarray,
+    domain_type: str,
+    lower_left: np.ndarray,
+    upper_right: np.ndarray,
+    nuclide_names: list[str],
+    atom_densities: np.ndarray,
+    volumes: np.ndarray,
+):
+    """Create decay photon sources from activated material compositions.
+
+    This populates the internal external source bank with
+    :class:`~openmc.IndependentSource` objects for each activated region with
+    non-zero photon emission. Existing external sources are cleared before the
+    new sources are created.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    domain_ids : numpy.ndarray of int32
+        Material or cell IDs for source domain constraints, shape (n_regions,).
+    domain_type : str
+        Either "material" or "cell".
+    lower_left : numpy.ndarray of float64
+        Lower-left bounding box corners, shape (n_regions, 3).
+    upper_right : numpy.ndarray of float64
+        Upper-right bounding box corners, shape (n_regions, 3).
+    nuclide_names : list of str
+        Names of nuclides in the atom density matrix.
+    atom_densities : numpy.ndarray of float64
+        Atom densities in [atom/b-cm], shape (n_regions, n_nuclides).
+    volumes : numpy.ndarray of float64
+        Volume of each region in [cm^3], shape (n_regions,).
+
+    """
+    n_regions = len(domain_ids)
+    n_nuclides = len(nuclide_names)
+
+    # Ensure arrays are contiguous with correct dtype
+    domain_ids = np.ascontiguousarray(domain_ids, dtype=np.int32)
+    lower_left = np.ascontiguousarray(lower_left.ravel(), dtype=np.float64)
+    upper_right = np.ascontiguousarray(upper_right.ravel(), dtype=np.float64)
+    atom_densities = np.ascontiguousarray(atom_densities.ravel(), dtype=np.float64)
+    volumes = np.ascontiguousarray(volumes, dtype=np.float64)
+
+    # Convert nuclide names to array of c_char_p
+    names_arr = (c_char_p * n_nuclides)(
+        *(name.encode() for name in nuclide_names)
+    )
+
+    _dll.openmc_create_decay_photon_sources(
+        n_regions,
+        domain_ids.ctypes.data_as(POINTER(c_int32)),
+        domain_type.encode(),
+        lower_left.ctypes.data_as(POINTER(c_double)),
+        upper_right.ctypes.data_as(POINTER(c_double)),
+        n_nuclides,
+        names_arr,
+        atom_densities.ctypes.data_as(POINTER(c_double)),
+        volumes.ctypes.data_as(POINTER(c_double)),
+    )
+
 
 def sample_external_source(
         n_samples: int = 1000,

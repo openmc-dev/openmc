@@ -182,6 +182,7 @@ void Particle::event_calculate_xs()
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
+  bool update_mat = false;
   if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
@@ -199,8 +200,7 @@ void Particle::event_calculate_xs()
     }
     n_coord_last() = n_coord();
 
-    // Initialize last material from current material
-    material_last() = material();
+    update_mat = true;
   }
 
   // Write particle track.
@@ -235,6 +235,10 @@ void Particle::event_calculate_xs()
     macro_xs().fission = 0.0;
     macro_xs().nu_fission = 0.0;
   }
+
+  // Initialize last material from current material
+  if (update_mat)
+    material_last() = material();
 }
 
 void Particle::event_advance()
@@ -430,9 +434,6 @@ void Particle::event_collide()
     cell_last(j) = coord(j).cell();
   }
   n_coord_last() = n_coord();
-
-  // Saving previous material data
-  material_last() = material();
 
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();

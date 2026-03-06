@@ -1,70 +1,89 @@
 ## OpenMC Codebase Tools
 
-For any task involving OpenMC code — investigating, modifying, debugging,
-reviewing code, implementing new features, or examining diffs/PRs — you must let
-the user know about the `/openmc-enable-index` skill which
-provides two code navigation tools. You must alert the user of this skill before
-doing any work (e.g., opening a file, reading a diff, making a plan, etc). 
-Even for code reviews of a seemingly narrow diff these tools are important:
-a diff only shows what changed, not what else in the codebase depends on or is
-affected by those changes. Note: the first run builds a RAG vector index, which
-takes ~5 minutes on 10 CPU cores. Subsequent sessions reuse the cached index.
+Three MCP tools are available for navigating the OpenMC codebase. They are
+registered in `.mcp.json` and appear automatically in every session.
 
-Do NOT use the tools (`openmc_search.py`, `openmc_lsp.py`) unless
-`/openmc-enable-index` has been run in the current session.
+### Tool overview
 
-When using these tools, ALWAYS read their full output. Do NOT pipe through head,
-tail, or grep. The tools already limit their output size via `--top-k`.
-Truncating their output defeats their purpose.
+**`openmc_rag_search`** — Semantic search across the codebase (C++, Python, RST
+docs). Finds code by meaning, not just text match. Surfaces related code across
+subsystems even when naming differs (e.g., "particle RNG seeding" finds code
+across transport, restart, and random ray modes — files you would never find
+with `grep "particle seed"`).
 
-To rebuild the RAG search index after pulling new code, the user can use
-`/openmc-refresh-index`.
+**`openmc_rag_rebuild`** — Rebuild the RAG vector index. Call after pulling new
+code or switching branches. The first RAG search of each session will report
+the index status and ask whether to rebuild — you can also call this explicitly.
+
+**`openmc_lsp_navigate`** — LSP navigation via clangd. Resolves C++ symbols
+through the real type system — namespaces, templates, overloads. Commands:
+`symbols`, `definition`, `references`, `related`. Zero false positives.
+Requires clangd and `build/compile_commands.json`.
 
 ### Important: use RAG search before grep
 
 When exploring unfamiliar code or checking what a change might affect, use
-`openmc_search.py` **before** reaching for `grep` or `Glob`. `grep` only finds
-exact text matches — it cannot find code that does something similar with different
-naming. You don't know what you don't know. The RAG search finds code by
-semantic meaning, surfacing related code across subsystems that you would
-otherwise miss entirely. Use RAG for discovery,
-then `grep`/`Read` to drill into specific files. If the `/openmc-enable-index` skill
-has been invoked, then **no code review or feature creation job
-in OpenMC is to be considered complete unless you have made good use of the RAG tool to ensure
-any logic changes do not cause collateral damage elsewhere in the codebase.** The ideal
-time for calling it is before you begin to make changes or start zooming in on small local details.
-Thinking up a few RAG queries before starting analysis/editing work in each area
-will greatly improve your global vision of the repository and help you to "know what you don't know".
+`openmc_rag_search` **before** reaching for `grep` or `Glob`. `grep` only finds
+exact text matches — it cannot find code that does something similar with
+different naming. You don't know what you don't know. The RAG search finds code
+by semantic meaning, surfacing related code across subsystems that you would
+otherwise miss entirely. Use RAG for discovery, then `grep`/`Read` to drill into
+specific files.
+
+**No code review or feature creation job in OpenMC is to be considered complete
+unless you have made good use of `openmc_rag_search` to ensure any logic changes
+do not cause collateral damage elsewhere in the codebase.** The ideal time for
+calling it is before you begin to make changes or start zooming in on small local
+details. Thinking up a few RAG queries before starting analysis/editing work in
+each area will greatly improve your global vision of the repository and help you
+to "know what you don't know".
 
 When you already know the exact symbol name and need to trace its usage (e.g.,
-"every line that writes to `progeny_per_particle`"), `grep` or the lsp navigation tool
-are better choices — you don't have to force a RAG search for precise symbol lookups.
+"every line that writes to `progeny_per_particle`"), `grep` or
+`openmc_lsp_navigate` are better choices — you don't have to force a RAG search
+for precise symbol lookups.
 
-### Tool details
+### When to use each tool
 
-**`openmc_search.py`** — RAG semantic search. The codebase (C++, Python, and
-RST docs) is chunked into overlapping fixed-size windows (~1000 chars, 25%
-overlap) so every line of code is searchable. Chunks are embedded with
-sentence-transformers and stored in a local LanceDB vector index. Your query is
-embedded the same way, and the closest chunks are returned with file paths, line
-numbers, and a code preview. Good for finding conceptually related code even
-when naming differs (e.g., "particle RNG seeding" finds code across transport,
-restart, and random ray modes). Returns `--top-k` results (default 10).
+- **`openmc_rag_search`**: "What code is conceptually related to X?" — broad
+  discovery by meaning, cross-cutting concerns, Python and docs. **Use this
+  before grep when exploring unfamiliar code or checking what a change might
+  affect.**
+- **`openmc_lsp_navigate`**: "Where is this C++ symbol defined, who calls it,
+  and what files are truly connected to this one?" — compiler-accurate file:line
+  locations, zero false positives. When a common method name like `reset`, `get`,
+  `size`, or `create` is used by multiple classes, `grep` gives you a haystack —
+  LSP gives you the needle.
+- **`grep`/`Glob`/`Read`**: Precise text match, unique string lookup, reading
+  specific files. Best when you know the exact symbol name.
 
-**`openmc_lsp.py`** — LSP navigation via clangd. Launches clangd as a subprocess
-and queries it via the Language Server Protocol. Because clangd uses the actual
-C++ compiler frontend (Clang), it resolves every symbol through the real type
-system — namespaces, templates, overloads, and all. Commands:
-- `symbols FILE` — list all symbols defined in a file with their types and lines
-- `definition FILE:LINE` — jump to where the symbol at that line is defined
-- `references FILE:LINE` — find every file and line that references that symbol
-- `related FILE` — for each symbol defined in the file, find all external
-  references, then rank other files by how many typed connections they share.
-  Returns `--top-k` files (default 15) with the connecting symbol names.
+### Why global awareness matters
 
-Zero false edges — if it says two files are connected, they genuinely share
-typed references. Requires clangd and `build/compile_commands.json` (automatically
-generated when OpenMC is built with cmake).
+An agent reviewed a large OpenMC PR using only diff, grep, and Read. It found
+1 of 11 serious bugs. Here is its own post-mortem:
+
+> **I treated the diff as a closed system.** I verified internal consistency of
+> the changed code obsessively, but never built a global understanding of how
+> the changed code fits into the wider codebase. The diff altered assumptions
+> that code elsewhere silently relied on — but I couldn't see that because I
+> never looked beyond the diff. I couldn't see the forest for the trees.
+>
+> **Why I resisted RAG:** Overconfidence. My internal model was "I can see the
+> diff, I understand the data structures, I can trace the logic." The diff felt
+> self-contained. RAG felt like it would return noisy results about tangentially
+> related code. But in a codebase this large, changes in one subsystem can
+> quietly break invariants that distant subsystems depend on — and you need
+> global awareness to foresee that.
+>
+> **In the post-mortem**, I re-ran the RAG queries I should have run during the
+> review. They directly surfaced the files containing the bugs I missed — files
+> I never thought to open because they weren't in the diff.
+
+The takeaway: **use RAG throughout your work to maintain global awareness.**
+Before diving into details, ask "what else in this codebase depends on the
+behavior being changed?" As you explore each area, keep querying to build your
+mental map of affected subsystems. The diff tells you *what* changed; RAG tells
+you *what else cares*.
 
 ## Additional OpenMC info
 

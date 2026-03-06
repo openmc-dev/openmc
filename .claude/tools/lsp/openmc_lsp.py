@@ -55,17 +55,15 @@ class ClangdClient:
     def __init__(self, compile_commands_dir=None):
         clangd = self._find_clangd()
         if not clangd:
-            print("ERROR: clangd not found. Install with: apt-get install clangd",
-                  file=sys.stderr)
-            sys.exit(1)
+            raise RuntimeError(
+                "clangd not found. Install with: apt-get install clangd")
 
         if not compile_commands_dir:
             compile_commands_dir = self._find_compile_commands()
         if not compile_commands_dir:
-            print("ERROR: compile_commands.json not found. Build OpenMC with "
-                  "cmake first (it generates this file automatically).",
-                  file=sys.stderr)
-            sys.exit(1)
+            raise RuntimeError(
+                "compile_commands.json not found. Build OpenMC with "
+                "cmake first (it generates this file automatically).")
 
         args = [clangd, '--compile-commands-dir=' + str(compile_commands_dir)]
         self.proc = subprocess.Popen(
@@ -248,12 +246,16 @@ def cmd_symbols(client, filepath):
     """List all symbols defined in a file."""
     symbols = client.get_symbols(filepath)
     flat = flatten_symbols(symbols)
+    if not flat:
+        return "No symbols found."
+    lines = []
     for sym, depth in flat:
         kind_name = SYMBOL_KINDS.get(sym['kind'], f"kind={sym['kind']}")
         start = get_symbol_range(sym)
         line = start['line']
         indent = "  " * depth
-        print(f"{indent}{kind_name}: {sym['name']} (line {line + 1})")
+        lines.append(f"{indent}{kind_name}: {sym['name']} (line {line + 1})")
+    return "\n".join(lines)
 
 
 def find_symbol_on_line(client, filepath, line_1based):
@@ -309,20 +311,20 @@ def cmd_definition(client, filepath, line, character=None):
     if character is None:
         character, _ = find_symbol_on_line(client, filepath, line)
         if character is None:
-            print("Could not determine symbol on that line.")
-            return
+            return "Could not determine symbol on that line."
 
     result = client.get_definition(filepath, line - 1, character)
     if not result:
-        print("No definition found.")
-        return
+        return "No definition found."
 
     if isinstance(result, dict):
         result = [result]
+    lines = []
     for loc in result:
         rel = uri_to_relpath(loc['uri'])
         ln = loc['range']['start']['line'] + 1
-        print(f"  {rel}:{ln}")
+        lines.append(f"  {rel}:{ln}")
+    return "\n".join(lines)
 
 
 def cmd_references(client, filepath, line, character=None):
@@ -330,13 +332,11 @@ def cmd_references(client, filepath, line, character=None):
     if character is None:
         character, _ = find_symbol_on_line(client, filepath, line)
         if character is None:
-            print("Could not determine symbol on that line.")
-            return
+            return "Could not determine symbol on that line."
 
     result = client.get_references(filepath, line - 1, character)
     if not result:
-        print("No references found.")
-        return
+        return "No references found."
 
     # Group by file
     by_file = defaultdict(list)
@@ -345,10 +345,11 @@ def cmd_references(client, filepath, line, character=None):
         ln = loc['range']['start']['line'] + 1
         by_file[rel].append(ln)
 
-    print(f"{len(result)} references across {len(by_file)} files:\n")
+    output = [f"{len(result)} references across {len(by_file)} files:\n"]
     for fpath, lines_list in sorted(by_file.items()):
         lines_str = ", ".join(str(l) for l in sorted(lines_list))
-        print(f"  {fpath}:{lines_str}")
+        output.append(f"  {fpath}:{lines_str}")
+    return "\n".join(output)
 
 
 def cmd_related(client, filepath, top_k=15):
@@ -365,8 +366,7 @@ def cmd_related(client, filepath, top_k=15):
     interesting = [(s, d) for s, d in flat if s['kind'] in interesting_kinds]
 
     if not interesting:
-        print("No interesting symbols found in file.")
-        return
+        return "No interesting symbols found in file."
 
     target_rel = filepath
     if Path(filepath).is_absolute():
@@ -374,9 +374,6 @@ def cmd_related(client, filepath, top_k=15):
 
     file_connections = Counter()  # file -> number of symbols referencing it
     symbol_details = defaultdict(set)  # file -> set of symbol names
-
-    print(f"Analyzing {len(interesting)} symbols in {target_rel}...\n",
-          file=sys.stderr)
 
     # Read the file so we can find exact symbol name positions
     fpath_obj = Path(filepath)
@@ -411,18 +408,18 @@ def cmd_related(client, filepath, top_k=15):
             symbol_details[rel].add(sym['name'])
 
     if not file_connections:
-        print("No external references found.")
-        return
+        return "No external references found."
 
-    print(f"Files related to {target_rel} "
-          f"(ranked by typed reference count):\n")
+    output = [f"Files related to {target_rel} "
+              f"(ranked by typed reference count):\n"]
     for fpath, count in file_connections.most_common(top_k):
         syms = sorted(symbol_details[fpath])
         sym_preview = ", ".join(syms[:5])
         if len(syms) > 5:
             sym_preview += f", ... (+{len(syms)-5} more)"
-        print(f"  [{count:3d} refs] {fpath}")
-        print(f"           via: {sym_preview}")
+        output.append(f"  [{count:3d} refs] {fpath}")
+        output.append(f"           via: {sym_preview}")
+    return "\n".join(output)
 
 
 def parse_file_location(location):
@@ -472,24 +469,29 @@ def main():
         print(f"ERROR: File not found: {filepath}", file=sys.stderr)
         sys.exit(1)
 
-    client = ClangdClient(compile_commands_dir=args.compile_commands_dir)
+    try:
+        client = ClangdClient(compile_commands_dir=args.compile_commands_dir)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
     try:
         if args.command == "symbols":
-            cmd_symbols(client, filepath)
+            print(cmd_symbols(client, filepath))
         elif args.command == "definition":
             if line is None:
                 print("ERROR: definition requires file:line format",
                       file=sys.stderr)
                 sys.exit(1)
-            cmd_definition(client, filepath, line)
+            print(cmd_definition(client, filepath, line))
         elif args.command == "references":
             if line is None:
                 print("ERROR: references requires file:line format",
                       file=sys.stderr)
                 sys.exit(1)
-            cmd_references(client, filepath, line)
+            print(cmd_references(client, filepath, line))
         elif args.command == "related":
-            cmd_related(client, filepath, top_k=args.top_k)
+            print(cmd_related(client, filepath, top_k=args.top_k))
     finally:
         client.close()
 

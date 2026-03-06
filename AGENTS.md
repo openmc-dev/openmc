@@ -40,7 +40,7 @@ OpenMC uses a git flow branching model with two primary branches:
 
 ### Instructions for Code Review
 
-When reviewing code changes in this repository, use the `reviewing-openmc-code` skill.
+When reviewing code changes in this repository, use the `openmc-code-review` skill.
 
 ### Workflow for contributors
 

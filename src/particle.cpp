@@ -198,6 +198,8 @@ void Particle::event_calculate_xs()
       cell_last(j) = coord(j).cell();
     }
     n_coord_last() = n_coord();
+
+    material_last() = material();
   }
 
   // Write particle track.
@@ -293,12 +295,6 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
-  // Saving previous cell data
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
-  n_coord_last() = n_coord();
-
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
@@ -309,6 +305,12 @@ void Particle::event_cross_surface()
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
+
+    // Saving previous cell data
+    for (int j = 0; j < n_coord(); ++j) {
+      cell_last(j) = coord(j).cell();
+    }
+    n_coord_last() = n_coord();
 
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
@@ -478,6 +480,8 @@ void Particle::event_revive_from_secondary()
           cell_last(j) = coord(j).cell();
         }
         n_coord_last() = n_coord();
+
+        material_last() = material();
       }
       pht_secondary_particles();
     }
@@ -574,13 +578,18 @@ void Particle::cross_surface(const Surface& surf)
   if (surf.geom_type() == GeometryType::CSG)
     history().reset();
 #endif
-
   // Handle any applicable boundary conditions.
   if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
       settings::run_mode != RunMode::VOLUME) {
     surf.bc_->handle_particle(*this, surf);
     return;
   }
+
+  // Saving previous cell data
+  for (int j = 0; j < n_coord(); ++j) {
+    cell_last(j) = coord(j).cell();
+  }
+  n_coord_last() = n_coord();
 
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
@@ -700,10 +709,11 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // Set the new particle direction
   u() = new_u;
 
-  // Reassign particle's cell and surface
+  // Reassign particle's cell, material and surface
   coord(0).cell() = cell_last(0);
-  surface() = -surface();
+  material() = material_last();
 
+  surface() = -surface();
   // If a reflective surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in
   // the lower universes.

@@ -173,12 +173,21 @@ bool find_cell_inner(
       }
 
       // Set the material, temperature and density multiplier.
-      p.material_last() = p.material();
-      p.material() = c.material(p.cell_instance());
-      p.sqrtkT_last() = p.sqrtkT();
-      p.sqrtkT() = c.sqrtkT(p.cell_instance());
-      p.density_mult_last() = p.density_mult();
-      p.density_mult() = c.density_mult(p.cell_instance());
+      if (p.sqrtkT() != -1) {
+        // if current material is set, set last material
+        p.material_last() = p.material();
+        p.material() = c.material(p.cell_instance());
+        p.sqrtkT_last() = p.sqrtkT();
+        p.sqrtkT() = c.sqrtkT(p.cell_instance());
+        p.density_mult_last() = p.density_mult();
+        p.density_mult() = c.density_mult(p.cell_instance());
+      } else {
+        // set both current data and last data to current data
+        p.material_last() = p.material() = c.material(p.cell_instance());
+        p.sqrtkT_last() = p.sqrtkT() = c.sqrtkT(p.cell_instance());
+        p.density_mult_last() = p.density_mult() =
+          c.density_mult(p.cell_instance());
+      }
 
       return true;
 

@@ -374,11 +374,7 @@ public:
   //!
   //! \param[in] r Coordinate to get index for
   //! \param[in] i Direction index
-  int get_index_in_direction(double r, int i) const
-  {
-    fatal_error("function is not implemented.");
-    return -1;
-  }
+  virtual int get_index_in_direction(double r, int i) const = 0;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
@@ -489,7 +485,7 @@ public:
   RegularMesh(hid_t group);
 
   // Overridden methods
-  int get_index_in_direction(double r, int i) const;
+  int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -542,7 +538,7 @@ public:
   RectilinearMesh(hid_t group);
 
   // Overridden methods
-  int get_index_in_direction(double r, int i) const;
+  int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -587,7 +583,7 @@ public:
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
-  int get_index_in_direction(double r, int i) const;
+  int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -652,7 +648,7 @@ public:
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
-  int get_index_in_direction(double r, int i) const;
+  int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -758,6 +754,12 @@ private:
     const Position& r, const Direction& u, double l, int shell) const;
 
   double volume(const MeshIndex& ijk) const override;
+
+  int get_index_in_direction(double r, int i) const override
+  {
+    fatal_error("This function is not implemented");
+    return -1;
+  }
 
   int get_index_in_z_direction(double z) const;
 };

@@ -19,6 +19,8 @@ the index status and ask whether to rebuild — you can also call this explicitl
 returns an index status message instead of search results. When this happens,
 you MUST use the `AskUserQuestion` tool to present the rebuild/use-existing
 choice to the user. Do not ask conversationally — always use the widget.
+Do not skip this step even if the index looks current — the user may have
+uncommitted changes that warrant a rebuild.
 
 **`openmc_lsp_navigate`** — LSP navigation via clangd. Resolves C++ symbols
 through the real type system — namespaces, templates, overloads. Commands:

@@ -100,17 +100,20 @@ def _check_index_first_call():
         return (
             f"Existing RAG index found — built at {built_at} on branch "
             f"'{built_branch}'. Current branch is '{current_branch}'.\n\n"
-            f"IMPORTANT: Use the AskUserQuestion tool to ask the user whether "
-            f"to rebuild the index (you would then call openmc_rag_rebuild) "
-            f"or use the existing one."
+            f"REQUIRED: You must use the AskUserQuestion tool now to ask the "
+            f"user whether to rebuild the index (you would then call "
+            f"openmc_rag_rebuild) or use the existing one. Do not skip this "
+            f"step — the user may have uncommitted changes. Do not decide "
+            f"on their behalf."
         )
 
     return (
         f"RAG index found but has no build metadata. "
         f"Current branch is '{current_branch}'.\n\n"
-        f"IMPORTANT: Use the AskUserQuestion tool to ask the user whether "
-        f"to rebuild the index (you would then call openmc_rag_rebuild) "
-        f"or use the existing one."
+        f"REQUIRED: You must use the AskUserQuestion tool now to ask the "
+        f"user whether to rebuild the index (you would then call "
+        f"openmc_rag_rebuild) or use the existing one. Do not skip this "
+        f"step. Do not decide on their behalf."
     )
 
 

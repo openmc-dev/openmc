@@ -12,6 +12,7 @@ Apply repository-wide guidance from `AGENTS.md` (architecture, build/test workfl
    - **User specifies a base branch or commit range:** Use that instead.
    - **PR context provided by tooling:** Use the base/head refs supplied by the tool.
 2. **Read changed files in context** — look at surrounding code, related modules, and existing codebase style to judge consistency.
+3. **Explore repository** Given the context of the current PR, explore OpenMC to determine if there are any additional files you'll need to analyze given the multiple ways OpenMC can be run. You should read the (very short) main.cpp to get an idea of this as you begin. Read or Explore all files necessary to determine how this PR may intersect with different modes and run configurations: eigenvalue vs. fixed-source vs. volume vs. plotting modes; history-based vs. event-based transport; Monte Carlo vs. Random Ray; multigroup vs. continuous energy; particle restart and statepoint restart; statepoint/source I/O; surface source write; the C API accessors. Significant code is shared between the different run modes - you must understand how changes in the PR may affect other areas of the code not in the diff. Furthermore, ensure you have read enough to understand the global parallel status (both with MPI and OpenMP threading) of any regions of the diff. A minor change may look fine if assuming it runs in serial but a major bug if it is buried within a parallel region. 
 3. **Determine review mode:**
    - **Self-review mode** (author preparing changes before submission): Emphasize likely reviewer objections, missing tests/docs, API naming consistency, and quick fixes that would speed up review.
    - **Reviewer mode** (default): Provide a standard structured review suitable for a code review or PR review.
@@ -27,10 +28,12 @@ Assess each of the following areas, noting any issues found. If an area looks go
 - Are the changes of **general enough interest** to warrant inclusion in the main OpenMC codebase, or would they be better suited as a downstream extension?
 
 ### Correctness and Testing
-- Do the changes compile and appear functionally correct?
+- Do the changes compile and can you confirm all logic to be functionally correct?
 - Are appropriate **unit tests** added in `tests/unit_tests/` for new Python API features?
 - Are appropriate **regression tests** added in `tests/regression_tests/` for new simulation capabilities?
 - Are edge cases and error conditions handled and tested?
+- Are all changes sound when considering that OpenMC runs in parallel with MPI and OpenMP (potentially at scale on massive exascale systems with billions or trillions of concurrent particles?)
+- You have **UNLIMITED** time to complete the review -- the priority is to check every line and pull on every thread to ensure 100% correctness and that no errors are introduced to the repository. Do not rush to produce findings — a review that is thorough but slow is far more valuable than one that is fast but shallow. Finding one or two issues early does not mean the correctness analysis is done — keep looking with the same intensity through every category and every file. If you miss a single bug, the report quality is greatly diminished, so you need to pull on **EVERY** thread you find.
 
 ### Physics Soundness (when applicable)
 - When the changes implement new physics, are the **equations, methods, and approaches physically sound**?
@@ -77,7 +80,7 @@ Produce your review as a structured report with the following sections:
 Group findings into:
 1. **Blocking issues** — Would justify requesting changes before merge
 2. **Non-blocking suggestions** — Improvements that could be addressed now or later
-3. **Questions for the author** — Ambiguities or design choices worth clarifying
+3. **Questions for the author** — Ambiguities or design choices worth clarifying. Do not include questions that you are capable of answering yourself via deep analysis of the full repository. Only propose alternative designs if you have coded them up and can confirm they offer tangible improvements.
 
 **Recommended Action**:
 - *Reviewer mode*: One of — *Approve*, *Approve with minor suggestions*, *Request changes*, or *Reject* — with a brief justification.

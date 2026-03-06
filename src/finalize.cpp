@@ -123,6 +123,8 @@ int openmc_finalize()
   settings::restart_run = false;
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
+  settings::surface_grazing_cutoff = 0.001;
+  settings::surface_grazing_ratio = 0.5;
   settings::solver_type = SolverType::MONTE_CARLO;
   settings::source_latest = false;
   settings::source_rejection_fraction = 0.05;

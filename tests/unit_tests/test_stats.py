@@ -560,6 +560,113 @@ def test_point():
     assert d.xyz == pytest.approx(p)
 
 
+def test_spherical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    thetas = (0.0, pi/2)
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    sph_indep_function = openmc.stats.spherical_uniform(r_outer,
+                                                        r_inner,
+                                                        thetas,
+                                                        phis,
+                                                        origin)
+
+    assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+
+
+def test_cylindrical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    height = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    dist = openmc.stats.cylindrical_uniform(r_outer, height, r_inner, phis,
+                                            origin=origin)
+
+    assert isinstance(dist, openmc.stats.CylindricalIndependent)
+
+    # Check r distribution (PowerLaw with exponent 1 for uniform area sampling)
+    assert isinstance(dist.r, openmc.stats.PowerLaw)
+    assert dist.r.a == pytest.approx(r_inner)
+    assert dist.r.b == pytest.approx(r_outer)
+    assert dist.r.n == pytest.approx(1.0)
+
+    # Check phi distribution
+    assert isinstance(dist.phi, openmc.stats.Uniform)
+    assert dist.phi.a == pytest.approx(phis[0])
+    assert dist.phi.b == pytest.approx(phis[1])
+
+    # Check z distribution (centered on origin along z_dir)
+    assert isinstance(dist.z, openmc.stats.Uniform)
+    assert dist.z.a == pytest.approx(-height / 2)
+    assert dist.z.b == pytest.approx(height / 2)
+
+    # Check origin and default directions
+    np.testing.assert_allclose(dist.origin, origin)
+    np.testing.assert_allclose(dist.r_dir, [1., 0., 0.])
+    np.testing.assert_allclose(dist.z_dir, [0., 0., 1.])
+
+    # XML round-trip preserves all parameters
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+
+
+def test_cylindrical_uniform_tilted():
+    # Test with non-default axis orientation (y-axis as cylinder axis)
+    dist = openmc.stats.cylindrical_uniform(
+        r_outer=3.0, height=2.0, r_dir=(1., 0., 0.), z_dir=(0., 1., 0.)
+    )
+    np.testing.assert_allclose(dist.z_dir, [0., 1., 0.])
+    np.testing.assert_allclose(dist.r_dir, [1., 0., 0.])
+
+    # XML round-trip preserves tilted directions
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+
+
+def test_cylindrical_uniform_ring():
+    # height=0 should produce a flat ring (delta function at z=0)
+    r_outer = 2.0
+    r_inner = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    dist = openmc.stats.cylindrical_uniform(r_outer, 0.0, r_inner, phis,
+                                            origin=origin)
+
+    assert isinstance(dist, openmc.stats.CylindricalIndependent)
+
+    # Check r distribution
+    assert isinstance(dist.r, openmc.stats.PowerLaw)
+    assert dist.r.a == pytest.approx(r_inner)
+    assert dist.r.b == pytest.approx(r_outer)
+    assert dist.r.n == pytest.approx(1.0)
+
+    # Check phi distribution
+    assert isinstance(dist.phi, openmc.stats.Uniform)
+    assert dist.phi.a == pytest.approx(phis[0])
+    assert dist.phi.b == pytest.approx(phis[1])
+
+    # z distribution must be a delta function at 0.0 (local frame)
+    assert isinstance(dist.z, openmc.stats.Discrete)
+    assert dist.z.x[0] == pytest.approx(0.0)
+
+    # XML round-trip
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+
+
 @pytest.mark.flaky(reruns=1)
 def test_normal():
     mean = 10.0
@@ -728,6 +835,23 @@ def test_combine_distributions():
     assert isinstance(mixed, openmc.stats.Mixture)
     assert len(mixed.distribution) == 2
     assert len(mixed.probability) == 2
+    assert mixed == openmc.stats.combine_distributions([mixed], [1.0])
+
+    # Mixture combined with another distribution: probabilities should be
+    # correctly scaled when the Mixture is flattened
+    d_a = openmc.stats.delta_function(1.0)
+    d_b = openmc.stats.delta_function(2.0)
+    m = openmc.stats.Mixture([0.3, 0.7], [d_a, d_b])
+    extra = openmc.stats.delta_function(3.0)
+    result = openmc.stats.combine_distributions([m, extra], [0.5, 0.5])
+    assert isinstance(result, openmc.stats.Discrete)
+    assert result.x == pytest.approx([1.0, 2.0, 3.0])
+    assert result.p == pytest.approx([0.5*0.3, 0.5*0.7, 0.5])
+
+    # Passing a Mixture with a bias should warn that the bias is dropped
+    biased_m = openmc.stats.Mixture([0.5, 0.5], [d_a, d_b], bias=[0.8, 0.2])
+    with pytest.warns(UserWarning, match='bias'):
+        openmc.stats.combine_distributions([biased_m], [1.0])
 
     # Single tabular returns a tabular distribution with scaled probabilities
     t_single = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])

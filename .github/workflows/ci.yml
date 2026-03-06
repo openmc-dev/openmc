@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
@@ -51,26 +51,29 @@ jobs:
         event: [n]
 
         include:
-          - python-version: "3.12"
-            omp: n
-            mpi: n
           - python-version: "3.13"
             omp: n
             mpi: n
+          - python-version: "3.14"
+            omp: n
+            mpi: n
+          - python-version: "3.14t"
+            omp: n
+            mpi: n
           - dagmc: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: n
             omp: y
           - event: y
-            python-version: "3.11"
+            python-version: "3.12"
             omp: y
             mpi: n
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
@@ -210,6 +213,7 @@ jobs:
           parallel: true
           flag-name: C++ and Python
           path-to-lcov: coverage.lcov
+          fail-on-error: false
 
   coverage:
     needs: [filter-changes, main]
@@ -222,6 +226,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true
+          fail-on-error: false
 
   ci-pass:
     needs: [filter-changes, main, coverage]

@@ -1294,8 +1294,9 @@ class Model:
         self,
         n_samples: int = 1000,
         prn_seed: int | None = None,
+        as_array: bool = False,
         **init_kwargs
-    ) -> openmc.ParticleList:
+    ) -> openmc.ParticleList | np.ndarray:
         """Sample external source and return source particles.
 
         .. versionadded:: 0.15.1
@@ -1307,13 +1308,17 @@ class Model:
         prn_seed : int
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
+        as_array : bool
+            If True, return a numpy structured array instead of a
+            :class:`~openmc.ParticleList`.
         **init_kwargs
             Keyword arguments passed to :func:`openmc.lib.init`
 
         Returns
         -------
-        openmc.ParticleList
-            List of samples source particles
+        openmc.ParticleList or numpy.ndarray
+            List of sampled source particles, or a structured array when
+            *as_array* is True.
         """
         import openmc.lib
 
@@ -1324,7 +1329,7 @@ class Model:
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.sample_external_source(
-                n_samples=n_samples, prn_seed=prn_seed
+                n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
@@ -2584,9 +2589,16 @@ class Model:
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():
                 if isinstance(univ, openmc.DAGMCUniverse):
+                    # Initialize in stochastic volume mode (non-transport mode)
+                    # This mode doesn't require
+                    # valid transport settings like particles/batches
+                    original_run_mode = self.settings.run_mode
+                    self.settings.run_mode = 'volume'
                     self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()
+                    # Restore original run mode
+                    self.settings.run_mode = original_run_mode
                     break
 
             # Make sure all materials have a name, and that the name is a valid HDF5

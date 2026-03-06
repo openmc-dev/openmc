@@ -88,8 +88,9 @@ def _check_index_first_call():
             "No RAG index found. Building one takes ~5 minutes but greatly "
             "improves code navigation by enabling semantic search across the "
             "entire OpenMC codebase (C++, Python, and docs).\n\n"
-            "Ask the user: build the index now (you would call "
-            "openmc_rag_rebuild), or proceed without it?"
+            "IMPORTANT: Use the AskUserQuestion tool to ask the user whether "
+            "to build the index now (you would then call openmc_rag_rebuild) "
+            "or proceed without it."
         )
 
     meta = _get_index_metadata()
@@ -99,15 +100,17 @@ def _check_index_first_call():
         return (
             f"Existing RAG index found — built at {built_at} on branch "
             f"'{built_branch}'. Current branch is '{current_branch}'.\n\n"
-            f"Ask the user: rebuild the index (you would call "
-            f"openmc_rag_rebuild), or use the existing one?"
+            f"IMPORTANT: Use the AskUserQuestion tool to ask the user whether "
+            f"to rebuild the index (you would then call openmc_rag_rebuild) "
+            f"or use the existing one."
         )
 
     return (
         f"RAG index found but has no build metadata. "
         f"Current branch is '{current_branch}'.\n\n"
-        f"Ask the user: rebuild the index (you would call "
-        f"openmc_rag_rebuild), or use the existing one?"
+        f"IMPORTANT: Use the AskUserQuestion tool to ask the user whether "
+        f"to rebuild the index (you would then call openmc_rag_rebuild) "
+        f"or use the existing one."
     )
 
 

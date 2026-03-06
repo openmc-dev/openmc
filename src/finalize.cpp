@@ -30,7 +30,7 @@
 #include "openmc/volume_calc.h"
 #include "openmc/weight_windows.h"
 
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 namespace openmc {
 
@@ -123,6 +123,8 @@ int openmc_finalize()
   settings::restart_run = false;
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
+  settings::surface_grazing_cutoff = 0.001;
+  settings::surface_grazing_ratio = 0.5;
   settings::solver_type = SolverType::MONTE_CARLO;
   settings::source_latest = false;
   settings::source_rejection_fraction = 0.05;
@@ -203,7 +205,7 @@ int openmc_reset()
 
   // Reset global tallies
   simulation::n_realizations = 0;
-  xt::view(simulation::global_tallies, xt::all()) = 0.0;
+  simulation::global_tallies.fill(0.0);
 
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;

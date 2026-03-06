@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
 
 #include "hdf5.h"
 #include "openmc/cell.h"
@@ -83,13 +83,14 @@ const RGBColor BLACK {0, 0, 0};
  * \class PlottableInterface
  * \brief Interface for plottable objects.
  *
- * PlottableInterface classes must have a unique ID in the plots.xml file.
- * They guarantee the ability to create output in some form. This interface
- * is designed to be implemented by classes that produce plot-relevant data
- * which can be visualized.
+ * PlottableInterface classes must have unique IDs. If no ID (or -1) is
+ * provided, the next available ID is assigned automatically. They guarantee
+ * the ability to create output in some form. This interface is designed to be
+ * implemented by classes that produce plot-relevant data which can be
+ * visualized.
  */
 
-typedef xt::xtensor<RGBColor, 2> ImageData;
+typedef tensor::Tensor<RGBColor> ImageData;
 class PlottableInterface {
 public:
   PlottableInterface() = default;
@@ -98,7 +99,7 @@ public:
 
 private:
   void set_id(pugi::xml_node plot_node);
-  int id_; // unique plot ID
+  int id_ {C_NONE}; // unique plot ID
 
   void set_bg_color(pugi::xml_node plot_node);
   void set_universe(pugi::xml_node plot_node);
@@ -129,18 +130,19 @@ public:
   const std::string& path_plot() const { return path_plot_; }
   std::string& path_plot() { return path_plot_; }
   int id() const { return id_; }
+  void set_id(int id = C_NONE);
   int level() const { return level_; }
   PlotColorBy color_by() const { return color_by_; }
 
   // Public color-related data
   PlottableInterface(pugi::xml_node plot_node);
   virtual ~PlottableInterface() = default;
-  int level_ {-1};               // Universe level to plot
-  bool color_overlaps_ {false};  // Show overlapping cells?
-  PlotColorBy color_by_;         // Plot coloring (cell/material)
-  RGBColor not_found_ {WHITE};   // Plot background color
-  RGBColor overlap_color_ {RED}; // Plot overlap color
-  vector<RGBColor> colors_;      // Plot colors
+  int level_ {-1};                           // Universe level to plot
+  bool color_overlaps_ {false};              // Show overlapping cells?
+  PlotColorBy color_by_ {PlotColorBy::mats}; // Plot coloring (cell/material)
+  RGBColor not_found_ {WHITE};               // Plot background color
+  RGBColor overlap_color_ {RED};             // Plot overlap color
+  vector<RGBColor> colors_;                  // Plot colors
 };
 
 struct IdData {
@@ -152,7 +154,7 @@ struct IdData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
+  tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
 };
 
 struct PropertyData {
@@ -164,7 +166,7 @@ struct PropertyData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+  tensor::Tensor<double> data_; //!< 2D array of temperature & density data
 };
 
 //===============================================================================
@@ -371,9 +373,9 @@ private:
 
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
   Position camera_position_;               // where camera is
-  Position look_at_;             // point camera is centered looking at
-  std::array<int, 2> pixels_;    // pixel dimension of resulting image
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+  Position look_at_;                     // point camera is centered looking at
+  std::array<int, 2> pixels_ {100, 100}; // pixel dimension of resulting image
+  Direction up_ {0.0, 0.0, 1.0};         // which way is up
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
@@ -500,7 +502,11 @@ private:
 class Ray : public GeometryState {
 
 public:
+  // Initialize from location and direction
   Ray(Position r, Direction u) { init_from_r_u(r, u); }
+
+  // Initialize from known geometry state
+  Ray(const GeometryState& p) : GeometryState(p) {}
 
   // Called at every surface intersection within the model
   virtual void on_intersection() = 0;

@@ -18,11 +18,6 @@ fi
 pip install 'ncrystal>=4.1.0'
 nctool --test
 
-# Install vectfit for WMP generation if needed
-if [[ $VECTFIT = 'y' ]]; then
-    ./tools/ci/gha-install-vectfit.sh
-fi
-
 # Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
     ./tools/ci/gha-install-libmesh.sh
@@ -40,7 +35,7 @@ if [[ $MPI == 'y' ]]; then
     export HDF5_MPI=ON
     export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich
     # Install h5py without build isolation to pick up already installed mpi4py
-    pip install Cython pkgconfig
+    pip install setuptools Cython pkgconfig
     pip install --no-build-isolation --no-binary=h5py h5py
 fi
 

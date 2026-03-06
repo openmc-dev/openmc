@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="domain">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="domain"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="5 -6 1 -2 3 -4" universe="1"/>
+    <surface id="1" name="minimum y" type="y-plane" boundary="reflective" coeffs="-5.0"/>
+    <surface id="2" name="maximum y" type="y-plane" boundary="reflective" coeffs="5.0"/>
+    <surface id="3" name="minimum z" type="z-plane" boundary="reflective" coeffs="-5.0"/>
+    <surface id="4" name="maximum z" type="z-plane" boundary="reflective" coeffs="5.0"/>
+    <surface id="5" type="x-plane" boundary="vacuum" coeffs="0.0"/>
+    <surface id="6" type="x-plane" boundary="vacuum" coeffs="40.0"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>100</particles>
+    <batches>30</batches>
+    <inactive>10</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>0.0 -5.0 -5.0 40.0 5.0 5.0</parameters>
+      </space>
+      <energy type="discrete">
+        <parameters>1000.0 1.0</parameters>
+      </energy>
+      <constraints>
+        <domain_type>material</domain_type>
+        <domain_ids>1</domain_ids>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <random_ray>
+      <distance_inactive>100.0</distance_inactive>
+      <distance_active>400.0</distance_active>
+      <source type="independent" strength="1.0" particle="neutron">
+        <space type="box">
+          <parameters>0.0 -5.0 -5.0 40.0 5.0 5.0</parameters>
+        </space>
+      </source>
+      <source_shape>flat</source_shape>
+      <sample_method>s2</sample_method>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="1" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+    </random_ray>
+    <mesh id="1">
+      <dimension>10 1 1</dimension>
+      <lower_left>0.0 -5.0 -5.0</lower_left>
+      <upper_right>40.0 5.0 5.0</upper_right>
+    </mesh>
+  </settings>
+  <tallies>
+    <filter id="1" type="mesh">
+      <bins>1</bins>
+    </filter>
+    <tally id="1" name="LR">
+      <filters>1</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+  </tallies>
+</model>

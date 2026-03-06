@@ -7,8 +7,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "xtensor/xmanipulation.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 #ifdef USE_LIBPNG
@@ -74,7 +73,8 @@ void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
 
 void IdData::set_overlap(size_t y, size_t x)
 {
-  xt::view(data_, y, x, xt::all()) = OVERLAP;
+  for (size_t k = 0; k < data_.shape(2); ++k)
+    data_(y, x, k) = OVERLAP;
 }
 
 PropertyData::PropertyData(size_t h_res, size_t v_res)
@@ -211,8 +211,11 @@ void read_plots_xml()
 void read_plots_xml(pugi::xml_node root)
 {
   for (auto node : root.children("plot")) {
-    std::string id_string = get_node_value(node, "id", true);
-    int id = std::stoi(id_string);
+    std::string plot_desc = "<auto>";
+    if (check_for_node(node, "id")) {
+      plot_desc = get_node_value(node, "id", true);
+    }
+
     if (check_for_node(node, "type")) {
       std::string type_str = get_node_value(node, "type", true);
       if (type_str == "slice") {
@@ -227,12 +230,12 @@ void read_plots_xml(pugi::xml_node root)
       } else if (type_str == "solid_raytrace") {
         model::plots.emplace_back(std::make_unique<SolidRayTracePlot>(node));
       } else {
-        fatal_error(
-          fmt::format("Unsupported plot type '{}' in plot {}", type_str, id));
+        fatal_error(fmt::format(
+          "Unsupported plot type '{}' in plot {}", type_str, plot_desc));
       }
       model::plot_map[model::plots.back()->id()] = model::plots.size() - 1;
     } else {
-      fatal_error(fmt::format("Must specify plot type in plot {}", id));
+      fatal_error(fmt::format("Must specify plot type in plot {}", plot_desc));
     }
   }
 }
@@ -290,18 +293,41 @@ ImageData Plot::create_image() const
 
 void PlottableInterface::set_id(pugi::xml_node plot_node)
 {
-  // Copy data into plots
+  int id {C_NONE};
   if (check_for_node(plot_node, "id")) {
-    id_ = std::stoi(get_node_value(plot_node, "id"));
-  } else {
-    fatal_error("Must specify plot id in plots XML file.");
+    id = std::stoi(get_node_value(plot_node, "id"));
   }
 
-  // Check to make sure 'id' hasn't been used
-  if (model::plot_map.find(id_) != model::plot_map.end()) {
-    fatal_error(
-      fmt::format("Two or more plots use the same unique ID: {}", id_));
+  try {
+    set_id(id);
+  } catch (const std::runtime_error& e) {
+    fatal_error(e.what());
   }
+}
+
+void PlottableInterface::set_id(int id)
+{
+  if (id < 0 && id != C_NONE) {
+    throw std::runtime_error {fmt::format("Invalid plot ID: {}", id)};
+  }
+
+  if (id == C_NONE) {
+    id = 1;
+    for (const auto& p : model::plots) {
+      id = std::max(id, p->id() + 1);
+    }
+  }
+
+  if (id_ == id)
+    return;
+
+  // Check to make sure this ID doesn't already exist
+  if (model::plot_map.find(id) != model::plot_map.end()) {
+    throw std::runtime_error {
+      fmt::format("Two or more plots use the same unique ID: {}", id)};
+  }
+
+  id_ = id;
 }
 
 // Checks if png or ppm is already present
@@ -757,14 +783,14 @@ void output_ppm(const std::string& filename, const ImageData& data)
 
   // Write header
   of << "P6\n";
-  of << data.shape()[0] << " " << data.shape()[1] << "\n";
+  of << data.shape(0) << " " << data.shape(1) << "\n";
   of << "255\n";
   of.close();
 
   of.open(fname, std::ios::binary | std::ios::app);
   // Write color for each pixel
-  for (int y = 0; y < data.shape()[1]; y++) {
-    for (int x = 0; x < data.shape()[0]; x++) {
+  for (int y = 0; y < data.shape(1); y++) {
+    for (int x = 0; x < data.shape(0); x++) {
       RGBColor rgb = data(x, y);
       of << rgb.red << rgb.green << rgb.blue;
     }
@@ -796,8 +822,8 @@ void output_png(const std::string& filename, const ImageData& data)
   png_init_io(png_ptr, fp);
 
   // Write header (8 bit colour depth)
-  int width = data.shape()[0];
-  int height = data.shape()[1];
+  int width = data.shape(0);
+  int height = data.shape(1);
   png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGB,
     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
   png_write_info(png_ptr, info_ptr);
@@ -998,9 +1024,14 @@ void Plot::create_voxel() const
 
     // select only cell/material ID data and flip the y-axis
     int idx = color_by_ == PlotColorBy::cells ? 0 : 2;
-    xt::xtensor<int32_t, 2> data_slice =
-      xt::view(ids.data_, xt::all(), xt::all(), idx);
-    xt::xtensor<int32_t, 2> data_flipped = xt::flip(data_slice, 0);
+    // Extract 2D slice at index idx from 3D data
+    size_t rows = ids.data_.shape(0);
+    size_t cols = ids.data_.shape(1);
+    tensor::Tensor<int32_t> data_slice({rows, cols});
+    for (size_t r = 0; r < rows; ++r)
+      for (size_t c = 0; c < cols; ++c)
+        data_slice(r, c) = ids.data_(r, c, idx);
+    tensor::Tensor<int32_t> data_flipped = data_slice.flip(0);
 
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, data_flipped.data());
@@ -1246,7 +1277,8 @@ ImageData WireframeRayTracePlot::create_image() const
   // This array marks where the initial wireframe was drawn. We convolve it with
   // a filter that gets adjusted with the wireframe thickness in order to
   // thicken the lines.
-  xt::xtensor<int, 2> wireframe_initial({width, height}, 0);
+  tensor::Tensor<int> wireframe_initial(
+    {static_cast<size_t>(width), static_cast<size_t>(height)}, 0);
 
   /* Holds all of the track segments for the current rendered line of pixels.
    * old_segments holds a copy of this_line_segments from the previous line.
@@ -1635,9 +1667,25 @@ void Ray::trace()
   // After phase one is done, we can starting tracing from cell to cell within
   // the model. This step can use neighbor lists to accelerate the ray tracing.
 
-  // Attempt to initialize the particle. We may have to enter a loop to move
-  // it up to the edge of the model.
-  bool inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+  bool inside_cell;
+  // Check for location if the particle is already known
+  if (lowest_coord().cell() == C_NONE) {
+    // The geometry position of the particle is either unknown or outside of the
+    // edge of the model.
+    if (lowest_coord().universe() == C_NONE) {
+      // Attempt to initialize the particle. We may have to
+      // enter a loop to move it up to the edge of the model.
+      inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+    } else {
+      // It has been already calculated that the current position is outside of
+      // the edge of the model.
+      inside_cell = false;
+    }
+  } else {
+    // Availability of the cell means that the particle is located inside the
+    // edge.
+    inside_cell = true;
+  }
 
   // Advance to the boundary of the model
   while (!inside_cell) {
@@ -1718,6 +1766,11 @@ void Ray::trace()
       coord(lev).r() += boundary().distance() * coord(lev).u();
     }
     surface() = boundary().surface();
+    // Initialize last cells from the current cell, because the cell() variable
+    // does not contain the data for the case of a single-segment ray
+    for (int j = 0; j < n_coord(); ++j) {
+      cell_last(j) = coord(j).cell();
+    }
     n_coord_last() = n_coord();
     n_coord() = boundary().coord_level();
     if (boundary().lattice_translation()[0] != 0 ||
@@ -1794,7 +1847,10 @@ void PhongRay::on_intersection()
     // the normal or the diffuse lighting contribution
     reflected_ = true;
     result_color_ = plot_.colors_[hit_id];
-    Direction to_light = plot_.light_location_ - r();
+    // The ray has been advanced slightly past the boundary. Use an
+    // approximation to the actual hit point for stable normal/lighting.
+    Position r_hit = r() - TINY_BIT * u();
+    Direction to_light = plot_.light_location_ - r_hit;
     to_light /= to_light.norm();
 
     // TODO
@@ -1815,12 +1871,22 @@ void PhongRay::on_intersection()
     // Get surface pointer
     const auto& surf = model::surfaces.at(surface_index());
 
-    Direction normal = surf->normal(r_local());
+    // The crossed surface may be on a higher coordinate level than the
+    // innermost local coordinates, so we check the surface's coordinate level
+    // to find the appropriate coordinate level to use for the normal
+    // calculation
+    int surf_level = boundary().coord_level() - 1;
+    // ensure surface level is within bounds of current coordinate stack
+    surf_level = std::max(0, std::min(surf_level, n_coord() - 1));
+
+    Position r_hit_level =
+      coord(surf_level).r() - TINY_BIT * coord(surf_level).u();
+    Direction normal = surf->normal(r_hit_level);
     normal /= normal.norm();
 
-    // Need to apply translations to find the normal vector in
+    // Need to apply rotations to find the normal vector in
     // the base level universe's coordinate system.
-    for (int lev = n_coord() - 2; lev >= 0; --lev) {
+    for (int lev = surf_level - 1; lev >= 0; --lev) {
       if (coord(lev + 1).rotated()) {
         const Cell& c {*model::cells[coord(lev).cell()]};
         normal = normal.inverse_rotate(c.rotation_);
@@ -1924,6 +1990,590 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
   // write id data to array
   std::copy(props.data_.begin(), props.data_.end(), data_out);
 
+  return 0;
+}
+
+extern "C" int openmc_get_plot_index(int32_t id, int32_t* index)
+{
+  auto it = model::plot_map.find(id);
+  if (it == model::plot_map.end()) {
+    set_errmsg("No plot exists with ID=" + std::to_string(id) + ".");
+    return OPENMC_E_INVALID_ID;
+  }
+
+  *index = it->second;
+  return 0;
+}
+
+extern "C" int openmc_plot_get_id(int32_t index, int32_t* id)
+{
+  if (index < 0 || index >= model::plots.size()) {
+    set_errmsg("Index in plots array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *id = model::plots[index]->id();
+  return 0;
+}
+
+extern "C" int openmc_plot_set_id(int32_t index, int32_t id)
+{
+  if (index < 0 || index >= model::plots.size()) {
+    set_errmsg("Index in plots array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  if (id < 0 && id != C_NONE) {
+    set_errmsg("Invalid plot ID.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  auto* plot = model::plots[index].get();
+  int32_t old_id = plot->id();
+  if (id == old_id)
+    return 0;
+
+  model::plot_map.erase(old_id);
+  try {
+    plot->set_id(id);
+  } catch (const std::runtime_error& e) {
+    model::plot_map[old_id] = index;
+    set_errmsg(e.what());
+    return OPENMC_E_INVALID_ID;
+  }
+  model::plot_map[plot->id()] = index;
+  return 0;
+}
+
+extern "C" size_t openmc_plots_size()
+{
+  return model::plots.size();
+}
+
+int map_phong_domain_id(
+  const SolidRayTracePlot* plot, int32_t id, int32_t* index_out)
+{
+  if (!plot || !index_out) {
+    set_errmsg("Invalid plot pointer passed to map_phong_domain_id");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (plot->color_by_ == PlottableInterface::PlotColorBy::mats) {
+    auto it = model::material_map.find(id);
+    if (it == model::material_map.end()) {
+      set_errmsg("Invalid material ID for SolidRayTracePlot");
+      return OPENMC_E_INVALID_ID;
+    }
+    *index_out = it->second;
+    return 0;
+  }
+
+  if (plot->color_by_ == PlottableInterface::PlotColorBy::cells) {
+    auto it = model::cell_map.find(id);
+    if (it == model::cell_map.end()) {
+      set_errmsg("Invalid cell ID for SolidRayTracePlot");
+      return OPENMC_E_INVALID_ID;
+    }
+    *index_out = it->second;
+    return 0;
+  }
+
+  set_errmsg("Unsupported color_by for SolidRayTracePlot");
+  return OPENMC_E_INVALID_TYPE;
+}
+
+int get_solidraytrace_plot_by_index(int32_t index, SolidRayTracePlot** plot)
+{
+  if (!plot) {
+    set_errmsg("Null output pointer passed to get_solidraytrace_plot_by_index");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (index < 0 || index >= model::plots.size()) {
+    set_errmsg("Index in plots array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  auto* plottable = model::plots[index].get();
+  auto* solid_plot = dynamic_cast<SolidRayTracePlot*>(plottable);
+  if (!solid_plot) {
+    set_errmsg("Plot at index=" + std::to_string(index) +
+               " is not a solid raytrace plot.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  *plot = solid_plot;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_create(int32_t* index)
+{
+  if (!index) {
+    set_errmsg(
+      "Null output pointer passed to openmc_solidraytrace_plot_create");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  try {
+    auto new_plot = std::make_unique<SolidRayTracePlot>();
+    new_plot->set_id();
+    int32_t new_plot_id = new_plot->id();
+#ifdef USE_LIBPNG
+    new_plot->path_plot() = fmt::format("plot_{}.png", new_plot_id);
+#else
+    new_plot->path_plot() = fmt::format("plot_{}.ppm", new_plot_id);
+#endif
+    int32_t new_plot_index = model::plots.size();
+    model::plots.emplace_back(std::move(new_plot));
+    model::plot_map[new_plot_id] = new_plot_index;
+    *index = new_plot_index;
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_ALLOCATE;
+  }
+
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_pixels(
+  int32_t index, int32_t* width, int32_t* height)
+{
+  if (!width || !height) {
+    set_errmsg(
+      "Invalid arguments passed to openmc_solidraytrace_plot_get_pixels");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  *width = plt->pixels()[0];
+  *height = plt->pixels()[1];
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_pixels(
+  int32_t index, int32_t width, int32_t height)
+{
+  if (width <= 0 || height <= 0) {
+    set_errmsg(
+      "Invalid arguments passed to openmc_solidraytrace_plot_set_pixels");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->pixels()[0] = width;
+  plt->pixels()[1] = height;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_color_by(
+  int32_t index, int32_t* color_by)
+{
+  if (!color_by) {
+    set_errmsg(
+      "Invalid arguments passed to openmc_solidraytrace_plot_get_color_by");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  if (plt->color_by_ == PlottableInterface::PlotColorBy::mats) {
+    *color_by = 0;
+  } else if (plt->color_by_ == PlottableInterface::PlotColorBy::cells) {
+    *color_by = 1;
+  } else {
+    set_errmsg("Unsupported color_by for SolidRayTracePlot");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_color_by(
+  int32_t index, int32_t color_by)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  if (color_by == 0) {
+    plt->color_by_ = PlottableInterface::PlotColorBy::mats;
+  } else if (color_by == 1) {
+    plt->color_by_ = PlottableInterface::PlotColorBy::cells;
+  } else {
+    set_errmsg("Invalid color_by value for SolidRayTracePlot");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_default_colors(int32_t index)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->set_default_colors();
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_all_opaque(int32_t index)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->opaque_ids().clear();
+  if (plt->color_by_ == PlottableInterface::PlotColorBy::mats) {
+    for (int32_t i = 0; i < model::materials.size(); ++i) {
+      plt->opaque_ids().insert(i);
+    }
+    return 0;
+  }
+
+  if (plt->color_by_ == PlottableInterface::PlotColorBy::cells) {
+    for (int32_t i = 0; i < model::cells.size(); ++i) {
+      plt->opaque_ids().insert(i);
+    }
+    return 0;
+  }
+
+  set_errmsg("Unsupported color_by for SolidRayTracePlot");
+  return OPENMC_E_INVALID_TYPE;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_opaque(
+  int32_t index, int32_t id, bool visible)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  int32_t domain_index = -1;
+  err = map_phong_domain_id(plt, id, &domain_index);
+  if (err)
+    return err;
+
+  if (visible) {
+    plt->opaque_ids().insert(domain_index);
+  } else {
+    plt->opaque_ids().erase(domain_index);
+  }
+
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_color(
+  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  int32_t domain_index = -1;
+  err = map_phong_domain_id(plt, id, &domain_index);
+  if (err)
+    return err;
+
+  if (domain_index < 0 ||
+      static_cast<size_t>(domain_index) >= plt->colors_.size()) {
+    set_errmsg("Color index out of range for SolidRayTracePlot");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  plt->colors_[domain_index] = RGBColor(r, g, b);
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_camera_position(
+  int32_t index, double* x, double* y, double* z)
+{
+  if (!x || !y || !z) {
+    set_errmsg("Invalid arguments passed to "
+               "openmc_solidraytrace_plot_get_camera_position");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  const auto& camera_position = plt->camera_position();
+  *x = camera_position.x;
+  *y = camera_position.y;
+  *z = camera_position.z;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_camera_position(
+  int32_t index, double x, double y, double z)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->camera_position() = {x, y, z};
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_look_at(
+  int32_t index, double* x, double* y, double* z)
+{
+  if (!x || !y || !z) {
+    set_errmsg(
+      "Invalid arguments passed to openmc_solidraytrace_plot_get_look_at");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  const auto& look_at = plt->look_at();
+  *x = look_at.x;
+  *y = look_at.y;
+  *z = look_at.z;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_look_at(
+  int32_t index, double x, double y, double z)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->look_at() = {x, y, z};
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_up(
+  int32_t index, double* x, double* y, double* z)
+{
+  if (!x || !y || !z) {
+    set_errmsg("Invalid arguments passed to openmc_solidraytrace_plot_get_up");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  const auto& up = plt->up();
+  *x = up.x;
+  *y = up.y;
+  *z = up.z;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_up(
+  int32_t index, double x, double y, double z)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->up() = {x, y, z};
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_light_position(
+  int32_t index, double* x, double* y, double* z)
+{
+  if (!x || !y || !z) {
+    set_errmsg("Invalid arguments passed to "
+               "openmc_solidraytrace_plot_get_light_position");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  const auto& light_position = plt->light_location();
+  *x = light_position.x;
+  *y = light_position.y;
+  *z = light_position.z;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_light_position(
+  int32_t index, double x, double y, double z)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->light_location() = {x, y, z};
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_fov(int32_t index, double* fov)
+{
+  if (!fov) {
+    set_errmsg("Invalid arguments passed to openmc_solidraytrace_plot_get_fov");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  *fov = plt->horizontal_field_of_view();
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_fov(int32_t index, double fov)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->horizontal_field_of_view() = fov;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_update_view(int32_t index)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  plt->update_view();
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_create_image(
+  int32_t index, uint8_t* data_out, int32_t width, int32_t height)
+{
+  if (!data_out || width <= 0 || height <= 0) {
+    set_errmsg(
+      "Invalid arguments passed to openmc_solidraytrace_plot_create_image");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  if (plt->pixels()[0] != width || plt->pixels()[1] != height) {
+    set_errmsg(
+      "Requested image size does not match SolidRayTracePlot pixel settings");
+    return OPENMC_E_INVALID_SIZE;
+  }
+
+  ImageData data = plt->create_image();
+  if (static_cast<int32_t>(data.shape()[0]) != width ||
+      static_cast<int32_t>(data.shape()[1]) != height) {
+    set_errmsg("Unexpected image size from SolidRayTracePlot create_image");
+    return OPENMC_E_INVALID_SIZE;
+  }
+
+  for (int32_t y = 0; y < height; ++y) {
+    for (int32_t x = 0; x < width; ++x) {
+      const auto& color = data(x, y);
+      size_t idx = (static_cast<size_t>(y) * width + x) * 3;
+      data_out[idx + 0] = color.red;
+      data_out[idx + 1] = color.green;
+      data_out[idx + 2] = color.blue;
+    }
+  }
+
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_color(
+  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b)
+{
+  if (!r || !g || !b) {
+    set_errmsg(
+      "Invalid arguments passed to openmc_solidraytrace_plot_get_color");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  int32_t domain_index = -1;
+  err = map_phong_domain_id(plt, id, &domain_index);
+  if (err)
+    return err;
+
+  if (domain_index < 0 ||
+      static_cast<size_t>(domain_index) >= plt->colors_.size()) {
+    set_errmsg("Color index out of range for SolidRayTracePlot");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  const auto& color = plt->colors_[domain_index];
+  *r = color.red;
+  *g = color.green;
+  *b = color.blue;
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_get_diffuse_fraction(
+  int32_t index, double* diffuse_fraction)
+{
+  if (!diffuse_fraction) {
+    set_errmsg("Invalid arguments passed to "
+               "openmc_solidraytrace_plot_get_diffuse_fraction");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  *diffuse_fraction = plt->diffuse_fraction();
+  return 0;
+}
+
+extern "C" int openmc_solidraytrace_plot_set_diffuse_fraction(
+  int32_t index, double diffuse_fraction)
+{
+  SolidRayTracePlot* plt = nullptr;
+  int err = get_solidraytrace_plot_by_index(index, &plt);
+  if (err)
+    return err;
+
+  if (diffuse_fraction < 0.0 || diffuse_fraction > 1.0) {
+    set_errmsg("Diffuse fraction must be between 0 and 1");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  plt->diffuse_fraction() = diffuse_fraction;
   return 0;
 }
 

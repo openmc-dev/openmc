@@ -169,13 +169,13 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
         continue;
 
       // Get temperature of cell (rounding to nearest integer)
-      double sqrtkT =
-        cell->sqrtkT_.size() == 1 ? cell->sqrtkT_[j] : cell->sqrtkT_[0];
-      double kT = sqrtkT * sqrtkT;
+      for (int k = 0; k < cell->sqrtkT_.size(); ++k) {
+        double kT = cell->sqrtkT_[k] * cell->sqrtkT_[k];
 
-      // Add temperature if it hasn't already been added
-      if (!contains(kTs[i_material], kT)) {
-        kTs[i_material].push_back(kT);
+        // Add temperature if it hasn't already been added
+        if (!contains(kTs[i_material], kT)) {
+          kTs[i_material].push_back(kT);
+        }
       }
     }
   }

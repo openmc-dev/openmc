@@ -85,8 +85,6 @@ for broad exploration.
 
 ## Step 5: Demonstrate the LSP tool to yourself
 
-Skip this step if Step 3 printed `LSP_UNAVAILABLE`.
-
 ```bash
 HAS_CLANGD=false; HAS_COMPDB=false
 (which clangd || which clangd-15 || which clangd-16 || which clangd-17 || which clangd-18) >/dev/null 2>&1 && HAS_CLANGD=true

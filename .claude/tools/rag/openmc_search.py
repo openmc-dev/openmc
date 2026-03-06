@@ -72,10 +72,7 @@ def format_results(results, label=""):
         symbol = r["symbol"]
         dist = r.get("_distance", 0)
 
-        header = f"[{i}] {filepath}:{start}-{end} ({kind}"
-        if symbol:
-            header += f": {symbol}"
-        header += f", dist={dist:.3f})"
+        header = f"[{i}] {filepath}:{start}-{end} ({kind}, dist={dist:.3f})"
         output.append(header)
 
         # Show text preview (first 500 chars)

@@ -230,7 +230,7 @@ class R2SManager:
         )
         self.step3_photon_transport(
             photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
-            mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs, chain_file = chain_file
+            mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
         )
 
         return output_dir
@@ -405,7 +405,6 @@ class R2SManager:
         output_dir: PathLike = 'photon_transport',
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
-        chain_file: PathLike | None = None,
     ):
         """Run the photon transport step.
 
@@ -438,17 +437,12 @@ class R2SManager:
         run_kwargs : dict, optional
             Additional keyword arguments passed to :meth:`openmc.Model.run`
             during the photon transport step. By default, output is disabled.
-        chain_file : PathLike, optional
-                    Path to the depletion chain XML file to use during activation. If
-                    not provided, the default configured chain file will be used.
         """
 
         # TODO: Automatically determine bounding box for each cell
         if bounding_boxes is None and self.method == 'cell-based':
             raise ValueError("bounding_boxes must be provided for cell-based "
                              "R2S calculations.")
-        from openmc.deplete import Chain
-        chain = Chain.from_xml(chain_file) if chain_file is not None else None
 
         # Set default run arguments if not provided
         if run_kwargs is None:
@@ -496,7 +490,7 @@ class R2SManager:
             # Create decay photon source
             if self.method == 'mesh-based':
                 self.photon_model.settings.source = \
-                    self.get_decay_photon_source_mesh(time_index, chain_file=chain_file)
+                    self.get_decay_photon_source_mesh(time_index)
             else:
                 sources = []
                 results = self.results['depletion_results']
@@ -516,7 +510,7 @@ class R2SManager:
 
                     # Create decay photon source source
                     space = openmc.stats.Box(*bounding_box)
-                    energy = activated_mat.get_decay_photon_energy(chain=chain)
+                    energy = activated_mat.get_decay_photon_energy()
                     strength = energy.integral() if energy is not None else 0.0
                     source = openmc.IndependentSource(
                         space=space,
@@ -545,8 +539,7 @@ class R2SManager:
 
     def get_decay_photon_source_mesh(
         self,
-        time_index: int = -1,
-        chain_file: PathLike | None = None,
+        time_index: int = -1
     ) -> list[openmc.IndependentSource]:
         """Create decay photon source for a mesh-based calculation.
 
@@ -565,9 +558,6 @@ class R2SManager:
         ----------
         time_index : int, optional
             Time index for the decay photon source. Default is -1 (last time).
-        chain_file : PathLike, optional
-                    Path to the depletion chain XML file to use during activation. If
-                    not provided, the default configured chain file will be used.
 
         Returns
         -------
@@ -576,9 +566,6 @@ class R2SManager:
             each mesh element-material combination with non-zero source strength.
 
         """
-        from openmc.deplete import Chain
-        chain = Chain.from_xml(chain_file) if chain_file is not None else None
-                        
         mat_dict = self.neutron_model._get_all_materials()
 
         # List to hold all sources
@@ -620,7 +607,7 @@ class R2SManager:
                 activated_mat = results[time_index].get_material(str(original_mat.id))
 
                 # Create decay photon source
-                energy = activated_mat.get_decay_photon_energy(chain=chain)
+                energy = activated_mat.get_decay_photon_energy()
                 if energy is not None:
                     strength = energy.integral()
                     space = openmc.stats.Box(*bbox)

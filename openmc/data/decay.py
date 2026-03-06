@@ -564,7 +564,7 @@ class Decay(EqualityMixin):
 _DECAY_PHOTON_ENERGY = {}
 
 
-def decay_photon_energy(nuclide: str, chain = None) -> Univariate | None:
+def decay_photon_energy(nuclide: str) -> Univariate | None:
     """Get photon energy distribution resulting from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it
@@ -577,9 +577,7 @@ def decay_photon_energy(nuclide: str, chain = None) -> Univariate | None:
     ----------
     nuclide : str
         Name of nuclide, e.g., 'Co58'
-    chain : Chain, optional.
-            Chain file to get decay energy from
-    
+
     Returns
     -------
     openmc.stats.Univariate or None
@@ -587,15 +585,6 @@ def decay_photon_energy(nuclide: str, chain = None) -> Univariate | None:
         if no photon source exists. Note that the probabilities represent
         intensities, given as [Bq/atom] (in other words, decay constants).
     """
-    from openmc.deplete.chain import Chain
-    if chain is not None:
-        cv.check_type('chain', chain, Chain)
-        for nuc in chain.nuclides:
-            if nuc.name == nuclide:
-                return nuc.sources.get('photon')
-        else:
-            return
-                                                            
     if not _DECAY_PHOTON_ENERGY:
         chain_file = openmc.config.get('chain_file')
         if chain_file is None:
@@ -604,6 +593,7 @@ def decay_photon_energy(nuclide: str, chain = None) -> Univariate | None:
                 "openmc.config['chain_file'] in order to load decay data."
             )
 
+        from openmc.deplete import Chain
         chain = Chain.from_xml(chain_file)
         for nuc in chain.nuclides:
             if 'photon' in nuc.sources:
@@ -620,7 +610,7 @@ def decay_photon_energy(nuclide: str, chain = None) -> Univariate | None:
 _DECAY_ENERGY = {}
 
 
-def decay_energy(nuclide: str, chain = None):
+def decay_energy(nuclide: str):
     """Get decay energy value resulting from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it
@@ -633,8 +623,6 @@ def decay_energy(nuclide: str, chain = None):
     ----------
     nuclide : str
         Name of nuclide, e.g., 'H3'
-    chain : Chain, optional.
-        Chain file to get decay energy from
 
     Returns
     -------
@@ -642,15 +630,6 @@ def decay_energy(nuclide: str, chain = None):
         Decay energy of nuclide in [eV]. If the nuclide is stable, a value of
         0.0 is returned.
     """
-    from openmc.deplete.chain import Chain
-    if chain is not None:
-        cv.check_type('chain', chain, Chain)
-        for nuclide in chain.nuclides:
-            if nuc.name == nuclide and nuc.decay_energy:
-                return nuc.decay_energy
-        else:
-            return 0.0
-
     if not _DECAY_ENERGY:
         chain_file = openmc.config.get('chain_file')
         if chain_file is None:
@@ -659,6 +638,7 @@ def decay_energy(nuclide: str, chain = None):
                 "openmc.config['chain_file'] in order to load decay data."
             )
 
+        from openmc.deplete import Chain
         chain = Chain.from_xml(chain_file)
         for nuc in chain.nuclides:
             if nuc.decay_energy:

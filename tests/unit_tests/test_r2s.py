@@ -53,7 +53,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     r2s = R2SManager(model, mesh)
 
     # Use custom reduced chain file for Ni
-    chain_file = Path(__file__).parents[1] / "chain_ni.xml"
+    chain = Chain.from_xml(Path(__file__).parents[1] / "chain_ni.xml")
 
     # Run R2S calculation
     outdir = r2s.run(
@@ -61,7 +61,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
         source_rates=[1.0],
         photon_time_indices=[1],
         output_dir=tmp_path,
-        chain_file=chain_file,
+        chain_file=chain,
     )
 
     # Check directories and files exist
@@ -105,7 +105,7 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
     r2s = R2SManager(model, [c1, c2])
 
     # Use custom reduced chain file for Ni
-    chain_file = Path(__file__).parents[1] / "chain_ni.xml"
+    chain = Chain.from_xml(Path(__file__).parents[1] / "chain_ni.xml")
 
     # Run R2S calculation
     bounding_boxes = {c1.id: c1.bounding_box, c2.id: c2.bounding_box}
@@ -115,7 +115,7 @@ def test_r2s_cell_expected_output(simple_model_and_mesh, tmp_path):
         photon_time_indices=[1],
         output_dir=tmp_path,
         bounding_boxes=bounding_boxes,
-        chain_file=chain_file
+        chain_file=chain
     )
 
     # Check directories and files exist

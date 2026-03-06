@@ -286,6 +286,10 @@ def find_symbol_on_line(client, filepath, line_1based):
         if start['line'] == line_0:
             col = text.find(sym['name'], start['character'])
             if col >= 0:
+                # clangd may report "Class::method" — land on the method name
+                sep = sym['name'].rfind('::')
+                if sep >= 0:
+                    col += sep + 2
                 return col, text
 
     # No symbol definition on this line — find the most specific identifier.

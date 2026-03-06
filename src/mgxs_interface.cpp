@@ -109,7 +109,7 @@ void MgxsInterface::add_mgxs(
   }
 
   nuclides_.emplace_back(
-    xs_grp, temperature, energy_bins_, num_delayed_groups_);
+    xs_grp, temperature, num_energy_groups_, num_delayed_groups_);
   close_group(xs_grp);
 }
 
@@ -193,6 +193,23 @@ int MgxsInterface::get_group_index(double E)
 
 //==============================================================================
 
+double get_inverse_velocity(const Particle& p)
+{
+  auto mat = p->material();
+  if (mat != MATERIAL_VOID) {
+    auto& macro_xs = macro_xs_[mat];
+    int macro_t = p->mg_xs_cache().t;
+    int macro_a = macro_xs.get_angle_index(p->u());
+    double inv_v =
+      macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, p->g(), macro_t, macro_a);
+    if (inv_v > 0.0)
+      return inv_v;
+  }
+  return default_inverse_velocity_[p->g()];
+}
+
+//==============================================================================
+
 void MgxsInterface::read_header(const std::string& path_cross_sections)
 {
   // Save name of HDF5 file to be read to struct data
@@ -237,46 +254,16 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
                 "library file!");
   }
 
-  // Read void velocities
-  bool void_velocities_exist = false;
-  if (object_exists(file_id, "void")) {
-    auto void_grp = open_group(file_id, "void");
-    // Determine the available temperatures
-    hid_t kT_group = open_group(void_grp, "kTs");
-    size_t num_temps = get_num_datasets(kT_group);
-    char** dset_names = new char*[num_temps];
-    for (int i = 0; i < num_temps; i++) {
-      dset_names[i] = new char[151];
-    }
-    get_datasets(kT_group, dset_names);
-    close_group(kT_group);
-    if (num_temps > 1)
-      fatal_error("Multigroup void data must have only one dummy temperature");
-    auto xsdata_grp = open_group(void_grp, dset_names[0]);
-    if (object_exists(xsdata_grp, "inverse-velocity")) {
-      vector<size_t> shape {1, static_cast<size_t>(num_energy_groups_)};
-      xt::xtensor<double, 2> inverse_velocity = xt::zeros<double>(shape);
-      read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
-      auto velocity = 1.0 / inverse_velocity;
-      for (double v : velocity) {
-        void_velocities_.push_back(v);
-      }
-      void_velocities_exist = true;
-    }
-    close_group(xsdata_grp);
-    close_group(void_grp);
-  }
-  if (!void_velocities_exist) {
-    for (int i = 0; i < energy_bins_.size() - 1; ++i) {
-      double e_min = std::max(energy_bins_[i], 1e-5);
-      double e_max = energy_bins_[i + 1];
-      double v = C_LIGHT * std::log(e_max / e_min) /
-                 (std::acosh(1 + e_max / MASS_NEUTRON_EV) -
-                   std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_max) -
-                   std::acosh(1 + e_min / MASS_NEUTRON_EV) +
-                   std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_min));
-      void_velocities_.push_back(v);
-    }
+  // Calculate approximate default inverse velocity data
+  for (int i = 0; i < energy_bins_.size() - 1; ++i) {
+    double e_min = std::max(energy_bins_[i], 1e-5);
+    double e_max = energy_bins_[i + 1];
+    double inv_v = (std::acosh(1 + e_max / MASS_NEUTRON_EV) -
+                     std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_max) -
+                     std::acosh(1 + e_min / MASS_NEUTRON_EV) +
+                     std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_min)) /
+                   (C_LIGHT * std::log(e_max / e_min));
+    default_inverse_velocity.push_back(inv_v);
   }
 
   // Close MGXS HDF5 file

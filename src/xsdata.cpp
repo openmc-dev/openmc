@@ -78,7 +78,7 @@ XsData::XsData(bool fissionable, AngleDistributionType scatter_format,
 void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   AngleDistributionType scatter_format,
   AngleDistributionType final_scatter_format, int order_data, bool is_isotropic,
-  int n_pol, int n_azi, const vector<double>& energy_bins)
+  int n_pol, int n_azi)
 {
   // Reconstruct the dimension information so it doesn't need to be passed
   size_t n_ang = n_pol * n_azi;
@@ -92,22 +92,6 @@ void XsData::from_hdf5(hid_t xsdata_grp, bool fissionable,
   read_nd_tensor(xsdata_grp, "decay-rate", decay_rate);
   read_nd_tensor(xsdata_grp, "absorption", absorption, true);
   read_nd_tensor(xsdata_grp, "inverse-velocity", inverse_velocity);
-
-  if (!object_exists(xsdata_grp, "inverse-velocity")) {
-    xt::xarray<double> inv_vel = xt::zeros<double>({energy_groups});
-    for (int i = 0; i < energy_groups; ++i) {
-      double e_min = std::max(energy_bins[i], 1e-5);
-      double e_max = energy_bins[i + 1];
-      inv_vel[i] = (std::acosh(1 + e_max / MASS_NEUTRON_EV) -
-                     std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_max) -
-                     std::acosh(1 + e_min / MASS_NEUTRON_EV) +
-                     std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_min)) /
-                   std::log(e_max / e_min) / C_LIGHT;
-    }
-    for (int j = 0; j < n_ang; ++j) {
-      xt::view(inverse_velocity, j, xt::all()) = inv_vel;
-    }
-  }
 
   // Get scattering data
   scatter_from_hdf5(

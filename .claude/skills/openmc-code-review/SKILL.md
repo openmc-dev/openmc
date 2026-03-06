@@ -1,6 +1,6 @@
 ---
 name: openmc-code-review
-description: Reviews code changes in the OpenMC codebase against OpenMC's contribution criteria (correctness, testing, physics soundness, style, design, performance, docs, dependencies). Use when asked to review a PR, branch, patch, or set of code changes in OpenMC, or when an author wants to self-review changes before submitting a PR.
+description: Reviews code changes in the OpenMC codebase against OpenMC's contribution criteria (correctness, testing, physics soundness, style, design, performance, docs, dependencies). Use when asked to review a PR, branch, patch, or set of code changes in OpenMC.
 ---
 
 Apply repository-wide guidance from `AGENTS.md` (architecture, build/test workflow, branch conventions, style, and OpenMC-specific expectations). This skill adds a structured review process and rubric on top of that baseline knowledge.
@@ -12,12 +12,7 @@ Apply repository-wide guidance from `AGENTS.md` (architecture, build/test workfl
    - **User specifies a base branch or commit range:** Use that instead.
    - **PR context provided by tooling:** Use the base/head refs supplied by the tool.
 2. **Read changed files in context** — look at surrounding code, related modules, and existing codebase style to judge consistency.
-3. **Explore repository** Given the context of the current PR, explore OpenMC to determine if there are any additional files you'll need to analyze given the multiple ways OpenMC can be run.
-4. **Determine review mode:**
-   - **Self-review mode** (author preparing changes before submission): Emphasize likely reviewer objections, missing tests/docs, API naming consistency, and quick fixes that would speed up review.
-   - **Reviewer mode** (default): Provide a standard structured review suitable for a code review or PR review.
-
-   If the user explicitly requests self-review, use self-review mode. Otherwise, default to reviewer mode.
+3. **Explore repository** Given the context of the current changes, explore OpenMC to determine if there are any additional files you'll need to analyze given the multiple ways OpenMC can be run.
 
 ## Review Criteria
 
@@ -67,7 +62,7 @@ Assess each of the following areas, noting any issues found. If an area looks go
 
 Produce your review as a structured report with the following sections:
 
-**Context**: State the review mode (self-review or reviewer) and what is being compared (e.g., "current branch vs. `develop`", or the specific commit range/PR).
+**Context**: State what is being compared (e.g., "current branch vs. `develop`", or the specific commit range/PR).
 
 **Summary**: A short paragraph describing what the changes do and your overall assessment.
 
@@ -80,7 +75,3 @@ Group findings into:
 1. **Blocking issues** — Would justify requesting changes before merge
 2. **Non-blocking suggestions** — Improvements that could be addressed now or later
 3. **Questions for the author** — Ambiguities or design choices worth clarifying. Do not include questions that you are capable of answering yourself
-
-**Recommended Action**:
-- *Reviewer mode*: One of — *Approve*, *Approve with minor suggestions*, *Request changes*, or *Reject* — with a brief justification.
-- *Self-review mode*: A prioritized list of pre-submission fixes — missing tests, undocumented parameters, naming inconsistencies, or anything else likely to slow down review.

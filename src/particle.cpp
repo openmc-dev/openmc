@@ -247,7 +247,8 @@ void Particle::event_advance()
 
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[type().transport_index()];
-  double distance_cutoff = (time_cutoff - time()) * speed;
+  double distance_cutoff =
+    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
   // Select smaller of the three distances
   double distance =

@@ -43,7 +43,16 @@ Run `--help` for each tool to learn their full APIs:
 
 ```bash
 .claude/cache/.venv/bin/python .claude/tools/rag/openmc_search.py --help
-.claude/cache/.venv/bin/python .claude/tools/lsp/openmc_lsp.py --help
+# LSP tool requires clangd and compile_commands.json
+HAS_CLANGD=false; HAS_COMPDB=false
+(which clangd || which clangd-15 || which clangd-16 || which clangd-17 || which clangd-18) >/dev/null 2>&1 && HAS_CLANGD=true
+([ -f build/compile_commands.json ] || [ -f compile_commands.json ]) && HAS_COMPDB=true
+if $HAS_CLANGD && $HAS_COMPDB; then
+    .claude/cache/.venv/bin/python .claude/tools/lsp/openmc_lsp.py --help
+    echo "LSP_AVAILABLE"
+else
+    echo "LSP_UNAVAILABLE (need clangd [$HAS_CLANGD] and compile_commands.json [$HAS_COMPDB])"
+fi
 ```
 
 Read and internalize the output so you know all available options.
@@ -76,18 +85,31 @@ for broad exploration.
 
 ## Step 5: Demonstrate the LSP tool to yourself
 
-Run this references query and read the results carefully:
+Skip this step if Step 3 printed `LSP_UNAVAILABLE`.
 
 ```bash
-.claude/cache/.venv/bin/python .claude/tools/lsp/openmc_lsp.py references src/tallies/tally.cpp:835
+HAS_CLANGD=false; HAS_COMPDB=false
+(which clangd || which clangd-15 || which clangd-16 || which clangd-17 || which clangd-18) >/dev/null 2>&1 && HAS_CLANGD=true
+([ -f build/compile_commands.json ] || [ -f compile_commands.json ]) && HAS_COMPDB=true
+if $HAS_CLANGD && $HAS_COMPDB; then
+    LINE=$(grep -n "^void Tally::reset()" src/tallies/tally.cpp | head -1 | cut -d: -f1)
+    if [ -n "$LINE" ]; then
+        .claude/cache/.venv/bin/python .claude/tools/lsp/openmc_lsp.py references "src/tallies/tally.cpp:$LINE"
+    else
+        echo "SKIPPED: Could not find Tally::reset() in src/tallies/tally.cpp"
+    fi
+else
+    echo "SKIPPED: LSP demo requires clangd [$HAS_CLANGD] and compile_commands.json [$HAS_COMPDB]"
+fi
 ```
 
-Line 835 is `Tally::reset()`. The LSP tool uses the C++ compiler frontend to
-resolve this — it returns only references to **this specific** `reset()`, not
-the other 3 classes that also define `void reset()` (Timer, ParticleData,
-SharedArray). Compare with `grep 'reset()'` which returns 62 mixed hits across
-20 files including vendor code. The LSP tool gives you the exact 10 files that
-call or reference `Tally::reset()`, with line numbers — zero false positives.
+If it ran, the output shows references to `Tally::reset()`. The LSP tool uses
+the C++ compiler frontend to resolve this — it returns only references to
+**this specific** `reset()`, not the other classes that also define
+`void reset()`. Compare with `grep 'reset()'` which returns dozens of mixed
+hits across many files including vendor code. The LSP tool gives you only the
+files that actually reference `Tally::reset()`, with line numbers — zero false
+positives.
 
 This is why the LSP tool exists: **`grep` matches text, LSP resolves types.**
 When a common method name like `reset`, `get`, `size`, or `create` is used by

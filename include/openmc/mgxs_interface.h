@@ -65,7 +65,7 @@ public:
   vector<double> rev_energy_bins_;
   vector<vector<double>> nuc_temps_; // all available temperatures
   vector<double>
-    default_inverse_velocity; // approximate default inverse-velocity data
+    default_inverse_velocity_; // approximate default inverse-velocity data
 };
 
 namespace data {

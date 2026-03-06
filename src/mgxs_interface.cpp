@@ -193,19 +193,19 @@ int MgxsInterface::get_group_index(double E)
 
 //==============================================================================
 
-double get_inverse_velocity(const Particle& p)
+double MgxsInterface::get_inverse_velocity(const Particle& p)
 {
-  auto mat = p->material();
+  auto mat = p.material();
   if (mat != MATERIAL_VOID) {
     auto& macro_xs = macro_xs_[mat];
-    int macro_t = p->mg_xs_cache().t;
-    int macro_a = macro_xs.get_angle_index(p->u());
+    int macro_t = p.mg_xs_cache().t;
+    int macro_a = macro_xs.get_angle_index(p.u());
     double inv_v =
-      macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, p->g(), macro_t, macro_a);
+      macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, p.g(), macro_t, macro_a);
     if (inv_v > 0.0)
       return inv_v;
   }
-  return default_inverse_velocity_[p->g()];
+  return default_inverse_velocity_[p.g()];
 }
 
 //==============================================================================
@@ -263,7 +263,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
                      std::acosh(1 + e_min / MASS_NEUTRON_EV) +
                      std::sqrt(1 + 2 * MASS_NEUTRON_EV / e_min)) /
                    (C_LIGHT * std::log(e_max / e_min));
-    default_inverse_velocity.push_back(inv_v);
+    default_inverse_velocity_.push_back(inv_v);
   }
 
   // Close MGXS HDF5 file

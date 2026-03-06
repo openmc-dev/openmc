@@ -62,7 +62,7 @@ double Particle::speed() const
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
   } else {
-    return 1.0 / data::mg.get_inverse_velocity(&p);
+    return 1.0 / data::mg.get_inverse_velocity(*this);
   }
 }
 

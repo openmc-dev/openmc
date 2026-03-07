@@ -241,9 +241,11 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   for (int i = 0; i < energy_bins_.size() - 1; ++i) {
     double e_min = std::max(energy_bins_[i + 1], 1e-5);
     double e_max = energy_bins_[i];
-    double inv_v = (std::acosh(e_max / MASS_NEUTRON_EV) -
-                     std::acosh(e_min / MASS_NEUTRON_EV)) /
-                   (C_LIGHT * std::log(e_max / e_min));
+    double f = 1.0 / (C_LIGHT * std::log(e_max / e_min));
+    double k_max = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_max);
+    double k_min = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_min);
+    double inv_v =
+      f * (2.0 * (std::atan(k_max) - std::atan(k_min)) - (k_max - k_min));
     default_inverse_velocity_.push_back(inv_v);
   }
 

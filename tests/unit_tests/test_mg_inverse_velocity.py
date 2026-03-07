@@ -57,4 +57,4 @@ def test_inverse_velocity(run_in_tmpdir, slab_model):
     slab_model.run(apply_tally_results=True)
     inverse_velocity = tally.mean.squeeze()[1]/tally.mean.squeeze()[0]
 
-    assert inverse_velocity == pytest.approx(5.25e-5)
+    assert inverse_velocity == pytest.approx(1.6144e-5, rel=1e-4)

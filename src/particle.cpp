@@ -53,7 +53,14 @@ double Particle::speed() const
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
   } else {
-    return 1.0 / data::mg.get_inverse_velocity(*this);
+    auto mat = this->material();
+    if (mat == MATERIAL_VOID)
+      return 1.0 / data::mg.default_inverse_velocity_[this->g()];
+    auto& macro_xs = data::mg.macro_xs_[mat];
+    int macro_t = this->mg_xs_cache().t;
+    int macro_a = macro_xs.get_angle_index(this->u());
+    return 1.0 / macro_xs.get_xs(
+                   MgxsType::INVERSE_VELOCITY, this->g(), macro_t, macro_a);
   }
 }
 

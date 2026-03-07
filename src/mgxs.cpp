@@ -510,6 +510,8 @@ double Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
     break;
   case MgxsType::INVERSE_VELOCITY:
     val = xs_t->inverse_velocity(a, gin);
+    if (val == 0)
+      val = data::mg.default_inverse_velocity_[gin];
     break;
   case MgxsType::DECAY_RATE:
     if (dg != nullptr) {

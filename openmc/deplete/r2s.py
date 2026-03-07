@@ -545,10 +545,13 @@ class R2SManager:
             with TemporarySession(self.photon_model, cwd=photon_dir):
                 # Create decay photon sources in C++ memory
                 if self.method == 'mesh-based':
-                    self._create_cpp_sources_mesh(time_index, work_items)
+                    self._create_cpp_sources(time_index, work_items, 'material')
                 else:
-                    self._create_cpp_sources_cells(
-                        time_index, bounding_boxes, _domain_pairs)
+                    cell_work_items = [
+                        (cell, original_mat, bounding_boxes[cell.id])
+                        for cell, original_mat in _domain_pairs
+                    ]
+                    self._create_cpp_sources(time_index, cell_work_items, 'cell')
 
                 statepoint_path = self.photon_model.run(**run_kwargs)
 
@@ -662,43 +665,23 @@ class R2SManager:
         return (domain_ids, lower_left, upper_right, nuclide_names,
                 atom_densities, volumes_arr)
 
-    def _create_cpp_sources_mesh(self, time_index, work_items):
-        """Create decay photon sources in C++ for mesh-based calculations.
+    def _create_cpp_sources(self, time_index, work_items, domain_type):
+        """Create decay photon sources in C++ for a set of regions.
 
         Parameters
         ----------
         time_index : int
             Index into depletion results.
         work_items : list of tuple
-            List of (index_mat, mat_id, bbox) from :meth:`_get_mesh_work_items`.
+            For mesh-based: list of (index_mat, mat_id, bbox).
+            For cell-based: list of (cell, original_mat, bbox).
+        domain_type : {'material', 'cell'}
+            The type of domain constraint to apply to each source.
         """
         domain_ids, ll, ur, nuc_names, densities, vols = \
-            self._get_region_data(time_index, work_items, 'material')
+            self._get_region_data(time_index, work_items, domain_type)
         openmc.lib.create_decay_photon_sources(
-            domain_ids, 'material', ll, ur, nuc_names, densities, vols)
-
-    def _create_cpp_sources_cells(self, time_index, bounding_boxes,
-                                  domain_pairs):
-        """Create decay photon sources in C++ for cell-based calculations.
-
-        Parameters
-        ----------
-        time_index : int
-            Index into depletion results.
-        bounding_boxes : dict
-            Mapping of cell ID to :class:`~openmc.BoundingBox`.
-        domain_pairs : list of tuple
-            List of (cell, original_mat) pairs.
-        """
-        # Build work items with bounding boxes
-        work_items = [
-            (cell, original_mat, bounding_boxes[cell.id])
-            for cell, original_mat in domain_pairs
-        ]
-        domain_ids, ll, ur, nuc_names, densities, vols = \
-            self._get_region_data(time_index, work_items, 'cell')
-        openmc.lib.create_decay_photon_sources(
-            domain_ids, 'cell', ll, ur, nuc_names, densities, vols)
+            domain_ids, domain_type, ll, ur, nuc_names, densities, vols)
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

@@ -10,7 +10,6 @@ import openmc
 import openmc.lib
 from . import IndependentOperator, PredictorIntegrator
 from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
-from .pool import _distribute
 from .results import Results
 from ..checkvalue import PathLike
 from ..mpi import comm
@@ -559,111 +558,13 @@ class R2SManager:
                     sp.tallies[tally.id] for tally in self.photon_model.tallies
                 ]
 
-    def get_decay_photon_source_mesh(
-        self,
-        time_index: int = -1
-    ) -> list[openmc.IndependentSource]:
-        """Create decay photon source for a mesh-based calculation.
-
-        For each mesh element-material combination across all meshes, an
-        :class:`~openmc.IndependentSource` is created with a
-        :class:`~openmc.stats.Box` spatial distribution based on the bounding
-        box of the material within the mesh element. A material constraint is
-        also applied so that sampled source sites are limited to the correct
-        region.
-
-        When the photon transport model is different from the neutron model, the
-        photon MeshMaterialVolumes is used to determine whether an (element,
-        material) combination exists in the photon model.
-
-        Parameters
-        ----------
-        time_index : int, optional
-            Time index for the decay photon source. Default is -1 (last time).
-
-        Returns
-        -------
-        list of openmc.IndependentSource
-            A list of IndependentSource objects for the decay photons, one for
-            each mesh element-material combination with non-zero source strength.
-
-        """
-        mat_dict = self.neutron_model._get_all_materials()
-
-        # Get various results from previous steps
-        mmv_list = self.results['mesh_material_volumes']
-        materials = self.results['activation_materials']
-        results = self.results['depletion_results']
-        photon_mmv_list = self.results.get('mesh_material_volumes_photon')
-
-        # Phase 1: Enumerate all processable work items across all mesh
-        # elements and materials. This pass is cheap (no depletion data access)
-        # and records the stable index_mat needed to look up each activated
-        # material in the distributed phase.
-        work_items = []  # list of (index_mat, mat_id, bbox)
-        index_mat = 0
-        for mesh_idx, mat_vols in enumerate(mmv_list):
-            photon_mat_vols = photon_mmv_list[mesh_idx] \
-                if photon_mmv_list is not None else None
-
-            # Total number of mesh elements for this mesh
-            n_elements = mat_vols.num_elements
-
-            for index_elem in range(n_elements):
-                # Determine which materials exist in the photon model for this element
-                if photon_mat_vols is not None:
-                    photon_materials = {
-                        mat_id
-                        for mat_id, _ in photon_mat_vols.by_element(index_elem)
-                        if mat_id is not None
-                    }
-
-                for mat_id, _, bbox in mat_vols.by_element(index_elem, include_bboxes=True):
-                    # Skip void volume
-                    if mat_id is None:
-                        continue
-
-                    # Skip if this material doesn't exist in photon model
-                    if photon_mat_vols is not None and mat_id not in photon_materials:
-                        index_mat += 1
-                        continue
-
-                    work_items.append((index_mat, mat_id, bbox))
-                    index_mat += 1
-
-        # Phase 2: Distribute work items across MPI ranks
-        my_items = _distribute(work_items)
-
-        # Phase 3: Each rank builds decay photon sources for its assigned items
-        local_sources = []
-        for item_index_mat, mat_id, bbox in my_items:
-            original_mat = materials[item_index_mat]
-            activated_mat = results[time_index].get_material(str(original_mat.id))
-
-            # Create decay photon source
-            energy = activated_mat.get_decay_photon_energy()
-            if energy is not None:
-                strength = energy.integral()
-                space = openmc.stats.Box(*bbox)
-                local_sources.append(openmc.IndependentSource(
-                    space=space,
-                    energy=energy,
-                    particle='photon',
-                    strength=strength,
-                    constraints={'domains': [mat_dict[mat_id]]}
-                ))
-
-        # Phase 4: Gather sources from all ranks and return the complete list
-        all_sources = comm.allgather(local_sources)
-        return [s for rank_sources in all_sources for s in rank_sources]
-
     def _get_mesh_work_items(self):
         """Enumerate mesh-based work items across all meshes.
 
         Returns a list of (index_mat, mat_id, bbox) tuples for each eligible
-        mesh element--material combination. This is the same enumeration used
-        by :meth:`get_decay_photon_source_mesh` but separated out so it can be
-        called once outside the time loop.
+        mesh element--material combination, where index_mat is the index into
+        the activation materials list, mat_id is the material ID, and bbox is
+        the bounding box for that mesh element--material combination.
 
         Returns
         -------

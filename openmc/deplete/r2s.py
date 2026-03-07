@@ -517,20 +517,20 @@ class R2SManager:
         if different_photon_model:
             photon_cells = self.photon_model.geometry.get_all_cells()
 
-        # Determine eligible work items upfront. For cell-based calculations,
-        # pre-compute the eligible (cell, original_mat) pairs since the
-        # eligibility check doesn't depend on time.
+        # Determine eligible work items upfront (independent of time index).
         if self.method == 'mesh-based':
             work_items = self._get_mesh_work_items()
+            domain_type = 'material'
         else:
-            _domain_pairs = []
+            work_items = []
             for cell, original_mat in zip(
                     self.domains, self.results['activation_materials']):
                 if different_photon_model:
                     if cell.id not in photon_cells or \
                             cell.fill.id != photon_cells[cell.id].fill.id:
                         continue
-                _domain_pairs.append((cell, original_mat))
+                work_items.append((cell, original_mat, bounding_boxes[cell.id]))
+            domain_type = 'cell'
 
         # Ensure photon transport is enabled in settings
         self.photon_model.settings.photon_transport = True
@@ -544,14 +544,7 @@ class R2SManager:
             photon_dir = Path(output_dir) / f'time_{time_index}'
             with TemporarySession(self.photon_model, cwd=photon_dir):
                 # Create decay photon sources in C++ memory
-                if self.method == 'mesh-based':
-                    self._create_cpp_sources(time_index, work_items, 'material')
-                else:
-                    cell_work_items = [
-                        (cell, original_mat, bounding_boxes[cell.id])
-                        for cell, original_mat in _domain_pairs
-                    ]
-                    self._create_cpp_sources(time_index, cell_work_items, 'cell')
+                self._create_cpp_sources(time_index, work_items, domain_type)
 
                 statepoint_path = self.photon_model.run(**run_kwargs)
 

@@ -520,7 +520,6 @@ class R2SManager:
         # Determine eligible work items upfront (independent of time index).
         if self.method == 'mesh-based':
             work_items = self._get_mesh_work_items()
-            domain_type = 'material'
         else:
             work_items = []
             for cell, original_mat in zip(
@@ -530,7 +529,6 @@ class R2SManager:
                             cell.fill.id != photon_cells[cell.id].fill.id:
                         continue
                 work_items.append((cell, original_mat, bounding_boxes[cell.id]))
-            domain_type = 'cell'
 
         # Ensure photon transport is enabled in settings
         self.photon_model.settings.photon_transport = True
@@ -544,7 +542,7 @@ class R2SManager:
             photon_dir = Path(output_dir) / f'time_{time_index}'
             with TemporarySession(self.photon_model, cwd=photon_dir):
                 # Create decay photon sources in C++ memory
-                self._create_cpp_sources(time_index, work_items, domain_type)
+                self._create_cpp_sources(time_index, work_items)
 
                 statepoint_path = self.photon_model.run(**run_kwargs)
 
@@ -598,7 +596,7 @@ class R2SManager:
 
         return work_items
 
-    def _get_region_data(self, time_index, work_items, domain_type):
+    def _get_region_data(self, time_index, work_items):
         """Extract region data as flat numpy arrays for C++ source creation.
 
         Parameters
@@ -608,8 +606,6 @@ class R2SManager:
         work_items : list of tuple
             For mesh-based: list of (index_mat, mat_id, bbox).
             For cell-based: list of (cell, original_mat, bbox).
-        domain_type : str
-            Either ``'material'`` or ``'cell'``.
 
         Returns
         -------
@@ -622,6 +618,7 @@ class R2SManager:
         """
         step_result = self.results['depletion_results'][time_index]
         materials = self.results['activation_materials']
+        mesh_based = self.method == 'mesh-based'
 
         nuclide_names = list(step_result.index_nuc.keys())
         n_nuclides = len(nuclide_names)
@@ -634,7 +631,7 @@ class R2SManager:
         volumes_arr = np.empty(n_regions, dtype=np.float64)
 
         for i, item in enumerate(work_items):
-            if domain_type == 'material':
+            if mesh_based:
                 index_mat, mat_id, bbox = item
                 domain_ids[i] = mat_id
                 original_mat = materials[index_mat]
@@ -658,7 +655,7 @@ class R2SManager:
         return (domain_ids, lower_left, upper_right, nuclide_names,
                 atom_densities, volumes_arr)
 
-    def _create_cpp_sources(self, time_index, work_items, domain_type):
+    def _create_cpp_sources(self, time_index, work_items):
         """Create decay photon sources in C++ for a set of regions.
 
         Parameters
@@ -668,11 +665,10 @@ class R2SManager:
         work_items : list of tuple
             For mesh-based: list of (index_mat, mat_id, bbox).
             For cell-based: list of (cell, original_mat, bbox).
-        domain_type : {'material', 'cell'}
-            The type of domain constraint to apply to each source.
         """
         domain_ids, ll, ur, nuc_names, densities, vols = \
-            self._get_region_data(time_index, work_items, domain_type)
+            self._get_region_data(time_index, work_items)
+        domain_type = 'material' if self.method == 'mesh-based' else 'cell'
         openmc.lib.create_decay_photon_sources(
             domain_ids, domain_type, ll, ur, nuc_names, densities, vols)
 

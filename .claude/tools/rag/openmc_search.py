@@ -104,8 +104,9 @@ def search_related(db, embedder, filepath, top_k):
 
     # Get chunks from target file
     try:
+        safe_fp = fp.replace("'", "''")
         target_chunks = table.search().where(
-            f"filepath = '{fp}'"
+            f"filepath = '{safe_fp}'"
         ).limit(50).to_list()
     except Exception:
         # LanceDB where clause might not work in all versions

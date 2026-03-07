@@ -7,10 +7,6 @@
 #include <numeric>   // for accumulate
 #include <string>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include "openmc/capi.h"
 #include "openmc/chain.h"
 #include "openmc/distribution.h"
@@ -18,6 +14,7 @@
 #include "openmc/distribution_spatial.h"
 #include "openmc/error.h"
 #include "openmc/memory.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/particle_type.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
@@ -102,20 +99,12 @@ void create_decay_photon_sources(int n_regions, const int32_t* domain_ids,
   // Thread-local storage for sources built in parallel
   vector<vector<unique_ptr<Source>>> thread_sources;
 
-#ifdef _OPENMP
-  int n_threads = omp_get_max_threads();
-#else
-  int n_threads = 1;
-#endif
+  int n_threads = num_threads();
   thread_sources.resize(n_threads);
 
 #pragma omp parallel
   {
-#ifdef _OPENMP
-    int tid = omp_get_thread_num();
-#else
-    int tid = 0;
-#endif
+    int tid = thread_num();
 
 #pragma omp for schedule(dynamic, 64)
     for (int i = 0; i < n_regions; ++i) {

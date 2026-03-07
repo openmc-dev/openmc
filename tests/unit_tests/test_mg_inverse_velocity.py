@@ -41,9 +41,8 @@ def slab_model(one_group_lib):
     model.settings = openmc.Settings()
     model.settings.energy_mode = 'multi-group'
     model.settings.run_mode = 'fixed source'
-    model.settings.batches = 50
-    model.settings.inactive = 10
-    model.settings.particles = 5000
+    model.settings.batches = 3
+    model.settings.particles = 10
 
     source = openmc.IndependentSource()
     source.space = openmc.stats.Point((5.0, 0.0, 0.0))

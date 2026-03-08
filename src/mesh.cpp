@@ -1163,7 +1163,7 @@ void StructuredMesh::raytrace_mesh(
   Position global_r = r0;
   Position local_r = local_coords(r0);
 
-  const int n = n_neighbors_;
+  const int n = n_neighbors();
 
   // Flag if position is inside the mesh
   bool in_mesh;
@@ -1306,7 +1306,7 @@ void StructuredMesh::surface_bins_crossed(
     void surface(const MeshIndex& ijk, int k, bool max, bool inward) const
     {
       int i_bin =
-        4 * mesh->n_neighbors_ * mesh->get_bin_from_indices(ijk) + 4 * k;
+        4 * mesh->n_neighbors() * mesh->get_bin_from_indices(ijk) + 4 * k;
       if (max)
         i_bin += 2;
       if (inward)
@@ -1402,7 +1402,6 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
 
   tensor::Tensor<int> shape = get_node_tensor<int>(node, "dimension");
   int n = n_dimension_ = shape.size();
-  n_neighbors_ = n_dimension_;
   if (n != 1 && n != 2 && n != 3) {
     fatal_error("Mesh must be one, two, or three dimensions.");
   }
@@ -1447,7 +1446,6 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
   tensor::Tensor<int> shape;
   read_dataset(group, "dimension", shape);
   int n = n_dimension_ = shape.size();
-  n_neighbors_ = n_dimension_;
   if (n != 1 && n != 2 && n != 3) {
     fatal_error("Mesh must be one, two, or three dimensions.");
   }
@@ -1627,7 +1625,6 @@ double RegularMesh::volume(const MeshIndex& ijk) const
 RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
 {
   n_dimension_ = 3;
-  n_neighbors_ = n_dimension_;
 
   grid_[0] = get_node_array<double>(node, "x_grid");
   grid_[1] = get_node_array<double>(node, "y_grid");
@@ -1641,7 +1638,6 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
 RectilinearMesh::RectilinearMesh(hid_t group) : StructuredMesh {group}
 {
   n_dimension_ = 3;
-  n_neighbors_ = n_dimension_;
 
   read_dataset(group, "x_grid", grid_[0]);
   read_dataset(group, "y_grid", grid_[1]);
@@ -1777,7 +1773,6 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
-  n_neighbors_ = n_dimension_;
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
@@ -1791,7 +1786,6 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
 CylindricalMesh::CylindricalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
   n_dimension_ = 3;
-  n_neighbors_ = n_dimension_;
   read_dataset(group, "r_grid", grid_[0]);
   read_dataset(group, "phi_grid", grid_[1]);
   read_dataset(group, "z_grid", grid_[2]);
@@ -2070,7 +2064,6 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
-  n_neighbors_ = n_dimension_;
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "theta_grid");
   grid_[2] = get_node_array<double>(node, "phi_grid");
@@ -2084,7 +2077,6 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
 SphericalMesh::SphericalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
   n_dimension_ = 3;
-  n_neighbors_ = n_dimension_;
   read_dataset(group, "r_grid", grid_[0]);
   read_dataset(group, "theta_grid", grid_[1]);
   read_dataset(group, "phi_grid", grid_[2]);
@@ -2400,7 +2392,6 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
-  n_neighbors_ = 4;
   grid_ = get_node_array<double>(node, "grid");
   radius_ = std::stoi(get_node_value(node, "radius"));
   size_ = std::stod(get_node_value(node, "size"));
@@ -2424,7 +2415,6 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
   n_dimension_ = 3;
-  n_neighbors_ = 4;
   read_dataset(group, "grid", grid_);
   read_attribute(group, "radius", radius_);
   read_attribute(group, "size", size_);
@@ -4075,7 +4065,7 @@ void LibMesh::set_score_data(const std::string& var_name,
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-       it++) {
+    it++) {
     if (!(*it)->active()) {
       continue;
     }

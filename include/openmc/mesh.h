@@ -327,6 +327,8 @@ public:
 
   int n_surface_bins() const override;
 
+  virtual int n_neighbors() const { return n_dimension_; }
+
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
@@ -452,7 +454,6 @@ public:
 
   // Data members
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
-  int n_neighbors_ {-1};
 
 protected:
 };
@@ -720,6 +721,8 @@ public:
   virtual std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
+
+  virtual int n_neighbors() const override { return 4; }
 
   Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 

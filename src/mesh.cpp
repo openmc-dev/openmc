@@ -2468,7 +2468,7 @@ int HexagonalMesh::get_bin(Position r) const
 
 int HexagonalMesh::n_bins() const
 {
-  return (1 + 3 * (radius_ + 1) * radius_) * grid_.size() - 1;
+  return (1 + 3 * (radius_ + 1) * radius_) * (grid_.size() - 1);
 }
 
 int HexagonalMesh::n_surface_bins() const

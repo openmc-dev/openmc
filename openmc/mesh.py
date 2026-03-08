@@ -544,11 +544,6 @@ class StructuredMesh(MeshBase):
     def _axis_labels(self):
         pass
 
-    @property
-    @abstractmethod
-    def _grids(self):
-        pass
-
     @abstractmethod
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
         pass
@@ -2600,7 +2595,7 @@ class HexagonalMesh(StructuredMesh):
         self,
         z_grid: Sequence[float],
         pitch: float,
-        num_ring: int,
+        num_rings: int,
         orientation: str = 'y',
         origin: Sequence[float] = (0., 0., 0.),
         mesh_id: int | None = None,
@@ -2610,7 +2605,7 @@ class HexagonalMesh(StructuredMesh):
 
         self.z_grid = z_grid
         self.pitch = pitch
-        self.num_ring = num_ring
+        self.num_rings = num_rings
         self.orientation = orientation
         self.origin = origin
 
@@ -2650,6 +2645,22 @@ class HexagonalMesh(StructuredMesh):
         self._pitch = pitch
 
     @property
+    def n_dimension(self):
+        return 3
+
+    @property
+    def dimension(self):
+        return
+
+    @property
+    def lower_left(self):
+        return
+    
+    @property
+    def upper_right(self):
+        return
+                
+    @property
     def num_rings(self):
         return self._num_rings
 
@@ -2670,7 +2681,7 @@ class HexagonalMesh(StructuredMesh):
 
     @property
     def indices(self):
-        return [(r, i, z) for z in range(self.z_grid.size() - 1)
+        return [(r, i, z) for z in range(self.z_grid.size - 1)
                 for r in range(self.num_rings)
                 for i in range(max(6*(self.num_rings - 1 - r), 1))]
 

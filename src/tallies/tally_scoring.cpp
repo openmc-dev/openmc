@@ -1099,7 +1099,8 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       apply_derivative_to_score(
         p, i_tally, i_nuclide, atom_density, score_bin, score);
 
-// Update tally results
+    // Update tally results
+    write_message(2, "fi {} si {}", filter_index, score_index);
 #pragma omp atomic
     tally.results_(filter_index, score_index, TallyResult::VALUE) +=
       score * filter_weight;
@@ -2636,7 +2637,7 @@ void score_meshsurface_tally(Particle& p, const vector<int>& tallies)
       // for a further scoring function.
       double score = current * filter_weight;
       for (auto score_index = 0; score_index < tally.scores_.size();
-           ++score_index) {
+        ++score_index) {
 #pragma omp atomic
         tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
       }
@@ -2690,7 +2691,7 @@ void score_surface_tally(
 
       // Loop over scores.
       for (auto score_index = 0; score_index < tally.scores_.size();
-           ++score_index) {
+        ++score_index) {
         auto score_bin = tally.scores_[score_index];
         double score;
         if (score_bin == SCORE_CURRENT) {
@@ -2769,7 +2770,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
         // Loop over scores.
         for (auto score_index = 0; score_index < tally.scores_.size();
-             ++score_index) {
+          ++score_index) {
 #pragma omp atomic
           tally.results_(filter_index, score_index, TallyResult::VALUE) +=
             filter_weight;

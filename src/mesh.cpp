@@ -2441,6 +2441,49 @@ std::string HexagonalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+int HexagonalMesh::get_bin(Position r) const
+{
+  // Determine indices
+  bool in_mesh;
+  MeshIndex ijk = get_indices(r, in_mesh);
+  if (!in_mesh)
+    return -1;
+
+  // Convert indices to bin
+  return get_bin_from_indices(ijk);
+}
+
+int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
+{
+  int r = ijk[0];
+  int q = ijk[1];
+  int s = -r - q;
+  int k = ijk[2];
+  int rad = std::max({std::abs(r), std::abs(q), std::abs(s)});
+  int offset = 3 * (radius_ * (radius_ + 1) - rad * (rad + 1));
+  int side, pos;
+  if ((q == rad) && (s == -rad)) {
+    side = 0;
+    pos = r;
+  } else if ((s == -rad) && (r == rad)) {
+    side = 1;
+    pos = -q;
+  } else if ((r == rad) && (q == -rad)) {
+    side = 2;
+    pos = -s;
+  } else if ((q == -rad) && (s == rad)) {
+    side = 3;
+    pos = -r;
+  } else if ((s == rad) && (r == -rad)) {
+    side = 4;
+    pos = q;
+  } else {
+    side = 5;
+    pos = s;
+  }
+  return (k - 1) * (grid_.size() - 1) + offset + side * rad + pos;
+}
+
 StructuredMesh::MeshIndex HexagonalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -2712,6 +2755,8 @@ extern "C" int openmc_extend_meshes(
       model::meshes.push_back(make_unique<CylindricalMesh>());
     } else if (SphericalMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<SphericalMesh>());
+    } else if (HexagonalMesh::mesh_type == type) {
+      model::meshes.push_back(make_unique<HexagonalMesh>());
     } else {
       throw std::runtime_error {"Unknown mesh type: " + std::string(type)};
     }

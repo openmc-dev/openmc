@@ -716,13 +716,17 @@ public:
   HexagonalMesh(hid_t group);
 
   // Overridden methods
-  virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
+  int get_bin(Position r) const override;
 
-  virtual std::string get_mesh_type() const override;
+  MeshIndex get_indices(Position r, bool& in_mesh) const override;
+
+  int get_bin_from_indices(const MeshIndex& ijk) const override;
+
+  std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
 
-  virtual int n_neighbors() const override { return 4; }
+  int n_neighbors() const override { return 4; }
 
   Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 

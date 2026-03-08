@@ -85,6 +85,8 @@ def model():
     sph_mesh_exp_vols = np.multiply.outer(drdt, dp)
     np.testing.assert_allclose(sph_mesh.volumes, sph_mesh_exp_vols)
 
+    hex_mesh = openmc.HexagonalMesh(z_grid = np.logspace(0, np.log10(7.5), 11), pitch = 5, num_rings = 6)
+
     # Create filters
     reg_filters = [
         openmc.MeshFilter(mesh_1d),
@@ -92,7 +94,8 @@ def model():
         openmc.MeshFilter(mesh_3d),
         openmc.MeshFilter(recti_mesh),
         openmc.MeshFilter(cyl_mesh),
-        openmc.MeshFilter(sph_mesh)
+        openmc.MeshFilter(sph_mesh),
+        openmc.MeshFilter(hex_mesh),
     ]
     surf_filters = [
         openmc.MeshSurfaceFilter(mesh_1d),
@@ -100,7 +103,8 @@ def model():
         openmc.MeshSurfaceFilter(mesh_3d),
         openmc.MeshSurfaceFilter(recti_mesh),
         openmc.MeshSurfaceFilter(cyl_mesh),
-        openmc.MeshSurfaceFilter(sph_mesh)
+        openmc.MeshSurfaceFilter(sph_mesh),
+        openmc.MeshSurfaceFilter(hex_mesh),
     ]
 
     # Create tallies

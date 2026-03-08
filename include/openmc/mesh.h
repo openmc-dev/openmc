@@ -315,7 +315,7 @@ public:
   };
 
   virtual void sanitize_index(MeshIndex idx) const {};
-  
+
   Position sample_element(int32_t bin, uint64_t* seed) const override
   {
     return sample_element(get_indices_from_bin(bin), seed);
@@ -602,7 +602,7 @@ public:
   {
     idx[1] = sanitize_phi(idx[1]);
   }
-  
+
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
   int get_index_in_direction(double r, int i) const override;
@@ -753,7 +753,7 @@ public:
 
   bool index_inside_mesh(const MeshIndex& ijk, int k) const override
   {
-    if (k==3)
+    if (k == 3)
       return ((ijk[2] >= 1) && (ijk[2] < grid_.size()));
     int rad =
       std::max({std::abs(ijk[0]), std::abs(ijk[1]), std::abs(ijk[0] + ijk[1])});

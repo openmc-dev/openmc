@@ -1193,7 +1193,8 @@ void StructuredMesh::raytrace_mesh(
   // Loop until r = r1 is eventually reached
   int iteration;
   while (true) {
-    write_message(2, "traveled_distance {} iter {}", traveled_distance, ++iteration);
+    write_message(
+      2, "traveled_distance {} iter {}", traveled_distance, ++iteration);
     if (inside_mesh) {
 
       // find surface with minimal distance to current position
@@ -1216,8 +1217,8 @@ void StructuredMesh::raytrace_mesh(
 
       // Update cell and calculate distance to next surface in correlated
       // directions.
-      for (int j=0;j<3;++j)
-	ijk[j] += distances[k].offset[j];
+      for (int j = 0; j < 3; ++j)
+        ijk[j] += distances[k].offset[j];
       sanitize_index(ijk);
       for (auto j : correlated_axes_[k])
         distances[j] =
@@ -1946,7 +1947,7 @@ StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
   MeshDistance d;
-  
+
   // Direction of flight is within xy-plane. Will never intersect z.
   if (std::abs(u.z) < FP_PRECISION)
     return d;
@@ -1968,15 +1969,14 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
 {
   if (i == 0) {
     return std::min(
-		    MeshDistance({1,0,0}, true, find_r_crossing(r0, u, l, ijk[i])),
-		    MeshDistance({-1,0,0}, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance({1, 0, 0}, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance({-1, 0, 0}, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
-    return std::min(MeshDistance({0,1,0}, true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
-		    MeshDistance({0,-1,0}, false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+    return std::min(
+      MeshDistance({0, 1, 0}, true, find_phi_crossing(r0, u, l, ijk[i])),
+      MeshDistance({0, -1, 0}, false, find_phi_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
     return find_z_crossing(r0, u, l, ijk[i]);
@@ -2293,20 +2293,19 @@ StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
 
   if (i == 0) {
     return std::min(
-		    MeshDistance({1,0,0}, true, find_r_crossing(r0, u, l, ijk[i])),
-		    MeshDistance({-1,0,0}, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance({1, 0, 0}, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance({-1, 0, 0}, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
-    return std::min(MeshDistance({0,1,0}, true,
-                      find_theta_crossing(r0, u, l, ijk[i])),
-		    MeshDistance({0,-1,0}, false,
-        find_theta_crossing(r0, u, l, ijk[i] - 1)));
+    return std::min(
+      MeshDistance({0, 1, 0}, true, find_theta_crossing(r0, u, l, ijk[i])),
+      MeshDistance(
+        {0, -1, 0}, false, find_theta_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-    return std::min(MeshDistance({0,0,1}, true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
-		    MeshDistance({0,0,-1}, false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+    return std::min(
+      MeshDistance({0, 0, 1}, true, find_phi_crossing(r0, u, l, ijk[i])),
+      MeshDistance({0, 0, -1}, false, find_phi_crossing(r0, u, l, ijk[i] - 1)));
   }
 }
 
@@ -2572,7 +2571,7 @@ StructuredMesh::MeshDistance HexagonalMesh::find_z_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
   MeshDistance d;
-  
+
   // Direction of flight is within xy-plane. Will never intersect z.
   if (std::abs(u.z) < FP_PRECISION)
     return d;

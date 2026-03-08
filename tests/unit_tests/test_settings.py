@@ -198,8 +198,7 @@ def test_properties_file_load(tmp_path, mpi_intracomm):
     mat_densities = {}    # {mat_id: original atom/b-cm density}
 
     props_path = tmp_path / 'properties.h5'
-    comm_kwargs = {'intracomm': mpi_intracomm} if mpi_intracomm is not None else {}
-    with openmc.lib.TemporarySession(model, **comm_kwargs):
+    with openmc.lib.TemporarySession(model, intracomm=mpi_intracomm):
         openmc.lib.export_properties(str(props_path))
         for cell_id, cell in openmc.lib.cells.items():
             try:
@@ -229,7 +228,7 @@ def test_properties_file_load(tmp_path, mpi_intracomm):
 
     model.settings.properties_file = props_path
 
-    with openmc.lib.TemporarySession(model, **comm_kwargs):
+    with openmc.lib.TemporarySession(model, intracomm=mpi_intracomm):
         for cell_id, n in cell_instances.items():
             cell = openmc.lib.cells[cell_id]
             for i in range(n):

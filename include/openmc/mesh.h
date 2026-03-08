@@ -302,10 +302,10 @@ public:
 
   struct MeshDistance {
     MeshDistance() = default;
-    MeshDistance(int _index, bool _max_surface, double _distance)
-      : next_index {_index}, max_surface {_max_surface}, distance {_distance}
+    MeshDistance(MeshIndex _offset, bool _max_surface, double _distance)
+      : offset {_offset}, max_surface {_max_surface}, distance {_distance}
     {}
-    int next_index {-1};
+    MeshIndex offset {0, 0, 0};
     bool max_surface {true};
     double distance {INFTY};
     bool operator<(const MeshDistance& o) const
@@ -314,6 +314,8 @@ public:
     }
   };
 
+  virtual void sanitize_index(MeshIndex idx) const {};
+  
   Position sample_element(int32_t bin, uint64_t* seed) const override
   {
     return sample_element(get_indices_from_bin(bin), seed);
@@ -370,13 +372,9 @@ public:
   //
   //! \param[in] Array of mesh indices
   //! \return are indices inside mesh?
-  virtual bool in_mesh(const MeshIndex& ijk) const
+  virtual bool index_inside_mesh(const MeshIndex& ijk, int k) const
   {
-    for (int j = 0; j < 3; ++j) {
-      if ((ijk[j] < 1) || (ijk[j] > shape_[j]))
-        return false;
-    }
-    return true;
+    return ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
   }
 
   //! Get mesh indices corresponding to a mesh bin
@@ -600,6 +598,11 @@ public:
   CylindricalMesh(hid_t group);
 
   // Overridden methods
+  void sanitize_index(MeshIndex idx) const override
+  {
+    idx[1] = sanitize_phi(idx[1]);
+  }
+  
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
   int get_index_in_direction(double r, int i) const override;
@@ -665,6 +668,12 @@ public:
   SphericalMesh(hid_t group);
 
   // Overridden methods
+  void sanitize_index(MeshIndex idx) const override
+  {
+    idx[1] = sanitize_theta(idx[1]);
+    idx[2] = sanitize_phi(idx[2]);
+  }
+
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
   int get_index_in_direction(double r, int i) const override;
@@ -742,15 +751,13 @@ public:
 
   MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
-  bool in_mesh(const MeshIndex& ijk) const override
+  bool index_inside_mesh(const MeshIndex& ijk, int k) const override
   {
-    if ((ijk[2] < 1) || ijk[2] >= grid_.size())
-      return false;
+    if (k==3)
+      return ((ijk[2] >= 1) && (ijk[2] < grid_.size()));
     int rad =
       std::max({std::abs(ijk[0]), std::abs(ijk[1]), std::abs(ijk[0] + ijk[1])});
-    if (rad > radius_)
-      return false;
-    return true;
+    return (rad <= radius_);
   }
 
   int get_bin_from_indices(const MeshIndex& ijk) const override;

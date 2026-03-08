@@ -89,35 +89,35 @@ def model():
 
     # Create filters
     reg_filters = [
-        openmc.MeshFilter(mesh_1d),
-        openmc.MeshFilter(mesh_2d),
-        openmc.MeshFilter(mesh_3d),
-        openmc.MeshFilter(recti_mesh),
-        openmc.MeshFilter(cyl_mesh),
-        openmc.MeshFilter(sph_mesh),
+        #openmc.MeshFilter(mesh_1d),
+        #openmc.MeshFilter(mesh_2d),
+        #openmc.MeshFilter(mesh_3d),
+        #openmc.MeshFilter(recti_mesh),
+        #openmc.MeshFilter(cyl_mesh),
+        #openmc.MeshFilter(sph_mesh),
         openmc.MeshFilter(hex_mesh),
     ]
     surf_filters = [
-        openmc.MeshSurfaceFilter(mesh_1d),
-        openmc.MeshSurfaceFilter(mesh_2d),
-        openmc.MeshSurfaceFilter(mesh_3d),
-        openmc.MeshSurfaceFilter(recti_mesh),
-        openmc.MeshSurfaceFilter(cyl_mesh),
-        openmc.MeshSurfaceFilter(sph_mesh),
-        openmc.MeshSurfaceFilter(hex_mesh),
+        #openmc.MeshSurfaceFilter(mesh_1d),
+        #openmc.MeshSurfaceFilter(mesh_2d),
+        #openmc.MeshSurfaceFilter(mesh_3d),
+        #openmc.MeshSurfaceFilter(recti_mesh),
+        #openmc.MeshSurfaceFilter(cyl_mesh),
+        #openmc.MeshSurfaceFilter(sph_mesh),
+        #openmc.MeshSurfaceFilter(hex_mesh),
     ]
 
     # Create tallies
-    for f1, f2 in zip(reg_filters, surf_filters):
+    for f1 in reg_filters:
         tally = openmc.Tally()
         tally.filters = [f1]
         tally.scores = ['total']
         model.tallies.append(tally)
+    for f2 in surf_filters:
         tally = openmc.Tally()
         tally.filters = [f2]
         tally.scores = ['current']
         model.tallies.append(tally)
-
     return model
 
 

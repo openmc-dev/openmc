@@ -314,7 +314,7 @@ public:
     }
   };
 
-  virtual void sanitize_index(MeshIndex idx) const {};
+  virtual void sanitize_index(MeshIndex& idx) const {};
 
   Position sample_element(int32_t bin, uint64_t* seed) const override
   {
@@ -598,7 +598,7 @@ public:
   CylindricalMesh(hid_t group);
 
   // Overridden methods
-  void sanitize_index(MeshIndex idx) const override
+  void sanitize_index(MeshIndex& idx) const override
   {
     idx[1] = sanitize_phi(idx[1]);
   }
@@ -668,7 +668,7 @@ public:
   SphericalMesh(hid_t group);
 
   // Overridden methods
-  void sanitize_index(MeshIndex idx) const override
+  void sanitize_index(MeshIndex& idx) const override
   {
     idx[1] = sanitize_theta(idx[1]);
     idx[2] = sanitize_phi(idx[2]);

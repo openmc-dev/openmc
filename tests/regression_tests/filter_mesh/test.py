@@ -4,7 +4,7 @@ from math import pi
 import openmc
 import pytest
 
-from tests.testing_harness import PyAPITestHarness
+from tests.testing_harness import HashedPyAPITestHarness
 
 
 @pytest.fixture
@@ -118,5 +118,5 @@ def model():
 
 
 def test_filter_mesh(model):
-    harness = PyAPITestHarness('statepoint.5.h5', model)
+    harness = HashedPyAPITestHarness('statepoint.5.h5', model)
     harness.main()

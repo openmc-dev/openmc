@@ -63,6 +63,10 @@
       <phi_grid>0.0 0.3490658503988659 0.6981317007977318 1.0471975511965976 1.3962634015954636 1.7453292519943295 2.0943951023931953 2.443460952792061 2.792526803190927 3.141592653589793 3.490658503988659 3.839724354387525 4.1887902047863905 4.537856055185257 4.886921905584122 5.235987755982989 5.585053606381854 5.93411945678072 6.283185307179586</phi_grid>
       <origin>0.0 0.0 0.0</origin>
     </mesh>
+    <mesh id="7" type="hexagonal" size="2.886751345948129" radius="6" orientation="y">
+      <grid>1.0 1.223224374241637 1.4962778697388448 1.8302835609029084 2.2388474634702153 2.7386127875258306 3.3499379133114306 4.09772570775871 5.012437964687018 6.131336292779302 7.500000000000001</grid>
+      <origin>0.0 0.0 0.0</origin>
+    </mesh>
     <filter id="1" type="mesh">
       <bins>1</bins>
     </filter>
@@ -98,6 +102,12 @@
     </filter>
     <filter id="13" type="meshsurface">
       <bins>6</bins>
+    </filter>
+    <filter id="7" type="mesh">
+      <bins>7</bins>
+    </filter>
+    <filter id="14" type="meshsurface">
+      <bins>7</bins>
     </filter>
     <tally id="1">
       <filters>1</filters>
@@ -145,6 +155,14 @@
     </tally>
     <tally id="12">
       <filters>13</filters>
+      <scores>current</scores>
+    </tally>
+    <tally id="13">
+      <filters>7</filters>
+      <scores>total</scores>
+    </tally>
+    <tally id="14">
+      <filters>14</filters>
       <scores>current</scores>
     </tally>
   </tallies>

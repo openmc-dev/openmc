@@ -366,6 +366,19 @@ public:
   //! \return Array of mesh indices
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const;
 
+  //! Check if mesh indices are inside mesh
+  //
+  //! \param[in] Array of mesh indices
+  //! \return are indices inside mesh?
+  virtual bool in_mesh(const MeshIndex& ijk) const
+  {
+    for (int j = 0; j < 3; ++j) {
+      if ((ijk[j] < 1) || (ijk[j] > shape_[j]))
+        return false;
+    }
+    return true;
+  }
+
   //! Get mesh indices corresponding to a mesh bin
   //
   //! \param[in] bin Mesh bin
@@ -418,6 +431,10 @@ public:
   virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const = 0;
 
+  virtual double distance_to_mesh(const MeshIndex& ijk,
+    const std::array<MeshDistance, 4>& distances, double traveled_distance,
+    int& k_max) const;
+
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
@@ -454,6 +471,7 @@ public:
 
   // Data members
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
+  std::vector<std::vector<int>> correlated_axes_ = {{0}, {1}, {2}};
 
 protected:
 };
@@ -718,7 +736,22 @@ public:
   // Overridden methods
   int get_bin(Position r) const override;
 
+  int n_bins() const override;
+
+  int n_surface_bins() const override;
+
   MeshIndex get_indices(Position r, bool& in_mesh) const override;
+
+  bool in_mesh(const MeshIndex& ijk) const override
+  {
+    if ((ijk[2] < 1) || ijk[2] >= grid_.size())
+      return false;
+    int rad =
+      std::max({std::abs(ijk[0]), std::abs(ijk[1]), std::abs(ijk[0] + ijk[1])});
+    if (rad > radius_)
+      return false;
+    return true;
+  }
 
   int get_bin_from_indices(const MeshIndex& ijk) const override;
 
@@ -732,6 +765,10 @@ public:
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
+
+  double distance_to_mesh(const MeshIndex& ijk,
+    const std::array<MeshDistance, 4>& distances, double traveled_distance,
+    int& k_max) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;

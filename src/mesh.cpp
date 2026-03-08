@@ -1166,26 +1166,26 @@ void StructuredMesh::raytrace_mesh(
   const int n = n_neighbors();
 
   // Flag if position is inside the mesh
-  bool in_mesh;
+  bool inside_mesh;
 
   // Position is r = r0 + u * traveled_distance, start at r0
   double traveled_distance {0.0};
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
-  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
+  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, inside_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
   if (total_distance < 2 * TINY_BIT) {
-    if (in_mesh) {
+    if (inside_mesh) {
       tally.track(ijk, 1.0);
     }
     return;
   }
 
   // Calculate initial distances to next surfaces in all three dimensions
-  std::array<MeshDistance, 3> distances;
+  std::array<MeshDistance, 4> distances;
   for (int k = 0; k < n; ++k) {
     distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
   }
@@ -1193,7 +1193,7 @@ void StructuredMesh::raytrace_mesh(
   // Loop until r = r1 is eventually reached
   while (true) {
 
-    if (in_mesh) {
+    if (inside_mesh) {
 
       // find surface with minimal distance to current position
       const auto k = std::min_element(distances.begin(), distances.end()) -
@@ -1213,55 +1213,66 @@ void StructuredMesh::raytrace_mesh(
       // current
       tally.surface(ijk, k, distances[k].max_surface, false);
 
-      // Update cell and calculate distance to next surface in k-direction.
-      // The two other directions are still valid!
+      // Update cell and calculate distance to next surface in correlated
+      // directions.
       ijk[k] = distances[k].next_index;
-      distances[k] =
-        distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
+      for (auto j : correlated_axes_[k])
+        distances[j] =
+          distance_to_grid_boundary(ijk, j, local_r, u, traveled_distance);
 
       // Check if we have left the interior of the mesh
-      in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
+      inside_mesh = in_mesh(ijk);
 
       // If we are still inside the mesh, tally inward current for the next
       // cell
-      if (in_mesh)
+      if (inside_mesh)
         tally.surface(ijk, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
-
-      // For all directions outside the mesh, find the distance that we need
-      // to travel to reach the next surface. Use the largest distance, as
-      // only this will cross all outer surfaces.
-      int k_max {-1};
-      for (int k = 0; k < n; ++k) {
-        if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
-            (distances[k].distance > traveled_distance)) {
-          traveled_distance = distances[k].distance;
-          k_max = k;
-        }
-      }
-      // Assure some distance is traveled
-      if (k_max == -1) {
-        traveled_distance += TINY_BIT;
-      }
-
+      int k_max;
+      traveled_distance =
+        distance_to_mesh(ijk, distances, traveled_distance, k_max);
       // If r1 is not inside the mesh, exit here
       if (traveled_distance >= total_distance)
         return;
 
       // Calculate the new cell index and update all distances to next
       // surfaces.
-      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
+      ijk =
+        get_indices(global_r + (traveled_distance + TINY_BIT) * u, inside_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
           distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
       }
 
       // If inside the mesh, Tally inward current
-      if (in_mesh && k_max >= 0)
+      if (inside_mesh && k_max >= 0)
         tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
     }
   }
+}
+
+double StructuredMesh::distance_to_mesh(const MeshIndex& ijk,
+  const std::array<MeshDistance, 4>& distances, double traveled_distance,
+  int& k_max) const
+{
+  // For all directions outside the mesh, find the distance that we need
+  // to travel to reach the next surface. Use the largest distance, as
+  // only this will cross all outer surfaces.
+  const int n = n_neighbors();
+  k_max = -1;
+  for (int k = 0; k < n; ++k) {
+    if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
+        (distances[k].distance > traveled_distance)) {
+      traveled_distance = distances[k].distance;
+      k_max = k;
+    }
+  }
+  // Assure some distance is traveled
+  if (k_max == -1) {
+    traveled_distance += TINY_BIT;
+  }
+  return traveled_distance;
 }
 
 void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
@@ -2392,6 +2403,7 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
+  correlated_axes_ = {{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {3}};
   grid_ = get_node_array<double>(node, "grid");
   radius_ = std::stoi(get_node_value(node, "radius"));
   size_ = std::stod(get_node_value(node, "size"));
@@ -2415,6 +2427,7 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
   n_dimension_ = 3;
+  correlated_axes_ = {{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {3}};
   read_dataset(group, "grid", grid_);
   read_attribute(group, "radius", radius_);
   read_attribute(group, "size", size_);
@@ -2451,6 +2464,16 @@ int HexagonalMesh::get_bin(Position r) const
 
   // Convert indices to bin
   return get_bin_from_indices(ijk);
+}
+
+int HexagonalMesh::n_bins() const
+{
+  return (1 + 3 * (radius_ + 1) * radius_) * grid_.size() - 1;
+}
+
+int HexagonalMesh::n_surface_bins() const
+{
+  return 4 * 4 * n_bins();
 }
 
 int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
@@ -2620,6 +2643,35 @@ StructuredMesh::MeshDistance HexagonalMesh::distance_to_grid_boundary(
     d.distance = distance;
   }
   return d;
+}
+
+double HexagonalMesh::distance_to_mesh(const MeshIndex& ijk,
+  const std::array<MeshDistance, 4>& distances, double traveled_distance,
+  int& k_max) const
+{
+  // For all directions outside the mesh, find the distance that we need
+  // to travel to reach the next surface. Use the largest distance, as
+  // only this will cross all outer surfaces.
+  const int n = n_neighbors();
+  k_max = -1;
+
+  for (int k = 0; k < n; ++k) {
+    if (distances[k].distance <= traveled_distance)
+      continue;
+    if ((k < 2) && (std::abs(ijk[k]) <= radius_))
+      continue;
+    if ((k == 2) && std::abs(ijk[0] + ijk[1]) <= radius_)
+      continue;
+    if ((k == 3) && ijk[2] >= 1 && ijk[2] < grid_.size())
+      continue;
+    traveled_distance = distances[k].distance;
+    k_max = k;
+  }
+  // Assure some distance is traveled
+  if (k_max == -1) {
+    traveled_distance += TINY_BIT;
+  }
+  return traveled_distance;
 }
 
 int HexagonalMesh::set_grid()

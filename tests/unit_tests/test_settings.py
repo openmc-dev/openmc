@@ -188,12 +188,9 @@ def test_export_to_xml(run_in_tmpdir):
 
 def test_properties_file_load(tmp_path, mpi_intracomm):
     model = openmc.examples.pwr_assembly()
-    density_factor = 0.75
 
     # Session 1: export a structurally valid properties file via the C++ API,
     # then collect the cell/material structure so we can patch it with h5py.
-    # Using export_properties avoids HDF5 dtype mismatches that arise when
-    # writing attributes by hand (e.g. uint64 n_cells, fixed-length filetype).
     cell_instances = {}   # {cell_id: n_instances} — material cells only
     mat_densities = {}    # {mat_id: original atom/b-cm density}
 
@@ -211,8 +208,9 @@ def test_properties_file_load(tmp_path, mpi_intracomm):
 
     assert any(n > 1 for n in cell_instances.values())
 
-    # Patch the exported file: overwrite temperatures with per-instance values
-    # and scale material atom densities.
+    # Patch the exported properties file overwriting temperatures
+    # with per-instance values and scale material atom densities.
+    density_factor = 0.75
     with h5py.File(props_path, 'r+') as f:
         cells_grp = f['geometry/cells']
         for cell_id, n in cell_instances.items():
@@ -226,6 +224,9 @@ def test_properties_file_load(tmp_path, mpi_intracomm):
             f['materials'][f'material {mat_id}'].attrs['atom_density'] = \
                 orig_density * density_factor
 
+    # now apply the newly patched properties file using the settings
+    # and load the model again, checking that the new temperature and
+    # density values match those in the new file
     model.settings.properties_file = props_path
 
     with openmc.lib.TemporarySession(model, intracomm=mpi_intracomm):

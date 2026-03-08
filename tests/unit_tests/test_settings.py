@@ -1,6 +1,10 @@
 from pathlib import Path
 
+import h5py
+import pytest
+
 import openmc
+import openmc.lib
 import openmc.stats
 
 
@@ -180,3 +184,72 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01
     assert s.free_gas_threshold == 800.0
+
+
+@pytest.fixture
+def pwr_assembly_properties(tmp_path, mpi_intracomm):
+    """Build a pwr_assembly properties.h5 file and return associated data.
+
+    Returns (model, props_path, cell_instances, mat_densities, density_factor).
+    """
+    model = openmc.examples.pwr_assembly()
+    density_factor = 0.75
+
+    # Session 1: export a structurally valid properties file via the C++ API,
+    # then collect the cell/material structure so we can patch it with h5py.
+    # Using export_properties avoids HDF5 dtype mismatches that arise when
+    # writing attributes by hand (e.g. uint64 n_cells, fixed-length filetype).
+    cell_instances = {}   # {cell_id: n_instances} — material cells only
+    mat_densities = {}    # {mat_id: original atom/b-cm density}
+
+    props_path = tmp_path / 'properties.h5'
+    comm_kwargs = {'intracomm': mpi_intracomm} if mpi_intracomm is not None else {}
+    with openmc.lib.TemporarySession(model, **comm_kwargs):
+        openmc.lib.export_properties(str(props_path))
+        for cell_id, cell in openmc.lib.cells.items():
+            try:
+                cell.fill  # raises NotImplementedError for non-material cells
+                cell_instances[cell_id] = cell.num_instances
+            except NotImplementedError:
+                pass
+        for mat_id, mat in openmc.lib.materials.items():
+            mat_densities[mat_id] = mat.get_density('atom/b-cm')
+
+    # Patch the exported file: overwrite temperatures with per-instance values
+    # and scale material atom densities.
+    with h5py.File(props_path, 'r+') as f:
+        cells_grp = f['geometry/cells']
+        for cell_id, n in cell_instances.items():
+            cell_grp = cells_grp[f'cell {cell_id}']
+            del cell_grp['temperature']
+            cell_grp.create_dataset(
+                'temperature', data=[500.0 + 5.0 * i for i in range(n)]
+            )
+
+        for mat_id, orig_density in mat_densities.items():
+            f['materials'][f'material {mat_id}'].attrs['atom_density'] = \
+                orig_density * density_factor
+
+    return model, props_path, cell_instances, mat_densities, density_factor
+
+
+def test_properties_file_load(pwr_assembly_properties, mpi_intracomm):
+    model, props_path, cell_instances, mat_densities, density_factor = \
+        pwr_assembly_properties
+
+    assert any(n > 1 for n in cell_instances.values())
+
+    model.settings.properties_file = props_path
+
+    comm_kwargs = {'intracomm': mpi_intracomm} if mpi_intracomm is not None else {}
+    with openmc.lib.TemporarySession(model, **comm_kwargs):
+        for cell_id, n in cell_instances.items():
+            cell = openmc.lib.cells[cell_id]
+            for i in range(n):
+                assert cell.get_temperature(i) == pytest.approx(500.0 + 5.0 * i)
+
+        for mat_id, orig_density in mat_densities.items():
+            mat = openmc.lib.materials[mat_id]
+            assert mat.get_density('atom/b-cm') == pytest.approx(
+                orig_density * density_factor, rel=1e-5
+            )

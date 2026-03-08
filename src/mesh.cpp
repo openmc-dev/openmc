@@ -1191,10 +1191,7 @@ void StructuredMesh::raytrace_mesh(
   }
 
   // Loop until r = r1 is eventually reached
-  int iteration;
   while (true) {
-    write_message(
-      2, "traveled_distance {} iter {}", traveled_distance, ++iteration);
     if (inside_mesh) {
 
       // find surface with minimal distance to current position

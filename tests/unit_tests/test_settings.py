@@ -186,12 +186,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.free_gas_threshold == 800.0
 
 
-@pytest.fixture
-def pwr_assembly_properties(tmp_path, mpi_intracomm):
-    """Build a pwr_assembly properties.h5 file and return associated data.
-
-    Returns (model, props_path, cell_instances, mat_densities, density_factor).
-    """
+def test_properties_file_load(tmp_path, mpi_intracomm):
     model = openmc.examples.pwr_assembly()
     density_factor = 0.75
 
@@ -215,6 +210,8 @@ def pwr_assembly_properties(tmp_path, mpi_intracomm):
         for mat_id, mat in openmc.lib.materials.items():
             mat_densities[mat_id] = mat.get_density('atom/b-cm')
 
+    assert any(n > 1 for n in cell_instances.values())
+
     # Patch the exported file: overwrite temperatures with per-instance values
     # and scale material atom densities.
     with h5py.File(props_path, 'r+') as f:
@@ -230,18 +227,8 @@ def pwr_assembly_properties(tmp_path, mpi_intracomm):
             f['materials'][f'material {mat_id}'].attrs['atom_density'] = \
                 orig_density * density_factor
 
-    return model, props_path, cell_instances, mat_densities, density_factor
-
-
-def test_properties_file_load(pwr_assembly_properties, mpi_intracomm):
-    model, props_path, cell_instances, mat_densities, density_factor = \
-        pwr_assembly_properties
-
-    assert any(n > 1 for n in cell_instances.values())
-
     model.settings.properties_file = props_path
 
-    comm_kwargs = {'intracomm': mpi_intracomm} if mpi_intracomm is not None else {}
     with openmc.lib.TemporarySession(model, **comm_kwargs):
         for cell_id, n in cell_instances.items():
             cell = openmc.lib.cells[cell_id]

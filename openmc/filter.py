@@ -985,15 +985,8 @@ class MeshFilter(Filter):
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
-        # Determine index base (0-based for unstructured, 1-based otherwise)
-        idx_start = 0 if isinstance(self.mesh, openmc.UnstructuredMesh) else 1
-
-        # Generate a multi-index sub-column for each axis
-        for label, dim_size in zip(self.mesh._axis_labels, self.mesh.dimension):
-            filter_dict[mesh_key, label] = _repeat_and_tile(
-                np.arange(idx_start, idx_start + dim_size), stride, data_size)
-            stride *= dim_size
-        return pd.DataFrame(filter_dict)
+        columns = [(mesh_key, label) for label in self.mesh._axis_labels]
+        return pd.DataFrame(self.mesh.indices, columns=columns)
 
     def to_xml_element(self):
         """Return XML Element representing the Filter.

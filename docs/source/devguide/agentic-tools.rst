@@ -41,7 +41,7 @@ future that greatly exceed these limits.
 
 However, even assuming the entire repository can be fit within a context
 window, there are several downsides to doing this. Model performance
-degrads significantly as context size increases. Bencharmark results are
+degrades significantly as context size increases. Benchmark results are
 greatly improved if the model has less garbage to pick through. Additionally, API usage
 is typically billed as tokens in/out per turn. As the context file
 grows these costs become much larger. As such, there is still significant

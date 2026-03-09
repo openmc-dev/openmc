@@ -72,7 +72,7 @@ class FilterMeta(ABCMeta):
 
 
 def _repeat_and_tile(bins, repeat_factor, data_size):
-    filter_bins = np.repeat(bins, repeat_factor)
+    filter_bins = np.repeat(bins, repeat_factor, axis=0)
     tile_factor = data_size // len(filter_bins)
     return np.tile(filter_bins, tile_factor)
 
@@ -986,7 +986,8 @@ class MeshFilter(Filter):
         mesh_key = f'mesh {self.mesh.id}'
 
         columns = [(mesh_key, label) for label in self.mesh._axis_labels]
-        return pd.DataFrame(self.mesh.indices, columns=columns)
+        indices = _repeat_and_tile(self.mesh.indices, stride, data_size)
+        return pd.DataFrame(indices, columns=columns)
 
     def to_xml_element(self):
         """Return XML Element representing the Filter.

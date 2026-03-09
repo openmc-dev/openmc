@@ -596,25 +596,16 @@ class R2SManager:
 
         return work_items
 
-    def _get_region_data(self, time_index, work_items):
-        """Extract region data as flat numpy arrays for C++ source creation.
+    def _create_cpp_sources(self, time_index, work_items):
+        """Create decay photon sources in C++ for a set of regions.
 
         Parameters
         ----------
         time_index : int
-            Index into depletion results for the desired time.
+            Index into depletion results.
         work_items : list of tuple
             For mesh-based: list of (index_mat, mat_id, bbox).
             For cell-based: list of (cell, original_mat, bbox).
-
-        Returns
-        -------
-        domain_ids : numpy.ndarray of int32
-        lower_left : numpy.ndarray of float64, shape (n, 3)
-        upper_right : numpy.ndarray of float64, shape (n, 3)
-        nuclide_names : list of str
-        atom_densities : numpy.ndarray of float64, shape (n, n_nuclides)
-        volumes : numpy.ndarray of float64, shape (n,)
         """
         step_result = self.results['depletion_results'][time_index]
         materials = self.results['activation_materials']
@@ -628,49 +619,33 @@ class R2SManager:
         lower_left = np.empty((n_regions, 3), dtype=np.float64)
         upper_right = np.empty((n_regions, 3), dtype=np.float64)
         atom_densities = np.empty((n_regions, n_nuclides), dtype=np.float64)
-        volumes_arr = np.empty(n_regions, dtype=np.float64)
+        volumes = np.empty(n_regions, dtype=np.float64)
 
         for i, item in enumerate(work_items):
             if mesh_based:
                 index_mat, mat_id, bbox = item
                 domain_ids[i] = mat_id
                 original_mat = materials[index_mat]
-                mat_key = str(original_mat.id)
-                vol = step_result.volume[mat_key]
             else:
                 cell, original_mat, bbox = item
                 domain_ids[i] = cell.id
-                mat_key = str(original_mat.id)
-                vol = step_result.volume[mat_key]
 
-            lower_left[i] = bbox[0]
-            upper_right[i] = bbox[1]
-            volumes_arr[i] = vol
+            mat_key = str(original_mat.id)
+            vol = step_result.volume[mat_key]
+
+            lower_left[i] = bbox.lower_left
+            upper_right[i] = bbox.upper_right
+            volumes[i] = vol
 
             # Get atom counts for this material and convert to atom/b-cm
             mat_idx = step_result.index_mat[mat_key]
             atom_counts = step_result.data[mat_idx, :]
             atom_densities[i, :] = atom_counts / vol * 1e-24
 
-        return (domain_ids, lower_left, upper_right, nuclide_names,
-                atom_densities, volumes_arr)
-
-    def _create_cpp_sources(self, time_index, work_items):
-        """Create decay photon sources in C++ for a set of regions.
-
-        Parameters
-        ----------
-        time_index : int
-            Index into depletion results.
-        work_items : list of tuple
-            For mesh-based: list of (index_mat, mat_id, bbox).
-            For cell-based: list of (cell, original_mat, bbox).
-        """
-        domain_ids, ll, ur, nuc_names, densities, vols = \
-            self._get_region_data(time_index, work_items)
         domain_type = 'material' if self.method == 'mesh-based' else 'cell'
         openmc.lib.create_decay_photon_sources(
-            domain_ids, domain_type, ll, ur, nuc_names, densities, vols)
+            domain_ids, domain_type, lower_left, upper_right, nuclide_names,
+            atom_densities, volumes)
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

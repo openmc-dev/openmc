@@ -804,9 +804,9 @@ void TokamakSource::precompute_sampling_cdfs()
   }
 
   // Coefficients for the radial polynomial: A*r - B*r^2 - C*r^3
-  double A = 1.0 + eps * Dt;
-  double B = 0.375 * c1 * eps;  // 3/8 * c1 * eps
-  double C = 2.0 * eps * Dt;
+  radial_poly_a_ = 1.0 + eps * Dt;
+  radial_poly_b_ = 0.375 * c1 * eps;  // 3/8 * c1 * eps
+  radial_poly_c_ = 2.0 * eps * Dt;
 
   // Build the radial CDF on the user-provided r_over_a grid
   const size_t n_r = r_over_a_.size();
@@ -817,7 +817,8 @@ void TokamakSource::precompute_sampling_cdfs()
     double r = r_over_a_[i];
     double S = emission_rate_[i];
     // p(r) ~ S(r) * [A*r - B*r^2 - C*r^3]
-    double geometric_factor = A * r - B * r * r - C * r * r * r;
+    double geometric_factor =
+      radial_poly_a_ * r - radial_poly_b_ * r * r - radial_poly_c_ * r * r * r;
     radial_pdf[i] = S * std::max(0.0, geometric_factor);
   }
 
@@ -963,6 +964,27 @@ double TokamakSource::sample_r_over_a(uint64_t* seed) const
   return r_lo + t * (r_hi - r_lo);
 }
 
+double TokamakSource::mixture_weight(int k, double r) const
+{
+  double s = 1.0 - r;
+  switch (k) {
+  case 0:
+    return s * s * s * poloidal_integrals_[0];
+  case 1:
+    return 2.0 * r * s * s * poloidal_integrals_[1];
+  case 2:
+    return r * r * s * poloidal_integrals_[2];
+  case 3:
+    return r * s * s * poloidal_integrals_[3];
+  case 4:
+    return 2.0 * r * r * s * poloidal_integrals_[4];
+  case 5:
+    return r * r * r * poloidal_integrals_[5];
+  default:
+    UNREACHABLE();
+  }
+}
+
 double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
 {
   // Sample from the conditional distribution P(alpha | r_tilde) using
@@ -970,54 +992,34 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   //
   // The conditional is: P(alpha | r) ~ sum_k w_k(r) * I_hat_k * p_k(alpha)
   // where:
-  //   - w_k(r) are the "dynamic" Bernstein weight functions (computed here)
+  //   - w_k(r) are the "dynamic" Bernstein weight functions
   //   - I_hat_k are the "static" normalized integrals (precomputed in poloidal_integrals_)
   //   - p_k(alpha) are the normalized basis distributions (precomputed CDFs)
   //
+  // The normalization sum_k w_k(r) * I_hat_k equals the radial geometric
+  // polynomial evaluated at r, which is known analytically.
+  //
   // Algorithm:
-  // 1. Compute mixture weights: m_k = w_k(r) * I_hat_k
-  // 2. Sample component k from categorical distribution on {m_k}
+  // 1. Compute total from analytical normalization
+  // 2. Lazily evaluate mixture weights with early exit to select component k
   // 3. Sample alpha from CDF_k using inverse transform
 
-  double r = r_norm;
-  double one_minus_r = 1.0 - r;
-
-  // Compute Bernstein weight functions
-  double w0 = one_minus_r * one_minus_r * one_minus_r;  // (1-r)^3
-  double w3 = r * one_minus_r * one_minus_r;            // r*(1-r)^2
-  double w1 = 2.0 * w3;                                 // 2*r*(1-r)^2
-  double w2 = r * r * one_minus_r;                      // r^2*(1-r)
-  double w4 = 2.0 * w2;                                 // 2*r^2*(1-r)
-  double w5 = r * r * r;                                // r^3
-
-  // Compute mixture weights: m_k = w_k(r) * I_hat_k
-  double m0 = w0 * poloidal_integrals_[0];
-  double m1 = w1 * poloidal_integrals_[1];
-  double m2 = w2 * poloidal_integrals_[2];
-  double m3 = w3 * poloidal_integrals_[3];
-  double m4 = w4 * poloidal_integrals_[4];
-  double m5 = w5 * poloidal_integrals_[5];
-  double total = m0 + m1 + m2 + m3 + m4 + m5;
-
-  // Sample component from categorical distribution
-  // Order optimized for peaked emission profiles: 0, 1, 4, 5, 3, 2
-  // Components 0, 1, 4 have highest expected weights for H-mode profiles
-  // Components 3, 2 consistently have lowest expected weights
+  // Analytical normalization: sum_k w_k(r) * I_hat_k
+  double total = radial_poly_a_ - radial_poly_b_ * r_norm -
+                 radial_poly_c_ * r_norm * r_norm;
   double xi = prn(seed) * total;
-  int component;
-  double cumsum = m0;
-  if (xi < cumsum) {
-    component = 0;
-  } else if ((cumsum += m1) > xi) {
-    component = 1;
-  } else if ((cumsum += m4) > xi) {
-    component = 4;
-  } else if ((cumsum += m5) > xi) {
-    component = 5;
-  } else if ((cumsum += m3) > xi) {
-    component = 3;
-  } else {
-    component = 2;
+
+  // Sample component via lazy evaluation with early exit
+  // Order optimized for peaked emission profiles: 0, 1, 4, 5, 3, 2
+  constexpr int order[] = {0, 1, 4, 5, 3, 2};
+  double cumsum = 0.0;
+  int component = order[N_POLOIDAL_BASIS - 1];
+  for (int i = 0; i < N_POLOIDAL_BASIS; ++i) {
+    cumsum += mixture_weight(order[i], r_norm);
+    if (xi < cumsum) {
+      component = order[i];
+      break;
+    }
   }
 
   // Sample alpha from the selected CDF using inverse transform

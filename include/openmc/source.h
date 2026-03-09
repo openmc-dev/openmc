@@ -316,6 +316,12 @@ private:
   //! \return Sampled poloidal angle alpha [rad]
   double sample_poloidal_angle(double r_norm, uint64_t* seed) const;
 
+  //! Compute the k-th mixture weight w_k(r) * I_hat_k for poloidal sampling
+  //! \param k Basis function index (0-5)
+  //! \param r Normalized minor radius r/a
+  //! \return Mixture weight for component k
+  double mixture_weight(int k, double r) const;
+
   //! Sample energy from the distribution(s)
   //! \param r_norm Normalized minor radius r/a (for distribution selection)
   //! \param seed Pseudorandom seed pointer
@@ -359,6 +365,12 @@ private:
 
   // Precomputed data for radial sampling
   vector<double> radial_cdf_; //!< CDF for radial sampling (on r_over_a_ grid)
+
+  // Coefficients of the radial geometric polynomial: A*r - B*r^2 - C*r^3
+  // Also used as the analytical normalization for poloidal mixture weights
+  double radial_poly_a_; //!< 1 + ε·Δ̃
+  double radial_poly_b_; //!< (3/8)·c₁·ε
+  double radial_poly_c_; //!< 2·ε·Δ̃
 
   // Precomputed Bernstein basis functions for poloidal angle sampling.
   // Using the factorization f(r_tilde, alpha) = R_tilde x J_tilde where:

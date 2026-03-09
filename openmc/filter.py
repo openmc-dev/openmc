@@ -986,7 +986,7 @@ class MeshFilter(Filter):
         mesh_key = f'mesh {self.mesh.id}'
 
         columns = [(mesh_key, label) for label in self.mesh._axis_labels]
-        indices = _repeat_and_tile(self.mesh.indices, stride, data_size)
+        indices = _repeat_and_tile(list(self.mesh.indices), stride, data_size)
         return pd.DataFrame(indices, columns=columns)
 
     def to_xml_element(self):

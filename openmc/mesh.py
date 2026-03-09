@@ -2611,7 +2611,7 @@ class HexagonalMesh(StructuredMesh):
 
     @property
     def _axis_labels(self):
-        return ('r', 'i', 'z')
+        return ('r', 'q', 's', 'z')
 
     @property
     def origin(self):
@@ -2681,10 +2681,20 @@ class HexagonalMesh(StructuredMesh):
 
     @property
     def indices(self):
-        return [(r, i, z) for z in range(self.z_grid.size - 1)
-                for r in range(self.num_rings)
-                for i in range(max(6*(self.num_rings - 1 - r), 1))]
-
+        idx = []
+        for j in range(self.z_grid.size-1):
+            for rad in range(self.num_rings, 0, -1):
+                for i in range(rad):
+                    idx.append((i, rad-i, j))
+                    idx.append((rad, -i, j))
+                    idx.append((rad-i, -rad, j))
+                    idx.append((-i, i-rad, j))
+                    idx.append((-rad, i, j))
+                    idx.append((i-rad, rad, j))
+            else:
+                idx.append((0, 0, j))
+        return idx
+                
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
@@ -2704,15 +2714,15 @@ class HexagonalMesh(StructuredMesh):
         # Read and assign mesh properties
         mesh = cls(
             z_grid = group['grid'][()],
-            pitch = np.sqrt(3)*group['size'][()],
-            num_rings = group['radius'][()],
+            pitch = np.sqrt(3)*group.attrs['size'],
+            num_rings = group.attrs['radius'],
             mesh_id=mesh_id,
             name=name
         )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
-        if 'orientation' in group:
-            mesh.orientation = group['orientation'][()]
+        if 'orientation' in group.attrs:
+            mesh.orientation = group.attrs['orientation']
 
         return mesh
 

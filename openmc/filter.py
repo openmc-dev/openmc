@@ -30,13 +30,6 @@ _FILTER_TYPES = (
     'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )
 
-_CURRENT_NAMES = (
-    'x-min out', 'x-min in', 'x-max out', 'x-max in',
-    'y-min out', 'y-min in', 'y-max out', 'y-max in',
-    'z-min out', 'z-min in', 'z-max out', 'z-max in'
-)
-
-
 
 class FilterMeta(ABCMeta):
     """Metaclass for filters that ensures class names are appropriate."""
@@ -1000,7 +993,6 @@ class MeshFilter(Filter):
             filter_dict[mesh_key, label] = _repeat_and_tile(
                 np.arange(idx_start, idx_start + dim_size), stride, data_size)
             stride *= dim_size
-
         return pd.DataFrame(filter_dict)
 
     def to_xml_element(self):
@@ -1282,15 +1274,34 @@ class MeshSurfaceFilter(MeshFilter):
     def shape(self):
         return (self.num_bins,)
 
+    @staticmethod
+    def _current_names(mesh):
+        if isinstance(mesh, openmc.HexagonalMesh):
+            names = []
+            ax0, ax1, ax2, ax3 = mesh._axis_labels
+            pairs = [(ax0, ax1), (ax1, ax2), (ax2, ax0)]
+            for ax0, ax1 in pairs:
+                for minmax0, minmax1 in [('max','min'),('min','max')]:
+                    for inout in ('out','in'):
+                        names.append(f"{ax0}-{minmax0} {ax1}-{minmax1} {inout}")
+            for minmax in ('min', 'max'):
+                for inout in ('out','in'):
+                    names.append(f"{ax3}-{minmax} {inout}")
+            return names
+            
+        names = []
+        for ax in mesh._axis_labels:
+            for minmax in ('min', 'max'):
+                for inout in ('out','in'):
+                    names.append(f"{ax}-{minmax} {inout}")
+        return names
+
     @MeshFilter.mesh.setter
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
-
-        # Take the product of mesh indices and current names
-        n_dim = mesh.n_dimension
         self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
-                     product(mesh.indices, _CURRENT_NAMES[:4*n_dim])]
+                     product(mesh.indices, self._current_names(mesh))]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1356,7 +1367,7 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Generate multi-index sub-column for surface
         filter_dict[mesh_key, 'surf'] = _repeat_and_tile(
-            _CURRENT_NAMES[:n_surfs], stride, data_size)
+            self._current_names(self._mesh), stride, data_size)
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])

@@ -2618,15 +2618,15 @@ StructuredMesh::MeshDistance HexagonalMesh::distance_to_grid_boundary(
 
   d.max_surface = (u.dot(dir) > 0.0);
   if (d.max_surface) {
-    distance = (idx[0] * q_ + idx[1] * r_ - r).norm() / u.dot(dir);
+    distance = (idx[0] * q_ + idx[1] * r_ + dir - r).norm() / u.dot(dir);
     idx[0] += offset[0];
     idx[1] += offset[1];
     idx[2] += offset[2];
   } else {
+    distance = -(idx[0] * q_ + idx[1] * r_ - dir - r).norm() / u.dot(dir);
     idx[0] -= offset[0];
     idx[1] -= offset[1];
     idx[2] -= offset[2];
-    distance = -(idx[0] * q_ + idx[1] * r_ - r).norm() / u.dot(dir);
   }
   int radius = std::max({std::abs(idx[0]), std::abs(idx[1]), std::abs(idx[2])});
   if (d.max_surface && radius <= radius_) {
@@ -2676,13 +2676,13 @@ int HexagonalMesh::set_grid()
   if (orientation_ == Orientation::y) {
     q_ = {0.0, -1.0, 0.0};
     r_ = {0.5 * std::sqrt(3.0), 0.5, 0.0};
-    q_dual_ = {1.0 / std::sqrt(3.0), 2.0 / std::sqrt(3.0), 0.0};
-    r_dual_ = {-1.0, 0.0, 0.0};
+    q_dual_ = {1.0 / std::sqrt(3.0), -1.0, 0.0};
+    r_dual_ = {2.0 / std::sqrt(3.0), 0.0, 0.0};
   } else {
     q_ = {-1.0, 0.0, 0.0};
     r_ = {0.5, 0.5 * std::sqrt(3.0), 0.0};
-    q_dual_ = {2.0 / std::sqrt(3.0), 1.0 / std::sqrt(3.0), 0.0};
-    r_dual_ = {0.0, -1.0, 0.0};
+    q_dual_ = {-1.0, 1.0 / std::sqrt(3.0), 0.0};
+    r_dual_ = {0.0, 2.0 / std::sqrt(3.0), 0.0};
   }
 
   q_ *= size_;
@@ -4158,7 +4158,7 @@ void LibMesh::set_score_data(const std::string& var_name,
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-       it++) {
+    it++) {
     if (!(*it)->active()) {
       continue;
     }

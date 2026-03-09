@@ -879,41 +879,41 @@ void broadcast_results()
 
   // These guys are needed so that non-master processes can calculate the
   // combined estimate of k-effective
-  double temp[] {
+  double temp_k[] {
     simulation::k_col_abs, simulation::k_col_tra, simulation::k_abs_tra};
-  MPI_Bcast(temp, 3, MPI_DOUBLE, 0, mpi::intracomm);
-  simulation::k_col_abs = temp[0];
-  simulation::k_col_tra = temp[1];
-  simulation::k_abs_tra = temp[2];
+  MPI_Bcast(temp_k, 3, MPI_DOUBLE, 0, mpi::intracomm);
+  simulation::k_col_abs = temp_k[0];
+  simulation::k_col_tra = temp_k[1];
+  simulation::k_abs_tra = temp_k[2];
 
   // These guys are needed so that non-master processes can calculate the
   // combined estimate of kq
-  double temp[] {
+  double temp_kq[] {
     simulation::kq_col_abs, simulation::kq_col_tra, simulation::kq_abs_tra};
-  MPI_Bcast(temp, 3, MPI_DOUBLE, 0, mpi::intracomm);
-  simulation::kq_col_abs = temp[0];
-  simulation::kq_col_tra = temp[1];
-  simulation::kq_abs_tra = temp[2];
+  MPI_Bcast(temp_kq, 3, MPI_DOUBLE, 0, mpi::intracomm);
+  simulation::kq_col_abs = temp_kq[0];
+  simulation::kq_col_tra = temp_kq[1];
+  simulation::kq_abs_tra = temp_kq[2];
 
-  double temp[simulation::N_K_EST * simulation::N_K_EST];
+  double temp_products[simulation::N_K_EST * simulation::N_K_EST];
 
   if (mpi::master) {
     int idx = 0;
     for (int i = 0; i < simulation::N_K_EST; ++i) {
       for (int j = 0; j < simulation::N_K_EST; ++j) {
-        temp[idx++] = simulation::k_kq_products[i][j];
+        temp_products[idx++] = simulation::k_kq_products[i][j];
       }
     }
   }
 
-  MPI_Bcast(temp, simulation::N_K_EST * simulation::N_K_EST, MPI_DOUBLE, 0,
-    mpi::intracomm);
+  MPI_Bcast(temp_products, simulation::N_K_EST * simulation::N_K_EST,
+    MPI_DOUBLE, 0, mpi::intracomm);
 
   if (!mpi::master) {
     int idx = 0;
     for (int i = 0; i < simulation::N_K_EST; ++i) {
       for (int j = 0; j < simulation::N_K_EST; ++j) {
-        simulation::k_kq_products[i][j] = temp[idx++];
+        simulation::k_kq_products[i][j] = temp_products[idx++];
       }
     }
   }

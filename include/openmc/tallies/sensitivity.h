@@ -51,7 +51,7 @@ public:
 
   double denominator_ {0.0}; //!< Denominator of the sensitivity, <\phi F \psi>
 
-  xt::xtensor<double, 3> previous_results_;
+  tensor::Tensor<double> previous_results_; 
 
   bool gpt_ {false}; //!< if true, do not use denominator.
 

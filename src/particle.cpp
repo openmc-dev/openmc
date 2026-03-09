@@ -169,7 +169,7 @@ void Particle::from_source(const SourceSite* src)
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
   
-  if (src->particle == ParticleType::neutron) {
+  if (type().pdg_number() == PDG_NEUTRON) {
     initialize_cum_sens();
     initialize_pprod_sens();
   }
@@ -437,8 +437,6 @@ void Particle::event_collide()
     // score_pprod_sensitivity(*this);
   }
   
-#ifdef DAGMC
-
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif

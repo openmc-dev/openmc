@@ -244,16 +244,18 @@ void SensitivityTally::init_results()
 {
   int n_scores = 1;
   int n_filter_bins = model::tally_sens[sens_].n_bins_;
-  results_ = xt::empty<double>({n_filter_bins, n_scores, 3});
-  previous_results_ = xt::empty<double>({n_filter_bins, n_scores, 1});
+  results_ = tensor::Tensor<double>({static_cast<size_t>(n_filter_bins),
+      static_cast<size_t>(n_scores), size_t {3}});
+  previous_results_ = tensor::Tensor<double>({static_cast<size_t>(n_filter_bins),
+      static_cast<size_t>(n_scores), size_t {1}});
 }
 
 void SensitivityTally::reset()
 {
   n_realizations_ = 0;
   if (results_.size() != 0) {
-    xt::view(results_, xt::all()) = 0.0;
-    xt::view(previous_results_, xt::all()) = 0.0;
+    results_.fill(0.0);
+    previous_results_.fill(0.0);
   }
 }
 
@@ -357,7 +359,7 @@ TallySensitivity::TallySensitivity(pugi::xml_node node)
 
     // ADD LOGIC TO SET THE SCORE TYPE
     auto reaction = get_node_value(node, "reaction");
-    sens_reaction = reaction_type(reaction);
+    sens_reaction = reaction_tally_mt(reaction);
 
   } else if (variable_str == "multipole") {
     variable = SensitivityVariable::MULTIPOLE;
@@ -522,9 +524,9 @@ score_track_sensitivity(Particle& p, double distance)
       switch (sens.sens_reaction) {
       case SCORE_TOTAL:
         if (sens.sens_nuclide >=0 || sens.sens_element >=0){
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             macro_xs = p.neutron_xs(sens.sens_nuclide).total * atom_density;
-          } else if (p.type() == ParticleType::photon) {
+          } else if (p.type().is_photon()) {
             macro_xs = p.photon_xs(sens.sens_element).total * atom_density;
           }  
         } else {
@@ -533,7 +535,7 @@ score_track_sensitivity(Particle& p, double distance)
         break;
       case SCORE_SCATTER:
         if (sens.sens_nuclide >=0 || sens.sens_element >=0){
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             macro_xs = (p.neutron_xs(sens.sens_nuclide).total 
             - p.neutron_xs(sens.sens_nuclide).absorption) * atom_density;
           } else {
@@ -541,7 +543,7 @@ score_track_sensitivity(Particle& p, double distance)
             + p.photon_xs(sens.sens_element).incoherent) * atom_density;
           }
         } else {
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             macro_xs = p.macro_xs().total - p.macro_xs().absorption;
           } else {
             macro_xs = p.macro_xs().coherent + p.macro_xs().incoherent;
@@ -549,7 +551,7 @@ score_track_sensitivity(Particle& p, double distance)
         }
         break;
       case ELASTIC:
-        if (sens.sens_nuclide >= 0 && p.type() == ParticleType::neutron) {
+        if (sens.sens_nuclide >= 0 && p.type().is_neutron()) {
             if (p.neutron_xs(sens.sens_nuclide).elastic == CACHE_INVALID)
               data::nuclides[sens.sens_nuclide]->calculate_elastic_xs(p);
             macro_xs = p.neutron_xs(sens.sens_nuclide).elastic * atom_density;
@@ -557,14 +559,14 @@ score_track_sensitivity(Particle& p, double distance)
         break;
       case SCORE_ABSORPTION: 
         if (sens.sens_nuclide >=0 || sens.sens_element >=0){
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             macro_xs = p.neutron_xs(sens.sens_nuclide).absorption * atom_density;
           } else {
             const auto& xs = p.photon_xs(sens.sens_element);
             macro_xs = (xs.total - xs.coherent - xs.incoherent) * atom_density;
           }
         } else {
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             macro_xs = p.macro_xs().absorption;
           } else {
             macro_xs = p.macro_xs().photoelectric + p.macro_xs().pair_production;
@@ -602,7 +604,7 @@ score_track_sensitivity(Particle& p, double distance)
         case N_3N:    m = 4; break;
         case N_4N:    m = 5; break;
         }
-        if (sens.sens_nuclide >= 0 && p.type() == ParticleType::neutron) {
+        if (sens.sens_nuclide >= 0 && p.type().is_neutron()) {
           macro_xs = p.neutron_xs(sens.sens_nuclide).reaction[m] * atom_density;
         }
         break;      
@@ -618,7 +620,7 @@ score_track_sensitivity(Particle& p, double distance)
           atom_density = model::materials[p.material()]->atom_density_(j);
         }      
         
-        if (p.type() != ParticleType::photon) continue;
+        if (!p.type().is_photon()) continue;
       
         if (sens.sens_element >= 0) {
           const auto& micro = p.photon_xs(sens.sens_element);
@@ -630,7 +632,7 @@ score_track_sensitivity(Particle& p, double distance)
         } 
         break;
       default:
-        if (sens.sens_nuclide >= 0 && p.type() == ParticleType::neutron) {            
+        if (sens.sens_nuclide >= 0 && p.type().is_neutron()) {            
           macro_xs = get_nuclide_xs_sens(p, sens.sens_nuclide, sens.sens_reaction) * atom_density;          
         }
         break;
@@ -639,7 +641,7 @@ score_track_sensitivity(Particle& p, double distance)
       if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
         auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
         cumulative_sensitivities[bin] -= distance * macro_xs;
-        if (p.type() == ParticleType::neutron) {
+        if (p.type().is_neutron()) {
           cum_sens[bin] -= distance * macro_xs;
         }
       }                
@@ -788,13 +790,13 @@ void score_collision_sensitivity(Particle& p)
         break;
       case COHERENT:
       case INCOHERENT:
-        if (p.type() != ParticleType::photon) continue; 
+        if (!p.type().is_photon()) continue; 
         if (p.event_mt() != sens.sens_reaction) continue;                
         score = 1.0;
         break;
       case PHOTOELECTRIC:
       case PAIR_PROD:
-        if (p.type() != ParticleType::photon) continue;
+        if (!p.type().is_photon()) continue;
         if (p.event_mt() != sens.sens_reaction) continue;        
         score = 0.0;
         break;
@@ -808,7 +810,7 @@ void score_collision_sensitivity(Particle& p)
       if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
         auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
         cumulative_sensitivities[bin] += score; 
-        if (p.type() == ParticleType::neutron) {
+        if (p.type().is_neutron()) {
           cum_sens[bin] += score; 
         }
       }
@@ -887,7 +889,7 @@ double get_photon_yield(int i_nuclide, const Particle& p, int score_bin)
     return 0.0;
   // double yield = (*rx.products_[0].yield_)(E_in);    
   for (int j = 0; j < rx.products_.size(); ++j) {
-    if (rx.products_[j].particle_ == ParticleType::photon) {
+    if (rx.products_[j].particle_.is_photon()) {
 
       // pprod_xs = xs * (*rx.products_[j].yield_)(p.E());
       pyld =  (*rx.products_[j].yield_)(p.E());
@@ -905,7 +907,7 @@ void score_pprod_sensitivity(Particle& p)
   // Void material cannot be perturbed, it will not affect sensitivities.
   if (p.material() == MATERIAL_VOID) return;
 
-  if (p.type() == ParticleType::photon) return;
+  if (p.type().is_photon()) return;
   
   // Only scattering events produce secondary photons
   if (p.event() != TallyEvent::SCATTER) return;

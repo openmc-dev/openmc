@@ -2541,7 +2541,7 @@ void score_collision_tally(Particle& p)
     flux = p.wgt_last() / p.macro_xs().total;
   }
     
-  if (p.type() == ParticleType::neutron) {
+  if (p.type().is_neutron()) {
     double value = p.wgt_last() / p.macro_xs().total;
     p.set_neutron_flux_last(value);
   }
@@ -2663,8 +2663,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
           score = p.wgt_last();
         }
 
-        if (p.type() == ParticleType::neutron ||
-          p.type() == ParticleType::photon) {
+        if (p.type().is_neutron() || p.type().is_photon()) {
           score *= flux / p.macro_xs().total;
         } else {
           score = 0.;
@@ -2689,9 +2688,9 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
 
       } else {
         if (i_nuclide >= 0) {
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             score = p.neutron_xs(i_nuclide).total * atom_density * flux;
-          } else if (p.type() == ParticleType::photon) {
+          } else if (p.type().is_photon()) {
             score = p.photon_xs(i_nuclide).total * atom_density * flux;
           }
         } else {
@@ -2723,7 +2722,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
 
 
     case SCORE_SCATTER:
-      if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
+      if (!p.type().is_neutron() && !p.type().is_photon())
         continue;
       
       if (tally.estimator_ == TallyEstimator::ANALOG) {
@@ -2734,7 +2733,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
         score = p.wgt_last() * flux;
       } else {
         if (i_nuclide >= 0) {
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             score = (p.neutron_xs(i_nuclide).total
               - p.neutron_xs(i_nuclide).absorption) * atom_density * flux;
           } else {
@@ -2742,7 +2741,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
               + p.photon_xs(i_nuclide).incoherent) * atom_density * flux;
           }    
         } else {
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             score = (p.macro_xs().total
               - p.macro_xs().absorption) * flux;
           } else {
@@ -2776,7 +2775,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
 
 
     case SCORE_ABSORPTION:
-      if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
+      if (!p.type().is_neutron() && !p.type().is_photon())
         continue;
       
       if (tally.estimator_ == TallyEstimator::ANALOG) {
@@ -2793,7 +2792,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
         }
       } else {
         if (i_nuclide >= 0) {
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             score = p.neutron_xs(i_nuclide).absorption * atom_density * flux;
           } else {
             const auto& xs = p.photon_xs(i_nuclide);
@@ -2801,7 +2800,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
               (xs.total - xs.coherent - xs.incoherent) * atom_density * flux;
           }
         } else {
-          if (p.type() == ParticleType::neutron) {
+          if (p.type().is_neutron()) {
             score = p.macro_xs().absorption * flux;
           } else {
             score =
@@ -3420,7 +3419,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
     case INCOHERENT:
     case PHOTOELECTRIC:
     case PAIR_PROD:
-      if (p.type() != ParticleType::photon)
+      if (!p.type().is_photon())
         continue;
 
       if (tally.estimator_ == TallyEstimator::ANALOG) {
@@ -3466,7 +3465,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
 
       // The default block is really only meant for redundant neutron reactions
       // (e.g. 444, 901)
-      if (p.type() != ParticleType::neutron) continue;
+      if (!p.type().is_neutron()) continue;
 
       if (tally.estimator_ == TallyEstimator::ANALOG) {
 

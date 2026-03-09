@@ -676,7 +676,7 @@ void initialize_history_partial(Particle& p)
 void initialize_history_in_part(Particle& p)
 {
   
-  if (p.type() == ParticleType::photon) return;
+  if (p.type().is_photon()) return;
   
   // for n-p coupled simulation
   // and sensitivity of photon responses (heating, dose) to neutron cross-sections

@@ -40,8 +40,8 @@ and it's not unreasonable to assume that models may be available in the near
 future that greatly exceed these limits.
 
 However, even assuming the entire repository can be fit within a context
-window, there are several downsides to doing this. Model performance
-degrades significantly as context size increases. Benchmark results are
+window, there are several downsides to doing this. `Model performance
+degrades significantly as context size increases`_. Benchmark results are
 greatly improved if the model has less garbage to pick through. Additionally, API usage
 is typically billed as tokens in/out per turn. As the context file
 grows these costs become much larger. As such, there is still significant
@@ -61,6 +61,7 @@ All tools run entirely locally — no API keys or external service accounts are
 required. Python dependencies are installed automatically into an isolated
 virtual environment at ``.claude/cache/.venv/`` on first use.
 
+.. _Model performance degrades significantly as context size increases: https://www.anthropic.com/news/claude-opus-4-6
 .. _MCP (Model Context Protocol): https://modelcontextprotocol.io
 
 RAG Semantic Search

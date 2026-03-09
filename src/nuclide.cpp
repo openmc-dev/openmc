@@ -493,6 +493,15 @@ void Nuclide::create_derived(
   }
 }
 
+void Nuclide::reset_derived()
+{
+  xs_.clear();
+  fission_rx_.clear();
+  n_precursor_ = 0;
+  create_derived(prompt_photons_.get(), delayed_photons_.get());
+  // reaction_index_ and resonant scattering get overwritten, no harm
+}
+
 void Nuclide::init_grid()
 {
   int neutron = ParticleType::neutron().transport_index();

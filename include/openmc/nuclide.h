@@ -129,6 +129,9 @@ public:
   vector<unique_ptr<Reaction>> reactions_; //!< Reactions
   array<size_t, 902> reaction_index_;      //!< Index of each reaction
   vector<int> index_inelastic_scatter_;
+  
+  // Create new set of pertubations cross sections
+  void reset_derived();
 
 private:
   void create_derived(

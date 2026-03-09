@@ -162,6 +162,14 @@ int openmc_simulation_init()
     openmc_weight_windows_import(settings::weight_windows_file.c_str());
   }
 
+  if (settings::load_covariance) {
+    for (auto& nuc : data::nuclides) {
+      for (auto& rx : nuc->reactions_) {
+        rx->xs_reference_ = rx->xs_;
+      }
+    }
+  } 
+
   // Set flag indicating initialization is done
   simulation::initialized = true;
   return 0;
@@ -398,6 +406,27 @@ void initialize_batch()
 
   // Add user tallies to active tallies list
   setup_active_tallies();
+
+  //=== UQ perturbation ===//
+  if (settings::load_covariance) {
+    uint64_t seed = static_cast<uint64_t>(simulation::current_batch);
+
+    for (auto& nuc : data::nuclides) {
+      for (auto& rx : nuc->reactions_) {
+        // 1. Restore originals
+        rx->xs_ = rx->xs_reference_;
+
+        // 2. Apply fresh perturbation
+        rx->perturb_xs(nuc->grid_[0].energy, &seed);
+      }
+
+      // 3. Create perturbed derived tables (total, absorption, fission, etc.)
+      // valid only for redundant reaction but not its components like for 
+      // example MT=4. In this case, ERRORR provides covaraince for MT=4 
+      // but not individually for MT=51 through MT=91!
+      nuc->reset_derived();
+    }
+  }
 }
 
 void finalize_batch()

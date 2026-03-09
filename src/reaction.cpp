@@ -13,6 +13,7 @@
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/secondary_uncorrelated.h"
 #include "openmc/settings.h"
@@ -180,65 +181,84 @@ double Reaction::collapse_rate(int64_t i_temp, span<const double> energy,
   return xs_flux_sum;
 }
 
-void Reaction::perturb_xs(
-  const vector<double>& energy_grid, uint64_t* seed)
+void Reaction::perturb_xs(const vector<double>& energy_grid, uint64_t* seed)
 {
-  // Look up Cholesky factors for this reaction's MT
+  // Perturb cross sections using covariance data
   auto it = cholesky_.find(mt_);
-  if (it == cholesky_.end()) return;
-
-  const auto& cov = it->second;
-  int ng = cov.full_size;     // number of energy groups (rows of L)
-  int r = cov.effective_rank; // number of columns of L
-
-  // 1. Sample z from N(0, I)
-  vector<double> z(r);
-  for (int j = 0; j < r; ++j) {
-    double u1 = std::max(prn(seed), 1e-16);
-    double u2 = prn(seed);
-    z[j] = std::sqrt(-2.0 * std::log(u1)) * std::cos(2.0 * M_PI * u2);
+  if (it != cholesky_.end()){
+    perturb_xs_covariance(energy_grid, seed);
+    return;
   }
 
-  // 2. Correlated perturbations: delta = L * z
-  // L is stored row-major with shape (ng * r)
+  // Perturb manually cross sections (no covariance data)
+
+  double rel_std = 0.00; //TO DO NEW SETTINGS TO ADD
+  double factor = 1.0;
+
+  // Normal distribution
+  double z = normal_variate(0.0, 1.0, seed);
+  factor = 1.0 + rel_std * z;
+
+  factor = std::max(0.0, std::min(2.0, factor));
+
+  for (auto& txs : xs_)
+  {
+    for (auto& v : txs.value)
+    {
+      v *= factor;
+      if (v < 0.0) v = 0.0;
+    }
+  }
+}
+
+// Function to sample cross sections using covariance data 
+
+void Reaction::perturb_xs_covariance(const vector<double>& energy_grid, uint64_t* seed)
+{
+  const auto& cov = cholesky_[mt_];
+  int ng = cov.full_size;
+  int r = cov.effective_rank;
+
+  // First step is to sample from normal distribution
+  vector<double> z(r);
+  for (int j = 0; j < r; ++j)
+  {
+    z[j] = normal_variate(0.0, 1.0, seed);
+  }
+
+  // Second step is to compute correlated pertubations
   vector<double> delta(ng, 0.0);
   for (int i = 0; i < ng; ++i)
     for (int j = 0; j < r; ++j)
-      delta[i] += cov.L[i * r + j] * z[j];
+      delta[i] += cov.L[i * r + j] * z[j]; 
 
-  // 3. Multiplicative factors per group
+  // Third step is to obtain multiplicative factors per group
   vector<double> factor(ng);
-  for (int g = 0; g < ng; ++g){
+  for (int g = 0; g < ng; ++g)
+  {
     double f = 1.0 + delta[g];
-    if (f < 0.0) f = 0.0;
-    if (f > 2.0) f = 2.0;
-    factor[g] = f;
+    factor[g] = std::max(0.0, std::min(2.0, f));
   }
 
-  // 4. Apply to every temperature's CE cross section
-  for (auto& txs : xs_) {
+  // Apply the perturbation to every temperature CE XS
+  for (auto& txs : xs_)
+  {
     int n_points = txs.value.size();
-    for (int k = 0; k < n_points; ++k) {
-      // Map CE grid index to energy
+    for (int k = 0; k < n_points; ++k)
+    {
       int i_grid = k + txs.threshold;
       double E = energy_grid[i_grid];
 
-      // Find which covariance group this energy falls in
-      // e_bounds is sorted ascending, size ng+1
       if (cov.e_bounds.empty()) continue;
-
-      if (E < cov.e_bounds.front() || E >= cov.e_bounds.back()) {
-        continue; // outside MG grid => factor 1
-      }
+      if (E < cov.e_bounds.front() || E >= cov.e_bounds.back()) continue;
 
       auto itb = std::upper_bound(cov.e_bounds.begin(), cov.e_bounds.end(), E);
       int g = static_cast<int>(itb - cov.e_bounds.begin()) - 1;
       if (g < 0 || g >= ng) continue;
 
       txs.value[k] *= factor[g];
+      if (txs.value[k] < 0.0) txs.value[k] = 0.0; // to avoid negative cross sections
 
-      // Keep cross sections non-negative
-      if (txs.value[k] < 0.0) txs.value[k] = 0.0;
     }
   }
 }

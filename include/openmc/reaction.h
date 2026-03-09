@@ -59,12 +59,13 @@ public:
     vector<double> value;
   };
 
-  int mt_;                           //!< ENDF MT value
-  double q_value_;                   //!< Reaction Q value in [eV]
-  bool scatter_in_cm_;               //!< scattering system in center-of-mass?
-  bool redundant_;                   //!< redundant reaction?
-  vector<TemperatureXS> xs_;         //!< Cross section at each temperature
-  vector<ReactionProduct> products_; //!< Reaction products
+  int mt_;                             //!< ENDF MT value
+  double q_value_;                     //!< Reaction Q value in [eV]
+  bool scatter_in_cm_;                 //!< scattering system in center-of-mass?
+  bool redundant_;                     //!< redundant reaction?
+  vector<TemperatureXS> xs_;           //!< Cross section at each temperature
+  vector<TemperatureXS> xs_reference_; //!< Unperturbed cross section at each temperature
+  vector<ReactionProduct> products_;   //!< Reaction products
 
   struct CovData {
   vector<double> L;            //!< Flattened (full_size x effective_rank) factor
@@ -78,6 +79,7 @@ public:
   //! \param[in] energy_grid  Nuclide energy grid (the shared CE grid)
   //! \param[in,out] seed     Random number seed
   void perturb_xs(const vector<double>& energy_grid, uint64_t* seed);
+  void perturb_xs_covariance(const vector<double>& energy_grid, uint64_t* seed);
 
 };
 

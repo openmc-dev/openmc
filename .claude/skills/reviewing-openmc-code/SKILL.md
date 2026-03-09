@@ -1,5 +1,5 @@
 ---
-name: openmc-code-review
+name: reviewing-openmc-code
 description: Reviews code changes in the OpenMC codebase against OpenMC's contribution criteria (correctness, testing, physics soundness, style, design, performance, docs, dependencies). Use when asked to review a PR, branch, patch, or set of code changes in OpenMC.
 ---
 

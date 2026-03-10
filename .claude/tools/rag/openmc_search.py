@@ -2,8 +2,10 @@
 """Query the RAG vector index to find semantically related code and docs.
 
 This is the query-time half of the RAG pipeline (the counterpart to indexer.py,
-which builds the index). All operations are local — no network calls are made.
-Given a natural-language query, it embeds the query with the same MiniLM model
+which builds the index). All operations are local — no network calls are made
+once the embedding model has been downloaded (see embeddings.py for details on
+model download and caching). Given a natural-language query, it embeds the query
+with the same MiniLM model
 used at index time, then finds the closest chunks in the local LanceDB vector
 database by cosine similarity.
 
@@ -43,9 +45,9 @@ def get_db_and_embedder():
     from embeddings import EmbeddingProvider
 
     if not INDEX_DIR.exists():
-        print("ERROR: No index found. Run openmc_rag_rebuild() to build one.",
-              file=sys.stderr)
-        sys.exit(1)
+        raise FileNotFoundError(
+            "No RAG index found. Call openmc_rag_rebuild() to build one."
+        )
 
     db = lancedb.connect(str(INDEX_DIR))
 

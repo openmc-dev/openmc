@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Build the RAG vector index for the OpenMC codebase.
 
-This is the index-building half of the RAG pipeline. All operations are local —
-no network calls are made (the embedding model is already cached locally; see
-embeddings.py for details on model download). It walks the repo, chunks every
+This is the index-building half of the RAG pipeline. All operations are local
+once the embedding model has been downloaded and cached (see embeddings.py for
+details on model download, caching, and network behavior). It walks the repo,
+chunks every
 C++/Python/RST file (via chunker.py), embeds all chunks into 384-dim vectors
 (via embeddings.py), and stores them in a local LanceDB database on disk. The
 result is a .claude/cache/rag_index/ directory containing two tables — "code"

@@ -177,8 +177,14 @@ def openmc_rag_search(
     if not query and not related_file:
         return "Error: provide either 'query' or 'related_file'."
 
+    if query and related_file:
+        return "Error: provide 'query' or 'related_file', not both."
+
     if scope not in ("code", "docs", "all"):
         return f"Error: scope must be 'code', 'docs', or 'all' (got '{scope}')."
+
+    if top_k < 1:
+        return f"Error: top_k must be at least 1 (got {top_k})."
 
     try:
         from openmc_search import (

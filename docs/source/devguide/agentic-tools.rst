@@ -96,7 +96,9 @@ The search pipeline runs entirely on your local CPU:
 Requirements
 ^^^^^^^^^^^^
 
-No system dependencies beyond **Python 3.12+** with ``pip``. The Python
-packages (``sentence-transformers``, ``lancedb``) and their dependencies
-(including PyTorch, ~2GB) are installed automatically into an isolated virtual
-environment on first use.
+No system dependencies beyond **Python 3.12+** with ``pip``. An internet
+connection is required on first use to download the Python packages and
+embedding model weights; subsequent runs are fully offline. The Python packages
+(``sentence-transformers``, ``lancedb``) and their dependencies (including
+PyTorch, ~2GB) are installed automatically into an isolated virtual environment
+on first use.

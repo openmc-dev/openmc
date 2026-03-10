@@ -95,6 +95,16 @@ void broadcast_results();
 
 void free_memory_simulation();
 
+//! Compute unique particle ID from a 1-based source index
+//! \param index_source 1-based source index within this rank's work
+//! \return globally unique particle ID
+int64_t compute_particle_id(int64_t index_source);
+
+//! Compute the transport RNG seed from a particle ID
+//! \param particle_id the particle's globally unique ID
+//! \return seed value passed to init_particle_seeds()
+int64_t compute_transport_seed(int64_t particle_id);
+
 //! Simulate a single particle history from birth to death, inclusive of any
 //! secondary particles. In shared secondary mode, only a single track is
 //! transported and secondaries are deposited into a shared bank instead.

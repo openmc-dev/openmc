@@ -587,15 +587,7 @@ void sample_particle(Particle& p, int64_t index_source)
     p.from_source(&simulation::source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
-    int64_t id;
-    if (settings::use_shared_secondary_bank) {
-      id = simulation::work_index[mpi::rank] + index_source +
-           simulation::simulation_tracks_completed;
-    } else {
-      id = (simulation::total_gen + overall_generation() - 1) *
-             settings::n_particles +
-           simulation::work_index[mpi::rank] + index_source;
-    }
+    int64_t id = compute_transport_seed(compute_particle_id(index_source));
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
@@ -615,12 +607,7 @@ void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
   p.current_work() = index_source - 1;
 
   // set identifier for particle
-  if (settings::use_shared_secondary_bank) {
-    p.id() = simulation::work_index[mpi::rank] + index_source +
-             simulation::simulation_tracks_completed;
-  } else {
-    p.id() = simulation::work_index[mpi::rank] + index_source;
-  }
+  p.id() = compute_particle_id(index_source);
 
   // set progeny count to zero
   p.n_progeny() = 0;
@@ -644,14 +631,7 @@ void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
   std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
 
   // set random number seed
-  int64_t particle_seed;
-  if (settings::use_shared_secondary_bank) {
-    particle_seed = p.id() - 1;
-  } else {
-    particle_seed = (simulation::total_gen + overall_generation() - 1) *
-                      settings::n_particles +
-                    p.id();
-  }
+  int64_t particle_seed = compute_transport_seed(p.id());
   init_particle_seeds(particle_seed, p.seeds());
 
   // set particle trace
@@ -695,6 +675,27 @@ int overall_generation()
 {
   using namespace simulation;
   return settings::gen_per_batch * (current_batch - 1) + current_gen;
+}
+
+int64_t compute_particle_id(int64_t index_source)
+{
+  if (settings::use_shared_secondary_bank) {
+    return simulation::work_index[mpi::rank] + index_source +
+           simulation::simulation_tracks_completed;
+  } else {
+    return simulation::work_index[mpi::rank] + index_source;
+  }
+}
+
+int64_t compute_transport_seed(int64_t particle_id)
+{
+  if (settings::use_shared_secondary_bank) {
+    return particle_id;
+  } else {
+    return (simulation::total_gen + overall_generation() - 1) *
+               settings::n_particles +
+           particle_id;
+  }
 }
 
 void calculate_work(int64_t n_particles)

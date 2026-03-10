@@ -116,29 +116,7 @@ void run_particle_restart()
   }
 
   // Compute random number seed
-  int64_t particle_seed;
-  switch (previous_run_mode) {
-  case RunMode::EIGENVALUE:
-    particle_seed = (simulation::total_gen + overall_generation() - 1) *
-                      settings::n_particles +
-                    p.id();
-    break;
-  case RunMode::FIXED_SOURCE:
-    if (settings::use_shared_secondary_bank) {
-      // In shared secondary mode, the transport seed is p.id() - 1,
-      // matching initialize_history() in simulation.cpp
-      particle_seed = p.id() - 1;
-    } else {
-      particle_seed = (simulation::total_gen + overall_generation() - 1) *
-                        settings::n_particles +
-                      p.id();
-    }
-    break;
-  default:
-    throw std::runtime_error {
-      "Unexpected run mode: " +
-      std::to_string(static_cast<int>(previous_run_mode))};
-  }
+  int64_t particle_seed = compute_transport_seed(p.id());
   init_particle_seeds(particle_seed, p.seeds());
 
   // Force calculation of cross-sections by setting last energy to zero

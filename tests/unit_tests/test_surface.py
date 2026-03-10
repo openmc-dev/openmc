@@ -195,6 +195,12 @@ def test_cylinder():
     assert s.dy == -1
     assert s.dz == 1
     assert s.r == 2
+    
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.Cylinder(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.Cylinder(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r=-1.0)        
 
     # Check bounding box
     assert_infinite_bb(s)
@@ -244,6 +250,12 @@ def test_xcylinder():
     assert s.y0 == y
     assert s.z0 == z
     assert s.r == r
+    
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.XCylinder(y0=y, z0=z, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.XCylinder(y0=y, z0=z, r=-1.0)
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -290,6 +302,12 @@ def test_ycylinder():
     assert s.x0 == x
     assert s.z0 == z
     assert s.r == r
+    
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.YCylinder(x0=x, z0=z, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.YCylinder(x0=x, z0=z, r=-1.0)
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -327,6 +345,12 @@ def test_zcylinder():
     assert s.x0 == x
     assert s.y0 == y
     assert s.r == r
+    
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.ZCylinder(x0=x, y0=y, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.ZCylinder(x0=x, y0=y, r=-1.0)
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -365,6 +389,12 @@ def test_sphere():
     assert s.y0 == y
     assert s.z0 == z
     assert s.r == r
+    
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.Sphere(x0=x, y0=y, z0=z, r=0.0)
+    with pytest.raises(ValueError):
+        openmc.Sphere(x0=x, y0=y, z0=z, r=-1.0)
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -404,6 +434,12 @@ def cone_common(apex, r2, cls):
     assert s.y0 == y
     assert s.z0 == z
     assert s.r2 == r2
+    
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        cls(x0=x, y0=y, z0=z, r2=0.0)
+    with pytest.raises(ValueError):
+        cls(x0=x, y0=y, z0=z, r2=-1.0)
 
     # Check bounding box
     assert_infinite_bb(s)
@@ -442,6 +478,12 @@ def test_cone():
     assert s.dy == -1
     assert s.dz == 1
     assert s.r2 == 4
+    
+    # Check radius must be positive
+    with pytest.raises(ValueError):
+        openmc.Cone(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r2=0.0)
+    with pytest.raises(ValueError):
+        openmc.Cone(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r2=-1.0)   
 
     # Check bounding box
     assert_infinite_bb(s)
@@ -622,6 +664,13 @@ def torus_common(center, R, r1, r2, cls):
     assert s.a == R
     assert s.b == r1
     assert s.c == r2
+    
+    # Check radius must be positive
+    params = [(0.0, r1, r2), (R, 0.0, r2), (R, r1, 0.0), 
+              (-1.0, r1, r2), (R, -1.0, r2), (R, r1, -1.0)]
+    for a,b,c in params:
+        with pytest.raises(ValueError):
+            cls(x0=x, y0=y, z0=z, a=a, b=b, c=c)
 
     # evaluate method
     assert s.evaluate((x, y, z)) > 0.0

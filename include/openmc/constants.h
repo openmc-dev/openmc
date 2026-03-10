@@ -227,6 +227,7 @@ enum ReactionType {
   N_XA = 207,
   HEATING = 301,
   DAMAGE_ENERGY = 444,
+  PHOTON_TOTAL = 501,
   COHERENT = 502,
   INCOHERENT = 504,
   PAIR_PROD_ELEC = 515,
@@ -367,7 +368,7 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
-enum class RandomRaySampleMethod { PRNG, HALTON };
+enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 
 //==============================================================================
 // Geometry Constants

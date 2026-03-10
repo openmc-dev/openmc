@@ -4,7 +4,7 @@
 #ifndef OPENMC_XSDATA_H
 #define OPENMC_XSDATA_H
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/hdf5_interface.h"
 #include "openmc/memory.h"
@@ -69,26 +69,26 @@ private:
 public:
   // The following quantities have the following dimensions:
   // [angle][incoming group]
-  xt::xtensor<double, 2> total;
-  xt::xtensor<double, 2> absorption;
-  xt::xtensor<double, 2> nu_fission;
-  xt::xtensor<double, 2> prompt_nu_fission;
-  xt::xtensor<double, 2> kappa_fission;
-  xt::xtensor<double, 2> fission;
-  xt::xtensor<double, 2> inverse_velocity;
+  tensor::Tensor<double> total;
+  tensor::Tensor<double> absorption;
+  tensor::Tensor<double> nu_fission;
+  tensor::Tensor<double> prompt_nu_fission;
+  tensor::Tensor<double> kappa_fission;
+  tensor::Tensor<double> fission;
+  tensor::Tensor<double> inverse_velocity;
 
   // decay_rate has the following dimensions:
   // [angle][delayed group]
-  xt::xtensor<double, 2> decay_rate;
+  tensor::Tensor<double> decay_rate;
   // delayed_nu_fission has the following dimensions:
   // [angle][delayed group][incoming group]
-  xt::xtensor<double, 3> delayed_nu_fission;
+  tensor::Tensor<double> delayed_nu_fission;
   // chi_prompt has the following dimensions:
   // [angle][incoming group][outgoing group]
-  xt::xtensor<double, 3> chi_prompt;
+  tensor::Tensor<double> chi_prompt;
   // chi_delayed has the following dimensions:
   // [angle][incoming group][outgoing group][delayed group]
-  xt::xtensor<double, 4> chi_delayed;
+  tensor::Tensor<double> chi_delayed;
   // scatter has the following dimensions: [angle]
   vector<std::shared_ptr<ScattData>> scatter;
 

@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
 
 #include "hdf5.h"
 #include "openmc/cell.h"
@@ -17,6 +17,7 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
+#include "openmc/ray.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -90,7 +91,7 @@ const RGBColor BLACK {0, 0, 0};
  * visualized.
  */
 
-typedef xt::xtensor<RGBColor, 2> ImageData;
+typedef tensor::Tensor<RGBColor> ImageData;
 class PlottableInterface {
 public:
   PlottableInterface() = default;
@@ -154,7 +155,7 @@ struct IdData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
+  tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
 };
 
 struct PropertyData {
@@ -166,7 +167,7 @@ struct PropertyData {
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+  tensor::Tensor<double> data_; //!< 2D array of temperature & density data
 };
 
 //===============================================================================
@@ -495,43 +496,6 @@ private:
 
   // By default, the light is at the camera unless otherwise specified.
   Position light_location_;
-};
-
-// Base class that implements ray tracing logic, not necessarily through
-// defined regions of the geometry but also outside of it.
-class Ray : public GeometryState {
-
-public:
-  Ray(Position r, Direction u) { init_from_r_u(r, u); }
-
-  // Called at every surface intersection within the model
-  virtual void on_intersection() = 0;
-
-  /*
-   * Traces the ray through the geometry, calling on_intersection
-   * at every surface boundary.
-   */
-  void trace();
-
-  // Stops the ray and exits tracing when called from on_intersection
-  void stop() { stop_ = true; }
-
-  // Sets the dist_ variable
-  void compute_distance();
-
-protected:
-  // Records how far the ray has traveled
-  double traversal_distance_ {0.0};
-
-private:
-  // Max intersections before we assume ray tracing is caught in an infinite
-  // loop:
-  static const int MAX_INTERSECTIONS = 1000000;
-
-  bool hit_something_ {false};
-  bool stop_ {false};
-
-  unsigned event_counter_ {0};
 };
 
 class ProjectionRay : public Ray {

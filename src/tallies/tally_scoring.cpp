@@ -14,12 +14,14 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
 
+#include <numeric>
 #include <string>
 
 namespace openmc {
@@ -2621,7 +2623,7 @@ void score_collision_tally(Particle& p)
     match.bins_present_ = false;
 }
 
-void score_surface_tally(Particle& p, const vector<int>& tallies)
+void score_meshsurface_tally(Particle& p, const vector<int>& tallies)
 {
   double current = p.wgt_last();
 
@@ -2665,6 +2667,69 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
     match.bins_present_ = false;
 }
 
+void score_surface_tally(
+  Particle& p, const vector<int>& tallies, const Surface& surf)
+{
+  double wgt = p.wgt_last();
+
+  // Sign for net current: +1 if crossing outward (in direction of normal),
+  // -1 if crossing inward
+  double current_sign = (p.surface() > 0) ? 1.0 : -1.0;
+
+  // Determine absolute cosine of angle between particle direction and surface
+  // normal, needed for the surface-crossing flux estimator.
+  auto n = surf.normal(p.r());
+  n /= n.norm();
+  double abs_mu = std::min(std::abs(p.u().dot(n)), 1.0);
+  if (abs_mu < settings::surface_grazing_cutoff)
+    abs_mu = settings::surface_grazing_ratio * settings::surface_grazing_cutoff;
+
+  for (auto i_tally : tallies) {
+    auto& tally {*model::tallies[i_tally]};
+
+    // Initialize an iterator over valid filter bin combinations. If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    if (filter_iter == end)
+      continue;
+
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
+
+      // Loop over scores.
+      for (auto score_index = 0; score_index < tally.scores_.size();
+           ++score_index) {
+        auto score_bin = tally.scores_[score_index];
+        double score;
+        if (score_bin == SCORE_CURRENT) {
+          // Net current: weight carries the sign of the crossing direction.
+          score = wgt * current_sign;
+        } else {
+          // SCORE_FLUX: surface-crossing estimator phi_S = sum(w / |mu|).
+          score = wgt / abs_mu;
+        }
+#pragma omp atomic
+        tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+          score * filter_weight;
+      }
+    }
+    // If the user has specified that we can assume all tallies are spatially
+    // separate, this implies that once a tally has been scored to, we needn't
+    // check the others. This cuts down on overhead when there are many
+    // tallies specified
+    if (settings::assume_separate)
+      break;
+  }
+
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : p.filter_matches())
+    match.bins_present_ = false;
+}
+
 void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 {
   // The pulse height tally in OpenMC hijacks the logic of CellFilter and
@@ -2683,56 +2748,49 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
-    // Determine all CellFilter in the tally
-    for (const auto& filter : tally.filters()) {
-      auto cell_filter =
-        dynamic_cast<CellFilter*>(model::tally_filters[filter].get());
-      if (cell_filter != nullptr) {
+    // Find CellFilter in the tally (if any) to determine cells to loop over
+    const auto* cell_filter = tally.get_filter<CellFilter>();
+    const auto& cells =
+      cell_filter ? cell_filter->cells() : model::pulse_height_cells;
 
-        const auto& cells = cell_filter->cells();
-        // Loop over all cells in the CellFilter
-        for (auto cell_index = 0; cell_index < cells.size(); ++cell_index) {
-          int cell_id = cells[cell_index];
+    for (auto cell_id : cells) {
+      // Temporarily change cell of particle
+      p.n_coord() = 1;
+      p.coord(0).cell() = cell_id;
 
-          // Temporarily change cell of particle
-          p.n_coord() = 1;
-          p.coord(0).cell() = cell_id;
+      // Determine index of cell in model::pulse_height_cells
+      auto it = std::find(model::pulse_height_cells.begin(),
+        model::pulse_height_cells.end(), cell_id);
+      int index = std::distance(model::pulse_height_cells.begin(), it);
 
-          // Determine index of cell in model::pulse_height_cells
-          auto it = std::find(model::pulse_height_cells.begin(),
-            model::pulse_height_cells.end(), cell_id);
-          int index = std::distance(model::pulse_height_cells.begin(), it);
+      // Temporarily change energy of particle to pulse-height value
+      p.E_last() = p.pht_storage()[index];
 
-          // Temporarily change energy of particle to pulse-height value
-          p.E_last() = p.pht_storage()[index];
+      // Initialize an iterator over valid filter bin combinations. If
+      // there are no valid combinations, use a continue statement to ensure
+      // we skip the assume_separate break below.
+      auto filter_iter = FilterBinIter(tally, p);
+      auto end = FilterBinIter(tally, true, &p.filter_matches());
+      if (filter_iter == end)
+        continue;
 
-          // Initialize an iterator over valid filter bin combinations. If
-          // there are no valid combinations, use a continue statement to ensure
-          // we skip the assume_separate break below.
-          auto filter_iter = FilterBinIter(tally, p);
-          auto end = FilterBinIter(tally, true, &p.filter_matches());
-          if (filter_iter == end)
-            continue;
+      // Loop over filter bins.
+      for (; filter_iter != end; ++filter_iter) {
+        auto filter_index = filter_iter.index_;
+        auto filter_weight = filter_iter.weight_;
 
-          // Loop over filter bins.
-          for (; filter_iter != end; ++filter_iter) {
-            auto filter_index = filter_iter.index_;
-            auto filter_weight = filter_iter.weight_;
-
-            // Loop over scores.
-            for (auto score_index = 0; score_index < tally.scores_.size();
-              ++score_index) {
+        // Loop over scores.
+        for (auto score_index = 0; score_index < tally.scores_.size();
+             ++score_index) {
 #pragma omp atomic
-              tally.results_(filter_index, score_index, TallyResult::VALUE) +=
-                filter_weight;
-            }
-          }
-
-          // Reset all the filter matches for the next tally event.
-          for (auto& match : p.filter_matches())
-            match.bins_present_ = false;
+          tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+            filter_weight;
         }
       }
+
+      // Reset all the filter matches for the next tally event.
+      for (auto& match : p.filter_matches())
+        match.bins_present_ = false;
     }
     // Restore cell/energy
     p.n_coord() = orig_n_coord;

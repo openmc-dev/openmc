@@ -13,6 +13,7 @@ import pandas as pd
 import openmc
 import openmc.checkvalue as cv
 from .cell import Cell
+from .data.reaction import REACTION_NAME, REACTION_MT
 from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
@@ -22,11 +23,11 @@ from ._xml import get_elem_list, get_text
 
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
-    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
-    'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
+    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell',
+    'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre',
+    'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
     'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
-    'weight', 'meshborn', 'meshsurface', 'meshmaterial',
+    'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )
 
 _CURRENT_NAMES = (
@@ -971,53 +972,36 @@ class MeshFilter(Filter):
         Returns
         -------
         pandas.DataFrame
-            A Pandas DataFrame with three columns describing the x,y,z mesh
-            cell indices corresponding to each filter bin.  The number of rows
-            in the DataFrame is the same as the total number of bins in the
-            corresponding tally, with the filter bin appropriately tiled to map
-            to the corresponding tally bins.
+            A Pandas DataFrame with columns describing the mesh cell indices
+            corresponding to each filter bin. Column names depend on the mesh
+            type (e.g., x/y/z for RegularMesh, r/phi/z for CylindricalMesh,
+            r/theta/phi for SphericalMesh, or element index for
+            UnstructuredMesh). The number of rows in the DataFrame is the same
+            as the total number of bins in the corresponding tally, with the
+            filter bin appropriately tiled to map to the corresponding tally
+            bins.
 
         See also
         --------
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
         # Initialize dictionary to build Pandas Multi-index column
         filter_dict = {}
 
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
-        # Find mesh dimensions - use 3D indices for simplicity
-        n_dim = len(self.mesh.dimension)
-        if n_dim == 3:
-            nx, ny, nz = self.mesh.dimension
-        elif n_dim == 2:
-            nx, ny = self.mesh.dimension
-            nz = 1
-        else:
-            nx = self.mesh.dimension
-            ny = nz = 1
+        # Determine index base (0-based for unstructured, 1-based otherwise)
+        idx_start = 0 if isinstance(self.mesh, openmc.UnstructuredMesh) else 1
 
-        # Generate multi-index sub-column for x-axis
-        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
-            np.arange(1, nx + 1), stride, data_size)
+        # Generate a multi-index sub-column for each axis
+        for label, dim_size in zip(self.mesh._axis_labels, self.mesh.dimension):
+            filter_dict[mesh_key, label] = _repeat_and_tile(
+                np.arange(idx_start, idx_start + dim_size), stride, data_size)
+            stride *= dim_size
 
-        # Generate multi-index sub-column for y-axis
-        filter_dict[mesh_key, 'y'] = _repeat_and_tile(
-            np.arange(1, ny + 1), nx * stride, data_size)
-
-        # Generate multi-index sub-column for z-axis
-        filter_dict[mesh_key, 'z'] = _repeat_and_tile(
-            np.arange(1, nz + 1), nx * ny * stride, data_size)
-
-        # Initialize a Pandas DataFrame from the mesh dictionary
-        df = pd.concat([df, pd.DataFrame(filter_dict)])
-
-        return df
+        return pd.DataFrame(filter_dict)
 
     def to_xml_element(self):
         """Return XML Element representing the Filter.
@@ -1413,6 +1397,80 @@ class CollisionFilter(Filter):
             # Values should be integers
             cv.check_type('filter value', x, Integral)
             cv.check_greater_than('filter value', x, 0, equality=True)
+
+
+class ReactionFilter(Filter):
+    """Bins tally events based on the reaction type (MT number).
+
+    .. versionadded:: 0.15.4
+
+    Parameters
+    ----------
+    bins : str, int, or iterable thereof
+        The reaction types to tally. Can be reaction name strings
+        (e.g., ``'(n,elastic)'``, ``'(n,gamma)'``) or integer MT numbers
+        (e.g., 2, 102). Integer MT values are automatically converted to their
+        canonical string representation.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : numpy.ndarray of str
+        Reaction name strings
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    def __init__(self, bins, filter_id=None):
+        self.bins = bins
+        self.id = filter_id
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        if isinstance(bins, (str, Integral)):
+            bins = [bins]
+        elif not isinstance(bins, list):
+            bins = list(bins)
+        normalized = []
+        for b in bins:
+            if isinstance(b, Integral):
+                if int(b) not in REACTION_NAME:
+                    raise ValueError(f"No known reaction for MT={b}")
+                normalized.append(REACTION_NAME[int(b)])
+            elif isinstance(b, str):
+                if b == 'total':
+                    warnings.warn(
+                        "The reaction name 'total' is ambiguous. Use "
+                        "'(n,total)' for neutron total cross section or "
+                        "'photon-total' for photon total. Interpreting as"
+                        "'(n,total)'.")
+                if b not in REACTION_MT:
+                    raise ValueError(f"Unknown reaction name '{b}'")
+                normalized.append(REACTION_NAME[REACTION_MT[b]])
+            else:
+                raise TypeError(f"Expected str or int for reaction filter "
+                                f"bin, got {type(b)}")
+        self._bins = np.array(normalized, dtype=str)
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + "' instead")
+        bins = [b.decode() for b in group['bins'][()]]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        return cls(bins, filter_id=filter_id)
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", str) or []
+        return cls(bins, filter_id=filter_id)
 
 
 class RealFilter(Filter):

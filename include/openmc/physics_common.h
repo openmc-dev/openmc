@@ -13,5 +13,9 @@ namespace openmc {
 //! \param[in] weight_survive Weight assigned to particles that survive
 void russian_roulette(Particle& p, double weight_survive);
 
+//! \brief Performs the global russian roulette operation on a particle
+//! \param[in,out] p  Particle object
+void apply_russian_roulette(Particle& p);
+
 } // namespace openmc
 #endif // OPENMC_PHYSICS_COMMON_H

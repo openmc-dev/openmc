@@ -33,6 +33,7 @@
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_particle_production.h"
 #include "openmc/tallies/filter_polar.h"
+#include "openmc/tallies/filter_reaction.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_sptl_legendre.h"
 #include "openmc/tallies/filter_surface.h"
@@ -151,6 +152,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<ParticleProductionFilter>(id);
   } else if (type == "polar") {
     return Filter::create<PolarFilter>(id);
+  } else if (type == "reaction") {
+    return Filter::create<ReactionFilter>(id);
   } else if (type == "surface") {
     return Filter::create<SurfaceFilter>(id);
   } else if (type == "spatiallegendre") {

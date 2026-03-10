@@ -59,6 +59,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.log_grid_bins = 2000
     s.photon_transport = False
     s.electron_treatment = 'led'
+    s.atomic_relaxation = False
     s.write_initial_source = True
     s.weight_window_checkpoints = {'surface': True, 'collision': False}
     source_region_mesh = openmc.RegularMesh()
@@ -147,6 +148,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'
+    assert not s.atomic_relaxation
     assert s.write_initial_source
     assert len(s.volume_calculations) == 1
     vol = s.volume_calculations[0]

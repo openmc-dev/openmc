@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Build the RAG vector index for the OpenMC codebase.
 
-This is the "offline" step of the RAG pipeline. It walks the repo, chunks every
+This is the index-building half of the RAG pipeline. All operations are local —
+no network calls are made (the embedding model is already cached locally; see
+embeddings.py for details on model download). It walks the repo, chunks every
 C++/Python/RST file (via chunker.py), embeds all chunks into 384-dim vectors
-(via embeddings.py), and stores them in a LanceDB database on disk. The result
-is a .claude/cache/rag_index/ directory containing two tables — "code" and
-"docs" — that openmc_search.py queries at search time.
+(via embeddings.py), and stores them in a local LanceDB database on disk. The
+result is a .claude/cache/rag_index/ directory containing two tables — "code"
+and "docs" — that openmc_search.py queries at search time.
 
 Building the full index takes ~5 minutes on a 10-core machine. The bottleneck
 is the embedding step (running all chunks through the MiniLM model on CPU).

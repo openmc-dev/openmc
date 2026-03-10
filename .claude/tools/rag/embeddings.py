@@ -10,17 +10,22 @@ external service. All embedding computation happens locally. The only network
 activity is the one-time model download on first use:
 
   First run (model not yet cached, ~80MB download):
-    - Downloads model weight files from huggingface.co.
-    - The only metadata sent in requests is a user-agent header with library
-      versions (e.g. "hf_hub/1.6.0; python/3.12.3; torch/2.10.0") and a
-      random session ID. No user-identifiable information is sent.
-    - HF_HUB_DISABLE_TELEMETRY=1 is set, which disables any optional
-      analytics the library might otherwise send.
+    - Downloads model weight files from huggingface.co. This is a standard
+      HTTP file download, similar to pip installing a package.
+    - The only metadata sent in these requests is an HTTP user-agent header
+      containing library version numbers (e.g. "hf_hub/1.6.0;
+      python/3.12.3; torch/2.10.0"). No filenames, file contents, queries,
+      or any user-identifiable information is sent.
+    - The huggingface_hub library has an optional feature where it can report
+      anonymous library usage statistics (just version numbers, not user
+      data) back to HuggingFace. We disable this by setting
+      HF_HUB_DISABLE_TELEMETRY=1.
 
   Subsequent runs (model already cached):
-    - HF_HUB_OFFLINE=1 is set automatically (see _set_offline_if_cached()
+    - We set HF_HUB_OFFLINE=1 automatically (see _set_offline_if_cached()
       below), which prevents ALL network calls. The model loads entirely
-      from the local cache at ~/.cache/huggingface/hub/.
+      from the local cache at ~/.cache/huggingface/hub/. Zero bytes leave
+      the machine.
 
 How the model is downloaded
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,8 +43,9 @@ indexer (for bulk embedding of code chunks). The bulk embed() call shows a
 progress bar; the single-query embed_query() does not.
 
 The env vars below must be set before importing transformers or
-sentence_transformers. They suppress warnings, progress bars, and telemetry.
-Stray stderr output would interfere with the MCP server's JSON-RPC transport.
+sentence_transformers. They suppress warnings and progress bars that these
+libraries emit by default. Stray stderr output would interfere with the MCP
+server's JSON-RPC transport.
 """
 
 import os
@@ -47,13 +53,15 @@ from pathlib import Path
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
-# These env vars control logging/telemetry behavior in the HuggingFace
-# libraries. They must be set before the libraries are imported.
-os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
-os.environ.setdefault("HF_HUB_VERBOSITY", "error")
-os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+# These env vars control logging behavior in the HuggingFace libraries.
+# They must be set before the libraries are imported.
+os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")   # suppress warnings
+os.environ.setdefault("HF_HUB_VERBOSITY", "error")        # suppress warnings
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
-os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")   # suppress threading warning
+# Disable anonymous library usage statistics (version numbers only, not user
+# data — but we disable it anyway as a matter of policy).
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 
 def _set_offline_if_cached():
@@ -83,7 +91,9 @@ def _set_offline_if_cached():
 
 _set_offline_if_cached()
 
-import transformers  # noqa: E402 — must come after env vars are set
+# This import must come after the env vars above are set, because the
+# transformers library reads them at import time.
+import transformers
 transformers.logging.disable_progress_bar()
 
 

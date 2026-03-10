@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Query the RAG vector index to find semantically related code and docs.
 
-This is the "online" step of the RAG pipeline — the counterpart to indexer.py
-which builds the index. Given a natural-language query, it embeds the query
-with the same MiniLM model used at index time, then finds the closest chunks
-in the LanceDB vector database by cosine similarity.
+This is the query-time half of the RAG pipeline (the counterpart to indexer.py,
+which builds the index). All operations are local — no network calls are made.
+Given a natural-language query, it embeds the query with the same MiniLM model
+used at index time, then finds the closest chunks in the local LanceDB vector
+database by cosine similarity.
 
 The core functions (get_db_and_embedder, search_table, format_results,
 search_related) are imported by the MCP server for tool calls. The script

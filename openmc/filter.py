@@ -1325,47 +1325,19 @@ class MeshSurfaceFilter(MeshFilter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        # Initialize dictionary to build Pandas Multi-index column
-        filter_dict = {}
-
         # Append mesh ID as outermost index of multi-index
         mesh_key = f'mesh {self.mesh.id}'
 
         # Find mesh dimensions - use 3D indices for simplicity
-        n_surfs = 4 * len(self.mesh.dimension)
-        if len(self.mesh.dimension) == 3:
-            nx, ny, nz = self.mesh.dimension
-        elif len(self.mesh.dimension) == 2:
-            nx, ny = self.mesh.dimension
-            nz = 1
-        else:
-            nx = self.mesh.dimension
-            ny = nz = 1
+        n_surfs = len(self._current_names(self._mesh))
 
-        # Generate multi-index sub-column for x-axis
-        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
-            np.arange(1, nx + 1), n_surfs * stride, data_size)
+        columns = [(mesh_key, label) for label in self.mesh._axis_labels]
+        indices = _repeat_and_tile(list(self.mesh.indices), stride*n_surfs, data_size)
+        filter_dict = dict(zip(columns,indices.T))
+        surfs = _repeat_and_tile(self._current_names(self._mesh), stride, data_size)
+        filter_dict[mesh_key, 'surf'] = surfs
 
-        # Generate multi-index sub-column for y-axis
-        if len(self.mesh.dimension) > 1:
-            filter_dict[mesh_key, 'y'] = _repeat_and_tile(
-                np.arange(1, ny + 1), n_surfs * nx * stride, data_size)
-
-        # Generate multi-index sub-column for z-axis
-        if len(self.mesh.dimension) > 2:
-            filter_dict[mesh_key, 'z'] = _repeat_and_tile(
-                np.arange(1, nz + 1), n_surfs * nx * ny * stride, data_size)
-
-        # Generate multi-index sub-column for surface
-        filter_dict[mesh_key, 'surf'] = _repeat_and_tile(
-            self._current_names(self._mesh), stride, data_size)
-
-        # Initialize a Pandas DataFrame from the mesh dictionary
-        return pd.concat([df, pd.DataFrame(filter_dict)])
-
+        return pd.DataFrame(filter_dict)
 
 class CollisionFilter(Filter):
     """Bins tally events based on the number of collisions.

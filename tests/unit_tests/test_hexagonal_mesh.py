@@ -5,6 +5,8 @@ import numpy as np
 
 import pytest
 
+pitch = 1.25    
+
 @pytest.fixture(params=['x','y'])
 def model(request):
     openmc.reset_auto_ids()
@@ -35,8 +37,6 @@ def model(request):
 
     plane1 = openmc.ZPlane(-10.0, boundary_type='vacuum')
     plane2 = openmc.ZPlane(10.0, boundary_type='vacuum')
-
-    pitch = 1.25
 
     lat = openmc.HexLattice()
     lat.center = (0., 0.)
@@ -78,14 +78,16 @@ def model(request):
     tally.filters.append(cell_filter)
 
     tally.scores.append("total")
-    tally.estimator = "collision"
 
     tallies = openmc.Tallies([tally])
 
     return openmc.Model(geometry=geom, settings=settings, tallies=tallies)
 
-def test_correct_locations(model, run_in_tmpdir):
+
+@pytest.mark.parametrize("estimator", ["collision", "tracklength"])
+def test_correct_locations(model, run_in_tmpdir, estimator):
     tally, = model.tallies
+    tally.estimator = estimator
     model.run(apply_tally_results=True)
     df = tally.get_pandas_dataframe()
     df = df[df['mean']>0]
@@ -108,3 +110,29 @@ def test_correct_locations(model, run_in_tmpdir):
         assert tuple(df.loc[3]) == (-1,0,1,0)
         assert tuple(df.loc[4]) == (0,-1,1,0)
         assert tuple(df.loc[5]) == (1,-1,0,0)
+
+def test_meshsurface(model):
+    tally, = model.tallies
+    orientation = tally.filters[0].mesh.orientation
+    
+    tally = openmc.Tally()
+    mesh = openmc.HexagonalMesh(
+    z_grid=[-10.0, 10.0],
+    num_rings = 2,
+    pitch = pitch,
+    orientation = orientation,
+    )
+
+    tally.filters = [openmc.MeshSurfaceFilter(mesh)]
+    tally.scores = ['current']
+
+    model.tallies = [tally]
+
+    model.run(apply_tally_results=True)
+
+    df = tally.get_pandas_dataframe()
+
+    z_max_in = df['mesh 2', 'surf']=='z-max in'
+    z_min_in = df['mesh 2', 'surf']=='z-min in'
+    
+    assert np.all(df[z_max_in & z_min_in]['mean']==0.0)

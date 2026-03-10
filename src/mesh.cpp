@@ -769,6 +769,17 @@ std::string StructuredMesh::bin_label(int bin) const
   }
 }
 
+std::string StructuredMesh::surface_label(int surface) const
+{
+  int axis = static_cast<int>(std::floor(surface / 4));
+  std::string label = axes_labels_[axis];
+  const std::vector<std::string> MINMAX = {"min", "max"};
+  const std::vector<std::string> OUTIN = {"Outgoing", "Incoming"};
+  auto minmax = MINMAX[static_cast<int>(std::floor((surface % 4) / 2))];
+  auto outin = OUTIN[surface % 2];
+  return fmt::format("{}, {}-{}", outin, minmax, label);
+}
+
 tensor::Tensor<int> StructuredMesh::get_shape_tensor() const
 {
   return tensor::Tensor<int>(shape_.data(), static_cast<size_t>(n_dimension_));
@@ -1343,14 +1354,6 @@ int RegularMesh::set_grid()
 {
   tensor::Tensor<int> shape(shape_.data(), static_cast<size_t>(n_dimension_));
 
-  labels_.clear();
-  if (n_dimension_ > 0)
-    labels_.push_back("x");
-  if (n_dimension_ > 1)
-    labels_.push_back("y");
-  if (n_dimension_ > 2)
-    labels_.push_back("z");
-
   // Check that dimensions are all greater than zero
   if ((shape <= 0).any()) {
     set_errmsg("All entries for a regular mesh dimensions "
@@ -1711,8 +1714,6 @@ int RectilinearMesh::set_grid()
     static_cast<int>(grid_[1].size()) - 1,
     static_cast<int>(grid_[2].size()) - 1};
 
-  labels_ = {"x", "y", "z"};
-
   for (const auto& g : grid_) {
     if (g.size() < 2) {
       set_errmsg("x-, y-, and z- grids for rectilinear meshes "
@@ -1996,7 +1997,7 @@ int CylindricalMesh::set_grid()
     static_cast<int>(grid_[1].size()) - 1,
     static_cast<int>(grid_[2].size()) - 1};
 
-  labels_ = {"r", "phi", "z"};
+  axes_labels_ = {"r", "phi", "z"};
 
   for (const auto& g : grid_) {
     if (g.size() < 2) {
@@ -2324,7 +2325,7 @@ int SphericalMesh::set_grid()
     static_cast<int>(grid_[1].size()) - 1,
     static_cast<int>(grid_[2].size()) - 1};
 
-  labels_ = {"r", "theta", "phi"};
+  axes_labels_ = {"r", "theta", "phi"};
 
   for (const auto& g : grid_) {
     if (g.size() < 2) {
@@ -2466,17 +2467,21 @@ std::string HexagonalMesh::bin_label(int bin) const
     "Mesh Index ({}, {}, {}, {})", ijk[0], ijk[1], -ijk[0] - ijk[1], ijk[2]);
 }
 
-int HexagonalMesh::get_bin(Position r) const
+std::string HexagonalMesh::surface_label(int surface) const
 {
-  // Determine indices
-  bool in_mesh;
-  MeshIndex ijk = get_indices(r, in_mesh);
-
-  if (!in_mesh)
-    return -1;
-
-  // Convert indices to bin
-  return get_bin_from_indices(ijk);
+  int axis = static_cast<int>(std::floor(surface / 4));
+  int max = static_cast<int>(std::floor((surface % 4) / 2));
+  const std::vector<std::string> MINMAX = {"min", "max"};
+  const std::vector<std::string> OUTIN = {"Outgoing", "Incoming"};
+  auto minmax = MINMAX[max];
+  auto outin = OUTIN[surface % 2];
+  std::string label = axes_labels_[axis];
+  if (axis == 3) {
+    return fmt::format("{}, {}-{}", outin, label, minmax);
+  }
+  auto minmax2 = MINMAX[1 - max];
+  std::string label2 = axes_labels_[(axis + 1) % 2];
+  return fmt::format("{}, {}-{} {}-{}", outin, label, minmax, label2, minmax2);
 }
 
 int HexagonalMesh::n_bins() const
@@ -2488,31 +2493,29 @@ int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
 {
   int r = ijk[0];
   int q = ijk[1];
-  int s = -r - q;
   int k = ijk[2];
-  int rad = std::max({std::abs(r), std::abs(q), std::abs(s)});
-  int offset = 3 * (radius_ * (radius_ + 1) - rad * (rad + 1));
-  int side, pos;
-  if ((q == rad) && (s == -rad)) {
-    side = 0;
-    pos = r;
-  } else if ((s == -rad) && (r == rad)) {
-    side = 1;
-    pos = -q;
-  } else if ((r == rad) && (q == -rad)) {
-    side = 2;
-    pos = -s;
-  } else if ((q == -rad) && (s == rad)) {
-    side = 3;
-    pos = -r;
-  } else if ((s == rad) && (r == -rad)) {
-    side = 4;
-    pos = q;
+  int hexes = 3 * radius_ * (radius_ + 1) + 1;
+  int bin = k * (grid_.size() - 1) * hexes;
+  int rad = std::max({std::abs(r), std::abs(q), std::abs(r + q)});
+  if (rad == 0)
+    return bin;
+
+  bin += 3 * rad * (rad - 1) + 1;
+
+  if ((q == k) and (r <= 0)) {
+    bin += std::abs(r);
+  } else if ((r == -rad) && (q >= 0)) {
+    bin += (2 * rad - q);
+  } else if (q + r == -rad) {
+    bin += (2 * rad + std::abs(q));
+  } else if (q == -rad) {
+    bin += (3 * rad + std::abs(r));
+  } else if (r == rad) {
+    bin += (5 * rad + q);
   } else {
-    side = 5;
-    pos = s;
+    bin += (6 * rad - (q + r));
   }
-  return (k - 1) * (grid_.size() - 1) + offset + side * rad + pos;
+  return bin;
 }
 
 StructuredMesh::MeshIndex HexagonalMesh::get_indices(
@@ -2554,6 +2557,49 @@ StructuredMesh::MeshIndex HexagonalMesh::get_indices(
   if (ijk[2] < 1 || ijk[2] > grid_.size() - 1)
     in_mesh = false;
 
+  return ijk;
+}
+
+StructuredMesh::MeshIndex HexagonalMesh::get_indices_from_bin(int bin) const
+{
+  MeshIndex ijk = {0, 0, 0};
+  int hexes = 3 * radius_ * (radius_ + 1) + 1;
+  ijk[2] = static_cast<int>(std::floor(bin / hexes));
+  int sp_idx = bin % hexes;
+  if (sp_idx == 0) {
+    return ijk;
+  }
+  int rad =
+    static_cast<int>(std::ceil((3 + std::sqrt(9 + 12 * (sp_idx - 1))) / 6) - 1);
+  int offset = sp_idx - (3 * rad * (rad - 1) + 1);
+  int side = offset / rad;
+  int dist = offset % rad;
+  switch (side) {
+  case 0:
+    ijk[0] = rad;
+    ijk[1] = -dist;
+    break;
+  case 1:
+    ijk[0] = rad - dist;
+    ijk[1] = -rad;
+    break;
+  case 2:
+    ijk[0] = -dist;
+    ijk[1] = -rad + dist;
+    break;
+  case 3:
+    ijk[0] = -rad;
+    ijk[1] = dist;
+    break;
+  case 4:
+    ijk[0] = -rad + dist;
+    ijk[1] = rad;
+    break;
+  case 5:
+    ijk[0] = dist;
+    ijk[1] = rad - dist;
+    break;
+  }
   return ijk;
 }
 
@@ -2688,7 +2734,7 @@ int HexagonalMesh::set_grid()
   n_dimension_ = 4;
   correlated_axes_ = {{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {3}};
 
-  labels_ = {"r", "q", "s", "z"};
+  axes_labels_ = {"r", "q", "s", "z"};
 
   if (orientation_ == Orientation::x) {
     q_ = {std::sqrt(3.0), 0.0, 0.0};

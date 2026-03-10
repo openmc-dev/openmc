@@ -434,6 +434,9 @@ public:
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
+  //! Get a label for the surface
+  virtual std::string surface_label(int surface) const;
+
   //! Get mesh dimensions as a tensor
   tensor::Tensor<int> get_shape_tensor() const;
 
@@ -468,7 +471,7 @@ public:
   // Data members
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
   std::vector<std::vector<int>> correlated_axes_ = {{0}, {1}, {2}};
-  std::vector<std::string> labels_;
+  std::vector<std::string> axes_labels_ = {"x", "y", "z"};
 
 protected:
 };
@@ -746,11 +749,17 @@ public:
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
-  int get_bin(Position r) const override;
+  std::string surface_label(int surface) const override;
 
   int n_bins() const override;
 
   MeshIndex get_indices(Position r, bool& in_mesh) const override;
+
+  //! Get mesh indices corresponding to a mesh bin
+  //
+  //! \param[in] bin Mesh bin
+  //! \return ijk Mesh indices
+  MeshIndex get_indices_from_bin(int bin) const override;
 
   bool index_inside_mesh(const MeshIndex& ijk, int k) const override
   {

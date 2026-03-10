@@ -30,115 +30,11 @@ std::string MeshSurfaceFilter::text_label(int bin) const
 
   // Get flattend mesh index and surface index.
   int i_mesh = bin / (4 * n_dim);
+  int i_surf = bin % (4 * n_dim);
 
-  // Get mesh index part of label.
   std::string out = MeshFilter::text_label(i_mesh);
-  auto surf_dir = (bin % (4 * n_dim));
-  if (n_dim < 4) {
-    // Get surface part of label.
-    switch (surf_dir) {
-    case 0:
-      out += fmt::format(" Outgoing, {}-min", mesh->labels_[0]);
-      break;
-    case 1:
-      out += fmt::format(" Incoming, {}-min", mesh->labels_[0]);
-      break;
-    case 2:
-      out += fmt::format(" Outgoing, {}-max", mesh->labels_[0]);
-      break;
-    case 3:
-      out += fmt::format(" Incoming, {}-max", mesh->labels_[0]);
-      break;
-    case 4:
-      out += fmt::format(" Outgoing, {}-min", mesh->labels_[1]);
-      break;
-    case 5:
-      out += fmt::format(" Incoming, {}-min", mesh->labels_[1]);
-      break;
-    case 6:
-      out += fmt::format(" Outgoing, {}-max", mesh->labels_[1]);
-      break;
-    case 7:
-      out += fmt::format(" Incoming, {}-max", mesh->labels_[1]);
-      break;
-    case 8:
-      out += fmt::format(" Outgoing, {}-min", mesh->labels_[2]);
-      break;
-    case 9:
-      out += fmt::format(" Incoming, {}-min", mesh->labels_[2]);
-      break;
-    case 10:
-      out += fmt::format(" Outgoing, {}-max", mesh->labels_[2]);
-      break;
-    case 11:
-      out += fmt::format(" Incoming, {}-max", mesh->labels_[2]);
-      break;
-    }
-  } else {
-    // Get surface part of label.
-    switch (surf_dir) {
-    case 0:
-      out += fmt::format(
-        " Outgoing, {}-min {}-max", mesh->labels_[0], mesh->labels_[1]);
-      break;
-    case 1:
-      out += fmt::format(
-        " Incoming, {}-min {}-max", mesh->labels_[0], mesh->labels_[1]);
-      break;
-    case 2:
-      out += fmt::format(
-        " Outgoing, {}-max {}-min", mesh->labels_[0], mesh->labels_[1]);
-      break;
-    case 3:
-      out += fmt::format(
-        " Incoming, {}-max {}-min", mesh->labels_[0], mesh->labels_[1]);
-      break;
-    case 4:
-      out += fmt::format(
-        " Outgoing, {}-min {}-max", mesh->labels_[1], mesh->labels_[2]);
-      break;
-    case 5:
-      out += fmt::format(
-        " Incoming, {}-min {}-max", mesh->labels_[1], mesh->labels_[2]);
-      break;
-    case 6:
-      out += fmt::format(
-        " Outgoing, {}-max {}-min", mesh->labels_[1], mesh->labels_[2]);
-      break;
-    case 7:
-      out += fmt::format(
-        " Incoming, {}-max {}-min", mesh->labels_[1], mesh->labels_[2]);
-      break;
-    case 8:
-      out += fmt::format(
-        " Outgoing, {}-min {}-max", mesh->labels_[2], mesh->labels_[0]);
-      break;
-    case 9:
-      out += fmt::format(
-        " Incoming, {}-min {}-max", mesh->labels_[2], mesh->labels_[0]);
-      break;
-    case 10:
-      out += fmt::format(
-        " Outgoing, {}-max {}-min", mesh->labels_[2], mesh->labels_[0]);
-      break;
-    case 11:
-      out += fmt::format(
-        " Incoming, {}-max {}-min", mesh->labels_[2], mesh->labels_[0]);
-      break;
-    case 12:
-      out += fmt::format(" Outgoing, {}-min", mesh->labels_[3]);
-      break;
-    case 13:
-      out += fmt::format(" Incoming, {}-min", mesh->labels_[3]);
-      break;
-    case 14:
-      out += fmt::format(" Outgoing, {}-max", mesh->labels_[3]);
-      break;
-    case 15:
-      out += fmt::format(" Incoming, {}-max", mesh->labels_[3]);
-      break;
-    }
-  }
+  out += " ";
+  out += mesh->surface_label(i_surf);
   return out;
 }
 

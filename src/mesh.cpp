@@ -2502,18 +2502,18 @@ int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
 
   bin += 3 * rad * (rad - 1) + 1;
 
-  if ((q == k) and (r <= 0)) {
-    bin += std::abs(r);
-  } else if ((r == -rad) && (q >= 0)) {
-    bin += (2 * rad - q);
-  } else if (q + r == -rad) {
-    bin += (2 * rad + std::abs(q));
-  } else if (q == -rad) {
-    bin += (3 * rad + std::abs(r));
-  } else if (r == rad) {
-    bin += (5 * rad + q);
+  if ((q >= 0) and (r >= 0)) {
+    bin += q;
+  } else if ((r < 0) && (-r - q < 0)) {
+    bin += (rad - q);
+  } else if ((q >= 0) && (-q - r >= 0)) {
+    bin += (2 * rad - q - r);
+  } else if ((q < 0) && (r < 0)) {
+    bin += (3 * rad - q);
+  } else if ((r >= 0) && (-q - r >= 0)) {
+    bin += (4 * rad + r);
   } else {
-    bin += (6 * rad - (q + r));
+    bin += (5 * rad + (q + r));
   }
   return bin;
 }
@@ -2564,40 +2564,39 @@ StructuredMesh::MeshIndex HexagonalMesh::get_indices_from_bin(int bin) const
 {
   MeshIndex ijk = {0, 0, 0};
   int hexes = 3 * radius_ * (radius_ + 1) + 1;
-  ijk[2] = static_cast<int>(std::floor(bin / hexes));
+  ijk[2] = static_cast<int>(std::ceil(bin / hexes));
   int sp_idx = bin % hexes;
   if (sp_idx == 0) {
     return ijk;
   }
-  int rad =
-    static_cast<int>(std::ceil((3 + std::sqrt(9 + 12 * (sp_idx - 1))) / 6) - 1);
+  int rad = static_cast<int>(std::floor((3 + std::sqrt(12 * sp_idx - 3)) / 6));
   int offset = sp_idx - (3 * rad * (rad - 1) + 1);
-  int side = offset / rad;
+  int side = (offset / rad) % 6;
   int dist = offset % rad;
   switch (side) {
   case 0:
+    ijk[0] = dist;
+    ijk[1] = rad - dist;
+    break;
+  case 1:
     ijk[0] = rad;
     ijk[1] = -dist;
     break;
-  case 1:
+  case 2:
     ijk[0] = rad - dist;
     ijk[1] = -rad;
     break;
-  case 2:
-    ijk[0] = -dist;
-    ijk[1] = -rad + dist;
-    break;
   case 3:
+    ijk[0] = -dist;
+    ijk[1] = dist - rad;
+    break;
+  case 4:
     ijk[0] = -rad;
     ijk[1] = dist;
     break;
-  case 4:
-    ijk[0] = -rad + dist;
-    ijk[1] = rad;
-    break;
   case 5:
-    ijk[0] = dist;
-    ijk[1] = rad - dist;
+    ijk[0] = dist - rad;
+    ijk[1] = rad;
     break;
   }
   return ijk;

@@ -1,48 +1,41 @@
-from math import pi
-
-import numpy as np
 import openmc
+import pytest
 
 from tests.testing_harness import PyAPITestHarness
 
 
-class SourceTestHarness(PyAPITestHarness):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        mat = openmc.Material()
-        mat.add_element('Pb', 1.0)
-        mat.set_density('g/cm3', 11.35)
-        self._model.materials = openmc.Materials([mat])
+@pytest.fixture
+def model():
+    mat = openmc.Material()
+    mat.add_nuclide('Pb208', 1.0)
+    mat.set_density('g/cm3', 11.35)
 
-        sphere = openmc.Sphere(r=1.0e9, boundary_type='reflective')
-        inside_sphere = openmc.Cell(fill=mat, region=-sphere)
-        self._model.geometry = openmc.Geometry([inside_sphere])
+    sphere = openmc.Sphere(r=1.0e9, boundary_type='reflective')
+    inside_sphere = openmc.Cell(fill=mat, region=-sphere)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([inside_sphere])
 
-        # Isotropic point source of 1 MeV photons at the origin
-        source = openmc.IndependentSource()
-        source.space = openmc.stats.Point((0, 0, 0))
-        source.angle = openmc.stats.Isotropic()
-        source.energy = openmc.stats.delta_function(1.0e6)
-        source.particle = 'photon'
+    # Isotropic point source of 1 MeV photons at the origin
+    model.settings.source = openmc.IndependentSource(
+        particle='photon',
+        energy=openmc.stats.delta_function(1.0e6)
+    )
 
-        # Fixed-source photon transport with atomic relaxation disabled
-        settings = openmc.Settings()
-        settings.particles = 10000
-        settings.batches = 1
-        settings.photon_transport = True
-        settings.electron_treatment = 'led'
-        settings.atomic_relaxation = False
-        settings.run_mode = 'fixed source'
-        settings.source = source
-        self._model.settings = settings
+    # Fixed-source photon transport with atomic relaxation disabled
+    model.settings.particles = 10000
+    model.settings.batches = 1
+    model.settings.photon_transport = True
+    model.settings.electron_treatment = 'led'
+    model.settings.atomic_relaxation = False
+    model.settings.run_mode = 'fixed source'
 
-        particle_filter = openmc.ParticleFilter(['photon', 'electron'])
-        tally = openmc.Tally()
-        tally.filters = [particle_filter]
-        tally.scores = ['flux', 'heating']
-        self._model.tallies = openmc.Tallies([tally])
+    tally = openmc.Tally()
+    tally.filters = [openmc.ParticleFilter(['photon', 'electron'])]
+    tally.scores = ['flux', 'heating']
+    model.tallies = [tally]
+    return model
 
 
-def test_atomic_relaxation():
-    harness = SourceTestHarness('statepoint.1.h5', model=openmc.Model())
+def test_atomic_relaxation(model):
+    harness = PyAPITestHarness('statepoint.1.h5', model=model)
     harness.main()

@@ -2491,8 +2491,8 @@ int HexagonalMesh::n_bins() const
 
 int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
 {
-  int r = ijk[0];
-  int q = ijk[1];
+  int q = ijk[0];
+  int r = ijk[1];
   int k = ijk[2];
   int hexes = 3 * radius_ * (radius_ + 1) + 1;
   int bin = (k - 1) * (grid_.size() - 1) * hexes;
@@ -2504,16 +2504,16 @@ int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
 
   if ((q >= 0) and (r >= 0)) {
     bin += q;
-  } else if ((r < 0) && (-r - q < 0)) {
-    bin += (rad - q);
-  } else if ((q >= 0) && (-q - r >= 0)) {
+  } else if ((r < 0) && ((-r - q) < 0)) {
+    bin += (rad - r);
+  } else if ((q >= 0) && ((-q - r) >= 0)) {
     bin += (2 * rad - q - r);
   } else if ((q < 0) && (r < 0)) {
     bin += (3 * rad - q);
-  } else if ((r >= 0) && (-q - r >= 0)) {
+  } else if ((r >= 0) && ((-q - r) >= 0)) {
     bin += (4 * rad + r);
   } else {
-    bin += (5 * rad + (q + r));
+    bin += (5 * rad + q + r);
   }
   return bin;
 }
@@ -2564,7 +2564,7 @@ StructuredMesh::MeshIndex HexagonalMesh::get_indices_from_bin(int bin) const
 {
   MeshIndex ijk = {0, 0, 0};
   int hexes = 3 * radius_ * (radius_ + 1) + 1;
-  ijk[2] = static_cast<int>(std::ceil(bin / hexes));
+  ijk[2] = static_cast<int>(std::floor(bin / hexes)) + 1;
   int sp_idx = bin % hexes;
   if (sp_idx == 0) {
     return ijk;
@@ -4220,7 +4220,7 @@ void LibMesh::set_score_data(const std::string& var_name,
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-       it++) {
+    it++) {
     if (!(*it)->active()) {
       continue;
     }

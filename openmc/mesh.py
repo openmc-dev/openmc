@@ -2674,7 +2674,8 @@ class HexagonalMesh(StructuredMesh):
     def indices(self):
         idx = []
         for j in range(self.z_grid.size-1):
-            for rad in range(self.num_rings, 0, -1):
+            idx.append((0, 0, 0, j))
+            for rad in range(1, self.num_rings+1):
                 for i in range(rad):
                     idx.append((i, rad-i, -rad, j))
                     idx.append((rad, -i, i-rad, j))
@@ -2682,8 +2683,6 @@ class HexagonalMesh(StructuredMesh):
                     idx.append((-i, i-rad, rad, j))
                     idx.append((-rad, i, rad-i, j))
                     idx.append((i-rad, rad, -i, j))
-            else:
-                idx.append((0, 0, 0, j))
         return idx
                 
     def __repr__(self):

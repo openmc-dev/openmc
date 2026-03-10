@@ -694,7 +694,7 @@ int64_t compute_transport_seed(int64_t particle_id)
     return particle_id;
   } else {
     return (simulation::total_gen + overall_generation() - 1) *
-               settings::n_particles +
+             settings::n_particles +
            particle_id;
   }
 }
@@ -971,8 +971,8 @@ void transport_history_based_shared_secondary()
       vector<SourceSite> thread_bank;
 
 #pragma omp for schedule(runtime)
-      for (int64_t i = 1;
-           i <= simulation::shared_secondary_bank_read.size(); i++) {
+      for (int64_t i = 1; i <= simulation::shared_secondary_bank_read.size();
+           i++) {
         Particle p;
         initialize_history(p, i, true);
         SourceSite& site = simulation::shared_secondary_bank_read[i - 1];
@@ -1114,8 +1114,7 @@ void transport_event_based_shared_secondary()
     }
 
     // Transport secondary tracks using event-based processing
-    int64_t sec_remaining =
-      simulation::shared_secondary_bank_read.size();
+    int64_t sec_remaining = simulation::shared_secondary_bank_read.size();
     int64_t sec_offset = 0;
 
     while (sec_remaining > 0) {

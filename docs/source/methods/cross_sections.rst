@@ -294,7 +294,7 @@ Particle Speed
 ^^^^^^^^^^^^^^
 
 When using a multigroup representation of cross sections the particle speed
-has meaning only in an average sense. The particle speed is important when modeling dynamic behavior. OpenMC calculate the particle speed using the inverse velocity multigroup data if it is available. If it is not OpenMC uses an approximate velocity using the group energy bounds in the following way:
+has meaning only in an average sense. The particle speed is important when modeling dynamic behavior. OpenMC calculates the particle speed using the inverse velocity multigroup data if it is available. If it is not OpenMC uses an approximate velocity using the group energy bounds in the following way:
 
 .. math::
 

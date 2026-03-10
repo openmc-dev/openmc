@@ -121,6 +121,12 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
   // Use parent and progeny indices to sort bank
   for (int64_t i = 0; i < bank.size(); i++) {
     const auto& site = bank[i];
+    if (site.parent_id < 0 || site.parent_id >=
+        static_cast<int64_t>(simulation::progeny_per_particle.size())) {
+      fatal_error(fmt::format("Invalid parent_id {} for banked site (expected "
+                              "range [0, {})).",
+        site.parent_id, simulation::progeny_per_particle.size()));
+    }
     int64_t idx =
       simulation::progeny_per_particle[site.parent_id] + site.progeny_id;
     if (idx < 0 || idx >= bank.size()) {

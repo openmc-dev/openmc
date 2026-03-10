@@ -114,7 +114,8 @@ def build_index():
             doc_records.append(record)
 
     # Create tables (drop existing)
-    existing = db.list_tables().tables
+    result = db.table_names() if hasattr(db, "table_names") else db.list_tables()
+    existing = result.tables if hasattr(result, "tables") else list(result)
     for table_name in ("code", "docs"):
         if table_name in existing:
             db.drop_table(table_name)

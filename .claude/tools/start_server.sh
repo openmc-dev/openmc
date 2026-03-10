@@ -19,6 +19,7 @@ fi
 
 if [ ! -f "$SENTINEL" ]; then
     rm -rf "$VENV_DIR"
+    mkdir -p "$CACHE_DIR"
     python3 -m venv "$VENV_DIR"
 
     if ! "$VENV_DIR/bin/pip" install -q -r "$SCRIPT_DIR/requirements.txt"; then

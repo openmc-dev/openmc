@@ -55,9 +55,15 @@ def get_db_and_embedder():
     return db, embedder
 
 
+def _table_names(db):
+    """Return table names as a list, compatible with multiple LanceDB versions."""
+    result = db.table_names() if hasattr(db, "table_names") else db.list_tables()
+    return result.tables if hasattr(result, "tables") else list(result)
+
+
 def search_table(db, embedder, table_name, query, top_k):
     """Search a LanceDB table with a text query."""
-    if table_name not in db.list_tables().tables:
+    if table_name not in _table_names(db):
         print(f"Table '{table_name}' not found in index.", file=sys.stderr)
         return []
 
@@ -100,7 +106,7 @@ def format_results(results, label=""):
 
 def search_related(db, embedder, filepath, top_k):
     """Find code related to a given file."""
-    if "code" not in db.list_tables().tables:
+    if "code" not in _table_names(db):
         print("No 'code' table in index.", file=sys.stderr)
         return []
 

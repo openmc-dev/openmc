@@ -1306,12 +1306,8 @@ def fusion_neutron_spectrum(
     :math:`\Delta E_\text{th}` and :math:`\delta_\omega` are evaluated using
     interpolation formulas from `Ballabio et al.
     <https://doi.org/10.1088/0029-5515/38/11/310>`_: Table III for :math:`0 <
-    T_i \le 40` keV and Table IV for :math:`40 < T_i < 100` keV.
-
-    The returned distribution is a Normal (Gaussian) approximation to the
-    spectrum. The actual spectrum has a slight positive skewness that can be
-    modeled by a modified Gaussian (Eq. 21 in the reference), but this is not
-    accounted for here.
+    T_i \le 40` keV and Table IV for :math:`40 < T_i < 100` keV. The returned
+    distribution is a normal (Gaussian) approximation to the spectrum.
 
     .. versionadded:: 0.15.4
 

@@ -7,6 +7,7 @@ Exposes three tools:
   - openmc_lsp_navigate:  LSP-based C++ code navigation via clangd
 """
 
+from mcp.server.fastmcp import FastMCP
 import json
 import logging
 import subprocess
@@ -21,7 +22,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 
-from mcp.server.fastmcp import FastMCP
 
 OPENMC_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = OPENMC_ROOT / ".claude" / "cache"

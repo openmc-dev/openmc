@@ -113,7 +113,7 @@ class ClangdClient:
         """Send a request and wait for the response."""
         rid = self._next_id()
         self._send({"jsonrpc": "2.0", "id": rid, "method": method,
-                     "params": params or {}})
+                    "params": params or {}})
         while True:
             msg = self._read_msg()
             if msg.get('id') == rid:
@@ -124,7 +124,7 @@ class ClangdClient:
     def notify(self, method, params=None):
         """Send a notification (no response expected)."""
         self._send({"jsonrpc": "2.0", "method": method,
-                     "params": params or {}})
+                    "params": params or {}})
 
     def _read_msg(self):
         headers = {}
@@ -374,7 +374,8 @@ def cmd_related(client, filepath, top_k=15):
     flat = flatten_symbols(symbols)
 
     # Filter to meaningful symbols (functions, classes, methods, variables)
-    interesting_kinds = {5, 6, 8, 12, 13, 23}  # Class, Method, Field, Function, Variable, Struct
+    # Class, Method, Field, Function, Variable, Struct
+    interesting_kinds = {5, 6, 8, 12, 13, 23}
     interesting = [(s, d) for s, d in flat if s['kind'] in interesting_kinds]
 
     if not interesting:

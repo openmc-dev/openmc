@@ -166,8 +166,10 @@ def main():
         results = search_related(db, embedder, args.related, args.top_k)
         print(format_results(results, f"Code related to {args.related}"))
     elif args.all:
-        code_results = search_table(db, embedder, "code", args.query, args.top_k)
-        doc_results = search_table(db, embedder, "docs", args.query, args.top_k)
+        code_results = search_table(
+            db, embedder, "code", args.query, args.top_k)
+        doc_results = search_table(
+            db, embedder, "docs", args.query, args.top_k)
         print(format_results(code_results, "Code"))
         print(format_results(doc_results, "Documentation"))
     elif args.docs:

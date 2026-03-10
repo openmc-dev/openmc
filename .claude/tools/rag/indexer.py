@@ -6,6 +6,9 @@ Chunks all C++, Python, and RST files, embeds them, and stores in LanceDB.
 Output: .claude/cache/rag_index/ (LanceDB directory)
 """
 
+from embeddings import EmbeddingProvider
+from chunker import chunk_file
+import lancedb
 import sys
 import time
 from pathlib import Path
@@ -14,10 +17,6 @@ from pathlib import Path
 TOOLS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS_DIR / "rag"))
 
-import lancedb
-
-from chunker import chunk_file
-from embeddings import EmbeddingProvider
 
 OPENMC_ROOT = Path(__file__).resolve().parents[3]
 CACHE_DIR = OPENMC_ROOT / ".claude" / "cache"

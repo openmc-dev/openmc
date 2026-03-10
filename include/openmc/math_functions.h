@@ -233,5 +233,18 @@ void get_energy_index(
 
 double standard_normal_cdf(double z);
 
+//==============================================================================
+//! Return true if two floating-point values are approximately equal within a
+//! combined relative and absolute tolerance.
+//!
+//! \param a first floating point value
+//! \param b second floating point value
+//! \param rel_tol relative tolerance
+//! \param abs_tol absolute tolerance
+//! \return true if a and b are approximately equal, false otherwise
+//==============================================================================
+
+bool isclose(double a, double b, double rel_tol, double abs_tol);
+
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

@@ -10,6 +10,7 @@
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
 #include "openmc/string_utils.h"
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
@@ -267,22 +268,25 @@ std::pair<double, array<int, 3>> RectLattice::distance(
   double dy = u.y != 0.0 ? (y0 - y) / u.y : INFTY;
   double dz = is_3d_ ? (u.z != 0.0 ? (z0 - z) / u.z : INFTY) : INFTY;
 
-  double d = dx;
+  if (is_3d_) {
+    z0 = std::copysign(0.5 * pitch_[2], u.z);
+    dz = (u.z != 0.0) ? (z0 - z) / u.z : INFTY;
+  }
+
+  // Minimum distance
+  double d = std::min({dx, dy, dz});
+
   array<int, 3> lattice_trans = {0, 0, 0};
-  lattice_trans[0] = copysign(1, u.x);
 
-  if (dy < d) {
-    d = dy;
-    lattice_trans[0] = 0;
-    lattice_trans[1] = copysign(1, u.y);
-  }
+  // Determine which directions are crossed
+  if (isclose(d, dx, 1e-12, FP_PRECISION))
+    lattice_trans[0] = std::copysign(1, u.x);
 
-  if (is_3d_ && dz < d) {
-    d = dz;
-    lattice_trans[0] = 0;
-    lattice_trans[1] = 0;
-    lattice_trans[2] = copysign(1, u.z);
-  }
+  if (isclose(d, dy, 1e-12, FP_PRECISION))
+    lattice_trans[1] = std::copysign(1, u.y);
+
+  if (is_3d_ && isclose(d, dz, 1e-12, FP_PRECISION))
+    lattice_trans[2] = std::copysign(1, u.z);
 
   return {d, lattice_trans};
 }

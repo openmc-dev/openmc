@@ -41,6 +41,10 @@ class Settings:
 
     Attributes
     ----------
+    atomic_relaxation : bool
+        Whether to simulate the atomic relaxation cascade (fluorescence photons
+        and Auger electrons) following photoelectric and incoherent scattering
+        interactions.
     batches : int
         Number of batches to simulate
     confidence_intervals : bool
@@ -402,6 +406,7 @@ class Settings:
         self._confidence_intervals = None
         self._electron_treatment = None
         self._photon_transport = None
+        self._atomic_relaxation = None
         self._plot_seed = None
         self._ptables = None
         self._uniform_source_sampling = None
@@ -662,6 +667,15 @@ class Settings:
         cv.check_value('electron treatment',
                        electron_treatment, ['led', 'ttb'])
         self._electron_treatment = electron_treatment
+
+    @property
+    def atomic_relaxation(self) -> bool:
+        return self._atomic_relaxation
+
+    @atomic_relaxation.setter
+    def atomic_relaxation(self, atomic_relaxation: bool):
+        cv.check_type('atomic relaxation', atomic_relaxation, bool)
+        self._atomic_relaxation = atomic_relaxation
 
     @property
     def ptables(self) -> bool:
@@ -1631,6 +1645,11 @@ class Settings:
             element = ET.SubElement(root, "electron_treatment")
             element.text = str(self._electron_treatment)
 
+    def _create_atomic_relaxation_subelement(self, root):
+        if self._atomic_relaxation is not None:
+            element = ET.SubElement(root, "atomic_relaxation")
+            element.text = str(self._atomic_relaxation).lower()
+
     def _create_photon_transport_subelement(self, root):
         if self._photon_transport is not None:
             element = ET.SubElement(root, "photon_transport")
@@ -2129,6 +2148,11 @@ class Settings:
         if text is not None:
             self.electron_treatment = text
 
+    def _atomic_relaxation_from_xml_element(self, root):
+        text = get_text(root, 'atomic_relaxation')
+        if text is not None:
+            self.atomic_relaxation = text in ('true', '1')
+
     def _energy_mode_from_xml_element(self, root):
         text = get_text(root, 'energy_mode')
         if text is not None:
@@ -2478,6 +2502,7 @@ class Settings:
         self._create_collision_track_subelement(element)
         self._create_confidence_intervals(element)
         self._create_electron_treatment_subelement(element)
+        self._create_atomic_relaxation_subelement(element)
         self._create_energy_mode_subelement(element)
         self._create_max_order_subelement(element)
         self._create_photon_transport_subelement(element)
@@ -2594,6 +2619,7 @@ class Settings:
         settings._collision_track_from_xml_element(elem)
         settings._confidence_intervals_from_xml_element(elem)
         settings._electron_treatment_from_xml_element(elem)
+        settings._atomic_relaxation_from_xml_element(elem)
         settings._energy_mode_from_xml_element(elem)
         settings._max_order_from_xml_element(elem)
         settings._photon_transport_from_xml_element(elem)

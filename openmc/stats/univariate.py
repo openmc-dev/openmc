@@ -2,7 +2,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from copy import deepcopy
 from math import sqrt, pi, exp, log
 from numbers import Real
 from warnings import warn

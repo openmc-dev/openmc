@@ -24,41 +24,15 @@ choice to the user. Do not ask conversationally — always use the widget.
 Do not skip this step even if the index looks current — the user may have
 uncommitted changes that warrant a rebuild.
 
-### Important: use RAG search before grep
+### Why RAG matters
 
-When exploring unfamiliar code or checking what a change might affect, use
-`openmc_rag_search` **before** reaching for `grep` or `Glob`. `grep` only finds
-exact text matches — it cannot find code that does something similar with
-different naming. You don't know what you don't know. The RAG search finds code
-by semantic meaning, surfacing related code across subsystems that you would
-otherwise miss entirely. Use RAG for discovery, then `grep`/`Read` to drill into
-specific files.
+OpenMC is large enough that changes in one subsystem can silently break
+invariants that distant subsystems depend on — and those distant files often
+use different naming, so grep won't find them. The RAG search finds code by
+meaning, surfacing files you wouldn't have thought to open.
 
-**No code review or feature creation job in OpenMC is to be considered complete
-unless you have made good use of `openmc_rag_search` to ensure any logic changes
-do not cause collateral damage elsewhere in the codebase.** The ideal time for
-calling it is before you begin to make changes or start zooming in on small local
-details. Thinking up a few RAG queries before starting analysis/editing work in
-each area will greatly improve your global vision of the repository and help you
-to "know what you don't know".
-
-When you already know the exact symbol name and need to trace its usage (e.g.,
-"every line that writes to `progeny_per_particle`"), `grep` is the better
-choice — you don't have to force a RAG search for precise symbol lookups.
-
-### When to use each tool
-
-- **`openmc_rag_search`**: "What code is conceptually related to X?" — broad
-  discovery by meaning, cross-cutting concerns, Python and docs. **Use this
-  before grep when exploring unfamiliar code or checking what a change might
-  affect.**
-- **`grep`/`Glob`/`Read`**: Precise text match, unique string lookup, reading
-  specific files. Best when you know the exact symbol name.
-
-### Why global awareness matters
-
-An agent reviewed a large OpenMC PR using only diff, grep, and Read. It found
-1 of 11 serious bugs. Here is its own post-mortem:
+An agent reviewed a large OpenMC PR without RAG. It found 1 of 11 serious
+bugs. Its post-mortem:
 
 > **I treated the diff as a closed system.** I verified internal consistency of
 > the changed code obsessively, but never built a global understanding of how
@@ -77,11 +51,11 @@ An agent reviewed a large OpenMC PR using only diff, grep, and Read. It found
 > review. They directly surfaced the files containing the bugs I missed — files
 > I never thought to open because they weren't in the diff.
 
-The takeaway: **use RAG throughout your work to maintain global awareness.**
-Before diving into details, ask "what else in this codebase depends on the
-behavior being changed?" As you explore each area, keep querying to build your
-mental map of affected subsystems. The diff tells you *what* changed; RAG tells
-you *what else cares*.
+The takeaway: when reviewing or modifying code, ask yourself "what else in this
+codebase might depend on the behavior I'm changing?" If you aren't sure, that's
+a good time for a RAG query. It won't replace the grep-based investigation you
+should already be doing — but it can surface files you wouldn't have thought to
+open.
 
 ## Additional OpenMC info
 

@@ -4159,7 +4159,7 @@ void LibMesh::set_score_data(const std::string& var_name,
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-    it++) {
+       it++) {
     if (!(*it)->active()) {
       continue;
     }

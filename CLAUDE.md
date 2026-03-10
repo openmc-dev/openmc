@@ -9,7 +9,9 @@ registered in `.mcp.json` and appear automatically in every session.
 docs). Finds code by meaning, not just text match. Surfaces related code across
 subsystems even when naming differs (e.g., "particle RNG seeding" finds code
 across transport, restart, and random ray modes — files you would never find
-with `grep "particle seed"`).
+with `grep "particle seed"`). The index uses a small 22M-param embedding model
+(384-dim). Phrase-level natural-language queries work much better than single
+keywords or symbol names.
 
 **`openmc_rag_rebuild`** — Rebuild the RAG vector index. Call after pulling new
 code or switching branches. The first RAG search of each session will report

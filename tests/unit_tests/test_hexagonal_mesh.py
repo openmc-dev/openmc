@@ -16,14 +16,14 @@ def model(request):
     water.add_element('O', 1.0)
     water.set_density('g/cc', 1.0)
 
-    outer = openmc.Cell(fill=water)
-    cell10 = openmc.Cell(fill=water)
-    cell00 = openmc.Cell(fill=water)
-    cell01 = openmc.Cell(fill=water)
-    cell02 = openmc.Cell(fill=water)
-    cell03 = openmc.Cell(fill=water)
-    cell04 = openmc.Cell(fill=water)
-    cell05 = openmc.Cell(fill=water)
+    outer = openmc.Cell(fill=water, cell_id=100)
+    cell10 = openmc.Cell(fill=water, cell_id=10)
+    cell00 = openmc.Cell(fill=water, cell_id=0)
+    cell01 = openmc.Cell(fill=water, cell_id=1)
+    cell02 = openmc.Cell(fill=water, cell_id=2)
+    cell03 = openmc.Cell(fill=water, cell_id=3)
+    cell04 = openmc.Cell(fill=water, cell_id=4)
+    cell05 = openmc.Cell(fill=water, cell_id=5)
 
     univ10 = openmc.Universe(cells=[cell10])
     univ00 = openmc.Universe(cells=[cell00])
@@ -89,5 +89,22 @@ def test_correct_locations(model, run_in_tmpdir):
     model.run(apply_tally_results=True)
     df = tally.get_pandas_dataframe()
     df = df[df['mean']>0]
-
+    df = df.set_index("cell")["mesh 1"]
     assert len(df) == 7
+
+    if tally.filters[0].mesh.orientation == "y":
+        assert tuple(df.loc[10]) == (0,0,0,0)
+        assert tuple(df.loc[0]) == (0,-1,1,0)
+        assert tuple(df.loc[1]) == (1,-1,0,0)
+        assert tuple(df.loc[2]) == (1,0,-1,0)
+        assert tuple(df.loc[3]) == (0,1,-1,0)
+        assert tuple(df.loc[4]) == (-1,1,0,0)
+        assert tuple(df.loc[5]) == (-1,0,1,0)
+    else:
+        assert tuple(df.loc[10]) == (0,0,0,0)
+        assert tuple(df.loc[0]) == (1,0,-1,0)
+        assert tuple(df.loc[1]) == (0,1,-1,0)
+        assert tuple(df.loc[2]) == (-1,1,0,0)
+        assert tuple(df.loc[3]) == (-1,0,1,0)
+        assert tuple(df.loc[4]) == (0,-1,1,0)
+        assert tuple(df.loc[5]) == (1,-1,0,0)

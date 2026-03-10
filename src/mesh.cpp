@@ -2676,14 +2676,14 @@ int HexagonalMesh::set_grid()
 
   if (orientation_ == Orientation::x) {
     q_ = {std::sqrt(3.0), 0.0, 0.0};
-    r_ = {0.5 * std::sqrt(3), 1.5, 0.0};
-    q_dual_ = {std::sqrt(3.0) / 3.0, -1.0 / 3.0, 0.0};
-    r_dual_ = {0.0, 2.0 / 3.0, 0.0};
+    r_ = {0.5 * std::sqrt(3), -1.5, 0.0};
+    q_dual_ = {std::sqrt(3.0) / 3.0, 1.0 / 3.0, 0.0};
+    r_dual_ = {0.0, -2.0 / 3.0, 0.0};
   } else {
-    q_ = {0.0, std::sqrt(3.0), 0.0};
-    r_ = {1.5, 0.5 * std::sqrt(3.0), 0.0};
-    q_dual_ = {-1.0 / 3.0, std::sqrt(3.0) / 3.0, 0.0};
-    r_dual_ = {2.0 / 3.0, 0.0, 0.0};
+    q_ = {1.5, -0.5 * std::sqrt(3.0), 0.0};
+    r_ = {0.0, -std::sqrt(3.0), 0.0};
+    q_dual_ = {2.0 / 3.0, 0.0, 0.0};
+    r_dual_ = {-1.0 / 3.0, -std::sqrt(3.0) / 3.0, 0.0};
   }
 
   q_ *= size_;

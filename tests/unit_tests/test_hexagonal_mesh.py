@@ -5,9 +5,11 @@ import numpy as np
 
 import pytest
 
-@pytest.fixture()
-def model():
+@pytest.fixture(params=['x','y'])
+def model(request):
     openmc.reset_auto_ids()
+
+    orientation = request.param
 
     water = openmc.Material(name='water')
     water.add_element('H', 2.0)
@@ -41,11 +43,11 @@ def model():
     lat.pitch = (pitch,)
     lat.universes = [[univ00, univ01, univ02, univ03, univ04, univ05], [univ10]]
     lat.outer = openmc.Universe(cells=[outer])
-    lat.orientation = 'y'
+    lat.orientation = orientation
 
     hex_prism = openmc.model.HexagonalPrism(
                     edge_length=2*pitch,
-                    orientation='y',
+                    orientation=orientation,
                     boundary_type='vacuum'
                 )
     cell = openmc.Cell(region=-hex_prism & +plane1 & -plane2, fill=lat)
@@ -66,6 +68,7 @@ def model():
         z_grid=[-10.0, 10.0],
         num_rings = 2,
         pitch = pitch,
+        orientation = orientation,
     )
     tally = openmc.Tally()
 
@@ -88,4 +91,3 @@ def test_correct_locations(model, run_in_tmpdir):
     df = df[df['mean']>0]
 
     assert len(df) == 7
-    

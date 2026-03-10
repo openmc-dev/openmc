@@ -2648,7 +2648,7 @@ void score_meshsurface_tally(Particle& p, const vector<int>& tallies)
       // for a further scoring function.
       double score = current * filter_weight;
       for (auto score_index = 0; score_index < tally.scores_.size();
-        ++score_index) {
+           ++score_index) {
 #pragma omp atomic
         tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
       }
@@ -2702,7 +2702,7 @@ void score_surface_tally(
 
       // Loop over scores.
       for (auto score_index = 0; score_index < tally.scores_.size();
-        ++score_index) {
+           ++score_index) {
         auto score_bin = tally.scores_[score_index];
         double score;
         if (score_bin == SCORE_CURRENT) {
@@ -2781,7 +2781,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
         // Loop over scores.
         for (auto score_index = 0; score_index < tally.scores_.size();
-          ++score_index) {
+             ++score_index) {
 #pragma omp atomic
           tally.results_(filter_index, score_index, TallyResult::VALUE) +=
             filter_weight;

@@ -44,6 +44,13 @@ vector<vector<double>> ifp_fission_lifetime_bank;
 // used to efficiently sort the fission bank after each iteration.
 vector<int64_t> progeny_per_particle;
 
+// When shared secondary bank mode is enabled, secondaries produced during
+// transport are collected in the write bank. When a secondary generation is
+// complete, write is moved to read for transport, and a new empty write bank
+// is created. This repeats until no secondaries remain.
+SharedArray<SourceSite> shared_secondary_bank_read;
+SharedArray<SourceSite> shared_secondary_bank_write;
+
 } // namespace simulation
 
 //==============================================================================
@@ -61,6 +68,8 @@ void free_memory_bank()
   simulation::ifp_source_lifetime_bank.clear();
   simulation::ifp_fission_delayed_group_bank.clear();
   simulation::ifp_fission_lifetime_bank.clear();
+  simulation::shared_secondary_bank_read.clear();
+  simulation::shared_secondary_bank_write.clear();
 }
 
 void init_fission_bank(int64_t max)

@@ -889,28 +889,27 @@ void Particle::write_restart() const
     write_dataset(file_id, "id", id());
     write_dataset(file_id, "type", type().pdg_number());
 
+    // Get source site data for the particle that got lost
     int64_t i = current_work();
+    SourceSite site;
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      // take source data from primary bank for eigenvalue simulation
-      write_dataset(file_id, "weight", simulation::source_bank[i].wgt);
-      write_dataset(file_id, "energy", simulation::source_bank[i].E);
-      write_dataset(file_id, "xyz", simulation::source_bank[i].r);
-      write_dataset(file_id, "uvw", simulation::source_bank[i].u);
-      write_dataset(file_id, "time", simulation::source_bank[i].time);
+      site = simulation::source_bank[i];
+    } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
+               settings::use_shared_secondary_bank &&
+               i < simulation::shared_secondary_bank_read.size()) {
+      site = simulation::shared_secondary_bank_read[i];
     } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      // re-sample using rng random number seed used to generate source particle
-      // Note: current_work() is 0-indexed, but compute_particle_id expects
-      // a 1-indexed source index, so we add 1.
+      // Re-sample using the same seed used to generate the source particle.
+      // current_work() is 0-indexed, compute_particle_id expects 1-indexed.
       int64_t id = compute_transport_seed(compute_particle_id(i + 1));
       uint64_t seed = init_seed(id, STREAM_SOURCE);
-      // re-sample source site
-      auto site = sample_external_source(&seed);
-      write_dataset(file_id, "weight", site.wgt);
-      write_dataset(file_id, "energy", site.E);
-      write_dataset(file_id, "xyz", site.r);
-      write_dataset(file_id, "uvw", site.u);
-      write_dataset(file_id, "time", site.time);
+      site = sample_external_source(&seed);
     }
+    write_dataset(file_id, "weight", site.wgt);
+    write_dataset(file_id, "energy", site.E);
+    write_dataset(file_id, "xyz", site.r);
+    write_dataset(file_id, "uvw", site.u);
+    write_dataset(file_id, "time", site.time);
 
     // Close file
     file_close(file_id);

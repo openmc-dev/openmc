@@ -69,6 +69,8 @@ def _get_current_branch():
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
             capture_output=True, text=True, cwd=str(OPENMC_ROOT),
         )
+        if result.returncode != 0 or not result.stdout.strip():
+            return "unknown"
         return result.stdout.strip()
     except Exception:
         return "unknown"
@@ -174,6 +176,9 @@ def openmc_rag_search(
 
     if not query and not related_file:
         return "Error: provide either 'query' or 'related_file'."
+
+    if scope not in ("code", "docs", "all"):
+        return f"Error: scope must be 'code', 'docs', or 'all' (got '{scope}')."
 
     try:
         from openmc_search import (

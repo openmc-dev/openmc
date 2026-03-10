@@ -4,8 +4,8 @@
 Agentic Development Tools
 ===========================
 
-OpenMC ships a set of tools designed for AI coding agents (such as `Claude
-Code`_) that agents can use to navigate and understand the codebase.
+OpenMC ships a set of tools designed for AI coding agents (such as
+`Claude Code`_) that agents can use to navigate and understand the codebase.
 
 .. _Claude Code: https://claude.ai/code
 
@@ -29,8 +29,9 @@ and it's not unreasonable to assume that models may be available in the near
 future that greatly exceed these limits.
 
 However, even assuming the entire repository can be fit within a context
-window, there are several downsides to doing this. `Model performance
-degrades significantly as context size increases`_. Benchmark results are
+window, there are several downsides to doing this.
+`Model performance degrades significantly as context size increases`_.
+Benchmark results are
 greatly improved if the model has less garbage to pick through. Additionally, API usage
 is typically billed as tokens in/out per turn. As the context file
 grows these costs become much larger. As such, there is still significant
@@ -96,5 +97,6 @@ Requirements
 ^^^^^^^^^^^^
 
 No system dependencies beyond **Python 3.12+** with ``pip``. The Python
-packages (``sentence-transformers``, ``lancedb``) are installed in the agent's
-virtual python environment automatically.
+packages (``sentence-transformers``, ``lancedb``) and their dependencies
+(including PyTorch, ~2GB) are installed automatically into an isolated virtual
+environment on first use.

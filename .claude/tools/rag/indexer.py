@@ -18,8 +18,6 @@ The MCP server (openmc_mcp_server.py) uses the latter when the agent calls
 openmc_rag_rebuild.
 """
 
-from embeddings import EmbeddingProvider
-from chunker import chunk_file
 import lancedb
 import sys
 import time
@@ -30,6 +28,9 @@ from pathlib import Path
 # script. When imported from the MCP server, the server has already done this.
 TOOLS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS_DIR / "rag"))
+
+from embeddings import EmbeddingProvider
+from chunker import chunk_file
 
 
 OPENMC_ROOT = Path(__file__).resolve().parents[3]

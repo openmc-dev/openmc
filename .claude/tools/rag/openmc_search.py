@@ -106,7 +106,7 @@ def search_related(db, embedder, filepath, top_k):
 
     # Normalize filepath
     fp = filepath
-    if filepath.startswith("/"):
+    if Path(filepath).is_absolute():
         try:
             fp = str(Path(filepath).relative_to(OPENMC_ROOT))
         except ValueError:

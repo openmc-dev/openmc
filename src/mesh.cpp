@@ -2459,7 +2459,7 @@ std::string HexagonalMesh::get_mesh_type() const
   return mesh_type;
 }
 
-std::string StructuredMesh::bin_label(int bin) const
+std::string HexagonalMesh::bin_label(int bin) const
 {
   MeshIndex ijk = get_indices_from_bin(bin);
   return fmt::format(

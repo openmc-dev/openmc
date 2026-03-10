@@ -2412,9 +2412,9 @@ double SphericalMesh::volume(const MeshIndex& ijk) const
 HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
-  grid_ = get_node_array<double>(node, "grid");
-  radius_ = std::stoi(get_node_value(node, "radius"));
-  size_ = std::stod(get_node_value(node, "size"));
+  grid_ = get_node_array<double>(node, "z_grid");
+  radius_ = std::stoi(get_node_value(node, "num_rings"));
+  size_ = std::stod(get_node_value(node, "pitch")) / std::sqrt(3.0);
   origin_ = get_node_position(node, "origin");
 
   // Read the orientation.  Default to 'y'.
@@ -2434,9 +2434,10 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 
 HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
-  read_dataset(group, "grid", grid_);
-  read_attribute(group, "radius", radius_);
-  read_attribute(group, "size", size_);
+  read_dataset(group, "z_grid", grid_);
+  read_attribute(group, "num_rings", radius_);
+  read_attribute(group, "pitch", size_);
+  size_ /= std::sqrt(3.0);
   read_dataset(group, "origin", origin_);
 
   if (attribute_exists(group, "orientation")) {
@@ -2783,11 +2784,11 @@ std::pair<vector<double>, vector<double>> HexagonalMesh::plot(
 
 void HexagonalMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  write_dataset(mesh_group, "grid", grid_);
+  write_dataset(mesh_group, "z_grid", grid_);
   if (orientation_ == Orientation::x)
     write_attribute(mesh_group, "orientation", "x");
-  write_attribute(mesh_group, "radius", radius_);
-  write_attribute(mesh_group, "size", size_);
+  write_attribute(mesh_group, "num_rings", radius_);
+  write_attribute(mesh_group, "pitch", size_ * std::sqrt(3.0));
   write_dataset(mesh_group, "origin", origin_);
 }
 

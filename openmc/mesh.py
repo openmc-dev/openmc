@@ -2703,9 +2703,9 @@ class HexagonalMesh(StructuredMesh):
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
         mesh = cls(
-            z_grid = group['grid'][()],
-            pitch = np.sqrt(3)*group.attrs['size'],
-            num_rings = group.attrs['radius'],
+            z_grid = group['z_grid'][()],
+            pitch = group.attrs['pitch'],
+            num_rings = group.attrs['num_rings'],
             mesh_id=mesh_id,
             name=name
         )
@@ -2728,11 +2728,11 @@ class HexagonalMesh(StructuredMesh):
 
         element = super().to_xml_element()
         element.set("type", "hexagonal")
-        element.set("size", str(self.pitch/np.sqrt(3)))
-        element.set("radius", str(self.num_rings))
+        element.set("pitch", str(self.pitch))
+        element.set("num_rings", str(self.num_rings))
         element.set("orientation", str(self.orientation))
 
-        subelement = ET.SubElement(element, "grid")
+        subelement = ET.SubElement(element, "z_grid")
         subelement.text = ' '.join(map(str, self.z_grid))
 
         subelement = ET.SubElement(element, "origin")
@@ -2758,9 +2758,9 @@ class HexagonalMesh(StructuredMesh):
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(
             mesh_id=mesh_id,
-            z_grid = get_elem_list(elem, "grid", float),
-            pitch = float(get_text(elem, "size"))*np.sqrt(3),
-            num_rings = int(get_text(elem, "radius")),
+            z_grid = get_elem_list(elem, "z_grid", float),
+            pitch = float(get_text(elem, "pitch")),
+            num_rings = int(get_text(elem, "num_rings")),
             orientation = get_text(elem, "orientation"),
             origin = get_elem_list(elem, "origin", float) or [0., 0., 0.],
         )

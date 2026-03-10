@@ -1,9 +1,19 @@
-"""Chunk OpenMC source files and documentation for RAG indexing.
+"""Split source files into overlapping text chunks for vector embedding.
 
-Uses fixed-size overlapping windows so every line of code is searchable.
-Window size is tuned to fit within the MiniLM embedding model's 256-token
-context (~1000 chars). 25% overlap ensures most content appears in at least
-two chunks.
+The indexer (indexer.py) calls chunk_file() on every C++, Python, and RST file
+in the repo. Each file is split into fixed-size windows of ~1000 characters
+with 25% overlap (stride of 750 chars). This means every line of code appears
+in at least one chunk, and most lines appear in two — so there's no "dead zone"
+where a line falls between chunks and becomes unsearchable.
+
+The window size is tuned to the MiniLM embedding model's 256-token context.
+Code averages ~4 characters per token, so 1000 chars ≈ 250 tokens — just
+under the model's limit. Chunks are snapped to line boundaries to avoid
+splitting mid-line.
+
+Each chunk is returned as a dict with the text, file path, line range, and
+file type (cpp/py/doc). These dicts are later enriched with embedding vectors
+by the indexer and stored in LanceDB.
 """
 
 from pathlib import Path

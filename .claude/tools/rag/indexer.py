@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
-"""Build the RAG vector index for OpenMC source code and documentation.
+"""Build the RAG vector index for the OpenMC codebase.
 
-Chunks all C++, Python, and RST files, embeds them, and stores in LanceDB.
+This is the "offline" step of the RAG pipeline. It walks the repo, chunks every
+C++/Python/RST file (via chunker.py), embeds all chunks into 384-dim vectors
+(via embeddings.py), and stores them in a LanceDB database on disk. The result
+is a .claude/cache/rag_index/ directory containing two tables — "code" and
+"docs" — that openmc_search.py queries at search time.
 
-Output: .claude/cache/rag_index/ (LanceDB directory)
+Building the full index takes ~5 minutes on a 10-core machine. The bottleneck
+is the embedding step (running all chunks through the MiniLM model on CPU).
+
+Can be run standalone:  python indexer.py
+Or called programmatically:  from indexer import build_index; build_index()
+The MCP server (openmc_mcp_server.py) uses the latter when the agent calls
+openmc_rag_rebuild.
 """
 
 from embeddings import EmbeddingProvider
@@ -13,7 +23,9 @@ import sys
 import time
 from pathlib import Path
 
-# Add tools dir to path for imports
+# This file lives at .claude/tools/rag/indexer.py. The sys.path insert lets
+# us import sibling modules (embeddings, chunker) when run as a standalone
+# script. When imported from the MCP server, the server has already done this.
 TOOLS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS_DIR / "rag"))
 

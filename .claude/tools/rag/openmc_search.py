@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""Semantic search across the OpenMC codebase and documentation.
+"""Query the RAG vector index to find semantically related code and docs.
+
+This is the "online" step of the RAG pipeline — the counterpart to indexer.py
+which builds the index. Given a natural-language query, it embeds the query
+with the same MiniLM model used at index time, then finds the closest chunks
+in the LanceDB vector database by cosine similarity.
+
+The core functions (get_db_and_embedder, search_table, format_results,
+search_related) are imported by the MCP server for tool calls. The script
+can also be run standalone from the command line.
+
+The "related file" mode works differently from a text query: it reads the
+target file's chunks from the index, combines them into a synthetic query
+vector, and searches for the nearest chunks from *other* files. This surfaces
+files that are semantically similar to the target file.
 
 Usage:
     openmc_search.py "query"                    # Search code (default)
@@ -7,18 +21,13 @@ Usage:
     openmc_search.py "query" --all              # Search both code and docs
     openmc_search.py --related src/particle.cpp # Find related code
     openmc_search.py "query" --top-k 20         # Return more results
-
-Examples:
-    openmc_search.py "particle random number seed initialization"
-    openmc_search.py "how to define tallies" --docs
-    openmc_search.py --related src/simulation.cpp
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-# Add tools dir to path
+# Same sys.path setup as indexer.py — needed for standalone CLI use.
 TOOLS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS_DIR / "rag"))
 

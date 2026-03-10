@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
-"""MCP server providing OpenMC code navigation tools.
+"""MCP server that exposes OpenMC's RAG semantic search to AI coding agents.
 
-Exposes two tools:
-  - openmc_rag_search:    Semantic search across the codebase and docs
-  - openmc_rag_rebuild:   Rebuild the RAG vector index
+This is the entry point for the MCP (Model Context Protocol) server registered
+in .mcp.json at the repo root. When an MCP-capable agent (e.g. Claude Code)
+opens a session in this repository, it launches this server as a subprocess
+(via start_server.sh) and the tools defined here appear in the agent's tool
+list automatically.
+
+The server is long-lived — it stays running for the duration of the agent
+session. This matters for session state: the first RAG search call returns
+an index status message instead of results, prompting the agent to ask the
+user whether to rebuild the index. That first-call flag resets each session.
+
+Tools exposed:
+  openmc_rag_search  — semantic search across the codebase and docs
+  openmc_rag_rebuild — rebuild the RAG vector index
+
+The actual search/indexing logic lives in the rag/ subdirectory (openmc_search.py,
+indexer.py, chunker.py, embeddings.py). This file is just the MCP interface
+layer and session state management.
 """
 
 from mcp.server.fastmcp import FastMCP
@@ -14,28 +29,32 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Suppress noisy logging from httpx and huggingface_hub before any imports
-# that trigger HTTP requests.  The MCP transport uses stderr, so stray log
-# lines there would corrupt the protocol stream.
+# MCP communicates over stdin/stdout with JSON-RPC framing. Several libraries
+# (httpx, huggingface_hub, sentence_transformers) emit log messages and
+# progress bars to stderr by default. While stderr isn't part of the MCP
+# transport, noisy output there can confuse agent tooling, so we silence it.
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 
-
+# Path constants. This file lives at .claude/tools/openmc_mcp_server.py,
+# so parents[2] is the OpenMC repo root.
 OPENMC_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = OPENMC_ROOT / ".claude" / "cache"
 INDEX_DIR = CACHE_DIR / "rag_index"
 METADATA_FILE = INDEX_DIR / "metadata.json"
 
-# Add tool subdirectories to path for imports
+# The RAG modules (openmc_search, indexer, etc.) live in .claude/tools/rag/.
+# We add that directory to sys.path so we can import them directly.
 TOOLS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(TOOLS_DIR / "rag"))
 
 mcp = FastMCP("openmc-code-tools")
 
-# ---------------------------------------------------------------------------
-# Session state
-# ---------------------------------------------------------------------------
+# First-call flag: the first openmc_rag_search call of each session returns
+# index status info instead of search results, so the agent can ask the user
+# whether to rebuild. This resets when the server process restarts (i.e. each
+# new agent session).
 _rag_first_call = True
 
 

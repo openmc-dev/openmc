@@ -7,6 +7,19 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
 
+-------------------------------
+``<atomic_relaxation>`` Element
+-------------------------------
+
+The ``<atomic_relaxation>`` element determines whether the atomic relaxation
+cascade, the X-ray fluorescence photons and Auger electrons emitted when an
+inner-shell vacancy is filled, is simulated following photoelectric and
+incoherent (Compton) scattering interactions. Disabling this can speed up
+photon transport calculations where the detailed secondary particle cascade is
+not of interest.
+
+  *Default*: true
+
 ---------------------
 ``<batches>`` Element
 ---------------------
@@ -1233,6 +1246,23 @@ attributes/sub-elements:
 .. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
           are not eligible to store any particles when using ``cell``, ``cellfrom``
           or ``cellto`` attributes. It is recommended to use surface IDs instead.
+
+------------------------------------
+``<surface_grazing_cutoff>`` Element
+------------------------------------
+
+The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutoff.
+
+  *Default*: 0.001
+
+-----------------------------------
+``<surface_grazing_ratio>`` Element
+-----------------------------------
+
+The ``<surface_grazing_ratio>`` element specifies the surface flux cosine 
+substitution ratio.
+
+  *Default*: 0.5
 
 ------------------------------
 ``<survival_biasing>`` Element

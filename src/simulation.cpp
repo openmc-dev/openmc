@@ -122,6 +122,7 @@ int openmc_simulation_init()
   simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
+  reset_source_rejection_counters();
   openmc_reset();
 
   // If this is a restart run, load the state point data and binary source

@@ -362,7 +362,7 @@ attributes/sub-elements:
 
   :type:
     The type of mesh. This can be either "regular", "rectilinear",
-    "cylindrical", "spherical", or "unstructured".
+    "cylindrical", "spherical", "hexagonal", or "unstructured".
 
   :dimension:
     The number of mesh cells in each direction. (For regular mesh only.)
@@ -379,6 +379,9 @@ attributes/sub-elements:
     The upper-right corner of the structured mesh. If only two coordinates are
     given, it is assumed that the mesh is an x-y mesh. (For regular mesh only.)
 
+  :pitch:
+    The mesh radial pitch. (For hexagonal mesh only.)
+
   :width:
     The width of mesh cells in each direction. (For regular mesh only.)
 
@@ -389,7 +392,7 @@ attributes/sub-elements:
     The mesh divisions along the y-axis. (For rectilinear mesh only.)
 
   :z_grid:
-    The mesh divisions along the z-axis. (For rectilinear and cylindrical meshes only.)
+    The mesh divisions along the z-axis. (For rectilinear, cylindrical and hexagonal meshes only.)
 
   :r_grid:
     The mesh divisions along the r-axis. (For cylindrical and spherical meshes only.)
@@ -400,8 +403,14 @@ attributes/sub-elements:
   :theta_grid:
     The mesh divisions along the theta-axis. (For spherical mesh only.)
 
+  :num_rings:
+    The number of hexagonal rings. (For hexagonal mesh only.)
+
+  :orientation:
+    The orientation of the hexagonal mesh, either "x" or "y". (For hexagonal mesh only.)
+    
   :origin:
-    The origin in cartesian coordinates. (For cylindrical and spherical meshes only.)
+    The origin in cartesian coordinates. (For cylindrical, spherical and hexagonal meshes only.)
 
   :library:
     The mesh library used to represent an unstructured mesh. This can be either

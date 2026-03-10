@@ -61,8 +61,8 @@ def test_mg_fixed_source_ww_fission_shared_secondary():
 
     # Add weight windows on a simple 1D mesh
     ww_mesh = openmc.RegularMesh()
-    ww_mesh.lower_left = (0.0, -1.0, -1.0)
-    ww_mesh.upper_right = (929.45, 1.0, 1.0)
+    ww_mesh.lower_left = (0.0, -1000.0, -1000.0)
+    ww_mesh.upper_right = (929.45, 1000.0, 1000.0)
     ww_mesh.dimension = (5, 1, 1)
 
     # Uniform lower bounds for 2 energy groups, 5 spatial bins
@@ -79,8 +79,8 @@ def test_mg_fixed_source_ww_fission_shared_secondary():
 
     # Add a flux tally
     mesh = openmc.RegularMesh()
-    mesh.lower_left = (0.0, -1.0, -1.0)
-    mesh.upper_right = (929.45, 1.0, 1.0)
+    mesh.lower_left = (0.0, -1000.0, -1000.0)
+    mesh.upper_right = (929.45, 1000.0, 1000.0)
     mesh.dimension = (5, 1, 1)
 
     tally = openmc.Tally()

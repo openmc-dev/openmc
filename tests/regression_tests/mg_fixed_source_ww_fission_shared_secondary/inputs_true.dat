@@ -42,8 +42,8 @@
     </weight_windows>
     <mesh id="1">
       <dimension>5 1 1</dimension>
-      <lower_left>0.0 -1.0 -1.0</lower_left>
-      <upper_right>929.45 1.0 1.0</upper_right>
+      <lower_left>0.0 -1000.0 -1000.0</lower_left>
+      <upper_right>929.45 1000.0 1000.0</upper_right>
     </mesh>
     <shared_secondary_bank>true</shared_secondary_bank>
     <max_history_splits>100</max_history_splits>
@@ -51,8 +51,8 @@
   <tallies>
     <mesh id="2">
       <dimension>5 1 1</dimension>
-      <lower_left>0.0 -1.0 -1.0</lower_left>
-      <upper_right>929.45 1.0 1.0</upper_right>
+      <lower_left>0.0 -1000.0 -1000.0</lower_left>
+      <upper_right>929.45 1000.0 1000.0</upper_right>
     </mesh>
     <filter id="1" type="mesh">
       <bins>2</bins>

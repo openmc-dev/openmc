@@ -610,7 +610,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_MIGRATION:
       if (estimator_ != TallyEstimator::TRACKLENGTH)
         fatal_error(
-          "Migration-area can only be tallies with tracklength estimator");
+          "Migration-area can only be tallied with a tracklength estimator");
       if (non_particle_energy_present)
         fatal_error("Cannot tally migration area with filters other than "
                     "energy filter and particle filter");

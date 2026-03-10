@@ -37,7 +37,7 @@ def chunk_file(filepath, openmc_root):
     # Build a char-offset → line-number map
     line_starts = []
     offset = 0
-    for line in lines:
+    for line in content.split("\n"):
         line_starts.append(offset)
         offset += len(line) + 1  # +1 for newline
 

@@ -369,11 +369,9 @@ public:
   //! Check if mesh indices are inside mesh
   //
   //! \param[in] Array of mesh indices
+  //! \param[in] k Suspect axis
   //! \return are indices inside mesh?
-  virtual bool index_inside_mesh(const MeshIndex& ijk, int k) const
-  {
-    return ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
-  }
+  virtual bool valid_index(const MeshIndex& ijk, int k) const;
 
   //! Get mesh indices corresponding to a mesh bin
   //
@@ -761,14 +759,7 @@ public:
   //! \return ijk Mesh indices
   MeshIndex get_indices_from_bin(int bin) const override;
 
-  bool index_inside_mesh(const MeshIndex& ijk, int k) const override
-  {
-    if (k == 3)
-      return ((ijk[2] >= 1) && (ijk[2] < grid_.size()));
-    int rad =
-      std::max({std::abs(ijk[0]), std::abs(ijk[1]), std::abs(ijk[0] + ijk[1])});
-    return (rad <= radius_);
-  }
+  bool valid_index(const MeshIndex& ijk, int k) const override;
 
   int get_bin_from_indices(const MeshIndex& ijk) const override;
 
@@ -793,8 +784,8 @@ public:
   int set_grid();
 
   // Data members
-  int radius_;
-  double size_;
+  int num_rings_;
+  double pitch_;
   vector<double> grid_;
   Direction q_;
   Direction r_;

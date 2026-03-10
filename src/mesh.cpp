@@ -1049,6 +1049,11 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices(
   return ijk;
 }
 
+bool StructuredMesh::valid_index(const MeshIndex& ijk, int k) const
+{
+  return ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
+}
+
 int StructuredMesh::get_bin_from_indices(const MeshIndex& ijk) const
 {
   switch (n_dimension_) {
@@ -1177,19 +1182,19 @@ void StructuredMesh::raytrace_mesh(
   const int n = n_dimension_;
 
   // Flag if position is inside the mesh
-  bool inside_mesh;
+  bool in_mesh;
 
   // Position is r = r0 + u * traveled_distance, start at r0
   double traveled_distance {0.0};
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
-  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, inside_mesh);
+  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
   if (total_distance < 2 * TINY_BIT) {
-    if (inside_mesh) {
+    if (in_mesh) {
       tally.track(ijk, 1.0);
     }
     return;
@@ -1203,7 +1208,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Loop until r = r1 is eventually reached
   while (true) {
-    if (inside_mesh) {
+    if (in_mesh) {
 
       // find surface with minimal distance to current position
       const auto k = std::min_element(distances.begin(), distances.end()) -
@@ -1233,11 +1238,11 @@ void StructuredMesh::raytrace_mesh(
           distance_to_grid_boundary(ijk, j, local_r, u, traveled_distance);
 
       // Check if we have left the interior of the mesh
-      inside_mesh = index_inside_mesh(ijk, k);
+      in_mesh = valid_index(ijk, k);
 
       // If we are still inside the mesh, tally inward current for the next
       // cell
-      if (inside_mesh)
+      if (in_mesh)
         tally.surface(ijk, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
@@ -1250,15 +1255,14 @@ void StructuredMesh::raytrace_mesh(
 
       // Calculate the new cell index and update all distances to next
       // surfaces.
-      ijk =
-        get_indices(global_r + (traveled_distance + TINY_BIT) * u, inside_mesh);
+      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
           distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
       }
 
       // If inside the mesh, Tally inward current
-      if (inside_mesh && k_max >= 0)
+      if (in_mesh && k_max >= 0)
         tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
     }
   }
@@ -2413,8 +2417,8 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   grid_ = get_node_array<double>(node, "z_grid");
-  radius_ = std::stoi(get_node_value(node, "num_rings"));
-  size_ = std::stod(get_node_value(node, "pitch")) / std::sqrt(3.0);
+  num_rings_ = std::stoi(get_node_value(node, "num_rings"));
+  pitch_ = std::stod(get_node_value(node, "pitch"));
   origin_ = get_node_position(node, "origin");
 
   // Read the orientation.  Default to 'y'.
@@ -2435,9 +2439,8 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
   read_dataset(group, "z_grid", grid_);
-  read_attribute(group, "num_rings", radius_);
-  read_attribute(group, "pitch", size_);
-  size_ /= std::sqrt(3.0);
+  read_attribute(group, "num_rings", num_rings_);
+  read_attribute(group, "pitch", pitch_);
   read_dataset(group, "origin", origin_);
 
   if (attribute_exists(group, "orientation")) {
@@ -2487,7 +2490,16 @@ std::string HexagonalMesh::surface_label(int surface) const
 
 int HexagonalMesh::n_bins() const
 {
-  return (1 + 3 * (radius_ + 1) * radius_) * (grid_.size() - 1);
+  return (1 + 3 * (num_rings_ + 1) * num_rings_) * (grid_.size() - 1);
+}
+
+bool HexagonalMesh::valid_index(const MeshIndex& ijk, int k) const
+{
+  if (k == 3)
+    return ((ijk[2] >= 1) && (ijk[2] < grid_.size()));
+  int ring =
+    std::max({std::abs(ijk[0]), std::abs(ijk[1]), std::abs(ijk[0] + ijk[1])});
+  return (ring <= num_rings_);
 }
 
 int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
@@ -2495,7 +2507,7 @@ int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
   int q = ijk[0];
   int r = ijk[1];
   int k = ijk[2];
-  int hexes = 3 * radius_ * (radius_ + 1) + 1;
+  int hexes = 3 * num_rings_ * (num_rings_ + 1) + 1;
   int bin = (k - 1) * (grid_.size() - 1) * hexes;
   int rad = std::max({std::abs(r), std::abs(q), std::abs(r + q)});
   if (rad == 0)
@@ -2553,7 +2565,7 @@ StructuredMesh::MeshIndex HexagonalMesh::get_indices(
   ijk[1] = r_i;
   ijk[2] = z_i;
 
-  if (std::max({std::abs(q_i), std::abs(r_i), std::abs(s_i)}) > radius_)
+  if (std::max({std::abs(q_i), std::abs(r_i), std::abs(s_i)}) > num_rings_)
     in_mesh = false;
   if (ijk[2] < 1 || ijk[2] > grid_.size() - 1)
     in_mesh = false;
@@ -2564,7 +2576,7 @@ StructuredMesh::MeshIndex HexagonalMesh::get_indices(
 StructuredMesh::MeshIndex HexagonalMesh::get_indices_from_bin(int bin) const
 {
   MeshIndex ijk = {0, 0, 0};
-  int hexes = 3 * radius_ * (radius_ + 1) + 1;
+  int hexes = 3 * num_rings_ * (num_rings_ + 1) + 1;
   ijk[2] = static_cast<int>(std::floor(bin / hexes)) + 1;
   int sp_idx = bin % hexes;
   if (sp_idx == 0) {
@@ -2606,12 +2618,13 @@ StructuredMesh::MeshIndex HexagonalMesh::get_indices_from_bin(int bin) const
 Position HexagonalMesh::sample_element(
   const MeshIndex& ijk, uint64_t* seed) const
 {
+  double radius = pitch_ / std::sqrt(3.0);
   double q0 = ijk[0];
   double r0 = ijk[1];
   double z = uniform_distribution(grid_[ijk[2] - 1], grid_[ijk[2]], seed);
   double q, r, s;
   do {
-    double rad = std::cbrt(uniform_distribution(0.0, std::pow(size_, 3), seed));
+    double rad = std::cbrt(prn(seed)) * radius;
     double phi = uniform_distribution(0.0, 2 * PI, seed);
     double x = rad * std::cos(phi);
     double y = rad * std::sin(phi);
@@ -2620,7 +2633,7 @@ Position HexagonalMesh::sample_element(
     s = -q - r;
   } while (std::max({std::abs(q), std::abs(r), std::abs(s)}) > 1);
 
-  return origin_ + size_ * ((q + q0) * q_ + (r + r0) * r_) + z;
+  return origin_ + radius * ((q + q0) * q_ + (r + r0) * r_) + z;
 }
 
 StructuredMesh::MeshDistance HexagonalMesh::find_z_crossing(
@@ -2688,11 +2701,11 @@ StructuredMesh::MeshDistance HexagonalMesh::distance_to_grid_boundary(
     idx[2] -= offset[2];
   }
   int radius = std::max({std::abs(idx[0]), std::abs(idx[1]), std::abs(idx[2])});
-  if (d.max_surface && radius <= radius_) {
+  if (d.max_surface && radius <= num_rings_) {
     d.offset[0] += offset[0];
     d.offset[1] += offset[1];
     d.distance = distance;
-  } else if (!d.max_surface && radius <= radius_) {
+  } else if (!d.max_surface && radius <= num_rings_) {
     d.offset[0] -= offset[0];
     d.offset[1] -= offset[1];
     d.distance = distance;
@@ -2713,9 +2726,9 @@ double HexagonalMesh::distance_to_mesh(const MeshIndex& ijk,
   for (int k = 0; k < n; ++k) {
     if (distances[k].distance <= traveled_distance)
       continue;
-    if ((k < 2) && (std::abs(ijk[k]) <= radius_))
+    if ((k < 2) && (std::abs(ijk[k]) <= num_rings_))
       continue;
-    if ((k == 2) && std::abs(ijk[0] + ijk[1]) <= radius_)
+    if ((k == 2) && std::abs(ijk[0] + ijk[1]) <= num_rings_)
       continue;
     if ((k == 3) && ijk[2] >= 1 && ijk[2] < grid_.size())
       continue;
@@ -2748,10 +2761,12 @@ int HexagonalMesh::set_grid()
     r_dual_ = {-1.0 / 3.0, -std::sqrt(3.0) / 3.0, 0.0};
   }
 
-  q_ *= size_;
-  r_ *= size_;
-  q_dual_ /= size_;
-  r_dual_ /= size_;
+  double size = pitch_ / std::sqrt(3.0);
+
+  q_ *= size;
+  r_ *= size;
+  q_dual_ /= size;
+  r_dual_ /= size;
 
   if (grid_.size() < 2) {
     set_errmsg("z- grid for hexagonal meshes "
@@ -2787,17 +2802,18 @@ void HexagonalMesh::to_hdf5_inner(hid_t mesh_group) const
   write_dataset(mesh_group, "z_grid", grid_);
   if (orientation_ == Orientation::x)
     write_attribute(mesh_group, "orientation", "x");
-  write_attribute(mesh_group, "num_rings", radius_);
-  write_attribute(mesh_group, "pitch", size_ * std::sqrt(3.0));
+  write_attribute(mesh_group, "num_rings", num_rings_);
+  write_attribute(mesh_group, "pitch", pitch_);
   write_dataset(mesh_group, "origin", origin_);
 }
 
 double HexagonalMesh::volume(const MeshIndex& ijk) const
 {
   double f = 1.5 * std::sqrt(3.0);
+  double size = pitch_ / std::sqrt(3.0);
   double z_i = grid_[ijk[2] - 1];
   double z_o = grid_[ijk[2]];
-  return f * (z_o - z_i) * size_ * size_;
+  return f * (z_o - z_i) * size * size;
 }
 
 //==============================================================================

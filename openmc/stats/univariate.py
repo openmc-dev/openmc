@@ -1278,8 +1278,12 @@ def Muir(*args, **kwargs):
     return muir(*args, **kwargs)
 
 
-def fusion_spectrum(ion_temp: float, reactants: str = 'DD'):
-    """Return a Gaussian energy distribution for fusion neutron emission.
+def fusion_neutron_spectrum(
+    ion_temp: float,
+    reactants: str = 'DD',
+    bias: Univariate | None = None
+) -> Normal:
+    r"""Return a Gaussian energy distribution for fusion neutron emission.
 
     Computes the mean energy and spectral width of the neutron energy spectrum
     from thermonuclear fusion reactions in a plasma with Maxwellian ion velocity
@@ -1287,51 +1291,46 @@ def fusion_spectrum(ion_temp: float, reactants: str = 'DD'):
 
     .. math::
 
-        \\langle E_n \\rangle = E_0 + \\Delta E_\\text{th}
+        \langle E_n \rangle = E_0 + \Delta E_\text{th}
 
-    where :math:`E_0` is the neutron energy at zero ion temperature (determined
-    by relativistic two-body kinematics) and :math:`\\Delta E_\\text{th}` is the
-    thermal peak shift due to the motion of the reacting ions. The spectral
-    width is characterized by the FWHM:
+    where :math:`E_0` is the neutron energy at zero ion temperature and
+    :math:`\Delta E_\text{th}` is the thermal peak shift due to the motion of
+    the reacting ions. The spectral width is characterized by the FWHM:
 
     .. math::
 
-        W_{1/2} = \\omega_0 (1 + \\delta_\\omega) \\sqrt{T_i}
+        W_{1/2} = \omega_0 (1 + \delta_\omega) \sqrt{T_i}
 
-    where :math:`\\omega_0` is the width at the :math:`T_i \\to 0` limit and
-    :math:`\\delta_\\omega` is a temperature-dependent correction term. Both
-    :math:`\\Delta E_\\text{th}` and :math:`\\delta_\\omega` are evaluated using
-    interpolation formulas from Table III of the reference, which are valid for
-    :math:`0 < T_i < 40` keV.
+    where :math:`\omega_0` is the width at the :math:`T_i \to 0` limit and
+    :math:`\delta_\omega` is a temperature-dependent correction term. Both
+    :math:`\Delta E_\text{th}` and :math:`\delta_\omega` are evaluated using
+    interpolation formulas from `Ballabio et al.
+    <https://doi.org/10.1088/0029-5515/38/11/310>`_: Table III for :math:`0 <
+    T_i \le 40` keV and Table IV for :math:`40 < T_i < 100` keV.
 
     The returned distribution is a Normal (Gaussian) approximation to the
     spectrum. The actual spectrum has a slight positive skewness that can be
     modeled by a modified Gaussian (Eq. 21 in the reference), but this is not
     accounted for here.
 
-    .. versionadded:: 0.15.2
+    .. versionadded:: 0.15.4
 
     Parameters
     ----------
     ion_temp : float
         Ion temperature of the plasma in [eV].
     reactants : {'DD', 'DT'}
-        Fusion reactants. 'DD' corresponds to the D(d,n)\ :sup:`3`\ He
-        reaction and 'DT' to the T(d,n)\ :math:`\\alpha` reaction.
+        Fusion reactants. 'DD' corresponds to the D(d,n)\ :sup:`3`\ He reaction
+        and 'DT' to the T(d,n)\ :math:`\alpha` reaction.
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
 
     Returns
     -------
     openmc.stats.Normal
         Normal distribution with mean and standard deviation corresponding to
-        the first and second moments of the fusion neutron energy spectrum.
-        Both the mean and standard deviation are in [eV].
-
-    References
-    ----------
-    L. Ballabio, J. Kallne, and G. Gorini, "Relativistic calculation of
-    fusion product spectra for thermonuclear plasmas," Nucl. Fusion, 38 (11),
-    pp. 1723-1735 (1998). `doi:10.1088/0029-5515/38/11/310
-    <https://doi.org/10.1088/0029-5515/38/11/310>`_.
+        the first and second moments of the fusion neutron energy spectrum. Both
+        the mean and standard deviation are in [eV].
 
     """
     # Formulas from doi:10.1088/0029-5515/38/11/310
@@ -1344,17 +1343,25 @@ def fusion_spectrum(ion_temp: float, reactants: str = 'DD'):
         E_n = mhe3/(mhe3 + mn)*Q
         w0 = 82.542
 
-        # Constants for peak shift
+        # Low-T constants for peak shift (Table III)
         a1 = 4.69515
         a2 = -0.040729
         a3 = 0.47
         a4 = 0.81844
 
-        # Constants for width correction
+        # Low-T constants for width correction (Table III)
         b1 = 1.7013e-3
         b2 = 0.16888
         b3 = 0.49
         b4 = 7.9460e-4
+
+        # High-T constants for peak shift (Table IV)
+        a5 = 18.225
+        a6 = 2.1525
+
+        # High-T constants for width correction (Table IV)
+        b5 = 8.4619e-3
+        b6 = 8.3241e-4
 
     elif reactants == 'DT':
         mt = atomic_mass('H3')
@@ -1363,30 +1370,43 @@ def fusion_spectrum(ion_temp: float, reactants: str = 'DD'):
         E_n = ma/(ma + mn)*Q
         w0 = 177.259
 
-        # Constants for peak shift
+        # Low-T constants for peak shift (Table III)
         a1 = 5.30509
         a2 = 2.4736e-3
         a3 = 1.84
         a4 = 1.3818
 
-        # Constants for width correction
+        # Low-T constants for width correction (Table III)
         b1 = 5.1068e-4
         b2 = 7.6223e-3
         b3 = 1.78
         b4 = 8.7691e-5
 
-    # Calculate peak shift
-    T = ion_temp * 1e-3
-    Delta_E = a1/(1 + a2*T**a3)*T**(2/3) + a4*T
+        # High-T constants for peak shift (Table IV)
+        a5 = 37.771
+        a6 = 0.92181
 
-    # Calculate width correction
-    delta_w = b1/(1 + b2*T**b3)*T**(2/3) + b4*T
+        # High-T constants for width correction (Table IV)
+        b5 = 2.0199e-3
+        b6 = 5.9501e-5
+
+    # Ion temperature in keV
+    T = ion_temp * 1e-3
+
+    if T <= 40.0:
+        # Low-temperature interpolation (Table III, 0 < T_i <= 40 keV)
+        Delta_E = a1/(1 + a2*T**a3)*T**(2/3) + a4*T
+        delta_w = b1/(1 + b2*T**b3)*T**(2/3) + b4*T
+    else:
+        # High-temperature interpolation (Table IV, 40 < T_i < 100 keV)
+        Delta_E = a5 + a6*T
+        delta_w = b5 + b6*T
 
     # Calculate FWHM
     fwhm = (w0*(1 + delta_w) * sqrt(T))*1e3
 
     sigma = fwhm / (2*sqrt(2*log(2)))
-    return Normal(E_n + Delta_E * 1e3, sigma)
+    return Normal(E_n + Delta_E * 1e3, sigma, bias=bias)
 
 
 class Tabular(Univariate):

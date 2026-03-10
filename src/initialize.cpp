@@ -378,6 +378,28 @@ int parse_command_line(int argc, char* argv[])
   return 0;
 }
 
+// TODO: Pulse-height tallies require per-history scoring across the full
+// particle tree (parent + all descendants). The shared secondary bank
+// transports each secondary as an independent Particle, breaking this
+// assumption. A proper fix would defer pulse-height scoring: save
+// (root_source_id, cell, pht_storage) per particle, then aggregate by
+// root_source_id after all secondary generations complete before scoring
+// into the histogram. For now, disable shared secondary when pulse-height
+// tallies are present.
+static void check_pulse_height_compatibility()
+{
+  if (settings::use_shared_secondary_bank) {
+    for (const auto& t : model::tallies) {
+      if (t->type_ == TallyType::PULSE_HEIGHT) {
+        settings::use_shared_secondary_bank = false;
+        warning("Pulse-height tallies are not yet compatible with the shared "
+                "secondary bank. Disabling shared secondary bank.");
+        break;
+      }
+    }
+  }
+}
+
 bool read_model_xml()
 {
   std::string model_filename = settings::path_input;
@@ -471,6 +493,8 @@ bool read_model_xml()
   if (check_for_node(root, "tallies"))
     read_tallies_xml(root.child("tallies"));
 
+  check_pulse_height_compatibility();
+
   // Initialize distribcell_filters
   prepare_distribcell();
 
@@ -514,6 +538,8 @@ void read_separate_xml_files()
   finalize_cell_densities();
 
   read_tallies_xml();
+
+  check_pulse_height_compatibility();
 
   // Initialize distribcell_filters
   prepare_distribcell();

@@ -2499,7 +2499,7 @@ bool HexagonalMesh::valid_index(const MeshIndex& ijk, int k) const
     return ((ijk[2] >= 1) && (ijk[2] < grid_.size()));
   int ring =
     std::max({std::abs(ijk[0]), std::abs(ijk[1]), std::abs(ijk[0] + ijk[1])});
-  return (ring <= num_rings_);
+  return (ring < num_rings_);
 }
 
 int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
@@ -2565,7 +2565,7 @@ StructuredMesh::MeshIndex HexagonalMesh::get_indices(
   ijk[1] = r_i;
   ijk[2] = z_i;
 
-  if (std::max({std::abs(q_i), std::abs(r_i), std::abs(s_i)}) > num_rings_)
+  if (std::max({std::abs(q_i), std::abs(r_i), std::abs(s_i)}) >= num_rings_)
     in_mesh = false;
   if (ijk[2] < 1 || ijk[2] > grid_.size() - 1)
     in_mesh = false;
@@ -2701,11 +2701,11 @@ StructuredMesh::MeshDistance HexagonalMesh::distance_to_grid_boundary(
     idx[2] -= offset[2];
   }
   int radius = std::max({std::abs(idx[0]), std::abs(idx[1]), std::abs(idx[2])});
-  if (d.max_surface && radius <= num_rings_) {
+  if (d.max_surface && (radius < num_rings_)) {
     d.offset[0] += offset[0];
     d.offset[1] += offset[1];
     d.distance = distance;
-  } else if (!d.max_surface && radius <= num_rings_) {
+  } else if (!d.max_surface && (radius < num_rings_)) {
     d.offset[0] -= offset[0];
     d.offset[1] -= offset[1];
     d.distance = distance;
@@ -2726,11 +2726,11 @@ double HexagonalMesh::distance_to_mesh(const MeshIndex& ijk,
   for (int k = 0; k < n; ++k) {
     if (distances[k].distance <= traveled_distance)
       continue;
-    if ((k < 2) && (std::abs(ijk[k]) <= num_rings_))
+    if ((k < 2) && (std::abs(ijk[k]) < num_rings_))
       continue;
-    if ((k == 2) && std::abs(ijk[0] + ijk[1]) <= num_rings_)
+    if ((k == 2) && (std::abs(ijk[0] + ijk[1]) < num_rings_))
       continue;
-    if ((k == 3) && ijk[2] >= 1 && ijk[2] < grid_.size())
+    if ((k == 3) && (ijk[2] >= 1) && (ijk[2] < grid_.size()))
       continue;
     traveled_distance = distances[k].distance;
     k_max = k;

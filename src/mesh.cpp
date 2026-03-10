@@ -2495,7 +2495,7 @@ int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
   int q = ijk[1];
   int k = ijk[2];
   int hexes = 3 * radius_ * (radius_ + 1) + 1;
-  int bin = k * (grid_.size() - 1) * hexes;
+  int bin = (k - 1) * (grid_.size() - 1) * hexes;
   int rad = std::max({std::abs(r), std::abs(q), std::abs(r + q)});
   if (rad == 0)
     return bin;

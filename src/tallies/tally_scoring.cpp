@@ -669,9 +669,9 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_MIGRATION:
-      score =
-        1.0 / 6.0 * p.wgt() *
-        ((p.r() - p.r_born()).norm_sq() - (p.r_last() - p.r_born()).norm_sq());
+      score = 1.0 / 6.0 * p.wgt() *
+              (p.r() - p.r_last())
+                .dot((p.r() - p.r_born()) + (p.r_last() - p.r_born()));
       break;
 
     case SCORE_NU_FISSION:
@@ -1772,9 +1772,9 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_MIGRATION:
-      score =
-        1.0 / 6.0 * p.wgt() *
-        ((p.r() - p.r_born()).norm_sq() - (p.r_last() - p.r_born()).norm_sq());
+      score = 1.0 / 6.0 * p.wgt() *
+              (p.r() - p.r_last())
+                .dot((p.r() - p.r_born()) + (p.r_last() - p.r_born()));
       break;
 
     case SCORE_NU_SCATTER:
@@ -2646,7 +2646,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
       // for a further scoring function.
       double score = current * filter_weight;
       for (auto score_index = 0; score_index < tally.scores_.size();
-           ++score_index) {
+        ++score_index) {
 #pragma omp atomic
         tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
       }
@@ -2721,7 +2721,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
             // Loop over scores.
             for (auto score_index = 0; score_index < tally.scores_.size();
-                 ++score_index) {
+              ++score_index) {
 #pragma omp atomic
               tally.results_(filter_index, score_index, TallyResult::VALUE) +=
                 filter_weight;

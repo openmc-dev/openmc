@@ -750,8 +750,6 @@ public:
 
   int n_bins() const override;
 
-  int n_surface_bins() const override;
-
   MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
   bool index_inside_mesh(const MeshIndex& ijk, int k) const override

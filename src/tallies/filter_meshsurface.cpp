@@ -25,7 +25,7 @@ void MeshSurfaceFilter::get_all_bins(
 
 std::string MeshSurfaceFilter::text_label(int bin) const
 {
-  auto mesh = static_cast<StructuredMesh*>(model::meshes[mesh_]);
+  auto mesh = dynamic_cast<StructuredMesh*>(model::meshes[mesh_].get());
   int n_dim = mesh->n_dimension_;
 
   // Get flattend mesh index and surface index.
@@ -34,7 +34,7 @@ std::string MeshSurfaceFilter::text_label(int bin) const
   // Get mesh index part of label.
   std::string out = MeshFilter::text_label(i_mesh);
   auto surf_dir = (bin % (4 * n_dim));
-  if (mesh->mesh_type != HexagonalMesh::mesh_type) {
+  if (n_dim < 4) {
     // Get surface part of label.
     switch (surf_dir) {
     case 0:
@@ -145,7 +145,7 @@ std::string MeshSurfaceFilter::text_label(int bin) const
 void MeshSurfaceFilter::set_mesh(int32_t mesh)
 {
   mesh_ = mesh;
-  if (!dynamic_cast<StructuredMesh>(mesh))
+  if (!dynamic_cast<StructuredMesh*>(model::meshes[mesh_].get()))
     fatal_error("Only structured mesh is supported in MeshSurfaceFilter.");
   n_bins_ = model::meshes[mesh_]->n_surface_bins();
 }

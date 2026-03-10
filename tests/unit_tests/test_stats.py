@@ -999,3 +999,17 @@ def test_fusion_spectrum_zero_temp():
     d = openmc.stats.fusion_neutron_spectrum(1.0, 'DT')
     assert d.mean_value == pytest.approx(14.049e6, rel=1e-3)
     assert d.std_dev < 5e3  # width approaches zero at low temperature
+
+
+def test_fusion_spectrum_invalid():
+    # Invalid reactant string should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(10e3, '🐔🧇')
+
+    # Negative temperature should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(-10e3, 'DT')
+
+    # Temperature above 100 keV should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(101e3, 'DT')

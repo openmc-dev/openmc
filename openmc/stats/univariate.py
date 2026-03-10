@@ -1329,6 +1329,9 @@ def fusion_neutron_spectrum(
         the mean and standard deviation are in [eV].
 
     """
+    if ion_temp < 0.0 or ion_temp > 100e3:
+        raise ValueError("Ion temperature must be between 0 and 100 keV.")
+
     # Formulas from doi:10.1088/0029-5515/38/11/310
     mn = NEUTRON_MASS
     md = atomic_mass('H2')
@@ -1385,6 +1388,8 @@ def fusion_neutron_spectrum(
         # High-T constants for width correction (Table IV)
         b5 = 2.0199e-3
         b6 = 5.9501e-5
+    else:
+        raise ValueError("Invalid reactants specified. Must be 'DD' or 'DT'.")
 
     # Ion temperature in keV
     T = ion_temp * 1e-3

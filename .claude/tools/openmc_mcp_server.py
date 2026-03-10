@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """MCP server providing OpenMC code navigation tools.
 
-Exposes three tools:
+Exposes two tools:
   - openmc_rag_search:    Semantic search across the codebase and docs
   - openmc_rag_rebuild:   Rebuild the RAG vector index
-  - openmc_lsp_navigate:  LSP-based C++ code navigation via clangd
 """
 
 from mcp.server.fastmcp import FastMCP
@@ -31,7 +30,6 @@ METADATA_FILE = INDEX_DIR / "metadata.json"
 # Add tool subdirectories to path for imports
 TOOLS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(TOOLS_DIR / "rag"))
-sys.path.insert(0, str(TOOLS_DIR / "lsp"))
 
 mcp = FastMCP("openmc-code-tools")
 
@@ -39,7 +37,6 @@ mcp = FastMCP("openmc-code-tools")
 # Session state
 # ---------------------------------------------------------------------------
 _rag_first_call = True
-_lsp_client = None  # Keep clangd alive across calls
 
 
 # ---------------------------------------------------------------------------
@@ -217,77 +214,6 @@ def openmc_rag_rebuild() -> str:
         )
     except Exception as e:
         return f"Error rebuilding index: {e}"
-
-
-@mcp.tool()
-def openmc_lsp_navigate(
-    command: str,
-    location: str,
-    top_k: int = 15,
-) -> str:
-    """LSP-based C++ code navigation via clangd.  Compiler-accurate symbol
-    resolution — resolves namespaces, templates, and overloads through the
-    real C++ type system.  Zero false positives.
-
-    Commands:
-      symbols    — list all symbols defined in a file (location = file path)
-      definition — jump to where the symbol on a given line is defined
-                   (location = file:line)
-      references — find every file+line that references the symbol
-                   (location = file:line)
-      related    — rank other files by how many typed connections they share
-                   with this file (location = file path)
-
-    Requires clangd and build/compile_commands.json.
-
-    Args:
-        command: "symbols", "definition", "references", or "related"
-        location: File path or file:line (e.g. "src/simulation.cpp:132")
-        top_k: For 'related' — number of files to return (default 15)
-    """
-    global _lsp_client
-
-    try:
-        from openmc_lsp import (
-            ClangdClient, parse_file_location,
-            cmd_symbols, cmd_definition, cmd_references, cmd_related,
-        )
-
-        filepath, line = parse_file_location(location)
-
-        # Validate file exists
-        fpath = Path(filepath)
-        if not fpath.is_absolute():
-            fpath = OPENMC_ROOT / fpath
-        if not fpath.exists():
-            return f"Error: File not found: {filepath}"
-
-        # Initialize or reuse clangd client
-        if _lsp_client is None:
-            _lsp_client = ClangdClient()
-
-        if command == "symbols":
-            return cmd_symbols(_lsp_client, filepath)
-        elif command == "definition":
-            if line is None:
-                return ("Error: 'definition' requires file:line format "
-                        "(e.g. 'src/simulation.cpp:132')")
-            return cmd_definition(_lsp_client, filepath, line)
-        elif command == "references":
-            if line is None:
-                return ("Error: 'references' requires file:line format "
-                        "(e.g. 'src/simulation.cpp:132')")
-            return cmd_references(_lsp_client, filepath, line)
-        elif command == "related":
-            return cmd_related(_lsp_client, filepath, top_k=top_k)
-        else:
-            return (f"Error: Unknown command '{command}'. "
-                    f"Use: symbols, definition, references, related")
-    except RuntimeError as e:
-        return f"Error: {e}"
-    except Exception as e:
-        _lsp_client = None  # reset on unexpected failure
-        return f"Error during LSP navigation: {e}"
 
 
 if __name__ == "__main__":

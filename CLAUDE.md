@@ -1,6 +1,6 @@
 ## OpenMC Codebase Tools
 
-Three MCP tools are available for navigating the OpenMC codebase. They are
+Two MCP tools are available for navigating the OpenMC codebase. They are
 registered in `.mcp.json` and appear automatically in every session.
 
 ### Tool overview
@@ -22,11 +22,6 @@ choice to the user. Do not ask conversationally — always use the widget.
 Do not skip this step even if the index looks current — the user may have
 uncommitted changes that warrant a rebuild.
 
-**`openmc_lsp_navigate`** — LSP navigation via clangd. Resolves C++ symbols
-through the real type system — namespaces, templates, overloads. Commands:
-`symbols`, `definition`, `references`, `related`. Zero false positives.
-Requires clangd and `build/compile_commands.json`.
-
 ### Important: use RAG search before grep
 
 When exploring unfamiliar code or checking what a change might affect, use
@@ -46,9 +41,8 @@ each area will greatly improve your global vision of the repository and help you
 to "know what you don't know".
 
 When you already know the exact symbol name and need to trace its usage (e.g.,
-"every line that writes to `progeny_per_particle`"), `grep` or
-`openmc_lsp_navigate` are better choices — you don't have to force a RAG search
-for precise symbol lookups.
+"every line that writes to `progeny_per_particle`"), `grep` is the better
+choice — you don't have to force a RAG search for precise symbol lookups.
 
 ### When to use each tool
 
@@ -56,11 +50,6 @@ for precise symbol lookups.
   discovery by meaning, cross-cutting concerns, Python and docs. **Use this
   before grep when exploring unfamiliar code or checking what a change might
   affect.**
-- **`openmc_lsp_navigate`**: "Where is this C++ symbol defined, who calls it,
-  and what files are truly connected to this one?" — compiler-accurate file:line
-  locations, zero false positives. When a common method name like `reset`, `get`,
-  `size`, or `create` is used by multiple classes, `grep` gives you a haystack —
-  LSP gives you the needle.
 - **`grep`/`Glob`/`Read`**: Precise text match, unique string lookup, reading
   specific files. Best when you know the exact symbol name.
 

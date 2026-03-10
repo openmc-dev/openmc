@@ -18,9 +18,20 @@ activity is the one-time model download on first use:
       analytics the library might otherwise send.
 
   Subsequent runs (model already cached):
-    - HF_HUB_OFFLINE=1 is set automatically (see code below), which prevents
-      ALL network calls. The model loads entirely from the local cache at
-      ~/.cache/huggingface/hub/.
+    - HF_HUB_OFFLINE=1 is set automatically (see _set_offline_if_cached()
+      below), which prevents ALL network calls. The model loads entirely
+      from the local cache at ~/.cache/huggingface/hub/.
+
+How the model is downloaded
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The SentenceTransformer() constructor (called in __init__ below) handles
+the download automatically on first use. It calls into the huggingface_hub
+library, which downloads the model files from:
+
+    https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
+
+The files are saved to ~/.cache/huggingface/hub/ and reused on subsequent
+runs. We pass token=False to ensure no authentication token is sent.
 
 This module is imported by both the MCP server (for search queries) and the
 indexer (for bulk embedding of code chunks). The bulk embed() call shows a
@@ -34,21 +45,43 @@ Stray stderr output would interfere with the MCP server's JSON-RPC transport.
 import os
 from pathlib import Path
 
+MODEL_NAME = "all-MiniLM-L6-v2"
+
+# These env vars control logging/telemetry behavior in the HuggingFace
+# libraries. They must be set before the libraries are imported.
 os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
 os.environ.setdefault("HF_HUB_VERBOSITY", "error")
 os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
-# If the model is already downloaded, force fully offline mode so that no
-# network calls are made — not even the etag freshness check that
-# huggingface_hub does by default. The first-ever run will still download
-# normally because the cache dir won't exist yet. This MUST be set before
-# importing sentence_transformers, which reads the env var at import time.
-_MODEL_NAME = "all-MiniLM-L6-v2"
-_HF_CACHE = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
-if (_HF_CACHE / f"models--sentence-transformers--{_MODEL_NAME}").exists():
-    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
+def _set_offline_if_cached():
+    """If the model has already been downloaded, tell huggingface_hub to
+    skip all network calls by setting HF_HUB_OFFLINE=1.
+
+    Without this, huggingface_hub makes an HTTP request to huggingface.co
+    on every load to check if the cached model is still up to date — even
+    though the model never changes. Setting HF_HUB_OFFLINE=1 prevents this.
+
+    This must run before sentence_transformers is imported, because the
+    library reads the env var at import time.
+    """
+    # HuggingFace caches downloaded models under ~/.cache/huggingface/hub/
+    # in directories named like "models--sentence-transformers--all-MiniLM-L6-v2".
+    # The HF_HOME env var can override the base cache location.
+    hf_home = os.environ.get("HF_HOME")
+    if hf_home:
+        cache_dir = Path(hf_home) / "hub"
+    else:
+        cache_dir = Path.home() / ".cache" / "huggingface" / "hub"
+
+    model_dir = cache_dir / f"models--sentence-transformers--{MODEL_NAME}"
+    if model_dir.exists():
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
+
+_set_offline_if_cached()
 
 import transformers  # noqa: E402 — must come after env vars are set
 transformers.logging.disable_progress_bar()
@@ -57,8 +90,12 @@ transformers.logging.disable_progress_bar()
 class EmbeddingProvider:
     """Sentence-transformers embedder using all-MiniLM-L6-v2."""
 
-    def __init__(self, model_name: str = _MODEL_NAME):
+    def __init__(self, model_name: str = MODEL_NAME):
         from sentence_transformers import SentenceTransformer
+
+        # This constructor loads the model from the local cache. If the model
+        # has not been downloaded yet, it downloads it from huggingface.co
+        # (~80MB, one-time). token=False ensures no auth token is sent.
         self.model = SentenceTransformer(model_name, token=False)
         self.dim = self.model.get_sentence_embedding_dimension()
 

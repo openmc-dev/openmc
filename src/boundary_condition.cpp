@@ -265,7 +265,7 @@ void RotationalPeriodicBC::handle_particle(
 
   // Handle phantom birth location if migration present
   if (simulation::migration_present) {
-    auto r_born = p.r_born();
+    auto & r_born = p.r_born();
     Position new_r_born;
     new_r_born[zero_axis_idx_] = r_born[zero_axis_idx_];
     new_r_born[axis_1_idx_] =

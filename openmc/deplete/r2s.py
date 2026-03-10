@@ -138,7 +138,7 @@ class R2SManager:
             self.domains = list(domains)
         else:
             self.method = 'cell-based'
-            self.domains = domains
+            self.domains = list(domains)
         self.results = {}
 
     def run(

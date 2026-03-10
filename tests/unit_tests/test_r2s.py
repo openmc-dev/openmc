@@ -101,7 +101,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
 
 
 def test_r2s_multi_mesh(simple_model_and_mesh, tmp_path):
-    model, *_ = simple_model_and_mesh
+    model, _, _ = simple_model_and_mesh
 
     # Two 1x1x1 meshes that together cover the full domain, split along y.
     # Each mesh element spans the full x range [-10, 10], crossing the x=0

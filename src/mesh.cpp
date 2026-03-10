@@ -1163,7 +1163,7 @@ void StructuredMesh::raytrace_mesh(
   Position global_r = r0;
   Position local_r = local_coords(r0);
 
-  const int n = n_neighbors();
+  const int n = n_dimension_;
 
   // Flag if position is inside the mesh
   bool inside_mesh;
@@ -1260,7 +1260,7 @@ double StructuredMesh::distance_to_mesh(const MeshIndex& ijk,
   // For all directions outside the mesh, find the distance that we need
   // to travel to reach the next surface. Use the largest distance, as
   // only this will cross all outer surfaces.
-  const int n = n_neighbors();
+  const int n = n_dimension_;
   k_max = -1;
   for (int k = 0; k < n; ++k) {
     if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
@@ -1318,7 +1318,7 @@ void StructuredMesh::surface_bins_crossed(
     void surface(const MeshIndex& ijk, int k, bool max, bool inward) const
     {
       int i_bin =
-        4 * mesh->n_neighbors() * mesh->get_bin_from_indices(ijk) + 4 * k;
+        4 * mesh->n_dimension_ * mesh->get_bin_from_indices(ijk) + 4 * k;
       if (max)
         i_bin += 2;
       if (inward)
@@ -1342,6 +1342,14 @@ void StructuredMesh::surface_bins_crossed(
 int RegularMesh::set_grid()
 {
   tensor::Tensor<int> shape(shape_.data(), static_cast<size_t>(n_dimension_));
+
+  labels_.clear();
+  if (n_dimension_ > 0)
+    labels_.push_back("x");
+  if (n_dimension_ > 1)
+    labels_.push_back("y");
+  if (n_dimension_ > 2)
+    labels_.push_back("z");
 
   // Check that dimensions are all greater than zero
   if ((shape <= 0).any()) {
@@ -1703,6 +1711,8 @@ int RectilinearMesh::set_grid()
     static_cast<int>(grid_[1].size()) - 1,
     static_cast<int>(grid_[2].size()) - 1};
 
+  labels_ = {"x", "y", "z"};
+
   for (const auto& g : grid_) {
     if (g.size() < 2) {
       set_errmsg("x-, y-, and z- grids for rectilinear meshes "
@@ -1985,6 +1995,8 @@ int CylindricalMesh::set_grid()
   shape_ = {static_cast<int>(grid_[0].size()) - 1,
     static_cast<int>(grid_[1].size()) - 1,
     static_cast<int>(grid_[2].size()) - 1};
+
+  labels_ = {"r", "phi", "z"};
 
   for (const auto& g : grid_) {
     if (g.size() < 2) {
@@ -2312,9 +2324,11 @@ int SphericalMesh::set_grid()
     static_cast<int>(grid_[1].size()) - 1,
     static_cast<int>(grid_[2].size()) - 1};
 
+  labels_ = {"r", "theta", "phi"};
+
   for (const auto& g : grid_) {
     if (g.size() < 2) {
-      set_errmsg("x-, y-, and z- grids for spherical meshes "
+      set_errmsg("r-, theta-, and phi- grids for spherical meshes "
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
@@ -2397,8 +2411,6 @@ double SphericalMesh::volume(const MeshIndex& ijk) const
 HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
-  n_dimension_ = 3;
-  correlated_axes_ = {{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {3}};
   grid_ = get_node_array<double>(node, "grid");
   radius_ = std::stoi(get_node_value(node, "radius"));
   size_ = std::stod(get_node_value(node, "size"));
@@ -2421,8 +2433,6 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 
 HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
-  n_dimension_ = 3;
-  correlated_axes_ = {{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {3}};
   read_dataset(group, "grid", grid_);
   read_attribute(group, "radius", radius_);
   read_attribute(group, "size", size_);
@@ -2449,6 +2459,13 @@ std::string HexagonalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+std::string StructuredMesh::bin_label(int bin) const
+{
+  MeshIndex ijk = get_indices_from_bin(bin);
+  return fmt::format(
+    "Mesh Index ({}, {}, {}, {})", ijk[0], ijk[1], -ijk[0] - ijk[1], ijk[2]);
+}
+
 int HexagonalMesh::get_bin(Position r) const
 {
   // Determine indices
@@ -2465,11 +2482,6 @@ int HexagonalMesh::get_bin(Position r) const
 int HexagonalMesh::n_bins() const
 {
   return (1 + 3 * (radius_ + 1) * radius_) * (grid_.size() - 1);
-}
-
-int HexagonalMesh::n_surface_bins() const
-{
-  return 4 * 4 * n_bins();
 }
 
 int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
@@ -2649,7 +2661,7 @@ double HexagonalMesh::distance_to_mesh(const MeshIndex& ijk,
   // For all directions outside the mesh, find the distance that we need
   // to travel to reach the next surface. Use the largest distance, as
   // only this will cross all outer surfaces.
-  const int n = n_neighbors();
+  const int n = n_dimension_;
   k_max = -1;
 
   for (int k = 0; k < n; ++k) {
@@ -2673,6 +2685,10 @@ double HexagonalMesh::distance_to_mesh(const MeshIndex& ijk,
 
 int HexagonalMesh::set_grid()
 {
+  n_dimension_ = 4;
+  correlated_axes_ = {{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {3}};
+
+  labels_ = {"r", "q", "s", "z"};
 
   if (orientation_ == Orientation::x) {
     q_ = {std::sqrt(3.0), 0.0, 0.0};
@@ -2693,7 +2709,7 @@ int HexagonalMesh::set_grid()
 
   if (grid_.size() < 2) {
     set_errmsg("z- grid for hexagonal meshes "
-               "must each have at least 2 points");
+               "must have at least 2 points");
     return OPENMC_E_INVALID_ARGUMENT;
   }
   if (std::adjacent_find(grid_.begin(), grid_.end(), std::greater_equal<>()) !=

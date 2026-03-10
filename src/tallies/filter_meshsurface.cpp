@@ -30,86 +30,149 @@ std::string MeshSurfaceFilter::text_label(int bin) const
 
   // Get flattend mesh index and surface index.
   int i_mesh = bin / (4 * n_dim);
-  MeshDir surf_dir = static_cast<MeshDir>(bin % (4 * n_dim));
 
   // Get mesh index part of label.
   std::string out = MeshFilter::text_label(i_mesh);
-
-  // Get surface part of label.
-  switch (surf_dir) {
-  case MeshDir::OUT_LEFT:
-    out += " Outgoing, x-min";
-    break;
-  case MeshDir::IN_LEFT:
-    out += " Incoming, x-min";
-    break;
-  case MeshDir::OUT_RIGHT:
-    out += " Outgoing, x-max";
-    break;
-  case MeshDir::IN_RIGHT:
-    out += " Incoming, x-max";
-    break;
-  case MeshDir::OUT_BACK:
-    out += " Outgoing, y-min";
-    break;
-  case MeshDir::IN_BACK:
-    out += " Incoming, y-min";
-    break;
-  case MeshDir::OUT_FRONT:
-    out += " Outgoing, y-max";
-    break;
-  case MeshDir::IN_FRONT:
-    out += " Incoming, y-max";
-    break;
-  case MeshDir::OUT_BOTTOM:
-    out += " Outgoing, z-min";
-    break;
-  case MeshDir::IN_BOTTOM:
-    out += " Incoming, z-min";
-    break;
-  case MeshDir::OUT_TOP:
-    out += " Outgoing, z-max";
-    break;
-  case MeshDir::IN_TOP:
-    out += " Incoming, z-max";
-    break;
+  auto surf_dir = (bin % (4 * n_dim));
+  if (mesh->mesh_type != HexagonalMesh::mesh_type) {
+    // Get surface part of label.
+    switch (surf_dir) {
+    case 0:
+      out += fmt::format(" Outgoing, {}-min", mesh->labels_[0]);
+      break;
+    case 1:
+      out += fmt::format(" Incoming, {}-min", mesh->labels_[0]);
+      break;
+    case 2:
+      out += fmt::format(" Outgoing, {}-max", mesh->labels_[0]);
+      break;
+    case 3:
+      out += fmt::format(" Incoming, {}-max", mesh->labels_[0]);
+      break;
+    case 4:
+      out += fmt::format(" Outgoing, {}-min", mesh->labels_[1]);
+      break;
+    case 5:
+      out += fmt::format(" Incoming, {}-min", mesh->labels_[1]);
+      break;
+    case 6:
+      out += fmt::format(" Outgoing, {}-max", mesh->labels_[1]);
+      break;
+    case 7:
+      out += fmt::format(" Incoming, {}-max", mesh->labels_[1]);
+      break;
+    case 8:
+      out += fmt::format(" Outgoing, {}-min", mesh->labels_[2]);
+      break;
+    case 9:
+      out += fmt::format(" Incoming, {}-min", mesh->labels_[2]);
+      break;
+    case 10:
+      out += fmt::format(" Outgoing, {}-max", mesh->labels_[2]);
+      break;
+    case 11:
+      out += fmt::format(" Incoming, {}-max", mesh->labels_[2]);
+      break;
+    }
+  } else {
+    // Get surface part of label.
+    switch (surf_dir) {
+    case 0:
+      out += fmt::format(
+        " Outgoing, {}-min {}-max", mesh->labels_[0], mesh->labels_[1]);
+      break;
+    case 1:
+      out += fmt::format(
+        " Incoming, {}-min {}-max", mesh->labels_[0], mesh->labels_[1]);
+      break;
+    case 2:
+      out += fmt::format(
+        " Outgoing, {}-max {}-min", mesh->labels_[0], mesh->labels_[1]);
+      break;
+    case 3:
+      out += fmt::format(
+        " Incoming, {}-max {}-min", mesh->labels_[0], mesh->labels_[1]);
+      break;
+    case 4:
+      out += fmt::format(
+        " Outgoing, {}-min {}-max", mesh->labels_[1], mesh->labels_[2]);
+      break;
+    case 5:
+      out += fmt::format(
+        " Incoming, {}-min {}-max", mesh->labels_[1], mesh->labels_[2]);
+      break;
+    case 6:
+      out += fmt::format(
+        " Outgoing, {}-max {}-min", mesh->labels_[1], mesh->labels_[2]);
+      break;
+    case 7:
+      out += fmt::format(
+        " Incoming, {}-max {}-min", mesh->labels_[1], mesh->labels_[2]);
+      break;
+    case 8:
+      out += fmt::format(
+        " Outgoing, {}-min {}-max", mesh->labels_[2], mesh->labels_[0]);
+      break;
+    case 9:
+      out += fmt::format(
+        " Incoming, {}-min {}-max", mesh->labels_[2], mesh->labels_[0]);
+      break;
+    case 10:
+      out += fmt::format(
+        " Outgoing, {}-max {}-min", mesh->labels_[2], mesh->labels_[0]);
+      break;
+    case 11:
+      out += fmt::format(
+        " Incoming, {}-max {}-min", mesh->labels_[2], mesh->labels_[0]);
+      break;
+    case 12:
+      out += fmt::format(" Outgoing, {}-min", mesh->labels_[3]);
+      break;
+    case 13:
+      out += fmt::format(" Incoming, {}-min", mesh->labels_[3]);
+      break;
+    case 14:
+      out += fmt::format(" Outgoing, {}-max", mesh->labels_[3]);
+      break;
+    case 15:
+      out += fmt::format(" Incoming, {}-max", mesh->labels_[3]);
+      break;
+    }
+    return out;
   }
 
-  return out;
-}
+  void MeshSurfaceFilter::set_mesh(int32_t mesh)
+  {
+    mesh_ = mesh;
+    n_bins_ = model::meshes[mesh_]->n_surface_bins();
+  }
 
-void MeshSurfaceFilter::set_mesh(int32_t mesh)
-{
-  mesh_ = mesh;
-  n_bins_ = model::meshes[mesh_]->n_surface_bins();
-}
+  //==============================================================================
+  // C-API functions
+  //==============================================================================
 
-//==============================================================================
-// C-API functions
-//==============================================================================
+  extern "C" int openmc_meshsurface_filter_get_mesh(
+    int32_t index, int32_t* index_mesh)
+  {
+    return openmc_mesh_filter_get_mesh(index, index_mesh);
+  }
 
-extern "C" int openmc_meshsurface_filter_get_mesh(
-  int32_t index, int32_t* index_mesh)
-{
-  return openmc_mesh_filter_get_mesh(index, index_mesh);
-}
+  extern "C" int openmc_meshsurface_filter_set_mesh(
+    int32_t index, int32_t index_mesh)
+  {
+    return openmc_mesh_filter_set_mesh(index, index_mesh);
+  }
 
-extern "C" int openmc_meshsurface_filter_set_mesh(
-  int32_t index, int32_t index_mesh)
-{
-  return openmc_mesh_filter_set_mesh(index, index_mesh);
-}
+  extern "C" int openmc_meshsurface_filter_get_translation(
+    int32_t index, double translation[3])
+  {
+    return openmc_mesh_filter_get_translation(index, translation);
+  }
 
-extern "C" int openmc_meshsurface_filter_get_translation(
-  int32_t index, double translation[3])
-{
-  return openmc_mesh_filter_get_translation(index, translation);
-}
-
-extern "C" int openmc_meshsurface_filter_set_translation(
-  int32_t index, double translation[3])
-{
-  return openmc_mesh_filter_set_translation(index, translation);
-}
+  extern "C" int openmc_meshsurface_filter_set_translation(
+    int32_t index, double translation[3])
+  {
+    return openmc_mesh_filter_set_translation(index, translation);
+  }
 
 } // namespace openmc

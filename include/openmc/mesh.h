@@ -329,8 +329,6 @@ public:
 
   int n_surface_bins() const override;
 
-  virtual int n_neighbors() const { return n_dimension_; }
-
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
@@ -470,6 +468,7 @@ public:
   // Data members
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
   std::vector<std::vector<int>> correlated_axes_ = {{0}, {1}, {2}};
+  std::vector<std::string> labels_;
 
 protected:
 };
@@ -743,6 +742,10 @@ public:
   HexagonalMesh(hid_t group);
 
   // Overridden methods
+
+  //! Get a label for the mesh bin
+  std::string bin_label(int bin) const override;
+
   int get_bin(Position r) const override;
 
   int n_bins() const override;
@@ -765,8 +768,6 @@ public:
   std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
-
-  int n_neighbors() const override { return 4; }
 
   Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 

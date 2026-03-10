@@ -2454,6 +2454,7 @@ int HexagonalMesh::get_bin(Position r) const
   // Determine indices
   bool in_mesh;
   MeshIndex ijk = get_indices(r, in_mesh);
+
   if (!in_mesh)
     return -1;
 
@@ -2673,16 +2674,16 @@ double HexagonalMesh::distance_to_mesh(const MeshIndex& ijk,
 int HexagonalMesh::set_grid()
 {
 
-  if (orientation_ == Orientation::y) {
-    q_ = {0.0, -1.0, 0.0};
-    r_ = {0.5 * std::sqrt(3.0), 0.5, 0.0};
-    q_dual_ = {1.0 / std::sqrt(3.0), -1.0, 0.0};
-    r_dual_ = {2.0 / std::sqrt(3.0), 0.0, 0.0};
+  if (orientation_ == Orientation::x) {
+    q_ = {std::sqrt(3.0), 0.0, 0.0};
+    r_ = {0.5 * std::sqrt(3), 1.5, 0.0};
+    q_dual_ = {std::sqrt(3.0) / 3.0, -1.0 / 3.0, 0.0};
+    r_dual_ = {0.0, 2.0 / 3.0, 0.0};
   } else {
-    q_ = {-1.0, 0.0, 0.0};
-    r_ = {0.5, 0.5 * std::sqrt(3.0), 0.0};
-    q_dual_ = {-1.0, 1.0 / std::sqrt(3.0), 0.0};
-    r_dual_ = {0.0, 2.0 / std::sqrt(3.0), 0.0};
+    q_ = {0.0, std::sqrt(3.0), 0.0};
+    r_ = {1.5, 0.5 * std::sqrt(3.0), 0.0};
+    q_dual_ = {-1.0 / 3.0, std::sqrt(3.0) / 3.0, 0.0};
+    r_dual_ = {2.0 / 3.0, 0.0, 0.0};
   }
 
   q_ *= size_;
@@ -4158,7 +4159,7 @@ void LibMesh::set_score_data(const std::string& var_name,
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-       it++) {
+    it++) {
     if (!(*it)->active()) {
       continue;
     }

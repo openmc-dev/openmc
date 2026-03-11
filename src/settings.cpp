@@ -933,24 +933,35 @@ void read_settings_xml(pugi::xml_node root)
       ssw_max_files = 1;
     }
 
+    // Determine if sites are to be stored in MCPL format
     if (check_for_node(node_ssw, "mcpl")) {
       surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
     }
-    // Get cell information
+
+    // Get cells information from 'cells'
     if (check_for_node(node_ssw, "cells")) {
-      // raise an error if the new syntax is mixed with the old syntax
+      // Error if the new syntax is mixed with the previous syntax
       if (check_for_node(node_ssw, "cell") ||
           check_for_node(node_ssw, "cellfrom") ||
           check_for_node(node_ssw, "cellto")) {
-        fatal_error("'cells' cannot be used at the same time with 'cell', "
+        fatal_error("In the <surf_source_write> element, 'cells' cannot be "
+                    "used at the same time with 'cell', "
                     "'cellfrom' or 'cellto'.");
       }
+
+      // Read 'cells' information
       auto ids = get_node_array<int64_t>(node_ssw, "cells");
+      // If 'directions' is declared, retrieve directions
       if (check_for_node(node_ssw, "directions")) {
         auto directions = get_node_array<std::string>(node_ssw, "directions");
+
+        // Check that 'cells' and 'directions' have the same length
         if (directions.size() != ids.size()) {
-          fatal_error("'directions' must have the same length as 'cells'");
+          fatal_error("In the <surf_source_write> element, 'directions' must "
+                      "have the same length as 'cells'.");
         }
+
+        // Store directions
         for (std::size_t i {0}; i < ids.size(); ++i) {
           SSWCellType direction = ssw_cell_type_from_string(directions[i]);
           auto [it, inserted] = ssw_cells.emplace(ids[i], direction);
@@ -960,38 +971,50 @@ void read_settings_xml(pugi::xml_node root)
             it->second = SSWCellType::Both;
           }
         }
-      } else { // default behavior if 'directions' is not defined
+      } else {
+        // If 'directions' is not declared, assume 'both' for every cells
         for (std::size_t i {0}; i < ids.size(); ++i) {
           ssw_cells.emplace(ids[i], SSWCellType::Both);
         }
       }
     } else {
+      // If 'cells' is not declared, get cells information from 'cell', 'cellto'
+      // or 'cellfrom' instead - will be deprecated in the future
+
+      // Error if 'directions' is set without 'cells'
       if (check_for_node(node_ssw, "directions")) {
-        fatal_error("'directions' cannot be used if 'cells' is not defined.");
+        fatal_error("In the <surf_source_write> element, 'directions' cannot "
+                    "be used if 'cells' is not defined.");
       }
-      // old syntax will be deprecated in the future
+
+      // Cell
       if (check_for_node(node_ssw, "cell")) {
-        warning("'cell' is deprecated and will be removed in the future. Use "
+        warning("In the <surf_source_write> element, 'cell' is deprecated and "
+                "will be removed in the future. Please use "
                 "'cells' and 'directions' instead.");
         ssw_cell_id = std::stoll(get_node_value(node_ssw, "cell"));
         ssw_cells.emplace(ssw_cell_id, SSWCellType::Both);
       }
+      // Cellfrom
       if (check_for_node(node_ssw, "cellfrom")) {
-        warning("'cellfrom' is deprecated and will be removed in the future. "
-                "Use 'cells' and 'directions' instead.");
+        warning("In the <surf_source_write> element, 'cellfrom' is deprecated "
+                "and will be removed in the future. "
+                "Please use 'cells' and 'directions' instead.");
         if (ssw_cell_id != C_NONE) {
-          fatal_error(
-            "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+          fatal_error("In the <surf_source_write> element, 'cell', 'cellfrom' "
+                      "and 'cellto' cannot be used at the same time.");
         }
         ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellfrom"));
         ssw_cells.emplace(ssw_cell_id, SSWCellType::From);
       }
+      // Cellto
       if (check_for_node(node_ssw, "cellto")) {
-        warning("'cellto' is deprecated and will be removed in the future. Use "
+        warning("In the <surf_source_write> element, 'cellto' is deprecated "
+                "and will be removed in the future. Please use "
                 "'cells' and 'directions' instead.");
         if (ssw_cell_id != C_NONE) {
-          fatal_error(
-            "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+          fatal_error("In the <surf_source_write> element, 'cell', 'cellfrom' "
+                      "and 'cellto' cannot be used at the same time.");
         }
         ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellto"));
         ssw_cells.emplace(ssw_cell_id, SSWCellType::To);
@@ -1348,7 +1371,7 @@ SSWCellType ssw_cell_type_from_string(std::string_view s)
     return SSWCellType::To;
   if (s == "both")
     return SSWCellType::Both;
-  throw std::invalid_argument("direction must be 'from', 'to', or 'both'");
+  fatal_error("Direction must be 'from', 'to', or 'both'");
 }
 
 //==============================================================================

@@ -304,6 +304,8 @@ Where :math:`E_{\text{min}}^g` and :math:`E_{\text{max}}^g` are the group energy
 :math:`v(E)` is the neutron velocity calculated using relativistic kinematics,
 :math:`k` is a normalization constant for the :math:`\frac{1}{E}` spectrum.
 
+This equation is valid when inside the group boundaries the neutron spectrum follows a typical :math:`\frac{1}{E}` slowing down spectrum. This assumption is widely used when generating fine group neutron cross section data libraries from continuous energy data.
+
 The solution to this equation is:
 
 .. math::

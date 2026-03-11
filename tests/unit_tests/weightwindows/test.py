@@ -122,7 +122,8 @@ def model():
     return model
 
 
-def test_weightwindows(model, wws):
+@pytest.mark.parametrize("shared_secondary", [False, True])
+def test_weightwindows(model, wws, shared_secondary):
 
     ww_files = ('ww_n.txt', 'ww_p.txt')
     cwd = Path(__file__).parent.absolute()
@@ -131,6 +132,7 @@ def test_weightwindows(model, wws):
     with cdtemp(filepaths):
         # run once with variance reduction off
         model.settings.weight_windows_on = False
+        model.settings.shared_secondary_bank = shared_secondary
         analog_sp = model.run()
         os.rename(analog_sp, 'statepoint.analog.h5')
 
@@ -247,6 +249,10 @@ def test_photon_heating(run_in_tmpdir):
     model.settings.run_mode = 'fixed source'
     model.settings.batches = 5
     model.settings.particles = 100
+    # Pin to local mode: Compton scattering + atomic relaxation can produce
+    # small negative per-event heating scores (see PR #XXXX for the fix).
+    # Different PRNG streams change which mesh bins receive these events.
+    model.settings.shared_secondary_bank = False
 
     tally = openmc.Tally()
     tally.scores = ['heating']

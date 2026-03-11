@@ -537,6 +537,7 @@ void Particle::event_death()
 
   // Finish particle track output.
   if (write_track()) {
+    write_particle_track(*this);
     finalize_particle_track(*this);
   }
 

@@ -79,13 +79,16 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
+
 def translate_cell(position):
     cell_trans = [cell for cell in openmc.lib.cells.values() if cell.name == 'trans_cell'][0]
     openmc.lib.cells[cell_trans.id].translation = [0, 0, position]
 
+
 def rotate_cell(angle):
     cell_rot = [cell for cell in openmc.lib.cells.values() if cell.name == 'rot_cell'][0]
     openmc.lib.cells[cell_rot.id].rotation = [0, 0, angle]
+
 
 def adjust_material_density(density_factor):
     f = [material for material in openmc.lib.materials.values() if material.name == 'f'][0]
@@ -96,12 +99,12 @@ def adjust_material_density(density_factor):
     densities[nuc_idx] = new_density
     openmc.lib.materials[f.id].set_densities(nuclides, densities)
 
-@pytest.mark.parametrize("function, x0, x1, bracket, ref_result", [
-    (translate_cell, -11, -5, [-15,0], 'depletion_with_translation'),
-    (rotate_cell, -80, -50, [-90,0], 'depletion_with_rotation'),
-    (adjust_material_density, 0.5, 2, [0.3, 3.0], 'depletion_with_refuel')
-    ])
 
+@pytest.mark.parametrize("function, x0, x1, bracket, ref_result", [
+    (translate_cell, -11, -5, (-15, 0), 'depletion_with_translation'),
+    (rotate_cell, -80, -50, (-90, 0), 'depletion_with_rotation'),
+    (adjust_material_density, 0.5, 2, (0.3, 3.0), 'depletion_with_refuel')
+])
 def test_keff_search_control(run_in_tmpdir, model, function, x0, x1, bracket, ref_result):
 
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
@@ -114,10 +117,10 @@ def test_keff_search_control(run_in_tmpdir, model, function, x0, x1, bracket, re
         x0=x0,
         x1=x1,
         bracket=bracket,
-        output=True, 
-        k_tol=1e-1, 
+        output=True,
+        k_tol=1e-1,
         sigma_final=5e-2)
-    
+
     integrator.integrate()
 
     # Get path to test and reference results

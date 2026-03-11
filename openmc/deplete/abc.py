@@ -618,11 +618,6 @@ class Integrator(ABC):
         External source rates for the depletion system.
 
         .. versionadded:: 0.15.3
-    keff_search_control : openmc.deplete._KeffSearchControl
-        Instance of _KeffSearchControl class to perform keff search during
-        transport-depletion simulation.
-
-        .. versionadded:: 0.15.4
 
     """)
 
@@ -1115,7 +1110,7 @@ class Integrator(ABC):
             and modify ``openmc.lib`` objects accordingly (e.g., adjust control
             rod position via ``openmc.lib.cells[...].translation``, material
             density via ``openmc.lib.materials[...].set_densities(...)``, etc.).
-            
+
             **Important**: The function must modify ``openmc.lib`` objects, not
             ``openmc.model`` objects.
         x0: float
@@ -1124,7 +1119,7 @@ class Integrator(ABC):
             Initial upper bound for the keff search.
         bracket : list[float]
             Bracket interval [x_min, x_max] that constrains the allowed parameter
-            values during the keff search. This is a required parameter 
+            values during the keff search. This is a required parameter
             that defines the absolute bounds for the search. The bracket must contain
             exactly 2 elements with bracket[0] < bracket[1]. These values are passed
             directly to the ``x_min`` and ``x_max`` optional arguments in
@@ -1186,8 +1181,8 @@ class Integrator(ABC):
 
         """
         self._keff_search_control = _KeffSearchControl(
-            self.operator, 
-            function, 
+            self.operator,
+            function,
             x0,
             x1,
             bracket,

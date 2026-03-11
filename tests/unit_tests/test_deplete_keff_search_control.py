@@ -69,17 +69,20 @@ def integrator(operator):
     return openmc.deplete.PredictorIntegrator(
             operator, [1,1], 0.0, timestep_units = 'd')
 
+
 def translate_cell(position):
     """Helper function to translate a cell"""
     cell = [c for c in openmc.lib.cells.values() if c.name == 'universe_cell'][0]
     openmc.lib.cells[cell.id].translation = [0, 0, position]
     return position
 
+
 def rotate_cell(angle):
     """Helper function to rotate a cell"""
     cell = [c for c in openmc.lib.cells.values() if c.name == 'universe_cell'][0]
     openmc.lib.cells[cell.id].rotation = [0, 0, angle]
     return angle
+
 
 def adjust_fuel_density(density_factor):
     """Helper function to adjust fuel density"""
@@ -89,6 +92,7 @@ def adjust_fuel_density(density_factor):
     new_densities = [d * density_factor for d in current_densities]
     openmc.lib.materials[fuel.id].set_densities(nuclides, new_densities)
     return density_factor
+
 
 @pytest.mark.parametrize("function, x0, x1, bracket, test_value", [
     (translate_cell, -1.0, 1.0, [-5.0, 5.0], 0.5),
@@ -110,12 +114,12 @@ def test_integrator_add_keff_search_control(run_in_tmpdir, model, operator, inte
         k_tol=0.1,
         output=False,
     )
-    
+
     assert integrator.keff_search_control.x0 == x0
     assert integrator.keff_search_control.x1 == x1
     assert integrator.keff_search_control.function == test_function
     assert integrator.keff_search_control.search_kwargs['x_min'] == bracket[0]
-    assert integrator.keff_search_control.search_kwargs['x_max'] == bracket[1]  
+    assert integrator.keff_search_control.search_kwargs['x_max'] == bracket[1]
     assert integrator.keff_search_control.search_kwargs['k_tol'] == 0.1
-    assert integrator.keff_search_control.search_kwargs['output'] == False
+    assert not integrator.keff_search_control.search_kwargs['output']
     openmc.lib.finalize()

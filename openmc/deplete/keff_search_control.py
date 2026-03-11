@@ -1,14 +1,15 @@
-import openmc.lib
-from openmc.mpi import comm
 from typing import Callable
 from warnings import warn
 
+import openmc.lib
+
+
 class _KeffSearchControl:
     """Controller for keff search during depletion calculations.
-    
-    This class performs keff searches to maintain a target keff by adjusting
-    a model parameter through a provided function.
-    
+
+    This class performs keff searches to maintain a target keff by adjusting a
+    model parameter through a provided function.
+
     Parameters
     ----------
     operator : openmc.deplete.Operator
@@ -20,11 +21,12 @@ class _KeffSearchControl:
     x1 : float
         Initial upper bound for the keff search
     bracket : list[float]
-        Absolute bracketing interval lower and upper
-        if keff search solution lies off these limits the closest
-        limit will be set as new result.
-    search_kwargs : dict, optional
-        Additional keyword arguments to pass to `model.keff_search`
+        Absolute bracketing interval lower and upper. If the keff search
+        solution lies off these limits the closest limit will be set as new
+        result.
+    **search_kwargs : dict, optional
+        Additional keyword arguments to pass to :meth:`openmc.Model.keff_search`
+
     """
     def __init__(self, operator, function: Callable, x0: float, x1: float, bracket: list[float], **search_kwargs):
         if len(bracket) != 2:
@@ -41,14 +43,14 @@ class _KeffSearchControl:
 
     def search_for_keff(self, x, step_index):
         """Perform keff search and update the atom density vector.
-        
+
         Parameters
         ----------
         x : list of numpy.ndarray
             Current atom density vector (atoms per material)
         step_index : int
             Current depletion step index
-            
+
         Returns
         -------
         x : list of numpy.ndarray
@@ -59,26 +61,26 @@ class _KeffSearchControl:
         root = self._search_for_keff()
         x = self._update_vec(x)
         return x, root
-        
+
     def _search_for_keff(self) -> float:
         """Perform the keff search using the model's keff_search method.
-        
+
         Returns
         -------
         float
             Parameter value that achieves target keff
-            
+
         Raises
         ------
         ValueError
             If the keff search fails to converge
         """
-        with openmc.lib.TemporarySession(model=self.operator.model) as session:
+        with openmc.lib.TemporarySession(self.operator.model):
             # Only pass the first 3 required args plus explicitly provided kwargs
             result = self.operator.model.keff_search(
-                self.function, 
-                self.x0, 
-                self.x1, 
+                self.function,
+                self.x0,
+                self.x1,
                 **self.search_kwargs
             )
         if not result.converged:
@@ -86,61 +88,54 @@ class _KeffSearchControl:
                 f"Search for keff failed to converge. "
                 f"Termination reason: {result.flag}"
             )
-        
+
         root = result.root
-        
+
         # Check if root is outside the bracket bounds and give a warning
         if root < self.search_kwargs['x_min']:
-            warn(
-                f"keff search result ({root:.6f}) is below the lower bracket bound "
-                f"({self.search_kwargs['x_min']:.6f}). Clamping to bracket lower bound.",
-                UserWarning
-            )
-
+            warn(f"keff search result ({root:.6f}) is below the lower bracket "
+                 f"bound ({self.search_kwargs['x_min']:.6f}).", UserWarning)
         elif root > self.search_kwargs['x_max']:
-            warn(
-                f"keff search result ({root:.6f}) is above the upper bracket bound "
-                f"({self.search_kwargs['x_max']:.6f}). Clamping to bracket upper bound.",
-                UserWarning
-            )
-        
-        #restore the number of initial batches
+            warn(f"keff search result ({root:.6f}) is above the upper bracket "
+                 f"bound ({self.search_kwargs['x_max']:.6f}).", UserWarning)
+
+        # Restore the number of initial batches
         openmc.lib.settings.set_batches(self.operator.model.settings.batches)
 
         return root
 
     def _update_vec(self, x):
         """Update the atom density vector from openmc.lib.materials and AtomNumber object.
-        
-        This method synchronizes the atom densities across all MPI ranks by
-        broadcasting the number object from each rank and updating the x vector
-        with the current atom densities from openmc.lib.materials or AtomNumber object 
-        if the nuclide is not in openmc.lib.materials.
-        
+
+        The depletion vector ``x`` is rank-local, matching the materials owned
+        by ``self.operator.number`` on the current MPI rank. We therefore only
+        update entries for locally owned materials using the compositions
+        currently stored in ``openmc.lib.materials``.
+
         Parameters
         ----------
         x : list of numpy.ndarray
             Atom density vector to update (atoms per material)
-            
+
         Returns
         -------
         list of numpy.ndarray
-            Updated atom density vector synchronized across all ranks
+            Updated rank-local atom density vector
         """
-        for rank in range(comm.size):
-            number_i = comm.bcast(self.operator.number, root=rank)
-            
-            for mat_idx, mat in enumerate(number_i.materials):
-                for nuc in number_i.nuclides:
-                    if nuc in number_i.burnable_nuclides:
-                        nuc_idx = number_i.burnable_nuclides.index(nuc)
-                        volume = number_i.get_mat_volume(mat) # cm^3
-                        if nuc in openmc.lib.materials[int(mat)].nuclides:
-                            _nuc_idx = openmc.lib.materials[int(mat)].nuclides.index(nuc)
-                            val = 1.0e24 * openmc.lib.materials[int(mat)].densities[_nuc_idx] # atom/cm^3
-                        else:
-                            val = number_i.get_atom_density(mat, nuc) # atom/cm^3
-                        x[mat_idx][nuc_idx] = val * volume
-        
-            x = comm.bcast(x, root=rank)
+        number = self.operator.number
+
+        for mat_idx, mat in enumerate(number.materials):
+            lib_material = openmc.lib.materials[int(mat)]
+            nuclides = lib_material.nuclides
+            densities = 1e24 * lib_material.densities
+            volume = number.get_mat_volume(mat)
+
+            for nuc_idx, nuc in enumerate(number.burnable_nuclides):
+                if nuc in nuclides:
+                    lib_nuc_idx = nuclides.index(nuc)
+                    atom_density = densities[lib_nuc_idx]
+                else:
+                    atom_density = number.get_atom_density(mat, nuc)
+                x[mat_idx][nuc_idx] = atom_density * volume
+
         return x

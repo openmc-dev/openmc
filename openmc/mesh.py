@@ -2645,11 +2645,31 @@ class HexagonalMesh(StructuredMesh):
 
     @property
     def lower_left(self):
-        return
+        p = self.pitch
+        r = self.pitch/np.sqrt(3.0)
+        n = self.num_rings
+        offset = np.array([0,0,self.z_grid[0]])
+        if self.orientation == 'x':
+            offset[0] = -p*(n-0.5)
+            offset[1] = -(1+1.5*(n-1))*r
+        else:
+            offset[0] = -(1+1.5*(n-1))*r
+            offset[1] = -p*(n-0.5)
+        return self.origin + offset
     
     @property
     def upper_right(self):
-        return
+        p = self.pitch
+        r = self.pitch/np.sqrt(3.0)
+        n = self.num_rings
+        offset = np.array([0,0,self.z_grid[-1]])
+        if self.orientation == 'x':
+            offset[0] = p*(n-0.5)
+            offset[1] = (1+1.5*(n-1))*r
+        else:
+            offset[0] = (1+1.5*(n-1))*r
+            offset[1] = p*(n-0.5)
+        return self.origin + offset        
                 
     @property
     def num_rings(self):

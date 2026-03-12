@@ -848,11 +848,6 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
-    def _apply_keff_search_control(self, bos_conc):
-        """Apply keff search control to beginning-of-step concentrations."""
-        x = deepcopy(bos_conc)
-        return self._keff_search_control.search_for_keff(x)
-
     def _restore_keff_search_control(self, res):
         """Restore keff search control from restart results."""
         keff_search_root = res.keff_search_root
@@ -869,7 +864,7 @@ class Integrator(ABC):
         """Get beginning-of-step concentrations, rates, and control state."""
         if step_index > 0 or self.operator.prev_res is None:
             if self._keff_search_control is not None and source_rate != 0.0:
-                bos_conc, keff_search_root = self._apply_keff_search_control(
+                keff_search_root = self._keff_search_control.search_for_keff(
                     bos_conc)
             else:
                 keff_search_root = None
@@ -953,7 +948,7 @@ class Integrator(ABC):
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             if self._keff_search_control is not None and source_rate != 0.0:
-                n, keff_search_root = self._apply_keff_search_control(n)
+                keff_search_root = self._keff_search_control.search_for_keff(n)
             else:
                 keff_search_root = None
             res_final = self.operator(n, source_rate if final_step else 0.0)

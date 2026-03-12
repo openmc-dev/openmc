@@ -58,7 +58,7 @@ class _KeffSearchControl:
         """
         root = self._search_for_keff()
         self._update_vec(x)
-        return x, root
+        return root
 
     def _search_for_keff(self) -> float:
         """Perform the keff search using the model's keff_search method.

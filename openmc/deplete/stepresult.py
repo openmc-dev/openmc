@@ -204,7 +204,7 @@ class StepResult:
 
         Parameters
         ----------
-        mat_id : str | int
+        mat_id : str or int
             Material ID as a string or integer
 
         Returns
@@ -218,9 +218,9 @@ class StepResult:
             If specified material ID is not found in the StepResult
 
         """
-        # To avoid crash when calling the mat_id as an int, which is common elsewhere
+        # Coerce to str since internal dictionaries use str keys
         mat_id = str(mat_id)
-        
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', openmc.IDWarning)
             material = openmc.Material(material_id=int(mat_id))

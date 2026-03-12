@@ -424,16 +424,17 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
   double E_b = binding_energy_(last_shell);
   double E = alpha * MASS_ELECTRON_EV;
   double mu_max = 1 - E_b / (alpha * (E - E_b));
-  // If in every angle we cannot eject an electron
-  // Exit with no shell
-  if (mu_max < -1) {
-    *i_shell = -1;
-    break;
-  }
 
   while (true) {
     // Sample Klein-Nishina distribution for trial energy and angle
     std::tie(*alpha_out, *mu) = klein_nishina(alpha, seed);
+
+    // If in every angle we cannot eject an electron
+    // Exit with no shell
+    if (mu_max < -1) {
+      *i_shell = -1;
+      return;
+    }
 
     if (doppler) {
       // Reject angles that cannot eject the most loosely bound electron

@@ -4,6 +4,7 @@
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -136,12 +137,9 @@ std::unordered_set<int> source_write_surf_id;
 CollisionTrackConfig collision_track_config {};
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
-vector<int64_t> ssw_cell_ids;
-SSWCellType ssw_cell_type {SSWCellType::None};
+std::unordered_map<int64_t, SSWCellType> ssw_cells;
 double surface_grazing_cutoff {0.001};
 double surface_grazing_ratio {0.5};
-int64_t ssw_cell_id {C_NONE};
-std::unordered_map<int64_t, SSWCellType> ssw_cells;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -982,6 +980,7 @@ void read_settings_xml(pugi::xml_node root)
     } else {
       // If 'cells' is not declared, get cells information from 'cell', 'cellto'
       // or 'cellfrom' instead - will be deprecated in the future
+      int64_t ssw_cell_id {C_NONE};
 
       // Error if 'directions' is set without 'cells'
       if (check_for_node(node_ssw, "directions")) {

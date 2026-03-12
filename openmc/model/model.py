@@ -2582,7 +2582,10 @@ class Model:
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
-
+        elif isinstance(groups, (list, tuple)):
+            groups = openmc.mgxs.EnergyGroups(groups)
+        else:
+            raise TypeError("groups must be a string or list of floats")
         # Do all work (including MGXS generation) in a temporary directory
         # to avoid polluting the working directory with residual XML files
         with TemporaryDirectory() as tmpdir:

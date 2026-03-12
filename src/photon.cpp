@@ -420,9 +420,26 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
   double* alpha_out, double* mu, int* i_shell, uint64_t* seed) const
 {
   double form_factor_xmax = 0.0;
+  int last_shell = binding_energy_.shape()[0] - 1;
+  double E_b = binding_energy_(last_shell);
+  double E = alpha * MASS_ELECTRON_EV;
+  double mu_max = 1 - E_b / (alpha * (E - E_b));
+  // If in every angle we cannot eject an electron
+  // Exit with no shell
+  if (mu_max < -1) {
+    *i_shell = -1;
+    break;
+  }
+
   while (true) {
     // Sample Klein-Nishina distribution for trial energy and angle
     std::tie(*alpha_out, *mu) = klein_nishina(alpha, seed);
+
+    if (doppler) {
+      // Reject angles that cannot eject the most loosely bound electron
+      if (*mu > mu_max)
+        continue;
+    }
 
     // Note that the parameter used here does not correspond exactly to the
     // momentum transfer q in ENDF-102 Eq. (27.2). Rather, this is the
@@ -478,11 +495,8 @@ void PhotonInteraction::compton_doppler(
 
     double pz_max = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /
                     std::sqrt(2.0 * E * (E - E_b) * (1.0 - mu) + E_b * E_b);
-    if (pz_max < 0.0) {
-      *E_out = alpha / (1 + alpha * (1 - mu)) * MASS_ELECTRON_EV;
-      break;
-    }
-
+    if (pz_max < 0.0)
+      continue;
     // Determine profile cdf value corresponding to p_z,max
     double c_max;
     if (pz_max > data::compton_profile_pz(n - 1)) {
@@ -536,29 +550,21 @@ void PhotonInteraction::compton_doppler(
     c = E * E * (momentum_sq - 1.0);
 
     double quad = b * b - 4.0 * a * c;
-    if (quad < 0) {
-      *E_out = alpha / (1 + alpha * (1 - mu)) * MASS_ELECTRON_EV;
-      break;
-    }
+    if (quad < 0)
+      continue;
     quad = std::sqrt(quad);
     double E_out1 = -(b + quad) / (2.0 * a);
     double E_out2 = -(b - quad) / (2.0 * a);
 
+    // If no positive solution -- resample
+    if (std::max(E_out1, E_out2) < 0)
+      continue;
+
     // Determine solution to quadratic equation that is positive
-    if (E_out1 > 0.0) {
-      if (E_out2 > 0.0) {
-        // If both are positive, pick one at random
-        *E_out = prn(seed) < 0.5 ? E_out1 : E_out2;
-      } else {
-        *E_out = E_out1;
-      }
+    if ((E_out1 > 0.0) && (E_out2 > 0.0)) {
+      *E_out = prn(seed) < 0.5 ? E_out1 : E_out2;
     } else {
-      if (E_out2 > 0.0) {
-        *E_out = E_out2;
-      } else {
-        // No positive solution -- resample
-        continue;
-      }
+      *E_out = std::max(E_out1, E_out2);
     }
     if (*E_out < E - E_b)
       break;

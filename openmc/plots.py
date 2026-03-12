@@ -197,7 +197,7 @@ _PLOT_PARAMS = dedent("""\
             Assigns colors to specific materials or cells. Keys are instances of
             :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
             4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for example:
+            and alpha should all be interger in the range [0, 255], for example:
 
             .. code-block:: python
 
@@ -379,7 +379,7 @@ def id_map_to_rgb(
     -------
     numpy.ndarray
         RGB image array with shape (v_pixels, h_pixels, 3) with values
-        in range [0, 1] for matplotlib
+        in range [0, 255] for matplotlib
     """
     # Initialize RGB array with white background (values between 0 and 1 for matplotlib)
     img = np.ones(id_map.shape, dtype=float)

@@ -480,7 +480,7 @@ void PhotonInteraction::compton_doppler(
   auto n = data::compton_profile_pz.size();
   double E = alpha * MASS_ELECTRON_EV;
   int j_shell = 0;
-  for (double E_b : electron_cdf_) {
+  for (double E_b : binding_energy_) {
     if ((E_b - (E - E_b) * alpha * (1.0 - mu)) < 0.0)
       break;
     ++j_shell;

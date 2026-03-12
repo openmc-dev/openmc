@@ -107,10 +107,10 @@ def test_integrator_add_keff_search_control(run_in_tmpdir, function, x0, x1, bra
         output=False,
     )
 
-    assert integrator.keff_search_control.x0 == x0
-    assert integrator.keff_search_control.x1 == x1
-    assert integrator.keff_search_control.function == function
-    assert integrator.keff_search_control.search_kwargs['x_min'] == bracket[0]
-    assert integrator.keff_search_control.search_kwargs['x_max'] == bracket[1]
-    assert integrator.keff_search_control.search_kwargs['k_tol'] == 0.1
-    assert not integrator.keff_search_control.search_kwargs['output']
+    assert integrator._keff_search_control.x0 == x0
+    assert integrator._keff_search_control.x1 == x1
+    assert integrator._keff_search_control.function == function
+    assert integrator._keff_search_control.search_kwargs['x_min'] == bracket[0]
+    assert integrator._keff_search_control.search_kwargs['x_max'] == bracket[1]
+    assert integrator._keff_search_control.search_kwargs['k_tol'] == 0.1
+    assert not integrator._keff_search_control.search_kwargs['output']

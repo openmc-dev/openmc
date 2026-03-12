@@ -731,15 +731,6 @@ class Integrator(ABC):
 
         self._solver = func
 
-    @property
-    def keff_search_control(self):
-        return self._keff_search_control
-
-    @keff_search_control.setter
-    def keff_search_control(self, keff_search_control):
-        check_type('keff search control', keff_search_control, _KeffSearchControl)
-        self._keff_search_control = keff_search_control
-
     def _timed_deplete(self, n, rates, dt, i=None, matrix_func=None):
         start = time.time()
         results = deplete(

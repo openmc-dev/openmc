@@ -11,8 +11,8 @@ from openmc.deplete import CoupledOperator
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
-@pytest.fixture
-def model():
+
+def make_model():
     f = openmc.Material(name="fuel")
     f.add_element("U", 1, percent_type="ao", enrichment=4.25)
     f.add_element("O", 2)
@@ -60,15 +60,6 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.fixture
-def operator(model):
-    return CoupledOperator(model, CHAIN_PATH)
-
-@pytest.fixture
-def integrator(operator):
-    return openmc.deplete.PredictorIntegrator(
-            operator, [1,1], 0.0, timestep_units = 'd')
-
 
 def translate_cell(position):
     """Helper function to translate a cell"""
@@ -100,9 +91,13 @@ def set_u235_density(u235_density):
     (rotate_cell, -45.0, 45.0, (-90.0, 90.0)),
     (set_u235_density, 0.8, 1.2, (0.5, 1.5))
 ])
-def test_integrator_add_keff_search_control(run_in_tmpdir, model, operator, integrator,
-    function, x0, x1, bracket):
+def test_integrator_add_keff_search_control(run_in_tmpdir, function, x0, x1, bracket):
     """Test adding add_keff_search_control to integrator"""
+    model = make_model()
+    operator = CoupledOperator(model, CHAIN_PATH)
+    integrator = openmc.deplete.PredictorIntegrator(
+        operator, [1, 1], 0.0, timestep_units='d')
+
     integrator.add_keff_search_control(
         function=function,
         x0=x0,

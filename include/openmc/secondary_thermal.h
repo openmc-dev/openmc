@@ -33,12 +33,19 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
-  tensor::Tensor<double> bragg_edges_;  //!< Copy of Bragg edges for slicing
+  tensor::Tensor<double> bragg_edges_; //!< Copy of Bragg edges for slicing
   tensor::Tensor<double>
     factors_diff_; //!< Differences over elastic scattering factors
 };
@@ -61,6 +68,13 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
@@ -88,6 +102,13 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
@@ -116,7 +137,19 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+  //! Sample outgoing energy bin parameters
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] j Sampled outgoing energy bin index
+  //! \param[inout] seed Pseudorandom seed pointer
   void sample_params(double E_in, double& E_out, int& j, uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
@@ -147,8 +180,23 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  //! Sample outgoing energy bin parameters
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] f Interpolation factor within sampled energy bin
+  //! \param[out] l Index of the closer incident energy
+  //! \param[out] j Sampled outgoing energy bin index
+  //! \param[inout] seed Pseudorandom seed pointer
   void sample_params(double E_in, double& E_out, double& f, int& l, int& j,
     uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
@@ -186,7 +234,19 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  //! Select the coherent or incoherent elastic distribution to sample
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Reference to the selected angle-energy distribution
   const AngleEnergy& sample_dist(double E_in, uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
   double sample_energy_and_pdf(
     double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
@@ -198,24 +258,44 @@ private:
   const Function1D& incoherent_xs_;      //!< Polymorphic ref. to incoherent XS
 };
 
+//! Helper for returning a uniform weight via operator[] regardless of index
 struct DoubleVector {
   double data;
   const double& operator[](size_t index) const { return data; }
 };
 
+//! Evaluate the PDF of a discrete distribution at a given point.
+//!
+//! Given a set of discrete values mu[i] with weights w[i], this function
+//! computes the probability density at mu_0 by treating each discrete value
+//! as a rectangular bin. The bin half-width around each discrete value is
+//! half the distance to its nearest neighbor.
+//!
+//! \tparam T1 Container type for discrete cosine values (must support
+//!         operator[], begin(), end(), size())
+//! \tparam T2 Container type for weights (must support operator[])
+//! \param[in] mu Sorted array of discrete cosine values
+//! \param[in] w Weights for each discrete value (need not be normalized)
+//! \param[in] mu_0 Point at which to evaluate the PDF
+//! \param[in] a Lower bound of the domain (default: -1)
+//! \param[in] b Upper bound of the domain (default: 1)
+//! \return Probability density at mu_0
 template<typename T1, typename T2>
 double get_pdf_discrete(
   const T1 mu, const T2& w, double mu_0, double a = -1.0, double b = 1.0)
 {
-  // Make sure mu is in range [a,b]
+  // Clamp mu_0 to the domain [a, b]
   if (mu_0 < a)
     mu_0 = a;
   if (mu_0 > b)
     mu_0 = b;
-  double a0;
-  double a1;
-  double b0;
-  double b1;
+
+  // Find the nearest discrete values bracketing mu_0:
+  //   a0 = closest discrete value <= mu_0 (or domain bound a)
+  //   a1 = the discrete value before a0 (or domain bound a)
+  //   b0 = closest discrete value >= mu_0 (or domain bound b)
+  //   b1 = the discrete value after b0 (or domain bound b)
+  double a0, a1, b0, b1;
   int32_t ai = -1;
   int32_t bi = -1;
   if (mu_0 > mu[0]) {
@@ -235,10 +315,13 @@ double get_pdf_discrete(
     b1 = b;
   }
 
-  //  Calculate Delta_a and Delta_b
+  // Compute the half-width of the rectangular bin around each bracketing
+  // discrete value. The half-width is half the distance to its nearest
+  // neighbor (or domain boundary).
   double delta_a = 0.5 * std::min(b0 - a0, a0 - a1);
   double delta_b = 0.5 * std::min(b1 - b0, b0 - a0);
 
+  // Determine which bin mu_0 falls in and return the corresponding density
   if (mu_0 < a0 + delta_a)
     return w[ai] / (2.0 * delta_a);
   else if (mu_0 + delta_b < b0)
@@ -247,6 +330,14 @@ double get_pdf_discrete(
     return 0.0;
 }
 
+//! Evaluate the PDF of a discrete distribution with uniform weights
+//!
+//! \tparam T1 Container type for discrete cosine values
+//! \param[in] mu Sorted array of discrete cosine values
+//! \param[in] mu_0 Point at which to evaluate the PDF
+//! \param[in] a Lower bound of the domain (default: -1)
+//! \param[in] b Upper bound of the domain (default: 1)
+//! \return Probability density at mu_0
 template<typename T1>
 double get_pdf_discrete(
   const T1 mu, double mu_0, double a = -1.0, double b = 1.0)

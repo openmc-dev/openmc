@@ -2520,7 +2520,7 @@ class Model:
     def convert_to_multigroup(
         self,
         method: str = "material_wise",
-        groups: str | List[float] = "CASMO-2",
+        groups: str | Iterable[float] = "CASMO-2",
         nparticles: int = 2000,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
@@ -2538,7 +2538,7 @@ class Model:
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
             Method to generate the MGXS.
-        groups : str or list[float], optional
+        groups : str or Iterable[float], optional
             Energy group structure for the MGXS. Can be either:
             - A string name of a predefined group structure (e.g., "CASMO-2", "CASMO-16")
               from :data:`openmc.mgxs.GROUP_STRUCTURES`. Defaults to "CASMO-2".
@@ -2582,7 +2582,7 @@ class Model:
         """
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
-        elif isinstance(groups, (list, tuple)):
+        elif isinstance(groups, Iterable):
             groups = openmc.mgxs.EnergyGroups(groups)
         else:
             raise TypeError("groups must be a string or list of floats")

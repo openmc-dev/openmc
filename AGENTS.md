@@ -40,7 +40,7 @@ OpenMC uses a git flow branching model with two primary branches:
 
 ### Instructions for Code Review
 
-When analyzing code changes on a feature or bugfix branch (e.g., when a user asks "what do you think of these changes?"), **compare the branch changes against `develop`, not `master`**. Pull requests are submitted to merge into `develop`, so differences relative to `develop` represent the actual proposed changes. Comparing against `master` will include unrelated changes from other features that have already been merged to `develop`.
+When reviewing code changes in this repository, use the `reviewing-openmc-code` skill.
 
 ### Workflow for contributors
 

@@ -62,6 +62,7 @@ bool output_summary {true};
 bool output_tallies {true};
 bool particle_restart_run {false};
 bool photon_transport {false};
+bool atomic_relaxation {true};
 bool reduce_tallies {true};
 bool res_scat_on {false};
 bool restart_run {false};
@@ -136,6 +137,8 @@ int64_t ssw_max_particles;
 int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
+double surface_grazing_cutoff {0.001};
+double surface_grazing_ratio {0.5};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -605,6 +608,11 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
+  // Check for atomic relaxation
+  if (check_for_node(root, "atomic_relaxation")) {
+    atomic_relaxation = get_node_value_bool(root, "atomic_relaxation");
+  }
+
   // Number of bins for logarithmic grid
   if (check_for_node(root, "log_grid_bins")) {
     n_log_bins = std::stoi(get_node_value(root, "log_grid_bins"));
@@ -677,6 +685,14 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "free_gas_threshold")) {
     free_gas_threshold = std::stod(get_node_value(root, "free_gas_threshold"));
   }
+
+  // Surface grazing
+  if (check_for_node(root, "surface_grazing_cutoff"))
+    surface_grazing_cutoff =
+      std::stod(get_node_value(root, "surface_grazing_cutoff"));
+  if (check_for_node(root, "surface_grazing_ratio"))
+    surface_grazing_ratio =
+      std::stod(get_node_value(root, "surface_grazing_ratio"));
 
   // Survival biasing
   if (check_for_node(root, "survival_biasing")) {

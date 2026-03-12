@@ -41,15 +41,13 @@ class _KeffSearchControl:
         self.search_kwargs['x_min'] = bracket[0]
         self.search_kwargs['x_max'] = bracket[1]
 
-    def search_for_keff(self, x, step_index):
+    def search_for_keff(self, x):
         """Perform keff search and update the atom density vector.
 
         Parameters
         ----------
         x : list of numpy.ndarray
             Current atom density vector (atoms per material)
-        step_index : int
-            Current depletion step index
 
         Returns
         -------

@@ -2543,7 +2543,7 @@ class Model:
             - A string name of a predefined group structure (e.g., "CASMO-2", "CASMO-16")
               from :data:`openmc.mgxs.GROUP_STRUCTURES`. Defaults to "CASMO-2".
             - A list of floats specifying energy bin boundaries in eV, in ascending order.
-              For example, ``[0.0, 100e6]`` creates a single energy group from 0 to 100 MeV.
+              For example, ``[0.0, 1e6]`` creates a single energy group from 0 to 1e6 eV.
         nparticles : int, optional
             Number of particles to simulate per batch when generating MGXS.
         overwrite_mgxs_library : bool, optional

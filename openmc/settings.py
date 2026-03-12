@@ -281,22 +281,23 @@ class Settings:
         :max_source_files: Maximum number of surface source files to be created (int)
         :mcpl: Output in the form of an MCPL-file (bool)
         :cells: List of cell IDs used to determine if particles crossing identified
-               surfaces are to be banked. Particles coming from or going to this
-               declared cell will be banked (int)
+                surfaces are to be banked. Particles coming from or going to these
+                declared cells will be banked depending on the requested direction
+                via the 'directions' keyword or both directions by default (int)
         :directions: List of directions corresponding to cells. Acceptable entries are: 
-                    "from", "to", or "both" (str)
+                     "from", "to", or "both" (str)
         :cell: Cell ID used to determine if particles crossing identified
                surfaces are to be banked. Particles coming from or going to this
                declared cell will be banked (int) ("cell" will be deprecated in the future, 
-               use "cells" instead.)
+               please use "cells" instead.)
         :cellfrom: Cell ID used to determine if particles crossing identified
                    surfaces are to be banked. Particles coming from this
                    declared cell will be banked (int) ("cellfrom" will be deprecated in the future, 
-                   use "cells" and "directions" instead.)
+                   please use "cells" and "directions" instead.)
         :cellto: Cell ID used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
                  cell will be banked (int) ("cellto" will be deprecated in the future, 
-                 use "cells" and "directions" instead.)
+                 please use "cells" and "directions" instead.)
     surface_grazing_cutoff : float
         Surface flux cosine cutoff. If not specified, the default value is
         0.001. For more information, see the surface tally section in the theory
@@ -902,8 +903,7 @@ class Settings:
                 cv.check_type("directions corresponding to cells (from, to or both)", value, Iterable, str)
                 for direction in value:
                     if (direction not in ["from", "to", "both"]):
-                        msg = "allowed values for direction: 'from', 'to', 'both' "
-                        raise ValueError(msg)
+                        raise ValueError("Allowed values for directions are: 'from', 'to', or 'both'.")
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
             elif key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
@@ -2113,8 +2113,9 @@ class Settings:
         elem = root.find('surf_source_write')
         if elem is None:
             return
-        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cells', 'directions', 'cell', 'cellto', 'cellfrom'):
-            if key in ['surface_ids', 'cells']:
+        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cells',
+                    'directions', 'cell', 'cellto', 'cellfrom'):
+            if key in ('surface_ids', 'cells'):
                 value = get_elem_list(elem, key, int)
             elif key == 'directions':
                 value = get_elem_list(elem, key, str)
@@ -2126,7 +2127,6 @@ class Settings:
                 elif key in ('max_particles', 'max_source_files', 'cell', 'cellfrom', 'cellto'):
                     value = int(value)
                 self.surf_source_write[key] = value
-
 
     def _collision_track_from_xml_element(self, root):
         elem = root.find('collision_track')

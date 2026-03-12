@@ -1168,7 +1168,7 @@ The ``<surf_source_write>`` element triggers OpenMC to bank particles crossing
 certain surfaces and write out the source bank in a separate file called
 ``surface_source.h5``. One or multiple surface IDs and one or multiple cell IDs can be used
 to select the surfaces of interest. The cell IDs can have direction flags assosciated with them 
-to further filter the banked particles. Allowed directions are ``to``, ``from`` or ``both``. 
+to further filter the banked particles. Allowed directions are "to", "from" or "both". 
 If only one cell ID is used in banking, the ``cell``, ``cellfrom`` or ``cellto`` attributes 
 can be used instead of the ``cells`` and ``directions`` attributes. If no surface IDs are declared, 
 every surface of the model is eligible to bank particles. This element has the following
@@ -1215,7 +1215,7 @@ attributes/sub-elements:
 
   :directions:
     A list of strings representing the directions corresponding to the cell IDs. Allowed values are 
-    ``to``, ``from`` or ``both``. Must have the same length as ``cells``. 
+    "to", "from" or "both". Must have the same length as ``cells``.
 
     *Default*: None
 
@@ -1240,18 +1240,24 @@ attributes/sub-elements:
 
     *Default*: None
 
-.. note:: The ``cell``, ``cellfrom`` or ``cellto`` attributes cannot be
-          used simultaneously with ``cells`` attribute.        
+.. note:: If the ``cells`` attribute is used and the ``directions`` attribute is not, 
+          all directions associated with the cells declared in the ``cells`` atttribute
+          are set to ``both`` by default.
 
-.. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
+.. note:: If only one cell is needed to filter particles, an alternative syntax can be
+          used to bank particles with the ``cell``, ``cellfrom`` and ``cellto`` attributes.
+          However, this syntax will be deprecated in the future.
+
+.. note:: The ``cells``, ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
           used simultaneously.
 
-.. note:: If ``cells`` attribute is defined and ``directions`` attribute is not, 
-          all the directions of in ``cells`` will default to ``both``.  
+.. note:: The ``directions`` attribute cannot be used with any of the ``cell``,
+          ``cellfrom`` and ``cellto`` attributes.
 
 .. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
-          are not eligible to store any particles when using ``cell``, ``cellfrom``
-          or ``cellto`` attributes. It is recommended to use surface IDs instead.
+          are not eligible to store any particles when using ``cells``, ``cell``,
+          ``cellfrom`` or ``cellto`` attributes. It is recommended to use surface
+          IDs instead.
 
 ------------------------------------
 ``<surface_grazing_cutoff>`` Element

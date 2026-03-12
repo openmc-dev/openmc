@@ -903,9 +903,16 @@ class Integrator(ABC):
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
                     n, res = self._get_bos_data_from_restart(source_rate, n)
-                    # Get keff search root from keff search control
-                    if self._keff_search_control:
-                        n, keff_search_root = self._get_bos_from_keff_search_control(i, n)
+                    if self._keff_search_control is not None and source_rate != 0.0:
+                        keff_search_root = res.keff_search_root
+                        if keff_search_root is None:
+                            raise ValueError(
+                                "Cannot restore keff search control from restart "
+                                "results because no stored keff_search_root is "
+                                "available."
+                            )
+                        self._keff_search_control.apply_stored_root(
+                            keff_search_root)
                     else:
                         keff_search_root = None
                 # Solve Bateman equations over time interval
@@ -1100,7 +1107,9 @@ class Integrator(ABC):
             ``openmc.lib.cells``, ``openmc.lib.materials``) and **NOT** through
             ``openmc.model``. The function is called within a
             :class:`openmc.lib.TemporarySession` context where only the C API
-            (``openmc.lib``) is available for modifications.
+            (``openmc.lib``) is available for modifications. The function
+            should behave like a setter for the controlled parameter so that a
+            stored keff-search root can be safely reapplied during restart.
 
         Parameters
         ----------
@@ -1112,7 +1121,9 @@ class Integrator(ABC):
             density via ``openmc.lib.materials[...].set_densities(...)``, etc.).
 
             **Important**: The function must modify ``openmc.lib`` objects, not
-            ``openmc.model`` objects.
+            ``openmc.model`` objects, and should set the controlled parameter
+            directly rather than modifying the current state relative to its
+            existing value.
         x0: float
             Initial lower bound for the keff search.
         x1: float
@@ -1157,23 +1168,22 @@ class Integrator(ABC):
         ...     k_tol=1e-4
         ... )
 
-        Add keff search that adjusts material density:
+        Add keff search that sets the U235 density directly:
 
-        >>> def adjust_material_density(density_factor):
+        >>> def set_u235_density(u235_density):
         ...     # Get the material from openmc.lib
         ...     lib_mat = openmc.lib.materials[material_id]
         ...     # Get current nuclides and densities
         ...     nuclides = lib_mat.nuclides
-        ...     current_densities = lib_mat.densities
-        ...     # Scale all densities by the factor
-        ...     new_densities = densities * density_factor
-        ...     # Update the material densities
-        ...     lib_mat.set_densities(nuclides, new_densities)
+        ...     densities = lib_mat.densities
+        ...     u235_idx = nuclides.index('U235')
+        ...     densities[u235_idx] = u235_density
+        ...     lib_mat.set_densities(nuclides, densities)
         >>> integrator.add_keff_search_control(
-        ...     adjust_material_density,
-        ...     x0=0.8,
-        ...     x1=1.2,
-        ...     bracket=[0.2, 1.5],
+        ...     set_u235_density,
+        ...     x0=5.0e-4,
+        ...     x1=1.0e-3,
+        ...     bracket=[1.0e-4, 2.0e-3],
         ...     target=1.0
         ... )
 

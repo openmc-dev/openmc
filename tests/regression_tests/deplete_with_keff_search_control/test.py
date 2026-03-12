@@ -90,24 +90,24 @@ def rotate_cell(angle):
     openmc.lib.cells[cell_rot.id].rotation = [0, 0, angle]
 
 
-def adjust_material_density(density_factor):
-    f = [material for material in openmc.lib.materials.values() if material.name == 'f'][0]
-    nuclides = openmc.lib.materials[f.id].nuclides
-    densities = openmc.lib.materials[f.id].densities
+def set_u235_density(u235_density):
+    fuel = [material for material in openmc.lib.materials.values()
+            if material.name == 'f'][0]
+    nuclides = openmc.lib.materials[fuel.id].nuclides
+    densities = openmc.lib.materials[fuel.id].densities
     nuc_idx = nuclides.index('U235')
-    new_density = densities[nuc_idx] * density_factor
-    densities[nuc_idx] = new_density
-    openmc.lib.materials[f.id].set_densities(nuclides, densities)
+    densities[nuc_idx] = u235_density
+    openmc.lib.materials[fuel.id].set_densities(nuclides, densities)
 
 
 @pytest.mark.parametrize("function, x0, x1, bracket, ref_result", [
     (translate_cell, -11, -5, (-15, 0), 'depletion_with_translation'),
     (rotate_cell, -80, -50, (-90, 0), 'depletion_with_rotation'),
-    (adjust_material_density, 0.5, 2, (0.3, 3.0), 'depletion_with_refuel')
+    (set_u235_density, 2e-4, 1e-3, (1e-4, 2e-3), 'depletion_with_refuel')
 ])
 def test_keff_search_control(run_in_tmpdir, model, function, x0, x1, bracket, ref_result):
-
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
+    model.settings.verbosity = 1
     op = CoupledOperator(model, chain_file)
 
     integrator = openmc.deplete.PredictorIntegrator(
@@ -118,7 +118,7 @@ def test_keff_search_control(run_in_tmpdir, model, function, x0, x1, bracket, re
         x1=x1,
         bracket=bracket,
         output=True,
-        k_tol=1e-1,
+        k_tol=0.1,
         sigma_final=5e-2)
 
     integrator.integrate()

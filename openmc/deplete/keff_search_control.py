@@ -62,6 +62,16 @@ class _KeffSearchControl:
         x = self._update_vec(x)
         return x, root
 
+    def apply_stored_root(self, root: float):
+        """Reapply a previously stored control parameter value.
+
+        Parameters
+        ----------
+        root : float
+            Parameter value from a prior keff search result.
+        """
+        self.function(root)
+
     def _search_for_keff(self) -> float:
         """Perform the keff search using the model's keff_search method.
 

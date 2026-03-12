@@ -19,8 +19,11 @@ namespace openmc {
 
 CoherentElasticAE::CoherentElasticAE(const CoherentElasticXS& xs) : xs_ {xs}
 {
+  const auto& bragg = xs_.bragg_edges();
+  auto n = bragg.size();
+  bragg_edges_ = tensor::Tensor<double>(bragg.data(), n);
+
   const auto& factors = xs_.factors();
-  auto n = factors.size();
   factors_diff_ = tensor::zeros<double>({n});
   factors_diff_.slice(0) = factors[0];
   for (int i = 1; i < n; ++i) {
@@ -54,23 +57,20 @@ double CoherentElasticAE::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
-
-  double pdf;
   E_out = E_in;
-  const auto energies =
-    tensor::Tensor<double>(xs_.bragg_edges().data(), xs_.bragg_edges().size());
   const auto& factors = xs_.factors();
 
-  if (E_in < energies.front() || E_in > energies.back()) {
+  if (E_in < bragg_edges_.front() || E_in > bragg_edges_.back()) {
     return 0;
   }
 
-  const int n = upper_bound_index(energies.begin(), energies.end(), E_in);
+  const int n =
+    upper_bound_index(bragg_edges_.begin(), bragg_edges_.end(), E_in);
   double E = 0.5 * (1 - mu) * E_in;
   double C = 0.5 * E_in / factors[n];
 
   return C * get_pdf_discrete(
-               energies.slice(0, n), factors_diff_.slice(0, n), E, 0, E_in);
+               bragg_edges_.slice(0, n), factors_diff_.slice(0, n), E, 0, E_in);
 }
 
 //==============================================================================

@@ -2520,7 +2520,7 @@ class Model:
     def convert_to_multigroup(
         self,
         method: str = "material_wise",
-        groups: str = "CASMO-2",
+        groups: str | List[float] = "CASMO-2",
         nparticles: int = 2000,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
@@ -2538,9 +2538,12 @@ class Model:
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
             Method to generate the MGXS.
-        groups : openmc.mgxs.EnergyGroups or str, optional
-            Energy group structure for the MGXS or the name of the group
-            structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        groups : str or list[float], optional
+            Energy group structure for the MGXS. Can be either:
+            - A string name of a predefined group structure (e.g., "CASMO-2", "CASMO-16")
+              from :data:`openmc.mgxs.GROUP_STRUCTURES`. Defaults to "CASMO-2".
+            - A list of floats specifying energy bin boundaries in eV, in ascending order.
+              For example, ``[0.0, 100e6]`` creates a single energy group from 0 to 100 MeV.
         nparticles : int, optional
             Number of particles to simulate per batch when generating MGXS.
         overwrite_mgxs_library : bool, optional

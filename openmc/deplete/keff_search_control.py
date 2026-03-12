@@ -59,18 +59,8 @@ class _KeffSearchControl:
             Parameter value that achieves target keff
         """
         root = self._search_for_keff()
-        x = self._update_vec(x)
+        self._update_vec(x)
         return x, root
-
-    def apply_stored_root(self, root: float):
-        """Reapply a previously stored control parameter value.
-
-        Parameters
-        ----------
-        root : float
-            Parameter value from a prior keff search result.
-        """
-        self.function(root)
 
     def _search_for_keff(self) -> float:
         """Perform the keff search using the model's keff_search method.
@@ -88,10 +78,7 @@ class _KeffSearchControl:
         with openmc.lib.TemporarySession(self.operator.model):
             # Only pass the first 3 required args plus explicitly provided kwargs
             result = self.operator.model.keff_search(
-                self.function,
-                self.x0,
-                self.x1,
-                **self.search_kwargs
+                self.function, self.x0, self.x1, **self.search_kwargs
             )
         if not result.converged:
             raise ValueError(
@@ -127,10 +114,6 @@ class _KeffSearchControl:
         x : list of numpy.ndarray
             Atom density vector to update (atoms per material)
 
-        Returns
-        -------
-        list of numpy.ndarray
-            Updated rank-local atom density vector
         """
         number = self.operator.number
 
@@ -147,5 +130,3 @@ class _KeffSearchControl:
                 else:
                     atom_density = number.get_atom_density(mat, nuc)
                 x[mat_idx][nuc_idx] = atom_density * volume
-
-        return x

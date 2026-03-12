@@ -96,9 +96,9 @@ def set_u235_density(u235_density):
 
 
 @pytest.mark.parametrize("function, x0, x1, bracket", [
-    (translate_cell, -1.0, 1.0, [-5.0, 5.0]),
-    (rotate_cell, -45.0, 45.0, [-90.0, 90.0]),
-    (set_u235_density, 0.8, 1.2, [0.5, 1.5])
+    (translate_cell, -1.0, 1.0, (-5.0, 5.0)),
+    (rotate_cell, -45.0, 45.0, (-90.0, 90.0)),
+    (set_u235_density, 0.8, 1.2, (0.5, 1.5))
 ])
 def test_integrator_add_keff_search_control(run_in_tmpdir, model, operator, integrator,
     function, x0, x1, bracket):

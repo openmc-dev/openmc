@@ -852,8 +852,7 @@ class Integrator(ABC):
         """Get BOS from keff search control."""
         x = deepcopy(bos_conc)
         # Get new vector after keff criticality control
-        x, keff_search_root = self._keff_search_control.search_for_keff(x, step_index)
-        return x, keff_search_root
+        return self._keff_search_control.search_for_keff(x, step_index)
 
     def integrate(
             self,
@@ -911,10 +910,11 @@ class Integrator(ABC):
                                 "results because no stored keff_search_root is "
                                 "available."
                             )
-                        self._keff_search_control.apply_stored_root(
-                            keff_search_root)
+                        # Apply the control function to the saved root
+                        self._keff_search_control.function(keff_search_root)
                     else:
                         keff_search_root = None
+
                 # Solve Bateman equations over time interval
                 proc_time, n_end = self(n, res.rates, dt, source_rate, i)
 
@@ -1093,42 +1093,32 @@ class Integrator(ABC):
         function: Callable,
         x0: float,
         x1: float,
-        bracket: list[float],
+        bracket: Sequence[float],
         **search_kwargs
     ):
         """Add keff search to the integrator scheme.
 
-        This method creates a :class:`openmc.deplete._KeffSearchControl` that
-        performs keff searches during depletion to maintain a target keff
-        by adjusting a model parameter through the provided function.
+        This method causes OpenMC to perform a keff search during depletion to
+        maintain a target keff by adjusting a model parameter through the
+        provided function.
 
         .. important::
             The function **must** modify the model through ``openmc.lib`` (e.g.,
             ``openmc.lib.cells``, ``openmc.lib.materials``) and **NOT** through
-            ``openmc.model``. The function is called within a
+            ``openmc.Model``. The function is called within a
             :class:`openmc.lib.TemporarySession` context where only the C API
-            (``openmc.lib``) is available for modifications. The function
-            should behave like a setter for the controlled parameter so that a
-            stored keff-search root can be safely reapplied during restart.
+            (``openmc.lib``) is available for modifications.
 
         Parameters
         ----------
         function : Callable
-            Function that modifies the model through ``openmc.lib`` based on a
-            parameter value. The function should take a single float parameter
-            and modify ``openmc.lib`` objects accordingly (e.g., adjust control
-            rod position via ``openmc.lib.cells[...].translation``, material
-            density via ``openmc.lib.materials[...].set_densities(...)``, etc.).
-
-            **Important**: The function must modify ``openmc.lib`` objects, not
-            ``openmc.model`` objects, and should set the controlled parameter
-            directly rather than modifying the current state relative to its
-            existing value.
-        x0: float
+            Function that takes a single float argument and modifies the model
+            through :mod:`openmc.lib`.
+        x0 : float
             Initial lower bound for the keff search.
-        x1: float
+        x1 : float
             Initial upper bound for the keff search.
-        bracket : list[float]
+        bracket : sequence of float
             Bracket interval [x_min, x_max] that constrains the allowed parameter
             values during the keff search. This is a required parameter
             that defines the absolute bounds for the search. The bracket must contain

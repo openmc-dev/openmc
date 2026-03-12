@@ -473,8 +473,7 @@ void PhotonInteraction::compton_doppler(
     // Determine p_z,max
     double E = alpha * MASS_ELECTRON_EV;
     if (E < E_b) {
-      *E_out = alpha / (1 + alpha * (1 - mu)) * MASS_ELECTRON_EV;
-      break;
+      continue;
     }
 
     double pz_max = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /

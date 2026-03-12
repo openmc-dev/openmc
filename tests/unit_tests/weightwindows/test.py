@@ -370,6 +370,6 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
     model.settings.weight_windows = wws
     model.settings.weight_windows_on = True
     model.settings.run_mode = 'fixed source'
-    model.settings.particles = 100
+    model.settings.particles = 1000
     model.settings.batches = 2
     model.run()

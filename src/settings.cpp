@@ -4,6 +4,8 @@
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <fmt/core.h>
 #ifdef _OPENMP

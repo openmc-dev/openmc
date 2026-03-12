@@ -110,7 +110,7 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
     sorted_bank_holder.resize(bank.size());
     sorted_bank = sorted_bank_holder.data();
   } else { // otherwise, point sorted_bank to unused portion of the fission bank
-    sorted_bank = &bank[bank.size()];
+    sorted_bank = bank.data() + bank.size();
   }
 
   if (settings::ifp_on && is_fission_bank) {

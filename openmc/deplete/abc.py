@@ -864,8 +864,7 @@ class Integrator(ABC):
         """Get beginning-of-step concentrations, rates, and control state."""
         if step_index > 0 or self.operator.prev_res is None:
             if self._keff_search_control is not None and source_rate != 0.0:
-                keff_search_root = self._keff_search_control.search_for_keff(
-                    bos_conc)
+                keff_search_root = self._keff_search_control.run(bos_conc)
             else:
                 keff_search_root = None
             bos_conc, res = self._get_bos_data_from_operator(
@@ -948,7 +947,7 @@ class Integrator(ABC):
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             if self._keff_search_control is not None and source_rate != 0.0:
-                keff_search_root = self._keff_search_control.search_for_keff(n)
+                keff_search_root = self._keff_search_control.run(n)
             else:
                 keff_search_root = None
             res_final = self.operator(n, source_rate if final_step else 0.0)

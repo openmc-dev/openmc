@@ -41,7 +41,7 @@ class _KeffSearchControl:
         self.search_kwargs['x_min'] = bracket[0]
         self.search_kwargs['x_max'] = bracket[1]
 
-    def search_for_keff(self, x):
+    def run(self, x):
         """Perform keff search and update the atom density vector.
 
         Parameters
@@ -51,8 +51,6 @@ class _KeffSearchControl:
 
         Returns
         -------
-        x : list of numpy.ndarray
-            Updated atom density vector
         root : float
             Parameter value that achieves target keff
         """

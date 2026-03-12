@@ -890,27 +890,35 @@ void Particle::update_neutron_xs(
 //==============================================================================
 void add_surf_source_to_bank(Particle& p, const Surface& surf)
 {
-  if (simulation::current_batch <= settings::n_inactive) {
+  if (simulation::current_batch <= settings::n_inactive ||
+      simulation::surf_source_bank.full()) {
     return;
   }
 
-  bool add_site = true; // add the site if 'cells' is not defined
+  // Add the site if no cells have been requested (via 'cells', 'cell',
+  // 'cellfrom' or 'cellto')
+  bool add_site = true;
 
-  // If 'cells' is defined
+  // If cells have been requested (via 'cells', 'cell', 'cellfrom' or 'cellto')
   if (!settings::ssw_cells.empty()) {
+
+    // Leave if other boundary condition than vacuum
     if (surf.bc_ && surf.bc_->type() != "vacuum") {
-      // Leave if other boundary condition than vacuum
       return;
     }
-    add_site = false; // we assume all cell-direction pairs are invalid till one
-                      // of them passes all the tests
+
+    // The site will only be added if at least one cell-direction pair is valid
+    add_site = false;
+
+    // Looping through all cell-direction pairs
     for (auto& cell : settings::ssw_cells) {
       // Retrieve cell index and storage type
       int cell_idx = model::cell_map[cell.first];
       SSWCellType direction = cell.second;
+
+      // Skip if cellto with vacuum boundary condition
       if (surf.bc_ && surf.bc_->type() == "vacuum" &&
           direction == SSWCellType::To) {
-        // skip if cellto with vacuum boundary condition
         continue;
       }
 
@@ -958,7 +966,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
           continue;
         }
       }
-      // if a cell-direction pair survived all the checks we add the site and
+      // If a cell-direction pair survived all the checks we add the site and
       // terminate the loop
       add_site = true;
       break;

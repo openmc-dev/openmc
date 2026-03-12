@@ -1158,7 +1158,7 @@ class Integrator(ABC):
         ...     k_tol=1e-4
         ... )
 
-        Add keff search that sets the U235 density directly:
+        Add keff search that adjusts the U235 density:
 
         >>> def set_u235_density(u235_density):
         ...     # Get the material from openmc.lib
@@ -1181,12 +1181,7 @@ class Integrator(ABC):
 
         """
         self._keff_search_control = _KeffSearchControl(
-            self.operator,
-            function,
-            x0,
-            x1,
-            bracket,
-            **search_kwargs)
+            self.operator, function, x0, x1, bracket, **search_kwargs)
 
 @add_params
 class SIIntegrator(Integrator):

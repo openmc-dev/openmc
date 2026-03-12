@@ -214,12 +214,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   rgroup = open_group(group, "compton_profiles");
 
   // Read electron shell PDF and binding energies
-  tensor::Tensor<double> electron_pdf;
-  read_dataset(rgroup, "num_electrons", electron_pdf);
-  electron_pdf /= electron_pdf.sum();
-  electron_cdf_(0) = electron_pdf(0);
-  for (int i = 1; i < electron_pdf.shape()[0]; ++i)
-    electron_cdf_(i) = electron_cdf_(i - 1) + electron_pdf(i);
+  read_dataset(rgroup, "num_electrons", electron_pdf_);
+  electron_pdf_ /= electron_pdf_.sum();
   read_dataset(rgroup, "binding_energy", binding_energy_);
 
   // Read Compton profiles
@@ -477,25 +473,14 @@ void PhotonInteraction::compton_doppler(
   double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const
 {
   auto n = data::compton_profile_pz.size();
-  double E = alpha * MASS_ELECTRON_EV;
-  int j_shell = 0;
-  for (double E_b : electron_cdf_) {
-    if ((E_b - (E - E_b) * alpha * (1.0 - mu)) < 0.0)
-      break;
-    ++j_shell;
-  }
-
-  double offset = 0.0;
-  if (j_shell > 0)
-    offset = electron_cdf_(j_shell - 1);
 
   int shell; // index for shell
   while (true) {
     // Sample electron shell
-    double rn = offset + prn(seed) * (1.0 - offset);
-    double c;
-    for (shell = j_shell; shell < electron_cdf_.size(); ++shell) {
-      c = electron_cdf_(shell);
+    double rn = prn(seed);
+    double c = 0.0;
+    for (shell = 0; shell < electron_pdf_.size(); ++shell) {
+      c += electron_pdf_(shell);
       if (rn < c)
         break;
     }
@@ -504,8 +489,15 @@ void PhotonInteraction::compton_doppler(
     double E_b = binding_energy_(shell);
 
     // Determine p_z,max
+    double E = alpha * MASS_ELECTRON_EV;
+    if (E < E_b) {
+      continue;
+    }
+
     double pz_max = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /
                     std::sqrt(2.0 * E * (E - E_b) * (1.0 - mu) + E_b * E_b);
+    if (pz_max < 0.0)
+      continue;
     // Determine profile cdf value corresponding to p_z,max
     double c_max;
     if (pz_max > data::compton_profile_pz(n - 1)) {

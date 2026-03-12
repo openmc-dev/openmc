@@ -217,6 +217,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   tensor::Tensor<double> electron_pdf;
   read_dataset(rgroup, "num_electrons", electron_pdf);
   electron_pdf /= electron_pdf.sum();
+  electron_cdf_ = tensor::Tensor<double>(electron_pdf.shape());
   electron_cdf_(0) = electron_pdf(0);
   for (int i = 1; i < electron_pdf.shape()[0]; ++i)
     electron_cdf_(i) = electron_cdf_(i - 1) + electron_pdf(i);

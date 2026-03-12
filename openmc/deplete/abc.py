@@ -848,11 +848,42 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
-    def _get_bos_from_keff_search_control(self, step_index, bos_conc):
-        """Get BOS from keff search control."""
+    def _apply_keff_search_control(self, step_index, bos_conc):
+        """Apply keff search control to beginning-of-step concentrations."""
         x = deepcopy(bos_conc)
-        # Get new vector after keff criticality control
         return self._keff_search_control.search_for_keff(x, step_index)
+
+    def _restore_keff_search_control(self, res):
+        """Restore keff search control from restart results."""
+        keff_search_root = res.keff_search_root
+        if keff_search_root is None:
+            raise ValueError(
+                "Cannot restore keff search control from restart "
+                "results because no stored keff_search_root is "
+                "available."
+            )
+        self._keff_search_control.function(keff_search_root)
+        return keff_search_root
+
+    def _get_bos_data(self, step_index, source_rate, bos_conc):
+        """Get beginning-of-step concentrations, rates, and control state."""
+        if step_index > 0 or self.operator.prev_res is None:
+            if self._keff_search_control is not None and source_rate != 0.0:
+                bos_conc, keff_search_root = self._apply_keff_search_control(
+                    step_index, bos_conc)
+            else:
+                keff_search_root = None
+            bos_conc, res = self._get_bos_data_from_operator(
+                step_index, source_rate, bos_conc)
+        else:
+            bos_conc, res = self._get_bos_data_from_restart(
+                source_rate, bos_conc)
+            if self._keff_search_control is not None and source_rate != 0.0:
+                keff_search_root = self._restore_keff_search_control(res)
+            else:
+                keff_search_root = None
+
+        return bos_conc, res, keff_search_root
 
     def integrate(
             self,
@@ -892,28 +923,8 @@ class Integrator(ABC):
                 if output and comm.rank == 0:
                     print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
 
-                # Solve transport equation (or obtain result from restart)
-                if i > 0 or self.operator.prev_res is None:
-                    # Update geometry/material according to keff search control
-                    if self._keff_search_control is not None and source_rate != 0.0:
-                        n, keff_search_root = self._get_bos_from_keff_search_control(i, n)
-                    else:
-                        keff_search_root = None
-                    n, res = self._get_bos_data_from_operator(i, source_rate, n)
-                else:
-                    n, res = self._get_bos_data_from_restart(source_rate, n)
-                    if self._keff_search_control is not None and source_rate != 0.0:
-                        keff_search_root = res.keff_search_root
-                        if keff_search_root is None:
-                            raise ValueError(
-                                "Cannot restore keff search control from restart "
-                                "results because no stored keff_search_root is "
-                                "available."
-                            )
-                        # Apply the control function to the saved root
-                        self._keff_search_control.function(keff_search_root)
-                    else:
-                        keff_search_root = None
+                # Get beginning-of-step data from operator or restart results
+                n, res, keff_search_root = self._get_bos_data(i, source_rate, n)
 
                 # Solve Bateman equations over time interval
                 proc_time, n_end = self(n, res.rates, dt, source_rate, i)
@@ -942,7 +953,7 @@ class Integrator(ABC):
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             if self._keff_search_control is not None and source_rate != 0.0:
-                n, keff_search_root = self._get_bos_from_keff_search_control(i+1, n)
+                n, keff_search_root = self._apply_keff_search_control(i + 1, n)
             else:
                 keff_search_root = None
             res_final = self.operator(n, source_rate if final_step else 0.0)

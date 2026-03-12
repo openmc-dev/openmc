@@ -214,6 +214,20 @@ int openmc_simulation_finalize()
   // Stop timers and show timing statistics
   simulation::time_finalize.stop();
   simulation::time_total.stop();
+
+#ifdef OPENMC_MPI
+  // Reduce track count across ranks for correct reporting. In shared secondary
+  // bank mode, all ranks already have the global count; in non-shared mode,
+  // each rank only has its own count.
+  if (settings::weight_windows_on && !settings::use_shared_secondary_bank) {
+    int64_t total_tracks;
+    MPI_Reduce(&simulation::simulation_tracks_completed, &total_tracks, 1,
+      MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+    if (mpi::master)
+      simulation::simulation_tracks_completed = total_tracks;
+  }
+#endif
+
   if (mpi::master) {
     if (settings::solver_type != SolverType::RANDOM_RAY) {
       if (settings::verbosity >= 6)

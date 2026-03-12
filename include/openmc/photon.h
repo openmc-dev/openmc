@@ -87,7 +87,7 @@ public:
   tensor::Tensor<double> profile_pdf_;
   tensor::Tensor<double> profile_cdf_;
   tensor::Tensor<double> binding_energy_;
-  tensor::Tensor<double> electron_pdf_;
+  tensor::Tensor<double> electron_cdf_;
 
   // Map subshells from Compton profile data obtained from Biggs et al,
   // "Hartree-Fock Compton profiles for the elements" to ENDF/B atomic

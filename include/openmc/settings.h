@@ -182,17 +182,13 @@ extern int64_t ssw_cell_id;       //!< Cell id for the surface source
                                   //!< write setting
 extern SSWCellType ssw_cell_type; //!< Type of option for the cell
                                   //!< argument of surface source write
-extern double surface_grazing_cutoff; //!< surface flux cosine cutoff
-extern double surface_grazing_ratio;  //!< surface flux substitution ratio
-
 extern vector<int64_t> ssw_cell_ids; //!< Cell ids for the surface source
                                      //!< write setting
-extern SSWCellType ssw_cell_type;    //!< Type of option for the cell
-                                     //!< argument of surface source write
-
 extern std::unordered_map<int64_t, SSWCellType>
-  ssw_cells; //!< Cell ids and directions
-             //!< for the surface source write setting
+  ssw_cells; //!< Cell ids and directions for the surface source write setting
+
+extern double surface_grazing_cutoff; //!< surface flux cosine cutoff
+extern double surface_grazing_ratio;  //!< surface flux substitution ratio
 
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures

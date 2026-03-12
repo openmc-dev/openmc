@@ -246,7 +246,7 @@ def test_photon_heating(run_in_tmpdir):
 
     model.settings.run_mode = 'fixed source'
     model.settings.batches = 5
-    model.settings.particles = 500
+    model.settings.particles = 650
 
     tally = openmc.Tally()
     tally.scores = ['heating']

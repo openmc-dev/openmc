@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 import openmc
-import openmc.lib
 from . import IndependentOperator, PredictorIntegrator
 from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
 from .results import Results
@@ -538,12 +537,13 @@ class R2SManager:
             if time_index < 0:
                 time_index = len(self.results['depletion_results']) + time_index
 
+            # Build decay photon sources and assign to the photon model
+            sources = self._create_photon_sources(time_index, work_items)
+            self.photon_model.settings.source = sources
+
             # Run photon transport calculation
             photon_dir = Path(output_dir) / f'time_{time_index}'
             with TemporarySession(self.photon_model, cwd=photon_dir):
-                # Create decay photon sources in C++ memory
-                self._create_cpp_sources(time_index, work_items)
-
                 statepoint_path = self.photon_model.run(**run_kwargs)
 
             # Store tally results
@@ -596,8 +596,13 @@ class R2SManager:
 
         return work_items
 
-    def _create_cpp_sources(self, time_index, work_items):
-        """Create decay photon sources in C++ for a set of regions.
+    def _create_photon_sources(self, time_index, work_items):
+        """Create decay photon sources for a set of regions.
+
+        Builds :class:`openmc.IndependentSource` objects with
+        :class:`openmc.stats.DecayPhoton` energy distributions that will be
+        serialized to XML and resolved against the depletion chain by the C++
+        solver.
 
         Parameters
         ----------
@@ -606,46 +611,58 @@ class R2SManager:
         work_items : list of tuple
             For mesh-based: list of (index_mat, mat_id, bbox).
             For cell-based: list of (cell, original_mat, bbox).
+
+        Returns
+        -------
+        list of openmc.IndependentSource
+            Photon sources for each activated region.
         """
         step_result = self.results['depletion_results'][time_index]
         materials = self.results['activation_materials']
         mesh_based = self.method == 'mesh-based'
 
         nuclide_names = list(step_result.index_nuc.keys())
-        n_nuclides = len(nuclide_names)
-        n_regions = len(work_items)
 
-        domain_ids = np.empty(n_regions, dtype=np.int32)
-        lower_left = np.empty((n_regions, 3), dtype=np.float64)
-        upper_right = np.empty((n_regions, 3), dtype=np.float64)
-        atom_densities = np.empty((n_regions, n_nuclides), dtype=np.float64)
-        volumes = np.empty(n_regions, dtype=np.float64)
-
-        for i, item in enumerate(work_items):
+        sources = []
+        for item in work_items:
             if mesh_based:
-                index_mat, mat_id, bbox = item
-                domain_ids[i] = mat_id
+                index_mat, domain_id, bbox = item
                 original_mat = materials[index_mat]
             else:
                 cell, original_mat, bbox = item
-                domain_ids[i] = cell.id
+                domain_id = cell.id
 
             mat_key = str(original_mat.id)
             vol = step_result.volume[mat_key]
 
-            lower_left[i] = bbox.lower_left
-            upper_right[i] = bbox.upper_right
-            volumes[i] = vol
-
-            # Get atom counts for this material and convert to atom/b-cm
+            # Get atom counts and convert to atom/b-cm
             mat_idx = step_result.index_mat[mat_key]
             atom_counts = step_result.data[mat_idx, :]
-            atom_densities[i, :] = atom_counts / vol * 1e-24
+            atom_densities = atom_counts / vol * 1e-24
 
-        domain_type = 'material' if self.method == 'mesh-based' else 'cell'
-        openmc.lib.create_decay_photon_sources(
-            domain_ids, domain_type, lower_left, upper_right, nuclide_names,
-            atom_densities, volumes)
+            # Build nuclide dict with only non-zero densities
+            nuclides = {
+                name: dens for name, dens in zip(nuclide_names, atom_densities)
+                if dens > 0.0
+            }
+            if not nuclides:
+                continue
+
+            energy = openmc.stats.DecayPhoton(nuclides)
+
+            if mesh_based:
+                domains = [openmc.Material(material_id=domain_id)]
+            else:
+                domains = [openmc.Cell(cell_id=domain_id)]
+            source = openmc.IndependentSource(
+                space=openmc.stats.Box(bbox.lower_left, bbox.upper_right),
+                energy=energy,
+                particle='photon',
+                constraints={'domains': domains},
+            )
+            sources.append(source)
+
+        return sources
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

@@ -124,6 +124,8 @@ class Univariate(EqualityMixin, ABC):
             return Legendre.from_xml_element(elem)
         elif distribution == 'mixture':
             return Mixture.from_xml_element(elem)
+        elif distribution == 'decay_photon':
+            return DecayPhoton.from_xml_element(elem)
 
     @abstractmethod
     def _sample_unbiased(self, n_samples: int = 1, seed: int | None = None):
@@ -2194,6 +2196,153 @@ class Mixture(Univariate):
                  f"that is lower by a fraction of {diff} when tolerance={tolerance}.")
 
         return new_dist
+
+
+class DecayPhoton(Univariate):
+    """Energy distribution from decay photon spectra of a mixture of nuclides.
+
+    This distribution stores nuclide names and their atom densities. When
+    written to XML and read by the C++ solver, the nuclide names are resolved
+    against the depletion chain to obtain the decay photon energy spectra
+    and decay constants. The resulting distribution is a mixture of per-nuclide
+    photon spectra weighted by activity (atom_density * decay_constant *
+    photons_per_decay).
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    nuclides : dict
+        Dictionary mapping nuclide name (str) to atom density (float) in
+        units of atom/b-cm.
+
+    Attributes
+    ----------
+    nuclides : dict
+        Dictionary mapping nuclide name to atom density in atom/b-cm.
+
+    """
+
+    def __init__(self, nuclides: dict[str, float]):
+        super().__init__(bias=None)
+        self.nuclides = nuclides
+
+    def __len__(self):
+        return len(self.nuclides)
+
+    @property
+    def nuclides(self):
+        return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_type('nuclides', nuclides, dict)
+        for name, density in nuclides.items():
+            cv.check_type('nuclide name', name, str)
+            cv.check_type(f'atom density for {name}', density, Real)
+            cv.check_greater_than(f'atom density for {name}', density, 0.0)
+        self._nuclides = dict(nuclides)
+
+    def to_xml_element(self, element_name: str):
+        """Return XML representation of the decay photon distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing decay photon distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "decay_photon")
+        for name, density in self.nuclides.items():
+            nuclide_elem = ET.SubElement(element, "nuclide")
+            nuclide_elem.set("name", name)
+            nuclide_elem.set("density", str(density))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate decay photon distribution from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.DecayPhoton
+            Decay photon distribution generated from XML element
+
+        """
+        nuclides = {}
+        for nuclide_elem in elem.findall('nuclide'):
+            name = nuclide_elem.get('name')
+            density = float(nuclide_elem.get('density'))
+            nuclides[name] = density
+        return cls(nuclides)
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        raise NotImplementedError(
+            "DecayPhoton distributions can only be sampled by the C++ solver")
+
+    def integral(self):
+        """Return integral of the distribution
+
+        Returns
+        -------
+        float
+            Integral of the distribution (requires chain data, returns 0.0
+            when chain data is not available)
+        """
+        return 0.0
+
+    def clip(self, tolerance: float = 1e-6, inplace: bool = False):
+        """Remove nuclides with negligible contribution to photon emission.
+
+        Nuclides are sorted by their atom density and those contributing the
+        least are removed until the cumulative removed fraction exceeds the
+        tolerance.
+
+        Parameters
+        ----------
+        tolerance : float
+            Maximum fraction of total atom density that can be discarded.
+        inplace : bool
+            Whether to modify the current object in-place or return a new one.
+
+        Returns
+        -------
+        openmc.stats.DecayPhoton
+            Distribution with low-density nuclides removed
+
+        """
+        densities = np.array(list(self.nuclides.values()))
+        names = list(self.nuclides.keys())
+        indices = _intensity_clip(densities, tolerance=tolerance)
+        new_nuclides = {names[i]: densities[i] for i in indices}
+
+        if inplace:
+            self._nuclides = new_nuclides
+            return self
+        return type(self)(new_nuclides)
+
+    @property
+    def support(self):
+        return (0.0, np.inf)
+
+    def evaluate(self, x):
+        raise NotImplementedError(
+            "evaluate() is undefined for DecayPhoton distributions")
+
+    def mean(self):
+        raise NotImplementedError(
+            "mean() is undefined for DecayPhoton distributions")
 
 
 def combine_distributions(

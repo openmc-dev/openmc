@@ -11,6 +11,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/r2s_source.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
@@ -758,6 +759,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {
     dist = UPtrDist {new Mixture(node)};
+  } else if (type == "decay_photon") {
+    dist = UPtrDist {new DecayPhotonMixture(node)};
   } else if (type == "muir") {
     openmc::fatal_error(
       "'muir' distributions are now specified using the openmc.stats.muir() "

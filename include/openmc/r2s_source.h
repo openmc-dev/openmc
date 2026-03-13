@@ -7,33 +7,51 @@
 #include <cstddef> // for size_t
 #include <cstdint> // for int32_t
 
+#include "openmc/distribution.h"
 #include "openmc/source.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
-//! Create decay photon IndependentSource objects from activated materials
+//==============================================================================
+// DecayPhotonMixture — non-owning mixture of decay photon distributions
+//==============================================================================
+
+//! Energy distribution formed by mixing multiple decay photon spectra.
 //!
-//! For each spatial region, this function combines the decay photon energy
-//! spectra from all nuclides present (weighted by atom count and decay
-//! constant) and creates an IndependentSource with a SpatialBox spatial
-//! distribution and isotropic angular distribution. The resulting sources
-//! are stored in model::external_sources with the probability mass function
-//! rebuilt accordingly.
-//!
-//! \param n_regions Number of spatial regions
-//! \param domain_ids Material or cell IDs for source constraints [n_regions]
-//! \param domain_type MATERIAL or CELL
-//! \param lower_left Flattened lower-left bbox corners [n_regions * 3]
-//! \param upper_right Flattened upper-right bbox corners [n_regions * 3]
-//! \param n_nuclides Number of nuclides in the atom density matrix
-//! \param nuclide_names Array of nuclide name strings [n_nuclides]
-//! \param atom_densities Row-major atom densities in [atom/b-cm],
-//!   shape [n_regions * n_nuclides]
-//! \param volumes Volume of each region in [cm^3], shape [n_regions]
-void create_decay_photon_sources(int n_regions, const int32_t* domain_ids,
-  Source::DomainType domain_type, const double* lower_left,
-  const double* upper_right, int n_nuclides, const char** nuclide_names,
-  const double* atom_densities, const double* volumes);
+//! Unlike the general Mixture distribution, this class holds non-owning
+//! pointers to the component distributions (which live in
+//! data::chain_nuclides). Each component is weighted by the activity
+//! (atoms * decay_constant) of the corresponding nuclide.
+
+class DecayPhotonMixture : public Distribution {
+public:
+  //! Construct from non-owning distribution pointers and weights
+  //!
+  //! \param dists  Non-owning pointers to component distributions
+  //! \param weights  Activity-based weights for each component. The Mixture
+  //!   probability for component i is weights[i] * dists[i]->integral()
+  //!   (the integral encodes photons-per-decay).
+  DecayPhotonMixture(vector<const Distribution*> dists, vector<double> weights);
+
+  //! Construct from an XML node containing nuclide names and atom densities.
+  //!
+  //! Reads child ``<nuclide>`` elements with ``name`` and ``density``
+  //! attributes, resolves them against the loaded depletion chain, and
+  //! constructs the mixed distribution.
+  explicit DecayPhotonMixture(pugi::xml_node node);
+
+  std::pair<double, double> sample(uint64_t* seed) const override;
+  double integral() const override;
+
+protected:
+  double sample_unbiased(uint64_t* seed) const override;
+
+private:
+  vector<const Distribution*> dists_; //!< Non-owning component distributions
+  DiscreteIndex di_; //!< Discrete index for component selection
+  double integral_;  //!< Total photon emission rate
+};
 
 } // namespace openmc
 

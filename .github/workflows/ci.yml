@@ -47,6 +47,7 @@ jobs:
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
+        xdg: [n]
         libmesh: [n]
         event: [n]
 
@@ -64,6 +65,11 @@ jobs:
             python-version: "3.12"
             mpi: y
             omp: y
+          - xdg: y
+            python-version: "3.12"
+            libmesh: y
+            mpi: n
+            omp: y
           - libmesh: y
             python-version: "3.12"
             mpi: y
@@ -78,13 +84,15 @@ jobs:
             mpi: n
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
       mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
-      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}"
+      xdg=${{ matrix.xdg }}, libmesh=${{ matrix.libmesh }},
+      event=${{ matrix.event }}"
 
     env:
       MPI: ${{ matrix.mpi }}
       PHDF5: ${{ matrix.mpi }}
       OMP: ${{ matrix.omp }}
       DAGMC: ${{ matrix.dagmc }}
+      XDG: ${{ matrix.xdg }}
       EVENT: ${{ matrix.event }}
       LIBMESH: ${{ matrix.libmesh }}
       NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
@@ -145,6 +153,12 @@ jobs:
           sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
+
+      - name: Optional apt dependencies for XDG
+        shell: bash
+        if: ${{ matrix.xdg == 'y' }}
+        run: |
+          sudo apt install -y libembree-dev
 
       - name: install
         shell: bash

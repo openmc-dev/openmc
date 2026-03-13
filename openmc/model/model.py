@@ -1179,8 +1179,8 @@ class Model:
 
         # Convert ID map to RGB image
         img = id_map_to_rgb(
-            id_map=id_map, 
-            color_by=color_by, 
+            id_map=id_map,
+            color_by=color_by,
             colors=colors,
             overlap_color=overlap_color
         )
@@ -1217,7 +1217,7 @@ class Model:
                 extent=(x_min, x_max, y_min, y_max),
                 **contour_kwargs
             )
-            
+
             # If only showing outline, set the axis limits and aspect explicitly
             if outline == 'only':
                 axes.set_xlim(x_min, x_max)

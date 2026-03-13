@@ -618,11 +618,6 @@ class Integrator(ABC):
         External source rates for the depletion system.
 
         .. versionadded:: 0.15.3
-    keff_search_control : openmc.deplete._KeffSearchControl
-        Instance of _KeffSearchControl class to perform keff search during
-        transport-depletion simulation.
-
-        .. versionadded:: 0.15.4
 
     """)
 
@@ -736,15 +731,6 @@ class Integrator(ABC):
 
         self._solver = func
 
-    @property
-    def keff_search_control(self):
-        return self._keff_search_control
-
-    @keff_search_control.setter
-    def keff_search_control(self, keff_search_control):
-        check_type('keff search control', keff_search_control, _KeffSearchControl)
-        self._keff_search_control = keff_search_control
-
     def _timed_deplete(self, n, rates, dt, i=None, matrix_func=None):
         start = time.time()
         results = deplete(
@@ -853,12 +839,36 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
-    def _get_bos_from_keff_search_control(self, step_index, bos_conc):
-        """Get BOS from keff search control."""
-        x = deepcopy(bos_conc)
-        # Get new vector after keff criticality control
-        x, keff_search_root = self._keff_search_control.search_for_keff(x, step_index)
-        return x, keff_search_root
+    def _restore_keff_search_control(self, res):
+        """Restore keff search control from restart results."""
+        keff_search_root = res.keff_search_root
+        if keff_search_root is None:
+            raise ValueError(
+                "Cannot restore keff search control from restart "
+                "results because no stored keff_search_root is "
+                "available."
+            )
+        self._keff_search_control.function(keff_search_root)
+        return keff_search_root
+
+    def _get_bos_data(self, step_index, source_rate, bos_conc):
+        """Get beginning-of-step concentrations, rates, and control state."""
+        if step_index > 0 or self.operator.prev_res is None:
+            if self._keff_search_control is not None and source_rate != 0.0:
+                keff_search_root = self._keff_search_control.run(bos_conc)
+            else:
+                keff_search_root = None
+            bos_conc, res = self._get_bos_data_from_operator(
+                step_index, source_rate, bos_conc)
+        else:
+            bos_conc, res = self._get_bos_data_from_restart(
+                source_rate, bos_conc)
+            if self._keff_search_control is not None and source_rate != 0.0:
+                keff_search_root = self._restore_keff_search_control(res)
+            else:
+                keff_search_root = None
+
+        return bos_conc, res, keff_search_root
 
     def integrate(
             self,
@@ -898,21 +908,9 @@ class Integrator(ABC):
                 if output and comm.rank == 0:
                     print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
 
-                # Solve transport equation (or obtain result from restart)
-                if i > 0 or self.operator.prev_res is None:
-                    # Update geometry/material according to keff search control
-                    if self._keff_search_control is not None and source_rate != 0.0:
-                        n, keff_search_root = self._get_bos_from_keff_search_control(i, n)
-                    else:
-                        keff_search_root = None
-                    n, res = self._get_bos_data_from_operator(i, source_rate, n)
-                else:
-                    n, res = self._get_bos_data_from_restart(source_rate, n)
-                    # Get keff search root from keff search control
-                    if self._keff_search_control:
-                        n, keff_search_root = self._get_bos_from_keff_search_control(i, n)
-                    else:
-                        keff_search_root = None
+                # Get beginning-of-step data from operator or restart results
+                n, res, keff_search_root = self._get_bos_data(i, source_rate, n)
+
                 # Solve Bateman equations over time interval
                 proc_time, n_end = self(n, res.rates, dt, source_rate, i)
 
@@ -940,7 +938,7 @@ class Integrator(ABC):
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             if self._keff_search_control is not None and source_rate != 0.0:
-                n, keff_search_root = self._get_bos_from_keff_search_control(i+1, n)
+                keff_search_root = self._keff_search_control.run(n)
             else:
                 keff_search_root = None
             res_final = self.operator(n, source_rate if final_step else 0.0)
@@ -1091,40 +1089,34 @@ class Integrator(ABC):
         function: Callable,
         x0: float,
         x1: float,
-        bracket: list[float],
+        bracket: Sequence[float],
         **search_kwargs
     ):
         """Add keff search to the integrator scheme.
 
-        This method creates a :class:`openmc.deplete._KeffSearchControl` that
-        performs keff searches during depletion to maintain a target keff
-        by adjusting a model parameter through the provided function.
+        This method causes OpenMC to perform a keff search during depletion to
+        maintain a target keff by adjusting a model parameter through the
+        provided function.
 
         .. important::
             The function **must** modify the model through ``openmc.lib`` (e.g.,
             ``openmc.lib.cells``, ``openmc.lib.materials``) and **NOT** through
-            ``openmc.model``. The function is called within a
+            ``openmc.Model``. The function is called within a
             :class:`openmc.lib.TemporarySession` context where only the C API
             (``openmc.lib``) is available for modifications.
 
         Parameters
         ----------
         function : Callable
-            Function that modifies the model through ``openmc.lib`` based on a
-            parameter value. The function should take a single float parameter
-            and modify ``openmc.lib`` objects accordingly (e.g., adjust control
-            rod position via ``openmc.lib.cells[...].translation``, material
-            density via ``openmc.lib.materials[...].set_densities(...)``, etc.).
-            
-            **Important**: The function must modify ``openmc.lib`` objects, not
-            ``openmc.model`` objects.
-        x0: float
+            Function that takes a single float argument and modifies the model
+            through :mod:`openmc.lib`.
+        x0 : float
             Initial lower bound for the keff search.
-        x1: float
+        x1 : float
             Initial upper bound for the keff search.
-        bracket : list[float]
+        bracket : sequence of float
             Bracket interval [x_min, x_max] that constrains the allowed parameter
-            values during the keff search. This is a required parameter 
+            values during the keff search. This is a required parameter
             that defines the absolute bounds for the search. The bracket must contain
             exactly 2 elements with bracket[0] < bracket[1]. These values are passed
             directly to the ``x_min`` and ``x_max`` optional arguments in
@@ -1162,23 +1154,22 @@ class Integrator(ABC):
         ...     k_tol=1e-4
         ... )
 
-        Add keff search that adjusts material density:
+        Add keff search that adjusts the U235 density:
 
-        >>> def adjust_material_density(density_factor):
+        >>> def set_u235_density(u235_density):
         ...     # Get the material from openmc.lib
         ...     lib_mat = openmc.lib.materials[material_id]
         ...     # Get current nuclides and densities
         ...     nuclides = lib_mat.nuclides
-        ...     current_densities = lib_mat.densities
-        ...     # Scale all densities by the factor
-        ...     new_densities = densities * density_factor
-        ...     # Update the material densities
-        ...     lib_mat.set_densities(nuclides, new_densities)
+        ...     densities = lib_mat.densities
+        ...     u235_idx = nuclides.index('U235')
+        ...     densities[u235_idx] = u235_density
+        ...     lib_mat.set_densities(nuclides, densities)
         >>> integrator.add_keff_search_control(
-        ...     adjust_material_density,
-        ...     x0=0.8,
-        ...     x1=1.2,
-        ...     bracket=[0.2, 1.5],
+        ...     set_u235_density,
+        ...     x0=5.0e-4,
+        ...     x1=1.0e-3,
+        ...     bracket=[1.0e-4, 2.0e-3],
         ...     target=1.0
         ... )
 
@@ -1186,12 +1177,7 @@ class Integrator(ABC):
 
         """
         self._keff_search_control = _KeffSearchControl(
-            self.operator, 
-            function, 
-            x0,
-            x1,
-            bracket,
-            **search_kwargs)
+            self.operator, function, x0, x1, bracket, **search_kwargs)
 
 @add_params
 class SIIntegrator(Integrator):

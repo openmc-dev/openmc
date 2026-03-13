@@ -11,8 +11,8 @@ from openmc.deplete import CoupledOperator
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
-@pytest.fixture
-def model():
+
+def make_model():
     f = openmc.Material(name="fuel")
     f.add_element("U", 1, percent_type="ao", enrichment=4.25)
     f.add_element("O", 2)
@@ -60,14 +60,6 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.fixture
-def operator(model):
-    return CoupledOperator(model, CHAIN_PATH)
-
-@pytest.fixture
-def integrator(operator):
-    return openmc.deplete.PredictorIntegrator(
-            operator, [1,1], 0.0, timestep_units = 'd')
 
 def translate_cell(position):
     """Helper function to translate a cell"""
@@ -75,47 +67,50 @@ def translate_cell(position):
     openmc.lib.cells[cell.id].translation = [0, 0, position]
     return position
 
+
 def rotate_cell(angle):
     """Helper function to rotate a cell"""
     cell = [c for c in openmc.lib.cells.values() if c.name == 'universe_cell'][0]
     openmc.lib.cells[cell.id].rotation = [0, 0, angle]
     return angle
 
-def adjust_fuel_density(density_factor):
-    """Helper function to adjust fuel density"""
+
+def set_u235_density(u235_density):
+    """Helper function to set the U235 density directly"""
     fuel = [m for m in openmc.lib.materials.values() if m.name == 'fuel'][0]
     nuclides = openmc.lib.materials[fuel.id].nuclides
-    current_densities = openmc.lib.materials[fuel.id].densities
-    new_densities = [d * density_factor for d in current_densities]
-    openmc.lib.materials[fuel.id].set_densities(nuclides, new_densities)
-    return density_factor
+    densities = openmc.lib.materials[fuel.id].densities
+    u235_idx = nuclides.index('U235')
+    densities[u235_idx] = u235_density
+    openmc.lib.materials[fuel.id].set_densities(nuclides, densities)
+    return u235_density
 
-@pytest.mark.parametrize("function, x0, x1, bracket, test_value", [
-    (translate_cell, -1.0, 1.0, [-5.0, 5.0], 0.5),
-    (rotate_cell, -45.0, 45.0, [-90.0, 90.0], 10.0),
-    (adjust_fuel_density, 0.8, 1.2, [0.5, 1.5], 1.0)
+
+@pytest.mark.parametrize("function, x0, x1, bracket", [
+    (translate_cell, -1.0, 1.0, (-5.0, 5.0)),
+    (rotate_cell, -45.0, 45.0, (-90.0, 90.0)),
+    (set_u235_density, 0.8, 1.2, (0.5, 1.5))
 ])
-def test_integrator_add_keff_search_control(run_in_tmpdir, model, operator, integrator,
-    function, x0, x1, bracket, test_value):
+def test_integrator_add_keff_search_control(run_in_tmpdir, function, x0, x1, bracket):
     """Test adding add_keff_search_control to integrator"""
-    model.export_to_xml()
-    openmc.lib.init()
-    test_function = function(test_value)
-    # Test that add_reactivity_control method exists and works
+    model = make_model()
+    operator = CoupledOperator(model, CHAIN_PATH)
+    integrator = openmc.deplete.PredictorIntegrator(
+        operator, [1, 1], 0.0, timestep_units='d')
+
     integrator.add_keff_search_control(
-        function=test_function,
+        function=function,
         x0=x0,
         x1=x1,
         bracket=bracket,
         k_tol=0.1,
         output=False,
     )
-    
-    assert integrator.keff_search_control.x0 == x0
-    assert integrator.keff_search_control.x1 == x1
-    assert integrator.keff_search_control.function == test_function
-    assert integrator.keff_search_control.search_kwargs['x_min'] == bracket[0]
-    assert integrator.keff_search_control.search_kwargs['x_max'] == bracket[1]  
-    assert integrator.keff_search_control.search_kwargs['k_tol'] == 0.1
-    assert integrator.keff_search_control.search_kwargs['output'] == False
-    openmc.lib.finalize()
+
+    assert integrator._keff_search_control.x0 == x0
+    assert integrator._keff_search_control.x1 == x1
+    assert integrator._keff_search_control.function == function
+    assert integrator._keff_search_control.search_kwargs['x_min'] == bracket[0]
+    assert integrator._keff_search_control.search_kwargs['x_max'] == bracket[1]
+    assert integrator._keff_search_control.search_kwargs['k_tol'] == 0.1
+    assert not integrator._keff_search_control.search_kwargs['output']

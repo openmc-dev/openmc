@@ -350,6 +350,7 @@ void print_build_info()
   std::string mpi(n);
   std::string phdf5(n);
   std::string dagmc(n);
+  std::string xdg(n);
   std::string libmesh(n);
   std::string png(n);
   std::string profiling(n);
@@ -365,6 +366,9 @@ void print_build_info()
 #endif
 #ifdef OPENMC_DAGMC_ENABLED
   dagmc = y;
+#endif
+#ifdef OPENMC_XDG_ENABLED
+  xdg = y;
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED
   libmesh = y;
@@ -397,6 +401,7 @@ void print_build_info()
     fmt::print("Parallel HDF5 enabled: {}\n", phdf5);
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
+    fmt::print("XDG support:           {}\n", xdg);
     fmt::print("libMesh support:       {}\n", libmesh);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);

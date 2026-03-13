@@ -183,9 +183,9 @@ class Settings:
        Initial seed for randomly generated plot colors.
     ptables : bool
         Determine whether probability tables are used.
-    properties_file : Pathlike
+    properties_file : PathLike
         Location of the properties file to load cell temperatures/densities
-        and materials
+        and material densities
     random_ray : dict
         Options for configuring the random ray solver. Acceptable keys are:
 
@@ -1790,10 +1790,10 @@ class Settings:
 
     def _create_properties_file_element(self, root):
         if self.properties_file is not None:
-            element = ET.Element("properties")
+            element = ET.Element("properties_file")
             element.text = str(self.properties_file)
             root.append(element)
-        
+
     def _create_trace_subelement(self, root):
         if self._trace is not None:
             element = ET.SubElement(root, "trace")
@@ -2307,7 +2307,7 @@ class Settings:
             self.temperature['multipole'] = text in ('true', '1')
 
     def _properties_file_from_xml_element(self, root):
-        text = get_text(root, 'properties')
+        text = get_text(root, 'properties_file')
         if text is not None:
             self.properties_file = text
 

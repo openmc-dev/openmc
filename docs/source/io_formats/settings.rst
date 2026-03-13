@@ -565,6 +565,8 @@ generator during generation of colors in plots.
   properties HDF5 file to load cell temperatures/densities and material
   densities.
 
+  *Default*: None
+
 ---------------------
 ``<ptables>`` Element
 ---------------------

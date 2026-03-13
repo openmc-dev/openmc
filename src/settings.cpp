@@ -753,8 +753,8 @@ void read_settings_xml(pugi::xml_node root)
   }
 
   // read properties from file
-  if (check_for_node(root, "properties")) {
-    properties_file = get_node_value(root, "properties");
+  if (check_for_node(root, "properties_file")) {
+    properties_file = get_node_value(root, "properties_file");
     if (!file_exists(properties_file)) {
       fatal_error(fmt::format("File '{}' does not exist.", properties_file));
     }

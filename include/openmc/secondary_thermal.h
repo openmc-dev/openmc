@@ -258,12 +258,6 @@ private:
   const Function1D& incoherent_xs_;      //!< Polymorphic ref. to incoherent XS
 };
 
-//! Helper for returning a uniform weight via operator[] regardless of index
-struct DoubleVector {
-  double data;
-  const double& operator[](size_t index) const { return data; }
-};
-
 //! Evaluate the PDF of a discrete distribution at a given point.
 //!
 //! Given a set of discrete values mu[i] with weights w[i], this function
@@ -348,8 +342,9 @@ template<typename T1>
 double get_pdf_discrete(
   const T1 mu, double mu_0, double a = -1.0, double b = 1.0)
 {
-  DoubleVector w {1.0 / mu.size()};
-  return get_pdf_discrete(mu, w, mu_0, a, b);
+  auto center = [&](std::size_t i) { return mu[i]; };
+  auto weight = [&](std::size_t i) { return 1.0 / mu.size(); };
+  return get_pdf_discrete_impl(mu.size(), mu_0, a, b, center, weight);
 }
 
 //! Evaluate the PDF of a uniformly weighted distribution on interpolated points

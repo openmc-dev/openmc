@@ -1,6 +1,6 @@
 #include "openmc/distribution_multi.h"
 
-#include <algorithm> // for move
+#include <algorithm> // for move, clamp
 #include <cmath>     // for sqrt, sin, cos, max
 
 #include "openmc/constants.h"

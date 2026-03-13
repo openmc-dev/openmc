@@ -280,54 +280,45 @@ struct DoubleVector {
 //! \param[in] a Lower bound of the domain (default: -1)
 //! \param[in] b Upper bound of the domain (default: 1)
 //! \return Probability density at mu_0
+template<typename T>
+double discrete_half_width(const T& mu, std::size_t i, double a, double b)
+{
+  double x = mu[i];
+  double left_span = (i == 0) ? 2.0 * (x - a) : x - mu[i - 1];
+  double right_span = (i + 1 == mu.size()) ? 2.0 * (b - x) : mu[i + 1] - x;
+  return 0.5 * std::min(left_span, right_span);
+}
+
 template<typename T1, typename T2>
 double get_pdf_discrete(
   const T1 mu, const T2& w, double mu_0, double a = -1.0, double b = 1.0)
 {
-  // Clamp mu_0 to the domain [a, b]
-  if (mu_0 < a)
-    mu_0 = a;
-  if (mu_0 > b)
-    mu_0 = b;
-
-  // Find the nearest discrete values bracketing mu_0:
-  //   a0 = closest discrete value <= mu_0 (or domain bound a)
-  //   a1 = the discrete value before a0 (or domain bound a)
-  //   b0 = closest discrete value >= mu_0 (or domain bound b)
-  //   b1 = the discrete value after b0 (or domain bound b)
-  double a0, a1, b0, b1;
-  int32_t ai = -1;
-  int32_t bi = -1;
-  if (mu_0 > mu[0]) {
-    ai = lower_bound_index(mu.begin(), mu.end(), mu_0);
-    a0 = mu[ai];
-    a1 = (ai > 1) ? mu[ai - 1] : a;
-  } else {
-    a0 = a;
-    a1 = a;
-  }
-  if (mu_0 < mu[mu.size() - 1]) {
-    bi = upper_bound_index(mu.begin(), mu.end(), mu_0);
-    b0 = mu[bi];
-    b1 = (bi < mu.size() - 1) ? mu[bi + 1] : b;
-  } else {
-    b0 = b;
-    b1 = b;
-  }
-
-  // Compute the half-width of the rectangular bin around each bracketing
-  // discrete value. The half-width is half the distance to its nearest
-  // neighbor (or domain boundary).
-  double delta_a = 0.5 * std::min(b0 - a0, a0 - a1);
-  double delta_b = 0.5 * std::min(b1 - b0, b0 - a0);
-
-  // Determine which bin mu_0 falls in and return the corresponding density
-  if (mu_0 < a0 + delta_a)
-    return w[ai] / (2.0 * delta_a);
-  else if (mu_0 + delta_b < b0)
-    return w[bi] / (2.0 * delta_b);
-  else
+  if (mu.size() == 0 || mu_0 < a || mu_0 > b)
     return 0.0;
+
+  auto evaluate_bin = [&](std::size_t i) {
+    double delta = discrete_half_width(mu, i, a, b);
+    if (delta <= 0.0)
+      return 0.0;
+
+    double left = mu[i] - delta;
+    double right = mu[i] + delta;
+    bool in_bin = (mu_0 >= left) &&
+                  ((i + 1 == mu.size()) ? (mu_0 <= right) : (mu_0 < right));
+    return in_bin ? w[i] / (2.0 * delta) : 0.0;
+  };
+
+  auto i_right = static_cast<std::size_t>(
+    std::lower_bound(mu.begin(), mu.end(), mu_0) - mu.begin());
+
+  if (i_right < mu.size()) {
+    double pdf = evaluate_bin(i_right);
+    if (pdf > 0.0)
+      return pdf;
+  }
+  if (i_right > 0)
+    return evaluate_bin(i_right - 1);
+  return 0.0;
 }
 
 //! Evaluate the PDF of a discrete distribution with uniform weights
@@ -344,6 +335,65 @@ double get_pdf_discrete(
 {
   DoubleVector w {1.0 / mu.size()};
   return get_pdf_discrete(mu, w, mu_0, a, b);
+}
+
+//! Evaluate the PDF of a uniformly weighted distribution on interpolated points
+//!
+//! \tparam T1 Container type for the lower tabulated cosine values
+//! \tparam T2 Container type for the upper tabulated cosine values
+//! \param[in] mu0 Sorted array of discrete cosine values at the lower grid
+//! point \param[in] mu1 Sorted array of discrete cosine values at the upper
+//! grid point \param[in] f Interpolation factor between mu0 and mu1 \param[in]
+//! mu_0 Point at which to evaluate the PDF \param[in] a Lower bound of the
+//! domain (default: -1) \param[in] b Upper bound of the domain (default: 1)
+//! \return Probability density at mu_0
+template<typename T1, typename T2>
+double get_pdf_discrete_interpolated(const T1 mu0, const T2 mu1, double f,
+  double mu_0, double a = -1.0, double b = 1.0)
+{
+  if (mu0.size() == 0 || mu0.size() != mu1.size() || mu_0 < a || mu_0 > b)
+    return 0.0;
+
+  auto center = [&](std::size_t i) { return mu0[i] + f * (mu1[i] - mu0[i]); };
+  auto half_width = [&](std::size_t i) {
+    double x = center(i);
+    double left_span = (i == 0) ? 2.0 * (x - a) : x - center(i - 1);
+    double right_span =
+      (i + 1 == mu0.size()) ? 2.0 * (b - x) : center(i + 1) - x;
+    return 0.5 * std::min(left_span, right_span);
+  };
+  auto evaluate_bin = [&](std::size_t i) {
+    double x = center(i);
+    double delta = half_width(i);
+    if (delta <= 0.0)
+      return 0.0;
+
+    double left = x - delta;
+    double right = x + delta;
+    bool in_bin = (mu_0 >= left) &&
+                  ((i + 1 == mu0.size()) ? (mu_0 <= right) : (mu_0 < right));
+    return in_bin ? 1.0 / (mu0.size() * 2.0 * delta) : 0.0;
+  };
+
+  std::size_t low = 0;
+  std::size_t high = mu0.size();
+  while (low < high) {
+    std::size_t mid = low + (high - low) / 2;
+    if (center(mid) < mu_0) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  if (low < mu0.size()) {
+    double pdf = evaluate_bin(low);
+    if (pdf > 0.0)
+      return pdf;
+  }
+  if (low > 0)
+    return evaluate_bin(low - 1);
+  return 0.0;
 }
 
 } // namespace openmc

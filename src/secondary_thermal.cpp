@@ -165,10 +165,8 @@ double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
   // Energy doesn't change in elastic scattering
   E_out = E_in;
 
-  double pdf = 0.0;
-  pdf += f * get_pdf_discrete(mu_out_.slice(i + 1, tensor::all), mu);
-  pdf += (1 - f) * get_pdf_discrete(mu_out_.slice(i, tensor::all), mu);
-  return pdf;
+  return get_pdf_discrete_interpolated(
+    mu_out_.slice(i, tensor::all), mu_out_.slice(i + 1, tensor::all), f, mu);
 }
 
 //==============================================================================
@@ -265,10 +263,8 @@ double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
   int j;
   sample_params(E_in, E_out, j, seed);
 
-  double pdf = 0.0;
-  pdf += f * get_pdf_discrete(mu_out_.slice(i + 1, j, tensor::all), mu);
-  pdf += (1 - f) * get_pdf_discrete(mu_out_.slice(i, j, tensor::all), mu);
-  return pdf;
+  return get_pdf_discrete_interpolated(mu_out_.slice(i, j, tensor::all),
+    mu_out_.slice(i + 1, j, tensor::all), f, mu);
 }
 
 //==============================================================================
@@ -414,13 +410,10 @@ double IncoherentInelasticAE::sample_energy_and_pdf(
   int l, j;
   sample_params(E_in, E_out, f, l, j, seed);
 
-  int n_mu = distribution_[l].mu.shape()[1];
   const auto& mu_l = distribution_[l].mu;
 
-  double pdf = 0.0;
-  pdf += f * get_pdf_discrete(mu_l.slice(j + 1, tensor::all), mu);
-  pdf += (1 - f) * get_pdf_discrete(mu_l.slice(j, tensor::all), mu);
-  return pdf;
+  return get_pdf_discrete_interpolated(
+    mu_l.slice(j, tensor::all), mu_l.slice(j + 1, tensor::all), f, mu);
 }
 
 //==============================================================================

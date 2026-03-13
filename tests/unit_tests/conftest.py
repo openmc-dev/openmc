@@ -1,7 +1,18 @@
+import os
+
 import openmc
 import pytest
 
 from tests.regression_tests import config
+
+
+@pytest.fixture
+def run_in_tmpdir(tmp_path):
+    """Run test in a temporary directory, restoring cwd afterwards."""
+    orig = os.getcwd()
+    os.chdir(tmp_path)
+    yield tmp_path
+    os.chdir(orig)
 
 
 @pytest.fixture(scope='module')

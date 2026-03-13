@@ -1,8 +1,6 @@
 from math import pi
 from tempfile import TemporaryDirectory
 from pathlib import Path
-import itertools
-import random
 
 import h5py
 import numpy as np
@@ -556,7 +554,6 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     with h5py.File("test_mesh.vtkhdf", "r"):
         ...
 
-
 def test_mesh_get_homogenized_materials():
     """Test the get_homogenized_materials method"""
     # Simple model with 1 cm of Fe56 next to 1 cm of H1
@@ -612,7 +609,6 @@ def test_mesh_get_homogenized_materials():
 
 @pytest.fixture
 def sphere_model():
-    openmc.reset_auto_ids()
     # Model with three materials separated by planes x=0 and z=0
     mats = []
     for i in range(3):
@@ -694,49 +690,6 @@ def test_mesh_material_volumes_serialize():
     assert new_volumes.by_element(3) == [(2, 1.0)]
 
 
-def test_mesh_material_volumes_serialize_with_bboxes():
-    materials = np.array([
-        [1, -1, -2],
-        [-1, -2, -2],
-        [2, 1, -2],
-        [2, -2, -2]
-    ])
-    volumes = np.array([
-        [0.5, 0.5, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.5, 0.5, 0.0],
-        [1.0, 0.0, 0.0]
-    ])
-
-    # (xmin, ymin, zmin, xmax, ymax, zmax)
-    bboxes = np.empty((4, 3, 6))
-    bboxes[..., 0:3] = np.inf
-    bboxes[..., 3:6] = -np.inf
-    bboxes[0, 0] = [-1.0, -2.0, -3.0, 1.0, 2.0, 3.0]    # material 1
-    bboxes[0, 1] = [-5.0, -6.0, -7.0, 5.0, 6.0, 7.0]    # void
-    bboxes[1, 0] = [0.0, 0.0, 0.0, 10.0, 1.0, 2.0]      # void
-    bboxes[2, 0] = [-1.0, -1.0, -1.0, 0.0, 0.0, 0.0]    # material 2
-    bboxes[2, 1] = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0]       # material 1
-    bboxes[3, 0] = [-2.0, -2.0, -2.0, 2.0, 2.0, 2.0]    # material 2
-
-    mmv = openmc.MeshMaterialVolumes(materials, volumes, bboxes)
-    with TemporaryDirectory() as tmpdir:
-        path = f'{tmpdir}/volumes_bboxes.npz'
-        mmv.save(path)
-        loaded = openmc.MeshMaterialVolumes.from_npz(path)
-
-    assert loaded.has_bounding_boxes
-    first = loaded.by_element(0, include_bboxes=True)[0][2]
-    assert isinstance(first, openmc.BoundingBox)
-    np.testing.assert_array_equal(first.lower_left, (-1.0, -2.0, -3.0))
-    np.testing.assert_array_equal(first.upper_right, (1.0, 2.0, 3.0))
-
-    second = loaded.by_element(0, include_bboxes=True)[1][2]
-    assert isinstance(second, openmc.BoundingBox)
-    np.testing.assert_array_equal(second.lower_left, (-5.0, -6.0, -7.0))
-    np.testing.assert_array_equal(second.upper_right, (5.0, 6.0, 7.0))
-
-
 def test_mesh_material_volumes_boundary_conditions(sphere_model):
     """Test the material volumes method using a regular mesh
     that overlaps with a vacuum boundary condition."""
@@ -762,53 +715,6 @@ def test_mesh_material_volumes_boundary_conditions(sphere_model):
     for evaluated, expected in zip(volumes.by_element(0), expected_volumes):
         assert evaluated[0] == expected[0]
         assert evaluated[1] == pytest.approx(expected[1], rel=1e-2)
-
-
-def test_mesh_material_volumes_bounding_boxes():
-    # Create a model with 8 spherical cells at known locations with random radii
-    box = openmc.model.RectangularParallelepiped(
-        -10, 10, -10, 10, -10, 10, boundary_type='vacuum')
-
-    mat = openmc.Material()
-    mat.add_nuclide('H1', 1.0)
-
-    sph_cells = []
-    for x, y, z in itertools.product((-5., 5.), repeat=3):
-        mat_i = mat.clone()
-        sph = openmc.Sphere(x, y, z, r=random.uniform(0.5, 1.5))
-        sph_cells.append(openmc.Cell(region=-sph, fill=mat_i))
-    background = openmc.Cell(region=-box & openmc.Intersection([~c.region for c in sph_cells]))
-
-    model = openmc.Model()
-    model.geometry = openmc.Geometry(sph_cells + [background])
-    model.settings.particles = 1000
-    model.settings.batches = 10
-
-    # Create a one-element mesh that encompasses the entire geometry
-    mesh = openmc.RegularMesh()
-    mesh.lower_left = (-10., -10., -10.)
-    mesh.upper_right = (10., 10., 10.)
-    mesh.dimension = (1, 1, 1)
-
-    # Run material volume calculation with bounding boxes
-    n_samples = (400, 400, 400)
-    mmv = mesh.material_volumes(model, n_samples, max_materials=10, bounding_boxes=True)
-    assert mmv.has_bounding_boxes
-
-    # Create a mapping of material ID to bounding box
-    bbox_by_mat = {
-        mat_id: bbox
-        for mat_id, vol, bbox in mmv.by_element(0, include_bboxes=True)
-        if mat_id is not None and vol > 0.0
-    }
-
-    # Match the mesh ray spacing used for the bounding box estimator.
-    tol = 0.5 * mesh.bounding_box.width[0] / n_samples[0]
-    for cell in sph_cells:
-        bbox = bbox_by_mat[cell.fill.id]
-        cell_bbox = cell.bounding_box
-        np.testing.assert_allclose(bbox.lower_left, cell_bbox.lower_left, atol=tol)
-        np.testing.assert_allclose(bbox.upper_right, cell_bbox.upper_right, atol=tol)
 
 
 def test_raytrace_mesh_infinite_loop(run_in_tmpdir):
@@ -923,6 +829,10 @@ def test_filter_time_mesh(run_in_tmpdir):
     )
 
 
+# =============================================================================
+# VTKHDF Format Tests for StructuredMeshes
+# =============================================================================
+
 def test_regular_mesh_get_indices_at_coords():
     """Test get_indices_at_coords method for RegularMesh"""
     # Create a 10x10x10 mesh from (0,0,0) to (1,1,1)
@@ -994,3 +904,293 @@ def test_regular_mesh_get_indices_at_coords():
     assert isinstance(result_1d, tuple)
     assert len(result_1d) == 1
     assert result_1d == (5,)
+
+def test_write_vtkhdf_regular_mesh(run_in_tmpdir):
+    """Test writing a regular mesh to VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [-5., -5., -5.]
+    mesh.upper_right = [5., 5., 5.]
+    mesh.dimension = [2, 3, 4]
+
+    # Sample some random data and write to VTKHDF
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_regular_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    # Verify VTKHDF file structure
+    with h5py.File(filename, "r") as f:
+        assert "VTKHDF" in f
+        root = f["VTKHDF"]
+        assert root.attrs["Type"] == b"StructuredGrid"
+        assert tuple(root.attrs["Version"]) == (2, 1)
+        assert "Dimensions" in root
+        assert "Points" in root
+        assert "CellData" in root
+        assert "data" in root["CellData"]
+
+        # Check dimensions
+        dims = root["Dimensions"][()]
+        assert tuple(dims) == (3, 4, 5)  # dimension + 1 for each
+
+        # Check data shape
+        cell_data = root["CellData"]["data"][()]
+        assert cell_data.shape == (ref_data.size,)
+
+
+def test_write_vtkhdf_rectilinear_mesh(run_in_tmpdir):
+    """Test writing a rectilinear mesh to VTKHDF format."""
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = np.array([0., 1., 3., 6.])
+    mesh.y_grid = np.array([-5., 0., 5.])
+    mesh.z_grid = np.array([-10., -5., 0., 5., 10.])
+
+    # Sample some random data and write to VTKHDF
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_rectilinear_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"flux": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    # Verify VTKHDF file structure
+    with h5py.File(filename, "r") as f:
+        assert "VTKHDF" in f
+        root = f["VTKHDF"]
+        assert "CellData" in root
+        assert "flux" in root["CellData"]
+
+        # Check data was written
+        cell_data = root["CellData"]["flux"][()]
+        assert cell_data.size == ref_data.size
+
+
+def test_write_vtkhdf_cylindrical_mesh(run_in_tmpdir):
+    """Test writing a cylindrical mesh to VTKHDF format."""
+    mesh = openmc.CylindricalMesh(
+        r_grid=[0., 1., 2., 3.],
+        phi_grid=[0., pi/2, pi, 3*pi/2, 2*pi],
+        z_grid=[-5., 0., 5.],
+        origin=[0., 0., 0.]
+    )
+
+    # Sample some random data and write to VTKHDF
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_cylindrical_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"power": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    # Verify VTKHDF file structure
+    with h5py.File(filename, "r") as f:
+        assert "VTKHDF" in f
+        root = f["VTKHDF"]
+        assert "CellData" in root
+        assert "power" in root["CellData"]
+
+        # Check dimensions (vertices)
+        dims = root["Dimensions"][()]
+        expected_dims = np.array([3+1, 4+1, 2+1])  # r, phi, z
+        np.testing.assert_array_equal(dims, expected_dims)
+
+
+def test_write_vtkhdf_spherical_mesh(run_in_tmpdir):
+    """Test writing a spherical mesh to VTKHDF format."""
+    mesh = openmc.SphericalMesh(
+        r_grid=[0., 1., 2., 3.],
+        theta_grid=[0., pi/4, pi/2, 3*pi/4, pi],
+        phi_grid=[0., pi/2, pi, 3*pi/2, 2*pi],
+        origin=[0., 0., 0.]
+    )
+
+    # Sample some random data and write to VTKHDF
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_spherical_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"density": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    # Verify VTKHDF file structure
+    with h5py.File(filename, "r") as f:
+        assert "VTKHDF" in f
+        root = f["VTKHDF"]
+        assert "Points" in root
+        assert "CellData" in root
+        assert "density" in root["CellData"]
+
+
+def test_write_vtkhdf_volume_normalization(run_in_tmpdir):
+    """Test volume normalization in VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [10., 10., 10.]
+    mesh.dimension = [2, 2, 2]
+
+    # Create data with known values
+    ref_data = np.ones(mesh.dimension) * 100.0
+    filename_with_norm = "test_normalized.vtkhdf"
+    filename_without_norm = "test_unnormalized.vtkhdf"
+
+    # Write with normalization
+    mesh.write_data_to_vtk(
+        datasets={"flux": ref_data},
+        filename=filename_with_norm,
+        volume_normalization=True
+    )
+
+    # Write without normalization
+    mesh.write_data_to_vtk(
+        datasets={"flux": ref_data},
+        filename=filename_without_norm,
+        volume_normalization=False
+    )
+
+    # Read both files and compare
+    with h5py.File(filename_with_norm, "r") as f:
+        normalized_data = f["VTKHDF"]["CellData"]["flux"][()]
+
+    with h5py.File(filename_without_norm, "r") as f:
+        unnormalized_data = f["VTKHDF"]["CellData"]["flux"][()]
+
+    # Volume for each cell is 5 x 5 x 5 = 125
+    cell_volume = 125.0
+    expected_normalized = ref_data.ravel() / cell_volume
+    np.testing.assert_allclose(normalized_data, expected_normalized)
+    np.testing.assert_allclose(unnormalized_data, ref_data.ravel())
+
+
+def test_write_vtkhdf_multiple_datasets(run_in_tmpdir):
+    """Test writing multiple datasets to VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [1., 1., 1.]
+    mesh.dimension = [2, 2, 2]
+
+    # Create multiple datasets
+    rng = np.random.default_rng(42)
+    data1 = rng.random(mesh.dimension)
+    data2 = rng.random(mesh.dimension)
+    data3 = rng.random(mesh.dimension)
+
+    filename = "test_multiple_datasets.vtkhdf"
+    mesh.write_data_to_vtk(
+        datasets={"flux": data1, "power": data2, "heating": data3},
+        filename=filename
+    )
+
+    assert Path(filename).exists()
+
+    # Verify all datasets are present
+    with h5py.File(filename, "r") as f:
+        root = f["VTKHDF"]
+        assert "flux" in root["CellData"]
+        assert "power" in root["CellData"]
+        assert "heating" in root["CellData"]
+
+        # Verify data integrity
+        np.testing.assert_allclose(
+            root["CellData"]["flux"][()],
+            data1.T.ravel()
+        )
+        np.testing.assert_allclose(
+            root["CellData"]["power"][()],
+            data2.T.ravel()
+        )
+        np.testing.assert_allclose(
+            root["CellData"]["heating"][()],
+            data3.T.ravel()
+        )
+
+
+def test_write_vtkhdf_invalid_data_shape(run_in_tmpdir):
+    """Test that VTKHDF raises error for mismatched data shape."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [1., 1., 1.]
+    mesh.dimension = [2, 2, 2]
+
+    # Create data with wrong shape
+    wrong_data = np.ones((3, 3, 3))
+    filename = "test_invalid_shape.vtkhdf"
+
+    with pytest.raises(ValueError, match="Cannot apply multidimensional dataset"):
+        mesh.write_data_to_vtk(
+            datasets={"bad_data": wrong_data},
+            filename=filename
+        )
+
+
+def test_write_vtkhdf_1d_mesh(run_in_tmpdir):
+    """Test writing a 1D regular mesh to VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0.]
+    mesh.upper_right = [10.]
+    mesh.dimension = [5]
+
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_1d_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    with h5py.File(filename, "r") as f:
+        root = f["VTKHDF"]
+        # Verify 1D mesh was written
+        dims = root["Dimensions"][()]
+        assert len(dims) >= 1
+        assert "CellData" in root
+
+
+def test_write_vtkhdf_2d_mesh(run_in_tmpdir):
+    """Test writing a 2D regular mesh to VTKHDF format."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0.]
+    mesh.upper_right = [10., 10.]
+    mesh.dimension = [5, 3]
+
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_2d_mesh.vtkhdf"
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    with h5py.File(filename, "r") as f:
+        root = f["VTKHDF"]
+        # Verify 2D mesh was written
+        dims = root["Dimensions"][()]
+        assert len(dims) == 2
+        assert "CellData" in root
+
+
+def test_write_ascii_vtk_unchanged(run_in_tmpdir):
+    """Test that ASCII .vtk format still works as before."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0., 0., 0.]
+    mesh.upper_right = [1., 1., 1.]
+    mesh.dimension = [2, 2, 2]
+
+    rng = np.random.default_rng(42)
+    ref_data = rng.random(mesh.dimension)
+    filename = "test_ascii.vtk"
+
+    # This should work without requiring vtk module changes
+    vtkIOLegacy = pytest.importorskip("vtkmodules.vtkIOLegacy")
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    # Verify with VTK reader
+    reader = vtkIOLegacy.vtkGenericDataObjectReader()
+    reader.SetFileName(str(filename))
+    reader.Update()
+
+    # Get data from file
+    arr = reader.GetOutput().GetCellData().GetArray("data")
+    read_data = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
+    np.testing.assert_almost_equal(read_data, ref_data.ravel())

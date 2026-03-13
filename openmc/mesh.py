@@ -1688,10 +1688,45 @@ class RectilinearMesh(StructuredMesh):
 
         return element
 
-    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
-        raise NotImplementedError(
-            "get_indices_at_coords is not yet implemented for RectilinearMesh"
-        )
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple[int, int, int]:
+        """Find the mesh cell indices containing the specified coordinates.
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            Cartesian coordinates of the point as (x, y, z).
+
+        Returns
+        -------
+        tuple[int, int, int]
+            Mesh indices (ix, iy, iz).
+
+        Raises
+        ------
+        ValueError
+            If coords does not contain exactly 3 values, or if a coordinate is
+            outside the mesh grid boundaries.
+        """
+        if len(coords) != 3:
+            raise ValueError(
+                f"coords must contain exactly 3 values for a rectilinear mesh, "
+                f"got {len(coords)}"
+            )
+
+        grids = (self.x_grid, self.y_grid, self.z_grid)
+        indices = []
+
+        for grid, value in zip(grids, coords):
+            if value < grid[0] or value > grid[-1]:
+                raise ValueError(
+                    f"Coordinate value {value} is outside the mesh grid boundaries: "
+                    f"[{grid[0]}, {grid[-1]}]"
+                )
+
+            idx = np.searchsorted(grid, value, side="right") - 1
+            indices.append(int(min(idx, len(grid) - 2)))
+
+        return tuple(indices)
 
 
 class CylindricalMesh(StructuredMesh):

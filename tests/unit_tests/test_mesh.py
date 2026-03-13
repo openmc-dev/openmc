@@ -994,3 +994,36 @@ def test_regular_mesh_get_indices_at_coords():
     assert isinstance(result_1d, tuple)
     assert len(result_1d) == 1
     assert result_1d == (5,)
+
+def test_rectilinear_mesh_get_indices_at_coords():
+    """Test get_indices_at_coords method for RectilinearMesh"""
+    # Create a 3x2x2 rectilinear mesh with non-uniform spacing
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = [0., 1., 5., 10.]
+    mesh.y_grid = [-10., -5., 0.]
+    mesh.z_grid = [-100., 0., 100.]
+
+    # Test lower-left corner maps to first voxel (0, 0, 0)
+    assert mesh.get_indices_at_coords([0.0, -10., -100.]) == (0, 0, 0)
+
+    # Test centroid of first voxel
+    assert mesh.get_indices_at_coords([0.5, -7.5, -50.]) == (0, 0, 0)
+
+    # Test centroid of last voxel maps correctly
+    assert mesh.get_indices_at_coords([7.5, -2.5, 50.]) == (2, 1, 1)
+
+    # Test upper_right corner maps to last voxel
+    assert mesh.get_indices_at_coords([10., 0., 100.]) == (2, 1, 1)
+
+    # Test a middle voxel
+    assert mesh.get_indices_at_coords([2., -5., 0.]) == (1, 1, 1)
+    
+    # Test coordinates outside mesh bounds raise ValueError
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([-0.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([1.5, 0.5, 0.5])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, -0.5, 110.])
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([0.5, -20., 110.])

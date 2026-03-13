@@ -280,15 +280,6 @@ struct DoubleVector {
 //! \param[in] a Lower bound of the domain (default: -1)
 //! \param[in] b Upper bound of the domain (default: 1)
 //! \return Probability density at mu_0
-template<typename T>
-double discrete_half_width(const T& mu, std::size_t i, double a, double b)
-{
-  double x = mu[i];
-  double left_span = (i == 0) ? 2.0 * (x - a) : x - mu[i - 1];
-  double right_span = (i + 1 == mu.size()) ? 2.0 * (b - x) : mu[i + 1] - x;
-  return 0.5 * std::min(left_span, right_span);
-}
-
 template<typename CenterFn, typename EvaluateBinFn>
 double get_pdf_discrete_impl(std::size_t n, double mu_0, double a, double b,
   CenterFn center, EvaluateBinFn evaluate_bin)
@@ -331,12 +322,15 @@ double get_pdf_discrete(
   // at index i. The bin is a rectangle of width 0.5*min(mu[i] - mu[i-1],
   // mu[i+1] - mu[i]) centered on the discrete mu value itself.
   auto evaluate_bin = [&](std::size_t i) {
-    double delta = discrete_half_width(mu, i, a, b);
+    double x = mu[i];
+    double left_span = (i == 0) ? 2.0 * (x - a) : x - mu[i - 1];
+    double right_span = (i + 1 == mu.size()) ? 2.0 * (b - x) : mu[i + 1] - x;
+    double delta = 0.5 * std::min(left_span, right_span);
     if (delta <= 0.0)
       return 0.0;
 
-    double left = mu[i] - delta;
-    double right = mu[i] + delta;
+    double left = x - delta;
+    double right = x + delta;
     bool in_bin = (mu_0 >= left) &&
                   ((i + 1 == mu.size()) ? (mu_0 <= right) : (mu_0 < right));
     return in_bin ? w[i] / (2.0 * delta) : 0.0;

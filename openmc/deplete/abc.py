@@ -806,7 +806,12 @@ class Integrator(ABC):
         if res.source_rate != 0.0:
             # Scale reaction rates by ratio of source rates
             rates *= source_rate / res.source_rate
-        return bos_conc, OperatorResult(k, rates)
+        
+        if self._keff_search_control is not None and source_rate != 0.0:
+            keff_search_root = self._restore_keff_search_control(res)
+        else:
+            keff_search_root = None
+        return bos_conc, OperatorResult(k, rates), keff_search_root
 
     def _get_start_data(self) -> tuple[float, int]:
         """
@@ -861,12 +866,8 @@ class Integrator(ABC):
             bos_conc, res = self._get_bos_data_from_operator(
                 step_index, source_rate, bos_conc)
         else:
-            bos_conc, res = self._get_bos_data_from_restart(
+            bos_conc, res, keff_search_root = self._get_bos_data_from_restart(
                 source_rate, bos_conc)
-            if self._keff_search_control is not None and source_rate != 0.0:
-                keff_search_root = self._restore_keff_search_control(res)
-            else:
-                keff_search_root = None
 
         return bos_conc, res, keff_search_root
 

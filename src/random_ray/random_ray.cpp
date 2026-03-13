@@ -792,6 +792,9 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   case RandomRaySampleMethod::HALTON:
     site = sample_halton();
     break;
+  case RandomRaySampleMethod::S2:
+    site = sample_s2();
+    break;
   default:
     fatal_error("Unknown sample method for random ray transport.");
   }
@@ -870,6 +873,29 @@ SourceSite RandomRay::sample_halton()
   site.u.x = mu;
   site.u.y = std::cos(azi) * c;
   site.u.z = std::sin(azi) * c;
+
+  return site;
+}
+
+SourceSite RandomRay::sample_s2()
+{
+  // set random number seed
+  int64_t particle_seed =
+    (simulation::current_batch - 1) * settings::n_particles + id();
+  init_particle_seeds(particle_seed, seeds());
+  stream() = STREAM_TRACKING;
+
+  // Get spatial component of the ray_source_
+  SpatialDistribution* space =
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space();
+
+  SourceSite site;
+
+  // Sample spatial distribution
+  site.r = space->sample(current_seed()).first;
+
+  // Sample either left or right for S2 (flashlight) transport.
+  site.u = {prn(current_seed()) < 0.5 ? -1.0 : 1.0, 0.0, 0.0};
 
   return site;
 }

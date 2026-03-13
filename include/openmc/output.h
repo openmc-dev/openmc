@@ -10,6 +10,8 @@
 
 namespace openmc {
 
+extern "C" const bool STRICT_FP_ENABLED;
+
 //! \brief Display the main title banner as well as information about the
 //! program developers, version, and date/time which the problem was run.
 void title();
@@ -60,7 +62,6 @@ void write_tallies();
 void show_time(const char* label, double secs, int indent_level = 0);
 
 } // namespace openmc
-#endif // OPENMC_OUTPUT_H
 
 //////////////////////////////////////
 // Custom formatters
@@ -87,3 +88,5 @@ struct formatter<std::array<T, 2>> {
 }; // namespace fmt
 
 } // namespace fmt
+
+#endif // OPENMC_OUTPUT_H

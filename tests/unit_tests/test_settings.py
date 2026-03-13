@@ -30,6 +30,8 @@ def test_export_to_xml(run_in_tmpdir):
     s.statepoint = {'batches': [50, 150, 500, 1000]}
     s.surf_source_read = {'path': 'surface_source_1.h5'}
     s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
+    s.surface_grazing_ratio = 0.7
+    s.surface_grazing_cutoff = 0.1     
     s.confidence_intervals = True
     s.ptables = True
     s.plot_seed = 100
@@ -67,6 +69,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.log_grid_bins = 2000
     s.photon_transport = False
     s.electron_treatment = 'led'
+    s.atomic_relaxation = False
     s.write_initial_source = True
     s.weight_window_checkpoints = {'surface': True, 'collision': False}
     source_region_mesh = openmc.RegularMesh()
@@ -118,6 +121,8 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
     assert s.surf_source_read['path'].name == 'surface_source_1.h5'
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
+    assert s.surface_grazing_ratio == 0.7
+    assert s.surface_grazing_cutoff == 0.1     
     assert s.confidence_intervals
     assert s.ptables
     assert s.plot_seed == 100
@@ -155,6 +160,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'
+    assert not s.atomic_relaxation
     assert s.write_initial_source
     assert len(s.volume_calculations) == 1
     vol = s.volume_calculations[0]

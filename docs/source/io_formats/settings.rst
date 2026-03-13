@@ -7,6 +7,19 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
 
+-------------------------------
+``<atomic_relaxation>`` Element
+-------------------------------
+
+The ``<atomic_relaxation>`` element determines whether the atomic relaxation
+cascade, the X-ray fluorescence photons and Auger electrons emitted when an
+inner-shell vacancy is filled, is simulated following photoelectric and
+incoherent (Compton) scattering interactions. Disabling this can speed up
+photon transport calculations where the detailed secondary particle cascade is
+not of interest.
+
+  *Default*: true
+
 ---------------------
 ``<batches>`` Element
 ---------------------
@@ -824,6 +837,7 @@ attributes/sub-elements:
 
       For a "cylindrical" distribution, no parameters are specified. Instead,
       the ``r``, ``phi``, ``z``, and ``origin`` elements must be specified.
+      Optionally, the ``r_dir`` and ``z_dir`` elements could be specified.
 
       For a "spherical" distribution, no parameters are specified. Instead,
       the ``r``, ``theta``, ``phi``, and ``origin`` elements must be specified.
@@ -855,6 +869,10 @@ attributes/sub-elements:
       of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
+    :r_dir:
+      For "cylindrical" distributions, this element specifies the direction
+      of the cylinder r-axis at phi=0. Defaults to (1.0, 0.0, 0.0).
+
     :theta:
       For a "spherical" distribution, this element specifies the distribution
       of theta-coordinates. The necessary sub-elements/attributes are those of a
@@ -866,6 +884,10 @@ attributes/sub-elements:
       the distribution of phi-coordinates. The necessary
       sub-elements/attributes are those of a univariate probability
       distribution (see the description in :ref:`univariate`).
+
+    :z_dir:
+      For "cylindrical" distributions, this element specifies the direction
+      of the cylinder z-axis. Defaults to (0.0, 0.0, 1.0).
 
     :origin:
       For "cylindrical and "spherical" distributions, this element specifies
@@ -1234,6 +1256,23 @@ attributes/sub-elements:
 .. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
           are not eligible to store any particles when using ``cell``, ``cellfrom``
           or ``cellto`` attributes. It is recommended to use surface IDs instead.
+
+------------------------------------
+``<surface_grazing_cutoff>`` Element
+------------------------------------
+
+The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutoff.
+
+  *Default*: 0.001
+
+-----------------------------------
+``<surface_grazing_ratio>`` Element
+-----------------------------------
+
+The ``<surface_grazing_ratio>`` element specifies the surface flux cosine 
+substitution ratio.
+
+  *Default*: 0.5
 
 ------------------------------
 ``<survival_biasing>`` Element

@@ -9,7 +9,7 @@ pushd $HOME
 
 mkdir -p XDG
 cd XDG
-git clone -b $XDG_BRANCH $XDG_REPO xdg
+git clone -b $XDG_BRANCH --recurse-submodules $XDG_REPO xdg
 mkdir build
 cd build
 

@@ -583,6 +583,11 @@ class Integrator(ABC):
         `source_rates` should be the same as the initial run.
 
         .. versionadded:: 0.15.1
+    clip_negative_densities : bool, optional
+        Whether to clip negative atom densities to zero after each CRAM
+        solve. CRAM can produce small negative values. Defaults to False.
+
+        .. versionadded:: 0.15.4
 
     Attributes
     ----------
@@ -632,6 +637,7 @@ class Integrator(ABC):
             timestep_units: str = 's',
             solver: str = "cram48",
             continue_timesteps: bool = False,
+            clip_negative_densities: bool = False,
         ):
         if continue_timesteps and operator.prev_res is None:
             raise ValueError("Continuation run requires passing prev_results.")
@@ -684,6 +690,8 @@ class Integrator(ABC):
         self.timesteps = np.asarray(seconds)
         self.source_rates = np.asarray(source_rates)
 
+        self.clip_negative_densities = clip_negative_densities
+        self._warned_negative_density = False
         self.transfer_rates = None
         self.external_source_rates = None
 
@@ -736,8 +744,17 @@ class Integrator(ABC):
         results = deplete(
             self._solver, self.chain, n, rates, dt, i, matrix_func,
             self.transfer_rates, self.external_source_rates)
-        # filter-out negative atom densities (non-physical)
-        results = [np.maximum(r, 0.0) for r in results]
+        if self.clip_negative_densities:
+            for j, r in enumerate(results):
+                neg_mask = r < 0
+                if neg_mask.any():
+                    if not self._warned_negative_density:
+                        idx = np.argmin(r)
+                        nuc = self.chain.nuclides[idx].name
+                        warn(f"Clipping negative atom densities "
+                             f"(worst: {nuc} = {r[idx]:.4e})")
+                        self._warned_negative_density = True
+                    results[j] = np.maximum(r, 0.0)
         return time.time() - start, results
 
     @abstractmethod
@@ -1118,6 +1135,11 @@ class SIIntegrator(Integrator):
         `source_rates` should be the same as the initial run.
 
         .. versionadded:: 0.15.1
+    clip_negative_densities : bool, optional
+        Whether to clip negative atom densities to zero after each CRAM
+        solve. CRAM can produce small negative values. Defaults to False.
+
+        .. versionadded:: 0.15.4
 
     Attributes
     ----------
@@ -1161,12 +1183,15 @@ class SIIntegrator(Integrator):
             n_steps: int = 10,
             solver: str = "cram48",
             continue_timesteps: bool = False,
+            clip_negative_densities: bool = False,
         ):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
             operator, timesteps, power, power_density, source_rates,
-            timestep_units=timestep_units, solver=solver, continue_timesteps=continue_timesteps)
+            timestep_units=timestep_units, solver=solver,
+            continue_timesteps=continue_timesteps,
+            clip_negative_densities=clip_negative_densities)
         self.n_steps = n_steps
 
     def _get_bos_data_from_operator(self, step_index, step_power, n_bos):

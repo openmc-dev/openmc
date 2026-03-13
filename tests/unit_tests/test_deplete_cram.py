@@ -48,6 +48,8 @@ def test_timed_deplete_clips_negatives():
     integrator.chain = MagicMock()
     integrator.transfer_rates = None
     integrator.external_source_rates = None
+    integrator.clip_negative_densities = True
+    integrator._warned_negative_density = False
 
     fake_results = [
         np.array([1.0e10, -1.0e-35, 0.0, -1.0e-47, 5.0e8]),

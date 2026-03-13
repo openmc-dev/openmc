@@ -289,13 +289,47 @@ double discrete_half_width(const T& mu, std::size_t i, double a, double b)
   return 0.5 * std::min(left_span, right_span);
 }
 
+template<typename CenterFn, typename EvaluateBinFn>
+double get_pdf_discrete_impl(std::size_t n, double mu_0, double a, double b,
+  CenterFn center, EvaluateBinFn evaluate_bin)
+{
+  if (n == 0 || mu_0 < a || mu_0 > b)
+    return 0.0;
+
+  // This is effectively a lower_bound over the sequence center(i), but the
+  // sequence is implicit rather than stored in a container, so the STL
+  // algorithms can not be used.
+  std::size_t low = 0;
+  std::size_t high = n;
+  while (low < high) {
+    std::size_t mid = low + (high - low) / 2;
+    if (center(mid) < mu_0) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  if (low < n) {
+    double pdf = evaluate_bin(low);
+    if (pdf > 0.0)
+      return pdf;
+  }
+  if (low > 0)
+    return evaluate_bin(low - 1);
+  return 0.0;
+}
+
 template<typename T1, typename T2>
 double get_pdf_discrete(
   const T1 mu, const T2& w, double mu_0, double a = -1.0, double b = 1.0)
 {
-  if (mu.size() == 0 || mu_0 < a || mu_0 > b)
-    return 0.0;
+  // Returns the location of the discrete value for a given index
+  auto center = [&](std::size_t i) { return mu[i]; };
 
+  // Returns the contribution to the PDF from the bin around the discrete value
+  // at index i. The bin is a rectangle of width 0.5*min(mu[i] - mu[i-1],
+  // mu[i+1] - mu[i]) centered on the discrete mu value itself.
   auto evaluate_bin = [&](std::size_t i) {
     double delta = discrete_half_width(mu, i, a, b);
     if (delta <= 0.0)
@@ -308,17 +342,7 @@ double get_pdf_discrete(
     return in_bin ? w[i] / (2.0 * delta) : 0.0;
   };
 
-  auto i_right = static_cast<std::size_t>(
-    std::lower_bound(mu.begin(), mu.end(), mu_0) - mu.begin());
-
-  if (i_right < mu.size()) {
-    double pdf = evaluate_bin(i_right);
-    if (pdf > 0.0)
-      return pdf;
-  }
-  if (i_right > 0)
-    return evaluate_bin(i_right - 1);
-  return 0.0;
+  return get_pdf_discrete_impl(mu.size(), mu_0, a, b, center, evaluate_bin);
 }
 
 //! Evaluate the PDF of a discrete distribution with uniform weights
@@ -351,20 +375,19 @@ template<typename T1, typename T2>
 double get_pdf_discrete_interpolated(const T1 mu0, const T2 mu1, double f,
   double mu_0, double a = -1.0, double b = 1.0)
 {
-  if (mu0.size() == 0 || mu0.size() != mu1.size() || mu_0 < a || mu_0 > b)
+  if (mu0.size() != mu1.size())
     return 0.0;
 
+  // Returns interpolated discrete value for a given index
   auto center = [&](std::size_t i) { return mu0[i] + f * (mu1[i] - mu0[i]); };
-  auto half_width = [&](std::size_t i) {
+
+  // Returns the contribution to the PDF from the bin around the discrete value
+  auto evaluate_bin = [&](std::size_t i) {
     double x = center(i);
     double left_span = (i == 0) ? 2.0 * (x - a) : x - center(i - 1);
     double right_span =
       (i + 1 == mu0.size()) ? 2.0 * (b - x) : center(i + 1) - x;
-    return 0.5 * std::min(left_span, right_span);
-  };
-  auto evaluate_bin = [&](std::size_t i) {
-    double x = center(i);
-    double delta = half_width(i);
+    double delta = 0.5 * std::min(left_span, right_span);
     if (delta <= 0.0)
       return 0.0;
 
@@ -375,25 +398,7 @@ double get_pdf_discrete_interpolated(const T1 mu0, const T2 mu1, double f,
     return in_bin ? 1.0 / (mu0.size() * 2.0 * delta) : 0.0;
   };
 
-  std::size_t low = 0;
-  std::size_t high = mu0.size();
-  while (low < high) {
-    std::size_t mid = low + (high - low) / 2;
-    if (center(mid) < mu_0) {
-      low = mid + 1;
-    } else {
-      high = mid;
-    }
-  }
-
-  if (low < mu0.size()) {
-    double pdf = evaluate_bin(low);
-    if (pdf > 0.0)
-      return pdf;
-  }
-  if (low > 0)
-    return evaluate_bin(low - 1);
-  return 0.0;
+  return get_pdf_discrete_impl(mu0.size(), mu_0, a, b, center, evaluate_bin);
 }
 
 } // namespace openmc

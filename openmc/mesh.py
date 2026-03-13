@@ -693,7 +693,7 @@ class StructuredMesh(MeshBase):
     def write_data_to_vtk(self,
                           filename: PathLike,
                           datasets: dict | None = None,
-                          volume_normalization: bool = False,
+                          volume_normalization: bool | None = None,
                           curvilinear: bool = False):
         """Creates a VTK object of the mesh
 
@@ -709,9 +709,10 @@ class StructuredMesh(MeshBase):
             with structured indexing in "C" ordering. See the "expand_dims" flag
             of :meth:`~openmc.Tally.get_reshaped_data` on reshaping tally data when using
             :class:`~openmc.MeshFilter`'s.
-        volume_normalization : bool, optional
+        volume_normalization : bool or None, optional
             Whether or not to normalize the data by the volume of the mesh
-            elements.
+            elements. When None (default), the format-appropriate default is
+            used: True for legacy ASCII .vtk files, False for .vtkhdf files.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
             ``SphericalMesh`` and ``CylindricalMesh``.
@@ -748,9 +749,13 @@ class StructuredMesh(MeshBase):
             if write_impl is None:
                 raise NotImplementedError(
                     f"VTKHDF output not implemented for {type(self).__name__}")
-            # write_impl is a bound method – do NOT pass self again
-            write_impl(filename, datasets, volume_normalization)
+            # vtkhdf default is False; explicit value is respected
+            norm = volume_normalization if volume_normalization is not None else False
+            write_impl(filename, datasets, norm)
             return None
+
+        # legacy ASCII .vtk default is True
+        norm = volume_normalization if volume_normalization is not None else True
 
         # vtk is an optional dependency only needed for the legacy ASCII path
         import vtk
@@ -769,20 +774,26 @@ class StructuredMesh(MeshBase):
             # maintain a list of the datasets as added to the VTK arrays to
             # ensure they persist in memory until the file is written
             datasets_out = []
+            # Regular/Rectilinear meshes store data in C (ijk) order which
+            # matches VTK's expected ordering directly — no transpose needed.
+            # Curvilinear meshes (Cylindrical, Spherical) require a transpose
+            # to convert from C ordering to the Fortran (kji) ordering that VTK
+            # expects.
+            # TODO: update to "C" ordering throughout
+            needs_transpose = not isinstance(
+                self, (RegularMesh, RectilinearMesh))
             for label, dataset in datasets.items():
                 dataset = self._reshape_vtk_dataset(dataset)
                 self._check_vtk_dataset(label, dataset)
-                # If the array data is 3D, assume is in C ordering and transpose
-                # before flattening to match the ordering expected by the VTK
-                # array based on the way mesh indices are ordered in the Python
-                # API
-                # TODO: update to "C" ordering throughout
                 if dataset.ndim == 3:
-                    dataset = dataset.ravel()
+                    dataset = dataset.T.ravel() if needs_transpose else dataset.ravel()
                 datasets_out.append(dataset)
 
-                if volume_normalization:
-                    dataset /= self.volumes.ravel()
+                if norm:
+                    if needs_transpose:
+                        dataset /= self.volumes.T.ravel()
+                    else:
+                        dataset /= self.volumes.ravel()
 
                 dataset_array = vtk.vtkDoubleArray()
                 dataset_array.SetName(label)

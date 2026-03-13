@@ -1372,7 +1372,7 @@ class SIIntegrator(Integrator):
                     if self.operator.prev_res is None:
                         n, res = self._get_bos_data_from_operator(i, p, n)
                     else:
-                        n, res = self._get_bos_data_from_restart(p, n)
+                        n, res, _ = self._get_bos_data_from_restart(p, n)
 
                 proc_time, n_end, res_end = self(n, res.rates, dt, p, i)
 

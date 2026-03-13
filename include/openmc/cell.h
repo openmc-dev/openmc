@@ -146,6 +146,23 @@ private:
 };
 
 //==============================================================================
+// XML parsing helpers for <cell> nodes
+//==============================================================================
+
+//! Parse material IDs from a <cell> XML node.
+//! \param node XML node containing a "material" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of material IDs (MATERIAL_VOID for "void")
+vector<int32_t> parse_cell_material_xml(pugi::xml_node node, int32_t cell_id);
+
+//! Parse temperatures (in Kelvin) from a <cell> XML node.
+//! Validates that all values are non-negative and the list is non-empty.
+//! \param node XML node containing a "temperature" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of temperatures in Kelvin
+vector<double> parse_cell_temperature_xml(pugi::xml_node node, int32_t cell_id);
+
+//==============================================================================
 
 class Cell {
 public:

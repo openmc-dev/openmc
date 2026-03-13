@@ -115,45 +115,16 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
           "DAGMC cell {} override must specify material.", cell_id));
       }
 
-      vector<std::string> mats =
-        get_node_array<std::string>(cell_node, "material", true);
-      if (mats.empty()) {
-        fatal_error(fmt::format(
-          "DAGMC cell {} override has an empty material specification.",
-          cell_id));
-      }
-
-      vector<int32_t> override_mats;
-      override_mats.reserve(mats.size());
-      for (const auto& mat : mats) {
-        if (mat == "void") {
-          override_mats.push_back(MATERIAL_VOID);
-        } else {
-          override_mats.push_back(std::stoi(mat));
-        }
-      }
-
-      auto inserted = material_overrides.emplace(cell_id, override_mats);
+      auto inserted = material_overrides.emplace(
+        cell_id, parse_cell_material_xml(cell_node, cell_id));
       if (!inserted.second) {
         fatal_error(fmt::format(
           "Duplicate DAGMC cell override specified for cell {}", cell_id));
       }
 
       if (check_for_node(cell_node, "temperature")) {
-        auto temperatures = get_node_array<double>(cell_node, "temperature");
-        if (temperatures.empty()) {
-          fatal_error(fmt::format(
-            "DAGMC cell {} override has an empty temperature specification.",
-            cell_id));
-        }
-        for (auto T : temperatures) {
-          if (T < 0.0) {
-            fatal_error(fmt::format(
-              "DAGMC cell {} was specified with a negative temperature",
-              cell_id));
-          }
-        }
-        temperature_overrides.emplace(cell_id, temperatures);
+        temperature_overrides.emplace(
+          cell_id, parse_cell_temperature_xml(cell_node, cell_id));
       }
     }
   } else if (check_for_node(node, "material_overrides")) {

@@ -341,6 +341,45 @@ void Cell::to_hdf5(hid_t cell_group) const
 }
 
 //==============================================================================
+// XML parsing helpers for <cell> nodes
+//==============================================================================
+
+vector<int32_t> parse_cell_material_xml(pugi::xml_node node, int32_t cell_id)
+{
+  vector<std::string> mats {get_node_array<std::string>(node, "material", true)};
+  if (mats.empty()) {
+    fatal_error(fmt::format(
+      "An empty material element was specified for cell {}", cell_id));
+  }
+  vector<int32_t> material;
+  material.reserve(mats.size());
+  for (const auto& mat : mats) {
+    if (mat == "void") {
+      material.push_back(MATERIAL_VOID);
+    } else {
+      material.push_back(std::stoi(mat));
+    }
+  }
+  return material;
+}
+
+vector<double> parse_cell_temperature_xml(pugi::xml_node node, int32_t cell_id)
+{
+  auto temperatures = get_node_array<double>(node, "temperature");
+  if (temperatures.empty()) {
+    fatal_error(fmt::format(
+      "An empty temperature element was specified for cell {}", cell_id));
+  }
+  for (auto T : temperatures) {
+    if (T < 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a negative temperature", cell_id));
+    }
+  }
+  return temperatures;
+}
+
+//==============================================================================
 // CSGCell implementation
 //==============================================================================
 
@@ -390,26 +429,12 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // universe), more than one material (distribmats), and some materials may
   // be "void".
   if (material_present) {
-    vector<std::string> mats {
-      get_node_array<std::string>(cell_node, "material", true)};
-    if (mats.size() > 0) {
-      material_.reserve(mats.size());
-      for (std::string mat : mats) {
-        if (mat.compare("void") == 0) {
-          material_.push_back(MATERIAL_VOID);
-        } else {
-          material_.push_back(std::stoi(mat));
-        }
-      }
-    } else {
-      fatal_error(fmt::format(
-        "An empty material element was specified for cell {}", id_));
-    }
+    material_ = parse_cell_material_xml(cell_node, id_);
   }
 
   // Read the temperature element which may be distributed like materials.
   if (check_for_node(cell_node, "temperature")) {
-    sqrtkT_ = get_node_array<double>(cell_node, "temperature");
+    sqrtkT_ = parse_cell_temperature_xml(cell_node, id_);
     sqrtkT_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
@@ -418,14 +443,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
         "Cell {} was specified with a temperature but no material. Temperature"
         "specification is only valid for cells filled with a material.",
         id_));
-    }
-
-    // Make sure all temperatures are non-negative.
-    for (auto T : sqrtkT_) {
-      if (T < 0) {
-        fatal_error(fmt::format(
-          "Cell {} was specified with a negative temperature", id_));
-      }
     }
 
     // Convert to sqrt(k*T).

@@ -60,17 +60,16 @@ double CoherentElasticAE::sample_energy_and_pdf(
   E_out = E_in;
   const auto& factors = xs_.factors();
 
-  if (E_in < bragg_edges_.front() || E_in > bragg_edges_.back()) {
-    return 0;
-  }
+  if (E_in < bragg_edges_.front())
+    return 0.0;
 
-  const int n =
-    upper_bound_index(bragg_edges_.begin(), bragg_edges_.end(), E_in);
+  const int i =
+    lower_bound_index(bragg_edges_.begin(), bragg_edges_.end(), E_in);
   double E = 0.5 * (1 - mu) * E_in;
-  double C = 0.5 * E_in / factors[n];
+  double C = 0.5 * E_in / factors[i];
 
-  return C * get_pdf_discrete(
-               bragg_edges_.slice(0, n), factors_diff_.slice(0, n), E, 0, E_in);
+  return C * get_pdf_discrete(bragg_edges_.slice(tensor::range(i + 1)),
+               factors_diff_.slice(tensor::range(i + 1)), E, 0.0, E_in);
 }
 
 //==============================================================================

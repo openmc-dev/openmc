@@ -280,12 +280,27 @@ struct DoubleVector {
 //! \param[in] a Lower bound of the domain (default: -1)
 //! \param[in] b Upper bound of the domain (default: 1)
 //! \return Probability density at mu_0
-template<typename CenterFn, typename EvaluateBinFn>
+template<typename CenterFn, typename WeightFn>
 double get_pdf_discrete_impl(std::size_t n, double mu_0, double a, double b,
-  CenterFn center, EvaluateBinFn evaluate_bin)
+  CenterFn center, WeightFn weight)
 {
   if (n == 0 || mu_0 < a || mu_0 > b)
     return 0.0;
+
+  auto evaluate_bin = [&](std::size_t i) {
+    double x = center(i);
+    double left_span = (i == 0) ? 2.0 * (x - a) : x - center(i - 1);
+    double right_span = (i + 1 == n) ? 2.0 * (b - x) : center(i + 1) - x;
+    double delta = 0.5 * std::min(left_span, right_span);
+    if (delta <= 0.0)
+      return 0.0;
+
+    double left = x - delta;
+    double right = x + delta;
+    bool in_bin =
+      (mu_0 >= left) && ((i + 1 == n) ? (mu_0 <= right) : (mu_0 < right));
+    return in_bin ? weight(i) / (2.0 * delta) : 0.0;
+  };
 
   // This is effectively a lower_bound over the sequence center(i), but the
   // sequence is implicit rather than stored in a container, so the STL
@@ -317,26 +332,8 @@ double get_pdf_discrete(
 {
   // Returns the location of the discrete value for a given index
   auto center = [&](std::size_t i) { return mu[i]; };
-
-  // Returns the contribution to the PDF from the bin around the discrete value
-  // at index i. The bin is a rectangle of width 0.5*min(mu[i] - mu[i-1],
-  // mu[i+1] - mu[i]) centered on the discrete mu value itself.
-  auto evaluate_bin = [&](std::size_t i) {
-    double x = mu[i];
-    double left_span = (i == 0) ? 2.0 * (x - a) : x - mu[i - 1];
-    double right_span = (i + 1 == mu.size()) ? 2.0 * (b - x) : mu[i + 1] - x;
-    double delta = 0.5 * std::min(left_span, right_span);
-    if (delta <= 0.0)
-      return 0.0;
-
-    double left = x - delta;
-    double right = x + delta;
-    bool in_bin = (mu_0 >= left) &&
-                  ((i + 1 == mu.size()) ? (mu_0 <= right) : (mu_0 < right));
-    return in_bin ? w[i] / (2.0 * delta) : 0.0;
-  };
-
-  return get_pdf_discrete_impl(mu.size(), mu_0, a, b, center, evaluate_bin);
+  auto weight = [&](std::size_t i) { return w[i]; };
+  return get_pdf_discrete_impl(mu.size(), mu_0, a, b, center, weight);
 }
 
 //! Evaluate the PDF of a discrete distribution with uniform weights
@@ -374,25 +371,8 @@ double get_pdf_discrete_interpolated(const T1 mu0, const T2 mu1, double f,
 
   // Returns interpolated discrete value for a given index
   auto center = [&](std::size_t i) { return mu0[i] + f * (mu1[i] - mu0[i]); };
-
-  // Returns the contribution to the PDF from the bin around the discrete value
-  auto evaluate_bin = [&](std::size_t i) {
-    double x = center(i);
-    double left_span = (i == 0) ? 2.0 * (x - a) : x - center(i - 1);
-    double right_span =
-      (i + 1 == mu0.size()) ? 2.0 * (b - x) : center(i + 1) - x;
-    double delta = 0.5 * std::min(left_span, right_span);
-    if (delta <= 0.0)
-      return 0.0;
-
-    double left = x - delta;
-    double right = x + delta;
-    bool in_bin = (mu_0 >= left) &&
-                  ((i + 1 == mu0.size()) ? (mu_0 <= right) : (mu_0 < right));
-    return in_bin ? 1.0 / (mu0.size() * 2.0 * delta) : 0.0;
-  };
-
-  return get_pdf_discrete_impl(mu0.size(), mu_0, a, b, center, evaluate_bin);
+  auto weight = [&](std::size_t i) { return 1.0 / mu0.size(); };
+  return get_pdf_discrete_impl(mu0.size(), mu_0, a, b, center, weight);
 }
 
 } // namespace openmc

@@ -289,36 +289,46 @@ sections. This allows flexibility for the model to use highly anisotropic
 scattering information in the water while the fuel can be simulated with linear
 or even isotropic scattering.
 
-^^^^^^^^^^^^^^
 Particle Speed
-^^^^^^^^^^^^^^
+--------------
 
-When using a multigroup representation of cross sections the particle speed
-has meaning only in an average sense. The particle speed is important when modeling dynamic behavior. OpenMC calculates the particle speed using the inverse velocity multigroup data if it is available. If it is not OpenMC uses an approximate velocity using the group energy bounds in the following way:
+When using a multigroup representation of cross sections, the particle speed has
+meaning only in an average sense. The particle speed is important when modeling
+dynamic behavior. OpenMC calculates the particle speed using the inverse
+velocity multigroup data if it is available. If such data is not available,
+OpenMC uses an approximate velocity using the group energy bounds in the
+following way:
 
 .. math::
 
-   \frac{1}{v_g} = \int_{E_{\text{min}}^g}^{E_{\text{max}}^g} \frac{1}{v(E)} \frac{k}{E} dE 
+   \frac{1}{v_g} = \int_{E_{\text{min}}^g}^{E_{\text{max}}^g} \frac{1}{v(E)} \frac{k}{E} dE
 
-Where :math:`E_{\text{min}}^g` and :math:`E_{\text{max}}^g` are the group energy boundaries for group :math:`g`.
-:math:`v(E)` is the neutron velocity calculated using relativistic kinematics,
-:math:`k` is a normalization constant for the :math:`\frac{1}{E}` spectrum.
+Where :math:`E_{\text{min}}^g` and :math:`E_{\text{max}}^g` are the group energy
+boundaries for group :math:`g`. :math:`v(E)` is the neutron velocity calculated
+using relativistic kinematics, :math:`k` is a normalization constant for the
+:math:`\frac{1}{E}` spectrum.
 
-This equation is valid when inside the group boundaries the neutron spectrum follows a typical :math:`\frac{1}{E}` slowing down spectrum. This assumption is widely used when generating fine group neutron cross section data libraries from continuous energy data.
+This equation is valid when inside the group boundaries the neutron spectrum
+follows a typical :math:`\frac{1}{E}` slowing down spectrum. This assumption is
+widely used when generating fine group neutron cross section data libraries from
+continuous energy data.
 
 The solution to this equation is:
 
 .. math::
 
-   v_g = \frac{1.0}{c * log(\frac{E_{\text{max}}^g}{E_{\text{min}}^g})} * ( 2*(atan(k_max) - atan(k_min)) + (k_max-k_min))
+   v_g = \frac{1}{c \log\left(\frac{E_{\text{max}}^g}{E_{\text{min}}^g}\right)}
+   \left[ 2(\arctan(k_\text{max}) - \arctan(k_\text{min})) + (k_\text{max}-k_\text{min})) \right]
 
-Where :math:`k_{\text{max}}`, :math:`k_{\text{min}}` are defined by a change of variables:
+where :math:`k_{\text{max}}`, :math:`k_{\text{min}}` are defined by a change of
+variables:
 
 .. math::
 
-   k = \sqrt{1+\frac{2 M_n}{E}}
+   k = \sqrt{1+\frac{2 m_n}{E}}
 
-Where :math:`E` is the particle kinetic energy in eV and :math:`M_n` is the neutron mass in units of eV.
+where :math:`E` is the particle kinetic energy in [eV] and :math:`m_n` is the
+neutron mass in units of [eV].
 
 .. _logarithmic mapping technique:
    https://mcnp.lanl.gov/pdf_files/TechReport_2014_LANL_LA-UR-14-24530_Brown.pdf

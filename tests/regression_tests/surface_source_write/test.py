@@ -24,8 +24,8 @@ reflective and periodic Boundary Conditions (BC):
 - model_1: cylindrical core in 2 boxes (vacuum and transmission BC),
 - model_2: cylindrical core in 1 box (vacuum BC),
 - model_3: cylindrical core in 1 box (reflective BC),
-- model_4: cylindrical core in 1 box (periodic BC).
-- model_5: 4*1*3 array of boxes (transmission BC)
+- model_4: cylindrical core in 1 box (periodic BC),
+- model_5: 4*1*3 array of boxes (transmission BC).
 
 Two models including DAGMC geometries are also used, based on the mesh file 'dagmc.h5m'
 available from tests/regression_tests/dagmc/legacy:
@@ -617,10 +617,6 @@ def model_5():
     model = openmc.Model()
 
     # =============================================================================
-    # Materials
-    # =============================================================================
-
-    # =============================================================================
     # Geometry
     # =============================================================================
 
@@ -646,7 +642,8 @@ def model_5():
     cells = [[None]*nz for _ in range(nx)]
     for j in range(nz):
         for i in range(nx):
-            cells[i][j] = openmc.Cell(region = +x_planes[i] & -x_planes[i+1] & +y_planes[0] & -y_planes[-1] & +z_planes[j] & -z_planes[j+1])
+            cells[i][j] = (openmc.Cell(region = +x_planes[i] & -x_planes[i+1] 
+                & +y_planes[0] & -y_planes[-1] & +z_planes[j] & -z_planes[j+1]))
 
     cells_1D = [cells[i][j] for j in range(len(cells[0])) for i in range(len(cells))]
     root = openmc.Universe(cells=cells_1D)
@@ -1221,7 +1218,10 @@ def test_surface_source_cell_dagmc(
     harness.main()
 
 def test_surface_source_multiple_cells(model_5, single_thread, single_process):
-    """Test that the number of particles entering two cells equal the sum of the number of particles entering each individual cell"""
+    """Test that the number of particles entering two cells equal the sum of
+    the number of particles entering each individual cell
+    
+    """
     assert os.environ["OMP_NUM_THREADS"] == "1"
     assert config["mpi_np"] == "1"
 
@@ -1279,7 +1279,8 @@ def test_duplicate_cells(tmp_path, model_5, single_thread, single_process):
         model = model_5
         model.settings.surf_source_write = parameter
 
-        harness = SurfaceSourceWriteTestHarness("statepoint.5.h5", model=model, workdir=str(run_dir))
+        harness = SurfaceSourceWriteTestHarness(
+            "statepoint.5.h5", model=model, workdir=str(run_dir))
 
         base = os.getcwd()
         try:

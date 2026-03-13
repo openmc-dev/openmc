@@ -258,18 +258,16 @@ private:
   const Function1D& incoherent_xs_;      //!< Polymorphic ref. to incoherent XS
 };
 
-//! Evaluate the PDF of a discrete distribution at a given point.
+//! Internal helper for evaluating a piecewise-constant PDF on discrete points.
 //!
-//! Given a set of discrete values mu[i] with weights w[i], this function
-//! computes the probability density at mu_0 by treating each discrete value
-//! as a rectangular bin. The bin half-width around each discrete value is
-//! half the distance to its nearest neighbor.
+//! The underlying discrete points are represented implicitly through a
+//! monotonically increasing `center(i)` function and corresponding per-point
+//! `weight(i)` values. Each point contributes a rectangular bin whose
+//! half-width is half the distance to its nearest neighboring center.
 //!
-//! \tparam T1 Container type for discrete cosine values (must support
-//!         operator[], begin(), end(), size())
-//! \tparam T2 Container type for weights (must support operator[])
-//! \param[in] mu Sorted array of discrete cosine values
-//! \param[in] w Weights for each discrete value (need not be normalized)
+//! \tparam CenterFn Callable returning the location of the i-th discrete value
+//! \tparam WeightFn Callable returning the weight of the i-th discrete value
+//! \param[in] n Number of discrete values
 //! \param[in] mu_0 Point at which to evaluate the PDF
 //! \param[in] a Lower bound of the domain (default: -1)
 //! \param[in] b Upper bound of the domain (default: 1)
@@ -320,6 +318,22 @@ double get_pdf_discrete_impl(std::size_t n, double mu_0, double a, double b,
   return 0.0;
 }
 
+//! Evaluate the PDF of a weighted discrete distribution at a given point.
+//!
+//! Given a set of discrete values mu[i] with weights w[i], this function
+//! computes the probability density at mu_0 by treating each discrete value
+//! as a rectangular bin. The bin half-width around each discrete value is
+//! half the distance to its nearest neighbor.
+//!
+//! \tparam T1 Container type for discrete cosine values (must support
+//!         operator[], size())
+//! \tparam T2 Container type for weights (must support operator[])
+//! \param[in] mu Sorted array of discrete cosine values
+//! \param[in] w Weights for each discrete value (need not be normalized)
+//! \param[in] mu_0 Point at which to evaluate the PDF
+//! \param[in] a Lower bound of the domain (default: -1)
+//! \param[in] b Upper bound of the domain (default: 1)
+//! \return Probability density at mu_0
 template<typename T1, typename T2>
 double get_pdf_discrete(
   const T1 mu, const T2& w, double mu_0, double a = -1.0, double b = 1.0)
@@ -352,10 +366,11 @@ double get_pdf_discrete(
 //! \tparam T1 Container type for the lower tabulated cosine values
 //! \tparam T2 Container type for the upper tabulated cosine values
 //! \param[in] mu0 Sorted array of discrete cosine values at the lower grid
-//! point \param[in] mu1 Sorted array of discrete cosine values at the upper
-//! grid point \param[in] f Interpolation factor between mu0 and mu1 \param[in]
-//! mu_0 Point at which to evaluate the PDF \param[in] a Lower bound of the
-//! domain (default: -1) \param[in] b Upper bound of the domain (default: 1)
+//! \param[in] mu1 Sorted array of discrete cosine values at the upper grid
+//! \param[in] f Interpolation factor between mu0 and mu1
+//! \param[in] mu_0 Point at which to evaluate the PDF
+//! \param[in] a Lower bound of the domain (default: -1)
+//! \param[in] b Upper bound of the domain (default: 1)
 //! \return Probability density at mu_0
 template<typename T1, typename T2>
 double get_pdf_discrete_interpolated(const T1 mu0, const T2 mu1, double f,

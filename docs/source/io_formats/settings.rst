@@ -542,16 +542,15 @@ generator during generation of colors in plots.
 
   *Default*: 1
 
-
 .. _properties_file:
 
---------------------------------------
+-----------------------------
 ``<properties_file>`` Element
---------------------------------------
+-----------------------------
 
-  The ``properties_file`` element has no attributes and contains the path to 
-  a properties HDF5 file to load cell temperatures/densities and material densities.
-
+  The ``properties_file`` element has no attributes and contains the path to a
+  properties HDF5 file to load cell temperatures/densities and material
+  densities.
 
 ---------------------
 ``<ptables>`` Element

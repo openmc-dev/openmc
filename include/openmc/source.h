@@ -354,6 +354,7 @@ private:
   double elongation_;      //!< Elongation kappa
   double triangularity_;   //!< Triangularity delta
   double shafranov_shift_; //!< Shafranov shift Delta [cm]
+  double vertical_shift_;  //!< Vertical shift of plasma center [cm]
 
   // Normalized geometry parameters (precomputed for efficiency)
   double epsilon_;      //!< Inverse aspect ratio a/R0

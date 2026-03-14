@@ -940,6 +940,8 @@ class TokamakSource(SourceBase):
         Toroidal angle extent in [rad] (default: 2π)
     n_alpha : int
         Number of poloidal angle grid points for CDF sampling (default: 101)
+    vertical_shift : float
+        Vertical shift of the plasma center in [cm] (default: 0)
     strength : float
         Strength of the source (default: 1.0)
     constraints : dict
@@ -970,6 +972,8 @@ class TokamakSource(SourceBase):
         Toroidal angle extent in [rad]
     n_alpha : int
         Number of poloidal angle grid points
+    vertical_shift : float
+        Vertical shift of the plasma center in [cm]
     strength : float
         Strength of the source
     type : str
@@ -992,6 +996,7 @@ class TokamakSource(SourceBase):
         phi_start: float = 0.0,
         phi_extent: float = 2.0 * np.pi,
         n_alpha: int = 101,
+        vertical_shift: float = 0.0,
         strength: float = 1.0,
         constraints: dict[str, Any] | None = None
     ):
@@ -1006,6 +1011,7 @@ class TokamakSource(SourceBase):
         self.phi_start = phi_start
         self.phi_extent = phi_extent
         self.n_alpha = n_alpha
+        self.vertical_shift = vertical_shift
 
         # Handle energy as single distribution or sequence
         if isinstance(energy, Univariate):
@@ -1140,6 +1146,15 @@ class TokamakSource(SourceBase):
         cv.check_greater_than('n_alpha', value, 2)
         self._n_alpha = value
 
+    @property
+    def vertical_shift(self) -> float:
+        return self._vertical_shift
+
+    @vertical_shift.setter
+    def vertical_shift(self, value: float):
+        cv.check_type('vertical shift', value, Real)
+        self._vertical_shift = value
+
     def populate_xml_element(self, element):
         """Add necessary tokamak source information to an XML element
 
@@ -1162,6 +1177,10 @@ class TokamakSource(SourceBase):
 
         # Poloidal sampling resolution
         ET.SubElement(element, "n_alpha").text = str(self.n_alpha)
+
+        # Vertical shift
+        if self.vertical_shift != 0.0:
+            ET.SubElement(element, "vertical_shift").text = str(self.vertical_shift)
 
         # Emission profile
         ET.SubElement(element, "r_over_a").text = ' '.join(str(r) for r in self.r_over_a)
@@ -1203,6 +1222,9 @@ class TokamakSource(SourceBase):
         n_alpha_text = get_text(elem, 'n_alpha')
         n_alpha = int(n_alpha_text) if n_alpha_text else 101
 
+        vertical_shift_text = get_text(elem, 'vertical_shift')
+        vertical_shift = float(vertical_shift_text) if vertical_shift_text else 0.0
+
         # Read emission profile
         r_over_a = np.array([float(x) for x in get_text(elem, 'r_over_a').split()])
         emission_rate = np.array([float(x) for x in get_text(elem, 'emission_rate').split()])
@@ -1229,6 +1251,7 @@ class TokamakSource(SourceBase):
             phi_start=phi_start,
             phi_extent=phi_extent,
             n_alpha=n_alpha,
+            vertical_shift=vertical_shift,
             strength=strength,
             constraints=constraints
         )

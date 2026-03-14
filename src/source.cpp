@@ -660,6 +660,13 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   triangularity_ = std::stod(get_node_value(node, "triangularity"));
   shafranov_shift_ = std::stod(get_node_value(node, "shafranov_shift"));
 
+  // Read optional vertical shift
+  if (check_for_node(node, "vertical_shift")) {
+    vertical_shift_ = std::stod(get_node_value(node, "vertical_shift"));
+  } else {
+    vertical_shift_ = 0.0;
+  }
+
   // Read optional toroidal angle bounds
   if (check_for_node(node, "phi_start")) {
     phi_start_ = std::stod(get_node_value(node, "phi_start"));
@@ -1124,6 +1131,11 @@ SourceSite TokamakSource::sample(uint64_t* seed) const
 
   // 4. Convert to Cartesian coordinates
   site.r = flux_to_cartesian(r, alpha, phi);
+
+  // 4a. Apply vertical shift if non-zero
+  if (vertical_shift_ != 0.0) {
+    site.r.z += vertical_shift_;
+  }
 
   // 5. Sample isotropic direction
   site.u = angle_->sample(seed).first;

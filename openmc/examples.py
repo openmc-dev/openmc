@@ -1358,14 +1358,14 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     ebins = [1e-5, 20.0e6]
     groups = openmc.mgxs.EnergyGroups(group_edges=ebins)
 
-    void_sigma_a = 4.0e-5
-    void_sigma_s = 3.0e-3
-    void_mat_data = openmc.XSdata('void', groups)
-    void_mat_data.order = 0
-    void_mat_data.set_total([void_sigma_a + void_sigma_s])
-    void_mat_data.set_absorption([void_sigma_a])
-    void_mat_data.set_scatter_matrix(
-        np.rollaxis(np.array([[[void_sigma_s]]]), 0, 3))
+    cavity_sigma_a = 4.0e-5
+    cavity_sigma_s = 3.0e-3
+    cavity_mat_data = openmc.XSdata('cavity', groups)
+    cavity_mat_data.order = 0
+    cavity_mat_data.set_total([cavity_sigma_a + cavity_sigma_s])
+    cavity_mat_data.set_absorption([cavity_sigma_a])
+    cavity_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[cavity_sigma_s]]]), 0, 3))
 
     absorber_sigma_a = 0.50
     absorber_sigma_s = 0.50
@@ -1377,8 +1377,8 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
         np.rollaxis(np.array([[[absorber_sigma_s]]]), 0, 3))
 
     multiplier = 0.01
-    source_sigma_a = void_sigma_a * multiplier
-    source_sigma_s = void_sigma_s * multiplier
+    source_sigma_a = cavity_sigma_a * multiplier
+    source_sigma_s = cavity_sigma_s * multiplier
     source_mat_data = openmc.XSdata('source', groups)
     source_mat_data.order = 0
     source_mat_data.set_total([source_sigma_a + source_sigma_s])
@@ -1388,7 +1388,7 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
 
     mg_cross_sections_file = openmc.MGXSLibrary(groups)
     mg_cross_sections_file.add_xsdatas(
-        [source_mat_data, void_mat_data, absorber_mat_data])
+        [source_mat_data, cavity_mat_data, absorber_mat_data])
     mg_cross_sections_file.export_to_hdf5()
 
     ###########################################################################
@@ -1396,7 +1396,7 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
 
     # Instantiate some Macroscopic Data
     source_data = openmc.Macroscopic('source')
-    void_data = openmc.Macroscopic('void')
+    cavity_data = openmc.Macroscopic('cavity')
     absorber_data = openmc.Macroscopic('absorber')
 
     # Instantiate some Materials and register the appropriate Macroscopic objects
@@ -1404,31 +1404,31 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     source_mat.set_density('macro', 1.0)
     source_mat.add_macroscopic(source_data)
 
-    void_mat = openmc.Material(name='void')
-    void_mat.set_density('macro', 1.0)
-    void_mat.add_macroscopic(void_data)
+    cavity_mat = openmc.Material(name='cavity')
+    cavity_mat.set_density('macro', 1.0)
+    cavity_mat.add_macroscopic(cavity_data)
 
     absorber_mat = openmc.Material(name='absorber')
     absorber_mat.set_density('macro', 1.0)
     absorber_mat.add_macroscopic(absorber_data)
 
-    # Instantiate a Materials collection and export to XML
-    materials_file = openmc.Materials([source_mat, void_mat, absorber_mat])
+    # Instantiate a Materials collection
+    materials_file = openmc.Materials([source_mat, cavity_mat, absorber_mat])
     materials_file.cross_sections = "mgxs.h5"
 
     ###########################################################################
     # Define problem geometry
 
     source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
-    void_cell = openmc.Cell(fill=void_mat, name='infinite void region')
+    cavity_cell = openmc.Cell(fill=cavity_mat, name='cube cavity region')
     absorber_cell = openmc.Cell(
-        fill=absorber_mat, name='infinite absorber region')
+        fill=absorber_mat, name='absorber region')
 
     source_universe = openmc.Universe(name='source universe')
     source_universe.add_cells([source_cell])
 
-    void_universe = openmc.Universe()
-    void_universe.add_cells([void_cell])
+    cavity_universe = openmc.Universe()
+    cavity_universe.add_cells([cavity_cell])
 
     absorber_universe = openmc.Universe()
     absorber_universe.add_cells([absorber_cell])
@@ -1443,7 +1443,7 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     pitch = absorber_width / n
 
     pattern = fill_cube(n, 1*refinement_level, 5*refinement_level,
-                        source_universe, void_universe, absorber_universe)
+                        source_universe, cavity_universe, absorber_universe)
 
     lattice = openmc.RectLattice()
     lattice.lower_left = [0.0, 0.0, 0.0]
@@ -1515,7 +1515,7 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
         +x_low & +y_low & +z_high & -z_outer & 
         ((-y_outer & -x_high) | (-y_high & +x_high & -x_outer))
     )
-    external_cell = openmc.Cell(fill=None, 
+    external_cell = openmc.Cell(fill=cavity_mat, 
                                 region=(external_x | external_y | external_z), 
                                 name='outside cube')
 
@@ -1584,11 +1584,11 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     absorber_tally.scores = ['flux']
     absorber_tally.estimator = estimator
 
-    void_filter = openmc.MaterialFilter(void_mat)
-    void_tally = openmc.Tally(name="Void Tally")
-    void_tally.filters = [void_filter]
-    void_tally.scores = ['flux']
-    void_tally.estimator = estimator
+    cavity_filter = openmc.MaterialFilter(cavity_mat)
+    cavity_tally = openmc.Tally(name="Cavity Tally")
+    cavity_tally.filters = [cavity_filter]
+    cavity_tally.scores = ['flux']
+    cavity_tally.estimator = estimator
 
     source_filter = openmc.MaterialFilter(source_mat)
     source_tally = openmc.Tally(name="Source Tally")
@@ -1600,7 +1600,7 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     tallies = openmc.Tallies([detector1_tally, 
                               detector2_tally, 
                               absorber_tally,
-                              void_tally,
+                              cavity_tally,
                               source_tally])
 
     ###########################################################################

@@ -18,7 +18,7 @@ def test_weight_windows_fw_cadis_local():
     model = random_ray_three_region_cube_with_detectors()
 
     for tally in list(model.tallies):
-        if tally.name in {"Source Tally", "Absorber Tally", "Void Tally"}:
+        if tally.name in {"Source Tally", "Absorber Tally", "Cavity Tally"}:
             # leave only the tallies of interest
             model.tallies.remove(tally)
 

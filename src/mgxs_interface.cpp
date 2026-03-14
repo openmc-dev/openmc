@@ -1,5 +1,6 @@
 #include "openmc/mgxs_interface.h"
 
+#include <cmath>
 #include <string>
 #include <unordered_set>
 
@@ -241,12 +242,12 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   for (int i = 0; i < energy_bins_.size() - 1; ++i) {
     double e_min = std::max(energy_bins_[i + 1], 1e-5);
     double e_max = energy_bins_[i];
-    double f = 1.0 / (C_LIGHT * std::log(e_max / e_min));
-    double k_max = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_max);
-    double k_min = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_min);
-    double inv_v =
-      f * (2.0 * (std::atan(k_max) - std::atan(k_min)) - (k_max - k_min));
-    default_inverse_velocity_.push_back(inv_v);
+    double alpha = 1.0 / (C_LIGHT * std::log(e_max / e_min));
+    std::complex<double> k_max = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_max);
+    std::complex<double> k_min = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_min);
+    std::complex<double> inv_v =
+      alpha * (2.0 * (std::atanh(k_max) - std::atanh(k_min)) - (k_max - k_min));
+    default_inverse_velocity_.push_back(std::real(inv_v));
   }
 
   // Close MGXS HDF5 file

@@ -317,7 +317,9 @@ The solution to this equation is:
 
 .. math::
 
-   v_g = \frac{1}{c \log\left(\frac{E_{\text{max}}^g}{E_{\text{min}}^g}\right)} \left[ 2(\arctanh(k_{\text{max}}) - \arctanh(k_{\text{min}})) + (k_{\text{max}}-k_{\text{min}})) \right]
+   v_g = \frac{1}{c \log\left(\frac{E_{\text{max}}^g}{E_{\text{min}}^g}\right)} 
+   \left[ 2(\operatorname{arctanh}(k_{\text{max}}) - \operatorname{arctanh}(k_{\text{min}})) 
+   + (k_{\text{max}}-k_{\text{min}})) \right]
 
 where :math:`k_{\text{max}}`, :math:`k_{\text{min}}` are defined by a change of
 variables:

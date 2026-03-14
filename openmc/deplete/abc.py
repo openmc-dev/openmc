@@ -806,12 +806,7 @@ class Integrator(ABC):
         if res.source_rate != 0.0:
             # Scale reaction rates by ratio of source rates
             rates *= source_rate / res.source_rate
-        
-        if self._keff_search_control is not None and source_rate != 0.0:
-            keff_search_root = self._restore_keff_search_control(res)
-        else:
-            keff_search_root = None
-        return bos_conc, OperatorResult(k, rates), keff_search_root
+        return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self) -> tuple[float, int]:
         """
@@ -866,8 +861,12 @@ class Integrator(ABC):
             bos_conc, res = self._get_bos_data_from_operator(
                 step_index, source_rate, bos_conc)
         else:
-            bos_conc, res, keff_search_root = self._get_bos_data_from_restart(
+            bos_conc, res = self._get_bos_data_from_restart(
                 source_rate, bos_conc)
+            if self._keff_search_control is not None and source_rate != 0.0:
+                keff_search_root = self._restore_keff_search_control(self.operator.prev_res[-1])
+            else:
+                keff_search_root = None
 
         return bos_conc, res, keff_search_root
 
@@ -1372,7 +1371,7 @@ class SIIntegrator(Integrator):
                     if self.operator.prev_res is None:
                         n, res = self._get_bos_data_from_operator(i, p, n)
                     else:
-                        n, res, _ = self._get_bos_data_from_restart(p, n)
+                        n, res = self._get_bos_data_from_restart(p, n)
 
                 proc_time, n_end, res_end = self(n, res.rates, dt, p, i)
 

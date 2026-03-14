@@ -686,7 +686,7 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
 
   // Read emission profile
   r_over_a_ = get_node_array<double>(node, "r_over_a");
-  emission_rate_ = get_node_array<double>(node, "emission_rate");
+  emission_density_ = get_node_array<double>(node, "emission_density");
 
   // Read energy distribution(s)
   for (auto energy_node : node.children("energy")) {
@@ -694,9 +694,9 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   }
 
   // Validate inputs
-  if (emission_rate_.size() != r_over_a_.size()) {
+  if (emission_density_.size() != r_over_a_.size()) {
     fatal_error(
-      "TokamakSource: emission_rate and r_over_a must have the same length.");
+      "TokamakSource: emission_density and r_over_a must have the same length.");
   }
   if (r_over_a_.size() < 2) {
     fatal_error(
@@ -713,9 +713,9 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
       fatal_error("TokamakSource: r_over_a must be strictly increasing.");
     }
   }
-  for (size_t i = 0; i < emission_rate_.size(); ++i) {
-    if (emission_rate_[i] < 0.0) {
-      fatal_error("TokamakSource: emission_rate values cannot be negative.");
+  for (size_t i = 0; i < emission_density_.size(); ++i) {
+    if (emission_density_[i] < 0.0) {
+      fatal_error("TokamakSource: emission_density values cannot be negative.");
     }
   }
   if (major_radius_ <= 0.0) {
@@ -822,7 +822,7 @@ void TokamakSource::precompute_sampling_cdfs()
 
   for (size_t i = 0; i < n_r; ++i) {
     double r = r_over_a_[i];
-    double S = emission_rate_[i];
+    double S = emission_density_[i];
     // p(r) ~ S(r) * [A*r - B*r^2 - C*r^3]
     double geometric_factor =
       radial_poly_a_ * r - radial_poly_b_ * r * r - radial_poly_c_ * r * r * r;
@@ -841,8 +841,8 @@ void TokamakSource::precompute_sampling_cdfs()
   double total = radial_cdf_[n_r - 1];
   if (total <= 0.0) {
     fatal_error(
-      "TokamakSource: Integrated emission rate is zero or negative. "
-      "Check emission_rate profile.");
+      "TokamakSource: Integrated emission density is zero or negative. "
+      "Check emission_density profile.");
   }
   double inv_total = 1.0 / total;
   for (size_t i = 0; i < n_r; ++i) {

@@ -340,7 +340,7 @@ private:
 
   // Emission profile (input)
   vector<double> r_over_a_;     //!< Normalized minor radius grid points
-  vector<double> emission_rate_; //!< Emission rate S(r) at grid points
+  vector<double> emission_density_; //!< Emission density S(r) at grid points
 
   // Energy distribution(s): either 1 for all r, or one per r point
   vector<unique_ptr<Distribution>> energy_dists_;

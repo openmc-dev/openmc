@@ -929,8 +929,8 @@ class TokamakSource(SourceBase):
         Shafranov shift Δ in [cm] (must be >= 0 and < a/2)
     r_over_a : numpy.ndarray
         Normalized minor radius grid points, must start at 0 and end at 1
-    emission_rate : numpy.ndarray
-        Emission rate S(r) at each r/a point (arbitrary units, must be >= 0)
+    emission_density : numpy.ndarray
+        Emission density S(r) at each r/a point (arbitrary units, must be >= 0)
     energy : openmc.stats.Univariate or Sequence[openmc.stats.Univariate]
         Energy distribution(s). Either a single distribution for all r, or
         one distribution per r/a grid point.
@@ -962,8 +962,8 @@ class TokamakSource(SourceBase):
         Shafranov shift Δ in [cm]
     r_over_a : numpy.ndarray
         Normalized minor radius grid points
-    emission_rate : numpy.ndarray
-        Emission rate S(r) at each r/a point
+    emission_density : numpy.ndarray
+        Emission density S(r) at each r/a point
     energy : list of openmc.stats.Univariate
         Energy distribution(s)
     phi_start : float
@@ -991,7 +991,7 @@ class TokamakSource(SourceBase):
         triangularity: float,
         shafranov_shift: float,
         r_over_a: Sequence[float],
-        emission_rate: Sequence[float],
+        emission_density: Sequence[float],
         energy: Univariate | Sequence[Univariate],
         phi_start: float = 0.0,
         phi_extent: float = 2.0 * np.pi,
@@ -1007,7 +1007,7 @@ class TokamakSource(SourceBase):
         self.triangularity = triangularity
         self.shafranov_shift = shafranov_shift
         self.r_over_a = r_over_a
-        self.emission_rate = emission_rate
+        self.emission_density = emission_density
         self.phi_start = phi_start
         self.phi_extent = phi_extent
         self.n_alpha = n_alpha
@@ -1092,17 +1092,17 @@ class TokamakSource(SourceBase):
         self._r_over_a = value
 
     @property
-    def emission_rate(self) -> np.ndarray:
-        return self._emission_rate
+    def emission_density(self) -> np.ndarray:
+        return self._emission_density
 
-    @emission_rate.setter
-    def emission_rate(self, value: Sequence[float]):
+    @emission_density.setter
+    def emission_density(self, value: Sequence[float]):
         value = np.asarray(value, dtype=float)
         if value.ndim != 1:
-            raise ValueError("emission_rate must be a 1-D array")
+            raise ValueError("emission_density must be a 1-D array")
         if np.any(value < 0):
-            raise ValueError("emission_rate values cannot be negative")
-        self._emission_rate = value
+            raise ValueError("emission_density values cannot be negative")
+        self._emission_density = value
 
     @property
     def energy(self) -> list[Univariate]:
@@ -1184,7 +1184,7 @@ class TokamakSource(SourceBase):
 
         # Emission profile
         ET.SubElement(element, "r_over_a").text = ' '.join(str(r) for r in self.r_over_a)
-        ET.SubElement(element, "emission_rate").text = ' '.join(str(s) for s in self.emission_rate)
+        ET.SubElement(element, "emission_density").text = ' '.join(str(s) for s in self.emission_density)
 
         # Energy distribution(s)
         for dist in self.energy:
@@ -1227,7 +1227,7 @@ class TokamakSource(SourceBase):
 
         # Read emission profile
         r_over_a = np.array([float(x) for x in get_text(elem, 'r_over_a').split()])
-        emission_rate = np.array([float(x) for x in get_text(elem, 'emission_rate').split()])
+        emission_density = np.array([float(x) for x in get_text(elem, 'emission_density').split()])
 
         # Read energy distributions
         energy = [Univariate.from_xml_element(e) for e in elem.findall('energy')]
@@ -1246,7 +1246,7 @@ class TokamakSource(SourceBase):
             triangularity=triangularity,
             shafranov_shift=shafranov_shift,
             r_over_a=r_over_a,
-            emission_rate=emission_rate,
+            emission_density=emission_density,
             energy=energy,
             phi_start=phi_start,
             phi_extent=phi_extent,

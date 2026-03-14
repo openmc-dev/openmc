@@ -1353,4 +1353,4 @@ def test_rectilinear_mesh_get_indices_at_coords():
     with pytest.raises(ValueError):
         mesh.get_indices_at_coords([0.5, -0.5, 110.])
     with pytest.raises(ValueError):
-        mesh.get_indices_at_coords([0.5, -20., 110
+        mesh.get_indices_at_coords([0.5, -20., 110.])

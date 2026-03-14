@@ -995,6 +995,7 @@ def test_regular_mesh_get_indices_at_coords():
     assert len(result_1d) == 1
     assert result_1d == (5,)
 
+
 def test_rectilinear_mesh_get_indices_at_coords():
     """Test get_indices_at_coords method for RectilinearMesh"""
     # Create a 3x2x2 rectilinear mesh with non-uniform spacing
@@ -1017,7 +1018,7 @@ def test_rectilinear_mesh_get_indices_at_coords():
 
     # Test a middle voxel
     assert mesh.get_indices_at_coords([2., -5., 0.]) == (1, 1, 1)
-    
+
     # Test coordinates outside mesh bounds raise ValueError
     with pytest.raises(ValueError):
         mesh.get_indices_at_coords([-0.5, 0.5, 0.5])

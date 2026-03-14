@@ -1691,6 +1691,8 @@ class RectilinearMesh(StructuredMesh):
     def get_indices_at_coords(self, coords: Sequence[float]) -> tuple[int, int, int]:
         """Find the mesh cell indices containing the specified coordinates.
 
+        .. versionadded:: 0.15.4
+
         Parameters
         ----------
         coords : Sequence[float]

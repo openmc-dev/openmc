@@ -3,6 +3,7 @@
 
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/ray.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
@@ -83,6 +84,9 @@ void score_analog_tally_ce(Particle& p);
 //! \param p The particle being tracked
 void score_analog_tally_mg(Particle& p);
 
+void score_tracklength_tally_general(
+  Particle& p, double flux, const vector<int>& tallies);
+
 //! Score tallies using a tracklength estimate of the flux.
 //
 //! This is triggered at every event (surface crossing, lattice crossing, or
@@ -132,7 +136,33 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
 
 void score_point_tally(SourceSite& site, int source_index);
 
-void score_pseudoparticle_tally(Particle& p, double mfp, double pdf);
+template<typename PDF>
+void score_point_tally_impl(
+  const Position r, const ParticleType type, const double time, PDF pdf)
+{
+  for (auto& det : model::active_point_detectors) {
+    auto u = (det - r);
+    double total_distance = u.norm();
+    u /= total_distance;
+    double E;
+    double pdf = PDF(u, E);
+    auto p = ParticleRay(r, u, type, time, E);
+    p.Ray::trace();
+    double distance = p.traversal_distance();
+    if (distance < total_distance)
+      continue;
+    double mfp = p.traversal_mfp();
+    double attenuation = std::exp(-mfp);
+
+    // Save the attenuation for point filter handling
+    p.wgt_last() = p.wgt();
+    p.wgt() *= attenuation;
+
+    double flux = p.wgt_last() * pdf;
+    score_tracklength_tally_general(p, flux, model::active_point_tallies);
+  }
+}
+
 } // namespace openmc
 
 #endif // OPENMC_TALLIES_TALLY_SCORING_H

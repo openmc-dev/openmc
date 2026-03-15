@@ -51,14 +51,24 @@ private:
 class ParticleRay : public Ray, public Particle {
 
 public:
+  ParticleRay(
+    Position r, Direction u, ParticleType type_, double time_, double E_)
+    : Ray(r, u)
+  {
+    type() = type_;
+    time() = time_;
+    E() = E_;
+  }
+
   // Sets the dist_ variable
   void update_distance() override;
 
+  const double& traversal_distance() const { return traversal_distance_; }
+  const double& traversal_mfp() const { return traversal_mfp_; }
+
 protected:
-  // Records how much time passed during travel
-  double time_distance_ {0.0};
   // Records how much mean free paths the ray traveled
-  double mfp_distance_ {0.0};
+  double traversal_mfp_ {0.0};
 };
 
 } // namespace openmc

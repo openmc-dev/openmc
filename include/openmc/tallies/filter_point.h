@@ -43,14 +43,12 @@ public:
   }
 
   void set_detectors(span<std::pair<Position, double>> detectors);
-  void reset_indices();
 
 private:
   //----------------------------------------------------------------------------
   // Data members
 
   vector<std::pair<Position, double>> detectors_;
-  vector<vector<int32_t>> indices_;
 };
 
 } // namespace openmc

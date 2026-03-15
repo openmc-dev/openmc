@@ -2788,69 +2788,37 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   }
 }
 
-void score_pseudoparticle_tally(Particle& p, double mfp, double pdf)
-{
-  double attenuation = std::exp(-mfp);
-
-  // Save the attenuation for point filter handling
-  p.wgt_last() = p.wgt();
-  p.wgt() *= attenuation;
-
-  double flux = p.wgt_last() * pdf;
-
-  score_tracklength_tally_general(p, flux, model::active_point_tallies);
-}
-
 void score_point_tally(
   Particle& p, int i_nuclide, const Reaction& rx, int i_product, Direction* v_t)
 {
-  const auto& nuc {data::nuclides[i_nuclide]};
-  double awr = nuc->awr_;
-  double E_in = p.E();
-  double vel = std::sqrt(E_in);
-  Direction v_n = vel * p.u();
-  Direction v_cm = v_n / (awr + 1.0);
-  if (v_t != nullptr)
-    v_cm += awr / (awr + 1.0) * (*v_t);
-  Direction u_cm = (v_n - v_cm);
-  u_cm /= u_cm.norm();
-  double mfp = 0;
+  if (rx.scatter_in_cm) {
+    const auto& nuc {data::nuclides[i_nuclide]};
+    double awr = nuc->awr_;
+    double E_in = p.E();
+    double vel = std::sqrt(E_in);
+    Direction v_n = vel * p.u();
+    Direction v_cm = v_n / (awr + 1.0);
+    if (v_t != nullptr)
+      v_cm += awr / (awr + 1.0) * (*v_t);
+    Direction u_cm = (v_n - v_cm);
+    u_cm /= u_cm.norm();
 
-  auto old_stream = p.stream();
-  p.stream() = STREAM_NEXT_EVENT;
-
-  simulation::i_det = -1;
-  for (auto& det : model::active_point_detectors) {
-    ++simulation::i_det;
-
-    auto u = (det - p.r());
-    double distance = u.norm();
-    u /= distance;
-
-    double mu;
-    if (rx.scatter_in_cm_) {
-      mu = u.dot(u_cm);
-    } else {
-      mu = u.dot(p.u());
-    }
-    double E_out;
-    double pdf = rx.products_[i_product].sample_energy_and_pdf(
-      p.E(), mu, E_out, p.current_seed());
-    if (rx.scatter_in_cm_) {
-      double E_cm = E_out;
-      Direction v_out = std::sqrt(E_cm) * u_cm;
-      v_out += v_cm;
-      E_out = std::pow(v_out.norm(), 2);
-      pdf *= std::sqrt(E_out / E_cm) /
-             (1 - mu / (awr + 1) * std::sqrt(E_in / E_out));
-    }
-    simulation::pseudoparticle.initialize_pseudoparticle(p, u, E_out);
-    double mfp = transport_pseudoparticle(simulation::pseudoparticle, distance);
-    if (!simulation::pseudoparticle.alive())
-      continue;
-    score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
+    auto pdf = [&](Direction u, double& E) {
+      double E_cm;
+      double pdf0 = rx.products_[i_product].sample_energy_and_pdf(
+        p.E(), u.dot(u_cm), E_cm, p.current_seed());
+      Direction v_out = std::sqrt(E_cm) * u_cm + v_cm;
+      E = std::pow(v_out.norm(), 2);
+      return pdf0 *
+             (std::sqrt(E / E_cm) / (1 - mu / (awr + 1) * std::sqrt(E_in / E));)
+    };
+  } else {
+    auto pdf = [&](Direction u, double& E) {
+      return rx.products_[i_product].sample_energy_and_pdf(
+        p.E(), u.dot(p.u()), E, p.current_seed());
+    };
   }
-  p.stream() = old_stream;
+  score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
 }
 
 void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
@@ -2864,60 +2832,26 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   Direction v_cm = v_n / (awr + 1.0);
   Direction u_cm = (v_n - v_cm);
   u_cm /= u_cm.norm();
-  double mfp = 0;
 
-  auto old_stream = p.stream();
-  p.stream() = STREAM_NEXT_EVENT;
+  auto pdf = [&](Direction u, double& E) {
+    return sab.sample_energy_and_pdf(
+      micro, p.E(), u.dot(u_cm), E, p.current_seed());
+  };
 
-  simulation::i_det = -1;
-  for (auto& det : model::active_point_detectors) {
-    ++simulation::i_det;
-
-    auto u = (det - p.r());
-    double distance = u.norm();
-    u /= distance;
-
-    double mu = u.dot(p.u());
-    double E_out;
-    double pdf =
-      sab.sample_energy_and_pdf(micro, p.E(), mu, E_out, p.current_seed());
-    simulation::pseudoparticle.initialize_pseudoparticle(p, u, E_out);
-    double mfp = transport_pseudoparticle(simulation::pseudoparticle, distance);
-    if (!simulation::pseudoparticle.alive())
-      continue;
-    score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
-  }
-  p.stream() = old_stream;
+  score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
 }
 
 void score_point_tally(SourceSite& site, int source_index)
 {
-  double E_out = site.E;
-  Position r = site.r;
   auto src_ = model::external_sources[source_index].get();
   auto src = dynamic_cast<IndependentSource*>(src_);
   if (!src)
     fatal_error("Only independent source is valid for point detectors.");
-  auto angle = src->angle();
-
-  double mfp = 0;
-
-  simulation::i_det = -1;
-  for (auto& det : model::active_point_detectors) {
-    ++simulation::i_det;
-
-    auto u = (det - r);
-    double distance = u.norm();
-    u /= distance;
-
-    double pdf = angle->evaluate(u);
-    simulation::pseudoparticle.from_source(&site);
-    simulation::pseudoparticle.u() = u;
-    double mfp = transport_pseudoparticle(simulation::pseudoparticle, distance);
-    if (!simulation::pseudoparticle.alive())
-      continue;
-    score_pseudoparticle_tally(simulation::pseudoparticle, mfp, pdf);
-  }
+  auto pdf = [&](Direction u, double& E) {
+    E = site.E;
+    return src->angle()->evaluate(u);
+  };
+  score_point_tally_impl(site.r, site.particle, site.time, pdf);
 }
 
 } // namespace openmc

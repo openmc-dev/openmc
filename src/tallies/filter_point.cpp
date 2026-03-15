@@ -36,26 +36,12 @@ void PointFilter::set_detectors(span<std::pair<Position, double>> detectors)
   n_bins_ = detectors_.size();
 }
 
-void PointFilter::reset_indices()
-{
-  indices_.clear();
-  for (auto det : model::active_point_detectors) {
-    vector<int32_t> temp;
-    for (auto i = 0; i < detectors_.size(); i++) {
-      auto [d, r] = detectors_[i];
-      if (d == det)
-        temp.push_back(i);
-    }
-    indices_.push_back(temp);
-  }
-}
-
 void PointFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   double attenuation = p.wgt() / p.wgt_last();
-  for (auto i : indices_[simulation::i_det]) {
-    auto [pos, r] = detectors_[i];
+  int i = 0;
+  for (auto [pos, r] : detectors_) {
     if ((p.r() - pos).norm() < FP_COINCIDENT) {
       match.bins_.push_back(i);
       double weight;
@@ -67,6 +53,7 @@ void PointFilter::get_all_bins(
       }
       match.weights_.push_back(weight);
     }
+    ++i;
   }
 }
 

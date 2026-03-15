@@ -7,12 +7,10 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
-#include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
-#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
@@ -24,7 +22,6 @@
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
-#include "openmc/tallies/tally_scoring.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
@@ -823,43 +820,6 @@ void transport_history_based_single_particle(Particle& p)
     p.event_revive_from_secondary();
   }
   p.event_death();
-}
-
-double transport_pseudoparticle(Particle& p, double total_distance)
-{
-  double time_cutoff = settings::time_cutoff[p.type().transport_index()];
-  double speed = p.speed();
-  p.event_calculate_xs(true);
-
-  double mfp = 0.0;
-  while (total_distance > 0.0) {
-    p.boundary() = distance_to_boundary(p);
-
-    double distance_cutoff =
-      (time_cutoff < INFTY) ? (time_cutoff - p.time()) * speed : INFTY;
-
-    double distance =
-      std::min({p.boundary().distance(), distance_cutoff, total_distance});
-    if (distance == distance_cutoff) {
-      p.wgt() = 0.0;
-      return mfp;
-    }
-
-    // Advance particle in space and time
-    p.move_distance(distance);
-    p.time() += distance / speed;
-    p.lifetime() += distance / speed;
-    total_distance -= distance;
-    mfp += distance * p.macro_xs().total;
-
-    if (distance == p.boundary().distance()) {
-      p.event_cross_surface(true);
-      p.event_calculate_xs(true);
-      if (!settings::run_CE)
-        speed = p.speed();
-    }
-  }
-  return mfp;
 }
 
 void transport_history_based()

@@ -31,10 +31,6 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  void sample_params(double E_in, double& E_out, double& km_a, double& km_r,
-    uint64_t* seed) const;
-  double sample_energy_and_pdf(
-    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
   //! Sample outgoing energy and Kalbach-Mann parameters
   //! \param[in] E_in Incoming energy in [eV]

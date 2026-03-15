@@ -301,10 +301,10 @@ enum class TallyType {
   MESH_SURFACE,
   SURFACE,
   PULSE_HEIGHT,
-  NEXT_EVENT
+  POINT
 };
 
-enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION, POINT };
+enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION, NEXT_EVENT };
 
 enum class TallyEvent { SURFACE, LATTICE, KILL, SCATTER, ABSORB };
 

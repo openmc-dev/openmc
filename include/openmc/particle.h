@@ -66,12 +66,10 @@ public:
   //! \param src Source site data
   void from_source(const SourceSite* src);
 
-  void initialize_pseudoparticle(Particle& p, Direction u, double E);
-
   // Coarse-grained particle events
-  void event_calculate_xs(bool is_pseudo = false);
+  void event_calculate_xs();
   void event_advance();
-  void event_cross_surface(bool is_pseudo = false);
+  void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary();
   void event_death();

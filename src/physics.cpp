@@ -838,11 +838,12 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
   // Sample energy and angle
   double E_out;
   auto& sab = data::thermal_scatt[i_sab]->data_[i_temp];
-  sab.sample(micro, p.E(), &E_out, &p.mu(), p.current_seed());
 
   if (!model::active_point_tallies.empty()) {
     score_point_tally(p, i_nuclide, sab, micro);
   }
+
+  sab.sample(micro, p.E(), &E_out, &p.mu(), p.current_seed());
 
   // Set energy to outgoing, change direction of particle
   p.E() = E_out;

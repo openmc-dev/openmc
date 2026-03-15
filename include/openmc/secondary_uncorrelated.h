@@ -31,8 +31,6 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  double sample_energy_and_pdf(
-    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
   //! Sample an outgoing energy and evaluate the angular PDF
   //! \param[in] E_in Incoming energy in [eV]

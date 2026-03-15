@@ -27,11 +27,6 @@
 
 namespace openmc {
 
-namespace simulation {
-thread_local Particle pseudoparticle;
-thread_local int i_det;
-} // namespace simulation
-
 //==============================================================================
 // FilterBinIter implementation
 //==============================================================================

@@ -9,11 +9,6 @@
 
 namespace openmc {
 
-namespace simulation {
-extern thread_local Particle pseudoparticle;
-extern thread_local int i_det;
-} // namespace simulation
-
 //==============================================================================
 //! An iterator over all combinations of a tally's matching filter bins.
 //

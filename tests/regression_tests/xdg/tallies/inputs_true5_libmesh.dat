@@ -35,12 +35,12 @@
     <surface id="10" name="maximum y" type="y-plane" coeffs="6.0"/>
     <surface id="11" name="minimum z" type="z-plane" coeffs="-6.0"/>
     <surface id="12" name="maximum z" type="z-plane" coeffs="6.0"/>
-    <surface id="13" name="minimum x" type="x-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="14" name="maximum x" type="x-plane" boundary="vacuum" coeffs="10.0"/>
-    <surface id="15" name="minimum y" type="y-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="16" name="maximum y" type="y-plane" boundary="vacuum" coeffs="10.0"/>
-    <surface id="17" name="minimum z" type="z-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="18" name="maximum z" type="z-plane" boundary="vacuum" coeffs="10.0"/>
+    <surface id="13" name="minimum x" type="x-plane" boundary="vacuum" coeffs="-15.0"/>
+    <surface id="14" name="maximum x" type="x-plane" boundary="vacuum" coeffs="15.0"/>
+    <surface id="15" name="minimum y" type="y-plane" boundary="vacuum" coeffs="-15.0"/>
+    <surface id="16" name="maximum y" type="y-plane" boundary="vacuum" coeffs="15.0"/>
+    <surface id="17" name="minimum z" type="z-plane" boundary="vacuum" coeffs="-15.0"/>
+    <surface id="18" name="maximum z" type="z-plane" boundary="vacuum" coeffs="15.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
@@ -68,7 +68,7 @@
       <upper_right>10.0 10.0 10.0</upper_right>
     </mesh>
     <mesh id="2" type="xdg" library="libmesh">
-      <filename>test_mesh_hexes.exo</filename>
+      <filename>test_mesh_tets.exo</filename>
     </mesh>
     <filter id="1" type="mesh">
       <bins>1</bins>

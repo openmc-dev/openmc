@@ -255,6 +255,7 @@ MESH_CASES = (
         "mesh_kind": "tet",
         "holes": None,
         "elem_per_voxel": 12,
+        "external_geom": False,
         "libraries": ("moab", "libmesh"),
     },
     {
@@ -262,6 +263,7 @@ MESH_CASES = (
         "mesh_kind": "tet",
         "holes": None,
         "elem_per_voxel": 12,
+        "external_geom": False,
         "libraries": ("libmesh",),
     },
     {
@@ -269,6 +271,7 @@ MESH_CASES = (
         "mesh_kind": "tet",
         "holes": (333, 90, 77),
         "elem_per_voxel": 12,
+        "external_geom": False,
         "libraries": ("moab", "libmesh"),
     },
     {
@@ -276,6 +279,39 @@ MESH_CASES = (
         "mesh_kind": "tet",
         "holes": (333, 90, 77),
         "elem_per_voxel": 12,
+        "external_geom": False,
+        "libraries": ("libmesh",),
+    },
+    {
+        "mesh_filename": "test_mesh_tets.e",
+        "mesh_kind": "tet",
+        "holes": None,
+        "elem_per_voxel": 12,
+        "external_geom": True,
+        "libraries": ("moab", "libmesh"),
+    },
+    {
+        "mesh_filename": "test_mesh_tets.exo",
+        "mesh_kind": "tet",
+        "holes": None,
+        "elem_per_voxel": 12,
+        "external_geom": True,
+        "libraries": ("libmesh",),
+    },
+    {
+        "mesh_filename": "test_mesh_tets_w_holes.e",
+        "mesh_kind": "tet",
+        "holes": (333, 90, 77),
+        "elem_per_voxel": 12,
+        "external_geom": True,
+        "libraries": ("moab", "libmesh"),
+    },
+    {
+        "mesh_filename": "test_mesh_tets_w_holes.exo",
+        "mesh_kind": "tet",
+        "holes": (333, 90, 77),
+        "elem_per_voxel": 12,
+        "external_geom": True,
         "libraries": ("libmesh",),
     },
     # {
@@ -336,7 +372,7 @@ def test_xdg_mesh_tallies(model, test_opts):
         test_opts["mesh_filename"],
         test_opts["mesh_kind"],
         test_opts["holes"],
-        scale_factor=10.0,
+        scale_factor=15.0 if test_opts["external_geom"] else 10.0,
     )
     harness.ELEM_PER_VOXEL = test_opts["elem_per_voxel"]
     harness.main()

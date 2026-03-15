@@ -33,6 +33,11 @@ DecayPhotonMixture::DecayPhotonMixture(
 
 DecayPhotonMixture::DecayPhotonMixture(pugi::xml_node node)
 {
+  // Read the region volume [cm^3] needed for absolute emission rate
+  if (!check_for_node(node, "volume"))
+    fatal_error("DecayPhotonMixture: 'volume' attribute is required.");
+  double volume = std::stod(get_node_value(node, "volume"));
+
   // Read nuclide names and atom densities from XML
   vector<const Distribution*> dists;
   vector<double> weights;
@@ -51,8 +56,10 @@ DecayPhotonMixture::DecayPhotonMixture(pugi::xml_node node)
     if (!photon_dist)
       continue;
 
-    // Weight = atom_density * decay_constant
-    double weight = density * chain_nuc->decay_constant();
+    // Weight = atom_count * decay_constant
+    // atom_count = atom_density [atom/b-cm] * 1e24 [b-cm/cm^3] * volume [cm^3]
+    double atom_count = density * 1.0e24 * volume;
+    double weight = atom_count * chain_nuc->decay_constant();
     if (weight <= 0.0)
       continue;
 

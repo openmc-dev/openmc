@@ -27,6 +27,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/r2s_source.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -352,6 +353,13 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
     if (check_for_node(node, "energy")) {
       pugi::xml_node node_dist = node.child("energy");
       energy_ = distribution_from_xml(node_dist);
+
+      // For decay photon sources the C++ computes the absolute photon emission
+      // rate [photons/s] as the distribution integral. Use it as the source
+      // strength so that sources in more active regions are sampled more often.
+      if (dynamic_cast<DecayPhotonMixture*>(energy_.get())) {
+        strength_ = energy_->integral();
+      }
     } else {
       // Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
       energy_ = UPtrDist {new Watt(0.988e6, 2.249e-6)};

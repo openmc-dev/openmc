@@ -648,7 +648,7 @@ class R2SManager:
             if not nuclides:
                 continue
 
-            energy = openmc.stats.DecayPhoton(nuclides)
+            energy = openmc.stats.DecayPhoton(nuclides, vol)
 
             if mesh_based:
                 domains = [openmc.Material(material_id=domain_id)]

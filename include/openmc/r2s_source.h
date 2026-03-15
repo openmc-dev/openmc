@@ -8,7 +8,6 @@
 #include <cstdint> // for int32_t
 
 #include "openmc/distribution.h"
-#include "openmc/source.h"
 #include "openmc/vector.h"
 
 namespace openmc {

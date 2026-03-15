@@ -2201,31 +2201,39 @@ class Mixture(Univariate):
 class DecayPhoton(Univariate):
     """Energy distribution from decay photon spectra of a mixture of nuclides.
 
-    This distribution stores nuclide names and their atom densities. When
-    written to XML and read by the C++ solver, the nuclide names are resolved
-    against the depletion chain to obtain the decay photon energy spectra
-    and decay constants. The resulting distribution is a mixture of per-nuclide
-    photon spectra weighted by activity (atom_density * decay_constant *
-    photons_per_decay).
+    This distribution stores nuclide names, their atom densities, and the
+    volume of the region. When written to XML and read by the C++ solver, the
+    nuclide names are resolved against the depletion chain to obtain the decay
+    photon energy spectra and decay constants. The resulting distribution is a
+    mixture of per-nuclide photon spectra weighted by absolute activity
+    (atom_density * 1e24 * volume * decay_constant * photons_per_decay).
+    The volume is necessary so that the C++ solver can compute the total photon
+    emission rate in [photons/s], which is used as the source strength.
 
-    .. versionadded:: 0.15.1
+    .. versionadded:: 0.15.4
 
     Parameters
     ----------
     nuclides : dict
         Dictionary mapping nuclide name (str) to atom density (float) in
         units of atom/b-cm.
+    volume : float
+        Volume of the source region in cm\ :sup:`3`. Used together with atom
+        densities to compute the absolute photon emission rate.
 
     Attributes
     ----------
     nuclides : dict
         Dictionary mapping nuclide name to atom density in atom/b-cm.
+    volume : float
+        Volume of the source region in cm\ :sup:`3`.
 
     """
 
-    def __init__(self, nuclides: dict[str, float]):
+    def __init__(self, nuclides: dict[str, float], volume: float):
         super().__init__(bias=None)
         self.nuclides = nuclides
+        self.volume = volume
 
     def __len__(self):
         return len(self.nuclides)
@@ -2243,6 +2251,16 @@ class DecayPhoton(Univariate):
             cv.check_greater_than(f'atom density for {name}', density, 0.0)
         self._nuclides = dict(nuclides)
 
+    @property
+    def volume(self):
+        return self._volume
+
+    @volume.setter
+    def volume(self, volume):
+        cv.check_type('volume', volume, Real)
+        cv.check_greater_than('volume', volume, 0.0)
+        self._volume = float(volume)
+
     def to_xml_element(self, element_name: str):
         """Return XML representation of the decay photon distribution
 
@@ -2259,6 +2277,7 @@ class DecayPhoton(Univariate):
         """
         element = ET.Element(element_name)
         element.set("type", "decay_photon")
+        element.set("volume", str(self.volume))
         for name, density in self.nuclides.items():
             nuclide_elem = ET.SubElement(element, "nuclide")
             nuclide_elem.set("name", name)
@@ -2280,12 +2299,13 @@ class DecayPhoton(Univariate):
             Decay photon distribution generated from XML element
 
         """
+        volume = float(elem.get('volume'))
         nuclides = {}
         for nuclide_elem in elem.findall('nuclide'):
             name = nuclide_elem.get('name')
             density = float(nuclide_elem.get('density'))
             nuclides[name] = density
-        return cls(nuclides)
+        return cls(nuclides, volume)
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         raise NotImplementedError(
@@ -2330,7 +2350,7 @@ class DecayPhoton(Univariate):
         if inplace:
             self._nuclides = new_nuclides
             return self
-        return type(self)(new_nuclides)
+        return type(self)(new_nuclides, self.volume)
 
     @property
     def support(self):

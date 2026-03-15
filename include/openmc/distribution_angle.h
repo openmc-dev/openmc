@@ -25,7 +25,6 @@ public:
   //! \param[inout] seed pseudorandom number seed pointer
   //! \return Cosine of the angle in the range [-1,1]
   double sample(double E, uint64_t* seed) const;
-  double evaluate(double E, double mu) const;
 
   //! Evaluate the angular PDF at a given energy and cosine
   //! \param[in] E Particle energy in [eV]

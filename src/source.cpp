@@ -357,7 +357,7 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
       // For decay photon sources the C++ computes the absolute photon emission
       // rate [photons/s] as the distribution integral. Use it as the source
       // strength so that sources in more active regions are sampled more often.
-      if (dynamic_cast<DecayPhotonMixture*>(energy_.get())) {
+      if (dynamic_cast<DecaySpectrum*>(energy_.get())) {
         strength_ = energy_->integral();
       }
     } else {

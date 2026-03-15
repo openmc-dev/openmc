@@ -15,10 +15,10 @@
 namespace openmc {
 
 //==============================================================================
-// DecayPhotonMixture implementation
+// DecaySpectrum implementation
 //==============================================================================
 
-DecayPhotonMixture::DecayPhotonMixture(
+DecaySpectrum::DecaySpectrum(
   vector<const Distribution*> dists, vector<double> weights)
   : dists_(std::move(dists))
 {
@@ -31,11 +31,11 @@ DecayPhotonMixture::DecayPhotonMixture(
   di_.assign(probs);
 }
 
-DecayPhotonMixture::DecayPhotonMixture(pugi::xml_node node)
+DecaySpectrum::DecaySpectrum(pugi::xml_node node)
 {
   // Read the region volume [cm^3] needed for absolute emission rate
   if (!check_for_node(node, "volume"))
-    fatal_error("DecayPhotonMixture: 'volume' attribute is required.");
+    fatal_error("DecaySpectrum: 'volume' attribute is required.");
   double volume = std::stod(get_node_value(node, "volume"));
 
   // Read nuclide names and atom densities from XML
@@ -79,18 +79,18 @@ DecayPhotonMixture::DecayPhotonMixture(pugi::xml_node node)
   di_.assign(probs);
 }
 
-std::pair<double, double> DecayPhotonMixture::sample(uint64_t* seed) const
+std::pair<double, double> DecaySpectrum::sample(uint64_t* seed) const
 {
   size_t idx = di_.sample(seed);
   return dists_[idx]->sample(seed);
 }
 
-double DecayPhotonMixture::integral() const
+double DecaySpectrum::integral() const
 {
   return integral_;
 }
 
-double DecayPhotonMixture::sample_unbiased(uint64_t* seed) const
+double DecaySpectrum::sample_unbiased(uint64_t* seed) const
 {
   size_t idx = di_.sample(seed);
   return dists_[idx]->sample(seed).first;

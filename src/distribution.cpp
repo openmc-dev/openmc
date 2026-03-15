@@ -760,7 +760,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   } else if (type == "mixture") {
     dist = UPtrDist {new Mixture(node)};
   } else if (type == "decay_photon") {
-    dist = UPtrDist {new DecayPhotonMixture(node)};
+    dist = UPtrDist {new DecaySpectrum(node)};
   } else if (type == "muir") {
     openmc::fatal_error(
       "'muir' distributions are now specified using the openmc.stats.muir() "

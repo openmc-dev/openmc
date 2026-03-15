@@ -13,7 +13,7 @@
 namespace openmc {
 
 //==============================================================================
-// DecayPhotonMixture — non-owning mixture of decay photon distributions
+// DecaySpectrum — non-owning mixture of decay photon distributions
 //==============================================================================
 
 //! Energy distribution formed by mixing multiple decay photon spectra.
@@ -23,7 +23,7 @@ namespace openmc {
 //! data::chain_nuclides). Each component is weighted by the activity
 //! (atoms * decay_constant) of the corresponding nuclide.
 
-class DecayPhotonMixture : public Distribution {
+class DecaySpectrum : public Distribution {
 public:
   //! Construct from non-owning distribution pointers and weights
   //!
@@ -31,14 +31,14 @@ public:
   //! \param weights  Activity-based weights for each component. The Mixture
   //!   probability for component i is weights[i] * dists[i]->integral()
   //!   (the integral encodes photons-per-decay).
-  DecayPhotonMixture(vector<const Distribution*> dists, vector<double> weights);
+  DecaySpectrum(vector<const Distribution*> dists, vector<double> weights);
 
   //! Construct from an XML node containing nuclide names and atom densities.
   //!
   //! Reads child ``<nuclide>`` elements with ``name`` and ``density``
   //! attributes, resolves them against the loaded depletion chain, and
   //! constructs the mixed distribution.
-  explicit DecayPhotonMixture(pugi::xml_node node);
+  explicit DecaySpectrum(pugi::xml_node node);
 
   std::pair<double, double> sample(uint64_t* seed) const override;
   double integral() const override;

@@ -600,7 +600,7 @@ class R2SManager:
         """Create decay photon sources for a set of regions.
 
         Builds :class:`openmc.IndependentSource` objects with
-        :class:`openmc.stats.DecayPhoton` energy distributions that will be
+        :class:`openmc.stats.DecaySpectrum` energy distributions that will be
         serialized to XML and resolved against the depletion chain by the C++
         solver.
 
@@ -648,7 +648,7 @@ class R2SManager:
             if not nuclides:
                 continue
 
-            energy = openmc.stats.DecayPhoton(nuclides, vol)
+            energy = openmc.stats.DecaySpectrum(nuclides, vol)
 
             if mesh_based:
                 domains = [openmc.Material(material_id=domain_id)]

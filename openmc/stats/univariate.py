@@ -125,7 +125,7 @@ class Univariate(EqualityMixin, ABC):
         elif distribution == 'mixture':
             return Mixture.from_xml_element(elem)
         elif distribution == 'decay_photon':
-            return DecayPhoton.from_xml_element(elem)
+            return DecaySpectrum.from_xml_element(elem)
 
     @abstractmethod
     def _sample_unbiased(self, n_samples: int = 1, seed: int | None = None):
@@ -2198,7 +2198,7 @@ class Mixture(Univariate):
         return new_dist
 
 
-class DecayPhoton(Univariate):
+class DecaySpectrum(Univariate):
     """Energy distribution from decay photon spectra of a mixture of nuclides.
 
     This distribution stores nuclide names, their atom densities, and the
@@ -2295,7 +2295,7 @@ class DecayPhoton(Univariate):
 
         Returns
         -------
-        openmc.stats.DecayPhoton
+        openmc.stats.DecaySpectrum
             Decay photon distribution generated from XML element
 
         """
@@ -2309,7 +2309,7 @@ class DecayPhoton(Univariate):
 
     def _sample_unbiased(self, n_samples=1, seed=None):
         raise NotImplementedError(
-            "DecayPhoton distributions can only be sampled by the C++ solver")
+            "DecaySpectrum distributions can only be sampled by the C++ solver")
 
     def integral(self):
         """Return integral of the distribution
@@ -2338,7 +2338,7 @@ class DecayPhoton(Univariate):
 
         Returns
         -------
-        openmc.stats.DecayPhoton
+        openmc.stats.DecaySpectrum
             Distribution with low-density nuclides removed
 
         """
@@ -2358,11 +2358,11 @@ class DecayPhoton(Univariate):
 
     def evaluate(self, x):
         raise NotImplementedError(
-            "evaluate() is undefined for DecayPhoton distributions")
+            "evaluate() is undefined for DecaySpectrum distributions")
 
     def mean(self):
         raise NotImplementedError(
-            "mean() is undefined for DecayPhoton distributions")
+            "mean() is undefined for DecaySpectrum distributions")
 
 
 def combine_distributions(

@@ -484,7 +484,7 @@ private:
  *   Algorithms.” Annals of Nuclear Energy 113 (March 2018): 506–18.
  *   https://doi.org/10.1016/j.anucene.2017.11.032.
  */
-class ParticleData : public GeometryState {
+class ParticleData : virtual public GeometryState {
 private:
   //==========================================================================
   // Data members -- see public: below for descriptions

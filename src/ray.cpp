@@ -2,6 +2,8 @@
 
 #include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/material.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/settings.h"
 
 namespace openmc {
@@ -136,8 +138,8 @@ void Ray::trace()
       cross_lattice(*this, boundary(), settings::verbosity >= 10);
     }
 
-    // Record how far the ray has traveled
-    traversal_distance_ += boundary().distance();
+    update_distance();
+
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
 
     // Call the specialized logic for this type of ray. Note that we do not
@@ -163,6 +165,47 @@ void Ray::trace()
       return;
     }
   }
+}
+
+void Ray::update_distance()
+{
+  // Record how far the ray has traveled
+  traversal_distance_ += boundary().distance();
+}
+
+void ParticleRay::update_distance()
+{
+  Ray::update_distance();
+
+  time_distance_ += speed() * boundary().distance();
+
+  // Calculate microscopic and macroscopic cross sections
+  if (material() != MATERIAL_VOID) {
+    if (settings::run_CE) {
+      if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
+          density_mult() != density_mult_last()) {
+        // If the material is the same as the last material and the
+        // temperature hasn't changed, we don't need to lookup cross
+        // sections again.
+        model::materials[material()]->calculate_xs(*this);
+      }
+    } else {
+      // Get the MG data; unlike the CE case above, we have to re-calculate
+      // cross sections for every collision since the cross sections may
+      // be angle-dependent
+      data::mg.macro_xs_[material()].calculate_xs(*this);
+
+      // Update the particle's group while we know we are multi-group
+      g_last() = g();
+    }
+  } else {
+    macro_xs().total = 0.0;
+    macro_xs().absorption = 0.0;
+    macro_xs().fission = 0.0;
+    macro_xs().nu_fission = 0.0;
+  }
+
+  mfp_distance_ += macro_xs().total * boundary().distance();
 }
 
 } // namespace openmc

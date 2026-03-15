@@ -1,14 +1,14 @@
 #ifndef OPENMC_RAY_H
 #define OPENMC_RAY_H
 
-#include "openmc/particle_data.h"
+#include "openmc/particle.h"
 #include "openmc/position.h"
 
 namespace openmc {
 
 // Base class that implements ray tracing logic, not necessarily through
 // defined regions of the geometry but also outside of it.
-class Ray : public GeometryState {
+class Ray : virtual public GeometryState {
 
 public:
   // Initialize from location and direction
@@ -32,6 +32,8 @@ public:
   // Sets the dist_ variable
   void compute_distance();
 
+  virtual void update_distance();
+
 protected:
   // Records how far the ray has traveled
   double traversal_distance_ {0.0};
@@ -44,6 +46,19 @@ private:
   bool stop_ {false};
 
   unsigned event_counter_ {0};
+};
+
+class ParticleRay : public Ray, public Particle {
+
+public:
+  // Sets the dist_ variable
+  void update_distance() override;
+
+protected:
+  // Records how much time passed during travel
+  double time_distance_ {0.0};
+  // Records how much mean free paths the ray traveled
+  double mfp_distance_ {0.0};
 };
 
 } // namespace openmc

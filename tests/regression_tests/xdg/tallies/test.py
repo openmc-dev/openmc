@@ -331,6 +331,7 @@ MESH_CASES = (
 )
 
 test_cases = []
+test_case_ids = []
 for i, mesh_case in enumerate(MESH_CASES):
     for library in mesh_case["libraries"]:
         test_cases.append({
@@ -338,9 +339,12 @@ for i, mesh_case in enumerate(MESH_CASES):
             "library": library,
             **{k: v for k, v in mesh_case.items() if k != "libraries"},
         })
+        mesh_stem = os.path.splitext(mesh_case["mesh_filename"])[0]
+        geom_mode = "external-geom" if mesh_case["external_geom"] else "bounded-geom"
+        holes = "holes" if mesh_case["holes"] else "solid"
+        test_case_ids.append(f"{library}-{mesh_stem}-{holes}-{geom_mode}")
 
-
-@pytest.mark.parametrize("test_opts", test_cases)
+@pytest.mark.parametrize("test_opts", test_cases, ids=test_case_ids)
 def test_xdg_mesh_tallies(model, test_opts):
     if not openmc.lib._xdg_enabled():
         pytest.skip("XDG is not enabled in this build.")

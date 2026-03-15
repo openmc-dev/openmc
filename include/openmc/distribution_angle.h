@@ -27,6 +27,12 @@ public:
   double sample(double E, uint64_t* seed) const;
   double evaluate(double E, double mu) const;
 
+  //! Evaluate the angular PDF at a given energy and cosine
+  //! \param[in] E Particle energy in [eV]
+  //! \param[in] mu Cosine of the scattering angle
+  //! \return Probability density for the scattering cosine
+  double evaluate(double E, double mu) const;
+
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty
   bool empty() const { return energy_.empty(); }

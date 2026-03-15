@@ -1,5 +1,6 @@
 #include "openmc/reaction_product.h"
 
+#include <cassert>
 #include <string> // for string
 
 #include <fmt/core.h>
@@ -108,6 +109,8 @@ ReactionProduct::ReactionProduct(const ChainNuclide::Product& product)
 
 AngleEnergy& ReactionProduct::sample_dist(double E_in, uint64_t* seed) const
 {
+  assert(!distribution_.empty());
+
   auto n = applicability_.size();
   if (n > 1) {
     double prob = 0.0;
@@ -120,10 +123,9 @@ AngleEnergy& ReactionProduct::sample_dist(double E_in, uint64_t* seed) const
       if (c <= prob)
         return *distribution_[i];
     }
-  } else {
-    // If only one distribution is present, go ahead and sample it
-    return *distribution_[0];
   }
+
+  return *distribution_.back();
 }
 
 void ReactionProduct::sample(

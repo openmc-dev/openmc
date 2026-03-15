@@ -13,20 +13,17 @@
 
 namespace openmc {
 
-double get_pdf_discrete(const vector<double>& mu, double mu_0)
-{
-  DoubleVector w {1.0 / mu.size()};
-  return get_pdf_discrete(mu, w, mu_0);
-}
-
 //==============================================================================
 // CoherentElasticAE implementation
 //==============================================================================
 
 CoherentElasticAE::CoherentElasticAE(const CoherentElasticXS& xs) : xs_ {xs}
 {
+  const auto& bragg = xs_.bragg_edges();
+  auto n = bragg.size();
+  bragg_edges_ = tensor::Tensor<double>(bragg.data(), n);
+
   const auto& factors = xs_.factors();
-  auto n = factors.size();
   factors_diff_ = tensor::zeros<double>({n});
   factors_diff_.slice(0) = factors[0];
   for (int i = 1; i < n; ++i) {
@@ -60,23 +57,19 @@ double CoherentElasticAE::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
-
-  double pdf;
   E_out = E_in;
-  const auto energies =
-    tensor::Tensor<double>(xs_.bragg_edges().data(), xs_.bragg_edges().size());
   const auto& factors = xs_.factors();
 
-  if (E_in < energies.front() || E_in > energies.back()) {
-    return 0;
-  }
+  if (E_in < bragg_edges_.front())
+    return 0.0;
 
-  const int n = upper_bound_index(energies.begin(), energies.end(), E_in);
+  const int i =
+    lower_bound_index(bragg_edges_.begin(), bragg_edges_.end(), E_in);
   double E = 0.5 * (1 - mu) * E_in;
-  double C = 0.5 * E_in / factors[n];
+  double C = 0.5 * E_in / factors[i];
 
-  return C * get_pdf_discrete(
-               energies.slice(0, n), factors_diff_.slice(0, n), E, 0, E_in);
+  return C * get_pdf_discrete(bragg_edges_.slice(tensor::range(i + 1)),
+               factors_diff_.slice(tensor::range(i + 1)), E, 0.0, E_in);
 }
 
 //==============================================================================
@@ -172,10 +165,8 @@ double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
   // Energy doesn't change in elastic scattering
   E_out = E_in;
 
-  double pdf = 0.0;
-  pdf += f * get_pdf_discrete(mu_out_.slice(i + 1, tensor::all), mu);
-  pdf += (1 - f) * get_pdf_discrete(mu_out_.slice(i, tensor::all), mu);
-  return pdf;
+  return get_pdf_discrete_interpolated(
+    mu_out_.slice(i, tensor::all), mu_out_.slice(i + 1, tensor::all), f, mu);
 }
 
 //==============================================================================
@@ -272,10 +263,8 @@ double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
   int j;
   sample_params(E_in, E_out, j, seed);
 
-  double pdf = 0.0;
-  pdf += f * get_pdf_discrete(mu_out_.slice(i + 1, j, tensor::all), mu);
-  pdf += (1 - f) * get_pdf_discrete(mu_out_.slice(i, j, tensor::all), mu);
-  return pdf;
+  return get_pdf_discrete_interpolated(mu_out_.slice(i, j, tensor::all),
+    mu_out_.slice(i + 1, j, tensor::all), f, mu);
 }
 
 //==============================================================================
@@ -421,13 +410,10 @@ double IncoherentInelasticAE::sample_energy_and_pdf(
   int l, j;
   sample_params(E_in, E_out, f, l, j, seed);
 
-  int n_mu = distribution_[l].mu.shape()[1];
   const auto& mu_l = distribution_[l].mu;
 
-  double pdf = 0.0;
-  pdf += f * get_pdf_discrete(mu_l.slice(j + 1, tensor::all), mu);
-  pdf += (1 - f) * get_pdf_discrete(mu_l.slice(j, tensor::all), mu);
-  return pdf;
+  return get_pdf_discrete_interpolated(
+    mu_l.slice(j, tensor::all), mu_l.slice(j + 1, tensor::all), f, mu);
 }
 
 //==============================================================================

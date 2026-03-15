@@ -165,46 +165,10 @@ void Particle::from_source(const SourceSite* src)
   }
 }
 
-void Particle::initialize_pseudoparticle(
-  Particle& p, Direction u_new, double E_new)
-{
-  // Reset some attributes
-  clear();
-  surface() = SURFACE_NONE;
-  cell_born() = C_NONE;
-  material() = C_NONE;
-  n_collision() = 0;
-  fission() = false;
-  zero_flux_derivs();
-  lifetime() = 0.0;
-
-  // Copy attributes from particle
-  type() = p.type();
-  wgt() = p.wgt();
-  wgt_last() = p.wgt();
-  r() = p.r();
-  u() = u_new;
-  r_born() = p.r();
-  r_last_current() = p.r();
-  r_last() = p.r();
-  u_last() = p.u();
-  if (settings::run_CE) {
-    E() = E_new;
-    g() = 0;
-  } else {
-    g() = static_cast<int>(E_new);
-    g_last() = static_cast<int>(E_new);
-    E() = data::mg.energy_bin_avg_[g()];
-  }
-  E_last() = E();
-  time() = p.time();
-  time_last() = p.time();
-}
-
-void Particle::event_calculate_xs(bool is_pseudo)
+void Particle::event_calculate_xs()
 {
   // Set the random number stream
-  stream() = is_pseudo ? STREAM_NEXT_EVENT : STREAM_TRACKING;
+  stream() = STREAM_TRACKING;
 
   // Store pre-collision particle properties
   wgt_last() = wgt();
@@ -240,7 +204,7 @@ void Particle::event_calculate_xs(bool is_pseudo)
   }
 
   // Write particle track.
-  if (write_track() && !is_pseudo)
+  if (write_track())
     write_particle_track(*this);
 
   if (settings::check_overlaps)
@@ -329,7 +293,7 @@ void Particle::event_advance()
   }
 }
 
-void Particle::event_cross_surface(bool is_pseudo)
+void Particle::event_cross_surface()
 {
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
@@ -341,6 +305,8 @@ void Particle::event_cross_surface(bool is_pseudo)
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
+  const auto& surf {*model::surfaces[surface_index()].get()};
+
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
@@ -351,24 +317,23 @@ void Particle::event_cross_surface(bool is_pseudo)
     event() = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
-    const auto& surf {model::surfaces[surface_index()].get()};
     // If BC, add particle to surface source before crossing surface
-    if (surf->surf_source_ && surf->bc_ && !is_pseudo) {
-      add_surf_source_to_bank(*this, *surf);
+    if (surf.surf_source_ && surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
     }
-    this->cross_surface(*surf);
+    this->cross_surface(surf);
     // If no BC, add particle to surface source after crossing surface
-    if (surf->surf_source_ && !surf->bc_ && !is_pseudo) {
-      add_surf_source_to_bank(*this, *surf);
+    if (surf.surf_source_ && !surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
     }
-    if (settings::weight_window_checkpoint_surface && !is_pseudo) {
+    if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);
     }
     event() = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
-  if (!model::active_surface_tallies.empty() && !is_pseudo) {
-    score_surface_tally(*this, model::active_surface_tallies);
+  if (!model::active_surface_tallies.empty()) {
+    score_surface_tally(*this, model::active_surface_tallies, surf);
   }
 }
 
@@ -385,7 +350,7 @@ void Particle::event_collide()
   // pre-collision direction to figure out what mesh surfaces were crossed
 
   if (!model::active_meshsurf_tallies.empty())
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
 
   // Clear surface component
   surface() = SURFACE_NONE;
@@ -687,7 +652,7 @@ void Particle::cross_vacuum_bc(const Surface& surf)
     // physically moving the particle forward slightly
 
     r() += TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
   }
 
   // Score to global leakage tally
@@ -719,13 +684,13 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // with a mesh boundary
 
   if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies);
+    score_surface_tally(*this, model::active_surface_tallies, surf);
   }
 
   if (!model::active_meshsurf_tallies.empty()) {
     Position r {this->r()};
     this->r() -= TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
 
@@ -775,7 +740,7 @@ void Particle::cross_periodic_bc(
   if (!model::active_meshsurf_tallies.empty()) {
     Position r {this->r()};
     this->r() -= TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
 

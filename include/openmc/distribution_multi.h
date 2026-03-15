@@ -30,6 +30,9 @@ public:
   //! \return (sampled Direction, sample weight)
   virtual std::pair<Direction, double> sample(uint64_t* seed) const = 0;
 
+  //! Evaluate the probability density for a given direction
+  //! \param[in] u Direction on the unit sphere
+  //! \return Probability density at the given direction
   virtual double evaluate(Direction u) const
   {
     fatal_error("evaluate not available for this UnitSphereDistribution type");
@@ -58,6 +61,9 @@ public:
   //! \return (sampled Direction, value of the PDF at this Direction)
   std::pair<Direction, double> sample_as_bias(uint64_t* seed) const;
 
+  //! Evaluate the probability density for a given direction
+  //! \param[in] u Direction on the unit sphere
+  //! \return Probability density at the given direction
   double evaluate(Direction u) const override;
 
   // Observing pointers
@@ -95,6 +101,9 @@ public:
   //! \return (sampled direction, sample weight)
   std::pair<Direction, double> sample(uint64_t* seed) const override;
 
+  //! Evaluate the probability density for a given direction
+  //! \param[in] u Direction on the unit sphere
+  //! \return Probability density at the given direction
   double evaluate(Direction u) const override;
 
   // Set or get bias distribution

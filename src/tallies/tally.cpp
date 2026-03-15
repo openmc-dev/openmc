@@ -12,7 +12,6 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
-#include "openmc/position.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/settings.h"
@@ -32,7 +31,6 @@
 #include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
-#include "openmc/tallies/filter_point.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_time.h"
@@ -62,13 +60,11 @@ vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
 vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
-vector<int> active_point_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int32_t> pulse_height_cells;
 vector<double> time_grid;
-std::set<Position> active_point_detectors;
 } // namespace model
 
 namespace simulation {
@@ -545,6 +541,8 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool cell_present = false;
   bool cellfrom_present = false;
   bool point_present = false;
+  bool material_present = false;
+  bool materialfrom_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
   bool non_cell_energy_present = false;
@@ -561,6 +559,10 @@ void Tally::set_scores(const vector<std::string>& scores)
       cellfrom_present = true;
     } else if (filt->type() == FilterType::CELL) {
       cell_present = true;
+    } else if (filt->type() == FilterType::MATERIALFROM) {
+      materialfrom_present = true;
+    } else if (filt->type() == FilterType::MATERIAL) {
+      material_present = true;
     } else if (filt->type() == FilterType::POINT) {
       point_present = true;
       type_ = TallyType::NEXT_EVENT;
@@ -571,6 +573,11 @@ void Tally::set_scores(const vector<std::string>& scores)
       meshsurface_present = true;
     }
   }
+  bool surface_types_present =
+    (surface_present || cellfrom_present || materialfrom_present);
+  bool non_meshsurface_types_present =
+    (surface_present || cell_present || cellfrom_present || material_present ||
+      materialfrom_present);
 
   if (point_present) {
     if (simulation::nonvacuum_boundary_present)
@@ -605,6 +612,12 @@ void Tally::set_scores(const vector<std::string>& scores)
           fatal_error("Cannot tally flux for an individual nuclide.");
       if (energyout_present)
         fatal_error("Cannot tally flux with an outgoing energy filter.");
+      if (surface_types_present) {
+        if (meshsurface_present)
+          fatal_error("OpenMC does not support mesh surface fluxes yet");
+        type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
+      }
       break;
 
     case SCORE_TOTAL:
@@ -642,16 +655,14 @@ void Tally::set_scores(const vector<std::string>& scores)
       if (point_present)
         fatal_error("Cannot use current score with PointFilter.");
       // Check which type of current is desired: mesh or surface currents.
-      if (surface_present || cell_present || cellfrom_present) {
-        if (meshsurface_present)
+      if (meshsurface_present) {
+        if (non_meshsurface_types_present)
           fatal_error("Cannot tally mesh surface currents in the same tally as "
                       "normal surface currents");
-        type_ = TallyType::SURFACE;
-        estimator_ = TallyEstimator::ANALOG;
-      } else if (meshsurface_present) {
         type_ = TallyType::MESH_SURFACE;
       } else {
-        fatal_error("Cannot tally currents without surface type filters");
+        type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
       }
       break;
 
@@ -714,15 +725,20 @@ void Tally::set_scores(const vector<std::string>& scores)
                     "in multi-group mode");
   }
 
-  // Make sure current scores are not mixed in with volumetric scores.
-  if (type_ == TallyType::SURFACE || type_ == TallyType::MESH_SURFACE) {
-    if (scores_.size() != 1)
-      fatal_error("Cannot tally other scores in the same tally as surface "
-                  "currents.");
+  // Make sure mesh surface tallies contain only current score.
+  if (meshsurface_present) {
+    if ((scores_[0] != SCORE_CURRENT) || (scores_.size() > 1))
+      fatal_error("Cannot tally score other than 'current' when using a "
+                  "mesh-surface filter.");
   }
-  if ((surface_present || meshsurface_present) && scores_[0] != SCORE_CURRENT)
-    fatal_error("Cannot tally score other than 'current' when using a surface "
-                "or mesh-surface filter.");
+
+  // Make sure surface tallies contain only surface type scores score.
+  if (type_ == TallyType::SURFACE) {
+    for (auto sc : scores_)
+      if ((sc != SCORE_CURRENT) && (sc != SCORE_FLUX))
+        fatal_error("Cannot tally scores other than 'current' or 'flux' "
+                    "when using surface filters.");
+  }
 }
 
 void Tally::set_nuclides(pugi::xml_node node)
@@ -1171,14 +1187,6 @@ void add_to_time_grid(vector<double> grid)
   model::time_grid.swap(merged);
 }
 
-//! Add new points to global point_detectors
-//
-//! \param detector Position of new point detector to add
-void add_point_detector(Position& detector)
-{
-  model::active_point_detectors.insert(detector);
-}
-
 void setup_active_tallies()
 {
   model::active_tallies.clear();
@@ -1186,14 +1194,10 @@ void setup_active_tallies()
   model::active_tracklength_tallies.clear();
   model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
-  model::active_point_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
   model::time_grid.clear();
-  model::active_point_detectors.clear();
-
-  std::set<int32_t> particle_filter_ids;
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
@@ -1234,24 +1238,8 @@ void setup_active_tallies()
       case TallyType::PULSE_HEIGHT:
         model::active_pulse_height_tallies.push_back(i);
         break;
-
-      case TallyType::NEXT_EVENT:
-        switch (tally.estimator_) {
-        case TallyEstimator::POINT:
-          model::active_point_tallies.push_back(i);
-          auto pf = tally.get_filter<PointFilter>();
-          for (auto [det, r] : pf->detectors()) {
-            add_point_detector(det);
-          }
-          particle_filter_ids.insert(model::tally_map[pf->id()]);
-          break;
-        }
       }
     }
-  }
-  for (auto id : particle_filter_ids) {
-    auto pf = dynamic_cast<PointFilter*>(model::tally_filters.at(id).get());
-    pf->reset_indices();
   }
 }
 
@@ -1270,12 +1258,10 @@ void free_memory_tally()
   model::active_tracklength_tallies.clear();
   model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
-  model::active_point_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
   model::time_grid.clear();
-  model::active_point_detectors.clear();
 
   model::tally_map.clear();
 }

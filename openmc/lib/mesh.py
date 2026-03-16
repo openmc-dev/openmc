@@ -18,7 +18,7 @@ from ..mesh import MeshMaterialVolumes
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
-    'SphericalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes'
+    'SphericalMesh', 'HexagonalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes'
 ]
 
 
@@ -108,6 +108,11 @@ _dll.openmc_spherical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
 _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
 
+_dll.openmc_hexagonal_mesh_get_grid.argtypes = [c_int32,
+    POINTER(POINTER(c_double)), POINTER(c_int), POINTER(c_double),
+    POINTER(POINTER(c_double)), POINTER(c_double), POINTER(c_char_p)]
+_dll.openmc_hexagonal_mesh_get_grid.restype = c_int
+_dll.openmc_hexagonal_mesh_get_grid.errcheck = _error_handler
 
 class Mesh(_FortranObjectWithID):
     """Base class to represent mesh objects
@@ -727,6 +732,91 @@ class SphericalMesh(Mesh):
                                               ntheta, phi_grid, nphi)
 
 
+class HexagonalMesh(Mesh):
+    """HexagonalMesh stored internally.
+
+    This class exposes a mesh that is stored internally in the OpenMC
+    library. To obtain a view of a mesh with a given ID, use the
+    :data:`openmc.lib.meshes` mapping.
+
+    Parameters
+    ----------
+    index : int
+         Index in the `meshes` array.
+
+    Attributes
+    ----------
+    id : int
+        ID of the mesh
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
+    pitch : float
+        Radial pitch of the hexagonal mesh in cm.
+    num_rings : int
+        Number of radial ring positions in the xy-plane
+    orientation : {'x', 'y'}
+        The orientation of the lattice. The 'x' orientation means that each
+        lattice element has two faces that are perpendicular to the x-axis,
+        while the 'y' orientation means that each lattice element has two faces
+        that are perpendicular to the y-axis. By default, the orientation is
+        'y'.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates        
+    n_elements : int
+        Total number of mesh elements.
+    volumes : numpy.ndarray
+        Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
+
+    """
+    mesh_type = 'hexagonal'
+
+    def __init__(self, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        
+    @property
+    def n_elements(self):
+        z_grid, nr, *_ = self._get_parameters()
+        return (z_grid.size-1)*(3*nr*(nr-1)+1)        
+        
+    @property
+    def num_rings(self):
+        return self._get_parameters()[1]        
+
+    @property
+    def pitch(self):
+        return self._get_parameters()[2]
+        
+    @property
+    def orientation(self):
+        return self._get_parameters()[4]
+        
+    @property
+    def origin(self):
+        return self._get_parameters()[3]       
+        
+    @property
+    def z_grid(self):
+        return self._get_parameters()[0]          
+
+    def _get_parameters(self):
+        gz = POINTER(c_double)()
+        nz = c_int()
+        nr = c_int()
+        orig = POINTER(c_double)()
+        orient = c_char()
+        p = c_double()
+        # Call C API to get grid parameters
+        _dll.openmc_hexagonal_mesh_get_grid(self._index, gz, nz, nr, orig, p, orient)
+
+        # Convert grid parameters to Numpy arrays
+        grid_z = as_array(gz, (nz.value,))
+        origin = as_array(orig, (3,))
+
+        return (grid_z, nr, pitch, origin, orientation.decode())
+
 class UnstructuredMesh(Mesh):
     pass
 
@@ -736,6 +826,7 @@ _MESH_TYPE_MAP = {
     'rectilinear': RectilinearMesh,
     'cylindrical': CylindricalMesh,
     'spherical': SphericalMesh,
+    'hexagonal': HexagonalMesh,
     'unstructured': UnstructuredMesh
 }
 

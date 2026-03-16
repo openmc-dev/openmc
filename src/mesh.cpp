@@ -2490,7 +2490,7 @@ std::string HexagonalMesh::surface_label(int surface) const
 
 int HexagonalMesh::n_bins() const
 {
-  return (1 + 3 * (num_rings_ + 1) * num_rings_) * (grid_.size() - 1);
+  return (1 + 3 * num_rings_ * (num_rings_ - 1)) * (grid_.size() - 1);
 }
 
 bool HexagonalMesh::valid_index(const MeshIndex& ijk, int k) const
@@ -2507,7 +2507,7 @@ int HexagonalMesh::get_bin_from_indices(const MeshIndex& ijk) const
   int q = ijk[0];
   int r = ijk[1];
   int k = ijk[2];
-  int hexes = 3 * num_rings_ * (num_rings_ + 1) + 1;
+  int hexes = 3 * num_rings_ * (num_rings_ - 1) + 1;
   int bin = (k - 1) * (grid_.size() - 1) * hexes;
   int rad = std::max({std::abs(r), std::abs(q), std::abs(r + q)});
   if (rad == 0)
@@ -2576,7 +2576,7 @@ StructuredMesh::MeshIndex HexagonalMesh::get_indices(
 StructuredMesh::MeshIndex HexagonalMesh::get_indices_from_bin(int bin) const
 {
   MeshIndex ijk = {0, 0, 0};
-  int hexes = 3 * num_rings_ * (num_rings_ + 1) + 1;
+  int hexes = 3 * num_rings_ * (num_rings_ - 1) + 1;
   ijk[2] = static_cast<int>(std::floor(bin / hexes)) + 1;
   int sp_idx = bin % hexes;
   if (sp_idx == 0) {
@@ -3275,6 +3275,28 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
 {
   return openmc_structured_mesh_set_grid_impl<SphericalMesh>(
     index, grid_x, nx, grid_y, ny, grid_z, nz);
+}
+
+//! Get the hexagonal mesh grid
+extern "C" int openmc_hexagonal_mesh_get_grid(int32_t index, double** grid_z,
+  int* nz, int* nr, double** origin, double* pitch, const char** orient)
+{
+  if (int err = check_mesh_type<HexagonalMesh>(index))
+    return err;
+  HexagonalMesh* m = dynamic_cast<HexagonalMesh*>(model::meshes[index].get());
+
+  if (m->grid_.empty()) {
+    set_errmsg("Mesh parameters have not been set.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  *grid_z = m->grid_.data();
+  *nz = m->grid_.size();
+  *nr = m->num_rings_;
+  *origin = &m->origin_.x;
+  *pitch = m->pitch_;
+  *orient = (m->orientation_ == HexagonalMesh::Orientation::y) ? "y" : "x";
+  return 0;
 }
 
 #ifdef OPENMC_DAGMC_ENABLED

@@ -783,6 +783,11 @@ public:
 
   int set_grid();
 
+  enum class Orientation {
+    y, //!< Flat side of lattice parallel to y-axis
+    x  //!< Flat side of lattice parallel to x-axis
+  };
+
   // Data members
   int num_rings_;
   double pitch_;
@@ -791,15 +796,9 @@ public:
   Direction r_;
   Direction q_dual_;
   Direction r_dual_;
-
-private:
-  enum class Orientation {
-    y, //!< Flat side of lattice parallel to y-axis
-    x  //!< Flat side of lattice parallel to x-axis
-  };
-
   Orientation orientation_ {Orientation::y};
 
+private:
   StructuredMesh::MeshDistance find_z_crossing(
     const Position& r, const Direction& u, double l, int shell) const;
 

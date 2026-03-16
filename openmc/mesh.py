@@ -2638,10 +2638,18 @@ class HexagonalMesh(StructuredMesh):
         cv.check_type('mesh radial pitch', pitch, Real)
         cv.check_greater_than('mesh radial pitch', pitch, 0.0)
         self._pitch = pitch
+        
+    @property
+    def n_elements(self):
+        return (self.z_grid.size - 1)*(3*self.num_rings*(self.num_rings - 1) + 1)        
+        
+    @property
+    def dimension(self):
+        return (self.n_elements,)
 
     @property
     def n_dimension(self):
-        return 4
+        return 4        
 
     @property
     def lower_left(self):
@@ -2695,7 +2703,7 @@ class HexagonalMesh(StructuredMesh):
         idx = []
         for j in range(self.z_grid.size-1):
             idx.append((0, 0, 0, j))
-            for rad in range(1, self.num_rings+1):
+            for rad in range(1, self.num_rings):
                 for i in range(rad):
                     idx.append((i, rad-i, -rad, j))
                     idx.append((rad, -i, i-rad, j))

@@ -173,11 +173,13 @@ void Ray::update_distance()
   traversal_distance_ += boundary().distance();
 }
 
+void ParticleRay::on_intersection() {}
+
 void ParticleRay::update_distance()
 {
   Ray::update_distance();
 
-  time_distance_ += speed() * boundary().distance();
+  time() += boundary().distance() / speed();
 
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
@@ -205,7 +207,7 @@ void ParticleRay::update_distance()
     macro_xs().nu_fission = 0.0;
   }
 
-  mfp_distance_ += macro_xs().total * boundary().distance();
+  traversal_mfp_ += macro_xs().total * boundary().distance();
 }
 
 } // namespace openmc

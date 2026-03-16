@@ -412,6 +412,27 @@ void initialize_batch()
     uint64_t seed = static_cast<uint64_t>(simulation::current_batch);
 
     for (auto& nuc : data::nuclides) {
+
+      // ------ DIAGNOSTIC: snapshot a few total-XS values BEFORE ------
+      // Pick a grid point in the middle of the energy range for temperature 0
+      /*int diag_idx = -1;
+      double total_before = -1.0;
+      double elastic_rx_before = -1.0;
+      if (!nuc->xs_.empty() && !nuc->grid_.empty()) {
+        int n_grid = nuc->grid_[0].energy.size();
+        diag_idx = n_grid / 2;  // middle of the grid
+        // Nuclide::xs_[0] is the derived tensor for temperature 0
+        // Column 0 = XS_TOTAL
+        total_before = nuc->xs_[0](diag_idx, 0);
+        // Also grab the elastic reaction XS at that grid point
+        if (!nuc->reactions_.empty()) {
+          auto& el = nuc->reactions_[0];  // MT=2 is typically index 0
+          int thr = el->xs_[0].threshold;
+          if (diag_idx >= thr && diag_idx - thr < (int)el->xs_[0].value.size())
+            elastic_rx_before = el->xs_[0].value[diag_idx - thr];
+        }
+      }*/
+
       for (auto& rx : nuc->reactions_) {
         // 1. Restore originals
         rx->xs_ = rx->xs_reference_;
@@ -420,11 +441,44 @@ void initialize_batch()
         rx->perturb_xs(nuc->grid_[0].energy, &seed);
       }
 
+      // ------ DIAGNOSTIC: check elastic reaction XS after perturbation ------
+      /*double elastic_rx_after = -1.0;
+      if (diag_idx >= 0 && !nuc->reactions_.empty()) {
+        auto& el = nuc->reactions_[0];
+        int thr = el->xs_[0].threshold;
+        if (diag_idx >= thr && diag_idx - thr < (int)el->xs_[0].value.size())
+          elastic_rx_after = el->xs_[0].value[diag_idx - thr];
+      }*/
+
       // 3. Create perturbed derived tables (total, absorption, fission, etc.)
       // valid only for redundant reaction but not its components like for 
       // example MT=4. In this case, ERRORR provides covaraince for MT=4 
       // but not individually for MT=51 through MT=91!
       nuc->reset_derived();
+
+      /*double total_after = -1.0;
+      if (!nuc->xs_.empty() && diag_idx >= 0) {
+        total_after = nuc->xs_[0](diag_idx, 0);
+      }
+
+      if (diag_idx >= 0) {
+        double E_diag = nuc->grid_[0].energy[diag_idx];
+        fmt::print("[derived-check] {} batch={} E={:.6e} eV\n",
+                   nuc->name_, simulation::current_batch, E_diag);
+        fmt::print("  elastic_rx:  before={:.10e}  after={:.10e}  ratio={:.8f}\n",
+                   elastic_rx_before, elastic_rx_after,
+                   (elastic_rx_before > 0 ? elastic_rx_after / elastic_rx_before : 0.0));
+        fmt::print("  derived_total: before={:.10e}  after={:.10e}  ratio={:.8f}\n",
+                   total_before, total_after,
+                   (total_before > 0 ? total_after / total_before : 0.0));
+
+        if (total_before == total_after) {
+            fmt::print("  *** DERIVED TOTAL IS UNCHANGED — BUG CONFIRMED ***\n");
+          } else {
+            fmt::print("  derived total changed by {:.6f}%\n",
+                      100.0 * (total_after - total_before) / total_before);
+        }
+      }*/
     }
   }
 }

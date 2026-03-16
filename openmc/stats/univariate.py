@@ -2201,32 +2201,31 @@ class Mixture(Univariate):
 class DecaySpectrum(Univariate):
     """Energy distribution from decay photon spectra of a mixture of nuclides.
 
-    This distribution stores nuclide names, their atom densities, and the
-    volume of the region. When written to XML and read by the C++ solver, the
-    nuclide names are resolved against the depletion chain to obtain the decay
-    photon energy spectra and decay constants. The resulting distribution is a
-    mixture of per-nuclide photon spectra weighted by absolute activity
-    (atom_density * 1e24 * volume * decay_constant * photons_per_decay).
-    The volume is necessary so that the C++ solver can compute the total photon
-    emission rate in [photons/s], which is used as the source strength.
+    This distribution stores nuclide names, their atom densities, and the volume
+    of the region. When written to XML and read by the C++ solver, the nuclide
+    names are resolved against the depletion chain to obtain the decay photon
+    energy spectra and decay constants. The resulting distribution is a mixture
+    of per-nuclide photon spectra weighted by absolute activity. The volume is
+    necessary so that the C++ solver can compute the total photon emission rate
+    in [photons/s], which is used as the source strength.
 
     .. versionadded:: 0.15.4
 
     Parameters
     ----------
     nuclides : dict
-        Dictionary mapping nuclide name (str) to atom density (float) in
-        units of atom/b-cm.
+        Dictionary mapping nuclide name (str) to atom density (float) in units
+        of [atom/b-cm].
     volume : float
-        Volume of the source region in cm\ :sup:`3`. Used together with atom
-        densities to compute the absolute photon emission rate.
+        Volume of the source region in [cm³]. Used together with atom densities
+        to compute the absolute photon emission rate.
 
     Attributes
     ----------
     nuclides : dict
-        Dictionary mapping nuclide name to atom density in atom/b-cm.
+        Dictionary mapping nuclide name to atom density in [atom/b-cm].
     volume : float
-        Volume of the source region in cm\ :sup:`3`.
+        Volume of the source region in [cm³].
 
     """
 

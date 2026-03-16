@@ -565,8 +565,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       material_present = true;
     } else if (filt->type() == FilterType::POINT) {
       point_present = true;
-      type_ = TallyType::NEXT_EVENT;
-      estimator_ = TallyEstimator::POINT;
+      type_ = TallyType::POINT;
+      estimator_ = TallyEstimator::NEXT_EVENT;
     } else if (filt->type() == FilterType::SURFACE) {
       surface_present = true;
     } else if (filt->type() == FilterType::MESH_SURFACE) {

@@ -2791,7 +2791,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 void score_point_tally(
   Particle& p, int i_nuclide, const Reaction& rx, int i_product, Direction* v_t)
 {
-  if (rx.scatter_in_cm) {
+  if (rx.scatter_in_cm_) {
     const auto& nuc {data::nuclides[i_nuclide]};
     double awr = nuc->awr_;
     double E_in = p.E();
@@ -2804,21 +2804,23 @@ void score_point_tally(
     u_cm /= u_cm.norm();
 
     auto pdf = [&](Direction u, double& E) {
+      double mu = u.dot(u_cm);
       double E_cm;
       double pdf0 = rx.products_[i_product].sample_energy_and_pdf(
-        p.E(), u.dot(u_cm), E_cm, p.current_seed());
+        p.E(), mu, E_cm, p.current_seed());
       Direction v_out = std::sqrt(E_cm) * u_cm + v_cm;
       E = std::pow(v_out.norm(), 2);
       return pdf0 *
-             (std::sqrt(E / E_cm) / (1 - mu / (awr + 1) * std::sqrt(E_in / E));)
+             (std::sqrt(E / E_cm) / (1 - mu / (awr + 1) * std::sqrt(E_in / E)));
     };
+    score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
   } else {
     auto pdf = [&](Direction u, double& E) {
       return rx.products_[i_product].sample_energy_and_pdf(
         p.E(), u.dot(p.u()), E, p.current_seed());
     };
+    score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
   }
-  score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
 }
 
 void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,

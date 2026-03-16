@@ -138,14 +138,14 @@ void score_point_tally(SourceSite& site, int source_index);
 
 template<typename PDF>
 void score_point_tally_impl(
-  const Position r, const ParticleType type, const double time, PDF pdf)
+  const Position r, const ParticleType type, const double time, PDF pdffunc)
 {
   for (auto& det : model::active_point_detectors) {
     auto u = (det - r);
     double total_distance = u.norm();
     u /= total_distance;
     double E;
-    double pdf = PDF(u, E);
+    double pdf = pdffunc(u, E);
     auto p = ParticleRay(r, u, type, time, E);
     p.Ray::trace();
     double distance = p.traversal_distance();

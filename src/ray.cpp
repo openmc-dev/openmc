@@ -173,6 +173,8 @@ void Ray::update_distance()
   traversal_distance_ += boundary().distance();
 }
 
+void ParticleRay::on_intersection() {}
+
 void ParticleRay::update_distance()
 {
   Ray::update_distance();

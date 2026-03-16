@@ -60,6 +60,8 @@ public:
     E() = E_;
   }
 
+  void on_intersection() override;
+
   // Sets the dist_ variable
   void update_distance() override;
 

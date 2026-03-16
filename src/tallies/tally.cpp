@@ -60,11 +60,13 @@ vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
 vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
+vector<int> active_point_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int32_t> pulse_height_cells;
 vector<double> time_grid;
+std::set<Position> active_point_detectors;
 } // namespace model
 
 namespace simulation {

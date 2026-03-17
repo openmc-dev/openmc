@@ -25,7 +25,8 @@ _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell',
     'delayedgroup', 'energyfunction', 'cellfrom', 'materialfrom', 'legendre',
-    'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
+    'spatialfourier', 'spatiallegendre', 'sphericalharmonics',
+    'zernike', 'zernikeradial', 'particle',
     'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
     'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
 )

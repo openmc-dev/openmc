@@ -137,6 +137,180 @@ class LegendreFilter(ExpansionFilter):
         return out
 
 
+class SpatialExpansionFilter(ExpansionFilter):
+    """Abstract base class for spatial functional expansion filters.
+    
+    This class provides common functionality for filters that expand
+    tally data along a spatial axis (x, y, or z) within a bounded region.
+    Subclasses must implement the order setter to define their specific
+    bin structure.
+    
+    Parameters
+    ----------
+    order : int
+        Maximum expansion order
+    axis : {'x', 'y', 'z'}
+        Axis along which to take the expansion
+    minimum : float
+        Minimum value along selected axis
+    maximum : float
+        Maximum value along selected axis
+    filter_id : int or None
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    order : int
+        Maximum expansion order
+    axis : {'x', 'y', 'z'}
+        Axis along which to take the expansion
+    minimum : float
+        Minimum value along selected axis
+    maximum : float
+        Maximum value along selected axis
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+    
+    """
+
+    def __init__(self, order, axis, minimum, maximum, filter_id=None):
+        super().__init__(order, filter_id)
+        self.axis = axis
+        self.minimum = minimum
+        self.maximum = maximum
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        string += '{: <16}=\t{}\n'.format('\tAxis', self.axis)
+        string += '{: <16}=\t{}\n'.format('\tMin', self.minimum)
+        string += '{: <16}=\t{}\n'.format('\tMax', self.maximum)
+        return hash(string)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        string += '{: <16}=\t{}\n'.format('\tAxis', self.axis)
+        string += '{: <16}=\t{}\n'.format('\tMin', self.minimum)
+        string += '{: <16}=\t{}\n'.format('\tMax', self.maximum)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @axis.setter
+    def axis(self, axis):
+        cv.check_value('axis', axis, ('x', 'y', 'z'))
+        self._axis = axis
+
+    @property
+    def minimum(self):
+        return self._minimum
+
+    @minimum.setter
+    def minimum(self, minimum):
+        cv.check_type('minimum', minimum, Real)
+        self._minimum = minimum
+
+    @property
+    def maximum(self):
+        return self._maximum
+
+    @maximum.setter
+    def maximum(self, maximum):
+        cv.check_type('maximum', maximum, Real)
+        self._maximum = maximum
+
+    def to_xml_element(self):
+        """Return XML Element representing the filter.
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing spatial expansion filter data
+
+        """
+        element = super().to_xml_element()
+        subelement = ET.SubElement(element, 'axis')
+        subelement.text = self.axis
+        subelement = ET.SubElement(element, 'min')
+        subelement.text = str(self.minimum)
+        subelement = ET.SubElement(element, 'max')
+        subelement.text = str(self.maximum)
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(get_text(elem, "id"))
+        order = int(get_text(elem, "order"))
+        axis = get_text(elem, "axis")
+        minimum = float(get_text(elem, "min"))
+        maximum = float(get_text(elem, "max"))
+        return cls(order, axis, minimum, maximum, filter_id=filter_id)
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        order = group['order'][()]
+        axis = group['axis'][()].decode()
+        min_, max_ = group['min'][()], group['max'][()]
+
+        return cls(order, axis, min_, max_, filter_id)
+
+
+
+class SpatialFourierFilter(ExpansionFilter):
+    r"""Score Fourier expansion moments in space up to specified order.
+
+    This filter allows scores to be multiplied by Fourier basis functions of
+    the particle's position along a particular axis, normalized to a given
+    range, up to a user-specified order.
+
+    Parameters
+    ----------
+    order : int
+        Maximum Fourier expansion order
+    axis : {'x', 'y', 'z'}
+        Axis along which to take the expansion
+    minimum : float
+        Minimum value along selected axis
+    maximum : float
+        Maximum value along selected axis
+    filter_id : int or None
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    order : int
+        Maximum Fourier expansion order
+    axis : {'x', 'y', 'z'}
+        Axis along which to take the expansion
+    minimum : float
+        Minimum value along selected axis
+    maximum : float
+        Maximum value along selected axis
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins (2*order + 1)
+
+    """
+
+    @ExpansionFilter.order.setter
+    def order(self, order):
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = [f'F{i}' for i in range(2 * order + 1)]
+
+
 class SpatialLegendreFilter(ExpansionFilter):
     r"""Score Legendre expansion moments in space up to specified order.
 
@@ -174,102 +348,10 @@ class SpatialLegendreFilter(ExpansionFilter):
 
     """
 
-    def __init__(self, order, axis, minimum, maximum, filter_id=None):
-        super().__init__(order, filter_id)
-        self.axis = axis
-        self.minimum = minimum
-        self.maximum = maximum
-
-    def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tAxis', self.axis)
-        string += '{: <16}=\t{}\n'.format('\tMin', self.minimum)
-        string += '{: <16}=\t{}\n'.format('\tMax', self.maximum)
-        return hash(string)
-
-    def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tAxis', self.axis)
-        string += '{: <16}=\t{}\n'.format('\tMin', self.minimum)
-        string += '{: <16}=\t{}\n'.format('\tMax', self.maximum)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
-        return string
-
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
         self.bins = [f'P{i}' for i in range(order + 1)]
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @axis.setter
-    def axis(self, axis):
-        cv.check_value('axis', axis, ('x', 'y', 'z'))
-        self._axis = axis
-
-    @property
-    def minimum(self):
-        return self._minimum
-
-    @minimum.setter
-    def minimum(self, minimum):
-        cv.check_type('minimum', minimum, Real)
-        self._minimum = minimum
-
-    @property
-    def maximum(self):
-        return self._maximum
-
-    @maximum.setter
-    def maximum(self, maximum):
-        cv.check_type('maximum', maximum, Real)
-        self._maximum = maximum
-
-    @classmethod
-    def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
-
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
-        order = group['order'][()]
-        axis = group['axis'][()].decode()
-        min_, max_ = group['min'][()], group['max'][()]
-
-        return cls(order, axis, min_, max_, filter_id)
-
-    def to_xml_element(self):
-        """Return XML Element representing the filter.
-
-        Returns
-        -------
-        element : lxml.etree._Element
-            XML element containing Legendre filter data
-
-        """
-        element = super().to_xml_element()
-        subelement = ET.SubElement(element, 'axis')
-        subelement.text = self.axis
-        subelement = ET.SubElement(element, 'min')
-        subelement.text = str(self.minimum)
-        subelement = ET.SubElement(element, 'max')
-        subelement.text = str(self.maximum)
-
-        return element
-
-    @classmethod
-    def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(get_text(elem, "id"))
-        order = int(get_text(elem, "order"))
-        axis = get_text(elem, "axis")
-        minimum = float(get_text(elem, "min"))
-        maximum = float(get_text(elem, "max"))
-        return cls(order, axis, minimum, maximum, filter_id=filter_id)
 
 
 class SphericalHarmonicsFilter(ExpansionFilter):

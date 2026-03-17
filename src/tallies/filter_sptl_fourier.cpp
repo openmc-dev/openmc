@@ -5,8 +5,8 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
-#include "openmc/math_functions.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -42,7 +42,7 @@ void SpatialFourierFilter::set_order(int order)
     throw std::invalid_argument {"Fourier order must be non-negative."};
   }
   order_ = order;
-  n_bins_ = order_ + 1;
+  n_bins_ = 2 * order_ + 1;
 }
 
 void SpatialFourierFilter::set_axis(FourierAxis axis)
@@ -74,13 +74,18 @@ void SpatialFourierFilter::get_all_bins(
   }
 
   if (x >= min_ && x <= max_) {
-    // Compute the normalized coordinate value.
-    double x_norm = 2.0 * (x - min_) / (max_ - min_) - 1.0;
+    // Compute the normalized coordinate value on [0, 1]
+    double x_norm = (x - min_) / (max_ - min_);
 
     // Compute and return the Fourier weights.
-    vector<double> wgt(order_ + 1);
-    calc_pn_c(order_, x_norm, wgt.data());
-    for (int i = 0; i < order_ + 1; i++) {
+    vector<double> wgt(n_bins_);
+    wgt[0] = 1.0;  // a_0: constant term
+    for (int n = 1; n <= order_; ++n) {
+      double arg = 2.0 * PI * n * x_norm;
+      wgt[2*n - 1] = std::cos(arg);
+      wgt[2*n] = std::sin(arg);
+    }
+    for (int i = 0; i < n_bins_; ++i) {
       match.bins_.push_back(i);
       match.weights_.push_back(wgt[i]);
     }
@@ -104,13 +109,26 @@ void SpatialFourierFilter::to_statepoint(hid_t filter_group) const
 
 std::string SpatialFourierFilter::text_label(int bin) const
 {
+  std::string axis_str;
+  std::string func_str;
   if (axis_ == FourierAxis::x) {
-    return fmt::format("Fourier expansion, x axis, P{}", bin);
+    axis_str = "x";
   } else if (axis_ == FourierAxis::y) {
-    return fmt::format("Fourier expansion, y axis, P{}", bin);
+    axis_str = "y";
   } else {
-    return fmt::format("Fourier expansion, z axis, P{}", bin);
+    axis_str = "z";
   }
+
+  if (bin == 0) {
+    func_str = "a0 (constant)";
+  } else if (bin % 2 == 1) {
+    int n = (bin + 1) / 2;
+    func_str = fmt::format("a{} (cos)", n);
+  } else {
+    int n = bin / 2;
+    func_str = fmt::format("b{} (sin)", n);
+  }
+  return fmt::format("Fourier expansion, {} axis, {}", axis_str, func_str);
 }
 
 //==============================================================================

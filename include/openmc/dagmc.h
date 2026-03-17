@@ -96,6 +96,7 @@ class DAGUniverse : public Universe {
 public:
   using MaterialOverrides = std::unordered_map<int32_t, vector<int32_t>>;
   using TemperatureOverrides = std::unordered_map<int32_t, vector<double>>;
+  using DensityOverrides = std::unordered_map<int32_t, vector<double>>;
 
   explicit DAGUniverse(pugi::xml_node node);
 
@@ -116,7 +117,8 @@ public:
   //! assignments, etc.
   void initialize();
   void initialize(const MaterialOverrides& material_overrides,
-    const TemperatureOverrides& temperature_overrides);
+    const TemperatureOverrides& temperature_overrides,
+    const DensityOverrides& density_overrides = {});
 
   //! Reads UWUW materials and returns an ID map
   void read_uwuw_materials();
@@ -194,7 +196,8 @@ private:
   void init_dagmc();    //!< Create and initialise DAGMC pointer
   void init_metadata(); //!< Create and initialise dagmcMetaData pointer
   void init_geometry(const MaterialOverrides& material_overrides,
-    const TemperatureOverrides& temperature_overrides);
+    const TemperatureOverrides& temperature_overrides,
+    const DensityOverrides& density_overrides);
 
   std::string
     filename_; //!< Name of the DAGMC file used to create this universe

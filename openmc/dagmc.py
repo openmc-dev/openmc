@@ -617,6 +617,14 @@ class DAGMCCell(openmc.Cell):
     DAG_parent_universe : int
         The parent universe of the cell.
 
+    Notes
+    -----
+    DAGMC geometries are composed of triangulated surfaces, which means cell
+    volumes can in principle be computed exactly (e.g. via mesh-based
+    integration). Manually specifying :attr:`volume` overrides any such
+    calculation and may introduce inconsistencies if the value does not
+    accurately reflect the true geometric volume.
+
     """
     def __init__(self, cell_id=None, name='', fill=None):
         super().__init__(cell_id, name, fill, None)
@@ -656,11 +664,16 @@ class DAGMCCell(openmc.Cell):
         ):
             raise TypeError("DAGMC cell temperature overrides require a "
                             "material fill.")
+        if self.density is not None and self.fill_type not in (
+            'material', 'distribmat'
+        ):
+            raise TypeError("DAGMC cell density overrides require a "
+                            "material fill.")
         if any(getattr(self, attr) is not None for attr in (
-            'density', 'translation', 'rotation', 'volume'
+            'translation', 'rotation'
         )):
-            raise TypeError("DAGMC cell overrides currently only support "
-                            "material fills.")
+            raise TypeError("DAGMC cell overrides do not support translation "
+                            "or rotation.")
         return super().create_xml_subelement(xml_element, memo)
 
     @classmethod
@@ -687,11 +700,11 @@ class DAGMCCell(openmc.Cell):
             if get_text(elem, tag) is not None:
                 raise ValueError(
                     f"DAGMC cell {cell_id} override cannot specify '{tag}'.")
-        for tag in ('density', 'translation', 'rotation', 'volume'):
+        for tag in ('translation', 'rotation'):
             if get_text(elem, tag) is not None:
                 raise ValueError(
-                    f"DAGMC cell {cell_id} override currently only supports "
-                    f"material fills (found unsupported '{tag}').")
+                    f"DAGMC cell {cell_id} override does not support "
+                    f"'{tag}'.")
         if get_elem_list(elem, 'material', str) is None:
             raise ValueError(
                 f"DAGMC cell {cell_id} must specify a material override.")

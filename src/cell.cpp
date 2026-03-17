@@ -379,6 +379,23 @@ vector<double> parse_cell_temperature_xml(pugi::xml_node node, int32_t cell_id)
   return temperatures;
 }
 
+vector<double> parse_cell_density_xml(pugi::xml_node node, int32_t cell_id)
+{
+  auto densities = get_node_array<double>(node, "density");
+  if (densities.empty()) {
+    fatal_error(fmt::format(
+      "An empty density element was specified for cell {}", cell_id));
+  }
+  for (auto rho : densities) {
+    if (rho <= 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a density less than or equal to zero",
+        cell_id));
+    }
+  }
+  return densities;
+}
+
 //==============================================================================
 // CSGCell implementation
 //==============================================================================
@@ -457,7 +474,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Note: calculating the actual density multiplier is deferred until materials
   // are finalized. density_mult_ contains the true density in the meantime.
   if (check_for_node(cell_node, "density")) {
-    density_mult_ = get_node_array<double>(cell_node, "density");
+    density_mult_ = parse_cell_density_xml(cell_node, id_);
     density_mult_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
@@ -475,15 +492,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
           "Cell {} was specified with a density, but contains a void "
           "material. Density specification is only valid for cells "
           "filled with a non-void material.",
-          id_));
-      }
-    }
-
-    // Make sure all densities are non-negative and greater than zero.
-    for (auto rho : density_mult_) {
-      if (rho <= 0) {
-        fatal_error(fmt::format(
-          "Cell {} was specified with a density less than or equal to zero",
           id_));
       }
     }

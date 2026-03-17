@@ -162,6 +162,13 @@ vector<int32_t> parse_cell_material_xml(pugi::xml_node node, int32_t cell_id);
 //! \return Vector of temperatures in Kelvin
 vector<double> parse_cell_temperature_xml(pugi::xml_node node, int32_t cell_id);
 
+//! Parse densities (in g/cm³) from a <cell> XML node.
+//! Validates that all values are positive and the list is non-empty.
+//! \param node XML node containing a "density" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of densities in g/cm³
+vector<double> parse_cell_density_xml(pugi::xml_node node, int32_t cell_id);
+
 //==============================================================================
 
 class Cell {

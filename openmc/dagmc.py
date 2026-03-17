@@ -496,53 +496,12 @@ class DAGMCUniverse(openmc.UniverseBase):
                              "no materials were provided to populate the "
                              "mapping.")
 
-        self._material_overrides = {}
         for cell_elem in elem.findall('cell'):
-            cell_id = int(get_text(cell_elem, 'id'))
-            name = get_text(cell_elem, 'name')
-
-            if get_text(cell_elem, 'region') is not None:
-                raise ValueError("DAGMC cell overrides cannot include a region.")
-            if get_text(cell_elem, 'fill') is not None:
-                raise ValueError("DAGMC cell overrides currently only support "
-                                 "material fills.")
-            if get_text(cell_elem, 'universe') is not None:
-                raise ValueError("DAGMC cell overrides cannot specify a "
-                                 "universe.")
-            for tag in ('density', 'translation', 'rotation', 'volume'):
-                if get_text(cell_elem, tag) is not None:
-                    raise ValueError(
-                        "DAGMC cell overrides currently only support material "
-                        f"fills (found unsupported '{tag}' for cell {cell_id}).")
-
-            mat_ids = get_elem_list(cell_elem, 'material', str)
-            if mat_ids is None:
+            cell = DAGMCCell.from_xml_element(cell_elem, mats)
+            if cell.id in self.cells:
                 raise ValueError(
-                    f"DAGMC cell {cell_id} must specify a material override.")
-
-            mat_objs = [mats[mat_id] for mat_id in mat_ids]
-            if len(mat_objs) == 1:
-                fill = mat_objs[0]
-            else:
-                fill = mat_objs
-
-            temperature = get_elem_list(cell_elem, 'temperature', float)
-            if temperature is not None:
-                if len(temperature) > 1:
-                    cell_temp = temperature
-                else:
-                    cell_temp = temperature[0]
-            else:
-                cell_temp = None
-
-            if cell_id in self.cells:
-                raise ValueError(
-                    f"Duplicate DAGMC cell override specified for cell {cell_id}.")
-            cell = openmc.DAGMCCell(cell_id=cell_id, name=name or '', fill=fill)
-            if cell_temp is not None:
-                cell.temperature = cell_temp
+                    f"Duplicate DAGMC cell override specified for cell {cell.id}.")
             self.add_cell(cell)
-            self._material_overrides[cell_id] = mat_objs
 
     def _partial_deepcopy(self):
         """Clone all of the openmc.DAGMCUniverse object's attributes except for
@@ -705,5 +664,44 @@ class DAGMCCell(openmc.Cell):
         return super().create_xml_subelement(xml_element, memo)
 
     @classmethod
-    def from_xml_element(cls, elem, surfaces, materials, get_universe):
-        raise TypeError("from_xml_element is not available for DAGMC cells.")
+    def from_xml_element(cls, elem, mats):
+        """Generate a DAGMCCell from an XML <cell> override element.
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            `<cell>` element containing a DAGMC cell property override
+        mats : dict
+            Dictionary mapping material ID strings to
+            :class:`openmc.Material` instances
+
+        Returns
+        -------
+        DAGMCCell
+            DAGMCCell instance
+        """
+        cell_id = int(get_text(elem, 'id'))
+
+        # Validate attributes that are unsupported for DAGMC cell overrides
+        for tag in ('region', 'fill', 'universe'):
+            if get_text(elem, tag) is not None:
+                raise ValueError(
+                    f"DAGMC cell {cell_id} override cannot specify '{tag}'.")
+        for tag in ('density', 'translation', 'rotation', 'volume'):
+            if get_text(elem, tag) is not None:
+                raise ValueError(
+                    f"DAGMC cell {cell_id} override currently only supports "
+                    f"material fills (found unsupported '{tag}').")
+        if get_elem_list(elem, 'material', str) is None:
+            raise ValueError(
+                f"DAGMC cell {cell_id} must specify a material override.")
+
+        # Delegate to Cell.from_xml_element for common parsing. Supply a
+        # no-op universe since DAGMC cells are not placed in a CSG universe.
+        class _NullUniverse:
+            def add_cell(self, _):
+                pass
+
+        return super().from_xml_element(
+            elem, surfaces={}, materials=mats,
+            get_universe=lambda _: _NullUniverse())

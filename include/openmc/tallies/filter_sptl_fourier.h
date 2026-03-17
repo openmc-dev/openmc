@@ -1,5 +1,5 @@
-#ifndef OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H
-#define OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H
+#ifndef OPENMC_TALLIES_FILTER_SPTL_FOURIER_H
+#define OPENMC_TALLIES_FILTER_SPTL_FOURIER_H
 
 #include <string>
 
@@ -7,24 +7,24 @@
 
 namespace openmc {
 
-enum class LegendreAxis { x, y, z };
+enum class FourierAxis { x, y, z };
 
 //==============================================================================
-//! Gives Legendre moments of the particle's normalized position along an axis
+//! Gives Fourier moments of the particle's normalized position along an axis
 //==============================================================================
 
-class SpatialLegendreFilter : public Filter {
+class SpatialFourierFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
 
-  ~SpatialLegendreFilter() = default;
+  ~SpatialFourierFilter() = default;
 
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type_str() const override { return "spatiallegendre"; }
-  FilterType type() const override { return FilterType::SPATIAL_LEGENDRE; }
+  std::string type_str() const override { return "spatialfourier"; }
+  FilterType type() const override { return FilterType::SPATIAL_FOURIER; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -41,8 +41,8 @@ public:
   int order() const { return order_; }
   void set_order(int order);
 
-  LegendreAxis axis() const { return axis_; }
-  void set_axis(LegendreAxis axis);
+  FourierAxis axis() const { return axis_; }
+  void set_axis(FourierAxis axis);
 
   double min() const { return min_; }
   double max() const { return max_; }
@@ -54,8 +54,8 @@ private:
 
   int order_;
 
-  //! The Cartesian coordinate axis that the Legendre expansion is applied to.
-  LegendreAxis axis_;
+  //! The Cartesian coordinate axis that the Fourier expansion is applied to.
+  FourierAxis axis_;
 
   //! The minimum coordinate along the reference axis that the expansion covers.
   double min_;
@@ -65,4 +65,4 @@ private:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLIES_FILTER_SPTL_LEGENDRE_H
+#endif // OPENMC_TALLIES_FILTER_SPTL_FOURIER_H

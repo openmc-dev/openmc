@@ -79,11 +79,11 @@ void SpatialFourierFilter::get_all_bins(
 
     // Compute and return the Fourier weights.
     vector<double> wgt(n_bins_);
-    wgt[0] = 1.0;  // a_0: constant term
+    wgt[0] = 1.0; // a_0: constant term
     for (int n = 1; n <= order_; ++n) {
       double arg = 2.0 * PI * n * x_norm;
-      wgt[2*n - 1] = std::cos(arg);
-      wgt[2*n] = std::sin(arg);
+      wgt[2 * n - 1] = std::cos(arg);
+      wgt[2 * n] = std::sin(arg);
     }
     for (int i = 0; i < n_bins_; ++i) {
       match.bins_.push_back(i);
@@ -187,8 +187,7 @@ extern "C" int openmc_spatial_fourier_filter_get_params(
   return 0;
 }
 
-extern "C" int openmc_spatial_fourier_filter_set_order(
-  int32_t index, int order)
+extern "C" int openmc_spatial_fourier_filter_set_order(int32_t index, int order)
 {
   // Check the filter.
   auto check_result = check_sptl_fourier_filter(index);

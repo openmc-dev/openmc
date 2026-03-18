@@ -641,6 +641,9 @@ class Chain:
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
 
+        _index_nuc = rates.index_nuc
+        _index_rx = rates.index_rx
+
         for i, nuc in enumerate(self.nuclides):
             # Loss from radioactive decay
             if nuc.half_life is not None:
@@ -671,14 +674,14 @@ class Chain:
                                 count = decay_type.count('p')
                                 setval(k, i, count * branch_val)
 
-            if nuc.name in rates.index_nuc:
+            if nuc.name in _index_nuc:
                 # Extract all reactions for this nuclide in this cell
-                nuc_ind = rates.index_nuc[nuc.name]
+                nuc_ind = _index_nuc[nuc.name]
                 nuc_rates = rates[nuc_ind, :]
 
                 for r_type, target, _, br in nuc.reactions:
                     # Extract reaction index, and then final reaction rate
-                    r_id = rates.index_rx[r_type]
+                    r_id = _index_rx[r_type]
                     path_rate = nuc_rates[r_id]
 
                     # Loss term -- make sure we only count loss once for

@@ -59,7 +59,8 @@ class CrossScore(Generic[T]):
         return f'({self.left_score} {self.binary_op} {self.right_score})'
         
     def __iter__(self):
-        return (self.left_score, self.right_score)
+        yield self.left_score
+        yield self.right_score
 
     @property
     def left_score(self):
@@ -133,7 +134,8 @@ class CrossNuclide(Generic[T]):
         return self.name
         
     def __iter__(self):
-        return (self.left_nuclide, self.right_nuclide)
+        yield self.left_nuclide
+        yield self.right_nuclide
 
     @property
     def left_nuclide(self):
@@ -226,7 +228,8 @@ class CrossFilter(Generic[T]):
         return '\n'.join(parts)
         
     def __iter__(self):
-        return (self.left_filter, self.right_filter)        
+        yield self.left_filter
+        yield self.right_filter
 
     @property
     def left_filter(self):
@@ -400,7 +403,7 @@ class AggregateScore(Generic[T]):
         return string
         
     def __iter__(self):
-        return self._scores       
+        yield from self._scores       
 
     @property
     def scores(self):
@@ -471,7 +474,7 @@ class AggregateNuclide(Generic[T]):
         return f'{self.aggregate_op}{self.name}'
         
     def __iter__(self):
-        return self._nuclides
+        yield from self._nuclides
 
     @property
     def nuclides(self):
@@ -573,7 +576,7 @@ class AggregateFilter(Generic[T]):
         return '\n'.join(parts)
         
     def __iter__(self):
-        return (self._aggregate_filter,)        
+        yield self._aggregate_filter     
 
     @property
     def aggregate_filter(self):

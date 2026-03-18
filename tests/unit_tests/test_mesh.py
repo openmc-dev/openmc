@@ -824,7 +824,7 @@ def test_raytrace_mesh_infinite_loop(run_in_tmpdir):
     mesh_surface.upper_right = (30, 30, 60)
     mesh_surface.dimension = (1, 1, 1)
     reg_filter = openmc.MeshSurfaceFilter(mesh_surface)
-    mesh_surface_tally = openmc.VolumeTally()
+    mesh_surface_tally = openmc.SurfaceTally()
     mesh_surface_tally.filters = [reg_filter]
     mesh_surface_tally.scores = ['current']
     model.tallies = [mesh_surface_tally]

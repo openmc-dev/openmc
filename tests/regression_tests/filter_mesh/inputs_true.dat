@@ -103,49 +103,55 @@
       <filters>1</filters>
       <scores>total</scores>
     </tally>
-    <tally id="2">
+    <tally id="2" type="surface">
       <filters>7</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
     <tally id="3">
       <filters>2</filters>
       <scores>total</scores>
     </tally>
-    <tally id="4">
+    <tally id="4" type="surface">
       <filters>8</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
     <tally id="5">
       <filters>3</filters>
       <scores>total</scores>
     </tally>
-    <tally id="6">
+    <tally id="6" type="surface">
       <filters>9</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
     <tally id="7">
       <filters>4</filters>
       <scores>total</scores>
     </tally>
-    <tally id="8">
+    <tally id="8" type="surface">
       <filters>10</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
     <tally id="9">
       <filters>5</filters>
       <scores>total</scores>
     </tally>
-    <tally id="10">
+    <tally id="10" type="surface">
       <filters>11</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
     <tally id="11">
       <filters>6</filters>
       <scores>total</scores>
     </tally>
-    <tally id="12">
+    <tally id="12" type="surface">
       <filters>12</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
   </tallies>
 </model>

@@ -78,6 +78,14 @@ REACTION_MT['elastic'] = 2
 REACTION_MT['fission'] = 18
 REACTION_MT['absorption'] = 27
 REACTION_MT['capture'] = 102
+REACTION_MT['n2n'] = 16;
+REACTION_MT['n3n'] = 17;
+REACTION_MT['n4n'] = 37;
+REACTION_MT['H1-production'] = 203;
+REACTION_MT['H2-production'] = 204;
+REACTION_MT['H3-production'] = 205;
+REACTION_MT['He3-production'] = 206;
+REACTION_MT['He4-production'] = 207;
 
 FISSION_MTS = (18, 19, 20, 21, 38)
 

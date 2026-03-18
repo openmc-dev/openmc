@@ -595,7 +595,10 @@ class MGXS:
             tally_metadata = \
                 zip(self.scores, self.tally_keys, self.filters, estimators)
             for score, key, filters, estimator in tally_metadata:
-                self._tallies[key] = openmc.VolumeTally(name=self.name)
+                if score != 'current':
+                    self._tallies[key] = openmc.VolumeTally(name=self.name)
+                else:
+                    self._tallies[key] = openmc.SurfaceTally(name=self.name)
                 self._tallies[key].scores = [score]
                 self._tallies[key].estimator = estimator
                 if score != 'current':

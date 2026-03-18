@@ -33,7 +33,7 @@ from .mesh import MeshBase
 # specified axis.
 _PRODUCT_TYPES = ['tensor', 'entrywise']
 
-_ALL_SCORES = list(REACTION_MT)+list(_SCORES.values())
+_ALL_SCORES = list(REACTION_MT)+list(_SCORES.values())+ ['scatter-1']
 _VOLUME_SCORES = [score for score in _ALL_SCORES if score not in ('pulse-height', 'current')]
 
 _ALL_FILTERS = [openmc.AzimuthalFilter, openmc.CellFilter, openmc.CellBornFilter, openmc.CellFromFilter,
@@ -46,8 +46,7 @@ _ALL_FILTERS = [openmc.AzimuthalFilter, openmc.CellFilter, openmc.CellBornFilter
     openmc.SurfaceFilter, openmc.TimeFilter, openmc.UniverseFilter, openmc.WeightFilter, openmc.ZernikeFilter,
     openmc.ZernikeRadialFilter]
 _VOLUME_FILTERS = [filt for filt in _ALL_FILTERS if filt not in (openmc.MeshSurfaceFilter,
-                                                                 openmc.SurfaceFilter, 
-                                                                 openmc.MuFilter, 
+                                                                 openmc.SurfaceFilter,  
                                                                  openmc.MuSurfaceFilter, 
                                                                  openmc.SurfaceFilter)]
 _SURFACE_FILTERS = [filt for filt in _ALL_FILTERS]

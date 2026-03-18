@@ -1,6 +1,7 @@
 import copy
 import os
 from collections.abc import Iterable
+import sys
 import types
 import typing
 
@@ -11,32 +12,57 @@ PathLike = str | os.PathLike
 
 
 
-def _isinstance(obj, expected_type):
+def _isinstance(obj, expected_type, _memo=None):
+    if _memo is None:
+        _memo = set()
+        
+    if isinstance(expected_type, str):
+        expected_type = typing.ForwardRef(expected_type)
+        
+    if isinstance(expected_type, typing.ForwardRef):
+        # Recursion Guard: If we've seen this (object, type) pair, assume True to break cycle
+        memo_key = (id(obj), id(expected_type))
+        if memo_key in _memo:
+            return True
+        _memo.add(memo_key)
+
+        # Resolve ForwardRef using caller's scope
+        iframe = 0
+        while True:
+            iframe += 1
+            frame = sys._getframe(iframe)
+            try:
+                expected_type = expected_type._evaluate(frame.f_globals, frame.f_locals, recursive_guard=frozenset())
+            except NameError:
+                pass
+            else:
+                break    
+        
     origin = typing.get_origin(expected_type)
     
     # Handle Union (e.g., Union[int, str] or int | str)
     if origin in (typing.Union, types.UnionType):
-        return any(_isinstance(obj, t) for t in typing.get_args(expected_type))
+        return any(_isinstance(obj, t, _memo) for t in typing.get_args(expected_type))
         
     elif origin is typing.Literal:
         return any(obj == t for t in typing.get_args(expected_type))
 
     # Handle Generic Alias (e.g., list[int])
     if origin is not None:
-        if not _isinstance(obj, origin):
+        if not _isinstance(obj, origin, _memo):
             return False
         
         # Check inner types (e.g., the int in list[int])
         args = typing.get_args(expected_type)
         if not args:
             return True
-            
-        if origin is list or origin is set:
-            return all(_isinstance(item, args[0]) for item in obj)
         
         if origin is dict:
             k_type, v_type = args
-            return all(_isinstance(k, k_type) and _isinstance(v, v_type) for k, v in obj.items())
+            return all(_isinstance(k, k_type, _memo) and _isinstance(v, v_type, _memo) for k, v in obj.items())            
+        
+        if issubclass(origin, Iterable):
+            return all(_isinstance(item, args[0], _memo) for item in obj)
             
     return isinstance(obj, expected_type)
     
@@ -356,6 +382,13 @@ class CheckedList(list):
         if items is not None:
             for item in items:
                 self.append(item)
+                
+    def __deepcopy__(self, memo):
+        import copy
+        cls = CheckedList(self.expected_type, self.name)
+        for item in self:
+            cls.append(copy.deepcopy(item, memo))
+        return cls                
 
     def __add__(self, other):
         new_instance = copy.copy(self)

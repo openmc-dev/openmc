@@ -109,6 +109,20 @@ class DAGMCUniverse(openmc.UniverseBase):
         cv.check_type('DAGMC filename', val, cv.PathLike)
         self._filename = input_path(val)
 
+    @property
+    def material_overrides(self):
+        raise AttributeError(
+            "DAGMCUniverse.material_overrides has been removed. Use "
+            "DAGMCCell objects added via add_cell() to manage per-cell "
+            "material assignments.")
+
+    @material_overrides.setter
+    def material_overrides(self, val):
+        raise AttributeError(
+            "DAGMCUniverse.material_overrides has been removed. Use "
+            "DAGMCCell objects added via add_cell() to manage per-cell "
+            "material assignments.")
+
     def add_material_override(self, key, overrides=None):
         """Add a material override to the universe.
 

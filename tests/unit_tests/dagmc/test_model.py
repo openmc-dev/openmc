@@ -319,17 +319,86 @@ def test_dagmc_xml_reject_region_override():
         openmc.DAGMCUniverse.from_xml_element(elem, mats)
 
 
-def test_dagmc_xml_reject_legacy_material_overrides():
-    mats = {'1': openmc.Material(1), 'void': None}
+def _legacy_xml(cell_overrides):
+    """Helper to build a <dagmc_universe> with old-format <material_overrides>."""
+    inner = ''.join(
+        f'<cell_override id="{cid}"><material_ids>{mids}</material_ids></cell_override>'
+        for cid, mids in cell_overrides.items()
+    )
+    return ET.fromstring(
+        f'<dagmc_universe id="1" filename="dagmc.h5m">'
+        f'<material_overrides>{inner}</material_overrides>'
+        f'</dagmc_universe>'
+    )
+
+
+def test_dagmc_xml_legacy_single_material_compat():
+    mat = openmc.Material(1)
+    mats = {'1': mat, 'void': None}
+    elem = _legacy_xml({3: '1'})
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        univ = openmc.DAGMCUniverse.from_xml_element(elem, mats)
+    assert 3 in univ.cells
+    assert univ.cells[3].fill is mat
+
+
+def test_dagmc_xml_legacy_distribmat_compat():
+    mat1, mat2 = openmc.Material(2), openmc.Material(3)
+    mats = {'2': mat1, '3': mat2, 'void': None}
+    elem = _legacy_xml({5: '2 3'})
+    with pytest.warns(DeprecationWarning):
+        univ = openmc.DAGMCUniverse.from_xml_element(elem, mats)
+    assert univ.cells[5].fill_type == 'distribmat'
+    assert list(univ.cells[5].fill) == [mat1, mat2]
+
+
+def test_dagmc_xml_legacy_void_compat():
+    mats = {'void': None}
+    elem = _legacy_xml({7: 'void'})
+    with pytest.warns(DeprecationWarning):
+        univ = openmc.DAGMCUniverse.from_xml_element(elem, mats)
+    assert univ.cells[7].fill_type == 'void'
+
+
+def test_dagmc_xml_legacy_both_raises():
+    mat = openmc.Material(1)
+    mats = {'1': mat, 'void': None}
     elem = ET.fromstring(
         '<dagmc_universe id="1" filename="dagmc.h5m">'
         '<material_overrides>'
-        '<cell_override id="1"><material_ids>1</material_ids></cell_override>'
+        '<cell_override id="3"><material_ids>1</material_ids></cell_override>'
         '</material_overrides>'
+        '<cell id="5" material="1"/>'
         '</dagmc_universe>'
     )
-    with pytest.raises(ValueError, match="no longer supported"):
+    with pytest.raises(ValueError, match="both"):
         openmc.DAGMCUniverse.from_xml_element(elem, mats)
+
+
+def test_dagmc_xml_legacy_deprecation_warning():
+    mats = {'1': openmc.Material(1), 'void': None}
+    elem = _legacy_xml({3: '1'})
+    with pytest.warns(DeprecationWarning):
+        openmc.DAGMCUniverse.from_xml_element(elem, mats)
+
+
+def test_dagmc_xml_legacy_roundtrip():
+    """Old-format XML loads correctly and re-exports using the new <cell> format."""
+    mat = openmc.Material(1)
+    mats = {'1': mat, 'void': None}
+    elem = _legacy_xml({3: '1'})
+    with pytest.warns(DeprecationWarning):
+        univ = openmc.DAGMCUniverse.from_xml_element(elem, mats)
+
+    root = ET.Element('geometry')
+    univ.create_xml_subelement(root)
+    dagmc_elem = root.find('dagmc_universe')
+
+    assert dagmc_elem.find('material_overrides') is None
+    cell_elems = dagmc_elem.findall('cell')
+    assert len(cell_elems) == 1
+    assert int(cell_elems[0].get('id')) == 3
+    assert cell_elems[0].get('material') == '1'
 
 
 def test_dagmc_xml_temperature_roundtrip():

@@ -132,9 +132,22 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
       }
     }
   } else if (check_for_node(node, "material_overrides")) {
-    fatal_error(
-      "DAGMCUniverse <material_overrides> is no longer supported. Use nested "
-      "<cell> elements under <dagmc_universe> instead.");
+    if (node.child("cell")) {
+      fatal_error("DAGMCUniverse cannot specify both <material_overrides> and "
+                  "<cell> sub-elements. Use <cell> elements only.");
+    }
+    warning("DAGMCUniverse <material_overrides> is deprecated. Use nested "
+            "<cell> elements under <dagmc_universe> instead.");
+    for (pugi::xml_node co :
+      node.child("material_overrides").children("cell_override")) {
+      int32_t cell_id = std::stoi(get_node_value(co, "id"));
+      std::istringstream iss(co.child("material_ids").text().get());
+      vector<int32_t> mats;
+      for (std::string s; iss >> s;) {
+        mats.push_back(s == "void" ? MATERIAL_VOID : std::stoi(s));
+      }
+      material_overrides.emplace(cell_id, mats);
+    }
   }
 
   initialize(material_overrides, temperature_overrides, density_overrides);

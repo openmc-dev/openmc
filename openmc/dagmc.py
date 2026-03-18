@@ -480,15 +480,42 @@ class DAGMCUniverse(openmc.UniverseBase):
         out.auto_geom_ids = bool(get_text(elem, "auto_geom_ids"))
         out.auto_mat_ids = bool(get_text(elem, "auto_mat_ids"))
 
-        if elem.find('material_overrides') is not None:
-            raise ValueError(
-                "DAGMCUniverse <material_overrides> is no longer supported. "
-                "Use nested <cell> elements under <dagmc_universe> instead.")
+        has_overrides = elem.find('material_overrides') is not None
+        has_cells = elem.find('cell') is not None
 
-        if elem.find('cell') is not None:
+        if has_overrides and has_cells:
+            raise ValueError(
+                "DAGMCUniverse cannot specify both <material_overrides> and "
+                "<cell> sub-elements. Use <cell> elements only.")
+
+        if has_overrides:
+            warnings.warn(
+                "DAGMCUniverse <material_overrides> is deprecated and will be "
+                "removed in a future version. Use nested <cell> elements "
+                "instead.", DeprecationWarning, stacklevel=2)
+            out._parse_legacy_material_overrides(elem, mats)
+        elif has_cells:
             out._parse_cell_overrides(elem, mats)
 
         return out
+
+    def _parse_legacy_material_overrides(self, elem, mats):
+        """Parse the deprecated <material_overrides> XML format and populate
+        the universe with equivalent DAGMCCell objects."""
+        if mats is None:
+            raise ValueError(
+                "DAGMC material overrides found but no materials were "
+                "provided to populate the mapping.")
+        mo_elem = elem.find('material_overrides')
+        for co_elem in mo_elem.findall('cell_override'):
+            cell_id = int(get_text(co_elem, 'id'))
+            mat_ids = co_elem.find('material_ids').text.split()
+            fill_objs = [mats[mid] for mid in mat_ids]
+            fill = fill_objs[0] if len(fill_objs) == 1 else fill_objs
+            if cell_id in self.cells:
+                raise ValueError(
+                    f"Duplicate DAGMC cell override specified for cell {cell_id}.")
+            self.add_cell(DAGMCCell(cell_id=cell_id, fill=fill))
 
     def _parse_cell_overrides(self, elem, mats):
         if mats is None:

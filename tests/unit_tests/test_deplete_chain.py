@@ -587,3 +587,63 @@ def test_reduce(gnd_simple_chain, endf_chain):
     reduced_chain = endf_chain.reduce(['U235'])
     assert 'H1' in reduced_chain
     assert 'H2' in reduced_chain
+
+
+_ISOMERIC_CHAIN = """\
+<depletion_chain>
+  <nuclide name="Am241" half_life="13651800000.0" decay_modes="1"
+           decay_energy="5627985.0" reactions="1">
+    <decay type="alpha" target="Np237" branching_ratio="1.0"/>
+    <reaction type="(n,gamma)" Q="5537755.0" target="Am242"/>
+    <isomeric_branching reaction="(n,gamma)">
+      <energies>1e-5 0.0253 1e3 1e5 1e6 1e7</energies>
+      <product nuclide="Am242">0.9 0.9 0.87 0.84 0.74 0.52</product>
+      <product nuclide="Am242_m2">0.1 0.1 0.13 0.16 0.26 0.48</product>
+    </isomeric_branching>
+  </nuclide>
+  <nuclide name="Am242" half_life="57672.0" decay_modes="1"
+           decay_energy="0.0" reactions="0">
+    <decay type="beta-" target="Cm242" branching_ratio="1.0"/>
+  </nuclide>
+  <nuclide name="Am242_m2" half_life="4449312000.0" decay_modes="1"
+           decay_energy="0.0" reactions="0">
+    <decay type="IT" target="Am242" branching_ratio="1.0"/>
+  </nuclide>
+  <nuclide name="Np237" reactions="0"/>
+  <nuclide name="Cm242" reactions="0"/>
+</depletion_chain>
+"""
+
+
+def test_isomeric_branching_chain_roundtrip():
+    """Test that a chain with isomeric branching data can be read, written,
+    and re-read with energy-dependent yields preserved."""
+    with cdtemp():
+        with open('chain_iso.xml', 'w') as fh:
+            fh.write(_ISOMERIC_CHAIN)
+
+        chain = Chain.from_xml('chain_iso.xml')
+        am241 = chain['Am241']
+
+        # Verify isomeric branching was read
+        assert '(n,gamma)' in am241.isomeric_branching
+        energies, products = am241.isomeric_branching['(n,gamma)']
+        assert len(energies) == 6
+        assert 'Am242' in products
+        assert 'Am242_m2' in products
+
+        # Check energy-dependent values
+        assert np.isclose(products['Am242'][0], 0.9)
+        assert np.isclose(products['Am242'][-1], 0.52)
+        assert np.isclose(products['Am242_m2'][0], 0.1)
+        assert np.isclose(products['Am242_m2'][-1], 0.48)
+
+        # Write and re-read
+        chain.export_to_xml('chain_iso_rt.xml')
+        chain2 = Chain.from_xml('chain_iso_rt.xml')
+        am241_2 = chain2['Am241']
+
+        energies2, products2 = am241_2.isomeric_branching['(n,gamma)']
+        assert np.allclose(energies, energies2)
+        for target in products:
+            assert np.allclose(products[target], products2[target])

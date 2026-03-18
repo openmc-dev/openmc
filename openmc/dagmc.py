@@ -654,6 +654,11 @@ class DAGMCCell(openmc.Cell):
         DAGMCCell
             DAGMCCell instance
         """
+        if not isinstance(universe, DAGMCUniverse):
+            raise TypeError(
+                f"universe must be a DAGMCUniverse instance, "
+                f"got {type(universe).__name__}.")
+
         cell_id = int(get_text(elem, 'id'))
 
         # Validate attributes that are unsupported for DAGMC cell overrides

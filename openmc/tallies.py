@@ -8,6 +8,7 @@ from numbers import Integral, Real
 import operator
 from pathlib import Path
 import lxml.etree as ET
+import typing
 
 import h5py
 import numpy as np
@@ -16,6 +17,9 @@ from scipy.stats import chi2, norm
 
 import openmc
 import openmc.checkvalue as cv
+from .data.reaction import REACTION_MT
+from .lib.tally import _SCORES
+from .lib.filter import _FILTER_TYPE_MAP
 from ._sparse_compat import lil_array
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
@@ -29,17 +33,44 @@ from .mesh import MeshBase
 # specified axis.
 _PRODUCT_TYPES = ['tensor', 'entrywise']
 
+_ALL_SCORES = list(REACTION_MT)+list(_SCORES.values())
+_VOLUME_SCORES = [score for score in _ALL_SCORES if score not in ('pulse-height', 'current')]
+
+_ALL_FILTERS = [openmc.AzimuthalFilter, openmc.CellFilter, openmc.CellBornFilter, openmc.CellFromFilter,
+    openmc.CellInstanceFilter, openmc.CollisionFilter, openmc.DistribcellFilter, openmc.DelayedGroupFilter,
+    openmc.EnergyFilter, openmc.EnergyoutFilter, openmc.EnergyFunctionFilter, openmc.LegendreFilter,
+    openmc.MaterialFilter, openmc.MaterialFromFilter, openmc.MeshFilter, openmc.MeshBornFilter,
+    openmc.MeshMaterialFilter, openmc.MeshSurfaceFilter, openmc.MuFilter, openmc.MuSurfaceFilter,
+    openmc.ParentNuclideFilter, openmc.ParticleFilter, openmc.ParticleProductionFilter, openmc.PolarFilter,
+    openmc.ReactionFilter, openmc.SphericalHarmonicsFilter, openmc.SpatialLegendreFilter,
+    openmc.SurfaceFilter, openmc.TimeFilter, openmc.UniverseFilter, openmc.WeightFilter, openmc.ZernikeFilter,
+    openmc.ZernikeRadialFilter]
+_VOLUME_FILTERS = [filt for filt in _ALL_FILTERS if filt not in (openmc.MeshSurfaceFilter,
+                                                                 openmc.SurfaceFilter, 
+                                                                 openmc.MuFilter, 
+                                                                 openmc.MuSurfaceFilter, 
+                                                                 openmc.SurfaceFilter)]
+_SURFACE_FILTERS = [filt for filt in _ALL_FILTERS]
+_PULSEHEIGHT_FILTERS = [openmc.CellFilter, openmc.EnergyFilter]
+
+
 # The following indicate acceptable types when setting TallyBase.scores,
 # TallyBase.nuclides, and TallyBase.filters
-_SCORE_CLASSES = (str, openmc.CrossScore, openmc.AggregateScore)
+_SCORE_CLASSES = typing.Union[typing.Union[typing.Literal[tuple(_ALL_SCORES)], int], openmc.CrossScore['_SCORE_CLASSES'], openmc.AggregateScore['_SCORE_CLASSES']]
+_FILTER_CLASSES = typing.Union[openmc.Filter, openmc.CrossFilter['_FILTER_CLASSES'], openmc.AggregateFilter['_FILTER_CLASSES']]
 _NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
-_FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
+
+_VOLUME_SCORE_CLASSES = typing.Union[typing.Union[typing.Literal[tuple(_VOLUME_SCORES)], int], openmc.CrossScore['_VOLUME_SCORE_CLASSES'], openmc.AggregateScore['_VOLUME_SCORE_CLASSES']]
+_VOLUME_FILTER_CLASSES = typing.Union[typing.Union[tuple(_VOLUME_FILTERS)], openmc.CrossFilter['_VOLUME_FILTER_CLASSES'], openmc.AggregateFilter['_VOLUME_FILTER_CLASSES']]
+
+_SURFACE_SCORE_CLASSES = typing.Union[typing.Literal['flux', 'current'], openmc.CrossScore['_SURFACE_SCORE_CLASSES'], openmc.AggregateScore['_SURFACE_SCORE_CLASSES']]
+_SURFACE_FILTER_CLASSES = typing.Union[typing.Union[tuple(_SURFACE_FILTERS)], openmc.CrossFilter['_SURFACE_FILTER_CLASSES'], openmc.AggregateFilter['_SURFACE_FILTER_CLASSES']]
+
+_PULSEHEIGHT_SCORE_CLASSES = typing.Union[typing.Literal['pulse-height'], openmc.CrossScore['_PULSEHEIGHT_SCORE_CLASSES'], openmc.AggregateScore['_PULSEHEIGHT_SCORE_CLASSES']]
+_PULSEHEIGHT_FILTER_CLASSES = typing.Union[typing.Union[tuple(_PULSEHEIGHT_FILTERS)], openmc.CrossFilter['_PULSEHEIGHT_FILTER_CLASSES'], openmc.AggregateFilter['_PULSEHEIGHT_FILTER_CLASSES']]
 
 # Valid types of estimators
 ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog'}
-
-# Valid types of surface scores
-SURFACE_SCORE_TYPES = {'current', 'flux'}
 
 
 class TallyBase(IDManagerMixin):
@@ -138,6 +169,9 @@ class TallyBase(IDManagerMixin):
 
     next_id = 1
     used_ids = set()
+    
+    FILTER_CLASSES = _FILTER_CLASSES
+    SCORE_CLASSES = _SCORE_CLASSES
 
     def __init__(self, tally_id=None, name='', scores=None, filters=None,
                  nuclides=None, estimator=None, triggers=None,
@@ -145,9 +179,9 @@ class TallyBase(IDManagerMixin):
         # Initialize Tally class attributes
         self.id = tally_id
         self.name = name
-        self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters')
+        self._filters = cv.CheckedList(self.FILTER_CLASSES, 'tally filters')
         self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides')
-        self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores')
+        self._scores = cv.CheckedList(self.SCORE_CLASSES, 'tally scores')
         self._estimator = None
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
@@ -294,7 +328,7 @@ class TallyBase(IDManagerMixin):
                 raise ValueError(msg)
             visited_filters.add(f)
 
-        self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
+        self._filters = cv.CheckedList(self.FILTER_CLASSES, 'tally filters', filters)
 
     @property
     @ensure_results
@@ -351,7 +385,7 @@ class TallyBase(IDManagerMixin):
                         raise ValueError(msg)
                 scores[i] = score.strip()
 
-        self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
+        self._scores = cv.CheckedList(self.SCORE_CLASSES, 'tally scores', scores)
 
     @property
     def num_scores(self):
@@ -2465,8 +2499,8 @@ class TallyBase(IDManagerMixin):
 
         """
 
-        cv.check_type('filter1', filter1, _FILTER_CLASSES)
-        cv.check_type('filter2', filter2, _FILTER_CLASSES)
+        cv.check_type('filter1', filter1, self.FILTER_CLASSES)
+        cv.check_type('filter2', filter2, self.FILTER_CLASSES)
 
         # Check that the filters exist in the tally and are not the same
         if filter1 == filter2:
@@ -3617,7 +3651,7 @@ class TallyBase(IDManagerMixin):
 
         """
 
-        cv.check_type('new_filter', new_filter, _FILTER_CLASSES)
+        cv.check_type('new_filter', new_filter, self.FILTER_CLASSES)
         cv.check_type('filter_position', filter_position, Integral)
 
         if new_filter in self.filters:
@@ -3762,6 +3796,9 @@ class VolumeTally(TallyBase):
     """
     
     tally_type = "volume"
+    
+    FILTER_CLASSES = _VOLUME_FILTER_CLASSES
+    SCORE_CLASSES = _VOLUME_SCORE_CLASSES
 
     def __init__(self, tally_id=None, name='', scores=None, filters=None,
                  nuclides=None, estimator=None, triggers=None,
@@ -3907,7 +3944,10 @@ class SurfaceTally(TallyBase):
     """
     
     tally_type = "surface"
-
+    
+    FILTER_CLASSES = _SURFACE_FILTER_CLASSES
+    SCORE_CLASSES = _SURFACE_SCORE_CLASSES
+    
     def __init__(self, tally_id=None, name='', scores=None, filters=None,
                  triggers=None):
         super().__init__(tally_id=tally_id, name=name, scores=scores, filters=filters,
@@ -3969,12 +4009,7 @@ class SurfaceTally(TallyBase):
     @TallyBase.nuclides.setter
     def nuclides(self, nuclides):
         cv.check_type('tally nuclides', nuclides, MutableSequence, {None})
-        self._nuclides = nuclides      
-
-    @TallyBase.scores.setter
-    def scores(self, scores):
-        cv.check_type('tally scores', scores, MutableSequence, SURFACE_SCORE_TYPES)
-        self._scores = scores        
+        self._nuclides = nuclides             
                            
                  
 class PulseHeightTally(TallyBase):
@@ -4059,6 +4094,9 @@ class PulseHeightTally(TallyBase):
     """
     
     tally_type = "pulse-height"
+    
+    FILTER_CLASSES = _PULSEHEIGHT_FILTER_CLASSES
+    SCORE_CLASSES = _PULSEHEIGHT_SCORE_CLASSES    
 
     def __init__(self, tally_id=None, name='', filters=None, triggers=None):
         super().__init__(tally_id=tally_id, name=name, scores=['pulse-height'], filters=filters,

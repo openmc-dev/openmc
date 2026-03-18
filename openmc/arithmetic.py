@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 import copy
+from typing import Generic, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -15,8 +16,9 @@ _TALLY_ARITHMETIC_OPS = {'+', '-', '*', '/', '^'}
 # Acceptable tally aggregation operations
 _TALLY_AGGREGATE_OPS = {'sum', 'avg'}
 
+T = TypeVar("T")
 
-class CrossScore:
+class CrossScore(Generic[T]):
     """A special-purpose tally score used to encapsulate all combinations of two
     tally's scores as an outer product for tally arithmetic.
 
@@ -55,6 +57,9 @@ class CrossScore:
 
     def __repr__(self):
         return f'({self.left_score} {self.binary_op} {self.right_score})'
+        
+    def __iter__(self):
+        return (self.left_score, self.right_score)
 
     @property
     def left_score(self):
@@ -162,7 +167,7 @@ class CrossNuclide:
         return f'({self.left_nuclide} {self.binary_op} {self.right_nuclide})'
 
 
-class CrossFilter:
+class CrossFilter(Generic[T]):
     """A special-purpose filter used to encapsulate all combinations of two
     tally's filter bins as an outer product for tally arithmetic.
 
@@ -216,6 +221,9 @@ class CrossFilter:
             '{: <16}=\t{}'.format('\tBins', filter_bins)
         ]
         return '\n'.join(parts)
+        
+    def __iter__(self):
+        return (self.left_filter, self.right_filter)        
 
     @property
     def left_filter(self):
@@ -345,7 +353,7 @@ class CrossFilter:
         return df
 
 
-class AggregateScore:
+class AggregateScore(Generic[T]):
     """A special-purpose tally score used to encapsulate an aggregate of a
     subset or all of tally's scores for tally aggregation.
 
@@ -387,6 +395,9 @@ class AggregateScore:
         string = ', '.join(map(str, self.scores))
         string = f'{self.aggregate_op}({string})'
         return string
+        
+    def __iter__(self):
+        return self._scores       
 
     @property
     def scores(self):
@@ -482,7 +493,7 @@ class AggregateNuclide:
         return '(' + ', '.join(map(str, names)) + ')'
 
 
-class AggregateFilter:
+class AggregateFilter(Generic[T]):
     """A special-purpose tally filter used to encapsulate an aggregate of a
     subset or all of a tally filter's bins for tally aggregation.
 
@@ -554,6 +565,9 @@ class AggregateFilter:
             '{: <16}=\t{}'.format('\tBins', self.bins)
         ]
         return '\n'.join(parts)
+        
+    def __iter__(self):
+        return (self._aggregate_filter,)        
 
     @property
     def aggregate_filter(self):

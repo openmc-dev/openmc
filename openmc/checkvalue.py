@@ -1,6 +1,8 @@
 import copy
 import os
 from collections.abc import Iterable
+import types
+import typing
 
 import numpy as np
 
@@ -8,6 +10,36 @@ import numpy as np
 PathLike = str | os.PathLike
 
 
+
+def _isinstance(obj, expected_type):
+    origin = typing.get_origin(expected_type)
+    
+    # Handle Union (e.g., Union[int, str] or int | str)
+    if origin in (typing.Union, types.UnionType):
+        return any(_isinstance(obj, t) for t in typing.get_args(expected_type))
+        
+    elif origin is typing.Literal:
+        return any(obj == t for t in typing.get_args(expected_type))
+
+    # Handle Generic Alias (e.g., list[int])
+    if origin is not None:
+        if not _isinstance(obj, origin):
+            return False
+        
+        # Check inner types (e.g., the int in list[int])
+        args = typing.get_args(expected_type)
+        if not args:
+            return True
+            
+        if origin is list or origin is set:
+            return all(_isinstance(item, args[0]) for item in obj)
+        
+        if origin is dict:
+            k_type, v_type = args
+            return all(_isinstance(k, k_type) and _isinstance(v, v_type) for k, v in obj.items())
+            
+    return isinstance(obj, expected_type)
+    
 def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=False):
     """Ensure that an object is of an expected type. Optionally, if the object is
     iterable, check that each element is of a particular type.
@@ -30,8 +62,8 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
     if none_ok and value is None:
         return
 
-    if not isinstance(value, expected_type):
-        if isinstance(expected_type, Iterable):
+    if not _isinstance(value, expected_type):
+        if _isinstance(expected_type, Iterable):
             msg = 'Unable to set "{}" to "{}" which is not one of the ' \
                   'following types: "{}"'.format(name, value, ', '.join(
                       [t.__name__ for t in expected_type]))
@@ -41,7 +73,7 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
         raise TypeError(msg)
 
     if expected_iter_type:
-        if isinstance(value, np.ndarray):
+        if _isinstance(value, np.ndarray):
             if not issubclass(value.dtype.type, expected_iter_type):
                 msg = (f'Unable to set "{name}" to "{value}" since each item '
                        f'must be of type "{expected_iter_type.__name__}"')
@@ -50,8 +82,8 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
                 return
 
         for item in value:
-            if not isinstance(item, expected_iter_type):
-                if isinstance(expected_iter_type, Iterable):
+            if not _isinstance(item, expected_iter_type):
+                if _isinstance(expected_iter_type, Iterable):
                     msg = 'Unable to set "{}" to "{}" since each item must be ' \
                           'one of the following types: "{}"'.format(
                               name, value, ', '.join([t.__name__ for t in
@@ -105,7 +137,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
 
         # If this item is of the expected type, then we've reached the bottom
         # level of this branch.
-        if isinstance(current_item, expected_type):
+        if _isinstance(current_item, expected_type):
             # Is this deep enough?
             if len(tree) < min_depth:
                 msg = (f'Error setting "{name}": The item at {ind_str} does not '
@@ -118,7 +150,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
         # If this item is not of the expected type, then it's either an error or
         # on a deeper level of the tree.
         else:
-            if isinstance(current_item, Iterable):
+            if _isinstance(current_item, Iterable):
                 # The tree goes deeper here, let's explore it.
                 tree.append(current_item)
                 index.append(0)

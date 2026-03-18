@@ -45,7 +45,7 @@ def model():
     surface_filter = openmc.SurfaceFilter(cyl)
     particle_filter = openmc.ParticleFilter(
         ['neutron', 'photon', 'electron', 'positron'])
-    current_tally = openmc.VolumeTally()
+    current_tally = openmc.SurfaceTally()
     current_tally.filters = [surface_filter, particle_filter]
     current_tally.scores = ['current']
     tally_tracklength = openmc.VolumeTally()

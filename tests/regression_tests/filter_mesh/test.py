@@ -109,7 +109,7 @@ def model():
         tally.filters = [f1]
         tally.scores = ['total']
         model.tallies.append(tally)
-        tally = openmc.VolumeTally()
+        tally = openmc.SurfaceTally()
         tally.filters = [f2]
         tally.scores = ['current']
         model.tallies.append(tally)

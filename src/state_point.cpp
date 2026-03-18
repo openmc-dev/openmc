@@ -188,6 +188,13 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
         write_dataset(tally_group, "name", tally->name_);
 
+        if ((tally->type_ == TallyType::SURFACE) ||
+            (tally->type_ == TallyType::MESH_SURFACE)) {
+          write_dataset(tally_group, "type", "surface");
+        } else if (tally->type_ == TallyType::PULSE_HEIGHT) {
+          write_dataset(tally_group, "type", "pulse-height");
+        }
+
         if (tally->writable_) {
           write_attribute(tally_group, "internal", 0);
         } else {

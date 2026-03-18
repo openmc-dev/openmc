@@ -6312,12 +6312,12 @@ class Current(MeshSurfaceMGXS):
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`TotalXS.tally_keys` property and values
-        are instances of :class:`openmc.VolumeTally`.
-    rxn_rate_tally : openmc.VolumeTally
+        are instances of :class:`openmc.SurfaceTally`.
+    rxn_rate_tally : openmc.SurfaceTally
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.VolumeTally
+    xs_tally : openmc.SurfaceTally
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int

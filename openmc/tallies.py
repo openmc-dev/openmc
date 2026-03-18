@@ -58,7 +58,8 @@ _PULSEHEIGHT_FILTERS = [openmc.CellFilter, openmc.EnergyFilter]
 # TallyBase.nuclides, and TallyBase.filters
 _SCORE_CLASSES = typing.Union[typing.Union[typing.Literal[tuple(_ALL_SCORES)], int], openmc.CrossScore['_SCORE_CLASSES'], openmc.AggregateScore['_SCORE_CLASSES']]
 _FILTER_CLASSES = typing.Union[openmc.Filter, openmc.CrossFilter['_FILTER_CLASSES'], openmc.AggregateFilter['_FILTER_CLASSES']]
-_NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
+_NUCLIDE_CLASSES = typing.Union[str, openmc.CrossNuclide['_NUCLIDE_CLASSES'], openmc.AggregateNuclide['_NUCLIDE_CLASSES']]
+_EMPTY_NUCLIDE_CLASSES = typing.Union[typing.Union[None, typing.Literal['total']], openmc.CrossNuclide['_EMPTY_NUCLIDE_CLASSES'], openmc.AggregateNuclide['_EMPTY_NUCLIDE_CLASSES']]
 
 _VOLUME_SCORE_CLASSES = typing.Union[typing.Union[typing.Literal[tuple(_VOLUME_SCORES)], int], openmc.CrossScore['_VOLUME_SCORE_CLASSES'], openmc.AggregateScore['_VOLUME_SCORE_CLASSES']]
 _VOLUME_FILTER_CLASSES = typing.Union[typing.Union[tuple(_VOLUME_FILTERS)], openmc.CrossFilter['_VOLUME_FILTER_CLASSES'], openmc.AggregateFilter['_VOLUME_FILTER_CLASSES']]
@@ -68,6 +69,7 @@ _SURFACE_FILTER_CLASSES = typing.Union[typing.Union[tuple(_SURFACE_FILTERS)], op
 
 _PULSEHEIGHT_SCORE_CLASSES = typing.Union[typing.Literal['pulse-height'], openmc.CrossScore['_PULSEHEIGHT_SCORE_CLASSES'], openmc.AggregateScore['_PULSEHEIGHT_SCORE_CLASSES']]
 _PULSEHEIGHT_FILTER_CLASSES = typing.Union[typing.Union[tuple(_PULSEHEIGHT_FILTERS)], openmc.CrossFilter['_PULSEHEIGHT_FILTER_CLASSES'], openmc.AggregateFilter['_PULSEHEIGHT_FILTER_CLASSES']]
+
 
 # Valid types of estimators
 ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog'}
@@ -172,6 +174,7 @@ class TallyBase(IDManagerMixin):
     
     FILTER_CLASSES = _FILTER_CLASSES
     SCORE_CLASSES = _SCORE_CLASSES
+    NUCLIDE_CLASSES = _NUCLIDE_CLASSES
 
     def __init__(self, tally_id=None, name='', scores=None, filters=None,
                  nuclides=None, estimator=None, triggers=None,
@@ -180,7 +183,7 @@ class TallyBase(IDManagerMixin):
         self.id = tally_id
         self.name = name
         self._filters = cv.CheckedList(self.FILTER_CLASSES, 'tally filters')
-        self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides')
+        self._nuclides = cv.CheckedList(self.NUCLIDE_CLASSES, 'tally nuclides')
         self._scores = cv.CheckedList(self.SCORE_CLASSES, 'tally scores')
         self._estimator = None
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
@@ -349,7 +352,7 @@ class TallyBase(IDManagerMixin):
                 raise ValueError(msg)
             visited_nuclides.add(nuc)
 
-        self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides',
+        self._nuclides = cv.CheckedList(self.NUCLIDE_CLASSES, 'tally nuclides',
                                         nuclides)
 
     @property
@@ -2592,8 +2595,8 @@ class TallyBase(IDManagerMixin):
                   'since it does not contain any results.'
             raise ValueError(msg)
 
-        cv.check_type('nuclide1', nuclide1, _NUCLIDE_CLASSES)
-        cv.check_type('nuclide2', nuclide2, _NUCLIDE_CLASSES)
+        cv.check_type('nuclide1', nuclide1, self.NUCLIDE_CLASSES)
+        cv.check_type('nuclide2', nuclide2, self.NUCLIDE_CLASSES)
 
         # Check that the nuclides exist in the tally and are not the same
         if nuclide1 == nuclide2:
@@ -3947,6 +3950,7 @@ class SurfaceTally(TallyBase):
     
     FILTER_CLASSES = _SURFACE_FILTER_CLASSES
     SCORE_CLASSES = _SURFACE_SCORE_CLASSES
+    NUCLIDE_CLASSES = _EMPTY_NUCLIDE_CLASSES
     
     def __init__(self, tally_id=None, name='', scores=None, filters=None,
                  triggers=None):
@@ -4004,12 +4008,7 @@ class SurfaceTally(TallyBase):
     @TallyBase.estimator.setter
     def estimator(self, estimator):
         cv.check_value('estimator', estimator, ("analog", None))
-        self._estimator = estimator              
-        
-    @TallyBase.nuclides.setter
-    def nuclides(self, nuclides):
-        cv.check_type('tally nuclides', nuclides, MutableSequence, {None})
-        self._nuclides = nuclides             
+        self._estimator = estimator                           
                            
                  
 class PulseHeightTally(TallyBase):
@@ -4096,7 +4095,8 @@ class PulseHeightTally(TallyBase):
     tally_type = "pulse-height"
     
     FILTER_CLASSES = _PULSEHEIGHT_FILTER_CLASSES
-    SCORE_CLASSES = _PULSEHEIGHT_SCORE_CLASSES    
+    SCORE_CLASSES = _PULSEHEIGHT_SCORE_CLASSES
+    NUCLIDE_CLASSES = _EMPTY_NUCLIDE_CLASSES    
 
     def __init__(self, tally_id=None, name='', filters=None, triggers=None):
         super().__init__(tally_id=tally_id, name=name, scores=['pulse-height'], filters=filters,
@@ -4149,21 +4149,7 @@ class PulseHeightTally(TallyBase):
     def derivative(self, deriv):
         cv.check_value('tally derivative', deriv, None)
         self._derivative = deriv      
-        
-    @TallyBase.estimator.setter
-    def estimator(self, estimator):
-        cv.check_value('estimator', estimator, ("collision", None))
-        self._estimator = estimator             
-    
-    @TallyBase.nuclides.setter
-    def nuclides(self, nuclides):
-        cv.check_value('tally nuclides', nuclides, None)
-        self._nuclides = nuclides         
-        
-    @TallyBase.scores.setter
-    def scores(self, scores):
-        cv.check_type('tally scores', scores, MutableSequence, {"pulse-height"})
-        self._scores = scores                         
+                                      
                  
 class Tallies(cv.CheckedList):
     """Collection of Tallies used for an OpenMC simulation.

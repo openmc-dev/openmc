@@ -92,7 +92,7 @@ class CrossScore(Generic[T]):
         self._binary_op = binary_op
 
 
-class CrossNuclide:
+class CrossNuclide(Generic[T]):
     """A special-purpose nuclide used to encapsulate all combinations of two
     tally's nuclides as an outer product for tally arithmetic.
 
@@ -131,6 +131,9 @@ class CrossNuclide:
 
     def __repr__(self):
         return self.name
+        
+    def __iter__(self):
+        return (self.left_nuclide, self.right_nuclide)
 
     @property
     def left_nuclide(self):
@@ -426,7 +429,7 @@ class AggregateScore(Generic[T]):
         return string
 
 
-class AggregateNuclide:
+class AggregateNuclide(Generic[T]):
     """A special-purpose tally nuclide used to encapsulate an aggregate of a
     subset or all of tally's nuclides for tally aggregation.
 
@@ -466,6 +469,9 @@ class AggregateNuclide:
 
     def __repr__(self):
         return f'{self.aggregate_op}{self.name}'
+        
+    def __iter__(self):
+        return self._nuclides
 
     @property
     def nuclides(self):

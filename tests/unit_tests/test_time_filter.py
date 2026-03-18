@@ -111,7 +111,7 @@ def model_surf(request):
     t0 = time(particle, x, E)
 
     # Create tally with surface and time filters
-    tally = openmc.VolumeTally()
+    tally = openmc.SurfaceTally()
     tally.filters = [
         openmc.SurfaceFilter([black_surface]),
         openmc.TimeFilter([0.0, t0*0.999, t0*1.001, 100.0])

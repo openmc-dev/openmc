@@ -120,6 +120,163 @@ REACTIONS = {
 __all__ = ["Chain", "REACTIONS"]
 
 
+def _read_activation_products(evaluation):
+    """Read MF=9/MF=10 data from an ENDF evaluation to get isomeric products.
+
+    For each reaction (MT) that has MF=9 or MF=10 data, returns the product
+    states with their energy-dependent yields (branching fractions).
+
+    Parameters
+    ----------
+    evaluation : openmc.data.endf.Evaluation
+        ENDF evaluation for a nuclide
+
+    Returns
+    -------
+    dict
+        ``{mt: {(Z, A, lfs): yield_func}}`` where yield_func is a
+        :class:`openmc.data.Tabulated1D` giving the yield as a function of
+        energy. lfs is the level number flag (0=ground, 1=first metastable,
+        etc.)
+    """
+    results = {}
+
+    # Find which MTs have MF=8 (which signals MF=9/MF=10 data)
+    mf8_mts = set()
+    for mf, mt, nc, mod in evaluation.reaction_list:
+        if mf == 8 and mt not in (454, 457, 459):
+            mf8_mts.add(mt)
+
+    for mt in sorted(mf8_mts):
+        if (8, mt) not in evaluation.section:
+            continue
+
+        file_obj = StringIO(evaluation.section[8, mt])
+        items = openmc.data.endf.get_head_record(file_obj)
+        n_states = items[4]
+        decay_sublib = (items[5] == 1)
+
+        # Determine which MF files (9 or 10) are present
+        present = {9: False, 10: False}
+        for _ in range(n_states):
+            if decay_sublib:
+                items = openmc.data.endf.get_cont_record(file_obj)
+            else:
+                items, _ = openmc.data.endf.get_list_record(file_obj)
+            lmf = int(items[2])
+            if lmf in present:
+                present[lmf] = True
+
+        products = {}
+
+        # Read MF=3 cross section for this MT (needed for MF=10 yield calc)
+        neutron_xs = None
+        if present[10] and (3, mt) in evaluation.section:
+            file_obj_3 = StringIO(evaluation.section[3, mt])
+            openmc.data.endf.get_head_record(file_obj_3)
+            _, neutron_xs = openmc.data.endf.get_tab1_record(file_obj_3)
+
+        for mf in (9, 10):
+            if not present[mf]:
+                continue
+            if (mf, mt) not in evaluation.section:
+                continue
+
+            file_obj = StringIO(evaluation.section[mf, mt])
+            items = openmc.data.endf.get_head_record(file_obj)
+            n_states = items[4]
+
+            for _ in range(n_states):
+                items, xs = openmc.data.endf.get_tab1_record(file_obj)
+                Z, A = divmod(int(items[2]), 1000)
+                lfs = int(items[3])
+
+                if mf == 9:
+                    # MF=9 gives multiplicity (yield) directly
+                    products[(Z, A, lfs)] = xs
+                elif neutron_xs is not None:
+                    # MF=10 gives production XS; convert to yield by
+                    # dividing by the reaction cross section
+                    energy = np.union1d(xs.x, neutron_xs.x)
+                    prod_xs = xs(energy)
+                    nxs = neutron_xs(energy)
+                    idx = np.where(nxs > 0)
+                    yield_ = np.zeros_like(energy)
+                    yield_[idx] = prod_xs[idx] / nxs[idx]
+                    products[(Z, A, lfs)] = \
+                        openmc.data.Tabulated1D(energy, yield_)
+
+        if products:
+            results[mt] = products
+
+    return results
+
+
+def _add_isomeric_reactions(nuclide, rx_name, q_value, iso_products,
+                            decay_data, missing_rx_product, parent):
+    """Add reaction entries for each isomeric product state.
+
+    Uses MF=9/MF=10 data to create separate reaction entries for ground
+    and metastable product states with appropriate branching ratios.
+
+    Parameters
+    ----------
+    nuclide : openmc.deplete.Nuclide
+        Nuclide to add reactions to
+    rx_name : str
+        Reaction name, e.g. '(n,gamma)'
+    q_value : float
+        Q value of the reaction in [eV]
+    iso_products : dict
+        ``{(Z, A, lfs): yield_func}`` from :func:`_read_activation_products`
+    decay_data : dict
+        Decay data keyed by nuclide name
+    missing_rx_product : list
+        List to append missing products to
+    parent : str
+        Parent nuclide name
+    """
+    # Compute branching ratios from the energy-dependent yields.
+    # Use the maximum yield value over the energy range as a representative
+    # ratio. This avoids the problem of threshold reactions having zero
+    # yield at low energies.
+    branching = {}
+    for (Z, A, lfs), yield_func in iso_products.items():
+        # Use max yield over energy range as representative value
+        br = float(np.max(yield_func.y))
+        if br < 0:
+            br = 0.0
+
+        # Map LFS to metastable state number: LFS=0 → ground,
+        # LFS=1 → _m1, LFS=2 → _m2
+        daughter = gnds_name(Z, A, lfs)
+
+        # Check if this daughter exists in the decay data
+        if daughter not in decay_data:
+            orig_daughter = daughter
+            daughter = replace_missing(daughter, decay_data)
+            if daughter is None:
+                missing_rx_product.append((parent, rx_name, orig_daughter))
+                continue
+
+        branching[daughter] = branching.get(daughter, 0.0) + br
+
+    if not branching:
+        return
+
+    # Normalize branching ratios to sum to 1.0
+    total = sum(branching.values())
+    if total > 0:
+        branching = {k: v / total for k, v in branching.items()}
+    else:
+        # If all yields are zero, fall back to equal distribution
+        n = len(branching)
+        branching = {k: 1.0 / n for k in branching}
+
+    for daughter, br in branching.items():
+        nuclide.add_reaction(rx_name, daughter, q_value, br)
+
+
 def replace_missing(product, decay_data):
     """Replace missing product with suitable decay daughter.
 
@@ -361,6 +518,7 @@ class Chain:
         if progress:
             print('Processing neutron sub-library files...')
         reactions = {}
+        activation_products = {}
         for f in neutron_files:
             evaluation = openmc.data.endf.Evaluation(f)
             name = evaluation.gnds_name
@@ -371,6 +529,11 @@ class Chain:
                     openmc.data.endf.get_head_record(file_obj)
                     q_value = openmc.data.endf.get_cont_record(file_obj)[1]
                     reactions[name][mt] = q_value
+
+            # Read MF=9/MF=10 activation products to get isomeric
+            # branching data for each reaction
+            activation_products[name] = _read_activation_products(
+                evaluation)
 
         # Determine what decay and FPY nuclides are available
         if progress:
@@ -438,19 +601,11 @@ class Chain:
             fissionable = False
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())
+                parent_products = activation_products.get(parent, {})
                 for name in transmutation_reactions:
                     mts = REACTIONS[name].mts
                     delta_A, delta_Z = openmc.data.DADZ[name]
                     if mts & reactions_available:
-                        A = data.nuclide['mass_number'] + delta_A
-                        Z = data.nuclide['atomic_number'] + delta_Z
-                        daughter = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
-
-                        if daughter not in decay_data:
-                            daughter = replace_missing(daughter, decay_data)
-                            if daughter is None:
-                                missing_rx_product.append((parent, name, daughter))
-
                         # Store Q value
                         for mt in sorted(mts):
                             if mt in reactions[parent]:
@@ -459,7 +614,36 @@ class Chain:
                         else:
                             q_value = 0.0
 
-                        nuclide.add_reaction(name, daughter, q_value, 1.0)
+                        # Check if MF=9/MF=10 provides isomeric product
+                        # states for this reaction
+                        iso_products = {}
+                        for mt in mts:
+                            if mt in parent_products:
+                                iso_products = parent_products[mt]
+                                break
+
+                        if iso_products:
+                            # Use MF=9/MF=10 data to resolve isomeric
+                            # products with branching ratios
+                            _add_isomeric_reactions(
+                                nuclide, name, q_value, iso_products,
+                                decay_data, missing_rx_product, parent)
+                        else:
+                            # Fall back to ground state only
+                            A = data.nuclide['mass_number'] + delta_A
+                            Z = data.nuclide['atomic_number'] + delta_Z
+                            daughter = \
+                                f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
+
+                            if daughter not in decay_data:
+                                daughter = replace_missing(
+                                    daughter, decay_data)
+                                if daughter is None:
+                                    missing_rx_product.append(
+                                        (parent, name, daughter))
+
+                            nuclide.add_reaction(
+                                name, daughter, q_value, 1.0)
 
                 if any(mt in reactions_available for mt in openmc.data.FISSION_MTS):
                     q_value = reactions[parent][18]

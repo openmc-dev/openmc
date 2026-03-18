@@ -442,11 +442,11 @@ class DAGMCUniverse(openmc.UniverseBase):
                              "mapping.")
 
         for cell_elem in elem.findall('cell'):
-            cell = DAGMCCell.from_xml_element(cell_elem, mats)
-            if cell.id in self.cells:
+            cell_id = int(get_text(cell_elem, 'id'))
+            if cell_id in self.cells:
                 raise ValueError(
-                    f"Duplicate DAGMC cell override specified for cell {cell.id}.")
-            self.add_cell(cell)
+                    f"Duplicate DAGMC cell override specified for cell {cell_id}.")
+            DAGMCCell.from_xml_element(cell_elem, mats, self)
 
     def _partial_deepcopy(self):
         """Clone all of the openmc.DAGMCUniverse object's attributes except for
@@ -622,7 +622,7 @@ class DAGMCCell(openmc.Cell):
         return super().create_xml_subelement(xml_element, memo)
 
     @classmethod
-    def from_xml_element(cls, elem, mats):
+    def from_xml_element(cls, elem, mats, universe=None):
         """Generate a DAGMCCell from an XML <cell> override element.
 
         Parameters
@@ -632,6 +632,9 @@ class DAGMCCell(openmc.Cell):
         mats : dict
             Dictionary mapping material ID strings to
             :class:`openmc.Material` instances
+        universe : DAGMCUniverse, optional
+            Universe to add the parsed cell to. If not provided the cell is
+            returned without being added to any universe.
 
         Returns
         -------
@@ -654,12 +657,17 @@ class DAGMCCell(openmc.Cell):
             raise ValueError(
                 f"DAGMC cell {cell_id} must specify a material override.")
 
-        # Delegate to Cell.from_xml_element for common parsing. Supply a
-        # no-op universe since DAGMC cells are not placed in a CSG universe.
-        class _NullUniverse:
-            def add_cell(self, _):
-                pass
+        # Delegate to Cell.from_xml_element. Pass the DAGMCUniverse directly
+        # so the cell is registered there; if no universe is provided use a
+        # no-op stub so the cell is returned without being added anywhere.
+        if universe is not None:
+            target = universe
+        else:
+            class _Stub:
+                def add_cell(self, _):
+                    pass
+            target = _Stub()
 
         return super().from_xml_element(
             elem, surfaces={}, materials=mats,
-            get_universe=lambda _: _NullUniverse())
+            get_universe=lambda _: target)

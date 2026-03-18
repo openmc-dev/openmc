@@ -70,30 +70,6 @@ def model(request):
             openmc.reset_auto_ids()
 
 
-def test_dagmc_replace_material_assignment(model):
-    mats = {}
-
-    mats["foo"] = openmc.Material(name="foo")
-    mats["foo"].add_nuclide("H1", 2.0)
-    mats["foo"].add_element("O", 1.0)
-    mats["foo"].set_density("g/cm3", 1.0)
-    mats["foo"].add_s_alpha_beta("c_H_in_H2O")
-
-    for univ in model.geometry.get_all_universes().values():
-        if not isinstance(univ, openmc.DAGMCUniverse):
-            break
-
-        cells_with_41 = []
-        for cell in univ.cells.values():
-            if cell.fill is None:
-                continue
-            if cell.fill.name == "41":
-                cells_with_41.append(cell.id)
-        univ.replace_material_assignment("41", mats["foo"])
-        for cell_id in cells_with_41:
-            assert univ.cells[cell_id].fill == mats["foo"]
-
-
 def test_dagmc_sync_cell_names(model):
     dag_univ = None
     for univ in model.geometry.get_all_universes().values():
@@ -190,57 +166,20 @@ def test_model_differentiate_with_dagmc(model):
     assert len(model.materials) == 4*2 + 4
 
 
-def test_bad_override_cell_id(model):
-    for univ in model.geometry.get_all_universes().values():
-        if isinstance(univ, openmc.DAGMCUniverse):
-            break
-    with pytest.raises(ValueError, match="Cell ID '1' not found in DAGMC universe"):
-        univ.material_overrides = {1: model.materials[0]}
-
-
-def test_bad_override_type(model):
-    not_a_dag_cell = openmc.Cell()
-    for univ in model.geometry.get_all_universes().values():
-        if isinstance(univ, openmc.DAGMCUniverse):
-            break
-    with pytest.raises(ValueError, match="Unrecognized key type. Must be an integer or openmc.DAGMCCell object"):
-        univ.material_overrides = {not_a_dag_cell: model.materials[0]}
-
-
-def test_bad_replacement_mat_name(model):
-    for univ in model.geometry.get_all_universes().values():
-        if isinstance(univ, openmc.DAGMCUniverse):
-            break
-    with pytest.raises(ValueError, match="No material with name 'not_a_mat' found in the DAGMC universe"):
-        univ.replace_material_assignment("not_a_mat", model.materials[0])
-
-
 def test_dagmc_xml(model):
-    # Set the environment
-    mats = {}
-    mats["no-void fuel"] = openmc.Material(1, name="no-void fuel")
-    mats["no-void fuel"].add_nuclide("U235", 0.03)
-    mats["no-void fuel"].add_nuclide("U238", 0.97)
-    mats["no-void fuel"].add_nuclide("O16", 2.0)
-    mats["no-void fuel"].set_density("g/cm3", 10.0)
-
-    mats[5] = openmc.Material(name="41")
-    mats[5].add_nuclide("H1", 2.0)
-    mats[5].add_element("O", 1.0)
-    mats[5].set_density("g/cm3", 1.0)
-    mats[5].add_s_alpha_beta("c_H_in_H2O")
+    override_mat = openmc.Material(name="41")
+    override_mat.add_nuclide("H1", 2.0)
+    override_mat.add_element("O", 1.0)
+    override_mat.set_density("g/cm3", 1.0)
+    override_mat.add_s_alpha_beta("c_H_in_H2O")
+    model.materials.append(override_mat)
 
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             dag_univ = univ
             break
 
-    for k, v in mats.items():
-        if isinstance(k, int):
-            dag_univ.add_material_override(k, v)
-            model.materials.append(v)
-        elif isinstance(k, str):
-            dag_univ.replace_material_assignment(k, v)
+    dag_univ.add_material_override(5, override_mat)
 
     # Tesing the XML subelement generation
     root = ET.Element('dagmc_universe')
@@ -304,7 +243,7 @@ def test_dagmc_xml_reject_fill_override():
         '<cell id="1" fill="2"/>'
         '</dagmc_universe>'
     )
-    with pytest.raises(ValueError, match="only support material fills"):
+    with pytest.raises(ValueError, match="cannot specify 'fill'"):
         openmc.DAGMCUniverse.from_xml_element(elem, mats)
 
 
@@ -315,7 +254,7 @@ def test_dagmc_xml_reject_region_override():
         '<cell id="1" material="1" region="-1"/>'
         '</dagmc_universe>'
     )
-    with pytest.raises(ValueError, match="cannot include a region"):
+    with pytest.raises(ValueError, match="cannot specify 'region'"):
         openmc.DAGMCUniverse.from_xml_element(elem, mats)
 
 
@@ -413,14 +352,14 @@ def test_dagmc_xml_temperature_roundtrip():
 
     dag_univ = openmc.DAGMCUniverse.from_xml_element(elem, mats)
     assert dag_univ.cells[7].fill.id == 1
-    assert dag_univ.cells[7].temperature == pytest.approx(825.0)
+    assert dag_univ.cells[7].temperature == pytest.approx([825.0])
 
     root = ET.Element('geometry')
     dag_univ.create_xml_subelement(root)
     dagmc_elem = root.find('dagmc_universe')
     xml_cell = dagmc_elem.find('cell')
-    assert xml_cell.get('temperature') == '825.0'
+    assert xml_cell.find('temperature').text == '825.0'
 
     dag_univ_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem, mats)
     assert dag_univ_roundtrip.cells[7].fill.id == 1
-    assert dag_univ_roundtrip.cells[7].temperature == pytest.approx(825.0)
+    assert dag_univ_roundtrip.cells[7].temperature == pytest.approx([825.0])

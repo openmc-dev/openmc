@@ -218,6 +218,8 @@ def _add_isomeric_reactions(nuclide, rx_name, q_value, iso_products,
 
     Uses MF=9/MF=10 data to create separate reaction entries for ground
     and metastable product states with appropriate branching ratios.
+    Also stores the full energy-dependent yield data on the nuclide
+    for use in spectrum-dependent branching ratio collapse.
 
     Parameters
     ----------
@@ -236,22 +238,12 @@ def _add_isomeric_reactions(nuclide, rx_name, q_value, iso_products,
     parent : str
         Parent nuclide name
     """
-    # Compute branching ratios from the energy-dependent yields.
-    # Use the maximum yield value over the energy range as a representative
-    # ratio. This avoids the problem of threshold reactions having zero
-    # yield at low energies.
-    branching = {}
+    # Map product states to daughter names, filtering missing nuclides
+    yield_funcs = {}  # {daughter_name: yield_func}
+    ground_state = None
     for (Z, A, lfs), yield_func in iso_products.items():
-        # Use max yield over energy range as representative value
-        br = float(np.max(yield_func.y))
-        if br < 0:
-            br = 0.0
-
-        # Map LFS to metastable state number: LFS=0 → ground,
-        # LFS=1 → _m1, LFS=2 → _m2
         daughter = gnds_name(Z, A, lfs)
 
-        # Check if this daughter exists in the decay data
         if daughter not in decay_data:
             orig_daughter = daughter
             daughter = replace_missing(daughter, decay_data)
@@ -259,22 +251,38 @@ def _add_isomeric_reactions(nuclide, rx_name, q_value, iso_products,
                 missing_rx_product.append((parent, rx_name, orig_daughter))
                 continue
 
-        branching[daughter] = branching.get(daughter, 0.0) + br
+        # If multiple LFS map to same daughter, keep the one with
+        # larger max yield (shouldn't normally happen)
+        if daughter in yield_funcs:
+            if np.max(yield_func.y) > np.max(yield_funcs[daughter].y):
+                yield_funcs[daughter] = yield_func
+        else:
+            yield_funcs[daughter] = yield_func
 
-    if not branching:
+        if lfs == 0:
+            ground_state = daughter
+
+    if not yield_funcs:
         return
 
-    # Normalize branching ratios to sum to 1.0
-    total = sum(branching.values())
-    if total > 0:
-        branching = {k: v / total for k, v in branching.items()}
-    else:
-        # If all yields are zero, fall back to equal distribution
-        n = len(branching)
-        branching = {k: 1.0 / n for k in branching}
+    # Build common energy grid from union of all product grids
+    common_energies = yield_funcs[next(iter(yield_funcs))].x
+    for yf in yield_funcs.values():
+        common_energies = np.union1d(common_energies, yf.x)
 
-    for daughter, br in branching.items():
-        nuclide.add_reaction(rx_name, daughter, q_value, br)
+    # Interpolate all yields onto common grid
+    yield_arrays = {}
+    for daughter, yf in yield_funcs.items():
+        yield_arrays[daughter] = np.clip(yf(common_energies), 0.0, None)
+
+    # Store energy-dependent data on the nuclide
+    nuclide.isomeric_branching[rx_name] = (common_energies, yield_arrays)
+
+    # Add a single reaction entry for the ground state target.
+    # The isomeric_branching data is the source of truth for
+    # the actual products and energy-dependent branching.
+    target = ground_state or next(iter(yield_funcs))
+    nuclide.add_reaction(rx_name, target, q_value, 1.0)
 
 
 def replace_missing(product, decay_data):

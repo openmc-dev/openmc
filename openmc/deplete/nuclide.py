@@ -122,6 +122,11 @@ class Nuclide:
         # Reaction paths
         self.reactions = []
 
+        # Energy-dependent isomeric branching data.
+        # {rx_type: (energies, {target: yields})} where energies is a 1D
+        # array and yields are 1D arrays on the same grid.
+        self.isomeric_branching = {}
+
         # Decay sources
         self.sources = {}
 
@@ -270,6 +275,17 @@ class Nuclide:
             nuc.reactions.append(ReactionTuple(
                 r_type, target, Q, branching_ratio))
 
+        # Read energy-dependent isomeric branching data
+        for iso_elem in element.iter('isomeric_branching'):
+            rx_type = get_text(iso_elem, 'reaction')
+            energies = np.fromstring(iso_elem.find('energies').text, sep=' ')
+            products = {}
+            for p_elem in iso_elem.iter('product'):
+                target = get_text(p_elem, 'nuclide')
+                yields = np.fromstring(p_elem.text, sep=' ')
+                products[target] = yields
+            nuc.isomeric_branching[rx_type] = (energies, products)
+
         fpy_elem = element.find('neutron_fission_yields')
         if fpy_elem is not None:
             # Check for use of FPY from other nuclide
@@ -330,6 +346,18 @@ class Nuclide:
                 rx_elem.set('target', daughter)
             if br != 1.0:
                 rx_elem.set('branching_ratio', str(br))
+
+        # Write energy-dependent isomeric branching data
+        if self.isomeric_branching:
+            for rx_type, (energies, products) in self.isomeric_branching.items():
+                iso_elem = ET.SubElement(elem, 'isomeric_branching')
+                iso_elem.set('reaction', rx_type)
+                e_elem = ET.SubElement(iso_elem, 'energies')
+                e_elem.text = ' '.join(str(e) for e in energies)
+                for target, yields in products.items():
+                    p_elem = ET.SubElement(iso_elem, 'product')
+                    p_elem.set('nuclide', target)
+                    p_elem.text = ' '.join(str(y) for y in yields)
 
         if self.yield_data:
             fpy_elem = ET.SubElement(elem, 'neutron_fission_yields')

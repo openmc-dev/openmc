@@ -348,3 +348,68 @@ def test_deepcopy():
     # Mutate the original and verify the copy remains intact
     nuc *= 2
     assert copied_nuc != nuc
+
+
+def test_isomeric_branching_xml_roundtrip():
+    """Test reading and writing energy-dependent isomeric branching data."""
+
+    # Build a nuclide with isomeric branching data
+    nuc = nuclide.Nuclide("Am241")
+    nuc.add_reaction("(n,gamma)", "Am242", 5537755.0, 1.0)
+
+    energies = np.array([1e-5, 0.0253, 1e3, 1e5, 1e6, 1e7])
+    products = {
+        "Am242": np.array([0.9, 0.9, 0.87, 0.84, 0.74, 0.52]),
+        "Am242_m2": np.array([0.1, 0.1, 0.13, 0.16, 0.26, 0.48]),
+    }
+    nuc.isomeric_branching["(n,gamma)"] = (energies, products)
+
+    # Write to XML
+    elem = nuc.to_xml_element()
+
+    # Check XML structure
+    iso_elems = elem.findall("isomeric_branching")
+    assert len(iso_elems) == 1
+    assert iso_elems[0].get("reaction") == "(n,gamma)"
+    assert iso_elems[0].find("energies") is not None
+    product_elems = iso_elems[0].findall("product")
+    assert len(product_elems) == 2
+    assert {p.get("nuclide") for p in product_elems} == {"Am242", "Am242_m2"}
+
+    # Read back from XML
+    nuc2 = nuclide.Nuclide.from_xml(elem)
+    assert "(n,gamma)" in nuc2.isomeric_branching
+    energies2, products2 = nuc2.isomeric_branching["(n,gamma)"]
+    assert np.allclose(energies, energies2)
+    for target in products:
+        assert target in products2
+        assert np.allclose(products[target], products2[target])
+
+
+def test_isomeric_branching_from_xml():
+    """Test reading isomeric branching data from XML string."""
+
+    data = """
+<nuclide name="Ir191" reactions="1">
+  <reaction type="(n,2n)" Q="-6000000.0" target="Ir190"/>
+  <isomeric_branching reaction="(n,2n)">
+    <energies>1e6 5e6 1e7 2e7</energies>
+    <product nuclide="Ir190">0.6 0.55 0.5 0.45</product>
+    <product nuclide="Ir190_m1">0.15 0.17 0.2 0.22</product>
+    <product nuclide="Ir190_m2">0.25 0.28 0.3 0.33</product>
+  </isomeric_branching>
+</nuclide>
+    """
+
+    elem = ET.fromstring(data)
+    nuc = nuclide.Nuclide.from_xml(elem)
+
+    assert nuc.name == "Ir191"
+    assert "(n,2n)" in nuc.isomeric_branching
+    energies, products = nuc.isomeric_branching["(n,2n)"]
+    assert len(energies) == 4
+    assert np.isclose(energies[0], 1e6)
+    assert set(products.keys()) == {"Ir190", "Ir190_m1", "Ir190_m2"}
+    assert np.allclose(products["Ir190"], [0.6, 0.55, 0.5, 0.45])
+    assert np.allclose(products["Ir190_m1"], [0.15, 0.17, 0.2, 0.22])
+    assert np.allclose(products["Ir190_m2"], [0.25, 0.28, 0.3, 0.33])

@@ -29,6 +29,7 @@ Univariate Probability Distributions
    :template: myfunction.rst
 
    openmc.stats.delta_function
+   openmc.stats.fusion_neutron_spectrum
    openmc.stats.muir
 
 Angular Distributions
@@ -67,3 +68,4 @@ Spatial Distributions
    :template: myfunction.rst
 
    openmc.stats.spherical_uniform
+   openmc.stats.cylindrical_uniform

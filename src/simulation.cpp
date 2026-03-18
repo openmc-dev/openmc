@@ -30,7 +30,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #ifdef OPENMC_MPI
 #include <mpi.h>
@@ -122,6 +122,7 @@ int openmc_simulation_init()
   simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
+  reset_source_rejection_counters();
   openmc_reset();
 
   // If this is a restart run, load the state point data and binary source
@@ -413,7 +414,7 @@ void finalize_batch()
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
-    xt::view(simulation::global_tallies, xt::all()) = 0.0;
+    simulation::global_tallies.fill(0.0);
     simulation::n_realizations = 0;
   }
 

@@ -39,6 +39,8 @@ class IDManagerMixin:
 
     """
 
+    min_id = 0
+
     @property
     def id(self):
         return self._id
@@ -64,7 +66,7 @@ class IDManagerMixin:
         else:
             name = cls.__name__
             cv.check_type(f'{name} ID', uid, Integral)
-            cv.check_greater_than(f'{name} ID', uid, 0, equality=True)
+            cv.check_greater_than(f'{name} ID', uid, cls.min_id, equality=True)
             if uid in cls.used_ids:
                 msg = f'Another {name} instance already exists with id={uid}.'
                 warn(msg, IDWarning)

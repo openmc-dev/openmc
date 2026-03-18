@@ -10,8 +10,7 @@ endif()
 
 find_dependency(fmt CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
 find_dependency(pugixml CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
-find_dependency(xtl CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
-find_dependency(xtensor CONFIG REQUIRED HINTS ${PACKAGE_PREFIX_DIR})
+
 if(@OPENMC_USE_DAGMC@)
   find_dependency(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()

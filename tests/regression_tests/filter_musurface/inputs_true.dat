@@ -31,7 +31,7 @@
     </filter>
     <tally id="1">
       <filters>1 2</filters>
-      <scores>current</scores>
+      <scores>current flux</scores>
     </tally>
   </tallies>
 </model>

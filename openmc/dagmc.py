@@ -36,12 +36,6 @@ class DAGMCUniverse(openmc.UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps in ID
         space between OpenMC and UWUW materials (False)
-    material_overrides : dict, optional
-        A dictionary of material overrides. Keys are cell IDs (or
-        :class:`openmc.DAGMCCell` objects), and values are
-        :class:`openmc.Material` objects or iterables of
-        :class:`openmc.Material` objects.
-
     Attributes
     ----------
     id : int
@@ -78,15 +72,6 @@ class DAGMCUniverse(openmc.UniverseBase):
         The number of surfaces in the model.
 
         .. versionadded:: 0.13.2
-    material_overrides : dict
-        A dictionary of material overrides. Keys are cell IDs; values are
-        iterables of :class:`openmc.Material` objects. The material assignment
-        of each DAGMC cell ID key will be replaced with the
-        :class:`~openmc.Material` object in the value. If the value contains
-        multiple :class:`~openmc.Material` objects, each Material in the list
-        will be assigned to the corresponding instance of the cell.
-
-        .. versionadded:: 0.15.1
     """
 
     def __init__(self,
@@ -94,16 +79,12 @@ class DAGMCUniverse(openmc.UniverseBase):
                  universe_id=None,
                  name='',
                  auto_geom_ids=False,
-                 auto_mat_ids=False,
-                 material_overrides=None):
+                 auto_mat_ids=False):
         super().__init__(universe_id, name)
         # Initialize class attributes
         self.filename = filename
         self.auto_geom_ids = auto_geom_ids
         self.auto_mat_ids = auto_mat_ids
-        self._material_overrides = {}
-        if material_overrides is not None:
-            self.material_overrides = material_overrides
 
     def __repr__(self):
         string = super().__repr__()
@@ -127,52 +108,6 @@ class DAGMCUniverse(openmc.UniverseBase):
     def filename(self, val: cv.PathLike):
         cv.check_type('DAGMC filename', val, cv.PathLike)
         self._filename = input_path(val)
-
-    @property
-    def material_overrides(self):
-        if self.cells:
-            return self._get_cell_material_overrides()
-        return self._material_overrides
-
-    @material_overrides.setter
-    def material_overrides(self, val):
-        cv.check_type('material overrides', val, Mapping)
-        for key, value in val.items():
-            self.add_material_override(key, value)
-
-    def replace_material_assignment(self, material_name: str, material: openmc.Material):
-        """Replace a material assignment within the DAGMC universe.
-
-        Replace the material assignment of all cells filled with a material in
-        the DAGMC universe. The universe must be synchronized in an initialized
-        Model (see :meth:`~openmc.DAGMCUniverse.sync_dagmc_cells`) before
-        calling this method.
-
-        .. versionadded:: 0.15.1
-
-        Parameters
-        ----------
-        material_name : str
-            Material name to replace
-        material : openmc.Material
-            Material to replace the material_name with
-
-        """
-        if material_name not in self.material_names:
-            raise ValueError(
-                f"No material with name '{material_name}' found in the DAGMC universe")
-
-        if not self.cells:
-            raise RuntimeError("This DAGMC universe has not been synchronized "
-                               "on an initialized Model.")
-
-        for cell in self.cells.values():
-            if cell.fill is None:
-                continue
-            if isinstance(cell.fill, openmc.Iterable):
-                cell.fill = list(map(lambda x: material if x.name == material_name else x, cell.fill))
-            else:
-                cell.fill = material if cell.fill.name == material_name else cell.fill
 
     def add_material_override(self, key, overrides=None):
         """Add a material override to the universe.
@@ -203,7 +138,6 @@ class DAGMCUniverse(openmc.UniverseBase):
         if key not in self.cells:
             raise ValueError(f"Cell ID '{key}' not found in DAGMC universe")
 
-        self._material_overrides[key] = list(overrides)
         if len(overrides) == 1:
             self.cells[key].fill = overrides[0]
         else:
@@ -287,21 +221,6 @@ class DAGMCUniverse(openmc.UniverseBase):
     def n_surfaces(self):
         return self._n_geom_elements('surface')
 
-    def _get_cell_material_overrides(self):
-        overrides = {}
-        for cell in self.cells.values():
-            if cell.fill_type == 'material':
-                overrides[cell.id] = [cell.fill]
-            elif cell.fill_type == 'distribmat':
-                overrides[cell.id] = list(cell.fill)
-            elif cell.fill_type == 'void':
-                overrides[cell.id] = [None]
-            else:
-                raise ValueError(
-                    "Only material fills are supported for DAGMC cell "
-                    "overrides.")
-        return overrides
-
     def create_xml_subelement(self, xml_element, memo=None):
         if memo is None:
             memo = set()
@@ -323,7 +242,6 @@ class DAGMCUniverse(openmc.UniverseBase):
             dagmc_element.set('auto_mat_ids', 'true')
         dagmc_element.set('filename', str(self.filename))
         if self.cells:
-            self._material_overrides = self._get_cell_material_overrides()
             for cell in self.cells.values():
                 cell_element = cell.create_xml_subelement(xml_element, memo)
                 dagmc_element.append(cell_element)

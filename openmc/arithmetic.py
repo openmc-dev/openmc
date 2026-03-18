@@ -296,7 +296,7 @@ class CrossFilter:
 
         This method constructs a Pandas DataFrame object for the CrossFilter
         with columns annotated by filter bin information. This is a helper
-        method for the Tally.get_pandas_dataframe(...) method. This method
+        method for the TallyBase.get_pandas_dataframe(...) method. This method
         recursively builds and concatenates Pandas DataFrames for the left
         and right filters and crossfilters.
 
@@ -326,7 +326,7 @@ class CrossFilter:
 
         See also
         --------
-        Tally.get_pandas_dataframe(), Filter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), Filter.get_pandas_dataframe()
 
         """
 
@@ -645,7 +645,7 @@ class AggregateFilter:
 
         This method constructs a Pandas DataFrame object for the AggregateFilter
         with columns annotated by filter bin information. This is a helper
-        method for the Tally.get_pandas_dataframe(...) method.
+        method for the TallyBase.get_pandas_dataframe(...) method.
 
         Parameters
         ----------
@@ -672,7 +672,7 @@ class AggregateFilter:
 
         See also
         --------
-        Tally.get_pandas_dataframe(), Filter.get_pandas_dataframe(),
+        TallyBase.get_pandas_dataframe(), Filter.get_pandas_dataframe(),
         CrossFilter.get_pandas_dataframe()
 
         """

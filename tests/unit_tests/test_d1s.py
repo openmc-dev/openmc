@@ -64,7 +64,7 @@ def test_time_correction_factors(nuclide):
 
 
 def test_prepare_tallies(model):
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [openmc.ParticleFilter('photon')]
     tally.scores = ['flux']
     model.tallies = [tally]
@@ -104,7 +104,7 @@ def test_apply_time_correction(run_in_tmpdir):
     model.settings.photon_transport = True
     model.settings.use_decay_photons = True
     particle_filter = openmc.ParticleFilter('photon')
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [particle_filter]
     tally.scores = ['flux']
     model.tallies = [tally]

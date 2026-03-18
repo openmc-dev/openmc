@@ -28,7 +28,7 @@ def sphere_model():
         "max_particles": 100,
     }
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['flux']
     model.tallies = [tally]
     return model

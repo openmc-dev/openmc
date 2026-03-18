@@ -22,14 +22,14 @@ def pincell_model():
     # Add a tally
     filter1 = openmc.MaterialFilter(pincell.materials)
     filter2 = openmc.EnergyFilter([0.0, 1.0, 1.0e3, 20.0e6])
-    mat_tally = openmc.Tally()
+    mat_tally = openmc.VolumeTally()
     mat_tally.filters = [filter1, filter2]
     mat_tally.nuclides = ['U235', 'U238']
     mat_tally.scores = ['total', 'elastic', '(n,gamma)']
     pincell.tallies.append(mat_tally)
 
     # Add an expansion tally
-    zernike_tally = openmc.Tally()
+    zernike_tally = openmc.VolumeTally()
     filter3 = openmc.ZernikeFilter(5, r=.63)
     cells = pincell.geometry.root_universe.cells
     filter4 = openmc.CellFilter(list(cells.values()))
@@ -38,7 +38,7 @@ def pincell_model():
     pincell.tallies.append(zernike_tally)
 
     # Add an energy function tally
-    energyfunc_tally = openmc.Tally()
+    energyfunc_tally = openmc.VolumeTally()
     energyfunc_filter = openmc.EnergyFunctionFilter(
         [0.0, 20e6], [0.0, 20e6])
     energyfunc_tally.scores = ['fission']

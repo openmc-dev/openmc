@@ -47,7 +47,7 @@ def test_surface_filter_flux_normal_incidence(two_cell_model, run_in_tmpdir):
     model, xmid, *_ = two_cell_model
 
     surf_filter = openmc.SurfaceFilter([xmid])
-    flux_tally = openmc.Tally()
+    flux_tally = openmc.SurfaceTally()
     flux_tally.filters = [surf_filter]
     flux_tally.scores = ['flux']
     model.tallies = [flux_tally]
@@ -64,7 +64,7 @@ def test_surface_filter_current_outward(two_cell_model, run_in_tmpdir):
     model, xmid, *_ = two_cell_model
 
     surf_filter = openmc.SurfaceFilter([xmid])
-    current_tally = openmc.Tally()
+    current_tally = openmc.SurfaceTally()
     current_tally.filters = [surf_filter]
     current_tally.scores = ['current']
     model.tallies = [current_tally]
@@ -86,7 +86,7 @@ def test_surface_filter_flux_angled(two_cell_model, run_in_tmpdir):
     model.settings.source[0].angle = openmc.stats.Monodirectional((ux, uy, 0.0))
 
     surf_filter = openmc.SurfaceFilter([xmid])
-    flux_tally = openmc.Tally()
+    flux_tally = openmc.SurfaceTally()
     flux_tally.filters = [surf_filter]
     flux_tally.scores = ['flux']
     model.tallies = [flux_tally]
@@ -105,7 +105,7 @@ def test_cellfrom_filter_flux_directional(two_cell_model, run_in_tmpdir):
     surf_filter = openmc.SurfaceFilter([xmid])
     cellfrom_filter = openmc.CellFromFilter([cell1, cell2])
 
-    tally = openmc.Tally()
+    tally = openmc.SurfaceTally()
     tally.filters = [surf_filter, cellfrom_filter]
     tally.scores = ['flux']
 

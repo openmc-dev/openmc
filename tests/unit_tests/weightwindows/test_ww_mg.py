@@ -8,7 +8,7 @@ def test_weight_windows_mg(request, run_in_tmpdir):
 
     # create a mesh tally
     mesh = openmc.RegularMesh.from_domain(model.geometry, (3, 3, 3))
-    mesh_tally = openmc.Tally()
+    mesh_tally = openmc.VolumeTally()
     mesh_tally.filters = [openmc.MeshFilter(mesh)]
     mesh_tally.scores = ['flux']
     model.tallies = [mesh_tally]

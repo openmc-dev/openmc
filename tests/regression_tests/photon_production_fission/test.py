@@ -23,17 +23,17 @@ def model():
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Point((0, 0, 0)))
 
     particle_filter = openmc.ParticleFilter(['neutron', 'photon'])
-    tally_tracklength = openmc.Tally()
+    tally_tracklength = openmc.VolumeTally()
     tally_tracklength.filters = [particle_filter]
     tally_tracklength.scores = ['fission', 'heating-local']
     tally_tracklength.nuclides = ['U235', 'total']
     tally_tracklength.estimator = 'tracklength'
-    tally_collision = openmc.Tally()
+    tally_collision = openmc.VolumeTally()
     tally_collision.filters = [particle_filter]
     tally_collision.scores = ['fission', 'heating', 'heating-local']
     tally_collision.nuclides = ['U235', 'total']
     tally_collision.estimator = 'collision'
-    tally_analog = openmc.Tally()
+    tally_analog = openmc.VolumeTally()
     tally_analog.filters = [particle_filter]
     tally_analog.scores = ['fission', 'heating', 'heating-local']
     tally_analog.nuclides = ['U235', 'total']

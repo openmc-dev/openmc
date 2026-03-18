@@ -33,7 +33,7 @@ def model():
     )
     model.settings.run_mode = 'fixed source'
 
-    rx_tally = openmc.Tally(name='activation tally')
+    rx_tally = openmc.VolumeTally(name='activation tally')
     rx_tally.scores = ['(n,gamma)']
     model.tallies.append(rx_tally)
 

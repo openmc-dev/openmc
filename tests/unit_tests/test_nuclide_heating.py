@@ -25,10 +25,10 @@ def test_nuclide_heating(run_in_tmpdir):
     )
 
     # Create two tallies, one with heating by nuclide and one with total heating
-    tally1 = openmc.Tally()
+    tally1 = openmc.VolumeTally()
     tally1.scores = ["heating"]
     tally1.nuclides = mat.get_nuclides()
-    tally2 = openmc.Tally()
+    tally2 = openmc.VolumeTally()
     tally2.scores = ["heating"]
     model.tallies = [tally1, tally2]
 

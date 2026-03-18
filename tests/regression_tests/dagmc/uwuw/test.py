@@ -27,7 +27,7 @@ class UWUWTest(PyAPITestHarness):
         self._model.geometry = openmc.Geometry(root=dag_univ)
 
         # tally
-        tally = openmc.Tally()
+        tally = openmc.VolumeTally()
         tally.scores = ['total']
         tally.filters = [openmc.CellFilter(1)]
         self._model.tallies = [tally]

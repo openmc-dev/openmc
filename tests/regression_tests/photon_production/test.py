@@ -45,21 +45,21 @@ def model():
     surface_filter = openmc.SurfaceFilter(cyl)
     particle_filter = openmc.ParticleFilter(
         ['neutron', 'photon', 'electron', 'positron'])
-    current_tally = openmc.Tally()
+    current_tally = openmc.VolumeTally()
     current_tally.filters = [surface_filter, particle_filter]
     current_tally.scores = ['current']
-    tally_tracklength = openmc.Tally()
+    tally_tracklength = openmc.VolumeTally()
     tally_tracklength.filters = [particle_filter]
     # heating doesn't work with tracklength
     tally_tracklength.scores = ['total', '(n,gamma)']
     tally_tracklength.nuclides = ['Al27', 'total']
     tally_tracklength.estimator = 'tracklength'
-    tally_collision = openmc.Tally()
+    tally_collision = openmc.VolumeTally()
     tally_collision.filters = [particle_filter]
     tally_collision.scores = ['total', 'heating', '(n,gamma)']
     tally_collision.nuclides = ['Al27', 'total']
     tally_collision.estimator = 'collision'
-    tally_analog = openmc.Tally()
+    tally_analog = openmc.VolumeTally()
     tally_analog.filters = [particle_filter]
     tally_analog.scores = ['total', 'heating', '(n,gamma)']
     tally_analog.nuclides = ['Al27', 'total']
@@ -75,7 +75,7 @@ def model():
         ['neutron', 'photon'], [0.0, 100e3, 300e3, 500e3, 2e6, 20e6])
 
     neutron_only = openmc.ParticleFilter(['neutron'])
-    tally_gam_ene = openmc.Tally()
+    tally_gam_ene = openmc.VolumeTally()
     tally_gam_ene.filters = [neutron_only, ene_filter, ene2_filter]
     tally_gam_ene.scores = ['events']
     tally_gam_ene.estimator = 'analog'

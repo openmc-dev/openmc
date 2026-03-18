@@ -105,11 +105,11 @@ def model():
 
     # Create tallies
     for f1, f2 in zip(reg_filters, surf_filters):
-        tally = openmc.Tally()
+        tally = openmc.VolumeTally()
         tally.filters = [f1]
         tally.scores = ['total']
         model.tallies.append(tally)
-        tally = openmc.Tally()
+        tally = openmc.VolumeTally()
         tally.filters = [f2]
         tally.scores = ['current']
         model.tallies.append(tally)

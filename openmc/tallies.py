@@ -29,8 +29,8 @@ from .mesh import MeshBase
 # specified axis.
 _PRODUCT_TYPES = ['tensor', 'entrywise']
 
-# The following indicate acceptable types when setting Tally.scores,
-# Tally.nuclides, and Tally.filters
+# The following indicate acceptable types when setting TallyBase.scores,
+# TallyBase.nuclides, and TallyBase.filters
 _SCORE_CLASSES = (str, openmc.CrossScore, openmc.AggregateScore)
 _NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
@@ -38,8 +38,11 @@ _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 # Valid types of estimators
 ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog'}
 
+# Valid types of surface scores
+SURFACE_SCORE_TYPES = {'current', 'flux'}
 
-class Tally(IDManagerMixin):
+
+class TallyBase(IDManagerMixin):
     """A tally defined by a set of scores that are accumulated for a list of
     nuclides given a set of filters.
 
@@ -233,7 +236,7 @@ class Tally(IDManagerMixin):
            Results will be loaded if appropriate based on the tally properties.
 
         Args:
-            f function: Tally method to wrap
+            f function: TallyBase method to wrap
 
         Returns:
             function: Wrapped function that reads tally results before calling
@@ -1079,7 +1082,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally
+        other : openmc.TallyBase
             Tally to check for mergeable filters
 
         """
@@ -1119,7 +1122,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally
+        other : openmc.TallyBase
             Tally to check for mergeable nuclides
 
         """
@@ -1153,7 +1156,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally
+        other : openmc.TallyBase
             Tally to check for mergeable scores
 
         """
@@ -1192,12 +1195,12 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally
+        other : openmc.TallyBase
             Tally to check for merging
 
         """
 
-        if not isinstance(other, Tally):
+        if not isinstance(other, TallyBase):
             return False
 
         # Must have same estimator
@@ -1235,12 +1238,12 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally
+        other : openmc.TallyBase
             Tally to merge with this one
 
         Returns
         -------
-        merged_tally : openmc.Tally
+        merged_tally : openmc.TallyBase
             Merged tallies
 
         """
@@ -1413,6 +1416,10 @@ class Tally(IDManagerMixin):
 
         # Tally ID
         element.set("id", str(self.id))
+        
+        # Tally Type
+        if self.tally_type != VolumeTally.tally_type:
+            element.set("type", self.tally_type)
 
         # Optional Tally name
         if self.name != '':
@@ -1508,51 +1515,20 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             Tally object
 
         """
-        tally_id = int(get_text(elem, "id"))
-        name = get_text(elem, "name", "")
-        tally = cls(tally_id=tally_id, name=name)
+        tally_type = get_text(elem, 'type')
 
-        text = get_text(elem, 'multiply_density')
-        if text is not None:
-            tally.multiply_density = text in ('true', '1')
-
-        # Read filters
-        filter_ids = get_elem_list(elem, "filters", int)
-        if filter_ids is not None:
-            tally.filters = [kwargs['filters'][uid] for uid in filter_ids]
-
-        # Read nuclides
-        nuclides = get_elem_list(elem, "nuclides", str)
-        if nuclides is not None:
-            tally.nuclides = nuclides
-
-        # Read scores
-        scores = get_elem_list(elem, "scores", str)
-        if scores is not None:
-            tally.scores = scores
-
-        # Set estimator
-        estimator = get_text(elem, "estimator")
-        if estimator is not None:
-            tally.estimator = estimator
-
-        # Read triggers
-        tally.triggers = [
-            openmc.Trigger.from_xml_element(trigger_elem)
-            for trigger_elem in elem.findall('trigger')
-        ]
-
-        # Read tally derivative
-        deriv = get_text(elem, "derivative")
-        if deriv is not None:
-            deriv_id = int(deriv)
-            tally.derivative = kwargs['derivatives'][deriv_id]
-
-        return tally
+        if tally_type == 'volume' or tally_type is None:
+            return VolumeTally.from_xml_element(elem, **kwargs)
+        elif tally_type == 'surface':
+            return SurfaceTally.from_xml_element(elem, **kwargs)
+        elif tally_type == 'pulse-height':
+            return PulseHeightTally.from_xml_element(elem, **kwargs)
+        else:
+            raise ValueError(f'Unrecognized tally type "{tally_type}" found.')
 
     def contains_filter(self, filter_type):
         """Looks for a filter in the tally that matches a specified type
@@ -1674,7 +1650,7 @@ class Tally(IDManagerMixin):
     def get_filter_indices(self, filters=[], filter_bins=[]):
         """Get indices into the filter axis of this tally's data arrays.
 
-        This is a helper method for the Tally.get_values(...) method to
+        This is a helper method for the TallyBase.get_values(...) method to
         extract tally data. This method returns the indices into the filter
         axis of the tally's data array (axis=0) for particular combinations
         of filters and their corresponding bins.
@@ -1737,7 +1713,7 @@ class Tally(IDManagerMixin):
     def get_nuclide_indices(self, nuclides):
         """Get indices into the nuclide axis of this tally's data arrays.
 
-        This is a helper method for the Tally.get_values(...) method to
+        This is a helper method for the TallyBase.get_values(...) method to
         extract tally data. This method returns the indices into the nuclide
         axis of the tally's data array (axis=1) for one or more nuclides.
 
@@ -1769,7 +1745,7 @@ class Tally(IDManagerMixin):
     def get_score_indices(self, scores):
         """Get indices into the score axis of this tally's data arrays.
 
-        This is a helper method for the Tally.get_values(...) method to
+        This is a helper method for the TallyBase.get_values(...) method to
         extract tally data. This method returns the indices into the score
         axis of the tally's data array (axis=2) for one or more scores.
 
@@ -2042,7 +2018,7 @@ class Tally(IDManagerMixin):
         The tally data in OpenMC is stored as a 3D array with the dimensions
         corresponding to filters, nuclides and scores. As a result, tally data
         can be opaque for a user to directly index (i.e., without use of
-        :meth:`openmc.Tally.get_values`) since one must know how to properly use
+        :meth:`openmc.TallyBase.get_values`) since one must know how to properly use
         the number of bins and strides for each filter to index into the first
         (filter) dimension.
 
@@ -2124,7 +2100,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally
+        other : openmc.TallyBase
             The tally on the right hand side of the hybrid product
         binary_op : {'+', '-', '*', '/', '^'}
             The binary operation in the hybrid product
@@ -2146,7 +2122,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new Tally that is the hybrid product with this one.
 
         Raises
@@ -2190,7 +2166,7 @@ class Tally(IDManagerMixin):
                   f'ID="{other.id}" since it does not contain any results.'
             raise ValueError(msg)
 
-        new_tally = Tally()
+        new_tally = type(self)()
         new_tally._derived = True
         new_tally.with_batch_statistics = True
         new_tally._num_realizations = self.num_realizations
@@ -2336,7 +2312,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally
+        other : openmc.TallyBase
             The tally to outer product with this tally
         filter_product : {'entrywise'}
             The type of product to be performed between filter data. Currently,
@@ -2709,12 +2685,12 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally or float
+        other : openmc.TallyBase or float
             The tally or scalar value to add to this tally
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally which is the sum of this tally and the other
             tally or scalar value in the addition.
 
@@ -2731,7 +2707,7 @@ class Tally(IDManagerMixin):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        if isinstance(other, Tally):
+        if isinstance(other, TallyBase):
             new_tally = self.hybrid_product(other, binary_op='+')
 
             # If both tally operands were sparse, sparsify the new tally
@@ -2739,7 +2715,7 @@ class Tally(IDManagerMixin):
                 new_tally.sparse = True
 
         elif isinstance(other, Real):
-            new_tally = Tally(name='derived')
+            new_tally = type(self)(name='derived')
             new_tally._derived = True
             new_tally.with_batch_statistics = True
             new_tally.name = self.name
@@ -2781,12 +2757,12 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally or float
+        other : openmc.TallyBase or float
             The tally or scalar value to subtract from this tally
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally which is the difference of this tally and the
             other tally or scalar value in the subtraction.
 
@@ -2803,7 +2779,7 @@ class Tally(IDManagerMixin):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        if isinstance(other, Tally):
+        if isinstance(other, TallyBase):
             new_tally = self.hybrid_product(other, binary_op='-')
 
             # If both tally operands were sparse, sparsify the new tally
@@ -2811,7 +2787,7 @@ class Tally(IDManagerMixin):
                 new_tally.sparse = True
 
         elif isinstance(other, Real):
-            new_tally = Tally(name='derived')
+            new_tally = type(self)(name='derived')
             new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self.mean - other
@@ -2852,12 +2828,12 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally or float
+        other : openmc.TallyBase or float
             The tally or scalar value to multiply with this tally
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally which is the product of this tally and the
             other tally or scalar value in the multiplication.
 
@@ -2874,7 +2850,7 @@ class Tally(IDManagerMixin):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        if isinstance(other, Tally):
+        if isinstance(other, TallyBase):
             new_tally = self.hybrid_product(other, binary_op='*')
 
             # If original tally operands were sparse, sparsify the new tally
@@ -2882,7 +2858,7 @@ class Tally(IDManagerMixin):
                 new_tally.sparse = True
 
         elif isinstance(other, Real):
-            new_tally = Tally(name='derived')
+            new_tally = type(self)(name='derived')
             new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self.mean * other
@@ -2923,12 +2899,12 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        other : openmc.Tally or float
+        other : openmc.TallyBase or float
             The tally or scalar value to divide this tally by
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally which is the dividend of this tally and the
             other tally or scalar value in the division.
 
@@ -2945,7 +2921,7 @@ class Tally(IDManagerMixin):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        if isinstance(other, Tally):
+        if isinstance(other, TallyBase):
             new_tally = self.hybrid_product(other, binary_op='/')
 
             # If original tally operands were sparse, sparsify the new tally
@@ -2953,7 +2929,7 @@ class Tally(IDManagerMixin):
                 new_tally.sparse = True
 
         elif isinstance(other, Real):
-            new_tally = Tally(name='derived')
+            new_tally = type(self)(name='derived')
             new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self.mean / other
@@ -2998,12 +2974,12 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        power : openmc.Tally or float
+        power : openmc.TallyBase or float
             The tally or scalar value exponent
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally which is this tally raised to the power of the
             other tally or scalar value in the exponentiation.
 
@@ -3020,7 +2996,7 @@ class Tally(IDManagerMixin):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        if isinstance(power, Tally):
+        if isinstance(power, TallyBase):
             new_tally = self.hybrid_product(power, binary_op='^')
 
             # If original tally operand was sparse, sparsify the new tally
@@ -3028,7 +3004,7 @@ class Tally(IDManagerMixin):
                 new_tally.sparse = True
 
         elif isinstance(power, Real):
-            new_tally = Tally(name='derived')
+            new_tally = type(self)(name='derived')
             new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean ** power
@@ -3063,7 +3039,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally of this tally added with the scalar value.
 
         """
@@ -3082,7 +3058,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally of this tally subtracted from the scalar value.
 
         """
@@ -3101,7 +3077,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally of this tally multiplied by the scalar value.
 
         """
@@ -3120,7 +3096,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally of the scalar value divided by this tally.
 
         """
@@ -3132,7 +3108,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally which is the absolute value of this tally.
 
         """
@@ -3146,7 +3122,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived tally which is the negated value of this tally.
 
         """
@@ -3189,7 +3165,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new tally which encapsulates the subset of data requested in the
             order each filter, nuclide and score is listed in the parameters.
 
@@ -3343,12 +3319,12 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new tally which encapsulates the sum of data requested.
         """
 
         # Create new derived Tally for summation
-        tally_sum = Tally()
+        tally_sum = type(self)()
         tally_sum._derived = True
         tally_sum._estimator = self.estimator
         tally_sum._num_realizations = self.num_realizations
@@ -3495,12 +3471,12 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new tally which encapsulates the average of data requested.
         """
 
         # Create new derived Tally for average
-        tally_avg = Tally()
+        tally_avg = type(self)()
         tally_avg._derived = True
         tally_avg._estimator = self.estimator
         tally_avg._num_realizations = self.num_realizations
@@ -3636,7 +3612,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        openmc.Tally
+        openmc.TallyBase
             A new derived Tally with data diagonalized along the new filter.
 
         """
@@ -3691,29 +3667,489 @@ class Tally(IDManagerMixin):
         return new_tally
 
 
+class VolumeTally(TallyBase):
+    """A volume tally defined by a set of scores that are accumulated for a list of
+    nuclides given a set of filters.
+
+    Parameters
+    ----------
+    tally_id : int, optional
+        Unique identifier for the tally. If none is specified, an identifier
+        will automatically be assigned
+    name : str, optional
+        Name of the tally. If not specified, the name is the empty string.
+    scores : list of str, optional
+        List of scores, e.g. ['flux', 'fission']
+    filters : list of openmc.Filter, optional
+        List of filters for the tally
+    nuclides : list of str, optional
+        List of nuclides to score results for
+    estimator : {'analog', 'tracklength', 'collision'}, optional
+        Type of estimator for the tally
+    triggers : list of openmc.Trigger, optional
+        List of tally triggers
+    derivative : openmc.TallyDerivative, optional
+        A material perturbation derivative to apply to all scores in the tally
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the tally
+    name : str
+        Name of the tally
+    multiply_density : bool
+        Whether reaction rates should be multiplied by atom density
+
+        .. versionadded:: 0.14.0
+    filters : list of openmc.Filter
+        List of specified filters for the tally
+    nuclides : list of str
+        List of nuclides to score results for
+    scores : list of str
+        List of defined scores, e.g. 'flux', 'fission', etc.
+    estimator : {'analog', 'tracklength', 'collision'}
+        Type of estimator for the tally. If unset (None), OpenMC will automatically
+        select an appropriate estimator based on the tally filters and scores
+        with a preference for 'tracklength'.
+    triggers : list of openmc.Trigger
+        List of tally triggers
+    num_scores : int
+        Total number of scores
+    num_filter_bins : int
+        Total number of filter bins accounting for all filters
+    num_bins : int
+        Total number of bins for the tally
+    shape : 3-tuple of int
+        The shape of the tally data array ordered as the number of filter bins,
+        nuclide bins and score bins
+    filter_strides : list of int
+        Stride in memory for each filter
+    num_realizations : int
+        Total number of realizations
+    with_summary : bool
+        Whether or not a Summary has been linked
+    sum : numpy.ndarray
+        An array containing the sum of each independent realization for each bin
+    sum_sq : numpy.ndarray
+        An array containing the sum of each independent realization squared for
+        each bin
+    sum_third : numpy.ndarray
+        An array containing the sum of each independent realization to the third power for
+        each bin
+    sum_fourth : numpy.ndarray
+        An array containing the sum of each independent realization to the fourth power for
+        each bin
+    mean : numpy.ndarray
+        An array containing the sample mean for each bin
+    std_dev : numpy.ndarray
+        An array containing the sample standard deviation for each bin
+    vov : numpy.ndarray
+        An array containing the variance of the variance for each tally bin
+    higher_moments : bool
+        Whether or not the tally accumulates the sums third and fourth to compute higher-order moments
+    figure_of_merit : numpy.ndarray
+        An array containing the figure of merit for each bin
+
+        .. versionadded:: 0.15.3
+    derived : bool
+        Whether or not the tally is derived from one or more other tallies
+    sparse : bool
+        Whether or not the tally uses SciPy's LIL sparse matrix format for
+        compressed data storage
+    derivative : openmc.TallyDerivative
+        A material perturbation derivative to apply to all scores in the tally.
+
+    """
+    
+    tally_type = "volume"
+
+    def __init__(self, tally_id=None, name='', scores=None, filters=None,
+                 nuclides=None, estimator=None, triggers=None,
+                 derivative=None):
+        super().__init__(tally_id=tally_id, name=name, scores=scores, filters=filters,
+                 nuclides=nuclides, estimator=estimator, triggers=triggers,
+                 derivative=derivative)
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        """Generate tally object from an XML element
+
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.TallyBase
+            Tally object
+
+        """
+        tally_id = int(get_text(elem, "id"))
+        name = get_text(elem, "name", "")
+        tally = cls(tally_id=tally_id, name=name)
+
+        text = get_text(elem, 'multiply_density')
+        if text is not None:
+            tally.multiply_density = text in ('true', '1')
+
+        # Read filters
+        filter_ids = get_elem_list(elem, "filters", int)
+        if filter_ids is not None:
+            tally.filters = [kwargs['filters'][uid] for uid in filter_ids]
+
+        # Read nuclides
+        nuclides = get_elem_list(elem, "nuclides", str)
+        if nuclides is not None:
+            tally.nuclides = nuclides
+
+        # Read scores
+        scores = get_elem_list(elem, "scores", str)
+        if scores is not None:
+            tally.scores = scores
+
+        # Set estimator
+        estimator = get_text(elem, "estimator")
+        if estimator is not None:
+            tally.estimator = estimator
+
+        # Read triggers
+        tally.triggers = [
+            openmc.Trigger.from_xml_element(trigger_elem)
+            for trigger_elem in elem.findall('trigger')
+        ]
+
+        # Read tally derivative
+        deriv = get_text(elem, "derivative")
+        if deriv is not None:
+            deriv_id = int(deriv)
+            tally.derivative = kwargs['derivatives'][deriv_id]
+
+        return tally                           
+
+
+class SurfaceTally(TallyBase):
+    """A surface tally defined by a set of scores that are accumulated given a set of filters.
+
+    Parameters
+    ----------
+    tally_id : int, optional
+        Unique identifier for the tally. If none is specified, an identifier
+        will automatically be assigned
+    name : str, optional
+        Name of the tally. If not specified, the name is the empty string.
+    scores : list of str, optional
+        List of scores, e.g. ['flux', 'fission']
+    filters : list of openmc.Filter, optional
+        List of filters for the tally
+    triggers : list of openmc.Trigger, optional
+        List of tally triggers
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the tally
+    name : str
+        Name of the tally
+
+        .. versionadded:: 0.14.0
+    filters : list of openmc.Filter
+        List of specified filters for the tally
+    scores : list of str
+        List of defined scores, e.g. 'flux', 'fission', etc.
+    triggers : list of openmc.Trigger
+        List of tally triggers
+    num_scores : int
+        Total number of scores
+    num_filter_bins : int
+        Total number of filter bins accounting for all filters
+    num_bins : int
+        Total number of bins for the tally
+    shape : 3-tuple of int
+        The shape of the tally data array ordered as the number of filter bins,
+        nuclide bins and score bins
+    filter_strides : list of int
+        Stride in memory for each filter
+    num_realizations : int
+        Total number of realizations
+    with_summary : bool
+        Whether or not a Summary has been linked
+    sum : numpy.ndarray
+        An array containing the sum of each independent realization for each bin
+    sum_sq : numpy.ndarray
+        An array containing the sum of each independent realization squared for
+        each bin
+    sum_third : numpy.ndarray
+        An array containing the sum of each independent realization to the third power for
+        each bin
+    sum_fourth : numpy.ndarray
+        An array containing the sum of each independent realization to the fourth power for
+        each bin
+    mean : numpy.ndarray
+        An array containing the sample mean for each bin
+    std_dev : numpy.ndarray
+        An array containing the sample standard deviation for each bin
+    vov : numpy.ndarray
+        An array containing the variance of the variance for each tally bin
+    higher_moments : bool
+        Whether or not the tally accumulates the sums third and fourth to compute higher-order moments
+    figure_of_merit : numpy.ndarray
+        An array containing the figure of merit for each bin
+
+        .. versionadded:: 0.15.3
+    derived : bool
+        Whether or not the tally is derived from one or more other tallies
+    sparse : bool
+        Whether or not the tally uses SciPy's LIL sparse matrix format for
+        compressed data storage
+
+    """
+    
+    tally_type = "surface"
+
+    def __init__(self, tally_id=None, name='', scores=None, filters=None,
+                 triggers=None):
+        super().__init__(tally_id=tally_id, name=name, scores=scores, filters=filters,
+                 estimator="analog", triggers=triggers)
+                 
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        """Generate tally object from an XML element
+
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.TallyBase
+            Tally object
+
+        """
+        tally_id = int(get_text(elem, "id"))
+        name = get_text(elem, "name", "")
+        tally = cls(tally_id=tally_id, name=name)
+
+        # Read filters
+        filter_ids = get_elem_list(elem, "filters", int)
+        if filter_ids is not None:
+            tally.filters = [kwargs['filters'][uid] for uid in filter_ids]
+
+        # Read scores
+        scores = get_elem_list(elem, "scores", str)
+        if scores is not None:
+            tally.scores = scores
+
+        # Set estimator
+        estimator = get_text(elem, "estimator")
+        if estimator is not None:
+            tally.estimator = estimator
+
+        # Read triggers
+        tally.triggers = [
+            openmc.Trigger.from_xml_element(trigger_elem)
+            for trigger_elem in elem.findall('trigger')
+        ]
+
+        return tally 
+                 
+    @TallyBase.derivative.setter
+    def derivative(self, deriv):
+        cv.check_type('tally derivative', deriv, {None})
+        self._derivative = deriv                        
+
+    @TallyBase.estimator.setter
+    def estimator(self, estimator):
+        cv.check_value('estimator', estimator, ("analog", None))
+        self._estimator = estimator              
+        
+    @TallyBase.nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_type('tally nuclides', nuclides, MutableSequence, {None})
+        self._nuclides = nuclides      
+
+    @TallyBase.scores.setter
+    def scores(self, scores):
+        cv.check_type('tally scores', scores, MutableSequence, SURFACE_SCORE_TYPES)
+        self._scores = scores        
+                           
+                 
+class PulseHeightTally(TallyBase):
+    """A pulse height tally defined by a set of filters.
+
+    Parameters
+    ----------
+    tally_id : int, optional
+        Unique identifier for the tally. If none is specified, an identifier
+        will automatically be assigned
+    name : str, optional
+        Name of the tally. If not specified, the name is the empty string.
+    scores : list of str, optional
+        List of scores, e.g. ['flux', 'fission']
+    filters : list of openmc.Filter, optional
+        List of filters for the tally
+    triggers : list of openmc.Trigger, optional
+        List of tally triggers
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the tally
+    name : str
+        Name of the tally
+    multiply_density : bool
+        Whether reaction rates should be multiplied by atom density
+
+        .. versionadded:: 0.14.0
+    filters : list of openmc.Filter
+        List of specified filters for the tally
+    nuclides : list of str
+        List of nuclides to score results for
+    scores : list of str
+        List of defined scores, e.g. 'flux', 'fission', etc.
+    triggers : list of openmc.Trigger
+        List of tally triggers
+    num_scores : int
+        Total number of scores
+    num_filter_bins : int
+        Total number of filter bins accounting for all filters
+    num_bins : int
+        Total number of bins for the tally
+    shape : 3-tuple of int
+        The shape of the tally data array ordered as the number of filter bins,
+        nuclide bins and score bins
+    filter_strides : list of int
+        Stride in memory for each filter
+    num_realizations : int
+        Total number of realizations
+    with_summary : bool
+        Whether or not a Summary has been linked
+    sum : numpy.ndarray
+        An array containing the sum of each independent realization for each bin
+    sum_sq : numpy.ndarray
+        An array containing the sum of each independent realization squared for
+        each bin
+    sum_third : numpy.ndarray
+        An array containing the sum of each independent realization to the third power for
+        each bin
+    sum_fourth : numpy.ndarray
+        An array containing the sum of each independent realization to the fourth power for
+        each bin
+    mean : numpy.ndarray
+        An array containing the sample mean for each bin
+    std_dev : numpy.ndarray
+        An array containing the sample standard deviation for each bin
+    vov : numpy.ndarray
+        An array containing the variance of the variance for each tally bin
+    higher_moments : bool
+        Whether or not the tally accumulates the sums third and fourth to compute higher-order moments
+    figure_of_merit : numpy.ndarray
+        An array containing the figure of merit for each bin
+
+        .. versionadded:: 0.15.3
+    derived : bool
+        Whether or not the tally is derived from one or more other tallies
+    sparse : bool
+        Whether or not the tally uses SciPy's LIL sparse matrix format for
+        compressed data storage
+
+    """
+    
+    tally_type = "pulse-height"
+
+    def __init__(self, tally_id=None, name='', filters=None, triggers=None):
+        super().__init__(tally_id=tally_id, name=name, scores=['pulse-height'], filters=filters,
+                 estimator="collision", triggers=triggers)
+                 
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        """Generate tally object from an XML element
+
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.TallyBase
+            Tally object
+
+        """
+        tally_id = int(get_text(elem, "id"))
+        name = get_text(elem, "name", "")
+        tally = cls(tally_id=tally_id, name=name)
+
+        # Read filters
+        filter_ids = get_elem_list(elem, "filters", int)
+        if filter_ids is not None:
+            tally.filters = [kwargs['filters'][uid] for uid in filter_ids]
+
+        # Read scores
+        scores = get_elem_list(elem, "scores", str)
+        if scores is not None:
+            tally.scores = scores
+
+        # Set estimator
+        estimator = get_text(elem, "estimator")
+        if estimator is not None:
+            tally.estimator = estimator
+
+        # Read triggers
+        tally.triggers = [
+            openmc.Trigger.from_xml_element(trigger_elem)
+            for trigger_elem in elem.findall('trigger')
+        ]
+
+        return tally  
+                         
+    @TallyBase.derivative.setter
+    def derivative(self, deriv):
+        cv.check_value('tally derivative', deriv, None)
+        self._derivative = deriv      
+        
+    @TallyBase.estimator.setter
+    def estimator(self, estimator):
+        cv.check_value('estimator', estimator, ("collision", None))
+        self._estimator = estimator             
+    
+    @TallyBase.nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_value('tally nuclides', nuclides, None)
+        self._nuclides = nuclides         
+        
+    @TallyBase.scores.setter
+    def scores(self, scores):
+        cv.check_type('tally scores', scores, MutableSequence, {"pulse-height"})
+        self._scores = scores                         
+                 
 class Tallies(cv.CheckedList):
     """Collection of Tallies used for an OpenMC simulation.
 
     This class corresponds directly to the tallies.xml input file. It can be
-    thought of as a normal Python list where each member is a :class:`Tally`. It
+    thought of as a normal Python list where each member is a :class:`TallyBase`. It
     behaves like a list as the following example demonstrates:
 
-    >>> t1 = openmc.Tally()
-    >>> t2 = openmc.Tally()
-    >>> t3 = openmc.Tally()
+    >>> t1 = openmc.VolumeTally()
+    >>> t2 = openmc.SurfaceTally()
+    >>> t3 = openmc.PulseHeightTally()
     >>> tallies = openmc.Tallies([t1])
     >>> tallies.append(t2)
     >>> tallies += [t3]
 
     Parameters
     ----------
-    tallies : Iterable of openmc.Tally
+    tallies : Iterable of openmc.TallyBase
         Tallies to add to the collection
 
     """
 
     def __init__(self, tallies=None):
-        super().__init__(Tally, 'tallies collection')
+        super().__init__(TallyBase, 'tallies collection')
         if tallies is not None:
             self += tallies
 
@@ -3722,7 +4158,7 @@ class Tallies(cv.CheckedList):
 
         Parameters
         ----------
-        tally : openmc.Tally
+        tally : openmc.TallyBase
             Tally to append
         merge : bool
             Indicate whether the tally should be merged with an existing tally,
@@ -3893,7 +4329,7 @@ class Tallies(cv.CheckedList):
         # Read tally elements
         tallies = []
         for e in elem.findall('tally'):
-            tally = openmc.Tally.from_xml_element(
+            tally = openmc.TallyBase.from_xml_element(
                 e, filters=filters, derivatives=derivatives
             )
             tallies.append(tally)

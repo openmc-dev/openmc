@@ -113,7 +113,7 @@ def model():
 
     particle_filter = openmc.ParticleFilter(['neutron', 'photon'])
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter, energy_filter, particle_filter]
     tally.scores = ['flux']
 
@@ -248,7 +248,7 @@ def test_photon_heating(run_in_tmpdir):
     model.settings.batches = 5
     model.settings.particles = 100
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['heating']
     tally.filters = [
         openmc.ParticleFilter(['photon']),

@@ -43,7 +43,7 @@ def model():
 
     energy_filter = openmc.EnergyFilter([0.0, 0.253, 1.0e3, 1.0e6, 20.0e6])
     distrib_filter = openmc.DistribcellFilter(pin.cells[1])
-    tally = openmc.Tally(name='distribcell tally')
+    tally = openmc.VolumeTally(name='distribcell tally')
     tally.filters = [energy_filter, distrib_filter]
     tally.scores = ['nu-fission', 'total']
     tally.nuclides = ['U234', 'U235', 'U238']

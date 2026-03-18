@@ -51,19 +51,19 @@ def model():
     f_1 = openmc.MeshFilter(mesh)
     f_2 = openmc.MeshBornFilter(mesh)
 
-    t_1 = openmc.Tally(name="scatter")
+    t_1 = openmc.VolumeTally(name="scatter")
     t_1.filters = [f_1, f_2]
     t_1.scores = ["scatter"]
 
-    t_2 = openmc.Tally(name="scatter-mesh")
+    t_2 = openmc.VolumeTally(name="scatter-mesh")
     t_2.filters = [f_1]
     t_2.scores = ["scatter"]
 
-    t_3 = openmc.Tally(name="scatter-meshborn")
+    t_3 = openmc.VolumeTally(name="scatter-meshborn")
     t_3.filters = [f_2]
     t_3.scores = ["scatter"]
 
-    t_4 = openmc.Tally(name="scatter-total")
+    t_4 = openmc.VolumeTally(name="scatter-total")
     t_4.scores = ["scatter"]
 
     model.tallies = [t_1, t_2, t_3, t_4]

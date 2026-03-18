@@ -51,7 +51,7 @@ def pencil_beam_model(cfg, E0, N):
 
     # Tally definition
 
-    tally1 = openmc.Tally(name="angular distribution")
+    tally1 = openmc.VolumeTally(name="angular distribution")
     tally1.scores = ["current"]
     filter1 = openmc.SurfaceFilter(sample_sphere)
     filter2 = openmc.PolarFilter(np.linspace(0, pi, 180+1))

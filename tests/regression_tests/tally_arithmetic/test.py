@@ -41,12 +41,12 @@ def model():
     material_filter = openmc.MaterialFilter((fuel, water))
     mesh_filter = openmc.MeshFilter(mesh)
 
-    tally = openmc.Tally(name='tally 1')
+    tally = openmc.VolumeTally(name='tally 1')
     tally.filters = [material_filter, energy_filter]
     tally.scores = ['nu-fission', 'total']
     tally.nuclides = ['U234', 'U235']
     model.tallies.append(tally)
-    tally = openmc.Tally(name='tally 2')
+    tally = openmc.VolumeTally(name='tally 2')
     tally.filters = [energy_filter, mesh_filter]
     tally.scores = ['total', 'fission']
     tally.nuclides = ['U238', 'U235']

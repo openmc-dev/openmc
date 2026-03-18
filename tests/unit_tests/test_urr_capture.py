@@ -21,7 +21,7 @@ def th232_model():
     energies = openmc.stats.Uniform(e_min, e_max)
     model.settings.source = openmc.IndependentSource(energy=energies)
 
-    tally = openmc.Tally(name='rates')
+    tally = openmc.VolumeTally(name='rates')
     tally.filters = [openmc.EnergyFilter([e_min, e_max])]
     tally.scores = ['(n,gamma)', 'absorption', 'fission']
     model.tallies.append(tally)

@@ -76,10 +76,10 @@ def model():
                  [(c3, i) for i in range(c3.num_instances)])
     f1 = openmc.CellInstanceFilter(instances)
     f2 = openmc.CellInstanceFilter(instances[::-1])
-    t1 = openmc.Tally()
+    t1 = openmc.VolumeTally()
     t1.filters = [f1]
     t1.scores = ['total']
-    t2 = openmc.Tally()
+    t2 = openmc.VolumeTally()
     t2.filters = [f2]
     t2.scores = ['total']
     model.tallies += [t1, t2]

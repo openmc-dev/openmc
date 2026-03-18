@@ -21,7 +21,7 @@ def test_negative_positron_heating():
     model.settings.electron_treatment = 'led'
     model.settings.seed = 513836
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [openmc.ParticleFilter(['photon', 'electron', 'positron'])]
     tally.scores = ['heating']
     model.tallies = openmc.Tallies([tally])

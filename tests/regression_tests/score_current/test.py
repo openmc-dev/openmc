@@ -37,10 +37,10 @@ def model():
     mesh_surface_filter = openmc.MeshSurfaceFilter(mesh)
     energy_filter = openmc.EnergyFilter([0.0, 0.253, 20.0e6])
 
-    tally1 = openmc.Tally()
+    tally1 = openmc.SurfaceTally()
     tally1.filters = [mesh_surface_filter]
     tally1.scores = ['current']
-    tally2 = openmc.Tally()
+    tally2 = openmc.SurfaceTally()
     tally2.filters = [mesh_surface_filter, energy_filter]
     tally2.scores = ['current']
     model.tallies.extend([tally1, tally2])

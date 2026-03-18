@@ -69,7 +69,7 @@ def model():
     mesh.lower_left = (-lat_size, -lat_size)
     mesh.upper_right = (lat_size, lat_size)
     mesh_filter = openmc.MeshFilter(mesh)
-    tally = openmc.Tally(tally_id=1)
+    tally = openmc.VolumeTally(tally_id=1)
     tally.filters = [mesh_filter]
     tally.scores = ['flux']
     tally.estimator = 'tracklength'

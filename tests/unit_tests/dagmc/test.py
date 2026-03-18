@@ -44,7 +44,7 @@ def dagmc_model(request):
     assert dagmc_universe.n_surfaces == 21
 
     # tally
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['total']
     tally.filters = [openmc.CellFilter(1)]
     model.tallies = [tally]

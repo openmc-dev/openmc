@@ -1,6 +1,6 @@
 from openmc.filter import *
 from openmc.filter_expansion import *
-from openmc import RegularMesh, Tally
+from openmc import RegularMesh, VolumeTally
 
 from tests.testing_harness import HashedPyAPITestHarness
 
@@ -18,12 +18,12 @@ def test_tallies():
 
     azimuthal_bins = (-3.14159, -1.8850, -0.6283, 0.6283, 1.8850, 3.14159)
     azimuthal_filter = AzimuthalFilter(azimuthal_bins)
-    azimuthal_tally1 = Tally()
+    azimuthal_tally1 = VolumeTally()
     azimuthal_tally1.filters = [azimuthal_filter]
     azimuthal_tally1.scores = ['flux']
     azimuthal_tally1.estimator = 'tracklength'
 
-    azimuthal_tally2 = Tally()
+    azimuthal_tally2 = VolumeTally()
     azimuthal_tally2.filters = [azimuthal_filter]
     azimuthal_tally2.scores = ['flux']
     azimuthal_tally2.estimator = 'analog'
@@ -33,39 +33,39 @@ def test_tallies():
     mesh_2x2.upper_right = [182.07, 182.07]
     mesh_2x2.dimension = [2, 2]
     mesh_filter = MeshFilter(mesh_2x2)
-    azimuthal_tally3 = Tally()
+    azimuthal_tally3 = VolumeTally()
     azimuthal_tally3.filters = [azimuthal_filter, mesh_filter]
     azimuthal_tally3.scores = ['flux']
     azimuthal_tally3.estimator = 'tracklength'
 
-    cellborn_tally = Tally()
+    cellborn_tally = VolumeTally()
     cellborn_tally.filters = [
         CellBornFilter((model.geometry.get_all_cells()[10],
                         model.geometry.get_all_cells()[21],
                         22, 23))]  # Test both Cell objects and ids
     cellborn_tally.scores = ['total']
 
-    dg_tally = Tally()
+    dg_tally = VolumeTally()
     dg_tally.filters = [DelayedGroupFilter((1, 2, 3, 4, 5, 6))]
     dg_tally.scores = ['delayed-nu-fission', 'decay-rate']
     dg_tally.nuclides = ['U235', 'O16', 'total']
 
     four_groups = (0.0, 0.253, 1.0e3, 1.0e6, 20.0e6)
     energy_filter = EnergyFilter(four_groups)
-    energy_tally = Tally()
+    energy_tally = VolumeTally()
     energy_tally.filters = [energy_filter]
     energy_tally.scores = ['total']
 
     energyout_filter = EnergyoutFilter(four_groups)
-    energyout_tally = Tally()
+    energyout_tally = VolumeTally()
     energyout_tally.filters = [energyout_filter]
     energyout_tally.scores = ['scatter']
 
-    transfer_tally = Tally()
+    transfer_tally = VolumeTally()
     transfer_tally.filters = [energy_filter, energyout_filter]
     transfer_tally.scores = ['scatter', 'nu-fission']
 
-    material_tally = Tally()
+    material_tally = VolumeTally()
     material_tally.filters = [
         MaterialFilter((model.geometry.get_materials_by_name('UOX fuel')[0],
                         model.geometry.get_materials_by_name('Zircaloy')[0],
@@ -74,54 +74,54 @@ def test_tallies():
 
     mu_bins = (-1.0, -0.5, 0.0, 0.5, 1.0)
     mu_filter = MuFilter(mu_bins)
-    mu_tally1 = Tally()
+    mu_tally1 = VolumeTally()
     mu_tally1.filters = [mu_filter]
     mu_tally1.scores = ['scatter', 'nu-scatter']
 
-    mu_tally2 = Tally()
+    mu_tally2 = VolumeTally()
     mu_tally2.filters = [mu_filter, mesh_filter]
     mu_tally2.scores = ['scatter', 'nu-scatter']
 
     polar_bins = (0.0, 0.6283, 1.2566, 1.8850, 2.5132, 3.14159)
     polar_filter = PolarFilter(polar_bins)
-    polar_tally1 = Tally()
+    polar_tally1 = VolumeTally()
     polar_tally1.filters = [polar_filter]
     polar_tally1.scores = ['flux']
     polar_tally1.estimator = 'tracklength'
 
-    polar_tally2 = Tally()
+    polar_tally2 = VolumeTally()
     polar_tally2.filters = [polar_filter]
     polar_tally2.scores = ['flux']
     polar_tally2.estimator = 'analog'
 
-    polar_tally3 = Tally()
+    polar_tally3 = VolumeTally()
     polar_tally3.filters = [polar_filter, mesh_filter]
     polar_tally3.scores = ['flux']
     polar_tally3.estimator = 'tracklength'
 
     legendre_filter = LegendreFilter(order=4)
-    legendre_tally = Tally()
+    legendre_tally = VolumeTally()
     legendre_tally.filters = [legendre_filter]
     legendre_tally.scores = ['scatter', 'nu-scatter']
     legendre_tally.estimator = 'analog'
 
     harmonics_filter = SphericalHarmonicsFilter(order=4)
-    harmonics_tally = Tally()
+    harmonics_tally = VolumeTally()
     harmonics_tally.filters = [harmonics_filter]
     harmonics_tally.scores = ['scatter', 'nu-scatter', 'flux', 'total']
     harmonics_tally.estimator = 'analog'
 
-    harmonics_tally2 = Tally()
+    harmonics_tally2 = VolumeTally()
     harmonics_tally2.filters = [harmonics_filter]
     harmonics_tally2.scores = ['flux', 'total']
     harmonics_tally2.estimator = 'collision'
 
-    harmonics_tally3 = Tally()
+    harmonics_tally3 = VolumeTally()
     harmonics_tally3.filters = [harmonics_filter]
     harmonics_tally3.scores = ['flux', 'total']
     harmonics_tally3.estimator = 'tracklength'
 
-    universe_tally = Tally()
+    universe_tally = VolumeTally()
     universe_tally.filters = [
         UniverseFilter((model.geometry.get_all_universes()[1],
                         model.geometry.get_all_universes()[2],
@@ -131,7 +131,7 @@ def test_tallies():
     cell_filter = CellFilter((model.geometry.get_all_cells()[10],
                               model.geometry.get_all_cells()[21],
                               22, 23, 60))  # Test both Cell objects and ids
-    score_tallies = [Tally() for i in range(6)]
+    score_tallies = [VolumeTally() for i in range(6)]
     for t in score_tallies:
         t.filters = [cell_filter]
         t.scores = ['absorption', 'delayed-nu-fission', 'events', 'fission',
@@ -146,7 +146,7 @@ def test_tallies():
         t.nuclides = ['U235', 'O16', 'total']
 
     cell_filter2 = CellFilter((21, 22, 23, 27, 28, 29, 60))
-    flux_tallies = [Tally() for i in range(3)]
+    flux_tallies = [VolumeTally() for i in range(3)]
     for t in flux_tallies:
         t.filters = [cell_filter2]
         t.scores = ['flux']
@@ -154,13 +154,13 @@ def test_tallies():
     flux_tallies[1].estimator = 'analog'
     flux_tallies[2].estimator = 'collision'
 
-    fusion_tally = Tally()
+    fusion_tally = VolumeTally()
     fusion_tally.scores = ['H1-production', 'H2-production', 'H3-production',
         'He3-production', 'He4-production', 'heating', 'damage-energy']
 
     n_collision = (1, 2, 5, 3, 6)
     collision_filter = CollisionFilter(n_collision)
-    collision_tally = Tally()
+    collision_tally = VolumeTally()
     collision_tally.filters = [collision_filter]
     collision_tally.scores = ['scatter']
 

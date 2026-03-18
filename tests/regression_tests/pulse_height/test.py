@@ -37,8 +37,7 @@ def sphere_model():
     )
 
     # Define tallies
-    tally = openmc.Tally(name="pht tally")
-    tally.scores = ['pulse-height']
+    tally = openmc.PulseHeightTally(name="pht tally")
     cell_filter = openmc.CellFilter(inner_sphere)
     energy_filter = openmc.EnergyFilter(np.linspace(0, 1_000_000, 101))
     tally.filters = [cell_filter, energy_filter]

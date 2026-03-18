@@ -25,13 +25,13 @@ def inf_medium_model(cutoff_energy, source_energy):
     model.settings.batches = 10
     model.settings.cutoff = {'energy_photon': cutoff_energy}
 
-    tally_flux = openmc.Tally(name='flux')
+    tally_flux = openmc.VolumeTally(name='flux')
     tally_flux.filters = [
         openmc.EnergyFilter([0.0, cutoff_energy, source_energy]),
         openmc.ParticleFilter(['photon'])
     ]
     tally_flux.scores = ['flux']
-    tally_heating = openmc.Tally(name='heating')
+    tally_heating = openmc.VolumeTally(name='heating')
     tally_heating.scores = ['heating']
     model.tallies = openmc.Tallies([tally_flux, tally_heating])
 

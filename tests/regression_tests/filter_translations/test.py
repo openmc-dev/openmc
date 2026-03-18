@@ -77,7 +77,7 @@ def model():
 
     # Create tallies
     for f in filters:
-        tally = openmc.Tally()
+        tally = openmc.VolumeTally()
         tally.filters = [f]
         tally.scores = ['total']
         model.tallies.append(tally)

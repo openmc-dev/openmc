@@ -18,10 +18,10 @@ def test_micro_macro_compare(run_in_tmpdir):
 
     # Set up two reaction rate tallies, one that multplies by density and the
     # other that doesn't
-    tally_macro = openmc.Tally()
+    tally_macro = openmc.VolumeTally()
     tally_macro.nuclides = ['H1', 'H2', 'H3']
     tally_macro.scores = ['total', 'elastic']
-    tally_micro = openmc.Tally()
+    tally_micro = openmc.VolumeTally()
     tally_micro.nuclides = ['H1', 'H2', 'H3']
     tally_micro.scores = ['total', 'elastic']
     tally_micro.multiply_density = False

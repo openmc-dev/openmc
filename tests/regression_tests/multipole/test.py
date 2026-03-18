@@ -58,7 +58,7 @@ def make_model():
     model.settings.temperature = {'tolerance': 1000, 'multipole': True}
 
     # Tallies
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.nuclides = ['U235', 'O16', 'total']
     tally.scores = ['total', 'fission', '(n,gamma)', 'elastic', '(n,p)']
     model.tallies.append(tally)

@@ -74,7 +74,7 @@ def model():
     model.geometry = openmc.Geometry(dag_univ)
 
     # Tallies
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['total']
     tally.filters = [openmc.CellFilter(1)]
     model.tallies = [tally]

@@ -32,7 +32,7 @@ def ifp_model():
         space=space, constraints={'fissionable': True})
 
     # Tally IFP scores
-    tally = openmc.Tally(name="ifp-scores")
+    tally = openmc.VolumeTally(name="ifp-scores")
     tally.scores = ["ifp-time-numerator", "ifp-beta-numerator", "ifp-denominator"]
     model.tallies = [tally]
 

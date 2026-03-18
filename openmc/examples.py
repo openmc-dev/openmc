@@ -937,7 +937,7 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
     ###########################################################################
     # Define tallies
     # Now use the mesh filter in a tally and indicate what scores are desired
-    tally = openmc.Tally(name="Pin tally")
+    tally = openmc.VolumeTally(name="Pin tally")
     tally.scores = ['flux', 'fission', 'nu-fission']
     tally.estimator = 'analog'
 
@@ -1067,7 +1067,7 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
     energy_filter = openmc.EnergyFilter(group_edges)
 
     # Now use the mesh filter in a tally and indicate what scores are desired
-    tally = openmc.Tally(name="Mesh tally")
+    tally = openmc.VolumeTally(name="Mesh tally")
     tally.filters = [mesh_filter, energy_filter]
     tally.scores = ['flux', 'fission', 'nu-fission']
     tally.estimator = 'analog'
@@ -1281,19 +1281,19 @@ def random_ray_three_region_cube() -> openmc.Model:
     estimator = 'tracklength'
 
     absorber_filter = openmc.MaterialFilter(absorber_mat)
-    absorber_tally = openmc.Tally(name="Absorber Tally")
+    absorber_tally = openmc.VolumeTally(name="Absorber Tally")
     absorber_tally.filters = [absorber_filter]
     absorber_tally.scores = ['flux']
     absorber_tally.estimator = estimator
 
     void_filter = openmc.MaterialFilter(void_mat)
-    void_tally = openmc.Tally(name="Void Tally")
+    void_tally = openmc.VolumeTally(name="Void Tally")
     void_tally.filters = [void_filter]
     void_tally.scores = ['flux']
     void_tally.estimator = estimator
 
     source_filter = openmc.MaterialFilter(source_mat)
-    source_tally = openmc.Tally(name="Source Tally")
+    source_tally = openmc.VolumeTally(name="Source Tally")
     source_tally.filters = [source_filter]
     source_tally.scores = ['flux']
     source_tally.estimator = estimator

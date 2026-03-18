@@ -25,29 +25,29 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # We want density derivatives for both water and fuel to get coverage
         # for both fissile and non-fissile materials.
-        d1 = openmc.TallyDerivative(derivative_id=1)
+        d1 = openmc.VolumeTallyDerivative(derivative_id=1)
         d1.variable = 'density'
         d1.material = 3
-        d2 = openmc.TallyDerivative(derivative_id=2)
+        d2 = openmc.VolumeTallyDerivative(derivative_id=2)
         d2.variable = 'density'
         d2.material = 1
 
         # O-16 is a good nuclide to test against because it is present in both
         # water and fuel.  Some routines need to recognize that they have the
         # perturbed nuclide but not the perturbed material.
-        d3 = openmc.TallyDerivative(derivative_id=3)
+        d3 = openmc.VolumeTallyDerivative(derivative_id=3)
         d3.variable = 'nuclide_density'
         d3.material = 1
         d3.nuclide = 'O16'
 
         # A fissile nuclide, just for good measure.
-        d4 = openmc.TallyDerivative(derivative_id=4)
+        d4 = openmc.VolumeTallyDerivative(derivative_id=4)
         d4.variable = 'nuclide_density'
         d4.material = 1
         d4.nuclide = 'U235'
 
         # Temperature derivatives.
-        d5 = openmc.TallyDerivative(derivative_id=5)
+        d5 = openmc.VolumeTallyDerivative(derivative_id=5)
         d5.variable = 'temperature'
         d5.material = 1
 
@@ -55,7 +55,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # Cover the flux score.
         for i in range(5):
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.scores = ['flux']
             t.filters = [filt_mats]
             t.derivative = derivs[i]
@@ -63,7 +63,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # Cover supported scores with a collision estimator.
         for i in range(5):
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.scores = ['total', 'absorption', 'scatter', 'fission', 'nu-fission']
             t.filters = [filt_mats]
             t.nuclides = ['total', 'U235']
@@ -72,7 +72,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # Cover an analog estimator.
         for i in range(5):
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.scores = ['absorption']
             t.filters = [filt_mats]
             t.estimator = 'analog'
@@ -81,7 +81,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # Energyout filter and total nuclide for the density derivatives.
         for i in range(2):
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.scores = ['nu-fission', 'scatter']
             t.filters = [filt_mats, filt_eout]
             t.nuclides = ['total', 'U235']
@@ -90,7 +90,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # Energyout filter without total nuclide for other derivatives.
         for i in range(2, 5):
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.scores = ['nu-fission', 'scatter']
             t.filters = [filt_mats, filt_eout]
             t.nuclides = ['U235']

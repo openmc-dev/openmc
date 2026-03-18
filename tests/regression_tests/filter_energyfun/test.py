@@ -66,7 +66,7 @@ def model():
 
     filters = [filt1, filt3, filt4, filt5, filt6, filt7, filt8, filt9]
     # Make tallies
-    tallies = [openmc.Tally() for _ in range(len(filters) + 1)]
+    tallies = [openmc.VolumeTally() for _ in range(len(filters) + 1)]
     for t in tallies:
         t.scores = ['(n,gamma)']
         t.nuclides = ['Am241']

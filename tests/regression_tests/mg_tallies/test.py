@@ -87,7 +87,7 @@ def test_mg_tallies():
 
     for do_nuclides, scores in ((False, scores_without_nuclides),
                                 (True, scores_with_nuclides)):
-        t = openmc.Tally()
+        t = openmc.VolumeTally()
         t.filters = [mesh_filter]
         t.estimator = 'analog'
         t.scores = scores
@@ -95,7 +95,7 @@ def test_mg_tallies():
             t.nuclides = nuclides
         model.tallies.append(t)
 
-        t = openmc.Tally()
+        t = openmc.VolumeTally()
         t.filters = [mesh_filter]
         t.estimator = 'tracklength'
         t.scores = scores
@@ -113,7 +113,7 @@ def test_mg_tallies():
                 e_filter = energy_filter
                 eout_filter = energyout_filter
 
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.filters = [mat_filter, e_filter]
             t.estimator = 'analog'
             t.scores = scores + ['scatter', 'nu-scatter']
@@ -121,7 +121,7 @@ def test_mg_tallies():
                 t.nuclides = nuclides
             model.tallies.append(t)
 
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.filters = [mat_filter, e_filter]
             t.estimator = 'collision'
             t.scores = scores
@@ -129,7 +129,7 @@ def test_mg_tallies():
                 t.nuclides = nuclides
             model.tallies.append(t)
 
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.filters = [mat_filter, e_filter]
             t.estimator = 'tracklength'
             t.scores = scores
@@ -137,7 +137,7 @@ def test_mg_tallies():
                 t.nuclides = nuclides
             model.tallies.append(t)
 
-            t = openmc.Tally()
+            t = openmc.VolumeTally()
             t.filters = [mat_filter, e_filter, eout_filter]
             t.scores = ['scatter', 'nu-scatter', 'nu-fission']
             if do_nuclides:

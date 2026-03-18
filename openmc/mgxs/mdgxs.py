@@ -92,11 +92,11 @@ class MDGXS(MGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
-    rxn_rate_tally : openmc.Tally
+    rxn_rate_tally : openmc.TallyBase
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
+    xs_tally : openmc.TallyBase
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int

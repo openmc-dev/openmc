@@ -61,7 +61,7 @@ def model():
     model.settings.particles = 1000
     model.settings.run_mode = 'fixed source'
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     mat_filter = openmc.MaterialFilter([natural_lead])
     # energy filter with two bins 0 eV - 1 keV and 1 keV - 1 MeV
     # the second bin shouldn't have any results

@@ -424,9 +424,13 @@ class StatePoint:
                     # Check if tally is internal and therefore has no data
                     if group.attrs.get("internal"):
                         continue
+                        
+                    tally_type = 'volume'
+                    if 'type' in group:
+                        tally_type = group['type'][()].decode()    
 
                     # Create Tally object and assign basic properties
-                    tally = openmc.Tally(tally_id)
+                    tally = {"volume": openmc.VolumeTally, "pulse-height": openmc.PulseHeightTally, "surface": openmc.SurfaceTally}[tally_type](tally_id)
                     tally._sp_filename = Path(self._f.filename)
                     tally.name = group['name'][()].decode() if 'name' in group else ''
 
@@ -590,7 +594,7 @@ class StatePoint:
 
         Returns
         -------
-        tally : openmc.Tally
+        tally : openmc.TallyBase
             A tally matching the specified criteria
 
         Raises

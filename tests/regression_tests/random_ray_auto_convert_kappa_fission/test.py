@@ -51,7 +51,7 @@ def test_random_ray_auto_convert(method):
         model.settings.random_ray['source_shape'] = 'linear'
 
         # Set a material tally
-        t = openmc.Tally(name = 'KF Tally')
+        t = openmc.VolumeTally(name = 'KF Tally')
         t.filters = [openmc.MaterialFilter(bins=1)]
         t.scores = ['kappa-fission']
         model.tallies.append(t)

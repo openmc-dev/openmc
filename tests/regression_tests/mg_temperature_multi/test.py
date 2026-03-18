@@ -147,12 +147,12 @@ def test_mg_temperature_multi():
     outer_filter = openmc.CellFilter(fuel_outer)
     energy_filter = openmc.EnergyFilter(egroups)
 
-    inner_tally = openmc.Tally(name="inner tally")
+    inner_tally = openmc.VolumeTally(name="inner tally")
     inner_tally.filters = [energy_filter]
     inner_tally.filters = [inner_filter]
     inner_tally.scores = ['flux']
 
-    outer_tally = openmc.Tally(name="outer tally")
+    outer_tally = openmc.VolumeTally(name="outer tally")
     outer_tally.filters = [energy_filter]
     outer_tally.filters = [outer_filter]
     outer_tally.scores = ['flux']

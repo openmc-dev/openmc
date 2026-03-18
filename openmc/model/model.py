@@ -130,7 +130,7 @@ class Model:
 
     @tallies.setter
     def tallies(self, tallies):
-        check_type('tallies', tallies, Iterable, openmc.Tally)
+        check_type('tallies', tallies, Iterable, openmc.TallyBase)
         if isinstance(tallies, openmc.Tallies):
             self._tallies = tallies
         else:
@@ -252,17 +252,17 @@ class Model:
 
         """
         if not any('ifp-time-numerator' in t.scores for t in self.tallies):
-            gen_time_tally = openmc.Tally(name='IFP time numerator')
+            gen_time_tally = openmc.VolumeTally(name='IFP time numerator')
             gen_time_tally.scores = ['ifp-time-numerator']
             self.tallies.append(gen_time_tally)
         if not any('ifp-beta-numerator' in t.scores for t in self.tallies):
-            beta_tally = openmc.Tally(name='IFP beta numerator')
+            beta_tally = openmc.VolumeTally(name='IFP beta numerator')
             beta_tally.scores = ['ifp-beta-numerator']
             if num_groups is not None:
                 beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
             self.tallies.append(beta_tally)
         if not any('ifp-denominator' in t.scores for t in self.tallies):
-            denom_tally = openmc.Tally(name='IFP denominator')
+            denom_tally = openmc.VolumeTally(name='IFP denominator')
             denom_tally.scores = ['ifp-denominator']
             self.tallies.append(denom_tally)
 

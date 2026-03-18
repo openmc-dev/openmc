@@ -16,7 +16,7 @@ def test_filter_reaction():
     model.geometry = openmc.Geometry([c])
 
     # Create a tally with reaction filter
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [openmc.ReactionFilter(
         ['(n,elastic)', '(n,2n)', '(n,fission)', '(n,gamma)', 'total']
     )]

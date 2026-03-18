@@ -27,7 +27,7 @@ def model():
     # Create a tally for current through the first surface binned by mu
     surf_filter = openmc.SurfaceFilter([cyl1])
     mu_filter = openmc.MuSurfaceFilter([-1.0, -0.5, 0.0, 0.5, 1.0])
-    tally = openmc.Tally()
+    tally = openmc.SurfaceTally()
     tally.filters = [surf_filter, mu_filter]
     tally.scores = ['current', 'flux']
     model.tallies.append(tally)

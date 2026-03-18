@@ -69,7 +69,7 @@ def pin_model_attributes():
     settings.entropy_mesh = entropy_mesh
 
     tals = openmc.Tallies()
-    tal = openmc.Tally(tally_id=1, name='test')
+    tal = openmc.VolumeTally(tally_id=1, name='test')
     tal.filters = [openmc.MaterialFilter(bins=[uo2])]
     tal.scores = ['flux', 'fission']
     tals.append(tal)
@@ -934,7 +934,7 @@ def test_setter_from_list():
     model = openmc.Model(materials=[mat])
     assert isinstance(model.materials, openmc.Materials)
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     model = openmc.Model(tallies=[tally])
     assert isinstance(model.tallies, openmc.Tallies)
 

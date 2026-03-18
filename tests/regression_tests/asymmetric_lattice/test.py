@@ -46,7 +46,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         distrib_filter = openmc.DistribcellFilter(27)
 
         # Initialize the tallies
-        tally = openmc.Tally(name='distribcell tally', tally_id=27)
+        tally = openmc.VolumeTally(name='distribcell tally', tally_id=27)
         tally.filters.append(distrib_filter)
         tally.scores.append('nu-fission')
 

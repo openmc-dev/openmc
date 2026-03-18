@@ -46,7 +46,7 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
 
         # Tally flux under energy cutoff
         tallies = openmc.Tallies()
-        tally = openmc.Tally(1)
+        tally = openmc.VolumeTally(1)
         tally.scores = ['flux']
         energy_filter = openmc.filter.EnergyFilter((0.0, energy_cutoff))
         tally.filters = [energy_filter]

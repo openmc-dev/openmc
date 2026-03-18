@@ -346,7 +346,8 @@ void Cell::to_hdf5(hid_t cell_group) const
 
 vector<int32_t> parse_cell_material_xml(pugi::xml_node node, int32_t cell_id)
 {
-  vector<std::string> mats {get_node_array<std::string>(node, "material", true)};
+  vector<std::string> mats {
+    get_node_array<std::string>(node, "material", true)};
   if (mats.empty()) {
     fatal_error(fmt::format(
       "An empty material element was specified for cell {}", cell_id));

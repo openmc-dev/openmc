@@ -51,9 +51,10 @@
       <particles>neutron photon</particles>
       <energies>0.0 100000.0 300000.0 500000.0 2000000.0 20000000.0</energies>
     </filter>
-    <tally id="1">
+    <tally id="1" type="surface">
       <filters>1 2</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
     <tally id="2">
       <filters>2</filters>

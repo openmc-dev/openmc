@@ -42,13 +42,15 @@
     <filter id="2" type="energy">
       <bins>0.0 0.253 20000000.0</bins>
     </filter>
-    <tally id="1">
+    <tally id="1" type="surface">
       <filters>1</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
-    <tally id="2">
+    <tally id="2" type="surface">
       <filters>1 2</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
   </tallies>
 </model>

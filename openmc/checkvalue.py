@@ -385,10 +385,17 @@ class CheckedList(list):
                 
     def __deepcopy__(self, memo):
         import copy
-        cls = CheckedList(self.expected_type, self.name)
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k != 'expected_type':
+                setattr(result, k, copy.deepcopy(v, memo))
+            else:
+                setattr(result, k, v)
         for item in self:
-            cls.append(copy.deepcopy(item, memo))
-        return cls                
+            result.append(copy.deepcopy(item, memo))
+        return result                
 
     def __add__(self, other):
         new_instance = copy.copy(self)

@@ -636,7 +636,7 @@ class DAGMCCell(openmc.Cell):
         return super().create_xml_subelement(xml_element, memo)
 
     @classmethod
-    def from_xml_element(cls, elem, mats, universe=None):
+    def from_xml_element(cls, elem, mats, universe):
         """Generate a DAGMCCell from an XML <cell> override element.
 
         Parameters
@@ -646,9 +646,8 @@ class DAGMCCell(openmc.Cell):
         mats : dict
             Dictionary mapping material ID strings to
             :class:`openmc.Material` instances
-        universe : DAGMCUniverse, optional
-            Universe to add the parsed cell to. If not provided the cell is
-            returned without being added to any universe.
+        universe : DAGMCUniverse
+            Universe to add the parsed cell to.
 
         Returns
         -------
@@ -671,17 +670,6 @@ class DAGMCCell(openmc.Cell):
             raise ValueError(
                 f"DAGMC cell {cell_id} must specify a material override.")
 
-        # Delegate to Cell.from_xml_element. Pass the DAGMCUniverse directly
-        # so the cell is registered there; if no universe is provided use a
-        # no-op stub so the cell is returned without being added anywhere.
-        if universe is not None:
-            target = universe
-        else:
-            class _Stub:
-                def add_cell(self, _):
-                    pass
-            target = _Stub()
-
         return super().from_xml_element(
             elem, surfaces={}, materials=mats,
-            get_universe=lambda _: target)
+            get_universe=lambda _: universe)

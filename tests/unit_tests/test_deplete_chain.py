@@ -598,14 +598,14 @@ _ISOMERIC_CHAIN = """\
     <isomeric_branching reaction="(n,gamma)">
       <energies>1e-5 0.0253 1e3 1e5 1e6 1e7</energies>
       <product nuclide="Am242">0.9 0.9 0.87 0.84 0.74 0.52</product>
-      <product nuclide="Am242_m2">0.1 0.1 0.13 0.16 0.26 0.48</product>
+      <product nuclide="Am242_m1">0.1 0.1 0.13 0.16 0.26 0.48</product>
     </isomeric_branching>
   </nuclide>
   <nuclide name="Am242" half_life="57672.0" decay_modes="1"
            decay_energy="0.0" reactions="0">
     <decay type="beta-" target="Cm242" branching_ratio="1.0"/>
   </nuclide>
-  <nuclide name="Am242_m2" half_life="4449312000.0" decay_modes="1"
+  <nuclide name="Am242_m1" half_life="4449312000.0" decay_modes="1"
            decay_energy="0.0" reactions="0">
     <decay type="IT" target="Am242" branching_ratio="1.0"/>
   </nuclide>
@@ -630,13 +630,13 @@ def test_isomeric_branching_chain_roundtrip():
         energies, products = am241.isomeric_branching['(n,gamma)']
         assert len(energies) == 6
         assert 'Am242' in products
-        assert 'Am242_m2' in products
+        assert 'Am242_m1' in products
 
         # Check energy-dependent values
         assert np.isclose(products['Am242'][0], 0.9)
         assert np.isclose(products['Am242'][-1], 0.52)
-        assert np.isclose(products['Am242_m2'][0], 0.1)
-        assert np.isclose(products['Am242_m2'][-1], 0.48)
+        assert np.isclose(products['Am242_m1'][0], 0.1)
+        assert np.isclose(products['Am242_m1'][-1], 0.48)
 
         # Write and re-read
         chain.export_to_xml('chain_iso_rt.xml')

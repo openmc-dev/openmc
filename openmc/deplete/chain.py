@@ -134,10 +134,11 @@ def _read_activation_products(evaluation):
     Returns
     -------
     dict
-        ``{mt: {(Z, A, lfs): yield_func}}`` where yield_func is a
+        ``{mt: {(Z, A, m): yield_func}}`` where yield_func is a
         :class:`openmc.data.Tabulated1D` giving the yield as a function of
-        energy. lfs is the level number flag (0=ground, 1=first metastable,
-        etc.)
+        energy. m is the isomeric state number (0=ground, 1=first metastable,
+        etc.), derived by sequentially numbering the excited states in order
+        of increasing LFS.
     """
     results = {}
 
@@ -207,7 +208,22 @@ def _read_activation_products(evaluation):
                         openmc.data.Tabulated1D(energy, yield_)
 
         if products:
-            results[mt] = products
+            # Remap LFS level numbers to sequential isomeric state numbers.
+            # LFS in MF9/MF10 refers to the energy level, not the isomeric
+            # state number.  Isomeric states are numbered sequentially:
+            # ground (LFS=0) -> m=0, then m=1, m=2, ... for excited states
+            # in order of increasing LFS.
+            za_groups: dict[tuple[int, int], list[int]] = {}
+            for (Z, A, lfs) in products:
+                za_groups.setdefault((Z, A), []).append(lfs)
+
+            remapped = {}
+            for (Z, A), lfs_values in za_groups.items():
+                lfs_values.sort()
+                for m, lfs in enumerate(lfs_values):
+                    remapped[(Z, A, m)] = products[(Z, A, lfs)]
+
+            results[mt] = remapped
 
     return results
 
@@ -230,7 +246,7 @@ def _add_isomeric_reactions(nuclide, rx_name, q_value, iso_products,
     q_value : float
         Q value of the reaction in [eV]
     iso_products : dict
-        ``{(Z, A, lfs): yield_func}`` from :func:`_read_activation_products`
+        ``{(Z, A, m): yield_func}`` from :func:`_read_activation_products`
     decay_data : dict
         Decay data keyed by nuclide name
     missing_rx_product : list
@@ -241,8 +257,8 @@ def _add_isomeric_reactions(nuclide, rx_name, q_value, iso_products,
     # Map product states to daughter names, filtering missing nuclides
     yield_funcs = {}  # {daughter_name: yield_func}
     ground_state = None
-    for (Z, A, lfs), yield_func in iso_products.items():
-        daughter = gnds_name(Z, A, lfs)
+    for (Z, A, m), yield_func in iso_products.items():
+        daughter = gnds_name(Z, A, m)
 
         if daughter not in decay_data:
             orig_daughter = daughter
@@ -251,7 +267,7 @@ def _add_isomeric_reactions(nuclide, rx_name, q_value, iso_products,
                 missing_rx_product.append((parent, rx_name, orig_daughter))
                 continue
 
-        # If multiple LFS map to same daughter, keep the one with
+        # If multiple states map to same daughter, keep the one with
         # larger max yield (shouldn't normally happen)
         if daughter in yield_funcs:
             if np.max(yield_func.y) > np.max(yield_funcs[daughter].y):
@@ -259,7 +275,7 @@ def _add_isomeric_reactions(nuclide, rx_name, q_value, iso_products,
         else:
             yield_funcs[daughter] = yield_func
 
-        if lfs == 0:
+        if m == 0:
             ground_state = daughter
 
     if not yield_funcs:

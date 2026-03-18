@@ -360,7 +360,7 @@ def test_isomeric_branching_xml_roundtrip():
     energies = np.array([1e-5, 0.0253, 1e3, 1e5, 1e6, 1e7])
     products = {
         "Am242": np.array([0.9, 0.9, 0.87, 0.84, 0.74, 0.52]),
-        "Am242_m2": np.array([0.1, 0.1, 0.13, 0.16, 0.26, 0.48]),
+        "Am242_m1": np.array([0.1, 0.1, 0.13, 0.16, 0.26, 0.48]),
     }
     nuc.isomeric_branching["(n,gamma)"] = (energies, products)
 
@@ -374,7 +374,7 @@ def test_isomeric_branching_xml_roundtrip():
     assert iso_elems[0].find("energies") is not None
     product_elems = iso_elems[0].findall("product")
     assert len(product_elems) == 2
-    assert {p.get("nuclide") for p in product_elems} == {"Am242", "Am242_m2"}
+    assert {p.get("nuclide") for p in product_elems} == {"Am242", "Am242_m1"}
 
     # Read back from XML
     nuc2 = nuclide.Nuclide.from_xml(elem)

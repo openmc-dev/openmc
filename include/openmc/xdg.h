@@ -16,7 +16,7 @@ extern "C" const bool XDG_ENABLED;
 #include "openmc/position.h"
 namespace openmc {
 
-class XDGMesh : public UnstructuredMesh{
+class XDGMesh : public UnstructuredMesh {
 
 public:
   // Constructors
@@ -42,10 +42,7 @@ public:
 
   int get_bin(Position r) const override;
 
-  bool bin_is_valid(int bin) const
-  {
-    return bin >= 0 && bin < n_bins();
-  }
+  bool bin_is_valid(int bin) const { return bin >= 0 && bin < n_bins(); }
 
   xdg::MeshID bin_to_mesh_id(int bin) const;
 
@@ -89,22 +86,24 @@ public:
   //! \return Volume of the bin
   double volume(int bin) const override;
 
-  //! Get the distance to the nearest boundary for a given position and direction
-  //! \param[in] g GeometryState object containing position and direction
-  //! \return NextMeshCell struct containing distance, face index, and next indices
+  //! Get the distance to the nearest boundary for a given position and
+  //! direction \param[in] g GeometryState object containing position and
+  //! direction \return NextMeshCell struct containing distance, face index, and
+  //! next indices
   NextMeshCell distance_to_bin_boundary(GeometryState& g) const;
 
-  //! Get the distance to the nearest boundary for a given position and direction
-  //! \param[in] r Position to check
-  //! \param[in] u Direction to check
+  //! Get the distance to the nearest boundary for a given position and
+  //! direction \param[in] r Position to check \param[in] u Direction to check
   //! \return Distance to the nearest boundary
-  NextMeshCell distance_to_bin_boundary(int bin, const Position& r, const Direction& u) const;
+  NextMeshCell distance_to_bin_boundary(
+    int bin, const Position& r, const Direction& u) const;
 
 private:
   void initialize() override;
 
   std::shared_ptr<xdg::XDG> xdg_; //!< XDG instance
-  xdg::MeshLibrary mesh_library_ {xdg::MeshLibrary::LIBMESH}; //!< Mesh library type
+  xdg::MeshLibrary mesh_library_ {
+    xdg::MeshLibrary::LIBMESH}; //!< Mesh library type
 };
 
 } // namespace openmc

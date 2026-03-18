@@ -47,8 +47,7 @@ namespace openmc {
 
 enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
-struct NextMeshCell
-{
+struct NextMeshCell {
   double distance {INFTY};
   int face_idx {-1};
   std::array<int, 3> next_ijk;
@@ -845,7 +844,7 @@ protected:
       }
     }
     V result = s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
-              u * (coords[3] - coords[0]) + coords[0];
+               u * (coords[3] - coords[0]) + coords[0];
     return {result[0], result[1], result[2]};
   }
 

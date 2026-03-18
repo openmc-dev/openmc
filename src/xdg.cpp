@@ -40,10 +40,10 @@ namespace openmc {
 // XDG Mesh implementation
 //==============================================================================
 
-
 const std::string XDGMesh::mesh_lib_type = "xdg";
 
-XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node) {
+XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node)
+{
   std::string mesh_lib = get_node_value(node, "library", true, true);
   if (mesh_lib == "moab") {
     mesh_library_ = xdg::MeshLibrary::MOAB;
@@ -53,7 +53,8 @@ XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node) {
   initialize();
 }
 
-XDGMesh::XDGMesh(hid_t group) : UnstructuredMesh(group) {
+XDGMesh::XDGMesh(hid_t group) : UnstructuredMesh(group)
+{
   std::string mesh_lib;
   read_dataset(group, "library", mesh_lib);
   if (mesh_lib == "moab") {
@@ -64,21 +65,24 @@ XDGMesh::XDGMesh(hid_t group) : UnstructuredMesh(group) {
   initialize();
 }
 
-
-XDGMesh::XDGMesh(const std::string& filename, double length_multiplier) {
+XDGMesh::XDGMesh(const std::string& filename, double length_multiplier)
+{
   filename_ = filename;
   set_length_multiplier(length_multiplier);
   initialize();
 }
 
-XDGMesh::XDGMesh(std::shared_ptr<xdg::XDG> external_xdg) {
+XDGMesh::XDGMesh(std::shared_ptr<xdg::XDG> external_xdg)
+{
   xdg_ = external_xdg;
   filename_ = "unknown (external file)";
   initialize();
 }
 
-void XDGMesh::initialize() {
-  if (xdg_) return;
+void XDGMesh::initialize()
+{
+  if (xdg_)
+    return;
 
   // create XDGMesh instance
   xdg_ = xdg::XDG::create(mesh_library_);
@@ -93,11 +97,13 @@ void XDGMesh::initialize() {
   xdg_->mesh_manager()->parse_metadata();
 }
 
-void XDGMesh::prepare_for_point_location() {
+void XDGMesh::prepare_for_point_location()
+{
   xdg_->prepare_raytracer();
 }
 
-Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const {
+Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const
+{
   // MeshIDs are 1-indexed, so we add 1 to the bin, which is 0-indexed
   auto vertices = xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
   return this->sample_tet<xdg::Vertex>(vertices, seed);
@@ -112,8 +118,11 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   double length_rcp = 1 / (p1 - p0).length();
   auto track_segments = xdg_->segments(p0, p1);
   // remove elements with lengths of zero
-  track_segments.erase(std::remove_if(track_segments.begin(), track_segments.end(), [](const std::pair<xdg::MeshID, double>& p) {return p.second == 0.0;}), track_segments.end());
-  for (const auto& track_segment : track_segments ) {
+  track_segments.erase(
+    std::remove_if(track_segments.begin(), track_segments.end(),
+      [](const std::pair<xdg::MeshID, double>& p) { return p.second == 0.0; }),
+    track_segments.end());
+  for (const auto& track_segment : track_segments) {
     bins.push_back(mesh_id_to_bin(track_segment.first));
     lengths.push_back(track_segment.second * length_rcp);
   }
@@ -125,11 +134,13 @@ int XDGMesh::get_bin(Position r) const
   return mesh_id_to_bin(xdg_->find_element(p));
 }
 
-int XDGMesh::n_bins() const {
+int XDGMesh::n_bins() const
+{
   return xdg_->mesh_manager()->num_volume_elements();
 }
 
-int XDGMesh::n_surface_bins() const {
+int XDGMesh::n_surface_bins() const
+{
   return 4 * n_bins();
 }
 
@@ -140,11 +151,13 @@ std::pair<vector<double>, vector<double>> XDGMesh::plot(
   return {};
 }
 
-std::string XDGMesh::library() const {
+std::string XDGMesh::library() const
+{
   return mesh_lib_type;
 }
 
-std::string XDGMesh::mesh_library() const {
+std::string XDGMesh::mesh_library() const
+{
   if (mesh_library_ == xdg::MeshLibrary::LIBMESH) {
     return "libmesh";
   } else if (mesh_library_ == xdg::MeshLibrary::MOAB) {
@@ -159,7 +172,8 @@ void XDGMesh::write(const std::string& base_filename) const
 
 Position XDGMesh::centroid(int bin) const
 {
-  auto element_vertices = xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
+  auto element_vertices =
+    xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
 
   xdg::Vertex centroid {0.0, 0.0, 0.0};
   for (const auto& v : element_vertices) {
@@ -204,7 +218,8 @@ xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const
 
 int32_t XDGMesh::mesh_id_to_bin(xdg::MeshID id) const
 {
-  if (id < 0) return -1;
+  if (id < 0)
+    return -1;
   return xdg_->mesh_manager()->element_index(id);
 }
 

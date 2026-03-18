@@ -345,7 +345,7 @@ const std::unique_ptr<Mesh>& Mesh::create(
 #endif
 #ifdef OPENMC_XDG_ENABLED
   } else if (mesh_type == "xdg") {
-      model::meshes.push_back(make_unique<XDGMesh>(dataset));
+    model::meshes.push_back(make_unique<XDGMesh>(dataset));
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED
   } else if (mesh_type == UnstructuredMesh::mesh_type &&
@@ -3683,7 +3683,8 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  Position sampled_position = this->sample_tet<Position>({tet_verts.begin(), tet_verts.end()}, seed);
+  Position sampled_position =
+    this->sample_tet<Position>({tet_verts.begin(), tet_verts.end()}, seed);
   if (length_multiplier_ > 0.0) {
     return length_multiplier_ * sampled_position;
   } else {

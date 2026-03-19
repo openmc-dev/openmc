@@ -1338,8 +1338,9 @@ class Model:
         self,
         n_samples: int = 1000,
         prn_seed: int | None = None,
+        as_array: bool = False,
         **init_kwargs
-    ) -> openmc.ParticleList:
+    ) -> openmc.ParticleList | np.ndarray:
         """Sample external source and return source particles.
 
         .. versionadded:: 0.15.1
@@ -1351,13 +1352,17 @@ class Model:
         prn_seed : int
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
+        as_array : bool
+            If True, return a numpy structured array instead of a
+            :class:`~openmc.ParticleList`.
         **init_kwargs
             Keyword arguments passed to :func:`openmc.lib.init`
 
         Returns
         -------
-        openmc.ParticleList
-            List of samples source particles
+        openmc.ParticleList or numpy.ndarray
+            List of sampled source particles, or a structured array when
+            *as_array* is True.
         """
         import openmc.lib
 
@@ -1368,7 +1373,7 @@ class Model:
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.sample_external_source(
-                n_samples=n_samples, prn_seed=prn_seed
+                n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
@@ -2559,7 +2564,7 @@ class Model:
     def convert_to_multigroup(
         self,
         method: str = "material_wise",
-        groups: str = "CASMO-2",
+        groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
         nparticles: int = 2000,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
@@ -2577,9 +2582,13 @@ class Model:
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
             Method to generate the MGXS.
-        groups : openmc.mgxs.EnergyGroups or str, optional
-            Energy group structure for the MGXS or the name of the group
-            structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
+            Energy group structure for the MGXS. Can be an
+            :class:`openmc.mgxs.EnergyGroups` object, a string name of a
+            predefined group structure from :data:`openmc.mgxs.GROUP_STRUCTURES`
+            (e.g., ``"CASMO-2"``), or a sequence of floats specifying energy
+            bin boundaries in eV (e.g., ``[0.0, 1e6]`` for a single group).
+            Defaults to ``"CASMO-2"``.
         nparticles : int, optional
             Number of particles to simulate per batch when generating MGXS.
         overwrite_mgxs_library : bool, optional
@@ -2616,7 +2625,7 @@ class Model:
             Valid entries for temperature_settings are the same as the valid
             entries in openmc.Settings.temperature_settings.
         """
-        if isinstance(groups, str):
+        if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
 
         # Do all work (including MGXS generation) in a temporary directory
@@ -2632,7 +2641,7 @@ class Model:
                     # This mode doesn't require
                     # valid transport settings like particles/batches
                     original_run_mode = self.settings.run_mode
-                    self.settings.run_mode = 'volume' 
+                    self.settings.run_mode = 'volume'
                     self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()

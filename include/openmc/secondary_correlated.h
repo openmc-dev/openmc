@@ -41,6 +41,22 @@ public:
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
+  //! Sample the outgoing energy and return the angular distribution
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Reference to the angular distribution at the sampled energy bin
+  Distribution& sample_dist(double E_in, double& E_out, uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
+
   // energy property
   vector<double>& energy() { return energy_; }
   const vector<double>& energy() const { return energy_; }

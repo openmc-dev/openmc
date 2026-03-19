@@ -103,6 +103,7 @@ def _run(args, output, cwd):
         # If OpenMC is finished, break loop
         line = p.stdout.readline()
         if not line and p.poll() is not None:
+            p.stdout.close()
             break
 
         lines.append(line)

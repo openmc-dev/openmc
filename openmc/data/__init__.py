@@ -35,4 +35,6 @@ from .grid import *
 from .function import *
 from .vectfit import *
 
-from .effective_dose.dose import dose_coefficients
+from .dose.dose import dose_coefficients
+from .dose.mass_attenuation import \
+    mass_energy_absorption_coefficient, mass_attenuation_coefficient

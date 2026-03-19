@@ -37,6 +37,9 @@
 
 namespace openmc {
 
+std::atomic<int64_t> source_n_accept {0};
+std::atomic<int64_t> source_n_reject {0};
+
 namespace {
 
 void validate_particle_type(ParticleType type, const std::string& context)
@@ -193,9 +196,8 @@ void check_rejection_fraction(int64_t n_reject, int64_t n_accept)
 SourceSite Source::sample_with_constraints(uint64_t* seed) const
 {
   bool accepted = false;
-  static int64_t n_reject = 0;
-  static int64_t n_accept = 0;
-  SourceSite site;
+  int64_t n_local_reject = 0;
+  SourceSite site {};
 
   while (!accepted) {
     // Sample a source site without considering constraints yet
@@ -209,9 +211,13 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
       if (!accepted) {
-        // Increment number of rejections and check against minimum fraction
-        ++n_reject;
-        check_rejection_fraction(n_reject, n_accept);
+        ++n_local_reject;
+
+        // Check per-particle rejection limit
+        if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+          fatal_error("Exceeded maximum number of source rejections per "
+                      "sample. Please check your source definition.");
+        }
 
         // For the "kill" strategy, accept particle but set weight to 0 so that
         // it is terminated immediately
@@ -223,8 +229,13 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
     }
   }
 
-  // Increment number of accepted samples
-  ++n_accept;
+  // Flush local rejection count, update accept counter, and check overall
+  // rejection fraction
+  if (n_local_reject > 0) {
+    source_n_reject += n_local_reject;
+  }
+  ++source_n_accept;
+  check_rejection_fraction(source_n_reject, source_n_accept);
 
   return site;
 }
@@ -363,15 +374,14 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 
 SourceSite IndependentSource::sample(uint64_t* seed) const
 {
-  SourceSite site;
+  SourceSite site {};
   site.particle = particle_;
   double r_wgt = 1.0;
   double E_wgt = 1.0;
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
-  static int64_t n_reject = 0;
-  static int64_t n_accept = 0;
+  int64_t n_local_reject = 0;
 
   while (!accepted) {
 
@@ -385,8 +395,11 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Check for rejection
     if (!accepted) {
-      ++n_reject;
-      check_rejection_fraction(n_reject, n_accept);
+      ++n_local_reject;
+      if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+        fatal_error("Exceeded maximum number of source rejections per "
+                    "sample. Please check your source definition.");
+      }
     }
   }
 
@@ -421,8 +434,11 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
           (satisfies_energy_constraints(site.E)))
         break;
 
-      n_reject++;
-      check_rejection_fraction(n_reject, n_accept);
+      ++n_local_reject;
+      if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+        fatal_error("Exceeded maximum number of source rejections per "
+                    "sample. Please check your source definition.");
+      }
     }
 
     // Sample particle creation time
@@ -432,8 +448,10 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     site.wgt *= (E_wgt * time_wgt);
   }
 
-  // Increment number of accepted samples
-  ++n_accept;
+  // Flush local rejection count into global counter
+  if (n_local_reject > 0) {
+    source_n_reject += n_local_reject;
+  }
 
   return site;
 }
@@ -694,6 +712,13 @@ SourceSite sample_external_source(uint64_t* seed)
 void free_memory_source()
 {
   model::external_sources.clear();
+  reset_source_rejection_counters();
+}
+
+void reset_source_rejection_counters()
+{
+  source_n_accept = 0;
+  source_n_reject = 0;
 }
 
 //==============================================================================
@@ -714,8 +739,15 @@ extern "C" int openmc_sample_external_source(
   }
 
   auto sites_array = static_cast<SourceSite*>(sites);
+
+  // Derive independent per-particle seeds from the base seed so that
+  // each iteration has its own RNG state for thread-safe parallel sampling.
+  uint64_t base_seed = *seed;
+
+#pragma omp parallel for schedule(static)
   for (size_t i = 0; i < n; ++i) {
-    sites_array[i] = sample_external_source(seed);
+    uint64_t particle_seed = init_seed(base_seed + i, STREAM_SOURCE);
+    sites_array[i] = sample_external_source(&particle_seed);
   }
   return 0;
 }

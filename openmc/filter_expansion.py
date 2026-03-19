@@ -308,7 +308,12 @@ class SpatialFourierFilter(ExpansionFilter):
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = [f'F{i}' for i in range(2 * order + 1)]
+        self.bins = ['a0 (constant)'] + [None]*2*order
+        for i in range(1, order + 1):
+            a = 2*i - 1
+            b = 2*i
+            self.bins[a] = f'a{i} (cos)'
+            self.bins[b] = f'b{i} (sin)'
 
 
 class SpatialLegendreFilter(ExpansionFilter):

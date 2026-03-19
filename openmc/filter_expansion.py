@@ -144,7 +144,7 @@ class SpatialExpansionFilter(ExpansionFilter):
     tally data along a spatial axis (x, y, or z) within a bounded region.
     Subclasses must implement the order setter to define their specific
     bin structure.
-    
+
     Parameters
     ----------
     order : int
@@ -172,7 +172,7 @@ class SpatialExpansionFilter(ExpansionFilter):
         Unique identifier for the filter
     num_bins : int
         The number of filter bins
-    
+
     """
 
     def __init__(self, order, axis, minimum, maximum, filter_id=None):
@@ -265,7 +265,6 @@ class SpatialExpansionFilter(ExpansionFilter):
         min_, max_ = group['min'][()], group['max'][()]
 
         return cls(order, axis, min_, max_, filter_id)
-
 
 
 class SpatialFourierFilter(SpatialExpansionFilter):

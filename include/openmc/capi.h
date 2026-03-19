@@ -192,6 +192,12 @@ int openmc_set_n_batches(
 int openmc_simulation_finalize();
 int openmc_simulation_init();
 int openmc_source_bank(void** ptr, int64_t* n);
+int openmc_spatial_fourier_filter_get_order(int32_t index, int* order);
+int openmc_spatial_fourier_filter_get_params(
+  int32_t index, int* axis, double* min, double* max);
+int openmc_spatial_fourier_filter_set_order(int32_t index, int order);
+int openmc_spatial_fourier_filter_set_params(
+  int32_t index, const int* axis, const double* min, const double* max);
 int openmc_spatial_legendre_filter_get_order(int32_t index, int* order);
 int openmc_spatial_legendre_filter_get_params(
   int32_t index, int* axis, double* min, double* max);

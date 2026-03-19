@@ -302,8 +302,6 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
-  const auto& surf {*model::surfaces[surface_index()].get()};
-
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
@@ -313,7 +311,13 @@ void Particle::event_cross_surface()
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
   } else {
-    // Particle crosses surface
+    // Particle crosses surface -- look up the surface only when we know
+    // surface() is a valid (nonzero) surface ID.  Previously, this
+    // dereference was done unconditionally before the lattice translation
+    // check, which caused an out-of-bounds access on model::surfaces when
+    // surface() == SURFACE_NONE (0) during a lattice crossing.
+    const auto& surf {*model::surfaces[surface_index()].get()};
+
     // If BC, add particle to surface source before crossing surface
     if (surf.surf_source_ && surf.bc_) {
       add_surf_source_to_bank(*this, surf);
@@ -327,10 +331,11 @@ void Particle::event_cross_surface()
       apply_weight_windows(*this);
     }
     event() = TallyEvent::SURFACE;
-  }
-  // Score cell to cell partial currents
-  if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies, surf);
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      score_surface_tally(*this, model::active_surface_tallies, surf);
+    }
   }
 }
 

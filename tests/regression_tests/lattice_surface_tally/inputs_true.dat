@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" depletable="true">
+      <density value="10.0" units="g/cm3"/>
+      <nuclide name="U235" ao="0.04"/>
+      <nuclide name="U238" ao="0.96"/>
+      <nuclide name="O16" ao="2.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" universe="1"/>
+    <cell id="2" material="1" universe="2"/>
+    <cell id="3" material="1" universe="3"/>
+    <cell id="4" material="1" universe="4"/>
+    <cell id="5" material="1" universe="5"/>
+    <cell id="6" material="1" universe="6"/>
+    <cell id="7" material="1" universe="7"/>
+    <cell id="8" material="1" universe="8"/>
+    <cell id="9" material="1" universe="9"/>
+    <cell id="10" fill="10" region="1 -2 3 -4" universe="11"/>
+    <lattice id="10">
+      <pitch>2.0 2.0</pitch>
+      <dimension>3 3</dimension>
+      <lower_left>-3.0 -3.0</lower_left>
+      <universes>
+7 8 9 
+4 5 6 
+1 2 3 </universes>
+    </lattice>
+    <surface id="1" type="x-plane" boundary="vacuum" coeffs="-3.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="3.0"/>
+    <surface id="3" type="y-plane" boundary="vacuum" coeffs="-3.0"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="3.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>5</batches>
+    <inactive>0</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-1 -1 -1 1 1 1</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+  </settings>
+  <tallies>
+    <filter id="1" type="surface">
+      <bins>1 2 3 4</bins>
+    </filter>
+    <tally id="1">
+      <filters>1</filters>
+      <scores>current</scores>
+    </tally>
+  </tallies>
+</model>

@@ -124,7 +124,7 @@ class Univariate(EqualityMixin, ABC):
             return Legendre.from_xml_element(elem)
         elif distribution == 'mixture':
             return Mixture.from_xml_element(elem)
-        elif distribution == 'decay_photon':
+        elif distribution == 'decay_spectrum':
             return DecaySpectrum.from_xml_element(elem)
 
     @abstractmethod
@@ -2313,7 +2313,7 @@ class DecaySpectrum(Univariate):
 
         """
         element = ET.Element(element_name)
-        element.set("type", "decay_photon")
+        element.set("type", "decay_spectrum")
         element.set("volume", str(self.volume))
         for name, density in self.nuclides.items():
             nuclide_elem = ET.SubElement(element, "nuclide")

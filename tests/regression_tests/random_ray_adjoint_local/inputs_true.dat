@@ -223,6 +223,11 @@
         </source>
       </ray_source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="6" type="universe"/>
+        </mesh>
+      </source_region_meshes>
       <adjoint>true</adjoint>
       <adjoint_source>
         <source type="independent" strength="3.14" particle="neutron">
@@ -237,6 +242,11 @@
       </adjoint_source>
       <volume_estimator>naive</volume_estimator>
     </random_ray>
+    <mesh id="1">
+      <dimension>14 14 14</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <upper_right>35.0 35.0 35.0</upper_right>
+    </mesh>
   </settings>
   <tallies>
     <filter id="1" type="cell">

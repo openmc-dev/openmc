@@ -2231,6 +2231,7 @@ class DecaySpectrum(Univariate):
 
     def __init__(self, nuclides: dict[str, float], volume: float):
         super().__init__(bias=None)
+        self._dist_cache = None
         self.nuclides = nuclides
         self.volume = volume
 
@@ -2249,6 +2250,7 @@ class DecaySpectrum(Univariate):
             cv.check_type(f'atom density for {name}', density, Real)
             cv.check_greater_than(f'atom density for {name}', density, 0.0)
         self._nuclides = dict(nuclides)
+        self._dist_cache = None
 
     @property
     def volume(self):
@@ -2259,6 +2261,43 @@ class DecaySpectrum(Univariate):
         cv.check_type('volume', volume, Real)
         cv.check_greater_than('volume', volume, 0.0)
         self._volume = float(volume)
+        self._dist_cache = None
+
+    def to_distribution(self):
+        """Convert to a concrete distribution using decay chain data.
+
+        Builds a combined photon energy distribution by looking up each nuclide
+        in the depletion chain via :func:`openmc.data.decay_photon_energy` and
+        weighting by absolute atom count (``density * 1e24 * volume``). The
+        result is cached on the object; the cache is invalidated automatically
+        when :attr:`nuclides` or :attr:`volume` are reassigned.
+
+        Requires ``openmc.config['chain_file']`` to be set.
+
+        Returns
+        -------
+        openmc.stats.Univariate or None
+            Combined photon energy distribution, or ``None`` if no nuclide in
+            :attr:`nuclides` has a photon source in the chain.
+
+        """
+        if self._dist_cache is not None:
+            return self._dist_cache
+
+        import openmc.data
+        dists = []
+        weights = []
+        for name, density in self.nuclides.items():
+            dist = openmc.data.decay_photon_energy(name)
+            if dist is not None:
+                dists.append(dist)
+                weights.append(density * 1e24 * self.volume)
+
+        if not dists:
+            return None
+
+        self._dist_cache = combine_distributions(dists, weights)
+        return self._dist_cache
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the decay photon distribution
@@ -2307,19 +2346,35 @@ class DecaySpectrum(Univariate):
         return cls(nuclides, volume)
 
     def _sample_unbiased(self, n_samples=1, seed=None):
-        raise NotImplementedError(
-            "DecaySpectrum distributions can only be sampled by the C++ solver")
+        dist = self.to_distribution()
+        if dist is None:
+            raise RuntimeError(
+                "DecaySpectrum._sample_unbiased requires chain data but none "
+                "was found. Ensure openmc.config['chain_file'] is set and the "
+                "chain contains photon sources for the nuclides present."
+            )
+        return dist.sample(n_samples, seed)[0]
 
     def integral(self):
         """Return integral of the distribution
 
+        Returns the total photon emission rate in [photons/s] by delegating to
+        :meth:`to_distribution`. Returns ``0.0`` when no chain data is
+        available (e.g., ``openmc.config['chain_file']`` is not set).
+
         Returns
         -------
         float
-            Integral of the distribution (requires chain data, returns 0.0
-            when chain data is not available)
+            Total photon emission rate in [photons/s], or ``0.0`` if chain
+            data is unavailable.
         """
-        return 0.0
+        try:
+            dist = self.to_distribution()
+        except Exception:
+            return 0.0
+        if dist is None:
+            return 0.0
+        return dist.integral()
 
     def clip(self, tolerance: float = 1e-6, inplace: bool = False):
         """Remove nuclides with negligible contribution to photon emission.
@@ -2356,12 +2411,48 @@ class DecaySpectrum(Univariate):
         return (0.0, np.inf)
 
     def evaluate(self, x):
-        raise NotImplementedError(
-            "evaluate() is undefined for DecaySpectrum distributions")
+        """Evaluate the probability density at a given value.
+
+        Delegates to the combined distribution built from chain data. Raises
+        ``NotImplementedError`` if the combined distribution is a
+        :class:`~openmc.stats.Mixture` (which does not support
+        ``evaluate()``).
+
+        Parameters
+        ----------
+        x : float
+            Value at which to evaluate the PDF.
+
+        Returns
+        -------
+        float
+            Probability density at *x*.
+        """
+        dist = self.to_distribution()
+        if dist is None:
+            raise RuntimeError(
+                "DecaySpectrum.evaluate requires chain data. Ensure "
+                "openmc.config['chain_file'] is set."
+            )
+        return dist.evaluate(x)
 
     def mean(self):
-        raise NotImplementedError(
-            "mean() is undefined for DecaySpectrum distributions")
+        """Return the mean of the distribution.
+
+        Delegates to the combined distribution built from chain data.
+
+        Returns
+        -------
+        float
+            Mean photon energy in [eV].
+        """
+        dist = self.to_distribution()
+        if dist is None:
+            raise RuntimeError(
+                "DecaySpectrum.mean requires chain data. Ensure "
+                "openmc.config['chain_file'] is set."
+            )
+        return dist.mean()
 
 
 def combine_distributions(

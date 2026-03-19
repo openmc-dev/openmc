@@ -621,49 +621,32 @@ class R2SManager:
         materials = self.results['activation_materials']
         mesh_based = self.method == 'mesh-based'
 
-        nuclide_names = list(step_result.index_nuc.keys())
-
         sources = []
         for item in work_items:
             if mesh_based:
                 index_mat, domain_id, bbox = item
                 original_mat = materials[index_mat]
+                domain = openmc.Material(material_id=domain_id)
             else:
                 cell, original_mat, bbox = item
-                domain_id = cell.id
+                domain = cell
 
-            mat_key = str(original_mat.id)
-            vol = step_result.volume[mat_key]
-
-            # Get atom counts and convert to atom/b-cm
-            mat_idx = step_result.index_mat[mat_key]
-            atom_counts = step_result.data[mat_idx, :]
-            atom_densities = atom_counts / vol * 1e-24
-
-            # Build nuclide dict with only non-zero densities
-            nuclides = {
-                name: dens for name, dens in zip(nuclide_names, atom_densities)
-                if dens > 0.0
-            }
+            activated_mat = step_result.get_material(str(original_mat.id))
+            nuclides = activated_mat.get_nuclide_atom_densities()
             if not nuclides:
                 continue
 
-            energy = openmc.stats.DecaySpectrum(nuclides, vol)
+            energy = openmc.stats.DecaySpectrum(nuclides, activated_mat.volume)
             energy.clip(inplace=True)
             if not energy.nuclides:
                 continue
 
-            if mesh_based:
-                domains = [openmc.Material(material_id=domain_id)]
-            else:
-                domains = [openmc.Cell(cell_id=domain_id)]
-            source = openmc.IndependentSource(
+            sources.append(openmc.IndependentSource(
                 space=openmc.stats.Box(bbox.lower_left, bbox.upper_right),
                 energy=energy,
                 particle='photon',
-                constraints={'domains': domains},
-            )
-            sources.append(source)
+                constraints={'domains': [domain]},
+            ))
 
         return sources
 

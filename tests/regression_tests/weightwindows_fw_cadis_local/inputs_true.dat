@@ -214,7 +214,7 @@
     <energy_mode>multi-group</energy_mode>
     <weight_window_generators>
       <weight_windows_generator>
-        <mesh>1</mesh>
+        <mesh>2</mesh>
         <particle_type>neutron</particle_type>
         <max_realizations>10</max_realizations>
         <update_interval>1</update_interval>
@@ -223,7 +223,7 @@
         <targets>1 2</targets>
       </weight_windows_generator>
     </weight_window_generators>
-    <mesh id="1">
+    <mesh id="2">
       <dimension>7 7 7</dimension>
       <lower_left>0.0 0.0 0.0</lower_left>
       <upper_right>35.0 35.0 35.0</upper_right>
@@ -239,8 +239,18 @@
         </source>
       </ray_source>
       <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="6" type="universe"/>
+        </mesh>
+      </source_region_meshes>
       <volume_estimator>naive</volume_estimator>
     </random_ray>
+    <mesh id="1">
+      <dimension>14 14 14</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <upper_right>35.0 35.0 35.0</upper_right>
+    </mesh>
   </settings>
   <tallies>
     <filter id="1" type="cell">

@@ -1284,35 +1284,33 @@ void FlatSourceDomain::set_fw_adjoint_sources()
   // set its adjoint source to zero. This adds negligible bias to the adjoint
   // flux solution, as the true total adjoint source contribution from small
   // regions is likely to be negligible.
-  if (!fw_cadis_local_) {
 #pragma omp parallel for
-    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-      if (source_regions_.is_small(sr)) {
-        for (int g = 0; g < negroups_; g++) {
-          source_regions_.external_source(sr, g) = 0.0;
-        }
-        source_regions_.external_source_present(sr) = 0;
-      }
-    }
-
-    // Divide the fixed source term by sigma t (to save time when applying each
-    // iteration)
-#pragma omp parallel for
-    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-      int material = source_regions_.material(sr);
-      int temp = source_regions_.temperature_idx(sr);
-      if (material == MATERIAL_VOID) {
-        continue;
-      }
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    if (source_regions_.is_small(sr)) {
       for (int g = 0; g < negroups_; g++) {
-        double sigma_t =
-          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
-          source_regions_.density_mult(sr);
-        source_regions_.external_source(sr, g) /= sigma_t;
-        if (!std::isfinite(source_regions_.external_source(sr, g))) {
-          // If the flux is NaN or Inf, set the adjoint source to zero
-          source_regions_.external_source(sr, g) = 0.0;
-        }
+        source_regions_.external_source(sr, g) = 0.0;
+      }
+      source_regions_.external_source_present(sr) = 0;
+    }
+  }
+
+  // Divide the fixed source term by sigma t (to save time when applying each
+  // iteration)
+#pragma omp parallel for
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    int material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
+    if (material == MATERIAL_VOID) {
+      continue;
+    }
+    for (int g = 0; g < negroups_; g++) {
+      double sigma_t =
+        sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+        source_regions_.density_mult(sr);
+      source_regions_.external_source(sr, g) /= sigma_t;
+      if (!std::isfinite(source_regions_.external_source(sr, g))) {
+        // If the flux is NaN or Inf, set the adjoint source to zero
+        source_regions_.external_source(sr, g) = 0.0;
       }
     }
   }

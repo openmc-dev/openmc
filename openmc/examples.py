@@ -1550,6 +1550,13 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     settings.random_ray['ray_source'] = rr_source
     settings.random_ray['volume_normalized_flux_tallies'] = True
 
+    # Create a rectilinear source region mesh
+    sr_mesh = openmc.RegularMesh()
+    sr_mesh.dimension = (14, 14, 14)
+    sr_mesh.lower_left = (0.0, 0.0, 0.0)
+    sr_mesh.upper_right = (outer_width, outer_width, outer_width)
+    settings.random_ray['source_region_meshes'] = [(sr_mesh, [root])]
+
     # Create the neutron source in the bottom right of the moderator
     # Good - fast group appears largest (besides most thermal)
     strengths = [1.0]

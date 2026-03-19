@@ -707,7 +707,8 @@ CoincidentSource::CoincidentSource(pugi::xml_node node) : Source(node)
 
     auto src = Source::create(source_node);
     if (auto ptr = dynamic_cast<IndependentSource*>(src.get())) {
-      sources_.emplace_back(std::move(ptr));
+      src.release();  // release ownership before transferring raw pointer
+      sources_.emplace_back(ptr);
     } else {
       fatal_error(
         "Sub-sources of a coincident source must be IndependentSource.");

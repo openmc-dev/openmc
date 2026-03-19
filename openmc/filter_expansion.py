@@ -268,7 +268,7 @@ class SpatialExpansionFilter(ExpansionFilter):
 
 
 
-class SpatialFourierFilter(ExpansionFilter):
+class SpatialFourierFilter(SpatialExpansionFilter):
     r"""Score Fourier expansion moments in space up to specified order.
 
     This filter allows scores to be multiplied by Fourier basis functions of
@@ -316,7 +316,7 @@ class SpatialFourierFilter(ExpansionFilter):
             self.bins[b] = f'b{i} (sin)'
 
 
-class SpatialLegendreFilter(ExpansionFilter):
+class SpatialLegendreFilter(SpatialExpansionFilter):
     r"""Score Legendre expansion moments in space up to specified order.
 
     This filter allows scores to be multiplied by Legendre polynomials of the

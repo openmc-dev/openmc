@@ -311,11 +311,7 @@ void Particle::event_cross_surface()
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
   } else {
-    // Particle crosses surface -- look up the surface only when we know
-    // surface() is a valid (nonzero) surface ID.  Previously, this
-    // dereference was done unconditionally before the lattice translation
-    // check, which caused an out-of-bounds access on model::surfaces when
-    // surface() == SURFACE_NONE (0) during a lattice crossing.
+    // Particle crosses surface
     const auto& surf {*model::surfaces[surface_index()].get()};
 
     // If BC, add particle to surface source before crossing surface

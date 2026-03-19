@@ -14,6 +14,10 @@ PathLike = str | os.PathLike
 
 
 def _isinstance(obj, expected_type, _memo=None):
+    from openmc.tallies import (_SCORE_CLASSES, _FILTER_CLASSES, _NUCLIDE_CLASSES, _EMPTY_NUCLIDE_CLASSES, 
+                                _VOLUME_SCORE_CLASSES, _VOLUME_FILTER_CLASSES, 
+                                _SURFACE_SCORE_CLASSES, _SURFACE_FILTER_CLASSES, 
+                                _PULSEHEIGHT_SCORE_CLASSES, _PULSEHEIGHT_FILTER_CLASSES)
     if _memo is None:
         _memo = set()
         
@@ -26,7 +30,7 @@ def _isinstance(obj, expected_type, _memo=None):
         if memo_key in _memo:
             return True
         _memo.add(memo_key)
-
+        
         # Resolve ForwardRef using caller's scope
         for frame, *_ in inspect.stack()[1:]:
             try:

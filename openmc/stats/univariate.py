@@ -13,7 +13,7 @@ from scipy.special import exprel, hyp1f1, lambertw
 import scipy
 
 import openmc.checkvalue as cv
-from openmc.data import atomic_mass, NEUTRON_MASS
+from openmc.data import atomic_mass, NEUTRON_MASS, decay_photon_energy
 from .._xml import get_elem_list, get_text
 from ..mixin import EqualityMixin
 
@@ -2284,11 +2284,10 @@ class DecaySpectrum(Univariate):
         if self._dist_cache is not None:
             return self._dist_cache
 
-        import openmc.data
         dists = []
         weights = []
         for name, density in self.nuclides.items():
-            dist = openmc.data.decay_photon_energy(name)
+            dist = decay_photon_energy(name)
             if dist is not None:
                 dists.append(dist)
                 weights.append(density * 1e24 * self.volume)
@@ -2376,33 +2375,56 @@ class DecaySpectrum(Univariate):
             return 0.0
         return dist.integral()
 
-    def clip(self, tolerance: float = 1e-6, inplace: bool = False):
+    def clip(self, tolerance: float = 1e-9, inplace: bool = False):
         """Remove nuclides with negligible contribution to photon emission.
 
-        Nuclides are sorted by their atom density and those contributing the
-        least are removed until the cumulative removed fraction exceeds the
-        tolerance.
+        Nuclides that are stable or have no photon source in the depletion
+        chain are removed unconditionally.  The remaining nuclides are ranked
+        by their photon emission rate (proportional to
+        ``atom_density * decay_constant * photon_yield``) and the least
+        important are discarded until the cumulative discarded fraction of the
+        total emission rate exceeds *tolerance*.
+
+        Requires ``openmc.config['chain_file']`` to be set.
 
         Parameters
         ----------
         tolerance : float
-            Maximum fraction of total atom density that can be discarded.
+            Maximum fraction of total photon emission rate that may be
+            discarded.
         inplace : bool
             Whether to modify the current object in-place or return a new one.
 
         Returns
         -------
         openmc.stats.DecaySpectrum
-            Distribution with low-density nuclides removed
+            Distribution with negligible nuclides removed.
 
         """
-        densities = np.array(list(self.nuclides.values()))
-        names = list(self.nuclides.keys())
-        indices = _intensity_clip(densities, tolerance=tolerance)
-        new_nuclides = {names[i]: densities[i] for i in indices}
+        # Compute per-nuclide emission rate; drop non-emitters
+        emitting_names = []
+        emitting_densities = []
+        rates = []
+        for name, density in self.nuclides.items():
+            dist = decay_photon_energy(name)
+            if dist is None:
+                continue
+            rate = density * self.volume * dist.integral()
+            emitting_names.append(name)
+            emitting_densities.append(density)
+            rates.append(rate)
+
+        if not emitting_names:
+            new_nuclides = {}
+        else:
+            indices = _intensity_clip(rates, tolerance=tolerance)
+            new_nuclides = {
+                emitting_names[i]: emitting_densities[i] for i in indices
+            }
 
         if inplace:
             self._nuclides = new_nuclides
+            self._dist_cache = None
             return self
         return type(self)(new_nuclides, self.volume)
 

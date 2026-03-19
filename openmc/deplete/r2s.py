@@ -649,6 +649,9 @@ class R2SManager:
                 continue
 
             energy = openmc.stats.DecaySpectrum(nuclides, vol)
+            energy.clip(inplace=True)
+            if not energy.nuclides:
+                continue
 
             if mesh_based:
                 domains = [openmc.Material(material_id=domain_id)]

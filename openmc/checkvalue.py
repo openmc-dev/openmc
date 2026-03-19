@@ -1,4 +1,5 @@
 import copy
+import inspect
 import os
 from collections.abc import Iterable
 import sys
@@ -27,10 +28,7 @@ def _isinstance(obj, expected_type, _memo=None):
         _memo.add(memo_key)
 
         # Resolve ForwardRef using caller's scope
-        iframe = 0
-        while True:
-            iframe += 1
-            frame = sys._getframe(iframe)
+        for frame, *_ in inspect.stack()[1:]:
             try:
                 expected_type = expected_type._evaluate(frame.f_globals, frame.f_locals, recursive_guard=frozenset())
             except NameError:

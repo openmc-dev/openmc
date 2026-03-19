@@ -707,7 +707,7 @@ CoincidentSource::CoincidentSource(pugi::xml_node node) : Source(node)
 
     auto src = Source::create(source_node);
     if (auto ptr = dynamic_cast<IndependentSource*>(src.get())) {
-      src.release();  // release ownership before transferring raw pointer
+      src.release();
       sources_.emplace_back(ptr);
     } else {
       fatal_error(

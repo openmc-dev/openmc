@@ -415,7 +415,6 @@ list(APPEND libopenmc_SOURCES
   src/ray.cpp
   src/reaction.cpp
   src/reaction_product.cpp
-  src/r2s_source.cpp
   src/scattdata.cpp
   src/secondary_correlated.cpp
   src/secondary_kalbach.cpp

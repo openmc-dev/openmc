@@ -125,6 +125,36 @@ def test_spatial_legendre():
     assert new_f.axis == f.axis
 
 
+def test_spatial_fourier():
+    n = 5
+    axis = 'x'
+    f = openmc.SpatialFourierFilter(n, axis, -10., 10.)
+    assert f.order == n
+    assert f.axis == axis
+    assert f.minimum == -10.
+    assert f.maximum == 10.
+    assert f.bins[0] == 'a0 (constant)'
+    assert f.bins[-1] == 'b5 (sin)'
+    assert f.bins[-2] == 'a5 (cos)'
+    assert len(f.bins) == 2*n + 1
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'spatialfourier'
+    assert elem.find('order').text == str(n)
+    assert elem.find('axis').text == str(axis)
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.order == f.order
+    assert new_f.axis == f.axis
+
+
 def test_spherical_harmonics():
     n = 3
     f = openmc.SphericalHarmonicsFilter(n)

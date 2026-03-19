@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
+from functools import cache
 from math import sqrt, pi, exp, log
 from numbers import Real
 from warnings import warn
@@ -2375,6 +2376,13 @@ class DecaySpectrum(Univariate):
             return 0.0
         return dist.integral()
 
+    @staticmethod
+    @cache
+    def _photon_integral(nuclide: str) -> float | None:
+        """Return the per-atom photon emission integral for a nuclide"""
+        dist = decay_photon_energy(nuclide)
+        return dist.integral() if dist is not None else None
+
     def clip(self, tolerance: float = 1e-9, inplace: bool = False):
         """Remove nuclides with negligible contribution to photon emission.
 
@@ -2406,13 +2414,12 @@ class DecaySpectrum(Univariate):
         emitting_densities = []
         rates = []
         for name, density in self.nuclides.items():
-            dist = decay_photon_energy(name)
-            if dist is None:
+            integral = DecaySpectrum._photon_integral(name)
+            if integral is None:
                 continue
-            rate = density * self.volume * dist.integral()
             emitting_names.append(name)
             emitting_densities.append(density)
-            rates.append(rate)
+            rates.append(density * self.volume * integral)
 
         if not emitting_names:
             new_nuclides = {}

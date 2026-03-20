@@ -1049,7 +1049,7 @@ class LogLinInterpolateFissionYieldHelper(TalliedFissionYieldHelper):
         ``n_groups = len(energy_bins)``, and ``n_tnucs`` is the number
         of nuclides with multiple sets of fission yields.
         Data are normalized group fractions corresponding to ``y1..yN``.
-        
+
     Notes
     -----
     Fission events are partitioned into ``len(energy_bins)`` group
@@ -1063,7 +1063,7 @@ class LogLinInterpolateFissionYieldHelper(TalliedFissionYieldHelper):
     for each nuclide.
 
      Implementation overview
-     -----------------------
+
     The helper creates one denominator tally and ``N`` weighted numerator
     tallies, where ``N = len(energy_bins)``:
 
@@ -1089,7 +1089,7 @@ class LogLinInterpolateFissionYieldHelper(TalliedFissionYieldHelper):
          tally to produce per-group fractions ``w_g``.
 
      Depletion-chain combination
-     ---------------------------
+
      For each nuclide, the final effective fission-yield vector is computed from
      group-wise yield vectors in the depletion chain:
 
@@ -1101,7 +1101,7 @@ class LogLinInterpolateFissionYieldHelper(TalliedFissionYieldHelper):
      ``g``, and ``w_g`` is the normalized group fraction from tallies.
 
     Example with bins ``(0.025, 500e3, 14e6)``
-     ------------------------------------------
+
     This gives 3 groups ``(y1, y2, y3)`` with
     ``x_nodes = [e0, 0.025, 500e3, 14e6, e_top]`` and:
 
@@ -1130,6 +1130,10 @@ class LogLinInterpolateFissionYieldHelper(TalliedFissionYieldHelper):
      So the event contributes to the chain-weighted yield as
      ``\vec{f} \approx 0.3697\,\vec{f}_1 + 0.6303\,\vec{f}_2`` for this
      interval.
+
+    Examples
+    --------
+    operator=openmc.deplete.CoupledOperator(model,chain, fission_yield_mode='loglin', fission_yield_opts={'energy_bins':(0.025, 500.0e3, 14.0e6)})
 
     
     """

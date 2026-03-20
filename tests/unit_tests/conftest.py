@@ -1,18 +1,7 @@
-import os
-
 import openmc
 import pytest
 
 from tests.regression_tests import config
-
-
-@pytest.fixture
-def run_in_tmpdir(tmp_path):
-    """Run test in a temporary directory, restoring cwd afterwards."""
-    orig = os.getcwd()
-    os.chdir(tmp_path)
-    yield tmp_path
-    os.chdir(orig)
 
 
 @pytest.fixture(scope='module')
@@ -59,8 +48,7 @@ def sphere_model():
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.IndependentSource(
-        space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
     return model
 
 
@@ -83,7 +71,6 @@ def cell_with_lattice():
     return ([inside_cyl, outside_cyl, main_cell],
             [m_inside[0], m_inside[1], m_inside[3], m_outside],
             univ, lattice)
-
 
 @pytest.fixture
 def mixed_lattice_model(uo2, water):

@@ -1112,20 +1112,12 @@ class MeshMaterialFilter(MeshFilter):
             A new MeshMaterialFilter instance
 
         """
-        # Build bins sorted by volume ascending (mat ID ascending as tiebreaker)
-        # so the bin ordering is deterministic regardless of the ray-traversal
-        # order stored in the raw _materials array.
-        bins = []
-        for i in range(volumes.num_elements):
-            entries = volumes.by_element(i)
-            # sort by (volume asc, mat_id asc), excluding void (None)
-            entries = sorted(
-                ((mat_id, vol)
-                 for mat_id, vol in entries if mat_id is not None),
-                key=lambda t: (t[1], t[0])
-            )
-            for mat_id, _ in entries:
-                bins.append((i, mat_id))
+        # Get flat arrays of material IDs and element indices
+        mat_ids = volumes._materials[volumes._materials > -1]
+        elems, _ = np.where(volumes._materials > -1)
+
+        # Stack them into a 2D array of (element, material) pairs
+        bins = np.column_stack((elems, mat_ids))
         return cls(mesh, bins)
 
     def __hash__(self):

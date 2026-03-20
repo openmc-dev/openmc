@@ -1025,6 +1025,33 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 class LogLinInterpolateFissionYieldHelper(TalliedFissionYieldHelper):
     r"""Helper that computes fission yields from log-lin weighted groups.
 
+    Parameters
+    ----------
+    chain_nuclides : iterable of openmc.deplete.Nuclide
+        Nuclides tracked in the depletion chain. All nuclides are
+        not required to have fission yield data.
+    energy_bins : iterable of float, optional
+        Energy points [eV] that define ``len(energy_bins)`` log-lin
+        groups. Must be strictly increasing and positive.
+        Defaults to ``(0.025, 500e3, 14e6)``.
+
+    Attributes
+    ----------
+    constant_yields : collections.defaultdict
+        Fission yields for all nuclides that only have one set of
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
+    results : None or numpy.ndarray
+        If tallies have been generated and unpacked, then the array will
+        have shape ``(n_mats, n_groups, n_tnucs)``, where ``n_mats`` is the
+        number of materials where fission reactions were tallied,
+        ``n_groups = len(energy_bins)``, and ``n_tnucs`` is the number
+        of nuclides with multiple sets of fission yields.
+        Data are normalized group fractions corresponding to ``y1..yN``.
+        
+    Notes
+    -----
     Fission events are partitioned into ``len(energy_bins)`` group
     fractions using the provided energy points. Adjacent groups share each
     interval and are blended using log-linear interpolation in incident energy.
@@ -1104,30 +1131,7 @@ class LogLinInterpolateFissionYieldHelper(TalliedFissionYieldHelper):
      ``\vec{f} \approx 0.3697\,\vec{f}_1 + 0.6303\,\vec{f}_2`` for this
      interval.
 
-    Parameters
-    ----------
-    chain_nuclides : iterable of openmc.deplete.Nuclide
-        Nuclides tracked in the depletion chain. All nuclides are
-        not required to have fission yield data.
-    energy_bins : iterable of float, optional
-        Energy points [eV] that define ``len(energy_bins)`` log-lin
-        groups. Must be strictly increasing and positive.
-        Defaults to ``(0.025, 500e3, 14e6)``.
-
-    Attributes
-    ----------
-    constant_yields : collections.defaultdict
-        Fission yields for all nuclides that only have one set of
-        fission yield data. Dictionary of form ``{str: {str: float}}``
-        representing yields for ``{parent: {product: yield}}``. Default
-        return object is an empty dictionary
-    results : None or numpy.ndarray
-        If tallies have been generated and unpacked, then the array will
-        have shape ``(n_mats, n_groups, n_tnucs)``, where ``n_mats`` is the
-        number of materials where fission reactions were tallied,
-        ``n_groups = len(energy_bins)``, and ``n_tnucs`` is the number
-        of nuclides with multiple sets of fission yields.
-        Data are normalized group fractions corresponding to ``y1..yN``.
+    
     """
 
     def __init__(self, chain_nuclides, energy_bins=(0.025, 500.0e3, 14.0e6)):

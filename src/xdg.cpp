@@ -182,7 +182,7 @@ Position XDGMesh::centroid(int bin) const
 
   centroid /= double(element_vertices.size());
 
-  return {centroid[0], centroid[1], centroid[1]};
+  return {centroid[0], centroid[1], centroid[2]};
 }
 
 int XDGMesh::n_vertices() const

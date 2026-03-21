@@ -95,7 +95,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // libMesh was initialized externally. If libMesh was initialized internally,
   // the XDG config will use the internal initialization and communicator.
   xdg::config::external_libmesh_init = settings::libmesh_init.get();
-  xdg::config::external_libmesh_comm = &(settings::libmesh_init->comm());
+  xdg::config::external_libmesh_comm = settings::libmesh_comm;
 #endif
 #endif
 

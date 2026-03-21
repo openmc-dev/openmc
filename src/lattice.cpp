@@ -345,12 +345,10 @@ Direction RectLattice::get_normal(
 {
   is_valid = false;
   Direction dir = {0.0, 0.0, 0.0};
-  if ((std::abs(i_xyz[0]) == 1) && (i_xyz[1] == 0) && (i_xyz[2]) == 0))
-    {
-      is_valid = true;
-      dir[0] = std::copysign(1.0, i_xyz[0]);
-    }
-  else if ((i_xyz[0] == 0) && (std::abs(i_xyz[1]) == 1) && (i_xyz[2] == 0)) {
+  if ((std::abs(i_xyz[0]) == 1) && (i_xyz[1] == 0) && (i_xyz[2] == 0)) {
+    is_valid = true;
+    dir[0] = std::copysign(1.0, i_xyz[0]);
+  } else if ((i_xyz[0] == 0) && (std::abs(i_xyz[1]) == 1) && (i_xyz[2] == 0)) {
     is_valid = true;
     dir[1] = std::copysign(1.0, i_xyz[1]);
   } else if ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (std::abs(i_xyz[2]) == 1)) {

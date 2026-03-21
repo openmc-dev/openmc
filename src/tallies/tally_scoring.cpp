@@ -2660,7 +2660,7 @@ void score_surface_tally(
 {
   double wgt = p.wgt_last();
 
-  double mu = std::clamp(p.u().dot(n), -1.0, 1.0);
+  double mu = std::clamp(p.u().dot(normal), -1.0, 1.0);
 
   // Sign for net current: +1 if crossing outward (in direction of normal),
   // -1 if crossing inward

@@ -14,6 +14,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -313,9 +314,14 @@ void Particle::event_cross_surface()
 
     // Score cell to cell partial currents
     if (!model::active_surface_tallies.empty()) {
-      Direction normal = surf->normal(p.r());
-      normal /= normal.norm();
-      score_surface_tally(*this, model::active_surface_tallies, normal);
+      auto& lat {*model::lattices[lowest_coord().lattice()]};
+      bool is_valid;
+      Direction normal =
+        lat.get_normal(boundary().lattice_translation(), is_valid);
+      if (is_valid) {
+        normal /= normal.norm();
+        score_surface_tally(*this, model::active_surface_tallies, normal);
+      }
     }
 
   } else {
@@ -339,7 +345,7 @@ void Particle::event_cross_surface()
 
     // Score cell to cell partial currents
     if (!model::active_surface_tallies.empty()) {
-      Direction normal = surf->normal(p.r());
+      Direction normal = surf.normal(r());
       normal /= normal.norm();
       score_surface_tally(*this, model::active_surface_tallies, normal);
     }
@@ -693,7 +699,9 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // with a mesh boundary
 
   if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies, surf);
+    Direction normal = surf.normal(r());
+    normal /= normal.norm();
+    score_surface_tally(*this, model::active_surface_tallies, normal);
   }
 
   if (!model::active_meshsurf_tallies.empty()) {

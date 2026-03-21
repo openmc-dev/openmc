@@ -340,6 +340,28 @@ Position RectLattice::get_local_position(
 
 //==============================================================================
 
+Direction RectLattice::get_normal(
+  const array<int, 3>& i_xyz, bool& is_valid) const
+{
+  is_valid = false;
+  Direction dir = {0.0, 0.0, 0.0};
+  if ((std::abs(i_xyz[0]) == 1) && (i_xyz[1] == 0) && (i_xyz[2]) == 0))
+    {
+      is_valid = true;
+      dir[0] = std::copysign(1.0, i_xyz[0]);
+    }
+  else if ((i_xyz[0] == 0) && (std::abs(i_xyz[1]) == 1) && (i_xyz[2] == 0)) {
+    is_valid = true;
+    dir[1] = std::copysign(1.0, i_xyz[1]);
+  } else if ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (std::abs(i_xyz[2]) == 1)) {
+    is_valid = true;
+    dir[2] = std::copysign(1.0, i_xyz[2]);
+  }
+  return dir;
+}
+
+//==============================================================================
+
 int32_t& RectLattice::offset(int map, const array<int, 3>& i_xyz)
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
@@ -982,6 +1004,73 @@ Position HexLattice::get_local_position(
   }
 
   return r;
+}
+
+//==============================================================================
+
+Direction HexLattice::get_normal(
+  const array<int, 3>& i_xyz, bool& is_valid) const
+{
+  is_valid = false;
+  Direction dir = {0.0, 0.0, 0.0};
+  if ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (std::abs(i_xyz[2]) == 1)) {
+    is_valid = true;
+    dir[2] = std::copysign(1.0, i_xyz[2]);
+  } else if ((i_xyz[2] == 0) &&
+             std::max({std::abs(i_xyz[0]), std::abs(i_xyz[1]),
+               std::abs(i_xyz[0] + i_xyz[1])}) == 1) {
+    is_valid = true;
+    if ((i_xyz[0] == 1) && (i_xyz[1] == -1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      } else {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      }
+    } else if ((i_xyz[0] == -1) && (i_xyz[1] == 1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      } else {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      }
+    } else if ((i_xyz[0] == 0) && (i_xyz[1] == 1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      } else {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      }
+    } else if ((i_xyz[0] == 0) && (i_xyz[1] == -1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      } else {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      }
+    } else if ((i_xyz[0] == 1) && (i_xyz[1] == 0)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      } else {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      }
+    } else if ((i_xyz[0] == -1) && (i_xyz[1] == 0)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      } else {
+        dir[0] = 0.0;
+        dir[1] = 0.0;
+      }
+    }
+  }
+  return dir;
 }
 
 //==============================================================================

@@ -302,8 +302,6 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
-  const auto& surf {*model::surfaces[surface_index()].get()};
-
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
@@ -312,7 +310,18 @@ void Particle::event_cross_surface()
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      Direction normal = surf->normal(p.r());
+      normal /= normal.norm();
+      score_surface_tally(*this, model::active_surface_tallies, normal);
+    }
+
   } else {
+
+    const auto& surf {*model::surfaces[surface_index()].get()};
+
     // Particle crosses surface
     // If BC, add particle to surface source before crossing surface
     if (surf.surf_source_ && surf.bc_) {
@@ -327,10 +336,13 @@ void Particle::event_cross_surface()
       apply_weight_windows(*this);
     }
     event() = TallyEvent::SURFACE;
-  }
-  // Score cell to cell partial currents
-  if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies, surf);
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      Direction normal = surf->normal(p.r());
+      normal /= normal.norm();
+      score_surface_tally(*this, model::active_surface_tallies, normal);
+    }
   }
 }
 

@@ -74,6 +74,7 @@ class StepResult:
         self.name_list = None
 
         self.data = None
+        self.hdf5_dtype = 'float64'
 
     def __repr__(self):
         t = self.time[0]
@@ -344,17 +345,18 @@ class StepResult:
                     self.rates.index_rx[rxn])
 
         # Construct array storage
+        _dtype = getattr(self, 'hdf5_dtype', 'float64')
 
         handle.create_dataset("number", (1, n_mats, n_nuc_number),
                               maxshape=(None, n_mats, n_nuc_number),
                               chunks=True,
-                              dtype='float64')
+                              dtype=_dtype)
 
         if include_rates and n_nuc_rxn > 0 and n_rxn > 0:
             handle.create_dataset(
                 "reaction rates", (1, n_mats, n_nuc_rxn, n_rxn),
                 maxshape=(None, n_mats, n_nuc_rxn, n_rxn),
-                chunks=True, dtype='float64')
+                chunks=True, dtype=_dtype)
 
         handle.create_dataset("eigenvalues", (1, 2),
                               maxshape=(None, 2), dtype='float64')
@@ -554,7 +556,8 @@ class StepResult:
         step_ind,
         proc_time=None,
         write_rates: bool = False,
-        path: PathLike = "depletion_results.h5"
+        path: PathLike = "depletion_results.h5",
+        hdf5_dtype: str = 'float64',
     ):
         """Creates and writes depletion results to disk
 
@@ -582,12 +585,17 @@ class StepResult:
             Path to file to write. Defaults to 'depletion_results.h5'.
 
             .. versionadded:: 0.14.0
+        hdf5_dtype : str, optional
+            dtype for number and reaction rate datasets, float32 or float64 (default)
+
+            .. versionadded:: 0.15.4
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list, name_list = op.get_results_info()
 
         # Create results
         results = StepResult()
+        results.hdf5_dtype = hdf5_dtype
         results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, name_list)
 
         n_mat = len(burn_list)

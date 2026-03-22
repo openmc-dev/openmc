@@ -352,14 +352,14 @@ def test_dagmc_xml_temperature_roundtrip():
 
     dag_univ = openmc.DAGMCUniverse.from_xml_element(elem, mats)
     assert dag_univ.cells[7].fill.id == 1
-    assert dag_univ.cells[7].temperature == pytest.approx([825.0])
+    assert dag_univ.cells[7].temperature == pytest.approx(825.0)
 
     root = ET.Element('geometry')
     dag_univ.create_xml_subelement(root)
     dagmc_elem = root.find('dagmc_universe')
     xml_cell = dagmc_elem.find('cell')
-    assert xml_cell.find('temperature').text == '825.0'
+    assert xml_cell.get('temperature') == '825.0'
 
     dag_univ_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem, mats)
     assert dag_univ_roundtrip.cells[7].fill.id == 1
-    assert dag_univ_roundtrip.cells[7].temperature == pytest.approx([825.0])
+    assert dag_univ_roundtrip.cells[7].temperature == pytest.approx(825.0)

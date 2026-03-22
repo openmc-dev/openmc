@@ -391,8 +391,8 @@ def test_dagmccell_from_xml_element():
     assert cell.id == 5
     assert cell.name == 'fuel'
     assert cell.fill is mat
-    assert cell.density == [10.5]
-    assert cell.temperature == [900.0]
+    assert cell.density == 10.5
+    assert cell.temperature == 900.0
 
     # volume round-trip
     xml = '<cell id="6" material="1" volume="42.0"/>'

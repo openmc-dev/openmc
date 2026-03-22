@@ -8,6 +8,7 @@ set(TEST_NAMES
   test_mesh
   test_region
   test_tensor
+  test_surf_source_write
   # Add additional unit test files here
 )
 

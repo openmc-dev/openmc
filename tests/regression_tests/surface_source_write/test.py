@@ -659,9 +659,9 @@ def model_5():
     model.settings.batches = 5
     model.settings.seed = 1
 
-    point_21 = openmc.stats.Point((1.5,0.5,0.5))
-    point_31 = openmc.stats.Point((2.5,0.5,0.5))
-    point_12 = openmc.stats.Point((0.5,0.5,1.5))
+    point_21 = openmc.stats.Point((1.6,0.5,0.5))
+    point_31 = openmc.stats.Point((2.6,0.5,0.5))
+    point_12 = openmc.stats.Point((0.5,0.5,1.6))
     point_42 = openmc.stats.Point((3.5,0.5,1.5))
     point_23 = openmc.stats.Point((1.5,0.5,2.5))
     point_33 = openmc.stats.Point((2.5,0.5,2.5))

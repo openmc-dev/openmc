@@ -76,7 +76,7 @@ class IPFCramSolver(DepSystemSolver):
 
         """
         A = dt * csc_array(A, dtype=np.float64)
-        y = np.asarray(n0, dtype=np.float64)
+        y = np.array(n0, dtype=np.float64)
         ident = eye_array(A.shape[0], format='csc')
         for alpha, theta in zip(self.alpha, self.theta):
             y += 2*np.real(alpha*sla.spsolve(A - theta*ident, y))

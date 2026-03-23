@@ -421,6 +421,13 @@ class KalbachMann(AngleEnergy):
         dset.attrs['interpolation'] = interpolation
         dset.attrs['n_discrete_lines'] = n_discrete_lines
 
+        # Preserve full Tabulated1D metadata for Python round-trip.
+        metadata_group = group.create_group('kalbach_metadata')
+        for i, (km_r, km_a) in enumerate(zip(self.precompound, self.slope)):
+            sub_group = metadata_group.create_group(f'energy_{i}')
+            km_r.to_hdf5(sub_group, 'precompound')
+            km_a.to_hdf5(sub_group, 'slope')
+
     @classmethod
     def from_hdf5(cls, group):
         """Generate Kalbach-Mann distribution from HDF5 data
@@ -450,6 +457,7 @@ class KalbachMann(AngleEnergy):
         precompound = []
         slope = []
         n_energy = len(energy)
+        metadata_group = group.get('kalbach_metadata')
         for i in range(n_energy):
             # Determine length of outgoing energy distribution and number of
             # discrete lines
@@ -482,9 +490,16 @@ class KalbachMann(AngleEnergy):
                 eout_i = Mixture([p_discrete, 1. - p_discrete],
                                  [eout_discrete, eout_continuous])
 
-            # Precompound factor and slope are on rows 3 and 4, respectively
-            km_r = Tabulated1D(data[0, j:j+n], data[3, j:j+n])
-            km_a = Tabulated1D(data[0, j:j+n], data[4, j:j+n])
+            # Precompound factor and slope are on rows 3 and 4, respectively.
+            # For older HDF5 files, only y-values are stored, so we fall back
+            # to a single linear-linear interpolation region.
+            if metadata_group is not None and f'energy_{i}' in metadata_group:
+                sub_group = metadata_group[f'energy_{i}']
+                km_r = Tabulated1D.from_hdf5(sub_group['precompound'])
+                km_a = Tabulated1D.from_hdf5(sub_group['slope'])
+            else:
+                km_r = Tabulated1D(data[0, j:j+n], data[3, j:j+n])
+                km_a = Tabulated1D(data[0, j:j+n], data[4, j:j+n])
 
             energy_out.append(eout_i)
             precompound.append(km_r)

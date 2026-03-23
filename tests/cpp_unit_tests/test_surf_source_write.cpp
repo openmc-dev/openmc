@@ -6,28 +6,29 @@
 
 #include "openmc/settings.h"
 
-auto ssw_cells_from_xml(std::string xml_string) {
+auto ssw_cells_from_xml(std::string xml_string)
+{
 
-    // Create a pugixml document object
-    pugi::xml_document doc;
+  // Create a pugixml document object
+  pugi::xml_document doc;
 
-    // Load the XML from the string
-    pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-    
-    pugi::xml_node root = doc.child("settings");
+  // Load the XML from the string
+  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
 
-    // Read the surface source settings
-    openmc::read_settings_xml(root);
+  pugi::xml_node root = doc.child("settings");
 
-    // Get the cell direction map
-    auto ssw_cells = openmc::settings::ssw_cells;
+  // Read the surface source settings
+  openmc::read_settings_xml(root);
 
-    // Finalize to allow more tests
-    openmc::free_memory_settings();
-    openmc::settings::n_particles = -1;
-    openmc::settings::run_mode = openmc::RunMode::UNSET;
+  // Get the cell direction map
+  auto ssw_cells = openmc::settings::ssw_cells;
 
-    return ssw_cells;
+  // Finalize to allow more tests
+  openmc::free_memory_settings();
+  openmc::settings::n_particles = -1;
+  openmc::settings::run_mode = openmc::RunMode::UNSET;
+
+  return ssw_cells;
 }
 
 TEST_CASE("Test duplicate cells in surface source write")
@@ -84,8 +85,7 @@ TEST_CASE("Test duplicate cells in surface source write")
             <directions>both to</directions>
           </surf_source_write>
         </settings>
-    )"
-  };
+    )"};
 
   auto ssw_cells = ssw_cells_from_xml(xml_strings[0]);
   REQUIRE(ssw_cells.size() == 1);

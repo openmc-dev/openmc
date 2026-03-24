@@ -579,8 +579,6 @@ void Tally::set_scores(const vector<std::string>& scores)
       meshsurface_present = true;
     }
   }
-  bool surface_types_present =
-    (surface_present || cellfrom_present || materialfrom_present);
   bool non_meshsurface_types_present =
     (surface_present || cell_present || cellfrom_present || material_present ||
       materialfrom_present);
@@ -595,8 +593,7 @@ void Tally::set_scores(const vector<std::string>& scores)
   if ((type_ == TallyType::MESH_SURFACE) && non_meshsurface_types_present)
     fatal_error("Cannot tally mesh surface tally with surface type filters.");
 
-  if ((type_ == TallyType::VOLUME) &&
-      (surface_types_present || meshsurface_present))
+  if ((type_ == TallyType::VOLUME) && (surface_present || meshsurface_present))
     fatal_error("Cannot use surface filters in a volume tally.");
 
   if ((type_ == TallyType::SURFACE) || (type_ == TallyType::MESH_SURFACE))

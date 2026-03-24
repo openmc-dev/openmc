@@ -160,7 +160,7 @@ mesh.width = [1, 1]
 mesh_filter = openmc.MeshFilter(mesh)
 
 # Instantiate the Tally
-tally = openmc.Tally(tally_id=1)
+tally = openmc.VolumeTally(tally_id=1)
 tally.filters = [mesh_filter]
 tally.scores = ['total']
 

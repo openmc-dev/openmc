@@ -100,7 +100,7 @@ create a shallow copy of the original neutron model (available as the
 ``neutron_model`` attribute) and store it in the ``photon_model`` attribute. We
 can use this to define tallies specific to the photon model::
 
-    dose_tally = openmc.Tally()
+    dose_tally = openmc.VolumeTally()
     ...
     r2s.photon_model.tallies = [dose_tally]
 

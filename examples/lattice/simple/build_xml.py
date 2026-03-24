@@ -157,7 +157,7 @@ trigger = openmc.Trigger(trigger_type='rel_err', threshold=1E-2)
 trigger.scores = ['all']
 
 # Instantiate the Tally
-tally = openmc.Tally(tally_id=1)
+tally = openmc.VolumeTally(tally_id=1)
 tally.filters = [mesh_filter]
 tally.scores = ['total']
 tally.triggers = [trigger]

@@ -180,7 +180,7 @@ mesh_filter = openmc.MeshFilter(mesh)
 energy_filter = openmc.EnergyFilter(group_edges)
 
 # Now use the mesh filter in a tally and indicate what scores are desired
-tally = openmc.Tally(name="Mesh and Energy tally")
+tally = openmc.VolumeTally(name="Mesh and Energy tally")
 tally.filters = [mesh_filter, energy_filter]
 tally.scores = ['flux', 'fission', 'nu-fission']
 

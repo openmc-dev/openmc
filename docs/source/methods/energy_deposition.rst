@@ -137,7 +137,7 @@ run with :math:`N918` reflecting fission heating computed from NJOY.
       + E_{i, \gamma, d}\right]\sigma_{i, f}(E).
 
 This modified heating data is stored as the MT=901 reaction and will be scored
-if ``heating-local`` is included in :attr:`openmc.Tally.scores`.
+if ``heating-local`` is included in :attr:`openmc.TallyBase.scores`.
 
 Coupled Neutron-Photon Transport
 --------------------------------
@@ -155,7 +155,7 @@ Let :math:`N301` represent the total heating number returned from this
       + \left[E_{i, fr}(E) + E_{i, \beta}(E)\right]\sigma_{i, f}(E).
 
 This modified heating data is stored as the MT=301 reaction and will be scored
-if ``heating`` is included in :attr:`openmc.Tally.scores`.
+if ``heating`` is included in :attr:`openmc.TallyBase.scores`.
 
 Photons and Charged Particles
 -----------------------------

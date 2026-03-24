@@ -30,7 +30,7 @@ mesh.lower_left = (-5.0, -5.0)
 mesh.upper_right = (5.0, 5.0)
 mesh.dimension = (50, 50)
 
-tally = openmc.Tally()
+tally = openmc.VolumeTally()
 tally.filters = [openmc.MeshFilter(mesh)]
 tally.scores = ['flux']
 tallies = openmc.Tallies([tally])

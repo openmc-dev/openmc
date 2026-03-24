@@ -7,7 +7,8 @@ Specifying Tallies
 .. currentmodule:: openmc
 
 In order to obtain estimates of physical quantities in your simulation, you need
-to create one or more tallies using the :class:`openmc.Tally` class. As
+to create one or more tallies using some of the :class:`openmc.TallyBase` subclasses. 
+The most used :class:`openmc.TallyBase` subclass is the :class:`openmc.VolumeTally` class. As
 explained in detail in the :ref:`theory manual <methods_tallies>`, tallies
 provide estimates of a scoring function times the flux integrated over some
 region of phase space, as in:
@@ -53,8 +54,8 @@ Energies are specified in eV and need to be monotonically increasing.
 .. caution:: An energy bin between zero and the lowest energy specified is not
              included by default as it is in MCNP.
 
-Once you have created a filter, it should be assigned to a :class:`openmc.Tally`
-instance through the :attr:`Tally.filters` attribute::
+Once you have created a filter, it should be assigned to a :class:`openmc.TallyBase`
+instance through the :attr:`TallyBase.filters` attribute::
 
   tally.filters.append(cell_filter)
   tally.filters.append(energy_filter)
@@ -74,7 +75,7 @@ Scores
 ------
 
 To specify the scoring functions, a list of strings needs to be given to the
-:attr:`Tally.scores` attribute. You can score the flux ('flux'), or a reaction
+:attr:`TallyBase.scores` attribute. You can score the flux ('flux'), or a reaction
 rate ('total', 'fission', etc.). For example, to tally the elastic scattering
 rate and the fission neutron production, you'd assign::
 
@@ -82,7 +83,7 @@ rate and the fission neutron production, you'd assign::
 
 With no further specification, you will get the total elastic scattering rate
 and the total fission neutron production. If you want reaction rates for a
-particular nuclide or set of nuclides, you can set the :attr:`Tally.nuclides`
+particular nuclide or set of nuclides, you can set the :attr:`TallyBase.nuclides`
 attribute to a list of strings indicating which nuclides. The nuclide names
 should follow the same :ref:`naming convention <usersguide_naming>` as that used
 for material specification. If we wanted the reaction rates only for U235 and

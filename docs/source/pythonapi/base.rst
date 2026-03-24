@@ -153,7 +153,10 @@ Constructing Tallies
    openmc.MeshMaterialVolumes
    openmc.Trigger
    openmc.TallyDerivative
-   openmc.Tally
+   openmc.TallyBase
+   openmc.VolumeTally
+   openmc.SurfaceTally
+   openmc.PulseHeightTally
    openmc.Tallies
 
 Meshes

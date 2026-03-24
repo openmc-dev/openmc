@@ -584,7 +584,12 @@ class Integrator(ABC):
 
         .. versionadded:: 0.15.1
     hdf5_dtype : str, optional
-        dtype for number and reaction rate datasets, float32 or float64 (default)
+        dtype for number and reaction rate datasets, float32 or float64.
+
+        .. versionadded:: 0.15.4
+    hdf5_compression : str, optional
+        Compression for number and reaction rate datasets.
+        Accepted values are 'gzip' and 'lzf'. Ignored with parallel HDF5.
 
         .. versionadded:: 0.15.4
 
@@ -637,11 +642,17 @@ class Integrator(ABC):
             solver: str = "cram48",
             continue_timesteps: bool = False,
             hdf5_dtype: str = 'float64',
+            hdf5_compression: str = None,
         ):
         if hdf5_dtype not in ('float32', 'float64'):
             raise ValueError(
                 f"hdf5_dtype must be 'float32' or 'float64', got '{hdf5_dtype}'")
+        if hdf5_compression is not None and hdf5_compression not in ('gzip', 'lzf'):
+            raise ValueError(
+                f"hdf5_compression must be None, 'gzip', or 'lzf', "
+                f"got '{hdf5_compression}'")
         self.hdf5_dtype = hdf5_dtype
+        self.hdf5_compression = hdf5_compression
         if continue_timesteps and operator.prev_res is None:
             raise ValueError("Continuation run requires passing prev_results.")
         self.operator = operator
@@ -906,6 +917,7 @@ class Integrator(ABC):
                     write_rates=write_rates,
                     path=path,
                     hdf5_dtype=self.hdf5_dtype,
+                    hdf5_compression=self.hdf5_compression,
                 )
 
                 # Update for next step
@@ -930,6 +942,7 @@ class Integrator(ABC):
                 write_rates=write_rates,
                 path=path,
                 hdf5_dtype=self.hdf5_dtype,
+                hdf5_compression=self.hdf5_compression,
             )
             self.operator.write_bos_data(len(self) + self._i_res)
 
@@ -1131,6 +1144,12 @@ class SIIntegrator(Integrator):
         dtype for number and reaction rate datasets, float32 or float64 (default)
 
         .. versionadded:: 0.15.4
+    hdf5_compression : str, optional
+        Compression filter for number and reaction rate datasets in
+        depletion_results.h5. Accepted values are 'gzip' and 'lzf'.
+        Default is None (no compression). Ignored with parallel HDF5.
+
+        .. versionadded:: 0.15.4
 
     Attributes
     ----------
@@ -1175,6 +1194,7 @@ class SIIntegrator(Integrator):
             solver: str = "cram48",
             continue_timesteps: bool = False,
             hdf5_dtype: str = 'float64',
+            hdf5_compression: str = None,
         ):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
@@ -1182,7 +1202,8 @@ class SIIntegrator(Integrator):
             operator, timesteps, power, power_density, source_rates,
             timestep_units=timestep_units, solver=solver,
             continue_timesteps=continue_timesteps,
-            hdf5_dtype=hdf5_dtype)
+            hdf5_dtype=hdf5_dtype,
+            hdf5_compression=hdf5_compression)
         self.n_steps = n_steps
 
     def _get_bos_data_from_operator(self, step_index, step_power, n_bos):
@@ -1275,6 +1296,7 @@ class SIIntegrator(Integrator):
                     write_rates=write_rates,
                     path=path,
                     hdf5_dtype=self.hdf5_dtype,
+                    hdf5_compression=self.hdf5_compression,
                 )
 
                 # Update for next step
@@ -1294,6 +1316,7 @@ class SIIntegrator(Integrator):
                 write_rates=write_rates,
                 path=path,
                 hdf5_dtype=self.hdf5_dtype,
+                hdf5_compression=self.hdf5_compression,
             )
             self.operator.write_bos_data(self._i_res + len(self))
 

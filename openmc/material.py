@@ -1630,6 +1630,25 @@ class Material(IDManagerMixin):
               short-lived radionuclides
             - 'NRC_short_C': Uses the 10 CFR 61.55 class C limits for
               short-lived radionuclides
+            The following options use clearance values from the German
+            Strahlenschutzverordnung (StrlSchV) 2018, Anlage 4, Tabelle 1.
+            These limits are in [Bq/g] and the material activity will be
+            compared using the same units.
+
+            - 'StrlSchV_unrestricted': Unrestricted clearance of solid and
+              liquid substances (column 3)
+            - 'StrlSchV_metal_recycling': Metal scrap recycling (column 14)
+            - 'StrlSchV_landfill_100': Landfill disposal for facilities
+              receiving ≤100 Mg/a (column 8)
+            - 'StrlSchV_landfill_1000': Landfill disposal for facilities
+              receiving ≤1000 Mg/a (column 10)
+            - 'StrlSchV_incineration_100': Incineration for facilities
+              receiving ≤100 Mg/a (column 9)
+            - 'StrlSchV_incineration_1000': Incineration for facilities
+              receiving ≤1000 Mg/a (column 11)
+            - 'StrlSchV_soil': Soil surface clearance (column 7)
+            - 'StrlSchV_rubble': Building rubble clearance for >1000 Mg/a
+              (column 6)
         metal : bool, optional
             Whether or not the material is in metal form (only applicable for
             NRC based limits)

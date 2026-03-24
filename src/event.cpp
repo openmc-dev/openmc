@@ -17,6 +17,7 @@ SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 SharedArray<EventQueueItem> advance_particle_queue;
 SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
+SharedArray<EventQueueItem> temperature_mesh_crossing_queue;
 
 vector<Particle> particles;
 
@@ -33,6 +34,9 @@ void init_event_queues(int64_t n_particles)
   simulation::advance_particle_queue.reserve(n_particles);
   simulation::surface_crossing_queue.reserve(n_particles);
   simulation::collision_queue.reserve(n_particles);
+  if (settings::temperature_field_on) {
+    simulation::temperature_mesh_crossing_queue.reserve(n_particles);
+  }
 
   simulation::particles.resize(n_particles);
 }
@@ -44,6 +48,7 @@ void free_event_queues(void)
   simulation::advance_particle_queue.clear();
   simulation::surface_crossing_queue.clear();
   simulation::collision_queue.clear();
+  simulation::temperature_mesh_crossing_queue.clear();
 
   simulation::particles.clear();
 }
@@ -115,10 +120,24 @@ void process_advance_particle_events()
     p.event_advance();
     if (!p.alive())
       continue;
-    if (p.collision_distance() > p.boundary().distance()) {
+
+    switch (p.next_event()) {
+    case EVENT_CROSS_SURFACE:
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
-    } else {
+      break;
+    case EVENT_COLLIDE:
       simulation::collision_queue.thread_safe_append({p, buffer_idx});
+      break;
+    case EVENT_CROSS_TEMPERATURE_MESH:
+      simulation::temperature_mesh_crossing_queue.thread_safe_append({p, buffer_idx});
+      break;
+    case EVENT_TIME_CUTOFF:
+      p.wgt() = 0.0;
+      break;
+    default:
+      fatal_error(fmt::format(
+        "Unknown event '{}' in event-based transport!", p.next_event()));
+      break;
     }
   }
 
@@ -163,6 +182,25 @@ void process_collision_events()
   simulation::collision_queue.resize(0);
 
   simulation::time_event_collision.stop();
+}
+
+void process_temperature_mesh_crossing_events()
+{
+  simulation::time_event_temperature_mesh_crossing.start();
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::temperature_mesh_crossing_queue.size(); i++) {
+    int64_t buffer_idx = simulation::temperature_mesh_crossing_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_cross_temperature_mesh();
+    p.event_revive_from_secondary();
+    if (p.alive())
+      dispatch_xs_event(buffer_idx);
+  }
+
+  simulation::temperature_mesh_crossing_queue.resize(0);
+
+  simulation::time_event_temperature_mesh_crossing.stop();
 }
 
 void process_death_events(int64_t n_particles)

@@ -25,6 +25,7 @@ Timer time_event_calculate_xs;
 Timer time_event_advance_particle;
 Timer time_event_surface_crossing;
 Timer time_event_collision;
+Timer time_event_temperature_mesh_crossing;
 Timer time_event_death;
 Timer time_update_src;
 
@@ -85,6 +86,7 @@ void reset_timers()
   simulation::time_event_advance_particle.reset();
   simulation::time_event_surface_crossing.reset();
   simulation::time_event_collision.reset();
+  simulation::time_event_temperature_mesh_crossing.reset();
   simulation::time_event_death.reset();
   simulation::time_update_src.reset();
 }

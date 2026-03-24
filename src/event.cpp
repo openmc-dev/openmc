@@ -129,7 +129,8 @@ void process_advance_particle_events()
       simulation::collision_queue.thread_safe_append({p, buffer_idx});
       break;
     case EVENT_CROSS_TEMPERATURE_MESH:
-      simulation::temperature_mesh_crossing_queue.thread_safe_append({p, buffer_idx});
+      simulation::temperature_mesh_crossing_queue.thread_safe_append(
+        {p, buffer_idx});
       break;
     case EVENT_TIME_CUTOFF:
       p.wgt() = 0.0;
@@ -189,7 +190,8 @@ void process_temperature_mesh_crossing_events()
   simulation::time_event_temperature_mesh_crossing.start();
 
 #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < simulation::temperature_mesh_crossing_queue.size(); i++) {
+  for (int64_t i = 0; i < simulation::temperature_mesh_crossing_queue.size();
+    i++) {
     int64_t buffer_idx = simulation::temperature_mesh_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_cross_temperature_mesh();

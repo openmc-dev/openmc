@@ -102,6 +102,17 @@ Tally::Tally(pugi::xml_node node)
   if (check_for_node(node, "name"))
     name_ = get_node_value(node, "name");
 
+  if (check_for_node(node, "type")) {
+    auto type_str = get_node_value(node, "type");
+    if (type_str == "surface") {
+      type_ = TallyType::SURFACE;
+    } else if (type_str == "pulse-height") {
+      type_ = TallyType::PULSE_HEIGHT;
+    } else if (type_str != "volume") {
+      fatal_error(fmt::format("Unknown tally type {}", type_str));
+    }
+  }
+
   if (check_for_node(node, "multiply_density")) {
     multiply_density_ = get_node_value_bool(node, "multiply_density");
   }
@@ -574,6 +585,26 @@ void Tally::set_scores(const vector<std::string>& scores)
     (surface_present || cell_present || cellfrom_present || material_present ||
       materialfrom_present);
 
+  if (meshsurface_present && (type_ == TallyType::SURFACE))
+    type_ = TallyType::MESH_SURFACE;
+
+  if ((type_ == TallyType::PULSE_HEIGHT) && non_cell_energy_present)
+    fatal_error("Pulse-height tallies are not compatible with filters "
+                "other than CellFilter and EnergyFilter");
+
+  if ((type_ == TallyType::MESH_SURFACE) && non_meshsurface_types_present)
+    fatal_error("Cannot tally mesh surface tally with surface type filters.");
+
+  if ((type_ == TallyType::VOLUME) &&
+      (surface_types_present || meshsurface_present))
+    fatal_error("Cannot use volume tally surface filters.");
+
+  if ((type_ == TallyType::SURFACE) || (type_ == TallyType::MESH_SURFACE))
+    estimator_ = TallyEstimator::ANALOG;
+
+  if (type_ == TallyType::PULSE_HEIGHT)
+    estimator_ = TallyEstimator::COLLISION;
+
   // Iterate over the given scores.
   for (auto score_str : scores) {
     // Make sure a delayed group filter wasn't used with an incompatible
@@ -594,12 +625,8 @@ void Tally::set_scores(const vector<std::string>& scores)
           fatal_error("Cannot tally flux for an individual nuclide.");
       if (energyout_present)
         fatal_error("Cannot tally flux with an outgoing energy filter.");
-      if (surface_types_present) {
-        if (meshsurface_present)
-          fatal_error("OpenMC does not support mesh surface fluxes yet");
-        type_ = TallyType::SURFACE;
-        estimator_ = TallyEstimator::ANALOG;
-      }
+      if (type_ == TallyType::MESH_SURFACE)
+        fatal_error("OpenMC does not support mesh surface fluxes yet");
       break;
 
     case SCORE_TOTAL:
@@ -631,16 +658,9 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_CURRENT:
-      // Check which type of current is desired: mesh or surface currents.
-      if (meshsurface_present) {
-        if (non_meshsurface_types_present)
-          fatal_error("Cannot tally mesh surface currents in the same tally as "
-                      "normal surface currents");
-        type_ = TallyType::MESH_SURFACE;
-      } else {
-        type_ = TallyType::SURFACE;
-        estimator_ = TallyEstimator::ANALOG;
-      }
+      if ((type_ != TallyType::SURFACE) && (type_ != TallyType::MESH_SURFACE))
+        fatal_error("Cannot tally current in non surface tallies.");
+      estimator_ = TallyEstimator::ANALOG;
       break;
 
     case HEATING:
@@ -649,11 +669,9 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_PULSE_HEIGHT: {
-      if (non_cell_energy_present) {
-        fatal_error("Pulse-height tallies are not compatible with filters "
-                    "other than CellFilter and EnergyFilter");
-      }
-      type_ = TallyType::PULSE_HEIGHT;
+      if (type_ != TallyType::PULSE_HEIGHT)
+        fatal_error(
+          "Can only tally pulse-height score in a pulse-height tally.");
       // Collect all unique cell indices covered by this tally.
       // If no CellFilter is present, all cells in the geometry are scored.
       const auto* cell_filter_ptr = get_filter<CellFilter>();
@@ -697,10 +715,10 @@ void Tally::set_scores(const vector<std::string>& scores)
   }
 
   // Make sure mesh surface tallies contain only current score.
-  if (meshsurface_present) {
+  if (type_ == TallyType::MESH_SURFACE) {
     if ((scores_[0] != SCORE_CURRENT) || (scores_.size() > 1))
       fatal_error("Cannot tally score other than 'current' when using a "
-                  "mesh-surface filter.");
+                  "mesh-surface filter in a surface tally.");
   }
 
   // Make sure surface tallies contain only surface type scores score.
@@ -708,7 +726,14 @@ void Tally::set_scores(const vector<std::string>& scores)
     for (auto sc : scores_)
       if ((sc != SCORE_CURRENT) && (sc != SCORE_FLUX))
         fatal_error("Cannot tally scores other than 'current' or 'flux' "
-                    "when using surface filters.");
+                    "when using a surface tally.");
+  }
+
+  // Make sure pulse height tallies contain only pulse height score.
+  if (type_ == TallyType::PULSE_HEIGHT) {
+    if ((scores_[0] != SCORE_PULSE_HEIGHT) || (scores_.size() > 1))
+      fatal_error("Cannot tally score other than 'pulse-height' when using a "
+                  "pulse height tally.");
   }
 }
 

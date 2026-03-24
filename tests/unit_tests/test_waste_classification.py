@@ -105,12 +105,14 @@ def test_waste_disposal_rating():
 def test_strlschv_unrestricted():
     """Test German StrlSchV unrestricted clearance rating"""
     # Co-60 unrestricted clearance limit is 0.1 Bq/g.
-    # Create a material with Co60 and check the rating against its activity.
+    # Create a material with Co60 and stable Co59 (which should not
+    # contribute to the waste disposal rating).
     mat = openmc.Material()
+    mat.add_nuclide('Co59', 1e-10)
     mat.add_nuclide('Co60', 1e-12)
     bq_g = mat.get_activity('Bq/g', by_nuclide=True)['Co60']
 
-    # Rating should equal activity / limit
+    # Rating should equal activity / limit (Co59 is stable, no contribution)
     expected = bq_g / 0.1
     rating = mat.waste_disposal_rating(limits='StrlSchV_unrestricted')
     assert rating == pytest.approx(expected, rel=1e-3)

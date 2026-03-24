@@ -163,7 +163,7 @@ bool multipole_in_range(const Nuclide& nuc, double E);
 namespace data {
 
 // Minimum/maximum transport energy for each particle type. Order corresponds to
-// that of the ParticleType enum
+// transport_index() for supported transport particles.
 extern array<double, 4> energy_min;
 extern array<double, 4> energy_max;
 

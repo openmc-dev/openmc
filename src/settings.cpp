@@ -63,6 +63,7 @@ bool output_summary {true};
 bool output_tallies {true};
 bool particle_restart_run {false};
 bool photon_transport {false};
+bool atomic_relaxation {true};
 bool reduce_tallies {true};
 bool res_scat_on {false};
 bool restart_run {false};
@@ -97,6 +98,7 @@ std::string path_sourcepoint;
 std::string path_statepoint;
 const char* path_statepoint_c {path_statepoint.c_str()};
 std::string weight_windows_file;
+std::string properties_file;
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
@@ -137,6 +139,8 @@ int64_t ssw_max_particles;
 int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
+double surface_grazing_cutoff {0.001};
+double surface_grazing_ratio {0.5};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -385,6 +389,8 @@ void get_run_parameters(pugi::xml_node node_base)
         RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
       } else if (temp_str == "halton") {
         RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
+      } else if (temp_str == "s2") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::S2;
       } else {
         fatal_error("Unrecognized sample method: " + temp_str);
       }
@@ -684,6 +690,11 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
+  // Check for atomic relaxation
+  if (check_for_node(root, "atomic_relaxation")) {
+    atomic_relaxation = get_node_value_bool(root, "atomic_relaxation");
+  }
+
   // Number of bins for logarithmic grid
   if (check_for_node(root, "log_grid_bins")) {
     n_log_bins = std::stoi(get_node_value(root, "log_grid_bins"));
@@ -757,6 +768,14 @@ void read_settings_xml(pugi::xml_node root)
     free_gas_threshold = std::stod(get_node_value(root, "free_gas_threshold"));
   }
 
+  // Surface grazing
+  if (check_for_node(root, "surface_grazing_cutoff"))
+    surface_grazing_cutoff =
+      std::stod(get_node_value(root, "surface_grazing_cutoff"));
+  if (check_for_node(root, "surface_grazing_ratio"))
+    surface_grazing_ratio =
+      std::stod(get_node_value(root, "surface_grazing_ratio"));
+
   // Survival biasing
   if (check_for_node(root, "survival_biasing")) {
     survival_biasing = get_node_value_bool(root, "survival_biasing");
@@ -811,6 +830,14 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "time_positron")) {
       time_cutoff[3] = std::stod(get_node_value(node_cutoff, "time_positron"));
+    }
+  }
+
+  // read properties from file
+  if (check_for_node(root, "properties_file")) {
+    properties_file = get_node_value(root, "properties_file");
+    if (!file_exists(properties_file)) {
+      fatal_error(fmt::format("File '{}' does not exist.", properties_file));
     }
   }
 
@@ -1043,7 +1070,7 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_ct, "reactions")) {
       auto temp = get_node_array<std::string>(node_ct, "reactions");
       for (const auto& b : temp) {
-        int reaction_int = reaction_type(b);
+        int reaction_int = reaction_mt(b);
         if (reaction_int > 0) {
           collision_track_config.mt_numbers.insert(reaction_int);
         }
@@ -1343,6 +1370,13 @@ void read_settings_xml(pugi::xml_node root)
       weight_window_checkpoint_surface =
         get_node_value_bool(ww_checkpoints, "surface");
     }
+  }
+
+  if (weight_windows_on) {
+    if (!weight_window_checkpoint_surface &&
+        !weight_window_checkpoint_collision)
+      fatal_error(
+        "Weight Windows are enabled but there are no valid checkpoints.");
   }
 
   if (check_for_node(root, "use_decay_photons")) {

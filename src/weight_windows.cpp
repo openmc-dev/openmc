@@ -45,108 +45,6 @@ openmc::vector<unique_ptr<WeightWindowsGenerator>> weight_windows_generators;
 } // namespace variance_reduction
 
 //==============================================================================
-// Non-member functions
-//==============================================================================
-
-void apply_weight_windows(Particle& p)
-{
-  if (!settings::weight_windows_on)
-    return;
-
-  // WW on photon and neutron only
-  if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
-    return;
-
-  // skip dead or no energy
-  if (p.E() <= 0 || !p.alive())
-    return;
-
-  bool in_domain = false;
-  // TODO: this is a linear search - should do something more clever
-  WeightWindow weight_window;
-  for (const auto& ww : variance_reduction::weight_windows) {
-    weight_window = ww->get_weight_window(p);
-    if (weight_window.is_valid())
-      break;
-  }
-
-  // If particle has not yet had its birth weight window value set, set it to
-  // the current weight window (or 1.0 if not born in a weight window).
-  if (p.wgt_ww_born() == -1.0) {
-    if (weight_window.is_valid()) {
-      p.wgt_ww_born() =
-        (weight_window.lower_weight + weight_window.upper_weight) / 2;
-    } else {
-      p.wgt_ww_born() = 1.0;
-    }
-  }
-
-  // particle is not in any of the ww domains, do nothing
-  if (!weight_window.is_valid())
-    return;
-
-  // Normalize weight windows based on particle's starting weight
-  // and the value of the weight window the particle was born in.
-  weight_window.scale(p.wgt_born() / p.wgt_ww_born());
-
-  // get the paramters
-  double weight = p.wgt();
-
-  // first check to see if particle should be killed for weight cutoff
-  if (p.wgt() < weight_window.weight_cutoff) {
-    p.wgt() = 0.0;
-    return;
-  }
-
-  // check if particle is far above current weight window
-  // only do this if the factor is not already set on the particle and a
-  // maximum lower bound ratio is specified
-  if (p.ww_factor() == 0.0 && weight_window.max_lb_ratio > 1.0 &&
-      p.wgt() > weight_window.lower_weight * weight_window.max_lb_ratio) {
-    p.ww_factor() =
-      p.wgt() / (weight_window.lower_weight * weight_window.max_lb_ratio);
-  }
-
-  // move weight window closer to the particle weight if needed
-  if (p.ww_factor() > 1.0)
-    weight_window.scale(p.ww_factor());
-
-  // if particle's weight is above the weight window split until they are within
-  // the window
-  if (weight > weight_window.upper_weight) {
-    // do not further split the particle if above the limit
-    if (p.n_split() >= settings::max_history_splits)
-      return;
-
-    double n_split = std::ceil(weight / weight_window.upper_weight);
-    double max_split = weight_window.max_split;
-    n_split = std::min(n_split, max_split);
-
-    p.n_split() += n_split;
-
-    // Create secondaries and divide weight among all particles
-    int i_split = std::round(n_split);
-    for (int l = 0; l < i_split - 1; l++) {
-      p.split(weight / n_split);
-    }
-    // remaining weight is applied to current particle
-    p.wgt() = weight / n_split;
-
-  } else if (weight <= weight_window.lower_weight) {
-    // if the particle weight is below the window, play Russian roulette
-    double weight_survive =
-      std::min(weight * weight_window.max_split, weight_window.survival_weight);
-    russian_roulette(p, weight_survive);
-  } // else particle is in the window, continue as normal
-}
-
-void free_memory_weight_windows()
-{
-  variance_reduction::ww_map.clear();
-  variance_reduction::weight_windows.clear();
-}
-
-//==============================================================================
 // WeightWindowSettings implementation
 //==============================================================================
 
@@ -174,7 +72,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // get the particle type
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
-  particle_type_ = openmc::str_to_particle_type(particle_type_str);
+  particle_type_ = ParticleType {particle_type_str};
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
@@ -247,7 +145,7 @@ WeightWindows* WeightWindows::from_hdf5(
 
   std::string particle_type;
   read_dataset(ww_group, "particle_type", particle_type);
-  wws->particle_type_ = openmc::str_to_particle_type(particle_type);
+  wws->particle_type_ = ParticleType {particle_type};
 
   read_dataset<double>(ww_group, "energy_bounds", wws->energy_bounds_);
 
@@ -283,7 +181,10 @@ void WeightWindows::set_defaults()
 {
   // set energy bounds to the min/max energy supported by the data
   if (energy_bounds_.size() == 0) {
-    int p_type = static_cast<int>(particle_type_);
+    int p_type = particle_type_.transport_index();
+    if (p_type == C_NONE) {
+      fatal_error("Weight windows particle is not supported for transport.");
+    }
     energy_bounds_.push_back(data::energy_min[p_type]);
     energy_bounds_.push_back(data::energy_max[p_type]);
   }
@@ -297,11 +198,11 @@ void WeightWindows::allocate_ww_bounds()
       "Size of weight window bounds is zero for WeightWindows {}", id());
     warning(msg);
   }
-  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]),
-    static_cast<size_t>(shape[1]), static_cast<size_t>(shape[2])});
+  lower_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
   lower_ww_.fill(-1);
-  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]),
-    static_cast<size_t>(shape[1]), static_cast<size_t>(shape[2])});
+  upper_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
   upper_ww_.fill(-1);
 }
 
@@ -346,10 +247,9 @@ void WeightWindows::set_energy_bounds(span<const double> bounds)
 
 void WeightWindows::set_particle_type(ParticleType p_type)
 {
-  if (p_type != ParticleType::neutron && p_type != ParticleType::photon)
-    fatal_error(
-      fmt::format("Particle type '{}' cannot be applied to weight windows.",
-        particle_type_to_str(p_type)));
+  if (!p_type.is_neutron() && !p_type.is_photon())
+    fatal_error(fmt::format(
+      "Particle type '{}' cannot be applied to weight windows.", p_type.str()));
   particle_type_ = p_type;
 }
 
@@ -373,12 +273,20 @@ void WeightWindows::set_mesh(const Mesh* mesh)
   set_mesh(model::mesh_map[mesh->id_]);
 }
 
-WeightWindow WeightWindows::get_weight_window(const Particle& p) const
+std::pair<bool, WeightWindow> WeightWindows::get_weight_window(
+  const Particle& p) const
 {
   // check for particle type
   if (particle_type_ != p.type()) {
-    return {};
+    return {false, {}};
   }
+
+  // particle energy
+  double E = p.E();
+
+  // check to make sure energy is in range, expects sorted energy values
+  if (E < energy_bounds_.front() || E > energy_bounds_.back())
+    return {false, {}};
 
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
@@ -386,14 +294,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 
   // particle is outside the weight window mesh
   if (mesh_bin < 0)
-    return {};
-
-  // particle energy
-  double E = p.E();
-
-  // check to make sure energy is in range, expects sorted energy values
-  if (E < energy_bounds_.front() || E > energy_bounds_.back())
-    return {};
+    return {false, {}};
 
   // get the mesh bin in energy group
   int energy_bin =
@@ -408,7 +309,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   ww.max_lb_ratio = max_lb_ratio_;
   ww.max_split = max_split_;
   ww.weight_cutoff = weight_cutoff_;
-  return ww;
+  return {true, ww};
 }
 
 std::array<int, 2> WeightWindows::bounds_size() const
@@ -474,10 +375,10 @@ void WeightWindows::set_bounds(
 {
   check_bounds(lower_bounds, upper_bounds);
   auto shape = this->bounds_size();
-  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]),
-    static_cast<size_t>(shape[1]), static_cast<size_t>(shape[2])});
-  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]),
-    static_cast<size_t>(shape[1]), static_cast<size_t>(shape[2])});
+  lower_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  upper_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
 
   // Copy weight window values from input spans into the tensors
   std::copy(lower_bounds.data(), lower_bounds.data() + lower_ww_.size(),
@@ -491,10 +392,10 @@ void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
   this->check_bounds(lower_bounds);
 
   auto shape = this->bounds_size();
-  lower_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]),
-    static_cast<size_t>(shape[1]), static_cast<size_t>(shape[2])});
-  upper_ww_ = tensor::Tensor<double>({static_cast<size_t>(shape[0]),
-    static_cast<size_t>(shape[1]), static_cast<size_t>(shape[2])});
+  lower_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
+  upper_ww_ = tensor::Tensor<double>(
+    {static_cast<size_t>(shape[0]), static_cast<size_t>(shape[1])});
 
   // Copy lower bounds into both arrays, then scale upper by ratio
   std::copy(lower_bounds.data(), lower_bounds.data() + lower_ww_.size(),
@@ -545,16 +446,16 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   ///////////////////////////
   // Extract tally data
   //
-  // At the end of this section, the mean and rel_err array
-  // is a 2D view of tally data (n_e_groups, n_mesh_bins)
+  // At the end of this section, mean and rel_err are
+  // 2D tensors of tally data (n_e_groups, n_mesh_bins)
   //
   ///////////////////////////
 
-  // build a shape for a view of the tally results, this will always be
+  // build a shape for the tally results, this will always be
   // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
-  // Look for the size of the last dimension of the results array
-  const auto& results_arr = tally->results();
-  const int results_dim = static_cast<int>(results_arr.shape()[2]);
+  // Look for the size of the last dimension of the results tensor
+  const auto& results = tally->results();
+  const int results_dim = static_cast<int>(results.shape(2));
   std::array<int, 5> shape = {1, 1, 1, tally->n_scores(), results_dim};
 
   // set the shape for the filters applied on the tally
@@ -591,6 +492,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     std::find(filter_types.begin(), filter_types.end(), FilterType::MESH) -
     filter_types.begin();
 
+  // determine the index of the particle within its filter
   int particle_idx = 0;
   if (tally->has_filter(FilterType::PARTICLE)) {
     auto pf = tally->get_filter<ParticleFilter>();
@@ -601,8 +503,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     if (p_it == particles.end()) {
       auto msg = fmt::format("Particle type '{}' not present on Filter {} for "
                              "Tally {} used to update WeightWindows {}",
-        particle_type_to_str(this->particle_type_), pf->id(), tally->id(),
-        this->id());
+        this->particle_type_.str(), pf->id(), tally->id(), this->id());
       fatal_error(msg);
     }
 
@@ -611,8 +512,8 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // The tally results array is 3D: (n_filter_combos, n_scores, n_result_types).
   // The first dimension is a row-major flattening of up to 3 filter dimensions
-  // (particle, energy, mesh) whose storage order depends on which filters
-  // the tally has. We need to map our desired indices (particle, energy, mesh)
+  // (particle, energy, mesh) whose storage order depends on which filters the
+  // tally has. We need to map our desired indices (particle, energy, mesh)
   // into the correct flat filter combination index.
   //
   // transpose[i] tells us which storage position holds dimension i:
@@ -633,8 +534,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   for (int e = 0; e < e_bins; e++) {
     for (int64_t m = 0; m < mesh_bins; m++) {
-      // Place particle, energy, mesh, and time indices into their storage
-      // positions
+      // Place particle, energy, and mesh indices into their storage positions
       std::array<int, 3> idx = {0, 0, 0};
       idx[transpose[0]] = particle_idx;
       idx[transpose[1]] = e;
@@ -841,8 +741,7 @@ void WeightWindows::to_hdf5(hid_t group) const
   hid_t ww_group = create_group(group, fmt::format("weight_windows_{}", id()));
 
   write_dataset(ww_group, "mesh", this->mesh()->id());
-  write_dataset(
-    ww_group, "particle_type", openmc::particle_type_to_str(particle_type_));
+  write_dataset(ww_group, "particle_type", particle_type_.str());
   write_dataset(ww_group, "energy_bounds", energy_bounds_);
   write_dataset(ww_group, "lower_ww_bounds", lower_ww_);
   write_dataset(ww_group, "upper_ww_bounds", upper_ww_);
@@ -869,8 +768,8 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
         max_realizations_, active_batches);
     warning(msg);
   }
-  auto tmp_str = get_node_value(node, "particle_type", true, true);
-  auto particle_type = str_to_particle_type(tmp_str);
+  auto tmp_str = get_node_value(node, "particle_type", false, true);
+  auto particle_type = ParticleType {tmp_str};
 
   update_interval_ = std::stoi(get_node_value(node, "update_interval"));
   on_the_fly_ = get_node_value_bool(node, "on_the_fly");
@@ -879,7 +778,10 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   if (check_for_node(node, "energy_bounds")) {
     e_bounds = get_node_array<double>(node, "energy_bounds");
   } else {
-    int p_type = static_cast<int>(particle_type);
+    int p_type = particle_type.transport_index();
+    if (p_type == C_NONE) {
+      fatal_error("Weight windows particle is not supported for transport.");
+    }
     e_bounds.push_back(data::energy_min[p_type]);
     e_bounds.push_back(data::energy_max[p_type]);
   }
@@ -1020,6 +922,115 @@ void WeightWindowsGenerator::update() const
 // Non-member functions
 //==============================================================================
 
+std::pair<bool, WeightWindow> search_weight_window(const Particle& p)
+{
+  // TODO: this is a linear search - should do something more clever
+  for (const auto& ww : variance_reduction::weight_windows) {
+    auto [ww_found, weight_window] = ww->get_weight_window(p);
+    if (ww_found)
+      return {true, weight_window};
+  }
+  return {false, {}};
+}
+
+void apply_weight_windows(Particle& p)
+{
+  if (!settings::weight_windows_on)
+    return;
+
+  // WW on photon and neutron only
+  if (!p.type().is_neutron() && !p.type().is_photon())
+    return;
+
+  // skip dead or no energy
+  if (p.E() <= 0 || !p.alive())
+    return;
+
+  auto [ww_found, ww] = search_weight_window(p);
+  if (ww_found && ww.is_valid()) {
+    apply_weight_window(p, ww);
+  } else {
+    if (p.wgt_ww_born() == -1.0)
+      p.wgt_ww_born() = 1.0;
+  }
+}
+
+void apply_weight_window(Particle& p, WeightWindow weight_window)
+{
+  if (!weight_window.is_valid())
+    return;
+
+  // skip dead or no energy
+  if (p.E() <= 0 || !p.alive())
+    return;
+
+  // If particle has not yet had its birth weight window value set, set it to
+  // the current weight window.
+  if (p.wgt_ww_born() == -1.0)
+    p.wgt_ww_born() =
+      (weight_window.lower_weight + weight_window.upper_weight) / 2;
+
+  // Normalize weight windows based on particle's starting weight
+  // and the value of the weight window the particle was born in.
+  weight_window.scale(p.wgt_born() / p.wgt_ww_born());
+
+  // get the paramters
+  double weight = p.wgt();
+
+  // first check to see if particle should be killed for weight cutoff
+  if (p.wgt() < weight_window.weight_cutoff) {
+    p.wgt() = 0.0;
+    return;
+  }
+
+  // check if particle is far above current weight window
+  // only do this if the factor is not already set on the particle and a
+  // maximum lower bound ratio is specified
+  if (p.ww_factor() == 0.0 && weight_window.max_lb_ratio > 1.0 &&
+      p.wgt() > weight_window.lower_weight * weight_window.max_lb_ratio) {
+    p.ww_factor() =
+      p.wgt() / (weight_window.lower_weight * weight_window.max_lb_ratio);
+  }
+
+  // move weight window closer to the particle weight if needed
+  if (p.ww_factor() > 1.0)
+    weight_window.scale(p.ww_factor());
+
+  // if particle's weight is above the weight window split until they are within
+  // the window
+  if (weight > weight_window.upper_weight) {
+    // do not further split the particle if above the limit
+    if (p.n_split() >= settings::max_history_splits)
+      return;
+
+    double n_split = std::ceil(weight / weight_window.upper_weight);
+    double max_split = weight_window.max_split;
+    n_split = std::min(n_split, max_split);
+
+    p.n_split() += n_split;
+
+    // Create secondaries and divide weight among all particles
+    int i_split = std::round(n_split);
+    for (int l = 0; l < i_split - 1; l++) {
+      p.split(weight / n_split);
+    }
+    // remaining weight is applied to current particle
+    p.wgt() = weight / n_split;
+
+  } else if (weight <= weight_window.lower_weight) {
+    // if the particle weight is below the window, play Russian roulette
+    double weight_survive =
+      std::min(weight * weight_window.max_split, weight_window.survival_weight);
+    russian_roulette(p, weight_survive);
+  } // else particle is in the window, continue as normal
+}
+
+void free_memory_weight_windows()
+{
+  variance_reduction::ww_map.clear();
+  variance_reduction::weight_windows.clear();
+}
+
 void finalize_variance_reduction()
 {
   for (const auto& wwg : variance_reduction::weight_windows_generators) {
@@ -1133,23 +1144,25 @@ extern "C" int openmc_weight_windows_get_energy_bounds(
   return 0;
 }
 
-extern "C" int openmc_weight_windows_set_particle(int32_t index, int particle)
+extern "C" int openmc_weight_windows_set_particle(
+  int32_t index, int32_t particle)
 {
   if (int err = verify_ww_index(index))
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  wws->set_particle_type(static_cast<ParticleType>(particle));
+  wws->set_particle_type(ParticleType {particle});
   return 0;
 }
 
-extern "C" int openmc_weight_windows_get_particle(int32_t index, int* particle)
+extern "C" int openmc_weight_windows_get_particle(
+  int32_t index, int32_t* particle)
 {
   if (int err = verify_ww_index(index))
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  *particle = static_cast<int>(wws->particle_type());
+  *particle = wws->particle_type().pdg_number();
   return 0;
 }
 

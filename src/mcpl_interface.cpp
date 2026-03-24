@@ -321,25 +321,7 @@ inline void ensure_mcpl_ready_or_fatal()
 SourceSite mcpl_particle_to_site(const mcpl_particle_repr_t* particle_repr)
 {
   SourceSite site;
-  switch (particle_repr->pdgcode) {
-  case 2112:
-    site.particle = ParticleType::neutron;
-    break;
-  case 22:
-    site.particle = ParticleType::photon;
-    break;
-  case 11:
-    site.particle = ParticleType::electron;
-    break;
-  case -11:
-    site.particle = ParticleType::positron;
-    break;
-  default:
-    fatal_error(fmt::format(
-      "MCPL: Encountered unexpected PDG code {} when converting to SourceSite.",
-      particle_repr->pdgcode));
-    break;
-  }
+  site.particle = ParticleType {particle_repr->pdgcode};
 
   // Copy position and direction
   site.r.x = particle_repr->position[0];
@@ -368,7 +350,6 @@ vector<SourceSite> mcpl_source_sites(std::string path)
   }
 
   size_t n_particles_in_file = g_mcpl_api->hdr_nparticles(mcpl_file);
-  size_t n_skipped = 0;
   if (n_particles_in_file > 0) {
     sites.reserve(n_particles_in_file);
   }
@@ -381,31 +362,16 @@ vector<SourceSite> mcpl_source_sites(std::string path)
         path, sites.size(), n_particles_in_file));
       break;
     }
-    if (p_repr->pdgcode == 2112 || p_repr->pdgcode == 22 ||
-        p_repr->pdgcode == 11 || p_repr->pdgcode == -11) {
-      sites.push_back(mcpl_particle_to_site(p_repr));
-    } else {
-      n_skipped++;
-    }
+    sites.push_back(mcpl_particle_to_site(p_repr));
   }
 
   g_mcpl_api->close_file(mcpl_file);
 
-  if (n_skipped > 0 && n_particles_in_file > 0) {
-    double percent_skipped =
-      100.0 * static_cast<double>(n_skipped) / n_particles_in_file;
-    warning(fmt::format(
-      "MCPL: Skipped {} of {} total particles ({:.1f}%) in file '{}' because "
-      "their type is not supported by OpenMC.",
-      n_skipped, n_particles_in_file, percent_skipped, path));
-  }
-
   if (sites.empty()) {
     if (n_particles_in_file > 0) {
       fatal_error(fmt::format(
-        "MCPL file '{}' contained {} particles, but none were of the supported "
-        "types (neutron, photon, electron, positron). OpenMC cannot proceed "
-        "without source particles.",
+        "MCPL file '{}' contained {} particles, but no particles could be "
+        "read.",
         path, n_particles_in_file));
     } else {
       fatal_error(fmt::format(
@@ -461,22 +427,7 @@ void write_mcpl_source_bank_internal(mcpl_outfile_t* file_id,
         p_repr.ekin = site.E * 1e-6;
         p_repr.time = site.time * 1e3;
         p_repr.weight = site.wgt;
-        switch (site.particle) {
-        case ParticleType::neutron:
-          p_repr.pdgcode = 2112;
-          break;
-        case ParticleType::photon:
-          p_repr.pdgcode = 22;
-          break;
-        case ParticleType::electron:
-          p_repr.pdgcode = 11;
-          break;
-        case ParticleType::positron:
-          p_repr.pdgcode = -11;
-          break;
-        default:
-          continue;
-        }
+        p_repr.pdgcode = site.particle.pdg_number();
         g_mcpl_api->add_particle(file_id, &p_repr);
       }
     }
@@ -633,22 +584,7 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
       p_repr.ekin = site.E * 1e-6;
       p_repr.time = site.time * 1e3;
       p_repr.weight = site.wgt;
-      switch (site.particle) {
-      case ParticleType::neutron:
-        p_repr.pdgcode = 2112;
-        break;
-      case ParticleType::photon:
-        p_repr.pdgcode = 22;
-        break;
-      case ParticleType::electron:
-        p_repr.pdgcode = 11;
-        break;
-      case ParticleType::positron:
-        p_repr.pdgcode = -11;
-        break;
-      default:
-        continue;
-      }
+      p_repr.pdgcode = site.particle.pdg_number();
       g_mcpl_api->add_particle(file_id, &p_repr);
     }
   } else {

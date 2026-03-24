@@ -121,28 +121,31 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 
   // Add scattering + fission source
   int material = srh.material();
+  int temp = srh.temperature_idx();
   double density_mult = srh.density_mult();
   if (material != MATERIAL_VOID) {
     double inverse_k_eff = 1.0 / k_eff_;
+    const int material_offset = (material * ntemperature_ + temp) * negroups_;
+    const int scatter_offset =
+      (material * ntemperature_ + temp) * negroups_ * negroups_;
     for (int g_out = 0; g_out < negroups_; g_out++) {
-      double sigma_t = sigma_t_[material * negroups_ + g_out] * density_mult;
+      double sigma_t = sigma_t_[material_offset + g_out] * density_mult;
       double scatter_source = 0.0;
       double fission_source = 0.0;
       double total_source = 0.0;
 
       for (int g_in = 0; g_in < negroups_; g_in++) {
         double scalar_flux = srh.scalar_flux_old(g_in);
-        double sigma_s = sigma_s_[material * negroups_ * negroups_ +
-                                  g_out * negroups_ + g_in] *
-                         density_mult;
+        double sigma_s =
+          sigma_s_[scatter_offset + g_out * negroups_ + g_in] * density_mult;
         double nu_sigma_f;
         double chi;
         if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-          nu_sigma_f = nu_p_sigma_f_[material * negroups_ + g_in];
-          chi = chi_p_[material * negroups_ + g_out];
+          nu_sigma_f = nu_p_sigma_f_[material_offset + g_in];
+          chi = chi_p_[material_offset + g_out];
         } else {
-          nu_sigma_f = nu_sigma_f_[material * negroups_ + g_in];
-          chi = chi_[material * negroups_ + g_out];
+          nu_sigma_f = nu_sigma_f_[material_offset + g_in];
+          chi = chi_[material_offset + g_out];
         }
         nu_sigma_f *= density_mult;
         scatter_source += sigma_s * scalar_flux;
@@ -156,10 +159,12 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       // turned on
       if (settings::kinetic_simulation && !simulation::is_initial_condition &&
           settings::create_delayed_neutrons) {
+        const int delay_offset =
+          (material * ntemperature_ + temp) * negroups_ * ndgroups_;
         double delayed_source = 0.0;
         for (int dg = 0; dg < ndgroups_; dg++) {
-          double chi_d_lambda = chi_d_lambda_[material * negroups_ * ndgroups_ +
-                                              dg * negroups_ + g_out];
+          double chi_d_lambda =
+            chi_d_lambda_[delay_offset + dg * negroups_ + g_out];
           double precursors = srh.precursors_old(dg);
           delayed_source += chi_d_lambda * precursors;
         }
@@ -232,7 +237,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
   int material = source_regions_.material(sr);
-  double density_mult = source_regions_.density_mult(sr);
+  int temp = source_regions_.temperature_idx(sr);
   if (material == MATERIAL_VOID) {
     source_regions_.scalar_flux_new(sr, g) /= volume;
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -241,17 +246,23 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
         source_regions_.volume_sq(sr);
     }
   } else {
-    double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
+    double sigma_t =
+      sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      source_regions_.density_mult(sr);
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
   }
   if (settings::kinetic_simulation && !simulation::is_initial_condition) {
-    double inverse_vbar = inverse_vbar_[material * negroups_ + g];
+    double inverse_vbar =
+      inverse_vbar_[(material * ntemperature_ + temp) * negroups_ + g];
     double scalar_flux_rhs_bd = source_regions_.scalar_flux_rhs_bd(sr, g);
     double A0 =
       (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
+
     // TODO: Add support for expicit void regions
-    double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
+    double sigma_t =
+      sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      source_regions_.density_mult(sr);
     source_regions_.scalar_flux_new(sr, g) -=
       scalar_flux_rhs_bd * inverse_vbar / sigma_t;
     source_regions_.scalar_flux_new(sr, g) /= 1 + A0 * inverse_vbar / sigma_t;
@@ -378,6 +389,7 @@ void FlatSourceDomain::compute_k_eff()
     }
 
     int material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     if (material == MATERIAL_VOID) {
       continue;
     }
@@ -386,8 +398,9 @@ void FlatSourceDomain::compute_k_eff()
     double sr_fission_source_new = 0;
 
     for (int g = 0; g < negroups_; g++) {
-      double nu_sigma_f = nu_sigma_f_[material * negroups_ + g] *
-                          source_regions_.density_mult(sr);
+      double nu_sigma_f =
+        nu_sigma_f_[(material * ntemperature_ + temp) * negroups_ + g] *
+        source_regions_.density_mult(sr);
       sr_fission_source_old +=
         nu_sigma_f * source_regions_.scalar_flux_old(sr, g);
       sr_fission_source_new +=
@@ -671,6 +684,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 #pragma omp parallel for reduction(+ : simulation_external_source_strength)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     double volume = source_regions_.volume(sr) * simulation_volume_;
     for (int g = 0; g < negroups_; g++) {
       // For non-void regions, we store the external source pre-divided by
@@ -678,8 +692,8 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
       // to get the total source strength in the expected units.
       double sigma_t = 1.0;
       if (material != MATERIAL_VOID) {
-        sigma_t =
-          sigma_t_[material * negroups_ + g] * source_regions_.density_mult(sr);
+        sigma_t = sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+                  source_regions_.density_mult(sr);
       }
       simulation_external_source_strength +=
         source_regions_.external_source(sr, g) * sigma_t * volume;
@@ -736,9 +750,9 @@ void FlatSourceDomain::random_ray_tally()
     // source strength.
     double volume = source_regions_.volume(sr) * simulation_volume_;
 
-    int material = source_regions_.material(sr);
+    double material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     double density_mult = source_regions_.density_mult(sr);
-
     for (int g = 0; g < negroups_; g++) {
       double flux =
         source_regions_.scalar_flux_new(sr, g) * source_normalization_factor;
@@ -755,21 +769,27 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_TOTAL:
           if (material != MATERIAL_VOID) {
             score =
-              flux * volume * sigma_t_[material * negroups_ + g] * density_mult;
+              flux * volume *
+              sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+              density_mult;
           }
           break;
 
         case SCORE_FISSION:
           if (material != MATERIAL_VOID) {
             score =
-              flux * volume * sigma_f_[material * negroups_ + g] * density_mult;
+              flux * volume *
+              sigma_f_[(material * ntemperature_ + temp) * negroups_ + g] *
+              density_mult;
           }
           break;
 
         case SCORE_NU_FISSION:
           if (material != MATERIAL_VOID) {
-            score = flux * volume * nu_sigma_f_[material * negroups_ + g] *
-                    density_mult;
+            score =
+              flux * volume *
+              nu_sigma_f_[(material * ntemperature_ + temp) * negroups_ + g] *
+              density_mult;
           }
           break;
 
@@ -778,8 +798,10 @@ void FlatSourceDomain::random_ray_tally()
           break;
 
         case SCORE_KAPPA_FISSION:
-          score = flux * volume * kappa_fission_[material * negroups_ + g] *
-                  density_mult;
+          score =
+            flux * volume *
+            kappa_fission_[(material * ntemperature_ + temp) * negroups_ + g] *
+            density_mult;
           break;
 
         case SCORE_PRECURSORS:
@@ -991,7 +1013,7 @@ void FlatSourceDomain::output_to_vtk() const
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
 
           if (variance_reduction::weight_windows.size() == 1) {
-            WeightWindow ww =
+            auto [ww_found, ww] =
               variance_reduction::weight_windows[0]->get_weight_window(p);
             float weight = ww.lower_weight;
             weight_windows[z * Ny * Nx + y * Nx + x] = weight;
@@ -1088,12 +1110,14 @@ void FlatSourceDomain::output_to_vtk() const
         float total_fission = 0.0;
         if (fsr >= 0) {
           int mat = source_regions_.material(fsr);
+          int temp = source_regions_.temperature_idx(fsr);
           if (mat != MATERIAL_VOID) {
             for (int g = 0; g < negroups_; g++) {
               int64_t source_element = fsr * negroups_ + g;
               float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
-              double sigma_f = sigma_f_[mat * negroups_ + g] *
-                               source_regions_.density_mult(fsr);
+              double sigma_f =
+                sigma_f_[(mat * ntemperature_ + temp) * negroups_ + g] *
+                source_regions_.density_mult(fsr);
               total_fission += sigma_f * flux;
             }
           }
@@ -1107,6 +1131,7 @@ void FlatSourceDomain::output_to_vtk() const
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         int64_t fsr = voxel_indices[i];
         int mat = source_regions_.material(fsr);
+        int temp = source_regions_.temperature_idx(fsr);
         float total_external = 0.0f;
         if (fsr >= 0) {
           for (int g = 0; g < negroups_; g++) {
@@ -1114,7 +1139,7 @@ void FlatSourceDomain::output_to_vtk() const
             // multiply it back to get the true external source.
             double sigma_t = 1.0;
             if (mat != MATERIAL_VOID) {
-              sigma_t = sigma_t_[mat * negroups_ + g] *
+              sigma_t = sigma_t_[(mat * ntemperature_ + temp) * negroups_ + g] *
                         source_regions_.density_mult(fsr);
             }
             total_external += source_regions_.external_source(fsr, g) * sigma_t;
@@ -1294,118 +1319,125 @@ void FlatSourceDomain::flatten_xs()
 {
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single angle data.
-  const int t = 0;
+  // TODO: Currently assumes we are only using single angle data.
   const int a = 0;
 
   n_materials_ = data::mg.macro_xs_.size();
+  ntemperature_ = 1;
+  for (int i = 0; i < n_materials_; i++) {
+    ntemperature_ =
+      std::max(ntemperature_, data::mg.macro_xs_[i].n_temperature_points());
+  }
+
   for (int i = 0; i < n_materials_; i++) {
     auto& m = data::mg.macro_xs_[i];
-    for (int g_out = 0; g_out < negroups_; g_out++) {
-      if (m.exists_in_model) {
-        double sigma_t =
-          m.get_xs(MgxsType::TOTAL, g_out, NULL, NULL, NULL, t, a);
-        sigma_t_.push_back(sigma_t);
+    for (int t = 0; t < ntemperature_; t++) {
+      for (int g_out = 0; g_out < negroups_; g_out++) {
+        if (m.exists_in_model && t < m.n_temperature_points()) {
+          double sigma_t =
+            m.get_xs(MgxsType::TOTAL, g_out, NULL, NULL, NULL, t, a);
+          sigma_t_.push_back(sigma_t);
 
-        if (sigma_t < MINIMUM_MACRO_XS) {
-          Material* mat = model::materials[i].get();
-          warning(fmt::format(
-            "Material \"{}\" (id: {}) has a group {} total cross section "
-            "({:.3e}) below the minimum threshold "
-            "({:.3e}). Material will be treated as pure void.",
-            mat->name(), mat->id(), g_out, sigma_t, MINIMUM_MACRO_XS));
-        }
+          if (sigma_t < MINIMUM_MACRO_XS) {
+            Material* mat = model::materials[i].get();
+            warning(fmt::format(
+              "Material \"{}\" (id: {}) has a group {} total cross section "
+              "({:.3e}) below the minimum threshold "
+              "({:.3e}). Material will be treated as pure void.",
+              mat->name(), mat->id(), g_out, sigma_t, MINIMUM_MACRO_XS));
+          }
 
-        double nu_sigma_f =
-          m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a);
-        nu_sigma_f_.push_back(nu_sigma_f);
+          double nu_sigma_f =
+            m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a);
+          nu_sigma_f_.push_back(nu_sigma_f);
 
-        double sigma_f =
-          m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a);
-        sigma_f_.push_back(sigma_f);
+          double sigma_f =
+            m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a);
+          sigma_f_.push_back(sigma_f);
 
-        double chi = m.get_xs(MgxsType::CHI, g_out, &g_out, NULL, NULL, t, a);
-        if (!std::isfinite(chi)) {
-          // MGXS interface may return NaN in some cases, such as when material
-          // is fissionable but has very small sigma_f.
-          chi = 0.0;
-        }
-        chi_.push_back(chi);
-
-        double kappa_fission =
-          m.get_xs(MgxsType::KAPPA_FISSION, g_out, NULL, NULL, NULL, t, a);
-        kappa_fission_.push_back(kappa_fission);
-
-        for (int g_in = 0; g_in < negroups_; g_in++) {
-          double sigma_s =
-            m.get_xs(MgxsType::NU_SCATTER, g_in, &g_out, NULL, NULL, t, a);
-          sigma_s_.push_back(sigma_s);
-          // For transport corrected XS data, diagonal elements may be negative.
-          // In this case, set a flag to enable transport stabilization for the
-          // simulation.
-          if (g_out == g_in && sigma_s < 0.0)
-            is_transport_stabilization_needed_ = true;
-        }
-        // Prompt cross-sections for kinetic simulations
-        if (settings::kinetic_simulation) {
-          double chi_p =
-            m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a);
-          if (!std::isfinite(chi_p)) {
+          double chi = m.get_xs(MgxsType::CHI, g_out, &g_out, NULL, NULL, t, a);
+          if (!std::isfinite(chi)) {
             // MGXS interface may return NaN in some cases, such as when
             // material is fissionable but has very small sigma_f.
-            chi_p = 0.0;
+            chi = 0.0;
           }
-          chi_p_.push_back(chi_p);
+          chi_.push_back(chi);
 
-          double inverse_vbar =
-            m.get_xs(MgxsType::INVERSE_VELOCITY, g_out, NULL, NULL, NULL, t, a);
-          inverse_vbar_.push_back(inverse_vbar);
+          double kappa_fission =
+            m.get_xs(MgxsType::KAPPA_FISSION, g_out, NULL, NULL, NULL, t, a);
+          kappa_fission_.push_back(kappa_fission);
 
-          double nu_p_Sigma_f = m.get_xs(
-            MgxsType::PROMPT_NU_FISSION, g_out, NULL, NULL, NULL, t, a);
-          nu_p_sigma_f_.push_back(nu_p_Sigma_f);
-        }
-      } else {
-        sigma_t_.push_back(0);
-        nu_sigma_f_.push_back(0);
-        sigma_f_.push_back(0);
-        chi_.push_back(0);
-        kappa_fission_.push_back(0);
-        for (int g_in = 0; g_in < negroups_; g_in++) {
-          sigma_s_.push_back(0);
-        }
-        if (settings::kinetic_simulation) {
-          chi_p_.push_back(0);
-          inverse_vbar_.push_back(0);
-          nu_p_sigma_f_.push_back(0);
-        }
-      }
-    }
-    // Delayed cross sections for time-dependent simulations
-    if (settings::kinetic_simulation) {
-      for (int dg = 0; dg < ndgroups_; dg++) {
-        if (m.exists_in_model) {
-          double lambda =
-            m.get_xs(MgxsType::DECAY_RATE, 0, NULL, NULL, &dg, t, a);
-          lambda_.push_back(lambda);
-          for (int g_out = 0; g_out < negroups_; g_out++) {
-            double nu_d_Sigma_f = m.get_xs(
-              MgxsType::DELAYED_NU_FISSION, g_out, NULL, NULL, &dg, t, a);
-            nu_d_sigma_f_.push_back(nu_d_Sigma_f);
-            double chi_d =
-              m.get_xs(MgxsType::CHI_DELAYED, g_out, &g_out, NULL, &dg, t, a);
-            if (!std::isfinite(chi_d)) {
+          for (int g_in = 0; g_in < negroups_; g_in++) {
+            double sigma_s =
+              m.get_xs(MgxsType::NU_SCATTER, g_in, &g_out, NULL, NULL, t, a);
+            sigma_s_.push_back(sigma_s);
+            // For transport corrected XS data, diagonal elements may be
+            // negative. In this case, set a flag to enable transport
+            // stabilization for the simulation.
+            if (g_out == g_in && sigma_s < 0.0)
+              is_transport_stabilization_needed_ = true;
+          }
+          // Prompt cross-sections for kinetic simulations
+          if (settings::kinetic_simulation) {
+            double chi_p =
+              m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a);
+            if (!std::isfinite(chi_p)) {
               // MGXS interface may return NaN in some cases, such as when
               // material is fissionable but has very small sigma_f.
-              chi_d = 0.0;
+              chi_p = 0.0;
             }
-            chi_d_lambda_.push_back(chi_d * lambda);
+            chi_p_.push_back(chi_p);
+
+            double inverse_vbar = m.get_xs(
+              MgxsType::INVERSE_VELOCITY, g_out, NULL, NULL, NULL, t, a);
+            inverse_vbar_.push_back(inverse_vbar);
+
+            double nu_p_Sigma_f = m.get_xs(
+              MgxsType::PROMPT_NU_FISSION, g_out, NULL, NULL, NULL, t, a);
+            nu_p_sigma_f_.push_back(nu_p_Sigma_f);
           }
         } else {
-          lambda_.push_back(0);
-          for (int g_out = 0; g_out < negroups_; g_out++) {
-            nu_d_sigma_f_.push_back(0);
-            chi_d_lambda_.push_back(0);
+          sigma_t_.push_back(0);
+          nu_sigma_f_.push_back(0);
+          sigma_f_.push_back(0);
+          chi_.push_back(0);
+          kappa_fission_.push_back(0);
+          for (int g_in = 0; g_in < negroups_; g_in++) {
+            sigma_s_.push_back(0);
+          }
+          if (settings::kinetic_simulation) {
+            chi_p_.push_back(0);
+            inverse_vbar_.push_back(0);
+            nu_p_sigma_f_.push_back(0);
+          }
+        }
+      }
+      // Delayed cross sections for time-dependent simulations
+      if (settings::kinetic_simulation) {
+        for (int dg = 0; dg < ndgroups_; dg++) {
+          if (m.exists_in_model) {
+            double lambda =
+              m.get_xs(MgxsType::DECAY_RATE, 0, NULL, NULL, &dg, t, a);
+            lambda_.push_back(lambda);
+            for (int g_out = 0; g_out < negroups_; g_out++) {
+              double nu_d_Sigma_f = m.get_xs(
+                MgxsType::DELAYED_NU_FISSION, g_out, NULL, NULL, &dg, t, a);
+              nu_d_sigma_f_.push_back(nu_d_Sigma_f);
+              double chi_d =
+                m.get_xs(MgxsType::CHI_DELAYED, g_out, &g_out, NULL, &dg, t, a);
+              if (!std::isfinite(chi_d)) {
+                // MGXS interface may return NaN in some cases, such as when
+                // material is fissionable but has very small sigma_f.
+                chi_d = 0.0;
+              }
+              chi_d_lambda_.push_back(chi_d * lambda);
+            }
+          } else {
+            lambda_.push_back(0);
+            for (int g_out = 0; g_out < negroups_; g_out++) {
+              nu_d_sigma_f_.push_back(0);
+              chi_d_lambda_.push_back(0);
+            }
           }
         }
       }
@@ -1478,12 +1510,14 @@ void FlatSourceDomain::set_adjoint_sources()
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
-    double density_mult = source_regions_.density_mult(sr);
+    int temp = source_regions_.temperature_idx(sr);
     if (material == MATERIAL_VOID) {
       continue;
     }
     for (int g = 0; g < negroups_; g++) {
-      double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
+      double sigma_t =
+        sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+        source_regions_.density_mult(sr);
       source_regions_.external_source(sr, g) /= sigma_t;
     }
   }
@@ -1492,16 +1526,19 @@ void FlatSourceDomain::set_adjoint_sources()
 void FlatSourceDomain::transpose_scattering_matrix()
 {
   // Transpose the inner two dimensions for each material
+#pragma omp parallel for
   for (int m = 0; m < n_materials_; ++m) {
-    int material_offset = m * negroups_ * negroups_;
-    for (int i = 0; i < negroups_; ++i) {
-      for (int j = i + 1; j < negroups_; ++j) {
-        // Calculate indices of the elements to swap
-        int idx1 = material_offset + i * negroups_ + j;
-        int idx2 = material_offset + j * negroups_ + i;
+    for (int t = 0; t < ntemperature_; t++) {
+      int material_offset = (m * ntemperature_ + t) * negroups_ * negroups_;
+      for (int i = 0; i < negroups_; ++i) {
+        for (int j = i + 1; j < negroups_; ++j) {
+          // Calculate indices of the elements to swap
+          int idx1 = material_offset + i * negroups_ + j;
+          int idx2 = material_offset + j * negroups_ + i;
 
-        // Swap the elements to transpose the matrix
-        std::swap(sigma_s_[idx1], sigma_s_[idx2]);
+          // Swap the elements to transpose the matrix
+          std::swap(sigma_s_[idx1], sigma_s_[idx2]);
+        }
       }
     }
   }
@@ -1732,14 +1769,21 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   int gs_i_cell = gs.lowest_coord().cell();
   Cell& cell = *model::cells[gs_i_cell];
   int material = cell.material(gs.cell_instance());
+  int temp = 0;
 
   // If material total XS is extremely low, just set it to void to avoid
   // problems with 1/Sigma_t
-  for (int g = 0; g < negroups_; g++) {
-    double sigma_t = sigma_t_[material * negroups_ + g];
-    if (sigma_t < MINIMUM_MACRO_XS) {
-      material = MATERIAL_VOID;
-      break;
+  if (material != MATERIAL_VOID) {
+    temp = data::mg.macro_xs_[material].get_temperature_index(
+      cell.sqrtkT(gs.cell_instance()));
+    for (int g = 0; g < negroups_; g++) {
+      double sigma_t =
+        sigma_t_[(material * ntemperature_ + temp) * negroups_ + g];
+      if (sigma_t < MINIMUM_MACRO_XS) {
+        material = MATERIAL_VOID;
+        temp = 0;
+        break;
+      }
     }
   }
 
@@ -1749,6 +1793,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   }
 
   handle.material() = material;
+  handle.temperature_idx() = temp;
 
   handle.density_mult() = cell.density_mult(gs.cell_instance());
 
@@ -1781,7 +1826,8 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     if (material != C_NONE) {
       for (int g = 0; g < negroups_; g++) {
         double sigma_t =
-          sigma_t_[material * negroups_ + g] * handle.density_mult();
+          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+          handle.density_mult();
         handle.external_source(g) /= sigma_t;
       }
     }
@@ -1862,6 +1908,7 @@ void FlatSourceDomain::apply_transport_stabilization()
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
+    int temp = source_regions_.temperature_idx(sr);
     double density_mult = source_regions_.density_mult(sr);
     if (material == MATERIAL_VOID) {
       continue;
@@ -1870,10 +1917,14 @@ void FlatSourceDomain::apply_transport_stabilization()
       // Only apply stabilization if the diagonal (in-group) scattering XS is
       // negative
       double sigma_s =
-        sigma_s_[material * negroups_ * negroups_ + g * negroups_ + g] *
+        sigma_s_[((material * ntemperature_ + temp) * negroups_ + g) *
+                   negroups_ +
+                 g] *
         density_mult;
       if (sigma_s < 0.0) {
-        double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
+        double sigma_t =
+          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+          density_mult;
         double phi_new = source_regions_.scalar_flux_new(sr, g);
         double phi_old = source_regions_.scalar_flux_old(sr, g);
 
@@ -1955,17 +2006,19 @@ int64_t FlatSourceDomain::lookup_mesh_bin(int64_t sr, Position r) const
 // kinetic simulations) sources in each source region based on the flux
 // estimate from the previous iteration.
 
+// TODO: support void regions
 void FlatSourceDomain::compute_single_phi_prime(SourceRegionHandle& srh)
 {
   double A0 =
     (bd_coefficients_first_order_.at(RandomRay::bd_order_))[0] / settings::dt;
   int material = srh.material();
+  int temp = srh.temperature_idx();
   double density_mult = srh.density_mult();
+  const int material_offset = (material * ntemperature_ + temp) * negroups_;
   for (int g = 0; g < negroups_; g++) {
-    double inverse_vbar = inverse_vbar_[material * negroups_ + g];
+    double inverse_vbar = inverse_vbar_[material_offset + g];
     // TODO: add support for explicit void
-    double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
-    ;
+    double sigma_t = sigma_t_[material_offset + g] * density_mult;
 
     double scalar_flux_time_derivative =
       A0 * srh.scalar_flux_old(g) + srh.scalar_flux_rhs_bd(g);
@@ -1974,6 +2027,7 @@ void FlatSourceDomain::compute_single_phi_prime(SourceRegionHandle& srh)
 }
 
 // T1 calculation
+// TODO: support void regions
 void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
 {
   double A0 =
@@ -1981,11 +2035,13 @@ void FlatSourceDomain::compute_single_T1(SourceRegionHandle& srh)
   double B0 = (bd_coefficients_second_order_.at(RandomRay::bd_order_))[0] /
               (settings::dt * settings::dt);
   int material = srh.material();
+  int temp = srh.temperature_idx();
   double density_mult = srh.density_mult();
+  const int material_offset = (material * ntemperature_ + temp) * negroups_;
   for (int g = 0; g < negroups_; g++) {
-    double inverse_vbar = inverse_vbar_[material * negroups_ + g];
+    double inverse_vbar = inverse_vbar_[material_offset + g];
     // TODO: add support for explicit void
-    double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
+    double sigma_t = sigma_t_[material_offset + g] * density_mult;
 
     // Multiply out sigma_t to correctly compute the derivative term
     float source_time_derivative =
@@ -2011,7 +2067,10 @@ void FlatSourceDomain::compute_single_delayed_fission_source(
   }
 
   int material = srh.material();
+  int temp = srh.temperature_idx();
   double density_mult = srh.density_mult();
+  const int delay_offset =
+    (material * ntemperature_ + temp) * negroups_ * ndgroups_;
   if (material != MATERIAL_VOID) {
     double inverse_k_eff = 1.0 / k_eff_;
     for (int dg = 0; dg < ndgroups_; dg++) {
@@ -2020,9 +2079,8 @@ void FlatSourceDomain::compute_single_delayed_fission_source(
       if (lambda != 0.0) {
         for (int g = 0; g < negroups_; g++) {
           double scalar_flux = scalar_flux = srh.scalar_flux_new(g);
-          double nu_d_sigma_f = nu_d_sigma_f_[material * negroups_ * ndgroups_ +
-                                              dg * negroups_ + g] *
-                                density_mult;
+          double nu_d_sigma_f =
+            nu_d_sigma_f_[delay_offset + dg * negroups_ + g] * density_mult;
           srh.delayed_fission_source(dg) += nu_d_sigma_f * scalar_flux;
         }
         srh.delayed_fission_source(dg) *= inverse_k_eff;
@@ -2039,9 +2097,11 @@ void FlatSourceDomain::compute_single_precursors(SourceRegionHandle& srh)
   }
 
   int material = srh.material();
+  int temp = srh.temperature_idx();
+  const int delay_offset = (material * ntemperature_ + temp) * ndgroups_;
   if (material != MATERIAL_VOID) {
     for (int dg = 0; dg < ndgroups_; dg++) {
-      double lambda = lambda_[material * ndgroups_ + dg];
+      double lambda = lambda_[delay_offset + dg];
       if (lambda != 0.0) {
         double delayed_fission_source = srh.delayed_fission_source(dg);
         if (simulation::is_initial_condition) {
@@ -2172,9 +2232,12 @@ void FlatSourceDomain::store_time_step_quantities(bool increment_not_initialize)
       if (RandomRay::time_method_ == RandomRayTimeMethod::PROPAGATION) {
         // Multiply out sigma_t to store the base source
         int material = source_regions_.material(sr);
+        int temp = source_regions_.temperature_idx(sr);
         double density_mult = source_regions_.density_mult(sr);
         // TODO: add support for explicit void regions
-        double sigma_t = sigma_t_[material * negroups_ + g] * density_mult;
+        double sigma_t =
+          sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+          density_mult;
         float source = source_regions_.source_final(sr, g) * sigma_t;
         add_value_to_bd_vector(source_regions_.source_bd(sr, g), source,
           increment_not_initialize, RandomRay::bd_order_);
@@ -2218,29 +2281,16 @@ void FlatSourceDomain::compute_rhs_bd_quantities()
   }
 }
 
-// Update material density and cross sections
+// Update material density by source region
 void FlatSourceDomain::update_material_density(int i)
 {
 #pragma omp parallel for
-  for (int j = 0; j < model::materials.size(); j++) {
-    auto& mat {model::materials[j]};
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    int material = source_regions_.material(sr);
+    auto& mat {model::materials[material]};
     if (mat->density_timeseries_.size() != 0) {
       double density_factor = mat->density_timeseries_[i] / mat->density_;
-      mat->density_ = mat->density_timeseries_[i];
-      for (int g_out = 0; g_out < negroups_; g_out++) {
-        for (int dg = 0; dg < ndgroups_; dg++) {
-          nu_d_sigma_f_[j * negroups_ * ndgroups_ + dg * negroups_ + g_out] *=
-            density_factor;
-        }
-        nu_p_sigma_f_[j * negroups_ + g_out] *= density_factor;
-        sigma_t_[j * negroups_ + g_out] *= density_factor;
-        nu_sigma_f_[j * negroups_ + g_out] *= density_factor;
-        sigma_f_[j * negroups_ + g_out] *= density_factor;
-        for (int g_in = 0; g_in < negroups_; g_in++) {
-          sigma_s_[j * negroups_ * negroups_ + g_out * negroups_ + g_in] *=
-            density_factor;
-        }
-      }
+      source_regions_.density_mult(sr) = density_factor;
     }
   }
 }

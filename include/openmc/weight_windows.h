@@ -10,7 +10,7 @@
 #include "openmc/constants.h"
 #include "openmc/memory.h"
 #include "openmc/mesh.h"
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/span.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/vector.h"
@@ -24,17 +24,6 @@ enum class WeightWindowUpdateMethod { MAGIC, FW_CADIS };
 //==============================================================================
 
 constexpr double DEFAULT_WEIGHT_CUTOFF {1.0e-38}; // default low weight cutoff
-
-//==============================================================================
-// Non-member functions
-//==============================================================================
-
-//! Apply weight windows to a particle
-//! \param[in] p  Particle to apply weight windows to
-void apply_weight_windows(Particle& p);
-
-//! Free memory associated with weight windows
-void free_memory_weight_windows();
 
 //==============================================================================
 // Global variables
@@ -137,14 +126,11 @@ public:
 
   //! Retrieve the weight window for a particle
   //! \param[in] p  Particle to get weight window for
-  WeightWindow get_weight_window(const Particle& p) const;
+  std::pair<bool, WeightWindow> get_weight_window(const Particle& p) const;
 
   std::array<int, 2> bounds_size() const;
 
   const vector<double>& energy_bounds() const { return energy_bounds_; }
-
-  void set_bounds(const xt::xtensor<double, 2>& lower_ww_bounds,
-    const xt::xtensor<double, 2>& upper_bounds);
 
   void set_bounds(const tensor::Tensor<double>& lower_ww_bounds,
     const tensor::Tensor<double>& upper_bounds);
@@ -196,10 +182,9 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Data members
-  int32_t id_;    //!< Unique ID
-  int64_t index_; //!< Index into weight windows vector
-  ParticleType particle_type_ {
-    ParticleType::neutron};      //!< Particle type to apply weight windows to
+  int32_t id_;                   //!< Unique ID
+  int64_t index_;                //!< Index into weight windows vector
+  ParticleType particle_type_;   //!< Particle type to apply weight windows to
   vector<double> energy_bounds_; //!< Energy boundaries [eV]
   tensor::Tensor<double> lower_ww_; //!< Lower weight window bounds (shape:
                                     //!< energy_bins, mesh_bins (k, j, i))
@@ -239,6 +224,26 @@ public:
                            // update weight windows
   double ratio_ {5.0};     //<! ratio of lower to upper weight window bounds
 };
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+//! Apply weight windows to a particle
+//! \param[in] p  Particle to apply weight windows to
+void apply_weight_windows(Particle& p);
+
+//! Apply weight window to a particle
+//! \param[in] p  Particle to apply weight window to
+//! \param[in] weight_window WeightWindow to apply
+void apply_weight_window(Particle& p, WeightWindow weight_window);
+
+//! Free memory associated with weight windows
+void free_memory_weight_windows();
+
+//! Search weight window that apply to a particle
+//! \param[in]  p  Particle to search weight window for
+std::pair<bool, WeightWindow> search_weight_window(const Particle& p);
 
 //! Finalize variance reduction objects after all inputs have been read
 void finalize_variance_reduction();

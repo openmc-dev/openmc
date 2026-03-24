@@ -131,17 +131,18 @@ public:
   // in model::cells
   vector<int64_t> source_region_offsets_;
 
-  // 2D arrays stored in 1D representing values for all materials x energy
-  // groups
+  // 3D arrays stored in 1D representing values for all materials x temperature
+  // points x energy groups
   int n_materials_;
+  int ntemperature_;
   vector<double> sigma_t_;
   vector<double> nu_sigma_f_;
   vector<double> sigma_f_;
   vector<double> chi_;
   vector<double> kappa_fission_;
 
-  // 3D arrays stored in 1D representing values for all materials x energy
-  // groups x energy groups
+  // 4D arrays stored in 1D representing values for all materials x temperature
+  // points x energy groups x energy groups
   vector<double> sigma_s_;
 
   // The abstract container holding all source region-specific data

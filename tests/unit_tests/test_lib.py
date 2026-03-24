@@ -5,6 +5,7 @@ import os
 import numpy as np
 import pytest
 import openmc
+from openmc.examples import random_ray_pin_cell
 import openmc.exceptions as exc
 import openmc.lib
 
@@ -82,6 +83,19 @@ def uo2_trigger_model():
         model.export_to_xml()
         yield
 
+
+@pytest.fixture(scope='module')
+def random_ray_pincell_model():
+    """Set up a random ray model to test with and delete files when done"""
+    openmc.reset_auto_ids()
+    # Write XML and MGXS files in tmpdir
+    with cdtemp():
+        model = random_ray_pin_cell()
+        model.settings.batches = 200
+        model.settings.inactive = 50
+        model.settings.particles = 50
+        model.export_to_xml()
+        yield
 
 @pytest.fixture(scope='module')
 def lib_init(pincell_model, mpi_intracomm):
@@ -920,6 +934,60 @@ def test_property_map(lib_init):
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 
+def test_solid_raytrace_plot(lib_init, pincell_model):
+    # Ensure plot mapping can be accessed and grows after allocation
+    n0 = len(openmc.lib.plots)
+    plot = openmc.lib.SolidRayTracePlot()
+    assert len(openmc.lib.plots) == n0 + 1
+    assert plot.id in openmc.lib.plots
+    assert openmc.lib.plots[plot.id] is plot
+
+    # Exercise plot property getters/setters
+    plot.pixels = (8, 6)
+    assert plot.pixels == (8, 6)
+
+    plot.color_by = openmc.lib.SolidRayTracePlot.COLOR_BY_MATERIAL
+    assert plot.color_by == openmc.lib.SolidRayTracePlot.COLOR_BY_MATERIAL
+
+    plot.camera_position = (2.0, 0.0, 1.0)
+    plot.look_at = (0.0, 0.0, 0.0)
+    plot.up = (0.0, 0.0, 1.0)
+    plot.light_position = (3.0, 2.0, 4.0)
+    plot.fov = 60.0
+    plot.diffuse_fraction = 0.4
+    assert plot.camera_position == pytest.approx((2.0, 0.0, 1.0))
+    assert plot.look_at == pytest.approx((0.0, 0.0, 0.0))
+    assert plot.up == pytest.approx((0.0, 0.0, 1.0))
+    assert plot.light_position == pytest.approx((3.0, 2.0, 4.0))
+    assert plot.fov == pytest.approx(60.0)
+    assert plot.diffuse_fraction == pytest.approx(0.4)
+
+    # Exercise color/visibility CAPI wrappers
+    plot.set_default_colors()
+    plot.set_color(1, (12, 34, 56))
+    assert plot.get_color(1) == (12, 34, 56)
+    plot.set_visibility(1, False)
+    plot.set_visibility(1, True)
+
+    # Confirm image creation path works and dimensions match pixels
+    plot.update_view()
+    image = plot.create_image()
+    assert image.shape == (6, 8, 3)
+    assert image.dtype == np.uint8
+
+    # Change some properties and confirm image changes
+    plot.set_color(1, (255, 0, 0))
+    plot.update_view()
+    image2 = plot.create_image()
+    assert not np.array_equal(image, image2)
+
+    # Solid raytrace uses Phong/diffuse shading, so rendered RGB values are
+    # generally modulated and need not exactly match the assigned palette.
+    changed = np.any(image != image2, axis=2)
+    assert np.any(changed)
+    assert np.mean(image2[..., 0][changed]) > np.mean(image[..., 0][changed])
+
+
 def test_position(lib_init):
 
     pos = openmc.lib.plot._Position(1.0, 2.0, 3.0)
@@ -1046,9 +1114,29 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p1.time == p2.time
         assert p1.wgt == p2.wgt
 
+    # as_array should return a numpy structured array with matching values
+    arr = openmc.lib.sample_external_source(10, prn_seed=3, as_array=True)
+    assert isinstance(arr, np.ndarray)
+    assert len(arr) == 10
+    for p, row in zip(particles, arr):
+        assert p.r == pytest.approx(row['r'])
+        assert p.E == pytest.approx(row['E'])
+
     openmc.lib.finalize()
 
     # Make sure sampling works in volume calculation mode
     openmc.lib.init(["-c"])
     openmc.lib.sample_external_source(100)
+    openmc.lib.finalize()
+
+
+def test_random_ray(random_ray_pincell_model, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+    openmc.lib.run_random_ray()
+    keff = openmc.lib.keff()
+
+    assert keff[0]==pytest.approx(1.3236826574065745)
+
     openmc.lib.finalize()

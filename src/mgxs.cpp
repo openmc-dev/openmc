@@ -11,6 +11,7 @@
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/nuclide.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
@@ -80,6 +81,13 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   }
   delete[] dset_names;
   std::sort(temps_available.begin(), temps_available.end());
+
+  // Set the global upper and lower interpolation bounds to avoid errors
+  // involving C-API functions.
+  data::temperature_min =
+    std::min(data::temperature_min, temps_available.front());
+  data::temperature_max =
+    std::max(data::temperature_max, temps_available.back());
 
   // If only one temperature is available, lets just use nearest temperature
   // interpolation

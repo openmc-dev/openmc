@@ -376,7 +376,7 @@ void Nuclide::create_derived(
       auto xs = tensor::Tensor<double>(
         rx->xs_[t].value.data(), rx->xs_[t].value.size());
       for (const auto& p : rx->products_) {
-        if (p.particle_ == ParticleType::photon) {
+        if (p.particle_.is_photon()) {
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k + j];
 
@@ -495,7 +495,7 @@ void Nuclide::create_derived(
 
 void Nuclide::init_grid()
 {
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = ParticleType::neutron().transport_index();
   double E_min = data::energy_min[neutron];
   double E_max = data::energy_max[neutron];
   int M = settings::n_log_bins;
@@ -546,7 +546,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
         for (int i = 1; i < rx->products_.size(); ++i) {
           // Skip any non-neutron products
           const auto& product = rx->products_[i];
-          if (product.particle_ != ParticleType::neutron)
+          if (!product.particle_.is_neutron())
             continue;
 
           // Evaluate yield

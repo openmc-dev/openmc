@@ -400,7 +400,7 @@ below.
     {
       openmc::SourceSite particle;
       // weight
-      particle.particle = openmc::ParticleType::neutron;
+      particle.particle = openmc::ParticleType::neutron();
       particle.wgt = 1.0;
       // position
       double angle = 2.0 * M_PI * openmc::prn(seed);
@@ -477,7 +477,7 @@ parameters to the source class when it is created:
     {
       openmc::SourceSite particle;
       // weight
-      particle.particle = openmc::ParticleType::neutron;
+      particle.particle = openmc::ParticleType::neutron();
       particle.wgt = 1.0;
       // position
       particle.r.x = 0.0;
@@ -603,6 +603,13 @@ neutrons as well as pure photon calculations. The
 transport::
 
   settings.photon_transport = True
+
+Atomic relaxation (the cascade of fluorescence photons and Auger electrons
+emitted when an inner-shell vacancy is filled) is enabled by default whenever
+photon transport is on. It can be disabled using the
+:attr:`Settings.atomic_relaxation` attribute::
+
+  settings.atomic_relaxation = False
 
 The way in which OpenMC handles secondary charged particles can be specified
 with the :attr:`Settings.electron_treatment` attribute. By default, the

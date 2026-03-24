@@ -122,7 +122,7 @@ void finalize_particle_track(Particle& p)
   int offset = 0;
   for (auto& track_i : p.tracks()) {
     offsets.push_back(offset);
-    particles.push_back(static_cast<int>(track_i.particle));
+    particles.push_back(track_i.particle.pdg_number());
     offset += track_i.states.size();
     tracks.insert(tracks.end(), track_i.states.begin(), track_i.states.end());
   }

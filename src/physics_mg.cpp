@@ -27,12 +27,22 @@ void collision_mg(Particle& p)
 {
   // Add to the collision counter for the particle
   p.n_collision()++;
+  p.secondary_bank_index() = p.secondary_bank().size();
 
   // Sample the reaction type
   sample_reaction(p);
 
-  if (settings::weight_window_checkpoint_collision)
-    apply_weight_windows(p);
+  if (settings::weight_windows_on) {
+    auto [ww_found, ww] = search_weight_window(p);
+    if (!ww_found && p.type() == ParticleType::neutron()) {
+      // if the weight window is not valid, apply russian roulette
+      // (regardless of weight window collision checkpoint setting)
+      apply_russian_roulette(p);
+    } else if (settings::weight_window_checkpoint_collision) {
+      // if collision checkpointing is on, apply weight window
+      apply_weight_window(p, ww);
+    }
+  }
 
   // Display information about collision
   if ((settings::verbosity >= 10) || p.trace()) {
@@ -66,18 +76,9 @@ void sample_reaction(Particle& p)
   // Sample a scattering event to determine the energy of the exiting neutron
   scatter(p);
 
-  // Play Russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
-    // if survival normalization is applicable, use normalized weight cutoff and
-    // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
-      }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
-    }
-  }
+  // Play russian roulette if there are no weight windows
+  if (!settings::weight_windows_on)
+    apply_russian_roulette(p);
 }
 
 void scatter(Particle& p)
@@ -136,7 +137,7 @@ void create_fission_sites(Particle& p)
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
-    site.particle = ParticleType::neutron;
+    site.particle = ParticleType::neutron();
     site.time = p.time();
     site.wgt = 1. / weight;
 
@@ -171,7 +172,7 @@ void create_fission_sites(Particle& p)
       site.time -= std::log(prn(p.current_seed())) / decay_rate;
 
       // Reject site if it exceeds time cutoff
-      double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      double t_cutoff = settings::time_cutoff[site.particle.transport_index()];
       if (site.time > t_cutoff) {
         continue;
       }
@@ -200,6 +201,7 @@ void create_fission_sites(Particle& p)
       }
     } else {
       p.secondary_bank().push_back(site);
+      p.n_secondaries()++;
     }
 
     // Set the delayed group on the particle as well

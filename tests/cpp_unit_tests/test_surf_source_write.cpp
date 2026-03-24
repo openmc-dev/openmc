@@ -8,7 +8,6 @@
 
 auto ssw_cells_from_xml(std::string xml_string)
 {
-
   // Create a pugixml document object
   pugi::xml_document doc;
 
@@ -87,18 +86,22 @@ TEST_CASE("Test duplicate cells in surface source write")
         </settings>
     )"};
 
+  // to + to -> to
   auto ssw_cells = ssw_cells_from_xml(xml_strings[0]);
   REQUIRE(ssw_cells.size() == 1);
   REQUIRE(ssw_cells.at(1) == openmc::SSWCellType::To);
 
+  // to + from -> both
   ssw_cells = ssw_cells_from_xml(xml_strings[1]);
   REQUIRE(ssw_cells.size() == 1);
   REQUIRE(ssw_cells.at(1) == openmc::SSWCellType::Both);
 
+  // to + both -> both
   ssw_cells = ssw_cells_from_xml(xml_strings[2]);
   REQUIRE(ssw_cells.size() == 1);
   REQUIRE(ssw_cells.at(1) == openmc::SSWCellType::Both);
 
+  // both + to -> both
   ssw_cells = ssw_cells_from_xml(xml_strings[3]);
   REQUIRE(ssw_cells.size() == 1);
   REQUIRE(ssw_cells.at(1) == openmc::SSWCellType::Both);

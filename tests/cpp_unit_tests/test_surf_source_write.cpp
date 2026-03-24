@@ -6,7 +6,7 @@
 
 #include "openmc/settings.h"
 
-auto ssw_cells_from_xml(std::string xml_string)
+auto ssw_cells_from_xml(const std::string& xml_string)
 {
   // Create a pugixml document object
   pugi::xml_document doc;

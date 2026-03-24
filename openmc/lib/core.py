@@ -696,8 +696,8 @@ class TemporarySession:
         self.model = model
 
         # Determine MPI intercommunicator
-        self.init_kwargs.setdefault('intracomm', comm)
-        self.comm = self.init_kwargs['intracomm']
+        self.comm = self.init_kwargs.get('intracomm') or comm
+        self.init_kwargs['intracomm'] = self.comm
 
     def __enter__(self):
         """Initialize the OpenMC library in a temporary directory."""

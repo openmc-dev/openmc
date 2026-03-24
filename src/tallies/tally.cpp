@@ -597,7 +597,7 @@ void Tally::set_scores(const vector<std::string>& scores)
 
   if ((type_ == TallyType::VOLUME) &&
       (surface_types_present || meshsurface_present))
-    fatal_error("Cannot use volume tally surface filters.");
+    fatal_error("Cannot use surface filters in a volume tally.");
 
   if ((type_ == TallyType::SURFACE) || (type_ == TallyType::MESH_SURFACE))
     estimator_ = TallyEstimator::ANALOG;

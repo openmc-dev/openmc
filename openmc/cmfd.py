@@ -2941,9 +2941,9 @@ class CMFDRun:
                 else:
                     cmfd_tally.filters = [mesh_filter]
                 # Set scores, type, and estimator for tally
-                cmfd_tally.scores = ['flux', 'total']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
+                cmfd_tally.scores = ['flux', 'total']                
 
             # Set attributes of CMFD neutron production tally
             elif i == 1:
@@ -2954,9 +2954,9 @@ class CMFDRun:
                 else:
                     cmfd_tally.filters = [mesh_filter]
                 # Set scores, type, and estimator for tally
-                cmfd_tally.scores = ['nu-scatter', 'nu-fission']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
+                cmfd_tally.scores = ['nu-scatter', 'nu-fission']                
 
             # Set attributes of CMFD surface current tally
             elif i == 2:
@@ -2966,9 +2966,9 @@ class CMFDRun:
                 else:
                     cmfd_tally.filters = [meshsurface_filter]
                 # Set scores, type, and estimator for tally
-                cmfd_tally.scores = ['current']
                 cmfd_tally.type = 'mesh-surface'
                 cmfd_tally.estimator = 'analog'
+                cmfd_tally.scores = ['current']                
 
             # Set attributes of CMFD P1 scatter tally
             elif i == 3:
@@ -2979,9 +2979,9 @@ class CMFDRun:
                 else:
                     cmfd_tally.filters = [mesh_filter, legendre_filter]
                 # Set scores for tally
-                cmfd_tally.scores = ['scatter']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
+                cmfd_tally.scores = ['scatter']                
 
             # Set all tallies to be active from beginning
             cmfd_tally.active = True

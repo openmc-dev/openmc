@@ -108,8 +108,8 @@ void process_surface_crossing_events();
 //! Execute the collision event for all particles in this event's buffer
 void process_collision_events();
 
-//! Execute the temperature mesh crossing event fo all particles in this event's
-//! buffer
+//! Execute the temperature mesh crossing event for all particles in this
+//! event's buffer
 void process_temperature_mesh_crossing_events();
 
 //! Execute the death event for all particles

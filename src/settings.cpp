@@ -381,6 +381,9 @@ void get_run_parameters(pugi::xml_node node_base)
     if (check_for_node(random_ray_node, "adjoint")) {
       FlatSourceDomain::adjoint_ =
         get_node_value_bool(random_ray_node, "adjoint");
+      if (FlatSourceDomain::adjoint_ && kinetic_simulation) {
+        fatal_error("Adjoint kinetic simulations are currently unsupported .");
+      }
     }
     if (check_for_node(random_ray_node, "sample_method")) {
       std::string temp_str =
@@ -1343,6 +1346,10 @@ void read_settings_xml(pugi::xml_node root)
 
   // Create weight window generator objects
   if (check_for_node(root, "weight_window_generators")) {
+    if (kinetic_simulation) {
+      fatal_error("Weight window generation is currently unsupported in kinetic"
+                  " random ray solver mode.");
+    }
     auto wwgs_node = root.child("weight_window_generators");
     for (pugi::xml_node node_wwg :
       wwgs_node.children("weight_windows_generator")) {

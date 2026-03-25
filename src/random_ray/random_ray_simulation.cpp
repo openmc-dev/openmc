@@ -438,6 +438,9 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint()
 
 void RandomRaySimulation::prepare_adjoint_simulation()
 {
+  // Reset all simulation values
+  domain_->source_regions_.simulation_reset();
+
   // Configure the domain for adjoint simulation
   FlatSourceDomain::adjoint_ = true;
 
@@ -452,59 +455,6 @@ void RandomRaySimulation::prepare_adjoint_simulation()
 
   // Swap nu_sigma_f and chi
   domain_->nu_sigma_f_.swap(domain_->chi_);
-}
-
-// TODO: Add support for time-dependent restart
-void RandomRaySimulation::kinetic_single_time_step(int i)
-{
-  // Increment time step
-  simulation::current_timestep = i + 1;
-  if (i >= 0)
-    // Increment the current time
-    simulation::current_time += settings::dt;
-
-  // Set eigenvalue if needed
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    if (i == -1) {
-      // Set flag for k_eff correction if initial condition
-      simulation::k_eff_correction = true;
-
-      // Store average keff from initial simulation
-      static_avg_k_eff_ = simulation::keff;
-    }
-    domain_->k_eff_ = static_avg_k_eff_;
-  }
-  domain_->source_regions_.adjoint_reset();
-  domain_->propagate_final_quantities();
-  domain_->source_regions_.time_step_reset();
-
-  if (i >= 0) {
-    // Compute RHS backward differences
-    domain_->compute_rhs_bd_quantities();
-
-    // Update time dependent cross section based on the density
-    domain_->update_material_density(i);
-  }
-
-  // Run the initial condition
-  simulate();
-
-  if (i == -1) {
-    // Initialize the BD arrays if initial condition
-    domain_->store_time_step_quantities(false);
-    // Reset flags for kinetic simulation if initial condition
-    simulation::is_initial_condition = false;
-    simulation::k_eff_correction = false;
-  } else {
-    // Else, store final quantities for the current time step
-    domain_->store_time_step_quantities();
-  }
-
-  // Rename statepoint and tallies file for the current time step
-  rename_time_step_file(fmt::format("statepoint.{0}", settings::n_batches),
-    ".h5", simulation::current_timestep);
-  if (settings::output_tallies)
-    rename_time_step_file("tallies", ".out", simulation::current_timestep);
 }
 
 void RandomRaySimulation::simulate()
@@ -580,11 +530,11 @@ void RandomRaySimulation::simulate()
       domain_->apply_transport_stabilization();
 
       if (settings::run_mode == RunMode::EIGENVALUE) {
-        // Compute random ray k-eff
-        if (!settings::kinetic_simulation ||
-            settings::kinetic_simulation && simulation::is_initial_condition) {
+        // Compute random ray k-eff for initial condition.
+        // This keff will be preserved
+        if (simulation::is_initial_condition) {
           domain_->compute_k_eff();
-          if (simulation::k_eff_correction) {
+          if (settings::kinetic_simulation && simulation::k_eff_correction) {
             static_fission_rate_.push_back(domain_->fission_rate_);
             static_k_eff_.push_back(domain_->k_eff_);
           }
@@ -653,6 +603,51 @@ void RandomRaySimulation::simulate()
   // simulation
   if (is_first_simulation_)
     is_first_simulation_ = false;
+}
+
+void RandomRaySimulation::initialize_time_step(int i)
+{
+  if (simulation::k_eff_correction)
+    static_avg_k_eff_ = simulation::keff;
+  domain_->k_eff_ = static_avg_k_eff_;
+
+  // Increment current timestep and simuation time
+  simulation::current_timestep = i + 1;
+
+  // Propagate previous converted solution for kinetic simulation
+  domain_->source_regions_.simulation_reset();
+  domain_->propagate_final_quantities();
+  domain_->source_regions_.time_step_reset();
+
+  if (!simulation::is_initial_condition) {
+    // Compute RHS backward differences
+    domain_->compute_rhs_bd_quantities();
+
+    // Update time dependent cross section based on the density
+    domain_->update_material_density(i);
+
+    simulation::current_time += settings::dt;
+  }
+}
+
+void RandomRaySimulation::finalize_time_step()
+{
+  if (simulation::is_initial_condition) {
+    // Initialize the BD arrays if initial condition
+    domain_->store_time_step_quantities(false);
+    // Toggle off initial condition and source correction
+    simulation::is_initial_condition = false;
+    simulation::k_eff_correction = false;
+  } else {
+    // Else, store final quantities for the current time step
+    domain_->store_time_step_quantities();
+  }
+
+  // Rename statepoint and tallies file for the current time step
+  rename_time_step_file(fmt::format("statepoint.{0}", settings::n_batches),
+    ".h5", simulation::current_timestep);
+  if (settings::output_tallies)
+    rename_time_step_file("tallies", ".out", simulation::current_timestep);
 }
 
 void RandomRaySimulation::output_simulation_results() const
@@ -861,7 +856,6 @@ void openmc_run_random_ray()
   //////////////////////////////////////////////////////////
   // Run forward simulation
   //////////////////////////////////////////////////////////
-
   if (openmc::mpi::master) {
     if (openmc::FlatSourceDomain::adjoint_) {
       openmc::FlatSourceDomain::adjoint_ = false;
@@ -883,14 +877,22 @@ void openmc_run_random_ray()
   // Initialize fixed sources, if present
   sim.apply_fixed_sources_and_mesh_domains();
 
-  // Run initial random ray simulation
+  // Simulate single random ray simulation (static case)
+  // OR get an initial estimate for scattering and fission
+  // distributions (if fissile material exist),
+  // and k-eff (if kinetic eigenvalue simulation)
   sim.simulate();
 
   if (openmc::settings::kinetic_simulation) {
-    // Timestepping loop, including k-eff correction initial
-    // condition (i = -1)
-    for (int i = -1; i < openmc::settings::n_timesteps; i++)
-      sim.kinetic_single_time_step(i);
+    // Toggle initial condition source correction
+    openmc::simulation::k_eff_correction = true;
+    int i_start = -1;
+    // Timestepping loop,
+    for (int i = i_start; i < openmc::settings::n_timesteps; i++) {
+      sim.initialize_time_step(i);
+      sim.simulate();
+      sim.finalize_time_step();
+    }
   }
 
   //////////////////////////////////////////////////////////

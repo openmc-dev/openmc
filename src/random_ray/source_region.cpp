@@ -364,7 +364,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   return handle;
 }
 
-void SourceRegionContainer::adjoint_reset()
+void SourceRegionContainer::simulation_reset()
 {
   std::fill(n_hits_.begin(), n_hits_.end(), 0);
   std::fill(volume_.begin(), volume_.end(), 0.0);
@@ -372,9 +372,6 @@ void SourceRegionContainer::adjoint_reset()
   std::fill(volume_sq_.begin(), volume_sq_.end(), 0.0);
   std::fill(volume_sq_t_.begin(), volume_sq_t_.end(), 0.0);
   std::fill(volume_naive_.begin(), volume_naive_.end(), 0.0);
-  std::fill(
-    external_source_present_.begin(), external_source_present_.end(), 0);
-  std::fill(external_source_.begin(), external_source_.end(), 0.0);
   std::fill(centroid_.begin(), centroid_.end(), Position {0.0, 0.0, 0.0});
   std::fill(centroid_iteration_.begin(), centroid_iteration_.end(),
     Position {0.0, 0.0, 0.0});
@@ -390,7 +387,6 @@ void SourceRegionContainer::adjoint_reset()
   }
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
-  std::fill(external_source_.begin(), external_source_.end(), 0.0f);
   std::fill(source_gradients_.begin(), source_gradients_.end(),
     MomentArray {0.0, 0.0, 0.0});
   std::fill(flux_moments_old_.begin(), flux_moments_old_.end(),
@@ -422,6 +418,13 @@ void SourceRegionContainer::adjoint_reset()
         scalar_flux_rhs_bd_2_.begin(), scalar_flux_rhs_bd_2_.end(), 0.0);
     }
   }
+}
+
+void SourceRegionContainer::adjoint_reset()
+{
+  std::fill(
+    external_source_present_.begin(), external_source_present_.end(), 0);
+  std::fill(external_source_.begin(), external_source_.end(), 0.0f);
 }
 
 //-----------------------------------------------------------------------------

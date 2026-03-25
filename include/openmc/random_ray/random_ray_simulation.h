@@ -21,9 +21,10 @@ public:
   // Methods
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fixed_sources_adjoint();
-  void kinetic_single_time_step(int i);
   void prepare_adjoint_simulation();
   void simulate();
+  void initialize_time_step(int i);
+  void finalize_time_step();
   void output_simulation_results() const;
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;

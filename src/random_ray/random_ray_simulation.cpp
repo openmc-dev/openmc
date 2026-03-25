@@ -713,7 +713,9 @@ void openmc_run_random_ray()
     sim.prepare_fw_fixed_sources_adjoint();
   } else {
     // Initialize adjoint fixed sources
+    sim.domain()->apply_meshes();
     sim.prepare_local_fixed_sources_adjoint();
+    sim.domain()->count_external_source_regions();
   }
 
   sim.domain()->k_eff_ = 1.0;

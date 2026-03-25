@@ -1391,9 +1391,6 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         // Otherwise, we zero out the source term.
         if (local_fw_cadis_target_region) {
           has_any_sources = true;
-          // print external source term
-          fmt::print("External source term for source region {} group {}: {}\n",
-            sr, g, source_regions_.external_source(sr, g));
         } else {
           source_regions_.external_source(sr, g) = 0.0;
         }

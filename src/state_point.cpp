@@ -592,8 +592,15 @@ void write_source_point(std::string filename, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index, bool use_mcpl)
 {
   std::string ext = use_mcpl ? "mcpl" : "h5";
+
+  int total_surf_particles = source_bank.size();
+#ifdef OPENMC_MPI
+  int num_particles = source_bank.size();
+  MPI_Allreduce(&num_particles, &total_surf_particles, 1, MPI_INT, MPI_SUM, mpi::intracomm);
+#endif
+
   write_message("Creating source file {}.{} with {} particles ...", filename,
-    ext, source_bank.size(), 5);
+    ext, total_surf_particles, 5);
 
   // Dispatch to appropriate function based on file type
   if (use_mcpl) {

@@ -596,7 +596,8 @@ void write_source_point(std::string filename, span<SourceSite> source_bank,
   int total_surf_particles = source_bank.size();
 #ifdef OPENMC_MPI
   int num_particles = source_bank.size();
-  MPI_Allreduce(&num_particles, &total_surf_particles, 1, MPI_INT, MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(
+    &num_particles, &total_surf_particles, 1, MPI_INT, MPI_SUM, mpi::intracomm);
 #endif
 
   write_message("Creating source file {}.{} with {} particles ...", filename,

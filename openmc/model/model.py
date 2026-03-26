@@ -1771,10 +1771,10 @@ class Model:
             mgxs_lib.mgxs_types += ['chi-prompt', 'chi-delayed',
                                     'decay-rate', 'inverse-velocity', 'beta']
 
-        # Specify a "cell" domain type for the cross section tally filters
+        # Specify a "material" domain type for the cross section tally filters
         mgxs_lib.domain_type = "material"
 
-        # Specify the cell domains over which to compute multi-group cross sections
+        # Specify the domains over which to compute multi-group cross sections
         mgxs_lib.domains = model.geometry.get_all_materials().values()
 
         # Do not compute cross sections on a nuclide-by-nuclide basis

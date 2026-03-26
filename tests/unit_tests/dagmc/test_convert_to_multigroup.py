@@ -16,7 +16,7 @@ def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
     """Test that convert_to_multigroup works with DAGMC model without
     setting particles/batches beforehand."""
     openmc.reset_auto_ids()
-    
+
     mat = openmc.Material(name="mat")
     mat.add_nuclide("Fe56", 1.0)
     mat.set_density("g/cm3", 7.0)
@@ -33,7 +33,7 @@ def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
     model.settings = openmc.Settings()  # Note: no particles or batches set!
 
     model.settings.run_mode = 'fixed source'
-    
+
     # Create a point source
     my_source = openmc.IndependentSource()
     my_source.space = openmc.stats.Point((0.25, 0.25, 0.25))
@@ -44,7 +44,7 @@ def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
     # convert_to_multigroup handles initialization internally using non-transport mode
     model.convert_to_multigroup(
         method='material_wise',
-        groups='CASMO-2',
+        energy_groups='CASMO-2',
         nparticles=10,
         overwrite_mgxs_library=True
     )

@@ -7,6 +7,19 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
 
+-------------------------------
+``<atomic_relaxation>`` Element
+-------------------------------
+
+The ``<atomic_relaxation>`` element determines whether the atomic relaxation
+cascade, the X-ray fluorescence photons and Auger electrons emitted when an
+inner-shell vacancy is filled, is simulated following photoelectric and
+incoherent (Compton) scattering interactions. Disabling this can speed up
+photon transport calculations where the detailed secondary particle cascade is
+not of interest.
+
+  *Default*: true
+
 ---------------------
 ``<batches>`` Element
 ---------------------
@@ -541,6 +554,18 @@ The ``<plot_seed>`` element is used to set the seed for the pseudorandom number
 generator during generation of colors in plots.
 
   *Default*: 1
+
+.. _properties_file:
+
+-----------------------------
+``<properties_file>`` Element
+-----------------------------
+
+  The ``properties_file`` element has no attributes and contains the path to a
+  properties HDF5 file to load cell temperatures/densities and material
+  densities.
+
+  *Default*: None
 
 ---------------------
 ``<ptables>`` Element

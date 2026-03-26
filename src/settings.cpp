@@ -62,6 +62,7 @@ bool output_summary {true};
 bool output_tallies {true};
 bool particle_restart_run {false};
 bool photon_transport {false};
+bool atomic_relaxation {true};
 bool reduce_tallies {true};
 bool res_scat_on {false};
 bool restart_run {false};
@@ -96,6 +97,7 @@ std::string path_sourcepoint;
 std::string path_statepoint;
 const char* path_statepoint_c {path_statepoint.c_str()};
 std::string weight_windows_file;
+std::string properties_file;
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
@@ -608,6 +610,11 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
+  // Check for atomic relaxation
+  if (check_for_node(root, "atomic_relaxation")) {
+    atomic_relaxation = get_node_value_bool(root, "atomic_relaxation");
+  }
+
   // Number of bins for logarithmic grid
   if (check_for_node(root, "log_grid_bins")) {
     n_log_bins = std::stoi(get_node_value(root, "log_grid_bins"));
@@ -743,6 +750,14 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "time_positron")) {
       time_cutoff[3] = std::stod(get_node_value(node_cutoff, "time_positron"));
+    }
+  }
+
+  // read properties from file
+  if (check_for_node(root, "properties_file")) {
+    properties_file = get_node_value(root, "properties_file");
+    if (!file_exists(properties_file)) {
+      fatal_error(fmt::format("File '{}' does not exist.", properties_file));
     }
   }
 

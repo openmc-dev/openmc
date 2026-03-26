@@ -77,6 +77,7 @@ extern "C" bool output_summary;      //!< write summary.h5?
 extern bool output_tallies;          //!< write tallies.out?
 extern bool particle_restart_run;    //!< particle restart run?
 extern "C" bool photon_transport;    //!< photon transport turned on?
+extern bool atomic_relaxation;       //!< atomic relaxation enabled?
 extern "C" bool reduce_tallies;      //!< reduce tallies at end of batch?
 extern bool res_scat_on;             //!< use resonance upscattering method?
 extern "C" bool restart_run;         //!< restart run?
@@ -113,6 +114,8 @@ extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_sourcepoint;      //!< path to a source file
 extern std::string path_statepoint;       //!< path to a statepoint file
 extern std::string weight_windows_file;   //!< Location of weight window file to
+                                          //!< load on simulation initialization
+extern std::string properties_file;       //!< Location of properties file to
                                           //!< load on simulation initialization
 
 // This is required because the c_str() may not be the first thing in

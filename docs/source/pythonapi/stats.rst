@@ -29,6 +29,7 @@ Univariate Probability Distributions
    :template: myfunction.rst
 
    openmc.stats.delta_function
+   openmc.stats.fusion_neutron_spectrum
    openmc.stats.muir
 
 Angular Distributions

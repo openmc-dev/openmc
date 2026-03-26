@@ -737,7 +737,7 @@ class WeightWindowGenerator:
                     "target tallies for WeightWindowGenerator.")
             elif isinstance(self.targets, openmc.Tallies):
                 raise RuntimeError(
-                    "FW-CADIS target tallies must be checked to ensure they are" \
+                    "FW-CADIS target tallies must be checked to ensure they are " \
                     "present on model.tallies. Use model.export_to_xml() or " \
                     "model.export_to_model_xml() to link FW-CADIS target tallies.")
             else:

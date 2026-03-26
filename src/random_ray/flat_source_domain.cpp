@@ -1002,7 +1002,9 @@ void FlatSourceDomain::output_to_vtk() const
 void FlatSourceDomain::apply_external_source_to_source_region(
   int src_idx, SourceRegionHandle& srh)
 {
-  auto s = model::external_sources[src_idx].get();
+  auto s = (adjoint_ && !model::adjoint_sources.empty())
+             ? model::adjoint_sources[src_idx].get()
+             : model::external_sources[src_idx].get();
   auto is = dynamic_cast<IndependentSource*>(s);
   auto discrete = dynamic_cast<Discrete*>(is->energy());
   double strength_factor = is->strength();

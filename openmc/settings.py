@@ -2487,6 +2487,7 @@ class Settings:
                         child.text in ('true', '1')
                     )
                 elif child.tag == 'adjoint_source':
+                    self.random_ray['adjoint_source'] = []
                     for subelem in child.findall('source'):
                         src = SourceBase.from_xml_element(subelem)
                         # add newly constructed source object to the list

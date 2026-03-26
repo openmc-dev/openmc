@@ -294,6 +294,8 @@ void openmc_finalize_random_ray()
   FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_ = false;
+  FlatSourceDomain::fw_cadis_local_ = false;
+  FlatSourceDomain::fw_cadis_local_targets_.clear();
   FlatSourceDomain::mesh_domain_map_.clear();
   RandomRay::ray_source_.reset();
   RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
@@ -346,8 +348,7 @@ void RandomRaySimulation::prepare_fw_fixed_sources_adjoint()
 {
   // Prepare adjoint fixed sources using forward flux
   domain_->source_regions_.adjoint_reset();
-  if (settings::run_mode == RunMode::FIXED_SOURCE ||
-      FlatSourceDomain::fw_cadis_local_) {
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
     domain_->set_fw_adjoint_sources();
   }
 }

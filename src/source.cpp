@@ -712,6 +712,7 @@ SourceSite sample_external_source(uint64_t* seed)
 void free_memory_source()
 {
   model::external_sources.clear();
+  model::adjoint_sources.clear();
   reset_source_rejection_counters();
 }
 

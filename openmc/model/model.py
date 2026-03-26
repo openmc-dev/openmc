@@ -259,8 +259,7 @@ class Model:
             beta_tally = openmc.Tally(name='IFP beta numerator')
             beta_tally.scores = ['ifp-beta-numerator']
             if num_groups is not None:
-                beta_tally.filters = [openmc.DelayedGroupFilter(
-                    list(range(1, num_groups + 1)))]
+                beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
             self.tallies.append(beta_tally)
         if not any('ifp-denominator' in t.scores for t in self.tallies):
             denom_tally = openmc.Tally(name='IFP denominator')
@@ -524,8 +523,7 @@ class Model:
             check_value('method', method,
                         dep.integrators.integrator_by_name.keys())
             integrator_class = dep.integrators.integrator_by_name[method]
-            integrator = integrator_class(
-                depletion_operator, **integrator_kwargs)
+            integrator = integrator_class(depletion_operator, **integrator_kwargs)
 
             # Now perform the depletion
             with openmc.lib.quiet_dll(output):
@@ -585,8 +583,7 @@ class Model:
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml(
-                d, nuclides_to_ignore=nuclides_to_ignore)
+            self.materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
@@ -625,8 +622,7 @@ class Model:
             if not xml_path.exists():
                 xml_path.mkdir(parents=True, exist_ok=True)
             elif not xml_path.is_dir():
-                raise FileExistsError(
-                    f"File exists and is not a directory: '{xml_path}'")
+                raise FileExistsError(f"File exists and is not a directory: '{xml_path}'")
             xml_path /= 'model.xml'
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing
@@ -1638,8 +1634,7 @@ class Model:
             Default is True, only depletable materials will be differentiated. If False, all materials will be
             differentiated.
         """
-        check_value('volume differentiation method',
-                    diff_volume_method, ("divide equally", "match cell", None))
+        check_value('volume differentiation method', diff_volume_method, ("divide equally", "match cell", None))
 
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
@@ -1687,8 +1682,7 @@ class Model:
 
                 # Clone materials
                 if cell.num_instances > 1:
-                    cell.fill = [mat.clone()
-                                 for _ in range(cell.num_instances)]
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
                 else:
                     cell.fill = mat.clone()
 
@@ -1844,8 +1838,7 @@ class Model:
             strengths.append(1.0)
 
         uniform_energy = openmc.stats.Discrete(x=midpoints, p=strengths)
-        uniform_distribution = openmc.IndependentSource(
-            spatial_dist, energy=uniform_energy, strength=0.01)
+        uniform_distribution = openmc.IndependentSource(spatial_dist, energy=uniform_energy, strength=0.01)
         sources = [uniform_distribution]
 
         # If the user provided an energy distribution, use that
@@ -1961,7 +1954,13 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, energy_groups, correction, directory, kinetic, num_delayed_groups)
+            model,
+            energy_groups,
+            correction,
+            directory,
+            kinetic,
+            num_delayed_groups
+        )
 
         if temperature != None:
             return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
@@ -2065,7 +2064,9 @@ class Model:
 
             # Write the file to disk.
             mgxs_file = openmc.MGXSLibrary(
-                energy_groups=energy_groups, num_delayed_groups=num_delayed_groups)
+                energy_groups=energy_groups,
+                num_delayed_groups=num_delayed_groups
+            )
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2092,9 +2093,14 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for m in range(len(self.materials)):
-                mgxs_sets.append(openmc.XSdata(self.materials[m].name, energy_groups,
-                                               temperatures=temperatures,
-                                               num_delayed_groups=num_delayed_groups))
+                mgxs_sets.append(
+                    openmc.XSdata(
+                        self.materials[m].name,
+                        energy_groups,
+                        temperatures=temperatures,
+                        num_delayed_groups=num_delayed_groups
+                    )
+                )
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][m])
@@ -2256,8 +2262,13 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, energy_groups, correction, directory, kinetic,
-            num_delayed_groups)
+            model,
+            energy_groups,
+            correction,
+            directory,
+            kinetic,
+            num_delayed_groups
+        )
 
         # Fetch all of the isothermal results.
         if temperature != None:
@@ -2371,8 +2382,10 @@ class Model:
             ).values()
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=energy_groups,
-                                           num_delayed_groups=num_delayed_groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=energy_groups,
+                num_delayed_groups=num_delayed_groups
+            )
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2396,9 +2409,14 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for mat in self.materials:
-                mgxs_sets.append(openmc.XSdata(mat.name, energy_groups,
-                                               temperatures=temperatures,
-                                               num_delayed_groups=num_delayed_groups))
+                mgxs_sets.append(
+                    openmc.XSdata(
+                        mat.name,
+                        energy_groups,
+                        temperatures=temperatures,
+                        num_delayed_groups=num_delayed_groups
+                    )
+                )
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
@@ -2479,7 +2497,13 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, energy_groups, correction, directory, kinetic, num_delayed_groups)
+            model,
+            energy_groups,
+            correction,
+            directory,
+            kinetic,
+            num_delayed_groups
+        )
 
         # Fetch all of the isothermal results.
         if temperature != None:
@@ -2561,8 +2585,10 @@ class Model:
             ).values()
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=energy_groups,
-                                           num_delayed_groups=num_delayed_groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=energy_groups,
+                num_delayed_groups=num_delayed_groups
+            )
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2585,15 +2611,23 @@ class Model:
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
             for mat in self.materials:
-                mgxs_sets.append(openmc.XSdata(mat.name, energy_groups,
-                                               temperatures=temperatures,
-                                               num_delayed_groups=num_delayed_groups))
+                mgxs_sets.append(
+                    openmc.XSdata(
+                        mat.name,
+                        energy_groups,
+                        temperatures=temperatures,
+                        num_delayed_groups=num_delayed_groups
+                    )
+                )
                 mgxs_sets[-1].order = 0
                 for temperature in temperatures:
                     mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
 
             # Write the file to disk.
-            mgxs_file = openmc.MGXSLibrary(energy_groups=energy_groups)
+            mgxs_file = openmc.MGXSLibrary(
+                energy_groups=energy_groups,
+                num_delayed_groups=num_delayed_groups
+            )
             for mgxs_set in mgxs_sets:
                 mgxs_file.add_xsdata(mgxs_set)
             mgxs_file.export_to_hdf5(mgxs_path)
@@ -2703,19 +2737,42 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        energy_groups, nparticles, mgxs_path, correction, tmpdir,
-                        source_energy, temperatures, temperature_settings,
-                        kinetic, num_delayed_groups)
+                        energy_groups,
+                        nparticles,
+                        mgxs_path,
+                        correction,
+                        tmpdir,
+                        source_energy,
+                        temperatures,
+                        temperature_settings,
+                        kinetic,
+                        num_delayed_groups
+                    )
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
-                        energy_groups, nparticles, mgxs_path, correction,
-                        tmpdir, temperatures, temperature_settings,
-                        kinetic, num_delayed_groups)
+                        energy_groups,
+                        nparticles,
+                        mgxs_path,
+                        correction,
+                        tmpdir,
+                        temperatures,
+                        temperature_settings,
+                        kinetic,
+                        num_delayed_groups
+                    )
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        energy_groups, nparticles, mgxs_path, correction,
-                        tmpdir, source_energy, temperatures, temperature_settings,
-                        kinetic, num_delayed_groups)
+                        energy_groups,
+                        nparticles,
+                        mgxs_path,
+                        correction,
+                        tmpdir,
+                        source_energy,
+                        temperatures,
+                        temperature_settings,
+                        kinetic,
+                        num_delayed_groups
+                    )
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')
@@ -2735,13 +2792,16 @@ class Model:
             # If making a set the time step size to 0.01
             if kinetic:
                 self.settings.kinetic_simulation = True
-                warnings.warn("Kinetic model. Currently, only the random ray solver"
-                              " supports kinetic simulations. The number of time"
-                              " steps to run and material density transient using "
-                              " openmc.Settings.timestep_parameters['n_timesteps'] "
-                              " and openmc.Material.set_density(), respectively.")
+                warnings.warn(
+                    "Kinetic model. Currently, only the random ray solver"
+                    " supports kinetic simulations. The number of time"
+                    " steps to run and material density transient using "
+                    " openmc.Settings.timestep_parameters['n_timesteps'] "
+                    " and openmc.Material.set_density(), respectively.")
                 self.settings.timestep_parameters = {
-                    'dt': 0.01, 'timestep_units': 's'}
+                    'dt': 0.01,
+                    'timestep_units': 's'
+                }
 
     def convert_to_random_ray(self):
         """Convert a multigroup model to use random ray.

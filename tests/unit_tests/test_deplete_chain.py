@@ -587,3 +587,35 @@ def test_reduce(gnd_simple_chain, endf_chain):
     reduced_chain = endf_chain.reduce(['U235'])
     assert 'H1' in reduced_chain
     assert 'H2' in reduced_chain
+
+
+def test_get_decay_daughters(gnd_simple_chain):
+    """Test get_decay_daughters follows only decay paths."""
+    # I135 decays to Xe135 (radioactive), which decays to Cs135 (stable)
+    daughters = gnd_simple_chain.get_decay_daughters("I135")
+    assert daughters == {"Xe135"}
+
+    # Xe135 decays to Cs135 (stable) — no radioactive daughters
+    daughters = gnd_simple_chain.get_decay_daughters("Xe135")
+    assert daughters == set()
+
+    # Reaction product Xe136 should NOT appear (it comes from n,gamma)
+    daughters = gnd_simple_chain.get_decay_daughters("I135")
+    assert "Xe136" not in daughters
+
+    # Stable nuclide returns empty set
+    daughters = gnd_simple_chain.get_decay_daughters("Cs135")
+    assert daughters == set()
+
+    # Nuclide not in chain returns empty set
+    daughters = gnd_simple_chain.get_decay_daughters("Xx999")
+    assert daughters == set()
+
+
+def test_get_decay_daughters_cyclic(simple_chain):
+    """Test get_decay_daughters handles cyclic decay chains."""
+    daughters = simple_chain.get_decay_daughters("A")
+    assert daughters == {"B"}
+
+    daughters = simple_chain.get_decay_daughters("B")
+    assert daughters == {"A"}

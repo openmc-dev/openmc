@@ -1240,11 +1240,6 @@ class Chain:
     def get_decay_daughters(self, nuclide):
         """Return all radioactive nuclides reachable via decay.
 
-        Unlike :meth:`reduce`, this follows only decay paths (not
-        reactions such as neutron capture) and returns a set of nuclide
-        names rather than a new :class:`Chain`. Stable nuclides are not
-        included in the result.
-
         Parameters
         ----------
         nuclide : str

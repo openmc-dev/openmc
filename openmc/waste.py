@@ -3,6 +3,93 @@ from __future__ import annotations
 import openmc
 from openmc.data import half_life
 
+# Nuclides whose clearance values in StrlSchV Anlage 4 are listed with a '+'
+# suffix, meaning the value accounts for daughter nuclides in secular
+# equilibrium. When a depletion chain is available, daughters of these nuclides
+# are excluded from the sum-of-fractions to avoid double-counting.
+_STRLSCHV_PLUS_PARENTS = {
+    "Ac225", "Ac227", "Ag108_m1", "Ag110_m1", "Am242_m1", "Am243", "As73",
+    "At211", "Bi210_m1", "Bi212", "Bk249", "Ca45", "Cd109", "Cd115",
+    "Cd115_m1", "Ce144", "Cf253", "Cm247", "Cs137", "Fe52", "Fe60", "Gd146",
+    "Ge68", "Hf172", "Hf178_m2", "Hf182", "Hg194", "Hg195_m1", "Hg197_m1",
+    "I135", "In111", "In114_m1", "Ir189", "Lu177_m1", "Mo99", "Np237",
+    "Os191", "Os194", "Pa230", "Pb202", "Pb210", "Pd103", "Pd109", "Pt191",
+    "Pt197_m1", "Pu239", "Pu241", "Pu244", "Ra223", "Ra224", "Ra226",
+    "Ra228", "Rb81", "Rb83", "Re186_m1", "Re189", "Rn222", "Ru103", "Ru105",
+    "Ru106", "Sb125", "Si32", "Sn113", "Sn121_m1", "Sn126", "Sr82", "Sr89",
+    "Sr90", "Sr91", "Ta178_m1", "Tc95_m1", "Te127_m1", "Te129_m1",
+    "Te131_m1", "Te132", "Th228", "Th229", "Th234", "Ti44", "Tm167", "U230",
+    "U232", "U235", "U238", "W178", "W188", "Xe122", "Y87", "Zn69_m1",
+    "Zr95", "Zr97",
+}
+
+
+def _get_excluded_daughters(chain, plus_parents):
+    """Find daughter nuclides covered by '+' clearance values.
+
+    For each '+' parent in the chain, recursively walks the decay chain and
+    collects all daughters whose half-life is shorter than the original
+    parent's. These daughters are in secular equilibrium and their activity
+    is already accounted for by the parent's '+' clearance value.
+
+    Parameters
+    ----------
+    chain : openmc.deplete.Chain
+        Depletion chain with decay data.
+    plus_parents : set of str
+        Nuclide names whose clearance values include daughters.
+
+    Returns
+    -------
+    set of str
+        Nuclide names to exclude from the sum-of-fractions.
+
+    """
+    excluded = set()
+    for parent_name in plus_parents:
+        if parent_name not in chain.nuclide_dict:
+            continue
+        parent_nuc = chain[parent_name]
+        if parent_nuc.half_life is None or parent_nuc.half_life <= 0:
+            continue
+        _walk_daughters(
+            chain, parent_name, parent_nuc.half_life, excluded, set()
+        )
+    return excluded
+
+
+def _walk_daughters(chain, name, parent_half_life, excluded, visited):
+    """Recursively collect daughters in secular equilibrium.
+
+    Walks the decay chain from *name*, adding each radioactive daughter to
+    *excluded* as long as its half-life is shorter than *parent_half_life*
+    (the original '+' parent). Stops descending a branch when a daughter's
+    half-life exceeds the parent's.
+
+    """
+    if name in visited:
+        return
+    visited.add(name)
+
+    if name not in chain.nuclide_dict:
+        return
+    nuc = chain[name]
+
+    for mode in nuc.decay_modes:
+        daughter = mode.target
+        if daughter is None or daughter in visited:
+            continue
+        if daughter not in chain.nuclide_dict:
+            continue
+        daughter_nuc = chain[daughter]
+        if daughter_nuc.half_life is None or daughter_nuc.half_life <= 0:
+            continue
+        if daughter_nuc.half_life < parent_half_life:
+            excluded.add(daughter)
+            _walk_daughters(
+                chain, daughter, parent_half_life, excluded, visited
+            )
+
 
 def _waste_classification(mat: openmc.Material, metal: bool = True) -> str:
     """Classify a material for near-surface waste disposal.
@@ -81,6 +168,7 @@ def _waste_disposal_rating(
     limits: str | dict[str, float] = 'Fetter',
     metal: bool = False,
     by_nuclide: bool = False,
+    chain=None,
 ) -> float | dict[str, float]:
     """Return the waste disposal rating for a material.
 
@@ -128,6 +216,17 @@ def _waste_disposal_rating(
         - 'StrlSchV_soil': Soil surface clearance (column 7)
         - 'StrlSchV_rubble': Building rubble clearance for >1000 Mg/a
           (column 6)
+
+        .. note::
+            Some nuclides in Anlage 4 are listed with a '+' suffix,
+            indicating that their clearance value includes daughter
+            nuclides in secular equilibrium. When a depletion chain is
+            provided via the ``chain`` parameter, daughters in secular
+            equilibrium are automatically excluded from the
+            sum-of-fractions to avoid double-counting. Without a chain,
+            all nuclides with clearance entries are counted individually,
+            which may overestimate the rating for some decay chains.
+
     metal : bool, optional
         Whether or not the material is in metal form (only applicable for NRC
         based limits)
@@ -137,6 +236,11 @@ def _waste_disposal_rating(
         nuclide names and the values are the waste disposal ratings for each
         nuclide. If False, a single float value is returned that represents the
         overall waste disposal rating for the material.
+    chain : openmc.deplete.Chain, optional
+        Depletion chain used to identify daughter nuclides in secular
+        equilibrium for StrlSchV limits. When provided, daughters covered
+        by a parent's '+' clearance value are excluded from the
+        sum-of-fractions to avoid double-counting.
 
     Returns
     -------
@@ -145,6 +249,7 @@ def _waste_disposal_rating(
 
     """
     units = None
+    is_strlschv = False
     if limits == 'Fetter':
         # Specific activity limits for radionuclides with half-lives between 5
         # years and 1e12 years from Table 2 in Fetter
@@ -657,6 +762,7 @@ def _waste_disposal_rating(
             "Zr97": 10.0,
         }
         units = 'Bq/g'
+        is_strlschv = True
 
     elif limits == 'StrlSchV_rubble':
         # Building rubble clearance >1000 Mg/a
@@ -904,6 +1010,7 @@ def _waste_disposal_rating(
             "Zr95": 9.0e-02,
         }
         units = 'Bq/g'
+        is_strlschv = True
 
     elif limits == 'StrlSchV_soil':
         # Soil surface clearance
@@ -1024,6 +1131,7 @@ def _waste_disposal_rating(
             "Zr95": 1.0e-01,
         }
         units = 'Bq/g'
+        is_strlschv = True
 
     elif limits == 'StrlSchV_landfill_100':
         # Landfill disposal ≤100 Mg/a clearance
@@ -1191,6 +1299,7 @@ def _waste_disposal_rating(
             "Zr95": 10.0,
         }
         units = 'Bq/g'
+        is_strlschv = True
 
     elif limits == 'StrlSchV_incineration_100':
         # Incineration ≤100 Mg/a clearance
@@ -1364,6 +1473,7 @@ def _waste_disposal_rating(
             "Zr95": 10.0,
         }
         units = 'Bq/g'
+        is_strlschv = True
 
     elif limits == 'StrlSchV_landfill_1000':
         # Landfill disposal ≤1000 Mg/a clearance
@@ -1531,6 +1641,7 @@ def _waste_disposal_rating(
             "Zr95": 4.0,
         }
         units = 'Bq/g'
+        is_strlschv = True
 
     elif limits == 'StrlSchV_incineration_1000':
         # Incineration ≤1000 Mg/a clearance
@@ -1704,6 +1815,7 @@ def _waste_disposal_rating(
             "Zr95": 4.0,
         }
         units = 'Bq/g'
+        is_strlschv = True
 
     elif limits == 'StrlSchV_metal_recycling':
         # Metal scrap recycling clearance
@@ -1955,15 +2067,21 @@ def _waste_disposal_rating(
             "Zr97": 10.0,
         }
         units = 'Bq/g'
+        is_strlschv = True
 
     # Determine activity units based on the limit set
     if units is None:
         units = 'Ci/m3'
 
+    # For StrlSchV limits, exclude daughters already covered by '+' parents
+    excluded = set()
+    if is_strlschv and chain is not None:
+        excluded = _get_excluded_daughters(chain, _STRLSCHV_PLUS_PARENTS)
+
     # Calculate the sum of the fractions of the activity of each radionuclide
     # compared to the specified limits
     ratio = {}
     for nuc, activity in mat.get_activity(units=units, by_nuclide=True).items():
-        if nuc in limits:
+        if nuc in limits and nuc not in excluded:
             ratio[nuc] = activity / limits[nuc]
     return ratio if by_nuclide else sum(ratio.values())

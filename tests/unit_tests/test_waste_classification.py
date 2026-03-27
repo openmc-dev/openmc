@@ -1,6 +1,8 @@
 import random
 
 import openmc
+from openmc.deplete import Chain
+from openmc.deplete.nuclide import Nuclide, DecayTuple
 import pytest
 
 
@@ -181,3 +183,131 @@ def test_strlschv_all_pathways(pathway):
     wdr = mat.waste_disposal_rating(limits=pathway, by_nuclide=True)
     assert isinstance(wdr, dict)
     assert rating == pytest.approx(sum(wdr.values()), rel=1e-6)
+
+
+def _make_test_chain():
+    """Build a minimal chain with Cs137 -> Ba137_m1 and Sr90 -> Y90."""
+    chain = Chain()
+
+    cs137 = Nuclide("Cs137")
+    cs137.half_life = 9.49e8  # ~30 years in seconds
+    cs137.add_decay_mode("beta-", "Ba137_m1", 0.947)
+    cs137.add_decay_mode("beta-", "Ba137", 0.053)
+
+    ba137_m1 = Nuclide("Ba137_m1")
+    ba137_m1.half_life = 153.12  # seconds
+    ba137_m1.add_decay_mode("IT", "Ba137", 1.0)
+
+    ba137 = Nuclide("Ba137")
+    ba137.half_life = None  # stable
+
+    sr90 = Nuclide("Sr90")
+    sr90.half_life = 9.09e8  # ~28.8 years in seconds
+    sr90.add_decay_mode("beta-", "Y90", 1.0)
+
+    y90 = Nuclide("Y90")
+    y90.half_life = 2.304e5  # ~2.67 days in seconds
+    y90.add_decay_mode("beta-", "Zr90", 1.0)
+
+    zr90 = Nuclide("Zr90")
+    zr90.half_life = None  # stable
+
+    co60 = Nuclide("Co60")
+    co60.half_life = 1.66e8  # ~5.27 years
+    co60.add_decay_mode("beta-", "Ni60", 1.0)
+
+    ni60 = Nuclide("Ni60")
+    ni60.half_life = None  # stable
+
+    chain.nuclides = [cs137, ba137_m1, ba137, sr90, y90, zr90, co60, ni60]
+    chain.nuclide_dict = {n.name: i for i, n in enumerate(chain.nuclides)}
+    return chain
+
+
+def test_strlschv_chain_excludes_daughters():
+    """Test that providing a chain excludes '+' daughters from the rating."""
+    chain = _make_test_chain()
+
+    # Sr-90 is a '+' parent. Y-90 is its daughter in secular equilibrium.
+    # Both have entries in the unrestricted clearance table (Sr90 at 1 Bq/g,
+    # Y90 at 1000 Bq/g). Without a chain, both contribute to the sum.
+    # With a chain, Y-90 should be excluded.
+    mat = openmc.Material()
+    mat.add_nuclide('Sr90', 1e-12)
+    mat.add_nuclide('Y90', 1e-12)
+
+    rating_no_chain = mat.waste_disposal_rating(
+        limits='StrlSchV_unrestricted'
+    )
+    rating_with_chain = mat.waste_disposal_rating(
+        limits='StrlSchV_unrestricted', chain=chain
+    )
+
+    # With chain, Y90 should be excluded so rating should be lower
+    assert rating_with_chain < rating_no_chain
+
+    # by_nuclide with chain should not contain Y90
+    wdr = mat.waste_disposal_rating(
+        limits='StrlSchV_unrestricted', by_nuclide=True, chain=chain
+    )
+    assert 'Sr90' in wdr
+    assert 'Y90' not in wdr
+
+
+def test_strlschv_chain_excludes_sr90_daughter():
+    """Test that Y90 is excluded as a daughter of Sr90+."""
+    chain = _make_test_chain()
+
+    mat = openmc.Material()
+    mat.add_nuclide('Sr90', 1e-12)
+    mat.add_nuclide('Y90', 1e-12)
+
+    wdr_no_chain = mat.waste_disposal_rating(
+        limits='StrlSchV_unrestricted', by_nuclide=True
+    )
+    wdr_with_chain = mat.waste_disposal_rating(
+        limits='StrlSchV_unrestricted', by_nuclide=True, chain=chain
+    )
+
+    # Without chain, both Sr90 and Y90 contribute
+    assert 'Sr90' in wdr_no_chain
+    assert 'Y90' in wdr_no_chain
+
+    # With chain, Y90 is excluded as daughter of Sr90+
+    assert 'Sr90' in wdr_with_chain
+    assert 'Y90' not in wdr_with_chain
+
+
+def test_strlschv_chain_no_effect_on_non_plus():
+    """Test that the chain does not exclude non-'+' nuclides."""
+    chain = _make_test_chain()
+
+    # Co-60 is NOT a '+' parent (it has a non-'+' entry in the table).
+    # Its daughter Ni-60 is stable and has no clearance entry.
+    # The chain should not affect the Co-60 rating.
+    mat = openmc.Material()
+    mat.add_nuclide('Co60', 1e-12)
+
+    rating_no_chain = mat.waste_disposal_rating(
+        limits='StrlSchV_unrestricted'
+    )
+    rating_with_chain = mat.waste_disposal_rating(
+        limits='StrlSchV_unrestricted', chain=chain
+    )
+
+    assert rating_no_chain == pytest.approx(rating_with_chain, rel=1e-6)
+
+
+def test_strlschv_chain_no_effect_on_nrc():
+    """Test that the chain parameter has no effect on NRC/Fetter limits."""
+    chain = _make_test_chain()
+
+    mat = openmc.Material()
+    mat.add_nuclide('Cs137', 1e-10)
+
+    rating_no_chain = mat.waste_disposal_rating(limits='Fetter')
+    rating_with_chain = mat.waste_disposal_rating(
+        limits='Fetter', chain=chain
+    )
+
+    assert rating_no_chain == pytest.approx(rating_with_chain, rel=1e-6)

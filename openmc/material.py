@@ -1597,6 +1597,7 @@ class Material(IDManagerMixin):
         limits: str | dict[str, float] = 'Fetter',
         metal: bool = False,
         by_nuclide: bool = False,
+        chain=None,
     ) -> float | dict[str, float]:
         """Return the waste disposal rating for the material.
 
@@ -1649,6 +1650,18 @@ class Material(IDManagerMixin):
             - 'StrlSchV_soil': Soil surface clearance (column 7)
             - 'StrlSchV_rubble': Building rubble clearance for >1000 Mg/a
               (column 6)
+
+            .. note::
+                Some nuclides in Anlage 4 are listed with a '+' suffix,
+                indicating that their clearance value includes daughter
+                nuclides in secular equilibrium. When a depletion chain is
+                provided via the ``chain`` parameter, daughters in secular
+                equilibrium are automatically excluded from the
+                sum-of-fractions to avoid double-counting. Without a
+                chain, all nuclides with clearance entries are counted
+                individually, which may overestimate the rating for some
+                decay chains.
+
         metal : bool, optional
             Whether or not the material is in metal form (only applicable for
             NRC based limits)
@@ -1658,6 +1671,11 @@ class Material(IDManagerMixin):
             nuclide names and the values are the waste disposal ratings for each
             nuclide. If False, a single float value is returned that represents
             the overall waste disposal rating for the material.
+        chain : openmc.deplete.Chain, optional
+            Depletion chain used to identify daughter nuclides in secular
+            equilibrium for StrlSchV limits. When provided, daughters
+            covered by a parent's '+' clearance value are excluded from
+            the sum-of-fractions to avoid double-counting.
 
         Returns
         -------
@@ -1670,7 +1688,7 @@ class Material(IDManagerMixin):
         Material.waste_classification()
 
         """
-        return waste._waste_disposal_rating(self, limits, metal, by_nuclide)
+        return waste._waste_disposal_rating(self, limits, metal, by_nuclide, chain)
 
     def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.

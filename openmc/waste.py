@@ -24,72 +24,6 @@ _STRLSCHV_PLUS_PARENTS = {
 }
 
 
-def _get_excluded_daughters(chain, plus_parents):
-    """Find daughter nuclides covered by '+' clearance values.
-
-    For each '+' parent in the chain, recursively walks the decay chain and
-    collects all daughters whose half-life is shorter than the original
-    parent's. These daughters are in secular equilibrium and their activity
-    is already accounted for by the parent's '+' clearance value.
-
-    Parameters
-    ----------
-    chain : openmc.deplete.Chain
-        Depletion chain with decay data.
-    plus_parents : set of str
-        Nuclide names whose clearance values include daughters.
-
-    Returns
-    -------
-    set of str
-        Nuclide names to exclude from the sum-of-fractions.
-
-    """
-    excluded = set()
-    for parent_name in plus_parents:
-        if parent_name not in chain.nuclide_dict:
-            continue
-        parent_nuc = chain[parent_name]
-        if parent_nuc.half_life is None or parent_nuc.half_life <= 0:
-            continue
-        _walk_daughters(
-            chain, parent_name, parent_nuc.half_life, excluded, set()
-        )
-    return excluded
-
-
-def _walk_daughters(chain, name, parent_half_life, excluded, visited):
-    """Recursively collect daughters in secular equilibrium.
-
-    Walks the decay chain from *name*, adding each radioactive daughter to
-    *excluded* as long as its half-life is shorter than *parent_half_life*
-    (the original '+' parent). Stops descending a branch when a daughter's
-    half-life exceeds the parent's.
-
-    """
-    if name in visited:
-        return
-    visited.add(name)
-
-    if name not in chain.nuclide_dict:
-        return
-    nuc = chain[name]
-
-    for mode in nuc.decay_modes:
-        daughter = mode.target
-        if daughter is None or daughter in visited:
-            continue
-        if daughter not in chain.nuclide_dict:
-            continue
-        daughter_nuc = chain[daughter]
-        if daughter_nuc.half_life is None or daughter_nuc.half_life <= 0:
-            continue
-        if daughter_nuc.half_life < parent_half_life:
-            excluded.add(daughter)
-            _walk_daughters(
-                chain, daughter, parent_half_life, excluded, visited
-            )
-
 
 def _waste_classification(mat: openmc.Material, metal: bool = True) -> str:
     """Classify a material for near-surface waste disposal.
@@ -2076,7 +2010,14 @@ def _waste_disposal_rating(
     # For StrlSchV limits, exclude daughters already covered by '+' parents
     excluded = set()
     if is_strlschv and chain is not None:
-        excluded = _get_excluded_daughters(chain, _STRLSCHV_PLUS_PARENTS)
+        for parent in _STRLSCHV_PLUS_PARENTS:
+            if parent not in chain.nuclide_dict:
+                continue
+            parent_hl = chain[parent].half_life
+            if parent_hl is not None and parent_hl > 0:
+                excluded |= chain.get_decay_daughters(
+                    parent, max_half_life=parent_hl
+                )
 
     # Calculate the sum of the fractions of the activity of each radionuclide
     # compared to the specified limits

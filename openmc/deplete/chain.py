@@ -655,7 +655,7 @@ class Chain:
 
                     # Allow for total annihilation for debug purposes
                     if branch_val != 0.0:
-                        if target is not None:
+                        if target is not None and 'sf' not in decay_type:
                             k = self.nuclide_dict[target]
                             setval(k, i, branch_val)
 

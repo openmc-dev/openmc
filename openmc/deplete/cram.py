@@ -8,7 +8,7 @@ import numbers
 import numpy as np
 import scipy.sparse.linalg as sla
 
-from openmc.checkvalue import check_type, check_length
+from openmc.checkvalue import check_type, check_length, check_greater_than
 from .abc import DepSystemSolver
 from .._sparse_compat import csc_array, eye_array
 
@@ -24,6 +24,12 @@ class IPFCramSolver(DepSystemSolver):
     Chebyshev Rational Approximation Method and Application to Burnup Equations
     <https://doi.org/10.13182/NSE15-26>`_," Nucl. Sci. Eng., 182:3, 297-318.
 
+    When `substeps` > 1, the time interval is split into `substeps` identical
+    sub-intervals and LU factorizations are reused across them, as described
+    in: A. Isotalo and M. Pusa, "`Improving the Accuracy of the Chebyshev
+    Rational Approximation Method Using Substeps
+    <https://doi.org/10.13182/NSE15-67>`_," Nucl. Sci. Eng., 183:1, 65-77.
+
     Parameters
     ----------
     alpha : numpy.ndarray
@@ -33,6 +39,8 @@ class IPFCramSolver(DepSystemSolver):
         Complex poles. Must have an equal size as ``alpha``.
     alpha0 : float
         Limit of the approximation at infinity
+    substeps : int, optional
+        Number of substeps for LU-reuse CRAM.
 
     Attributes
     ----------
@@ -43,17 +51,22 @@ class IPFCramSolver(DepSystemSolver):
         Complex poles :math:`\theta` of the rational approximation
     alpha0 : float
         Limit of the approximation at infinity
+    substeps : int
+        Number of substeps per depletion interval
 
     """
 
-    def __init__(self, alpha, theta, alpha0):
+    def __init__(self, alpha, theta, alpha0, substeps=1):
         check_type("alpha", alpha, np.ndarray, numbers.Complex)
         check_type("theta", theta, np.ndarray, numbers.Complex)
         check_length("theta", theta, alpha.size)
         check_type("alpha0", alpha0, numbers.Real)
+        check_type("substeps", substeps, numbers.Integral)
+        check_greater_than("substeps", substeps, 0)
         self.alpha = alpha
         self.theta = theta
         self.alpha0 = alpha0
+        self.substeps = substeps
 
     def __call__(self, A, n0, dt):
         """Solve depletion equations using IPF CRAM
@@ -75,12 +88,27 @@ class IPFCramSolver(DepSystemSolver):
             Final compositions after ``dt``
 
         """
-        A = dt * csc_array(A, dtype=np.float64)
+        if self.substeps == 1:
+            A = dt * csc_array(A, dtype=np.float64)
+            y = n0.copy()
+            ident = eye_array(A.shape[0], format='csc')
+            for alpha, theta in zip(self.alpha, self.theta):
+                y += 2*np.real(alpha*sla.spsolve(A - theta*ident, y))
+            return y * self.alpha0
+
+        # Substep path: pre-compute LU factorizations, reuse across substeps
+        sub_dt = dt / self.substeps
+        A_sub = sub_dt * csc_array(A, dtype=np.float64)
+        ident = eye_array(A_sub.shape[0], format='csc')
+        lu_solvers = [sla.splu(A_sub - theta * ident)
+                      for theta in self.theta]
+
         y = n0.copy()
-        ident = eye_array(A.shape[0], format='csc')
-        for alpha, theta in zip(self.alpha, self.theta):
-            y += 2*np.real(alpha*sla.spsolve(A - theta*ident, y))
-        return y * self.alpha0
+        for _ in range(self.substeps):
+            for alpha, lu in zip(self.alpha, lu_solvers):
+                y += 2 * np.real(alpha * lu.solve(y))
+            y *= self.alpha0
+        return y
 
 
 # Coefficients for IPF Cram 16

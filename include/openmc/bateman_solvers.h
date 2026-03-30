@@ -6,7 +6,6 @@
 
 #include <complex>
 
-#include "openmc/memory.h"
 #include "openmc/sparse_matrix.h"
 #include "openmc/vector.h"
 

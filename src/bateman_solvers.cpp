@@ -421,17 +421,12 @@ using namespace openmc;
 
 extern "C" int openmc_cram_solve(int n, const int* indptr,
   const int* indices, const double* data, const double* n0,
-  double dt, int order, int solver_type, double* result)
+  double dt, int order, double* result)
 {
   try {
     if (order != 16 && order != 48) {
       set_errmsg(fmt::format(
         "CRAM order must be 16 or 48, got {}", order));
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-    if (solver_type != 0) {
-      set_errmsg(fmt::format(
-        "Only solver_type 0 (general LU) is supported, got {}", solver_type));
       return OPENMC_E_INVALID_ARGUMENT;
     }
 
@@ -448,91 +443,6 @@ extern "C" int openmc_cram_solve(int n, const int* indptr,
     IPFCramSolver solver(cram_order);
     vector<double> y = solver.solve(A, n0_vec, dt);
     std::copy(y.begin(), y.end(), result);
-  } catch (const std::exception& e) {
-    set_errmsg(e.what());
-    return OPENMC_E_UNASSIGNED;
-  }
-  return 0;
-}
-
-extern "C" int openmc_cram_solve_batch(int n_materials, const int* dims,
-  const int* all_indptr, const int* all_indices, const double* all_data,
-  const int* nnz_per_mat, const double* all_n0, double dt, int order,
-  int solver_type, double* all_results)
-{
-  try {
-    if (order != 16 && order != 48) {
-      set_errmsg(fmt::format(
-        "CRAM order must be 16 or 48, got {}", order));
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-    if (solver_type != 0) {
-      set_errmsg(fmt::format(
-        "Only solver_type 0 (general LU) is supported, got {}", solver_type));
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-
-    auto cram_order = (order == 16) ? CramOrder::cram16
-                                    : CramOrder::cram48;
-
-    // Precompute offsets into the concatenated arrays
-    vector<int> indptr_offset(n_materials + 1, 0);
-    vector<int> nnz_offset(n_materials + 1, 0);
-    vector<int> n0_offset(n_materials + 1, 0);
-    for (int m = 0; m < n_materials; ++m) {
-      indptr_offset[m + 1] = indptr_offset[m] + dims[m] + 1;
-      nnz_offset[m + 1] = nnz_offset[m] + nnz_per_mat[m];
-      n0_offset[m + 1] = n0_offset[m] + dims[m];
-    }
-
-    // Track first error across threads
-    int err_code = 0;
-    std::string err_msg;
-
-    #pragma omp parallel
-    {
-      // Each thread gets its own solver instance
-      IPFCramSolver solver(cram_order);
-
-      #pragma omp for schedule(dynamic)
-      for (int m = 0; m < n_materials; ++m) {
-        // Skip remaining work if another thread hit an error
-        if (err_code != 0) continue;
-
-        try {
-          int nm = dims[m];
-          int nnz = nnz_per_mat[m];
-          const int* ip = all_indptr + indptr_offset[m];
-          const int* ix = all_indices + nnz_offset[m];
-          const double* d = all_data + nnz_offset[m];
-          const double* n0_m = all_n0 + n0_offset[m];
-          double* res_m = all_results + n0_offset[m];
-
-          CSCPattern pattern(
-            nm, vector<int>(ip, ip + nm + 1), vector<int>(ix, ix + nnz));
-          CSCMatrix A(std::move(pattern), vector<double>(d, d + nnz));
-          vector<double> n0_vec(n0_m, n0_m + nm);
-
-          vector<double> y = solver.solve(A, n0_vec, dt);
-
-          std::copy(y.begin(), y.end(), res_m);
-        } catch (const std::exception& e) {
-          #pragma omp critical
-          {
-            if (err_code == 0) {
-              err_code = OPENMC_E_UNASSIGNED;
-              err_msg = fmt::format(
-                "Error solving material {}: {}", m, e.what());
-            }
-          }
-        }
-      }
-    }
-
-    if (err_code != 0) {
-      set_errmsg(err_msg);
-      return err_code;
-    }
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;

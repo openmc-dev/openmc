@@ -7,7 +7,6 @@ import numbers
 
 import numpy as np
 import scipy.sparse.linalg as sla
-from scipy.sparse import csc_array
 
 from openmc.checkvalue import check_type, check_length
 from .abc import DepSystemSolver
@@ -186,7 +185,7 @@ def _cpp_cram_solve(A, n0, dt, order):
     from openmc.lib.deplete import cram_solve
     return cram_solve(
         csc_array(A), np.asarray(n0, dtype=np.float64),
-        float(dt), order=order, solver_type=0)
+        float(dt), order=order)
 
 
 def _cpp_cram48(A, n0, dt):

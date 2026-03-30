@@ -320,6 +320,24 @@ int openmc_properties_export(const char* filename);
 // \return Error code
 int openmc_properties_import(const char* filename);
 
+// Solve a single Bateman system A*n0 over time dt using CRAM.
+// The matrix A is in CSC format with dimension n.
+// solver_type: 0 = general LU (only type currently supported).
+int openmc_cram_solve(int n, const int* indptr, const int* indices,
+  const double* data, const double* n0, double dt, int order,
+  int solver_type, double* result);
+
+// Solve multiple Bateman systems in parallel using CRAM with OpenMP.
+// Each material m has dimension dims[m]. CSC arrays are concatenated:
+//   all_indptr  has sum(dims[m]+1) entries,
+//   all_indices and all_data have sum(nnz_per_mat[m]) entries,
+//   all_n0 and all_results have sum(dims[m]) entries.
+// solver_type: 0 = general LU (only type currently supported).
+int openmc_cram_solve_batch(int n_materials, const int* dims,
+  const int* all_indptr, const int* all_indices, const double* all_data,
+  const int* nnz_per_mat, const double* all_n0, double dt, int order,
+  int solver_type, double* all_results);
+
 // Error codes
 extern int OPENMC_E_UNASSIGNED;
 extern int OPENMC_E_ALLOCATE;

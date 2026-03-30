@@ -7,6 +7,7 @@ import numbers
 
 import numpy as np
 import scipy.sparse.linalg as sla
+from scipy.sparse import csc_array
 
 from openmc.checkvalue import check_type, check_length
 from .abc import DepSystemSolver
@@ -108,7 +109,6 @@ c16_theta = np.array([
 
 c16_alpha0 = 2.124853710495224e-16
 Cram16Solver = IPFCramSolver(c16_alpha, c16_theta, c16_alpha0)
-CRAM16 = Cram16Solver.__call__
 
 del c16_alpha, c16_alpha0, c16_theta
 
@@ -180,4 +180,29 @@ Cram48Solver = IPFCramSolver(c48_alpha, c48_theta, c48_alpha0)
 
 del c48_alpha, c48_alpha0, c48_theta, alpha_r, alpha_i, theta_r, theta_i
 
-CRAM48 = Cram48Solver.__call__
+
+def _cpp_cram_solve(A, n0, dt, order):
+    """Single-material CRAM solve via C++ IPFCramSolver."""
+    from openmc.lib.deplete import cram_solve
+    return cram_solve(
+        csc_array(A), np.asarray(n0, dtype=np.float64),
+        float(dt), order=order, solver_type=0)
+
+
+def _cpp_cram48(A, n0, dt):
+    return _cpp_cram_solve(A, n0, dt, order=48)
+
+
+def _cpp_cram16(A, n0, dt):
+    return _cpp_cram_solve(A, n0, dt, order=16)
+
+
+try:
+    from openmc.lib.deplete import cram_solve as _test_import
+    CRAM48 = _cpp_cram48
+    CRAM16 = _cpp_cram16
+    del _test_import
+except (ImportError, OSError):
+    # Fall back to scipy if C++ library not available
+    CRAM48 = Cram48Solver.__call__
+    CRAM16 = Cram16Solver.__call__

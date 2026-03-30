@@ -214,13 +214,6 @@ void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
         throw std::runtime_error {openmc_err_msg};
 
       already_read.insert(name);
-
-      /*uint64_t xs_perturbation_seed = 42;
-
-      auto& nuc = *data::nuclides.back();
-      for (auto& rx : nuc.reactions_) {
-        rx->perturb_xs(nuc.grid_[0].energy, &xs_perturbation_seed);
-      }*/
     }
   }
 

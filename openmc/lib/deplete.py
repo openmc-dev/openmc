@@ -27,13 +27,13 @@ _dll.openmc_cram_solve.argtypes = [
 ]
 
 
-def cram_solve(matrix, n0, dt, order=48):
+def cram_solve(A, n0, dt, order=48):
     """Solve a single Bateman system using C++ CRAM.
 
     Parameters
     ----------
-    matrix : scipy.sparse.csc_array
-        Sparse transmutation matrix.
+    A : scipy.sparse.csc_array or scipy.sparse.csc_matrix
+        Sparse transmutation matrix in CSC format.
     n0 : numpy.ndarray
         Initial atom number vector.
     dt : float
@@ -47,15 +47,13 @@ def cram_solve(matrix, n0, dt, order=48):
         Final atom numbers.
 
     """
-    from scipy.sparse import csc_array
     if order not in (16, 48):
         raise ValueError(f"CRAM order must be 16 or 48, got {order}")
 
-    matrix = csc_array(matrix)
-    n = matrix.shape[0]
-    indptr = np.asarray(matrix.indptr, dtype=np.int32)
-    indices = np.asarray(matrix.indices, dtype=np.int32)
-    data = np.asarray(matrix.data, dtype=np.float64)
+    n = A.shape[0]
+    indptr = np.asarray(A.indptr, dtype=np.int32)
+    indices = np.asarray(A.indices, dtype=np.int32)
+    data = np.asarray(A.data, dtype=np.float64)
     n0 = np.asarray(n0, dtype=np.float64)
     result = np.empty(n, dtype=np.float64)
 

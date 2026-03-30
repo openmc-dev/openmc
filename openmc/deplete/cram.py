@@ -184,7 +184,7 @@ def _cpp_cram_solve(A, n0, dt, order):
     """Single-material CRAM solve via C++ IPFCramSolver."""
     from openmc.lib.deplete import cram_solve
     return cram_solve(
-        csc_array(A), np.asarray(n0, dtype=np.float64),
+        csc_array(A, dtype=np.float64), np.asarray(n0, dtype=np.float64),
         float(dt), order=order)
 
 

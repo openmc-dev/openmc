@@ -160,14 +160,6 @@ int openmc_simulation_init()
   // load weight windows from file
   if (!settings::weight_windows_file.empty()) {
     openmc_weight_windows_import(settings::weight_windows_file.c_str());
-  }
-
-  if (settings::load_covariance) {
-    for (auto& nuc : data::nuclides) {
-      for (auto& rx : nuc->reactions_) {
-        rx->xs_reference_ = rx->xs_;
-      }
-    }
   } 
 
   // Set flag indicating initialization is done
@@ -406,25 +398,6 @@ void initialize_batch()
 
   // Add user tallies to active tallies list
   setup_active_tallies();
-
-  //=== UQ perturbation ===//
-  if (settings::load_covariance) {
-    uint64_t seed = static_cast<uint64_t>(simulation::current_batch);
-
-    for (auto& nuc : data::nuclides) {
-
-      for (auto& rx : nuc->reactions_) {
-        // 1. Restore originals
-        rx->xs_ = rx->xs_reference_;
-
-        // 2. Apply fresh perturbation
-        rx->perturb_xs(nuc->grid_[0].energy, &seed);
-      }
-
-      nuc->reset_derived();
-
-    }
-  }
 }
 
 void finalize_batch()

@@ -132,3 +132,25 @@ TEST_CASE("CSCMatrix default constructor")
   CHECK(mat.n() == 0);
   CHECK(mat.nnz() == 0);
 }
+
+TEST_CASE("CSCMatrix construction from raw arrays")
+{
+  // Same 3x3 matrix:
+  //   [1  0  2]
+  //   [0  3  0]
+  //   [4  0  5]
+  vector<int> indptr = {0, 2, 3, 5};
+  vector<int> indices = {0, 2, 1, 0, 2};
+  vector<double> data = {1.0, 4.0, 3.0, 2.0, 5.0};
+  CSCMatrix mat(3, indptr, indices, data);
+
+  CHECK(mat.n() == 3);
+  CHECK(mat.nnz() == 5);
+  CHECK(mat.indptr() == indptr);
+  CHECK(mat.indices() == indices);
+  CHECK(mat.data() == data);
+
+  // Verify pattern matches equivalent two-step construction
+  CSCPattern pat(3, indptr, indices);
+  CHECK(mat.pattern() == pat);
+}

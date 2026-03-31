@@ -22,9 +22,7 @@ class CSCPattern {
 public:
   // Constructors
   CSCPattern() = default;
-  CSCPattern(int n, vector<int> indptr, vector<int> indices)
-    : n_(n), indptr_(std::move(indptr)), indices_(std::move(indices))
-  {}
+  CSCPattern(int n, vector<int> indptr, vector<int> indices);
 
   // Accessors
   int n() const { return n_; }
@@ -58,9 +56,9 @@ class CSCMatrix {
 public:
   // Constructors
   CSCMatrix() = default;
-  CSCMatrix(CSCPattern pattern, vector<double> data)
-    : pattern_(std::move(pattern)), data_(std::move(data))
-  {}
+  CSCMatrix(CSCPattern pattern, vector<double> data);
+  CSCMatrix(int n, vector<int> indptr, vector<int> indices,
+    vector<double> data);
 
   // Accessors
   int n() const { return pattern_.n(); }

@@ -434,10 +434,10 @@ extern "C" int openmc_cram_solve(int n, const int* indptr,
                                     : CramOrder::cram48;
 
     int nnz = indptr[n];
-    CSCPattern pattern(
-      n, vector<int>(indptr, indptr + n + 1),
-      vector<int>(indices, indices + nnz));
-    CSCMatrix A(std::move(pattern), vector<double>(data, data + nnz));
+    CSCMatrix A(n,
+      vector<int>(indptr, indptr + n + 1),
+      vector<int>(indices, indices + nnz),
+      vector<double>(data, data + nnz));
     vector<double> n0_vec(n0, n0 + n);
 
     IPFCramSolver solver(cram_order);

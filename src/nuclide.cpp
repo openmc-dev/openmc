@@ -1139,10 +1139,6 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
     if (settings::temperature_multipole)
       read_multipole_data(i_nuclide);
 
-    // Read covariance data (Cholesky factors) if requested
-    if (settings::load_covariance)
-      load_nuclide_covariance(name);
-
     // Read elemental data, if necessary
     if (settings::photon_transport) {
       auto element = to_element(name);

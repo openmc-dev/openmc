@@ -1302,8 +1302,6 @@ void read_settings_xml(pugi::xml_node root)
     settings::use_decay_photons =
       get_node_value_bool(root, "use_decay_photons");
   }
-
-
 }
 
 void free_memory_settings()

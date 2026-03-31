@@ -4,7 +4,6 @@
 #include <string>
 #include <unordered_map>
 #include <utility> // for move
-#include <cmath>
 
 #include <fmt/core.h>
 
@@ -13,7 +12,6 @@
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
-#include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/secondary_uncorrelated.h"
 #include "openmc/settings.h"

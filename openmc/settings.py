@@ -485,7 +485,6 @@ class Settings:
         self._max_tracks = None
         self._max_secondaries = None
         self._use_decay_photons = None
-        self._load_covariance = None
 
         self._random_ray = {}
 
@@ -1462,15 +1461,6 @@ class Settings:
             cv.check_greater_than('free gas threshold', free_gas_threshold, 0.0)
         self._free_gas_threshold = free_gas_threshold
 
-    @property
-    def load_covariance(self):
-        return self._load_covariance
-
-    @load_covariance.setter
-    def load_covariance(self, value):
-        cv.check_type('load_covariance', value, bool)
-        self._load_covariance = value
-
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1835,11 +1825,6 @@ class Settings:
         if self._use_decay_photons is not None:
             element = ET.SubElement(root, "use_decay_photons")
             element.text = str(self._use_decay_photons).lower()
-    
-    def _create_load_covariance_subelement(self, root):
-        if self._load_covariance is not None:
-            element = ET.SubElement(root, "load_covariance")
-            element.text = str(self._load_covariance).lower()
 
     def _create_resonance_scattering_subelement(self, root):
         res = self.resonance_scattering
@@ -2591,7 +2576,6 @@ class Settings:
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
         self._create_free_gas_threshold_subelement(element)
-        self._create_load_covariance_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)

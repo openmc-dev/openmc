@@ -2,6 +2,7 @@
 #include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/mesh.h"
+#include "openmc/simulation.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -75,6 +76,22 @@ void TemperatureField::update_particle_temperature(Particle& p)
     Cell& c {*model::cells[p.lowest_coord().cell()]};
     p.sqrtkT() = c.sqrtkT(p.cell_instance());
   }
+}
+
+//==============================================================================
+// C API
+//==============================================================================
+
+extern "C" int openmc_temperature_field_set_temperature(
+  int32_t index, double temperature)
+{
+  if (index < 0 || index >= simulation::temperature_field.values().size()) {
+    set_errmsg("Index in temperature field is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  simulation::temperature_field.value(index) = temperature;
+  return 0;
 }
 
 } // namespace openmc

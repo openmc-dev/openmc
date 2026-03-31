@@ -5,7 +5,6 @@
 #define OPENMC_REACTION_H
 
 #include <string>
-#include <unordered_map>
 
 #include "hdf5.h"
 
@@ -64,7 +63,6 @@ public:
   bool scatter_in_cm_;                 //!< scattering system in center-of-mass?
   bool redundant_;                     //!< redundant reaction?
   vector<TemperatureXS> xs_;           //!< Cross section at each temperature
-  vector<TemperatureXS> xs_reference_; //!< Unperturbed cross section at each temperature
   vector<ReactionProduct> products_;   //!< Reaction products
 
 };

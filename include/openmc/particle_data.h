@@ -417,9 +417,9 @@ public:
 private:
   int64_t id_ {-1}; //!< Unique ID
 
-  int n_coord_ {1};          //!< number of current coordinate levels
-  int cell_instance_;        //!< offset for distributed properties
-  vector<LocalCoord> coord_; //!< coordinates for all levels
+  int n_coord_ {1};   //!< number of current coordinate levels
+  int cell_instance_; //!< offset for distributed properties
+  vector<LocalCoord> coord_ = {LocalCoord()}; //!< coordinates for all levels
 
   int n_coord_last_ {1};  //!< number of current coordinates
   vector<int> cell_last_; //!< coordinates for all levels

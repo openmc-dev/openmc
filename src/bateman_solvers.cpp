@@ -419,25 +419,20 @@ void IPFCramSolver::triangular_solve(
 
 using namespace openmc;
 
-extern "C" int openmc_cram_solve(int n, const int* indptr,
-  const int* indices, const double* data, const double* n0,
-  double dt, int order, double* result)
+extern "C" int openmc_cram_solve(int n, const int* indptr, const int* indices,
+  const double* data, const double* n0, double dt, int order, double* result)
 {
   try {
     if (order != 16 && order != 48) {
-      set_errmsg(fmt::format(
-        "CRAM order must be 16 or 48, got {}", order));
+      set_errmsg(fmt::format("CRAM order must be 16 or 48, got {}", order));
       return OPENMC_E_INVALID_ARGUMENT;
     }
 
-    auto cram_order = (order == 16) ? CramOrder::cram16
-                                    : CramOrder::cram48;
+    auto cram_order = (order == 16) ? CramOrder::cram16 : CramOrder::cram48;
 
     int nnz = indptr[n];
-    CSCMatrix A(n,
-      vector<int>(indptr, indptr + n + 1),
-      vector<int>(indices, indices + nnz),
-      vector<double>(data, data + nnz));
+    CSCMatrix A(n, vector<int>(indptr, indptr + n + 1),
+      vector<int>(indices, indices + nnz), vector<double>(data, data + nnz));
     vector<double> n0_vec(n0, n0 + n);
 
     IPFCramSolver solver(cram_order);

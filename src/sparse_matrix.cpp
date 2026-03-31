@@ -22,8 +22,7 @@ CSCPattern::CSCPattern(int n, vector<int> indptr, vector<int> indices)
     fatal_error(fmt::format("CSCPattern: indptr[0] ({}) != 0", indptr_[0]));
   }
   if (indptr_[n_] != static_cast<int>(indices_.size())) {
-    fatal_error(fmt::format(
-      "CSCPattern: indptr[n] ({}) != indices size ({})",
+    fatal_error(fmt::format("CSCPattern: indptr[n] ({}) != indices size ({})",
       indptr_[n_], indices_.size()));
   }
 
@@ -35,10 +34,10 @@ CSCPattern::CSCPattern(int n, vector<int> indptr, vector<int> indices)
           indices_[k], n_, j));
       }
       if (k > indptr_[j] && indices_[k - 1] >= indices_[k]) {
-        fatal_error(fmt::format(
-          "CSCPattern: row indices not sorted in column {} "
-          "(indices[{}]={} >= indices[{}]={})",
-          j, k - 1, indices_[k - 1], k, indices_[k]));
+        fatal_error(
+          fmt::format("CSCPattern: row indices not sorted in column {} "
+                      "(indices[{}]={} >= indices[{}]={})",
+            j, k - 1, indices_[k - 1], k, indices_[k]));
       }
     }
   }
@@ -50,8 +49,7 @@ CSCPattern::CSCPattern(int n, vector<int> indptr, vector<int> indices)
 
 CSCMatrix::CSCMatrix(
   int n, vector<int> indptr, vector<int> indices, vector<double> data)
-  : pattern_(n, std::move(indptr), std::move(indices)),
-    data_(std::move(data))
+  : pattern_(n, std::move(indptr), std::move(indices)), data_(std::move(data))
 {
   if (static_cast<int>(data_.size()) != pattern_.nnz()) {
     fatal_error(fmt::format("CSCMatrix: data size ({}) != pattern nnz ({})",

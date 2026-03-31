@@ -56,8 +56,8 @@ class CSCMatrix {
 public:
   // Constructors
   CSCMatrix() = default;
-  CSCMatrix(int n, vector<int> indptr, vector<int> indices,
-    vector<double> data);
+  CSCMatrix(
+    int n, vector<int> indptr, vector<int> indices, vector<double> data);
 
   // Accessors
   int n() const { return pattern_.n(); }

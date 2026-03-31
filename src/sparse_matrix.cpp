@@ -27,7 +27,6 @@ CSCPattern::CSCPattern(int n, vector<int> indptr, vector<int> indices)
       indptr_[n_], indices_.size()));
   }
 
-#ifndef NDEBUG
   for (int j = 0; j < n_; ++j) {
     for (int k = indptr_[j]; k < indptr_[j + 1]; ++k) {
       if (indices_[k] < 0 || indices_[k] >= n_) {
@@ -43,21 +42,11 @@ CSCPattern::CSCPattern(int n, vector<int> indptr, vector<int> indices)
       }
     }
   }
-#endif
 }
 
 //==============================================================================
 // CSCMatrix implementation
 //==============================================================================
-
-CSCMatrix::CSCMatrix(CSCPattern pattern, vector<double> data)
-  : pattern_(std::move(pattern)), data_(std::move(data))
-{
-  if (static_cast<int>(data_.size()) != pattern_.nnz()) {
-    fatal_error(fmt::format("CSCMatrix: data size ({}) != pattern nnz ({})",
-      data_.size(), pattern_.nnz()));
-  }
-}
 
 CSCMatrix::CSCMatrix(
   int n, vector<int> indptr, vector<int> indices, vector<double> data)

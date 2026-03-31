@@ -56,7 +56,6 @@ class CSCMatrix {
 public:
   // Constructors
   CSCMatrix() = default;
-  CSCMatrix(CSCPattern pattern, vector<double> data);
   CSCMatrix(int n, vector<int> indptr, vector<int> indices,
     vector<double> data);
 

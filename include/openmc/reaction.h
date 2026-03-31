@@ -64,7 +64,6 @@ public:
   bool redundant_;                   //!< redundant reaction?
   vector<TemperatureXS> xs_;         //!< Cross section at each temperature
   vector<ReactionProduct> products_; //!< Reaction products
-
 };
 
 //==============================================================================

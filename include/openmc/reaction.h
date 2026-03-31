@@ -67,20 +67,6 @@ public:
   vector<TemperatureXS> xs_reference_; //!< Unperturbed cross section at each temperature
   vector<ReactionProduct> products_;   //!< Reaction products
 
-  struct CovData {
-  vector<double> L;            //!< Flattened (full_size x effective_rank) factor
-  vector<double> e_bounds;     //!< Energy group boundaries [eV], length = full_size+1
-  int full_size {0};           //!< Original matrix dimension G (number of groups)
-  int effective_rank {0};      //!< Number of columns retained (r <= G)
-  };
-  std::unordered_map<int, CovData> cholesky_;  // MT → Cholesky factor
-
-  //! Apply multigroup perturbation factors to CE cross sections
-  //! \param[in] energy_grid  Nuclide energy grid (the shared CE grid)
-  //! \param[in,out] seed     Random number seed
-  void perturb_xs(const vector<double>& energy_grid, uint64_t* seed);
-  void perturb_xs_covariance(const vector<double>& energy_grid, uint64_t* seed);
-
 };
 
 //==============================================================================

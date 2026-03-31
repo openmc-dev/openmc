@@ -20,6 +20,12 @@ def test_contains():
     assert (10.0, -4., 2.0) in c
 
 
+def test_id():
+    openmc.Cell(cell_id=0)
+    with pytest.raises(ValueError):
+        openmc.Cell(cell_id=-1)
+
+
 def test_repr(cell_with_lattice):
     cells, mats, univ, lattice = cell_with_lattice
     repr(cells[0])  # cell with distributed materials
@@ -125,6 +131,29 @@ def test_temperature(cell_with_lattice):
     c = cells[0]
     c.temperature = (300., 600., 900.)
 
+
+def test_densities(cell_with_lattice):
+    # Make sure density propagates through universes
+    m = openmc.Material()
+    s = openmc.XPlane()
+    c1 = openmc.Cell(fill=m, region=+s)
+    c2 = openmc.Cell(fill=m, region=-s)
+    u1 = openmc.Universe(cells=[c1, c2])
+    c = openmc.Cell(fill=u1)
+
+    c.density = 1.
+    assert c1.density == 1.
+    assert c2.density == 1.
+    with pytest.raises(ValueError):
+        c.density = -1.
+    c.density = None
+    assert c1.density == None
+    assert c2.density == None
+
+    # distributed density
+    cells, _, _, _ = cell_with_lattice
+    c = cells[0]
+    c.density = (1., 2., 3.)
 
 def test_rotation():
     u = openmc.Universe()

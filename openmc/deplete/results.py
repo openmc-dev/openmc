@@ -203,7 +203,7 @@ class Results(list):
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            concentrations[i] = result[0, mat_id, nuc]
+            concentrations[i] = result[mat_id, nuc]
 
         # Unit conversions
         times = _get_time_as(times, time_units)
@@ -363,7 +363,7 @@ class Results(list):
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            rates[i] = result.rates[0].get(mat_id, nuc, rx) * result[0, mat, nuc]
+            rates[i] = result.rates.get(mat_id, nuc, rx) * result[mat, nuc]
 
         return times, rates
 
@@ -397,7 +397,7 @@ class Results(list):
         # Get time/eigenvalue at each point
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            eigenvalues[i] = result.k[0]
+            eigenvalues[i] = result.k
 
         # Convert time units if necessary
         times = _get_time_as(times, time_units)
@@ -630,7 +630,7 @@ class Results(list):
                 for nuc in result.index_nuc:
                     if nuc not in available_cross_sections:
                         continue
-                    atoms = result[0, mat_id, nuc]
+                    atoms = result[mat_id, nuc]
                     if atoms > 0.0:
                         atoms_per_barn_cm = 1e-24 * atoms / mat.volume
                         mat.remove_nuclide(nuc) # Replace if it's there

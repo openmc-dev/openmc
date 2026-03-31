@@ -8,7 +8,7 @@ import warnings
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .checkvalue import check_type, check_value
 from .surface import _BOUNDARY_TYPES
 from .bounding_box import BoundingBox
@@ -223,21 +223,19 @@ class DAGMCUniverse(openmc.UniverseBase):
 
     @property
     def material_names(self):
-        dagmc_file_contents = h5py.File(self.filename)
-        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
-            'values')
         material_tags_ascii = []
-        for tag in material_tags_hex:
-            candidate_tag = tag.tobytes().decode().replace('\x00', '')
-            # tags might be for temperature or reflective surfaces
-            if candidate_tag.startswith('mat:'):
-                # if name ends with _comp remove it, it is not parsed
-                if candidate_tag.endswith('_comp'):
-                   candidate_tag = candidate_tag[:-5]
-                # removes first 4 characters as openmc.Material name should be
-                # set without the 'mat:' part of the tag
-                material_tags_ascii.append(candidate_tag[4:])
-
+        with h5py.File(self.filename) as dagmc_file_contents:
+            material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get('values')
+            for tag in material_tags_hex:
+                candidate_tag = tag.tobytes().decode().replace('\x00', '')
+                # tags might be for temperature or reflective surfaces
+                if candidate_tag.startswith('mat:'):
+                    # if name ends with _comp remove it, it is not parsed
+                    if candidate_tag.endswith('_comp'):
+                       candidate_tag = candidate_tag[:-5]
+                    # removes first 4 characters as openmc.Material name should be
+                    # set without the 'mat:' part of the tag
+                    material_tags_ascii.append(candidate_tag[4:])
         return sorted(set(material_tags_ascii))
 
     def _n_geom_elements(self, geom_type):
@@ -302,6 +300,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         dagmc_element = ET.Element('dagmc_universe')
         dagmc_element.set('id', str(self.id))
 
+        if self.name:
+            dagmc_element.set('name', self.name)
         if self.auto_geom_ids:
             dagmc_element.set('auto_geom_ids', 'true')
         if self.auto_mat_ids:
@@ -468,8 +468,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         if name is not None:
             out.name = name
 
-        out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
-        out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
+        out.auto_geom_ids = bool(get_text(elem, "auto_geom_ids"))
+        out.auto_mat_ids = bool(get_text(elem, "auto_mat_ids"))
 
         el_mat_override = elem.find('material_overrides')
         if el_mat_override is not None:
@@ -480,7 +480,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             out._material_overrides = {}
             for elem in el_mat_override.findall('cell_override'):
                 cell_id = int(get_text(elem, 'id'))
-                mat_ids = get_text(elem, 'material_ids').split(' ')
+                mat_ids = get_elem_list(elem, "material_ids", str) or []
                 mat_objs = [mats[mat_id] for mat_id in mat_ids]
                 out._material_overrides[cell_id] = mat_objs
 

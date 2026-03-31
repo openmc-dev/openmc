@@ -17,8 +17,7 @@
 
 #include <fmt/core.h>
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include <algorithm> // for sort, min_element
 #include <cassert>
@@ -31,8 +30,8 @@ namespace openmc {
 //==============================================================================
 
 namespace data {
-array<double, 2> energy_min {0.0, 0.0};
-array<double, 2> energy_max {INFTY, INFTY};
+array<double, 4> energy_min {0.0, 0.0, 0.0, 0.0};
+array<double, 4> energy_max {INFTY, INFTY, INFTY, INFTY};
 double temperature_min {INFTY};
 double temperature_max {0.0};
 std::unordered_map<std::string, int> nuclide_map;
@@ -361,8 +360,7 @@ void Nuclide::create_derived(
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
-    array<size_t, 2> shape {grid.energy.size(), 5};
-    xs_.emplace_back(shape, 0.0);
+    xs_.push_back(tensor::zeros<double>({grid.energy.size(), 5}));
   }
 
   reaction_index_.fill(C_NONE);
@@ -375,11 +373,10 @@ void Nuclide::create_derived(
     for (int t = 0; t < kTs_.size(); ++t) {
       int j = rx->xs_[t].threshold;
       int n = rx->xs_[t].value.size();
-      auto xs = xt::adapt(rx->xs_[t].value);
-      auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
-
+      auto xs = tensor::Tensor<double>(
+        rx->xs_[t].value.data(), rx->xs_[t].value.size());
       for (const auto& p : rx->products_) {
-        if (p.particle_ == ParticleType::photon) {
+        if (p.particle_.is_photon()) {
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k + j];
 
@@ -396,7 +393,7 @@ void Nuclide::create_derived(
               }
             }
 
-            pprod[k] += f * xs[k] * (*p.yield_)(E);
+            xs_[t](j + k, XS_PHOTON_PROD) += f * xs[k] * (*p.yield_)(E);
           }
         }
       }
@@ -406,20 +403,17 @@ void Nuclide::create_derived(
         continue;
 
       // Add contribution to total cross section
-      auto total = xt::view(xs_[t], xt::range(j, j + n), XS_TOTAL);
-      total += xs;
+      xs_[t].slice(tensor::range(j, j + n), XS_TOTAL) += xs;
 
       // Add contribution to absorption cross section
-      auto absorption = xt::view(xs_[t], xt::range(j, j + n), XS_ABSORPTION);
       if (is_disappearance(rx->mt_)) {
-        absorption += xs;
+        xs_[t].slice(tensor::range(j, j + n), XS_ABSORPTION) += xs;
       }
 
       if (is_fission(rx->mt_)) {
         fissionable_ = true;
-        auto fission = xt::view(xs_[t], xt::range(j, j + n), XS_FISSION);
-        fission += xs;
-        absorption += xs;
+        xs_[t].slice(tensor::range(j, j + n), XS_FISSION) += xs;
+        xs_[t].slice(tensor::range(j, j + n), XS_ABSORPTION) += xs;
 
         // Keep track of fission reactions
         if (t == 0) {
@@ -501,7 +495,7 @@ void Nuclide::create_derived(
 
 void Nuclide::init_grid()
 {
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = ParticleType::neutron().transport_index();
   double E_min = data::energy_min[neutron];
   double E_max = data::energy_max[neutron];
   int M = settings::n_log_bins;
@@ -510,7 +504,7 @@ void Nuclide::init_grid()
   double spacing = std::log(E_max / E_min) / M;
 
   // Create equally log-spaced energy grid
-  auto umesh = xt::linspace(0.0, M * spacing, M + 1);
+  auto umesh = tensor::linspace(0.0, M * spacing, M + 1);
 
   for (auto& grid : grid_) {
     // Resize array for storing grid indices
@@ -552,7 +546,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
         for (int i = 1; i < rx->products_.size(); ++i) {
           // Skip any non-neutron products
           const auto& product = rx->products_[i];
-          if (product.particle_ != ParticleType::neutron)
+          if (!product.particle_.is_neutron())
             continue;
 
           // Evaluate yield

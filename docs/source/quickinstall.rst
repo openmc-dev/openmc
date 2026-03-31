@@ -40,7 +40,7 @@ will also need to specify the `--platform` option:
 
 .. code-block:: sh
 
-    conda create --name openmc-env --platform osx-arm64 openmc
+    conda create --name openmc-env --platform osx-64 openmc
 
 You are now in a conda environment called `openmc-env` that has OpenMC
 installed.
@@ -119,7 +119,7 @@ packages should be installed, for example in Homebrew via:
 
 .. code-block:: sh
 
-   brew install llvm cmake xtensor hdf5 python libomp libpng
+   brew install llvm cmake hdf5 python libomp libpng
 
 The compiler provided by the above LLVM package should be used in place of the
 one provisioned by XCode, which does not support the multithreading library used

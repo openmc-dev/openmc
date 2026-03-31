@@ -14,6 +14,7 @@ Theory and Methodology
     random_numbers
     neutron_physics
     photon_physics
+    charged_particles_physics
     tallies
     eigenvalue
     depletion

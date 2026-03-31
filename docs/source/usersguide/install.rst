@@ -40,7 +40,7 @@ will also need to specify the `--platform` option:
 
 .. code-block:: sh
 
-    conda create --name openmc-env --platform osx-arm64 openmc
+    conda create --name openmc-env --platform osx-64 openmc
 
 You are now in a conda environment called `openmc-env` that has OpenMC
 installed.
@@ -375,10 +375,6 @@ OPENMC_USE_DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
 
-OPENMC_USE_MCPL
-  Turns on support for reading MCPL_ source files and writing MCPL source points
-  and surface sources. (Default: off)
-
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
@@ -386,6 +382,20 @@ OPENMC_USE_MPI
   Turns on compiling with MPI (Default: off). For further information on MPI
   options, please see the `FindMPI.cmake documentation
   <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
+
+.. _cmake_strict_fp:
+
+OPENMC_ENABLE_STRICT_FP
+  Disables compiler optimizations that change floating-point results relative to
+  unoptimized builds, improving cross-platform and cross-optimization-level
+  reproducibility. This disables FMA contraction (``-ffp-contract=off``) and
+  compiler builtin replacements of math functions like ``pow``, ``exp``, ``log``
+  (``-fno-builtin``). It also keeps C/C++ assertions active by removing the
+  ``-DNDEBUG`` flag from ``RelWithDebInfo`` builds. Without this flag, these
+  optimizations can produce bit-level differences across platforms, compilers,
+  and optimization levels. This option should be used when running the test
+  suite. By default (off), the compiler is free to use all optimizations for
+  best performance. (Default: off)
 
 OPENMC_FORCE_VENDORED_LIBS
   Forces OpenMC to use the submodules located in the vendor directory, as
@@ -419,7 +429,10 @@ Release
 
 RelWithDebInfo
   (Default if no type is specified.) Enable optimization and debug. On most
-  platforms/compilers, this is equivalent to `-O2 -g`.
+  platforms/compilers, this is equivalent to `-O2 -g`. When
+  :ref:`OPENMC_ENABLE_STRICT_FP <cmake_strict_fp>` is enabled, OpenMC removes the
+  ``-DNDEBUG`` flag that CMake normally adds for this build type, so that
+  C/C++ assertions remain active.
 
 Example of configuring for Debug mode:
 

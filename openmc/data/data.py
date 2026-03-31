@@ -6,6 +6,12 @@ from pathlib import Path
 from math import sqrt, log
 from warnings import warn
 
+from endf.data import (ATOMIC_NUMBER, ATOMIC_SYMBOL, ELEMENT_SYMBOL,
+                       EV_PER_MEV, K_BOLTZMANN, gnds_name, zam)
+
+gnds_name.__module__ = __name__
+zam.__module__ = __name__
+
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
 # pp. 293-306 (2013). The "representative isotopic abundance" values from
@@ -112,72 +118,6 @@ NATURAL_ABUNDANCE = {
     'U238': 0.992742
 }
 
-# Dictionary to give element symbols from IUPAC names
-# (and some common mispellings)
-ELEMENT_SYMBOL = {'neutron': 'n', 'hydrogen': 'H', 'helium': 'He',
-                 'lithium': 'Li', 'beryllium': 'Be', 'boron': 'B',
-                 'carbon': 'C', 'nitrogen': 'N', 'oxygen': 'O', 'fluorine': 'F',
-                 'neon': 'Ne', 'sodium': 'Na', 'magnesium': 'Mg',
-                 'aluminium': 'Al', 'aluminum': 'Al', 'silicon': 'Si',
-                 'phosphorus': 'P', 'sulfur': 'S', 'sulphur': 'S',
-                 'chlorine': 'Cl', 'argon': 'Ar', 'potassium': 'K',
-                 'calcium': 'Ca', 'scandium': 'Sc', 'titanium': 'Ti',
-                 'vanadium': 'V', 'chromium': 'Cr', 'manganese': 'Mn',
-                 'iron': 'Fe', 'cobalt': 'Co', 'nickel': 'Ni', 'copper': 'Cu',
-                 'zinc': 'Zn', 'gallium': 'Ga', 'germanium': 'Ge',
-                 'arsenic': 'As', 'selenium': 'Se', 'bromine': 'Br',
-                 'krypton': 'Kr', 'rubidium': 'Rb', 'strontium': 'Sr',
-                 'yttrium': 'Y', 'zirconium': 'Zr', 'niobium': 'Nb',
-                 'molybdenum': 'Mo', 'technetium': 'Tc', 'ruthenium': 'Ru',
-                 'rhodium': 'Rh', 'palladium': 'Pd', 'silver': 'Ag',
-                 'cadmium': 'Cd', 'indium': 'In', 'tin': 'Sn', 'antimony': 'Sb',
-                 'tellurium': 'Te', 'iodine': 'I', 'xenon': 'Xe',
-                 'caesium': 'Cs', 'cesium': 'Cs', 'barium': 'Ba',
-                 'lanthanum': 'La', 'cerium': 'Ce', 'praseodymium': 'Pr',
-                 'neodymium': 'Nd', 'promethium': 'Pm', 'samarium': 'Sm',
-                 'europium': 'Eu', 'gadolinium': 'Gd', 'terbium': 'Tb',
-                 'dysprosium': 'Dy', 'holmium': 'Ho', 'erbium': 'Er',
-                 'thulium': 'Tm', 'ytterbium': 'Yb', 'lutetium': 'Lu',
-                 'hafnium': 'Hf', 'tantalum': 'Ta', 'tungsten': 'W',
-                 'wolfram': 'W', 'rhenium': 'Re', 'osmium': 'Os',
-                 'iridium': 'Ir', 'platinum': 'Pt', 'gold': 'Au',
-                 'mercury': 'Hg', 'thallium': 'Tl', 'lead': 'Pb',
-                 'bismuth': 'Bi', 'polonium': 'Po', 'astatine': 'At',
-                 'radon': 'Rn', 'francium': 'Fr', 'radium': 'Ra',
-                 'actinium': 'Ac', 'thorium': 'Th', 'protactinium': 'Pa',
-                 'uranium': 'U', 'neptunium': 'Np', 'plutonium': 'Pu',
-                 'americium': 'Am', 'curium': 'Cm', 'berkelium': 'Bk',
-                 'californium': 'Cf', 'einsteinium': 'Es', 'fermium': 'Fm',
-                 'mendelevium': 'Md', 'nobelium': 'No', 'lawrencium': 'Lr',
-                 'rutherfordium': 'Rf', 'dubnium': 'Db', 'seaborgium': 'Sg',
-                 'bohrium': 'Bh', 'hassium': 'Hs', 'meitnerium': 'Mt',
-                 'darmstadtium': 'Ds', 'roentgenium': 'Rg', 'copernicium': 'Cn',
-                 'nihonium': 'Nh', 'flerovium': 'Fl', 'moscovium': 'Mc',
-                 'livermorium': 'Lv', 'tennessine': 'Ts', 'oganesson': 'Og'}
-
-ATOMIC_SYMBOL = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
-                 7: 'N', 8: 'O', 9: 'F', 10: 'Ne', 11: 'Na', 12: 'Mg', 13: 'Al',
-                 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar', 19: 'K',
-                 20: 'Ca', 21: 'Sc', 22: 'Ti', 23: 'V', 24: 'Cr', 25: 'Mn',
-                 26: 'Fe', 27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn', 31: 'Ga',
-                 32: 'Ge', 33: 'As', 34: 'Se', 35: 'Br', 36: 'Kr', 37: 'Rb',
-                 38: 'Sr', 39: 'Y', 40: 'Zr', 41: 'Nb', 42: 'Mo', 43: 'Tc',
-                 44: 'Ru', 45: 'Rh', 46: 'Pd', 47: 'Ag', 48: 'Cd', 49: 'In',
-                 50: 'Sn', 51: 'Sb', 52: 'Te', 53: 'I', 54: 'Xe', 55: 'Cs',
-                 56: 'Ba', 57: 'La', 58: 'Ce', 59: 'Pr', 60: 'Nd', 61: 'Pm',
-                 62: 'Sm', 63: 'Eu', 64: 'Gd', 65: 'Tb', 66: 'Dy', 67: 'Ho',
-                 68: 'Er', 69: 'Tm', 70: 'Yb', 71: 'Lu', 72: 'Hf', 73: 'Ta',
-                 74: 'W', 75: 'Re', 76: 'Os', 77: 'Ir', 78: 'Pt', 79: 'Au',
-                 80: 'Hg', 81: 'Tl', 82: 'Pb', 83: 'Bi', 84: 'Po', 85: 'At',
-                 86: 'Rn', 87: 'Fr', 88: 'Ra', 89: 'Ac', 90: 'Th', 91: 'Pa',
-                 92: 'U', 93: 'Np', 94: 'Pu', 95: 'Am', 96: 'Cm', 97: 'Bk',
-                 98: 'Cf', 99: 'Es', 100: 'Fm', 101: 'Md', 102: 'No',
-                 103: 'Lr', 104: 'Rf', 105: 'Db', 106: 'Sg', 107: 'Bh',
-                 108: 'Hs', 109: 'Mt', 110: 'Ds', 111: 'Rg', 112: 'Cn',
-                 113: 'Nh', 114: 'Fl', 115: 'Mc', 116: 'Lv', 117: 'Ts',
-                 118: 'Og'}
-ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
-
 DADZ = {
     '(n,2nd)': (-3, -1),
     '(n,2n)': (-1, 0),
@@ -268,11 +208,7 @@ DADZ = {
 # Values here are from the Committee on Data for Science and Technology
 # (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
-# The value of the Boltzman constant in units of eV / K
-K_BOLTZMANN = 8.617333262e-5
-
 # Unit conversions
-EV_PER_MEV = 1.0e6
 JOULE_PER_EV = 1.602176634e-19
 
 # Avogadro's constant
@@ -283,9 +219,6 @@ NEUTRON_MASS = 1.00866491595
 
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS: dict[str, float] = {}
-
-# Regex for GNDS nuclide names (used in zam function)
-_GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 # Used in half_life function as a cache
 _HALF_LIFE: dict[str, float] = {}
@@ -324,7 +257,7 @@ def atomic_mass(isotope):
         # isotopes of their element (e.g. C0), calculate the atomic mass as
         # the sum of the atomic mass times the natural abundance of the isotopes
         # that make up the element.
-        for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
+        for element in ['C', 'Zn', 'Pt', 'Os', 'Tl', 'V']:
             isotope_zero = element.lower() + '0'
             _ATOMIC_MASS[isotope_zero] = 0.
             for iso, abundance in isotopes(element):
@@ -523,33 +456,6 @@ def water_density(temperature, pressure=0.1013):
     return coeff / pi / gamma1_pi
 
 
-def gnds_name(Z, A, m=0):
-    """Return nuclide name using GNDS convention
-
-    .. versionchanged:: 0.14.0
-        Function name changed from ``gnd_name`` to ``gnds_name``
-
-    Parameters
-    ----------
-    Z : int
-        Atomic number
-    A : int
-        Mass number
-    m : int, optional
-        Metastable state
-
-    Returns
-    -------
-    str
-        Nuclide name in GNDS convention, e.g., 'Am242_m1'
-
-    """
-    if m > 0:
-        return f'{ATOMIC_SYMBOL[Z]}{A}_m{m}'
-    return f'{ATOMIC_SYMBOL[Z]}{A}'
-
-
-
 def _get_element_symbol(element: str) -> str:
     if len(element) > 2:
         symbol = ELEMENT_SYMBOL.get(element.lower())
@@ -592,28 +498,3 @@ def isotopes(element: str) -> list[tuple[str, float]]:
     return result
 
 
-def zam(name):
-    """Return tuple of (atomic number, mass number, metastable state)
-
-    Parameters
-    ----------
-    name : str
-        Name of nuclide using GNDS convention, e.g., 'Am242_m1'
-
-    Returns
-    -------
-    3-tuple of int
-        Atomic number, mass number, and metastable state
-
-    """
-    try:
-        symbol, A, state = _GNDS_NAME_RE.fullmatch(name).groups()
-    except AttributeError:
-        raise ValueError(f"'{name}' does not appear to be a nuclide name in "
-                         "GNDS format")
-
-    if symbol not in ATOMIC_NUMBER:
-        raise ValueError(f"'{symbol}' is not a recognized element symbol")
-
-    metastable = int(state[2:]) if state else 0
-    return (ATOMIC_NUMBER[symbol], int(A), metastable)

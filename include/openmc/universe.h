@@ -6,7 +6,7 @@
 
 namespace openmc {
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 class DAGUniverse;
 #endif
 
@@ -29,6 +29,7 @@ class Universe {
 public:
   int32_t id_;            //!< Unique ID
   vector<int32_t> cells_; //!< Cells within this universe
+  int32_t n_instances_;   //!< Number of instances of this universe
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.

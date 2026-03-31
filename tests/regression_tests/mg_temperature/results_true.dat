@@ -1,40 +1,40 @@
 micro, method: nearest, t: 300.0, k-combined:
-1.439563E+00 4.526076E-04
+1.439913E+00 4.285638E-04
 kanalyt
 1.440410E+00
 micro, method: nearest, t: 600.0, k-combined:
-1.409389E+00 4.684481E-04
+1.410750E+00 4.829834E-04
 kanalyt
 1.410164E+00
 micro, method: nearest, t: 900.0, k-combined:
-1.407593E+00 4.410387E-04
+1.408232E+00 4.946310E-04
 kanalyt
 1.407830E+00
 micro, method: interpolation, t: 520.0, k-combined:
-1.418259E+00 4.242856E-04
+1.418877E+00 4.651822E-04
 kanalyt
 1.418514E+00
 micro, method: interpolation, t: 600.0, k-combined:
-1.409389E+00 4.684481E-04
+1.410750E+00 4.829834E-04
 kanalyt
 1.410164E+00
 macro, method: nearest, t: 300.0, k-combined:
-1.439563E+00 4.526076E-04
+1.439913E+00 4.285638E-04
 kanalyt
 1.440410E+00
 macro, method: nearest, t: 600.0, k-combined:
-1.409389E+00 4.684481E-04
+1.410750E+00 4.829834E-04
 kanalyt
 1.410164E+00
 macro, method: nearest, t: 900.0, k-combined:
-1.407593E+00 4.410387E-04
+1.408232E+00 4.946310E-04
 kanalyt
 1.407830E+00
 macro, method: interpolation, t: 520.0, k-combined:
-1.418259E+00 4.242856E-04
+1.418877E+00 4.651822E-04
 kanalyt
 1.418514E+00
 macro, method: interpolation, t: 600, k-combined:
-1.409389E+00 4.684481E-04
+1.410750E+00 4.829834E-04
 kanalyt
 1.410164E+00

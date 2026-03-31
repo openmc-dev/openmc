@@ -13,6 +13,7 @@ def reset_config_and_env():
     """A fixture to ensure each test has a clean config, env, and CWD."""
     original_env = dict(os.environ)
     original_cwd = os.getcwd()
+    original_resolve_paths = openmc.config["resolve_paths"]
 
     # Reset environment variables that affect config
     for key in ['OPENMC_CROSS_SECTIONS', 'OPENMC_MG_CROSS_SECTIONS', 'OPENMC_CHAIN_FILE']:
@@ -25,13 +26,13 @@ def reset_config_and_env():
     try:
         yield
     finally:
-        # Restore environment and CWD
+        # Restore environment, CWD and resolve_paths
         os.environ.clear()
         os.environ.update(original_env)
         os.chdir(original_cwd)
 
         # Restore config one last time for safety between modules
-        openmc.config = _default_config()
+        openmc.config = _default_config(resolve_paths=original_resolve_paths)
 
 
 def test_config_basics():

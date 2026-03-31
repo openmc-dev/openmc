@@ -30,7 +30,7 @@ def test_data_library(tmpdir):
     assert os.path.exists(filename)
 
     new_lib = openmc.data.DataLibrary()
-    directory = os.path.dirname(os.environ['OPENMC_CROSS_SECTIONS'])
+    directory = os.path.dirname(openmc.config.get('cross_sections'))
     new_lib.register_file(os.path.join(directory, 'H1.h5'))
     assert new_lib[-1]['type'] == 'neutron'
     new_lib.register_file(os.path.join(directory, 'c_Zr_in_ZrH.h5'))

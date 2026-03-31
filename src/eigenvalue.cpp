@@ -1,9 +1,6 @@
 #include "openmc/eigenvalue.h"
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xmath.hpp"
-#include "xtensor/xtensor.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/array.h"
 #include "openmc/bank.h"
@@ -39,7 +36,7 @@ namespace simulation {
 double keff_generation;
 array<double, 2> k_sum;
 vector<double> entropy;
-xt::xtensor<double, 1> source_frac;
+tensor::Tensor<double> source_frac;
 
 } // namespace simulation
 
@@ -127,29 +124,7 @@ void synchronize_bank()
       "No fission sites banked on MPI rank " + std::to_string(mpi::rank));
   }
 
-  // Make sure all processors start at the same point for random sampling. Then
-  // skip ahead in the sequence using the starting index in the 'global'
-  // fission bank for each processor.
-
-  int64_t id = simulation::total_gen + overall_generation();
-  uint64_t seed = init_seed(id, STREAM_TRACKING);
-  advance_prn_seed(start, &seed);
-
-  // Determine how many fission sites we need to sample from the source bank
-  // and the probability for selecting a site.
-
-  int64_t sites_needed;
-  if (total < settings::n_particles) {
-    sites_needed = settings::n_particles % total;
-  } else {
-    sites_needed = settings::n_particles;
-  }
-  double p_sample = static_cast<double>(sites_needed) / total;
-
   simulation::time_bank_sample.start();
-
-  // ==========================================================================
-  // SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
 
   // Allocate temporary source bank -- we don't really know how many fission
   // sites were created, so overallocate by a factor of 3
@@ -165,33 +140,38 @@ void synchronize_bank()
       temp_delayed_groups, temp_lifetimes, 3 * simulation::work_per_rank);
   }
 
-  for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
-    const auto& site = simulation::fission_bank[i];
+  // ==========================================================================
+  // SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
 
-    // If there are less than n_particles particles banked, automatically add
-    // int(n_particles/total) sites to temp_sites. For example, if you need
-    // 1000 and 300 were banked, this would add 3 source sites per banked site
-    // and the remaining 100 would be randomly sampled.
-    if (total < settings::n_particles) {
-      for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
-        temp_sites[index_temp] = site;
-        if (settings::ifp_on) {
-          copy_ifp_data_from_fission_banks(
-            i, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
-        }
-        ++index_temp;
-      }
-    }
+  // We use Uniform Combing method to exactly get the targeted particle size
+  // [https://doi.org/10.1080/00295639.2022.2091906]
 
-    // Randomly sample sites needed
-    if (prn(&seed) < p_sample) {
-      temp_sites[index_temp] = site;
-      if (settings::ifp_on) {
-        copy_ifp_data_from_fission_banks(
-          i, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
-      }
-      ++index_temp;
+  // Make sure all processors use the same random number seed.
+  int64_t id = simulation::total_gen + overall_generation();
+  uint64_t seed = init_seed(id, STREAM_TRACKING);
+
+  // Comb specification
+  double teeth_distance = static_cast<double>(total) / settings::n_particles;
+  double teeth_offset = prn(&seed) * teeth_distance;
+
+  // First and last hitting tooth
+  int64_t end = start + simulation::fission_bank.size();
+  int64_t tooth_start = std::ceil((start - teeth_offset) / teeth_distance);
+  int64_t tooth_end = std::floor((end - teeth_offset) / teeth_distance) + 1;
+
+  // Locally comb particles in fission_bank
+  double tooth = tooth_start * teeth_distance + teeth_offset;
+  for (int64_t i = tooth_start; i < tooth_end; i++) {
+    int64_t idx = std::floor(tooth) - start;
+    temp_sites[index_temp] = simulation::fission_bank[idx];
+    if (settings::ifp_on) {
+      copy_ifp_data_from_fission_banks(
+        idx, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
     }
+    ++index_temp;
+
+    // Next tooth
+    tooth += teeth_distance;
   }
 
   // At this point, the sampling of source sites is done and now we need to
@@ -209,44 +189,13 @@ void synchronize_bank()
   // TODO: protect for MPI_Exscan at rank 0
 
   // Allocate space for bank_position if this hasn't been done yet
-  int64_t bank_position[mpi::n_procs];
-  MPI_Allgather(
-    &start, 1, MPI_INT64_T, bank_position, 1, MPI_INT64_T, mpi::intracomm);
+  std::vector<int64_t> bank_position(mpi::n_procs);
+  MPI_Allgather(&start, 1, MPI_INT64_T, bank_position.data(), 1, MPI_INT64_T,
+    mpi::intracomm);
 #else
   start = 0;
   finish = index_temp;
 #endif
-
-  // Now that the sampling is complete, we need to ensure that we have exactly
-  // n_particles source sites. The way this is done in a reproducible manner is
-  // to adjust only the source sites on the last processor.
-
-  if (mpi::rank == mpi::n_procs - 1) {
-    if (finish > settings::n_particles) {
-      // If we have extra sites sampled, we will simply discard the extra
-      // ones on the last processor
-      index_temp = settings::n_particles - start;
-
-    } else if (finish < settings::n_particles) {
-      // If we have too few sites, repeat sites from the very end of the
-      // fission bank
-      sites_needed = settings::n_particles - finish;
-      // TODO: sites_needed > simulation::fission_bank.size() or other test to
-      // make sure we don't need info from other proc
-      for (int i = 0; i < sites_needed; ++i) {
-        int i_bank = simulation::fission_bank.size() - sites_needed + i;
-        temp_sites[index_temp] = simulation::fission_bank[i_bank];
-        if (settings::ifp_on) {
-          copy_ifp_data_from_fission_banks(i_bank,
-            temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
-        }
-        ++index_temp;
-      }
-    }
-
-    // the last processor should not be sending sites to right
-    finish = simulation::work_index[mpi::rank + 1];
-  }
 
   simulation::time_bank_sample.stop();
   simulation::time_bank_sendrecv.start();
@@ -296,9 +245,12 @@ void synchronize_bank()
 
         if (settings::ifp_on) {
           // Send IFP data
-          send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
-            temp_delayed_groups, send_delayed_groups, temp_lifetimes,
-            send_lifetimes);
+          if (is_beta_effective_or_both())
+            send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+              temp_delayed_groups, send_delayed_groups);
+          if (is_generation_time_or_both())
+            send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+              temp_lifetimes, send_lifetimes);
         }
       }
 
@@ -334,7 +286,7 @@ void synchronize_bank()
     neighbor = mpi::n_procs - 1;
   } else {
     neighbor =
-      upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
+      upper_bound_index(bank_position.begin(), bank_position.end(), start);
   }
 
   // Resize IFP receive buffers
@@ -364,8 +316,12 @@ void synchronize_bank()
 
       if (settings::ifp_on) {
         // Receive IFP data
-        receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
-          recv_delayed_groups, recv_lifetimes, deserialization_info);
+        if (is_beta_effective_or_both())
+          receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+            recv_delayed_groups, deserialization_info);
+        if (is_generation_time_or_both())
+          receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+            recv_lifetimes, deserialization_info);
       }
 
     } else {
@@ -396,8 +352,12 @@ void synchronize_bank()
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
   if (settings::ifp_on) {
-    deserialize_ifp_info(ifp_n_generation, deserialization_info,
-      recv_delayed_groups, recv_lifetimes);
+    if (is_beta_effective_or_both())
+      deserialize_ifp_info(ifp_n_generation, recv_delayed_groups,
+        simulation::ifp_source_delayed_group_bank, deserialization_info);
+    if (is_generation_time_or_both())
+      deserialize_ifp_info(ifp_n_generation, recv_lifetimes,
+        simulation::ifp_source_lifetime_bank, deserialization_info);
   }
 
 #else
@@ -451,6 +411,16 @@ void calculate_average_keff()
         t_value *
         std::sqrt(
           (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
+
+      // In some cases (such as an infinite medium problem), random ray
+      // may estimate k exactly and in an unvarying manner between iterations.
+      // In this case, the floating point roundoff between the division and the
+      // power operations may cause an extremely small negative value to occur
+      // inside the sqrt operation, leading to NaN. If this occurs, we check for
+      // it and set the std dev to zero.
+      if (!std::isfinite(simulation::keff_std)) {
+        simulation::keff_std = 0.0;
+      }
     }
   }
 }
@@ -479,7 +449,7 @@ int openmc_get_keff(double* k_combined)
   const auto& gt = simulation::global_tallies;
 
   array<double, 3> kv {};
-  xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
+  tensor::Tensor<double> cov = tensor::zeros<double>({3, 3});
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
   kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
   kv[2] = gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n;
@@ -618,7 +588,7 @@ void shannon_entropy()
 {
   // Get source weight in each mesh bin
   bool sites_outside;
-  xt::xtensor<double, 1> p =
+  tensor::Tensor<double> p =
     simulation::entropy_mesh->count_sites(simulation::fission_bank.data(),
       simulation::fission_bank.size(), &sites_outside);
 
@@ -630,7 +600,7 @@ void shannon_entropy()
 
   if (mpi::master) {
     // Normalize to total weight of bank sites
-    p /= xt::sum(p);
+    p /= p.sum();
 
     // Sum values to obtain Shannon entropy
     double H = 0.0;
@@ -654,7 +624,7 @@ void ufs_count_sites()
 
     std::size_t n = simulation::ufs_mesh->n_bins();
     double vol_frac = simulation::ufs_mesh->volume_frac_;
-    simulation::source_frac = xt::xtensor<double, 1>({n}, vol_frac);
+    simulation::source_frac = tensor::Tensor<double>({n}, vol_frac);
 
   } else {
     // count number of source sites in each ufs mesh cell
@@ -676,7 +646,7 @@ void ufs_count_sites()
 #endif
 
     // Normalize to total weight to get fraction of source in each cell
-    double total = xt::sum(simulation::source_frac)();
+    double total = simulation::source_frac.sum();
     simulation::source_frac /= total;
 
     // Since the total starting weight is not equal to n_particles, we need to

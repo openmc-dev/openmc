@@ -3,6 +3,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cmfd_solver.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/dagmc.h"
@@ -13,6 +14,7 @@
 #include "openmc/material.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/plot.h"
@@ -28,7 +30,7 @@
 #include "openmc/volume_calc.h"
 #include "openmc/weight_windows.h"
 
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 namespace openmc {
 
@@ -76,6 +78,7 @@ int openmc_finalize()
   // Reset global variables
   settings::assume_separate = false;
   settings::check_overlaps = false;
+  settings::collision_track_config = CollisionTrackConfig {};
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::create_delayed_neutrons = true;
@@ -85,6 +88,7 @@ int openmc_finalize()
   settings::time_cutoff = {INFTY, INFTY, INFTY, INFTY};
   settings::entropy_on = false;
   settings::event_based = false;
+  settings::free_gas_threshold = 400.0;
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
@@ -92,6 +96,7 @@ int openmc_finalize()
   settings::max_lost_particles = 10;
   settings::max_order = 0;
   settings::max_particles_in_flight = 100000;
+  settings::max_secondaries = 10000;
   settings::max_particle_events = 1'000'000;
   settings::max_history_splits = 10'000'000;
   settings::max_tracks = 1000;
@@ -118,6 +123,9 @@ int openmc_finalize()
   settings::restart_run = false;
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
+  settings::surface_grazing_cutoff = 0.001;
+  settings::surface_grazing_ratio = 0.5;
+  settings::solver_type = SolverType::MONTE_CARLO;
   settings::source_latest = false;
   settings::source_rejection_fraction = 0.05;
   settings::source_separate = false;
@@ -132,13 +140,14 @@ int openmc_finalize()
   settings::temperature_multipole = false;
   settings::temperature_range = {0.0, 0.0};
   settings::temperature_tolerance = 10.0;
+  settings::properties_file.clear();
   settings::trigger_on = false;
   settings::trigger_predict = false;
   settings::trigger_batch_interval = 1;
   settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
-  settings::verbosity = 7;
+  settings::verbosity = -1;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
   settings::weight_windows_file.clear();
@@ -154,10 +163,11 @@ int openmc_finalize()
   simulation::entropy_mesh = nullptr;
   simulation::ufs_mesh = nullptr;
 
-  data::energy_max = {INFTY, INFTY};
-  data::energy_min = {0.0, 0.0};
+  data::energy_max = {INFTY, INFTY, INFTY, INFTY};
+  data::energy_min = {0.0, 0.0, 0.0, 0.0};
   data::temperature_min = 0.0;
   data::temperature_max = INFTY;
+  data::mg = {};
   model::root_universe = -1;
   model::plotter_seed = 1;
   openmc::openmc_set_seed(DEFAULT_SEED);
@@ -166,7 +176,7 @@ int openmc_finalize()
   // Deallocate arrays
   free_memory();
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   settings::libmesh_init.reset();
 #endif
 
@@ -175,9 +185,12 @@ int openmc_finalize()
   if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
   }
+  if (mpi::collision_track_site != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::collision_track_site);
+  }
 #endif
 
-  openmc_reset_random_ray();
+  openmc_finalize_random_ray();
 
   return 0;
 }
@@ -185,7 +198,6 @@ int openmc_finalize()
 int openmc_reset()
 {
 
-  model::universe_cell_counts.clear();
   model::universe_level_counts.clear();
 
   for (auto& t : model::tallies) {
@@ -194,7 +206,7 @@ int openmc_reset()
 
   // Reset global tallies
   simulation::n_realizations = 0;
-  xt::view(simulation::global_tallies, xt::all()) = 0.0;
+  simulation::global_tallies.fill(0.0);
 
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;

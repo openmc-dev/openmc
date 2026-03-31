@@ -11,6 +11,7 @@ namespace openmc {
 //==============================================================================
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   : negroups_(sr.scalar_flux_old_.size()), material_(&sr.material_),
+    temperature_idx_(&sr.temperature_idx_), density_mult_(&sr.density_mult_),
     is_small_(&sr.is_small_), n_hits_(&sr.n_hits_),
     is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
     volume_(&sr.volume_), volume_t_(&sr.volume_t_), volume_sq_(&sr.volume_sq_),
@@ -48,7 +49,7 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 
   scalar_flux_new_.assign(negroups, 0.0);
-  source_.resize(negroups);
+  source_.assign(negroups, 0.0);
   scalar_flux_final_.assign(negroups, 0.0);
 
   tally_task_.resize(negroups);
@@ -57,25 +58,6 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
     flux_moments_old_.resize(negroups);
     flux_moments_new_.resize(negroups);
     flux_moments_t_.resize(negroups);
-  }
-}
-
-SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
-  : SourceRegion(handle.negroups_, handle.is_linear_)
-{
-  material_ = handle.material();
-  mesh_ = handle.mesh();
-  parent_sr_ = parent_sr;
-  for (int g = 0; g < scalar_flux_new_.size(); g++) {
-    scalar_flux_old_[g] = handle.scalar_flux_old(g);
-    source_[g] = handle.source(g);
-  }
-
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    external_source_present_ = handle.external_source_present();
-    for (int g = 0; g < scalar_flux_new_.size(); g++) {
-      external_source_[g] = handle.external_source(g);
-    }
   }
 }
 
@@ -89,6 +71,8 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
   // Scalar fields
   material_.push_back(sr.material_);
+  temperature_idx_.push_back(sr.temperature_idx_);
+  density_mult_.push_back(sr.density_mult_);
   is_small_.push_back(sr.is_small_);
   n_hits_.push_back(sr.n_hits_);
   lock_.push_back(sr.lock_);
@@ -142,6 +126,8 @@ void SourceRegionContainer::assign(
   // Clear existing data
   n_source_regions_ = 0;
   material_.clear();
+  temperature_idx_.clear();
+  density_mult_.clear();
   is_small_.clear();
   n_hits_.clear();
   lock_.clear();
@@ -199,6 +185,8 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   SourceRegionHandle handle;
   handle.negroups_ = negroups();
   handle.material_ = &material(sr);
+  handle.temperature_idx_ = &temperature_idx(sr);
+  handle.density_mult_ = &density_mult(sr);
   handle.is_small_ = &is_small(sr);
   handle.n_hits_ = &n_hits(sr);
   handle.is_linear_ = is_linear();
@@ -259,9 +247,12 @@ void SourceRegionContainer::adjoint_reset()
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
+  } else {
+    std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 1.0);
+  }
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
-  std::fill(scalar_flux_final_.begin(), scalar_flux_final_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
   std::fill(external_source_.begin(), external_source_.end(), 0.0f);
   std::fill(source_gradients_.begin(), source_gradients_.end(),

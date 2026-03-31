@@ -4,6 +4,7 @@
 #ifndef OPENMC_SOURCE_H
 #define OPENMC_SOURCE_H
 
+#include <atomic>
 #include <limits>
 #include <unordered_set>
 
@@ -12,7 +13,7 @@
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/memory.h"
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -25,9 +26,17 @@ namespace openmc {
 // source_rejection_fraction
 constexpr int EXTSRC_REJECT_THRESHOLD {10000};
 
+// Maximum number of source rejections allowed while sampling a single site
+constexpr int64_t MAX_SOURCE_REJECTIONS_PER_SAMPLE {1'000'000};
+
 //==============================================================================
 // Global variables
 //==============================================================================
+
+// Cumulative counters for source rejection diagnostics. These are atomic to
+// allow thread-safe concurrent sampling of external sources.
+extern std::atomic<int64_t> source_n_accept;
+extern std::atomic<int64_t> source_n_reject;
 
 class Source;
 
@@ -148,11 +157,11 @@ protected:
 
 private:
   // Data members
-  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
-  UPtrSpace space_;                               //!< Spatial distribution
-  UPtrAngle angle_;                               //!< Angular distribution
-  UPtrDist energy_;                               //!< Energy distribution
-  UPtrDist time_;                                 //!< Time distribution
+  ParticleType particle_; //!< Type of particle emitted
+  UPtrSpace space_;       //!< Spatial distribution
+  UPtrAngle angle_;       //!< Angular distribution
+  UPtrDist energy_;       //!< Energy distribution
+  UPtrDist time_;         //!< Time distribution
 };
 
 //==============================================================================
@@ -173,7 +182,7 @@ protected:
   SourceSite sample(uint64_t* seed) const override;
 
 private:
-  vector<SourceSite> sites_; //!< Source sites from a file
+  vector<SourceSite> sites_; //!< Source sites
 };
 
 //==============================================================================
@@ -217,8 +226,8 @@ public:
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  //! \return (sampled position, importance weight)
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
 private:
   int32_t mesh_index_ {C_NONE}; //!< Index in global meshes array
@@ -264,6 +273,9 @@ extern "C" void initialize_source();
 SourceSite sample_external_source(uint64_t* seed);
 
 void free_memory_source();
+
+//! Reset cumulative source rejection counters
+void reset_source_rejection_counters();
 
 } // namespace openmc
 

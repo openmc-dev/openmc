@@ -17,8 +17,7 @@
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include <algorithm> // for copy
@@ -179,7 +178,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         } else if (domain_type_ == TallyDomain::CELL) {
           for (int level = 0; level < p.n_coord(); ++level) {
             for (int i_domain = 0; i_domain < n; i_domain++) {
-              if (model::cells[p.coord(level).cell]->id_ ==
+              if (model::cells[p.coord(level).cell()]->id_ ==
                   domain_ids_[i_domain]) {
                 this->check_hit(
                   p.material(), indices[i_domain], hits[i_domain]);
@@ -190,7 +189,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         } else if (domain_type_ == TallyDomain::UNIVERSE) {
           for (int level = 0; level < p.n_coord(); ++level) {
             for (int i_domain = 0; i_domain < n; ++i_domain) {
-              if (model::universes[p.coord(level).universe]->id_ ==
+              if (model::universes[p.coord(level).universe()]->id_ ==
                   domain_ids_[i_domain]) {
                 check_hit(p.material(), indices[i_domain], hits[i_domain]);
                 break;
@@ -242,7 +241,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // non-zero
       auto n_nuc =
         settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
-      xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
+      auto atoms =
+        tensor::zeros<double>({static_cast<size_t>(n_nuc), size_t {2}});
 
 #ifdef OPENMC_MPI
       if (mpi::master) {
@@ -452,9 +452,11 @@ void VolumeCalculation::to_hdf5(
     }
 
     // Create array of total # of atoms with uncertainty for each nuclide
-    xt::xtensor<double, 2> atom_data({n_nuc, 2});
-    xt::view(atom_data, xt::all(), 0) = xt::adapt(result.atoms);
-    xt::view(atom_data, xt::all(), 1) = xt::adapt(result.uncertainty);
+    tensor::Tensor<double> atom_data({static_cast<size_t>(n_nuc), size_t {2}});
+    for (size_t k = 0; k < static_cast<size_t>(n_nuc); ++k) {
+      atom_data(k, 0) = result.atoms[k];
+      atom_data(k, 1) = result.uncertainty[k];
+    }
 
     // Write results
     write_dataset(group_id, "nuclides", nucnames);

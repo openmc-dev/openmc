@@ -205,7 +205,71 @@ had a collision at every event. Thus, for tallies with outgoing-energy filters
 or for tallies of scattering moments (which require the scattering cosine of
 the change-in-angle), we must use an analog estimator.
 
-.. TODO: Add description of surface current tallies
+-----------------------------------
+Surface-Integrated Flux and Current
+-----------------------------------
+
+Surface tallies allow you to measure particle behavior as they cross specific
+boundaries in your geometry. Unlike volume tallies, which integrate over a
+volumetric region, surface tallies capture the current or flux passing through a
+surface. Surface tallies are estimated using an analog estimator.
+
+Current Score
+-------------
+
+When tallying the current across a surface, we simply count the weight of
+particles that cross the surface of interest:
+
+
+.. math::
+    :label: analog-current-estimator
+
+    J = \frac{1}{W} \sum_{i \in S} w_i.
+
+where :math:`J` is the area-integrated current passing through surface
+:math:`S`, :math:`W` is the total starting weight of the particles, and
+:math:`w_i` is the weight of the particle as it crosses the surface :math:`S`.
+
+Flux Score
+----------
+
+When tallying flux over a surface, we use the relationship between current and
+flux:
+
+
+.. math::
+    :label: surface-flux-estimator
+
+    \phi_S = \frac{1}{W} \sum_{i \in S} \frac{w_i}{|\mu|}.
+
+where :math:`\phi_S` is the area-integrated flux over surface :math:`S`,
+:math:`W` is the total starting weight of the particles, :math:`w_i` is the
+weight of the particle as it crosses the surface :math:`S` and :math:`\mu` is
+the cosine of angle between the particle direction and the surface normal.
+
+This equation diverges when the particle crossing the surface is nearly parallel
+to it (that is, as :math:`\mu` approaches zero). To remove this divergence,
+OpenMC scores:
+
+.. math::
+    :label: modified-surface-flux-estimator
+
+    \phi_S = \frac{1}{W} \sum_{i \in S} w_i f(\mu).
+
+and the function :math:`f` is defined by:
+
+.. math::
+     f(\mu) = \begin{cases}
+      \frac{1}{|\mu|} & |\mu| > \mu_\text{cut} \\
+      \frac{1}{c\mu_\text{cut}} & |\mu| \le \mu_\text{cut}
+     \end{cases}
+
+where :math:`\mu_\text{cut}` is the grazing cosine cutoff and :math:`c` is the
+cosine substitution ratio. The parameters :math:`\mu_\text{cut}` and :math:`c`
+can be set by the user via the :attr:`openmc.Settings.surface_grazing_cutoff`
+and :attr:`openmc.Settings.surface_grazing_ratio` attributes, respectively. The
+default values for these parameters are 0.001 and 0.5 as recommended by
+`Favorite, Thomas, and Booth <https://doi.org/10.13182/NSE09-72>`_.
 
 .. _tallies_statistics:
 
@@ -387,6 +451,101 @@ of this is that the longer you run a simulation, the better you know your
 results. Therefore, by running a simulation long enough, it is possible to
 reduce the stochastic uncertainty to arbitrarily low levels.
 
+Skewness
+++++++++
+
+The `skewness`_ of a population quantifies the asymmetry of the probability
+distribution around its mean. Positive and negative skewness indicate a
+longer/heavier right and left tail respectively. Let :math:`x_1,\ldots,x_n` be
+the per-realization values for a bin, with sample mean :math:`\bar{x}` and
+sample central moments:
+
+.. math::
+
+   m_k \;=\; \frac{1}{n}\sum_{i=1}^{n}\bigl(x_i-\bar{x}\bigr)^k.
+
+OpenMC reports the *adjusted Fisher-Pearson skewness* (defined for :math:`n \ge
+3`), which is commonly used in many statistical packages:
+
+.. math::
+
+   G_1 \;=\; \frac{\sqrt{n \cdot (n-1)}}{\,n-2\,}\cdot\frac{m_3}{m_2^{3/2}}.
+
+where :math:`m_2` and :math:`m_3` correspond to the biased sample second and
+third central moment respectively.
+
+Kurtosis
+++++++++
+
+The `kurtosis`_ of a population quantifies tail weight (also called tailedness)
+of the probability distribution relative to a normal distribution. Positive
+excess kurtosis indicates *heavier tails* whereas negative excess kurtosis
+indicates *lighter tails*. Kurtosis is especially useful for identifying bins
+where occasional extreme scores dominate uncertainty. OpenMC reports the
+*adjusted excess kurtosis* (defined for :math:`n \ge 4`):
+
+.. math::
+
+   G_2 \;=\; \frac{(n-1)}{(n-2)(n-3)}
+             \left[(n+1)\,\frac{m_4}{m_2^{2}} \;-\; 3(n-1)\right].
+
+where :math:`m_2` and :math:`m_4` correspond to the biased sample second and
+fourth central moment respectively. For a perfectly normal distribution, the
+excess kurtosis is :math:`0`.
+
+Variance of Variance
+++++++++++++++++++++
+
+The variance of the variance (also known as the coefficient of variation
+squared) measures *stability of the sample variance* :math:`s^2` and, by
+extension, the reliability of reported relative errors. High VOV means that
+error bars themselves are noisy—often due to heavy tails, skewness, or too few
+realizations.
+
+.. math::
+
+    VOV = \frac{s^2(s_{\bar{X}}^2)}{s_{\bar{X}}^4 } = \frac{m_4}{m_2^2} - \frac{1}{n}
+
+where :math:`s_{\bar{X}}^2` is the estimated variance of the mean and
+:math:`s^2(s_{\bar{X}}^2)` is the estimated variance in :math:`s_{\bar{X}}^2`.
+The MCNP manual suggests a hard threshold such that :math:`VOV < 0.1` to improve
+the probability of forming a reliable confidence interval. However, OpenMC does
+not enforce an universal cut-off because the suitability of any single threshold
+depends strongly on problem specifics (estimator choice, variance-reduction
+settings, tally binning, or even effective sample size).
+
+
+Normality Tests (D'Agostino-Pearson)
+++++++++++++++++++++++++++++++++++++
+
+These normality test verify the hypothesis that fluctuations are *approximately
+normal*, a working assumption behind many Monte Carlo diagnostics and
+`confidence-interval heuristics`_. Tests are provided for: (i) skewness-only,
+(ii) kurtosis-only, and (iii) the *omnibus* combination. OpenMC uses the
+finite-sample-adjusted skewness :math:`G_1` and excess kurtosis :math:`G_2`
+above to construct standardized normal scores :math:`Z_1` (from :math:`G_1`) and
+:math:`Z_2` (from :math:`G_2`) via the D'Agostino-Pearson transformations. The
+omnibus statistic is
+
+.. math::
+
+   K^2 \;=\; Z_1^{\,2} \;+\; Z_2^{\,2}
+   \;\sim\; \chi^2_{(2)} \quad \text{under } H_0:\ \text{normality}.
+
+OpenMC reports :math:`Z_1`, :math:`Z_2`, :math:`K^2`, and their p-values when
+prerequisites are met (skewness for :math:`n\ge 3`, kurtosis and omnibus for
+:math:`n\ge 4`). Given a user-chosen significance level :math:`\alpha` (default
+is :math:`0.05`), reject :math:`H_0` if :math:`\text{p-value}<\alpha`; otherwise
+fail to reject. OpenMC leaves the interpretation to the user, who should
+consider VOV together with skewness, kurtosis, and normality tests results when
+judging whether reported confidence intervals are credible for their application
+[#norm-tests]_.
+
+.. [#norm-tests]
+   Higher-moments accumulation must be enabled with ``higher_moments = True``
+   for running these diagnostics including the skewness, kurtosis, and normality
+   tests.
+
 Figure of Merit
 +++++++++++++++
 
@@ -405,14 +564,16 @@ defined as
 .. math::
     :label: relative_error
 
-    r = \frac{s_\bar{X}}{\bar{x}}.
+    r = \frac{s_{\bar{X}}}{\bar{x}}.
 
 Based on this definition, one can see that a higher FOM is desirable. The FOM is
 useful as a comparative tool. For example, if a variance reduction technique is
 being applied to a simulation, the FOM with variance reduction can be compared
 to the FOM without variance reduction to ascertain whether the reduction in
 variance outweighs the potential increase in execution time (e.g., due to
-particle splitting).
+particle splitting). It is important to note that MCNP reports the FOM using CPU
+time (wall-clock time multiplied by the number of threads/cores), whereas OpenMC
+reports the FOM using only the wall-clock time :math:`t`.
 
 Confidence Intervals
 ++++++++++++++++++++
@@ -521,6 +682,8 @@ improve the estimate of the percentile.
 
    .. rubric:: References
 
+.. _confidence-interval heuristics: https://doi.org/10.1080/00031305.1990.10475751
+
 .. _following approximation: https://doi.org/10.1080/03610918708812641
 
 .. _Bessel's correction: https://en.wikipedia.org/wiki/Bessel's_correction
@@ -540,6 +703,10 @@ improve the estimate of the percentile.
 .. _normal distribution: https://en.wikipedia.org/wiki/Normal_distribution
 
 .. _converges in distribution: https://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution
+
+.. _skewness: https://en.wikipedia.org/wiki/Skewness
+
+.. _kurtosis: https://en.wikipedia.org/wiki/Kurtosis
 
 .. _confidence intervals: https://en.wikipedia.org/wiki/Confidence_interval
 

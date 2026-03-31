@@ -32,6 +32,24 @@ enum class IFPParameter {
   GenerationTime,
 };
 
+struct CollisionTrackConfig {
+  bool mcpl_write {false}; //!< Write collision tracks using MCPL?
+  std::unordered_set<int>
+    cell_ids; //!< Cell ids where collisions will be written
+  std::unordered_set<int>
+    mt_numbers; //!< MT Numbers where collisions will be written
+  std::unordered_set<int>
+    universe_ids; //!< Universe IDs where collisions will be written
+  std::unordered_set<int>
+    material_ids; //!< Material IDs where collisions will be written
+  std::unordered_set<std::string>
+    nuclides; //!< Nuclides where collisions will be written
+  double deposited_energy_threshold {0.0}; //!< Minimum deposited energy [eV]
+  int64_t max_collisions {
+    1000};               //!< Maximum events recorded per collision track file
+  int64_t max_files {1}; //!< Maximum number of collision track files
+};
+
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -41,6 +59,7 @@ namespace settings {
 // Boolean flags
 extern bool assume_separate;      //!< assume tallies are spatially separate?
 extern bool check_overlaps;       //!< check overlaps in geometry?
+extern bool collision_track;      //!< flag to use collision track feature?
 extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
   create_fission_neutrons; //!< create fission neutrons (fixed source)?
@@ -58,6 +77,7 @@ extern "C" bool output_summary;      //!< write summary.h5?
 extern bool output_tallies;          //!< write tallies.out?
 extern bool particle_restart_run;    //!< particle restart run?
 extern "C" bool photon_transport;    //!< photon transport turned on?
+extern bool atomic_relaxation;       //!< atomic relaxation enabled?
 extern "C" bool reduce_tallies;      //!< reduce tallies at end of batch?
 extern bool res_scat_on;             //!< use resonance upscattering method?
 extern "C" bool restart_run;         //!< restart run?
@@ -94,6 +114,8 @@ extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_sourcepoint;      //!< path to a source file
 extern std::string path_statepoint;       //!< path to a statepoint file
 extern std::string weight_windows_file;   //!< Location of weight window file to
+                                          //!< load on simulation initialization
+extern std::string properties_file;       //!< Location of properties file to
                                           //!< load on simulation initialization
 
 // This is required because the c_str() may not be the first thing in
@@ -145,11 +167,15 @@ extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
+extern CollisionTrackConfig collision_track_config;
 extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
+extern double free_gas_threshold;        //!< Threshold multiplier for free gas
+                                         //!< scattering treatment
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows
+extern int max_secondaries;       //!< maximum number of secondaries in the bank
 extern int64_t ssw_max_particles; //!< maximum number of particles to be
                                   //!< banked on surfaces per process
 extern int64_t ssw_max_files;     //!< maximum number of surface source files
@@ -158,6 +184,8 @@ extern int64_t ssw_cell_id;       //!< Cell id for the surface source
                                   //!< write setting
 extern SSWCellType ssw_cell_type; //!< Type of option for the cell
                                   //!< argument of surface source write
+extern double surface_grazing_cutoff; //!< surface flux cosine cutoff
+extern double surface_grazing_ratio;  //!< surface flux substitution ratio
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures
 extern double

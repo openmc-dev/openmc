@@ -91,11 +91,29 @@ void score_analog_tally_mg(Particle& p);
 //! \param distance The distance in [cm] traveled by the particle
 void score_tracklength_tally(Particle& p, double distance);
 
-//! Score surface or mesh-surface tallies for particle currents.
+//! Score time filtered tallies using a tracklength estimate of the flux.
+//
+//! This is triggered at every event (surface crossing, lattice crossing, or
+//! collision) and thus cannot be done for tallies that require post-collision
+//! information.
+//
+//! \param p The particle being tracked
+//! \param total_distance The distance in [cm] traveled by the particle
+void score_timed_tracklength_tally(Particle& p, double total_distance);
+
+//! Score mesh-surface tallies for particle currents.
 //
 //! \param p The particle being tracked
 //! \param tallies A vector of the indices of the tallies to score to
-void score_surface_tally(Particle& p, const vector<int>& tallies);
+void score_meshsurface_tally(Particle& p, const vector<int>& tallies);
+
+//! Score surface tallies for particle currents.
+//
+//! \param p The particle being tracked
+//! \param tallies A vector of the indices of the tallies to score to
+//! \param normal The normal of the surface being crossed
+void score_surface_tally(
+  Particle& p, const vector<int>& tallies, const Direction& normal);
 
 //! Score the pulse-height tally
 //! This is triggered at the end of every particle history

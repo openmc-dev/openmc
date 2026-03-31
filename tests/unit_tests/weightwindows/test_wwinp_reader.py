@@ -52,7 +52,7 @@ n_mesh.z_grid = np.array([-100.0,
 n_e_bounds = (np.array([0.0,
                          100000.0,
                          146780.0]),)
-n_particles = ('neutron',)
+n_particles = [openmc.ParticleType.NEUTRON]
 
 # expected results - neutron and photon data
 np_mesh = openmc.RectilinearMesh()
@@ -63,7 +63,7 @@ np_mesh.z_grid = n_mesh.z_grid
 
 np_e_bounds = (np.array([0.0, 100000.0, 146780.0, 215440.0]),
                np.array([0.0, 1.0E8]))
-np_particles = ('neutron', 'photon')
+np_particles = [openmc.ParticleType.NEUTRON, openmc.ParticleType.PHOTON]
 
 # expected results - photon data only
 p_mesh = openmc.RectilinearMesh()
@@ -74,7 +74,7 @@ p_mesh.y_grid = np_mesh.y_grid
 p_mesh.z_grid = np.array([-50.0, 50.0])
 
 p_e_bounds = (np.array([0.0, 100000.0, 146780.0, 215440.0, 316230.0]),)
-p_particles = ('photon',)
+p_particles = [openmc.ParticleType.PHOTON]
 
 expected_results = [('wwinp_n', n_mesh, n_particles, n_e_bounds),
                     ('wwinp_np', np_mesh, np_particles, np_e_bounds),
@@ -96,7 +96,7 @@ def id_fn(params):
 def test_wwinp_reader(wwinp_data, request):
     wwinp_file, mesh, particle_types, energy_bounds = wwinp_data
 
-    wws = openmc.wwinp_to_wws(request.node.path.parent / wwinp_file)
+    wws = openmc.WeightWindowsList.from_wwinp(request.node.path.parent / wwinp_file)
 
     for i, ww in enumerate(wws):
         e_bounds = energy_bounds[i]
@@ -140,4 +140,4 @@ def test_wwinp_reader_failures(wwinp_data, request):
     filename, expected_failure = wwinp_data
 
     with pytest.raises(expected_failure):
-        _ = openmc.wwinp_to_wws(request.node.path.parent / filename)
+        _ = openmc.WeightWindowsList.from_wwinp(request.node.path.parent / filename)

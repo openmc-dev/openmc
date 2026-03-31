@@ -3,8 +3,11 @@ from pathlib import Path
 
 import pytest
 
+import numpy as np
+
 import openmc
 from openmc.data import decay_photon_energy
+from openmc.deplete import Chain
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -73,6 +76,13 @@ def test_add_components():
         m.add_components({1.0: 'H1'}, percent_type = 'wo')
     with pytest.raises(ValueError):
         m.add_components({'H1': 1.0}, percent_type = 'oa')
+
+
+def test_id():
+    openmc.Material(material_id=0)
+    with pytest.raises(ValueError):
+        openmc.Material(material_id=-1)
+
 
 def test_nuclides_to_ignore(run_in_tmpdir):
     """Test nuclides_to_ignore when exporting a material to XML"""
@@ -478,6 +488,7 @@ def test_borated_water():
     # Test the density override
     m = openmc.model.borated_water(975, 566.5, 15.51, density=0.9)
     assert m.density == pytest.approx(0.9, 1e-3)
+    assert m.temperature == pytest.approx(566.5)
 
 
 def test_from_xml(run_in_tmpdir):
@@ -712,6 +723,47 @@ def test_avoid_subnormal(run_in_tmpdir):
     assert mats[0].get_nuclide_atom_densities()['H2'] == 0.0
 
 
+def test_material_deplete():
+    pristine_material = openmc.Material()
+    pristine_material.add_nuclide("Ni58", 1.0)
+    pristine_material.set_density("g/cm3", 7.87)
+    pristine_material.depletable = True
+    pristine_material.temperature = 293.6
+    pristine_material.volume = 1.
+
+    mg_flux = [0.5e11] * 42
+
+    chain = Chain.from_xml(
+        Path(__file__).parents[1] / "chain_ni.xml"
+    )
+
+    depleted_material = pristine_material.deplete(
+        multigroup_flux=mg_flux,
+        energy_group_structure="VITAMIN-J-42",
+        timesteps=[10, 70.86],
+        source_rates=[1e19, 0.0],
+        timestep_units="d",
+        chain_file=chain,
+    )
+
+    for i_step, material in enumerate(depleted_material):
+        assert isinstance(material, openmc.Material)
+        if i_step > 0:
+            assert len(material.get_nuclides()) > len(pristine_material.get_nuclides())
+
+    Co58_mat_1_step_0 = depleted_material[0].get_nuclide_atom_densities("Co58").get("Co58", 0.0)
+    Co58_mat_1_step_1 = depleted_material[1].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_2 = depleted_material[2].get_nuclide_atom_densities("Co58")["Co58"]
+
+    assert Co58_mat_1_step_0 == 0.0
+
+    # Check that Co58 is produced in the first step
+    assert Co58_mat_1_step_1 > 0.0
+
+    # Check that Co58 is halved in the second step which is one halflife later
+    assert np.allclose(Co58_mat_1_step_1 * 0.5, Co58_mat_1_step_2)
+
+
 def test_mean_free_path():
 
     mat1 = openmc.Material()
@@ -723,3 +775,109 @@ def test_mean_free_path():
     mat2.add_nuclide('Pb208', 1.0)
     mat2.set_density('g/cm3', 11.34)
     assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)
+
+
+def test_material_from_constructor():
+    # Test that components and percent_type work in the constructor
+    components = {
+        'Li': {'percent': 0.5, 'enrichment': 60.0, 'enrichment_target': 'Li7'},
+        'O16': 1.0,
+        'Be': 0.5
+    }
+    mat = openmc.Material(
+        material_id=123,
+        name="test-mat",
+        components=components,
+        percent_type="ao"
+    )
+    # Check that nuclides were added
+    nuclide_names = [nuc.name for nuc in mat.nuclides]
+    assert 'O16' in nuclide_names
+    assert 'Be9' in nuclide_names
+    assert 'Li7' in nuclide_names
+    assert 'Li6' in nuclide_names
+    assert mat.id == 123
+    assert mat.name == "test-mat"
+
+    mat1 = openmc.Material(
+        **{
+            "material_id": 1,
+            "name": "neutron_star",
+            "density": 1e17,
+            "density_units": "kg/m3",
+        }
+    )
+    assert mat1.id == 1
+    assert mat1.name == "neutron_star"
+    assert mat1._density == 1e17
+    assert mat1._density_units == "kg/m3"
+    assert mat1.nuclides == []
+
+    mat2 = openmc.Material(
+        material_id=42,
+        name="plasma",
+        temperature=None,
+        density=1e-7,
+        density_units="g/cm3",
+    )
+    assert mat2.id == 42
+    assert mat2.name == "plasma"
+    assert mat2.temperature is None
+    assert mat2.density == 1e-7
+    assert mat2.density_units == "g/cm3"
+    assert mat2.nuclides == []
+
+
+def test_get_photon_contact_dose_rate():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # A purely stable material (Fe) should give zero dose
+    m_stable = openmc.Material()
+    m_stable.add_element('Fe', 1.0)
+    m_stable.set_density('g/cm3', 7.87)
+    assert m_stable.get_photon_contact_dose_rate('absorbed-air') == 0.0
+    assert m_stable.get_photon_contact_dose_rate('effective') == 0.0
+
+    # I135 has a Discrete photon source (lines)
+    m_i135 = openmc.Material()
+    m_i135.add_nuclide('I135', 1.0)
+    m_i135.set_density('atom/b-cm', 1.0)
+
+    cdr_abs = m_i135.get_photon_contact_dose_rate('absorbed-air')
+    cdr_eff = m_i135.get_photon_contact_dose_rate('effective')
+    assert cdr_abs == pytest.approx(6.091547e10, rel=1e-4)   # [Gy/h]
+    assert cdr_eff == pytest.approx(6.102167e10, rel=1e-4)   # [Sv/h]
+
+    # Xe135 has a Tabular photon source (continuous distribution)
+    m_xe135 = openmc.Material()
+    m_xe135.add_nuclide('Xe135', 1.0)
+    m_xe135.set_density('atom/b-cm', 1.0)
+
+    cdr_xe_abs = m_xe135.get_photon_contact_dose_rate('absorbed-air')
+    cdr_xe_eff = m_xe135.get_photon_contact_dose_rate('effective')
+    assert cdr_xe_abs == pytest.approx(7.886077e8, rel=1e-4)  # [Gy/h]
+    assert cdr_xe_eff == pytest.approx(9.488298e8, rel=1e-4)  # [Sv/h]
+
+    # by_nuclide=True should return a dict whose values sum to the total
+    cdr_by_nuc = m_i135.get_photon_contact_dose_rate('absorbed-air', by_nuclide=True)
+    assert isinstance(cdr_by_nuc, dict)
+    assert 'I135' in cdr_by_nuc
+    assert sum(cdr_by_nuc.values()) == pytest.approx(cdr_abs)
+
+    # For a mixed material the sum over nuclides must equal the total
+    m_mix = openmc.Material()
+    m_mix.add_nuclide('I135', 0.5)
+    m_mix.add_nuclide('Xe135', 0.5)
+    m_mix.set_density('atom/b-cm', 1.0)
+    cdr_mix_total = m_mix.get_photon_contact_dose_rate('absorbed-air')
+    cdr_mix_nuc = m_mix.get_photon_contact_dose_rate('absorbed-air', by_nuclide=True)
+    assert sum(cdr_mix_nuc.values()) == pytest.approx(cdr_mix_total)
+
+    # Input validation
+    with pytest.raises(ValueError):
+        m_i135.get_photon_contact_dose_rate('invalid-quantity')
+    with pytest.raises(TypeError):
+        m_i135.get_photon_contact_dose_rate('absorbed-air', build_up='two')
+    with pytest.raises(ValueError):
+        m_i135.get_photon_contact_dose_rate('absorbed-air', build_up=-1.0)

@@ -76,7 +76,7 @@ public:
   }
 
   //! Populate the distribcell offset tables.
-  int32_t fill_offset_table(int32_t offset, int32_t target_univ_id, int map,
+  int32_t fill_offset_table(int32_t target_univ_id, int map,
     std::unordered_map<int32_t, int32_t>& univ_count_memo);
 
   //! \brief Check lattice indices.
@@ -112,6 +112,14 @@ public:
   //! \return Local 3D Cartesian coordinates.
   virtual Position get_local_position(
     Position r, const array<int, 3>& i_xyz) const = 0;
+
+  //! \brief get the normal of the lattice surface crossing
+  //! \param[in] i_xyz The indices for the lattice translation.
+  //! \param[out] is_valid is the lattice translation correspond to a valid
+  //! surface. \return The surface normal corresponding to the lattice
+  //! translation.
+  virtual Direction get_normal(
+    const array<int, 3>& i_xyz, bool& is_valid) const = 0;
 
   //! \brief Check flattened lattice index.
   //! \param indx The index for a lattice tile.
@@ -223,6 +231,9 @@ public:
   Position get_local_position(
     Position r, const array<int, 3>& i_xyz) const override;
 
+  Direction get_normal(
+    const array<int, 3>& i_xyz, bool& is_valid) const override;
+
   int32_t& offset(int map, const array<int, 3>& i_xyz) override;
 
   int32_t offset(int map, int indx) const override;
@@ -267,6 +278,9 @@ public:
 
   Position get_local_position(
     Position r, const array<int, 3>& i_xyz) const override;
+
+  Direction get_normal(
+    const array<int, 3>& i_xyz, bool& is_valid) const override;
 
   bool is_valid_index(int indx) const override;
 

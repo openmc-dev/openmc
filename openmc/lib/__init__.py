@@ -46,11 +46,11 @@ def _coord_levels():
 def _libmesh_enabled():
     return c_bool.in_dll(_dll, "LIBMESH_ENABLED").value
 
-def _mcpl_enabled():
-    return c_bool.in_dll(_dll, "MCPL_ENABLED").value
-
 def _uwuw_enabled():
     return c_bool.in_dll(_dll, "UWUW_ENABLED").value
+
+def _strict_fp_enabled():
+    return c_bool.in_dll(_dll, "STRICT_FP_ENABLED").value
 
 
 from .error import *

@@ -96,7 +96,7 @@ public:
   // Temperature dependent cross section data
   vector<double> kTs_;                //!< temperatures in eV (k*T)
   vector<EnergyGrid> grid_;           //!< Energy grid at each temperature
-  vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+  vector<tensor::Tensor<double>> xs_; //!< Cross sections at each temperature
 
   // Multipole data
   unique_ptr<WindowedMultipole> multipole_;
@@ -163,9 +163,9 @@ bool multipole_in_range(const Nuclide& nuc, double E);
 namespace data {
 
 // Minimum/maximum transport energy for each particle type. Order corresponds to
-// that of the ParticleType enum
-extern array<double, 2> energy_min;
-extern array<double, 2> energy_max;
+// transport_index() for supported transport particles.
+extern array<double, 4> energy_min;
+extern array<double, 4> energy_max;
 
 //! Minimum temperature in [K] that nuclide data is available at
 extern double temperature_min;

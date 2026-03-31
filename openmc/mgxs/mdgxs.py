@@ -7,6 +7,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from openmc.mgxs import MGXS
 from .mgxs import _DOMAIN_TO_FILTER
 
@@ -722,7 +723,7 @@ class MDGXS(MGXS):
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
@@ -876,8 +877,8 @@ class MDGXS(MGXS):
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
             mesh_str = f'mesh {self.domain.id}'
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
-                               (mesh_str, 'z')] + columns, inplace=True)
+            mesh_cols = [(mesh_str, label) for label in self.domain._axis_labels]
+            df.sort_values(by=mesh_cols + columns, inplace=True)
         else:
             df.sort_values(by=[self.domain_type] + columns, inplace=True)
 

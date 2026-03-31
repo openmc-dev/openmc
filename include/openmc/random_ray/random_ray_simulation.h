@@ -31,10 +31,6 @@ public:
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
   void print_results_random_ray() const;
-  int64_t total_geometric_intersections() const
-  {
-    return total_geometric_intersections_;
-  }
 
   //----------------------------------------------------------------------------
   // Accessors

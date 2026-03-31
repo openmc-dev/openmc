@@ -96,6 +96,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Write run information
     write_dataset(file_id, "energy_mode",
       settings::run_CE ? "continuous-energy" : "multi-group");
+    if (!settings::run_CE) {
+      write_dataset(file_id, "n_energy_groups", data::mg.num_energy_groups_);
+    }
     switch (settings::run_mode) {
     case RunMode::FIXED_SOURCE:
       write_dataset(file_id, "run_mode", "fixed source");
@@ -106,6 +109,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     default:
       break;
     }
+
     write_attribute(file_id, "photon_transport", settings::photon_transport);
     write_dataset(file_id, "n_particles", settings::n_particles);
     write_dataset(file_id, "n_batches", settings::n_batches);

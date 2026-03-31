@@ -28,6 +28,8 @@ The current version of the statepoint file format is 18.1.
              'continuous-energy' or 'multi-group'.
            - **run_mode** (*char[]*) -- Run mode used, either 'eigenvalue' or
              'fixed source'.
+           - **solver_type** (*char[]*) -- Solver used, either 'monte carlo' or
+             'random ray'.
            - **n_particles** (*int8_t*) -- Number of particles used per generation.
            - **n_batches** (*int*) -- Number of batches to simulate.
            - **current_batch** (*int*) -- The number of batches already simulated.
@@ -49,6 +51,8 @@ The current version of the statepoint file format is 18.1.
              combined estimate of k-effective.
            - **n_realizations** (*int*) -- Number of realizations for global
              tallies.
+           - **n_energy_groups** (*int*) -- Number of energy groups used if
+              **energy_mode** is 'multi-group'.
            - **global_tallies** (*double[][2]*) -- Accumulated sum and
              sum-of-squares for each global tally.
            - **source_bank** (Compound type) -- Source bank information for each
@@ -167,6 +171,37 @@ The current version of the statepoint file format is 18.1.
              combinations of filter bins, the second dimensions represents
              scoring bins, and the third dimension has two entries for the sum
              and the sum-of-squares.
+
+**/random_ray/**
+
+This dataset only exists if a random ray simulation was run.
+
+:Datasets: - **adjoint_mode** (*int*) -- Indicate whether random ray solve
+             was in adjoint mode.
+           - **avg_miss_rate** (*double*) -- The random ray average source
+            region miss rate per iteration expressed as a percent.
+           -  **distance_active** (*double*) -- Indicates the total active
+             distance in [cm] for each ray.
+           -  **distance_inactive** (*double*) -- Indicates the total inactive
+             distance in [cm] for each ray.
+           -  **sample_method** (*char[]*) -- Sampling method for the ray
+             starting location and direction of travel, e.g. `prng` or 'halton`
+           -  **source_shape** (*char[]*) -- Assumed shape of the source
+             distribution within each source region, e.g. 'flat' (default),
+             'linear', or 'linear_xy'.
+           -  **n_external_source_regions** (*int*) -- Number of external
+             source regions in random ray simulation.
+           -  **n_geometric_intersections** (*int*) -- Total number of
+             geometric intersections in random ray simulation.
+           -  **n_integrations** (*int*) -- Total number of integrations in
+             random ray simulation.
+           -  **n_source_regions** (*int*) -- Number of source regions in
+             random ray simulation.
+           -  **volume_estimator** (*char[]*) -- Choice of volume estimator for
+             the random ray solver, e.g. 'naive', 'simulation_averaged', or
+             'hybrid'.
+           -  **volume_normalized_flux_tallies** (*int*) -- Indicate whether
+             volume normalized flux tallies are used or not.
 
 **/runtime/**
 

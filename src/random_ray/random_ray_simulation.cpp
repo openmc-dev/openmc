@@ -372,48 +372,59 @@ void openmc_reset_random_ray()
 
 void write_random_ray_hdf5(hid_t group)
 {
+  hid_t random_ray_group = create_group(group, "random_ray");
   switch (RandomRay::source_shape_) {
   case RandomRaySourceShape::FLAT:
-    write_dataset(group, "source_shape", "flat");
+    write_dataset(random_ray_group, "source_shape", "flat");
     break;
   case RandomRaySourceShape::LINEAR:
-    write_dataset(group, "source_shape", "linear");
+    write_dataset(random_ray_group, "source_shape", "linear");
     break;
   case RandomRaySourceShape::LINEAR_XY:
-    write_dataset(group, "source_shape", "linear_xy");
+    write_dataset(random_ray_group, "source_shape", "linear xy");
     break;
   default:
     break;
   }
+
   std::string sample_method =
     (RandomRay::sample_method_ == RandomRaySampleMethod::PRNG) ? "prng"
                                                                : "halton";
-  write_dataset(group, "sample_method", sample_method);
+  write_dataset(random_ray_group, "sample_method", sample_method);
   switch (FlatSourceDomain::volume_estimator_) {
   case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
-    write_dataset(group, "volume_estimator", "simulation_averaged");
+    write_dataset(random_ray_group, "volume_estimator", "simulation averaged");
     break;
   case RandomRayVolumeEstimator::NAIVE:
-    write_dataset(group, "volume_estimator", "naive");
+    write_dataset(random_ray_group, "volume_estimator", "naive");
     break;
   case RandomRayVolumeEstimator::HYBRID:
-    write_dataset(group, "volume_estimator", "hybrid");
+    write_dataset(random_ray_group, "volume_estimator", "hybrid");
     break;
   default:
     break;
   }
-  write_dataset(group, "distance_active", RandomRay::distance_active_);
-  write_dataset(group, "distance_inactive", RandomRay::distance_inactive_);
-  write_dataset(group, "adjoint_mode", FlatSourceDomain::adjoint_);
-  write_dataset(group, "avg_miss_rate", RandomRay::avg_miss_rate);
-  write_dataset(group, "n_source_regions", RandomRay::n_source_regions);
+  write_dataset(random_ray_group, "volume_normalized_flux_tallies",
+    FlatSourceDomain::volume_normalized_flux_tallies_);
+
   write_dataset(
-    group, "n_external_source_regions", RandomRay::n_external_source_regions);
-  write_dataset(group, "n_geometric_intersections",
-    RandomRay::total_geometric_intersections);
+    random_ray_group, "distance_active", RandomRay::distance_active_);
+  write_dataset(
+    random_ray_group, "distance_inactive", RandomRay::distance_inactive_);
+  write_dataset(random_ray_group, "adjoint_mode", FlatSourceDomain::adjoint_);
+
+  write_dataset(random_ray_group, "avg_miss_rate", RandomRay::avg_miss_rate_);
+  write_dataset(
+    random_ray_group, "n_source_regions", RandomRay::n_source_regions_);
+  write_dataset(random_ray_group, "n_external_source_regions",
+    RandomRay::n_external_source_regions_);
+  write_dataset(random_ray_group, "n_geometric_intersections",
+    RandomRay::total_geometric_intersections_);
   int64_t n_integrations =
-    RandomRay::total_geometric_intersections * RandomRay::negroups_;
-  write_dataset(group, "n_integrations", n_integrations);
+    RandomRay::total_geometric_intersections_ * data::mg.num_energy_groups_;
+  write_dataset(random_ray_group, "n_integrations", n_integrations);
+
+  close_group(random_ray_group);
 }
 
 //==============================================================================
@@ -571,11 +582,11 @@ void RandomRaySimulation::simulate()
       instability_check(n_hits, k_eff_, avg_miss_rate_);
     } // End MPI master work
 
-    // Set global variables for reporting
-    RandomRay::avg_miss_rate = avg_miss_rate_ / settings::n_batches;
-    RandomRay::total_geometric_intersections = total_geometric_intersections_;
-    RandomRay::n_external_source_regions = domain_->n_external_source_regions_;
-    RandomRay::n_source_regions = domain_->n_source_regions();
+    // Store simulation metrics
+    RandomRay::avg_miss_rate_ = avg_miss_rate_ / settings::n_batches;
+    RandomRay::total_geometric_intersections_ = total_geometric_intersections_;
+    RandomRay::n_external_source_regions_ = domain_->n_external_source_regions_;
+    RandomRay::n_source_regions_ = domain_->n_source_regions();
 
     // Finalize the current batch
     finalize_generation();
@@ -633,7 +644,7 @@ void RandomRaySimulation::print_results_random_ray() const
 
   if (settings::verbosity >= 6) {
     double total_integrations =
-      RandomRay::total_geometric_intersections * RandomRay::negroups_;
+      RandomRay::total_geometric_intersections_ * negroups_;
     double time_per_integration =
       simulation::time_transport.elapsed() / total_integrations;
     double misc_time = time_total.elapsed() - time_update_src.elapsed() -
@@ -649,22 +660,22 @@ void RandomRaySimulation::print_results_random_ray() const
       RandomRay::distance_inactive_);
     fmt::print(" Active Distance                   = {} cm\n",
       RandomRay::distance_active_);
-    fmt::print(
-      " Source Regions (SRs)              = {}\n", RandomRay::n_source_regions);
+    fmt::print(" Source Regions (SRs)              = {}\n",
+      RandomRay::n_source_regions_);
     fmt::print(" SRs Containing External Sources   = {}\n",
-      RandomRay::n_external_source_regions);
+      RandomRay::n_external_source_regions_);
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
-      static_cast<double>(RandomRay::total_geometric_intersections));
+      static_cast<double>(RandomRay::total_geometric_intersections_));
     fmt::print("   Avg per Iteration               = {:.4e}\n",
-      static_cast<double>(RandomRay::total_geometric_intersections) /
+      static_cast<double>(RandomRay::total_geometric_intersections_) /
         settings::n_batches);
     fmt::print("   Avg per Iteration per SR        = {:.2f}\n",
-      static_cast<double>(RandomRay::total_geometric_intersections) /
-        static_cast<double>(settings::n_batches) / RandomRay::n_source_regions);
+      static_cast<double>(RandomRay::total_geometric_intersections_) /
+        static_cast<double>(settings::n_batches) /
+        RandomRay::n_source_regions_);
     fmt::print(" Avg SR Miss Rate per Iteration    = {:.4f}%\n",
-      RandomRay::avg_miss_rate);
-    fmt::print(
-      " Energy Groups                     = {}\n", RandomRay::negroups_);
+      RandomRay::avg_miss_rate_);
+    fmt::print(" Energy Groups                     = {}\n", negroups_);
     fmt::print(
       " Total Integrations                = {:.4e}\n", total_integrations);
     fmt::print("   Avg per Iteration               = {:.4e}\n",

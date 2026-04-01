@@ -2181,13 +2181,14 @@ class Settings:
         self.entropy_mesh = meshes[mesh_id]
 
     def _temperature_field_from_xml_element(self, root, meshes):
-        text = get_text(root, 'temperature_field')
-        if text is None:
-            return
-        mesh_id = int(text)
-        if mesh_id not in meshes:
-            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
-        self.temperature_field.mesh = meshes[mesh_id]
+        elem = root.find('temperature_field')
+        if elem is not None:
+            mesh_id = int(get_text(elem, 'mesh'))
+            if mesh_id not in meshes:
+                raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+            mesh = meshes[mesh_id]
+            values = [float(x) for x in get_text(elem, 'values').split()]
+            self.temperature_field = TemperatureField(mesh, values)
 
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')

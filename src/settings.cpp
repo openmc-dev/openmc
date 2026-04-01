@@ -806,6 +806,11 @@ void read_settings_xml(pugi::xml_node root)
     vector<double> tf_values;
     if (check_for_node(node_tf, "values")) {
       auto temp = get_node_array<double>(node_tf, "values");
+      if (temp.size() != tf_mesh_ptr->n_bins()) {
+        throw std::runtime_error(
+          "Inconsistency in the temperature field: the number of "
+          "values must be equal to the number of bins in the mesh.");
+      }
       for (const auto& b : temp) {
         tf_values.push_back(b);
       }

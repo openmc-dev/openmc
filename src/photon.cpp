@@ -503,7 +503,11 @@ void PhotonInteraction::compton_doppler(
     }
 
     // Sample value on bounded cdf
-    c = prn(seed) * c_max;
+    if (pz_max > 0.0) {
+      c = prn(seed) * c_max;
+    } else {
+      c = 1.0 + (c_max - 1.0) * prn(seed);
+    }
 
     // Determine pz corresponding to sampled cdf value
     tensor::View<const double> cdf_shell = profile_cdf_.slice(shell);
@@ -528,29 +532,24 @@ void PhotonInteraction::compton_doppler(
     double momentum_sq = std::pow((pz / FINE_STRUCTURE), 2);
     double f = 1.0 + alpha * (1.0 - mu);
     double a = momentum_sq - f * f;
-    double b = 2.0 * E * (f - momentum_sq * mu);
-    c = E * E * (momentum_sq - 1.0);
-
-    double quad = std::sqrt(b * b - 4.0 * a * c);
-    double E_out1 = -(b + quad) / (2.0 * a);
-    double E_out2 = -(b - quad) / (2.0 * a);
-
-    // Determine solution to quadratic equation that is positive
-    if (E_out1 > 0.0) {
-      if (E_out2 > 0.0) {
-        // If both are positive, pick one at random
-        *E_out = prn(seed) < 0.5 ? E_out1 : E_out2;
-      } else {
-        *E_out = E_out1;
-      }
-    } else {
-      if (E_out2 > 0.0) {
-        *E_out = E_out2;
-      } else {
-        // No positive solution -- resample
-        continue;
-      }
+    double b = 2.0 * (f - momentum_sq * mu);
+    c = (momentum_sq - 1.0);
+    double quad = b * b - 4.0 * a * c;
+    if (quad < 0) {
+      write_message("Negative quad {}", quad);
+      continue;
     }
+    quad = std::sqrt(quad);
+    double E_out1 = -(b + quad) / (2.0 * a) * E;
+    double E_out2 = -(b - quad) / (2.0 * a) * E;
+    // Determine solution to quadratic equation that is positive and minimal
+    if ((E_out1 < 0.0) && (E_out2 < 0.0))
+      continue;
+    if ((E_out1 > 0.0) && (E_out2 > 0.0))
+      *E_out = std::min(E_out1, E_out2);
+    else
+      *E_out = std::max(E_out1, E_out2);
+
     if (prn(seed) * E <= *E_out)
       break;
   }

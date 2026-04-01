@@ -753,3 +753,12 @@ Functions
    :type scores: const int*
    :return: Return status (negative if an error occurred)
    :rtype: int
+
+.. c:function:: int openmc_temperature_field_set_temperature(int32_t index, double temperature)
+
+   Set the temperature value of a given cell in the temperature field
+
+   :param int32_t index: Index in the tempererature mesh
+   :param double temperature: Temperature in Kelvin
+   :return: Return status (negative if an error occurred)
+   :rtype: int

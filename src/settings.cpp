@@ -794,12 +794,13 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_tf, "mesh")) {
       int temp = std::stoi(get_node_value(node_tf, "mesh"));
       if (model::mesh_map.find(temp) == model::mesh_map.end()) {
-        fatal_error(fmt::format(
+        throw std::runtime_error(fmt::format(
           "Mesh {} specified for the temperature field does not exist.", temp));
       }
       tf_mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
     } else {
-      fatal_error("A mesh should be given for the temperature field.");
+      throw std::runtime_error(
+        "A mesh should be given for the temperature field.");
     }
 
     // Values parameter
@@ -815,7 +816,7 @@ void read_settings_xml(pugi::xml_node root)
         tf_values.push_back(b);
       }
     } else {
-      fatal_error(
+      throw std::runtime_error(
         "Temperature values should be given for the temperature field.");
     }
 

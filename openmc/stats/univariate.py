@@ -2,8 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from copy import deepcopy
-from math import sqrt, pi, exp
+from math import sqrt, pi, exp, log
 from numbers import Real
 from warnings import warn
 
@@ -14,6 +13,7 @@ from scipy.special import exprel, hyp1f1, lambertw
 import scipy
 
 import openmc.checkvalue as cv
+from openmc.data import atomic_mass, NEUTRON_MASS
 from .._xml import get_elem_list, get_text
 from ..mixin import EqualityMixin
 
@@ -1275,6 +1275,138 @@ def Muir(*args, **kwargs):
         FutureWarning
     )
     return muir(*args, **kwargs)
+
+
+def fusion_neutron_spectrum(
+    ion_temp: float,
+    reactants: str = 'DD',
+    bias: Univariate | None = None
+) -> Normal:
+    r"""Return a Gaussian energy distribution for fusion neutron emission.
+
+    Computes the mean energy and spectral width of the neutron energy spectrum
+    from thermonuclear fusion reactions in a plasma with Maxwellian ion velocity
+    distributions. The mean neutron energy is calculated as
+
+    .. math::
+
+        \langle E_n \rangle = E_0 + \Delta E_\text{th}
+
+    where :math:`E_0` is the neutron energy at zero ion temperature and
+    :math:`\Delta E_\text{th}` is the thermal peak shift due to the motion of
+    the reacting ions. The spectral width is characterized by the FWHM:
+
+    .. math::
+
+        W_{1/2} = \omega_0 (1 + \delta_\omega) \sqrt{T_i}
+
+    where :math:`\omega_0` is the width at the :math:`T_i \to 0` limit and
+    :math:`\delta_\omega` is a temperature-dependent correction term. Both
+    :math:`\Delta E_\text{th}` and :math:`\delta_\omega` are evaluated using
+    interpolation formulas from `Ballabio et al.
+    <https://doi.org/10.1088/0029-5515/38/11/310>`_: Table III for :math:`0 <
+    T_i \le 40` keV and Table IV for :math:`40 < T_i < 100` keV. The returned
+    distribution is a normal (Gaussian) approximation to the spectrum.
+
+    .. versionadded:: 0.15.4
+
+    Parameters
+    ----------
+    ion_temp : float
+        Ion temperature of the plasma in [eV].
+    reactants : {'DD', 'DT'}
+        Fusion reactants. 'DD' corresponds to the D(d,n)\ :sup:`3`\ He reaction
+        and 'DT' to the T(d,n)\ :math:`\alpha` reaction.
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
+
+    Returns
+    -------
+    openmc.stats.Normal
+        Normal distribution with mean and standard deviation corresponding to
+        the first and second moments of the fusion neutron energy spectrum. Both
+        the mean and standard deviation are in [eV].
+
+    """
+    if ion_temp < 0.0 or ion_temp > 100e3:
+        raise ValueError("Ion temperature must be between 0 and 100 keV.")
+
+    # Formulas from doi:10.1088/0029-5515/38/11/310
+    mn = NEUTRON_MASS
+    md = atomic_mass('H2')
+    ev_per_c2 = 931.49410372*1e6
+    if reactants == 'DD':
+        mhe3 = atomic_mass('He3')
+        Q = (md + md - mhe3 - mn)*ev_per_c2
+        E_n = mhe3/(mhe3 + mn)*Q
+        w0 = 82.542
+
+        # Low-T constants for peak shift (Table III)
+        a1 = 4.69515
+        a2 = -0.040729
+        a3 = 0.47
+        a4 = 0.81844
+
+        # Low-T constants for width correction (Table III)
+        b1 = 1.7013e-3
+        b2 = 0.16888
+        b3 = 0.49
+        b4 = 7.9460e-4
+
+        # High-T constants for peak shift (Table IV)
+        a5 = 18.225
+        a6 = 2.1525
+
+        # High-T constants for width correction (Table IV)
+        b5 = 8.4619e-3
+        b6 = 8.3241e-4
+
+    elif reactants == 'DT':
+        mt = atomic_mass('H3')
+        ma = atomic_mass('He4')
+        Q = (md + mt - ma - mn)*ev_per_c2
+        E_n = ma/(ma + mn)*Q
+        w0 = 177.259
+
+        # Low-T constants for peak shift (Table III)
+        a1 = 5.30509
+        a2 = 2.4736e-3
+        a3 = 1.84
+        a4 = 1.3818
+
+        # Low-T constants for width correction (Table III)
+        b1 = 5.1068e-4
+        b2 = 7.6223e-3
+        b3 = 1.78
+        b4 = 8.7691e-5
+
+        # High-T constants for peak shift (Table IV)
+        a5 = 37.771
+        a6 = 0.92181
+
+        # High-T constants for width correction (Table IV)
+        b5 = 2.0199e-3
+        b6 = 5.9501e-5
+    else:
+        raise ValueError("Invalid reactants specified. Must be 'DD' or 'DT'.")
+
+    # Ion temperature in keV
+    T = ion_temp * 1e-3
+
+    if T <= 40.0:
+        # Low-temperature interpolation (Table III, 0 < T_i <= 40 keV)
+        Delta_E = a1/(1 + a2*T**a3)*T**(2/3) + a4*T
+        delta_w = b1/(1 + b2*T**b3)*T**(2/3) + b4*T
+    else:
+        # High-temperature interpolation (Table IV, 40 < T_i < 100 keV)
+        Delta_E = a5 + a6*T
+        delta_w = b5 + b6*T
+
+    # Calculate FWHM
+    fwhm = (w0*(1 + delta_w) * sqrt(T))*1e3
+
+    sigma = fwhm / (2*sqrt(2*log(2)))
+    return Normal(E_n + Delta_E * 1e3, sigma, bias=bias)
 
 
 class Tabular(Univariate):

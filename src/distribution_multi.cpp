@@ -1,6 +1,6 @@
 #include "openmc/distribution_multi.h"
 
-#include <algorithm> // for move
+#include <algorithm> // for move, clamp
 #include <cmath>     // for sqrt, sin, cos, max
 
 #include "openmc/constants.h"
@@ -44,6 +44,7 @@ UnitSphereDistribution::UnitSphereDistribution(pugi::xml_node node)
       fatal_error("Angular distribution reference direction must have "
                   "three parameters specified.");
     u_ref_ = Direction(u_ref.data());
+    u_ref_ /= u_ref_.norm();
   }
 }
 
@@ -65,6 +66,7 @@ PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
       fatal_error("Angular distribution reference v direction must have "
                   "three parameters specified.");
     v_ref_ = Direction(v_ref.data());
+    v_ref_ /= v_ref_.norm();
   }
   w_ref_ = u_ref_.cross(v_ref_);
   if (check_for_node(node, "mu")) {
@@ -116,6 +118,22 @@ std::pair<Direction, double> PolarAzimuthal::sample_impl(
     weight};
 }
 
+double PolarAzimuthal::evaluate(Direction u) const
+{
+  double mu = std::clamp(u.dot(u_ref_), -1.0, 1.0);
+  double phi = 0.0;
+  double sin_theta_sq = std::max(0.0, 1.0 - mu * mu);
+  if (sin_theta_sq > 0.0) {
+    double sin_theta = std::sqrt(sin_theta_sq);
+    double cos_phi = u.dot(v_ref_) / sin_theta;
+    double sin_phi = u.dot(w_ref_) / sin_theta;
+    phi = std::atan2(sin_phi, cos_phi);
+    if (phi < 0.0)
+      phi += 2.0 * PI;
+  }
+  return mu_->evaluate(mu) * phi_->evaluate(phi);
+}
+
 //==============================================================================
 // Isotropic implementation
 //==============================================================================
@@ -155,6 +173,11 @@ std::pair<Direction, double> Isotropic::sample(uint64_t* seed) const
   } else {
     return {isotropic_direction(seed), 1.0};
   }
+}
+
+double Isotropic::evaluate(Direction u) const
+{
+  return 1.0 / (4.0 * PI);
 }
 
 //==============================================================================

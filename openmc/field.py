@@ -28,6 +28,10 @@ class ScalarField(ABC):
         self.mesh = mesh
         self.values = values
 
+    def __eq__(self, other):
+        if not isinstance(other, ScalarField):
+            return NotImplementedError()
+        return self.mesh.id == other.mesh.id and self.values == other.values
 
 
 class TemperatureField(ScalarField):

@@ -513,6 +513,7 @@ Supported scores:
     - total
     - fission
     - nu-fission
+    - kappa-fission
     - events
 
 Supported Estimators:
@@ -644,7 +645,10 @@ model to use these multigroup cross sections. An example is given below::
       nparticles=2000,
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
-      correction=None
+      correction=None,
+      source_energy=None,
+      temperatures=None,
+      temperature_settings=None
   )
 
 The most important parameter to set is the ``method`` parameter, which can be
@@ -706,6 +710,45 @@ generation and use an existing library file.
     with a :math:`\rho` default value of 1.0, which can be adjusted with the
     ``settings.random_ray['diagonal_stabilization_rho']`` parameter.
 
+When generating MGXS data with either the ``stochastic_slab`` or
+``infinite_medium`` methods, by default the simulation will use a uniform source
+distribution spread evenly over all energy groups. This ensures that all energy
+groups receive tallies and therefore produce non-zero total multigroup cross
+sections. Additionally, the function will convert any sources in the model into
+simplified spatial sources that retain the original energy distributions.  If
+sources are present, they will be used 99% of the time to sample source energies
+during MGXS generation. The other 1% of the time, energies will be sampled
+uniformly over all energy groups to ensure that all groups receive some tallies.
+However, the user may wish to specify a different source energy spectrum (for
+instance, if they are using a FileSource, such that the energy distribution
+cannot be extracted from the python source object). This can be done by
+providing a :class:`openmc.stats.Univariate` distribution as the
+``source_energy`` parameter of the :meth:`openmc.Model.convert_to_multigroup`
+method. If provided, it will override any sources present in the model and will
+be used 99% of the time to sample source energies during MGXS generation. The
+other 1% of the time, energies will be sampled uniformly over all energy groups
+to ensure that all groups receive some tallies.
+
+For instance, a D-D fusion simulation may involve a complex file source. In this
+case, the user may wish to provide a discrete 2.45 MeV energy source
+distribution for MGXS generation as::
+
+  source_energy = openmc.stats.delta_function(2.45e6)
+
+The ``temperatures`` parameter can be provided if temperature-dependent
+multi-group cross sections are desired for multi-physics simulations. An
+individual cross section generation calculation is run for each temperature
+provided, where the materials in the model are set to the temperature. The
+temperature settings used during cross section generation can be specified with the
+``temperature_settings`` parameter. If no ``temperature_settings`` are provided,
+the settings contained in the model will be used. The valid keys and values in the
+``temperature_settings`` dictionary are identical to
+:attr:`openmc.Settings.temperature_settings`; more information can be found in
+:class:`openmc.Settings` . This approach yields isothermal cross section interpolation
+tables, which can be inaccurate for systems with large differences between temperatures
+in each material (often the case in fission reactors). If a more sophisticated
+temperature-dependence is required, we recommend generating cross sections manually.
+
 Ultimately, the methods described above are all just approximations.
 Approximations in the generated MGXS data will fundamentally limit the potential
 accuracy of the random ray solver. However, the methods described above are all
@@ -765,7 +808,7 @@ energy decomposition::
 
   # Create a "tallies.xml" file for the MGXS Library
   tallies = openmc.Tallies()
-  mgxs_lib.add_to_tallies_file(tallies, merge=True)
+  mgxs_lib.add_to_tallies(tallies, merge=True)
 
   # Export
   tallies.export_to_xml()
@@ -1105,11 +1148,10 @@ given below:
     tallies.export_to_xml()
 
     # Create voxel plot
-    plot = openmc.Plot()
+    plot = openmc.VoxelPlot()
     plot.origin = [0, 0, 0]
     plot.width = [2*pitch, 2*pitch, 1]
     plot.pixels = [1000, 1000, 1]
-    plot.type = 'voxel'
 
     # Instantiate a Plots collection and export to XML
     plots = openmc.Plots([plot])
@@ -1189,11 +1231,10 @@ given below:
     tallies.export_to_xml()
 
     # Create voxel plot
-    plot = openmc.Plot()
+    plot = openmc.VoxelPlot()
     plot.origin = [0, 0, 0]
     plot.width = [2*pitch, 2*pitch, 1]
     plot.pixels = [1000, 1000, 1]
-    plot.type = 'voxel'
 
     # Instantiate a Plots collection and export to XML
     plots = openmc.Plots([plot])

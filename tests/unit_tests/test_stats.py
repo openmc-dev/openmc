@@ -4,16 +4,10 @@ import numpy as np
 import pytest
 import openmc
 import openmc.stats
+from openmc.stats.univariate import _INTERPOLATION_SCHEMES
 from scipy.integrate import trapezoid
 
-
-def assert_sample_mean(samples, expected_mean):
-    # Calculate sample standard deviation
-    std_dev = samples.std() / np.sqrt(samples.size - 1)
-
-    # Means should agree within 4 sigma 99.993% of the time. Note that this is
-    # expected to fail about 1 out of 16,000 times
-    assert np.abs(expected_mean - samples.mean()) < 4*std_dev
+from tests.unit_tests import assert_sample_mean
 
 
 @pytest.mark.flaky(reruns=1)
@@ -47,8 +41,19 @@ def test_discrete():
     # sample discrete distribution and check that the mean of the samples is
     # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d3.sample(n_samples)
+    samples, weights = d3.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d3.bias = np.array([0.2, 0.1, 0.7])
+    bias_elem = d3.to_xml_element('distribution')
+    d4 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    np.testing.assert_array_equal(d4.bias, [0.2, 0.1, 0.7])
+    samples, weights = d4.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 def test_delta_function():
@@ -81,6 +86,28 @@ def test_merge_discrete():
     assert triple.x == pytest.approx([3.0])
     assert triple.p == pytest.approx([6.0])
     assert triple.integral() == pytest.approx(6.0)
+
+
+def test_merge_discrete_with_bias():
+    # Two discrete distributions with different biases
+    d1 = openmc.stats.Discrete([1.0, 2.0], [0.5, 0.5])
+    d2 = openmc.stats.Discrete([2.0, 3.0], [0.3, 0.7], bias=[0.1, 0.9])
+
+    merged = openmc.stats.Discrete.merge([d1, d2], [0.6, 0.4])
+    exp_mean = 0.6 * d1.mean() + 0.4 * d2.mean()
+
+    # Verify merged distribution has correct x values
+    assert set(merged.x) == {1.0, 2.0, 3.0}
+
+    # Bias should not be changed in original distributions
+    assert d1.bias is None
+    assert np.all(d2.bias == [0.1, 0.9])
+
+    # Sample and verify bias is applied correctly
+    samples, weights = merged.sample(10_000)
+
+    # Verify weighted mean matches expected unbiased mean
+    assert_sample_mean(samples*weights, exp_mean)
 
 
 def test_clip_discrete():
@@ -125,8 +152,19 @@ def test_uniform():
     # std. dev. of the expected mean
     exp_mean = 0.5 * (a + b)
     n_samples = 1_000_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d.bias = openmc.stats.PowerLaw(a, b, 2)
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.PowerLaw)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -147,8 +185,19 @@ def test_powerlaw():
     # sample power law distribution and check that the mean of the samples is
     # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d.bias = openmc.stats.Uniform(a, b)
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Uniform)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -166,13 +215,25 @@ def test_maxwell():
     # sample maxwell distribution and check that the mean of the samples is
     # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
 
     # A second sample starting from a different seed
-    samples_2 = d.sample(n_samples)
+    samples_2, weights_2 = d.sample(n_samples)
     assert_sample_mean(samples_2, exp_mean)
     assert samples_2.mean() != samples.mean()
+    assert np.all(weights_2 == 1)
+
+    # Test biased distribution
+    d.bias = openmc.stats.Maxwell((theta * 1.1))
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Maxwell)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -195,29 +256,51 @@ def test_watt():
     # sample Watt distribution and check that the mean of the samples is within
     # 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution with 5 percent higher T_e
+    d.bias = openmc.stats.Watt(a*1.05, b)
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Watt)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
 def test_tabular():
     # test linear-linear sampling
-    x = np.array([0.0, 5.0, 7.0, 10.0])
+    x = np.array([0.001, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0, 6.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     n_samples = 100_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
+    assert np.all(weights == 1.0)
 
-    # test linear-linear normalization
-    d.normalize()
-    assert d.integral() == pytest.approx(1.0)
+    for scheme in _INTERPOLATION_SCHEMES:
+        # test sampling
+        d = openmc.stats.Tabular(x, p, scheme)
+        n_samples = 100_000
+        samples = d.sample(n_samples)[0]
+        assert_sample_mean(samples, d.mean())
 
     # test histogram sampling
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
+    assert np.all(weights == 1.0)
 
+    # Multiplying the probabilities should preserve the mean but change the integral
+    d2 = openmc.stats.Tabular(x, p*2, interpolation='histogram')
+    assert d2.mean() == pytest.approx(d.mean())
+    assert d2.integral() == pytest.approx(2.0*d.integral())
+
+    # Normalizing should result in an integral of 1
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 
@@ -226,7 +309,7 @@ def test_tabular():
     d = openmc.stats.Tabular(x, p[:-1], interpolation='histogram')
     d.cdf()
     d.mean()
-    assert_sample_mean(d.sample(n_samples), d.mean())
+    assert_sample_mean(d.sample(n_samples)[0], d.mean())
 
     # passing a shorter probability set should raise an error for linear-linear
     with pytest.raises(ValueError):
@@ -237,6 +320,16 @@ def test_tabular():
     # call the CDF method
     d = openmc.stats.Tabular(x, p, interpolation='linear-linear')
     d.cdf()
+
+    # Test biased distribution
+    d.bias = openmc.stats.Uniform(x[0], x[-1])
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Uniform)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, d2.mean())
+    assert np.all(weights != 1.0)
 
 
 def test_tabular_from_xml():
@@ -288,8 +381,9 @@ def test_mixture():
 
     # Sample and make sure sample mean is close to expected mean
     n_samples = 1_000_000
-    samples = mix.sample(n_samples)
+    samples, weights = mix.sample(n_samples)
     assert_sample_mean(samples, (2.5 + 5.0)/2)
+    assert np.all(weights == 1.0)
 
     elem = mix.to_xml_element('distribution')
 
@@ -297,6 +391,26 @@ def test_mixture():
     np.testing.assert_allclose(d.probability, p)
     assert d.distribution == [d1, d2]
     assert len(d) == 4
+
+    # Test biased sub-distribution
+    d.distribution[0].bias = openmc.stats.PowerLaw(0, 5, 2)
+    bias_elem = d.to_xml_element('distribution')
+    d3 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d3.distribution[0].bias, openmc.stats.PowerLaw)
+    samples, weights = d3.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, (2.5 + 5.0)/2)
+
+    # Test biased meta-probability
+    d.distribution[0].bias = None
+    d.bias = [0.25, 0.75]
+    bias_elem_2 = d.to_xml_element('distribution')
+    d4 = openmc.stats.Univariate.from_xml_element(bias_elem_2)
+    assert isinstance (d4.bias, np.ndarray)
+    samples, weights = d4.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, (2.5 + 5.0)/2)
+    assert np.all(weights != 1.0)
 
 
 def test_mixture_clip():
@@ -328,6 +442,13 @@ def test_mixture_clip():
     d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation='histogram')
     mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
     with pytest.warns(UserWarning):
+        mix_clip = mix.clip(1e-6)
+
+    # Make sure warning is raised if a biased Discrete is clipped
+    d3 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-8])
+    d3.bias = [0.9, 0.1]
+    mix = openmc.stats.Mixture([1.0, 1.0], [d3, d2])
+    with pytest.raises(RuntimeError):
         mix_clip = mix.clip(1e-6)
 
 
@@ -365,12 +486,17 @@ def test_polar_azimuthal():
 
 def test_isotropic():
     d = openmc.stats.Isotropic()
+    mu = openmc.stats.Uniform(-1.0, 1.0)
+    phi = openmc.stats.PowerLaw(0., 2*np.pi, 2)
+    d2 = openmc.stats.PolarAzimuthal(mu, phi)
+    d.bias = d2
     elem = d.to_xml_element()
     assert elem.tag == 'angle'
     assert elem.attrib['type'] == 'isotropic'
 
     d = openmc.stats.Isotropic.from_xml_element(elem)
     assert isinstance(d, openmc.stats.Isotropic)
+    assert isinstance(d.bias, openmc.stats.PolarAzimuthal)
 
 
 def test_monodirectional():
@@ -387,6 +513,7 @@ def test_cartesian():
     x = openmc.stats.Uniform(-10., 10.)
     y = openmc.stats.Uniform(-10., 10.)
     z = openmc.stats.Uniform(0., 20.)
+    z.bias = openmc.stats.PowerLaw(0., 20., 3)
     d = openmc.stats.CartesianIndependent(x, y, z)
 
     elem = d.to_xml_element()
@@ -402,6 +529,7 @@ def test_cartesian():
 
     d = openmc.stats.Spatial.from_xml_element(elem)
     assert isinstance(d, openmc.stats.CartesianIndependent)
+    assert isinstance (d.z.bias, openmc.stats.PowerLaw)
 
 
 def test_box():
@@ -432,6 +560,113 @@ def test_point():
     assert d.xyz == pytest.approx(p)
 
 
+def test_spherical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    thetas = (0.0, pi/2)
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    sph_indep_function = openmc.stats.spherical_uniform(r_outer,
+                                                        r_inner,
+                                                        thetas,
+                                                        phis,
+                                                        origin)
+
+    assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+
+
+def test_cylindrical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    height = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    dist = openmc.stats.cylindrical_uniform(r_outer, height, r_inner, phis,
+                                            origin=origin)
+
+    assert isinstance(dist, openmc.stats.CylindricalIndependent)
+
+    # Check r distribution (PowerLaw with exponent 1 for uniform area sampling)
+    assert isinstance(dist.r, openmc.stats.PowerLaw)
+    assert dist.r.a == pytest.approx(r_inner)
+    assert dist.r.b == pytest.approx(r_outer)
+    assert dist.r.n == pytest.approx(1.0)
+
+    # Check phi distribution
+    assert isinstance(dist.phi, openmc.stats.Uniform)
+    assert dist.phi.a == pytest.approx(phis[0])
+    assert dist.phi.b == pytest.approx(phis[1])
+
+    # Check z distribution (centered on origin along z_dir)
+    assert isinstance(dist.z, openmc.stats.Uniform)
+    assert dist.z.a == pytest.approx(-height / 2)
+    assert dist.z.b == pytest.approx(height / 2)
+
+    # Check origin and default directions
+    np.testing.assert_allclose(dist.origin, origin)
+    np.testing.assert_allclose(dist.r_dir, [1., 0., 0.])
+    np.testing.assert_allclose(dist.z_dir, [0., 0., 1.])
+
+    # XML round-trip preserves all parameters
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+
+
+def test_cylindrical_uniform_tilted():
+    # Test with non-default axis orientation (y-axis as cylinder axis)
+    dist = openmc.stats.cylindrical_uniform(
+        r_outer=3.0, height=2.0, r_dir=(1., 0., 0.), z_dir=(0., 1., 0.)
+    )
+    np.testing.assert_allclose(dist.z_dir, [0., 1., 0.])
+    np.testing.assert_allclose(dist.r_dir, [1., 0., 0.])
+
+    # XML round-trip preserves tilted directions
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+
+
+def test_cylindrical_uniform_ring():
+    # height=0 should produce a flat ring (delta function at z=0)
+    r_outer = 2.0
+    r_inner = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    dist = openmc.stats.cylindrical_uniform(r_outer, 0.0, r_inner, phis,
+                                            origin=origin)
+
+    assert isinstance(dist, openmc.stats.CylindricalIndependent)
+
+    # Check r distribution
+    assert isinstance(dist.r, openmc.stats.PowerLaw)
+    assert dist.r.a == pytest.approx(r_inner)
+    assert dist.r.b == pytest.approx(r_outer)
+    assert dist.r.n == pytest.approx(1.0)
+
+    # Check phi distribution
+    assert isinstance(dist.phi, openmc.stats.Uniform)
+    assert dist.phi.a == pytest.approx(phis[0])
+    assert dist.phi.b == pytest.approx(phis[1])
+
+    # z distribution must be a delta function at 0.0 (local frame)
+    assert isinstance(dist.z, openmc.stats.Discrete)
+    assert dist.z.x[0] == pytest.approx(0.0)
+
+    # XML round-trip
+    elem = dist.to_xml_element()
+    dist2 = openmc.stats.CylindricalIndependent.from_xml_element(elem)
+    np.testing.assert_allclose(dist2.origin, origin)
+    np.testing.assert_allclose(dist2.r_dir, dist.r_dir)
+    np.testing.assert_allclose(dist2.z_dir, dist.z_dir)
+
+
 @pytest.mark.flaky(reruns=1)
 def test_normal():
     mean = 10.0
@@ -448,8 +683,105 @@ def test_normal():
 
     # sample normal distribution
     n_samples = 100_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d.bias = openmc.stats.Normal(10.0, 4.0)
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Normal)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, mean)
+    assert np.all(weights != 1.0)
+
+
+@pytest.mark.flaky(reruns=1)
+def test_normal_truncated():
+    mean = 10.0
+    std_dev = 2.0
+    lower = 6.0
+    upper = 14.0
+
+    d = openmc.stats.Normal(mean, std_dev, lower, upper)
+
+    # Check attributes
+    assert d.mean_value == pytest.approx(mean)
+    assert d.std_dev == pytest.approx(std_dev)
+    assert d.lower == pytest.approx(lower)
+    assert d.upper == pytest.approx(upper)
+    assert len(d) == 4
+    assert d.support == (lower, upper)
+
+    # Test XML round-trip
+    elem = d.to_xml_element('distribution')
+    assert elem.attrib['type'] == 'normal'
+    params = elem.attrib['parameters'].split()
+    assert len(params) == 4
+
+    d2 = openmc.stats.Normal.from_xml_element(elem)
+    assert d2.mean_value == pytest.approx(mean)
+    assert d2.std_dev == pytest.approx(std_dev)
+    assert d2.lower == pytest.approx(lower)
+    assert d2.upper == pytest.approx(upper)
+
+    # Test PDF evaluation
+    # PDF should be zero outside bounds
+    assert d.evaluate(lower - 1.0) == 0.0
+    assert d.evaluate(upper + 1.0) == 0.0
+
+    # PDF should be positive inside bounds
+    assert d.evaluate(mean) > 0.0
+
+    # PDF should be higher than untruncated at the mean (due to renormalization)
+    d_unbounded = openmc.stats.Normal(mean, std_dev)
+    assert d.evaluate(mean) > d_unbounded.evaluate(mean)
+
+    # Verify that PDF integrates to approximately 1
+    x = np.linspace(lower, upper, 1000)
+    integral = trapezoid(d.evaluate(x), x)
+    assert integral == pytest.approx(1.0, rel=0.01)
+
+    # Sample truncated distribution
+    n_samples = 10_000
+    samples, weights = d.sample(n_samples)
+
+    # All samples should be within bounds
+    assert np.all(samples >= lower)
+    assert np.all(samples <= upper)
+
+    # Weights should all be 1 (no biasing)
+    assert np.all(weights == 1.0)
+
+
+def test_normal_truncated_one_sided():
+    # Test lower-bounded only (positive half-normal centered at 0)
+    d_lower = openmc.stats.Normal(0.0, 1.0, lower=0.0)
+    assert d_lower.lower == 0.0
+    assert d_lower.upper == np.inf
+    assert d_lower.evaluate(-1.0) == 0.0
+    assert d_lower.evaluate(1.0) > 0.0
+
+    # PDF at 0 should be approximately 2 * 0.3989 ≈ 0.798 (half-normal)
+    assert d_lower.evaluate(0.0) == pytest.approx(0.798, rel=0.01)
+
+    # Test upper-bounded only
+    d_upper = openmc.stats.Normal(0.0, 1.0, upper=0.0)
+    assert d_upper.lower == -np.inf
+    assert d_upper.upper == 0.0
+    assert d_upper.evaluate(1.0) == 0.0
+    assert d_upper.evaluate(-1.0) > 0.0
+
+
+def test_normal_truncated_errors():
+    # Invalid bounds (lower >= upper)
+    with pytest.raises(ValueError):
+        openmc.stats.Normal(0.0, 1.0, lower=1.0, upper=0.0)
+
+    with pytest.raises(ValueError):
+        openmc.stats.Normal(0.0, 1.0, lower=1.0, upper=1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -468,8 +800,9 @@ def test_muir():
 
     # sample muir distribution
     n_samples = 100_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, mean)
+    assert np.all(weights == 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -502,20 +835,71 @@ def test_combine_distributions():
     assert isinstance(mixed, openmc.stats.Mixture)
     assert len(mixed.distribution) == 2
     assert len(mixed.probability) == 2
+    assert mixed == openmc.stats.combine_distributions([mixed], [1.0])
+
+    # Mixture combined with another distribution: probabilities should be
+    # correctly scaled when the Mixture is flattened
+    d_a = openmc.stats.delta_function(1.0)
+    d_b = openmc.stats.delta_function(2.0)
+    m = openmc.stats.Mixture([0.3, 0.7], [d_a, d_b])
+    extra = openmc.stats.delta_function(3.0)
+    result = openmc.stats.combine_distributions([m, extra], [0.5, 0.5])
+    assert isinstance(result, openmc.stats.Discrete)
+    assert result.x == pytest.approx([1.0, 2.0, 3.0])
+    assert result.p == pytest.approx([0.5*0.3, 0.5*0.7, 0.5])
+
+    # Passing a Mixture with a bias should warn that the bias is dropped
+    biased_m = openmc.stats.Mixture([0.5, 0.5], [d_a, d_b], bias=[0.8, 0.2])
+    with pytest.warns(UserWarning, match='bias'):
+        openmc.stats.combine_distributions([biased_m], [1.0])
+
+    # Single tabular returns a tabular distribution with scaled probabilities
+    t_single = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])
+    scaled = openmc.stats.combine_distributions([t_single], [0.25])
+    assert isinstance(scaled, openmc.stats.Tabular)
+    assert scaled.p == pytest.approx([0.5, 0.0])
+
+    # Mixture with biased tabular should preserve unbiased mean via weights
+    bias = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])
+    t_biased = openmc.stats.Tabular([0.0, 1.0], [1.0, 1.0], bias=bias)
+    d1 = openmc.stats.delta_function(0.0)
+    mixed = openmc.stats.combine_distributions([t_biased, d1], [0.5, 0.5])
+    assert isinstance(mixed, openmc.stats.Mixture)
+    samples, weights = mixed.sample(10_000)
+    assert_sample_mean(samples*weights, 0.25)
 
     # Combine 1 discrete and 2 tabular -- the tabular distributions should
     # combine to produce a uniform distribution with mean 0.5. The combined
     # distribution should have a mean of 0.25.
     t1 = openmc.stats.Tabular([0., 1.], [2.0, 0.0])
     t2 = openmc.stats.Tabular([0., 1.], [0.0, 2.0])
-    d1 = openmc.stats.Discrete([0.0], [1.0])
+    d1 = openmc.stats.delta_function(0.0)
     combined = openmc.stats.combine_distributions([t1, t2, d1], [0.25, 0.25, 0.5])
     assert combined.integral() == pytest.approx(1.0)
 
     # Sample the combined distribution and make sure the sample mean is within
     # uncertainty of the expected value
-    samples = combined.sample(10_000)
+    samples, weights = combined.sample(10_000)
     assert_sample_mean(samples, 0.25)
+    assert np.all(weights == 1.0)
+
+    # If biased/unbiased Discrete distributions are combined, unbiased probability
+    # should be conserved and points from both original distributions should be
+    # assigned bias probabilities.
+    x1 = [0.0, 1.0, 10.0]
+    p1 = [0.3, 0.2, 0.5]
+    b1 = [0.2, 0.5, 0.3]
+    d1 = openmc.stats.Discrete(x1, p1, b1)
+    x2 = [0.5, 1.0, 5.0]
+    p2 = [0.4, 0.5, 0.1]
+    d2 = openmc.stats.Discrete(x2, p2)
+    combined = openmc.stats.combine_distributions([d1, d2, t1], [0.25, 0.25, 0.5])
+
+    p3 = [0.075, 0.1, 0.175, 0.025, 0.125]
+    b3 = [0.05, 0.1, 0.25, 0.025, 0.075]
+    assert all(combined.distribution[-1].p == p3)
+    assert all(combined.distribution[-1].bias == b3)
+
 
 def test_reference_vwu_projection():
     """When a non-orthogonal vector is provided, the setter should project out
@@ -546,3 +930,86 @@ def test_reference_vwu_normalization():
 
     # reference_v should be unit length
     assert np.isclose(np.linalg.norm(reference_v), 1.0, atol=1e-12)
+
+
+def test_fusion_spectrum_dd():
+    d = openmc.stats.fusion_neutron_spectrum(10e3, 'DD')
+    assert isinstance(d, openmc.stats.Normal)
+
+    # E_0 for D(d,n)3He is ~2.45 MeV; thermal shift at 10 keV should be
+    # several tens of keV, so mean should be noticeably above E_0
+    assert d.mean_value > 2.45e6
+    assert d.mean_value < 2.6e6
+
+    # Standard deviation should be positive and on order of ~50-100 keV
+    assert d.std_dev > 30e3
+    assert d.std_dev < 200e3
+
+
+def test_fusion_spectrum_dt():
+    d = openmc.stats.fusion_neutron_spectrum(10e3, 'DT')
+    assert isinstance(d, openmc.stats.Normal)
+
+    # E_0 for T(d,n)alpha is ~14.02 MeV; with thermal shift mean should be
+    # above E_0 by several tens of keV
+    assert d.mean_value > 14.02e6
+    assert d.mean_value < 14.2e6
+
+    # Standard deviation should be on order of ~200-400 keV
+    assert d.std_dev > 100e3
+    assert d.std_dev < 500e3
+
+
+def test_fusion_spectrum_temp_continuity():
+    # Verify the low-T and high-T formulas produce nearly identical results
+    # at the 40 keV switchover point
+    d_lo = openmc.stats.fusion_neutron_spectrum(39.99e3, 'DT')
+    d_hi = openmc.stats.fusion_neutron_spectrum(40.01e3, 'DT')
+
+    assert d_lo.mean_value == pytest.approx(d_hi.mean_value, rel=1e-3)
+    assert d_lo.std_dev == pytest.approx(d_hi.std_dev, rel=1e-3)
+
+    # Same check for DD
+    d_lo = openmc.stats.fusion_neutron_spectrum(39.99e3, 'DD')
+    d_hi = openmc.stats.fusion_neutron_spectrum(40.01e3, 'DD')
+
+    assert d_lo.mean_value == pytest.approx(d_hi.mean_value, rel=1e-3)
+    assert d_lo.std_dev == pytest.approx(d_hi.std_dev, rel=1e-3)
+
+
+def test_fusion_spectrum_high_temp():
+    # At T_i = 80 keV (high-T regime), ensure the function still produces
+    # reasonable results using Table IV formulas
+    for reactants in ('DD', 'DT'):
+        d = openmc.stats.fusion_neutron_spectrum(80e3, reactants)
+        assert isinstance(d, openmc.stats.Normal)
+        assert d.mean_value > 0
+        assert d.std_dev > 0
+
+    # DT mean at 80 keV should be higher than at 10 keV
+    d_10 = openmc.stats.fusion_neutron_spectrum(10e3, 'DT')
+    d_80 = openmc.stats.fusion_neutron_spectrum(80e3, 'DT')
+    assert d_80.mean_value > d_10.mean_value
+    assert d_80.std_dev > d_10.std_dev
+
+
+def test_fusion_spectrum_zero_temp():
+    # At very low temperature, mean should approach E_0 and width should
+    # approach zero
+    d = openmc.stats.fusion_neutron_spectrum(1.0, 'DT')
+    assert d.mean_value == pytest.approx(14.049e6, rel=1e-3)
+    assert d.std_dev < 5e3  # width approaches zero at low temperature
+
+
+def test_fusion_spectrum_invalid():
+    # Invalid reactant string should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(10e3, '🐔🧇')
+
+    # Negative temperature should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(-10e3, 'DT')
+
+    # Temperature above 100 keV should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(101e3, 'DT')

@@ -11,6 +11,7 @@ namespace openmc {
 //==============================================================================
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
   : negroups_(sr.scalar_flux_old_.size()), material_(&sr.material_),
+    temperature_idx_(&sr.temperature_idx_), density_mult_(&sr.density_mult_),
     is_small_(&sr.is_small_), n_hits_(&sr.n_hits_),
     is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
     volume_(&sr.volume_), volume_t_(&sr.volume_t_), volume_sq_(&sr.volume_sq_),
@@ -70,6 +71,8 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
   // Scalar fields
   material_.push_back(sr.material_);
+  temperature_idx_.push_back(sr.temperature_idx_);
+  density_mult_.push_back(sr.density_mult_);
   is_small_.push_back(sr.is_small_);
   n_hits_.push_back(sr.n_hits_);
   lock_.push_back(sr.lock_);
@@ -123,6 +126,8 @@ void SourceRegionContainer::assign(
   // Clear existing data
   n_source_regions_ = 0;
   material_.clear();
+  temperature_idx_.clear();
+  density_mult_.clear();
   is_small_.clear();
   n_hits_.clear();
   lock_.clear();
@@ -180,6 +185,8 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   SourceRegionHandle handle;
   handle.negroups_ = negroups();
   handle.material_ = &material(sr);
+  handle.temperature_idx_ = &temperature_idx(sr);
+  handle.density_mult_ = &density_mult(sr);
   handle.is_small_ = &is_small(sr);
   handle.n_hits_ = &n_hits(sr);
   handle.is_linear_ = is_linear();

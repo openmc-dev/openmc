@@ -118,6 +118,10 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (!read_model_xml())
     read_separate_xml_files();
 
+  if (!settings::properties_file.empty()) {
+    openmc_properties_import(settings::properties_file.c_str());
+  }
+
   // Reset locale to previous state
   if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
     fatal_error("Cannot reset locale.");
@@ -225,6 +229,15 @@ int parse_command_line(int argc, char* argv[])
       } else if (arg == "-n" || arg == "--particles") {
         i += 1;
         settings::n_particles = std::stoll(argv[i]);
+
+      } else if (arg == "-q" || arg == "--verbosity") {
+        i += 1;
+        settings::verbosity = std::stoi(argv[i]);
+        if (settings::verbosity > 10 || settings::verbosity < 1) {
+          auto msg = fmt::format("Invalid verbosity: {}.", settings::verbosity);
+          strcpy(openmc_err_msg, msg.c_str());
+          return OPENMC_E_INVALID_ARGUMENT;
+        }
 
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
@@ -376,8 +389,10 @@ bool read_model_xml()
   auto settings_root = root.child("settings");
 
   // Verbosity
-  if (check_for_node(settings_root, "verbosity")) {
+  if (check_for_node(settings_root, "verbosity") && settings::verbosity == -1) {
     settings::verbosity = std::stoi(get_node_value(settings_root, "verbosity"));
+  } else if (settings::verbosity == -1) {
+    settings::verbosity = 7;
   }
 
   // To this point, we haven't displayed any output since we didn't know what

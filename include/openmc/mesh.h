@@ -4,11 +4,12 @@
 #ifndef OPENMC_MESH_H
 #define OPENMC_MESH_H
 
+#include <set>
 #include <unordered_map>
 
 #include "hdf5.h"
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
 
 #include "openmc/bounding_box.h"
 #include "openmc/error.h"
@@ -87,8 +88,12 @@ namespace detail {
 
 class MaterialVolumes {
 public:
+  MaterialVolumes(int32_t* mats, double* vols, double* bboxes, int table_size)
+    : materials_(mats), volumes_(vols), bboxes_(bboxes), table_size_(table_size)
+  {}
+
   MaterialVolumes(int32_t* mats, double* vols, int table_size)
-    : materials_(mats), volumes_(vols), table_size_(table_size)
+    : MaterialVolumes(mats, vols, nullptr, table_size)
   {}
 
   //! Add volume for a given material in a mesh element
@@ -96,8 +101,11 @@ public:
   //! \param[in] index_elem Index of the mesh element
   //! \param[in] index_material Index of the material within the model
   //! \param[in] volume Volume to add
-  void add_volume(int index_elem, int index_material, double volume);
-  void add_volume_unsafe(int index_elem, int index_material, double volume);
+  //! \param[in] bbox Bounding box to union into the result (optional)
+  void add_volume(int index_elem, int index_material, double volume,
+    const BoundingBox* bbox = nullptr);
+  void add_volume_unsafe(int index_elem, int index_material, double volume,
+    const BoundingBox* bbox = nullptr);
 
   // Accessors
   int32_t& materials(int i, int j) { return materials_[i * table_size_ + j]; }
@@ -112,11 +120,23 @@ public:
     return volumes_[i * table_size_ + j];
   }
 
+  double& bboxes(int i, int j, int k)
+  {
+    return bboxes_[(i * table_size_ + j) * 6 + k];
+  }
+  const double& bboxes(int i, int j, int k) const
+  {
+    return bboxes_[(i * table_size_ + j) * 6 + k];
+  }
+
+  bool has_bboxes() const { return bboxes_ != nullptr; }
+
   bool table_full() const { return table_full_; }
 
 private:
   int32_t* materials_;      //!< material index (bins, table_size)
   double* volumes_;         //!< volume in [cm^3] (bins, table_size)
+  double* bboxes_;          //!< bounding boxes (bins, table_size, 6)
   int table_size_;          //!< Size of hash table for each mesh element
   bool table_full_ {false}; //!< Whether the hash table is full
 };
@@ -249,22 +269,33 @@ public:
   void material_volumes(int nx, int ny, int nz, int max_materials,
     int32_t* materials, double* volumes) const;
 
+  //! Determine volume and bounding boxes of materials within each mesh element
+  //
+  //! \param[in] nx Number of samples in x direction
+  //! \param[in] ny Number of samples in y direction
+  //! \param[in] nz Number of samples in z direction
+  //! \param[in] max_materials Maximum number of materials in a single mesh
+  //!                          element
+  //! \param[inout] materials Array storing material indices
+  //! \param[inout] volumes Array storing volumes
+  //! \param[inout] bboxes Array storing bounding boxes (n_elems, table_size, 6)
+  void material_volumes(int nx, int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes, double* bboxes) const;
+
   //! Determine bounding box of mesh
   //
   //! \return Bounding box of mesh
   BoundingBox bounding_box() const
   {
-    auto ll = this->lower_left();
-    auto ur = this->upper_right();
-    return {ll.x, ur.x, ll.y, ur.y, ll.z, ur.z};
+    return {this->lower_left(), this->upper_right()};
   }
 
   virtual Position lower_left() const = 0;
   virtual Position upper_right() const = 0;
 
   // Data members
-  xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
-  xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
+  tensor::Tensor<double> lower_left_;  //!< Lower-left coordinates of mesh
+  tensor::Tensor<double> upper_right_; //!< Upper-right coordinates of mesh
   int id_ {-1};                        //!< Mesh ID
   std::string name_;                   //!< User-specified name
   int n_dimension_ {-1};               //!< Number of dimensions
@@ -329,7 +360,7 @@ public:
   //! \param[in] Pointer to bank sites
   //! \param[in] Number of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
-  xt::xtensor<double, 1> count_sites(
+  tensor::Tensor<double> count_sites(
     const SourceSite* bank, int64_t length, bool* outside) const;
 
   //! Get bin given mesh indices
@@ -400,8 +431,8 @@ public:
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
-  //! Get shape as xt::xtensor
-  xt::xtensor<int, 1> get_x_shape() const;
+  //! Get mesh dimensions as a tensor
+  tensor::Tensor<int> get_shape_tensor() const;
 
   double volume(int bin) const override
   {
@@ -496,7 +527,7 @@ public:
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(
+  tensor::Tensor<double> count_sites(
     const SourceSite* bank, int64_t length, bool* outside) const;
 
   //! Return the volume for a given mesh index
@@ -507,7 +538,7 @@ public:
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element
   double element_volume_;        //!< Volume of each mesh element
-  xt::xtensor<double, 1> width_; //!< Width of each mesh element
+  tensor::Tensor<double> width_; //!< Width of each mesh element
 };
 
 class RectilinearMesh : public StructuredMesh {
@@ -985,7 +1016,7 @@ public:
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 
-  int get_bin(Position r) const override;
+  virtual int get_bin(Position r) const override;
 
   int n_bins() const override;
 
@@ -1023,16 +1054,21 @@ public:
 
 protected:
   // Methods
-
   //! Translate a bin value to an element reference
   virtual const libMesh::Elem& get_element_from_bin(int bin) const;
 
   //! Translate an element pointer to a bin index
   virtual int get_bin_from_element(const libMesh::Elem* elem) const;
 
+  // Data members
   libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
                          //!< during intialization
+  vector<unique_ptr<libMesh::PointLocatorBase>>
+    pl_;                      //!< per-thread point locators
+  libMesh::BoundingBox bbox_; //!< bounding box of the mesh
+
 private:
+  // Methods
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);
   void build_eqn_sys();
@@ -1041,8 +1077,6 @@ private:
   unique_ptr<libMesh::MeshBase> unique_m_ =
     nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is
              //!< created inside OpenMC
-  vector<unique_ptr<libMesh::PointLocatorBase>>
-    pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>
     equation_systems_; //!< pointer to the libMesh EquationSystems
                        //!< instance
@@ -1051,7 +1085,6 @@ private:
   std::unordered_map<std::string, unsigned int>
     variable_map_; //!< mapping of variable names (tally scores) to libMesh
                    //!< variable numbers
-  libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
 };
@@ -1059,8 +1092,9 @@ private:
 class AdaptiveLibMesh : public LibMesh {
 public:
   // Constructor
-  AdaptiveLibMesh(
-    libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
+  AdaptiveLibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0,
+    const std::set<libMesh::subdomain_id_type>& block_ids =
+      std::set<libMesh::subdomain_id_type>());
 
   // Overridden methods
   int n_bins() const override;
@@ -1072,6 +1106,8 @@ public:
 
   void write(const std::string& filename) const override;
 
+  int get_bin(Position r) const override;
+
 protected:
   // Overridden methods
   int get_bin_from_element(const libMesh::Elem* elem) const override;
@@ -1080,6 +1116,9 @@ protected:
 
 private:
   // Data members
+  const std::set<libMesh::subdomain_id_type>
+    block_ids_;               //!< subdomains of the mesh to tally on
+  const bool block_restrict_; //!< whether a subset of the mesh is being used
   const libMesh::dof_id_type num_active_; //!< cached number of active elements
 
   std::vector<libMesh::dof_id_type>

@@ -4,7 +4,7 @@ import numpy as np
 
 import openmc
 
-
+PINCELL_PITCH = 1.26 # cm
 
 def pwr_pin_cell() -> openmc.Model:
     """Create a PWR pin-cell model.
@@ -51,7 +51,7 @@ def pwr_pin_cell() -> openmc.Model:
     model.materials = (fuel, clad, hot_water)
 
     # Instantiate ZCylinder surfaces
-    pitch = 1.26
+    pitch = PINCELL_PITCH
     fuel_or = openmc.ZCylinder(x0=0, y0=0, r=0.39218, name='Fuel OR')
     clad_or = openmc.ZCylinder(x0=0, y0=0, r=0.45720, name='Clad OR')
     left = openmc.XPlane(x0=-pitch/2, name='left', boundary_type='reflective')
@@ -83,7 +83,7 @@ def pwr_pin_cell() -> openmc.Model:
         constraints={'fissionable': True}
     )
 
-    plot = openmc.Plot.from_geometry(model.geometry)
+    plot = openmc.SlicePlot.from_geometry(model.geometry)
     plot.pixels = (300, 300)
     plot.color_by = 'material'
     model.plots.append(plot)
@@ -319,14 +319,14 @@ def pwr_core() -> openmc.Model:
     l100 = openmc.RectLattice(
         name='Fuel assembly (lower half)', lattice_id=100)
     l100.lower_left = (-10.71, -10.71)
-    l100.pitch = (1.26, 1.26)
+    l100.pitch = (PINCELL_PITCH, PINCELL_PITCH)
     l100.universes = np.tile(fuel_cold, (17, 17))
     l100.universes[tube_x, tube_y] = tube_cold
 
     l101 = openmc.RectLattice(
         name='Fuel assembly (upper half)', lattice_id=101)
     l101.lower_left = (-10.71, -10.71)
-    l101.pitch = (1.26, 1.26)
+    l101.pitch = (PINCELL_PITCH, PINCELL_PITCH)
     l101.universes = np.tile(fuel_hot, (17, 17))
     l101.universes[tube_x, tube_y] = tube_hot
 
@@ -350,7 +350,7 @@ def pwr_core() -> openmc.Model:
     # Define core lattices
     l200 = openmc.RectLattice(name='Core lattice (lower half)', lattice_id=200)
     l200.lower_left = (-224.91, -224.91)
-    l200.pitch = (21.42, 21.42)
+    l200.pitch = (17 * PINCELL_PITCH, 17 * PINCELL_PITCH)
     l200.universes = [
         [fa_cw]*21,
         [fa_cw]*21,
@@ -376,7 +376,7 @@ def pwr_core() -> openmc.Model:
 
     l201 = openmc.RectLattice(name='Core lattice (lower half)', lattice_id=201)
     l201.lower_left = (-224.91, -224.91)
-    l201.pitch = (21.42, 21.42)
+    l201.pitch = (17 * PINCELL_PITCH, 17 * PINCELL_PITCH)
     l201.universes = [
         [fa_hw]*21,
         [fa_hw]*21,
@@ -429,7 +429,7 @@ def pwr_core() -> openmc.Model:
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-160, -160, -183], [160, 160, 183]))
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     plot.origin = (125, 125, 0)
     plot.width = (250, 250)
     plot.pixels = (3000, 3000)
@@ -488,7 +488,7 @@ def pwr_assembly() -> openmc.Model:
     clad_or = openmc.ZCylinder(x0=0, y0=0, r=0.45720, name='Clad OR')
 
     # Create boundary planes to surround the geometry
-    pitch = 21.42
+    pitch = 17 * PINCELL_PITCH
     min_x = openmc.XPlane(x0=-pitch/2, boundary_type='reflective')
     max_x = openmc.XPlane(x0=+pitch/2, boundary_type='reflective')
     min_y = openmc.YPlane(y0=-pitch/2, boundary_type='reflective')
@@ -514,7 +514,7 @@ def pwr_assembly() -> openmc.Model:
 
     # Create fuel assembly Lattice
     assembly = openmc.RectLattice(name='Fuel Assembly')
-    assembly.pitch = (pitch/17, pitch/17)
+    assembly.pitch = (PINCELL_PITCH, PINCELL_PITCH)
     assembly.lower_left = (-pitch/2, -pitch/2)
 
     # Create array indices for guide tube locations in lattice
@@ -544,7 +544,7 @@ def pwr_assembly() -> openmc.Model:
         constraints={'fissionable': True}
     )
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     plot.origin = (0.0, 0.0, 0)
     plot.width = (21.42, 21.42)
     plot.pixels = (300, 300)
@@ -656,27 +656,69 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model
     return model
 
 
-def random_ray_lattice() -> openmc.Model:
-    """Create a 2x2 PWR pincell asymmetrical lattic eexample.
+def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
+    """Generate materials utilizing multi-group cross sections based on the
+    the C5G7 Benchmark.
 
-    This model is a 2x2 reflective lattice of fuel pins with one of the lattice
-    locations having just moderator instead of a fuel pin. It uses 7 group
-    cross section data.
+    Parameters
+    ----------
+    second_temp : bool, optional
+        Whether or not the cross sections should contain two temperature datapoints.
+        The first data point is the C5G7 cross sections, which corresponds to a temperature
+        of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
+        which corresponds to a temperature of 394 K. This temperature dependence is
+        fictitious; it is used for testing temperature feedback in the random ray solver.
 
     Returns
     -------
-    model : openmc.Model
-        A PWR 2x2 lattice model
+    materials : openmc.Materials
+        Materials object containing UO2 and water materials.
 
+    Data Sources
+    ------------
+    All cross section data are from:
+    Lewis et al., "Benchmark specification for determinisitc 2D/3D MOX fuel
+    assembly transport calculations without spatial homogenization"
     """
-    model = openmc.Model()
-
-    ###########################################################################
-    # Create MGXS data for the problem
-
     # Instantiate the energy group data
+    # MGXS for the UO2 pins.
     group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
     groups = openmc.mgxs.EnergyGroups(group_edges)
+
+    uo2_total = np.array([0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
+                          0.5644058])
+    uo2_abs = np.array([8.0248e-03, 3.7174e-03, 2.6769e-02, 9.6236e-02, 3.0020e-02,
+                        1.1126e-01, 2.8278e-01])
+    uo2_scatter_matrix = np.array(
+        [[[0.1275370, 0.0423780, 0.0000094, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.3244560, 0.0016314, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.4509400, 0.0026792, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.4525650, 0.0055664, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0001253, 0.2714010, 0.0102550, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0012968, 0.2658020, 0.0168090],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
+    uo2_scatter_matrix = np.rollaxis(uo2_scatter_matrix, 0, 3)
+    uo2_fission = np.array([7.21206e-03, 8.19301e-04, 6.45320e-03, 1.85648e-02, 1.78084e-02,
+                            8.30348e-02, 2.16004e-01])
+    uo2_nu_fission = np.array([2.005998e-02, 2.027303e-03, 1.570599e-02, 4.518301e-02,
+                               4.334208e-02, 2.020901e-01, 5.257105e-01])
+    uo2_chi = np.array([5.8791e-01, 4.1176e-01, 3.3906e-04, 1.1761e-07, 0.0000e+00,
+                        0.0000e+00, 0.0000e+00])
+
+    # MGXS for the H2O moderator.
+    h2o_total = np.array([0.15920605, 0.412969593, 0.59030986, 0.58435, 0.718, 1.2544497,
+                          2.650379])
+    h2o_abs = np.array([6.0105e-04, 1.5793e-05, 3.3716e-04, 1.9406e-03, 5.7416e-03,
+                        1.5001e-02, 3.7239e-02])
+    h2o_scatter_matrix = np.array(
+        [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
+          [0.0000000, 0.2823340, 0.1299400, 0.0006234, 0.0000480, 0.0000074, 0.0000010],
+          [0.0000000, 0.0000000, 0.3452560, 0.2245700, 0.0169990, 0.0026443, 0.0005034],
+          [0.0000000, 0.0000000, 0.0000000, 0.0910284, 0.4155100, 0.0637320, 0.0121390],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000714, 0.1391380, 0.5118200, 0.0612290],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
+    h2o_scatter_matrix = np.rollaxis(h2o_scatter_matrix, 0, 3)
 
     # Instantiate the 7-group (C5G7) cross section data
     uo2_xsdata = openmc.XSdata('UO2', groups)
@@ -704,34 +746,39 @@ def random_ray_lattice() -> openmc.Model:
     uo2_xsdata.set_fission([7.21206e-03, 8.19301e-04, 6.45320e-03,
                             1.85648e-02, 1.78084e-02, 8.30348e-02,
                             2.16004e-01])
-    uo2_xsdata.set_nu_fission([2.005998e-02, 2.027303e-03, 1.570599e-02,
-                               4.518301e-02, 4.334208e-02, 2.020901e-01,
-                               5.257105e-01])
+    nu_fission = np.array([2.005998e-02, 2.027303e-03, 1.570599e-02,
+                           4.518301e-02, 4.334208e-02, 2.020901e-01,
+                           5.257105e-01])
+    uo2_xsdata.set_nu_fission(nu_fission)
     uo2_xsdata.set_chi([5.8791e-01, 4.1176e-01, 3.3906e-04, 1.1761e-07, 0.0000e+00,
                         0.0000e+00, 0.0000e+00])
+    uo2_xsdata.set_total(uo2_total, temperature=294.0)
+    uo2_xsdata.set_absorption(uo2_abs, temperature=294.0)
+    uo2_xsdata.set_scatter_matrix(uo2_scatter_matrix, temperature=294.0)
+    uo2_xsdata.set_fission(uo2_fission, temperature=294.0)
+    uo2_xsdata.set_nu_fission(uo2_nu_fission, temperature=294.0)
+    uo2_xsdata.set_chi(uo2_chi, temperature=294.0)
 
     h2o_xsdata = openmc.XSdata('LWTR', groups)
     h2o_xsdata.order = 0
-    h2o_xsdata.set_total([0.15920605, 0.412969593, 0.59030986, 0.58435,
-                          0.718, 1.2544497, 2.650379])
-    h2o_xsdata.set_absorption([6.0105e-04, 1.5793e-05, 3.3716e-04,
-                               1.9406e-03, 5.7416e-03, 1.5001e-02,
-                               3.7239e-02])
-    scatter_matrix = np.array(
-        [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
-          [0.0000000, 0.2823340, 0.1299400, 0.0006234,
-              0.0000480, 0.0000074, 0.0000010],
-          [0.0000000, 0.0000000, 0.3452560, 0.2245700,
-              0.0169990, 0.0026443, 0.0005034],
-          [0.0000000, 0.0000000, 0.0000000, 0.0910284,
-              0.4155100, 0.0637320, 0.0121390],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000714,
-              0.1391380, 0.5118200, 0.0612290],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000,
-              0.0022157, 0.6999130, 0.5373200],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
-    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
-    h2o_xsdata.set_scatter_matrix(scatter_matrix)
+    h2o_xsdata.set_total(h2o_total, temperature=294.0)
+    h2o_xsdata.set_absorption(h2o_abs, temperature=294.0)
+    h2o_xsdata.set_scatter_matrix(h2o_scatter_matrix, temperature=294.0)
+
+    # Add the second temperature data point if requested.
+    if second_temp:
+        uo2_xsdata.add_temperature(394.0)
+        uo2_xsdata.set_total(0.5 * uo2_total, temperature=394.0)
+        uo2_xsdata.set_absorption(0.5 * uo2_abs, temperature=394.0)
+        uo2_xsdata.set_scatter_matrix(0.5 * uo2_scatter_matrix, temperature=394.0)
+        uo2_xsdata.set_fission(0.5 * uo2_fission, temperature=394.0)
+        uo2_xsdata.set_nu_fission(0.5 * uo2_nu_fission, temperature=394.0)
+        uo2_xsdata.set_chi(uo2_chi, temperature=394.0)
+
+        h2o_xsdata.add_temperature(394.0)
+        h2o_xsdata.set_total(0.5 * h2o_total, temperature=394.0)
+        h2o_xsdata.set_absorption(0.5 * h2o_abs, temperature=394.0)
+        h2o_xsdata.set_scatter_matrix(0.5 * h2o_scatter_matrix, temperature=394.0)
 
     mg_cross_sections = openmc.MGXSLibrary(groups)
     mg_cross_sections.add_xsdatas([uo2_xsdata, h2o_xsdata])
@@ -752,14 +799,28 @@ def random_ray_lattice() -> openmc.Model:
     # Instantiate a Materials collection and export to XML
     materials = openmc.Materials([uo2, water])
     materials.cross_sections = "mgxs.h5"
+    return materials
 
-    ###########################################################################
-    # Define problem geometry
 
+def _generate_subdivided_pin_cell(uo2, water) -> openmc.Universe:
+    """Create a radially and azimuthally subdivided pin cell universe. Helper
+    function for random_ray_pin_cell() and random_ray_lattice()
+
+    Parameters
+    ----------
+    uo2 : openmc.Material
+        UO2 material
+    water : openmc.Material
+        Water material
+
+    Returns
+    -------
+    pincell : openmc.Universe
+        Universe containing an unbounded pin cell
+
+    """
     ########################################
-    # Define an unbounded pincell universe
-
-    pitch = 1.26
+    # Define an unbounded pin cell universe
 
     # Create a surface for the fuel outer radius
     fuel_or = openmc.ZCylinder(r=0.54, name='Fuel OR')
@@ -781,7 +842,7 @@ def random_ray_lattice() -> openmc.Model:
     moderator_c = openmc.Cell(
         fill=water, region=+outer_ring_b, name='moderator outer c')
 
-    # Create pincell universe
+    # Create pin cell universe
     pincell_base = openmc.Universe()
 
     # Register Cells with Universe
@@ -801,19 +862,143 @@ def random_ray_lattice() -> openmc.Model:
     for i in range(8):
         azimuthal_cell = openmc.Cell(name=f'azimuthal_cell_{i}')
         azimuthal_cell.fill = pincell_base
-        azimuthal_cell.region = +azimuthal_planes[i] & -azimuthal_planes[(i+1) % 8]
+        azimuthal_cell.region = + \
+            azimuthal_planes[i] & -azimuthal_planes[(i+1) % 8]
         azimuthal_cells.append(azimuthal_cell)
 
     # Create a geometry with the azimuthal universes
     pincell = openmc.Universe(cells=azimuthal_cells, name='pincell')
 
+    return pincell
+
+
+def random_ray_pin_cell(second_temp = False) -> openmc.Model:
+    """Create a PWR pin cell example using C5G7 cross section data.
+    cross section data.
+
+    Parameters
+    ----------
+    second_temp : bool, optional
+        Whether or not the cross sections should contain two temperature datapoints.
+        The first data point is the C5G7 cross sections, which corresponds to a temperature
+        of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
+        which corresponds to a temperature of 3934 K. This temperature dependence is
+        fictitious; it is used for testing temperature feedback in the random ray solver.
+
+    Returns
+    -------
+    model : openmc.Model
+        A PWR pin cell model
+
+    """
+    model = openmc.Model()
+
+    ###########################################################################
+    # Create Materials for the problem
+    materials = _generate_c5g7_materials(second_temp)
+    uo2 = materials[0]
+    water = materials[1]
+
+    ###########################################################################
+    # Define problem geometry
+    pincell = _generate_subdivided_pin_cell(uo2, water)
+
+    ########################################
+    # Define cell containing lattice and other stuff
+    pitch = PINCELL_PITCH
+    box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
+
+    pincell = openmc.Cell(fill=pincell, region=-box, name='pincell')
+
+    # Create a geometry with the top-level cell
+    geometry = openmc.Geometry([pincell])
+
+    ###########################################################################
+    # Define problem settings
+
+    # Instantiate a Settings object, set all runtime parameters, and export to XML
+    settings = openmc.Settings()
+    settings.energy_mode = "multi-group"
+    settings.batches = 400
+    settings.inactive = 200
+    settings.particles = 100
+
+    # Create an initial uniform spatial source distribution over fissionable zones
+    lower_left = (-pitch / 2, -pitch / 2, -1)
+    upper_right = (pitch / 2, pitch / 2, 1)
+    uniform_dist = openmc.stats.Box(lower_left, upper_right)
+    rr_source = openmc.IndependentSource(space=uniform_dist)
+
+    settings.random_ray['distance_active'] = 100.0
+    settings.random_ray['distance_inactive'] = 20.0
+    settings.random_ray['ray_source'] = rr_source
+    settings.random_ray['volume_normalized_flux_tallies'] = True
+
+    ###########################################################################
+    # Define tallies
+    # Now use the mesh filter in a tally and indicate what scores are desired
+    tally = openmc.Tally(name="Pin tally")
+    tally.scores = ['flux', 'fission', 'nu-fission']
+    tally.estimator = 'analog'
+
+    # Instantiate a Tallies collection and export to XML
+    tallies = openmc.Tallies([tally])
+
+    ###########################################################################
+    #                   Exporting to OpenMC model
+    ###########################################################################
+
+    model.geometry = geometry
+    model.materials = materials
+    model.settings = settings
+    model.tallies = tallies
+    return model
+
+
+def random_ray_lattice(second_temp = False) -> openmc.Model:
+    """Create a 2x2 PWR pin cell asymmetrical lattice example.
+
+    This model is a 2x2 reflective lattice of fuel pins with one of the lattice
+    locations having just moderator instead of a fuel pin. It uses C5G7
+    cross section data.
+
+    Parameters
+    ----------
+    second_temp : bool, optional
+        Whether or not the cross sections should contain two temperature datapoints.
+        The first data point is the C5G7 cross sections, which corresponds to a temperature
+        of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
+        which corresponds to a temperature of 3934 K. This temperature dependence is
+        fictitious; it is used for testing temperature feedback in the random ray solver.
+
+    Returns
+    -------
+    model : openmc.Model
+        A PWR 2x2 lattice model
+
+    """
+    model = openmc.Model()
+
+    ###########################################################################
+    # Create Materials for the problem
+    materials = _generate_c5g7_materials(second_temp)
+    uo2 = materials[0]
+    water = materials[1]
+
+    ###########################################################################
+    # Define problem geometry
+    pincell = _generate_subdivided_pin_cell(uo2, water)
+
     ########################################
     # Define a moderator lattice universe
 
-    moderator_infinite = openmc.Cell(fill=water, name='moderator infinite')
+    moderator_infinite = openmc.Cell(name='moderator infinite')
+    moderator_infinite.fill = water
+
     mu = openmc.Universe()
     mu.add_cells([moderator_infinite])
 
+    pitch = PINCELL_PITCH
     lattice = openmc.RectLattice()
     lattice.lower_left = [-pitch/2.0, -pitch/2.0]
     lattice.pitch = [pitch/10.0, pitch/10.0]
@@ -837,8 +1022,7 @@ def random_ray_lattice() -> openmc.Model:
 
     ########################################
     # Define cell containing lattice and other stuff
-    box = openmc.model.RectangularPrism(
-        pitch*2, pitch*2, boundary_type='reflective')
+    box = openmc.model.RectangularPrism(pitch*2, pitch*2, boundary_type='reflective')
 
     assembly = openmc.Cell(fill=lattice2x2, region=-box, name='assembly')
 

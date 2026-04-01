@@ -7,12 +7,14 @@ import os
 from pathlib import Path
 from random import getrandbits
 from tempfile import TemporaryDirectory
+import traceback as tb
 
 import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from ..mpi import comm
 from openmc.checkvalue import PathLike
 import openmc.lib
 import openmc
@@ -26,11 +28,10 @@ class _SourceSite(Structure):
                 ('wgt', c_double),
                 ('delayed_group', c_int),
                 ('surf_id', c_int),
-                ('particle', c_int),
+                ('particle', c_int32),
                 ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
-
 
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous
@@ -80,6 +81,7 @@ _dll.openmc_properties_import.restype = c_int
 _dll.openmc_properties_import.errcheck = _error_handler
 _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
+_dll.openmc_run_random_ray.restype = None
 _dll.openmc_reset.restype = c_int
 _dll.openmc_reset.errcheck = _error_handler
 _dll.openmc_reset_timers.restype = c_int
@@ -477,10 +479,23 @@ def run(output=True):
         _dll.openmc_run()
 
 
+def run_random_ray(output=True):
+    """Run a random ray simulation
+
+    Parameters
+    ----------
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+    """
+
+    with quiet_dll(output):
+        _dll.openmc_run_random_ray()
+
 def sample_external_source(
         n_samples: int = 1000,
-        prn_seed: int | None = None
-) -> openmc.ParticleList:
+        prn_seed: int | None = None,
+        as_array: bool = False
+) -> openmc.ParticleList | np.ndarray:
     """Sample external source and return source particles.
 
     .. versionadded:: 0.13.1
@@ -492,11 +507,20 @@ def sample_external_source(
     prn_seed : int
         Pseudorandom number generator (PRNG) seed; if None, one will be
         generated randomly.
+    as_array : bool
+        If True, return a numpy structured array instead of a
+        :class:`~openmc.ParticleList`.  The array has fields ``'r'`` (float64,
+        shape 3), ``'u'`` (float64, shape 3), ``'E'`` (float64), ``'time'``
+        (float64), ``'wgt'`` (float64), ``'delayed_group'`` (int32),
+        ``'surf_id'`` (int32), and ``'particle'`` (int32).  This avoids the
+        overhead of constructing individual :class:`~openmc.SourceParticle`
+        objects and is substantially faster for large sample counts.
 
     Returns
     -------
-    openmc.ParticleList
-        List of sampled source particles
+    openmc.ParticleList or numpy.ndarray
+        List of sampled source particles, or a structured array when
+        *as_array* is True.
 
     """
     if n_samples <= 0:
@@ -504,18 +528,28 @@ def sample_external_source(
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
-    # Call into C API to sample source
-    sites_array = (_SourceSite * n_samples)()
-    _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
+    # Pre-allocate output array and sample all particles in a single C call
+    result = np.empty(n_samples, dtype=_SourceSite)
+    sites_array = (_SourceSite * n_samples).from_buffer(result)
+    _dll.openmc_sample_external_source(
+        c_size_t(n_samples),
+        c_uint64(prn_seed),
+        sites_array,
+    )
 
-    # Convert to list of SourceParticle and return
-    return openmc.ParticleList([openmc.SourceParticle(
-            r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
-            delayed_group=site.delayed_group, surf_id=site.surf_id,
-            particle=openmc.ParticleType(site.particle)
+    if as_array:
+        return result
+
+    particles = [
+        openmc.SourceParticle(
+            r=site.r, u=site.u, E=site.E, time=site.time,
+            wgt=site.wgt, delayed_group=site.delayed_group,
+            surf_id=site.surf_id,
+            particle=openmc.ParticleType(site.particle),
         )
         for site in sites_array
-    ])
+    ]
+    return openmc.ParticleList(particles)
 
 
 def simulation_init():
@@ -632,6 +666,9 @@ class TemporarySession:
     model : openmc.Model, optional
         OpenMC model to use for the session. If None, a minimal working model is
         created.
+    cwd : PathLike, optional
+        Working directory in which to run OpenMC. If None, a temporary directory
+        is created and deleted automatically.
     **init_kwargs
         Keyword arguments to pass to :func:`openmc.lib.init`.
 
@@ -639,10 +676,13 @@ class TemporarySession:
     ----------
     model : openmc.Model
         The OpenMC model used for the session.
+    comm : mpi4py.MPI.Intracomm
+        The MPI intracommunicator used for the session.
 
     """
-    def __init__(self, model=None, **init_kwargs):
-        self.init_kwargs = init_kwargs
+    def __init__(self, model=None, cwd=None, **init_kwargs):
+        self.init_kwargs = dict(init_kwargs)
+        self.cwd = cwd
         if model is None:
             surf = openmc.Sphere(boundary_type="vacuum")
             cell = openmc.Cell(region=-surf)
@@ -651,6 +691,10 @@ class TemporarySession:
             model.settings = openmc.Settings(
                 particles=1, batches=1, output={'summary': False})
         self.model = model
+
+        # Determine MPI intercommunicator
+        self.comm = self.init_kwargs.get('intracomm') or comm
+        self.init_kwargs['intracomm'] = self.comm
 
     def __enter__(self):
         """Initialize the OpenMC library in a temporary directory."""
@@ -662,14 +706,24 @@ class TemporarySession:
         # Store original working directory
         self.orig_dir = Path.cwd()
 
-        # Set up temporary directory
-        self.tmp_dir = TemporaryDirectory()
-        working_dir = Path(self.tmp_dir.name)
-        working_dir.mkdir(parents=True, exist_ok=True)
-        os.chdir(working_dir)
+        if self.cwd is None:
+            # Set up temporary directory on rank 0
+            if self.comm.rank == 0:
+                self._tmp_dir = TemporaryDirectory()
+                self.cwd = self._tmp_dir.name
 
-        # Export model and initialize OpenMC
-        self.model.export_to_model_xml()
+            # Broadcast the path so that all ranks use the same directory
+            self.cwd = self.comm.bcast(self.cwd)
+
+        # Create and change to specified directory
+        self.cwd = Path(self.cwd)
+        self.cwd.mkdir(parents=True, exist_ok=True)
+        os.chdir(self.cwd)
+
+        # Export model on first rank and initialize OpenMC
+        if self.comm.rank == 0:
+            self.model.export_to_model_xml()
+        self.comm.barrier()
         openmc.lib.init(**self.init_kwargs)
 
         return self
@@ -679,11 +733,24 @@ class TemporarySession:
         if self.already_initialized:
             return
 
+        # If an exception occurred, abort all ranks immediately
+        if exc_type is not None:
+            # Print exception info on the rank that failed
+            tb.print_exception(exc_type, exc_value, traceback)
+            sys.stdout.flush()
+
+            # Abort all MPI processes
+            self.comm.Abort(1)
+
         try:
             finalize()
         finally:
             os.chdir(self.orig_dir)
-            self.tmp_dir.cleanup()
+
+            # Make sure all ranks have finalized before deleting temporary dir
+            self.comm.barrier()
+            if hasattr(self, '_tmp_dir'):
+                self._tmp_dir.cleanup()
 
 
 class _DLLGlobal:

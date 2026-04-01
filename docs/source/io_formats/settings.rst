@@ -7,6 +7,19 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
 
+-------------------------------
+``<atomic_relaxation>`` Element
+-------------------------------
+
+The ``<atomic_relaxation>`` element determines whether the atomic relaxation
+cascade, the X-ray fluorescence photons and Auger electrons emitted when an
+inner-shell vacancy is filled, is simulated following photoelectric and
+incoherent (Compton) scattering interactions. Disabling this can speed up
+photon transport calculations where the detailed secondary particle cascade is
+not of interest.
+
+  *Default*: true
+
 ---------------------
 ``<batches>`` Element
 ---------------------
@@ -277,6 +290,15 @@ ignored for all run modes other than "eigenvalue".
 
   *Default*: 1
 
+------------------------------
+``<ifp_n_generation>`` Element
+------------------------------
+
+The ``<ifp_n_generation>`` element indicates the number of generations to
+consider for the Iterated Fission Probability method.
+
+  *Default*: 10
+
 ----------------------
 ``<inactive>`` Element
 ----------------------
@@ -402,7 +424,25 @@ then, OpenMC will only use up to the :math:`P_1` data.
 ``<max_history_splits>`` Element
 --------------------------------
 
-The ``<max_history_splits>`` element indicates the number of times a particle can split during a history.
+The ``<max_history_splits>`` element indicates the number of times a particle
+can split during a history.
+
+  *Default*: 1000
+
+-----------------------------
+``<max_secondaries>`` Element
+-----------------------------
+
+The ``<max_secondaries>`` element indicates the maximum secondary bank size.
+
+  *Default*: 10000
+
+------------------------
+``<max_tracks>`` Element
+------------------------
+
+The ``<max_tracks>`` element indicates the maximum number of tracks written to a
+track file (per MPI process).
 
   *Default*: 1000
 
@@ -514,6 +554,18 @@ The ``<plot_seed>`` element is used to set the seed for the pseudorandom number
 generator during generation of colors in plots.
 
   *Default*: 1
+
+.. _properties_file:
+
+-----------------------------
+``<properties_file>`` Element
+-----------------------------
+
+  The ``properties_file`` element has no attributes and contains the path to a
+  properties HDF5 file to load cell temperatures/densities and material
+  densities.
+
+  *Default*: None
 
 ---------------------
 ``<ptables>`` Element
@@ -694,7 +746,10 @@ attributes/sub-elements:
     is present.
 
   :particle:
-    The source particle type, either ``neutron`` or ``photon``.
+    The source particle type, specified as a PDG number or a string alias (e.g.,
+    ``neutron``/``n``, ``photon``/``gamma``, ``electron``, ``positron``,
+    ``proton``/``p``, ``deuteron``/``d``, ``triton``/``t``, ``alpha``, or GNDS
+    nuclide names like ``Fe57``).
 
     *Default*: neutron
 
@@ -784,6 +839,7 @@ attributes/sub-elements:
 
       For a "cylindrical" distribution, no parameters are specified. Instead,
       the ``r``, ``phi``, ``z``, and ``origin`` elements must be specified.
+      Optionally, the ``r_dir`` and ``z_dir`` elements could be specified.
 
       For a "spherical" distribution, no parameters are specified. Instead,
       the ``r``, ``theta``, ``phi``, and ``origin`` elements must be specified.
@@ -815,6 +871,10 @@ attributes/sub-elements:
       of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
+    :r_dir:
+      For "cylindrical" distributions, this element specifies the direction
+      of the cylinder r-axis at phi=0. Defaults to (1.0, 0.0, 0.0).
+
     :theta:
       For a "spherical" distribution, this element specifies the distribution
       of theta-coordinates. The necessary sub-elements/attributes are those of a
@@ -826,6 +886,10 @@ attributes/sub-elements:
       the distribution of phi-coordinates. The necessary
       sub-elements/attributes are those of a univariate probability
       distribution (see the description in :ref:`univariate`).
+
+    :z_dir:
+      For "cylindrical" distributions, this element specifies the direction
+      of the cylinder z-axis. Defaults to (0.0, 0.0, 1.0).
 
     :origin:
       For "cylindrical and "spherical" distributions, this element specifies
@@ -844,12 +908,17 @@ attributes/sub-elements:
       relative source strength of each mesh element or each point in the cloud.
 
     :volume_normalized:
-      For "mesh" spatial distrubtions, this optional boolean element specifies
+      For "mesh" spatial distributions, this optional boolean element specifies
       whether the vector of relative strengths should be multiplied by the mesh
       element volume. This is most common if the strengths represent a source
       per unit volume.
 
       *Default*: false
+
+    :bias:
+      For "mesh" and "cloud" spatial distributions, this optional element
+      specifies floating point values corresponding to alternative probabilities
+      for each value/component to use for biased sampling.
 
   :angle:
     An element specifying the angular distribution of source sites. This element
@@ -883,6 +952,10 @@ attributes/sub-elements:
       are those of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
+    :bias:
+      For "isotropic" angular distributions, this optional element specifies a
+      "mu-phi" angular distribution used for biased sampling.
+
   :energy:
     An element specifying the energy distribution of source sites. The necessary
     sub-elements/attributes are those of a univariate probability distribution
@@ -905,6 +978,10 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
+
+  .. note:: Biased sampling can be applied to the spatial and energy distributions
+            of a source by using the ``<bias>`` sub-element (see
+            :ref:`univariate` for details on how to specify bias distributions).
 
   :constraints:
     This sub-element indicates the presence of constraints on sampled source
@@ -998,13 +1075,26 @@ variable and whose sub-elements/attributes are as follows:
   *Default*: histogram
 
 :pair:
-  For a "mixture" distribution, this element provides a distribution and its corresponding probability.
+  For a "mixture" distribution, this element provides a distribution and its
+  corresponding probability.
 
   :probability:
-    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution.
+    An attribute or ``pair`` that provides the probability of a univariate
+    distribution within a "mixture" distribution.
 
   :dist:
-    This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
+    This sub-element of a ``pair`` element provides information on the
+    corresponding univariate distribution.
+
+:bias:
+  This optional element specifies a biased distribution for importance sampling.
+  For continuous distributions, the ``bias`` element should contain another
+  univariate distribution with the same support (interval) as the parent
+  distribution. For discrete distributions, the ``bias`` element should contain
+  floating point values corresponding to alternative probabilities for each
+  value/component to be used for biased sampling.
+
+  *Default*: None
 
 ---------------------------------------
 ``<source_rejection_fraction>`` Element
@@ -1168,6 +1258,23 @@ attributes/sub-elements:
 .. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
           are not eligible to store any particles when using ``cell``, ``cellfrom``
           or ``cellto`` attributes. It is recommended to use surface IDs instead.
+
+------------------------------------
+``<surface_grazing_cutoff>`` Element
+------------------------------------
+
+The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutoff.
+
+  *Default*: 0.001
+
+-----------------------------------
+``<surface_grazing_ratio>`` Element
+-----------------------------------
+
+The ``<surface_grazing_ratio>`` element specifies the surface flux cosine 
+substitution ratio.
+
+  *Default*: 0.5
 
 ------------------------------
 ``<survival_biasing>`` Element
@@ -1352,6 +1459,15 @@ has the following attributes/sub-elements:
               for fixed source and small criticality calculations, but is very
               optimistic for highly coupled full-core reactor problems.
 
+-------------------------------------
+``<uniform_source_sampling>`` Element
+-------------------------------------
+
+The ``<uniform_source_sampling>`` element indicates whether to sample among
+multiple sources uniformly, applying their strengths as weights to sampled
+particles.
+
+  *Default*: False
 
 ------------------------
 ``<ufs_mesh>`` Element
@@ -1363,6 +1479,16 @@ methodology described in Kelly et al., "MC21 Analysis of the Nuclear Energy
 Agency Monte Carlo Performance Benchmark Problem," Proceedings of *Physor 2012*,
 Knoxville, TN (2012). The mesh should cover all possible fissionable materials
 in the problem and is specified using a :ref:`mesh_element`.
+
+-------------------------------
+``<use_decay_photons>`` Element
+-------------------------------
+
+The ``<use_decay_photons>`` element indicates whether to produce decay photons
+from neutron reactions instead of prompt photons. This is used in conjunction
+with the direct 1-step method for shutdown dose rate calculations.
+
+  *Default*: False
 
 .. _verbosity:
 
@@ -1465,7 +1591,8 @@ sub-elements/attributes:
     *Default*: None
 
   :particle_type:
-    The particle that the weight windows will apply to (e.g., 'neutron')
+    The particle that the weight windows will apply to, specified as a PDG
+    code or string (e.g., ``neutron``).
 
     *Default*: 'neutron'
 
@@ -1525,7 +1652,8 @@ mesh-based weight windows.
     *Default*: None
 
   :particle_type:
-    The particle that the weight windows will apply to (e.g., 'neutron')
+    The particle that the weight windows will apply to, specified as a PDG
+    code or string (e.g., ``neutron``).
 
     *Default*: neutron
 
@@ -1594,3 +1722,21 @@ following sub-elements/attributes:
 
   The ``weight_windows_file`` element has no attributes and contains the path to
   a weight windows HDF5 file to load during simulation initialization.
+
+-------------------------------
+``<weight_windows_on>`` Element
+-------------------------------
+
+  The ``weight_windows_on`` element indicates whether weight windows are
+  enabled.
+
+  *Default*: False
+
+----------------------------------
+``<write_initial_source>`` Element
+----------------------------------
+
+  The ``write_initial_source`` element indicates whether to write the initial
+  source distribution to file.
+
+  *Default*: False

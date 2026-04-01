@@ -13,7 +13,7 @@ import openmc.checkvalue as cv
 from openmc.exceptions import DataError
 from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
-from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
+from .data import ATOMIC_NUMBER, gnds_name
 from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
 
@@ -126,9 +126,7 @@ class FissionProductYields(EqualityMixin):
                 for j in range(n_products):
                     Z, A = divmod(int(values[4*j]), 1000)
                     isomeric_state = int(values[4*j + 1])
-                    name = ATOMIC_SYMBOL[Z] + str(A)
-                    if isomeric_state > 0:
-                        name += f'_m{isomeric_state}'
+                    name = gnds_name(Z, A, isomeric_state)
                     yield_j = ufloat(values[4*j + 2], values[4*j + 3])
                     yields[name] = yield_j
 
@@ -256,10 +254,7 @@ class DecayMode(EqualityMixin):
                         A += delta_A
                         Z += delta_Z
 
-        if self._daughter_state > 0:
-            return f'{ATOMIC_SYMBOL[Z]}{A}_m{self._daughter_state}'
-        else:
-            return f'{ATOMIC_SYMBOL[Z]}{A}'
+        return gnds_name(Z, A, self._daughter_state)
 
     @property
     def parent(self):
@@ -348,10 +343,7 @@ class Decay(EqualityMixin):
         self.nuclide['atomic_number'] = Z
         self.nuclide['mass_number'] = A
         self.nuclide['isomeric_state'] = metastable
-        if metastable > 0:
-            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}_m{metastable}'
-        else:
-            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}'
+        self.nuclide['name'] = gnds_name(Z, A, metastable)
         self.nuclide['mass'] = items[1]  # AWR
         self.nuclide['excited_state'] = items[2]  # State of the original nuclide
         self.nuclide['stable'] = (items[4] == 1)  # Nucleus stability flag

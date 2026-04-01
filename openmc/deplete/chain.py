@@ -17,13 +17,13 @@ from warnings import warn
 from typing import List
 
 import lxml.etree as ET
-import scipy.sparse as sp
 
-from openmc.checkvalue import check_type, check_greater_than, PathLike
+from openmc.checkvalue import check_type, check_length, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
 from .._xml import get_text
+from .._sparse_compat import csc_array, dok_array
 import openmc.data
 
 
@@ -619,7 +619,7 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csc_matrix
+        scipy.sparse.csc_array
             Sparse matrix representing depletion.
 
         See Also
@@ -630,7 +630,7 @@ class Chain:
 
         n = len(self)
 
-        # we accumulate indices and value entries for everything and create the matrix 
+        # we accumulate indices and value entries for everything and create the matrix
         # in one step at the end to avoid expensive index checks scipy otherwise does.
         rows, cols, vals = [], [], []
         def setval(i, j, val):
@@ -713,22 +713,25 @@ class Chain:
                 reactions.clear()
 
         # Return CSC representation instead of DOK
-        return sp.csc_matrix((vals, (rows, cols)), shape=(n, n))
+        return csc_array((vals, (rows, cols)), shape=(n, n))
 
     def add_redox_term(self, matrix, buffer, oxidation_states):
-        """Adds a redox term to the depletion matrix from data contained in
+        r"""Adds a redox term to the depletion matrix from data contained in
         the matrix itself and a few user-inputs.
 
         The redox term to add to the buffer nuclide :math:`N_j` can be written
-        as: :math:`\frac{dN_j(t)}{dt} =
-                \cdots - \frac{1}{OS_j}\sum_i N_i a_{ij} \cdot OS_i `
+        as:
 
-        where :math:`OS` is the oxidation states vector and `a_{ij}` the
+        .. math::
+            \frac{dN_j(t)}{dt} = \cdots - \frac{1}{OS_j}\sum_i N_i a_{ij}
+            \cdot OS_i
+
+        where :math:`OS` is the oxidation states vector and :math:`a_{ij}` the
         corresponding term in the Bateman matrix.
 
         Parameters
         ----------
-        matrix : scipy.sparse.csc_matrix
+        matrix : scipy.sparse.csc_array
             Sparse matrix representing depletion
         buffer : dict
             Dictionary of buffer nuclides used to maintain anoins net balance.
@@ -740,7 +743,7 @@ class Chain:
             states as integers (e.g., +1, 0).
         Returns
         -------
-        matrix : scipy.sparse.csc_matrix
+        matrix : scipy.sparse.csc_array
             Sparse matrix with redox term added
         """
         # Elements list with the same size as self.nuclides
@@ -766,7 +769,7 @@ class Chain:
         for nuc, idx in buffer_idx.items():
             array[idx] -= redox_change * buffer[nuc] / os[idx]
 
-        return sp.csc_matrix(array)
+        return csc_array(array)
 
     def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.
@@ -797,44 +800,36 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csc_matrix
+        scipy.sparse.csc_array
             Sparse matrix representing transfer term.
 
         """
         # Use DOK as intermediate representation
         n = len(self)
-        matrix = sp.dok_matrix((n, n))
+        matrix = dok_array((n, n))
+        
+        check_type("mats", mats, (tuple, str))
+        if not isinstance(mats, str):
+            check_type("mats", mats, tuple, str)
+            check_length("mats", mats, 2, 2)
+            dest_mat, mat = mats
+        else:
+            mat = mats
+            dest_mat = None
+        
+        # Build transfer term 
+        components = tr_rates.get_components(mat, current_timestep, dest_mat)
 
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
-            # Build transfer terms (nuclide transfer only)
-            if isinstance(mats, str):
-                mat = mats
-                components = tr_rates.get_components(mat, current_timestep)
-                if not components:
-                    break
-                if elm in components:
-                    matrix[i, i] = sum(
-                        tr_rates.get_external_rate(mat, elm, current_timestep))
-                elif nuc.name in components:
-                    matrix[i, i] = sum(
-                        tr_rates.get_external_rate(mat, nuc.name, current_timestep))
-                else:
-                    matrix[i, i] = 0.0
-
-            # Build transfer terms (transfer from one material into another)
-            elif isinstance(mats, tuple):
-                dest_mat, mat = mats
-                components = tr_rates.get_components(mat, current_timestep, dest_mat)
-                if elm in components:
-                    matrix[i, i] = tr_rates.get_external_rate(
-                        mat, elm, current_timestep, dest_mat)[0]
-                elif nuc.name in components:
-                    matrix[i, i] = tr_rates.get_external_rate(
-                        mat, nuc.name, current_timestep, dest_mat)[0]
-                else:
-                    matrix[i, i] = 0.0
-
+            if elm in components:
+                key = elm
+            elif nuc.name in components:
+                key = nuc.name
+            else:
+                continue
+            matrix[i, i] = sum(tr_rates.get_external_rate(mat, key, current_timestep, dest_mat))
+                
         # Return CSC instead of DOK
         return matrix.tocsc()
 
@@ -854,7 +849,7 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csc_matrix
+        scipy.sparse.csc_array
             Sparse vector representing external source term.
 
         """
@@ -862,15 +857,14 @@ class Chain:
             return
         # Use DOK as intermediate representation
         n = len(self)
-        vector = sp.dok_matrix((n, 1))
+        vector = dok_array((n, 1))
+        components = ext_source_rates.get_components(mat, current_timestep)
 
         for i, nuc in enumerate(self.nuclides):
             # Build source term vector
-            if nuc.name in ext_source_rates.get_components(mat, current_timestep):
+            if nuc.name in components:
                 vector[i] = sum(ext_source_rates.get_external_rate(
                     mat, nuc.name, current_timestep))
-            else:
-                vector[i] = 0.0
 
         # Return CSC instead of DOK
         return vector.tocsc()

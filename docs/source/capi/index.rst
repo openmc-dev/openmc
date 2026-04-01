@@ -580,6 +580,279 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: int openmc_get_plot_index(int32_t id, int32_t* index)
+
+   Get the index in the plots array for a plot with a given ID.
+
+   :param int32_t id: Plot ID
+   :param int32_t* index: Index in the plots array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_plot_get_id(int32_t index, int32_t* id)
+
+   Get the ID of a plot.
+
+   :param int32_t index: Index in the plots array
+   :param int32_t* id: Plot ID
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_plot_set_id(int32_t index, int32_t id)
+
+   Set the ID of a plot.
+
+   :param int32_t index: Index in the plots array
+   :param int32_t id: Plot ID
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: size_t openmc_plots_size()
+
+   Number of plots currently allocated.
+
+   :return: Number of plots in the plots array
+   :rtype: size_t
+
+.. c:function:: int openmc_solidraytrace_plot_create(int32_t* index)
+
+   Create a new solid raytrace plot.
+
+   :param int32_t* index: Index of the newly created plot
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_pixels(int32_t index, int32_t* width, int32_t* height)
+
+   Get output pixel dimensions for a solid raytrace plot.
+
+   :param int32_t index: Index in the plots array
+   :param int32_t* width: Image width in pixels
+   :param int32_t* height: Image height in pixels
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_pixels(int32_t index, int32_t width, int32_t height)
+
+   Set output pixel dimensions for a solid raytrace plot.
+
+   :param int32_t index: Index in the plots array
+   :param int32_t width: Image width in pixels
+   :param int32_t height: Image height in pixels
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_color_by(int32_t index, int32_t* color_by)
+
+   Get the domain type used for coloring (0=materials, 1=cells).
+
+   :param int32_t index: Index in the plots array
+   :param int32_t* color_by: Coloring mode
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_color_by(int32_t index, int32_t color_by)
+
+   Set the domain type used for coloring (0=materials, 1=cells).
+
+   :param int32_t index: Index in the plots array
+   :param int32_t color_by: Coloring mode
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_default_colors(int32_t index)
+
+   Set default random colors for the current ``color_by`` mode.
+
+   :param int32_t index: Index in the plots array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_all_opaque(int32_t index)
+
+   Mark all domains in the current ``color_by`` mode as opaque.
+
+   :param int32_t index: Index in the plots array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_opaque(int32_t index, int32_t id, bool visible)
+
+   Set whether a specific domain ID is opaque (visible) in the rendered image.
+
+   :param int32_t index: Index in the plots array
+   :param int32_t id: Cell/material ID (based on ``color_by``)
+   :param bool visible: Whether the domain is opaque
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_color(int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b)
+
+   Set RGB color for a specific domain ID.
+
+   :param int32_t index: Index in the plots array
+   :param int32_t id: Cell/material ID (based on ``color_by``)
+   :param uint8_t r: Red channel
+   :param uint8_t g: Green channel
+   :param uint8_t b: Blue channel
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_color(int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b)
+
+   Get RGB color for a specific domain ID.
+
+   :param int32_t index: Index in the plots array
+   :param int32_t id: Cell/material ID (based on ``color_by``)
+   :param uint8_t* r: Red channel
+   :param uint8_t* g: Green channel
+   :param uint8_t* b: Blue channel
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_camera_position(int32_t index, double* x, double* y, double* z)
+
+   Get camera position.
+
+   :param int32_t index: Index in the plots array
+   :param double* x: X coordinate
+   :param double* y: Y coordinate
+   :param double* z: Z coordinate
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_camera_position(int32_t index, double x, double y, double z)
+
+   Set camera position.
+
+   :param int32_t index: Index in the plots array
+   :param double x: X coordinate
+   :param double y: Y coordinate
+   :param double z: Z coordinate
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_look_at(int32_t index, double* x, double* y, double* z)
+
+   Get camera target point.
+
+   :param int32_t index: Index in the plots array
+   :param double* x: X coordinate
+   :param double* y: Y coordinate
+   :param double* z: Z coordinate
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_look_at(int32_t index, double x, double y, double z)
+
+   Set camera target point.
+
+   :param int32_t index: Index in the plots array
+   :param double x: X coordinate
+   :param double y: Y coordinate
+   :param double z: Z coordinate
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_up(int32_t index, double* x, double* y, double* z)
+
+   Get the camera up vector.
+
+   :param int32_t index: Index in the plots array
+   :param double* x: X component
+   :param double* y: Y component
+   :param double* z: Z component
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_up(int32_t index, double x, double y, double z)
+
+   Set the camera up vector.
+
+   :param int32_t index: Index in the plots array
+   :param double x: X component
+   :param double y: Y component
+   :param double z: Z component
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_light_position(int32_t index, double* x, double* y, double* z)
+
+   Get light source position.
+
+   :param int32_t index: Index in the plots array
+   :param double* x: X coordinate
+   :param double* y: Y coordinate
+   :param double* z: Z coordinate
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_light_position(int32_t index, double x, double y, double z)
+
+   Set light source position.
+
+   :param int32_t index: Index in the plots array
+   :param double x: X coordinate
+   :param double y: Y coordinate
+   :param double z: Z coordinate
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_fov(int32_t index, double* fov)
+
+   Get horizontal field of view in degrees.
+
+   :param int32_t index: Index in the plots array
+   :param double* fov: Field of view in degrees
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_fov(int32_t index, double fov)
+
+   Set horizontal field of view in degrees.
+
+   :param int32_t index: Index in the plots array
+   :param double fov: Field of view in degrees
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_get_diffuse_fraction(int32_t index, double* diffuse_fraction)
+
+   Get diffuse-light fraction.
+
+   :param int32_t index: Index in the plots array
+   :param double* diffuse_fraction: Diffuse fraction in [0, 1]
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_set_diffuse_fraction(int32_t index, double diffuse_fraction)
+
+   Set diffuse-light fraction.
+
+   :param int32_t index: Index in the plots array
+   :param double diffuse_fraction: Diffuse fraction in [0, 1]
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_update_view(int32_t index)
+
+   Recompute internal camera/view transforms after camera changes.
+
+   :param int32_t index: Index in the plots array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_solidraytrace_plot_create_image(int32_t index, uint8_t* data_out, int32_t width, int32_t height)
+
+   Render the plot to an RGB image buffer.
+
+   :param int32_t index: Index in the plots array
+   :param uint8_t* data_out: Output buffer of shape ``height*width*3``
+   :param int32_t width: Image width in pixels
+   :param int32_t height: Image height in pixels
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
 .. c:function:: int openmc_reset()
 
    Resets all tally scores
@@ -600,6 +873,10 @@ Functions
 
    :return: Return status (negative if an error occurs)
    :rtype: int
+
+.. c:function:: void openmc_run_random_ray()
+
+   Run a random ray simulation
 
 .. c:function:: int openmc_set_n_batches(int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)
 

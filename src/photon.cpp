@@ -214,13 +214,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   rgroup = open_group(group, "compton_profiles");
 
   // Read electron shell PDF and binding energies
-  tensor::Tensor<double> electron_pdf;
-  read_dataset(rgroup, "num_electrons", electron_pdf);
-  electron_pdf /= electron_pdf.sum();
-  electron_cdf_ = tensor::Tensor<double>(electron_pdf.shape());
-  electron_cdf_(0) = electron_pdf(0);
-  for (int i = 1; i < electron_pdf.shape()[0]; ++i)
-    electron_cdf_(i) = electron_cdf_(i - 1) + electron_pdf(i);
+  read_dataset(rgroup, "num_electrons", electron_pdf_);
+  electron_pdf_ /= electron_pdf_.sum();
   read_dataset(rgroup, "binding_energy", binding_energy_);
 
   // Read Compton profiles
@@ -428,24 +423,12 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
   int last_shell = binding_energy_.shape()[0] - 1;
   double E_b = binding_energy_(last_shell);
   double E = alpha * MASS_ELECTRON_EV;
-  double mu_max = 1 - E_b / (alpha * (E - E_b));
+  if (E < E_b)
+    fatal_error("Cannot eject any electron");
 
   while (true) {
     // Sample Klein-Nishina distribution for trial energy and angle
     std::tie(*alpha_out, *mu) = klein_nishina(alpha, seed);
-
-    // If in every angle we cannot eject an electron
-    // Exit with no shell
-    if (mu_max < -1) {
-      *i_shell = -1;
-      return;
-    }
-
-    if (doppler) {
-      // Reject angles that cannot eject the most loosely bound electron
-      if (*mu > mu_max)
-        continue;
-    }
 
     // Note that the parameter used here does not correspond exactly to the
     // momentum transfer q in ENDF-102 Eq. (27.2). Rather, this is the
@@ -478,42 +461,37 @@ void PhotonInteraction::compton_doppler(
   double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const
 {
   auto n = data::compton_profile_pz.size();
-  double E = alpha * MASS_ELECTRON_EV;
-  int j_shell = 0;
-  for (double E_b : binding_energy_) {
-    if ((E_b - (E - E_b) * alpha * (1.0 - mu)) < 0.0)
-      break;
-    ++j_shell;
-  }
-
-  double offset = 0.0;
-  if (j_shell > 0)
-    offset = electron_cdf_(j_shell - 1);
 
   int shell; // index for shell
   while (true) {
     // Sample electron shell
-    double rn = offset + prn(seed) * (1.0 - offset);
-    double c;
-    for (shell = j_shell; shell < electron_cdf_.size(); ++shell) {
-      c = electron_cdf_(shell);
+    double rn = prn(seed);
+    double c = 0.0;
+    for (shell = 0; shell < electron_pdf_.size(); ++shell) {
+      c += electron_pdf_(shell);
       if (rn < c)
         break;
     }
+    double E = alpha * MASS_ELECTRON_EV;
 
     // Determine binding energy of shell
     double E_b = binding_energy_(shell);
 
-    // Determine p_z,max
+    // Resample if photon energy insufficient
+    if (E < E_b)
+      continue;
+
     double pz_max = -FINE_STRUCTURE * (E_b - (E - E_b) * alpha * (1.0 - mu)) /
                     std::sqrt(2.0 * E * (E - E_b) * (1.0 - mu) + E_b * E_b);
+
     // Determine profile cdf value corresponding to p_z,max
     double c_max;
-    if (pz_max > data::compton_profile_pz(n - 1)) {
+    if (std::abs(pz_max) > data::compton_profile_pz(n - 1)) {
+      // TODO: handle linear extrapolation in lin-log scales
       c_max = profile_cdf_(shell, n - 1);
     } else {
       int i = lower_bound_index(data::compton_profile_pz.cbegin(),
-        data::compton_profile_pz.cend(), pz_max);
+        data::compton_profile_pz.cend(), std::abs(pz_max));
       double pz_l = data::compton_profile_pz(i);
       double pz_r = data::compton_profile_pz(i + 1);
       double p_l = profile_pdf_(shell, i);
@@ -522,10 +500,11 @@ void PhotonInteraction::compton_doppler(
       if (pz_l == pz_r) {
         c_max = c_l;
       } else if (p_l == p_r) {
-        c_max = c_l + (pz_max - pz_l) * p_l;
+        c_max = c_l + (std::abs(pz_max) - pz_l) * p_l;
       } else {
         double m = (p_l - p_r) / (pz_l - pz_r);
-        c_max = c_l + (std::pow((m * (pz_max - pz_l) + p_l), 2) - p_l * p_l) /
+        c_max = c_l + (std::pow((m * (std::abs(pz_max) - pz_l) + p_l), 2) -
+                        p_l * p_l) /
                         (2.0 * m);
       }
     }
@@ -561,22 +540,28 @@ void PhotonInteraction::compton_doppler(
 
     double quad = b * b - 4.0 * a * c;
     if (quad < 0)
-      continue;
+      fatal_error("Cannot doppler broaden.");
     quad = std::sqrt(quad);
     double E_out1 = -(b + quad) / (2.0 * a);
     double E_out2 = -(b - quad) / (2.0 * a);
 
-    // If no positive solution -- resample
-    if (std::max(E_out1, E_out2) < 0)
-      continue;
-
     // Determine solution to quadratic equation that is positive
-    if ((E_out1 > 0.0) && (E_out2 > 0.0)) {
-      *E_out = prn(seed) < 0.5 ? E_out1 : E_out2;
+    if (E_out1 > 0.0) {
+      if (E_out2 > 0.0) {
+        // If both are positive, pick one at random
+        *E_out = prn(seed) < 0.5 ? E_out1 : E_out2;
+      } else {
+        *E_out = E_out1;
+      }
     } else {
-      *E_out = std::max(E_out1, E_out2);
+      if (E_out2 > 0.0) {
+        *E_out = E_out2;
+      } else {
+        // No positive solution -- resample
+        continue;
+      }
     }
-    if (*E_out < E - E_b)
+    if (prn(seed) * E <= *E_out)
       break;
   }
 

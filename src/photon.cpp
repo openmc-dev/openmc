@@ -535,10 +535,8 @@ void PhotonInteraction::compton_doppler(
     double b = 2.0 * (f - momentum_sq * mu);
     c = (momentum_sq - 1.0);
     double quad = b * b - 4.0 * a * c;
-    if (quad < 0) {
-      write_message("Negative quad {}", quad);
+    if (quad < 0)
       continue;
-    }
     quad = std::sqrt(quad);
     double E_out1 = -(b + quad) / (2.0 * a) * E;
     double E_out2 = -(b - quad) / (2.0 * a) * E;

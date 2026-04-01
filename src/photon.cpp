@@ -420,12 +420,6 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
   double* alpha_out, double* mu, int* i_shell, uint64_t* seed) const
 {
   double form_factor_xmax = 0.0;
-  int last_shell = binding_energy_.shape()[0] - 1;
-  double E_b = binding_energy_(last_shell);
-  double E = alpha * MASS_ELECTRON_EV;
-  if (E < E_b)
-    fatal_error("Cannot eject any electron");
-
   while (true) {
     // Sample Klein-Nishina distribution for trial energy and angle
     std::tie(*alpha_out, *mu) = klein_nishina(alpha, seed);
@@ -487,7 +481,6 @@ void PhotonInteraction::compton_doppler(
     // Determine profile cdf value corresponding to p_z,max
     double c_max;
     if (std::abs(pz_max) > data::compton_profile_pz(n - 1)) {
-      // TODO: handle linear extrapolation in lin-log scales
       c_max = profile_cdf_(shell, n - 1);
     } else {
       int i = lower_bound_index(data::compton_profile_pz.cbegin(),
@@ -538,10 +531,7 @@ void PhotonInteraction::compton_doppler(
     double b = 2.0 * E * (f - momentum_sq * mu);
     c = E * E * (momentum_sq - 1.0);
 
-    double quad = b * b - 4.0 * a * c;
-    if (quad < 0)
-      fatal_error("Cannot doppler broaden.");
-    quad = std::sqrt(quad);
+    double quad = std::sqrt(b * b - 4.0 * a * c);
     double E_out1 = -(b + quad) / (2.0 * a);
     double E_out2 = -(b - quad) / (2.0 * a);
 

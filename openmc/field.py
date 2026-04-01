@@ -28,18 +28,6 @@ class ScalarField(ABC):
         self.mesh = mesh
         self.values = values
 
-    @classmethod
-    def from_exodus_file(cls, filepath):
-        """Construct a ScalarField from an Exodus mesh file
-
-        Parameters
-        ----------
-        filepath : path-like or str
-            Path to the Exodus mesh file
-
-        """
-        #TODO
-        raise NotImplementedError("Constructor not yet implemented.")
 
 
 class TemperatureField(ScalarField):

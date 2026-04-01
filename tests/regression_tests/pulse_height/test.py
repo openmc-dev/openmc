@@ -27,8 +27,8 @@ def sphere_model():
 
     # Define settings
     model.settings.run_mode = 'fixed source'
-    model.settings.batches = 5
-    model.settings.particles = 100
+    model.settings.batches = 1
+    model.settings.particles = 10000
     model.settings.photon_transport = True
     model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point(),
@@ -49,5 +49,5 @@ def sphere_model():
 
 
 def test_pulse_height(sphere_model):
-    harness = PyAPITestHarness('statepoint.5.h5', sphere_model)
+    harness = PyAPITestHarness('statepoint.1.h5', sphere_model)
     harness.main()

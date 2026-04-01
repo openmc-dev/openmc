@@ -1,11 +1,13 @@
 #include <string>
 
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <pugixml.hpp>
 
-#include "openmc/mesh.h"
 #include "openmc/field.h"
+#include "openmc/mesh.h"
 
 using namespace openmc;
 
@@ -52,4 +54,94 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   p.r() = Position(-0.5, -0.5, -0.5);
   temp_field.update_particle_temperature(p);
   REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
+}
+
+TEST_CASE("Test settings declaration exceptions for a temperature field",
+  "[generators]")
+{
+  auto [input, error] = GENERATE(table<std::string, std::string>({
+    {// If the number of values is not equal to the number of bins -> error
+      R"(
+      <settings>
+        <run_mode>eigenvalue</run_mode>
+        <particles>200</particles>
+        <batches>20</batches>
+        <temperature_field>
+          <mesh>1</mesh>
+          <values>294.0 394.0 494.0 594.0 694.0 794.0 894.0</values>
+        </temperature_field>
+        <mesh id="1">
+          <dimension>2 2 2</dimension>
+          <lower_left>0.0 0.0 0.0</lower_left>
+          <upper_right>5.0 5.0 5.0</upper_right>
+        </mesh>
+      </settings>
+      )",
+      "Inconsistency in the temperature field: the number of values must be "
+      "equal to the number of bins in the mesh."},
+    {// If the mesh declared is not defined -> error
+      R"(
+      <settings>
+        <run_mode>eigenvalue</run_mode>
+        <particles>200</particles>
+        <batches>20</batches>
+        <temperature_field>
+          <mesh>2</mesh>
+          <values>294.0 394.0 494.0 594.0 694.0 794.0 894.0 994.0</values>
+        </temperature_field>
+        <mesh id="1">
+          <dimension>2 2 2</dimension>
+          <lower_left>0.0 0.0 0.0</lower_left>
+          <upper_right>5.0 5.0 5.0</upper_right>
+        </mesh>
+      </settings>
+      )",
+      "Mesh 2 specified for the temperature field does not exist."},
+    {// No mesh declared -> error
+      R"(
+      <settings>
+        <run_mode>eigenvalue</run_mode>
+        <particles>200</particles>
+        <batches>20</batches>
+        <temperature_field>
+          <values>294.0 394.0 494.0 594.0 694.0 794.0 894.0 994.0</values>
+        </temperature_field>
+        <mesh id="1">
+          <dimension>2 2 2</dimension>
+          <lower_left>0.0 0.0 0.0</lower_left>
+          <upper_right>5.0 5.0 5.0</upper_right>
+        </mesh>
+      </settings>
+      )",
+      "A mesh should be given for the temperature field."},
+    {// No values declared -> error
+      R"(
+      <settings>
+        <run_mode>eigenvalue</run_mode>
+        <particles>200</particles>
+        <batches>20</batches>
+        <temperature_field>
+          <mesh>1</mesh>
+        </temperature_field>
+        <mesh id="1">
+          <dimension>2 2 2</dimension>
+          <lower_left>0.0 0.0 0.0</lower_left>
+          <upper_right>5.0 5.0 5.0</upper_right>
+        </mesh>
+      </settings>
+      )",
+      "Temperature values should be given for the temperature field."},
+  }));
+
+  free_memory_mesh();
+  free_memory_settings();
+  settings::run_mode = RunMode::UNSET;
+
+  pugi::xml_document doc;
+  pugi::xml_parse_result result = doc.load_string(input.c_str());
+  pugi::xml_node root = doc.child("settings");
+
+  CAPTURE(input);
+  REQUIRE_THROWS_WITH(read_settings_xml(root), error);
+  doc.reset();
 }

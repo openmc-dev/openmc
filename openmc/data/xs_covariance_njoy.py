@@ -397,7 +397,7 @@ class NeutronXSCovariances:
         mf33.attrs["source"] = np.bytes_("njoy errorr")
         mf33.attrs["relative"] = 1  # int flag – portable across languages
         mf33.attrs["store_raw_covariance"] = int(store_raw_covariance)
-        mf33.attrs["factorization"] = np.bytes_("eigen_qr_thin")
+        #mf33.attrs["factorization"] = np.bytes_("eigen_qr_thin")
         if self.mat is not None:
             mf33.attrs["mat"] = int(self.mat)
         if self.temperature_k is not None:

@@ -1203,8 +1203,8 @@ def test_write_vtkhdf_invalid_data_shape(run_in_tmpdir):
     mesh.upper_right = [1., 1., 1.]
     mesh.dimension = [2, 2, 2]
 
-    # Create data with wrong shape
-    wrong_data = np.ones((3, 3, 3))
+    # Create data with wrong shape but correct total size
+    wrong_data = np.ones((4, 2, 1))
     filename = "test_invalid_shape.vtkhdf"
 
     with pytest.raises(ValueError, match="Cannot apply multidimensional dataset"):

@@ -937,7 +937,15 @@ class StructuredMesh(MeshBase):
             )
 
     @classmethod
-    def from_domain(cls, domain, dimension=1000, mesh_id=None, name='', **kwargs):
+    def from_domain(
+        cls,
+        domain: HasBoundingBox | BoundingBox,
+        dimension: Sequence[int] | int | None = None,
+        mesh_id: int | None = None,
+        name: str = '',
+        **kwargs
+    ):
+        """Create a structured mesh from a domain using its bounding box."""
         if isinstance(domain, BoundingBox):
             bbox = domain
         elif hasattr(domain, 'bounding_box'):
@@ -945,7 +953,13 @@ class StructuredMesh(MeshBase):
         else:
             raise TypeError("Domain must be a BoundingBox or have a "
                             "bounding_box property")
-        return cls.from_bounding_box(bbox, dimension=dimension, mesh_id=mesh_id, name=name, **kwargs)
+
+        if dimension is None:
+            return cls.from_bounding_box(
+                bbox, mesh_id=mesh_id, name=name, **kwargs)
+
+        return cls.from_bounding_box(
+            bbox, dimension=dimension, mesh_id=mesh_id, name=name, **kwargs)
 
     @classmethod
     @abstractmethod

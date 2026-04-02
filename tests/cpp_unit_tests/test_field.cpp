@@ -8,6 +8,7 @@
 
 #include "openmc/field.h"
 #include "openmc/mesh.h"
+#include "openmc/geometry.h"
 
 using namespace openmc;
 
@@ -46,6 +47,7 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
           Catch::Approx(0.083029).margin(1.0E-6));
 
   // Update particle temperature
+  model::n_coord_levels = 1;
   Particle p;
   REQUIRE(p.sqrtkT() == -1.0);
   //p.r() = Position(0.5, 0.5, 0.5);

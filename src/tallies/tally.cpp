@@ -644,8 +644,24 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case HEATING:
-      if (settings::photon_transport)
-        estimator_ = TallyEstimator::COLLISION;
+      if (settings::photon_transport) {
+        // Photon heating requires a collision estimator (analog energy
+        // balance). However, if the tally only scores neutrons, we can
+        // keep the tracklength estimator since neutron heating uses
+        // kerma coefficients which support tracklength scoring.
+        bool neutron_only = false;
+        for (auto i_filt : filters_) {
+          auto pf = dynamic_cast<ParticleFilter*>(
+            model::tally_filters[i_filt].get());
+          if (pf && pf->particles().size() == 1 &&
+              pf->particles()[0].is_neutron()) {
+            neutron_only = true;
+            break;
+          }
+        }
+        if (!neutron_only)
+          estimator_ = TallyEstimator::COLLISION;
+      }
       break;
 
     case SCORE_PULSE_HEIGHT: {

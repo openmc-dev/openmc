@@ -7,8 +7,8 @@
 #include <pugixml.hpp>
 
 #include "openmc/field.h"
-#include "openmc/mesh.h"
 #include "openmc/geometry.h"
+#include "openmc/mesh.h"
 
 using namespace openmc;
 

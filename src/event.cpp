@@ -191,7 +191,7 @@ void process_temperature_mesh_crossing_events()
 
 #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::temperature_mesh_crossing_queue.size();
-    i++) {
+       i++) {
     int64_t buffer_idx = simulation::temperature_mesh_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_cross_temperature_mesh();

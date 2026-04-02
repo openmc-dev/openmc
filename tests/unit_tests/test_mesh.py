@@ -693,6 +693,7 @@ def test_mesh_material_volumes_serialize():
     assert new_volumes.by_element(2) == [(2, 0.5), (1, 0.5)]
     assert new_volumes.by_element(3) == [(2, 1.0)]
 
+
 def test_mesh_material_volumes_serialize_with_bboxes():
     materials = np.array([
         [1, -1, -2],
@@ -761,6 +762,7 @@ def test_mesh_material_volumes_boundary_conditions(sphere_model):
     for evaluated, expected in zip(volumes.by_element(0), expected_volumes):
         assert evaluated[0] == expected[0]
         assert evaluated[1] == pytest.approx(expected[1], rel=1e-2)
+
 
 def test_mesh_material_volumes_bounding_boxes():
     # Create a model with 8 spherical cells at known locations with random radii

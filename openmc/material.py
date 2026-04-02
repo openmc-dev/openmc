@@ -1439,15 +1439,15 @@ class Material(IDManagerMixin):
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
                        volume: float | None = None) -> dict[str, float] | float:
         """Returns the decay heat of the material or for each nuclide in the
-        material in units of [W], [W/g], [W/kg] or [W/cm3].
+        material in units of [W], [W/g], [W/kg], [W/cm3] or [W/m3].
 
         .. versionadded:: 0.13.3
 
         Parameters
         ----------
-        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
+        units : {'W', 'W/g', 'W/kg', 'W/cm3', 'W/m3'}
             Specifies the units of decay heat to return. Options include total
-            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
+            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3, W/m3].
             Default is total heat [W].
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
@@ -1466,13 +1466,15 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3'})
+        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3', 'W/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'W':
             multiplier = volume if volume is not None else self.volume
         elif units == 'W/cm3':
             multiplier = 1
+        elif units == 'W/m3':
+            multiplier = 1e6
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'W/kg':

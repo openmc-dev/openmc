@@ -650,6 +650,8 @@ def test_get_decay_heat():
     assert pytest.approx(m4.get_decay_heat(units='W/g', by_nuclide=True)["I135"]) == 40175.15720273193 # [W/g]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3')) == 40175.15720273193*3/2 # [W/cc]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2 #[W/cc]
+    assert pytest.approx(m4.get_decay_heat(units='W/m3')) == 40175.15720273193*3/2*1e6 # [W/m3]
+    assert pytest.approx(m4.get_decay_heat(units='W/m3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2*1e6 # [W/m3]
     # volume is required to calculate total decay heat
     m4.volume = 10.
     assert pytest.approx(m4.get_decay_heat(units='W')) == 40175.15720273193*3/2*10 # [W]

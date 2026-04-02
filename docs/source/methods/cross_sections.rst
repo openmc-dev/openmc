@@ -317,19 +317,19 @@ The solution to this equation is:
 
 .. math::
 
-   v_g = \frac{1}{c \log\left(\frac{E_{\text{max}}^g}{E_{\text{min}}^g}\right)} 
-   \left[ 2(\operatorname{arctanh}(k_{\text{max}}) - \operatorname{arctanh}(k_{\text{min}})) 
-   + (k_{\text{max}}-k_{\text{min}})) \right]
+   \frac{1}{v_g} = \frac{1}{c \log\left(\frac{E_{\text{max}}^g}{E_{\text{min}}^g}\right)}
+   \left[ 2(\operatorname{arctanh}(k_{\text{max}}^{-1}) - \operatorname{arctanh}(k_{\text{min}}^{-1}))
+   - (k_{\text{max}}-k_{\text{min}}) \right]
 
-where :math:`k_{\text{max}}`, :math:`k_{\text{min}}` are defined by a change of
-variables:
+where :math:`c` is the speed of light and :math:`k_{\text{max}}`,
+:math:`k_{\text{min}}` are defined by a change of variables:
 
 .. math::
 
-   k = \sqrt{1+\frac{2 m_n}{E}}
+   k = \sqrt{1+\frac{2 m_n c^2}{E}}
 
-where :math:`E` is the particle kinetic energy in [eV] and :math:`m_n` is the
-neutron mass in units of [eV].
+where :math:`E` is the particle kinetic energy and :math:`m_n` is the neutron
+rest mass.
 
 .. _logarithmic mapping technique:
    https://mcnp.lanl.gov/pdf_files/TechReport_2014_LANL_LA-UR-14-24530_Brown.pdf

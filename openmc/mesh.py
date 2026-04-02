@@ -1542,17 +1542,7 @@ class RegularMesh(StructuredMesh):
 
             for name, data in datasets.items():
                 data = self._reshape_vtk_dataset(data)
-                if data.ndim > 1 and data.shape != self.dimension:
-                    raise ValueError(
-                        f'Cannot apply multidimensional dataset "{name}" with '
-                        f"shape {data.shape} to mesh {self.id} "
-                        f"with dimensions {self.dimension}"
-                    )
-                if data.size != self.n_elements:
-                    raise ValueError(
-                        f"The size of the dataset '{name}' ({data.size}) should be"
-                        f" equal to the number of mesh cells ({self.n_elements})"
-                    )
+                self._check_vtk_dataset(name, data)
 
                 if volume_normalization:
                     data = data / self.volumes
@@ -1849,17 +1839,7 @@ class RectilinearMesh(StructuredMesh):
 
             for name, data in datasets.items():
                 data = self._reshape_vtk_dataset(data)
-                if data.ndim > 1 and data.shape != self.dimension:
-                    raise ValueError(
-                        f'Cannot apply dataset "{name}" with '
-                        f"shape {data.shape} to mesh {self.id} "
-                        f"with dimensions {self.dimension}"
-                    )
-                if data.size != self.n_elements:
-                    raise ValueError(
-                        f"The size of the dataset '{name}' ({data.size}) should be"
-                        f" equal to the number of mesh cells ({self.n_elements})"
-                    )
+                self._check_vtk_dataset(name, data)
 
                 if volume_normalization:
                     data = data / self.volumes
@@ -2354,17 +2334,7 @@ class CylindricalMesh(StructuredMesh):
 
             for name, data in datasets.items():
                 data = self._reshape_vtk_dataset(data)
-                if data.ndim > 1 and data.shape != self.dimension:
-                    raise ValueError(
-                        f'Cannot apply dataset "{name}" with '
-                        f"shape {data.shape} to mesh {self.id} "
-                        f"with dimensions {self.dimension}"
-                    )
-                if data.size != self.n_elements:
-                    raise ValueError(
-                        f"The size of the dataset '{name}' ({data.size}) should be"
-                        f" equal to the number of mesh cells ({self.n_elements})"
-                    )
+                self._check_vtk_dataset(name, data)
 
                 if volume_normalization:
                     data = data / self.volumes
@@ -2795,17 +2765,7 @@ class SphericalMesh(StructuredMesh):
 
             for name, data in datasets.items():
                 data = self._reshape_vtk_dataset(data)
-                if data.ndim > 1 and data.shape != self.dimension:
-                    raise ValueError(
-                        f'Cannot apply dataset "{name}" with '
-                        f"shape {data.shape} to mesh {self.id} "
-                        f"with dimensions {self.dimension}"
-                    )
-                if data.size != self.n_elements:
-                    raise ValueError(
-                        f"The size of the dataset '{name}' ({data.size}) should be"
-                        f" equal to the number of mesh cells ({self.n_elements})"
-                    )
+                self._check_vtk_dataset(name, data)
 
                 if volume_normalization:
                     data = data / self.volumes

@@ -944,8 +944,31 @@ class StructuredMesh(MeshBase):
         mesh_id: int | None = None,
         name: str = '',
         **kwargs
-    ):
-        """Create a structured mesh from a domain using its bounding box."""
+    ) -> StructuredMesh:
+        """Create a structured mesh from a domain using its bounding box.
+
+        Parameters
+        ----------
+        domain : HasBoundingBox | openmc.BoundingBox
+            Object used as a template for the mesh extents. If ``domain`` has a
+            ``bounding_box`` attribute, that bounding box is used directly.
+        dimension : Iterable of int or int, optional
+            Number of mesh cells. When omitted, the subclass-specific default is
+            used. If provided as a single integer, subclasses that support it
+            interpret it as a target total number of mesh cells.
+        mesh_id : int, optional
+            Unique identifier for the mesh.
+        name : str, optional
+            Name of the mesh.
+        **kwargs
+            Additional keyword arguments forwarded to
+            :meth:`from_bounding_box`.
+
+        Returns
+        -------
+        openmc.StructuredMesh
+            Structured mesh instance.
+        """
         if isinstance(domain, BoundingBox):
             bbox = domain
         elif hasattr(domain, 'bounding_box'):
@@ -963,7 +986,35 @@ class StructuredMesh(MeshBase):
 
     @classmethod
     @abstractmethod
-    def from_bounding_box(cls, bbox: openmc.BoundingBox, dimension=1000, mesh_id=None, name='', **kwargs):
+    def from_bounding_box(
+        cls,
+        bbox: openmc.BoundingBox,
+        dimension: Sequence[int] | int,
+        mesh_id: int | None = None,
+        name: str = '',
+        **kwargs
+    ) -> StructuredMesh:
+        """Create a structured mesh from a bounding box.
+
+        Parameters
+        ----------
+        bbox : openmc.BoundingBox
+            Bounding box used to define the mesh extents.
+        dimension : Iterable of int or int
+            Number of mesh cells. The interpretation and any default value are
+            defined by the concrete mesh type.
+        mesh_id : int, optional
+            Unique identifier for the mesh.
+        name : str, optional
+            Name of the mesh.
+        **kwargs
+            Additional keyword arguments accepted by specific subclasses.
+
+        Returns
+        -------
+        openmc.StructuredMesh
+            Structured mesh instance.
+        """
         pass
 
 class HasBoundingBox(Protocol):
@@ -1219,13 +1270,33 @@ class RegularMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_bounding_box(cls,
-                          bbox,
-                          dimension=1000,
-                          mesh_id=None,
-                          name='',
-                          **kwargs):
-        
+    def from_bounding_box(
+        cls,
+        bbox: openmc.BoundingBox,
+        dimension: Sequence[int] | int = 1000,
+        mesh_id: int | None = None,
+        name: str = '',
+    ) -> RegularMesh:
+        """Create a RegularMesh from a bounding box.
+
+        Parameters
+        ----------
+        bbox : openmc.BoundingBox
+            Bounding box used to set the mesh extents.
+        dimension : Iterable of int or int, optional
+            The number of mesh cells in each direction (x, y, z). If a single
+            integer is provided, the total number of cells is distributed
+            across directions to produce cells with roughly equal widths.
+        mesh_id : int, optional
+            Unique identifier for the mesh.
+        name : str, optional
+            Name of the mesh.
+
+        Returns
+        -------
+        openmc.RegularMesh
+            RegularMesh instance.
+        """
         mesh = cls(mesh_id=mesh_id, name=name)
         mesh.lower_left = bbox[0]
         mesh.upper_right = bbox[1]
@@ -1731,8 +1802,7 @@ class RectilinearMesh(StructuredMesh):
         dimension: Sequence[int] | int = 1000,
         mesh_id: int | None = None,
         name: str = '',
-        **kwargs
-    ):
+    ) -> RectilinearMesh:
         """Create a RectilinearMesh from a bounding box with uniform grids.
 
         Parameters
@@ -2041,8 +2111,7 @@ class CylindricalMesh(StructuredMesh):
         name: str = '',
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         enclose_domain: bool = False,
-        **kwargs
-    ):
+    ) -> CylindricalMesh:
         """Create CylindricalMesh from a bounding box.
 
         Parameters
@@ -2415,8 +2484,7 @@ class SphericalMesh(StructuredMesh):
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         theta_grid_bounds: Sequence[float] = (0.0, pi),
         enclose_domain: bool = False,
-        **kwargs
-    ):
+    ) -> SphericalMesh:
         """Create SphericalMesh from a bounding box.
 
         Parameters

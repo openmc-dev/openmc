@@ -37,6 +37,7 @@ _CURRENT_NAMES = (
 )
 
 
+
 class FilterMeta(ABCMeta):
     """Metaclass for filters that ensures class names are appropriate."""
 
@@ -1860,7 +1861,7 @@ class ParticleProductionFilter(Filter):
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tParticles',
-                                          [str(p) for p in self.particles])
+            [str(p) for p in self.particles])
         if self.energies is not None:
             string += '{: <16}=\t{}\n'.format('\tEnergies', self.energies)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
@@ -2170,7 +2171,7 @@ class DistribcellFilter(Filter):
         if self._paths is None:
             if not hasattr(self, '_geometry'):
                 raise ValueError(
-                    "Model must be exported before the 'paths' attribute is"
+                    "Model must be exported before the 'paths' attribute is" \
                     "available for a DistribcellFilter.")
 
             # Determine paths for cell instances

@@ -50,12 +50,12 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   model::n_coord_levels = 1;
   Particle p;
   REQUIRE(p.sqrtkT() == -1.0);
-  //p.r() = Position(0.5, 0.5, 0.5);
-  //temp_field.update_particle_temperature(p);
-  //REQUIRE(p.sqrtkT() == Catch::Approx(0.083029).margin(1.0E-6));
-  //p.r() = Position(-0.5, -0.5, -0.5);
-  //temp_field.update_particle_temperature(p);
-  //REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
+  p.r() = Position(0.5, 0.5, 0.5);
+  temp_field.update_particle_temperature(p);
+  REQUIRE(p.sqrtkT() == Catch::Approx(0.083029).margin(1.0E-6));
+  p.r() = Position(-0.5, -0.5, -0.5);
+  temp_field.update_particle_temperature(p);
+  REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
 }
 
 TEST_CASE("Test settings declaration exceptions for a temperature field",

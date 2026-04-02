@@ -17,9 +17,9 @@ def empty_sphere():
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     tally = openmc.Tally()
-    tally.scores = ['fission']
+    tally.scores = ['total', elastic]
     tally.nuclides = ['U235']
-
+    tally.multiply_density = False
     model.tallies.append(tally)
 
     return model
@@ -40,3 +40,4 @@ def test_equivalent_microxs(empty_sphere, run_in_tmpdir):
         tally2 = sp.tallies[1]
     
     assert np.isclose(tally1.mean.sum(),tally2.mean.sum(), rtol=1e-10, atol=0)
+    assert tally1.mean.sum() > 0

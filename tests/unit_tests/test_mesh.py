@@ -1287,7 +1287,7 @@ def test_write_ascii_vtk_unchanged(run_in_tmpdir):
     arr = reader.GetOutput().GetCellData().GetArray("data")
     read_data = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
     np.testing.assert_almost_equal(read_data, ref_data.ravel())
-    
+
 def test_rectilinear_mesh_get_indices_at_coords():
     """Test get_indices_at_coords method for RectilinearMesh"""
     # Create a 3x2x2 rectilinear mesh with non-uniform spacing

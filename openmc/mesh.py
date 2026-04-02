@@ -1017,6 +1017,7 @@ class StructuredMesh(MeshBase):
         """
         pass
 
+
 class HasBoundingBox(Protocol):
     """Object that has a ``bounding_box`` attribute."""
     bounding_box: openmc.BoundingBox
@@ -1809,7 +1810,7 @@ class RectilinearMesh(StructuredMesh):
         ----------
         bbox : openmc.BoundingBox
             Bounding box used to set the mesh extents.
-        dimension : Iterable of int or int
+        dimension : Iterable of int or int, optional
             The number of mesh cells in each direction (x, y, z). If a single
             integer is provided, the total number of cells is distributed across
             the three directions proportionally to the side lengths.

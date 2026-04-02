@@ -17,7 +17,7 @@ def empty_sphere():
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     tally = openmc.Tally()
-    tally.scores = ['total', elastic]
+    tally.scores = ['total', 'elastic']
     tally.nuclides = ['U235']
     tally.multiply_density = False
     model.tallies.append(tally)

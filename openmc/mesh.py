@@ -664,12 +664,16 @@ class StructuredMesh(MeshBase):
                           datasets: dict | None = None,
                           volume_normalization: bool | None = None,
                           curvilinear: bool = False):
-        """Creates a VTK object of the mesh
+        """Creates a VTK object of the mesh and writes it to a file.
+
+        Supported formats are legacy ASCII ``.vtk`` (requires the ``vtk``
+        package) and ``.vtkhdf`` (requires only ``h5py``).
 
         Parameters
         ----------
-        filename : str
-            Name of the VTK file to write.
+        filename : str or PathLike
+            Name of the VTK file to write. Use a ``.vtkhdf`` extension for
+            the VTKHDF format or ``.vtk`` for the legacy ASCII format.
         datasets : dict
             Dictionary whose keys are the data labels and values are the data
             sets. 1D datasets are expected to be extracted directly from

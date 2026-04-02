@@ -15,5 +15,8 @@ set(TEST_NAMES
 foreach(test ${TEST_NAMES})
   add_executable(${test} ${test}.cpp)
   target_link_libraries(${test} Catch2::Catch2WithMain libopenmc)
+  if (OPENMC_USE_DAGMC)
+    target_compile_definitions(${test} PRIVATE OPENMC_DAGMC_ENABLED)
+  endif()
   add_test(NAME ${test} COMMAND ${test} WORKING_DIRECTORY ${UNIT_TEST_BIN_OUTPUT_DIR})
 endforeach()

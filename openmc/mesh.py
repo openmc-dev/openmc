@@ -1831,7 +1831,12 @@ class RectilinearMesh(StructuredMesh):
         with h5py.File(filename, "w") as f:
             root = f.create_group("VTKHDF")
             root.attrs["Version"] = (2, 1)
-            root.attrs["Type"] = b"StructuredGrid"
+            _type = "StructuredGrid".encode("ascii")
+            root.attrs.create(
+                "Type",
+                _type,
+                dtype=h5py.string_dtype("ascii", len(_type)),
+            )
             root.create_dataset("Dimensions", data=vertex_dims, dtype="i8")
 
             points = vertices.reshape(-1, 3)
@@ -2331,7 +2336,12 @@ class CylindricalMesh(StructuredMesh):
         with h5py.File(filename, "w") as f:
             root = f.create_group("VTKHDF")
             root.attrs["Version"] = (2, 1)
-            root.attrs["Type"] = b"StructuredGrid"
+            _type = "StructuredGrid".encode("ascii")
+            root.attrs.create(
+                "Type",
+                _type,
+                dtype=h5py.string_dtype("ascii", len(_type)),
+            )
             root.create_dataset("Dimensions", data=vertex_dims, dtype="i8")
 
             points = vertices.reshape(-1, 3)
@@ -2767,7 +2777,12 @@ class SphericalMesh(StructuredMesh):
         with h5py.File(filename, "w") as f:
             root = f.create_group("VTKHDF")
             root.attrs["Version"] = (2, 1)
-            root.attrs["Type"] = b"StructuredGrid"
+            _type = "StructuredGrid".encode("ascii")
+            root.attrs.create(
+                "Type",
+                _type,
+                dtype=h5py.string_dtype("ascii", len(_type)),
+            )
             root.create_dataset("Dimensions", data=vertex_dims, dtype="i8")
 
             points = vertices.reshape(-1, 3)

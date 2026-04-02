@@ -1113,6 +1113,49 @@ def test_write_vtkhdf_spherical_mesh(run_in_tmpdir):
         assert "density" in root["CellData"]
 
 
+@pytest.mark.parametrize(
+    "mesh",
+    [
+        openmc.RectilinearMesh(),
+        openmc.CylindricalMesh(
+            r_grid=[0.0, 1.0, 2.0],
+            z_grid=[0.0, 1.0, 2.0],
+            phi_grid=[0.0, np.pi / 2, np.pi],
+        ),
+        openmc.SphericalMesh(
+            r_grid=[0.0, 1.0, 2.0],
+            theta_grid=[0.0, np.pi / 2, np.pi],
+            phi_grid=[0.0, np.pi / 2, np.pi],
+        ),
+    ],
+    ids=["rectilinear", "cylindrical", "spherical"],
+)
+def test_write_vtkhdf_structuredgrid_points_order_and_type(run_in_tmpdir, mesh):
+    """Test VTKHDF _write_vtk_hdf5 point ordering and Type attribute."""
+    if isinstance(mesh, openmc.RectilinearMesh):
+        mesh.x_grid = [0.0, 1.0, 2.0]
+        mesh.y_grid = [0.0, 1.0, 2.0]
+        mesh.z_grid = [0.0, 1.0, 2.0]
+    data = np.arange(mesh.n_elements).reshape(mesh.dimension)
+    mesh.write_data_to_vtk(
+        datasets={"values": data},
+        filename="test_structured.vtkhdf",
+        volume_normalization=False,
+    )
+
+    with h5py.File("test_structured.vtkhdf", "r") as f:
+        root = f["VTKHDF"]
+
+        points = root["Points"][()]
+        expected_points = np.swapaxes(mesh.vertices, 0, 2).reshape(-1, 3)
+        np.testing.assert_allclose(points, expected_points)
+
+        type_attr = root.attrs["Type"]
+        if isinstance(type_attr, bytes):
+            type_attr = type_attr.decode("ascii")
+        assert type_attr == "StructuredGrid"
+
+
 def test_write_vtkhdf_volume_normalization(run_in_tmpdir):
     """Test volume normalization in VTKHDF format."""
     mesh = openmc.RegularMesh()
@@ -1151,6 +1194,78 @@ def test_write_vtkhdf_volume_normalization(run_in_tmpdir):
     expected_normalized = ref_data.ravel() / cell_volume
     np.testing.assert_allclose(normalized_data, expected_normalized)
     np.testing.assert_allclose(unnormalized_data, ref_data.ravel())
+
+
+def test_write_vtkhdf_default_volume_normalization_for_vtkhdf(run_in_tmpdir):
+    """Ensure VTKHDF default keeps data un-normalized by volume."""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [0.0, 0.0, 0.0]
+    mesh.upper_right = [10.0, 10.0, 10.0]
+    mesh.dimension = [2, 2, 2]
+
+    data = np.arange(mesh.n_elements).reshape(mesh.dimension)
+    mesh.write_data_to_vtk(
+        datasets={"flux": data},
+        filename="test_default_norm.vtkhdf",
+    )
+
+    with h5py.File("test_default_norm.vtkhdf", "r") as f:
+        saved = f["VTKHDF"]["CellData"]["flux"][()]
+
+    np.testing.assert_allclose(saved, data.T.ravel())
+
+
+@pytest.mark.parametrize(
+    "x_grid,y_grid,z_grid,data,expected", [
+        (
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0],
+            [0.0, 1.0],
+            np.arange(2),
+            np.arange(2),
+        ),
+        (
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0],
+            np.arange(4).reshape(2,2),
+            np.arange(4),
+        ),
+        (
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0, 2.0],
+            [0.0, 1.0, 2.0],
+            np.arange(8).reshape(2,2,2),
+            np.arange(8),
+        ),
+    ],
+    ids=["1d", "2d", "3d"],
+)
+def test_write_vtkhdf_rectilinear_multi_dimensional_data(run_in_tmpdir, x_grid, y_grid, z_grid, data, expected):
+    """Test RectilinearMesh VTKHDF accepts 1D/2D/3D data with singleton padding."""
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = x_grid
+    mesh.y_grid = y_grid
+    mesh.z_grid = z_grid
+
+    mesh.write_data_to_vtk(
+        datasets={"flux": data},
+        filename="test_rectilinear_dims.vtkhdf",
+        volume_normalization=False,
+    )
+
+    with h5py.File("test_rectilinear_dims.vtkhdf", "r") as f:
+        saved = f["VTKHDF"]["CellData"]["flux"][()]
+
+    expected_written = np.swapaxes(data, 0, data.ndim-1).ravel() if data.ndim > 1 else data.ravel()
+    if data.ndim == 1:
+        expected_written = expected
+    elif data.ndim == 2:
+        expected_written = data.T.ravel()
+    elif data.ndim == 3:
+        expected_written = data.T.ravel()
+
+    np.testing.assert_allclose(saved, expected_written)
 
 
 def test_write_vtkhdf_multiple_datasets(run_in_tmpdir):

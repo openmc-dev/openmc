@@ -952,12 +952,21 @@ class StructuredMesh(MeshBase):
         if dataset.ndim == 1:
             return
 
-        if dataset.shape != self.dimension:
-            raise ValueError(
-                f'Cannot apply multidimensional dataset "{label}" with '
-                f"shape {dataset.shape} to mesh {self.id} "
-                f"with dimensions {self.dimension}"
-            )
+        if dataset.shape == self.dimension:
+            return
+
+        # allow datasets in lower dimension when the missing dimensions are
+        # singleton (e.g., 2D data on a 3D mesh with one depth layer)
+        if dataset.ndim < len(self.dimension):
+            padded_shape = tuple(dataset.shape) + (1,) * (len(self.dimension) - dataset.ndim)
+            if padded_shape == tuple(self.dimension):
+                return
+
+        raise ValueError(
+            f'Cannot apply multidimensional dataset "{label}" with '
+            f"shape {dataset.shape} to mesh {self.id} "
+            f"with dimensions {self.dimension}"
+        )
 
 
 class HasBoundingBox(Protocol):

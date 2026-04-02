@@ -3338,7 +3338,7 @@ class UnstructuredMesh(MeshBase):
             cell_data_group = root.create_group("CellData")
 
             for name, data in datasets.items():
-                
+
                 cell_data_group.create_dataset(
                     name, (0,), maxshape=(None,), dtype="float64", chunks=True
                 )

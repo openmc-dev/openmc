@@ -1385,7 +1385,7 @@ class Material(IDManagerMixin):
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
                      volume: float | None = None) -> dict[str, float] | float:
-        """Returns the activity of the material or of each nuclide within.
+        """Return the activity of the material or each nuclide within.
 
         .. versionadded:: 0.13.1
 
@@ -1442,8 +1442,7 @@ class Material(IDManagerMixin):
 
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
                        volume: float | None = None) -> dict[str, float] | float:
-        """Returns the decay heat of the material or for each nuclide in the
-        material in units of [W], [W/g], [W/kg], [W/cm3] or [W/m3].
+        """Return the decay heat of the material or each nuclide within.
 
         .. versionadded:: 0.13.3
 

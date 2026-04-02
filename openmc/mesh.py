@@ -1839,7 +1839,7 @@ class RectilinearMesh(StructuredMesh):
             )
             root.create_dataset("Dimensions", data=vertex_dims, dtype="i8")
 
-            points = vertices.reshape(-1, 3)
+            points = np.swapaxes(vertices, 0, 2).reshape(-1, 3)
             root.create_dataset("Points", data=points.astype(np.float64), dtype="f8")
 
             cell_data_group = root.create_group("CellData")
@@ -2344,7 +2344,7 @@ class CylindricalMesh(StructuredMesh):
             )
             root.create_dataset("Dimensions", data=vertex_dims, dtype="i8")
 
-            points = vertices.reshape(-1, 3)
+            points = np.swapaxes(vertices, 0, 2).reshape(-1, 3)
             root.create_dataset("Points", data=points.astype(np.float64), dtype="f8")
 
             cell_data_group = root.create_group("CellData")
@@ -2785,7 +2785,7 @@ class SphericalMesh(StructuredMesh):
             )
             root.create_dataset("Dimensions", data=vertex_dims, dtype="i8")
 
-            points = vertices.reshape(-1, 3)
+            points = np.swapaxes(vertices, 0, 2).reshape(-1, 3)
             root.create_dataset("Points", data=points.astype(np.float64), dtype="f8")
 
             cell_data_group = root.create_group("CellData")

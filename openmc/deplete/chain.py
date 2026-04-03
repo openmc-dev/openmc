@@ -688,6 +688,9 @@ class Chain:
         """
         reactions = set()
         n = len(self)
+
+        # Accumulate indices/values and then create the matrix at the end to
+        # avoid expensive index checks scipy otherwise does.
         rows, cols, vals = [], [], []
 
         def setval(i, j, val):
@@ -858,7 +861,7 @@ class Chain:
         # Use DOK as intermediate representation
         n = len(self)
         matrix = dok_array((n, n))
-        
+
         check_type("mats", mats, (tuple, str))
         if not isinstance(mats, str):
             check_type("mats", mats, tuple, str)
@@ -867,8 +870,8 @@ class Chain:
         else:
             mat = mats
             dest_mat = None
-        
-        # Build transfer term 
+
+        # Build transfer term
         components = tr_rates.get_components(mat, current_timestep, dest_mat)
 
         for i, nuc in enumerate(self.nuclides):
@@ -880,7 +883,7 @@ class Chain:
             else:
                 continue
             matrix[i, i] = sum(tr_rates.get_external_rate(mat, key, current_timestep, dest_mat))
-                
+
         # Return CSC instead of DOK
         return matrix.tocsc()
 

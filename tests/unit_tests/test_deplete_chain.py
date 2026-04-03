@@ -246,6 +246,29 @@ def test_form_matrix(simple_chain):
         assert new_mat[r, c] == mat[r, c]
 
 
+def test_decay_matrix(simple_chain):
+    """Test that decay_matrix contains only radioactive decay terms."""
+    # Nuclide order: H1(0), A(1), B(2), C(3)
+    decay_A = log(2) / 2.36520E+04
+    decay_B = log(2) / 3.29040E+04
+
+    expected = np.zeros((4, 4))
+    expected[1, 1] = -decay_A           # Loss: A decays
+    expected[2, 1] = decay_A * 0.6      # A -> B (branching ratio 0.6)
+    expected[3, 1] = decay_A * 0.4      # A -> C (branching ratio 0.4)
+    expected[1, 2] = decay_B            # B -> A (branching ratio 1.0)
+    expected[2, 2] = -decay_B           # Loss: B decays
+
+    assert np.allclose(expected, simple_chain.decay_matrix.toarray())
+
+
+def test_decay_matrix_cached(simple_chain):
+    """Test that decay_matrix is lazily computed and returns the same object."""
+    m1 = simple_chain.decay_matrix
+    m2 = simple_chain.decay_matrix
+    assert m1 is m2
+
+
 def test_getitem():
     """Test nuc_by_ind converter function."""
     chain = Chain()

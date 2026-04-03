@@ -154,14 +154,14 @@ class StepResult:
         full_burn_list : list of str
             List of all burnable material IDs
         name_list : list of str, optional
-            Material names corresponding to materials in burn_list
+            Material names corresponding to materials in full_burn_list
 
         """
         self.volume = copy.deepcopy(volume)
         self.index_nuc = {nuc: i for i, nuc in enumerate(nuc_list)}
         self.index_mat = {mat: i for i, mat in enumerate(burn_list)}
         self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
-        self.mat_to_name = dict(zip(burn_list, name_list)) if name_list is not None else {}
+        self.mat_to_name = dict(zip(full_burn_list, name_list)) if name_list is not None else {}
 
         # Create storage array
         self.data = np.zeros((self.n_mat, self.n_nuc))

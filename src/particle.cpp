@@ -14,6 +14,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -47,30 +48,33 @@ double Particle::speed() const
 {
   if (settings::run_CE) {
     // Determine mass in eV/c^2
-    double mass;
-    switch (this->type().pdg_number()) {
-    case PDG_NEUTRON:
-      mass = MASS_NEUTRON_EV;
-      break;
-    case PDG_PHOTON:
-      mass = 0.0;
-      break;
-    case PDG_ELECTRON:
-    case PDG_POSITRON:
-      mass = MASS_ELECTRON_EV;
-      break;
-    default:
-      fatal_error("Unsupported particle for speed calculation.");
-    }
+    double mass = this->mass();
+
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
   } else {
-    auto& macro_xs = data::mg.macro_xs_[this->material()];
+    auto mat = this->material();
+    if (mat == MATERIAL_VOID)
+      return 1.0 / data::mg.default_inverse_velocity_[this->g()];
+    auto& macro_xs = data::mg.macro_xs_[mat];
     int macro_t = this->mg_xs_cache().t;
     int macro_a = macro_xs.get_angle_index(this->u());
-    return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, this->g(), nullptr,
-                   nullptr, nullptr, macro_t, macro_a);
+    return 1.0 / macro_xs.get_xs(
+                   MgxsType::INVERSE_VELOCITY, this->g(), macro_t, macro_a);
+  }
+}
+
+double Particle::mass() const
+{
+  switch (type().pdg_number()) {
+  case PDG_NEUTRON:
+    return MASS_NEUTRON_EV;
+  case PDG_ELECTRON:
+  case PDG_POSITRON:
+    return MASS_ELECTRON_EV;
+  default:
+    return this->type().mass() * AMU_EV;
   }
 }
 
@@ -86,6 +90,9 @@ bool Particle::create_secondary(
   if (E < settings::energy_cutoff[idx]) {
     return false;
   }
+
+  // Increment number of secondaries created (for ParticleProductionFilter)
+  n_secondaries()++;
 
   auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
@@ -311,31 +318,50 @@ void Particle::event_cross_surface()
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
-  } else {
-    // Particle crosses surface
-    const auto& surf {model::surfaces[surface_index()].get()};
-    // If BC, add particle to surface source before crossing surface
-    if (surf->surf_source_ && surf->bc_) {
-      add_surf_source_to_bank(*this, *surf);
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      auto& lat {*model::lattices[lowest_coord().lattice()]};
+      bool is_valid;
+      Direction normal =
+        lat.get_normal(boundary().lattice_translation(), is_valid);
+      if (is_valid) {
+        normal /= normal.norm();
+        score_surface_tally(*this, model::active_surface_tallies, normal);
+      }
     }
-    this->cross_surface(*surf);
+
+  } else {
+
+    const auto& surf {*model::surfaces[surface_index()].get()};
+
+    // Particle crosses surface
+    // If BC, add particle to surface source before crossing surface
+    if (surf.surf_source_ && surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
+    }
+    this->cross_surface(surf);
     // If no BC, add particle to surface source after crossing surface
-    if (surf->surf_source_ && !surf->bc_) {
-      add_surf_source_to_bank(*this, *surf);
+    if (surf.surf_source_ && !surf.bc_) {
+      add_surf_source_to_bank(*this, surf);
     }
     if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);
     }
     event() = TallyEvent::SURFACE;
-  }
-  // Score cell to cell partial currents
-  if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies);
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      Direction normal = surf.normal(r());
+      normal /= normal.norm();
+      score_surface_tally(*this, model::active_surface_tallies, normal);
+    }
   }
 }
 
 void Particle::event_collide()
 {
+
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
@@ -346,7 +372,7 @@ void Particle::event_collide()
   // pre-collision direction to figure out what mesh surfaces were crossed
 
   if (!model::active_meshsurf_tallies.empty())
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
 
   // Clear surface component
   surface() = SURFACE_NONE;
@@ -383,6 +409,11 @@ void Particle::event_collide()
   n_bank() = 0;
   bank_second_E() = 0.0;
   wgt_bank() = 0.0;
+
+  // Clear number of secondaries in this collision. This is
+  // distinct from the number of created neutrons n_bank() above!
+  n_secondaries() = 0;
+
   zero_delayed_bank();
 
   // Reset fission logical
@@ -643,7 +674,7 @@ void Particle::cross_vacuum_bc(const Surface& surf)
     // physically moving the particle forward slightly
 
     r() += TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
   }
 
   // Score to global leakage tally
@@ -675,13 +706,15 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // with a mesh boundary
 
   if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies);
+    Direction normal = surf.normal(r());
+    normal /= normal.norm();
+    score_surface_tally(*this, model::active_surface_tallies, normal);
   }
 
   if (!model::active_meshsurf_tallies.empty()) {
     Position r {this->r()};
     this->r() -= TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
 
@@ -731,7 +764,7 @@ void Particle::cross_periodic_bc(
   if (!model::active_meshsurf_tallies.empty()) {
     Position r {this->r()};
     this->r() -= TINY_BIT * u();
-    score_surface_tally(*this, model::active_meshsurf_tallies);
+    score_meshsurface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
 

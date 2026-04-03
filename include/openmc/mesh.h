@@ -8,8 +8,8 @@
 #include <unordered_map>
 
 #include "hdf5.h"
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xtensor.hpp"
 
 #include "openmc/bounding_box.h"
 #include "openmc/error.h"
@@ -284,8 +284,8 @@ public:
   virtual Position upper_right() const = 0;
 
   // Data members
-  xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
-  xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
+  tensor::Tensor<double> lower_left_;  //!< Lower-left coordinates of mesh
+  tensor::Tensor<double> upper_right_; //!< Upper-right coordinates of mesh
   int id_ {-1};                        //!< Mesh ID
   std::string name_;                   //!< User-specified name
   int n_dimension_ {-1};               //!< Number of dimensions
@@ -348,7 +348,7 @@ public:
   //! \param[in] Pointer to bank sites
   //! \param[in] Number of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
-  xt::xtensor<double, 1> count_sites(
+  tensor::Tensor<double> count_sites(
     const SourceSite* bank, int64_t length, bool* outside) const;
 
   //! Get bin given mesh indices
@@ -419,8 +419,8 @@ public:
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
-  //! Get shape as xt::xtensor
-  xt::xtensor<int, 1> get_x_shape() const;
+  //! Get mesh dimensions as a tensor
+  tensor::Tensor<int> get_shape_tensor() const;
 
   double volume(int bin) const override
   {
@@ -515,7 +515,7 @@ public:
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(
+  tensor::Tensor<double> count_sites(
     const SourceSite* bank, int64_t length, bool* outside) const;
 
   //! Return the volume for a given mesh index
@@ -526,7 +526,7 @@ public:
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element
   double element_volume_;        //!< Volume of each mesh element
-  xt::xtensor<double, 1> width_; //!< Width of each mesh element
+  tensor::Tensor<double> width_; //!< Width of each mesh element
 };
 
 class RectilinearMesh : public StructuredMesh {

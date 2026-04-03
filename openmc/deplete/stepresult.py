@@ -12,8 +12,9 @@ import h5py
 import numpy as np
 
 import openmc
-from openmc.mpi import comm, MPI
 from openmc.checkvalue import PathLike
+from openmc.mpi import MPI, comm
+
 from .reaction_rates import ReactionRates
 
 VERSION_RESULTS = (1, 2)
@@ -153,14 +154,14 @@ class StepResult:
         full_burn_list : list of str
             List of all burnable material IDs
         name_list : list of str, optional
-            Material names corresponding to materials in burn_list
+            Material names corresponding to materials in full_burn_list
 
         """
         self.volume = copy.deepcopy(volume)
         self.index_nuc = {nuc: i for i, nuc in enumerate(nuc_list)}
         self.index_mat = {mat: i for i, mat in enumerate(burn_list)}
         self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
-        self.mat_to_name = dict(zip(burn_list, name_list)) if name_list is not None else {}
+        self.mat_to_name = dict(zip(full_burn_list, name_list)) if name_list is not None else {}
 
         # Create storage array
         self.data = np.zeros((self.n_mat, self.n_nuc))
@@ -196,15 +197,15 @@ class StepResult:
         new.rates = self.rates[ranges]
         return new
 
-    def get_material(self, mat_id):
+    def get_material(self, mat_id: str | int) -> openmc.Material:
         """Return material object for given depleted composition
 
         .. versionadded:: 0.13.2
 
         Parameters
         ----------
-        mat_id : str
-            Material ID as a string
+        mat_id : str or int
+            Material ID as a string or integer
 
         Returns
         -------
@@ -217,6 +218,9 @@ class StepResult:
             If specified material ID is not found in the StepResult
 
         """
+        # Coerce to str since internal dictionaries use str keys
+        mat_id = str(mat_id)
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', openmc.IDWarning)
             material = openmc.Material(material_id=int(mat_id))

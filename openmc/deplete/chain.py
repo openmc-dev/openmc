@@ -701,15 +701,19 @@ class Chain:
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
 
+        # Save local variables to avoid attribute lookups in loop
+        index_nuc = rates.index_nuc
+        index_rx = rates.index_rx
+
         for i, nuc in enumerate(self.nuclides):
-            if nuc.name not in rates.index_nuc:
+            if nuc.name not in index_nuc:
                 continue
 
-            nuc_ind = rates.index_nuc[nuc.name]
+            nuc_ind = index_nuc[nuc.name]
             nuc_rates = rates[nuc_ind, :]
 
             for r_type, target, _, br in nuc.reactions:
-                r_id = rates.index_rx[r_type]
+                r_id = index_rx[r_type]
                 path_rate = nuc_rates[r_id]
 
                 # Loss term -- make sure we only count loss once for

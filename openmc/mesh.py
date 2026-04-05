@@ -662,7 +662,7 @@ class StructuredMesh(MeshBase):
     def write_data_to_vtk(self,
                           filename: PathLike,
                           datasets: dict | None = None,
-                          volume_normalization: bool | None = None,
+                          volume_normalization: bool = True,
                           curvilinear: bool = False):
         """Creates a VTK object of the mesh and writes it to a file.
 
@@ -682,10 +682,9 @@ class StructuredMesh(MeshBase):
             with structured indexing in "C" ordering. See the "expand_dims" flag
             of :meth:`~openmc.Tally.get_reshaped_data` on reshaping tally data when using
             :class:`~openmc.MeshFilter`'s.
-        volume_normalization : bool or None, optional
+        volume_normalization : bool, optional
             Whether or not to normalize the data by the volume of the mesh
-            elements. When None (default), the format-appropriate default is
-            used: True for legacy ASCII .vtk files, False for .vtkhdf files.
+            elements. Defaults to True.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
             ``SphericalMesh`` and ``CylindricalMesh``.
@@ -725,9 +724,6 @@ class StructuredMesh(MeshBase):
             write_impl(filename, datasets, volume_normalization)
             return None
 
-        # legacy ASCII .vtk default is True
-        norm = volume_normalization if volume_normalization is not None else True
-
         # vtk is an optional dependency only needed for the legacy ASCII path
         import vtk
         from vtk.util import numpy_support as nps
@@ -760,7 +756,7 @@ class StructuredMesh(MeshBase):
                     dataset = dataset.T.ravel() if needs_transpose else dataset.ravel()
                 datasets_out.append(dataset)
 
-                if norm:
+                if volume_normalization:
                     if needs_transpose:
                         dataset /= self.volumes.T.ravel()
                     else:

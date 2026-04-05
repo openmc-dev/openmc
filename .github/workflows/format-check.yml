@@ -22,7 +22,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: cpp-linter/cpp-linter-action@v2
         id: linter
         env:

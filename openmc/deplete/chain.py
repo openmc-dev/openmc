@@ -1251,7 +1251,17 @@ class Chain:
             Names of all radioactive decay daughters reachable from the
             parent.
 
+        Raises
+        ------
+        ValueError
+            If the nuclide is not present in the chain.
+
         """
+        if nuclide not in self.nuclide_dict:
+            raise ValueError(
+                f"Cannot find decay daughters for '{nuclide}': "
+                "nuclide is not in the chain."
+            )
         daughters = set()
         stack = [nuclide]
         visited = set()

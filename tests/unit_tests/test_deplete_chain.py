@@ -607,9 +607,9 @@ def test_get_decay_daughters(gnd_simple_chain):
     daughters = gnd_simple_chain.get_decay_daughters("Cs135")
     assert daughters == set()
 
-    # Nuclide not in chain returns empty set
-    daughters = gnd_simple_chain.get_decay_daughters("Xx999")
-    assert daughters == set()
+    # Nuclide not in chain raises ValueError
+    with pytest.raises(ValueError, match="not in the chain"):
+        gnd_simple_chain.get_decay_daughters("Xx999")
 
 
 def test_get_decay_daughters_cyclic(simple_chain):

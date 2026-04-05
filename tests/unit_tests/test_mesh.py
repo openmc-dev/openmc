@@ -1116,6 +1116,10 @@ def test_write_vtkhdf_spherical_mesh(run_in_tmpdir):
 @pytest.mark.parametrize(
     "mesh",
     [
+        openmc.RegularMesh.from_domain(
+            openmc.BoundingBox([0.0, 0.0, 0.0], [2.0, 2.0, 2.0]),
+            dimension=[2, 2, 2],
+        ),
         openmc.RectilinearMesh(),
         openmc.CylindricalMesh(
             r_grid=[0.0, 1.0, 2.0],
@@ -1128,7 +1132,7 @@ def test_write_vtkhdf_spherical_mesh(run_in_tmpdir):
             phi_grid=[0.0, np.pi / 2, np.pi],
         ),
     ],
-    ids=["rectilinear", "cylindrical", "spherical"],
+    ids=["regular", "rectilinear", "cylindrical", "spherical"],
 )
 def test_write_vtkhdf_structuredgrid_points_order_and_type(run_in_tmpdir, mesh):
     """Test VTKHDF _write_vtk_hdf5 point ordering and Type attribute."""
@@ -1197,13 +1201,13 @@ def test_write_vtkhdf_volume_normalization(run_in_tmpdir):
 
 
 def test_write_vtkhdf_default_volume_normalization_for_vtkhdf(run_in_tmpdir):
-    """Ensure VTKHDF default keeps data un-normalized by volume."""
+    """Ensure VTKHDF default normalizes data by volume (same as legacy)."""
     mesh = openmc.RegularMesh()
     mesh.lower_left = [0.0, 0.0, 0.0]
     mesh.upper_right = [10.0, 10.0, 10.0]
     mesh.dimension = [2, 2, 2]
 
-    data = np.arange(mesh.n_elements).reshape(mesh.dimension)
+    data = np.ones(mesh.dimension) * 100.0
     mesh.write_data_to_vtk(
         datasets={"flux": data},
         filename="test_default_norm.vtkhdf",
@@ -1212,7 +1216,9 @@ def test_write_vtkhdf_default_volume_normalization_for_vtkhdf(run_in_tmpdir):
     with h5py.File("test_default_norm.vtkhdf", "r") as f:
         saved = f["VTKHDF"]["CellData"]["flux"][()]
 
-    np.testing.assert_allclose(saved, data.T.ravel())
+    # Each cell volume is 5*5*5 = 125, default normalization divides by it
+    cell_volume = 125.0
+    np.testing.assert_allclose(saved, (data / cell_volume).T.ravel())
 
 
 @pytest.mark.parametrize(
@@ -1277,7 +1283,8 @@ def test_write_vtkhdf_multiple_datasets(run_in_tmpdir):
     filename = "test_multiple_datasets.vtkhdf"
     mesh.write_data_to_vtk(
         datasets={"flux": data1, "power": data2, "heating": data3},
-        filename=filename
+        filename=filename,
+        volume_normalization=False
     )
 
     assert Path(filename).exists()
@@ -1332,7 +1339,8 @@ def test_write_vtkhdf_1d_mesh(run_in_tmpdir):
     rng = np.random.default_rng(42)
     ref_data = rng.random(mesh.dimension)
     filename = "test_1d_mesh.vtkhdf"
-    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename,
+                           volume_normalization=False)
 
     assert Path(filename).exists()
 
@@ -1354,7 +1362,8 @@ def test_write_vtkhdf_2d_mesh(run_in_tmpdir):
     rng = np.random.default_rng(42)
     ref_data = rng.random(mesh.dimension)
     filename = "test_2d_mesh.vtkhdf"
-    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename,
+                           volume_normalization=False)
 
     assert Path(filename).exists()
 

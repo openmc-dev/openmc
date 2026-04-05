@@ -696,8 +696,9 @@ class StructuredMesh(MeshBase):
 
         Returns
         -------
-        vtk.StructuredGrid or vtk.UnstructuredGrid
-            a VTK grid object representing the mesh
+        vtk.StructuredGrid or vtk.UnstructuredGrid or None
+            A VTK grid object representing the mesh for the legacy ASCII
+            format, or None for the VTKHDF format.
 
         Examples
         --------
@@ -1590,13 +1591,12 @@ class RegularMesh(StructuredMesh):
             coords_1d.append(np.array([0.0]))
 
         # np.meshgrid with indexing='ij' → axis 0 = x, axis 1 = y, axis 2 = z
-        xx, yy, zz = np.meshgrid(*coords_1d, indexing='ij')
-        # Flatten in Fortran (x-fastest) order for VTK point ordering
-        points = np.column_stack([
-            xx.ravel(order='F'),
-            yy.ravel(order='F'),
-            zz.ravel(order='F'),
-        ]).astype(np.float64)   # shape (n_points, 3)
+        vertices = np.stack(
+            np.meshgrid(*coords_1d, indexing='ij'), axis=-1
+        )
+        # Swap first and last spatial axes then flatten, matching the
+        # approach used by RectilinearMesh/CylindricalMesh/SphericalMesh.
+        points = np.swapaxes(vertices, 0, 2).reshape(-1, 3).astype(np.float64)
 
         with h5py.File(filename, "w") as f:
             root = f.create_group("VTKHDF")
@@ -1923,7 +1923,7 @@ class RectilinearMesh(StructuredMesh):
                 cell_data_group.create_dataset(
                     name, data=flat_data, dtype="float64", chunks=True
                 )
-    
+
     @classmethod
     def from_bounding_box(
         cls,
@@ -3320,7 +3320,7 @@ class UnstructuredMesh(MeshBase):
         volume_normalization: bool = True,
     ):
         """Write UnstructuredMesh as VTK-HDF5 UnstructuredGrid format.
-        
+
         Supports linear tetrahedra and linear hexahedra elements.
         """
         def append_dataset(dset, array):

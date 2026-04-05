@@ -1257,14 +1257,7 @@ def test_write_vtkhdf_rectilinear_multi_dimensional_data(run_in_tmpdir, x_grid, 
     with h5py.File("test_rectilinear_dims.vtkhdf", "r") as f:
         saved = f["VTKHDF"]["CellData"]["flux"][()]
 
-    expected_written = np.swapaxes(data, 0, data.ndim-1).ravel() if data.ndim > 1 else data.ravel()
-    if data.ndim == 1:
-        expected_written = expected
-    elif data.ndim == 2:
-        expected_written = data.T.ravel()
-    elif data.ndim == 3:
-        expected_written = data.T.ravel()
-
+    expected_written = data.T.ravel() if data.ndim > 1 else data.ravel()
     np.testing.assert_allclose(saved, expected_written)
 
 

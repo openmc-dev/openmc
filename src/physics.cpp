@@ -30,9 +30,9 @@
 
 #include <fmt/core.h>
 
+#include "openmc/tensor.h"
 #include <algorithm> // for max, min, max_element
 #include <cmath>     // for sqrt, exp, log, abs, copysign
-#include <xtensor/xview.hpp>
 
 namespace openmc {
 
@@ -44,29 +44,41 @@ void collision(Particle& p)
 {
   // Add to collision counter for particle
   ++(p.n_collision());
+  p.secondary_bank_index() = p.secondary_bank().size();
 
   // Sample reaction for the material the particle is in
-  switch (p.type()) {
-  case ParticleType::neutron:
+  switch (p.type().pdg_number()) {
+  case PDG_NEUTRON:
     sample_neutron_reaction(p);
     break;
-  case ParticleType::photon:
+  case PDG_PHOTON:
     sample_photon_reaction(p);
     break;
-  case ParticleType::electron:
+  case PDG_ELECTRON:
     sample_electron_reaction(p);
     break;
-  case ParticleType::positron:
+  case PDG_POSITRON:
     sample_positron_reaction(p);
     break;
+  default:
+    fatal_error("Unsupported particle PDG for collision sampling.");
   }
 
-  if (settings::weight_window_checkpoint_collision)
-    apply_weight_windows(p);
+  if (settings::weight_windows_on) {
+    auto [ww_found, ww] = search_weight_window(p);
+    if (!ww_found && p.type() == ParticleType::neutron()) {
+      // if the weight window is not valid, apply russian roulette for neutrons
+      // (regardless of weight window collision checkpoint setting)
+      apply_russian_roulette(p);
+    } else if (settings::weight_window_checkpoint_collision) {
+      // if collision checkpointing is on, apply weight window
+      apply_weight_window(p, ww);
+    }
+  }
 
   // Kill particle if energy falls below cutoff
-  int type = static_cast<int>(p.type());
-  if (p.E() < settings::energy_cutoff[type]) {
+  int type = p.type().transport_index();
+  if (type != C_NONE && p.E() < settings::energy_cutoff[type]) {
     p.wgt() = 0.0;
   }
 
@@ -75,11 +87,11 @@ void collision(Particle& p)
     std::string msg;
     if (p.event() == TallyEvent::KILL) {
       msg = fmt::format("    Killed. Energy = {} eV.", p.E());
-    } else if (p.type() == ParticleType::neutron) {
+    } else if (p.type().is_neutron()) {
       msg = fmt::format("    {} with {}. Energy = {} eV.",
         reaction_name(p.event_mt()), data::nuclides[p.event_nuclide()]->name_,
         p.E());
-    } else if (p.type() == ParticleType::photon) {
+    } else if (p.type().is_photon()) {
       msg = fmt::format("    {} with {}. Energy = {} eV.",
         reaction_name(p.event_mt()),
         to_element(data::nuclides[p.event_nuclide()]->name_), p.E());
@@ -153,18 +165,9 @@ void sample_neutron_reaction(Particle& p)
     advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
-  // Play russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
-    // if survival normalization is on, use normalized weight cutoff and
-    // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
-      }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
-    }
-  }
+  // Play russian roulette if there are no weight windows
+  if (!settings::weight_windows_on)
+    apply_russian_roulette(p);
 }
 
 void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
@@ -208,7 +211,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
-    site.particle = ParticleType::neutron;
+    site.particle = ParticleType::neutron();
     site.time = p.time();
     site.wgt = 1. / weight;
     site.surf_id = 0;
@@ -218,7 +221,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
     // Reject site if it exceeds time cutoff
     if (site.delayed_group > 0) {
-      double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      double t_cutoff = settings::time_cutoff[site.particle.transport_index()];
       if (site.time > t_cutoff) {
         continue;
       }
@@ -251,6 +254,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       }
     } else {
       p.secondary_bank().push_back(site);
+      p.n_secondaries()++;
     }
 
     // Increment the number of neutrons born delayed
@@ -289,7 +293,7 @@ void sample_photon_reaction(Particle& p)
   // Kill photon if below energy cutoff -- an extra check is made here because
   // photons with energy below the cutoff may have been produced by neutrons
   // reactions or atomic relaxation
-  int photon = static_cast<int>(ParticleType::photon);
+  int photon = ParticleType::photon().transport_index();
   if (p.E() < settings::energy_cutoff[photon]) {
     p.E() = 0.0;
     p.wgt() = 0.0;
@@ -339,19 +343,20 @@ void sample_photon_reaction(Particle& p)
     // Create Compton electron
     double phi = uniform_distribution(0., 2.0 * PI, p.current_seed());
     double E_electron = (alpha - alpha_out) * MASS_ELECTRON_EV - e_b;
-    int electron = static_cast<int>(ParticleType::electron);
+    int electron = ParticleType::electron().transport_index();
     if (E_electron >= settings::energy_cutoff[electron]) {
       double mu_electron = (alpha - alpha_out * p.mu()) /
                            std::sqrt(alpha * alpha + alpha_out * alpha_out -
                                      2.0 * alpha * alpha_out * p.mu());
       Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
-      p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
+      p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
     }
 
     // Allow electrons to fill orbital and produce Auger electrons and
     // fluorescent photons. Since Compton subshell data does not match atomic
     // relaxation data, use the mapping between the data to find the subshell
-    if (i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {
+    if (settings::atomic_relaxation && i_shell >= 0 &&
+        element.subshell_map_[i_shell] >= 0) {
       element.atomic_relaxation(element.subshell_map_[i_shell], p);
     }
 
@@ -371,8 +376,9 @@ void sample_photon_reaction(Particle& p)
     // cross sections
     int i_grid = micro.index_grid;
     double f = micro.interp_factor;
-    const auto& xs_lower = xt::row(element.cross_sections_, i_grid);
-    const auto& xs_upper = xt::row(element.cross_sections_, i_grid + 1);
+    tensor::View<const double> xs_lower = element.cross_sections_.slice(i_grid);
+    tensor::View<const double> xs_upper =
+      element.cross_sections_.slice(i_grid + 1);
 
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
       const auto& shell {element.shells_[i_shell]};
@@ -418,11 +424,13 @@ void sample_photon_reaction(Particle& p)
         u.z = std::sqrt(1.0 - mu * mu) * std::sin(phi);
 
         // Create secondary electron
-        p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
+        p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
-        element.atomic_relaxation(i_shell, p);
+        if (settings::atomic_relaxation) {
+          element.atomic_relaxation(i_shell, p);
+        }
         p.event() = TallyEvent::ABSORB;
         p.event_mt() = 533 + shell.index_subshell;
         p.wgt() = 0.0;
@@ -443,12 +451,11 @@ void sample_photon_reaction(Particle& p)
 
     // Create secondary electron
     Direction u = rotate_angle(p.u(), mu_electron, nullptr, p.current_seed());
-    p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
+    p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron());
 
     // Create secondary positron
     u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
-    p.create_secondary(p.wgt(), u, E_positron, ParticleType::positron);
-
+    p.create_secondary(p.wgt(), u, E_positron, ParticleType::positron());
     p.event() = TallyEvent::ABSORB;
     p.event_mt() = PAIR_PROD;
     p.wgt() = 0.0;
@@ -483,8 +490,8 @@ void sample_positron_reaction(Particle& p)
   Direction u = isotropic_direction(p.current_seed());
 
   // Create annihilation photon pair traveling in opposite directions
-  p.create_secondary(p.wgt(), u, MASS_ELECTRON_EV, ParticleType::photon);
-  p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType::photon);
+  p.create_secondary(p.wgt(), u, MASS_ELECTRON_EV, ParticleType::photon());
+  p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType::photon());
 
   p.E() = 0.0;
   p.wgt() = 0.0;
@@ -609,7 +616,7 @@ void sample_photon_product(
       continue;
 
     for (int j = 0; j < rx->products_.size(); ++j) {
-      if (rx->products_[j].particle_ == ParticleType::photon) {
+      if (rx->products_[j].particle_.is_photon()) {
         // For fission, artificially increase the photon yield to account
         // for delayed photons
         double f = 1.0;
@@ -1098,7 +1105,7 @@ void sample_fission_neutron(
     rx.products_[site->delayed_group].sample(E_in, site->E, mu, seed);
 
     // resample if energy is greater than maximum neutron energy
-    constexpr int neutron = static_cast<int>(ParticleType::neutron);
+    int neutron = ParticleType::neutron().transport_index();
     if (site->E < data::energy_max[neutron])
       break;
 
@@ -1158,7 +1165,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   if (std::floor(yield) == yield && yield > 0) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
-      p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron);
+      p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron());
     }
   } else {
     // Otherwise, change weight of particle based on yield
@@ -1214,7 +1221,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     }
 
     // Create the secondary photon
-    bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon);
+    bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon());
 
     // Tag secondary particle with parent nuclide
     if (created_photon && settings::use_decay_photons) {

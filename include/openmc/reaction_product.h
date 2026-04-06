@@ -10,7 +10,7 @@
 #include "openmc/chain.h"
 #include "openmc/endf.h"
 #include "openmc/memory.h" // for unique_ptr
-#include "openmc/particle.h"
+#include "openmc/particle_type.h"
 #include "openmc/vector.h" // for vector
 
 namespace openmc {
@@ -48,6 +48,21 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+
+  //! Select which angle-energy distribution to sample
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Reference to the selected angle-energy distribution
+  AngleEnergy& sample_dist(double E_in, uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const;
 
   ParticleType particle_;      //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode

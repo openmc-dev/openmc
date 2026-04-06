@@ -1,12 +1,6 @@
 [submodule "vendor/pugixml"]
 	path = vendor/pugixml
 	url = https://github.com/zeux/pugixml.git
-[submodule "vendor/xtensor"]
-	path = vendor/xtensor
-	url = https://github.com/xtensor-stack/xtensor.git
-[submodule "vendor/xtl"]
-	path = vendor/xtl
-	url = https://github.com/xtensor-stack/xtl.git
 [submodule "vendor/fmt"]
 	path = vendor/fmt
 	url = https://github.com/fmtlib/fmt.git

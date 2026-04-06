@@ -201,7 +201,7 @@ class TransportOperator(ABC):
         Returns
         -------
         volume : dict of str to float
-            Volumes corresponding to materials in burn_list
+            Volumes corresponding to materials in full_burn_list
         nuc_list : list of str
             A list of all nuclide names. Used for sorting the simulation.
         burn_list : list of int
@@ -209,6 +209,8 @@ class TransportOperator(ABC):
             simulation.
         full_burn_list : list of int
             All burnable materials in the geometry.
+        name_list : list of str
+            Material names corresponding to materials in full_burn_list
         """
 
     def finalize(self):

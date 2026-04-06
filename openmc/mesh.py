@@ -17,6 +17,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.utility_funcs import change_directory
+from .bounding_box import BoundingBox
 from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
@@ -40,6 +41,11 @@ class MeshMaterialVolumes(Mapping):
         Array of shape (elements, max_materials) storing material IDs
     volumes : numpy.ndarray
         Array of shape (elements, max_materials) storing material volumes
+    bboxes : numpy.ndarray, optional
+        Array of shape (elements, max_materials, 6) storing axis-aligned
+        bounding boxes for each (element, material) combination with ordering
+        (xmin, ymin, zmin, xmax, ymax, zmax). Bounding boxes enclose the
+        ray-estimator prisms used to compute volumes.
 
     See Also
     --------
@@ -64,9 +70,30 @@ class MeshMaterialVolumes(Mapping):
     [(2, 31.87963824195591), (1, 6.129949130817542)]
 
     """
-    def __init__(self, materials: np.ndarray, volumes: np.ndarray):
+    def __init__(
+        self,
+        materials: np.ndarray,
+        volumes: np.ndarray,
+        bboxes: np.ndarray | None = None
+    ):
         self._materials = materials
         self._volumes = volumes
+        self._bboxes = bboxes
+
+        if self._bboxes is not None:
+            if self._bboxes.shape[:2] != self._materials.shape:
+                raise ValueError(
+                    'bboxes must have shape (elements, max_materials, 6) '
+                    'matching materials/volumes.'
+                )
+            if self._bboxes.shape[2] != 6:
+                raise ValueError(
+                    'bboxes must have shape (elements, max_materials, 6).'
+                )
+
+    @property
+    def has_bounding_boxes(self) -> bool:
+        return self._bboxes is not None
 
     @property
     def num_elements(self) -> int:
@@ -92,7 +119,11 @@ class MeshMaterialVolumes(Mapping):
             volumes[indices] = self._volumes[indices, i]
         return volumes
 
-    def by_element(self, index_elem: int) -> list[tuple[int | None, float]]:
+    def by_element(
+        self,
+        index_elem: int,
+        include_bboxes: bool = False
+    ) -> list[tuple[int | None, float] | tuple[int | None, float, BoundingBox | None]]:
         """Get a list of volumes for each material within a specific element.
 
         Parameters
@@ -102,15 +133,32 @@ class MeshMaterialVolumes(Mapping):
 
         Returns
         -------
-        list of tuple of (material ID, volume)
+        list of tuple
+            If ``include_bboxes`` is False (default), returns tuples of
+            (material ID, volume). If ``include_bboxes`` is True, returns
+            tuples of (material ID, volume, bounding box).
 
         """
         table_size = self._volumes.shape[1]
-        return [
-            (m if m > -1 else None, self._volumes[index_elem, i])
-            for i in range(table_size)
-            if (m := self._materials[index_elem, i]) != -2
-        ]
+        if include_bboxes and self._bboxes is None:
+            raise ValueError('Bounding boxes were not computed for this object.')
+
+        results = []
+        for i in range(table_size):
+            m = self._materials[index_elem, i]
+            if m == -2:
+                continue
+            mat_id = m if m > -1 else None
+            vol = self._volumes[index_elem, i]
+
+            if include_bboxes:
+                vals = self._bboxes[index_elem, i]
+                bbox = BoundingBox(vals[0:3], vals[3:6])
+                results.append((mat_id, vol, bbox))
+            else:
+                results.append((mat_id, vol))
+
+        return results
 
     def save(self, filename: PathLike):
         """Save material volumes to a .npz file.
@@ -120,8 +168,10 @@ class MeshMaterialVolumes(Mapping):
         filename : path-like
             Filename where data will be saved
         """
-        np.savez_compressed(
-            filename, materials=self._materials, volumes=self._volumes)
+        kwargs = {'materials': self._materials, 'volumes': self._volumes}
+        if self._bboxes is not None:
+            kwargs['bboxes'] = self._bboxes
+        np.savez_compressed(filename, **kwargs)
 
     @classmethod
     def from_npz(cls, filename: PathLike) -> MeshMaterialVolumes:
@@ -134,7 +184,8 @@ class MeshMaterialVolumes(Mapping):
 
         """
         filedata = np.load(filename)
-        return cls(filedata['materials'], filedata['volumes'])
+        bboxes = filedata['bboxes'] if 'bboxes' in filedata.files else None
+        return cls(filedata['materials'], filedata['volumes'], bboxes)
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -153,11 +204,17 @@ class MeshBase(IDManagerMixin, ABC):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    lower_left : Iterable of float
+        The lower-left coordinates
+    upper_right : Iterable of float
+        The upper-right coordinates
     bounding_box : openmc.BoundingBox
         Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1, 1), ...]
+    n_elements : int
+        Number of elements in the mesh
     """
 
     next_id = 1
@@ -181,12 +238,27 @@ class MeshBase(IDManagerMixin, ABC):
             self._name = ''
 
     @property
+    @abstractmethod
+    def lower_left(self):
+        pass
+
+    @property
+    @abstractmethod
+    def upper_right(self):
+        pass
+
+    @property
     def bounding_box(self) -> openmc.BoundingBox:
         return openmc.BoundingBox(self.lower_left, self.upper_right)
 
     @property
     @abstractmethod
     def indices(self):
+        pass
+
+    @property
+    @abstractmethod
+    def n_elements(self):
         pass
 
     def __repr__(self):
@@ -366,6 +438,7 @@ class MeshBase(IDManagerMixin, ABC):
             model: openmc.Model,
             n_samples: int | tuple[int, int, int] = 10_000,
             max_materials: int = 4,
+            bounding_boxes: bool = False,
             **kwargs
     ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
@@ -388,6 +461,11 @@ class MeshBase(IDManagerMixin, ABC):
             the x, y, and z dimensions.
         max_materials : int, optional
             Estimated maximum number of materials in any given mesh element.
+        bounding_boxes : bool, optional
+            Whether to compute an axis-aligned bounding box for each
+            (mesh element, material) combination. When enabled, the bounding
+            box encloses the ray-estimator prisms used for the volume
+            estimation.
         **kwargs : dict
             Keyword arguments passed to :func:`openmc.lib.init`
 
@@ -419,7 +497,8 @@ class MeshBase(IDManagerMixin, ABC):
 
             # Compute material volumes
             volumes = mesh.material_volumes(
-                n_samples, max_materials, output=kwargs['output'])
+                n_samples, max_materials, output=kwargs['output'],
+                bounding_boxes=bounding_boxes)
 
         # Restore original tallies
         model.tallies = original_tallies
@@ -460,7 +539,16 @@ class StructuredMesh(MeshBase):
 
     @property
     @abstractmethod
+    def _axis_labels(self):
+        pass
+
+    @property
+    @abstractmethod
     def _grids(self):
+        pass
+
+    @abstractmethod
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
         pass
 
     @property
@@ -559,8 +647,17 @@ class StructuredMesh(MeshBase):
         return (vertices[s0] + vertices[s1]) / 2
 
     @property
-    def num_mesh_cells(self):
+    def n_elements(self):
         return np.prod(self.dimension)
+
+    @property
+    def num_mesh_cells(self):
+        warnings.warn(
+            "The 'num_mesh_cells' attribute is deprecated and will be removed in a future version. "
+            "Use 'n_elements' instead.",
+            FutureWarning, stacklevel=2
+        )
+        return self.n_elements
 
     def write_data_to_vtk(self,
                           filename: PathLike,
@@ -822,10 +919,10 @@ class StructuredMesh(MeshBase):
         """
         cv.check_type('data label', label, str)
 
-        if dataset.size != self.num_mesh_cells:
+        if dataset.size != self.n_elements:
             raise ValueError(
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
-                f" equal to the number of mesh cells ({self.num_mesh_cells})"
+                f" equal to the number of mesh cells ({self.n_elements})"
             )
 
         # accept a flat array as-is, assuming it is in the correct order
@@ -838,6 +935,87 @@ class StructuredMesh(MeshBase):
                 f"shape {dataset.shape} to mesh {self.id} "
                 f"with dimensions {self.dimension}"
             )
+
+    @classmethod
+    def from_domain(
+        cls,
+        domain: HasBoundingBox | BoundingBox,
+        dimension: Sequence[int] | int | None = None,
+        mesh_id: int | None = None,
+        name: str = '',
+        **kwargs
+    ) -> StructuredMesh:
+        """Create a structured mesh from a domain using its bounding box.
+
+        Parameters
+        ----------
+        domain : HasBoundingBox | openmc.BoundingBox
+            Object used as a template for the mesh extents. If ``domain`` has a
+            ``bounding_box`` attribute, that bounding box is used directly.
+        dimension : Iterable of int or int, optional
+            Number of mesh cells. When omitted, the subclass-specific default is
+            used. If provided as a single integer, subclasses that support it
+            interpret it as a target total number of mesh cells.
+        mesh_id : int, optional
+            Unique identifier for the mesh.
+        name : str, optional
+            Name of the mesh.
+        **kwargs
+            Additional keyword arguments forwarded to
+            :meth:`from_bounding_box`.
+
+        Returns
+        -------
+        openmc.StructuredMesh
+            Structured mesh instance.
+        """
+        if isinstance(domain, BoundingBox):
+            bbox = domain
+        elif hasattr(domain, 'bounding_box'):
+            bbox = domain.bounding_box
+        else:
+            raise TypeError("Domain must be a BoundingBox or have a "
+                            "bounding_box property")
+
+        if dimension is None:
+            return cls.from_bounding_box(
+                bbox, mesh_id=mesh_id, name=name, **kwargs)
+
+        return cls.from_bounding_box(
+            bbox, dimension=dimension, mesh_id=mesh_id, name=name, **kwargs)
+
+    @classmethod
+    @abstractmethod
+    def from_bounding_box(
+        cls,
+        bbox: openmc.BoundingBox,
+        dimension: Sequence[int] | int,
+        mesh_id: int | None = None,
+        name: str = '',
+        **kwargs
+    ) -> StructuredMesh:
+        """Create a structured mesh from a bounding box.
+
+        Parameters
+        ----------
+        bbox : openmc.BoundingBox
+            Bounding box used to define the mesh extents.
+        dimension : Iterable of int or int
+            Number of mesh cells. The interpretation and any default value are
+            defined by the concrete mesh type.
+        mesh_id : int, optional
+            Unique identifier for the mesh.
+        name : str, optional
+            Name of the mesh.
+        **kwargs
+            Additional keyword arguments accepted by specific subclasses.
+
+        Returns
+        -------
+        openmc.StructuredMesh
+            Structured mesh instance.
+        """
+        pass
 
 
 class HasBoundingBox(Protocol):
@@ -906,6 +1084,10 @@ class RegularMesh(StructuredMesh):
             return len(self._dimension)
         else:
             return None
+
+    @property
+    def _axis_labels(self):
+        return ('x', 'y', 'z')[:self.n_dimension]
 
     @property
     def lower_left(self):
@@ -1089,55 +1271,47 @@ class RegularMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_domain(
+    def from_bounding_box(
         cls,
-        domain: HasBoundingBox,
+        bbox: openmc.BoundingBox,
         dimension: Sequence[int] | int = 1000,
         mesh_id: int | None = None,
-        name: str = ''
-    ):
-        """Create RegularMesh from a domain using its bounding box.
+        name: str = '',
+    ) -> RegularMesh:
+        """Create a RegularMesh from a bounding box.
 
         Parameters
         ----------
-        domain : HasBoundingBox
-            The object passed in will be used as a template for this mesh. The
-            bounding box of the property of the object passed will be used to
-            set the lower_left and upper_right and of the mesh instance
-        dimension : Iterable of int | int
-            The number of mesh cells in total or number of mesh cells in each
-            direction (x, y, z). If a single integer is provided, the domain
-            will will be divided into that many mesh cells with roughly equal
-            lengths in each direction (cubes).
-        mesh_id : int
-            Unique identifier for the mesh
-        name : str
-            Name of the mesh
+        bbox : openmc.BoundingBox
+            Bounding box used to set the mesh extents.
+        dimension : Iterable of int or int, optional
+            The number of mesh cells in each direction (x, y, z). If a single
+            integer is provided, the total number of cells is distributed
+            across directions to produce cells with roughly equal widths.
+        mesh_id : int, optional
+            Unique identifier for the mesh.
+        name : str, optional
+            Name of the mesh.
 
         Returns
         -------
         openmc.RegularMesh
-            RegularMesh instance
-
+            RegularMesh instance.
         """
-        if not hasattr(domain, 'bounding_box'):
-            raise TypeError("Domain must have a bounding_box property")
-
         mesh = cls(mesh_id=mesh_id, name=name)
-        mesh.lower_left = domain.bounding_box[0]
-        mesh.upper_right = domain.bounding_box[1]
+        mesh.lower_left = bbox[0]
+        mesh.upper_right = bbox[1]
         if isinstance(dimension, int):
             cv.check_greater_than("dimension", dimension, 1, equality=True)
             # If a single integer is provided, divide the domain into that many
             # mesh cells with roughly equal lengths in each direction
-            ideal_cube_volume = domain.bounding_box.volume / dimension
+            ideal_cube_volume = bbox.volume / dimension
             ideal_cube_size = ideal_cube_volume ** (1 / 3)
             dimension = [
                 max(1, int(round(side / ideal_cube_size)))
-                for side in domain.bounding_box.width
+                for side in bbox.width
             ]
         mesh.dimension = dimension
-
         return mesh
 
     def to_xml_element(self):
@@ -1328,6 +1502,47 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        """Finds the index of the mesh element at the specified coordinates.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            Cartesian coordinates of the point.
+
+        Returns
+        -------
+        tuple
+            Mesh indices matching the dimensionality of the mesh
+
+        """
+        ndim = self.n_dimension
+        if len(coords) < ndim:
+            raise ValueError(
+                f"coords must have at least {ndim} values for a "
+                f"{ndim}D mesh, got {len(coords)}"
+            )
+
+        coords_array = np.array(coords[:ndim])
+        lower_left = np.array(self.lower_left)
+        upper_right = np.array(self.upper_right)
+        dimension = np.array(self.dimension)
+
+        if np.any(coords_array < lower_left) or np.any(coords_array > upper_right):
+            raise ValueError(
+                f"coords {tuple(coords_array)} are outside mesh bounds "
+                f"[{tuple(lower_left)}, {tuple(upper_right)}]"
+            )
+
+        # Calculate spacing for each dimension
+        spacing = (upper_right - lower_left) / dimension
+
+        # Calculate indices for each coordinate
+        indices = np.floor((coords_array - lower_left) / spacing).astype(int)
+        return tuple(int(i) for i in indices[:ndim])
+
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
@@ -1386,6 +1601,10 @@ class RectilinearMesh(StructuredMesh):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def _axis_labels(self):
+        return ('x', 'y', 'z')
 
     @property
     def x_grid(self):
@@ -1535,6 +1754,90 @@ class RectilinearMesh(StructuredMesh):
 
         return element
 
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple[int, int, int]:
+        """Find the mesh cell indices containing the specified coordinates.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            Cartesian coordinates of the point as (x, y, z).
+
+        Returns
+        -------
+        tuple[int, int, int]
+            Mesh indices (ix, iy, iz).
+
+        Raises
+        ------
+        ValueError
+            If coords does not contain exactly 3 values, or if a coordinate is
+            outside the mesh grid boundaries.
+        """
+        if len(coords) != 3:
+            raise ValueError(
+                f"coords must contain exactly 3 values for a rectilinear mesh, "
+                f"got {len(coords)}"
+            )
+
+        grids = (self.x_grid, self.y_grid, self.z_grid)
+        indices = []
+
+        for grid, value in zip(grids, coords):
+            if value < grid[0] or value > grid[-1]:
+                raise ValueError(
+                    f"Coordinate value {value} is outside the mesh grid boundaries: "
+                    f"[{grid[0]}, {grid[-1]}]"
+                )
+
+            idx = np.searchsorted(grid, value, side="right") - 1
+            indices.append(int(min(idx, len(grid) - 2)))
+
+        return tuple(indices)
+
+    @classmethod
+    def from_bounding_box(
+        cls,
+        bbox: openmc.BoundingBox,
+        dimension: Sequence[int] | int = 1000,
+        mesh_id: int | None = None,
+        name: str = '',
+    ) -> RectilinearMesh:
+        """Create a RectilinearMesh from a bounding box with uniform grids.
+
+        Parameters
+        ----------
+        bbox : openmc.BoundingBox
+            Bounding box used to set the mesh extents.
+        dimension : Iterable of int or int, optional
+            The number of mesh cells in each direction (x, y, z). If a single
+            integer is provided, the total number of cells is distributed across
+            the three directions proportionally to the side lengths.
+        mesh_id : int, optional
+            Unique identifier for the mesh.
+        name : str, optional
+            Name of the mesh.
+
+        Returns
+        -------
+        openmc.RectilinearMesh
+            RectilinearMesh instance with uniform grids along each axis.
+        """
+        if isinstance(dimension, int):
+            cv.check_greater_than("dimension", dimension, 1, equality=True)
+            ideal_cube_volume = bbox.volume / dimension
+            ideal_cube_size = ideal_cube_volume ** (1 / 3)
+            dimension = [
+                max(1, int(round(side / ideal_cube_size)))
+                for side in bbox.width
+            ]
+        mesh = cls(mesh_id=mesh_id, name=name)
+        mesh.x_grid = np.linspace(bbox[0][0], bbox[1][0], num=dimension[0] + 1)
+        mesh.y_grid = np.linspace(bbox[0][1], bbox[1][1], num=dimension[1] + 1)
+        mesh.z_grid = np.linspace(bbox[0][2], bbox[1][2], num=dimension[2] + 1)
+        return mesh
+
 
 class CylindricalMesh(StructuredMesh):
     """A 3D cylindrical mesh
@@ -1620,6 +1923,10 @@ class CylindricalMesh(StructuredMesh):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def _axis_labels(self):
+        return ('r', 'phi', 'z')
 
     @property
     def origin(self):
@@ -1723,14 +2030,14 @@ class CylindricalMesh(StructuredMesh):
             self,
             coords: Sequence[float]
         ) -> tuple[int, int, int]:
-        """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+        """Finds the index of the mesh element at the specified coordinates.
 
         .. versionadded:: 0.15.0
 
         Parameters
         ----------
         coords : Sequence[float]
-            The x, y, z axis coordinates
+            Cartesian coordinates of the point.
 
         Returns
         -------
@@ -1797,33 +2104,31 @@ class CylindricalMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_domain(
+    def from_bounding_box(
         cls,
-        domain: HasBoundingBox,
+        bbox: openmc.BoundingBox,
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
-        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         name: str = '',
-        enclose_domain: bool = False
-    ):
-        """Create CylindricalMesh from a domain using its bounding box.
+        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
+        enclose_domain: bool = False,
+    ) -> CylindricalMesh:
+        """Create CylindricalMesh from a bounding box.
 
         Parameters
         ----------
-        domain : HasBoundingBox
-            The object passed in will be used as a template for this mesh. The
-            bounding box of the property of the object passed will be used to
-            set the r_grid, z_grid ranges.
+        bbox : openmc.BoundingBox
+            Bounding box used to set the r_grid and z_grid ranges.
         dimension : Iterable of int
             The number of equally spaced mesh cells in each direction (r_grid,
             phi_grid, z_grid)
-        mesh_id : int
+        mesh_id : int, optional
             Unique identifier for the mesh
+        name : str, optional
+            Name of the mesh
         phi_grid_bounds : numpy.ndarray
             Mesh bounds points along the phi-axis in radians. The default value
             is (0, 2π), i.e., the full phi range.
-        name : str
-            Name of the mesh
         enclose_domain : bool
             If True, the mesh will encompass the bounding box of the domain. If
             False, the mesh will be inscribed within the domain's bounding box.
@@ -1834,38 +2139,28 @@ class CylindricalMesh(StructuredMesh):
             CylindricalMesh instance
 
         """
-        if not hasattr(domain, 'bounding_box'):
-            raise TypeError("Domain must have a bounding_box property")
-
-        # loaded once to avoid recalculating bounding box
-        cached_bb = domain.bounding_box
-
         if enclose_domain:
-            outer_radius = 0.5 * np.linalg.norm(cached_bb.width[:2])
+            outer_radius = 0.5 * np.linalg.norm(bbox.width[:2])
         else:
-            outer_radius = 0.5 * min(cached_bb.width[:2])
+            outer_radius = 0.5 * min(bbox.width[:2])
 
-        r_grid = np.linspace(
-            0,
-            outer_radius,
-            num=dimension[0]+1
-        )
+        r_grid = np.linspace(0, outer_radius, num=dimension[0]+1)
         phi_grid = np.linspace(
             phi_grid_bounds[0],
             phi_grid_bounds[1],
             num=dimension[1]+1
         )
         z_grid = np.linspace(
-            cached_bb[0][2],
-            cached_bb[1][2],
+            bbox[0][2],
+            bbox[1][2],
             num=dimension[2]+1
         )
-        origin = (cached_bb.center[0], cached_bb.center[1], z_grid[0])
+        origin = (bbox.center[0], bbox.center[1], z_grid[0])
 
         # make z-grid relative to the origin
         z_grid -= origin[2]
 
-        mesh = cls(
+        return cls(
             r_grid=r_grid,
             z_grid=z_grid,
             phi_grid=phi_grid,
@@ -1873,8 +2168,6 @@ class CylindricalMesh(StructuredMesh):
             name=name,
             origin=origin
         )
-
-        return mesh
 
     def to_xml_element(self):
         """Return XML representation of the mesh
@@ -2069,6 +2362,10 @@ class SphericalMesh(StructuredMesh):
         return 3
 
     @property
+    def _axis_labels(self):
+        return ('r', 'theta', 'phi')
+
+    @property
     def origin(self):
         return self._origin
 
@@ -2179,38 +2476,36 @@ class SphericalMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_domain(
+    def from_bounding_box(
         cls,
-        domain: HasBoundingBox,
+        bbox: openmc.BoundingBox,
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
+        name: str = '',
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         theta_grid_bounds: Sequence[float] = (0.0, pi),
-        name: str = '',
-        enclose_domain: bool = False
-    ):
-        """Create SphericalMesh from a domain using its bounding box.
+        enclose_domain: bool = False,
+    ) -> SphericalMesh:
+        """Create SphericalMesh from a bounding box.
 
         Parameters
         ----------
-        domain : HasBoundingBox
-            The object passed in will be used as a template for this mesh. The
-            bounding box of the property of the object passed will be used to
-            set the r_grid, phi_grid, and theta_grid ranges.
+        bbox : openmc.BoundingBox
+            Bounding box used to set the r_grid, phi_grid, and theta_grid ranges.
         dimension : Iterable of int
             The number of equally spaced mesh cells in each direction (r_grid,
             phi_grid, theta_grid). Spacing is in angular space (radians) for
             phi and theta, and in absolute space for r.
-        mesh_id : int
+        mesh_id : int, optional
             Unique identifier for the mesh
+        name : str, optional
+            Name of the mesh
         phi_grid_bounds : numpy.ndarray
             Mesh bounds points along the phi-axis in radians. The default value
             is (0, 2π), i.e., the full phi range.
         theta_grid_bounds : numpy.ndarray
             Mesh bounds points along the theta-axis in radians. The default value
             is (0, π), i.e., the full theta range.
-        name : str
-            Name of the mesh
         enclose_domain : bool
             If True, the mesh will encompass the bounding box of the domain. If
             False, the mesh will be inscribed within the domain's bounding box.
@@ -2221,16 +2516,10 @@ class SphericalMesh(StructuredMesh):
             SphericalMesh instance
 
         """
-        if not hasattr(domain, 'bounding_box'):
-            raise TypeError("Domain must have a bounding_box property")
-
-        # loaded once to avoid recalculating bounding box
-        cached_bb = domain.bounding_box
-
         if enclose_domain:
-            outer_radius = 0.5 * np.linalg.norm(cached_bb.width)
+            outer_radius = 0.5 * np.linalg.norm(bbox.width)
         else:
-            outer_radius = 0.5 * min(cached_bb.width)
+            outer_radius = 0.5 * min(bbox.width)
 
         r_grid = np.linspace(0, outer_radius, num=dimension[0] + 1)
         theta_grid = np.linspace(
@@ -2243,8 +2532,7 @@ class SphericalMesh(StructuredMesh):
             phi_grid_bounds[1],
             num=dimension[2]+1
         )
-        origin = np.array([
-            cached_bb.center[0], cached_bb.center[1], cached_bb.center[2]])
+        origin = np.array([bbox.center[0], bbox.center[1], bbox.center[2]])
 
         return cls(r_grid=r_grid, phi_grid=phi_grid, theta_grid=theta_grid,
                    origin=origin, mesh_id=mesh_id, name=name)
@@ -2355,6 +2643,11 @@ class SphericalMesh(StructuredMesh):
         arr[..., 1] = y + origin[1]
         arr[..., 2] = z + origin[2]
         return arr
+
+    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
+        raise NotImplementedError(
+            "get_indices_at_coords is not yet implemented for SphericalMesh"
+        )
 
 
 def require_statepoint_data(func):
@@ -2582,6 +2875,10 @@ class UnstructuredMesh(MeshBase):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def _axis_labels(self):
+        return ('element_index',)
 
     @property
     @require_statepoint_data

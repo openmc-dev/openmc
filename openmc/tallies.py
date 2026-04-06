@@ -50,6 +50,18 @@ class Tally(IDManagerMixin):
         will automatically be assigned
     name : str, optional
         Name of the tally. If not specified, the name is the empty string.
+    scores : list of str, optional
+        List of scores, e.g. ['flux', 'fission']
+    filters : list of openmc.Filter, optional
+        List of filters for the tally
+    nuclides : list of str, optional
+        List of nuclides to score results for
+    estimator : {'analog', 'tracklength', 'collision'}, optional
+        Type of estimator for the tally
+    triggers : list of openmc.Trigger, optional
+        List of tally triggers
+    derivative : openmc.TallyDerivative, optional
+        A material perturbation derivative to apply to all scores in the tally
 
     Attributes
     ----------
@@ -124,7 +136,9 @@ class Tally(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, tally_id=None, name=''):
+    def __init__(self, tally_id=None, name='', scores=None, filters=None,
+                 nuclides=None, estimator=None, triggers=None,
+                 derivative=None):
         # Initialize Tally class attributes
         self.id = tally_id
         self.name = name
@@ -154,6 +168,19 @@ class Tally(IDManagerMixin):
 
         self._sp_filename = None
         self._results_read = False
+
+        if filters is not None:
+            self.filters = filters
+        if nuclides is not None:
+            self.nuclides = nuclides
+        if scores is not None:
+            self.scores = scores
+        if estimator is not None:
+            self.estimator = estimator
+        if triggers is not None:
+            self.triggers = triggers
+        if derivative is not None:
+            self.derivative = derivative
 
     def __eq__(self, other):
         if other.id != self.id:
@@ -1982,7 +2009,7 @@ class Tally(IDManagerMixin):
 
         # Expand the columns into Pandas MultiIndices for readability
         if pd.__version__ >= '0.16':
-            columns = copy.deepcopy(df.columns.values)
+            columns = copy.deepcopy(list(df.columns.values))
 
             # Convert all elements in columns list to tuples
             for i, column in enumerate(columns):

@@ -6,7 +6,7 @@ import pytest
 import numpy as np
 
 import openmc
-from openmc.data import decay_photon_energy
+from openmc.data import decay_particle_energy
 from openmc.deplete import Chain
 import openmc.examples
 import openmc.model
@@ -699,13 +699,13 @@ def test_decay_photon_energy():
         return src.integral() if src is not None else 0.0
 
     assert src.integral() == pytest.approx(sum(
-        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
+        intensity(decay_particle_energy(nuc,"photon")) for nuc in m.get_nuclides()
     ), rel=1e-3)
 
     # When the clipping threshold is zero, the intensities should match exactly
     src = m.get_decay_photon_energy(0.0)
     assert src.integral() == pytest.approx(sum(
-        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
+        intensity(decay_particle_energy(nuc,"photon")) for nuc in m.get_nuclides()
     ))
 
     # A material with no unstable nuclides should have no decay photon source
@@ -713,6 +713,54 @@ def test_decay_photon_energy():
     stable.add_nuclide('Gd156', 1.0)
     stable.volume = 1.0
     assert stable.get_decay_photon_energy() is None
+
+
+def test_decay_particle_energy():
+    with openmc.config.patch('chain_file', Path(__file__).parents[1] / 'chain_ni.xml'):
+        # Material representing single atom of Fe55 and Co58
+        m = openmc.Material()
+        m.add_nuclide('Fe55', 1.0e-24)
+        m.add_nuclide('Co58', 1.0e-24)
+        m.volume = 1.0
+
+        # Get decay positron source and make sure it's the right type
+        src = m.get_decay_particle_energy('positron')
+        assert isinstance(src, openmc.stats.Discrete)
+
+        # Make sure units/volume work as expected
+        src_v2 = m.get_decay_particle_energy('positron', volume=2.0)
+        assert src.p * 2.0 == pytest.approx(src_v2.p)
+        src_per_cm3 = m.get_decay_particle_energy('positron', units='Bq/cm3',
+                                                  volume=100.0)
+        assert (src.p == src_per_cm3.p).all()
+        src_per_bqg = m.get_decay_particle_energy('positron', units='Bq/g')
+        src_per_bqkg = m.get_decay_particle_energy('positron', units='Bq/kg')
+        assert pytest.approx(src_per_bqg.integral()) == src_per_bqkg.integral() / 1000.
+        src_per_bqm3 = m.get_decay_particle_energy('positron', units='Bq/m3')
+        assert pytest.approx(src_per_bqm3.integral()) == src_per_cm3.integral() * 1e6
+
+        # With a single atom of each, the intensity of the positron source
+        # should be equal to the sum of the intensities for each nuclide
+        def intensity(src):
+            return src.integral() if src is not None else 0.0
+
+        assert src.integral() == pytest.approx(sum(
+            intensity(decay_particle_energy(nuc, 'positron'))
+            for nuc in m.get_nuclides()
+        ), rel=1e-3)
+
+        # When the clipping threshold is zero, the intensities should match exactly
+        src = m.get_decay_particle_energy('positron', 0.0)
+        assert src.integral() == pytest.approx(sum(
+            intensity(decay_particle_energy(nuc, 'positron'))
+            for nuc in m.get_nuclides()
+        ))
+
+        # A material with no unstable nuclides should have no decay positron source
+        stable = openmc.Material()
+        stable.add_nuclide('Gd156', 1.0)
+        stable.volume = 1.0
+        assert stable.get_decay_particle_energy('positron') is None
 
 
 def test_avoid_subnormal(run_in_tmpdir):

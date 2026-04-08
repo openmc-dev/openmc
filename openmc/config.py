@@ -20,7 +20,7 @@ import warnings
 from typing import Any, Dict, Iterator
 
 from openmc.data import DataLibrary
-from openmc.data.decay import _DECAY_ENERGY, _DECAY_PHOTON_ENERGY
+from openmc.data.decay import _DECAY_ENERGY, _DECAY_PARTICLE_ENERGY
 
 __all__ = ["config"]
 
@@ -77,7 +77,7 @@ class _Config(MutableMapping):
             if env_var in os.environ:
                 del os.environ[env_var]
         if key == 'chain_file':
-            _DECAY_PHOTON_ENERGY.clear()
+            _DECAY_PARTICLE_ENERGY.clear()
             _DECAY_ENERGY.clear()
 
     def __setitem__(self, key: str, value: Any):
@@ -103,7 +103,7 @@ class _Config(MutableMapping):
             os.environ[self._PATH_KEYS[key]] = str(stored_path)
 
             if key == 'chain_file':
-                _DECAY_PHOTON_ENERGY.clear()
+                _DECAY_PARTICLE_ENERGY.clear()
                 _DECAY_ENERGY.clear()
 
             if not stored_path.exists():

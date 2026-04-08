@@ -28,6 +28,21 @@ public:
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
+  //! Sample an outgoing energy from the N-body phase space distribution
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled outgoing energy in [eV]
+  double sample_energy(double E_in, uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
+
 private:
   int n_bodies_;      //!< Number of particles distributed
   double mass_ratio_; //!< Total mass of particles [neutron mass]

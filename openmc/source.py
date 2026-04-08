@@ -1,12 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
-from enum import IntEnum
 from numbers import Real
 from pathlib import Path
 import warnings
 from typing import Any
-from pathlib import Path
 
 import lxml.etree as ET
 import numpy as np
@@ -20,6 +18,8 @@ from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_elem_list, get_text
 from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
+from .particle_type import ParticleType
+from .statepoint import _VERSION_STATEPOINT
 from .utility_funcs import input_path
 
 
@@ -107,10 +107,12 @@ class SourceBase(ABC):
                 cv.check_type('fissionable', value, bool)
                 self._constraints['fissionable'] = value
             elif key == 'rejection_strategy':
-                cv.check_value('rejection strategy', value, ('resample', 'kill'))
+                cv.check_value('rejection strategy',
+                               value, ('resample', 'kill'))
                 self._constraints['rejection_strategy'] = value
             else:
-                raise ValueError(f'Unknown key in constraints dictionary: {key}')
+                raise ValueError(
+                    f'Unknown key in constraints dictionary: {key}')
 
     @abstractmethod
     def populate_xml_element(self, element):
@@ -144,13 +146,16 @@ class SourceBase(ABC):
                 dt_elem = ET.SubElement(constraints_elem, "domain_type")
                 dt_elem.text = constraints["domain_type"]
                 id_elem = ET.SubElement(constraints_elem, "domain_ids")
-                id_elem.text = ' '.join(str(uid) for uid in constraints["domain_ids"])
+                id_elem.text = ' '.join(str(uid)
+                                        for uid in constraints["domain_ids"])
             if "time_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "time_bounds")
-                dt_elem.text = ' '.join(str(t) for t in constraints["time_bounds"])
+                dt_elem.text = ' '.join(str(t)
+                                        for t in constraints["time_bounds"])
             if "energy_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "energy_bounds")
-                dt_elem.text = ' '.join(str(E) for E in constraints["energy_bounds"])
+                dt_elem.text = ' '.join(str(E)
+                                        for E in constraints["energy_bounds"])
             if "fissionable" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "fissionable")
                 dt_elem.text = str(constraints["fissionable"]).lower()
@@ -199,7 +204,8 @@ class SourceBase(ABC):
             elif source_type == 'mesh':
                 return MeshSource.from_xml_element(elem, meshes)
             else:
-                raise ValueError(f'Source type {source_type} is not recognized')
+                raise ValueError(
+                    f'Source type {source_type} is not recognized')
 
     @staticmethod
     def _get_constraints(elem: ET.Element) -> dict[str, Any]:
@@ -260,8 +266,8 @@ class IndependentSource(SourceBase):
         time distribution of source sites
     strength : float
         Strength of the source
-    particle : {'neutron', 'photon', 'electron', 'positron'}
-        Source particle type
+    particle : str or int or openmc.ParticleType
+        Source particle type (name, PDG number, or type)
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
@@ -297,10 +303,9 @@ class IndependentSource(SourceBase):
     type : str
         Indicator of source type: 'independent'
 
-    .. versionadded:: 0.14.0
-
-    particle : {'neutron', 'photon', 'electron', 'positron'}
-        Source particle type
+        .. versionadded:: 0.14.0
+    particle : str or int or openmc.ParticleType
+        Source particle type (alias, PDG number, or GNDS nuclide name)
     constraints : dict
         Constraints on sampled source particles. Valid keys include
         'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
@@ -315,8 +320,9 @@ class IndependentSource(SourceBase):
         energy: openmc.stats.Univariate | None = None,
         time: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
-        particle: str = 'neutron',
-        domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
+        particle: str | int | ParticleType = 'neutron',
+        domains: Sequence[openmc.Cell | openmc.Material |
+                          openmc.Universe] | None = None,
         constraints: dict[str, Any] | None = None
     ):
         if domains is not None:
@@ -399,14 +405,12 @@ class IndependentSource(SourceBase):
         self._time = time
 
     @property
-    def particle(self):
+    def particle(self) -> ParticleType:
         return self._particle
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle', particle,
-                       ['neutron', 'photon', 'electron', 'positron'])
-        self._particle = particle
+        self._particle = ParticleType(particle)
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
@@ -417,7 +421,7 @@ class IndependentSource(SourceBase):
             XML element containing source data
 
         """
-        element.set("particle", self.particle)
+        element.set("particle", str(self.particle))
         if self.space is not None:
             element.append(self.space.to_xml_element())
         if self.angle is not None:
@@ -527,11 +531,12 @@ class MeshSource(SourceBase):
         'fissionable', and 'rejection_strategy'.
 
     """
+
     def __init__(
             self,
             mesh: MeshBase,
             sources: Sequence[SourceBase],
-            constraints: dict[str, Any] | None  = None,
+            constraints: dict[str, Any] | None = None,
     ):
         super().__init__(strength=None, constraints=constraints)
         self.mesh = mesh
@@ -565,10 +570,10 @@ class MeshSource(SourceBase):
         s = np.asarray(s)
 
         if isinstance(self.mesh, StructuredMesh):
-            if s.size != self.mesh.num_mesh_cells:
+            if s.size != self.mesh.n_elements:
                 raise ValueError(
                     f'The length of the source array ({s.size}) does not match '
-                    f'the number of mesh elements ({self.mesh.num_mesh_cells}).')
+                    f'the number of mesh elements ({self.mesh.n_elements}).')
 
             # If user gave a multidimensional array, flatten in the order
             # of the mesh indices
@@ -577,7 +582,8 @@ class MeshSource(SourceBase):
 
         elif isinstance(self.mesh, UnstructuredMesh):
             if s.ndim > 1:
-                raise ValueError('Sources must be a 1-D array for unstructured mesh')
+                raise ValueError(
+                    'Sources must be a 1-D array for unstructured mesh')
 
         self._sources = s
         for src in self._sources:
@@ -646,7 +652,8 @@ class MeshSource(SourceBase):
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
 
-        sources = [SourceBase.from_xml_element(e) for e in elem.iterchildren('source')]
+        sources = [SourceBase.from_xml_element(
+            e) for e in elem.iterchildren('source')]
         constraints = cls._get_constraints(elem)
         return cls(mesh, sources, constraints=constraints)
 
@@ -656,7 +663,8 @@ def Source(*args, **kwargs):
     A function for backward compatibility of sources. Will be removed in the
     future. Please update to IndependentSource.
     """
-    warnings.warn("This class is deprecated in favor of 'IndependentSource'", FutureWarning)
+    warnings.warn(
+        "This class is deprecated in favor of 'IndependentSource'", FutureWarning)
     return openmc.IndependentSource(*args, **kwargs)
 
 
@@ -703,6 +711,7 @@ class CompiledSource(SourceBase):
         'fissionable', and 'rejection_strategy'.
 
     """
+
     def __init__(
         self,
         library: PathLike,
@@ -887,75 +896,6 @@ class FileSource(SourceBase):
         return cls(**kwargs)
 
 
-class ParticleType(IntEnum):
-    """
-    IntEnum class representing a particle type. Type
-    values mirror those found in the C++ class.
-    """
-    NEUTRON = 0
-    PHOTON = 1
-    ELECTRON = 2
-    POSITRON = 3
-
-    @classmethod
-    def from_string(cls, value: str):
-        """
-        Constructs a ParticleType instance from a string.
-
-        Parameters
-        ----------
-        value : str
-            The string representation of the particle type.
-
-        Returns
-        -------
-        The corresponding ParticleType instance.
-        """
-        try:
-            return cls[value.upper()]
-        except KeyError:
-            raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
-
-    @classmethod
-    def from_pdg_number(cls, pdg_number: int) -> ParticleType:
-        """Constructs a ParticleType instance from a PDG number.
-
-        The Particle Data Group at LBNL publishes a Monte Carlo particle
-        numbering scheme as part of the `Review of Particle Physics
-        <10.1103/PhysRevD.110.030001>`_. This method maps PDG numbers to the
-        corresponding :class:`ParticleType`.
-
-        Parameters
-        ----------
-        pdg_number : int
-            The PDG number of the particle type.
-
-        Returns
-        -------
-        The corresponding ParticleType instance.
-        """
-        try:
-            return {
-                2112: ParticleType.NEUTRON,
-                22: ParticleType.PHOTON,
-                11: ParticleType.ELECTRON,
-                -11: ParticleType.POSITRON,
-            }[pdg_number]
-        except KeyError:
-            raise ValueError(f"Unrecognized PDG number: {pdg_number}")
-
-    def __repr__(self) -> str:
-        """
-        Returns a string representation of the ParticleType instance.
-
-        Returns:
-            str: The lowercase name of the ParticleType instance.
-        """
-        return self.name.lower()
-
-    # needed for < Python 3.11
-    def __str__(self) -> str:
-        return self.__repr__()
 
 
 class SourceParticle:
@@ -980,10 +920,11 @@ class SourceParticle:
         Delayed group particle was created in (neutrons only)
     surf_id : int
         Surface ID where particle is at, if any.
-    particle : ParticleType
-        Type of the particle
+    particle : ParticleType or str or int
+        Type of the particle (type, name, or PDG number)
 
     """
+
     def __init__(
         self,
         r: Iterable[float] = (0., 0., 0.),
@@ -993,7 +934,7 @@ class SourceParticle:
         wgt: float = 1.0,
         delayed_group: int = 0,
         surf_id: int = 0,
-        particle: ParticleType = ParticleType.NEUTRON
+        particle: ParticleType | str | int = ParticleType.NEUTRON
     ):
 
         self.r = tuple(r)
@@ -1005,9 +946,16 @@ class SourceParticle:
         self.surf_id = surf_id
         self.particle = particle
 
+    @property
+    def particle(self) -> ParticleType:
+        return self._particle
+
+    @particle.setter
+    def particle(self, particle):
+        self._particle = ParticleType(particle)
+
     def __repr__(self):
-        name = self.particle.name.lower()
-        return f'<SourceParticle: {name} at E={self.E:.6e} eV>'
+        return f'<SourceParticle: {str(self.particle)} at E={self.E:.6e} eV>'
 
     def to_tuple(self) -> tuple:
         """Return source particle attributes as a tuple
@@ -1019,7 +967,7 @@ class SourceParticle:
 
         """
         return (self.r, self.u, self.E, self.time, self.wgt,
-                self.delayed_group, self.surf_id, self.particle.value)
+                self.delayed_group, self.surf_id, self.particle.pdg_number)
 
 
 def write_source_file(
@@ -1042,7 +990,8 @@ def write_source_file(
     openmc.SourceParticle
 
     """
-    cv.check_iterable_type("source particles", source_particles, SourceParticle)
+    cv.check_iterable_type(
+        "source particles", source_particles, SourceParticle)
     pl = ParticleList(source_particles)
     pl.export_to_hdf5(filename, **kwargs)
 
@@ -1102,11 +1051,7 @@ class ParticleList(list):
         particles = []
         with mcpl.MCPLFile(filename) as f:
             for particle in f.particles:
-                # Determine particle type based on the PDG number
-                try:
-                    particle_type = ParticleType.from_pdg_number(particle.pdgcode)
-                except ValueError:
-                    particle_type = "UNKNOWN"
+                particle_type = ParticleType(particle.pdgcode)
 
                 # Create a source particle instance. Note that MCPL stores
                 # energy in MeV and time in ms.
@@ -1164,7 +1109,7 @@ class ParticleList(list):
         # Extract the attributes of the source particles into a list of tuples
         data = [(sp.r[0], sp.r[1], sp.r[2], sp.u[0], sp.u[1], sp.u[2],
                  sp.E, sp.time, sp.wgt, sp.delayed_group, sp.surf_id,
-                 sp.particle.name.lower()) for sp in self]
+                 str(sp.particle)) for sp in self]
 
         # Define the column names for the DataFrame
         columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt',
@@ -1211,6 +1156,7 @@ class ParticleList(list):
         kwargs.setdefault('mode', 'w')
         with h5py.File(filename, **kwargs) as fh:
             fh.attrs['filetype'] = np.bytes_("source")
+            fh.attrs['version'] = np.array([_VERSION_STATEPOINT, 2])
             fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
 
@@ -1241,3 +1187,133 @@ def read_source_file(filename: PathLike) -> ParticleList:
         return ParticleList.from_hdf5(filename)
     else:
         return ParticleList.from_mcpl(filename)
+
+
+def read_collision_track_hdf5(filename):
+    """Read a collision track file in HDF5 format.
+
+    Parameters
+    ----------
+    filename : str or path-like
+        Path to the HDF5 collision track file.
+
+    Returns
+    -------
+    numpy.ndarray
+        Structured array containing collision track data.
+
+    See Also
+    --------
+    read_collision_track_mcpl
+    read_collision_track_file
+    """
+
+    with h5py.File(filename, 'r') as file:
+        data = file['collision_track_bank'][:]
+
+    return data
+
+
+def read_collision_track_mcpl(file_path):
+    """Read a collision track file in MCPL format.
+
+    Parameters
+    ----------
+    file_path : str or path-like
+        Path to the MCPL collision track file.
+
+    Returns
+    -------
+    numpy.ndarray
+        Structured array of particle collision track information, including
+        position, direction, energy, weight, reaction data, and identifiers.
+
+    See Also
+    --------
+    read_collision_track_hdf5
+    read_collision_track_file
+    """
+    import mcpl
+    myfile = mcpl.MCPLFile(file_path)
+    data = {
+        'r': [],  # for position (x, y, z)
+        'u': [],  # for direction (ux, uy, uz)
+        'E': [], 'dE': [], 'time': [],
+        'wgt': [], 'event_mt': [], 'delayed_group': [],
+        'cell_id': [], 'nuclide_id': [], 'material_id': [],
+        'universe_id': [], 'n_collision': [], 'particle': [],
+        'parent_id': [], 'progeny_id': []
+    }
+
+    # Read and collect data from the MCPL file
+    for i, p in enumerate(myfile.particles):
+        if f'blob_{i}' in myfile.blobs:
+            blob_data = myfile.blobs[f'blob_{i}']
+            decoded_str = blob_data.decode('utf-8')
+            pairs = decoded_str.split(';')
+            values_dict = {k.strip(): v.strip()
+                           for k, v in (pair.split(':') for pair in pairs if pair.strip())}
+
+            data['r'].append((p.x, p.y, p.z))  # Append as tuple
+            data['u'].append((p.ux, p.uy, p.uz))  # Append as tuple
+            data['E'].append(p.ekin * 1e6)
+            data['dE'].append(float(values_dict.get('dE', 0)))
+            data['time'].append(p.time * 1e-3)
+            data['wgt'].append(p.weight)
+            data['event_mt'].append(int(values_dict.get('event_mt', 0)))
+            data['delayed_group'].append(
+                int(values_dict.get('delayed_group', 0)))
+            data['cell_id'].append(int(values_dict.get('cell_id', 0)))
+            data['nuclide_id'].append(int(values_dict.get('nuclide_id', 0)))
+            data['material_id'].append(int(values_dict.get('material_id', 0)))
+            data['universe_id'].append(int(values_dict.get('universe_id', 0)))
+            data['n_collision'].append(int(values_dict.get('n_collision', 0)))
+            data['particle'].append(ParticleType(p.pdgcode))
+            data['parent_id'].append(int(values_dict.get('parent_id', 0)))
+            data['progeny_id'].append(int(values_dict.get('progeny_id', 0)))
+
+    dtypes = [
+        ('r', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
+        ('u', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
+        ('E', 'f8'), ('dE', 'f8'), ('time', 'f8'), ('wgt', 'f8'),
+        ('event_mt', 'f8'), ('delayed_group', 'i4'), ('cell_id', 'i4'),
+        ('nuclide_id', 'i4'), ('material_id', 'i4'), ('universe_id', 'i4'),
+        ('n_collision', 'i4'), ('particle', 'i4'),
+        ('parent_id', 'i8'), ('progeny_id', 'i8')
+    ]
+
+    structured_array = np.zeros(len(data['r']), dtype=dtypes)
+    for key in data:
+        structured_array[key] = data[key]  # Assign data
+
+    return structured_array
+
+
+def read_collision_track_file(filename):
+    """Read a collision track file (HDF5 or MCPL) and return its data.
+
+    Parameters
+    ----------
+    filename : str or path-like
+        Path to the collision track file to read. Must end with
+        ``.h5`` or ``.mcpl``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Structured array containing collision track data.
+
+    See Also
+    --------
+    read_collision_track_hdf5
+    read_collision_track_mcpl
+    """
+
+    filename = Path(filename)
+    if filename.suffix not in ('.h5', '.mcpl'):
+        raise ValueError('Collision track file must have a .h5 or .mcpl extension.')
+
+    if filename.suffix == '.h5':
+        return read_collision_track_hdf5(filename)
+    else:
+        return read_collision_track_mcpl(filename)

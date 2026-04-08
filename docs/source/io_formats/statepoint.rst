@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current version of the statepoint file format is 18.1.
+The current version of the statepoint file format is 18.2.
 
 **/**
 
@@ -56,8 +56,8 @@ The current version of the statepoint file format is 18.1.
              ``time``, ``wgt``, ``delayed_group``, ``surf_id``, and
              ``particle``, which represent the position, direction, energy,
              time, weight, delayed group, surface ID, and particle type
-             (0=neutron, 1=photon, 2=electron, 3=positron), respectively. Only
-             present when `run_mode` is 'eigenvalue'.
+             (PDG number), respectively. Only present when `run_mode` is
+             'eigenvalue'.
 
 **/tallies/**
 
@@ -149,6 +149,8 @@ The current version of the statepoint file format is 18.1.
                tallies will have a value of 0 unless otherwise instructed.
              - **multiply_density** (*int*) -- Flag indicating whether reaction
                rates should be multiplied by atom density (1) or not (0).
+             - **higher_moments** (*int*) -- Flag indicating whether
+               higher-order tally moments are enabled (1) or not (0).
 
 :Datasets: - **n_realizations** (*int*) -- Number of realizations.
            - **n_filters** (*int*) -- Number of filters used.

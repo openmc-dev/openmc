@@ -8,9 +8,8 @@
 #include "openmc/tallies/trigger.h"
 #include "openmc/vector.h"
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xfixed.hpp"
-#include "xtensor/xtensor.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -55,7 +54,7 @@ public:
 
   void set_nuclides(const vector<std::string>& nuclides);
 
-  const xt::xtensor<double, 3>& results() const { return results_; }
+  const tensor::Tensor<double>& results() const { return results_; }
 
   //! returns vector of indices corresponding to the tally this is called on
   const vector<int32_t>& filters() const { return filters_; }
@@ -106,6 +105,8 @@ public:
 
   bool writable() const { return writable_; }
 
+  bool higher_moments() const { return higher_moments_; }
+
   //----------------------------------------------------------------------------
   // Other methods.
 
@@ -123,7 +124,7 @@ public:
   int score_index(const std::string& score) const;
 
   //! Tally results reshaped according to filter sizes
-  xt::xarray<double> get_reshaped_data() const;
+  tensor::Tensor<double> get_reshaped_data() const;
 
   //! A string representing the i-th score on this tally
   std::string score_name(int score_idx) const;
@@ -158,7 +159,7 @@ public:
   //! combination of filters (e.g. specific cell, specific energy group, etc.)
   //! and the second dimension of the array is for scores (e.g. flux, total
   //! reaction rate, fission reaction rate, etc.)
-  xt::xtensor<double, 3> results_;
+  tensor::Tensor<double> results_;
 
   //! True if this tally should be written to statepoint files
   bool writable_ {true};
@@ -190,6 +191,9 @@ private:
   //! Whether to multiply by atom density for reaction rates
   bool multiply_density_ {true};
 
+  //! Whether to accumulate higher moments (third and fourth)
+  bool higher_moments_ {false};
+
   int64_t index_;
 };
 
@@ -208,15 +212,14 @@ extern vector<int> active_collision_tallies;
 extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
 extern vector<int> active_pulse_height_tallies;
-extern vector<int> pulse_height_cells;
+extern vector<int32_t> pulse_height_cells;
 extern vector<double> time_grid;
 
 } // namespace model
 
 namespace simulation {
 //! Global tallies (such as k-effective estimators)
-extern xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>>
-  global_tallies;
+extern tensor::StaticTensor2D<double, N_GLOBAL_TALLIES, 3> global_tallies;
 
 //! Number of realizations for global tallies
 extern "C" int32_t n_realizations;
@@ -251,12 +254,6 @@ double distance_to_time_boundary(double time, double speed);
 
 //! Determine which tallies should be active
 void setup_active_tallies();
-
-// Alias for the type returned by xt::adapt(...). N is the dimension of the
-// multidimensional array
-template<std::size_t N>
-using adaptor_type =
-  xt::xtensor_adaptor<xt::xbuffer_adaptor<double*&, xt::no_ownership>, N>;
 
 #ifdef OPENMC_MPI
 //! Collect all tally results onto master process

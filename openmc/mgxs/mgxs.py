@@ -1923,7 +1923,7 @@ class MGXS:
 
             # Create an HDF5 group for the subdomain
             if self.domain_type == 'distribcell':
-                group_name = ''.zfill(num_digits)
+                group_name = str(subdomain).zfill(num_digits)
                 subdomain_group = domain_group.require_group(group_name)
             else:
                 subdomain_group = domain_group
@@ -2127,15 +2127,15 @@ class MGXS:
             df['std. dev.'] /= np.tile(densities, tile_factor)
 
             # Replace NaNs by zeros (happens if nuclide density is zero)
-            df['mean'].replace(np.nan, 0.0, inplace=True)
-            df['std. dev.'].replace(np.nan, 0.0, inplace=True)
+            df['mean'] = df['mean'].replace(np.nan, 0.0)
+            df['std. dev.'] = df['std. dev.'].replace(np.nan, 0.0)
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
             mesh_str = f'mesh {self.domain.id}'
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
-                               (mesh_str, 'z')] + columns, inplace=True)
+            mesh_cols = [(mesh_str, label) for label in self.domain._axis_labels]
+            df.sort_values(by=mesh_cols + columns, inplace=True)
         else:
             df.sort_values(by=[self.domain_type] + columns, inplace=True)
 

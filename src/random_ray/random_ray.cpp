@@ -10,6 +10,8 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 
+#include <numeric>
+
 #include "openmc/distribution_spatial.h"
 #include "openmc/random_dist.h"
 #include "openmc/source.h"
@@ -432,10 +434,13 @@ void RandomRay::attenuate_flux_flat_source(
 
   // Get material
   int material = srh.material();
+  int temp = srh.temperature_idx();
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
-    float sigma_t = domain_->sigma_t_[material * negroups_ + g];
+    float sigma_t =
+      domain_->sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      srh.density_mult();
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
@@ -530,6 +535,7 @@ void RandomRay::attenuate_flux_linear_source(
   n_event()++;
 
   int material = srh.material();
+  int temp = srh.temperature_idx();
 
   Position& centroid = srh.centroid();
   Position midpoint = r + u() * (distance / 2.0);
@@ -558,7 +564,9 @@ void RandomRay::attenuate_flux_linear_source(
   for (int g = 0; g < negroups_; g++) {
 
     // Compute tau, the optical thickness of the ray segment
-    float sigma_t = domain_->sigma_t_[material * negroups_ + g];
+    float sigma_t =
+      domain_->sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      srh.density_mult();
     float tau = sigma_t * distance;
 
     // If tau is very small, set it to zero to avoid numerical issues.
@@ -763,6 +771,7 @@ void RandomRay::attenuate_flux_linear_source_void(
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 {
   domain_ = domain;
+  ntemperature_ = domain->ntemperature_;
 
   // Reset particle event counter
   n_event() = 0;
@@ -782,6 +791,9 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     break;
   case RandomRaySampleMethod::HALTON:
     site = sample_halton();
+    break;
+  case RandomRaySampleMethod::S2:
+    site = sample_s2();
     break;
   default:
     fatal_error("Unknown sample method for random ray transport.");
@@ -861,6 +873,29 @@ SourceSite RandomRay::sample_halton()
   site.u.x = mu;
   site.u.y = std::cos(azi) * c;
   site.u.z = std::sin(azi) * c;
+
+  return site;
+}
+
+SourceSite RandomRay::sample_s2()
+{
+  // set random number seed
+  int64_t particle_seed =
+    (simulation::current_batch - 1) * settings::n_particles + id();
+  init_particle_seeds(particle_seed, seeds());
+  stream() = STREAM_TRACKING;
+
+  // Get spatial component of the ray_source_
+  SpatialDistribution* space =
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space();
+
+  SourceSite site;
+
+  // Sample spatial distribution
+  site.r = space->sample(current_seed()).first;
+
+  // Sample either left or right for S2 (flashlight) transport.
+  site.u = {prn(current_seed()) < 0.5 ? -1.0 : 1.0, 0.0, 0.0};
 
   return site;
 }

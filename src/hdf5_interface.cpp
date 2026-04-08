@@ -4,8 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "hdf5.h"
@@ -466,22 +465,19 @@ void read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
 }
 
 template<>
-void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep)
+void read_dataset(
+  hid_t dset, tensor::Tensor<std::complex<double>>& tensor, bool indep)
 {
   // Get shape of dataset
   vector<hsize_t> shape = object_shape(dset);
 
-  // Allocate new array to read data into
-  std::size_t size = 1;
-  for (const auto x : shape)
-    size *= x;
-  vector<std::complex<double>> buffer(size);
+  // Resize tensor and read data directly
+  vector<size_t> tshape(shape.begin(), shape.end());
+  tensor.resize(tshape);
 
-  // Read data from attribute
-  read_complex(dset, nullptr, buffer.data(), indep);
-
-  // Adapt into xarray
-  arr = xt::adapt(buffer, shape);
+  // Read data from dataset
+  read_complex(dset, nullptr,
+    reinterpret_cast<std::complex<double>*>(tensor.data()), indep);
 }
 
 void read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
@@ -536,14 +532,14 @@ void read_complex(
   H5Tclose(complex_id);
 }
 
-void read_tally_results(
-  hid_t group_id, hsize_t n_filter, hsize_t n_score, double* results)
+void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+  hsize_t n_results, double* results)
 {
   // Create dataspace for hyperslab in memory
   constexpr int ndim = 3;
-  hsize_t dims[ndim] {n_filter, n_score, 3};
+  hsize_t dims[ndim] {n_filter, n_score, n_results};
   hsize_t start[ndim] {0, 0, 1};
-  hsize_t count[ndim] {n_filter, n_score, 2};
+  hsize_t count[ndim] {n_filter, n_score, n_results - 1};
   hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
@@ -686,15 +682,15 @@ void write_string(
     group_id, 0, nullptr, buffer.length(), name, buffer.c_str(), indep);
 }
 
-void write_tally_results(
-  hid_t group_id, hsize_t n_filter, hsize_t n_score, const double* results)
+void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+  hsize_t n_results, const double* results)
 {
   // Set dimensions of sum/sum_sq hyperslab to store
   constexpr int ndim = 3;
-  hsize_t count[ndim] {n_filter, n_score, 2};
+  hsize_t count[ndim] {n_filter, n_score, n_results - 1};
 
   // Set dimensions of results array
-  hsize_t dims[ndim] {n_filter, n_score, 3};
+  hsize_t dims[ndim] {n_filter, n_score, n_results};
   hsize_t start[ndim] {0, 0, 1};
   hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);

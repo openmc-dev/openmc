@@ -1,10 +1,11 @@
 """Tests the Results class"""
 
-from pathlib import Path
 from math import inf
+from pathlib import Path
 
 import numpy as np
 import pytest
+
 import openmc.deplete
 
 
@@ -221,3 +222,11 @@ def test_stepresult_get_material(res):
     densities = mat1.get_nuclide_atom_densities()
     assert densities['Xe135'] == pytest.approx(1e-14)
     assert densities['U234'] == pytest.approx(1.00506e-05)
+
+
+def test_stepresult_get_material_mat_id_as_int(res):
+    # Get material at first timestep using int mat_id
+    step_result = res[0]
+    mat1 = step_result.get_material(1)
+    assert mat1.id == 1
+    assert mat1.volume == step_result.volume["1"]

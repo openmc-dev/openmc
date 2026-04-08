@@ -346,7 +346,9 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         particle : string
-            Particle type to return the energy distribution for.
+            Particle type to return the energy distribution for. Supported
+            values are ``'photon'``, ``'electron'``, ``'positron'``,
+            ``'alpha'``, ``'neutron'``, ``'proton'``, and ``'fragment'``.
         clip_tolerance : float
             Maximum fraction of :math:`\sum_i x_i p_i` for discrete distributions
             that will be discarded.
@@ -427,10 +429,9 @@ class Material(IDManagerMixin):
     ) -> Univariate | None:
         r"""Return energy distribution of decay photons from unstable nuclides.
 
-        This is a convenience wrapper around :meth:`Material.get_decay_particle_energy`
-        with ``particle='photon'``.
-
-        .. versionadded:: 0.14.0
+        This is a backward-compatible convenience wrapper around
+        :meth:`Material.get_decay_particle_energy` with
+        ``particle='photon'``.
 
         Parameters
         ----------

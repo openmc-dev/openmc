@@ -571,7 +571,8 @@ def decay_photon_energy(nuclide: str) -> Univariate | None:
     for the first time, you need to ensure that a depletion chain has been
     specified in openmc.config['chain_file'].
 
-    .. versionadded:: 0.13.2
+    This is a backward-compatible convenience wrapper around
+    :func:`decay_particle_energy` with ``particle='photon'``.
 
     Parameters
     ----------
@@ -600,14 +601,16 @@ def decay_particle_energy(nuclide: str, particle: str) -> Univariate | None:
     nuclide : str
         Name of nuclide, e.g., 'Co58'
     particle : str
-        Name of the decay particle, e.g., 'photon', 'neutron'
+        Name of the decay particle, e.g., ``photon``, ``electron``,
+        ``positron``, ``alpha``, ``neutron``, ``proton``, or ``fragment``.
 
     Returns
     -------
     openmc.stats.Univariate or None
-        Distribution of energies in [eV] of decay particles emitted from decay, or None
-        if no decay source of that particle exists. Note that the probabilities represent
-        intensities, given as [Bq/atom] (in other words, decay constants).
+        Distribution of energies in [eV] of decay particles emitted from decay,
+        or None if no decay source of that particle exists. Note that the
+        probabilities represent intensities, given as [Bq/atom] (in other
+        words, decay constants).
     """
 
     if not _DECAY_PARTICLE_ENERGY:
@@ -674,4 +677,3 @@ def decay_energy(nuclide: str):
             warn(f"Chain file '{chain_file}' does not have any decay energy.")
 
     return _DECAY_ENERGY.get(nuclide, 0.0)
-

@@ -564,6 +564,30 @@ class Decay(EqualityMixin):
 _DECAY_PARTICLE_ENERGY = {}
 
 
+def decay_photon_energy(nuclide: str) -> Univariate | None:
+    """Get photon energy distribution resulting from the decay of a nuclide
+
+    This function relies on data stored in a depletion chain. Before calling it
+    for the first time, you need to ensure that a depletion chain has been
+    specified in openmc.config['chain_file'].
+
+    .. versionadded:: 0.13.2
+
+    Parameters
+    ----------
+    nuclide : str
+        Name of nuclide, e.g., 'Co58'
+
+    Returns
+    -------
+    openmc.stats.Univariate or None
+        Distribution of energies in [eV] of photons emitted from decay, or None
+        if no photon source exists. Note that the probabilities represent
+        intensities, given as [Bq/atom] (in other words, decay constants).
+    """
+    return decay_particle_energy(nuclide, 'photon')
+
+
 def decay_particle_energy(nuclide: str, particle: str) -> Univariate | None:
     """Get a decay particle energy distribution resulting from the decay of a nuclide
 
@@ -650,5 +674,4 @@ def decay_energy(nuclide: str):
             warn(f"Chain file '{chain_file}' does not have any decay energy.")
 
     return _DECAY_ENERGY.get(nuclide, 0.0)
-
 

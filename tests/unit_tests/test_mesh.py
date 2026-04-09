@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, sqrt
 from tempfile import TemporaryDirectory
 from pathlib import Path
 import itertools
@@ -1028,3 +1028,92 @@ def test_rectilinear_mesh_get_indices_at_coords():
         mesh.get_indices_at_coords([0.5, -0.5, 110.])
     with pytest.raises(ValueError):
         mesh.get_indices_at_coords([0.5, -20., 110.])
+
+
+def test_SphericalMesh_get_indices_at_coords():
+    """Test get_indices_at_coords method for SphericalMesh"""
+
+    # Basic mesh with default phi and theta grids (single angular bin)
+    mesh = openmc.SphericalMesh(r_grid=(0, 5, 10))
+
+    assert mesh.get_indices_at_coords([3, 0, 0]) == (0, 0, 0)
+    assert mesh.get_indices_at_coords([0, 0, 3]) == (0, 0, 0)
+    assert mesh.get_indices_at_coords([0, 0, -3]) == (0, 0, 0)
+    assert mesh.get_indices_at_coords([7, 0, 0]) == (1, 0, 0)
+    assert mesh.get_indices_at_coords([10, 0, 0]) == (1, 0, 0)
+
+    # Out-of-bounds r
+    with pytest.raises(ValueError):
+        mesh.get_indices_at_coords([11, 0, 0])
+
+    mesh2 = openmc.SphericalMesh(r_grid=(2, 5, 10))
+    with pytest.raises(ValueError):
+        mesh2.get_indices_at_coords([1, 0, 0])
+
+    # Multi-bin angular grids: use points clearly inside bins
+    mesh3 = openmc.SphericalMesh(
+        r_grid=(0, 5, 10),
+        theta_grid=(0, pi/4, pi/2, pi),
+        phi_grid=(0, pi/2, pi, 3*pi/2, 2*pi)
+    )
+
+    # Near z-axis: theta~0 -> bin 0
+    assert mesh3.get_indices_at_coords([0.01, 0, 3]) == (0, 0, 0)
+
+    # theta in (0, pi/4) -> bin 0: [1, 0, 2] theta=arccos(2/sqrt(5))~0.46
+    assert mesh3.get_indices_at_coords([1, 0, 2]) == (0, 0, 0)
+
+    # theta in (pi/4, pi/2) -> bin 1: [2, 0, 1] theta=arccos(1/sqrt(5))~1.107
+    assert mesh3.get_indices_at_coords([2, 0, 1]) == (0, 1, 0)
+
+    # theta in (pi/2, pi) -> bin 2: [1, 0, -2] theta=arccos(-2/sqrt(5))~2.034
+    assert mesh3.get_indices_at_coords([1, 0, -2]) == (0, 2, 0)
+
+    # phi in (pi/2, pi) -> bin 1: [-1, 1, 0.5]
+    assert mesh3.get_indices_at_coords([-1, 1, 0.5]) == (0, 1, 1)
+
+    # phi in (pi, 3*pi/2) -> bin 2: [-1, -1, 0.5]
+    assert mesh3.get_indices_at_coords([-1, -1, 0.5]) == (0, 1, 2)
+
+    # phi in (3*pi/2, 2*pi) -> bin 3: [1, -1, 0.5]
+    assert mesh3.get_indices_at_coords([1, -1, 0.5]) == (0, 1, 3)
+
+    # Non-default origin
+    mesh4 = openmc.SphericalMesh(
+        r_grid=(0, 5, 10),
+        origin=(100, 200, 300)
+    )
+
+    assert mesh4.get_indices_at_coords([103, 200, 300]) == (0, 0, 0)
+    assert mesh4.get_indices_at_coords([100, 200, 307]) == (1, 0, 0)
+
+    with pytest.raises(ValueError):
+        mesh4.get_indices_at_coords([111, 200, 300])
+
+    # Degenerate case: point at origin with r_grid starting at 0
+    mesh5 = openmc.SphericalMesh(r_grid=(0, 5))
+    assert mesh5.get_indices_at_coords([0, 0, 0]) == (0, 0, 0)
+
+    # Out-of-bounds theta: restricted theta grid
+    mesh6 = openmc.SphericalMesh(
+        r_grid=(0, 10),
+        theta_grid=(0, pi/4)
+    )
+    with pytest.raises(ValueError):
+        mesh6.get_indices_at_coords([5, 0, 0])  # theta=pi/2 > pi/4
+
+    # Out-of-bounds phi: restricted phi grid
+    mesh7 = openmc.SphericalMesh(
+        r_grid=(0, 10),
+        phi_grid=(0, pi/2)
+    )
+    with pytest.raises(ValueError):
+        mesh7.get_indices_at_coords([-5, 0, 0])  # phi=pi > pi/2
+
+    # Diagonal point: verify r, theta, phi all computed correctly
+    r = 6.0
+    val = r / sqrt(3)
+    result = mesh3.get_indices_at_coords([val, val, val])
+    assert result[0] == 1  # r=6 in second bin [5, 10]
+    assert result[1] == 1  # theta=arccos(1/sqrt(3))~0.955, in (pi/4, pi/2)
+    assert result[2] == 0  # phi=pi/4, in [0, pi/2)

@@ -3,7 +3,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
-from math import pi, sqrt, atan2
+from math import acos, atan2, pi, sqrt
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Protocol
@@ -2644,10 +2644,82 @@ class SphericalMesh(StructuredMesh):
         arr[..., 2] = z + origin[2]
         return arr
 
-    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
-        raise NotImplementedError(
-            "get_indices_at_coords is not yet implemented for SphericalMesh"
-        )
+    def get_indices_at_coords(
+            self,
+            coords: Sequence[float]
+        ) -> tuple[int, int, int]:
+        """Find the mesh cell indices containing the specified coordinates.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            Cartesian coordinates of the point as (x, y, z).
+
+        Returns
+        -------
+        tuple[int, int, int]
+            The r, theta, phi indices.
+
+        Raises
+        ------
+        ValueError
+            If the coordinates fall outside the mesh grid boundaries.
+
+        """
+        dx = coords[0] - self.origin[0]
+        dy = coords[1] - self.origin[1]
+        dz = coords[2] - self.origin[2]
+
+        r_value = sqrt(dx**2 + dy**2 + dz**2)
+
+        if r_value < self.r_grid[0] or r_value > self.r_grid[-1]:
+            raise ValueError(
+                f'The r value {r_value} computed from the specified '
+                f'coordinates is outside the r grid range '
+                f'[{self.r_grid[0]}, {self.r_grid[-1]}].'
+            )
+
+        r_index = int(min(
+            np.searchsorted(self.r_grid, r_value, side='right') - 1,
+            len(self.r_grid) - 2
+        ))
+
+        if r_value == 0.0:
+            theta_value = 0.0
+            phi_value = 0.0
+        else:
+            theta_value = acos(dz / r_value)
+            phi_value = atan2(dy, dx)
+            if phi_value < 0:
+                phi_value += 2 * pi
+
+        if theta_value < self.theta_grid[0] or theta_value > self.theta_grid[-1]:
+            raise ValueError(
+                f'The theta value {theta_value} computed from the specified '
+                f'coordinates is outside the theta grid range '
+                f'[{self.theta_grid[0]}, {self.theta_grid[-1]}].'
+            )
+
+        theta_index = int(min(
+            np.searchsorted(self.theta_grid, theta_value, side='right') - 1,
+            len(self.theta_grid) - 2
+        ))
+
+        if phi_value < self.phi_grid[0] or phi_value > self.phi_grid[-1]:
+            raise ValueError(
+                f'The phi value {phi_value} computed from the specified '
+                f'coordinates is outside the phi grid range '
+                f'[{self.phi_grid[0]}, {self.phi_grid[-1]}].'
+            )
+
+        phi_index = int(min(
+            np.searchsorted(self.phi_grid, phi_value, side='right') - 1,
+            len(self.phi_grid) - 2
+        ))
+
+        return (r_index, theta_index, phi_index)
 
 
 def require_statepoint_data(func):

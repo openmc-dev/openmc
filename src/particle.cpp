@@ -49,26 +49,33 @@ double Particle::speed() const
 {
   if (settings::run_CE) {
     // Determine mass in eV/c^2
-    double mass;
-    switch (type().pdg_number()) {
-    case PDG_NEUTRON:
-      mass = MASS_NEUTRON_EV;
-    case PDG_ELECTRON:
-    case PDG_POSITRON:
-      mass = MASS_ELECTRON_EV;
-    default:
-      mass = this->type().mass() * AMU_EV;
-    }
+    double mass = this->mass();
 
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
   } else {
-    auto& macro_xs = data::mg.macro_xs_[this->material()];
+    auto mat = this->material();
+    if (mat == MATERIAL_VOID)
+      return 1.0 / data::mg.default_inverse_velocity_[this->g()];
+    auto& macro_xs = data::mg.macro_xs_[mat];
     int macro_t = this->mg_xs_cache().t;
     int macro_a = macro_xs.get_angle_index(this->u());
-    return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, this->g(), nullptr,
-                   nullptr, nullptr, macro_t, macro_a);
+    return 1.0 / macro_xs.get_xs(
+                   MgxsType::INVERSE_VELOCITY, this->g(), macro_t, macro_a);
+  }
+}
+
+double Particle::mass() const
+{
+  switch (type().pdg_number()) {
+  case PDG_NEUTRON:
+    return MASS_NEUTRON_EV;
+  case PDG_ELECTRON:
+  case PDG_POSITRON:
+    return MASS_ELECTRON_EV;
+  default:
+    return this->type().mass() * AMU_EV;
   }
 }
 

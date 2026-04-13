@@ -158,6 +158,15 @@ void score_point_tally_impl(
     p.wgt_last() = p.wgt();
     p.wgt() *= attenuation;
 
+    // Set position state so PointFilter::get_all_bins can match:
+    // r() = detector position (for bin matching),
+    // r_last() = source/scatter position (for 1/r^2 weight)
+    p.r_last() = r;
+    p.r() = det;
+
+    // Set E_last so EnergyFilter::get_all_bins bins correctly
+    p.E_last() = E;
+
     double flux = p.wgt_last() * pdf;
     score_tracklength_tally_general(p, flux, model::active_point_tallies);
   }

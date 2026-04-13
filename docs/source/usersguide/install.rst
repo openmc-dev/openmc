@@ -173,7 +173,7 @@ This package provides a full-featured OpenMC stack, including:
 
 * MPI and DAGMC-enabled OpenMC build
 * User-selected nuclear data libraries
-* The `CAD_to_OpenMC <https://github.com/united-neux/CAD_to_OpenMC>` meshing tool
+* The `CAD_to_OpenMC <https://github.com/united-neux/CAD_to_OpenMC>`_ meshing tool
 * All required dependencies for the above components
 
 To install the package, you will need an AUR helper such as `yay`_ or `paru`_.

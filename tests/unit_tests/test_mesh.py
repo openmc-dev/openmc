@@ -500,7 +500,6 @@ vtkhdf_tests = [
         "libmesh"
     )
 ]
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
 @pytest.mark.parametrize('mesh_file, mesh_library', vtkhdf_tests)
 def test_write_vtkhdf(mesh_file, mesh_library, request, run_in_tmpdir):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting

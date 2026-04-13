@@ -158,6 +158,64 @@ feature can be used to access the installed packages.
 .. _Spack: https://spack.readthedocs.io/en/latest/
 .. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
 
+.. _install_aur:
+
+----------------------------------------
+Installing on Arch Linux via the AUR
+----------------------------------------
+
+On Arch Linux and Arch-based distributions, OpenMC can be installed from the
+`Arch User Repository (AUR) <https://aur.archlinux.org/>`_. An AUR package named
+``openmc-git`` is available, which builds OpenMC directly from the latest
+development sources.
+
+This package provides a full-featured OpenMC stack, including:
+
+* MPI and DAGMC-enabled OpenMC build
+* User-selected nuclear data libraries
+* The `CAD_to_OpenMC <https://github.com/united-neux/CAD_to_OpenMC>` meshing tool
+* All required dependencies for the above components
+
+To install the package, you will need an AUR helper such as `yay`_ or `paru`_.
+For example, using ``yay``:
+
+.. code-block:: sh
+
+    yay -S openmc-git
+
+Alternatively, you can manually clone and build the package:
+
+.. code-block:: sh
+
+    git clone https://aur.archlinux.org/openmc-git.git
+    cd openmc-git
+    makepkg -si
+
+The PKGBUILD will automatically handle all required dependencies and build
+OpenMC with MPI and DAGMC support enabled.
+
+.. note::
+
+    The ``openmc-git`` package tracks the latest development version from the
+    upstream repository. As such, it may include new features and bug fixes, but
+    could also introduce instability compared to official releases.
+
+.. tip::
+
+    OpenMC is installed under ``/opt``. If you are installing and using it in the
+    same terminal session, you may need to reload your environment variables:
+
+    .. code-block:: sh
+
+        source /etc/profile
+
+    Alternatively, start a new shell session.
+
+Once installed, the ``openmc`` executable, nuclear data libraries, and
+associated tools will be available in your system PATH.
+
+.. _yay: https://github.com/Jguer/yay
+.. _paru: https://github.com/Morganamilo/paru
 
 .. _install_source:
 

@@ -834,6 +834,28 @@ class PointFilter(Filter):
             cv.check_length(f'bins[{i}][0]', item[0], 3, 3)
             cv.check_type(f'bins[{i}][1]', item[1], Real)
         self._bins = bins
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        flat = group['bins'][()]
+        # Reconstruct tuple structure: every 4 values = (x, y, z, r0)
+        bins = []
+        for i in range(0, len(flat), 4):
+            pos = (float(flat[i]), float(flat[i+1]), float(flat[i+2]))
+            r0 = float(flat[i+3])
+            bins.append((pos, r0))
+        out = cls(bins, filter_id=filter_id)
+        out._num_bins = group['n_bins'][()]
+        return out
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        import pandas as pd
+        labels = [f"({p[0]}, {p[1]}, {p[2]}) R0={r}" for (p, r) in self.bins]
+        filter_bins = np.repeat(labels, stride)
+        tile_factor = data_size // len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        return pd.DataFrame({self.short_name.lower(): filter_bins})
     
     def to_xml_element(self):
         """Return XML Element representing the Filter.

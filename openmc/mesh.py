@@ -718,11 +718,7 @@ class StructuredMesh(MeshBase):
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
         if Path(filename).suffix == ".vtkhdf":
-            write_impl = getattr(self, '_write_vtk_hdf5', None)
-            if write_impl is None:
-                raise NotImplementedError(f"VTKHDF output not implemented for {type(self).__name__}")
-            # write_impl is a bound method – do NOT pass self again
-            write_impl(filename, datasets, volume_normalization)
+            self._write_vtk_hdf5(filename, datasets, volume_normalization)
             return None
 
         # vtk is an optional dependency only needed for the legacy ASCII path

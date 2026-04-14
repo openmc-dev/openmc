@@ -1403,7 +1403,7 @@ def test_write_ascii_vtk_unchanged(run_in_tmpdir):
     # Get data from file
     arr = reader.GetOutput().GetCellData().GetArray("data")
     read_data = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
-    np.testing.assert_almost_equal(read_data, ref_data.ravel())
+    np.testing.assert_almost_equal(read_data, ref_data.T.ravel())
 
 def test_rectilinear_mesh_get_indices_at_coords():
     """Test get_indices_at_coords method for RectilinearMesh"""

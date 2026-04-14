@@ -183,6 +183,7 @@ For example, using ``yay``:
 
     yay -S openmc-git
 
+
 Alternatively, you can manually clone and build the package:
 
 .. code-block:: sh
@@ -191,8 +192,26 @@ Alternatively, you can manually clone and build the package:
     cd openmc-git
     makepkg -si
 
+Note, `makepkg`_ uses `pacman`_ to resolve dependencies. Therefore, AUR-based 
+need to be installed separately with `yay`_ or `paru`_ before running `makepkg`_.
 The PKGBUILD will automatically handle all required dependencies and build
 OpenMC with MPI and DAGMC support enabled.
+
+.. tip::
+
+    If there are failing checks during the build process, you can bypass them with the ``--nocheck`` flag:
+
+    .. code-block:: sh
+
+        yay -S openmc-git --mflags "--nocheck"
+
+    Or 
+
+    .. code-block:: sh
+
+        git clone https://aur.archlinux.org/openmc-git.git
+        cd openmc-git
+        makepkg -si --nocheck
 
 .. note::
 

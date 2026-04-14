@@ -14,14 +14,14 @@ weight windows, then describe how source biasing may be applied.
 
 .. _ww_generator:
 
-------------------------------------
-Generating Weight Windows with MAGIC
-------------------------------------
+-------------------------------------------
+Generating Global Weight Windows with MAGIC
+-------------------------------------------
 
 As discussed in the :ref:`methods section <methods_variance_reduction>`, MAGIC
 is an iterative method that uses flux tally information from a Monte Carlo
 simulation to produce weight windows for a user-defined mesh with the objective 
-of local variance reduction. While generating the weight windows, OpenMC is 
+of global variance reduction. While generating the weight windows, OpenMC is 
 capable of applying the weight windows generated from a previous batch while 
 processing the next batch, allowing for progressive improvement in the weight 
 window quality across iterations.
@@ -74,9 +74,9 @@ the "Using Weight Windows" section below.
 
 .. _usersguide_fw_cadis:
 
-------------------------------------------------------
-Generating Weight Windows with FW-CADIS and Random Ray
-------------------------------------------------------
+----------------------------------------------------------------------
+Generating Global or Local Weight Windows with FW-CADIS and Random Ray
+----------------------------------------------------------------------
 
 Weight window generation with FW-CADIS and random ray in OpenMC uses the same
 exact strategy as with MAGIC. Using FW-CADIS, however, also enables 

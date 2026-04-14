@@ -168,14 +168,12 @@ void validate_random_ray_inputs()
                     "constrained by domain id (cell, material, or universe) in "
                     "random ray mode.");
       } else if (is->domain_ids().size() > 0 && sp) {
-        // If both a domain constraint and a non-default point source location
-        // are specified, notify user that domain constraint takes precedence.
-        if (sp->r().x == 0.0 && sp->r().y == 0.0 && sp->r().z == 0.0) {
-          warning("Fixed source has both a domain constraint and a point "
-                  "type spatial distribution. The domain constraint takes "
-                  "precedence in random ray mode -- point source coordinate "
-                  "will be ignored.");
-        }
+        // If both a domain constraint and a point source location are
+        // specified, notify user that domain constraint takes precedence.
+        warning("Fixed source has both a domain constraint and a point "
+                "type spatial distribution. The domain constraint takes "
+                "precedence in random ray mode -- point source coordinate "
+                "will be ignored.");
       }
 
       // Check that a discrete energy distribution was used
@@ -220,14 +218,12 @@ void validate_random_ray_inputs()
                     "constrained by domain id (cell, material, or universe) in "
                     "random ray mode.");
       } else if (is->domain_ids().size() > 0 && sp) {
-        // If both a domain constraint and a non-default point source location
-        // are specified, notify user that domain constraint takes precedence.
-        if (sp->r().x == 0.0 && sp->r().y == 0.0 && sp->r().z == 0.0) {
-          warning("Adjoint source has both a domain constraint and a point "
-                  "type spatial distribution. The domain constraint takes "
-                  "precedence in random ray mode -- point source coordinate "
-                  "will be ignored.");
-        }
+        // If both a domain constraint and a point source location are
+        // specified, notify user that domain constraint takes precedence.
+        warning("Adjoint source has both a domain constraint and a point "
+                "type spatial distribution. The domain constraint takes "
+                "precedence in random ray mode -- point source coordinate "
+                "will be ignored.");
       }
 
       // Check that a discrete energy distribution was used

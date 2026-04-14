@@ -1345,8 +1345,7 @@ void FlatSourceDomain::set_fw_adjoint_sources()
         }
 
         // If there are tally tasks, we can through them and check if
-        // any of them are local FW-CADIS targets and have a non-mesh filter
-        // type.
+        // any of them are local FW-CADIS targets.
 
         // We track if ANY of the tasks are local FW-CADIS target tallies
         bool local_fw_cadis_target_region = false;
@@ -1356,34 +1355,12 @@ void FlatSourceDomain::set_fw_adjoint_sources()
           Tally& tally {*model::tallies[task.tally_idx]};
           const auto t_id = tally.id();
 
-          // Skip non-target tallies
+          // Search for target tallies
           if (std::find(fw_cadis_local_targets_.begin(),
                 fw_cadis_local_targets_.end(),
-                t_id) == fw_cadis_local_targets_.end()) {
-            continue;
-          }
-
-          auto filter_types = tally.filter_types();
-
-          // For each tally, we loop through the filter types array.
-          // If any of them have a FW-CADIS-compatible filter type,
-          // then this source element is a valid local FW-CADIS source
-          for (const auto& filter_type : filter_types) {
-            if (filter_type == FilterType::CELL ||
-                filter_type == FilterType::CELL_INSTANCE ||
-                filter_type == FilterType::DISTRIBCELL ||
-                filter_type == FilterType::UNIVERSE ||
-                filter_type == FilterType::MATERIAL) {
-              local_fw_cadis_target_region = true;
-              break;
-            }
-          }
-          // If a target tally doesn't have any compatible filters, error
-          if (!local_fw_cadis_target_region) {
-            fatal_error("Local FW-CADIS target tally with ID " +
-                        std::to_string(t_id) +
-                        " does not have any "
-                        "FW-CADIS-compatible filters.");
+                t_id) != fw_cadis_local_targets_.end()) {
+            local_fw_cadis_target_region = true;
+            break;
           }
         }
 

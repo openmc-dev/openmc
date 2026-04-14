@@ -1875,7 +1875,7 @@ class RectilinearMesh(StructuredMesh):
         return tuple(indices)
 
     def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None, volume_normalization: bool) -> None:
-        """Write RectilinearMesh as VTK-HDF5 StructuredGrid format.
+        """Write RectilinearMesh as VTKHDF StructuredGrid format.
 
         Note: vtkRectilinearGrid is not part of the VTKHDF spec yet, so
         StructuredGrid with explicit point coordinates is used instead.
@@ -2397,7 +2397,7 @@ class CylindricalMesh(StructuredMesh):
         return arr
 
     def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None, volume_normalization: bool) -> None:
-        """Write CylindricalMesh as VTK-HDF5 StructuredGrid format."""
+        """Write CylindricalMesh as VTKHDF StructuredGrid format."""
         nr, nphi, nz = self.dimension
         vertex_dims = [nr + 1, nphi + 1, nz + 1]
 
@@ -2814,7 +2814,7 @@ class SphericalMesh(StructuredMesh):
         )
 
     def _write_vtk_hdf5(self, filename: PathLike, datasets: dict | None, volume_normalization: bool) -> None:
-        """Write SphericalMesh as VTK-HDF5 StructuredGrid format."""
+        """Write SphericalMesh as VTKHDF StructuredGrid format."""
         nr, ntheta, nphi = self.dimension
         vertex_dims = [nr + 1, ntheta + 1, nphi + 1]
 

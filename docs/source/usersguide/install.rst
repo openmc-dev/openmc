@@ -192,8 +192,8 @@ Alternatively, you can manually clone and build the package:
     cd openmc-git
     makepkg -si
 
-Note, `makepkg`_ uses `pacman`_ to resolve dependencies. Therefore, AUR-based 
-need to be installed separately with `yay`_ or `paru`_ before running `makepkg`_.
+Note, ``makepkg`` uses ``pacman`` to resolve dependencies. Therefore, AUR-based 
+need to be installed separately with ``yay`` or ``paru`` before running ``makepkg``.
 The PKGBUILD will automatically handle all required dependencies and build
 OpenMC with MPI and DAGMC support enabled.
 

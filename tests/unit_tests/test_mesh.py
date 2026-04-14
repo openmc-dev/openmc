@@ -1167,8 +1167,9 @@ def test_write_vtkhdf_volume_normalization(run_in_tmpdir):
     mesh.upper_right = [10., 10., 10.]
     mesh.dimension = [2, 2, 2]
 
-    # Create data with known values
-    ref_data = np.ones(mesh.dimension) * 100.0
+    # Use non-uniform data so that .T.ravel() and .ravel() differ,
+    # catching any ordering mistakes in the implementation.
+    ref_data = np.arange(8, dtype=float).reshape(mesh.dimension)
     filename_with_norm = "test_normalized.vtkhdf"
     filename_without_norm = "test_unnormalized.vtkhdf"
 
@@ -1195,9 +1196,9 @@ def test_write_vtkhdf_volume_normalization(run_in_tmpdir):
 
     # Volume for each cell is 5 x 5 x 5 = 125
     cell_volume = 125.0
-    expected_normalized = ref_data.ravel() / cell_volume
+    expected_normalized = ref_data.T.ravel() / cell_volume
     np.testing.assert_allclose(normalized_data, expected_normalized)
-    np.testing.assert_allclose(unnormalized_data, ref_data.ravel())
+    np.testing.assert_allclose(unnormalized_data, ref_data.T.ravel())
 
 
 def test_write_vtkhdf_default_volume_normalization_for_vtkhdf(run_in_tmpdir):

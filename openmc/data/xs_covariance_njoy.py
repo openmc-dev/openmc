@@ -234,8 +234,6 @@ def compute_covariance_factor(
             effective_rank=0,
             full_size=G,
             method="zero_matrix",
-            condition_number=np.inf,
-            nonzero_variance_indices=nz,
         )
 
     Gr = Ar.shape[0]
@@ -243,8 +241,6 @@ def compute_covariance_factor(
     # --- 2a. Fast path: standard Cholesky ---
     try:
         Lr = la.cholesky(Ar, lower=True)
-        eig_pos = np.diag(Lr) ** 2
-        cond = float(eig_pos.max() / eig_pos.min()) if eig_pos.min() > 0 else np.inf
 
         L_full = np.zeros((G, Gr), dtype=np.float64)
         L_full[nz, :] = Lr
@@ -346,14 +342,11 @@ class NeutronXSCovariances:
                     )
                     fcache[mt_key][mt1] = result
                     log.info(
-                        "  MT %s -> MT1 %s: method=%-9s  rank=%d/%d  "
-                        "cond=%.2e  neg_mass=%.2e%%",
+                        "  MT %s -> MT1 %s: method=%-9s  rank=%d/%d  ",
                         mt_key, mt1,
                         result.method,
                         result.effective_rank,
-                        result.full_size,
-                        result.condition_number,
-                        result.negative_eig_mass_pct,
+                        result.full_size
                     )
 
         if name is None:
@@ -458,3 +451,119 @@ class NeutronXSCovariances:
                     compression="gzip",
                     shuffle=True,
                 )
+
+    # -----------------------------------------------------------------
+    # HDF5 reading
+    # -----------------------------------------------------------------
+ 
+    @classmethod
+    def _read_mf33_group(cls, mf33_group, name: str = "unknown") -> "NeutronXSCovariances":
+        """Reconstruct a :class:`NeutronXSCovariances` from an open HDF5
+        ``mf33`` group (the inverse of :meth:`write_mf33_group`).
+ 
+        Parameters
+        ----------
+        mf33_group : h5py.Group
+            The ``mf33`` group inside the HDF5 file.
+        name : str
+            Nuclide name to attach to the returned object.
+ 
+        Returns
+        -------
+        NeutronXSCovariances
+        """
+        energy_grid_ev = mf33_group["energy_grid_ev"][()]
+        mt_list = mf33_group["mts"][()]
+ 
+        mat = int(mf33_group.attrs["mat"]) if "mat" in mf33_group.attrs else None
+        temperature_k = (
+            float(mf33_group.attrs["temperature_k"])
+            if "temperature_k" in mf33_group.attrs
+            else None
+        )
+ 
+        has_raw = "reactions" in mf33_group
+        has_factors = "factors" in mf33_group
+ 
+        reactions: Dict[int, Dict[str, Any]] = {}
+        factor_results: Dict[int, Dict[int, CovFactorResult]] = {}
+ 
+        for mt in mt_list:
+            mt_str = str(int(mt))
+            sec: Dict[str, Any] = {"MAT": mat, "MF": 33, "MT": int(mt)}
+ 
+            # --- Read raw covariance matrices (optional) ---
+            covs: Dict[int, np.ndarray] = {}
+            if has_raw and mt_str in mf33_group["reactions"]:
+                gmt = mf33_group["reactions"][mt_str]
+                for attr_name in ("ZA", "AWR"):
+                    if attr_name in gmt.attrs:
+                        sec[attr_name] = float(gmt.attrs[attr_name])
+                for ds_name in gmt:
+                    mt1 = int(ds_name)
+                    covs[mt1] = gmt[ds_name][()]
+            sec["COVS"] = covs
+ 
+            # --- Read triangular factors ---
+            mt_factors: Dict[int, CovFactorResult] = {}
+            if has_factors and mt_str in mf33_group["factors"]:
+                gmt_fact = mf33_group["factors"][mt_str]
+                for attr_name in ("ZA", "AWR"):
+                    if attr_name in gmt_fact.attrs:
+                        sec.setdefault(attr_name, float(gmt_fact.attrs[attr_name]))
+                for ds_name in gmt_fact:
+                    mt1 = int(ds_name)
+                    L = gmt_fact[ds_name][()]
+                    G = L.shape[0]
+                    r = L.shape[1] if L.ndim == 2 else 0
+                    mt_factors[mt1] = CovFactorResult(
+                        L=L,
+                        effective_rank=r,
+                        full_size=G,
+                        method="from_hdf5",
+                    )
+ 
+                    # If raw covariance was not stored, synthesise a
+                    # minimal COVS entry so downstream code that iterates
+                    # over reactions["COVS"] still works.
+                    if mt1 not in covs:
+                        covs[mt1] = L @ L.T
+ 
+            reactions[int(mt)] = sec
+            factor_results[int(mt)] = mt_factors
+ 
+        return cls(
+            name=name,
+            energy_grid_ev=energy_grid_ev,
+            reactions=reactions,
+            mat=mat,
+            temperature_k=temperature_k,
+            factor_results=factor_results if factor_results else None,
+        )
+ 
+    @classmethod
+    def from_hdf5(cls, filename: "str | Path") -> "NeutronXSCovariances":
+        """Read covariances from a standalone HDF5 file written by
+        :meth:`to_hdf5`.
+ 
+        Parameters
+        ----------
+        filename : str or Path
+            Path to the HDF5 file.
+ 
+        Returns
+        -------
+        NeutronXSCovariances
+        """
+        import h5py
+ 
+        filename = Path(filename)
+        with h5py.File(filename, "r") as f:
+            if "mf33" in f:
+                mf33 = f["mf33"]
+            else:
+                raise KeyError(
+                    f"HDF5 file '{filename}' does not contain an 'mf33' group."
+                )
+            name = filename.stem
+            return cls._read_mf33_group(mf33, name=name)

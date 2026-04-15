@@ -169,7 +169,230 @@ def parse_errorr_mf33_text(tape33_text: str, mat: Optional[int] = None) -> Dict[
     flush()
     return reactions
 
+# -----------------------------------------------------------------------------
+# Validating raw covariance data from NJOY
+# -----------------------------------------------------------------------------
+@dataclass
+class RawBlockDiagnostics:
+    """Stage-1 QA diagnostics for one raw MF=33 block."""
+    mt: int
+    mt1: int
+    is_self_covariance: bool
+    status: str = "pass"   # "pass", "warn", "fail"
+    messages: List[str] = field(default_factory=list)
 
+    # --- eigenvalue spectrum diagnostics (self-blocks only) ---
+    n_negative_eigenvalues: Optional[int] = None
+    negativity_ratio: Optional[float] = None      # |λ_min_neg| / λ_max_pos
+    negative_spectral_fraction: Optional[float] = None  # Σ|λ_neg| / Σ|λ_all|
+
+    # --- correlation matrix bounds (self-blocks only) ---
+    max_abs_correlation: Optional[float] = None
+
+    # --- relative uncertainty magnitude (self-blocks only) ---
+    max_rel_std: Optional[float] = None
+    n_groups_rel_std_above_1: Optional[int] = None
+    n_groups_rel_std_above_10: Optional[int] = None
+ 
+    def _flag(self, level: str, msg: str):
+        """Set status to *level* (unless already 'fail') and append *msg*."""
+        if level == "fail" or self.status != "fail":
+            self.status = level
+        self.messages.append(msg)
+ 
+ 
+def _rel_frob(A: np.ndarray, B: np.ndarray) -> float:
+    """||A-B||_F / max(||A||_F, ||B||_F, 1)."""
+    nA, nB = np.linalg.norm(A, "fro"), np.linalg.norm(B, "fro")
+    return float(np.linalg.norm(A - B, "fro") / max(nA, nB, 1.0))
+ 
+ 
+def validate_raw_mf33_reactions(
+    reactions: Dict[int, Dict[str, Any]],
+    energy_grid_ev: Sequence[float],
+    *,
+    atol: float = 1e-14,
+    rtol: float = 1e-10,
+    warn_only_missing_partner: bool = True,
+    negativity_ratio_warn: float = 1e-3,
+    negativity_ratio_fail: float = 1e-1,
+    rel_std_warn: float = 1.0,
+    rel_std_fail: float = 10.0,
+) -> Dict[int, Dict[int, RawBlockDiagnostics]]:
+    """Stage-1 integrity checks on raw MF=33 matrices from ERRORR tape33.
+ 
+    Checks per block: shape == (G,G), finiteness, and—for self blocks—
+    symmetry, non-negative diagonal, eigenvalue spectrum, correlation
+    matrix bounds, and relative uncertainty magnitude; for cross blocks,
+    transpose-partner consistency C(mt,mt1) ≈ C(mt1,mt)^T.
+
+    Parameters
+    ----------
+    negativity_ratio_warn, negativity_ratio_fail
+        Thresholds on |λ_min_neg| / λ_max_pos for the eigenvalue spectrum
+        check.  Following the convention that 1e-3 is a warning and 1e-1
+        signals the approximate (repaired) matrix will differ substantially.
+    rel_std_warn, rel_std_fail
+        Thresholds on group-wise relative standard deviations
+        (sqrt of diagonal, since IRELCO=1).  Values above rel_std_warn
+        (default 1.0 = 100%) are flagged as warnings; above rel_std_fail
+        (default 10.0 = 1000%) as likely processing artifacts.
+ 
+    Returns nested dict ``diagnostics[mt][mt1] = RawBlockDiagnostics``.
+    """
+    G = len(energy_grid_ev) - 1
+    shape_exp = (G, G)
+    diags: Dict[int, Dict[int, RawBlockDiagnostics]] = {}
+ 
+    for mt, sec in reactions.items():
+        diags[mt] = {}
+        for mt1, M in sec.get("COVS", {}).items():
+            A = np.asarray(M, dtype=np.float64)
+            is_self = int(mt) == int(mt1)
+            dx = RawBlockDiagnostics(int(mt), int(mt1), is_self)
+ 
+            # 1) Shape / finiteness (hard failures) -------------------------
+            if A.shape != shape_exp:
+                dx._flag("fail", f"Wrong shape {A.shape}, expected {shape_exp}.")
+            if not np.all(np.isfinite(A)):
+                dx._flag("fail", "Matrix contains NaN or Inf values.")
+            if dx.status == "fail":
+                diags[mt][mt1] = dx
+                continue
+ 
+            # 2) Self-covariance: symmetry + diagonal -----------------------
+            if is_self:
+                res = _rel_frob(A, A.T)
+                if not np.allclose(A, A.T, atol=atol, rtol=rtol):
+                    dx._flag("fail", f"Not symmetric (residual={res:.3e}).")
+                d = np.diag(A)
+                n_neg = int(np.count_nonzero(d < -atol))
+                n_zero = int(np.count_nonzero(np.isclose(d, 0.0, atol=atol)))
+                if n_neg > 0:
+                    dx._flag("fail", f"{n_neg} negative diagonal entries; "
+                             f"min(diag)={float(d.min()):.6e}.")
+                elif n_zero > 0:
+                    dx._flag("warn", f"{n_zero} zero-variance diagonal groups.")
+
+                # 2a) Eigenvalue spectrum diagnostics -----------------------
+                #     Symmetrise before computing eigenvalues so that eigh
+                #     is applicable even when ERRORR left tiny asymmetries.
+                A_sym = 0.5 * (A + A.T)
+                eigenvalues = la.eigvalsh(A_sym)
+
+                neg_mask = eigenvalues < -atol
+                pos_mask = eigenvalues > atol
+                n_neg_eig = int(neg_mask.sum())
+                dx.n_negative_eigenvalues = n_neg_eig
+
+                lam_max_pos = float(eigenvalues[pos_mask].max()) if pos_mask.any() else 0.0
+                abs_neg = np.abs(eigenvalues[neg_mask]) if neg_mask.any() else np.empty(0)
+                lam_min_neg_abs = float(abs_neg.max()) if abs_neg.size > 0 else 0.0
+
+                if lam_max_pos > 0.0 and lam_min_neg_abs > 0.0:
+                    dx.negativity_ratio = lam_min_neg_abs / lam_max_pos
+                else:
+                    dx.negativity_ratio = 0.0
+
+                total_spectral_weight = float(np.abs(eigenvalues).sum())
+                if total_spectral_weight > 0.0:
+                    dx.negative_spectral_fraction = float(abs_neg.sum()) / total_spectral_weight
+                else:
+                    dx.negative_spectral_fraction = 0.0
+
+                if n_neg_eig > 0:
+                    if dx.negativity_ratio >= negativity_ratio_fail:
+                        dx._flag(
+                            "fail",
+                            f"Eigenvalue spectrum: {n_neg_eig} negative eigenvalue(s), "
+                            f"negativity ratio={dx.negativity_ratio:.3e} "
+                            f"(>= {negativity_ratio_fail:.0e} threshold); "
+                            f"repaired matrix will differ substantially from original."
+                        )
+                    elif dx.negativity_ratio >= negativity_ratio_warn:
+                        dx._flag(
+                            "warn",
+                            f"Eigenvalue spectrum: {n_neg_eig} negative eigenvalue(s), "
+                            f"negativity ratio={dx.negativity_ratio:.3e} "
+                            f"(>= {negativity_ratio_warn:.0e} threshold)."
+                        )
+                    else:
+                        # Small negative eigenvalues — informational only
+                        dx.messages.append(
+                            f"Eigenvalue spectrum: {n_neg_eig} small negative "
+                            f"eigenvalue(s), negativity ratio={dx.negativity_ratio:.3e}."
+                        )
+
+                # 2b) Correlation matrix bounds check -----------------------
+                #     Convert self-covariance to correlation and verify |ρ|≤1.
+                d_safe = d.copy()
+                d_safe[d_safe <= 0.0] = np.inf  # skip zero-variance groups
+                inv_std = 1.0 / np.sqrt(d_safe)
+                corr = A_sym * np.outer(inv_std, inv_std)
+                # Zero out rows/cols that had zero variance (they are undefined)
+                zero_var_mask = d <= 0.0
+                corr[zero_var_mask, :] = 0.0
+                corr[:, zero_var_mask] = 0.0
+                np.fill_diagonal(corr, 1.0)  # diagonal is ρ=1 by definition
+
+                max_abs_rho = float(np.max(np.abs(
+                    corr[np.triu_indices_from(corr, k=1)]
+                ))) if G > 1 else 0.0
+                dx.max_abs_correlation = max_abs_rho
+
+                if max_abs_rho > 1.0 + rtol:
+                    n_violating = int(np.count_nonzero(
+                        np.abs(corr[np.triu_indices_from(corr, k=1)]) > 1.0 + rtol
+                    ))
+                    dx._flag(
+                        "warn",
+                        f"Correlation matrix has {n_violating} off-diagonal "
+                        f"element(s) with |rho| > 1 (max |rho|={max_abs_rho:.6f}); "
+                        f"unphysical covariance entries."
+                    )
+
+                # 2c) Relative uncertainty magnitude check ------------------
+                #     For IRELCO=1, sqrt(diag) gives group-wise relative sigma.
+                rel_std = np.sqrt(np.maximum(d, 0.0))
+                dx.max_rel_std = float(rel_std.max()) if rel_std.size > 0 else 0.0
+                dx.n_groups_rel_std_above_1 = int(np.count_nonzero(rel_std > rel_std_warn))
+                dx.n_groups_rel_std_above_10 = int(np.count_nonzero(rel_std > rel_std_fail))
+
+                if dx.n_groups_rel_std_above_10 > 0:
+                    dx._flag(
+                        "warn",
+                        f"Relative uncertainty: {dx.n_groups_rel_std_above_10} group(s) "
+                        f"with sigma_rel > {rel_std_fail} "
+                        f"(max={dx.max_rel_std:.3f}); "
+                        f"likely ERRORR processing artifact."
+                    )
+                elif dx.n_groups_rel_std_above_1 > 0:
+                    dx._flag(
+                        "warn",
+                        f"Relative uncertainty: {dx.n_groups_rel_std_above_1} group(s) "
+                        f"with sigma_rel > {rel_std_warn} "
+                        f"(max={dx.max_rel_std:.3f})."
+                    )
+ 
+            # 3) Cross-covariance: transpose partner ------------------------
+            else:
+                B_raw = reactions.get(int(mt1), {}).get("COVS", {}).get(int(mt))
+                if B_raw is None:
+                    pass  # Expected: ERRORR stores only the upper-triangle block
+                else:
+                    B = np.asarray(B_raw, dtype=np.float64)
+                    if B.shape != shape_exp:
+                        dx._flag("fail", f"Partner wrong shape {B.shape}.")
+                    elif not np.all(np.isfinite(B)):
+                        dx._flag("fail", "Partner contains NaN/Inf.")
+                    elif not np.allclose(A, B.T, atol=atol, rtol=rtol):
+                        dx._flag("fail",
+                                f"C({mt},{mt1}) != C({mt1},{mt})^T "
+                                f"(residual={_rel_frob(A, B.T):.3e}).")
+ 
+            diags[mt][mt1] = dx
+ 
+    return diags
 
 # -----------------------------------------------------------------------------
 # Covariance factor computation (eigendecomposition + QR)
@@ -177,7 +400,7 @@ def parse_errorr_mf33_text(tape33_text: str, mat: Optional[int] = None) -> Dict[
 
 @dataclass
 class CovFactorResult:
-    """Container for a covariance factorization and its diagnostics.
+    """Container for a covariance factorization after diagnostics are done.
 
     Attributes
     ----------
@@ -329,25 +552,85 @@ class NeutronXSCovariances:
 
         reactions = parse_errorr_mf33_text(res["tape33"], mat=mat_used)
 
+        # --- Parsed block inventory ---
+        n_self, n_cross = 0, 0
+        cross_pairs: List[Tuple[int, int]] = []
+        for mt_key, sec in reactions.items():
+            for mt1_key in sec.get("COVS", {}):
+                if int(mt_key) == int(mt1_key):
+                    n_self += 1
+                else:
+                    n_cross += 1
+                    cross_pairs.append((int(mt_key), int(mt1_key)))
+        log.debug(
+            "ERRORR tape33 parsed: %d MT section(s), "
+            "%d self-covariance block(s), %d cross-covariance block(s)",
+            len(reactions), n_self, n_cross,
+        )
+        if cross_pairs:
+            for mt_a, mt1_a in cross_pairs:
+                log.debug("  cross-covariance: MT %d <-> MT %d", mt_a, mt1_a)
+        else:
+            log.debug(
+                "  No explicit cross-covariance blocks in ERRORR output.  "
+                "Cross-reaction correlations (if any) are handled implicitly "
+                "via NC-type derivation relations in the evaluation."
+            )
+
+        raw_validation = validate_raw_mf33_reactions(reactions, ek, atol=1e-14, rtol=1e-10)
+        
+        n_warnings = 0
+        for mt, blocks in raw_validation.items():
+            for mt1, qa in blocks.items():
+                if qa.status == "fail":
+                    raise ValueError(
+                        f"Stage-1 MF=33 validation failed for MT {mt} -> MT1 {mt1}: "
+                        + "; ".join(qa.messages)
+                    )
+                elif qa.status == "warn":
+                    n_warnings += 1
+                    log.debug(
+                        "Stage-1 MF=33 warning for MT %s -> MT1 %s: %s",
+                        mt, mt1, "; ".join(qa.messages)
+                    )
         # Pre-compute covariance factors for all sub-blocks
+        n_eigen_qr = 0
         fcache: Optional[Dict[int, Dict[int, CovFactorResult]]] = None
         if compute_factors:
             fcache = {}
             for mt_key, sec in reactions.items():
                 fcache[mt_key] = {}
                 for mt1, M in sec.get("COVS", {}).items():
+                    if int(mt_key) != int(mt1):
+                        log.debug(
+                            "  MT %s -> MT1 %s: cross-block (%d x %d), "
+                            "stored raw (no factorization)",
+                            mt_key, mt1,
+                            M.shape[0], M.shape[1] if M.ndim > 1 else 0,
+                        )
+                        continue  # cross-block: store raw only
                     result = compute_covariance_factor(
                         np.asarray(M, dtype=np.float64),
                         tol=eig_tol,
                     )
                     fcache[mt_key][mt1] = result
-                    log.info(
+                    if result.method == "eigen_qr":
+                        n_eigen_qr += 1
+                    log.debug(
                         "  MT %s -> MT1 %s: method=%-9s  rank=%d/%d  ",
                         mt_key, mt1,
                         result.method,
                         result.effective_rank,
                         result.full_size
                     )
+
+        # --- One-line summary ---
+        log.info(
+            "%s: %d self-block(s), %d cross-block(s), "
+            "%d eigen_qr fallback(s), %d warning(s)",
+            name if name is not None else Path(endf_path).stem,
+            n_self, n_cross, n_eigen_qr, n_warnings,
+        )
 
         if name is None:
             name = Path(endf_path).stem
@@ -400,9 +683,11 @@ class NeutronXSCovariances:
             "energy_grid_ev",
             data=np.asarray(self.energy_grid_ev, dtype=np.float64),
         )
+        nonempty_mts = sorted(mt for mt, sec in self.reactions.items() if sec.get("COVS", {}))
+        
         mf33.create_dataset(
             "mts",
-            data=np.asarray(sorted(self.reactions.keys()), dtype=np.int32),
+            data=np.asarray(nonempty_mts, dtype=np.int32),
         )
 
         if store_raw_covariance:
@@ -412,6 +697,8 @@ class NeutronXSCovariances:
         cached = self.factor_results or {}
 
         for mt, sec in self.reactions.items():
+            if not sec.get("COVS", {}):
+                continue 
             mt_str = str(int(mt))
 
             if store_raw_covariance:
@@ -420,18 +707,26 @@ class NeutronXSCovariances:
                     if attr_name in sec:
                         gmt.attrs[attr_name] = float(sec[attr_name])
 
-            gmt_fact = gfact.create_group(mt_str)
-            for attr_name in ("ZA", "AWR"):
-                if attr_name in sec:
-                    gmt_fact.attrs[attr_name] = float(sec[attr_name])
-
             covs: Dict[int, np.ndarray] = sec.get("COVS", {})
             for mt1, M in covs.items():
                 M_arr = np.asarray(M, dtype=np.float64)
                 ds_name = str(int(mt1))
+                is_self = int(mt) == int(mt1)
 
-                # ---- raw covariance (optional) ----
-                if store_raw_covariance:
+                # ---- raw covariance ----
+                # Self-blocks: optional. Cross-blocks: always stored (no factor).
+                if store_raw_covariance or not is_self:
+                    if not store_raw_covariance:
+                        # Ensure the reactions group exists for cross-blocks
+                        if "reactions" not in mf33:
+                            greact = mf33.create_group("reactions")
+                        if mt_str not in greact:
+                            gmt = greact.create_group(mt_str)
+                            for attr_name in ("ZA", "AWR"):
+                                if attr_name in sec:
+                                    gmt.attrs[attr_name] = float(sec[attr_name])
+                        else:
+                            gmt = greact[mt_str]
                     gmt.create_dataset(
                         ds_name,
                         data=M_arr,
@@ -439,18 +734,27 @@ class NeutronXSCovariances:
                         shuffle=True,
                     )
 
-                # ---- Triangular factor (always stored) ----
-                result = cached.get(mt, {}).get(mt1, None)
-                if result is None:
-                    result = compute_covariance_factor(
-                        M_arr, tol=eig_tol,)
+                # ---- Triangular factor (self-blocks only) ----
+                if is_self:
+                    result = cached.get(mt, {}).get(mt1, None)
+                    if result is None:
+                        result = compute_covariance_factor(
+                            M_arr, tol=eig_tol,)
 
-                gmt_fact.create_dataset(
-                    ds_name,
-                    data=result.L,
-                    compression="gzip",
-                    shuffle=True,
-                )
+                    if mt_str not in gfact:
+                        gmt_fact = gfact.create_group(mt_str)
+                        for attr_name in ("ZA", "AWR"):
+                            if attr_name in sec:
+                                gmt_fact.attrs[attr_name] = float(sec[attr_name])
+                    else:
+                        gmt_fact = gfact[mt_str]
+
+                    gmt_fact.create_dataset(
+                        ds_name,
+                        data=result.L,
+                        compression="gzip",
+                        shuffle=True,
+                    )
 
     # -----------------------------------------------------------------
     # HDF5 reading

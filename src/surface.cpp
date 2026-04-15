@@ -391,7 +391,7 @@ double axis_aligned_cylinder_evaluate(
 {
   const double r1 = r.get<i1>() - offset1;
   const double r2 = r.get<i2>() - offset2;
-  return r1 * r1 + r2 * r2 - radius * radius;
+  return std::sqrt(r1 * r1 + r2 * r2) - radius;
 }
 
 // The first template parameter indicates which axis the cylinder is aligned to.
@@ -408,14 +408,15 @@ double axis_aligned_cylinder_distance(Position r, Direction u, bool coincident,
   const double r2 = r.get<i2>() - offset1;
   const double r3 = r.get<i3>() - offset2;
   const double k = r2 * u.get<i2>() + r3 * u.get<i3>();
-  const double c = r2 * r2 + r3 * r3 - radius * radius;
-  const double quad = k * k - a * c;
+  const double R = std::sqrt(r2 * r2 + r3 * r3);
+  const double quad = k * k - a * (R - radius) * (R + radius);
 
   if (quad < 0.0) {
     // No intersection with cylinder.
     return INFTY;
 
-  } else if (coincident || std::abs(c) < FP_COINCIDENT) {
+  } else if (coincident ||
+             std::abs(R - radius) < FP_COINCIDENT * (1.0 + radius)) {
     // Particle is on the cylinder, thus one distance is positive/negative
     // and the other is zero. The sign of k determines if we are facing in or
     // out.
@@ -425,7 +426,7 @@ double axis_aligned_cylinder_distance(Position r, Direction u, bool coincident,
       return (-k + sqrt(quad)) / a;
     }
 
-  } else if (c < 0.0) {
+  } else if (R < radius) {
     // Particle is inside the cylinder, thus one distance must be negative
     // and one must be positive. The positive distance will be the one with
     // negative sign on sqrt(quad).
@@ -601,7 +602,7 @@ double SurfaceSphere::evaluate(Position r) const
   const double x = r.x - x0_;
   const double y = r.y - y0_;
   const double z = r.z - z0_;
-  return x * x + y * y + z * z - radius_ * radius_;
+  return std::sqrt(x * x + y * y + z * z) - radius_;
 }
 
 double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
@@ -610,14 +611,15 @@ double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
   const double y = r.y - y0_;
   const double z = r.z - z0_;
   const double k = x * u.x + y * u.y + z * u.z;
-  const double c = x * x + y * y + z * z - radius_ * radius_;
-  const double quad = k * k - c;
+  const double R = std::sqrt(x * x + y * y + z * z);
+  const double quad = k * k - (R - radius_) * (R + radius_);
 
   if (quad < 0.0) {
     // No intersection with sphere.
     return INFTY;
 
-  } else if (coincident || std::abs(c) < FP_COINCIDENT) {
+  } else if (coincident ||
+             std::abs(R - radius_) < FP_COINCIDENT * (1.0 + radius_)) {
     // Particle is on the sphere, thus one distance is positive/negative and
     // the other is zero. The sign of k determines if we are facing in or out.
     if (k >= 0.0) {
@@ -626,7 +628,7 @@ double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
       return -k + sqrt(quad);
     }
 
-  } else if (c < 0.0) {
+  } else if (R < radius_) {
     // Particle is inside the sphere, thus one distance must be negative and
     // one must be positive. The positive distance will be the one with
     // negative sign on sqrt(quad)

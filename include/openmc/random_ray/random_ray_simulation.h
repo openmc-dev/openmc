@@ -22,6 +22,7 @@ public:
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fw_fixed_sources_adjoint();
   void prepare_local_fixed_sources_adjoint();
+  void prepare_adjoint_simulation();
   void simulate();
   void output_simulation_results() const;
   void instability_check(

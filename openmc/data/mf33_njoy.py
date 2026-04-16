@@ -51,13 +51,16 @@ def _validate_energy_grid_ev(ek: Sequence[float]) -> List[float]:
     ek = [float(x) for x in ek]
     if len(ek) < 2:
         raise ValueError("Energy grid must have at least 2 boundaries (G+1).")
-
+    if ek[0] <= 0.0:
+        raise ValueError(
+            f"Energy grid lower boundary must be positive (got {ek[0]:g} eV). "
+            f"ERRORR cannot integrate from zero energy. Use a small positive "
+            f"value like 1e-5 eV instead."
+        )
     for i in range(1, len(ek)):
         if not (ek[i] > ek[i-1]):
             raise ValueError("Energy grid boundaries must be strictly increasing (in eV).")
-
     return ek
-
 
 # ------------------------- NJOY deck builder -------------------------
 

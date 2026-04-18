@@ -160,9 +160,9 @@ feature can be used to access the installed packages.
 
 .. _install_aur:
 
-----------------------------------------
+------------------------------------
 Installing on Arch Linux via the AUR
-----------------------------------------
+------------------------------------
 
 On Arch Linux and Arch-based distributions, OpenMC can be installed from the
 `Arch User Repository (AUR) <https://aur.archlinux.org/>`_. An AUR package named
@@ -177,37 +177,30 @@ This package provides a full-featured OpenMC stack, including:
 * All required dependencies for the above components
 
 To install the package, you will need an AUR helper such as `yay`_ or `paru`_.
-For example, using ``yay``:
-
-.. code-block:: sh
+For example, using ``yay``::
 
     yay -S openmc-git
 
 
-Alternatively, you can manually clone and build the package:
-
-.. code-block:: sh
+Alternatively, you can manually clone and build the package::
 
     git clone https://aur.archlinux.org/openmc-git.git
     cd openmc-git
     makepkg -si
 
-Note, ``makepkg`` uses ``pacman`` to resolve dependencies. Therefore, AUR-based 
-dependencies need to be installed separately with ``yay`` or ``paru`` before running ``makepkg``.
-The PKGBUILD will automatically handle all required dependencies and build
-OpenMC with MPI and DAGMC support enabled.
+Note, ``makepkg`` uses ``pacman`` to resolve dependencies. Therefore, AUR-based
+dependencies need to be installed separately with ``yay`` or ``paru`` before
+running ``makepkg``. The PKGBUILD will automatically handle all required
+dependencies and build OpenMC with MPI and DAGMC support enabled.
 
 .. tip::
 
-    If there are failing checks during the build process, you can bypass them with the ``--nocheck`` flag:
-
-    .. code-block:: sh
+    If there are failing checks during the build process, you can bypass them
+    with the ``--nocheck`` flag::
 
         yay -S openmc-git --mflags "--nocheck"
 
-    Or 
-
-    .. code-block:: sh
+    Or::
 
         git clone https://aur.archlinux.org/openmc-git.git
         cd openmc-git
@@ -221,17 +214,16 @@ OpenMC with MPI and DAGMC support enabled.
 
 .. tip::
 
-    OpenMC is installed under ``/opt``. If you are installing and using it in the
-    same terminal session, you may need to reload your environment variables:
-
-    .. code-block:: sh
+    OpenMC is installed under ``/opt``. If you are installing and using it in
+    the same terminal session, you may need to reload your environment
+    variables::
 
         source /etc/profile
 
     Alternatively, start a new shell session.
 
 Once installed, the ``openmc`` executable, nuclear data libraries, and
-associated tools will be available in your system PATH.
+associated tools will be available in your system :envvar:`PATH`.
 
 .. _yay: https://github.com/Jguer/yay
 .. _paru: https://github.com/Morganamilo/paru

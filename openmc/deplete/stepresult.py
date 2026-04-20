@@ -16,7 +16,7 @@ from openmc.mpi import comm, MPI
 from openmc.checkvalue import PathLike
 from .reaction_rates import ReactionRates
 
-VERSION_RESULTS = (1, 2)
+VERSION_RESULTS = (1, 3)
 
 
 __all__ = ["StepResult"]

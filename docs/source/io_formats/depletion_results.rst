@@ -4,7 +4,7 @@
 Depletion Results File Format
 =============================
 
-The current version of the depletion results file format is 1.2.
+The current version of the depletion results file format is 1.3.
 
 **/**
 

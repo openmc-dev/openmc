@@ -160,7 +160,7 @@ class TransportOperator(ABC):
             self.prev_res = prev_results
 
     @abstractmethod
-    def __call__(self, vec, source_rate):
+    def __call__(self, vec, source_rate) -> OperatorResult:
         """Runs a simulation.
 
         Parameters
@@ -839,7 +839,7 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
-    def _restore_keff_search_control(self, res):
+    def _restore_keff_search_control(self, res: StepResult):
         """Restore keff search control from restart results."""
         keff_search_root = res.keff_search_root
         if keff_search_root is None:

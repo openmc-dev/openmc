@@ -147,3 +147,44 @@ TEST_CASE("Test settings declaration exceptions for a temperature field",
   REQUIRE_THROWS_WITH(read_settings_xml(root), error);
   doc.reset();
 }
+
+TEST_CASE("Test distance to next boundary when the point is close to a surface")
+{
+  // The XML data as a string
+  std::string xml_string = R"(
+        <mesh id="1">
+          <dimension>5 5 5</dimension>
+          <lower_left>0.0 0.0 0.0</lower_left>
+          <upper_right>10.0 10.0 10.0</upper_right>
+        </mesh>
+    )";
+
+  // Create the mesh from a file
+  pugi::xml_document doc;
+  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+  pugi::xml_node root = doc.child("mesh");
+  auto mesh = RegularMesh(root);
+
+  // Define some temperature values
+  vector<double> values = {893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
+    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0};
+
+  // Create a temperature field
+  TemperatureField temp_field = TemperatureField(&mesh, values);
+
+  REQUIRE(
+    temp_field.distance_to_next_boundary(
+      Position(2.4284379294472513, 2.7965340367438869, 7.9999999922776048),
+      Direction(-0.037401146240029437, 0.18369161574591669,
+        0.98227213365980526)) == Catch::Approx(0.0000000079).margin(1.0E-10));
+}

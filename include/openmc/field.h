@@ -87,7 +87,7 @@ public:
   //! associated with the current cell instance.
   //
   //! \param[inout] p Particle
-  void update_particle_temperature(Particle& p);
+  void update_particle_temperature(GeometryState& p);
 };
 
 } //  namespace openmc

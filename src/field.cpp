@@ -59,10 +59,11 @@ double TemperatureField::get_sqrtkT(const Position& r)
   return -1.0;
 }
 
-void TemperatureField::update_particle_temperature(Particle& p)
+void TemperatureField::update_particle_temperature(GeometryState& p)
 {
-  // Save current temperature
-  p.sqrtkT_last() = p.sqrtkT();
+  // It is assumed that the temperature of the cell instance is already
+  // known, so we only update the temperature if the particle is inside
+  // the mesh of the temperature field.
 
   // Determine the temperature based on the temperature field
   double field_sqrtkT = this->get_sqrtkT(p.r() + p.u() * TINY_BIT);
@@ -70,11 +71,8 @@ void TemperatureField::update_particle_temperature(Particle& p)
   // If particle inside the mesh, we use the temperature field
   if (field_sqrtkT >= 0.) {
     p.sqrtkT() = field_sqrtkT;
-
-    // If particle outside the mesh, go back to the cell instance temperature
   } else {
-    Cell& c {*model::cells[p.lowest_coord().cell()]};
-    p.sqrtkT() = c.sqrtkT(p.cell_instance());
+    return;
   }
 }
 

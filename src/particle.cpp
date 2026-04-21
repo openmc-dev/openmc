@@ -199,11 +199,6 @@ void Particle::event_calculate_xs()
       cell_last(j) = coord(j).cell();
     }
     n_coord_last() = n_coord();
-
-    // Update temperature of the particle if temperature field
-    if (settings::temperature_field_on) {
-      simulation::temperature_field.update_particle_temperature(*this);
-    }
   }
 
   // Write particle track.
@@ -312,6 +307,9 @@ void Particle::event_advance()
 
 void Particle::event_cross_temperature_mesh()
 {
+  // Save previous temperature
+  sqrtkT_last() = sqrtkT();
+
   // Update temperature of the particle
   simulation::temperature_field.update_particle_temperature(*this);
 }
@@ -376,10 +374,6 @@ void Particle::event_cross_surface()
     }
   }
 
-  // Update temperature of the particle if temperature field
-  if (settings::temperature_field_on) {
-    simulation::temperature_field.update_particle_temperature(*this);
-  }
 }
 
 void Particle::event_collide()
@@ -647,6 +641,10 @@ void Particle::cross_surface(const Surface& surf)
 
     material() = cell->material(cell_instance());
     sqrtkT() = cell->sqrtkT(cell_instance());
+    // Update temperature of the particle if temperature field
+    if (settings::temperature_field_on) {
+      simulation::temperature_field.update_particle_temperature(*this);
+    }
     density_mult() = cell->density_mult(cell_instance());
     return;
   }

@@ -1337,7 +1337,7 @@ double StructuredMesh::distance_to_next_boundary(Position r, Direction u) const
   const int n = n_dimension_;
   bool in_mesh;
 
-  StructuredMesh::MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
+  StructuredMesh::MeshIndex ijk = get_indices(global_r, in_mesh);
 
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<StructuredMesh::MeshDistance, 3> distances;
@@ -1348,10 +1348,25 @@ double StructuredMesh::distance_to_next_boundary(Position r, Direction u) const
   if (in_mesh) {
 
     // Find surface with minimal distance to current position
-    const auto k =
+    auto k =
       std::min_element(distances.begin(), distances.end()) - distances.begin();
 
     distance = distances[k].distance;
+
+    // If the particle is on any surface of the mesh
+    if (distance <= FP_COINCIDENT) {
+      // Move the particle a bit to determine ijk:
+      ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
+
+      for (int k = 0; k < n; ++k) {
+        distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
+      }
+
+      k = std::min_element(distances.begin(), distances.end()) -
+          distances.begin();
+
+      distance = distances[k].distance;
+    }
 
   } else { // not inside mesh
 

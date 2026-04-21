@@ -413,6 +413,8 @@ class Chain:
                     type_ = ','.join(mode.modes)
                     if mode.daughter in decay_data:
                         target = mode.daughter
+                    elif 'sf' in type_:
+                        target = None
                     else:
                         print('missing {} {} {}'.format(
                             parent, type_, mode.daughter))

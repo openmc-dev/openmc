@@ -738,6 +738,11 @@ class Integrator(ABC):
         results = deplete(
             self._solver, self.chain, n, rates, dt, i, matrix_func,
             self.transfer_rates, self.external_source_rates)
+
+        # Clip unphysical negative number densities
+        for r in results:
+            r.clip(min=0.0, out=r)
+
         return time.time() - start, results
 
     @abstractmethod

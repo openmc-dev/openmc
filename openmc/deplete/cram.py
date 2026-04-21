@@ -61,12 +61,20 @@ class IPFCramSolver(DepSystemSolver):
         check_type("theta", theta, np.ndarray, numbers.Complex)
         check_length("theta", theta, alpha.size)
         check_type("alpha0", alpha0, numbers.Real)
-        check_type("substeps", substeps, numbers.Integral)
-        check_greater_than("substeps", substeps, 0)
         self.alpha = alpha
         self.theta = theta
         self.alpha0 = alpha0
         self.substeps = substeps
+
+    @property
+    def substeps(self):
+        return self._substeps
+
+    @substeps.setter
+    def substeps(self, value):
+        check_type("substeps", value, numbers.Integral)
+        check_greater_than("substeps", value, 0)
+        self._substeps = value
 
     def __call__(self, A, n0, dt):
         """Solve depletion equations using IPF CRAM

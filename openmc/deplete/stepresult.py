@@ -191,8 +191,7 @@ class StepResult:
 
         # Direct transfer
         direct_attrs = ("time", "k", "source_rate", "index_nuc",
-                        "mat_to_hdf5_ind", "mat_to_name", "proc_time",
-                        "hdf5_dtype", "hdf5_compression")
+                        "mat_to_hdf5_ind", "mat_to_name", "proc_time")
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
         # Get applicable slice of data
@@ -608,6 +607,14 @@ class StepResult:
 
             .. versionadded:: 0.15.4
         """
+        if hdf5_dtype not in ('float32', 'float64'):
+            raise ValueError(
+                f"hdf5_dtype must be 'float32' or 'float64', got '{hdf5_dtype}'")
+        if hdf5_compression is not None and hdf5_compression not in ('gzip', 'lzf'):
+            raise ValueError(
+                f"hdf5_compression must be None, 'gzip', or 'lzf', "
+                f"got '{hdf5_compression}'")
+
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list, name_list = op.get_results_info()
 

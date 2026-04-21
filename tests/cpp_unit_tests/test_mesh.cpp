@@ -290,6 +290,11 @@ TEST_CASE("Test distance_to_next_boundary() - regular")
   r = Position(-2.0, 0.0, 0.0);
   u = Position(-1.0, 0.0, 0.0);
   REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
+
+  // Test on the mesh boundary, leaving the mesh
+  r = Position(1.0, 0.0, 0.0);
+  u = Position(1.0, 0.0, 0.0);
+  REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
 }
 
 TEST_CASE("Test distance_to_next_boundary() - rectilinear")
@@ -325,6 +330,11 @@ TEST_CASE("Test distance_to_next_boundary() - rectilinear")
   // Test outside the mesh, not going toward the mesh
   r = Position(-1.0, 0.0, 0.0);
   u = Position(-1.0, 0.0, 0.0);
+  REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
+
+  // Test on the mesh boundary, leaving the mesh
+  r = Position(10.0, -5.0, 0.0);
+  u = Position(1.0, 0.0, 0.0);
   REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
 }
 
@@ -363,6 +373,11 @@ TEST_CASE("Test distance_to_next_boundary() - cylindrical")
   r = Position(-2.0, 0.0, 0.0);
   u = Position(-1.0, 0.0, 0.0);
   REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
+
+  // Test on the mesh boundary, leaving the mesh
+  r = Position(1.0, 0.0, 0.5);
+  u = Position(1.0, 0.0, 0.0);
+  REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
 }
 
 TEST_CASE("Test distance_to_next_boundary() - spherical")
@@ -399,5 +414,10 @@ TEST_CASE("Test distance_to_next_boundary() - spherical")
   // Test outside the mesh, not going toward the mesh
   r = Position(-2.0, 0.0, 0.0);
   u = Position(-1.0, 0.0, 0.0);
+  REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
+
+  // Test on the mesh boundary, leaving the mesh
+  r = Position(1.0, 0.0, 0.0);
+  u = Position(1.0, 0.0, 0.0);
   REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
 }

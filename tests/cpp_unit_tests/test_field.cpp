@@ -41,6 +41,7 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   REQUIRE(temp_field.get_temperature(Position(0.5, -0.5, -0.5)) == 20.0);
   REQUIRE(temp_field.get_temperature(Position(-0.5, -0.5, 0.5)) == 50.0);
   REQUIRE(temp_field.get_temperature(Position(0.0, 0.0, 0.0)) == 10.0);
+  REQUIRE(temp_field.get_temperature(Position(2.0, 2.0, 2.0)) == -1.0);
 
   // Get sqrtkT
   REQUIRE(temp_field.get_sqrtkT(Position(0.5, 0.5, 0.5)) ==
@@ -54,6 +55,18 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   temp_field.update_particle_temperature(p);
   REQUIRE(p.sqrtkT() == Catch::Approx(0.083029).margin(1.0E-6));
   p.r() = Position(-0.5, -0.5, -0.5);
+  temp_field.update_particle_temperature(p);
+  REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
+
+  // Check that the temperature is not updated when outside the mesh
+  p.r() = Position(2.0, 2.0, 2.0);
+  temp_field.update_particle_temperature(p);
+  REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
+
+  // Check that the temperature is not updated when on an external surface with
+  // the particle is leaving the mesh
+  p.r() = Position(1.0, 0.0, 0.0);
+  p.u() = Direction(1.0, 0.0, 0.0);
   temp_field.update_particle_temperature(p);
   REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
 }

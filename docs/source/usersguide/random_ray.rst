@@ -642,7 +642,11 @@ model to use these multigroup cross sections. An example is given below::
   model.convert_to_multigroup(
       method="material_wise",
       groups="CASMO-2",
-      nparticles=2000,
+      particles=2000,
+      batches=100,
+      inactive=50,
+      max_batches=1000,
+      threshold=1e-2,
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
       correction=None,
@@ -693,10 +697,13 @@ of these methods is given below:
 
 When selecting a non-default energy group structure, you can manually define
 group boundaries or specify the name of a known group structure (a list of which
-can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The ``nparticles``
-parameter can be adjusted upward to improve the fidelity of the generated cross
-section library. The ``correction`` parameter can be set to ``"P0"`` to enable
-P0 transport correction. The ``overwrite_mgxs_library`` parameter can be set to
+can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The main knob controlling
+the accuracy/compute tradeoff is ``threshold`` (the ``rel_err`` convergence
+target applied to each MGXS tally); tighten it to improve fidelity. The
+``particles``, ``batches``, and ``max_batches`` parameters control simulation
+size; set ``threshold=None`` to disable the trigger and run exactly ``batches``
+batches. The ``correction`` parameter can be set to ``"P0"`` to enable P0
+transport correction. The ``overwrite_mgxs_library`` parameter can be set to
 ``True`` to overwrite an existing MGXS library file, or ``False`` to skip
 generation and use an existing library file.
 

@@ -1702,10 +1702,14 @@ class Model:
 
     @staticmethod
     def _auto_generate_mgxs_lib(
-        model: openmc.model.model,
+        model: openmc.Model,
         groups: openmc.mgxs.EnergyGroups,
-        correction: str | none,
-        directory: pathlike,
+        correction: str | None,
+        directory: PathLike,
+        batches: int,
+        inactive: int,
+        max_batches: int,
+        threshold: float | None,
     ) -> openmc.mgxs.Library:
         """
         Automatically generate a multi-group cross section libray from a model
@@ -1713,17 +1717,28 @@ class Model:
 
         Parameters
         ----------
+        model : openmc.Model
+            The model for which to generate MGXS tallies and run.
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
-        mgxs_path : str
-            Filename for the MGXS HDF5 file.
         correction : str
             Transport correction to apply to the MGXS. Options are None and
             "P0".
         directory : str
             Directory to run the simulation in, so as to contain XML files.
+        batches : int
+            Total batches when no trigger is used; the minimum batch count
+            before trigger convergence checking begins when ``threshold`` is
+            set.
+        inactive : int
+            Number of inactive batches. Applied only when the model's effective
+            ``run_mode`` is ``'eigenvalue'``; silently ignored otherwise.
+        max_batches : int
+            Upper cap on batches when a trigger is active. Ignored when
+            ``threshold`` is ``None``.
+        threshold : float or None
+            Relative-error convergence threshold applied to each MGXS tally via
+            an ``rel_err`` trigger. If ``None``, no trigger is attached.
 
         Returns
         -------
@@ -1771,6 +1786,19 @@ class Model:
 
         # Create a "tallies.xml" file for the MGXS Library
         mgxs_lib.add_to_tallies(model.tallies, merge=True)
+
+        # Apply batch/inactive/trigger settings. Inactive is eigenvalue-only.
+        model.settings.batches = batches
+        if model.settings.run_mode == 'eigenvalue':
+            model.settings.inactive = inactive
+        if threshold is not None:
+            # ignore_zeros=True so that structurally-zero score bins (e.g.
+            # nu-fission in non-fissile materials) don't block convergence.
+            for tally in model.tallies:
+                tally.triggers.append(
+                    openmc.Trigger('rel_err', threshold, ignore_zeros=True))
+            model.settings.trigger_active = True
+            model.settings.trigger_max_batches = max_batches
 
         # Run
         statepoint_filename = model.run(cwd=directory)
@@ -1870,7 +1898,11 @@ class Model:
     def _isothermal_infinite_media_mgxs(
         material: openmc.Material,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        particles: int,
+        batches: int,
+        inactive: int,
+        max_batches: int,
+        threshold: float | None,
         correction: str | None,
         directory: PathLike,
         source: openmc.IndependentSource,
@@ -1886,8 +1918,18 @@ class Model:
             The material to generate MGXS for
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        particles : int
+            Number of particles to simulate per batch.
+        batches : int
+            Number of batches to simulate (minimum count when a trigger is
+            active).
+        inactive : int
+            Number of inactive batches. Unused here since this path is always
+            fixed-source.
+        max_batches : int
+            Upper cap on batches when a trigger is active.
+        threshold : float or None
+            Relative-error trigger threshold. ``None`` disables the trigger.
         correction : str
             Transport correction to apply to the MGXS. Options are None and
             "P0".
@@ -1916,8 +1958,7 @@ class Model:
           model.materials[-1].temperature = temperature
 
         # Settings
-        model.settings.batches = 100
-        model.settings.particles = nparticles
+        model.settings.particles = particles
 
         model.settings.source = source
 
@@ -1937,7 +1978,8 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+                model, groups, correction, directory,
+                batches, inactive, max_batches, threshold)
 
         if temperature != None:
             return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
@@ -1948,7 +1990,11 @@ class Model:
     def _generate_infinite_medium_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        particles: int,
+        batches: int,
+        inactive: int,
+        max_batches: int,
+        threshold: float | None,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
@@ -1983,8 +2029,18 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        particles : int
+            Number of particles to simulate per batch.
+        batches : int
+            Number of batches to simulate (minimum count when a trigger is
+            active).
+        inactive : int
+            Number of inactive batches. Unused in this method (always
+            fixed-source).
+        max_batches : int
+            Upper cap on batches when a trigger is active.
+        threshold : float or None
+            Relative-error trigger threshold. ``None`` disables the trigger.
         mgxs_path : str
             Filename for the MGXS HDF5 file.
         correction : str
@@ -2023,7 +2079,11 @@ class Model:
                 xs_data = Model._isothermal_infinite_media_mgxs(
                     material,
                     groups,
-                    nparticles,
+                    particles,
+                    batches,
+                    inactive,
+                    max_batches,
+                    threshold,
                     correction,
                     directory,
                     src,
@@ -2045,7 +2105,11 @@ class Model:
                     xs_data = Model._isothermal_infinite_media_mgxs(
                         material,
                         groups,
-                        nparticles,
+                        particles,
+                        batches,
+                        inactive,
+                        max_batches,
+                        threshold,
                         correction,
                         directory,
                         src,
@@ -2147,7 +2211,11 @@ class Model:
     def _isothermal_stochastic_slab_mgxs(
         stoch_geom: openmc.Geometry,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        particles: int,
+        batches: int,
+        inactive: int,
+        max_batches: int,
+        threshold: float | None,
         correction: str | None,
         directory: PathLike,
         source: openmc.IndependentSource,
@@ -2164,8 +2232,18 @@ class Model:
             The stochastic slab geometry.
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        particles : int
+            Number of particles to simulate per batch.
+        batches : int
+            Number of batches to simulate (minimum count when a trigger is
+            active).
+        inactive : int
+            Number of inactive batches. Unused here since this path is always
+            fixed-source.
+        max_batches : int
+            Upper cap on batches when a trigger is active.
+        threshold : float or None
+            Relative-error trigger threshold. ``None`` disables the trigger.
         correction : str
             Transport correction to apply to the MGXS. Options are None and
             "P0".
@@ -2195,9 +2273,7 @@ class Model:
                 material.temperature = temperature
 
         # Settings
-        model.settings.batches = 200
-        model.settings.inactive = 100
-        model.settings.particles = nparticles
+        model.settings.particles = particles
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.temperature = temperature_settings
 
@@ -2211,7 +2287,8 @@ class Model:
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+                model, groups, correction, directory,
+                batches, inactive, max_batches, threshold)
 
         # Fetch all of the isothermal results.
         if temperature != None:
@@ -2229,7 +2306,11 @@ class Model:
     def _generate_stochastic_slab_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        particles: int,
+        batches: int,
+        inactive: int,
+        max_batches: int,
+        threshold: float | None,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
@@ -2253,8 +2334,18 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        particles : int
+            Number of particles to simulate per batch.
+        batches : int
+            Number of batches to simulate (minimum count when a trigger is
+            active).
+        inactive : int
+            Number of inactive batches. Unused in this method (always
+            fixed-source).
+        max_batches : int
+            Upper cap on batches when a trigger is active.
+        threshold : float or None
+            Relative-error trigger threshold. ``None`` disables the trigger.
         mgxs_path : str
             Filename for the MGXS HDF5 file.
         correction : str
@@ -2309,7 +2400,11 @@ class Model:
             mgxs_sets = Model._isothermal_stochastic_slab_mgxs(
                 geo,
                 groups,
-                nparticles,
+                particles,
+                batches,
+                inactive,
+                max_batches,
+                threshold,
                 correction,
                 directory,
                 src,
@@ -2328,7 +2423,11 @@ class Model:
                 raw_mgxs_sets[temperature] = Model._isothermal_stochastic_slab_mgxs(
                     geo,
                     groups,
-                    nparticles,
+                    particles,
+                    batches,
+                    inactive,
+                    max_batches,
+                    threshold,
                     correction,
                     directory,
                     src,
@@ -2354,7 +2453,11 @@ class Model:
     def _isothermal_materialwise_mgxs(
         input_model: openmc.Model,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        particles: int,
+        batches: int,
+        inactive: int,
+        max_batches: int,
+        threshold: float | None,
         correction: str | None,
         directory: PathLike,
         temperature_settings: dict,
@@ -2374,8 +2477,18 @@ class Model:
             The model to use when computing material-wise MGXS.
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        particles : int
+            Number of particles to simulate per batch.
+        batches : int
+            Number of batches to simulate (minimum count when a trigger is
+            active).
+        inactive : int
+            Number of inactive batches. Applied only when the model's
+            ``run_mode`` is ``'eigenvalue'``.
+        max_batches : int
+            Upper cap on batches when a trigger is active.
+        threshold : float or None
+            Relative-error trigger threshold. ``None`` disables the trigger.
         correction : str
             Transport correction to apply to the MGXS. Options are None and
             "P0".
@@ -2403,15 +2516,14 @@ class Model:
                 material.temperature = temperature
 
         # Settings
-        model.settings.batches = 200
-        model.settings.inactive = 100
-        model.settings.particles = nparticles
+        model.settings.particles = particles
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.temperature = temperature_settings
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+                model, groups, correction, directory,
+                batches, inactive, max_batches, threshold)
 
         # Fetch all of the isothermal results.
         if temperature != None:
@@ -2429,7 +2541,11 @@ class Model:
     def _generate_material_wise_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
-        nparticles: int,
+        particles: int,
+        batches: int,
+        inactive: int,
+        max_batches: int,
+        threshold: float | None,
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
@@ -2450,8 +2566,18 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        nparticles : int
-            Number of particles to simulate per batch when generating MGXS.
+        particles : int
+            Number of particles to simulate per batch.
+        batches : int
+            Number of batches to simulate (minimum count when a trigger is
+            active).
+        inactive : int
+            Number of inactive batches. Applied only when the model's
+            ``run_mode`` is ``'eigenvalue'``.
+        max_batches : int
+            Upper cap on batches when a trigger is active.
+        threshold : float or None
+            Relative-error trigger threshold. ``None`` disables the trigger.
         mgxs_path : PathLike
             Filename for the MGXS HDF5 file.
         correction : str
@@ -2478,7 +2604,11 @@ class Model:
             mgxs_sets = Model._isothermal_materialwise_mgxs(
                 self,
                 groups,
-                nparticles,
+                particles,
+                batches,
+                inactive,
+                max_batches,
+                threshold,
                 correction,
                 directory,
                 temp_settings
@@ -2496,7 +2626,11 @@ class Model:
                 raw_mgxs_sets[temperature] = Model._isothermal_materialwise_mgxs(
                     self,
                     groups,
-                    nparticles,
+                    particles,
+                    batches,
+                    inactive,
+                    max_batches,
+                    threshold,
                     correction,
                     directory,
                     temp_settings,
@@ -2521,7 +2655,11 @@ class Model:
         self,
         method: str = "material_wise",
         groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
-        nparticles: int = 2000,
+        particles: int = 2000,
+        batches: int = 100,
+        inactive: int = 50,
+        max_batches: int = 1000,
+        threshold: float | None = 1e-2,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
@@ -2534,6 +2672,13 @@ class Model:
         If no MGXS data library file is found, generate one using one or more
         continuous energy Monte Carlo simulations.
 
+        The primary knob controlling the accuracy-versus-compute tradeoff is
+        ``threshold``: the MGXS simulation attaches an ``rel_err`` tally
+        trigger at that relative-error level to every MGXS tally, and stops
+        as soon as all tallies converge (or when ``max_batches`` is reached).
+        Set ``threshold=None`` to disable the trigger and run for exactly
+        ``batches`` batches.
+
         Parameters
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
@@ -2545,8 +2690,24 @@ class Model:
             (e.g., ``"CASMO-2"``), or a sequence of floats specifying energy
             bin boundaries in eV (e.g., ``[0.0, 1e6]`` for a single group).
             Defaults to ``"CASMO-2"``.
-        nparticles : int, optional
+        particles : int, optional
             Number of particles to simulate per batch when generating MGXS.
+        batches : int, optional
+            Number of batches to simulate. When a trigger is active
+            (``threshold`` is not ``None``) this is the minimum batch count
+            before convergence checking begins.
+        inactive : int, optional
+            Number of inactive batches. Applied only when the effective
+            ``run_mode`` is ``'eigenvalue'`` (the ``material_wise`` path with
+            an eigenvalue source); silently ignored for fixed-source paths.
+        max_batches : int, optional
+            Upper cap on batches when a trigger is active. Ignored when
+            ``threshold`` is ``None``.
+        threshold : float or None, optional
+            Relative-error (``rel_err``) convergence threshold applied to each
+            MGXS tally. The simulation stops when every tally is below this
+            threshold or ``max_batches`` is reached. Set to ``None`` to
+            disable the trigger and run for exactly ``batches`` batches.
         overwrite_mgxs_library : bool, optional
             Whether to overwrite an existing MGXS library file.
         mgxs_path : str, optional
@@ -2616,15 +2777,18 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
+                        groups, particles, batches, inactive, max_batches,
+                        threshold, mgxs_path, correction, tmpdir, source_energy,
                         temperatures, temperature_settings)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir,
+                        groups, particles, batches, inactive, max_batches,
+                        threshold, mgxs_path, correction, tmpdir,
                         temperatures, temperature_settings)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
+                        groups, particles, batches, inactive, max_batches,
+                        threshold, mgxs_path, correction, tmpdir, source_energy,
                         temperatures, temperature_settings)
                 else:
                     raise ValueError(

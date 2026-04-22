@@ -50,9 +50,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
     ----------
     func : callable
         Function to use to get new compositions. Expected to have the signature
-        ``func(A, n0, t) -> n1`` for default single-step behavior or
-        ``func(A, n0, t, substeps=1) -> n1`` to support non-default
-        substeps.
+        ``func(A, n0, t, substeps=1) -> n1``.
     chain : openmc.deplete.Chain
         Depletion chain
     n : list of numpy.ndarray
@@ -169,10 +167,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
 
                 # Concatenate vectors of nuclides in one
                 n_multi = np.concatenate(n)
-                if substeps == 1:
-                    n_result = func(matrix, n_multi, dt)
-                else:
-                    n_result = func(matrix, n_multi, dt, substeps)
+                n_result = func(matrix, n_multi, dt, substeps)
 
                 # Split back the nuclide vector result into the original form
                 n_result = np.split(n_result, np.cumsum([len(i) for i in n])[:-1])
@@ -206,10 +201,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 matrix.resize(matrix.shape[1], matrix.shape[1])
                 n[i] = np.append(n[i], 1.0)
 
-    if substeps == 1:
-        inputs = zip(matrices, n, repeat(dt))
-    else:
-        inputs = zip(matrices, n, repeat(dt), repeat(substeps))
+    inputs = zip(matrices, n, repeat(dt), repeat(substeps))
 
     if USE_MULTIPROCESSING:
         with Pool(NUM_PROCESSES) as pool:

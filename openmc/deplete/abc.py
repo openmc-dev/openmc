@@ -606,12 +606,9 @@ class Integrator(ABC):
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
         size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions may have either of the following signatures:
-        ``solver(A, n0, t) -> n1`` for the default single-step behavior or
-        ``solver(A, n0, t, substeps=1) -> n1`` to support non-default
-        substeps. When :attr:`substeps` is greater than one, OpenMC will call
-        the solver with the fourth argument and unsupported custom solvers will
-        raise at runtime. In either case,
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t, substeps=1) -> n1``. Solvers that do not support
+        multiple substeps may raise when ``substeps > 1``.
 
             * ``A`` is a :class:`scipy.sparse.csc_array` making up the
               depletion matrix
@@ -737,10 +734,10 @@ class Integrator(ABC):
         params = list(sig.parameters.values())
 
         # Inspect arguments
-        if len(params) not in {3, 4}:
+        if len(params) != 4:
             raise ValueError(
-                "Function {} must support either three arguments "
-                "(A, n0, t) or four arguments (A, n0, t, substeps=1): {!s}"
+                "Function {} must support four arguments "
+                "(A, n0, t, substeps=1): {!s}"
                 .format(func, sig))
 
         for ix, param in enumerate(params):
@@ -1164,12 +1161,9 @@ class SIIntegrator(Integrator):
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
         size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions may have either of the following signatures:
-        ``solver(A, n0, t) -> n1`` for the default single-step behavior or
-        ``solver(A, n0, t, substeps=1) -> n1`` to support non-default
-        substeps. When :attr:`substeps` is greater than one, OpenMC will call
-        the solver with the fourth argument and unsupported custom solvers will
-        raise at runtime. In either case,
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t, substeps=1) -> n1``. Solvers that do not support
+        multiple substeps may raise when ``substeps > 1``.
 
             * ``A`` is a :class:`scipy.sparse.csc_array` making up the
               depletion matrix

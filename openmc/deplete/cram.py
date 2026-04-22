@@ -55,8 +55,9 @@ class IPFCramSolver(DepSystemSolver):
         self.theta = theta
         self.alpha0 = alpha0
         self._splu_cache = None
+        self._splu_cache_key = None
 
-    def __call__(self, A, n0, dt, use_cache=False):
+    def __call__(self, A, n0, dt):
         """Solve depletion equations using IPF CRAM
 
         Parameters
@@ -76,11 +77,17 @@ class IPFCramSolver(DepSystemSolver):
             Final compositions after ``dt``
 
         """
-        y = n0.copy()
-        if not use_cache or not self._splu_cache:
+        # If the matrix or time step has changed since the last call, update the
+        # cached factorization
+        key = (dt, A.shape, A.nnz, hash(A.data.tobytes()))
+        if key != self._splu_cache_key:
+            self._splu_cache_key = key
             A = dt * csc_array(A, dtype=np.float64)
             ident = eye_array(A.shape[0], format='csc')
             self._splu_cache = [sla.splu(A - theta*ident) for theta in self.theta]
+
+        # Perform the IPF CRAM update
+        y = n0.copy()
         for alpha, splu in zip(self.alpha, self._splu_cache):
             y += 2*np.real(alpha*splu.solve(y))
         return y * self.alpha0

@@ -40,7 +40,9 @@ class IPFCramSolver(DepSystemSolver):
     alpha0 : float
         Limit of the approximation at infinity
     substeps : int, optional
-        Number of substeps for LU-reuse CRAM.
+        Number of substeps per depletion interval.
+
+        .. versionadded:: 0.15.4
 
     Attributes
     ----------
@@ -56,7 +58,7 @@ class IPFCramSolver(DepSystemSolver):
 
     """
 
-    def __init__(self, alpha, theta, alpha0, substeps=1):
+    def __init__(self, alpha, theta, alpha0, substeps: int = 1):
         check_type("alpha", alpha, np.ndarray, numbers.Complex)
         check_type("theta", theta, np.ndarray, numbers.Complex)
         check_length("theta", theta, alpha.size)

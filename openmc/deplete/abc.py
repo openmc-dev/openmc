@@ -577,9 +577,9 @@ class Integrator(ABC):
         each interval is subdivided into `substeps` identical sub-intervals
         and LU factorizations are reused across them, improving accuracy
         for nuclides with large decay-constant × timestep products.
-        Only used when `solver` is ``cram48"`` or ``cram16``.
+        Only used when `solver` is "cram48" or "cram16".
 
-        .. versionadded:: 0.15.3
+        .. versionadded:: 0.15.4
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. When `False`, the depletion
@@ -1126,9 +1126,9 @@ class SIIntegrator(Integrator):
         each interval is subdivided into `substeps` identical sub-intervals
         and LU factorizations are reused across them, improving accuracy
         for nuclides with large decay-constant × timestep products.
-        Only used when `solver` is ``cram48`` or ``cram16``.
+        Only used when `solver` is "cram48" or "cram16".
 
-        .. versionadded:: 0.15.3
+        .. versionadded:: 0.15.4
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. If `False`, all time

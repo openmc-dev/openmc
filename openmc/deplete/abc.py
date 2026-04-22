@@ -703,13 +703,14 @@ class Integrator(ABC):
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
             if solver == "cram48":
-                from .cram import CRAM48 as _default
+                from .cram import CRAM48
+                self._solver = CRAM48
             elif solver == "cram16":
-                from .cram import CRAM16 as _default
+                from .cram import CRAM16
+                self._solver = CRAM16
             else:
                 raise ValueError(
                     f"Solver {solver} not understood. Expected 'cram48' or 'cram16'")
-            self._solver = _default
         else:
             self.solver = solver
 

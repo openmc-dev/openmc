@@ -51,11 +51,31 @@ public:
   static RandomRaySourceShape source_shape_; // Flag for linear source
   static RandomRaySampleMethod sample_method_; // Flag for sampling method
 
+  static double avg_miss_rate_;     // Average ray miss rate per
+                                    // iteration for reporting
+  static int64_t n_source_regions_; // Total number of source regions
+  static int64_t
+    n_external_source_regions_; // Total number of source regions with
+                                // non-zero external source terms
+  static uint64_t total_geometric_intersections_; // Tracks the total number of
+                                                  // geometric intersections by
+                                                  // all rays for reporting
+
+  // Kinetic simulation variables
+  static int bd_order_; // Order of backwards difference approximation for
+                        // time-derivatives
+  static RandomRayTimeMethod
+    time_method_; // Method for resolving angular flux time derivative term for
+                  // flux propogation
+
   //----------------------------------------------------------------------------
   // Public data members
   vector<float> angular_flux_;
-
   bool ray_trace_only_ {false}; // If true, only perform geometry operations
+
+  //---------------------------------------------------------------------------
+  // Public data members for kinetic simulations
+  vector<float> angular_flux_prime_;
 
 private:
   //----------------------------------------------------------------------------
@@ -72,6 +92,7 @@ private:
   double distance_travelled_ {0};
   bool is_active_ {false};
   bool is_alive_ {true};
+
 }; // class RandomRay
 
 } // namespace openmc

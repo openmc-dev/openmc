@@ -18,7 +18,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
 
 
 @pytest.mark.parametrize("method", ["material_wise", "stochastic_slab", "infinite_medium"])
-def test_random_ray_auto_convert(method):
+def test_random_ray_auto_convert_kappa_fission(method):
     with change_directory(method):
         openmc.reset_auto_ids()
 
@@ -27,7 +27,7 @@ def test_random_ray_auto_convert(method):
 
         # Convert to a multi-group model
         model.convert_to_multigroup(
-            method=method, groups='CASMO-2', nparticles=100,
+            method=method, energy_groups='CASMO-2', nparticles=100,
             overwrite_mgxs_library=False, mgxs_path="mgxs.h5"
         )
 

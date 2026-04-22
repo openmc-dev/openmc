@@ -71,6 +71,8 @@ extern "C" bool entropy_on; //!< calculate Shannon entropy?
 extern "C" bool
   event_based;      //!< use event-based mode (instead of history-based)
 extern bool ifp_on; //!< Use IFP for kinetics parameters?
+extern bool kinetic_simulation;  //!< Flag determining if the simulation is
+                                 //!< kinetic or static
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets;   //!< create material cells offsets?
 extern "C" bool output_summary;      //!< write summary.h5?
@@ -203,6 +205,9 @@ extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
 
+// Timestep variables for kinetic simulation
+extern int n_timesteps; //!< number of timesteps
+extern double dt;       //!< fixed timestep size
 } // namespace settings
 
 //==============================================================================

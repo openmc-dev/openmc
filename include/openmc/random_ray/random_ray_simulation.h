@@ -23,12 +23,12 @@ public:
   void prepare_fixed_sources_adjoint();
   void prepare_adjoint_simulation();
   void simulate();
+  void initialize_time_step(int i);
+  void finalize_time_step();
   void output_simulation_results() const;
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
-  void print_results_random_ray(uint64_t total_geometric_intersections,
-    double avg_miss_rate, int negroups, int64_t n_source_regions,
-    int64_t n_external_source_regions) const;
+  void print_results_random_ray() const;
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -57,8 +57,18 @@ private:
   // Number of energy groups
   int negroups_;
 
+  // Number of delay groups
+  int ndgroups_;
+
   // Toggle for first simulation
   bool is_first_simulation_;
+
+  //----------------------------------------------------------------------------
+  // Data Members for kinetic simulations
+
+  double static_avg_k_eff_;
+  vector<double> static_k_eff_;
+  vector<double> static_fission_rate_;
 
 }; // class RandomRaySimulation
 
@@ -69,6 +79,16 @@ private:
 void validate_random_ray_inputs();
 void print_adjoint_header();
 void openmc_finalize_random_ray();
+
+//! Write data related to randaom ray to statepoint
+//! \param[in] group HDF5 group
+void write_random_ray_hdf5(hid_t group);
+void print_adjoint_header();
+
+// Functions for kinetic simulations
+void set_time_dependent_settings();
+void rename_time_step_file(
+  std::string base_filename, std::string extension, int i);
 
 } // namespace openmc
 

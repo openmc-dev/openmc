@@ -7,8 +7,8 @@ import openmc
 import openmc.lib
 import openmc.stats
 
-
-def test_export_to_xml(run_in_tmpdir):
+@pytest.mark.parametrize("kinetic_simulation", [True, False])
+def test_export_to_xml(run_in_tmpdir, kinetic_simulation):
 
     tmp_properties_file = 'properties_test.h5'
 
@@ -19,6 +19,13 @@ def test_export_to_xml(run_in_tmpdir):
     s.max_lost_particles = 5
     s.rel_max_lost_particles = 1e-4
     s.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
+    s.kinetic_simulation = kinetic_simulation
+    if kinetic_simulation:
+        s.timestep_parameters = {
+            'dt': 0.1,
+            'n_timesteps': 41,
+            'timestep_units': 's',
+        }
     s.energy_mode = 'continuous-energy'
     s.max_order = 5
     s.max_tracks = 1234
@@ -90,6 +97,9 @@ def test_export_to_xml(run_in_tmpdir):
         'adjoint': False,
         'sample_method': 'halton'
     }
+    if kinetic_simulation:
+        s.random_ray['bd_order'] = 3
+        s.random_ray['time_derivative_method'] = 'propagation'
     s.max_particle_events = 100
     s.max_secondaries = 1_000_000
     s.source_rejection_fraction = 0.01
@@ -109,6 +119,11 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.max_lost_particles == 5
     assert s.rel_max_lost_particles == 1e-4
     assert s.keff_trigger == {'type': 'std_dev', 'threshold': 0.001}
+    assert s.kinetic_simulation == kinetic_simulation
+    if kinetic_simulation:
+        assert s.timestep_parameters['dt'] == 0.1
+        assert s.timestep_parameters['n_timesteps'] == 41
+        assert s.timestep_parameters['timestep_units'] == 's'
     assert s.energy_mode == 'continuous-energy'
     assert s.max_order == 5
     assert s.max_tracks == 1234
@@ -187,6 +202,9 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.random_ray['volume_normalized_flux_tallies']
     assert not s.random_ray['adjoint']
     assert s.random_ray['sample_method'] == 'halton'
+    if kinetic_simulation:
+        assert s.random_ray['bd_order'] == 3
+        assert s.random_ray['time_derivative_method'] == 'propagation'
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01
     assert s.free_gas_threshold == 800.0

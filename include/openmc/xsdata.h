@@ -83,6 +83,9 @@ public:
   // delayed_nu_fission has the following dimensions:
   // [angle][delayed group][incoming group]
   tensor::Tensor<double> delayed_nu_fission;
+  // chi has the following dimensions:
+  // [angle][incoming group][outgoing group]
+  tensor::Tensor<double> chi;
   // chi_prompt has the following dimensions:
   // [angle][incoming group][outgoing group]
   tensor::Tensor<double> chi_prompt;

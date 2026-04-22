@@ -53,8 +53,9 @@ XsData::XsData(bool fissionable, AngleDistributionType scatter_format,
     // allocate delayed_nu_fission; [temperature][angle][delay group][in group]
     delayed_nu_fission = tensor::zeros<double>(shape);
 
-    // chi_prompt; [temperature][angle][in group][out group]
+    // chi and chi_prompt; [temperature][angle][in group][out group]
     shape = {n_ang, n_g_, n_g_};
+    chi = tensor::zeros<double>(shape);
     chi_prompt = tensor::zeros<double>(shape);
 
     // chi_delayed; [temperature][angle][delay group][in group][out group]
@@ -138,11 +139,14 @@ void XsData::fission_vector_beta_from_hdf5(
     row /= row.sum();
   }
 
+  // TODO: This is incorrect!! This makes chi_prompt and chi_delayed identical
   // Replicate the energy spectrum across all incoming groups — the
   // spectrum is independent of the incoming neutron energy
   for (size_t a = 0; a < n_ang; a++)
-    for (size_t gin = 0; gin < n_g_; gin++)
+    for (size_t gin = 0; gin < n_g_; gin++) {
+      chi.slice(a, gin) = temp_chi.slice(a);
       chi_prompt.slice(a, gin) = temp_chi.slice(a);
+    }
 
   // Same spectrum for delayed neutrons, replicated across delayed groups
   for (size_t a = 0; a < n_ang; a++)
@@ -200,8 +204,23 @@ void XsData::fission_vector_beta_from_hdf5(
 
 void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
-  // Data is provided separately as prompt + delayed nu-fission and chi
+  // If chi is included in the dataset, we should store it!
+  if (object_exists(xsdata_grp, "chi")) {
+    tensor::Tensor<double> temp_chi = tensor::zeros<double>({n_ang, n_g_});
+    read_nd_tensor(xsdata_grp, "chi", temp_chi, true);
+    // Normalize chi by summing over the outgoing groups for each incoming angle
+    for (size_t a = 0; a < n_ang; a++) {
+      tensor::View<double> row = temp_chi.slice(a);
+      row /= row.sum();
+    }
 
+    // Replicate the spectrum across all incoming groups
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t gin = 0; gin < n_g_; gin++)
+        chi.slice(a, gin) = temp_chi.slice(a);
+  }
+
+  // Data is provided separately as prompt + delayed nu-fission and chi
   // Get chi-prompt
   tensor::Tensor<double> temp_chi_p = tensor::zeros<double>({n_ang, n_g_});
   read_nd_tensor(xsdata_grp, "chi-prompt", temp_chi_p, true);
@@ -241,6 +260,7 @@ void XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   read_nd_tensor(xsdata_grp, "delayed-nu-fission", delayed_nu_fission, true);
 }
 
+// TODO: Add machinery to read chi
 void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // No beta is provided and there is no prompt/delay distinction.
@@ -258,8 +278,10 @@ void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
   // Replicate the energy spectrum across all incoming groups
   for (size_t a = 0; a < n_ang; a++)
-    for (size_t gin = 0; gin < n_g_; gin++)
+    for (size_t gin = 0; gin < n_g_; gin++) {
+      chi.slice(a, gin) = temp_chi.slice(a);
       chi_prompt.slice(a, gin) = temp_chi.slice(a);
+    }
 
   // Get nu-fission directly
   read_nd_tensor(xsdata_grp, "nu-fission", prompt_nu_fission, true);
@@ -267,6 +289,7 @@ void XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 
 //==============================================================================
 
+// TODO: Add machinery to read chi
 void XsData::fission_matrix_beta_from_hdf5(
   hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
 {
@@ -373,6 +396,7 @@ void XsData::fission_matrix_beta_from_hdf5(
       }
 }
 
+// TODO: Add machinery to read chi
 void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // Data is provided separately as prompt + delayed nu-fission and chi
@@ -410,6 +434,7 @@ void XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
             temp_matrix_d(a, d, gin, gout) / delayed_nu_fission(a, d, gin);
 }
 
+// TODO: Add machinery to read chi
 void XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // No beta is provided and there is no prompt/delay distinction.
@@ -606,6 +631,10 @@ void XsData::combine(
       kappa_fission += scalar * that->kappa_fission;
       fission += scalar * that->fission;
       delayed_nu_fission += scalar * that->delayed_nu_fission;
+
+      // This may throw an error in some cases. Need a check for if
+      // chi exists!
+      chi += scalar * that->chi;
       // Accumulate chi_prompt weighted by total prompt nu-fission
       // (summed over energy groups) for this constituent
       {
@@ -636,6 +665,16 @@ void XsData::combine(
     decay_rate += scalar * that->decay_rate;
   }
 
+  // Normalize chi so it sums to 1 over outgoing groups
+  {
+    size_t n_ang = chi.shape(0);
+    size_t n_g = chi.shape(1);
+    for (size_t a = 0; a < n_ang; a++)
+      for (size_t gin = 0; gin < n_g; gin++) {
+        tensor::View<double> row = chi.slice(a, gin);
+        row /= row.sum();
+      }
+  }
   // Normalize chi_prompt so it sums to 1 over outgoing groups
   {
     size_t n_ang = chi_prompt.shape(0);

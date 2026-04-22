@@ -188,8 +188,8 @@ private:
   vector<double> energy_bounds_; //!< Energy boundaries [eV]
   tensor::Tensor<double> lower_ww_; //!< Lower weight window bounds (shape:
                                     //!< energy_bins, mesh_bins (k, j, i))
-  tensor::Tensor<double>
-    upper_ww_; //!< Upper weight window bounds (shape: energy_bins, mesh_bins)
+  tensor::Tensor<double> upper_ww_; //!< Upper weight window bounds (shape:
+                                    //!< energy_bins, mesh_bins)
   double survival_ratio_ {3.0}; //!< Survival weight ratio
   double max_lb_ratio_ {1.0}; //!< Maximum lower bound to particle weight ratio
   double weight_cutoff_ {DEFAULT_WEIGHT_CUTOFF}; //!< Weight cutoff

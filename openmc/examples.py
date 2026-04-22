@@ -4,7 +4,8 @@ import numpy as np
 
 import openmc
 
-PINCELL_PITCH = 1.26 # cm
+C5G7_N_DG = 8
+PINCELL_PITCH = 1.26
 
 def pwr_pin_cell() -> openmc.Model:
     """Create a PWR pin-cell model.
@@ -656,7 +657,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model
     return model
 
 
-def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
+def _generate_c5g7_materials(second_temp = False, kinetic = False) -> openmc.Materials:
     """Generate materials utilizing multi-group cross sections based on the
     the C5G7 Benchmark.
 
@@ -668,6 +669,8 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
         of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
         which corresponds to a temperature of 394 K. This temperature dependence is
         fictitious; it is used for testing temperature feedback in the random ray solver.
+    kinetic : bool, optional
+        Flag to generate cross sections for kinetic simulations.
 
     Returns
     -------
@@ -676,7 +679,14 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
 
     Data Sources
     ------------
-    All cross section data are from:
+    Prompt and delated fission cross sections, prompt and delayed fission
+    spectra, decay constants, delayed neutron fractions, and velocity data come
+    from:
+    Hou et al., "OECD/NEA benchmark for time-dependnet neutron
+    transport calculations without homogeniztaion"
+    DOI: 10.1016/j.nucengdes.2017.02.008
+
+    All other cross section data are from:
     Lewis et al., "Benchmark specification for determinisitc 2D/3D MOX fuel
     assembly transport calculations without spatial homogenization"
     """
@@ -684,6 +694,13 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
     # MGXS for the UO2 pins.
     group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
     groups = openmc.mgxs.EnergyGroups(group_edges)
+
+    # Number of delayed groups for a time-dependent simulation
+    # Delayed cross section values
+    # come from Hou et al., "OECD/NEA benchmark for time-dependnet neutron
+    # transport calculations without homogeniztaion"
+    # DOI: 10.1016/j.nucengdes.2017.02.008
+    n_dg = C5G7_N_DG if kinetic else 0
 
     uo2_total = np.array([0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
                           0.5644058])
@@ -721,7 +738,7 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
     h2o_scatter_matrix = np.rollaxis(h2o_scatter_matrix, 0, 3)
 
     # Instantiate the 7-group (C5G7) cross section data
-    uo2_xsdata = openmc.XSdata('UO2', groups)
+    uo2_xsdata = openmc.XSdata('UO2', groups, num_delayed_groups=n_dg)
     uo2_xsdata.order = 0
     uo2_xsdata.set_total(
         [0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
@@ -759,7 +776,65 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
     uo2_xsdata.set_nu_fission(uo2_nu_fission, temperature=294.0)
     uo2_xsdata.set_chi(uo2_chi, temperature=294.0)
 
-    h2o_xsdata = openmc.XSdata('LWTR', groups)
+    # Delayed and prompt cross sections for time-dependent simulation
+    if kinetic:
+
+        # Table A2 in Hou et. al
+        beta = np.array([[2.13333e-04, 2.13333e-04, 2.13333e-04, 2.13333e-04,
+                          2.13333e-04, 2.13333e-04, 2.13333e-04],
+                         [1.04514e-03, 1.04514e-03, 1.04514e-03, 1.04514e-03,
+                             1.04514e-03, 1.04514e-03, 1.04514e-03],
+                         [6.03969e-04, 6.03969e-04, 6.03969e-04, 6.03969e-04,
+                             6.03969e-04, 6.03969e-04, 6.03969e-04],
+                         [1.33963e-03, 1.33963e-03, 1.33963e-03, 1.33963e-03,
+                          1.33963e-03, 1.33963e-03, 1.33963e-03],
+                         [2.29386e-03, 2.29386e-03, 2.29386e-03, 2.29386e-03,
+                          2.29386e-03, 2.29386e-03, 2.29386e-03],
+                         [7.05174e-04, 7.05174e-04, 7.05174e-04, 7.05174e-04,
+                          7.05174e-04, 7.05174e-04, 7.05174e-04],
+                         [6.00381e-04, 6.00381e-04, 6.00381e-04, 6.00381e-04,
+                          6.00381e-04, 6.00381e-04, 6.00381e-04],
+                         [2.07736e-04, 2.07736e-04, 2.07736e-04, 2.07736e-04,
+                          2.07736e-04, 2.07736e-04, 2.07736e-04]])
+        # the actual tot is 7.009223e-03
+        beta_tot = 7.00922e-03
+
+        # Table A2 in Hou et. al
+        uo2_xsdata.set_decay_rate([1.247e-02, 2.829e-02, 4.252e-02,
+                                   1.330e-01, 2.925e-01, 6.665e-01,
+                                   1.635e+00, 3.555e+00])
+        # Derived from manipulating eq. B-3 in Hou et al.
+        # chi_prompt = (chi - np.sum(chi_delayed * beta, 0)) / (1 - beta_tot)
+        uo2_xsdata.set_chi_prompt([5.91741e-01, 4.07977e-01, 2.91169e-04,
+                                   1.18440e-07, 0.00000e+00, 0.00000e+00,
+                                   0.00000e+00])
+        # Table A3 in Hou et al.
+        chi_delayed = np.array([[0.00075, 0.98512, 0.01413, 0.0000e+00,
+                                 0.0000e+00, 0.0000e+00, 0.0000e+00],
+                                [0.03049, 0.96907, 0.00044, 0.0000e+00,
+                                    0.0000e+00, 0.0000e+00, 0.0000e+00],
+                                [0.00457, 0.97401, 0.02142, 0.0000e+00,
+                                    0.0000e+00, 0.0000e+00, 0.0000e+00],
+                                [0.02002, 0.97271, 0.00727, 0.0000e+00,
+                                    0.0000e+00, 0.0000e+00, 0.0000e+00],
+                                [0.05601, 0.93818, 0.00581, 0.0000e+00,
+                                    0.0000e+00, 0.0000e+00, 0.0000e+00],
+                                [0.06098, 0.93444, 0.00458, 0.0000e+00,
+                                    0.0000e+00, 0.0000e+00, 0.0000e+00],
+                                [0.10635, 0.88298, 0.01067, 0.0000e+00,
+                                    0.0000e+00, 0.0000e+00, 0.0000e+00],
+                                [0.09346, 0.9026, 0.00394, 0.0000e+00,
+                                 0.0000e+00, 0.0000e+00, 0.0000e+00]])
+        uo2_xsdata.set_chi_delayed(chi_delayed)
+        # Table A4 in Hou et al.
+        velocities = np.array([2.23466e+09, 5.07347e+08, 3.86595e+07,
+                              5.13931e+06, 1.67734e+06, 7.28603e+05, 2.92902e+05])
+        uo2_xsdata.set_inverse_velocity(1 / velocities)
+        # We need to set these so XsData::fission_matrix_beta_from_hdf5 is set
+        uo2_xsdata.set_prompt_nu_fission((1 - beta_tot) * nu_fission)
+        uo2_xsdata.set_delayed_nu_fission(beta * nu_fission)
+
+    h2o_xsdata = openmc.XSdata('LWTR', groups, num_delayed_groups=n_dg)
     h2o_xsdata.order = 0
     h2o_xsdata.set_total(h2o_total, temperature=294.0)
     h2o_xsdata.set_absorption(h2o_abs, temperature=294.0)
@@ -780,7 +855,13 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
         h2o_xsdata.set_absorption(0.5 * h2o_abs, temperature=394.0)
         h2o_xsdata.set_scatter_matrix(0.5 * h2o_scatter_matrix, temperature=394.0)
 
-    mg_cross_sections = openmc.MGXSLibrary(groups)
+    if kinetic:
+        # Table A4 in Hou et al.
+        velocities = np.array([2.23517E+09, 4.98880E+08, 3.84974E+07,
+                              5.12639E+06, 1.67542E+06, 7.26031E+05, 2.81629E+05])
+        h2o_xsdata.set_inverse_velocity(1 / velocities)
+
+    mg_cross_sections = openmc.MGXSLibrary(groups, num_delayed_groups=n_dg)
     mg_cross_sections.add_xsdatas([uo2_xsdata, h2o_xsdata])
     mg_cross_sections.export_to_hdf5('mgxs.h5')
 
@@ -792,8 +873,13 @@ def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
     uo2.set_density('macro', 1.0)
     uo2.add_macroscopic('UO2')
 
+    if kinetic:
+        densities = np.linspace(1, 0.95, 100)
+    else:
+        densities = None
+
     water = openmc.Material(name='Water')
-    water.set_density('macro', 1.0)
+    water.set_density('macro', 1.0, densities)
     water.add_macroscopic('LWTR')
 
     # Instantiate a Materials collection and export to XML
@@ -872,9 +958,8 @@ def _generate_subdivided_pin_cell(uo2, water) -> openmc.Universe:
     return pincell
 
 
-def random_ray_pin_cell(second_temp = False) -> openmc.Model:
+def random_ray_pin_cell(second_temp = False, kinetic = False) -> openmc.Model:
     """Create a PWR pin cell example using C5G7 cross section data.
-    cross section data.
 
     Parameters
     ----------
@@ -884,6 +969,9 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
         of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
         which corresponds to a temperature of 3934 K. This temperature dependence is
         fictitious; it is used for testing temperature feedback in the random ray solver.
+    kinetic : bool, optional
+        Flag to generate kinetic simulation model or not.
+
 
     Returns
     -------
@@ -895,7 +983,7 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
 
     ###########################################################################
     # Create Materials for the problem
-    materials = _generate_c5g7_materials(second_temp)
+    materials = _generate_c5g7_materials(second_temp, kinetic)
     uo2 = materials[0]
     water = materials[1]
 
@@ -933,6 +1021,14 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
     settings.random_ray['distance_inactive'] = 20.0
     settings.random_ray['ray_source'] = rr_source
     settings.random_ray['volume_normalized_flux_tallies'] = True
+    if kinetic:
+        settings.random_ray['bd_order'] = 3
+        settings.kinetic_simulation = True
+        settings.timestep_parameters = {
+            "dt": 0.01,
+            "n_timesteps": 20,
+            "timestep_units": "s",
+        }
 
     ###########################################################################
     # Define tallies
@@ -943,6 +1039,13 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
 
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([tally])
+
+    if kinetic:
+        delay_filter = openmc.DelayedGroupFilter(np.arange(1, C5G7_N_DG+1, 1))
+        tally = openmc.Tally(name="Delayed tally")
+        tally.filters = [delay_filter]
+        tally.scores += ['precursors']
+        tallies.append(tally)
 
     ###########################################################################
     #                   Exporting to OpenMC model
@@ -955,7 +1058,7 @@ def random_ray_pin_cell(second_temp = False) -> openmc.Model:
     return model
 
 
-def random_ray_lattice(second_temp = False) -> openmc.Model:
+def random_ray_lattice(second_temp = False, kinetic = False) -> openmc.Model:
     """Create a 2x2 PWR pin cell asymmetrical lattice example.
 
     This model is a 2x2 reflective lattice of fuel pins with one of the lattice
@@ -970,6 +1073,8 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
         of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
         which corresponds to a temperature of 3934 K. This temperature dependence is
         fictitious; it is used for testing temperature feedback in the random ray solver.
+    kinetic : bool, optional
+        Flag to generate a kinetic simulation model or not.
 
     Returns
     -------
@@ -981,7 +1086,7 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
 
     ###########################################################################
     # Create Materials for the problem
-    materials = _generate_c5g7_materials(second_temp)
+    materials = _generate_c5g7_materials(second_temp, kinetic)
     uo2 = materials[0]
     water = materials[1]
 
@@ -993,15 +1098,22 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
     # Define a moderator lattice universe
 
     moderator_infinite = openmc.Cell(name='moderator infinite')
-    moderator_infinite.fill = water
+    if kinetic:
+        water_reflector = water.clone()
+        water_reflector.name = 'Water Reflector'
+        water_reflector.set_density('macro', 1.0)
+        materials.append(water_reflector)
+        moderator_infinite.fill = water_reflector
+    else:
+        moderator_infinite.fill = water
 
     mu = openmc.Universe()
     mu.add_cells([moderator_infinite])
 
     pitch = PINCELL_PITCH
     lattice = openmc.RectLattice()
-    lattice.lower_left = [-pitch/2.0, -pitch/2.0]
-    lattice.pitch = [pitch/10.0, pitch/10.0]
+    lattice.lower_left = [-PINCELL_PITCH/2.0, -PINCELL_PITCH/2.0]
+    lattice.pitch = [PINCELL_PITCH/10.0, PINCELL_PITCH/10.0]
     lattice.universes = np.full((10, 10), mu)
 
     mod_lattice_cell = openmc.Cell(fill=lattice)
@@ -1013,8 +1125,8 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
     ########################################
     # Define 2x2 outer lattice
     lattice2x2 = openmc.RectLattice()
-    lattice2x2.lower_left = (-pitch, -pitch)
-    lattice2x2.pitch = (pitch, pitch)
+    lattice2x2.lower_left = (-PINCELL_PITCH, -PINCELL_PITCH)
+    lattice2x2.pitch = (PINCELL_PITCH, PINCELL_PITCH)
     lattice2x2.universes = [
         [pincell, pincell],
         [pincell, mod_lattice_uni]
@@ -1040,8 +1152,8 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
     settings.particles = 100
 
     # Create an initial uniform spatial source distribution over fissionable zones
-    lower_left = (-pitch, -pitch, -1)
-    upper_right = (pitch, pitch, 1)
+    lower_left = (-PINCELL_PITCH, -PINCELL_PITCH, -1)
+    upper_right = (PINCELL_PITCH, PINCELL_PITCH, 1)
     uniform_dist = openmc.stats.Box(lower_left, upper_right)
     rr_source = openmc.IndependentSource(space=uniform_dist)
 
@@ -1049,6 +1161,14 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
     settings.random_ray['distance_inactive'] = 20.0
     settings.random_ray['ray_source'] = rr_source
     settings.random_ray['volume_normalized_flux_tallies'] = True
+    if kinetic:
+        settings.random_ray['bd_order'] = 3
+        settings.kinetic_simulation = True
+        settings.timestep_parameters = {
+            "dt": 0.01,
+            "n_timesteps": 2,
+            "timestep_units": "s",
+        }
 
     ###########################################################################
     # Define tallies
@@ -1056,8 +1176,8 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
     # Create a mesh that will be used for tallying
     mesh = openmc.RegularMesh()
     mesh.dimension = (2, 2)
-    mesh.lower_left = (-pitch, -pitch)
-    mesh.upper_right = (pitch, pitch)
+    mesh.lower_left = (-PINCELL_PITCH, -PINCELL_PITCH)
+    mesh.upper_right = (PINCELL_PITCH, PINCELL_PITCH)
 
     # Create a mesh filter that can be used in a tally
     mesh_filter = openmc.MeshFilter(mesh)
@@ -1074,6 +1194,13 @@ def random_ray_lattice(second_temp = False) -> openmc.Model:
 
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([tally])
+
+    if kinetic:
+        delay_filter = openmc.DelayedGroupFilter(np.arange(1, C5G7_N_DG+1, 1))
+        tally = openmc.Tally(name="Mesh delayed tally")
+        tally.filters = [mesh_filter, delay_filter]
+        tally.scores += ['precursors']
+        tallies.append(tally)
 
     ###########################################################################
     #                   Exporting to OpenMC model

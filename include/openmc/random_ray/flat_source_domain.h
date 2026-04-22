@@ -39,6 +39,7 @@ public:
   void reset_tally_volumes();
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
+  void accumulate_iteration_source();
   void output_to_vtk() const;
   void convert_external_sources();
   void count_external_source_regions();
@@ -49,6 +50,7 @@ public:
   void flatten_xs();
   void transpose_scattering_matrix();
   void serialize_final_fluxes(vector<double>& flux);
+  void serialize_final_sources(vector<double>& source);
   void apply_meshes();
   void apply_mesh_to_cell_instances(int32_t i_cell, int32_t mesh_idx,
     int target_material_id, const vector<int32_t>& instances,
@@ -73,6 +75,32 @@ public:
   int lookup_mesh_idx(int64_t sr) const;
 
   //----------------------------------------------------------------------------
+  // Methods for kinetic simulations
+  void compute_single_phi_prime(SourceRegionHandle& srh);
+  void compute_single_T1(SourceRegionHandle& srh);
+
+  void compute_single_delayed_fission_source(SourceRegionHandle& srh);
+  void compute_single_precursors(SourceRegionHandle& srh);
+  void compute_all_precursors();
+
+  void serialize_final_precursors(vector<double>& precursors);
+  void serialize_final_delayed_fission_source(
+    vector<double>& delayed_fission_source);
+
+  void precursors_swap();
+  void accumulate_iteration_quantities();
+  void normalize_final_quantities();
+  void propagate_final_quantities();
+  void store_time_step_quantities(bool increment_not_initialize = true);
+  void compute_rhs_bd_quantities();
+  void update_material_density(int i);
+
+  int64_t n_delay_elements() const
+  {
+    return source_regions_.n_source_regions() * ndgroups_;
+  }
+
+  //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
   static bool adjoint_; // If the user wants outputs based on the adjoint flux
@@ -90,7 +118,10 @@ public:
 
   //----------------------------------------------------------------------------
   // Public Data members
-  double k_eff_ {1.0};              // Eigenvalue
+  double k_eff_ {1.0}; // Eigenvalue
+  double
+    fission_rate_; // The system's fission rate (per cm^3), in eigenvalue mode
+
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
@@ -151,6 +182,24 @@ public:
   // technique.
   bool is_transport_stabilization_needed_ {false};
 
+  //---------------------------------------------------------------------------
+  // Public Data Members for kinetic simulations
+
+  // 2D arrays stored in 1D representing values for all materials x
+  // delay_groups
+  vector<double> lambda_;
+
+  // 3D arrays stored in 1D representing values for all materials x energy
+  // groups x delay groups
+  vector<double> nu_d_sigma_f_;
+  vector<double> chi_d_lambda_; // chi-delayed * lambda in each delay group
+
+  // 2D arrays stored in 1D representing values for all materials x energy
+  // groups
+  vector<double> nu_p_sigma_f_;
+  vector<double> chi_p_;
+  vector<double> inverse_vbar_;
+
 protected:
   //----------------------------------------------------------------------------
   // Methods
@@ -167,13 +216,11 @@ protected:
   //----------------------------------------------------------------------------
   // Private data members
   int negroups_; // Number of energy groups in simulation
+  int ndgroups_; // Number of delay groups in simulation
 
   double
     simulation_volume_; // Total physical volume of the simulation domain, as
                         // defined by the 3D box of the random ray source
-
-  double
-    fission_rate_; // The system's fission rate (per cm^3), in eigenvalue mode
 
   // Volumes for each tally and bin/score combination. This intermediate data
   // structure is used when tallying quantities that must be normalized by

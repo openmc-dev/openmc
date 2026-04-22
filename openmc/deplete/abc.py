@@ -540,17 +540,15 @@ class Integrator(ABC):
         iterable of float. Alternatively, units can be specified for each step
         by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power``, ``power_density``, or
+        Power of the reactor in [W]. A single value indicates that the power is
+        constant over all timesteps. An iterable indicates potentially different
+        power levels for each timestep. For a 2D problem, the power can be given
+        in [W/cm] as long as the "volume" assigned to a depletion material is
+        actually an area in [cm^2]. Either ``power``, ``power_density``, or
         ``source_rates`` must be specified.
     power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not specified.
+        Power density of the reactor in [W/gHM]. It is multiplied by initial
+        heavy metal inventory to get total power if ``power`` is not specified.
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
         each interval in :attr:`timesteps`
@@ -562,8 +560,8 @@ class Integrator(ABC):
         and 'MWd/kg' indicates that the values are given in burnup (MW-d of
         energy deposited per kilogram of initial heavy metal).
     solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
+        If a string, must be the name of the solver responsible for solving the
+        Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
             * ``cram48`` - 48th order IPF CRAM [default]
@@ -573,21 +571,21 @@ class Integrator(ABC):
 
         .. versionadded:: 0.12
     substeps : int, optional
-        Number of substeps per depletion interval. When greater than 1,
-        each interval is subdivided into `substeps` identical sub-intervals
-        and LU factorizations may be reused across them, improving accuracy
-        for nuclides with large decay-constant × timestep products.
+        Number of substeps per depletion interval. When greater than 1, each
+        interval is subdivided into `substeps` identical sub-intervals and LU
+        factorizations may be reused across them, improving accuracy for
+        nuclides with large decay-constant × timestep products.
 
         .. versionadded:: 0.15.4
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. When `False`, the depletion
         steps provided are appended to any previous steps. If `True`, the
-        timesteps provided to the `Integrator` must exacly match any that
-        exist in the `prev_results` passed to the `Operator`. The `power`,
-        `power_density`, or `source_rates` must match as well. The
-        method of specifying `power`, `power_density`, or
-        `source_rates` should be the same as the initial run.
+        timesteps provided to the `Integrator` must exacly match any that exist
+        in the `prev_results` passed to the `Operator`. The `power`,
+        `power_density`, or `source_rates` must match as well. The method of
+        specifying `power`, `power_density`, or `source_rates` should be the
+        same as the initial run.
 
         .. versionadded:: 0.15.1
 
@@ -607,17 +605,19 @@ class Integrator(ABC):
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
         size :math:`t_i`. Can be configured using the ``solver`` argument.
         User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t, substeps=1) -> n1``. Solvers that do not support
-        multiple substeps may raise when ``substeps > 1``.
+        ``solver(A, n0, t, substeps=1) -> n1``, where
 
-            * ``A`` is a :class:`scipy.sparse.csc_array` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
+            * ``A`` is a :class:`scipy.sparse.csc_array` making up the depletion
+              matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions for
+              a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds
             * ``substeps`` is an optional integer number of substeps, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the next
+              time step. Expected to be of the same shape as ``n0``
+
+        Solvers that do not support multiple substeps should raise an exception
+        when ``substeps > 1``.
 
     transfer_rates : openmc.deplete.TransferRates
         Transfer rates for the depletion system used to model continuous
@@ -1090,17 +1090,15 @@ class SIIntegrator(Integrator):
         iterable of float. Alternatively, units can be specified for each step
         by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power``, ``power_density``, or
+        Power of the reactor in [W]. A single value indicates that the power is
+        constant over all timesteps. An iterable indicates potentially different
+        power levels for each timestep. For a 2D problem, the power can be given
+        in [W/cm] as long as the "volume" assigned to a depletion material is
+        actually an area in [cm^2]. Either ``power``, ``power_density``, or
         ``source_rates`` must be specified.
     power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not specified.
+        Power density of the reactor in [W/gHM]. It is multiplied by initial
+        heavy metal inventory to get total power if ``power`` is not specified.
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
         each interval in :attr:`timesteps`
@@ -1112,11 +1110,11 @@ class SIIntegrator(Integrator):
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
     n_steps : int, optional
-        Number of stochastic iterations per depletion interval.
-        Must be greater than zero. Default : 10
+        Number of stochastic iterations per depletion interval. Must be greater
+        than zero. Default : 10
     solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
+        If a string, must be the name of the solver responsible for solving the
+        Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
             * ``cram48`` - 48th order IPF CRAM [default]
@@ -1126,22 +1124,22 @@ class SIIntegrator(Integrator):
 
         .. versionadded:: 0.12
     substeps : int, optional
-        Number of substeps per depletion interval. When greater than 1,
-        each interval is subdivided into `substeps` identical sub-intervals
-        and LU factorizations may be reused across them, improving accuracy
-        for nuclides with large decay-constant × timestep products.
+        Number of substeps per depletion interval. When greater than 1, each
+        interval is subdivided into `substeps` identical sub-intervals and LU
+        factorizations may be reused across them, improving accuracy for
+        nuclides with large decay-constant × timestep products.
 
         .. versionadded:: 0.15.4
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
-        previous simulation. Defaults to `False`. If `False`, all time
-        steps and source rates will be run in an append fashion and will run
-        after whatever time steps exist, if any. If `True`, the timesteps
-        provided to the `Integrator` must match exactly those that exist
-        in the `prev_results` passed to the `Opereator`. The `power`,
-        `power_density`, or `source_rates` must match as well. The
-        method of specifying `power`, `power_density`, or
-        `source_rates` should be the same as the initial run.
+        previous simulation. Defaults to `False`. If `False`, all time steps and
+        source rates will be run in an append fashion and will run after
+        whatever time steps exist, if any. If `True`, the timesteps provided to
+        the `Integrator` must match exactly those that exist in the
+        `prev_results` passed to the `Opereator`. The `power`, `power_density`,
+        or `source_rates` must match as well. The method of specifying `power`,
+        `power_density`, or `source_rates` should be the same as the initial
+        run.
 
         .. versionadded:: 0.15.1
 
@@ -1162,17 +1160,19 @@ class SIIntegrator(Integrator):
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
         size :math:`t_i`. Can be configured using the ``solver`` argument.
         User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t, substeps=1) -> n1``. Solvers that do not support
-        multiple substeps may raise when ``substeps > 1``.
+        ``solver(A, n0, t, substeps=1) -> n1``, where
 
-            * ``A`` is a :class:`scipy.sparse.csc_array` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
+            * ``A`` is a :class:`scipy.sparse.csc_array` making up the depletion
+              matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions for
+              a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds
             * ``substeps`` is an optional integer number of substeps, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the next
+              time step. Expected to be of the same shape as ``n0``
+
+        Solvers that do not support multiple substeps should raise an exception
+        when ``substeps > 1``.
 
         .. versionadded:: 0.12
 

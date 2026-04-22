@@ -19,7 +19,7 @@ from openmc.mpi import comm
 from openmc.deplete import (
     ReactionRates, StepResult, Results, OperatorResult, PredictorIntegrator,
     CECMIntegrator, CF4Integrator, CELIIntegrator, EPCRK4Integrator,
-    LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator, cram)
+    LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator, cram, pool)
 
 from tests import dummy_operator
 
@@ -183,15 +183,33 @@ def test_bad_integrator_inputs():
     with pytest.raises(TypeError, match=".*callable.*NoneType"):
         PredictorIntegrator(op, timesteps, power=1, solver=None)
 
-    with pytest.raises(ValueError, match=".*arguments"):
+    with pytest.raises(ValueError, match="three arguments|four arguments"):
         PredictorIntegrator(op, timesteps, power=1, solver=mock_bad_solver_nargs)
+
+    with pytest.raises(ValueError, match="default to 1"):
+        PredictorIntegrator(op, timesteps, power=1,
+                            solver=mock_bad_solver_fourth_required)
+
+    with pytest.raises(ValueError, match="substeps"):
+        PredictorIntegrator(op, timesteps, power=1, substeps=0)
+
+    with pytest.raises(ValueError, match="substeps"):
+        PredictorIntegrator(op, timesteps, power=1, substeps=-1)
 
 
 def mock_good_solver(A, n, t):
-    pass
+    return n.copy()
+
+
+def mock_good_solver_substeps(A, n, t, substeps=1):
+    return n + substeps
 
 
 def mock_bad_solver_nargs(A, n):
+    pass
+
+
+def mock_bad_solver_fourth_required(A, n, t, substeps):
     pass
 
 
@@ -226,12 +244,59 @@ def test_integrator(run_in_tmpdir, scheme):
     integrator = bundle.solver(operator, [0.75], 1, solver="cram16")
     assert integrator.solver is cram.CRAM16
 
+    integrator = bundle.solver(operator, [0.75], 1, solver=cram.Cram48Solver,
+                               substeps=2)
+    assert integrator.solver is cram.Cram48Solver
+    assert integrator.substeps == 2
+
     integrator.solver = mock_good_solver
     assert integrator.solver is mock_good_solver
 
     lfunc = lambda A, n, t: mock_good_solver(A, n, t)
     integrator.solver = lfunc
     assert integrator.solver is lfunc
+
+    integrator.solver = mock_good_solver_substeps
+    assert integrator.solver is mock_good_solver_substeps
+
+
+def test_legacy_custom_solver_with_default_substeps(monkeypatch):
+    operator = dummy_operator.DummyOperator()
+    n = operator.initial_condition()
+    rates = operator(n, 1.0).rates
+    integrator = PredictorIntegrator(
+        operator, [0.75], power=1.0, solver=mock_good_solver)
+    monkeypatch.setattr(pool, "USE_MULTIPROCESSING", False)
+
+    _, result = integrator._timed_deplete(n, rates, 0.75)
+
+    np.testing.assert_array_equal(result[0], n[0])
+
+
+def test_legacy_custom_solver_raises_with_substeps(monkeypatch):
+    operator = dummy_operator.DummyOperator()
+    n = operator.initial_condition()
+    rates = operator(n, 1.0).rates
+    integrator = PredictorIntegrator(
+        operator, [0.75], power=1.0, solver=mock_good_solver, substeps=2)
+    monkeypatch.setattr(pool, "USE_MULTIPROCESSING", False)
+
+    with pytest.raises(TypeError):
+        integrator._timed_deplete(n, rates, 0.75)
+
+
+def test_substep_aware_custom_solver_receives_substeps(monkeypatch):
+    operator = dummy_operator.DummyOperator()
+    n = operator.initial_condition()
+    rates = operator(n, 1.0).rates
+    integrator = PredictorIntegrator(
+        operator, [0.75], power=1.0, solver=mock_good_solver_substeps,
+        substeps=3)
+    monkeypatch.setattr(pool, "USE_MULTIPROCESSING", False)
+
+    _, result = integrator._timed_deplete(n, rates, 0.75)
+
+    np.testing.assert_array_equal(result[0], n[0] + 3)
 
 
 @pytest.mark.parametrize("integrator", INTEGRATORS)

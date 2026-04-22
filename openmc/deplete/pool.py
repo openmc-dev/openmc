@@ -42,14 +42,17 @@ def _distribute(items):
         j += chunk_size
 
 def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
-            transfer_rates=None, external_source_rates=None, *matrix_args):
+            transfer_rates=None, external_source_rates=None, substeps=1,
+            *matrix_args):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
     ----------
     func : callable
         Function to use to get new compositions. Expected to have the signature
-        ``func(A, n0, t) -> n1``
+        ``func(A, n0, t) -> n1`` for default single-step behavior or
+        ``func(A, n0, t, substeps=1) -> n1`` to support non-default
+        substeps.
     chain : openmc.deplete.Chain
         Depletion chain
     n : list of numpy.ndarray
@@ -74,6 +77,8 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         External source rates for continuous removal/feed.
 
         .. versionadded:: 0.15.3
+    substeps : int, optional
+        Number of substeps to pass to solvers that support substepping.
     matrix_args: Any, optional
         Additional arguments passed to matrix_func
 
@@ -164,7 +169,10 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
 
                 # Concatenate vectors of nuclides in one
                 n_multi = np.concatenate(n)
-                n_result = func(matrix, n_multi, dt)
+                if substeps == 1:
+                    n_result = func(matrix, n_multi, dt)
+                else:
+                    n_result = func(matrix, n_multi, dt, substeps)
 
                 # Split back the nuclide vector result into the original form
                 n_result = np.split(n_result, np.cumsum([len(i) for i in n])[:-1])
@@ -198,7 +206,10 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 matrix.resize(matrix.shape[1], matrix.shape[1])
                 n[i] = np.append(n[i], 1.0)
 
-    inputs = zip(matrices, n, repeat(dt))
+    if substeps == 1:
+        inputs = zip(matrices, n, repeat(dt))
+    else:
+        inputs = zip(matrices, n, repeat(dt), repeat(substeps))
 
     if USE_MULTIPROCESSING:
         with Pool(NUM_PROCESSES) as pool:

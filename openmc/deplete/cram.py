@@ -39,10 +39,6 @@ class IPFCramSolver(DepSystemSolver):
         Complex poles. Must have an equal size as ``alpha``.
     alpha0 : float
         Limit of the approximation at infinity
-    substeps : int, optional
-        Number of substeps per depletion interval.
-
-        .. versionadded:: 0.15.4
 
     Attributes
     ----------
@@ -53,12 +49,10 @@ class IPFCramSolver(DepSystemSolver):
         Complex poles :math:`\theta` of the rational approximation
     alpha0 : float
         Limit of the approximation at infinity
-    substeps : int
-        Number of substeps per depletion interval
 
     """
 
-    def __init__(self, alpha, theta, alpha0, substeps: int = 1):
+    def __init__(self, alpha, theta, alpha0):
         check_type("alpha", alpha, np.ndarray, numbers.Complex)
         check_type("theta", theta, np.ndarray, numbers.Complex)
         check_length("theta", theta, alpha.size)
@@ -66,19 +60,8 @@ class IPFCramSolver(DepSystemSolver):
         self.alpha = alpha
         self.theta = theta
         self.alpha0 = alpha0
-        self.substeps = substeps
 
-    @property
-    def substeps(self):
-        return self._substeps
-
-    @substeps.setter
-    def substeps(self, value):
-        check_type("substeps", value, numbers.Integral)
-        check_greater_than("substeps", value, 0)
-        self._substeps = value
-
-    def __call__(self, A, n0, dt):
+    def __call__(self, A, n0, dt, substeps=1):
         """Solve depletion equations using IPF CRAM
 
         Parameters
@@ -91,6 +74,8 @@ class IPFCramSolver(DepSystemSolver):
             material or an atom density
         dt : float
             Time [s] of the specific interval to be solved
+        substeps : int, optional
+            Number of substeps per depletion interval.
 
         Returns
         -------
@@ -98,7 +83,10 @@ class IPFCramSolver(DepSystemSolver):
             Final compositions after ``dt``
 
         """
-        if self.substeps == 1:
+        check_type("substeps", substeps, numbers.Integral)
+        check_greater_than("substeps", substeps, 0)
+
+        if substeps == 1:
             A = dt * csc_array(A, dtype=np.float64)
             y = n0.copy()
             ident = eye_array(A.shape[0], format='csc')
@@ -107,14 +95,14 @@ class IPFCramSolver(DepSystemSolver):
             return y * self.alpha0
 
         # Substep path: pre-compute LU factorizations, reuse across substeps
-        sub_dt = dt / self.substeps
+        sub_dt = dt / substeps
         A_sub = sub_dt * csc_array(A, dtype=np.float64)
         ident = eye_array(A_sub.shape[0], format='csc')
         lu_solvers = [sla.splu(A_sub - theta * ident)
                       for theta in self.theta]
 
         y = n0.copy()
-        for _ in range(self.substeps):
+        for _ in range(substeps):
             for alpha, lu in zip(self.alpha, lu_solvers):
                 y += 2 * np.real(alpha * lu.solve(y))
             y *= self.alpha0

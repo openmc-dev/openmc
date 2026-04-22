@@ -1,12 +1,13 @@
-""" Tests for cram.py
+"""Tests for cram.py.
 
 Compares a few Mathematica matrix exponentials to CRAM16/CRAM48.
 Tests substep accuracy against self-converged reference solutions.
 """
 
-from pytest import approx
 import numpy as np
+import pytest
 import scipy.sparse as sp
+from pytest import approx
 from openmc.deplete.cram import (CRAM16, CRAM48, Cram16Solver, Cram48Solver,
                                   IPFCramSolver)
 
@@ -39,14 +40,6 @@ def test_CRAM48():
     assert z == approx(z0)
 
 
-# --- Substep tests ---
-
-def test_substeps_default():
-    """Default substeps=1 on module-level solvers."""
-    assert Cram48Solver.substeps == 1
-    assert Cram16Solver.substeps == 1
-
-
 def test_substeps1_matches_original():
     """substeps=1 must be bitwise identical to original spsolve path."""
     x = np.array([1.0, 1.0])
@@ -54,9 +47,7 @@ def test_substeps1_matches_original():
     dt = 0.1
 
     z_orig = CRAM48(mat, x, dt)
-    solver_1 = IPFCramSolver(Cram48Solver.alpha, Cram48Solver.theta,
-                              Cram48Solver.alpha0, substeps=1)
-    z_sub1 = solver_1(mat, x, dt)
+    z_sub1 = CRAM48(mat, x, dt, substeps=1)
 
     np.testing.assert_array_equal(z_sub1, z_orig)
 
@@ -72,11 +63,19 @@ def test_substeps2_matches_two_half_steps():
     z_two = CRAM48(mat, z_half, dt / 2)
 
     # Single call with substeps=2
-    solver_2 = IPFCramSolver(Cram48Solver.alpha, Cram48Solver.theta,
-                              Cram48Solver.alpha0, substeps=2)
-    z_sub2 = solver_2(mat, x, dt)
+    z_sub2 = CRAM48(mat, x, dt, substeps=2)
 
     assert z_sub2 == approx(z_two, rel=1e-12)
+
+
+@pytest.mark.parametrize("substeps", [0, -1])
+def test_invalid_substeps(substeps):
+    """substeps must be a positive integer at call time."""
+    x = np.array([1.0, 1.0])
+    mat = sp.csr_matrix([[-1.0, 0.0], [-2.0, -3.0]])
+
+    with pytest.raises(ValueError, match="substeps"):
+        CRAM48(mat, x, 0.1, substeps=substeps)
 
 
 def test_substeps_self_convergence():
@@ -90,15 +89,11 @@ def test_substeps_self_convergence():
     x = np.array([1.0, 1.0])
     dt = 50  # lambda*dt = 50 and 150, stresses CRAM16
 
-    ref_solver = IPFCramSolver(Cram16Solver.alpha, Cram16Solver.theta,
-                                Cram16Solver.alpha0, substeps=128)
-    n_ref = ref_solver(mat, x, dt)
+    n_ref = CRAM16(mat, x, dt, substeps=128)
 
     prev_err = np.inf
     for s in [1, 2, 4, 8, 16]:
-        solver = IPFCramSolver(Cram16Solver.alpha, Cram16Solver.theta,
-                                Cram16Solver.alpha0, substeps=s)
-        n_s = solver(mat, x, dt)
+        n_s = CRAM16(mat, x, dt, substeps=s)
         err = np.linalg.norm(n_s - n_ref) / np.linalg.norm(n_ref)
         assert err < prev_err, \
             f"substeps={s} error {err:.2e} not less than previous {prev_err:.2e}"

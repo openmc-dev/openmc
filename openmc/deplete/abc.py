@@ -575,9 +575,8 @@ class Integrator(ABC):
     substeps : int, optional
         Number of substeps per depletion interval. When greater than 1,
         each interval is subdivided into `substeps` identical sub-intervals
-        and LU factorizations are reused across them, improving accuracy
+        and LU factorizations may be reused across them, improving accuracy
         for nuclides with large decay-constant × timestep products.
-        Only used when `solver` is "cram48" or "cram16".
 
         .. versionadded:: 0.15.4
     continue_timesteps : bool, optional
@@ -607,14 +606,19 @@ class Integrator(ABC):
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
         size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
+        User-supplied functions may have either of the following signatures:
+        ``solver(A, n0, t) -> n1`` for the default single-step behavior or
+        ``solver(A, n0, t, substeps=1) -> n1`` to support non-default
+        substeps. When :attr:`substeps` is greater than one, OpenMC will call
+        the solver with the fourth argument and unsupported custom solvers will
+        raise at runtime. In either case,
 
             * ``A`` is a :class:`scipy.sparse.csc_array` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
             * ``t`` is a float of the time step size in seconds, and
+            * ``substeps`` is an optional integer number of substeps, and
             * ``n1`` is a :class:`numpy.ndarray` of compositions at the
               next time step. Expected to be of the same shape as ``n0``
 
@@ -661,6 +665,8 @@ class Integrator(ABC):
         # Normalize timesteps and source rates
         seconds, source_rates = _normalize_timesteps(
             timesteps, source_rates, timestep_units, operator)
+        check_type("substeps", substeps, Integral)
+        check_greater_than("substeps", substeps, 0)
 
         if continue_timesteps:
             # Get timesteps and source rates from previous results
@@ -692,6 +698,7 @@ class Integrator(ABC):
 
         self.timesteps = np.asarray(seconds)
         self.source_rates = np.asarray(source_rates)
+        self.substeps = substeps
 
         self.transfer_rates = None
         self.external_source_rates = None
@@ -699,23 +706,14 @@ class Integrator(ABC):
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
             if solver == "cram48":
-                from .cram import CRAM48 as _default, Cram48Solver as _base
+                from .cram import CRAM48 as _default
             elif solver == "cram16":
-                from .cram import CRAM16 as _default, Cram16Solver as _base
+                from .cram import CRAM16 as _default
             else:
                 raise ValueError(
                     f"Solver {solver} not understood. Expected 'cram48' or 'cram16'")
-
-            if substeps > 1:
-                from .cram import IPFCramSolver
-                self._solver = IPFCramSolver(
-                    _base.alpha, _base.theta, _base.alpha0,
-                    substeps=substeps)
-            else:
-                self._solver = _default
+            self._solver = _default
         else:
-            if substeps > 1:
-                warn("substeps is ignored when a custom solver is provided")
             self.solver = solver
 
     @property
@@ -736,15 +734,24 @@ class Integrator(ABC):
             self._solver = func
             return
 
-        # Inspect arguments
-        if len(sig.parameters) != 3:
-            raise ValueError("Function {} does not support three arguments: "
-                             "{!s}".format(func, sig))
+        params = list(sig.parameters.values())
 
-        for ix, param in enumerate(sig.parameters.values()):
-            if param.kind in {param.KEYWORD_ONLY, param.VAR_KEYWORD}:
+        # Inspect arguments
+        if len(params) not in {3, 4}:
+            raise ValueError(
+                "Function {} must support either three arguments "
+                "(A, n0, t) or four arguments (A, n0, t, substeps=1): {!s}"
+                .format(func, sig))
+
+        for ix, param in enumerate(params):
+            if param.kind in {param.KEYWORD_ONLY, param.VAR_KEYWORD,
+                              param.VAR_POSITIONAL}:
                 raise ValueError(
                     f"Keyword arguments like {ix} at position {param} are not allowed")
+
+        if len(params) == 4 and params[3].default != 1:
+            raise ValueError(
+                f"Fourth solver argument must default to 1, not {params[3].default}")
 
         self._solver = func
 
@@ -752,7 +759,7 @@ class Integrator(ABC):
         start = time.time()
         results = deplete(
             self._solver, self.chain, n, rates, dt, i, matrix_func,
-            self.transfer_rates, self.external_source_rates)
+            self.transfer_rates, self.external_source_rates, self.substeps)
         return time.time() - start, results
 
     @abstractmethod
@@ -1124,9 +1131,8 @@ class SIIntegrator(Integrator):
     substeps : int, optional
         Number of substeps per depletion interval. When greater than 1,
         each interval is subdivided into `substeps` identical sub-intervals
-        and LU factorizations are reused across them, improving accuracy
+        and LU factorizations may be reused across them, improving accuracy
         for nuclides with large decay-constant × timestep products.
-        Only used when `solver` is "cram48" or "cram16".
 
         .. versionadded:: 0.15.4
     continue_timesteps : bool, optional
@@ -1158,14 +1164,19 @@ class SIIntegrator(Integrator):
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
         size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
+        User-supplied functions may have either of the following signatures:
+        ``solver(A, n0, t) -> n1`` for the default single-step behavior or
+        ``solver(A, n0, t, substeps=1) -> n1`` to support non-default
+        substeps. When :attr:`substeps` is greater than one, OpenMC will call
+        the solver with the fourth argument and unsupported custom solvers will
+        raise at runtime. In either case,
 
             * ``A`` is a :class:`scipy.sparse.csc_array` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
             * ``t`` is a float of the time step size in seconds, and
+            * ``substeps`` is an optional integer number of substeps, and
             * ``n1`` is a :class:`numpy.ndarray` of compositions at the
               next time step. Expected to be of the same shape as ``n0``
 
@@ -1322,7 +1333,7 @@ class DepSystemSolver(ABC):
     """
 
     @abstractmethod
-    def __call__(self, A, n0, dt):
+    def __call__(self, A, n0, dt, substeps=1):
         """Solve the linear system of equations for depletion
 
         Parameters
@@ -1335,6 +1346,8 @@ class DepSystemSolver(ABC):
             material or an atom density
         dt : float
             Time [s] of the specific interval to be solved
+        substeps : int, optional
+            Number of substeps to use when the solver supports substepping.
 
         Returns
         -------

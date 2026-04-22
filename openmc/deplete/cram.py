@@ -3,10 +3,11 @@
 Implements two different forms of CRAM for use in openmc.deplete.
 """
 
+from functools import partial
 import numbers
 
 import numpy as np
-import scipy.sparse.linalg as sla
+from scipy.sparse.linalg import spsolve, splu
 
 from openmc.checkvalue import check_type, check_length, check_greater_than
 from .abc import DepSystemSolver
@@ -86,25 +87,20 @@ class IPFCramSolver(DepSystemSolver):
         check_type("substeps", substeps, numbers.Integral)
         check_greater_than("substeps", substeps, 0)
 
-        if substeps == 1:
-            A = dt * csc_array(A, dtype=np.float64)
-            y = n0.copy()
-            ident = eye_array(A.shape[0], format='csc')
-            for alpha, theta in zip(self.alpha, self.theta):
-                y += 2*np.real(alpha*sla.spsolve(A - theta*ident, y))
-            return y * self.alpha0
+        step_dt = dt if substeps == 1 else dt / substeps
+        A = step_dt * csc_array(A, dtype=np.float64)
+        ident = eye_array(A.shape[0], format='csc')
 
-        # Substep path: pre-compute LU factorizations, reuse across substeps
-        sub_dt = dt / substeps
-        A_sub = sub_dt * csc_array(A, dtype=np.float64)
-        ident = eye_array(A_sub.shape[0], format='csc')
-        lu_solvers = [sla.splu(A_sub - theta * ident)
-                      for theta in self.theta]
+        if substeps == 1:
+            solvers = [partial(spsolve, A - theta * ident) for theta in self.theta]
+        else:
+            # Pre-compute LU factorizations and reuse them across substeps.
+            solvers = [splu(A - theta * ident).solve for theta in self.theta]
 
         y = n0.copy()
         for _ in range(substeps):
-            for alpha, lu in zip(self.alpha, lu_solvers):
-                y += 2 * np.real(alpha * lu.solve(y))
+            for alpha, solve in zip(self.alpha, solvers):
+                y += 2 * np.real(alpha * solve(y))
             y *= self.alpha0
         return y
 

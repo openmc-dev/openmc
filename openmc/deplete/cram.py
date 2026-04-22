@@ -80,7 +80,7 @@ class IPFCramSolver(DepSystemSolver):
         if not use_cache or not self._splu_cache:
             A = dt * csc_array(A, dtype=np.float64)
             ident = eye_array(A.shape[0], format='csc')
-            self._splu_cache = [sla.splu(A - theta*ident) for alpha, theta in zip(self.alpha, self.theta)]
+            self._splu_cache = [sla.splu(A - theta*ident) for theta in self.theta]
         for alpha, splu in zip(self.alpha, self._splu_cache):
             y += 2*np.real(alpha*splu.solve(y))
         return y * self.alpha0

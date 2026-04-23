@@ -436,10 +436,10 @@ public:
   //!
   //! \param nuclide_indices  Indices of decay photon emitters in
   //!   data::chain_nuclides
-  //! \param weights  Activity-based weights for each component. The Mixture
-  //!   probability for component i is weights[i] *
+  //! \param weights  Atom counts for each component. The probability for
+  //!   component i is weights[i] *
   //!   chain_nuclides[nuclide_indices[i]]->photon_energy()->integral() (the
-  //!   integral encodes photons-per-decay).
+  //!   integral encodes photons-per-second-per-atom, i.e., Bq/atom).
   DecaySpectrum(vector<int> nuclide_indices, vector<double> weights);
 
   //! Construct from an XML node containing nuclide names and atom densities.

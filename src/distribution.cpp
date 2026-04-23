@@ -830,10 +830,12 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
     if (!photon_dist)
       continue;
 
-    // Weight = atom_count * decay_constant
-    // atom_count = atom_density [atom/b-cm] * 1e24 [b-cm/cm^3] * volume [cm^3]
+    // Weight = atom_count: photon_energy()->integral() is in [photons/s/atom]
+    // (Bq/atom), so multiplying by atom count gives total emission rate
+    // [photons/s]. atom_count = atom_density [atom/b-cm] * 1e24 [b-cm/cm^3] *
+    // volume [cm^3]
     double atom_count = density * 1.0e24 * volume;
-    double weight = atom_count * chain_nuc->decay_constant();
+    double weight = atom_count;
     if (weight <= 0.0)
       continue;
 

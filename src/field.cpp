@@ -71,9 +71,8 @@ void TemperatureField::update_particle_temperature(GeometryState& p)
   // If particle inside the mesh, we use the temperature field
   if (field_sqrtkT >= 0.) {
     p.sqrtkT() = field_sqrtkT;
-  } else {
-    return;
   }
+  return;
 }
 
 //==============================================================================

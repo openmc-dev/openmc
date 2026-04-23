@@ -50,6 +50,7 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   // Update particle temperature
   model::n_coord_levels = 1;
   Particle p;
+  p.u() = Direction(1.0, 0.0, 0.0);
   REQUIRE(p.sqrtkT() == -1.0);
   p.r() = Position(0.5, 0.5, 0.5);
   temp_field.update_particle_temperature(p);
@@ -66,7 +67,6 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   // Check that the temperature is not updated when on an external surface with
   // the particle is leaving the mesh
   p.r() = Position(1.0, 0.0, 0.0);
-  p.u() = Direction(1.0, 0.0, 0.0);
   temp_field.update_particle_temperature(p);
   REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
 }

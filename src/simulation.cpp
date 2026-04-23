@@ -818,11 +818,11 @@ void transport_history_based_single_particle(Particle& p)
       case EVENT_CROSS_SURFACE:
         p.event_cross_surface();
         break;
-      case EVENT_COLLIDE:
-        p.event_collide();
-        break;
       case EVENT_CROSS_TEMPERATURE_MESH:
         p.event_cross_temperature_mesh();
+        break;
+      case EVENT_COLLIDE:
+        p.event_collide();
         break;
       case EVENT_TIME_CUTOFF:
         p.wgt() = 0.0;

@@ -1328,59 +1328,71 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
+double StructuredMesh::get_minimum_distance(
+  std::array<StructuredMesh::MeshDistance, 3> distances) const
+{
+  auto k =
+    std::min_element(distances.begin(), distances.end()) - distances.begin();
+  return distances[k].distance;
+}
+
+double StructuredMesh::get_maximum_outer_distance(StructuredMesh::MeshIndex ijk,
+  std::array<StructuredMesh::MeshDistance, 3> distances) const
+{
+  double distance = 0.0;
+  int k_max {-1};
+  for (int k = 0; k < n_dimension_; ++k) {
+    if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
+        (distances[k].distance > distance)) {
+      distance = distances[k].distance;
+      k_max = k;
+    }
+  }
+  return distance;
+}
+
 double StructuredMesh::distance_to_next_boundary(Position r, Direction u) const
 {
   Position global_r = r;
   Position local_r = local_coords(r);
 
   double distance = 0.0;
-  const int n = n_dimension_;
   bool in_mesh;
 
   StructuredMesh::MeshIndex ijk = get_indices(global_r, in_mesh);
 
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<StructuredMesh::MeshDistance, 3> distances;
-  for (int k = 0; k < n; ++k) {
+  for (int k = 0; k < n_dimension_; ++k) {
     distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
   }
 
-  if (in_mesh) {
+  if (in_mesh) { // inside mesh
 
-    // Find surface with minimal distance to current position
-    auto k =
-      std::min_element(distances.begin(), distances.end()) - distances.begin();
+    // Calculate
+    distance = get_minimal_distance(distances);
 
-    distance = distances[k].distance;
-
-    // If the particle is on any surface of the mesh
+    // If the particle is on a surface
     if (distance <= FP_COINCIDENT) {
-      // Move the particle a bit to determine ijk:
+
+      // Move the particle a bit to avoid calculating the distance to the
+      // surface the particle is currently on, by selecting the next ijk
       ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
 
-      for (int k = 0; k < n; ++k) {
+      // Update distances
+      for (int k = 0; k < n_dimension_; ++k) {
         distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
       }
 
-      k = std::min_element(distances.begin(), distances.end()) -
-          distances.begin();
-
-      distance = distances[k].distance;
+      if (in_mesh) { // still inside mesh after moving
+        distance = get_minimal_distance(distances);
+      } else { // not inside mesh after moving
+        distance = get_maximal_outer_distance(ijk, distances);
+      }
     }
 
   } else { // not inside mesh
-
-    // For all directions outside the mesh, find the distance that we need
-    // to travel to reach the next surface. Use the largest distance, as
-    // only this will cross all outer surfaces.
-    int k_max {-1};
-    for (int k = 0; k < n; ++k) {
-      if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
-          (distances[k].distance > distance)) {
-        distance = distances[k].distance;
-        k_max = k;
-      }
-    }
+    distance = get_maximal_outer_distance(ijk, distances);
   }
 
   return distance;

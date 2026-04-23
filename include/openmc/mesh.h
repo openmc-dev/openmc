@@ -343,6 +343,16 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
+  //! Find surface with minimal distance to current position
+  double get_minimum_distance(
+    std::array<StructuredMesh::MeshDistance, 3> distances) const;
+
+  //! For all directions outside the mesh, find the distance that we need
+  //! to travel to reach the next surface. Use the largest distance, as
+  //! only this will cross all outer surfaces.
+  double get_maximum_outer_distance(StructuredMesh::MeshIndex ijk,
+    std::array<StructuredMesh::MeshDistance, 3> distances) const;
+
   double distance_to_next_boundary(Position r, Direction u) const override;
 
   //! Determine which cell or surface bins were crossed by a particle

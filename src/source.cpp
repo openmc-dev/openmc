@@ -419,6 +419,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Check for monoenergetic source above maximum particle energy
     auto p = particle_.transport_index();
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
+    auto decay_spectrum = dynamic_cast<DecaySpectrum*>(energy_.get());
     if (energy_ptr) {
       auto energies =
         tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
@@ -429,10 +430,18 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     }
 
     while (true) {
-      // Sample energy spectrum
-      auto [E, E_wgt_temp] = energy_->sample(seed);
-      site.E = E;
-      E_wgt = E_wgt_temp;
+      // Sample energy spectrum. For decay photon sources, also get the parent
+      // nuclide index to store in the source site for tallying purposes.
+      if (decay_spectrum) {
+        auto sample = decay_spectrum->sample_with_parent(seed);
+        site.E = sample.energy;
+        E_wgt = sample.weight;
+        site.parent_nuclide = sample.parent_nuclide;
+      } else {
+        auto [E, E_wgt_temp] = energy_->sample(seed);
+        site.E = E;
+        E_wgt = E_wgt_temp;
+      }
 
       // Resample if energy falls above maximum particle energy
       if (site.E < data::energy_max[p] &&

@@ -775,15 +775,31 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
 // DecaySpectrum implementation
 //==============================================================================
 
-DecaySpectrum::DecaySpectrum(
-  vector<const Distribution*> dists, vector<double> weights)
-  : dists_(std::move(dists))
+// Helper function to compute weighted probabilities for decay spectrum sampling
+vector<double> decay_spectrum_probabilities(
+  const vector<int>& nuclide_indices, const vector<double>& weights)
 {
-  vector<double> probs;
-  probs.reserve(dists_.size());
-  for (size_t i = 0; i < dists_.size(); ++i) {
-    probs.push_back(weights[i] * dists_[i]->integral());
+  if (nuclide_indices.size() != weights.size()) {
+    fatal_error("DecaySpectrum nuclide index and weight arrays must have the "
+                "same length.");
   }
+
+  vector<double> probs;
+  probs.reserve(nuclide_indices.size());
+  for (size_t i = 0; i < nuclide_indices.size(); ++i) {
+    const auto* dist =
+      data::chain_nuclides[nuclide_indices[i]]->photon_energy();
+    probs.push_back(weights[i] * dist->integral());
+  }
+  return probs;
+}
+
+DecaySpectrum::DecaySpectrum(
+  vector<int> nuclide_indices, vector<double> weights)
+  : nuclide_indices_(std::move(nuclide_indices))
+{
+  vector<double> probs =
+    decay_spectrum_probabilities(nuclide_indices_, weights);
   integral_ = std::accumulate(probs.begin(), probs.end(), 0.0);
   di_.assign(probs);
 }
@@ -796,7 +812,7 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
   double volume = std::stod(get_node_value(node, "volume"));
 
   // Read nuclide names and atom densities from XML
-  vector<const Distribution*> dists;
+  vector<int> nuclide_indices;
   vector<double> weights;
 
   for (auto nuclide_node : node.children("nuclide")) {
@@ -808,7 +824,8 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
     if (it == data::chain_nuclide_map.end())
       continue;
 
-    const auto& chain_nuc = data::chain_nuclides[it->second];
+    int nuclide_index = it->second;
+    const auto& chain_nuc = data::chain_nuclides[nuclide_index];
     const Distribution* photon_dist = chain_nuc->photon_energy();
     if (!photon_dist)
       continue;
@@ -820,26 +837,32 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
     if (weight <= 0.0)
       continue;
 
-    dists.push_back(photon_dist);
+    nuclide_indices.push_back(nuclide_index);
     weights.push_back(weight);
   }
 
-  dists_ = std::move(dists);
+  nuclide_indices_ = std::move(nuclide_indices);
 
   // Build alias table from weighted probabilities
-  vector<double> probs;
-  probs.reserve(dists_.size());
-  for (size_t i = 0; i < dists_.size(); ++i) {
-    probs.push_back(weights[i] * dists_[i]->integral());
-  }
+  vector<double> probs =
+    decay_spectrum_probabilities(nuclide_indices_, weights);
   integral_ = std::accumulate(probs.begin(), probs.end(), 0.0);
   di_.assign(probs);
 }
 
-std::pair<double, double> DecaySpectrum::sample(uint64_t* seed) const
+DecaySpectrum::Sample DecaySpectrum::sample_with_parent(uint64_t* seed) const
 {
   size_t idx = di_.sample(seed);
-  return dists_[idx]->sample(seed);
+  int parent_nuclide = nuclide_indices_[idx];
+  const auto* dist = data::chain_nuclides[parent_nuclide]->photon_energy();
+  auto [energy, weight] = dist->sample(seed);
+  return {energy, weight, parent_nuclide};
+}
+
+std::pair<double, double> DecaySpectrum::sample(uint64_t* seed) const
+{
+  auto sample = sample_with_parent(seed);
+  return {sample.energy, sample.weight};
 }
 
 double DecaySpectrum::integral() const
@@ -849,8 +872,7 @@ double DecaySpectrum::integral() const
 
 double DecaySpectrum::sample_unbiased(uint64_t* seed) const
 {
-  size_t idx = di_.sample(seed);
-  return dists_[idx]->sample(seed).first;
+  return sample_with_parent(seed).energy;
 }
 
 } // namespace openmc

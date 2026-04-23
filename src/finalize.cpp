@@ -44,6 +44,7 @@ void free_memory()
   free_memory_photon();
   free_memory_settings();
   free_memory_thermal();
+  free_memory_chain();
   library_clear();
   nuclides_clear();
   free_memory_source();

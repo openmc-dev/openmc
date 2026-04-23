@@ -420,13 +420,27 @@ private:
 
 class DecaySpectrum : public Distribution {
 public:
-  //! Construct from non-owning distribution pointers and weights
+  //============================================================================
+  // Types, aliases
+
+  struct Sample {
+    double energy;
+    double weight;
+    int parent_nuclide;
+  };
+
+  //============================================================================
+  // Constructors
+
+  //! Construct from depletion chain nuclide indices and weights
   //!
-  //! \param dists  Non-owning pointers to component distributions
+  //! \param nuclide_indices  Indices of decay photon emitters in
+  //!   data::chain_nuclides
   //! \param weights  Activity-based weights for each component. The Mixture
-  //!   probability for component i is weights[i] * dists[i]->integral()
-  //!   (the integral encodes photons-per-decay).
-  DecaySpectrum(vector<const Distribution*> dists, vector<double> weights);
+  //!   probability for component i is weights[i] *
+  //!   chain_nuclides[nuclide_indices[i]]->photon_energy()->integral() (the
+  //!   integral encodes photons-per-decay).
+  DecaySpectrum(vector<int> nuclide_indices, vector<double> weights);
 
   //! Construct from an XML node containing nuclide names and atom densities.
   //!
@@ -435,16 +449,31 @@ public:
   //! constructs the mixed distribution.
   explicit DecaySpectrum(pugi::xml_node node);
 
+  //============================================================================
+  // Methods
+
+  //! Sample a value from the distribution and return the parent nuclide index
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (Sampled energy, sample weight, chain nuclide index)
+  Sample sample_with_parent(uint64_t* seed) const;
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (sampled value, sample weight)
   std::pair<double, double> sample(uint64_t* seed) const override;
+
   double integral() const override;
 
 protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
-  vector<const Distribution*> dists_; //!< Non-owning component distributions
-  DiscreteIndex di_; //!< Discrete index for component selection
-  double integral_;  //!< Total photon emission rate
+  vector<int> nuclide_indices_; //!< Indices of emitting nuclides in the chain
+  DiscreteIndex di_;            //!< Discrete index for component selection
+  double integral_;             //!< Total photon emission rate
 };
 
 } // namespace openmc

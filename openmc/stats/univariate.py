@@ -2249,7 +2249,7 @@ class DecaySpectrum(Univariate):
         for name, density in nuclides.items():
             cv.check_type('nuclide name', name, str)
             cv.check_type(f'atom density for {name}', density, Real)
-            cv.check_greater_than(f'atom density for {name}', density, 0.0)
+            cv.check_greater_than(f'atom density for {name}', density, 0.0, True)
         self._nuclides = dict(nuclides)
         self._dist_cache = None
 

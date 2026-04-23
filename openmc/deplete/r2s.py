@@ -636,6 +636,10 @@ class R2SManager:
             if not nuclides:
                 continue
 
+            # Eliminate nuclides with zero density
+            nuclides = {nuclide: density for nuclide, density in nuclides.items()
+                        if density > 0}
+
             energy = openmc.stats.DecaySpectrum(nuclides, activated_mat.volume)
             energy.clip(inplace=True)
             if not energy.nuclides:

@@ -263,18 +263,20 @@ void Particle::event_advance()
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
-  // Select smaller distance
-  double distance = std::min({boundary().distance(), collision_distance(),
-    distance_cutoff, distance_tmesh});
+  // Define minimum distance and stop condition
+  double distance = distance_cutoff;
+  next_event() = EVENT_TIME_CUTOFF;
 
-  // Prepare the stop condition
-  if (distance == distance_cutoff) {
-    next_event() = EVENT_TIME_CUTOFF;
-  } else if (distance == boundary().distance()) {
+  if (boundary().distance() < distance) {
+    distance = boundary().distance();
     next_event() = EVENT_CROSS_SURFACE;
-  } else if (distance == distance_tmesh) {
+  }
+  if (distance_tmesh < distance) {
+    distance = distance_tmesh;
     next_event() = EVENT_CROSS_TEMPERATURE_MESH;
-  } else if (distance == collision_distance()) {
+  }
+  if (collision_distance() < distance) {
+    distance = collision_distance();
     next_event() = EVENT_COLLIDE;
   }
 
@@ -373,7 +375,6 @@ void Particle::event_cross_surface()
       score_surface_tally(*this, model::active_surface_tallies, normal);
     }
   }
-
 }
 
 void Particle::event_collide()

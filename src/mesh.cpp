@@ -1370,7 +1370,7 @@ double StructuredMesh::distance_to_next_boundary(Position r, Direction u) const
   if (in_mesh) { // inside mesh
 
     // Calculate
-    distance = get_minimal_distance(distances);
+    distance = get_minimum_distance(distances);
 
     // If the particle is on a surface
     if (distance <= FP_COINCIDENT) {
@@ -1385,14 +1385,14 @@ double StructuredMesh::distance_to_next_boundary(Position r, Direction u) const
       }
 
       if (in_mesh) { // still inside mesh after moving
-        distance = get_minimal_distance(distances);
+        distance = get_minimum_distance(distances);
       } else { // not inside mesh after moving
-        distance = get_maximal_outer_distance(ijk, distances);
+        distance = get_maximum_outer_distance(ijk, distances);
       }
     }
 
   } else { // not inside mesh
-    distance = get_maximal_outer_distance(ijk, distances);
+    distance = get_maximum_outer_distance(ijk, distances);
   }
 
   return distance;

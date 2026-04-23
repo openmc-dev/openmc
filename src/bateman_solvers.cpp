@@ -241,7 +241,7 @@ extern "C" int openmc_cram_solve(int n, const int* indptr, const int* indices,
     std::copy(y.begin(), y.end(), result);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
-    return OPENMC_E_UNASSIGNED;
+    return OPENMC_E_DATA;
   }
   return 0;
 }

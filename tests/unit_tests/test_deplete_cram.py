@@ -9,8 +9,7 @@ import pytest
 import scipy.sparse as sp
 from pytest import approx
 
-from openmc.deplete.cram import (CRAM16, CRAM48, Cram16Solver, Cram48Solver,
-                                  IPFCramSolver)
+from openmc.deplete.cram import CRAM16, CRAM48
 from openmc.lib.deplete import cram_solve
 
 
@@ -40,19 +39,6 @@ def test_CRAM48():
     assert z == approx(z0)
 
 
-def test_cram_solver_objects():
-    """Develop API singleton solver objects remain available and callable."""
-    assert isinstance(Cram16Solver, IPFCramSolver)
-    assert isinstance(Cram48Solver, IPFCramSolver)
-
-    x = np.array([1.0, 1.0])
-    mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
-    dt = 0.1
-
-    assert Cram16Solver(mat, x, dt) == approx(CRAM16(mat, x, dt))
-    assert Cram48Solver(mat, x, dt) == approx(CRAM48(mat, x, dt))
-
-
 def test_cram_solve_cpp():
     """Test C++ cram_solve binding directly against Mathematica reference."""
     A = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
@@ -68,8 +54,8 @@ def test_cram_solve_cpp():
     assert z16 == approx(z_ref)
 
 
-def test_substeps1_matches_original():
-    """substeps=1 must be bitwise identical to original result."""
+def test_substeps1_matches_unsubstepped():
+    """substeps=1 must be bitwise identical to the unsubstepped call."""
     x = np.array([1.0, 1.0])
     mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
     dt = 0.1
@@ -110,6 +96,16 @@ def test_invalid_substeps(substeps):
         cram_solve(mat, x, 0.1, order=48, substeps=substeps)
 
 
+@pytest.mark.parametrize("order", [0, 1, 32, 64])
+def test_invalid_order(order):
+    """cram_solve must reject unsupported orders."""
+    mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
+    x = np.array([1.0, 1.0])
+
+    with pytest.raises(ValueError, match="order"):
+        cram_solve(mat, x, 0.1, order=order)
+
+
 def test_substeps_self_convergence():
     """Increasing substeps converges toward reference solution.
 
@@ -127,3 +123,4 @@ def test_substeps_self_convergence():
         err = np.linalg.norm(n_sub - n_ref) / np.linalg.norm(n_ref)
         assert err < prev_err
         prev_err = err
+

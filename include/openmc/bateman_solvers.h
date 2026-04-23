@@ -11,9 +11,6 @@
 
 namespace openmc {
 
-//! CRAM approximation order
-enum class CramOrder { cram16, cram48 };
-
 //==============================================================================
 //! Abstract base class for Bateman equation solvers
 //!
@@ -28,9 +25,11 @@ public:
   //! \param A   Sparse transmutation matrix (n x n)
   //! \param n0  Initial atom densities [n]
   //! \param dt  Time interval [s]
+  //! \param substeps Number of substeps to use within dt
   //! \return    Final atom densities [n]
   virtual vector<double> solve(
-    const CSCMatrix& A, const vector<double>& n0, double dt) = 0;
+    const CSCMatrix& A, const vector<double>& n0, double dt,
+    int substeps = 1) = 0;
 };
 
 //==============================================================================
@@ -57,11 +56,12 @@ public:
 
 class IPFCramSolver : public BatemanSolver {
 public:
-  explicit IPFCramSolver(CramOrder order = CramOrder::cram48);
+  explicit IPFCramSolver(int order = 48);
 
   //! Solve using full LU factorization (general transmutation matrix).
   vector<double> solve(
-    const CSCMatrix& A, const vector<double>& n0, double dt) override;
+    const CSCMatrix& A, const vector<double>& n0, double dt,
+    int substeps = 1) override;
 
 private:
   // --- CRAM coefficients ---
@@ -69,36 +69,6 @@ private:
   vector<std::complex<double>> alpha_; //!< Residues [n_poles]
   vector<std::complex<double>> theta_; //!< Poles [n_poles]
   double alpha0_;                      //!< Limit at infinity
-
-  // --- Symbolic factorization state ---
-
-  //! L factor structure (CSC, unit lower triangular, diagonal not stored).
-  //! Row indices within each column are sorted in ascending order.
-  vector<int> l_indptr_; //!< Column pointers [n+1]
-  vector<int> l_rowidx_; //!< Row indices [l_nnz]
-
-  //! U factor structure (CSC, including diagonal as last entry per column).
-  //! Above-diagonal row indices are sorted in ascending order, followed by
-  //! the diagonal entry. The ascending order of the above-diagonal rows
-  //! enables correct left-looking forward substitution.
-  vector<int> u_indptr_; //!< Column pointers [n+1]
-  vector<int> u_rowidx_; //!< Row indices [u_nnz]
-
-  // --- Numeric factorization workspace ---
-  vector<std::complex<double>> l_data_; //!< L factor values [l_nnz]
-  vector<std::complex<double>> u_data_; //!< U factor values [u_nnz]
-  vector<std::complex<double>> u_diag_; //!< U diagonal values [n]
-  vector<std::complex<double>> work_;   //!< Dense workspace [n]
-  vector<std::complex<double>> x_;      //!< Complex solve result [n]
-
-  // --- Private methods ---
-  void symbolic_factorize(const CSCPattern& pattern);
-
-  void numeric_factorize(const CSCMatrix& A, const CSCPattern& pattern,
-    double dt, std::complex<double> theta);
-
-  void triangular_solve(
-    const vector<double>& b, vector<std::complex<double>>& x) const;
 };
 
 } // namespace openmc

@@ -332,10 +332,11 @@ int openmc_properties_import(const char* filename);
 //! \param[in] n0        Initial atom densities [n]
 //! \param[in] dt        Time interval in seconds
 //! \param[in] order     CRAM approximation order (16 or 48)
+//! \param[in] substeps  Number of substeps to use within dt
 //! \param[out] result   Final atom densities [n]
 //! \return Error code
 int openmc_cram_solve(int n, const int* indptr, const int* indices,
-  const double* data, const double* n0, double dt, int order,
+  const double* data, const double* n0, double dt, int order, int substeps,
   double* result);
 
 // Error codes

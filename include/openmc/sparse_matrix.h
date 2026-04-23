@@ -4,6 +4,7 @@
 #ifndef OPENMC_SPARSE_MATRIX_H
 #define OPENMC_SPARSE_MATRIX_H
 
+#include <complex>
 #include <utility> // for move
 
 #include "openmc/vector.h"
@@ -71,6 +72,49 @@ private:
   CSCPattern pattern_;  //!< Structural pattern
   vector<double> data_; //!< Values [nnz]
 };
+
+//==============================================================================
+//! Symbolic LU factorization for CSC matrices
+//!
+//! Stores the shared structural information for left-looking column LU
+//! factorization without pivoting. The input pattern must already contain the
+//! diagonal whenever the numeric phase expects diagonal entries to be present.
+//==============================================================================
+
+struct SymbolicLUFactorization {
+  CSCPattern pattern;
+  CSCPattern l_pattern;
+  CSCPattern u_pattern;
+};
+
+//==============================================================================
+//! Numeric LU factorization values for CSC matrices
+//!
+//! Stores the complex-valued L/U entries corresponding to a previously
+//! computed SymbolicLUFactorization. The U diagonal is stored both in the CSC
+//! values array and as precomputed reciprocals for faster back substitution.
+//==============================================================================
+
+struct NumericLUFactorization {
+  vector<std::complex<double>> l_data;
+  vector<std::complex<double>> u_data;
+  vector<std::complex<double>> u_diag_inv;
+};
+
+//! Compute symbolic LU fill patterns for left-looking column LU without
+//! pivoting.
+SymbolicLUFactorization symbolic_lu_factorize_no_pivot(CSCPattern pattern);
+
+//! Numeric left-looking LU factorization of the scaled and shifted operator
+//! scale*A - shift*I without explicitly forming it.
+void factorize_scaled_shifted_lu_no_pivot(const CSCMatrix& A, double scale,
+  std::complex<double> shift, const SymbolicLUFactorization& symbolic,
+  NumericLUFactorization& numeric, vector<std::complex<double>>& work);
+
+//! Solve LUx = b using a symbolic LU pattern and matching numeric values.
+void triangular_solve_lu(const vector<double>& b,
+  const SymbolicLUFactorization& symbolic,
+  const NumericLUFactorization& numeric, vector<std::complex<double>>& x);
 
 } // namespace openmc
 

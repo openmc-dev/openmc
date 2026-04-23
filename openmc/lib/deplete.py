@@ -1,6 +1,7 @@
 """Ctypes bindings for C++ depletion solvers."""
 
 from ctypes import c_int, c_double
+import numbers
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -23,11 +24,12 @@ _dll.openmc_cram_solve.argtypes = [
     _array_1d_dbl,  # n0
     c_double,       # dt
     c_int,          # order
+    c_int,          # substeps
     _array_1d_dbl,  # result
 ]
 
 
-def cram_solve(A, n0, dt, order=48):
+def cram_solve(A, n0, dt, order=48, substeps=1):
     """Solve a single Bateman system using C++ CRAM.
 
     Parameters
@@ -40,6 +42,8 @@ def cram_solve(A, n0, dt, order=48):
         Time step in seconds.
     order : int
         CRAM approximation order (16 or 48).
+    substeps : int
+        Number of equal substeps to use within ``dt``.
 
     Returns
     -------
@@ -49,6 +53,10 @@ def cram_solve(A, n0, dt, order=48):
     """
     if order not in (16, 48):
         raise ValueError(f"CRAM order must be 16 or 48, got {order}")
+    if not isinstance(substeps, numbers.Integral):
+        raise TypeError(f"substeps must be an integer, got {type(substeps)}")
+    if substeps <= 0:
+        raise ValueError(f"substeps must be positive, got {substeps}")
 
     n = A.shape[0]
     indptr = np.asarray(A.indptr, dtype=np.int32)
@@ -58,6 +66,6 @@ def cram_solve(A, n0, dt, order=48):
     result = np.empty(n, dtype=np.float64)
 
     _dll.openmc_cram_solve(
-        n, indptr, indices, data, n0, dt, order, result)
+        n, indptr, indices, data, n0, dt, order, int(substeps), result)
 
     return result

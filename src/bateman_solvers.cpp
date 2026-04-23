@@ -3,7 +3,6 @@
 
 #include "openmc/bateman_solvers.h"
 
-#include <algorithm> // for sort
 #include <complex>
 
 #include "openmc/capi.h"
@@ -12,17 +11,6 @@
 namespace openmc {
 
 namespace {
-
-// Fast complex reciprocal: 1/(a+bi) = (a-bi) / (a² + b²)
-// Avoids GCC's __divdc3 which includes NaN/Inf handling we don't need.
-// CRAM poles guarantee the diagonal is always well-conditioned.
-inline std::complex<double> fast_crecip(std::complex<double> z)
-{
-  double a = z.real();
-  double b = z.imag();
-  double denom = a * a + b * b;
-  return {a / denom, -b / denom};
-}
 
 // Fast complex multiply: (a+bi)(c+di) = (ac-bd) + (ad+bc)i
 // Avoids GCC's __muldc3 which includes NaN recovery we don't need.
@@ -136,30 +124,40 @@ const double cram48_alpha0 = 2.258038182743983e-47;
 // IPFCramSolver implementation
 //==============================================================================
 
-IPFCramSolver::IPFCramSolver(CramOrder order)
+IPFCramSolver::IPFCramSolver(int order)
 {
-  if (order == CramOrder::cram16) {
+  if (order == 16) {
     n_poles_ = 8;
     alpha_.assign(cram16_alpha, cram16_alpha + n_poles_);
     theta_.assign(cram16_theta, cram16_theta + n_poles_);
     alpha0_ = cram16_alpha0;
-  } else {
+  } else if (order == 48) {
     n_poles_ = 24;
     alpha_.assign(cram48_alpha, cram48_alpha + n_poles_);
     theta_.assign(cram48_theta, cram48_theta + n_poles_);
     alpha0_ = cram48_alpha0;
+  } else {
+    throw std::invalid_argument {
+      fmt::format("CRAM order must be 16 or 48, got {}.", order)};
   }
 }
 
 vector<double> IPFCramSolver::solve(
-  const CSCMatrix& A, const vector<double>& n0, double dt)
+  const CSCMatrix& A, const vector<double>& n0, double dt, int substeps)
 {
+  if (substeps <= 0) {
+    throw std::invalid_argument {
+      fmt::format("substeps must be positive, got {}.", substeps)};
+  }
+
   int n = A.n();
+  double step_dt = dt / substeps;
 
   // Symbolic factorization: compute L/U sparsity patterns for this matrix.
   // Reused across all pole solves below.
-  CSCPattern pattern = A.pattern().with_diagonal();
-  symbolic_factorize(pattern);
+  auto symbolic = symbolic_lu_factorize_no_pivot(A.pattern().with_diagonal());
+  vector<std::complex<double>> work(n);
+  vector<std::complex<double>> x(n);
 
   // IPF CRAM iteration:
   //   y_0 = n0
@@ -167,250 +165,50 @@ vector<double> IPFCramSolver::solve(
   //   result = alpha0 * y_final
   vector<double> y(n0.begin(), n0.end());
 
-  for (int p = 0; p < n_poles_; ++p) {
-    numeric_factorize(A, pattern, dt, theta_[p]);
-    triangular_solve(y, x_);
-
-    // y += 2 * Re(alpha_p * x_p)
-    for (int i = 0; i < n; ++i) {
-      auto ax = fast_cmul(alpha_[p], x_[i]);
-      y[i] += 2.0 * ax.real();
+  if (substeps > 1) {
+    vector<NumericLUFactorization> cached_pole_factorizations(n_poles_);
+    for (int p = 0; p < n_poles_; ++p) {
+      factorize_scaled_shifted_lu_no_pivot(
+        A, step_dt, theta_[p], symbolic, cached_pole_factorizations[p], work);
     }
-  }
 
-  // Final scaling
-  for (int i = 0; i < n; ++i) {
-    y[i] *= alpha0_;
+    for (int step = 0; step < substeps; ++step) {
+      for (int p = 0; p < n_poles_; ++p) {
+        triangular_solve_lu(y, symbolic, cached_pole_factorizations[p], x);
+
+        // y += 2 * Re(alpha_p * x_p)
+        for (int i = 0; i < n; ++i) {
+          auto ax = fast_cmul(alpha_[p], x[i]);
+          y[i] += 2.0 * ax.real();
+        }
+      }
+
+      for (int i = 0; i < n; ++i) {
+        y[i] *= alpha0_;
+      }
+    }
+  } else {
+    // Reuse a single numeric container while recomputing each pole on demand.
+    NumericLUFactorization current_pole_factorization;
+    for (int p = 0; p < n_poles_; ++p) {
+      factorize_scaled_shifted_lu_no_pivot(
+        A, step_dt, theta_[p], symbolic, current_pole_factorization, work);
+      triangular_solve_lu(y, symbolic, current_pole_factorization, x);
+
+      // y += 2 * Re(alpha_p * x_p)
+      for (int i = 0; i < n; ++i) {
+        auto ax = fast_cmul(alpha_[p], x[i]);
+        y[i] += 2.0 * ax.real();
+      }
+    }
+
+    for (int i = 0; i < n; ++i) {
+      y[i] *= alpha0_;
+    }
   }
 
   return y;
 }
-
-//==============================================================================
-// Symbolic factorization
-//
-// Computes the exact L/U sparsity patterns for left-looking column LU
-// factorization without pivoting. Pivoting is unnecessary because the
-// transmutation matrix A is Metzler (non-negative off-diagonal entries)
-// and each CRAM pole theta has nonzero imaginary part. For M = A*dt - theta*I
-// with A Metzler, unpivoted Gaussian elimination produces pivots u_jj
-// satisfying |u_jj| >= |Im(theta)| >= 1.194. This guarantees non-singular
-// factorization, and since no row swaps occur the L/U patterns are
-// deterministic and identical across all poles.
-//
-// Algorithm: symbolic left-looking factorization with worklist-based fill
-// propagation. For each column j, start with the structural nonzeros of
-// the input pattern, then propagate fill through previously computed L
-// column patterns. Any row k < j that becomes nonzero (a U entry) triggers
-// examination of L[:,k]'s rows, which may create additional fill.
-//==============================================================================
-
-void IPFCramSolver::symbolic_factorize(const CSCPattern& pattern)
-{
-  int n = pattern.n();
-  const auto& indptr = pattern.indptr();
-  const auto& indices = pattern.indices();
-
-  // Build L and U fill patterns column by column
-  vector<vector<int>> l_cols(n);
-  vector<bool> marked(n, false);
-  vector<int> u_work, l_work;
-
-  // Temporary storage for U column patterns (needed for CSC construction)
-  vector<vector<int>> u_cols(n);
-
-  for (int j = 0; j < n; ++j) {
-    u_work.clear();
-    l_work.clear();
-
-    // Scatter: mark off-diagonal nonzero rows of column j
-    for (int p = indptr[j]; p < indptr[j + 1]; ++p) {
-      int i = indices[p];
-      if (i == j)
-        continue;
-      if (!marked[i]) {
-        marked[i] = true;
-        if (i < j)
-          u_work.push_back(i);
-        else
-          l_work.push_back(i);
-      }
-    }
-
-    // Propagate fill through L columns of above-diagonal entries.
-    // u_work grows as new above-diagonal rows are discovered via fill.
-    for (size_t idx = 0; idx < u_work.size(); ++idx) {
-      int k = u_work[idx];
-      for (int row : l_cols[k]) {
-        if (row == j)
-          continue; // diagonal, skip
-        if (!marked[row]) {
-          marked[row] = true;
-          if (row < j)
-            u_work.push_back(row);
-          else
-            l_work.push_back(row);
-        }
-      }
-    }
-
-    // Sort row indices and store
-    std::sort(u_work.begin(), u_work.end());
-    std::sort(l_work.begin(), l_work.end());
-    u_cols[j] = u_work;
-    l_cols[j] = l_work;
-
-    // Clear marked flags
-    for (int k : u_work)
-      marked[k] = false;
-    for (int i : l_work)
-      marked[i] = false;
-  }
-
-  // Build L CSC-style index arrays
-  l_indptr_.resize(n + 1);
-  l_rowidx_.clear();
-  for (int j = 0; j < n; ++j) {
-    l_indptr_[j] = static_cast<int>(l_rowidx_.size());
-    for (int r : l_cols[j])
-      l_rowidx_.push_back(r);
-  }
-  l_indptr_[n] = static_cast<int>(l_rowidx_.size());
-
-  // Build U CSC-style index arrays (diagonal stored as last entry per column)
-  u_indptr_.resize(n + 1);
-  u_rowidx_.clear();
-  for (int j = 0; j < n; ++j) {
-    u_indptr_[j] = static_cast<int>(u_rowidx_.size());
-    for (int r : u_cols[j])
-      u_rowidx_.push_back(r);
-    u_rowidx_.push_back(j); // diagonal last
-  }
-  u_indptr_[n] = static_cast<int>(u_rowidx_.size());
-
-  // Allocate numeric workspace
-  l_data_.resize(l_rowidx_.size());
-  u_data_.resize(u_rowidx_.size());
-  u_diag_.resize(n);
-  work_.resize(n);
-  x_.resize(n);
-}
-
-//==============================================================================
-// Numeric factorization
-//
-// Left-looking column LU factorization without pivoting.
-// Forms the shifted matrix M = A*dt - theta*I on-the-fly.
-//
-// For each column j, the above-diagonal U rows (stored in ascending order
-// in u_rowidx_) serve as the left-looking schedule: each k < j with
-// U[k,j] != 0 triggers a rank-1 update w -= L[:,k] * U[k,j]. Processing
-// in ascending order naturally performs the forward substitution that
-// resolves fill-in dependencies between earlier columns.
-//==============================================================================
-
-void IPFCramSolver::numeric_factorize(const CSCMatrix& A,
-  const CSCPattern& pattern, double dt, std::complex<double> theta)
-{
-  int n = A.n();
-  const auto& a_indptr = A.indptr();
-  const auto& a_indices = A.indices();
-  const auto& a_data = A.data();
-
-  const auto& sp_indptr = pattern.indptr();
-  const auto& sp_indices = pattern.indices();
-
-  for (int j = 0; j < n; ++j) {
-
-    // --- Step 1: Scatter M[:,j] = A[:,j]*dt - theta*I[:,j] ---
-    {
-      int a_pos = a_indptr[j];
-      int a_end = a_indptr[j + 1];
-
-      for (int sp_pos = sp_indptr[j]; sp_pos < sp_indptr[j + 1]; ++sp_pos) {
-        int row = sp_indices[sp_pos];
-        std::complex<double> val(0.0, 0.0);
-
-        if (a_pos < a_end && a_indices[a_pos] == row) {
-          val = dt * a_data[a_pos];
-          ++a_pos;
-        }
-
-        if (row == j) {
-          val -= theta;
-        }
-
-        work_[row] = val;
-      }
-    }
-
-    // --- Step 2: Left-looking updates ---
-    // Process U[:,j] rows in ascending order (forward substitution).
-    // Each k < j with U[k,j] != 0 subtracts L[:,k] * U[k,j].
-    for (int up = u_indptr_[j]; up < u_indptr_[j + 1] - 1; ++up) {
-      int k = u_rowidx_[up];
-      std::complex<double> ukj = work_[k];
-      u_data_[up] = ukj;
-
-      for (int lp = l_indptr_[k]; lp < l_indptr_[k + 1]; ++lp) {
-        work_[l_rowidx_[lp]] -= fast_cmul(l_data_[lp], ukj);
-      }
-    }
-
-    // --- Step 3: Extract diagonal and L column ---
-    std::complex<double> inv_ujj = fast_crecip(work_[j]);
-    u_diag_[j] = inv_ujj;
-    u_data_[u_indptr_[j + 1] - 1] = work_[j];
-    for (int lp = l_indptr_[j]; lp < l_indptr_[j + 1]; ++lp) {
-      l_data_[lp] = fast_cmul(work_[l_rowidx_[lp]], inv_ujj);
-    }
-
-    // --- Step 4: Clear workspace ---
-    // Clear all positions in the predicted fill pattern (U + L + diagonal)
-    for (int up = u_indptr_[j]; up < u_indptr_[j + 1]; ++up) {
-      work_[u_rowidx_[up]] = {0.0, 0.0};
-    }
-    for (int lp = l_indptr_[j]; lp < l_indptr_[j + 1]; ++lp) {
-      work_[l_rowidx_[lp]] = {0.0, 0.0};
-    }
-  }
-}
-
-//==============================================================================
-// Triangular solve
-//
-// Solve LUx = b without permutation (no pivoting means identity perm).
-// Forward substitution solves Lz = b, back substitution solves Ux = z.
-//==============================================================================
-
-void IPFCramSolver::triangular_solve(
-  const vector<double>& b, vector<std::complex<double>>& x) const
-{
-  int n = static_cast<int>(u_diag_.size());
-
-  // Copy real RHS into complex vector
-  for (int j = 0; j < n; ++j) {
-    x[j] = std::complex<double>(b[j], 0.0);
-  }
-
-  // Forward substitution: Lz = b (L is unit lower triangular)
-  for (int j = 0; j < n; ++j) {
-    for (int lp = l_indptr_[j]; lp < l_indptr_[j + 1]; ++lp) {
-      x[l_rowidx_[lp]] -= fast_cmul(l_data_[lp], x[j]);
-    }
-  }
-
-  // Back substitution: Ux = z
-  // u_diag_ stores reciprocals (1/U[j,j]) to avoid complex division
-  for (int j = n - 1; j >= 0; --j) {
-    x[j] = fast_cmul(x[j], u_diag_[j]);
-
-    for (int up = u_indptr_[j]; up < u_indptr_[j + 1] - 1; ++up) {
-      x[u_rowidx_[up]] -= fast_cmul(u_data_[up], x[j]);
-    }
-  }
-}
-
 } // namespace openmc
 
 //==============================================================================
@@ -420,23 +218,26 @@ void IPFCramSolver::triangular_solve(
 using namespace openmc;
 
 extern "C" int openmc_cram_solve(int n, const int* indptr, const int* indices,
-  const double* data, const double* n0, double dt, int order, double* result)
+  const double* data, const double* n0, double dt, int order, int substeps,
+  double* result)
 {
   try {
     if (order != 16 && order != 48) {
       set_errmsg(fmt::format("CRAM order must be 16 or 48, got {}", order));
       return OPENMC_E_INVALID_ARGUMENT;
     }
-
-    auto cram_order = (order == 16) ? CramOrder::cram16 : CramOrder::cram48;
+    if (substeps <= 0) {
+      set_errmsg(fmt::format("substeps must be positive, got {}", substeps));
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
 
     int nnz = indptr[n];
     CSCMatrix A(n, vector<int>(indptr, indptr + n + 1),
       vector<int>(indices, indices + nnz), vector<double>(data, data + nnz));
     vector<double> n0_vec(n0, n0 + n);
 
-    IPFCramSolver solver(cram_order);
-    vector<double> y = solver.solve(A, n0_vec, dt);
+    IPFCramSolver solver(order);
+    vector<double> y = solver.solve(A, n0_vec, dt, substeps);
     std::copy(y.begin(), y.end(), result);
   } catch (const std::exception& e) {
     set_errmsg(e.what());

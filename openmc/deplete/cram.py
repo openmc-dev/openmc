@@ -12,14 +12,14 @@ from openmc.lib.deplete import cram_solve
 __all__ = ["CRAM16", "CRAM48"]
 
 
-def _cram_solve(A, n0, dt, order):
+def _cram_solve(A, n0, dt, order, substeps=1):
     """Single-material CRAM solve via C++ IPFCramSolver."""
     return cram_solve(
         csc_array(A, dtype=np.float64), np.asarray(n0, dtype=np.float64),
-        float(dt), order=order)
+        float(dt), order=order, substeps=substeps)
 
 
-def CRAM48(A, n0, dt):
+def CRAM48(A, n0, dt, substeps=1):
     """Solve depletion equations using 48th order IPF CRAM
 
     Parameters
@@ -32,6 +32,8 @@ def CRAM48(A, n0, dt):
         material or an atom density
     dt : float
         Time [s] of the specific interval to be solved
+    substeps : int, optional
+        Number of equal substeps to use within ``dt``
 
     Returns
     -------
@@ -39,10 +41,10 @@ def CRAM48(A, n0, dt):
         Final compositions after ``dt``
 
     """
-    return _cram_solve(A, n0, dt, order=48)
+    return _cram_solve(A, n0, dt, order=48, substeps=substeps)
 
 
-def CRAM16(A, n0, dt):
+def CRAM16(A, n0, dt, substeps=1):
     """Solve depletion equations using 16th order IPF CRAM
 
     Parameters
@@ -55,6 +57,8 @@ def CRAM16(A, n0, dt):
         material or an atom density
     dt : float
         Time [s] of the specific interval to be solved
+    substeps : int, optional
+        Number of equal substeps to use within ``dt``
 
     Returns
     -------
@@ -62,4 +66,4 @@ def CRAM16(A, n0, dt):
         Final compositions after ``dt``
 
     """
-    return _cram_solve(A, n0, dt, order=16)
+    return _cram_solve(A, n0, dt, order=16, substeps=substeps)

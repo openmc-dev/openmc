@@ -1,9 +1,16 @@
+"""Tests for cram.py.
+
+Compares a few Mathematica matrix exponentials to CRAM16/CRAM48.
+Tests substep accuracy against self-converged reference solutions.
+"""
+
 import numpy as np
 import pytest
 import scipy.sparse as sp
 from pytest import approx
 
-from openmc.deplete.cram import CRAM16, CRAM48
+from openmc.deplete.cram import (CRAM16, CRAM48, Cram16Solver, Cram48Solver,
+                                  IPFCramSolver)
 from openmc.lib.deplete import cram_solve
 
 
@@ -15,7 +22,6 @@ def test_CRAM16():
 
     z = CRAM16(mat, x, dt)
 
-    # Solution from Mathematica
     z0 = np.array((0.904837418035960, 0.576799023327476))
 
     assert z == approx(z0)
@@ -29,10 +35,22 @@ def test_CRAM48():
 
     z = CRAM48(mat, x, dt)
 
-    # Solution from Mathematica
     z0 = np.array((0.904837418035960, 0.576799023327476))
 
     assert z == approx(z0)
+
+
+def test_cram_solver_objects():
+    """Develop API singleton solver objects remain available and callable."""
+    assert isinstance(Cram16Solver, IPFCramSolver)
+    assert isinstance(Cram48Solver, IPFCramSolver)
+
+    x = np.array([1.0, 1.0])
+    mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
+    dt = 0.1
+
+    assert Cram16Solver(mat, x, dt) == approx(CRAM16(mat, x, dt))
+    assert Cram48Solver(mat, x, dt) == approx(CRAM48(mat, x, dt))
 
 
 def test_cram_solve_cpp():
@@ -44,7 +62,6 @@ def test_cram_solve_cpp():
     z48 = cram_solve(A, n0, dt, order=48)
     z16 = cram_solve(A, n0, dt, order=16)
 
-    # Reference from Mathematica
     z_ref = np.array((0.904837418035960, 0.576799023327476))
 
     assert z48 == approx(z_ref)
@@ -52,7 +69,7 @@ def test_cram_solve_cpp():
 
 
 def test_substeps1_matches_original():
-    """substeps=1 must match the original single-step result exactly."""
+    """substeps=1 must be bitwise identical to original result."""
     x = np.array([1.0, 1.0])
     mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
     dt = 0.1
@@ -66,7 +83,7 @@ def test_substeps1_matches_original():
 
 
 def test_substeps2_matches_two_half_steps():
-    """substeps=2 must match two independent half-step solves."""
+    """substeps=2 must match two independent CRAM calls with dt/2."""
     x = np.array([1.0, 1.0])
     mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
     dt = 1.0
@@ -82,7 +99,7 @@ def test_substeps2_matches_two_half_steps():
 
 @pytest.mark.parametrize("substeps", [0, -1])
 def test_invalid_substeps(substeps):
-    """substeps must be a positive integer."""
+    """substeps must be a positive integer at call time."""
     x = np.array([1.0, 1.0])
     mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
 
@@ -94,7 +111,10 @@ def test_invalid_substeps(substeps):
 
 
 def test_substeps_self_convergence():
-    """Increasing substeps converges toward a self-converged reference."""
+    """Increasing substeps converges toward reference solution.
+
+    Uses CRAM16 where substep convergence is visible.
+    """
     mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
     x = np.array([1.0, 1.0])
     dt = 50.0

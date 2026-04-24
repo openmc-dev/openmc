@@ -156,7 +156,7 @@ namespace {
 
 // --- CRAM16 coefficients (8 poles) ---
 
-const std::complex<double> cram16_theta[] = {
+constexpr std::complex<double> cram16_theta[] = {
   {+3.509103608414918e+0, +8.436198985884374e+0},
   {+5.948152268951177e+0, +3.587457362018322e+0},
   {-5.264971343442647e+0, +1.622022147316793e+1},
@@ -167,7 +167,7 @@ const std::complex<double> cram16_theta[] = {
   {-1.084391707869699e+1, +1.927744616718165e+1},
 };
 
-const std::complex<double> cram16_alpha[] = {
+constexpr std::complex<double> cram16_alpha[] = {
   {+5.464930576870210e+3, -3.797983575308356e+4},
   {+9.045112476907548e+1, -1.115537522430261e+3},
   {+2.344818070467641e+2, -4.228020157070496e+2},
@@ -178,11 +178,11 @@ const std::complex<double> cram16_alpha[] = {
   {+2.394538338734709e+1, -5.650522971778156e+0},
 };
 
-const double cram16_alpha0 = 2.124853710495224e-16;
+constexpr double cram16_alpha0 = 2.124853710495224e-16;
 
 // --- CRAM48 coefficients (24 poles) ---
 
-const std::complex<double> cram48_theta[] = {
+constexpr std::complex<double> cram48_theta[] = {
   {-4.465731934165702e+1, +6.233225190695437e+1},
   {-5.284616241568964e+0, +4.057499381311059e+1},
   {-8.867715667624458e+0, +4.325515754166724e+1},
@@ -209,7 +209,7 @@ const std::complex<double> cram48_theta[] = {
   {+1.316284237125190e+1, +2.042951874827759e+1},
 };
 
-const std::complex<double> cram48_alpha[] = {
+constexpr std::complex<double> cram48_alpha[] = {
   {+6.387380733878774e+2, -6.743912502859256e+2},
   {+1.909896179065730e+2, -3.973203432721332e+2},
   {+4.236195226571914e+2, -2.041233768918671e+3},
@@ -236,7 +236,7 @@ const std::complex<double> cram48_alpha[] = {
   {+1.041366366475571e+2, -2.777743732451969e+2},
 };
 
-const double cram48_alpha0 = 2.258038182743983e-47;
+constexpr double cram48_alpha0 = 2.258038182743983e-47;
 
 } // anonymous namespace
 

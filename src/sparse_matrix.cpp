@@ -71,48 +71,31 @@ bool CSCPattern::operator==(const CSCPattern& other) const
 
 CSCPattern CSCPattern::with_diagonal() const
 {
-  // First pass: count entries per column, noting missing diagonals
-  int extra = 0;
-  for (int col = 0; col < n_; ++col) {
-    bool has_diag = false;
-    for (int idx = indptr_[col]; idx < indptr_[col + 1]; ++idx) {
-      if (indices_[idx] == col) {
-        has_diag = true;
-        break;
-      }
-    }
-    if (!has_diag)
-      ++extra;
-  }
-
-  if (extra == 0)
-    return *this;
-
-  // Build new CSC directly, inserting diagonal entries in sorted position
-  int new_nnz = nnz() + extra;
+  // Single-pass merge: for each column, copy the existing sorted row indices
+  // while inserting `col` in its sorted position if absent. The final nnz is
+  // at most nnz() + n_, so we reserve that upper bound.
   vector<int> new_indptr(n_ + 1);
-  vector<int> new_indices(new_nnz);
+  vector<int> new_indices;
+  new_indices.reserve(indices_.size() + n_);
 
-  int dst = 0;
   for (int col = 0; col < n_; ++col) {
-    new_indptr[col] = dst;
-    bool has_diag = false;
-    bool diag_inserted = false;
+    new_indptr[col] = static_cast<int>(new_indices.size());
+    bool diag_written = false;
     for (int idx = indptr_[col]; idx < indptr_[col + 1]; ++idx) {
       int row = indices_[idx];
-      if (!has_diag && !diag_inserted && row > col) {
-        new_indices[dst++] = col;
-        diag_inserted = true;
+      if (!diag_written && row >= col) {
+        new_indices.push_back(col);
+        diag_written = true;
+        if (row == col)
+          continue; // don't duplicate an existing diagonal
       }
-      if (row == col)
-        has_diag = true;
-      new_indices[dst++] = row;
+      new_indices.push_back(row);
     }
-    if (!has_diag && !diag_inserted) {
-      new_indices[dst++] = col;
+    if (!diag_written) {
+      new_indices.push_back(col);
     }
   }
-  new_indptr[n_] = dst;
+  new_indptr[n_] = static_cast<int>(new_indices.size());
 
   return CSCPattern(n_, std::move(new_indptr), std::move(new_indices));
 }

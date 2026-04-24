@@ -620,13 +620,15 @@ class R2SManager:
         step_result = self.results['depletion_results'][time_index]
         materials = self.results['activation_materials']
         mesh_based = self.method == 'mesh-based'
+        if mesh_based:
+            mat_dict = self.neutron_model._get_all_materials()
 
         sources = []
         for item in work_items:
             if mesh_based:
                 index_mat, domain_id, bbox = item
                 original_mat = materials[index_mat]
-                domain = openmc.Material(material_id=domain_id)
+                domain = mat_dict[domain_id]
             else:
                 cell, original_mat, bbox = item
                 domain = cell

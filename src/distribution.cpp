@@ -777,29 +777,29 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
 
 // Helper function to compute weighted probabilities for decay spectrum sampling
 vector<double> decay_spectrum_probabilities(
-  const vector<int>& nuclide_indices, const vector<double>& weights)
+  const vector<int>& nuclide_indices, const vector<double>& atoms)
 {
-  if (nuclide_indices.size() != weights.size()) {
-    fatal_error("DecaySpectrum nuclide index and weight arrays must have the "
-                "same length.");
+  if (nuclide_indices.size() != atoms.size()) {
+    fatal_error("DecaySpectrum nuclide index and atoms arrays must have "
+                "the same length.");
   }
 
   vector<double> probs;
   probs.reserve(nuclide_indices.size());
   for (size_t i = 0; i < nuclide_indices.size(); ++i) {
+    // Distribution integral is in [photons/s/atom]; multiplying by atoms gives
+    // the total emission rate [photons/s] for this nuclide.
     const auto* dist =
       data::chain_nuclides[nuclide_indices[i]]->photon_energy();
-    probs.push_back(weights[i] * dist->integral());
+    probs.push_back(atoms[i] * dist->integral());
   }
   return probs;
 }
 
-DecaySpectrum::DecaySpectrum(
-  vector<int> nuclide_indices, vector<double> weights)
+DecaySpectrum::DecaySpectrum(vector<int> nuclide_indices, vector<double> atoms)
   : nuclide_indices_(std::move(nuclide_indices))
 {
-  vector<double> probs =
-    decay_spectrum_probabilities(nuclide_indices_, weights);
+  vector<double> probs = decay_spectrum_probabilities(nuclide_indices_, atoms);
   integral_ = std::accumulate(probs.begin(), probs.end(), 0.0);
   di_.assign(probs);
 }
@@ -813,7 +813,7 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
 
   // Read nuclide names and atom densities from XML
   vector<int> nuclide_indices;
-  vector<double> weights;
+  vector<double> atoms;
 
   for (auto nuclide_node : node.children("nuclide")) {
     std::string name = get_node_value(nuclide_node, "name");
@@ -830,24 +830,19 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
     if (!photon_dist)
       continue;
 
-    // Weight = atom_count: photon_energy()->integral() is in [photons/s/atom]
-    // (Bq/atom), so multiplying by atom count gives total emission rate
-    // [photons/s]. atom_count = atom_density [atom/b-cm] * 1e24 [b-cm/cm^3] *
-    // volume [cm^3]
-    double atom_count = density * 1.0e24 * volume;
-    double weight = atom_count;
-    if (weight <= 0.0)
+    // atoms = density [atom/b-cm] * 1e24 [b/cm^2] * volume [cm^3]
+    double atoms_i = density * 1.0e24 * volume;
+    if (atoms_i <= 0.0)
       continue;
 
     nuclide_indices.push_back(nuclide_index);
-    weights.push_back(weight);
+    atoms.push_back(atoms_i);
   }
 
   nuclide_indices_ = std::move(nuclide_indices);
 
   // Build alias table from weighted probabilities
-  vector<double> probs =
-    decay_spectrum_probabilities(nuclide_indices_, weights);
+  vector<double> probs = decay_spectrum_probabilities(nuclide_indices_, atoms);
   integral_ = std::accumulate(probs.begin(), probs.end(), 0.0);
   di_.assign(probs);
 }

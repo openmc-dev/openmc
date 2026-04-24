@@ -22,7 +22,127 @@ inline std::complex<double> fast_cmul(
   return {a * c - b * d, a * d + b * c};
 }
 
+// Fast complex reciprocal: 1/(a+bi) = (a-bi) / (a^2 + b^2)
+inline std::complex<double> fast_crecip(std::complex<double> z)
+{
+  double a = z.real();
+  double b = z.imag();
+  double denom = a * a + b * b;
+  return {a / denom, -b / denom};
+}
+
 } // anonymous namespace
+
+//==============================================================================
+// LU factorization for the CRAM shifted operator
+//==============================================================================
+
+void numeric_factorize_cram(const CSCMatrix& A, double dt,
+  std::complex<double> theta, const SymbolicLUFactorization& symbolic,
+  NumericLUFactorization& numeric, vector<std::complex<double>>& work)
+{
+  int n = A.n();
+  const auto& a_indptr = A.indptr();
+  const auto& a_indices = A.indices();
+  const auto& a_data = A.data();
+
+  const auto& sp_indptr = symbolic.pattern.indptr();
+  const auto& sp_indices = symbolic.pattern.indices();
+  const auto& l_indptr = symbolic.l_pattern.indptr();
+  const auto& l_rowidx = symbolic.l_pattern.indices();
+  const auto& u_indptr = symbolic.u_pattern.indptr();
+  const auto& u_rowidx = symbolic.u_pattern.indices();
+
+  if (static_cast<int>(work.size()) != n) {
+    work.resize(n);
+  }
+  numeric.l_data.resize(symbolic.l_pattern.nnz());
+  numeric.u_data.resize(symbolic.u_pattern.nnz());
+  numeric.u_diag_inv.resize(n);
+
+  for (int j = 0; j < n; ++j) {
+
+    // Scatter the shifted operator column: M[:, j] = dt * A[:, j] - theta * I[:, j]
+    {
+      int a_pos = a_indptr[j];
+      int a_end = a_indptr[j + 1];
+
+      for (int sp_pos = sp_indptr[j]; sp_pos < sp_indptr[j + 1]; ++sp_pos) {
+        int row = sp_indices[sp_pos];
+        std::complex<double> val(0.0, 0.0);
+
+        if (a_pos < a_end && a_indices[a_pos] == row) {
+          val = dt * a_data[a_pos];
+          ++a_pos;
+        }
+
+        if (row == j) {
+          val -= theta;
+        }
+
+        work[row] = val;
+      }
+    }
+
+    // Left-looking updates.
+    for (int up = u_indptr[j]; up < u_indptr[j + 1] - 1; ++up) {
+      int k = u_rowidx[up];
+      std::complex<double> ukj = work[k];
+      numeric.u_data[up] = ukj;
+
+      for (int lp = l_indptr[k]; lp < l_indptr[k + 1]; ++lp) {
+        work[l_rowidx[lp]] -= fast_cmul(numeric.l_data[lp], ukj);
+      }
+    }
+
+    std::complex<double> inv_ujj = fast_crecip(work[j]);
+    numeric.u_diag_inv[j] = inv_ujj;
+    numeric.u_data[u_indptr[j + 1] - 1] = work[j];
+    for (int lp = l_indptr[j]; lp < l_indptr[j + 1]; ++lp) {
+      numeric.l_data[lp] = fast_cmul(work[l_rowidx[lp]], inv_ujj);
+    }
+
+    for (int up = u_indptr[j]; up < u_indptr[j + 1]; ++up) {
+      work[u_rowidx[up]] = {0.0, 0.0};
+    }
+    for (int lp = l_indptr[j]; lp < l_indptr[j + 1]; ++lp) {
+      work[l_rowidx[lp]] = {0.0, 0.0};
+    }
+  }
+}
+
+void triangular_solve_lu(const vector<double>& b,
+  const SymbolicLUFactorization& symbolic,
+  const NumericLUFactorization& numeric, vector<std::complex<double>>& x)
+{
+  int n = symbolic.pattern.n();
+  const auto& l_indptr = symbolic.l_pattern.indptr();
+  const auto& l_rowidx = symbolic.l_pattern.indices();
+  const auto& u_indptr = symbolic.u_pattern.indptr();
+  const auto& u_rowidx = symbolic.u_pattern.indices();
+
+  if (static_cast<int>(x.size()) != n) {
+    x.resize(n);
+  }
+
+  for (int j = 0; j < n; ++j) {
+    x[j] = std::complex<double>(b[j], 0.0);
+  }
+
+  for (int j = 0; j < n; ++j) {
+    for (int lp = l_indptr[j]; lp < l_indptr[j + 1]; ++lp) {
+      x[l_rowidx[lp]] -= fast_cmul(numeric.l_data[lp], x[j]);
+    }
+  }
+
+  for (int j = n - 1; j >= 0; --j) {
+    x[j] = fast_cmul(x[j], numeric.u_diag_inv[j]);
+
+    for (int up = u_indptr[j]; up < u_indptr[j + 1] - 1; ++up) {
+      x[u_rowidx[up]] -= fast_cmul(numeric.u_data[up], x[j]);
+    }
+  }
+}
 
 //==============================================================================
 // CRAM coefficient tables
@@ -128,13 +248,13 @@ IPFCramSolver::IPFCramSolver(int order)
 {
   if (order == 16) {
     n_poles_ = 8;
-    alpha_.assign(cram16_alpha, cram16_alpha + n_poles_);
-    theta_.assign(cram16_theta, cram16_theta + n_poles_);
+    alpha_ = cram16_alpha;
+    theta_ = cram16_theta;
     alpha0_ = cram16_alpha0;
   } else if (order == 48) {
     n_poles_ = 24;
-    alpha_.assign(cram48_alpha, cram48_alpha + n_poles_);
-    theta_.assign(cram48_theta, cram48_theta + n_poles_);
+    alpha_ = cram48_alpha;
+    theta_ = cram48_theta;
     alpha0_ = cram48_alpha0;
   } else {
     throw std::invalid_argument {
@@ -155,7 +275,7 @@ vector<double> IPFCramSolver::solve(
 
   // Symbolic factorization: compute L/U sparsity patterns for this matrix.
   // Reused across all pole solves below.
-  auto symbolic = symbolic_lu_factorize_no_pivot(A.pattern().with_diagonal());
+  auto symbolic = symbolic_factorize(A.pattern().with_diagonal());
   vector<std::complex<double>> work(n);
   vector<std::complex<double>> x(n);
 
@@ -168,7 +288,7 @@ vector<double> IPFCramSolver::solve(
   if (substeps > 1) {
     vector<NumericLUFactorization> cached_pole_factorizations(n_poles_);
     for (int p = 0; p < n_poles_; ++p) {
-      factorize_scaled_shifted_lu_no_pivot(
+      numeric_factorize_cram(
         A, step_dt, theta_[p], symbolic, cached_pole_factorizations[p], work);
     }
 
@@ -191,7 +311,7 @@ vector<double> IPFCramSolver::solve(
     // Reuse a single numeric container while recomputing each pole on demand.
     NumericLUFactorization current_pole_factorization;
     for (int p = 0; p < n_poles_; ++p) {
-      factorize_scaled_shifted_lu_no_pivot(
+      numeric_factorize_cram(
         A, step_dt, theta_[p], symbolic, current_pole_factorization, work);
       triangular_solve_lu(y, symbolic, current_pole_factorization, x);
 

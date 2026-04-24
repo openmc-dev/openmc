@@ -54,8 +54,8 @@ def test_cram_solve_cpp():
     assert z16 == approx(z_ref)
 
 
-def test_substeps1_matches_unsubstepped():
-    """substeps=1 must be bitwise identical to the unsubstepped call."""
+def test_substeps1_matches_original():
+    """substeps=1 must be bitwise identical to original result."""
     x = np.array([1.0, 1.0])
     mat = sp.csc_array([[-1.0, 0.0], [-2.0, -3.0]])
     dt = 0.1
@@ -123,4 +123,3 @@ def test_substeps_self_convergence():
         err = np.linalg.norm(n_sub - n_ref) / np.linalg.norm(n_ref)
         assert err < prev_err
         prev_err = err
-

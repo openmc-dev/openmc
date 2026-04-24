@@ -4,33 +4,11 @@
 #include "openmc/sparse_matrix.h"
 
 #include <algorithm>
-#include <complex>
+#include <stdexcept>
 
-#include "openmc/error.h"
+#include <fmt/core.h>
 
 namespace openmc {
-
-namespace {
-
-// Fast complex reciprocal: 1/(a+bi) = (a-bi) / (a^2 + b^2)
-inline std::complex<double> fast_crecip(std::complex<double> z)
-{
-  double a = z.real();
-  double b = z.imag();
-  double denom = a * a + b * b;
-  return {a / denom, -b / denom};
-}
-
-// Fast complex multiply: (a+bi)(c+di) = (ac-bd) + (ad+bc)i
-inline std::complex<double> fast_cmul(
-  std::complex<double> x, std::complex<double> y)
-{
-  double a = x.real(), b = x.imag();
-  double c = y.real(), d = y.imag();
-  return {a * c - b * d, a * d + b * c};
-}
-
-} // anonymous namespace
 
 //==============================================================================
 // CSCPattern implementation
@@ -40,29 +18,31 @@ CSCPattern::CSCPattern(int n, vector<int> indptr, vector<int> indices)
   : n_(n), indptr_(std::move(indptr)), indices_(std::move(indices))
 {
   if (static_cast<int>(indptr_.size()) != n_ + 1) {
-    fatal_error(fmt::format(
-      "CSCPattern: indptr size ({}) != n + 1 ({})", indptr_.size(), n_ + 1));
+    throw std::invalid_argument {fmt::format(
+      "CSCPattern: indptr size ({}) != n + 1 ({})", indptr_.size(), n_ + 1)};
   }
   if (indptr_[0] != 0) {
-    fatal_error(fmt::format("CSCPattern: indptr[0] ({}) != 0", indptr_[0]));
+    throw std::invalid_argument {
+      fmt::format("CSCPattern: indptr[0] ({}) != 0", indptr_[0])};
   }
   if (indptr_[n_] != static_cast<int>(indices_.size())) {
-    fatal_error(fmt::format("CSCPattern: indptr[n] ({}) != indices size ({})",
-      indptr_[n_], indices_.size()));
+    throw std::invalid_argument {
+      fmt::format("CSCPattern: indptr[n] ({}) != indices size ({})",
+        indptr_[n_], indices_.size())};
   }
 
   for (int j = 0; j < n_; ++j) {
     for (int k = indptr_[j]; k < indptr_[j + 1]; ++k) {
       if (indices_[k] < 0 || indices_[k] >= n_) {
-        fatal_error(fmt::format(
+        throw std::invalid_argument {fmt::format(
           "CSCPattern: row index {} out of bounds [0, {}) in column {}",
-          indices_[k], n_, j));
+          indices_[k], n_, j)};
       }
       if (k > indptr_[j] && indices_[k - 1] >= indices_[k]) {
-        fatal_error(
+        throw std::invalid_argument {
           fmt::format("CSCPattern: row indices not sorted in column {} "
                       "(indices[{}]={} >= indices[{}]={})",
-            j, k - 1, indices_[k - 1], k, indices_[k]));
+            j, k - 1, indices_[k - 1], k, indices_[k])};
       }
     }
   }
@@ -77,8 +57,9 @@ CSCMatrix::CSCMatrix(
   : pattern_(n, std::move(indptr), std::move(indices)), data_(std::move(data))
 {
   if (static_cast<int>(data_.size()) != pattern_.nnz()) {
-    fatal_error(fmt::format("CSCMatrix: data size ({}) != pattern nnz ({})",
-      data_.size(), pattern_.nnz()));
+    throw std::invalid_argument {
+      fmt::format("CSCMatrix: data size ({}) != pattern nnz ({})",
+        data_.size(), pattern_.nnz())};
   }
 }
 
@@ -140,7 +121,7 @@ CSCPattern CSCPattern::with_diagonal() const
 // LU factorization helpers
 //==============================================================================
 
-SymbolicLUFactorization symbolic_lu_factorize_no_pivot(CSCPattern pattern)
+SymbolicLUFactorization symbolic_factorize(CSCPattern pattern)
 {
   int n = pattern.n();
   const auto& indptr = pattern.indptr();
@@ -224,114 +205,6 @@ SymbolicLUFactorization symbolic_lu_factorize_no_pivot(CSCPattern pattern)
   return {std::move(pattern),
     CSCPattern(n, std::move(l_indptr), std::move(l_rowidx)),
     CSCPattern(n, std::move(u_indptr), std::move(u_rowidx))};
-}
-
-void factorize_scaled_shifted_lu_no_pivot(const CSCMatrix& A, double scale,
-  std::complex<double> shift, const SymbolicLUFactorization& symbolic,
-  NumericLUFactorization& numeric, vector<std::complex<double>>& work)
-{
-  int n = A.n();
-  const auto& a_indptr = A.indptr();
-  const auto& a_indices = A.indices();
-  const auto& a_data = A.data();
-
-  const auto& sp_indptr = symbolic.pattern.indptr();
-  const auto& sp_indices = symbolic.pattern.indices();
-  const auto& l_indptr = symbolic.l_pattern.indptr();
-  const auto& l_rowidx = symbolic.l_pattern.indices();
-  const auto& u_indptr = symbolic.u_pattern.indptr();
-  const auto& u_rowidx = symbolic.u_pattern.indices();
-
-  if (static_cast<int>(work.size()) != n) {
-    work.resize(n);
-  }
-  numeric.l_data.resize(symbolic.l_pattern.nnz());
-  numeric.u_data.resize(symbolic.u_pattern.nnz());
-  numeric.u_diag_inv.resize(n);
-
-  for (int j = 0; j < n; ++j) {
-
-    // Scatter the scaled and shifted operator column:
-    // M[:, j] = scale * A[:, j] - shift * I[:, j]
-    {
-      int a_pos = a_indptr[j];
-      int a_end = a_indptr[j + 1];
-
-      for (int sp_pos = sp_indptr[j]; sp_pos < sp_indptr[j + 1]; ++sp_pos) {
-        int row = sp_indices[sp_pos];
-        std::complex<double> val(0.0, 0.0);
-
-        if (a_pos < a_end && a_indices[a_pos] == row) {
-          val = scale * a_data[a_pos];
-          ++a_pos;
-        }
-
-        if (row == j) {
-          val -= shift;
-        }
-
-        work[row] = val;
-      }
-    }
-
-    // Left-looking updates.
-    for (int up = u_indptr[j]; up < u_indptr[j + 1] - 1; ++up) {
-      int k = u_rowidx[up];
-      std::complex<double> ukj = work[k];
-      numeric.u_data[up] = ukj;
-
-      for (int lp = l_indptr[k]; lp < l_indptr[k + 1]; ++lp) {
-        work[l_rowidx[lp]] -= fast_cmul(numeric.l_data[lp], ukj);
-      }
-    }
-
-    std::complex<double> inv_ujj = fast_crecip(work[j]);
-    numeric.u_diag_inv[j] = inv_ujj;
-    numeric.u_data[u_indptr[j + 1] - 1] = work[j];
-    for (int lp = l_indptr[j]; lp < l_indptr[j + 1]; ++lp) {
-      numeric.l_data[lp] = fast_cmul(work[l_rowidx[lp]], inv_ujj);
-    }
-
-    for (int up = u_indptr[j]; up < u_indptr[j + 1]; ++up) {
-      work[u_rowidx[up]] = {0.0, 0.0};
-    }
-    for (int lp = l_indptr[j]; lp < l_indptr[j + 1]; ++lp) {
-      work[l_rowidx[lp]] = {0.0, 0.0};
-    }
-  }
-}
-
-void triangular_solve_lu(const vector<double>& b,
-  const SymbolicLUFactorization& symbolic,
-  const NumericLUFactorization& numeric, vector<std::complex<double>>& x)
-{
-  int n = symbolic.pattern.n();
-  const auto& l_indptr = symbolic.l_pattern.indptr();
-  const auto& l_rowidx = symbolic.l_pattern.indices();
-  const auto& u_indptr = symbolic.u_pattern.indptr();
-  const auto& u_rowidx = symbolic.u_pattern.indices();
-
-  if (static_cast<int>(x.size()) != n) {
-    x.resize(n);
-  }
-
-  for (int j = 0; j < n; ++j) {
-    x[j] = std::complex<double>(b[j], 0.0);
-  }
-
-  for (int j = 0; j < n; ++j) {
-    for (int lp = l_indptr[j]; lp < l_indptr[j + 1]; ++lp) {
-      x[l_rowidx[lp]] -= fast_cmul(numeric.l_data[lp], x[j]);
-    }
-  }
-
-  for (int j = n - 1; j >= 0; --j) {
-    x[j] = fast_cmul(x[j], numeric.u_diag_inv[j]);
-
-    for (int up = u_indptr[j]; up < u_indptr[j + 1] - 1; ++up) {
-      x[u_rowidx[up]] -= fast_cmul(numeric.u_data[up], x[j]);
-    }
-  }
 }
 
 } // namespace openmc

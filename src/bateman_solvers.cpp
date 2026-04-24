@@ -102,12 +102,18 @@ void numeric_factorize_cram(const CSCMatrix& A, double dt,
       numeric.l_data[lp] = fast_cmul(work[l_rowidx[lp]], inv_ujj);
     }
 
+    // Reset the scatter buffer to zero for the next column. The union of
+    // U[:, j] and L[:, j] row indices is a superset of every row written by
+    // the scatter and left-looking updates above, so these two loops suffice.
     for (int up = u_indptr[j]; up < u_indptr[j + 1]; ++up) {
       work[u_rowidx[up]] = {0.0, 0.0};
     }
     for (int lp = l_indptr[j]; lp < l_indptr[j + 1]; ++lp) {
       work[l_rowidx[lp]] = {0.0, 0.0};
     }
+    // Invariant: the union of U[:, j] rows and L[:, j] rows is a superset of
+    // every row touched by the scatter and left-looking updates above, so
+    // these two loops fully reset `work` to zero before the next column.
   }
 }
 
@@ -341,16 +347,16 @@ extern "C" int openmc_cram_solve(int n, const int* indptr, const int* indices,
   const double* data, const double* n0, double dt, int order, int substeps,
   double* result)
 {
-  try {
-    if (order != 16 && order != 48) {
-      set_errmsg(fmt::format("CRAM order must be 16 or 48, got {}", order));
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-    if (substeps <= 0) {
-      set_errmsg(fmt::format("substeps must be positive, got {}", substeps));
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
+  if (!indptr || !indices || !data || !n0 || !result) {
+    set_errmsg("openmc_cram_solve: null pointer argument");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  if (n < 0) {
+    set_errmsg(fmt::format("matrix dimension must be non-negative, got {}", n));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
 
+  try {
     int nnz = indptr[n];
     CSCMatrix A(n, vector<int>(indptr, indptr + n + 1),
       vector<int>(indices, indices + nnz), vector<double>(data, data + nnz));
@@ -359,6 +365,9 @@ extern "C" int openmc_cram_solve(int n, const int* indptr, const int* indices,
     IPFCramSolver solver(order);
     vector<double> y = solver.solve(A, n0_vec, dt, substeps);
     std::copy(y.begin(), y.end(), result);
+  } catch (const std::invalid_argument& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_INVALID_ARGUMENT;
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_DATA;

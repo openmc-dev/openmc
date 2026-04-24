@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "openmc/sparse_matrix.h"
@@ -133,4 +135,38 @@ TEST_CASE("CSCMatrix default constructor")
   CSCMatrix mat;
   CHECK(mat.n() == 0);
   CHECK(mat.nnz() == 0);
+}
+
+TEST_CASE("CSCPattern rejects malformed inputs")
+{
+  // indptr size mismatch (n=3 requires 4 entries)
+  CHECK_THROWS_AS(
+    CSCPattern(3, {0, 1, 2}, {0, 1}), std::invalid_argument);
+
+  // indptr[0] must be 0
+  CHECK_THROWS_AS(
+    CSCPattern(2, {1, 1, 2}, {0, 1}), std::invalid_argument);
+
+  // indptr[n] must equal nnz
+  CHECK_THROWS_AS(
+    CSCPattern(2, {0, 1, 3}, {0, 1}), std::invalid_argument);
+
+  // Row index out of bounds
+  CHECK_THROWS_AS(
+    CSCPattern(2, {0, 1, 2}, {0, 5}), std::invalid_argument);
+
+  // Unsorted row indices within a column
+  CHECK_THROWS_AS(
+    CSCPattern(3, {0, 2, 2, 2}, {2, 0}), std::invalid_argument);
+
+  // Duplicate row indices within a column (not strictly ascending)
+  CHECK_THROWS_AS(
+    CSCPattern(3, {0, 2, 2, 2}, {1, 1}), std::invalid_argument);
+}
+
+TEST_CASE("CSCMatrix rejects data/nnz size mismatch")
+{
+  // Pattern has 2 nonzeros, only 1 data value supplied
+  CHECK_THROWS_AS(
+    CSCMatrix(2, {0, 1, 2}, {0, 1}, {1.0}), std::invalid_argument);
 }

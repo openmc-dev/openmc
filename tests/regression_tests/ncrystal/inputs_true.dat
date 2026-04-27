@@ -36,9 +36,10 @@
     <filter id="3" type="cellfrom">
       <bins>1</bins>
     </filter>
-    <tally id="1" name="angular distribution">
+    <tally id="1" type="surface" name="angular distribution">
       <filters>1 2 3</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
   </tallies>
 </model>

@@ -26,7 +26,7 @@ def test_weightfilter(run_in_tmpdir):
         [0.999, 0.9999, 0.99999, 0.999999, 1.0, 1.000001 ,1.00001, 1.0001, 1.001]
     )
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter, weight_filter]
     tally.estimator = 'analog'
     tally.scores = ['flux']

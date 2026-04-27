@@ -52,7 +52,7 @@ def test_random_ray_s2():
     mesh.lower_left = (0.0, -5.0, -5.0)
     mesh.upper_right = (L, 5.0, 5.0)
 
-    tally = openmc.Tally(name="LR")
+    tally = openmc.VolumeTally(name="LR")
     tally.filters = [openmc.MeshFilter(mesh)]
     tally.scores = ['flux']
     tally.estimator = 'tracklength'

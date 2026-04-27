@@ -28,7 +28,7 @@ def water_model():
     settings.source = source
 
     # Define tallies
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ["heating"]
     tallies = openmc.Tallies([tally])
 

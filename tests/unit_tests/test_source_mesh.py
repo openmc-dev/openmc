@@ -269,7 +269,7 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
 
     # tally the flux on the mesh
     mesh_filter = openmc.MeshFilter(mesh)
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter]
     tally.scores = ['flux']
 

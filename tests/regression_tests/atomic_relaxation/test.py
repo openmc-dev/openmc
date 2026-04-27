@@ -29,7 +29,7 @@ def model():
     model.settings.atomic_relaxation = False
     model.settings.run_mode = 'fixed source'
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [openmc.ParticleFilter(['photon', 'electron'])]
     tally.scores = ['flux', 'heating']
     model.tallies = [tally]

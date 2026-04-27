@@ -18,7 +18,7 @@ def test_musurface(run_in_tmpdir):
 
     filter1 = openmc.MuSurfaceFilter(200)
     filter2 = openmc.SurfaceFilter(sphere)
-    tally = openmc.Tally()
+    tally = openmc.SurfaceTally()
     tally.filters = [filter1, filter2]
     tally.scores = ['current']
     model.tallies = openmc.Tallies([tally])

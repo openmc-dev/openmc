@@ -155,7 +155,7 @@ def get_microxs_and_flux(
     else:
         raise ValueError(f"Unsupported domain type: {type(domains[0])}")
 
-    flux_tally = openmc.Tally(name='MicroXS flux')
+    flux_tally = openmc.VolumeTally(name='MicroXS flux')
     flux_tally.filters = [domain_filter, energy_filter]
     flux_tally.scores = ['flux']
     model.tallies = [flux_tally]
@@ -179,7 +179,7 @@ def get_microxs_and_flux(
 
     # Only construct tally if both lists are non-empty
     if rr_nuclides and rr_reactions:
-        rr_tally = openmc.Tally(name='MicroXS RR')
+        rr_tally = openmc.VolumeTally(name='MicroXS RR')
         # Use 1-group energy filter for RR in flux mode
         if reaction_rate_mode == 'flux':
             rr_energy_filter = openmc.EnergyFilter(

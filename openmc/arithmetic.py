@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 import copy
+from typing import Generic, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -15,8 +16,9 @@ _TALLY_ARITHMETIC_OPS = {'+', '-', '*', '/', '^'}
 # Acceptable tally aggregation operations
 _TALLY_AGGREGATE_OPS = {'sum', 'avg'}
 
+T = TypeVar("T")
 
-class CrossScore:
+class CrossScore(Generic[T]):
     """A special-purpose tally score used to encapsulate all combinations of two
     tally's scores as an outer product for tally arithmetic.
 
@@ -55,6 +57,10 @@ class CrossScore:
 
     def __repr__(self):
         return f'({self.left_score} {self.binary_op} {self.right_score})'
+        
+    def __iter__(self):
+        yield self.left_score
+        yield self.right_score
 
     @property
     def left_score(self):
@@ -87,7 +93,7 @@ class CrossScore:
         self._binary_op = binary_op
 
 
-class CrossNuclide:
+class CrossNuclide(Generic[T]):
     """A special-purpose nuclide used to encapsulate all combinations of two
     tally's nuclides as an outer product for tally arithmetic.
 
@@ -126,6 +132,10 @@ class CrossNuclide:
 
     def __repr__(self):
         return self.name
+        
+    def __iter__(self):
+        yield self.left_nuclide
+        yield self.right_nuclide
 
     @property
     def left_nuclide(self):
@@ -162,7 +172,7 @@ class CrossNuclide:
         return f'({self.left_nuclide} {self.binary_op} {self.right_nuclide})'
 
 
-class CrossFilter:
+class CrossFilter(Generic[T]):
     """A special-purpose filter used to encapsulate all combinations of two
     tally's filter bins as an outer product for tally arithmetic.
 
@@ -216,6 +226,10 @@ class CrossFilter:
             '{: <16}=\t{}'.format('\tBins', filter_bins)
         ]
         return '\n'.join(parts)
+        
+    def __iter__(self):
+        yield self.left_filter
+        yield self.right_filter
 
     @property
     def left_filter(self):
@@ -296,7 +310,7 @@ class CrossFilter:
 
         This method constructs a Pandas DataFrame object for the CrossFilter
         with columns annotated by filter bin information. This is a helper
-        method for the Tally.get_pandas_dataframe(...) method. This method
+        method for the TallyBase.get_pandas_dataframe(...) method. This method
         recursively builds and concatenates Pandas DataFrames for the left
         and right filters and crossfilters.
 
@@ -326,7 +340,7 @@ class CrossFilter:
 
         See also
         --------
-        Tally.get_pandas_dataframe(), Filter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), Filter.get_pandas_dataframe()
 
         """
 
@@ -345,7 +359,7 @@ class CrossFilter:
         return df
 
 
-class AggregateScore:
+class AggregateScore(Generic[T]):
     """A special-purpose tally score used to encapsulate an aggregate of a
     subset or all of tally's scores for tally aggregation.
 
@@ -387,6 +401,9 @@ class AggregateScore:
         string = ', '.join(map(str, self.scores))
         string = f'{self.aggregate_op}({string})'
         return string
+        
+    def __iter__(self):
+        yield from self._scores       
 
     @property
     def scores(self):
@@ -415,7 +432,7 @@ class AggregateScore:
         return string
 
 
-class AggregateNuclide:
+class AggregateNuclide(Generic[T]):
     """A special-purpose tally nuclide used to encapsulate an aggregate of a
     subset or all of tally's nuclides for tally aggregation.
 
@@ -455,6 +472,9 @@ class AggregateNuclide:
 
     def __repr__(self):
         return f'{self.aggregate_op}{self.name}'
+        
+    def __iter__(self):
+        yield from self._nuclides
 
     @property
     def nuclides(self):
@@ -482,7 +502,7 @@ class AggregateNuclide:
         return '(' + ', '.join(map(str, names)) + ')'
 
 
-class AggregateFilter:
+class AggregateFilter(Generic[T]):
     """A special-purpose tally filter used to encapsulate an aggregate of a
     subset or all of a tally filter's bins for tally aggregation.
 
@@ -554,6 +574,9 @@ class AggregateFilter:
             '{: <16}=\t{}'.format('\tBins', self.bins)
         ]
         return '\n'.join(parts)
+        
+    def __iter__(self):
+        yield self._aggregate_filter     
 
     @property
     def aggregate_filter(self):
@@ -645,7 +668,7 @@ class AggregateFilter:
 
         This method constructs a Pandas DataFrame object for the AggregateFilter
         with columns annotated by filter bin information. This is a helper
-        method for the Tally.get_pandas_dataframe(...) method.
+        method for the TallyBase.get_pandas_dataframe(...) method.
 
         Parameters
         ----------
@@ -672,7 +695,7 @@ class AggregateFilter:
 
         See also
         --------
-        Tally.get_pandas_dataframe(), Filter.get_pandas_dataframe(),
+        TallyBase.get_pandas_dataframe(), Filter.get_pandas_dataframe(),
         CrossFilter.get_pandas_dataframe()
 
         """

@@ -104,7 +104,7 @@ def labels(params):
 @pytest.mark.parametrize("filters", test_cases, ids=labels)
 def test_ww_gen(filters, run_in_tmpdir, model):
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = list(filters)
     tally.scores = ['flux']
     model.tallies = openmc.Tallies([tally])
@@ -180,7 +180,7 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     pf = openmc.ParticleFilter(['neutron', 'photon'])
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mf, ef, pf]
     tally.scores = ['flux']
 
@@ -315,7 +315,7 @@ def test_python_hdf5_roundtrip(run_in_tmpdir, model):
 
 
 def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = filters
     tally.scores = ['flux']
     model.tallies = [tally]

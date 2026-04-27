@@ -40,10 +40,10 @@ def test_filter_mesh_material(run_in_tmpdir):
     np.testing.assert_equal(mmf.bins, expected_bins)
 
     # Create two tallies, one with a mesh filter and one with mesh-material
-    mesh_tally = openmc.Tally()
+    mesh_tally = openmc.VolumeTally()
     mesh_tally.filters = [openmc.MeshFilter(mesh)]
     mesh_tally.scores = ['flux']
-    mesh_material_tally = openmc.Tally()
+    mesh_material_tally = openmc.VolumeTally()
     mesh_material_tally.filters = [mmf]
     mesh_material_tally.scores = ['flux']
     model.tallies = [mesh_tally, mesh_material_tally]

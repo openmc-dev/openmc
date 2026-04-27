@@ -63,7 +63,7 @@ def model():
 
     particle_filter = openmc.ParticleFilter(['neutron', 'photon'])
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter, energy_filter, particle_filter]
     tally.scores = ['flux']
 

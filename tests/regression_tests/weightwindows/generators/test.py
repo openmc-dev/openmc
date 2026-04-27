@@ -30,7 +30,7 @@ def test_ww_generator(run_in_tmpdir):
 
     # include another tally to make sure user-specified tallies and those automaticaly
     # created by weight window generators can coexist
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     ef = openmc.EnergyFilter(energy_bounds)
     tally.filters = [ef]
     tally.scores = ['flux']

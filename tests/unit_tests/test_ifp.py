@@ -42,7 +42,7 @@ def test_exceptions(options, error, run_in_tmpdir, geometry):
         settings = openmc.Settings(**options)
         settings.particles = 100
         settings.batches = 15
-        tally = openmc.Tally(name="ifp-scores")
+        tally = openmc.VolumeTally(name="ifp-scores")
         tally.scores = ["ifp-time-numerator", "ifp-beta-numerator", "ifp-denominator"]
         tallies = openmc.Tallies([tally])
         model = openmc.Model(geometry=geometry, settings=settings, tallies=tallies)
@@ -71,7 +71,7 @@ def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, use_auto_t
         model.add_kinetics_parameters_tallies(num_groups=num_groups)
     else:
         for score in ["ifp-time-numerator", "ifp-beta-numerator", "ifp-denominator"]:
-            tally = openmc.Tally()
+            tally = openmc.VolumeTally()
             tally.scores = [score]
             if score == "ifp-beta-numerator" and num_groups is not None:
                 tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]

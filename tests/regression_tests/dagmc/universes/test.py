@@ -72,7 +72,7 @@ def pin_lattice_model():
     model.geometry = openmc.Geometry([bounding_cell])
 
     # add a cell instance tally
-    tally = openmc.Tally(name='cell instance tally')
+    tally = openmc.VolumeTally(name='cell instance tally')
     # using scattering
     cell_instance_filter = openmc.CellInstanceFilter(((4, 0), (4, 1), (4, 2), (4, 3), (4, 4)))
     tally.filters = [cell_instance_filter]

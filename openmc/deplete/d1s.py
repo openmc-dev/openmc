@@ -122,11 +122,11 @@ def time_correction_factors(
 
 
 def apply_time_correction(
-        tally: openmc.Tally,
+        tally: openmc.TallyBase,
         time_correction_factors: dict[str, np.ndarray],
         index: int = -1,
         sum_nuclides: bool = True
-) -> openmc.Tally:
+) -> openmc.TallyBase:
     """Apply time correction factors to a tally.
 
     This function applies the time correction factors at the given index to a
@@ -136,8 +136,8 @@ def apply_time_correction(
 
     Parameters
     ----------
-    tally : openmc.Tally
-        Tally to apply the time correction factors to
+    tally : openmc.TallyBase
+        TallyBase to apply the time correction factors to
     time_correction_factors : dict
         Time correction factors as returned by :func:`time_correction_factors`
     index : int, optional
@@ -149,7 +149,7 @@ def apply_time_correction(
 
     Returns
     -------
-    openmc.Tally
+    openmc.TallyBase
         Derived tally with time correction factors applied
 
     """

@@ -39,7 +39,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
             for cell_filter in self.cell_filters:
                 for nuclide in self.nuclides:
                     for score in self.scores:
-                        tally = openmc.Tally()
+                        tally = openmc.VolumeTally()
                         tally.estimator = 'tracklength'
                         tally.scores.append(score)
                         tally.nuclides.append(nuclide)
@@ -57,7 +57,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         tallies[0].name = 'cell tally'
 
         # Initialize a distribcell tally
-        distribcell_tally = openmc.Tally(name='distribcell tally')
+        distribcell_tally = openmc.VolumeTally(name='distribcell tally')
         distribcell_tally.estimator = 'tracklength'
         distribcell_tally.filters = [distribcell_filter, merged_energies]
         for score in self.scores:
@@ -65,7 +65,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         for nuclide in self.nuclides:
             distribcell_tally.nuclides.append(nuclide)
 
-        mesh_tally = openmc.Tally(name='mesh tally')
+        mesh_tally = openmc.VolumeTally(name='mesh tally')
         mesh_tally.estimator = 'tracklength'
         mesh_tally.filters = [mesh_filter, merged_energies]
         mesh_tally.scores = self.scores

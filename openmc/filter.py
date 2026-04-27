@@ -381,7 +381,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -409,7 +409,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         # Initialize Pandas DataFrame
@@ -650,7 +650,7 @@ class CellInstanceFilter(Filter):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -669,7 +669,7 @@ class CellInstanceFilter(Filter):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         # Repeat and tile bins as necessary to account for other filters.
@@ -960,7 +960,7 @@ class MeshFilter(Filter):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -983,7 +983,7 @@ class MeshFilter(Filter):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         # Initialize dictionary to build Pandas Multi-index column
@@ -1220,7 +1220,7 @@ class MeshMaterialFilter(MeshFilter):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -1239,7 +1239,7 @@ class MeshMaterialFilter(MeshFilter):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         # Repeat and tile bins as necessary to account for other filters.
@@ -1297,7 +1297,7 @@ class MeshSurfaceFilter(MeshFilter):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -1317,7 +1317,7 @@ class MeshSurfaceFilter(MeshFilter):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         # Initialize Pandas DataFrame
@@ -1603,7 +1603,7 @@ class RealFilter(Filter):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -1623,7 +1623,7 @@ class RealFilter(Filter):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         # Initialize Pandas DataFrame
@@ -1984,7 +1984,7 @@ class ParticleProductionFilter(Filter):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -2001,7 +2001,7 @@ class ParticleProductionFilter(Filter):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         filter_dict = {}
@@ -2216,7 +2216,7 @@ class DistribcellFilter(Filter):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -2250,7 +2250,7 @@ class DistribcellFilter(Filter):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         # Initialize Pandas DataFrame
@@ -2813,7 +2813,7 @@ class EnergyFunctionFilter(Filter):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
+        :meth:`TallyBase.get_pandas_dataframe`.
 
         Parameters
         ----------
@@ -2833,7 +2833,7 @@ class EnergyFunctionFilter(Filter):
 
         See also
         --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+        TallyBase.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
         df = pd.DataFrame()

@@ -44,7 +44,7 @@ class CreateFissionNeutronsTestHarness(PyAPITestHarness):
 
         # Create tallies
         tallies = openmc.Tallies()
-        tally = openmc.Tally(1)
+        tally = openmc.VolumeTally(1)
         tally.scores = ['flux']
         tallies.append(tally)
         self._model.tallies = tallies

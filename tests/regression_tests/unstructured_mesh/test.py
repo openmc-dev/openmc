@@ -212,7 +212,7 @@ def model():
     regular_mesh.upper_right = (10.0, 10.0, 10.0)
 
     regular_mesh_filter = openmc.MeshFilter(mesh=regular_mesh)
-    regular_mesh_tally = openmc.Tally(name="regular mesh tally")
+    regular_mesh_tally = openmc.VolumeTally(name="regular mesh tally")
     regular_mesh_tally.filters = [regular_mesh_filter]
     regular_mesh_tally.scores = ['flux']
 
@@ -282,7 +282,7 @@ def test_unstructured_mesh_tets(model, test_opts):
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies
-    uscd_tally = openmc.Tally(name="unstructured mesh tally")
+    uscd_tally = openmc.VolumeTally(name="unstructured mesh tally")
     uscd_tally.filters = [uscd_filter]
     uscd_tally.scores = ['flux']
     uscd_tally.estimator = test_opts['estimator']
@@ -313,7 +313,7 @@ def test_unstructured_mesh_hexes(model):
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies
-    uscd_tally = openmc.Tally(name="unstructured mesh tally")
+    uscd_tally = openmc.VolumeTally(name="unstructured mesh tally")
     uscd_tally.filters = [uscd_filter]
     uscd_tally.scores = ['flux']
     uscd_tally.estimator = 'collision'

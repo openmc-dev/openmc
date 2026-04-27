@@ -13,7 +13,7 @@ def test_xml_roundtrip(run_in_tmpdir):
     mesh.dimension = (5, 5, 5)
     mesh_filter = openmc.MeshFilter(mesh)
     meshborn_filter = openmc.MeshBornFilter(mesh)
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter, meshborn_filter]
     tally.nuclides = ['U235', 'I135', 'Li6']
     tally.scores = ['total', 'fission', 'heating']
@@ -48,8 +48,8 @@ def test_xml_roundtrip(run_in_tmpdir):
 
 
 def test_tally_equivalence():
-    tally_a = openmc.Tally()
-    tally_b = openmc.Tally(tally_id=tally_a.id)
+    tally_a = openmc.VolumeTally()
+    tally_b = openmc.VolumeTally(tally_id=tally_a.id)
 
     tally_a.name = 'new name'
     assert tally_a != tally_b
@@ -100,7 +100,7 @@ def test_tally_equivalence():
 
 def test_figure_of_merit(sphere_model, run_in_tmpdir):
     # Run model with a few simple tally scores
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['total', 'absorption', 'scatter']
     sphere_model.tallies = [tally]
     sp_path = sphere_model.run(apply_tally_results=True)
@@ -116,7 +116,7 @@ def test_figure_of_merit(sphere_model, run_in_tmpdir):
 
 def test_tally_application(sphere_model, run_in_tmpdir):
     # Create a tally with most possible gizmos
-    tally = openmc.Tally(name='test tally')
+    tally = openmc.VolumeTally(name='test tally')
     ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
     mesh = openmc.RegularMesh.from_domain(sphere_model.geometry, (2, 2, 2))
     mf = openmc.MeshFilter(mesh)
@@ -167,7 +167,7 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     assert sp_tally.nuclides == tally.nuclides
 
 def _tally_from_data(x, *, higher_moments=True, normality=True):
-    t = openmc.Tally()
+    t = openmc.VolumeTally()
     t.scores = ["flux"]  # 1 score
     t.nuclides = [openmc.Nuclide("H1")]  # 1 nuclide
     t._sp_filename = "dummy.h5"  # mark "results available"
@@ -330,7 +330,7 @@ def test_ztests_scipy_comparison():
     assert K2_1 > 2000 and k2_sp1 > 2000
 
 def test_vov_stochastic(sphere_model, run_in_tmpdir):
-    tally = openmc.Tally(name="test tally")
+    tally = openmc.VolumeTally(name="test tally")
     ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
     mesh = openmc.RegularMesh.from_domain(sphere_model.geometry, (2, 2, 2))
     mf = openmc.MeshFilter(mesh)

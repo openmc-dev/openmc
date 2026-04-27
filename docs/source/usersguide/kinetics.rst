@@ -78,7 +78,7 @@ Alternatively, each of the tallies can be manually defined using group-wise or
 total :math:`\beta_{\text{eff}}` specified by providing a 6-group
 :class:`openmc.DelayedGroupFilter`::
 
-    beta_tally = openmc.Tally(name="group-beta-score")
+    beta_tally = openmc.VolumeTally(name="group-beta-score")
     beta_tally.scores = ["ifp-beta-numerator"]
 
     # Add DelayedGroupFilter to enable group-wise tallies
@@ -87,7 +87,7 @@ total :math:`\beta_{\text{eff}}` specified by providing a 6-group
 Here is an example showing how to declare the three available IFP scores in a
 single tally::
 
-    tally = openmc.Tally(name="ifp-scores")
+    tally = openmc.VolumeTally(name="ifp-scores")
     tally.scores = [
         "ifp-time-numerator",
         "ifp-beta-numerator",

@@ -70,7 +70,7 @@ def model(request):
     t0 = time(particle, x - r, E)
 
     # Create tally with time filter
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [openmc.TimeFilter([0.0, t0, 2*t0])]
     tally.scores = ['total']
     model.tallies.append(tally)
@@ -111,7 +111,7 @@ def model_surf(request):
     t0 = time(particle, x, E)
 
     # Create tally with surface and time filters
-    tally = openmc.Tally()
+    tally = openmc.SurfaceTally()
     tally.filters = [
         openmc.SurfaceFilter([black_surface]),
         openmc.TimeFilter([0.0, t0*0.999, t0*1.001, 100.0])
@@ -172,10 +172,10 @@ def test_small_time_interval(run_in_tmpdir):
 
     # Add tallies with and without a time filter that should match all particles
     time_filter = openmc.TimeFilter([0.0, 1.0e100])
-    tally_with_filter = openmc.Tally()
+    tally_with_filter = openmc.VolumeTally()
     tally_with_filter.filters = [time_filter]
     tally_with_filter.scores = ['flux']
-    tally_without_filter = openmc.Tally()
+    tally_without_filter = openmc.VolumeTally()
     tally_without_filter.scores = ['flux']
     model.tallies.extend([tally_with_filter, tally_without_filter])
 

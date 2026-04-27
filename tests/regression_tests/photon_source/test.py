@@ -38,7 +38,7 @@ class SourceTestHarness(PyAPITestHarness):
         self._model.settings = settings
 
         particle_filter = openmc.ParticleFilter('photon')
-        tally = openmc.Tally()
+        tally = openmc.VolumeTally()
         tally.filters = [particle_filter]
         tally.scores = ['flux', '(n,gamma)']
         tallies = openmc.Tallies([tally])

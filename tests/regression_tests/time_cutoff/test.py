@@ -27,7 +27,7 @@ def time_model():
 
     # Tally flux under time cutoff
     tallies = openmc.Tallies()
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['flux']
     time_filter = openmc.TimeFilter([0, time_cutoff, 2*time_cutoff])
     tally.filters = [time_filter]

@@ -76,7 +76,7 @@ t_grid = np.insert(np.logspace(-6, 2, 100), 0, 0.0)
 time_filter = openmc.TimeFilter(t_grid)
 
 # Tally for total neutron density in time
-density_tally = openmc.Tally(name="Density")
+density_tally = openmc.VolumeTally(name="Density")
 density_tally.filters = [time_filter]
 density_tally.scores = ["inverse-velocity"]
 

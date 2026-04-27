@@ -51,7 +51,7 @@ def test_fixed_source():
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Point(),
                                                      strength=10.0)
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['flux']
     model.tallies.append(tally)
 

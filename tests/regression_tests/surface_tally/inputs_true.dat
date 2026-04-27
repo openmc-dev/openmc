@@ -69,37 +69,45 @@
     <filter id="11" type="surface">
       <bins>3</bins>
     </filter>
-    <tally id="1" name="fuel_to_water_1">
+    <tally id="1" type="surface" name="fuel_to_water_1">
       <filters>5 6 1 2 3</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
-    <tally id="2" name="fuel_to_water_2">
+    <tally id="2" type="surface" name="fuel_to_water_2">
       <filters>5 4 1 2 3</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
-    <tally id="3" name="water_to_fuel_1">
+    <tally id="3" type="surface" name="water_to_fuel_1">
       <filters>7 8 1 2 3</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
-    <tally id="4" name="water_to_fuel_2">
+    <tally id="4" type="surface" name="water_to_fuel_2">
       <filters>7 4 1 2 3</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
-    <tally id="5" name="net_cylinder">
+    <tally id="5" type="surface" name="net_cylinder">
       <filters>4 1 2 3</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
-    <tally id="6" name="leakage_left">
+    <tally id="6" type="surface" name="leakage_left">
       <filters>10 1 2 3</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
-    <tally id="7" name="net_right">
+    <tally id="7" type="surface" name="net_right">
       <filters>11 1</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
-    <tally id="8" name="net_right">
+    <tally id="8" type="surface" name="net_right">
       <filters>11 1</filters>
       <scores>current</scores>
+      <estimator>analog</estimator>
     </tally>
   </tallies>
 </model>

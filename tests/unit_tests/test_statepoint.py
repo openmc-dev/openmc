@@ -18,12 +18,12 @@ def test_get_tally_filter_type(run_in_tmpdir):
     settings.run_mode = "fixed source"
 
     reg_mesh = openmc.RegularMesh().from_domain(cell)
-    tally1 = openmc.Tally(tally_id=1)
+    tally1 = openmc.VolumeTally(tally_id=1)
     mesh_filter = openmc.MeshFilter(reg_mesh)
     tally1.filters = [mesh_filter]
     tally1.scores = ["flux"]
 
-    tally2 = openmc.Tally(tally_id=2, name="heating tally")
+    tally2 = openmc.VolumeTally(tally_id=2, name="heating tally")
     cell_filter = openmc.CellFilter(cell)
     tally2.filters = [cell_filter]
     tally2.scores = ["heating"]

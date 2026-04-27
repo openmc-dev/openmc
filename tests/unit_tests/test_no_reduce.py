@@ -24,7 +24,7 @@ def test_no_reduce(no_reduce, run_in_tmpdir):
 
     # Tally: surface current on vacuum boundary
     surf_filter = openmc.SurfaceFilter(sphere)
-    tally = openmc.Tally()
+    tally = openmc.SurfaceTally()
     tally.filters = [surf_filter]
     tally.scores = ['current']
     model.tallies = [tally]

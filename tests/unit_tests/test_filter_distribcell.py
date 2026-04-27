@@ -27,7 +27,7 @@ def test_distribcell_filter_apply_tally_results(run_in_tmpdir):
     model = openmc.Model(geometry)
     model.settings.batches = 10
     model.settings.particles = 1000
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     distribcell_filter = openmc.DistribcellFilter(cell1)
     tally.filters = [distribcell_filter]
     tally.scores = ['flux']

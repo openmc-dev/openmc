@@ -198,27 +198,27 @@ def test_zernike_radial():
 
 
 def test_first_moment(run_in_tmpdir, box_model):
-    plain_tally = openmc.Tally()
+    plain_tally = openmc.VolumeTally()
     plain_tally.scores = ['flux', 'scatter']
 
     # Create tallies with expansion filters
-    leg_tally = openmc.Tally()
+    leg_tally = openmc.VolumeTally()
     leg_tally.filters = [openmc.LegendreFilter(3)]
     leg_tally.scores = ['scatter']
-    leg_sptl_tally = openmc.Tally()
+    leg_sptl_tally = openmc.VolumeTally()
     leg_sptl_tally.filters = [openmc.SpatialLegendreFilter(3, 'x', -5., 5.)]
     leg_sptl_tally.scores = ['scatter']
     sph_scat_filter = openmc.SphericalHarmonicsFilter(5)
     sph_scat_filter.cosine = 'scatter'
-    sph_scat_tally = openmc.Tally()
+    sph_scat_tally = openmc.VolumeTally()
     sph_scat_tally.filters = [sph_scat_filter]
     sph_scat_tally.scores = ['scatter']
     sph_flux_filter = openmc.SphericalHarmonicsFilter(5)
     sph_flux_filter.cosine = 'particle'
-    sph_flux_tally = openmc.Tally()
+    sph_flux_tally = openmc.VolumeTally()
     sph_flux_tally.filters = [sph_flux_filter]
     sph_flux_tally.scores = ['flux']
-    zernike_tally = openmc.Tally()
+    zernike_tally = openmc.VolumeTally()
     zernike_tally.filters = [openmc.ZernikeFilter(3, r=10.)]
     zernike_tally.scores = ['scatter']
 

@@ -91,14 +91,14 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         cell_filter = openmc.CellFilter(water)
 
         # Use Cell to cell filters for partial current
-        cell_to_cell_tally = openmc.Tally(name=str('fuel_to_water_1'))
+        cell_to_cell_tally = openmc.SurfaceTally(name=str('fuel_to_water_1'))
         cell_to_cell_tally.filters = [cell_from_filter, cell_filter, \
              energy_filter, polar_filter, azimuthal_filter]
         cell_to_cell_tally.scores = ['current']
         tallies_file.append(cell_to_cell_tally)
 
         # Use a Cell from + surface filters for partial current
-        cell_to_cell_tally = openmc.Tally(name=str('fuel_to_water_2'))
+        cell_to_cell_tally = openmc.SurfaceTally(name=str('fuel_to_water_2'))
         cell_to_cell_tally.filters = [cell_from_filter, surface_filter, \
              energy_filter, polar_filter, azimuthal_filter]
         cell_to_cell_tally.scores = ['current']
@@ -110,14 +110,14 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         cell_filter = openmc.CellFilter(fuel)
 
         # Cell to cell filters for partial current
-        cell_to_cell_tally = openmc.Tally(name=str('water_to_fuel_1'))
+        cell_to_cell_tally = openmc.SurfaceTally(name=str('water_to_fuel_1'))
         cell_to_cell_tally.filters = [mat_from_filter, cell_filter, \
              energy_filter, polar_filter, azimuthal_filter]
         cell_to_cell_tally.scores = ['current']
         tallies_file.append(cell_to_cell_tally)
 
         # Cell from + surface filters for partial current
-        cell_to_cell_tally = openmc.Tally(name=str('water_to_fuel_2'))
+        cell_to_cell_tally = openmc.SurfaceTally(name=str('water_to_fuel_2'))
         cell_to_cell_tally.filters = [mat_from_filter, surface_filter, \
              energy_filter, polar_filter, azimuthal_filter]
         cell_to_cell_tally.scores = ['current']
@@ -125,7 +125,7 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
 
         # Create a net current tally on inner surface using a surface filter
         surface_filter = openmc.SurfaceFilter([1])
-        surf_tally1 = openmc.Tally(name='net_cylinder')
+        surf_tally1 = openmc.SurfaceTally(name='net_cylinder')
         surf_tally1.filters = [surface_filter, energy_filter, polar_filter, \
              azimuthal_filter]
         surf_tally1.scores = ['current']
@@ -134,7 +134,7 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         # Create a net current tally on left surface using a surface filter
         # This surface has a vacuum boundary condition, so leakage is tallied
         surface_filter = openmc.SurfaceFilter([2])
-        surf_tally2 = openmc.Tally(name='leakage_left')
+        surf_tally2 = openmc.SurfaceTally(name='leakage_left')
         surf_tally2.filters = [surface_filter, energy_filter, polar_filter, \
             azimuthal_filter]
         surf_tally2.scores = ['current']
@@ -144,13 +144,13 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         # This surface has a reflective boundary condition, so the net current
         # should be zero.
         surface_filter = openmc.SurfaceFilter([3])
-        surf_tally3 = openmc.Tally(name='net_right')
+        surf_tally3 = openmc.SurfaceTally(name='net_right')
         surf_tally3.filters = [surface_filter, energy_filter]
         surf_tally3.scores = ['current']
         tallies_file.append(surf_tally3)
 
         surface_filter = openmc.SurfaceFilter([3])
-        surf_tally3 = openmc.Tally(name='net_right')
+        surf_tally3 = openmc.SurfaceTally(name='net_right')
         surf_tally3.filters = [surface_filter, energy_filter]
         surf_tally3.scores = ['current']
         tallies_file.append(surf_tally3)

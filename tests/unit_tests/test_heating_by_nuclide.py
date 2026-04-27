@@ -22,12 +22,12 @@ def model():
 
     # Add two tallies, one with heating by nuclide and one with total heating
     particle_filter = openmc.ParticleFilter(['neutron', 'photon'])
-    heating_by_nuclide = openmc.Tally()
+    heating_by_nuclide = openmc.VolumeTally()
     heating_by_nuclide.filters = [particle_filter]
     heating_by_nuclide.nuclides = ['U235', 'H1']
     heating_by_nuclide.scores = ['heating']
 
-    heating_total = openmc.Tally()
+    heating_total = openmc.VolumeTally()
     heating_total.filters = [particle_filter]
     heating_total.scores = ['heating']
     model.tallies.extend([heating_by_nuclide, heating_total])

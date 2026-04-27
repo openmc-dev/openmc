@@ -480,7 +480,7 @@ class MeshBase(IDManagerMixin, ABC):
         # In order to get mesh into model, we temporarily replace the
         # tallies with a single mesh tally using the current mesh
         original_tallies = list(model.tallies)
-        new_tally = openmc.Tally()
+        new_tally = openmc.VolumeTally()
         new_tally.filters = [openmc.MeshFilter(self)]
         new_tally.scores = ['flux']
         model.tallies = [new_tally]
@@ -676,7 +676,7 @@ class StructuredMesh(MeshBase):
             statepoint data without reordering/reshaping. Multidimensional
             datasets are expected to have the same dimensions as the mesh itself
             with structured indexing in "C" ordering. See the "expand_dims" flag
-            of :meth:`~openmc.Tally.get_reshaped_data` on reshaping tally data when using
+            of :meth:`~openmc.TallyBase.get_reshaped_data` on reshaping tally data when using
             :class:`~openmc.MeshFilter`'s.
         volume_normalization : bool, optional
             Whether or not to normalize the data by the volume of the mesh

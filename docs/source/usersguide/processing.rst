@@ -126,7 +126,7 @@ a flat array for a given dataset can be passed directly to this method.
     mesh.lower_left = [-5, -10, -15]
     mesh.upper_right = [5, 10, 15]
     mesh_filter = openmc.MeshFilter(mesh)
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter]
     tally.scores = ['flux']
 
@@ -136,10 +136,10 @@ a flat array for a given dataset can be passed directly to this method.
     # provide the data as-is to the method
     mesh.write_data_to_vtk('flux.vtk', {'flux-mean': tally.mean})
 
-The :class:`~openmc.Tally` object also provides a way to expand the dimensions
+The :class:`~openmc.TallyBase` object also provides a way to expand the dimensions
 of the mesh filter into a meaningful form where indexing the mesh filter
 dimensions results in intuitive slicing of structured meshes by setting
-``expand_dims=True`` when using :meth:`openmc.Tally.get_reshaped_data`. This
+``expand_dims=True`` when using :meth:`openmc.TallyBase.get_reshaped_data`. This
 reshaping does cause flat indexing of the data to change, however. As noted
 above, provided datasets are allowed to be shaped so long as such datasets have
 shapes that match the mesh dimensions. The ability to pass datasets in this way
@@ -158,7 +158,7 @@ demonstrates such a case for tally with both a :class:`~openmc.MeshFilter` and
     mesh.upper_right = [5, 10, 15]
     mesh_filter = openmc.MeshFilter(mesh)
     energy_filter = openmc.EnergyFilter([0.0, 1.0, 20.0e6])
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter, energy_filter]
     tally.scores = ['flux']
 

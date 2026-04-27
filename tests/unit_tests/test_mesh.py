@@ -375,7 +375,7 @@ def test_mesh_name_roundtrip(run_in_tmpdir):
     mesh.dimension = (1, 1, 1)
 
     mesh_filter = openmc.MeshFilter(mesh)
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter]
     tally.scores = ['flux']
 
@@ -393,7 +393,7 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
 
     # create a tally using this mesh
     mf = openmc.MeshFilter(umesh)
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mf]
     tally.scores = ['flux']
 
@@ -429,7 +429,7 @@ def simple_umesh(request):
     mesh_filter = openmc.MeshFilter(umesh)
 
     # Create flux mesh tally to score alpha production
-    mesh_tally = openmc.Tally(name="test_tally")
+    mesh_tally = openmc.VolumeTally(name="test_tally")
     mesh_tally.filters = [mesh_filter]
     mesh_tally.scores = ["total"]
 
@@ -511,7 +511,7 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     mesh_filter = openmc.MeshFilter(umesh)
 
     # Create flux mesh tally to score alpha production
-    mesh_tally = openmc.Tally(name="test_tally")
+    mesh_tally = openmc.VolumeTally(name="test_tally")
     mesh_tally.filters = [mesh_filter]
     mesh_tally.scores = ["flux"]
 
@@ -824,7 +824,7 @@ def test_raytrace_mesh_infinite_loop(run_in_tmpdir):
     mesh_surface.upper_right = (30, 30, 60)
     mesh_surface.dimension = (1, 1, 1)
     reg_filter = openmc.MeshSurfaceFilter(mesh_surface)
-    mesh_surface_tally = openmc.Tally()
+    mesh_surface_tally = openmc.SurfaceTally()
     mesh_surface_tally.filters = [reg_filter]
     mesh_surface_tally.scores = ['current']
     model.tallies = [mesh_surface_tally]
@@ -879,11 +879,11 @@ def test_filter_time_mesh(run_in_tmpdir):
     time_filter = openmc.TimeFilter(time_grid)
 
     # Now use the mesh filter in a tally and indicate what scores are desired
-    tally1 = openmc.Tally(name="collision")
+    tally1 = openmc.VolumeTally(name="collision")
     tally1.estimator = "collision"
     tally1.filters = [time_filter, mesh_filter]
     tally1.scores = ["flux"]
-    tally2 = openmc.Tally(name="tracklength")
+    tally2 = openmc.VolumeTally(name="tracklength")
     tally2.estimator = "tracklength"
     tally2.filters = [time_filter, mesh_filter]
     tally2.scores = ["flux"]

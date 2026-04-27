@@ -160,71 +160,71 @@ def model():
     from_box1_filter = openmc.CellFromFilter([box1])
     from_box2_filter = openmc.CellFromFilter([box2])
 
-    t1_1 = openmc.Tally(name="total from 1 in 1")
+    t1_1 = openmc.VolumeTally(name="total from 1 in 1")
     t1_1.filters = [from_core_filter, in_core_filter]
     t1_1.scores = ["total"]
 
-    t1_2 = openmc.Tally(name="total from 1 in 2")
+    t1_2 = openmc.VolumeTally(name="total from 1 in 2")
     t1_2.filters = [from_core_filter, in_outside_core_filter]
     t1_2.scores = ["total"]
 
-    t1_3 = openmc.Tally(name="total from 1 in 3")
+    t1_3 = openmc.VolumeTally(name="total from 1 in 3")
     t1_3.filters = [from_core_filter, in_box1_filter]
     t1_3.scores = ["total"]
 
-    t1_4 = openmc.Tally(name="total from 1 in 4")
+    t1_4 = openmc.VolumeTally(name="total from 1 in 4")
     t1_4.filters = [from_core_filter, in_box2_filter]
     t1_4.scores = ["total"]
 
-    t2_1 = openmc.Tally(name="total from 2 in 1")
+    t2_1 = openmc.VolumeTally(name="total from 2 in 1")
     t2_1.filters = [from_outside_core_filter, in_core_filter]
     t2_1.scores = ["total"]
 
-    t2_2 = openmc.Tally(name="total from 2 in 2")
+    t2_2 = openmc.VolumeTally(name="total from 2 in 2")
     t2_2.filters = [from_outside_core_filter, in_outside_core_filter]
     t2_2.scores = ["total"]
 
-    t2_3 = openmc.Tally(name="total from 2 in 3")
+    t2_3 = openmc.VolumeTally(name="total from 2 in 3")
     t2_3.filters = [from_outside_core_filter, in_box1_filter]
     t2_3.scores = ["total"]
 
-    t2_4 = openmc.Tally(name="total from 2 in 4")
+    t2_4 = openmc.VolumeTally(name="total from 2 in 4")
     t2_4.filters = [from_outside_core_filter, in_box2_filter]
     t2_4.scores = ["total"]
 
-    t3_1 = openmc.Tally(name="total from 3 in 1")
+    t3_1 = openmc.VolumeTally(name="total from 3 in 1")
     t3_1.filters = [from_box1_filter, in_core_filter]
     t3_1.scores = ["total"]
 
-    t3_2 = openmc.Tally(name="total from 3 in 2")
+    t3_2 = openmc.VolumeTally(name="total from 3 in 2")
     t3_2.filters = [from_box1_filter, in_outside_core_filter]
     t3_2.scores = ["total"]
 
-    t3_3 = openmc.Tally(name="total from 3 in 3")
+    t3_3 = openmc.VolumeTally(name="total from 3 in 3")
     t3_3.filters = [from_box1_filter, in_box1_filter]
     t3_3.scores = ["total"]
 
-    t3_4 = openmc.Tally(name="total from 3 in 4")
+    t3_4 = openmc.VolumeTally(name="total from 3 in 4")
     t3_4.filters = [from_box1_filter, in_box2_filter]
     t3_4.scores = ["total"]
 
-    t4_1 = openmc.Tally(name="total from 4 in 1")
+    t4_1 = openmc.VolumeTally(name="total from 4 in 1")
     t4_1.filters = [from_box2_filter, in_core_filter]
     t4_1.scores = ["total"]
 
-    t4_2 = openmc.Tally(name="total from 4 in 2")
+    t4_2 = openmc.VolumeTally(name="total from 4 in 2")
     t4_2.filters = [from_box2_filter, in_outside_core_filter]
     t4_2.scores = ["total"]
 
-    t4_3 = openmc.Tally(name="total from 4 in 3")
+    t4_3 = openmc.VolumeTally(name="total from 4 in 3")
     t4_3.filters = [from_box2_filter, in_box1_filter]
     t4_3.scores = ["total"]
 
-    t4_4 = openmc.Tally(name="total from 4 in 4")
+    t4_4 = openmc.VolumeTally(name="total from 4 in 4")
     t4_4.filters = [from_box2_filter, in_box2_filter]
     t4_4.scores = ["total"]
 
-    tglobal = openmc.Tally(name="total")
+    tglobal = openmc.VolumeTally(name="total")
     tglobal.scores = ["total"]
 
     model.tallies += [

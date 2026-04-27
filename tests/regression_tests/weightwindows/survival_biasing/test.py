@@ -55,7 +55,7 @@ def model():
     mesh.upper_right = (160.0, 160.0, 160.0)
 
     mesh_filter = openmc.MeshFilter(mesh)
-    flux_tally = openmc.Tally(name='flux')
+    flux_tally = openmc.VolumeTally(name='flux')
     flux_tally.filters = [mesh_filter]
     flux_tally.scores = ['flux']
     tallies = openmc.Tallies([flux_tally])

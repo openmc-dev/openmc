@@ -4,7 +4,7 @@ import openmc
 def test_tally_init_args():
     """Test that Tally constructor kwargs are applied correctly."""
     filter = openmc.EnergyFilter([0.0, 1.0, 20.0e6])
-    tally = openmc.Tally(
+    tally = openmc.VolumeTally(
         name='my tally',
         scores=['flux', 'fission'],
         filters=[filter],

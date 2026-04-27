@@ -30,7 +30,7 @@ def model():
     model.settings.batches = 10
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Point((-R, 0, 0,)))
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['flux']
     model.tallies.append(tally)
     return model

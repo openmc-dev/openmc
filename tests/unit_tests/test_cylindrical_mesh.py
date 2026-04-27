@@ -38,7 +38,7 @@ def model():
         z_grid=np.linspace(-geom_size, geom_size, 11),
         r_grid=np.linspace(0, geom_size, geom_size)
     )
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
 
     mesh_filter = openmc.MeshFilter(mesh)
     tally.filters.append(mesh_filter)
@@ -138,7 +138,7 @@ def void_coincident_geom_model():
     )
     mesh_filter = openmc.MeshFilter(mesh)
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['flux']
     tally.filters = [mesh_filter]
 

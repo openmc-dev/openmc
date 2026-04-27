@@ -242,7 +242,7 @@ def test_external_mesh(cpp_driver):
 
     # Tallies
     tallies = openmc.Tallies()
-    uscd_tally = openmc.Tally(name="unstructured mesh tally")
+    uscd_tally = openmc.VolumeTally(name="unstructured mesh tally")
     uscd_tally.filters = [uscd_filter]
     uscd_tally.scores = ['flux']
     uscd_tally.estimator = 'tracklength'

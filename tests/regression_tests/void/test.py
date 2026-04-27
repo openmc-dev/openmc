@@ -26,7 +26,7 @@ def model():
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     cell_filter = openmc.CellFilter(cells)
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [cell_filter]
     tally.scores = ['total']
     model.tallies.append(tally)

@@ -1139,7 +1139,7 @@ given below:
     energy_filter = openmc.EnergyFilter(group_edges)
 
     # Create tally using our two filters and add scores
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter, energy_filter]
     tally.scores = ['flux', 'fission', 'nu-fission']
 
@@ -1222,7 +1222,7 @@ given below:
     energy_filter = openmc.EnergyFilter(ebins)
 
     # Create tally using our two filters and add scores
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mesh_filter, energy_filter]
     tally.scores = ['flux']
 

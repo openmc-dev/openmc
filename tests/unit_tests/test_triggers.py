@@ -8,7 +8,7 @@ def test_tally_trigger(run_in_tmpdir):
     mat_filter = openmc.MaterialFilter(pincell.materials)
 
     # create a tally with triggers applied
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mat_filter]
     tally.scores = ['scatter']
 
@@ -46,7 +46,7 @@ def test_tally_trigger_null_score(run_in_tmpdir):
     mat_filter = openmc.MaterialFilter(pincell.materials)
 
     # apply a tally with a score that be tallied in this model
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [mat_filter]
     tally.scores = ['pair-production']
 
@@ -81,7 +81,7 @@ def test_tally_trigger_zero_ignored(run_in_tmpdir):
     e_filter = openmc.EnergyFilter([0.0, 1e7, 2e7])
 
     # create a tally with triggers applied
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.filters = [e_filter]
     tally.scores = ['(n,p)']
     tally.nuclides = ["O16"]
@@ -137,7 +137,7 @@ def test_trigger_he3_production(run_in_tmpdir):
     # Define tally with trigger
     trigger = openmc.Trigger(trigger_type='rel_err', threshold=0.0001)
     trigger.scores = ['He3-production']
-    he3_production_tally = openmc.Tally()
+    he3_production_tally = openmc.VolumeTally()
     he3_production_tally.scores = ['He3-production']
     he3_production_tally.triggers = [trigger]
     model.tallies = openmc.Tallies([he3_production_tally])

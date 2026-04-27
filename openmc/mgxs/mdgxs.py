@@ -92,11 +92,11 @@ class MDGXS(MGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
-    rxn_rate_tally : openmc.Tally
+    rxn_rate_tally : openmc.TallyBase
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
+    xs_tally : openmc.TallyBase
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
@@ -776,7 +776,7 @@ class MDGXS(MGXS):
                              delayed_groups='all'):
         """Build a Pandas DataFrame for the MDGXS data.
 
-        This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
+        This method leverages :meth:`openmc.TallyBase.get_pandas_dataframe`, but
         renames the columns with terminology appropriate for cross section data.
 
         Parameters
@@ -975,12 +975,12 @@ class ChiDelayed(MDGXS):
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`ChiDelayed.tally_keys` property and
-        values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
+        values are instances of :class:`openmc.TallyBase`.
+    rxn_rate_tally : openmc.TallyBase
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
+    xs_tally : openmc.TallyBase
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
@@ -1494,12 +1494,12 @@ class DelayedNuFissionXS(MDGXS):
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DelayedNuFissionXS.tally_keys` property
-        and values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
+        and values are instances of :class:`openmc.TallyBase`.
+    rxn_rate_tally : openmc.TallyBase
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
+    xs_tally : openmc.TallyBase
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
@@ -1633,12 +1633,12 @@ class Beta(MDGXS):
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`Beta.tally_keys` property and
-        values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
+        values are instances of :class:`openmc.TallyBase`.
+    rxn_rate_tally : openmc.TallyBase
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
+    xs_tally : openmc.TallyBase
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
@@ -1826,12 +1826,12 @@ class DecayRate(MDGXS):
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DecayRate.tally_keys` property and
-        values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
+        values are instances of :class:`openmc.TallyBase`.
+    rxn_rate_tally : openmc.TallyBase
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
+    xs_tally : openmc.TallyBase
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
@@ -2136,11 +2136,11 @@ class MatrixMDGXS(MDGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
-    rxn_rate_tally : openmc.Tally
+    rxn_rate_tally : openmc.TallyBase
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
+    xs_tally : openmc.TallyBase
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
@@ -2735,12 +2735,12 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DelayedNuFissionXS.tally_keys` property
-        and values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
+        and values are instances of :class:`openmc.TallyBase`.
+    rxn_rate_tally : openmc.TallyBase
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
         unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
+    xs_tally : openmc.TallyBase
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int

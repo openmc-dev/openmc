@@ -36,7 +36,7 @@ def model():
     settings.verbosity = 1 # to test that this works even with no output
 
     # Tallies
-    t = openmc.Tally()
+    t = openmc.VolumeTally()
     t.scores = ['flux']
     tallies = openmc.Tallies([t])
 

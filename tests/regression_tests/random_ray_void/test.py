@@ -48,19 +48,19 @@ def test_random_ray_void(shape):
         # filters instead of material ones
         estimator = 'tracklength'
         absorber_filter = openmc.CellFilter(absorber_cell)
-        absorber_tally = openmc.Tally(name="Absorber Tally")
+        absorber_tally = openmc.VolumeTally(name="Absorber Tally")
         absorber_tally.filters = [absorber_filter]
         absorber_tally.scores = ['flux']
         absorber_tally.estimator = estimator
 
         void_filter = openmc.CellFilter(void_cell)
-        void_tally = openmc.Tally(name="Void Tally")
+        void_tally = openmc.VolumeTally(name="Void Tally")
         void_tally.filters = [void_filter]
         void_tally.scores = ['flux']
         void_tally.estimator = estimator
 
         source_filter = openmc.CellFilter(source_cell)
-        source_tally = openmc.Tally(name="Source Tally")
+        source_tally = openmc.VolumeTally(name="Source Tally")
         source_tally.filters = [source_filter]
         source_tally.scores = ['flux']
         source_tally.estimator = estimator

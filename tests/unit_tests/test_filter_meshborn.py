@@ -47,12 +47,12 @@ def model():
     mesh.upper_right = (r, r, r)
 
     f = openmc.MeshBornFilter(mesh)
-    t_1 = openmc.Tally(name="scatter-collision")
+    t_1 = openmc.VolumeTally(name="scatter-collision")
     t_1.filters = [f]
     t_1.scores = ["scatter"]
     t_1.estimator = "collision"
 
-    t_2 = openmc.Tally(name="scatter-tracklength")
+    t_2 = openmc.VolumeTally(name="scatter-tracklength")
     t_2.filters = [f]
     t_2.scores = ["scatter"]
     t_2.estimator = "tracklength"

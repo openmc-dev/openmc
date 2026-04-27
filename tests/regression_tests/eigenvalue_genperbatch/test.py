@@ -24,7 +24,7 @@ def model():
     space = openmc.stats.Box((-4.0, -4.0, -4.0), (4.0, 4.0, 4.))
     model.settings.source = openmc.IndependentSource(space=space)
 
-    t = openmc.Tally()
+    t = openmc.VolumeTally()
     t.scores = ['flux']
     model.tallies.append(t)
 

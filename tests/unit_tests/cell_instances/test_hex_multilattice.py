@@ -54,7 +54,7 @@ def double_hex_lattice_model():
 
     # moderator
     cell = next(iter(univ.get_all_cells().values()))
-    tally = openmc.Tally(tally_id=1)
+    tally = openmc.VolumeTally(tally_id=1)
     filter = openmc.DistribcellFilter(cell)
     tally.filters = [filter]
     tally.scores = ['flux']

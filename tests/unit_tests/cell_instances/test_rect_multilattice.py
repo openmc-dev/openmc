@@ -40,7 +40,7 @@ def double_rect_lattice_model():
     cell_with_lattice2.translation = (2., 0., 0.)
     model.geometry = openmc.Geometry([cell_with_lattice1, cell_with_lattice2])
 
-    tally = openmc.Tally(tally_id=1)
+    tally = openmc.VolumeTally(tally_id=1)
     dcell_filter = openmc.DistribcellFilter(c)
     tally.filters = [dcell_filter]
     tally.scores = ['flux']

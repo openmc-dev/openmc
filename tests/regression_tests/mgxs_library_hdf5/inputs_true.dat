@@ -416,7 +416,7 @@
       <scores>prompt-nu-fission</scores>
       <estimator>analog</estimator>
     </tally>
-    <tally id="57">
+    <tally id="57" type="surface">
       <filters>68 2</filters>
       <nuclides>total</nuclides>
       <scores>current</scores>

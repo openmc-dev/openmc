@@ -29,9 +29,10 @@
     <filter id="2" type="musurface">
       <bins>-1.0 -0.5 0.0 0.5 1.0</bins>
     </filter>
-    <tally id="1">
+    <tally id="1" type="surface">
       <filters>1 2</filters>
       <scores>current flux</scores>
+      <estimator>analog</estimator>
     </tally>
   </tallies>
 </model>

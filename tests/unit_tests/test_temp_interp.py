@@ -162,7 +162,7 @@ def model(tmp_path_factory):
     model.settings.inactive = 0
     model.settings.batches = 10
 
-    tally = openmc.Tally()
+    tally = openmc.VolumeTally()
     tally.scores = ['absorption', 'fission', 'scatter', 'nu-fission']
     model.tallies = [tally]
 

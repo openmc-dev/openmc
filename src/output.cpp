@@ -322,7 +322,6 @@ void print_build_info()
   std::string png(n);
   std::string profiling(n);
   std::string coverage(n);
-  std::string mcpl(n);
   std::string uwuw(n);
   std::string strict_fp(n);
 
@@ -337,9 +336,6 @@ void print_build_info()
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED
   libmesh = y;
-#endif
-#ifdef OPENMC_MCPL
-  mcpl = y;
 #endif
 #ifdef USE_LIBPNG
   png = y;
@@ -370,7 +366,6 @@ void print_build_info()
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
-    fmt::print("MCPL support:          {}\n", mcpl);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
     fmt::print("UWUW support:          {}\n", uwuw);

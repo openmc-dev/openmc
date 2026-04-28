@@ -265,8 +265,9 @@ def get_microxs_and_flux(
         direct_micros = []
         for flux_arr, rr_tally in zip(all_flux_arrays, rr_tallies):
             flux = flux_arr
-            reaction_rates = rr_tally.get_reshaped_data()
-            reaction_rates = np.moveaxis(reaction_rates, 1, -1)
+            # Get reaction rates and make energy groups last dimension
+            reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
+            reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
 
             # If RR is 1-group, sum flux over groups
             if reaction_rate_mode == "flux":

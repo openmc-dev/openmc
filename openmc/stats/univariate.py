@@ -5,6 +5,7 @@ from collections.abc import Iterable, Sequence
 from functools import cache
 from math import sqrt, pi, exp, log
 from numbers import Real
+from pathlib import Path
 from warnings import warn
 
 import lxml.etree as ET
@@ -2234,6 +2235,7 @@ class DecaySpectrum(Univariate):
     def __init__(self, nuclides: dict[str, float], volume: float):
         super().__init__(bias=None)
         self._dist_cache = None
+        self._dist_cache_key = None
         self.nuclides = nuclides
         self.volume = volume
 
@@ -2253,6 +2255,7 @@ class DecaySpectrum(Univariate):
             cv.check_greater_than(f'atom density for {name}', density, 0.0, True)
         self._nuclides = dict(nuclides)
         self._dist_cache = None
+        self._dist_cache_key = None
 
     @property
     def volume(self):
@@ -2264,6 +2267,21 @@ class DecaySpectrum(Univariate):
         cv.check_greater_than('volume', volume, 0.0)
         self._volume = float(volume)
         self._dist_cache = None
+        self._dist_cache_key = None
+
+    @staticmethod
+    def _chain_file_cache_key():
+        """Return a hashable key for the active depletion chain."""
+        chain_file = openmc.config.get('chain_file')
+        if chain_file is None:
+            return None
+
+        path = Path(chain_file).resolve()
+        try:
+            stat = path.stat()
+        except OSError:
+            return (path, None, None)
+        return (path, stat.st_mtime, stat.st_size)
 
     def to_distribution(self):
         """Convert to a concrete distribution using decay chain data.
@@ -2283,7 +2301,8 @@ class DecaySpectrum(Univariate):
             :attr:`nuclides` has a photon source in the chain.
 
         """
-        if self._dist_cache is not None:
+        chain_key = self._chain_file_cache_key()
+        if self._dist_cache is not None and self._dist_cache_key == chain_key:
             return self._dist_cache
 
         dists = []
@@ -2298,6 +2317,7 @@ class DecaySpectrum(Univariate):
             return None
 
         self._dist_cache = combine_distributions(dists, weights)
+        self._dist_cache_key = chain_key
         return self._dist_cache
 
     def to_xml_element(self, element_name: str):
@@ -2379,7 +2399,7 @@ class DecaySpectrum(Univariate):
 
     @staticmethod
     @cache
-    def _photon_integral(nuclide: str) -> float | None:
+    def _photon_integral(nuclide: str, chain_key) -> float | None:
         """Return the per-atom photon emission integral for a nuclide"""
         dist = openmc.data.decay_photon_energy(nuclide)
         return dist.integral() if dist is not None else None
@@ -2414,8 +2434,9 @@ class DecaySpectrum(Univariate):
         emitting_names = []
         emitting_densities = []
         rates = []
+        chain_key = self._chain_file_cache_key()
         for name, density in self.nuclides.items():
-            integral = DecaySpectrum._photon_integral(name)
+            integral = DecaySpectrum._photon_integral(name, chain_key)
             if integral is None:
                 continue
             emitting_names.append(name)
@@ -2433,6 +2454,7 @@ class DecaySpectrum(Univariate):
         if inplace:
             self._nuclides = new_nuclides
             self._dist_cache = None
+            self._dist_cache_key = None
             return self
         return type(self)(new_nuclides, self.volume)
 

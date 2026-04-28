@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/cmfd_solver.h"
 #include "openmc/collision_track.h"
 #include "openmc/constants.h"

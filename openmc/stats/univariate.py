@@ -14,7 +14,8 @@ from scipy.special import exprel, hyp1f1, lambertw
 import scipy
 
 import openmc.checkvalue as cv
-from openmc.data import atomic_mass, NEUTRON_MASS, decay_photon_energy
+from openmc.data import atomic_mass, NEUTRON_MASS
+import openmc.data
 from .._xml import get_elem_list, get_text
 from ..mixin import EqualityMixin
 
@@ -2288,7 +2289,7 @@ class DecaySpectrum(Univariate):
         dists = []
         weights = []
         for name, density in self.nuclides.items():
-            dist = decay_photon_energy(name)
+            dist = openmc.data.decay_photon_energy(name)
             if dist is not None:
                 dists.append(dist)
                 weights.append(density * 1e24 * self.volume)
@@ -2380,7 +2381,7 @@ class DecaySpectrum(Univariate):
     @cache
     def _photon_integral(nuclide: str) -> float | None:
         """Return the per-atom photon emission integral for a nuclide"""
-        dist = decay_photon_energy(nuclide)
+        dist = openmc.data.decay_photon_energy(nuclide)
         return dist.integral() if dist is not None else None
 
     def clip(self, tolerance: float = 1e-9, inplace: bool = False):

@@ -4,26 +4,27 @@
 Variance Reduction
 ==================
 
-Global variance reduction in OpenMC is accomplished by weight windowing
-or source biasing techniques, the latter of which additionally provides a
-local variance reduction capability. OpenMC is capable of generating weight
-windows using either the MAGIC or FW-CADIS methods. Both techniques will
-produce a ``weight_windows.h5`` file that can be loaded and used later on. In
+Global and local variance reduction are possible in OpenMC through both weight 
+windowing and source biasing techniques. OpenMC is capable of generating weight
+windows using either the MAGIC or FW-CADIS methods, the latter with an optional
+capability for local variance reduction. Both techniques will produce a
+``weight_windows.h5`` file that can be loaded and used later on. In
 this section, we first break down the steps required to generate and apply
 weight windows, then describe how source biasing may be applied.
 
 .. _ww_generator:
 
-------------------------------------
-Generating Weight Windows with MAGIC
-------------------------------------
+-------------------------------------------
+Generating Global Weight Windows with MAGIC
+-------------------------------------------
 
 As discussed in the :ref:`methods section <methods_variance_reduction>`, MAGIC
 is an iterative method that uses flux tally information from a Monte Carlo
-simulation to produce weight windows for a user-defined mesh. While generating
-the weight windows, OpenMC is capable of applying the weight windows generated
-from a previous batch while processing the next batch, allowing for progressive
-improvement in the weight window quality across iterations.
+simulation to produce weight windows for a user-defined mesh with the objective 
+of global variance reduction. While generating the weight windows, OpenMC is 
+capable of applying the weight windows generated from a previous batch while 
+processing the next batch, allowing for progressive improvement in the weight 
+window quality across iterations.
 
 The typical way of generating weight windows is to define a mesh and then add an
 :class:`openmc.WeightWindowGenerator` object to an :attr:`openmc.Settings`
@@ -71,15 +72,20 @@ At the end of the simulation, a ``weight_windows.h5`` file will be saved to disk
 for later use. Loading it in another subsequent simulation will be discussed in
 the "Using Weight Windows" section below.
 
-------------------------------------------------------
-Generating Weight Windows with FW-CADIS and Random Ray
-------------------------------------------------------
+.. _usersguide_fw_cadis:
+
+----------------------------------------------------------------------
+Generating Global or Local Weight Windows with FW-CADIS and Random Ray
+----------------------------------------------------------------------
 
 Weight window generation with FW-CADIS and random ray in OpenMC uses the same
-exact strategy as with MAGIC. An :class:`openmc.WeightWindowGenerator` object is
-added to the :attr:`openmc.Settings` object, and a ``weight_windows.h5`` will be
-generated at the end of the simulation. The only difference is that the code
-must be run in random ray mode. A full description of how to enable and setup
+exact strategy as with MAGIC. Using FW-CADIS, however, also enables 
+local variance reduction in fixed source problems through the :attr:`targets` 
+attribute, which is described later in this section. To enable FW-CADIS, an 
+:class:`openmc.WeightWindowGenerator` object is added to the 
+:attr:`openmc.Settings` object, and a ``weight_windows.h5`` will be generated 
+at the end of the simulation. The only procedural difference is that the code 
+must be run in random ray mode. A full description of how to enable and setup 
 random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
 
 .. note::
@@ -90,7 +96,7 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
     ray solver. A high level overview of the current workflow for generation of
     weight windows with FW-CADIS using random ray is given below.
 
-1. Begin by making a deepy copy of your continuous energy Python model and then
+1. Begin by making a deep copy of your continuous energy Python model and then
    convert the copy to be multigroup and use the random ray transport solver.
    The conversion process can largely be automated as described in more detail
    in the :ref:`random ray quick start guide <quick_start>`, summarized below::
@@ -148,7 +154,53 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
     assigning to ``model.settings.random_ray['source_region_meshes']``) and for
     weight window generation.
 
-3. When running your multigroup random ray input deck, OpenMC will automatically
+3. (Optional) If local variance reduction is desired in a fixed-source problem,  
+   populate the :attr:`targets` attribute with an :class:`openmc.Tallies` 
+   instance or an iterable of tally IDs indicating the tallies of interest for 
+   variance reduction::
+
+    # Build a new example and WWG for local variance reduction
+    from openmc.examples import random_ray_three_region_cube_with_detectors
+    new_model = random_ray_three_region_cube_with_detectors()
+
+    ww_mesh = openmc.RegularMesh()
+    n = 7
+    width = 35.0
+    ww_mesh.dimension = (n, n, n)
+    ww_mesh.lower_left = (0.0, 0.0, 0.0)
+    ww_mesh.upper_right = (width, width, width)
+
+    wwg = openmc.WeightWindowGenerator(
+        method="fw_cadis", 
+        mesh=ww_mesh, 
+        max_realizations=new_model.settings.batches
+    )
+    new_model.settings.weight_window_generators = wwg
+    new_model.settings.random_ray['volume_estimator'] = 'naive'
+
+    # Get the tallies of interest
+    target_tallies = openmc.Tallies()
+
+    for tally in list(new_model.tallies):
+        if tally.name in {"Detector 1 Tally", "Detector 2 Tally"}:
+            target_tallies.append(tally)
+    
+    # Add to WeightWindowGenerator
+    wwg.targets = target_tallies
+
+.. warning::
+    The tallies designated as FW-CADIS targets to the 
+    :class:`~openmc.WeightWindowGenerator` must be present under the
+    :class:`~openmc.model.Model.tallies` attribute of the 
+    :class:`~openmc.model.Model` as well in order to be recognized as valid 
+    local variance reduction targets. This check is performed when the 
+    :func:`openmc.model.Model.export_to_model_xml` or 
+    :func:`openmc.model.Model.export_to_xml` functions are called, meaning 
+    that the standalone :func:`openmc.Settings.export_to_xml` and 
+    :func:`openmc.Tallies.export_to_xml` methods should not be used with 
+    FW-CADIS local variance reduction.
+
+4. When running your multigroup random ray input deck, OpenMC will automatically
    run a forward solve followed by an adjoint solve, with a
    ``weight_windows.h5`` file generated at the end. The ``weight_windows.h5``
    file will contain FW-CADIS generated weight windows. This file can be used in

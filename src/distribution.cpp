@@ -801,6 +801,10 @@ DecaySpectrum::DecaySpectrum(vector<int> nuclide_indices, vector<double> atoms)
 {
   vector<double> probs = decay_spectrum_probabilities(nuclide_indices_, atoms);
   integral_ = std::accumulate(probs.begin(), probs.end(), 0.0);
+  if (nuclide_indices_.empty() || integral_ <= 0.0) {
+    fatal_error("DecaySpectrum must contain at least one decay photon emitter "
+                "with a positive emission rate.");
+  }
   di_.assign(probs);
 }
 
@@ -844,6 +848,12 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
   // Build alias table from weighted probabilities
   vector<double> probs = decay_spectrum_probabilities(nuclide_indices_, atoms);
   integral_ = std::accumulate(probs.begin(), probs.end(), 0.0);
+  if (nuclide_indices_.empty() || integral_ <= 0.0) {
+    fatal_error("DecaySpectrum source did not resolve any nuclides with decay "
+                "photon spectra and positive atom densities. Ensure "
+                "OPENMC_CHAIN_FILE is set and matches the nuclides in the "
+                "source definition.");
+  }
   di_.assign(probs);
 }
 

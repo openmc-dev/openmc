@@ -1725,6 +1725,14 @@ mesh-based weight windows.
         The ratio of the lower to upper weight window bounds.
 
         *Default*: 5.0
+    
+    For FW-CADIS:
+
+      :targets:
+        A sequence of IDs corresponding to the tallies which cover phase 
+        space regions of interest for local variance reduction.
+
+        *Default*: None
 
 ---------------------------------------
 ``<weight_window_checkpoints>`` Element

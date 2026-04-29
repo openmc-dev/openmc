@@ -51,7 +51,25 @@ public:
   //! \param[out] mu Outgoing scattering angle cosine
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(const NuclideMicroXS& micro_xs, double E_in, double* E_out,
-    double* mu, uint64_t* seed);
+    double* mu, uint64_t* seed) const;
+
+  //! Select the elastic or inelastic distribution to sample
+  //! \param[in] micro_xs Microscopic cross sections
+  //! \param[in] E Incident neutron energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Reference to the selected angle-energy distribution
+  AngleEnergy& sample_dist(
+    const NuclideMicroXS& micro_xs, double E, uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] micro_xs Microscopic cross sections
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
+  double sample_energy_and_pdf(const NuclideMicroXS& micro_xs, double E_in,
+    double mu, double& E_out, uint64_t* seed) const;
 
 private:
   struct Reaction {

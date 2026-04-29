@@ -7,6 +7,19 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
 
+-------------------------------
+``<atomic_relaxation>`` Element
+-------------------------------
+
+The ``<atomic_relaxation>`` element determines whether the atomic relaxation
+cascade, the X-ray fluorescence photons and Auger electrons emitted when an
+inner-shell vacancy is filled, is simulated following photoelectric and
+incoherent (Compton) scattering interactions. Disabling this can speed up
+photon transport calculations where the detailed secondary particle cascade is
+not of interest.
+
+  *Default*: true
+
 ---------------------
 ``<batches>`` Element
 ---------------------
@@ -542,6 +555,18 @@ generator during generation of colors in plots.
 
   *Default*: 1
 
+.. _properties_file:
+
+-----------------------------
+``<properties_file>`` Element
+-----------------------------
+
+  The ``properties_file`` element has no attributes and contains the path to a
+  properties HDF5 file to load cell temperatures/densities and material
+  densities.
+
+  *Default*: None
+
 ---------------------
 ``<ptables>`` Element
 ---------------------
@@ -572,11 +597,40 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: None
 
-  :source:
+  :ray_source:
     Specifies the starting ray distribution, and follows the format for
     :ref:`source_element`. It must be uniform in space and angle and cover the
     full domain. It does not represent a physical neutron or photon source -- it
     is only used to sample integrating ray starting locations and directions.
+
+    *Default*: None
+
+  :adjoint_source:
+    Specifies an adjoint fixed source for adjoint transport simulations, and 
+    follows the format for :ref:`source_element`. The distributions which make 
+    up the adjoint source are subject to the same restrictions as forward 
+    fixed sources in Random Ray mode.
+
+    *Default*: None
+  
+  :adjoint:
+    Specifies whether to perform adjoint transport. The default is 'False', 
+    corresponding to forward transport.
+
+    *Default*: None
+  
+  :volume_estimator:
+    Specifies choice of volume estimator for the random ray solver. Options 
+    are 'naive', 'simulation_averaged', or 'hybrid'. The default is 'hybrid'.
+
+    *Default*: None
+
+  :volume_normalized_flux_tallies:
+    Specifies whether to normalize flux tallies by volume (bool). The 
+    default is 'False'. When enabled, flux tallies will be reported in units 
+    of cm/cm^3. When disabled, flux tallies will be reported in units of cm 
+    (i.e., total distance traveled by neutrons in the spatial tally 
+    region).
 
     *Default*: None
 
@@ -1671,6 +1725,14 @@ mesh-based weight windows.
         The ratio of the lower to upper weight window bounds.
 
         *Default*: 5.0
+    
+    For FW-CADIS:
+
+      :targets:
+        A sequence of IDs corresponding to the tallies which cover phase 
+        space regions of interest for local variance reduction.
+
+        *Default*: None
 
 ---------------------------------------
 ``<weight_window_checkpoints>`` Element

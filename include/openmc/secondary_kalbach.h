@@ -32,6 +32,24 @@ public:
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
+  //! Sample outgoing energy and Kalbach-Mann parameters
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] km_a Kalbach-Mann 'a' parameter
+  //! \param[out] km_r Kalbach-Mann pre-compound fraction 'r'
+  //! \param[inout] seed Pseudorandom seed pointer
+  void sample_params(double E_in, double& E_out, double& km_a, double& km_r,
+    uint64_t* seed) const;
+
+  //! Sample an outgoing energy and evaluate the angular PDF
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[in] mu Scattering cosine with respect to current direction
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Probability density for the scattering cosine
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
+
 private:
   //! Outgoing energy/angle at a single incoming energy
   struct KMTable {

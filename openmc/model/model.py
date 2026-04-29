@@ -265,6 +265,46 @@ class Model:
             denom_tally = openmc.Tally(name='IFP denominator')
             denom_tally.scores = ['ifp-denominator']
             self.tallies.append(denom_tally)
+    
+    # TODO: This should also be incorporated into lower-level calls in 
+    # settings.py, but it requires information about the tallies currently
+    # on the active Model
+    def _assign_fw_cadis_tally_IDs(self):
+        # Verify that all tallies assigned as targets on WeightWindowGenerators 
+        # exist within model.tallies. If this is the case, convert the .targets 
+        # attribute of each WeightWindowGenerator to a sequence of tally IDs.
+        if len(self.settings.weight_window_generators) == 0:
+            return
+        
+        # List of valid tally IDs
+        reference_tally_ids = np.asarray([tal.id for tal in self.tallies])
+        
+        for wwg in self.settings.weight_window_generators:
+            # Only proceeds if the "targets" attribute is an openmc.Tallies, 
+            # which means it hasn't been checked against model.tallies.
+            if isinstance(wwg.targets, openmc.Tallies):
+                id_vec = []
+                for tal in wwg.targets:
+                    # check against model tallies for equivalence
+                    id_next = None
+                    for reference_tal in self.tallies:
+                        if tal == reference_tal:
+                            id_next = reference_tal.id
+                            break
+                    
+                    if id_next == None:
+                        raise RuntimeError(
+                            f'Local FW-CADIS target tally {tal.id} not found on model.tallies!')
+                    else:
+                        id_vec.append(id_next)
+
+                wwg.targets = id_vec
+
+            elif isinstance(wwg.targets, np.ndarray):
+                invalid = wwg.targets[~np.isin(wwg.targets, reference_tally_ids)]
+                if len(invalid) > 0:
+                    raise RuntimeError(
+                        f'Local FW-CADIS target tally IDs {invalid} not found on model.tallies!')
 
     @classmethod
     def from_xml(
@@ -576,6 +616,7 @@ class Model:
         if not d.is_dir():
             d.mkdir(parents=True, exist_ok=True)
 
+        self._assign_fw_cadis_tally_IDs()
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
 
@@ -633,6 +674,9 @@ class Model:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
                           "set the Geometry.merge_surfaces attribute instead.")
             self.geometry.merge_surfaces = True
+
+        # Link FW-CADIS WeightWindowGenerator target tallies, if present
+        self._assign_fw_cadis_tally_IDs()
 
         # provide a memo to track which meshes have been written
         mesh_memo = set()
@@ -1294,8 +1338,9 @@ class Model:
         self,
         n_samples: int = 1000,
         prn_seed: int | None = None,
+        as_array: bool = False,
         **init_kwargs
-    ) -> openmc.ParticleList:
+    ) -> openmc.ParticleList | np.ndarray:
         """Sample external source and return source particles.
 
         .. versionadded:: 0.15.1
@@ -1307,13 +1352,17 @@ class Model:
         prn_seed : int
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
+        as_array : bool
+            If True, return a numpy structured array instead of a
+            :class:`~openmc.ParticleList`.
         **init_kwargs
             Keyword arguments passed to :func:`openmc.lib.init`
 
         Returns
         -------
-        openmc.ParticleList
-            List of samples source particles
+        openmc.ParticleList or numpy.ndarray
+            List of sampled source particles, or a structured array when
+            *as_array* is True.
         """
         import openmc.lib
 
@@ -1324,7 +1373,7 @@ class Model:
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.sample_external_source(
-                n_samples=n_samples, prn_seed=prn_seed
+                n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
@@ -2515,7 +2564,7 @@ class Model:
     def convert_to_multigroup(
         self,
         method: str = "material_wise",
-        groups: str = "CASMO-2",
+        groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
         nparticles: int = 2000,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
@@ -2533,9 +2582,13 @@ class Model:
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
             Method to generate the MGXS.
-        groups : openmc.mgxs.EnergyGroups or str, optional
-            Energy group structure for the MGXS or the name of the group
-            structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
+            Energy group structure for the MGXS. Can be an
+            :class:`openmc.mgxs.EnergyGroups` object, a string name of a
+            predefined group structure from :data:`openmc.mgxs.GROUP_STRUCTURES`
+            (e.g., ``"CASMO-2"``), or a sequence of floats specifying energy
+            bin boundaries in eV (e.g., ``[0.0, 1e6]`` for a single group).
+            Defaults to ``"CASMO-2"``.
         nparticles : int, optional
             Number of particles to simulate per batch when generating MGXS.
         overwrite_mgxs_library : bool, optional
@@ -2572,7 +2625,7 @@ class Model:
             Valid entries for temperature_settings are the same as the valid
             entries in openmc.Settings.temperature_settings.
         """
-        if isinstance(groups, str):
+        if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
 
         # Do all work (including MGXS generation) in a temporary directory
@@ -2588,7 +2641,7 @@ class Model:
                     # This mode doesn't require
                     # valid transport settings like particles/batches
                     original_run_mode = self.settings.run_mode
-                    self.settings.run_mode = 'volume' 
+                    self.settings.run_mode = 'volume'
                     self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()

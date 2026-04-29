@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections.abc import Sequence
+from contextlib import nullcontext
 import copy
 from datetime import datetime
 import json
@@ -8,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import openmc
 from . import IndependentOperator, PredictorIntegrator
+from .chain import Chain
 from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
 from .results import Results
 from ..checkvalue import PathLike
@@ -149,7 +151,7 @@ class R2SManager:
         photon_time_indices: Sequence[int] | None = None,
         output_dir: PathLike | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
-        chain_file: PathLike | None = None,
+        chain_file: PathLike | Chain | None = None,
         micro_kwargs: dict | None = None,
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
@@ -187,9 +189,10 @@ class R2SManager:
             Dictionary mapping cell IDs to bounding boxes used for spatial
             source sampling in cell-based R2S calculations. Required if method
             is 'cell-based'.
-        chain_file : PathLike, optional
-            Path to the depletion chain XML file to use during activation. If
-            not provided, the default configured chain file will be used.
+        chain_file : PathLike or openmc.deplete.Chain, optional
+            Path to the depletion chain XML file or depletion chain object to
+            use during activation. If not provided, the default configured
+            chain file will be used.
         micro_kwargs : dict, optional
             Additional keyword arguments passed to
             :func:`openmc.deplete.get_microxs_and_flux` during the neutron
@@ -216,6 +219,8 @@ class R2SManager:
             # consistency (different ranks may have slightly different times)
             stamp = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
             output_dir = Path(comm.bcast(f'r2s_{stamp}'))
+        else:
+            output_dir = Path(output_dir)
 
         # Set run_kwargs for the neutron transport step
         if micro_kwargs is None:
@@ -226,22 +231,35 @@ class R2SManager:
             operator_kwargs = {}
         run_kwargs.setdefault('output', False)
         micro_kwargs.setdefault('run_kwargs', run_kwargs)
-        # If a chain file is provided, prefer it for steps 1 and 2
-        if chain_file is not None:
-            micro_kwargs.setdefault('chain_file', chain_file)
-            operator_kwargs.setdefault('chain_file', chain_file)
 
-        self.step1_neutron_transport(
-            output_dir / 'neutron_transport', mat_vol_kwargs, micro_kwargs
+        # DecaySpectrum distributions are resolved in the C++ solver using
+        # OPENMC_CHAIN_FILE. If a Chain object was passed, write an XML
+        # representation alongside the R2S outputs.
+        if isinstance(chain_file, Chain):
+            output_dir.mkdir(parents=True, exist_ok=True)
+            chain_path = output_dir / 'chain.xml'
+            if comm.rank == 0:
+                chain_file.export_to_xml(chain_path)
+            comm.barrier()
+        else:
+            chain_path = chain_file
+
+        chain_context = (
+            openmc.config.patch('chain_file', chain_path)
+            if chain_path is not None else nullcontext()
         )
-        self.step2_activation(
-            timesteps, source_rates, timestep_units, output_dir / 'activation',
-            operator_kwargs=operator_kwargs
-        )
-        self.step3_photon_transport(
-            photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
-            mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
-        )
+        with chain_context:
+            self.step1_neutron_transport(
+                output_dir / 'neutron_transport', mat_vol_kwargs, micro_kwargs
+            )
+            self.step2_activation(
+                timesteps, source_rates, timestep_units,
+                output_dir / 'activation', operator_kwargs=operator_kwargs
+            )
+            self.step3_photon_transport(
+                photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
+                mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
+            )
 
         return output_dir
 
@@ -535,7 +553,7 @@ class R2SManager:
         for time_index in time_indices:
             # Convert time_index (which may be negative) to a normal index
             if time_index < 0:
-                time_index = len(self.results['depletion_results']) + time_index
+                time_index += len(self.results['depletion_results'])
 
             # Build decay photon sources and assign to the photon model
             sources = self._create_photon_sources(time_index, work_items)

@@ -280,8 +280,9 @@ void get_run_parameters(pugi::xml_node node_base)
     } else {
       fatal_error("Specify random ray inactive distance in settings XML");
     }
-    if (check_for_node(random_ray_node, "source")) {
-      xml_node source_node = random_ray_node.child("source");
+    if (check_for_node(random_ray_node, "ray_source")) {
+      xml_node ray_source_node = random_ray_node.child("ray_source");
+      xml_node source_node = ray_source_node.child("source");
       // Get point to list of <source> elements and make sure there is at least
       // one
       RandomRay::ray_source_ = Source::create(source_node);
@@ -367,6 +368,13 @@ void get_run_parameters(pugi::xml_node node_base)
           FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
         fatal_error("Random ray diagonal stabilization rho factor must be "
                     "between 0 and 1");
+      }
+    }
+    if (check_for_node(random_ray_node, "adjoint_source")) {
+      pugi::xml_node adj_source_node = random_ray_node.child("adjoint_source");
+      for (pugi::xml_node source_node : adj_source_node.children("source")) {
+        // Find any local adjoint sources
+        model::adjoint_sources.push_back(Source::create(source_node));
       }
     }
   }
@@ -1274,6 +1282,16 @@ void read_settings_xml(pugi::xml_node root)
       if (wwg->on_the_fly_) {
         settings::weight_windows_on = true;
         break;
+      }
+    }
+    // If any weight window generators have local FW-CADIS target tallies,
+    // user-defined adjoint sources cannot be used at the same time.
+    if (!model::adjoint_sources.empty()) {
+      for (const auto& wwg : variance_reduction::weight_windows_generators) {
+        if (!wwg->targets_.empty()) {
+          fatal_error("Cannot use both user-defined adjoint sources and "
+                      "FW-CADIS target tallies at the same time.");
+        }
       }
     }
   }

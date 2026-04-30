@@ -178,9 +178,11 @@ bool find_cell_inner(
 
       // Set the temperature.
       p.sqrtkT_last() = p.sqrtkT();
-      p.sqrtkT() = c.sqrtkT(p.cell_instance());
-      if (settings::temperature_field_on) {
-        simulation::temperature_field.update_particle_temperature(p);
+      if (settings::temperature_field_on && p.tf_bin() != C_NONE) {
+        p.sqrtkT() =
+          sqrt(simulation::temperature_field.value(p.tf_bin()) * K_BOLTZMANN);
+      } else {
+        p.sqrtkT() = c.sqrtkT(p.cell_instance());
       }
 
       // Set the density multiplier.

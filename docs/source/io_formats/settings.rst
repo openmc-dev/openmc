@@ -712,14 +712,16 @@ pseudo-random number generator.
 
   *Default*: 1
 
---------------------
-``<stride>`` Element
---------------------
+-----------------------------------
+``<shared_secondary_bank>`` Element
+-----------------------------------
 
-The ``stride`` element is used to specify how many random numbers are allocated
-for each source particle history.
-
-  *Default*: 152,917
+  The ``shared_secondary_bank`` element indicates whether to use a shared
+  secondary particle bank. When enabled, secondary particles are collected into
+  a global bank, sorted for reproducibility, and load-balanced across MPI ranks
+  between generations. If not specified, the shared secondary bank is enabled
+  automatically for fixed-source simulations with weight windows active, and
+  disabled otherwise.
 
 .. _source_element:
 
@@ -1106,23 +1108,6 @@ based on constraints.
 
    *Default*: 0.05
 
--------------------------
-``<state_point>`` Element
--------------------------
-
-The ``<state_point>`` element indicates at what batches a state point file
-should be written. A state point file can be used to restart a run or to get
-tally results at any batch. The default behavior when using this tag is to
-write out the source bank in the state_point file. This behavior can be
-customized by using the ``<source_point>`` element. This element has the
-following attributes/sub-elements:
-
-  :batches:
-    A list of integers separated by spaces indicating at what batches a state
-    point file should be written.
-
-    *Default*: Last batch only
-
 --------------------------
 ``<source_point>`` Element
 --------------------------
@@ -1171,6 +1156,32 @@ attributes/sub-elements:
     is set to true.
 
     *Default*: false
+
+-------------------------
+``<state_point>`` Element
+-------------------------
+
+The ``<state_point>`` element indicates at what batches a state point file
+should be written. A state point file can be used to restart a run or to get
+tally results at any batch. The default behavior when using this tag is to
+write out the source bank in the state_point file. This behavior can be
+customized by using the ``<source_point>`` element. This element has the
+following attributes/sub-elements:
+
+  :batches:
+    A list of integers separated by spaces indicating at what batches a state
+    point file should be written.
+
+    *Default*: Last batch only
+
+--------------------
+``<stride>`` Element
+--------------------
+
+The ``stride`` element is used to specify how many random numbers are allocated
+for each source particle history.
+
+  *Default*: 152,917
 
 ------------------------------
 ``<surf_source_read>`` Element
@@ -1271,7 +1282,7 @@ The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutof
 ``<surface_grazing_ratio>`` Element
 -----------------------------------
 
-The ``<surface_grazing_ratio>`` element specifies the surface flux cosine 
+The ``<surface_grazing_ratio>`` element specifies the surface flux cosine
 substitution ratio.
 
   *Default*: 0.5
@@ -1722,17 +1733,6 @@ following sub-elements/attributes:
 
   The ``weight_windows_file`` element has no attributes and contains the path to
   a weight windows HDF5 file to load during simulation initialization.
-
-----------------------------------------
-``<shared_secondary_bank>`` Element
-----------------------------------------
-
-  The ``shared_secondary_bank`` element indicates whether to use a shared
-  secondary particle bank. When enabled, secondary particles are collected into
-  a global bank, sorted for reproducibility, and load-balanced across MPI ranks
-  between generations. If not specified, the shared secondary bank is enabled
-  automatically for fixed-source simulations with weight windows active, and
-  disabled otherwise.
 
 -------------------------------
 ``<weight_windows_on>`` Element

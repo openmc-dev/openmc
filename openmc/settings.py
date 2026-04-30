@@ -67,6 +67,10 @@ class Settings:
                     (ex: ["(n,fission)", 2, "(n,2n)"] ). (list of str or int)
         :deposited_E_threshold: Number to define the minimum deposited energy during
                      per collision to trigger banking. (float)
+    create_delayed_neutrons : bool
+        Whether delayed neutrons are created in fission.
+
+        .. versionadded:: 0.13.3
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
@@ -253,8 +257,15 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
-    stride : int
-        Number of random numbers allocated for each source particle history
+    shared_secondary_bank : bool
+        Whether to use a shared secondary particle bank. When enabled,
+        secondary particles are collected into a global bank, sorted for
+        reproducibility, and load-balanced across MPI ranks between
+        generations. If not specified, the shared secondary bank is
+        enabled automatically for fixed-source simulations with weight
+        windows active, and disabled otherwise.
+
+        .. versionadded:: 0.15.4
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     source_rejection_fraction : float
@@ -274,6 +285,8 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write statepoint files
+    stride : int
+        Number of random numbers allocated for each source particle history
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 
@@ -370,19 +383,6 @@ class Settings:
 
         .. versionadded:: 0.14.0
 
-    create_delayed_neutrons : bool
-        Whether delayed neutrons are created in fission.
-
-        .. versionadded:: 0.13.3
-    shared_secondary_bank : bool
-        Whether to use a shared secondary particle bank. When enabled,
-        secondary particles are collected into a global bank, sorted for
-        reproducibility, and load-balanced across MPI ranks between
-        generations. If not specified, the shared secondary bank is
-        enabled automatically for fixed-source simulations with weight
-        windows active, and disabled otherwise.
-
-        .. versionadded:: 0.15.1
     weight_windows_on : bool
         Whether weight windows are enabled
 

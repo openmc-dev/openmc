@@ -1357,43 +1357,72 @@ double StructuredMesh::distance_to_next_boundary(
   Position global_r = r;
   Position local_r = local_coords(r);
 
-  double distance = 0.0;
+  double distance;
   bool in_mesh;
 
-  StructuredMesh::MeshIndex ijk = get_indices(global_r, in_mesh);
+  // Find the cell indices
+  StructuredMesh::MeshIndex ijk;
+  if (current_bin >= 0) {
 
-  // Calculate initial distances to next surfaces in all three dimensions
-  std::array<StructuredMesh::MeshDistance, 3> distances;
-  for (int k = 0; k < n_dimension_; ++k) {
-    distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
-  }
+    ijk = get_indices_from_bin(current_bin);
 
-  if (in_mesh) { // inside mesh
+    // Calculate initial distances to next surfaces in all three dimensions
+    std::array<StructuredMesh::MeshDistance, 3> distances;
+    for (int k = 0; k < n_dimension_; ++k) {
+      distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
+    }
 
-    // Calculate
-    distance = get_minimum_distance(distances);
+    // Find next ijk
+    auto k_min =
+      std::min_element(distances.begin(), distances.end()) - distances.begin();
+    distance = distances[k_min].distance;
+    ijk[k_min] = distances[k_min].next_index;
 
-    // If the particle is on a surface
+    // If the particle is on a surface, test using the next index
     if (distance <= FP_COINCIDENT) {
-
-      // Move the particle a bit to avoid calculating the distance to the
-      // surface the particle is currently on, by selecting the next ijk
-      ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
 
       // Update distances
       for (int k = 0; k < n_dimension_; ++k) {
         distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
       }
 
-      if (in_mesh) { // still inside mesh after moving
-        distance = get_minimum_distance(distances);
-      } else { // not inside mesh after moving
-        distance = get_maximum_outer_distance(ijk, distances);
+      k_min = std::min_element(distances.begin(), distances.end()) -
+              distances.begin();
+      distance = distances[k_min].distance;
+      ijk[k_min] = distances[k_min].next_index;
+    }
+
+    // Determine next bin
+    in_mesh = true;
+    for (int k = 0; k < n_dimension_; ++k) {
+      if ((ijk[k] < 1) || (ijk[k] > shape_[k])) {
+        in_mesh = false;
+      }
+    }
+    if (in_mesh) {
+      bin_next = get_bin_from_indices(ijk);
+    } else {
+      bin_next = C_NONE;
+    }
+
+  } else { // Outside mesh
+
+    // Calculate distance to mesh from outside
+    distance = INFTY;
+    for (int k = 0; k < n_dimension_; k++) {
+      double d = distance_to_mesh_boundary_from_outside(k, r, u);
+      if (d < INFTY) {
+        distance = d;
       }
     }
 
-  } else { // not inside mesh
-    distance = get_maximum_outer_distance(ijk, distances);
+    // Determine next bin
+    if (distance < INFTY) {
+      ijk = get_indices(global_r + (distance + TINY_BIT) * u, in_mesh);
+      bin_next = get_bin_from_indices(ijk);
+    } else {
+      bin_next = C_NONE;
+    }
   }
 
   return distance;

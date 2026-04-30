@@ -381,6 +381,7 @@ constexpr int32_t SURFACE_NONE {0};
 //==============================================================================
 // EVENT IDENTIFIER IN HISTORY-BASED TRANSPORT
 
+const int EVENT_UNDEFINED = 0;
 const int EVENT_CROSS_SURFACE = 1;
 const int EVENT_COLLIDE = 2;
 const int EVENT_CROSS_TEMPERATURE_MESH = 3;

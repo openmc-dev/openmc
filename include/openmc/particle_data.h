@@ -265,6 +265,24 @@ private:
     0, 0, 0}; //!< which way lattice indices will change
 };
 
+struct TransportEvent {
+  int event_type = EVENT_UNDEFINED; //!< Type of transport event (crossing
+                                    //!< surface, collision, time cutoff)
+  bool cross_surface_geometry =
+    false; //!< if a surface of the geometry has been crossed during the event
+  bool cross_surface_temperature_field =
+    false; //!< if a surface of the temperature field has been crossed  during
+           //!< the event
+
+  // resets all information
+  void clear()
+  {
+    event_type = EVENT_UNDEFINED;
+    cross_surface_geometry = false;
+    cross_surface_temperature_field = false;
+  }
+};
+
 /*
  * Contains all geometry state information for a particle.
  */
@@ -568,7 +586,7 @@ private:
 
   int64_t n_progeny_ {0};
 
-  int next_event_ {0};
+  TransportEvent next_event_ = TransportEvent();
 
 public:
   //----------------------------------------------------------------------------
@@ -787,9 +805,9 @@ public:
     }
   }
 
-  // Next event identifier for history-based transport
-  int next_event() const { return next_event_; }
-  int& next_event() { return next_event_; }
+  // Next event in transport
+  TransportEvent& next_event() { return next_event_; }
+  const TransportEvent& next_event() const { return next_event_; }
 };
 
 } // namespace openmc

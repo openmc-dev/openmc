@@ -3610,21 +3610,34 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
       #pragma omp atomic
       tally.denominator_ += score*filter_weight;
       
+      // for neutron (or photon) only transport or for neutron (or photon) responses wrt to neutron (or photon) data respectively          
+      // if ((p.type().is_neutron() && !settings::photon_transport) || (p.type().is_photon() && !settings::neutron_transport)) {
+      // for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
+      //   #pragma omp atomic
+      //   tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cumulative_sensitivities[idx]*score*filter_weight; 
+      // }
+      // }
+      
+      // for n-p coupled transport & sensitivity of photon response to neutron data       
+      // if (settings::neutron_transport && settings::photon_transport) {
       for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
-        #pragma omp atomic
-        // tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cumulative_sensitivities[idx]*score*filter_weight;
+        #pragma omp atomic        
+        tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cum_sens[idx]*score*filter_weight; 
         // tally.results_(idx, score_index, SensitivityTallyResult::VALUE) +=
-        //   cum_sens[idx]*neutron_flux*p.neutron_xs(sens.sens_nuclide).photon_prod*score*filter_weight;
-        tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cum_sens[idx]*score*filter_weight;      
-        // tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += pprod_sens[idx]*score*filter_weight;      
+        //   cum_sens[idx]*neutron_flux*p.neutron_xs(sens.sens_nuclide).photon_prod*score*filter_weight;          
       }
+      //}
+      
+      // for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
+      //   #pragma omp atomic        
+      //   tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += pprod_sens[idx]*score*filter_weight;               
+      // }
 
       // if (sens.sens_nuclide == p.pprod_nuclide()){
       //   switch (sens.variable) {
       //   
       //   case SensitivityVariable::CROSS_SECTION:
-      //   {
-      //     
+      //   {           
       //     // Get the energy of the parent particle.
       //     auto E = p.E_pprod();
       //     // Bin the energy.

@@ -128,6 +128,10 @@ void Particle::from_source(const SourceSite* src)
   fission() = false;
   zero_flux_derivs();
   lifetime() = 0.0;
+  if (settings::temperature_field_on) {
+    tf_bin() = C_NONE;
+    tf_bin_next() = C_NONE;
+  }
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
@@ -184,6 +188,15 @@ void Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell() == C_NONE) {
+
+    // Define temperature field cell
+    if (settings::temperature_field_on) {
+      int bin = simulation::temperature_field.mesh_ptr()->get_bin(r());
+      if (bin >= 0 && bin < simulation::temperature_field.values().size()) {
+        tf_bin() = bin;
+      }
+    }
+
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));

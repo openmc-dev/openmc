@@ -873,7 +873,7 @@ UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
 }
 
 double UnstructuredMesh::distance_to_next_boundary(
-  Position r, Direction u) const
+  int current_bin, Position r, Direction u, int& bin_next) const
 {
   fatal_error("Not implemented");
   return -1.0;
@@ -1351,7 +1351,8 @@ double StructuredMesh::get_maximum_outer_distance(StructuredMesh::MeshIndex ijk,
   return distance;
 }
 
-double StructuredMesh::distance_to_next_boundary(Position r, Direction u) const
+double StructuredMesh::distance_to_next_boundary(
+  int current_bin, Position r, Direction u, int& bin_next) const
 {
   Position global_r = r;
   Position local_r = local_coords(r);

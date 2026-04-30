@@ -31,9 +31,10 @@ ScalarField::ScalarField(
 }
 
 double ScalarField::distance_to_next_boundary(
-  const Position& r, const Direction& u)
+  int current_bin, const Position& r, const Direction& u, int& bin_next)
 {
-  return this->mesh_ptr()->distance_to_next_boundary(r, u);
+  return this->mesh_ptr()->distance_to_next_boundary(
+    current_bin, r, u, bin_next);
 }
 
 double TemperatureField::get_temperature(const Position& r)

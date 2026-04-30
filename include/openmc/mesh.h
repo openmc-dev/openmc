@@ -198,10 +198,13 @@ public:
   //! will be from the initial position to the external boundary
   //! of the mesh if hit.
   //
+  //! \param[in] current_bin Current bin number
   //! \param[in] r Position of the particle
-  //! \param[in] u Particle direction
+  //! \param[in] u Direction of the particle
+  //! \param[out] bin_next Next bin number
   //! \return Distance to the next boundary
-  virtual double distance_to_next_boundary(Position r, Direction u) const = 0;
+  virtual double distance_to_next_boundary(
+    int current_bin, Position r, Direction u, int& bin_next) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -353,7 +356,8 @@ public:
   double get_maximum_outer_distance(StructuredMesh::MeshIndex ijk,
     std::array<StructuredMesh::MeshDistance, 3> distances) const;
 
-  double distance_to_next_boundary(Position r, Direction u) const override;
+  double distance_to_next_boundary(
+    int current_bin, Position r, Direction u, int& bin_next) const override;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -765,7 +769,8 @@ public:
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(hid_t group);
 
-  double distance_to_next_boundary(Position r, Direction u) const override;
+  double distance_to_next_boundary(
+    int current_bin, Position r, Direction u, int& bin_next) const override;
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;

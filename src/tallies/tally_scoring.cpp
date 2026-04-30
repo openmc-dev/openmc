@@ -2437,24 +2437,22 @@ void score_tracklength_tally_general(
           if (p.material() != MATERIAL_VOID) {
             const auto& mat = model::materials[p.material()];
             auto j = mat->mat_nuclide_index_[i_nuclide];
-            if (j == C_NONE) {
-              // Determine log union grid index
-              if (i_log_union == C_NONE) {
-                int neutron = ParticleType::neutron().transport_index();
-                i_log_union = std::log(p.E() / data::energy_min[neutron]) /
-                              simulation::log_spacing;
-              }
-
-              // Update micro xs cache
-              if (!tally.multiply_density()) {
-                p.update_neutron_xs(i_nuclide, i_log_union);
-                atom_density = 1.0;
-              }
-            } else {
-              atom_density = tally.multiply_density()
-                               ? mat->atom_density(j, p.density_mult())
-                               : 1.0;
+            if (j != C_NONE)
+              atom_density = mat->atom_density(j, p.density_mult());
+          }
+          if (atom_density > 0) {
+            if (!tally.multiply_density())
+              atom_density = 1.0;
+          } else if (!tally.multiply_density()) {
+            // Determine log union grid index
+            if (i_log_union == C_NONE) {
+              int neutron = ParticleType::neutron().transport_index();
+              i_log_union = std::log(p.E() / data::energy_min[neutron]) /
+                            simulation::log_spacing;
             }
+            // Update micro xs cache
+            p.update_neutron_xs(i_nuclide, i_log_union);
+            atom_density = 1.0;
           }
         }
 
@@ -2566,25 +2564,25 @@ void score_collision_tally(Particle& p)
 
         double atom_density = 0.;
         if (i_nuclide >= 0) {
-          const auto& mat = model::materials[p.material()];
-          auto j = mat->mat_nuclide_index_[i_nuclide];
-          if (j == C_NONE) {
+          if (p.material() != MATERIAL_VOID) {
+            const auto& mat = model::materials[p.material()];
+            auto j = mat->mat_nuclide_index_[i_nuclide];
+            if (j != C_NONE)
+              atom_density = mat->atom_density(j, p.density_mult());
+          }
+          if (atom_density > 0) {
+            if (!tally.multiply_density())
+              atom_density = 1.0;
+          } else if (!tally.multiply_density()) {
             // Determine log union grid index
             if (i_log_union == C_NONE) {
               int neutron = ParticleType::neutron().transport_index();
               i_log_union = std::log(p.E() / data::energy_min[neutron]) /
                             simulation::log_spacing;
             }
-
             // Update micro xs cache
-            if (!tally.multiply_density()) {
-              p.update_neutron_xs(i_nuclide, i_log_union);
-              atom_density = 1.0;
-            }
-          } else {
-            atom_density = tally.multiply_density()
-                             ? mat->atom_density(j, p.density_mult())
-                             : 1.0;
+            p.update_neutron_xs(i_nuclide, i_log_union);
+            atom_density = 1.0;
           }
         }
 
@@ -2657,19 +2655,19 @@ void score_meshsurface_tally(Particle& p, const vector<int>& tallies)
 }
 
 void score_surface_tally(
-  Particle& p, const vector<int>& tallies, const Surface& surf)
+  Particle& p, const vector<int>& tallies, const Direction& normal)
 {
   double wgt = p.wgt_last();
 
+  double mu = std::clamp(p.u().dot(normal), -1.0, 1.0);
+
   // Sign for net current: +1 if crossing outward (in direction of normal),
   // -1 if crossing inward
-  double current_sign = (p.surface() > 0) ? 1.0 : -1.0;
+  double current_sign = std::copysign(1.0, mu);
 
   // Determine absolute cosine of angle between particle direction and surface
   // normal, needed for the surface-crossing flux estimator.
-  auto n = surf.normal(p.r());
-  n /= n.norm();
-  double abs_mu = std::min(std::abs(p.u().dot(n)), 1.0);
+  double abs_mu = std::abs(mu);
   if (abs_mu < settings::surface_grazing_cutoff)
     abs_mu = settings::surface_grazing_ratio * settings::surface_grazing_cutoff;
 

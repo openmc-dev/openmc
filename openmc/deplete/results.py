@@ -113,7 +113,7 @@ class Results(list):
         ----------
         mat : openmc.Material, str
             Material object or material id to evaluate
-        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'}
             Specifies the type of activity to return, options include total
             activity [Bq], specific [Bq/g, Bq/kg] or volumetric activity [Bq/cm3].
         by_nuclide : bool
@@ -231,7 +231,7 @@ class Results(list):
         ----------
         mat : openmc.Material, str
             Material object or material id to evaluate.
-        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
+        units : {'W', 'W/g', 'W/kg', 'W/cm3', 'W/m3'}
             Specifies the units of decay heat to return. Options include total
             heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
         by_nuclide : bool

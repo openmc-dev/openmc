@@ -14,6 +14,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -60,16 +61,21 @@ double Particle::mass() const
 double Particle::speed() const
 {
   if (settings::run_CE) {
+    // Determine mass in eV/c^2
     double mass = this->mass();
+
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
   } else {
-    auto& macro_xs = data::mg.macro_xs_[this->material()];
+    auto mat = this->material();
+    if (mat == MATERIAL_VOID)
+      return 1.0 / data::mg.default_inverse_velocity_[this->g()];
+    auto& macro_xs = data::mg.macro_xs_[mat];
     int macro_t = this->mg_xs_cache().t;
     int macro_a = macro_xs.get_angle_index(this->u());
-    return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, this->g(), nullptr,
-                   nullptr, nullptr, macro_t, macro_a);
+    return 1.0 / macro_xs.get_xs(
+                   MgxsType::INVERSE_VELOCITY, this->g(), macro_t, macro_a);
   }
 }
 
@@ -305,8 +311,6 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
-  const auto& surf {*model::surfaces[surface_index()].get()};
-
   if (boundary().lattice_translation()[0] != 0 ||
       boundary().lattice_translation()[1] != 0 ||
       boundary().lattice_translation()[2] != 0) {
@@ -315,7 +319,23 @@ void Particle::event_cross_surface()
     bool verbose = settings::verbosity >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      auto& lat {*model::lattices[lowest_coord().lattice()]};
+      bool is_valid;
+      Direction normal =
+        lat.get_normal(boundary().lattice_translation(), is_valid);
+      if (is_valid) {
+        normal /= normal.norm();
+        score_surface_tally(*this, model::active_surface_tallies, normal);
+      }
+    }
+
   } else {
+
+    const auto& surf {*model::surfaces[surface_index()].get()};
+
     // Particle crosses surface
     // If BC, add particle to surface source before crossing surface
     if (surf.surf_source_ && surf.bc_) {
@@ -330,10 +350,13 @@ void Particle::event_cross_surface()
       apply_weight_windows(*this);
     }
     event() = TallyEvent::SURFACE;
-  }
-  // Score cell to cell partial currents
-  if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies, surf);
+
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      Direction normal = surf.normal(r());
+      normal /= normal.norm();
+      score_surface_tally(*this, model::active_surface_tallies, normal);
+    }
   }
 }
 
@@ -684,7 +707,9 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // with a mesh boundary
 
   if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies, surf);
+    Direction normal = surf.normal(r());
+    normal /= normal.norm();
+    score_surface_tally(*this, model::active_surface_tallies, normal);
   }
 
   if (!model::active_meshsurf_tallies.empty()) {

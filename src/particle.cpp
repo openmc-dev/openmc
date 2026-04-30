@@ -263,11 +263,13 @@ void Particle::event_advance()
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
-  // Find the distance to the nearest temperature mesh cell surface
+  // Find the distance to the nearest temperature mesh cell surface and clear
+  // the next event
   double distance_tmesh = INFTY;
   if (settings::temperature_field_on) {
-    distance_tmesh =
-      simulation::temperature_field.distance_to_next_boundary(r(), u());
+    distance_tmesh = simulation::temperature_field.distance_to_next_boundary(
+      tf_bin(), r(), u(), tf_bin_next());
+    next_event().clear();
   }
 
   // Calculate the distance corresponding to the time cutoff
@@ -275,9 +277,6 @@ void Particle::event_advance()
   double time_cutoff = settings::time_cutoff[type().transport_index()];
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
-
-  // Initialize next event
-  next_event().clear();
 
   // Determine minimal distance for cross surface events
   double distance_cross_surface =

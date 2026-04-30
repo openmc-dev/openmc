@@ -31,6 +31,7 @@
 #include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter_point.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_time.h"
@@ -1199,6 +1200,8 @@ void setup_active_tallies()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::active_point_tallies.clear();
+  model::active_point_detectors.clear();
   model::time_grid.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
@@ -1240,6 +1243,16 @@ void setup_active_tallies()
       case TallyType::PULSE_HEIGHT:
         model::active_pulse_height_tallies.push_back(i);
         break;
+
+      case TallyType::POINT:
+        model::active_point_tallies.push_back(i);
+        // Populate the set of unique detector positions from PointFilter
+        if (auto pf = tally.get_filter<PointFilter>()) {
+          for (const auto& [pos, r0] : pf->detectors()) {
+            model::active_point_detectors.insert(pos);
+          }
+        }
+        break;
       }
     }
   }
@@ -1263,6 +1276,8 @@ void free_memory_tally()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::active_point_tallies.clear();
+  model::active_point_detectors.clear();
   model::time_grid.clear();
 
   model::tally_map.clear();

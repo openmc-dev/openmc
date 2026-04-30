@@ -53,7 +53,7 @@ _NUCLIDE_CLASSES = (str, CrossNuclide, AggregateNuclide)
 _FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
 
 # Valid types of estimators
-ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog'}
+ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog', 'next-event'}
 
 
 class Tally(IDManagerMixin):

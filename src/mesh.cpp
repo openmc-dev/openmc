@@ -1328,29 +1328,6 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
-double StructuredMesh::get_minimum_distance(
-  std::array<StructuredMesh::MeshDistance, 3> distances) const
-{
-  auto k =
-    std::min_element(distances.begin(), distances.end()) - distances.begin();
-  return distances[k].distance;
-}
-
-double StructuredMesh::get_maximum_outer_distance(StructuredMesh::MeshIndex ijk,
-  std::array<StructuredMesh::MeshDistance, 3> distances) const
-{
-  double distance = 0.0;
-  int k_max {-1};
-  for (int k = 0; k < n_dimension_; ++k) {
-    if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
-        (distances[k].distance > distance)) {
-      distance = distances[k].distance;
-      k_max = k;
-    }
-  }
-  return distance;
-}
-
 double StructuredMesh::distance_to_next_boundary(
   int current_bin, Position r, Direction u, int& bin_next) const
 {

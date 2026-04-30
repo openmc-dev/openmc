@@ -478,7 +478,7 @@ void Particle::event_collide()
 #endif
 }
 
-void Particle::event_revive_from_secondary(SourceSite& site)
+void Particle::event_revive_from_secondary(const SourceSite& site)
 {
   // Write final position for the previous track (skip if this is a freshly
   // constructed particle with no prior track, e.g., Phase 2 of shared

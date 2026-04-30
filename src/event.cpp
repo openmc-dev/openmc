@@ -206,14 +206,13 @@ void process_transport_events()
 }
 
 void process_init_secondary_events(int64_t n_particles, int64_t offset,
-  SharedArray<SourceSite>& shared_secondary_bank)
+  const SharedArray<SourceSite>& shared_secondary_bank)
 {
   simulation::time_event_init.start();
 #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
-    initialize_particle_track(
-      simulation::particles[i], offset + i + 1, true);
-    SourceSite& site = shared_secondary_bank[offset + i];
+    initialize_particle_track(simulation::particles[i], offset + i + 1, true);
+    const SourceSite& site = shared_secondary_bank[offset + i];
     simulation::particles[i].event_revive_from_secondary(site);
     if (simulation::particles[i].alive()) {
       dispatch_xs_event(i);

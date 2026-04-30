@@ -123,7 +123,7 @@ void process_transport_events();
 //! \param offset The offset index in the shared secondary bank
 //! \param shared_secondary_bank The shared secondary bank to read from
 void process_init_secondary_events(int64_t n_particles, int64_t offset,
-  SharedArray<SourceSite>& shared_secondary_bank);
+  const SharedArray<SourceSite>& shared_secondary_bank);
 
 } // namespace openmc
 

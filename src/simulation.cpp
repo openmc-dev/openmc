@@ -871,8 +871,7 @@ void transport_event_based()
         simulation::calculate_nonfuel_xs_queue.size(),
         simulation::advance_particle_queue.size(),
         simulation::surface_crossing_queue.size(),
-        simulation::collision_queue.size(),
-        simulation::temperature_mesh_crossing_queue.size()});
+        simulation::collision_queue.size()});
 
       // Execute event with the longest queue
       if (max == 0) {
@@ -887,8 +886,6 @@ void transport_event_based()
         process_surface_crossing_events();
       } else if (max == simulation::collision_queue.size()) {
         process_collision_events();
-      } else if (max == simulation::temperature_mesh_crossing_queue.size()) {
-        process_temperature_mesh_crossing_events();
       }
     }
 

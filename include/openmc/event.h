@@ -64,7 +64,6 @@ extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
-extern SharedArray<EventQueueItem> temperature_mesh_crossing_queue;
 
 // Particle buffer
 extern vector<Particle> particles;

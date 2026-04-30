@@ -190,6 +190,25 @@ we would run::
 
     r2s.run(timesteps, source_rates, mat_vol_kwargs={'n_samples': 10_000_000})
 
+It is also possible to use multiple meshes by passing a list of meshes instead
+of a single mesh. This can be useful, for example, when different regions of the
+model require different mesh resolutions. The meshes are assumed to be
+**non-overlapping**; each element--material combination across all meshes is
+treated as an independent activation region, and all meshes are handled in a
+single neutron transport solve. For example::
+
+    # Fine mesh near the activation target
+    mesh_fine = openmc.RegularMesh()
+    mesh_fine.dimension = (10, 10, 10)
+    ...
+
+    # Coarse mesh for the surrounding region
+    mesh_coarse = openmc.RegularMesh()
+    mesh_coarse.dimension = (5, 5, 5)
+    ...
+
+    r2s = openmc.deplete.R2SManager(model, [mesh_fine, mesh_coarse])
+
 Direct 1-Step (D1S) Calculations
 ================================
 

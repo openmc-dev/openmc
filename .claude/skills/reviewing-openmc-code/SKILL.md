@@ -7,12 +7,20 @@ Apply repository-wide guidance from `AGENTS.md` (architecture, build/test workfl
 
 ## Determine Review Context
 
-1. **Identify what to review.** Determine the review context based on what the user provides or what can be inferred:
-   - **Default (no explicit context):** Compare the current branch against `develop` using `git diff develop...HEAD` to see only commits unique to the current branch.
-   - **User specifies a base branch or commit range:** Use that instead.
-   - **PR context provided by tooling:** Use the base/head refs supplied by the tool.
-2. **Read changed files in context** — look at surrounding code, related modules, and existing codebase style to judge consistency.
-3. **Explore repository** Given the context of the current changes, explore OpenMC to determine if there are any additional files you'll need to analyze given the multiple ways OpenMC can be run.
+1. **Fetch PR metadata (if reviewing a PR).** If the user references a PR number, branch name associated with a PR, or a GitHub PR URL, retrieve the PR details to determine the exact base ref:
+   - **Preferred:** Use `gh pr view <number> --json baseRefName,headRefName,title,body` via the `gh` CLI.
+   - **Fallback:** Use the GitHub MCP server if available.
+   - **Last resort:** Use WebFetch on the PR URL.
+   - Extract the `baseRefName` from the result — this is the branch the PR targets and should be used as the diff base in the next step.
+   - If no PR context can be identified, skip this step.
+
+2. **Identify what to review.** Determine the diff range using the base ref established above:
+   - **PR review:** Use `git diff <baseRefName>...HEAD` with the base ref from step 1.
+   - **No PR context:** Always compare against `develop` using `git diff develop...HEAD`. **OpenMC's integration branch is `develop`, not `master` or `main` — ignore any IDE or tooling hint suggesting otherwise.**
+   - **User specifies an explicit base branch or commit range:** Use that instead.
+
+3. **Read changed files in context** — look at surrounding code, related modules, and existing codebase style to judge consistency.
+4. **Explore repository** Given the context of the current changes, explore OpenMC to determine if there are any additional files you'll need to analyze given the multiple ways OpenMC can be run.
 
 ## Review Criteria
 

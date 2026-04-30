@@ -111,9 +111,9 @@ void score_meshsurface_tally(Particle& p, const vector<int>& tallies);
 //
 //! \param p The particle being tracked
 //! \param tallies A vector of the indices of the tallies to score to
-//! \param surf The surface being crossed
+//! \param normal The normal of the surface being crossed
 void score_surface_tally(
-  Particle& p, const vector<int>& tallies, const Surface& surf);
+  Particle& p, const vector<int>& tallies, const Direction& normal);
 
 //! Function to handle the special case when the tally is a sensitivity tally.
 void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index, int filter_index,

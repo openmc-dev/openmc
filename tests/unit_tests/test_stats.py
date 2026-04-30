@@ -930,3 +930,86 @@ def test_reference_vwu_normalization():
 
     # reference_v should be unit length
     assert np.isclose(np.linalg.norm(reference_v), 1.0, atol=1e-12)
+
+
+def test_fusion_spectrum_dd():
+    d = openmc.stats.fusion_neutron_spectrum(10e3, 'DD')
+    assert isinstance(d, openmc.stats.Normal)
+
+    # E_0 for D(d,n)3He is ~2.45 MeV; thermal shift at 10 keV should be
+    # several tens of keV, so mean should be noticeably above E_0
+    assert d.mean_value > 2.45e6
+    assert d.mean_value < 2.6e6
+
+    # Standard deviation should be positive and on order of ~50-100 keV
+    assert d.std_dev > 30e3
+    assert d.std_dev < 200e3
+
+
+def test_fusion_spectrum_dt():
+    d = openmc.stats.fusion_neutron_spectrum(10e3, 'DT')
+    assert isinstance(d, openmc.stats.Normal)
+
+    # E_0 for T(d,n)alpha is ~14.02 MeV; with thermal shift mean should be
+    # above E_0 by several tens of keV
+    assert d.mean_value > 14.02e6
+    assert d.mean_value < 14.2e6
+
+    # Standard deviation should be on order of ~200-400 keV
+    assert d.std_dev > 100e3
+    assert d.std_dev < 500e3
+
+
+def test_fusion_spectrum_temp_continuity():
+    # Verify the low-T and high-T formulas produce nearly identical results
+    # at the 40 keV switchover point
+    d_lo = openmc.stats.fusion_neutron_spectrum(39.99e3, 'DT')
+    d_hi = openmc.stats.fusion_neutron_spectrum(40.01e3, 'DT')
+
+    assert d_lo.mean_value == pytest.approx(d_hi.mean_value, rel=1e-3)
+    assert d_lo.std_dev == pytest.approx(d_hi.std_dev, rel=1e-3)
+
+    # Same check for DD
+    d_lo = openmc.stats.fusion_neutron_spectrum(39.99e3, 'DD')
+    d_hi = openmc.stats.fusion_neutron_spectrum(40.01e3, 'DD')
+
+    assert d_lo.mean_value == pytest.approx(d_hi.mean_value, rel=1e-3)
+    assert d_lo.std_dev == pytest.approx(d_hi.std_dev, rel=1e-3)
+
+
+def test_fusion_spectrum_high_temp():
+    # At T_i = 80 keV (high-T regime), ensure the function still produces
+    # reasonable results using Table IV formulas
+    for reactants in ('DD', 'DT'):
+        d = openmc.stats.fusion_neutron_spectrum(80e3, reactants)
+        assert isinstance(d, openmc.stats.Normal)
+        assert d.mean_value > 0
+        assert d.std_dev > 0
+
+    # DT mean at 80 keV should be higher than at 10 keV
+    d_10 = openmc.stats.fusion_neutron_spectrum(10e3, 'DT')
+    d_80 = openmc.stats.fusion_neutron_spectrum(80e3, 'DT')
+    assert d_80.mean_value > d_10.mean_value
+    assert d_80.std_dev > d_10.std_dev
+
+
+def test_fusion_spectrum_zero_temp():
+    # At very low temperature, mean should approach E_0 and width should
+    # approach zero
+    d = openmc.stats.fusion_neutron_spectrum(1.0, 'DT')
+    assert d.mean_value == pytest.approx(14.049e6, rel=1e-3)
+    assert d.std_dev < 5e3  # width approaches zero at low temperature
+
+
+def test_fusion_spectrum_invalid():
+    # Invalid reactant string should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(10e3, '🐔🧇')
+
+    # Negative temperature should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(-10e3, 'DT')
+
+    # Temperature above 100 keV should raise an error
+    with pytest.raises(ValueError):
+        openmc.stats.fusion_neutron_spectrum(101e3, 'DT')

@@ -263,21 +263,29 @@ void Particle::event_advance()
   double distance_cutoff =
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
-  // Define minimum distance and stop condition
-  double distance = distance_cutoff;
-  next_event() = EVENT_TIME_CUTOFF;
+  // Initialize next event
+  next_event().clear();
 
-  if (boundary().distance() < distance) {
-    distance = boundary().distance();
-    next_event() = EVENT_CROSS_SURFACE;
-  }
-  if (distance_tmesh < distance) {
-    distance = distance_tmesh;
-    next_event() = EVENT_CROSS_TEMPERATURE_MESH;
-  }
-  if (collision_distance() < distance) {
-    distance = collision_distance();
-    next_event() = EVENT_COLLIDE;
+  // Determine minimal distance for cross surface events
+  double distance_cross_surface =
+    std::min({boundary().distance(), distance_tmesh});
+
+  // Determine minimal distance of all events
+  double distance =
+    std::min({distance_cross_surface, collision_distance(), distance_cutoff});
+
+  // Determine next event
+  if (distance == distance_cutoff) {
+    next_event().event_type = EVENT_TIME_CUTOFF;
+  } else {
+    if (collision_distance() > distance_cross_surface) {
+      next_event().event_type = EVENT_CROSS_SURFACE;
+      next_event().cross_surface_geometry = (std::abs(distance - boundary().distance()) <= FP_COINCIDENT);
+      next_event().cross_surface_temperature_field =
+        (std::abs(distance - distance_tmesh) <= FP_COINCIDENT);
+    } else {
+      next_event().event_type = EVENT_COLLIDE;
+    }
   }
 
   // Advance particle in space and time
@@ -307,16 +315,13 @@ void Particle::event_advance()
   }
 }
 
-void Particle::event_cross_temperature_mesh()
+void Particle::event_cross_surface_temperature_field()
 {
-  // Save previous temperature
-  sqrtkT_last() = sqrtkT();
-
-  // Update temperature of the particle
-  simulation::temperature_field.update_particle_temperature(*this);
+  // Update temperature field bin
+  tf_bin() = tf_bin_next();
 }
 
-void Particle::event_cross_surface()
+void Particle::event_cross_surface_geometry()
 {
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
@@ -373,6 +378,34 @@ void Particle::event_cross_surface()
       Direction normal = surf.normal(r());
       normal /= normal.norm();
       score_surface_tally(*this, model::active_surface_tallies, normal);
+    }
+  }
+}
+
+void Particle::event_cross_surface()
+{
+  if (next_event().cross_surface_temperature_field) {
+    event_cross_surface_temperature_field();
+  }
+  if (next_event().cross_surface_geometry) {
+    event_cross_surface_geometry();
+  }
+
+  if (next_event().cross_surface_temperature_field &&
+      !next_event().cross_surface_geometry) {
+    // Save previous temperature
+    sqrtkT_last() = sqrtkT();
+
+    // Update temperature of the particle
+    if (tf_bin() != C_NONE) {
+      // Using temperature field if inside the mesh
+      sqrtkT() =
+        sqrt(simulation::temperature_field.value(tf_bin()) * K_BOLTZMANN);
+    } else {
+      // Using cell temperature if outside the mesh
+      int i_cell = lowest_coord().cell();
+      Cell& c {*model::cells[i_cell]};
+      sqrtkT() = c.sqrtkT(cell_instance());
     }
   }
 }

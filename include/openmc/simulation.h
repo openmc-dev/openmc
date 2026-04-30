@@ -73,8 +73,9 @@ void initialize_batch();
 //! Initialize a fission generation
 void initialize_generation();
 
-//! Full initialization of a particle history
-void initialize_history(Particle& p, int64_t index_source, bool is_secondary);
+//! Full initialization of a particle track
+void initialize_particle_track(
+  Particle& p, int64_t index_source, bool is_secondary);
 
 //! Finalize a batch
 //!

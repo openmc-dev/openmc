@@ -595,7 +595,7 @@ void finalize_generation()
   }
 }
 
-void sample_particle(Particle& p, int64_t index_source)
+void sample_source_particle(Particle& p, int64_t index_source)
 {
   // Sample a particle from the source bank
   if (settings::run_mode == RunMode::EIGENVALUE) {
@@ -610,13 +610,14 @@ void sample_particle(Particle& p, int64_t index_source)
   }
 }
 
-void initialize_history(Particle& p, int64_t index_source, bool is_secondary)
+void initialize_particle_track(
+  Particle& p, int64_t index_source, bool is_secondary)
 {
   // Note: index_source is 1-based (first particle = 1), but current_work() is
   // stored as 0-based for direct use as an array index into
   // progeny_per_particle, source_bank, ifp banks, etc.
   if (!is_secondary) {
-    sample_particle(p, index_source);
+    sample_source_particle(p, index_source);
   }
 
   p.current_work() = index_source - 1;
@@ -884,7 +885,7 @@ void transport_history_based()
 #pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
-    initialize_history(p, i_work, false);
+    initialize_particle_track(p, i_work, false);
     transport_history_based_single_particle(p);
   }
 }
@@ -922,7 +923,7 @@ void transport_history_based_shared_secondary()
 #pragma omp for schedule(runtime)
     for (int64_t i = 1; i <= simulation::work_per_rank; i++) {
       Particle p;
-      initialize_history(p, i, false);
+      initialize_particle_track(p, i, false);
       transport_history_based_single_particle(p);
       for (auto& site : p.local_secondary_bank()) {
         thread_bank.push_back(site);
@@ -988,7 +989,7 @@ void transport_history_based_shared_secondary()
       for (int64_t i = 1; i <= simulation::shared_secondary_bank_read.size();
            i++) {
         Particle p;
-        initialize_history(p, i, true);
+        initialize_particle_track(p, i, true);
         SourceSite& site = simulation::shared_secondary_bank_read[i - 1];
         p.event_revive_from_secondary(site);
         transport_history_based_single_particle(p);

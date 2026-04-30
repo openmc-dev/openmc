@@ -1590,6 +1590,34 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
   return d;
 }
 
+double RegularMesh::distance_to_mesh_boundary_from_outside(
+  int k, const Position& r, const Direction& u) const
+{
+  double t;
+  double distance = INFTY;
+
+  if (u[k] > 0.0) {
+    t = (lower_left_[k] - r[k]) / u[k];
+  } else {
+    t = (upper_right_[k] - r[k]) / u[k];
+  }
+
+  if (t > FP_COINCIDENT) {
+    bool reenter = true;
+    for (int i = 0; i < n_dimension_; i++) {
+      if (i != k) {
+        double a = r[i] + u[i] * t;
+        reenter &= (a >= lower_left_[i]);
+        reenter &= (a <= upper_right_[i]);
+      }
+    }
+    if (reenter) {
+      distance = t;
+    }
+  }
+  return distance;
+}
+
 std::pair<vector<double>, vector<double>> RegularMesh::plot(
   Position plot_ll, Position plot_ur) const
 {

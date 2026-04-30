@@ -44,20 +44,6 @@ namespace openmc {
 // Particle implementation
 //==============================================================================
 
-double Particle::mass() const
-{
-  // Determine mass in eV/c^2
-  switch (type().pdg_number()) {
-  case PDG_NEUTRON:
-    return MASS_NEUTRON_EV;
-  case PDG_ELECTRON:
-  case PDG_POSITRON:
-    return MASS_ELECTRON_EV;
-  default:
-    return this->type().mass() * AMU_EV;
-  }
-}
-
 double Particle::speed() const
 {
   if (settings::run_CE) {
@@ -76,6 +62,19 @@ double Particle::speed() const
     int macro_a = macro_xs.get_angle_index(this->u());
     return 1.0 / macro_xs.get_xs(
                    MgxsType::INVERSE_VELOCITY, this->g(), macro_t, macro_a);
+  }
+}
+
+double Particle::mass() const
+{
+  switch (type().pdg_number()) {
+  case PDG_NEUTRON:
+    return MASS_NEUTRON_EV;
+  case PDG_ELECTRON:
+  case PDG_POSITRON:
+    return MASS_ELECTRON_EV;
+  default:
+    return this->type().mass() * AMU_EV;
   }
 }
 

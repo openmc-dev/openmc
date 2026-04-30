@@ -37,8 +37,6 @@ public:
   //==========================================================================
   // Methods
 
-  double mass() const;
-
   double speed() const;
 
   double mass() const;

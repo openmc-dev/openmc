@@ -356,6 +356,13 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
       // For decay photon sources, use the absolute photon emission rate in
       // [photons/s] as the source strength
       if (dynamic_cast<DecaySpectrum*>(energy_.get())) {
+        if (strength_ != 1.0) {
+          warning(fmt::format(
+            "Source strength of {} is ignored because the source uses a "
+            "DecaySpectrum energy distribution. The source strength will be "
+            "set from the DecaySpectrum emission rate.",
+            strength_));
+        }
         strength_ = energy_->integral();
       }
     } else {

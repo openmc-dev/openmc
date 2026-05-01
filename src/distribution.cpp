@@ -7,6 +7,7 @@
 #include <numeric>   // for accumulate
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
+#include <unordered_set>
 
 #include "openmc/chain.h"
 #include "openmc/constants.h"
@@ -15,6 +16,10 @@
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
+
+namespace {
+std::unordered_set<std::string> decay_spectrum_missing_chain_nuclides;
+}
 
 namespace openmc {
 
@@ -825,8 +830,14 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
 
     // Look up nuclide in the depletion chain
     auto it = data::chain_nuclide_map.find(name);
-    if (it == data::chain_nuclide_map.end())
+    if (it == data::chain_nuclide_map.end()) {
+      if (decay_spectrum_missing_chain_nuclides.insert(name).second) {
+        warning("Nuclide '" + name +
+                "' appears in a DecaySpectrum source but is not present in "
+                "the depletion chain; it will be ignored.");
+      }
       continue;
+    }
 
     int nuclide_index = it->second;
     const auto& chain_nuc = data::chain_nuclides[nuclide_index];

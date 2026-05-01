@@ -147,6 +147,8 @@ int openmc_finalize()
   settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
+  settings::use_decay_photons = false;
+  settings::use_shared_secondary_bank = false;
   settings::verbosity = -1;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
@@ -154,7 +156,6 @@ int openmc_finalize()
   settings::weight_windows_on = false;
   settings::write_all_tracks = false;
   settings::write_initial_source = false;
-  settings::use_shared_secondary_bank = false;
 
   simulation::keff = 1.0;
   simulation::need_depletion_rx = false;

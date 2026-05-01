@@ -192,10 +192,7 @@ void Particle::event_calculate_xs()
 
     // Define temperature field cell
     if (settings::temperature_field_on) {
-      int bin = simulation::temperature_field.mesh_ptr()->get_bin(r());
-      if (bin >= 0 && bin < simulation::temperature_field.values().size()) {
-        tf_bin() = bin;
-      }
+      tf_bin() = simulation::temperature_field.get_bin(r());
     }
 
     if (!exhaustive_find_cell(*this)) {
@@ -330,7 +327,7 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface_temperature_field()
 {
-  // Update temperature field bin
+  // Update temperature field bins
   tf_bin_last() = tf_bin();
   tf_bin() = tf_bin_next();
 }
@@ -405,16 +402,14 @@ void Particle::event_cross_surface()
     event_cross_surface_geometry();
   }
 
-  if (next_event().cross_surface_temperature_field &&
-      !next_event().cross_surface_geometry) {
-    // Save previous temperature
+  // Update particle temperature if we did not cross the geometry
+  if (!next_event().cross_surface_geometry) {
+
     sqrtkT_last() = sqrtkT();
 
-    // Update temperature of the particle
     if (tf_bin() != C_NONE) {
       // Using temperature field if inside the mesh
-      sqrtkT() =
-        sqrt(simulation::temperature_field.value(tf_bin()) * K_BOLTZMANN);
+      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin());
     } else {
       // Using cell temperature if outside the mesh
       int i_cell = lowest_coord().cell();
@@ -851,12 +846,7 @@ void Particle::cross_periodic_bc(
 
   // Reassign particle's temperature field bin
   if (settings::temperature_field_on) {
-    int bin = simulation::temperature_field.mesh_ptr()->get_bin(r());
-    if (bin >= 0 && bin < simulation::temperature_field.values().size()) {
-      tf_bin() = bin;
-    } else {
-      tf_bin() = C_NONE;
-    }
+    tf_bin() = simulation::temperature_field.get_bin(r());
   }
 
   // Figure out what cell particle is in now

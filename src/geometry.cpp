@@ -179,8 +179,7 @@ bool find_cell_inner(
       // Set the temperature.
       p.sqrtkT_last() = p.sqrtkT();
       if (settings::temperature_field_on && p.tf_bin() != C_NONE) {
-        p.sqrtkT() =
-          sqrt(simulation::temperature_field.value(p.tf_bin()) * K_BOLTZMANN);
+        p.sqrtkT() = simulation::temperature_field.get_sqrtkT(p.tf_bin());
       } else {
         p.sqrtkT() = c.sqrtkT(p.cell_instance());
       }

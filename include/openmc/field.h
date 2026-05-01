@@ -71,26 +71,25 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  //! Returns the temperature in Kelvin corresponding to the given position.
+  //! Returns the temperature in Kelvin corresponding to a given bin number
+  //! relative to the mesh.
   //
   //! \param[in] r Position of the particle
   //! \return Temperature in Kelvin
-  double get_temperature(const Position& r);
+  double get_temperature(int bin);
 
   //! Returns the square root of the temperature multiplied by the Boltzmann
-  //! constant in eV for the given position.
+  //! constant in eV for a given bin number relative to the mesh.
+  //
+  //! \param[in] bin Bin number
+  //! \return Sqrt(k_Boltzmann * temperature) in eV
+  double get_sqrtkT(int bin);
+
+  //! Returns the bin number corresponding to the location of the particle.
   //
   //! \param[in] r Position of the particle
-  //! \return Sqrt(k_Boltzmann * temperature) in eV
-  double get_sqrtkT(const Position& r);
-
-  //! Update the temperature of a particle based on its position and direction.
-  //! If the particle is inside the temperature field, its temperature is
-  //! updated. If outside, the particle takes the temperature value
-  //! associated with the current cell instance.
-  //
-  //! \param[inout] p Particle
-  void update_particle_temperature(GeometryState& p);
+  //! \return Corresponding bin number or -1 if outside the mesh
+  int get_bin(const Position& r);
 };
 
 } //  namespace openmc

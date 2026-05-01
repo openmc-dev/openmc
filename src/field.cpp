@@ -37,43 +37,31 @@ double ScalarField::distance_to_next_boundary(
     current_bin, r, u, bin_next);
 }
 
-double TemperatureField::get_temperature(const Position& r)
+double TemperatureField::get_temperature(int bin)
 {
-  // Get bin from position
-  int i = this->mesh_ptr()->get_bin(r);
-
-  // If we have a bin, we use it to locate the value
-  if (i >= 0 && i < this->values().size()) {
-    return this->value(i);
+  if (bin >= 0 && bin < values().size()) {
+    return this->value(bin);
   }
-
-  // No values were found (outside the mesh)
   return -1.0;
 }
 
-double TemperatureField::get_sqrtkT(const Position& r)
+double TemperatureField::get_sqrtkT(int bin)
 {
-  double temperature = this->get_temperature(r);
+  double temperature = get_temperature(bin);
   if (temperature >= 0) {
     return sqrt(temperature * K_BOLTZMANN);
   }
   return -1.0;
 }
 
-void TemperatureField::update_particle_temperature(GeometryState& p)
+int TemperatureField::get_bin(const Position& r)
 {
-  // It is assumed that the temperature of the cell instance is already
-  // known, so we only update the temperature if the particle is inside
-  // the mesh of the temperature field.
-
-  // Determine the temperature based on the temperature field
-  double field_sqrtkT = this->get_sqrtkT(p.r() + p.u() * TINY_BIT);
-
-  // If particle inside the mesh, we use the temperature field
-  if (field_sqrtkT >= 0.) {
-    p.sqrtkT() = field_sqrtkT;
+  int bin = mesh_ptr()->get_bin(r);
+  if (bin >= 0 && bin < values().size()) {
+    return bin;
+  } else {
+    return C_NONE;
   }
-  return;
 }
 
 //==============================================================================

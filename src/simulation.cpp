@@ -905,7 +905,7 @@ void transport_history_based_shared_secondary()
   simulation::shared_secondary_bank_write.clear();
 
   if (mpi::master) {
-    write_message(fmt::format(" Primogenitor            particles: {}",
+    write_message(fmt::format(" Primary source          particles: {}",
                     settings::n_particles),
       6);
   }
@@ -1049,7 +1049,7 @@ void transport_event_based_shared_secondary()
   simulation::shared_secondary_bank_write.clear();
 
   if (mpi::master) {
-    write_message(fmt::format(" Primogenitor            particles: {}",
+    write_message(fmt::format(" Primary source          particles: {}",
                     settings::n_particles),
       6);
   }

@@ -812,10 +812,18 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
     if (!photon_dist)
       continue;
 
+    // Skip non-positive densities and warn if negative
+    if (density <= 0.0) {
+      if (density < 0.0) {
+        warning("Nuclide '" + name +
+                "' has a negative density in a DecaySpectrum source; it will "
+                "be ignored.");
+      }
+      continue;
+    }
+
     // atoms = density [atom/b-cm] * 1e24 [b/cm^2] * volume [cm^3]
     double atoms_i = density * 1.0e24 * volume;
-    if (atoms_i <= 0.0)
-      continue;
 
     nuclide_indices.push_back(nuclide_index);
     atoms.push_back(atoms_i);

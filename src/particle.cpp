@@ -683,10 +683,10 @@ void Particle::cross_surface(const Surface& surf)
       cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
 
     material() = cell->material(cell_instance());
-    sqrtkT() = cell->sqrtkT(cell_instance());
-    // Update temperature of the particle if temperature field
-    if (settings::temperature_field_on) {
-      simulation::temperature_field.update_particle_temperature(*this);
+    if (settings::temperature_field_on && tf_bin() != C_NONE) {
+      sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin());
+    } else {
+      sqrtkT() = cell->sqrtkT(cell_instance());
     }
     density_mult() = cell->density_mult(cell_instance());
     return;

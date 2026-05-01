@@ -432,13 +432,6 @@ public:
   //============================================================================
   // Constructors
 
-  //! Construct from depletion chain nuclide indices and weights
-  //!
-  //! \param nuclide_indices  Indices of decay photon emitters in
-  //!   data::chain_nuclides
-  //! \param atoms  Number of atoms for each component.
-  DecaySpectrum(vector<int> nuclide_indices, vector<double> atoms);
-
   //! Construct from an XML node containing nuclide names and atom densities.
   //!
   //! Reads child ``<nuclide>`` elements with ``name`` and ``density``
@@ -468,6 +461,12 @@ protected:
   double sample_unbiased(uint64_t* seed) const override;
 
 private:
+  //! Initialize decay spectrum sampling data
+  //! \param nuclide_indices  Indices of decay photon emitters in
+  //!   data::chain_nuclides
+  //! \param atoms  Number of atoms for each component.
+  void init(vector<int> nuclide_indices, const vector<double>& atoms);
+
   vector<int> nuclide_indices_; //!< Indices of emitting nuclides in the chain
   DiscreteIndex di_;            //!< Discrete index for component selection
   double integral_;             //!< Total photon emission rate

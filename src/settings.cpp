@@ -83,6 +83,7 @@ bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool use_decay_photons {false};
+bool use_shared_secondary_bank {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -152,7 +153,6 @@ int trigger_batch_interval {1};
 int verbosity {-1};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-bool use_shared_secondary_bank {false};
 
 } // namespace settings
 

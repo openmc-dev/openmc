@@ -98,7 +98,8 @@ extern bool uniform_source_sampling; //!< sample sources uniformly?
 extern bool ufs_on;                  //!< uniform fission site method on?
 extern bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
 extern bool use_decay_photons;       //!< use decay photons for D1S
-extern "C" bool weight_windows_on;   //!< are weight windows are enabled?
+extern bool use_shared_secondary_bank; //!< Use shared bank for secondaries
+extern "C" bool weight_windows_on;     //!< are weight windows are enabled?
 extern bool weight_window_checkpoint_surface;   //!< enable weight window check
                                                 //!< upon surface crossing?
 extern bool weight_window_checkpoint_collision; //!< enable weight window check
@@ -202,8 +203,6 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
-extern bool
-  use_shared_secondary_bank; //!< Use shared bank for secondary particles
 
 } // namespace settings
 

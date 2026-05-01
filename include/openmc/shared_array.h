@@ -4,6 +4,8 @@
 //! \file shared_array.h
 //! \brief Shared array data structure
 
+#include <algorithm> // for copy_n
+
 #include "openmc/memory.h"
 
 namespace openmc {
@@ -103,11 +105,9 @@ public:
   void thread_unsafe_append(const T& value)
   {
     if (size_ == capacity_) {
-      int64_t new_capacity = capacity_ == 0 ? 1 : 2 * capacity_;
+      int64_t new_capacity = capacity_ == 0 ? 8 : 2 * capacity_;
       unique_ptr<T[]> new_data = make_unique<T[]>(new_capacity);
-      for (int64_t i = 0; i < size_; i++) {
-        new_data[i] = std::move(data_[i]);
-      }
+      std::copy_n(data_.get(), size_, new_data.get());
       data_ = std::move(new_data);
       capacity_ = new_capacity;
     }

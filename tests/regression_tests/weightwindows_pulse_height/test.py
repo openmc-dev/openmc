@@ -13,7 +13,7 @@ from tests.testing_harness import PyAPITestHarness
 def test_weightwindows_pulse_height(shared_secondary, subdir):
     with change_directory(subdir):
         openmc.reset_auto_ids()
-        model = openmc.model.Model()
+        model = openmc.Model()
 
         # Define materials (NaI scintillator)
         NaI = openmc.Material()
@@ -42,8 +42,7 @@ def test_weightwindows_pulse_height(shared_secondary, subdir):
             'collision': True,
         }
         model.settings.source = openmc.IndependentSource(
-            space=openmc.stats.Point(),
-            energy=openmc.stats.Discrete([1e6], [1]),
+            energy=openmc.stats.delta_function(1e6),
             particle='photon'
         )
 
@@ -67,14 +66,7 @@ def test_weightwindows_pulse_height(shared_secondary, subdir):
         # Uniform weight window bounds (low enough to trigger some splitting)
         lower_bounds = np.array([0.01])
 
-        ww = openmc.WeightWindows(
-            ww_mesh,
-            lower_bounds,
-            None,
-            5.0,
-            e_bnds,
-            'photon',
-        )
+        ww = openmc.WeightWindows(ww_mesh, lower_bounds, None, 5.0, e_bnds, 'photon')
         model.settings.weight_windows = [ww]
 
         harness = PyAPITestHarness('statepoint.5.h5', model)

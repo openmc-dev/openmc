@@ -1,8 +1,7 @@
-import os
+from pathlib import Path
 
 import pytest
 import numpy as np
-
 import openmc
 from openmc.utility_funcs import change_directory
 
@@ -65,8 +64,8 @@ def build_model(shared_secondary):
     tallies = openmc.Tallies([flux_tally])
     model.tallies = tallies
 
-    parent_dir = os.path.dirname(os.path.abspath(__file__))
-    lower_ww_bounds = np.loadtxt(os.path.join(parent_dir, 'ww_n.txt'))
+    parent_dir = Path(__file__).parent
+    lower_ww_bounds = np.loadtxt(parent_dir / 'ww_n.txt')
 
     weight_windows = openmc.WeightWindows(mesh,
                                           lower_ww_bounds,

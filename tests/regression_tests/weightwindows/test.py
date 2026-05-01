@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pytest
 import numpy as np
@@ -76,9 +76,9 @@ def build_model(shared_secondary):
     # weight windows
 
     # load pre-generated weight windows from parent directory
-    parent_dir = os.path.dirname(os.path.abspath(__file__))
-    ww_n_lower_bnds = np.loadtxt(os.path.join(parent_dir, 'ww_n.txt'))
-    ww_p_lower_bnds = np.loadtxt(os.path.join(parent_dir, 'ww_p.txt'))
+    parent_dir = Path(__file__).parent
+    ww_n_lower_bnds = np.loadtxt(parent_dir / 'ww_n.txt')
+    ww_p_lower_bnds = np.loadtxt(parent_dir / 'ww_p.txt')
 
     # create a mesh matching the one used
     # to generate the weight windows

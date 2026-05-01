@@ -15,9 +15,6 @@
     <particles>100</particles>
     <batches>2</batches>
     <source type="independent" strength="1.0" particle="neutron">
-      <space type="point">
-        <parameters>0 0 0</parameters>
-      </space>
       <energy type="discrete">
         <parameters>1000000.0 1.0</parameters>
       </energy>

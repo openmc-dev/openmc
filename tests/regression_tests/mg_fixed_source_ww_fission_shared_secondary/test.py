@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-
 import openmc
 from openmc.examples import slab_mg
 
@@ -10,7 +9,7 @@ from tests.testing_harness import PyAPITestHarness
 
 def create_library():
     # Instantiate the energy group data and file object
-    groups = openmc.mgxs.EnergyGroups(group_edges=[0.0, 0.625, 20.0e6])
+    groups = openmc.mgxs.EnergyGroups([0.0, 0.625, 20.0e6])
 
     mg_cross_sections_file = openmc.MGXSLibrary(groups)
 

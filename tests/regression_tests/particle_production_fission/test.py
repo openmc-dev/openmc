@@ -15,7 +15,7 @@ def test_particle_production_fission(shared_secondary, subdir):
     with both local and shared secondary bank modes."""
     with change_directory(subdir):
         openmc.reset_auto_ids()
-        model = openmc.model.Model()
+        model = openmc.Model()
 
         mat = openmc.Material()
         mat.set_density('g/cm3', 18.0)
@@ -27,9 +27,7 @@ def test_particle_production_fission(shared_secondary, subdir):
         model.geometry = openmc.Geometry([cell])
 
         source = openmc.IndependentSource()
-        source.space = openmc.stats.Point((0, 0, 0))
-        source.energy = openmc.stats.Discrete([1.0e6], [1.0])
-        source.particle = 'neutron'
+        source.energy = openmc.stats.delta_function(1.0e6)
 
         model.settings.particles = 100
         model.settings.run_mode = 'fixed source'

@@ -13,7 +13,7 @@ from tests.testing_harness import PyAPITestHarness
 def test_pulse_height(shared_secondary, subdir):
     with change_directory(subdir):
         openmc.reset_auto_ids()
-        model = openmc.model.Model()
+        model = openmc.Model()
 
         # Define materials
         NaI = openmc.Material()
@@ -37,8 +37,7 @@ def test_pulse_height(shared_secondary, subdir):
         model.settings.photon_transport = True
         model.settings.shared_secondary_bank = shared_secondary
         model.settings.source = openmc.IndependentSource(
-            space=openmc.stats.Point(),
-            energy=openmc.stats.Discrete([1e6], [1]),
+            energy=openmc.stats.delta_function(1e6),
             particle='photon'
         )
 

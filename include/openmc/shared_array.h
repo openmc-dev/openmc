@@ -30,8 +30,7 @@ public:
   //! Default constructor.
   SharedArray() = default;
 
-  //! Construct a container with size elements, with space to hold size number
-  //! of elements.
+  //! Construct a container with `size` elements and capacity equal to `size`.
   //
   //! \param size The number of elements to allocate and initialize
   SharedArray(int64_t size) : size_(size), capacity_(size)

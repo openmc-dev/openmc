@@ -931,7 +931,7 @@ void transport_history_based_shared_secondary()
     }
 
     // Drain thread-local bank into the shared secondary bank (once per thread)
-#pragma omp critical(shared_secondary_bank)
+#pragma omp critical(SharedSecondaryBank)
     {
       for (auto& site : thread_bank) {
         simulation::shared_secondary_bank_write.thread_unsafe_append(site);
@@ -1000,7 +1000,7 @@ void transport_history_based_shared_secondary()
 
       // Drain thread-local bank into the shared secondary bank (once per
       // thread)
-#pragma omp critical(shared_secondary_bank)
+#pragma omp critical(SharedSecondaryBank)
       {
         for (auto& secondary_site : thread_bank) {
           simulation::shared_secondary_bank_write.thread_unsafe_append(

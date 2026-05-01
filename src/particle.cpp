@@ -129,6 +129,7 @@ void Particle::from_source(const SourceSite* src)
   zero_flux_derivs();
   lifetime() = 0.0;
   if (settings::temperature_field_on) {
+    tf_bin_last() = C_NONE;
     tf_bin() = C_NONE;
     tf_bin_next() = C_NONE;
   }
@@ -330,6 +331,7 @@ void Particle::event_advance()
 void Particle::event_cross_surface_temperature_field()
 {
   // Update temperature field bin
+  tf_bin_last() = tf_bin();
   tf_bin() = tf_bin_next();
 }
 
@@ -792,6 +794,11 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   coord(0).cell() = cell_last(0);
   surface() = -surface();
 
+  // Reassign particle's temperature field bin
+  if (settings::temperature_field_on) {
+    tf_bin() = tf_bin_last();
+  }
+
   // If a reflective surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in
   // the lower universes.
@@ -841,6 +848,16 @@ void Particle::cross_periodic_bc(
 
   // Reassign particle's surface
   surface() = new_surface;
+
+  // Reassign particle's temperature field bin
+  if (settings::temperature_field_on) {
+    int bin = simulation::temperature_field.mesh_ptr()->get_bin(r());
+    if (bin >= 0 && bin < simulation::temperature_field.values().size()) {
+      tf_bin() = bin;
+    } else {
+      tf_bin() = C_NONE;
+    }
+  }
 
   // Figure out what cell particle is in now
   n_coord() = 1;

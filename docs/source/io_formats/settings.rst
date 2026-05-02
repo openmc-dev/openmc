@@ -1059,6 +1059,10 @@ variable and whose sub-elements/attributes are as follows:
   :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
   points are given first followed by corresponding :math:`p` points.
 
+  For a "decay_spectrum" distribution, ``parameters`` gives the atom densities
+  in [atom/b-cm] for the nuclides listed in the ``nuclides`` element, in the
+  same order.
+
   For a "watt" distribution, ``parameters`` should be given as two real numbers
   :math:`a` and :math:`b` that parameterize the distribution :math:`p(x) dx = c
   e^{-x/a} \sinh \sqrt{b \, x} dx`.
@@ -1095,12 +1099,13 @@ variable and whose sub-elements/attributes are as follows:
   "decay_spectrum" energy distribution, the source strength is set from this
   emission rate.
 
-:nuclide:
-  For a "decay_spectrum" distribution, each ``nuclide`` sub-element specifies a
-  nuclide contributing to the decay photon source. The nuclide name is given by
-  the ``name`` attribute, and the atom density in [atom/b-cm] is given by the
-  ``density`` attribute. Nuclides are resolved against the depletion chain, and
-  nuclides without decay photon spectra do not contribute to the distribution.
+:nuclides:
+  For a "decay_spectrum" distribution, this element specifies a
+  whitespace-separated list of nuclide names contributing to the decay photon
+  source. The atom densities for these nuclides are given by the ``parameters``
+  element in the same order. Nuclides are resolved against the depletion chain,
+  and nuclides without decay photon spectra do not contribute to the
+  distribution.
 
 :bias:
   This optional element specifies a biased distribution for importance sampling.

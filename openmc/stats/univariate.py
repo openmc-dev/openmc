@@ -2337,10 +2337,10 @@ class DecaySpectrum(Univariate):
         element = ET.Element(element_name)
         element.set("type", "decay_spectrum")
         element.set("volume", str(self.volume))
-        for name, density in self.nuclides.items():
-            nuclide_elem = ET.SubElement(element, "nuclide")
-            nuclide_elem.set("name", name)
-            nuclide_elem.set("density", str(density))
+        nuclides = ET.SubElement(element, "nuclides")
+        nuclides.text = ' '.join(self.nuclides)
+        parameters = ET.SubElement(element, "parameters")
+        parameters.text = ' '.join(str(density) for density in self.nuclides.values())
         return element
 
     @classmethod
@@ -2359,11 +2359,9 @@ class DecaySpectrum(Univariate):
 
         """
         volume = float(elem.get('volume'))
-        nuclides = {}
-        for nuclide_elem in elem.findall('nuclide'):
-            name = nuclide_elem.get('name')
-            density = float(nuclide_elem.get('density'))
-            nuclides[name] = density
+        names = get_elem_list(elem, 'nuclides', str)
+        densities = get_elem_list(elem, 'parameters', float)
+        nuclides = dict(zip(names, densities))
         return cls(nuclides, volume)
 
     def _sample_unbiased(self, n_samples=1, seed=None):

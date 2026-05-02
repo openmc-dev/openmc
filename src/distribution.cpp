@@ -790,10 +790,16 @@ DecaySpectrum::DecaySpectrum(pugi::xml_node node)
   // Read nuclide names and atom densities from XML
   vector<int> nuclide_indices;
   vector<double> atoms;
+  auto names = get_node_array<std::string>(node, "nuclides");
+  auto densities = get_node_array<double>(node, "parameters");
+  if (names.size() != densities.size()) {
+    fatal_error("DecaySpectrum nuclides and parameters must have the same "
+                "length.");
+  }
 
-  for (auto nuclide_node : node.children("nuclide")) {
-    std::string name = get_node_value(nuclide_node, "name");
-    double density = std::stod(get_node_value(nuclide_node, "density"));
+  for (size_t i = 0; i < names.size(); ++i) {
+    const auto& name = names[i];
+    double density = densities[i];
 
     // Look up nuclide in the depletion chain
     auto it = data::chain_nuclide_map.find(name);

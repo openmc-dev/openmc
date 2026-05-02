@@ -1059,6 +1059,9 @@ def test_decay_spectrum_xml_roundtrip():
     elem = d.to_xml_element('energy')
     assert elem.get('type') == 'decay_spectrum'
     assert float(elem.get('volume')) == pytest.approx(100.0)
+    assert elem.findtext('nuclides').split() == list(nuclides)
+    assert [float(x) for x in elem.findtext('parameters').split()] == pytest.approx(
+        list(nuclides.values()))
 
     # Round-trip via DecaySpectrum.from_xml_element
     d2 = openmc.stats.DecaySpectrum.from_xml_element(elem)

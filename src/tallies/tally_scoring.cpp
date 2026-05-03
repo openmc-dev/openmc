@@ -2834,8 +2834,14 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   u_cm /= u_cm.norm();
 
   auto pdf = [&](Direction u, double& E) {
-    return sab.sample_energy_and_pdf(
-      micro, p.E(), u.dot(u_cm), E, p.current_seed());
+    double mu = u.dot(u_cm);
+    double E_cm;
+    double pdf0 =
+      sab.sample_energy_and_pdf(micro, p.E(), mu, E_cm, p.current_seed());
+    Direction v_out = std::sqrt(E_cm) * u_cm + v_cm;
+    E = std::pow(v_out.norm(), 2);
+    return pdf0 *
+           (std::sqrt(E / E_cm) / (1 - mu / (awr + 1) * std::sqrt(E_in / E)));
   };
 
   score_point_tally_impl(p.r(), p.type(), p.time(), pdf);

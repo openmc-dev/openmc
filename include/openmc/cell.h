@@ -112,10 +112,19 @@ private:
 
   //! Determine if a particle is inside the cell for a complex cell.
   //!
-  //! Uses the comobination of half-spaces and binary operators to determine
+  //! Uses the combination of half-spaces and binary operators to determine
   //! if short circuiting can be used. Short cicuiting uses the relative and
   //! absolute depth of parentheses in the expression.
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+
+  //! Find the oncoming boundary of this cell for a simple cell (only
+  //! intersection operators)
+  std::pair<double, int32_t> distance_simple(
+    Position r, Direction u, int32_t on_surface) const;
+
+  //! Find the oncoming boundary of this cell for a complex cell.
+  std::pair<double, int32_t> distance_complex(
+    Position r, Direction u, int32_t on_surface) const;
 
   //! BoundingBox if the paritcle is in a simple cell.
   BoundingBox bounding_box_simple() const;

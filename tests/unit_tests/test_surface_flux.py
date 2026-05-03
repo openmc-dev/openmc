@@ -1,6 +1,7 @@
 """Tests for surface flux tallying via flux score + SurfaceFilter."""
 
 import math
+import numpy as np
 import pytest
 
 import openmc
@@ -118,3 +119,44 @@ def test_cellfrom_filter_flux_directional(two_cell_model, run_in_tmpdir):
     assert mean_from1 == pytest.approx(1.0)
     # No particles cross xmid from cell2 → flux = 0
     assert mean_from2 == pytest.approx(0.0)
+    
+
+def test_surface_filter_do_not_tally_virtual_surface_crossing(run_in_tmpdir):
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+    zmin = openmc.ZPlane(z0 = -1.0, surface_id=1, name="plane 1")
+    zmax = openmc.ZPlane(z0 = 1.0, surface_id=2,  name="plane 2")
+    ymin = openmc.YPlane(y0 = -1.0, surface_id=3, name="plane 3")
+    ymax = openmc.YPlane(y0 = 1.0, surface_id=4,  name="plane 4")
+    xmin = openmc.XPlane(x0 = -1.0, surface_id=5, name="plane 5")
+    xmax = openmc.XPlane(x0 = 1.0, surface_id=6,  name="plane 6")
+    sph = openmc.Sphere(r=100.0, boundary_type='vacuum')
+
+    cube =  (+zmin & -zmax & +ymin & -ymax & +xmin & -xmax ) 
+    sphere = -sph&~(cube)
+
+    cube_cell =  openmc.Cell(region=cube)
+    sphere_cell = openmc.Cell(region=sphere)
+
+    univ = openmc.Universe(cells=[cube_cell, sphere_cell])
+    model.geometry = openmc.Geometry(univ)    
+    
+    src = openmc.IndependentSource()
+    src.space = openmc.stats.Point((0.0, 0.0, 0.0))
+    
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 1
+    model.settings.particles = 100
+    model.settings.source = src
+    
+    surface_filter = openmc.SurfaceFilter([1,2,3,4,5,6]) 
+    tally = openmc.Tally()
+    tally.scores = ["current"]
+    tally.filters = [surface_filter]
+    model.tallies = [tally]
+    
+    model.run(apply_tally_results=True)
+    current_mean = np.abs(tally.mean.flatten())
+
+    # Every particle crosses exit the cube with weight 1, so current = 1.0
+    assert current_mean.sum() == pytest.approx(1.0, rel=1e-8)

@@ -296,6 +296,10 @@ void Particle::event_advance()
   if (distance == distance_cutoff) {
     wgt() = 0.0;
   }
+
+  // Clear surface component if distance is long enough
+  if (distance > TINY_BIT)
+    surface() = SURFACE_NONE;
 }
 
 void Particle::event_cross_surface()
@@ -374,6 +378,8 @@ void Particle::event_collide()
   if (!model::active_meshsurf_tallies.empty())
     score_meshsurface_tally(*this, model::active_meshsurf_tallies);
 
+  auto last_surface = std::abs(surface());
+
   // Clear surface component
   surface() = SURFACE_NONE;
 
@@ -381,6 +387,13 @@ void Particle::event_collide()
     collision(*this);
   } else {
     collision_mg(*this);
+  }
+
+  if (last_surface != SURFACE_NONE) {
+    const auto& surf {*model::surfaces[last_surface - 1].get()};
+    Direction normal = surf.normal(r());
+    if (normal.dot(u()) * normal.dot(u_last()) < 0.0)
+      neighbor_list_find_cell(*this);
   }
 
   // Collision track feature to recording particle interaction

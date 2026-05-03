@@ -2808,14 +2808,16 @@ void score_point_tally(
         p.E(), mu, E_cm, p.current_seed());
       Direction v_out = std::sqrt(E_cm) * u_cm + v_cm;
       E = std::pow(v_out.norm(), 2);
-      return pdf0 *
-             (std::sqrt(E / E_cm) / (1 - mu / (awr + 1) * std::sqrt(E_in / E)));
+      double jac =
+        std::sqrt(E / E_cm) / (1 - mu / (awr + 1) * std::sqrt(E_in / E));
+      return pdf0 * std::abs(jac) / (2.0 * PI);
     };
     score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
   } else {
     auto pdf = [&](Direction u, double& E) {
       return rx.products_[i_product].sample_energy_and_pdf(
-        p.E(), u.dot(p.u()), E, p.current_seed());
+               p.E(), u.dot(p.u()), E, p.current_seed()) /
+             (2.0 * PI);
     };
     score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
   }
@@ -2840,8 +2842,9 @@ void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
       sab.sample_energy_and_pdf(micro, p.E(), mu, E_cm, p.current_seed());
     Direction v_out = std::sqrt(E_cm) * u_cm + v_cm;
     E = std::pow(v_out.norm(), 2);
-    return pdf0 *
-           (std::sqrt(E / E_cm) / (1 - mu / (awr + 1) * std::sqrt(E_in / E)));
+    double jac =
+      std::sqrt(E / E_cm) / (1 - mu / (awr + 1) * std::sqrt(E_in / E));
+    return pdf0 * std::abs(jac) / (2.0 * PI);
   };
 
   score_point_tally_impl(p.r(), p.type(), p.time(), pdf);

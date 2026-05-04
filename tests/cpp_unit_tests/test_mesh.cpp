@@ -326,9 +326,9 @@ TEST_CASE("Test distance_to_next_boundary() - rectilinear")
   // The XML data as a string
   std::string xml_string = R"(
         <mesh id="1" type="rectilinear">
-            <x_grid>0.0 1.0 7.0 10.0</x_grid>
-            <y_grid>-10.0 -3.0 0.0</y_grid>
-            <z_grid>-10.0 2.0 10.0</z_grid>
+            <x_grid>-1.0 0.5 1.0</x_grid>
+            <y_grid>-1.0 0.1 1.0</y_grid>
+            <z_grid>-1.0 0.2 1.0</z_grid>
         </mesh>
     )";
 
@@ -338,28 +338,51 @@ TEST_CASE("Test distance_to_next_boundary() - rectilinear")
   pugi::xml_node root = doc.child("mesh");
   auto mesh = RectilinearMesh(root);
 
+  int current_bin;
   Position r;
   Position u;
+  int next_bin;
+  double distance;
 
   // Test inside the mesh
-  r = Position(5.0, -5.0, 0.0);
+  current_bin = 0;
+  r = Position(0.5, 0.1, 0.2);
   u = Position(1.0, 0.0, 0.0);
-  REQUIRE(mesh.distance_to_next_boundary(r, u) == 2.0);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == 0.5);
+  REQUIRE(next_bin == -1);
 
   // Test outside the mesh, going toward the mesh
-  r = Position(-1.0, -5.0, 0.0);
+  current_bin = -1;
+  r = Position(-2.5, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
-  REQUIRE(mesh.distance_to_next_boundary(r, u) == 1.0);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == 1.5);
+  REQUIRE(next_bin == 0);
 
   // Test outside the mesh, not going toward the mesh
-  r = Position(-1.0, 0.0, 0.0);
+  current_bin = -1;
+  r = Position(-2.0, 0.0, 0.0);
   u = Position(-1.0, 0.0, 0.0);
-  REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == INFTY);
+  REQUIRE(next_bin == -1);
 
   // Test on the mesh boundary, leaving the mesh
-  r = Position(10.0, -5.0, 0.0);
+  current_bin = 1;
+  r = Position(1.0, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
-  REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == INFTY);
+  REQUIRE(next_bin == -1);
+
+  // Test close to the mesh boundary
+  current_bin = 1;
+  r = Position(0.99999999999, 0.0, 0.0);
+  u = Position(1.0, 0.0, 0.0);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));
+  REQUIRE(next_bin == -1);
 }
 
 TEST_CASE("Test distance_to_next_boundary() - cylindrical")

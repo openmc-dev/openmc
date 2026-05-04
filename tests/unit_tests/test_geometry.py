@@ -430,3 +430,32 @@ def test_sphere_overlap(run_in_tmpdir):
     model.settings.run_mode = "fixed source"
     model.settings.source = source
     model.run(geometry_debug=True)
+    
+
+def test_small_cylinder_overlap(run_in_tmpdir):
+    openmc.reset_auto_ids()
+    model = openmc.model.Model()
+    cyl = openmc.ZCylinder(x0=500.0, y0=0.0, r=0.25)
+    xmin = openmc.XPlane(499.5, boundary_type="reflective")
+    xmax = openmc.XPlane(500.5, boundary_type="reflective")
+    ymin = openmc.YPlane(-0.5, boundary_type="reflective")
+    ymax = openmc.YPlane(0.5, boundary_type="reflective")
+    zmin = openmc.ZPlane(-10.0, boundary_type="reflective")
+    zmax = openmc.ZPlane(10.0, boundary_type="reflective")
+     
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 0.1)
+    
+    cell1 = openmc.Cell(region=-cyl & +zmin & -zmax, fill=mat)
+    cell2 = openmc.Cell(region=+xmin & -xmax & +ymin & -ymax & +zmin & -zmax & +cyl, fill=mat)
+    
+    model.geometry = openmc.Geometry([cell1, cell2])
+    source = openmc.Source()
+    source.angle = openmc.stats.Isotropic()
+    source.space = openmc.stats.Point((500.0, 0.0, 0.0))
+    model.settings = openmc.Settings()
+    model.settings.batches = 100
+    model.settings.particles = 80000
+    model.settings.run_mode = "fixed source"
+    model.settings.source = source
+    model.run(geometry_debug=True)        

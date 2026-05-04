@@ -36,39 +36,24 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   TemperatureField temp_field = TemperatureField(&mesh, values);
 
   // Get temperature
-  REQUIRE(temp_field.get_temperature(Position(0.5, 0.5, 0.5)) == 80.0);
-  REQUIRE(temp_field.get_temperature(Position(-0.5, -0.5, -0.5)) == 10.0);
-  REQUIRE(temp_field.get_temperature(Position(0.5, -0.5, -0.5)) == 20.0);
-  REQUIRE(temp_field.get_temperature(Position(-0.5, -0.5, 0.5)) == 50.0);
-  REQUIRE(temp_field.get_temperature(Position(0.0, 0.0, 0.0)) == 10.0);
-  REQUIRE(temp_field.get_temperature(Position(2.0, 2.0, 2.0)) == -1.0);
+  REQUIRE(temp_field.get_temperature(0) == 10.0);
+  REQUIRE(temp_field.get_temperature(1) == 20.0);
+  REQUIRE(temp_field.get_temperature(2) == 30.0);
+  REQUIRE(temp_field.get_temperature(6) == 70.0);
+  REQUIRE(temp_field.get_temperature(7) == 80.0);
+  REQUIRE(temp_field.get_temperature(-1) == -1.0);
 
   // Get sqrtkT
-  REQUIRE(temp_field.get_sqrtkT(Position(0.5, 0.5, 0.5)) ==
-          Catch::Approx(0.083029).margin(1.0E-6));
+  REQUIRE(temp_field.get_sqrtkT(7) == Catch::Approx(0.083029).margin(1.0E-6));
 
-  // Update particle temperature
-  model::n_coord_levels = 1;
-  Particle p;
-  p.u() = Direction(1.0, 0.0, 0.0);
-  REQUIRE(p.sqrtkT() == -1.0);
-  p.r() = Position(0.5, 0.5, 0.5);
-  temp_field.update_particle_temperature(p);
-  REQUIRE(p.sqrtkT() == Catch::Approx(0.083029).margin(1.0E-6));
-  p.r() = Position(-0.5, -0.5, -0.5);
-  temp_field.update_particle_temperature(p);
-  REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
+  // Get bin
+  REQUIRE(temp_field.get_bin(Position(0.5, 0.5, 0.5)) == 7);
+  REQUIRE(temp_field.get_bin(Position(-0.5, -0.5, -0.5)) == 0);
+  REQUIRE(temp_field.get_bin(Position(0.5, -0.5, -0.5)) == 1);
+  REQUIRE(temp_field.get_bin(Position(-0.5, -0.5, 0.5)) == 4);
+  REQUIRE(temp_field.get_bin(Position(0.0, 0.0, 0.0)) == 0);
+  REQUIRE(temp_field.get_bin(Position(2.0, 2.0, 2.0)) == -1);
 
-  // Check that the temperature is not updated when outside the mesh
-  p.r() = Position(2.0, 2.0, 2.0);
-  temp_field.update_particle_temperature(p);
-  REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
-
-  // Check that the temperature is not updated when on an external surface with
-  // the particle is leaving the mesh
-  p.r() = Position(1.0, 0.0, 0.0);
-  temp_field.update_particle_temperature(p);
-  REQUIRE(p.sqrtkT() == Catch::Approx(0.029355).margin(1.0E-6));
 }
 
 TEST_CASE("Test settings declaration exceptions for a temperature field",
@@ -159,45 +144,4 @@ TEST_CASE("Test settings declaration exceptions for a temperature field",
   CAPTURE(input);
   REQUIRE_THROWS_WITH(read_settings_xml(root), error);
   doc.reset();
-}
-
-TEST_CASE("Test distance to next boundary when the point is close to a surface")
-{
-  // The XML data as a string
-  std::string xml_string = R"(
-        <mesh id="1">
-          <dimension>5 5 5</dimension>
-          <lower_left>0.0 0.0 0.0</lower_left>
-          <upper_right>10.0 10.0 10.0</upper_right>
-        </mesh>
-    )";
-
-  // Create the mesh from a file
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-  pugi::xml_node root = doc.child("mesh");
-  auto mesh = RegularMesh(root);
-
-  // Define some temperature values
-  vector<double> values = {893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0,
-    893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0, 893.0};
-
-  // Create a temperature field
-  TemperatureField temp_field = TemperatureField(&mesh, values);
-
-  REQUIRE(
-    temp_field.distance_to_next_boundary(
-      Position(2.4284379294472513, 2.7965340367438869, 7.9999999922776048),
-      Direction(-0.037401146240029437, 0.18369161574591669,
-        0.98227213365980526)) == Catch::Approx(0.0000000079).margin(1.0E-10));
 }

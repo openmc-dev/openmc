@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <pugixml.hpp>
 
@@ -273,28 +274,51 @@ TEST_CASE("Test distance_to_next_boundary() - regular")
   pugi::xml_node root = doc.child("mesh");
   auto mesh = RegularMesh(root);
 
+  int current_bin;
   Position r;
   Position u;
+  int next_bin;
+  double distance;
 
   // Test inside the mesh
+  current_bin = 0;
   r = Position(0.0, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
-  REQUIRE(mesh.distance_to_next_boundary(r, u) == 1.0);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == 1.0);
+  REQUIRE(next_bin == -1);
 
   // Test outside the mesh, going toward the mesh
-  r = Position(-1.5, 0.0, 0.0);
+  current_bin = -1;
+  r = Position(-2.5, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
-  REQUIRE(mesh.distance_to_next_boundary(r, u) == 0.5);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == 1.5);
+  REQUIRE(next_bin == 0);
 
   // Test outside the mesh, not going toward the mesh
+  current_bin = -1;
   r = Position(-2.0, 0.0, 0.0);
   u = Position(-1.0, 0.0, 0.0);
-  REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == INFTY);
+  REQUIRE(next_bin == -1);
 
   // Test on the mesh boundary, leaving the mesh
+  current_bin = 1;
   r = Position(1.0, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
-  REQUIRE(mesh.distance_to_next_boundary(r, u) == INFTY);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == INFTY);
+  REQUIRE(next_bin == -1);
+
+  // Test close to the mesh boundary
+  current_bin = 1;
+  r = Position(0.99999999999, 0.0, 0.0);
+  u = Position(1.0, 0.0, 0.0);
+  distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
+  REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));
+  REQUIRE(next_bin == -1);
 }
 
 TEST_CASE("Test distance_to_next_boundary() - rectilinear")

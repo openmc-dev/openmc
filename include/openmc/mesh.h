@@ -584,11 +584,7 @@ public:
     const Position& r0, const Direction& u, double l) const override;
 
   double distance_to_mesh_boundary_from_outside(
-    int k, const Position& r, const Direction& u) const override
-  {
-    fatal_error("Not implemented");
-    return -1.0;
-  }
+    int k, const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;

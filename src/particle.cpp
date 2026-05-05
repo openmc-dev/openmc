@@ -543,6 +543,12 @@ void Particle::event_revive_from_secondary()
       // removed from the pulse-height of this cell.
       if (lowest_coord().cell() == C_NONE) {
         bool verbose = settings::verbosity >= 10 || trace();
+
+        // Define temperature field cell
+        if (settings::temperature_field_on) {
+          tf_bin() = simulation::temperature_field.get_bin(r());
+        }
+
         if (!exhaustive_find_cell(*this, verbose)) {
           mark_as_lost("Could not find the cell containing particle " +
                        std::to_string(id()));

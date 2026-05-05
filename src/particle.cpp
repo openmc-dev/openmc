@@ -797,7 +797,9 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 
   // Reassign particle's temperature field bin
   if (settings::temperature_field_on) {
-    tf_bin() = tf_bin_last();
+    if (next_event().cross_surface_temperature_field) {
+      tf_bin() = tf_bin_last();
+    }
   }
 
   // If a reflective surface is coincident with a lattice or universe

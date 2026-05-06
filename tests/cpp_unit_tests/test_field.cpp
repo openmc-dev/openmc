@@ -53,7 +53,6 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   REQUIRE(temp_field.get_bin(Position(-0.5, -0.5, 0.5)) == 4);
   REQUIRE(temp_field.get_bin(Position(0.0, 0.0, 0.0)) == 0);
   REQUIRE(temp_field.get_bin(Position(2.0, 2.0, 2.0)) == -1);
-
 }
 
 TEST_CASE("Test settings declaration exceptions for a temperature field",

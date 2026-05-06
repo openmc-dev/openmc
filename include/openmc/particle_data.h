@@ -461,7 +461,7 @@ private:
   int material_ {-1};      //!< index for current material
   int material_last_ {-1}; //!< index for last material
 
-  double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
+  double sqrtkT_ {-1.0};      //!< sqrt(k_Boltzmann * temperature) in eV
   double sqrtkT_last_ {-1.0}; //!< last temperature
 
   double density_mult_ {1.0};      //!< density multiplier

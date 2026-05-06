@@ -289,7 +289,8 @@ void Particle::event_advance()
   } else {
     if (collision_distance() > distance_cross_surface) {
       next_event().event_type = EVENT_CROSS_SURFACE;
-      next_event().cross_surface_geometry = (std::abs(distance - boundary().distance()) <= FP_COINCIDENT);
+      next_event().cross_surface_geometry =
+        (std::abs(distance - boundary().distance()) <= FP_COINCIDENT);
       next_event().cross_surface_temperature_field =
         (std::abs(distance - distance_tmesh) <= FP_COINCIDENT);
     } else {
@@ -386,8 +387,8 @@ void Particle::event_cross_surface()
       }
     }
 
-  // Update particle temperature from the temperature field
-  } else if (next_event().cross_surface_temperature_field) { 
+    // Update particle temperature from the temperature field
+  } else if (next_event().cross_surface_temperature_field) {
 
     sqrtkT_last() = sqrtkT();
 

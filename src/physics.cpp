@@ -1109,7 +1109,7 @@ void sample_fission_neutron(
   }
 
   if (!model::active_point_tallies.empty()) {
-    score_point_tally(p, i_nuclide, rx, site->delayed_group, nullptr);
+    score_point_tally(p, i_nuclide, rx, site->delayed_group);
   }
 
   // sample from prompt neutron energy distribution
@@ -1151,7 +1151,7 @@ void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle& p)
   rx.products_[0].sample(E_in, E, mu, p.current_seed());
 
   if (!model::active_point_tallies.empty()) {
-    score_point_tally(p, i_nuclide, rx, 0, nullptr);
+    score_point_tally(p, i_nuclide, rx, 0);
   }
 
   // if scattering system is in center-of-mass, transfer cosine of scattering

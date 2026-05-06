@@ -2,7 +2,6 @@ from collections.abc import Iterable
 from functools import cached_property
 from io import StringIO
 from math import log
-import re
 from warnings import warn
 
 import numpy as np
@@ -13,7 +12,7 @@ import openmc.checkvalue as cv
 from openmc.exceptions import DataError
 from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
-from .data import ATOMIC_NUMBER, gnds_name
+from .data import gnds_name, zam
 from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
 
@@ -241,9 +240,7 @@ class DecayMode(EqualityMixin):
     @property
     def daughter(self):
         # Determine atomic number and mass number of parent
-        symbol, A = re.match(r'([A-Zn][a-z]*)(\d+)', self.parent).groups()
-        A = int(A)
-        Z = ATOMIC_NUMBER[symbol]
+        Z, A, _ = zam(self.parent)
 
         # Process changes
         for mode in self.modes:
@@ -253,6 +250,9 @@ class DecayMode(EqualityMixin):
                         delta_A, delta_Z = changes
                         A += delta_A
                         Z += delta_Z
+                        break
+                    else:
+                        return None
 
         return gnds_name(Z, A, self._daughter_state)
 

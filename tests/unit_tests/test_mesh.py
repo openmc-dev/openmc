@@ -1337,20 +1337,20 @@ def test_write_vtkhdf_1d_mesh(run_in_tmpdir):
     mesh.upper_right = [10.]
     mesh.dimension = [5]
 
-    rng = np.random.default_rng(42)
-    ref_data = rng.random(mesh.dimension)
+    ref_data = np.arange(5, dtype=float)
     filename = "test_1d_mesh.vtkhdf"
-    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename,
-                           volume_normalization=False)
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
 
     assert Path(filename).exists()
 
     with h5py.File(filename, "r") as f:
         root = f["VTKHDF"]
-        # Verify 1D mesh was written
         dims = root["Dimensions"][()]
-        assert len(dims) >= 1
-        assert "CellData" in root
+        assert len(dims) == 1
+        saved = root["CellData"]["data"][()]
+
+    # Default volume_normalization=True; cell width = 2.0 → volume = 2.0
+    np.testing.assert_allclose(saved, ref_data / 2.0)
 
 
 def test_write_vtkhdf_2d_mesh(run_in_tmpdir):
@@ -1360,20 +1360,21 @@ def test_write_vtkhdf_2d_mesh(run_in_tmpdir):
     mesh.upper_right = [10., 10.]
     mesh.dimension = [5, 3]
 
-    rng = np.random.default_rng(42)
-    ref_data = rng.random(mesh.dimension)
+    ref_data = np.arange(15, dtype=float).reshape(mesh.dimension)
     filename = "test_2d_mesh.vtkhdf"
-    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename,
-                           volume_normalization=False)
+    mesh.write_data_to_vtk(datasets={"data": ref_data}, filename=filename)
 
     assert Path(filename).exists()
 
     with h5py.File(filename, "r") as f:
         root = f["VTKHDF"]
-        # Verify 2D mesh was written
         dims = root["Dimensions"][()]
         assert len(dims) == 2
-        assert "CellData" in root
+        saved = root["CellData"]["data"][()]
+
+    # Default volume_normalization=True; cell volume = 2.0 * (10/3)
+    cell_volume = 2.0 * (10.0 / 3.0)
+    np.testing.assert_allclose(saved, (ref_data / cell_volume).T.ravel())
 
 
 def test_write_ascii_vtk_unchanged(run_in_tmpdir):

@@ -260,10 +260,15 @@ void CorrelatedAngleEnergy::sample(
   mu = sample_dist(E_in, E_out, seed).sample(seed).first;
 }
 
-double CorrelatedAngleEnergy::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double CorrelatedAngleEnergy::sample_energy_and_pdf(double E_in, double mu,
+  double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
-  return sample_dist(E_in, E_out, seed).evaluate(mu);
+  auto& dist = sample_dist(E_in, E_out, seed);
+  double jac = 1.0;
+  if (is_com)
+    jac = get_jac_and_transform(E_in, mu, E_out, seed, awr);
+
+  return jac * dist.evaluate(mu);
 }
 
 } // namespace openmc

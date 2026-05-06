@@ -128,8 +128,11 @@ void score_surface_tally(
 //! \param tallies A vector of the indices of the tallies to score to
 void score_pulse_height_tally(Particle& p, const vector<int>& tallies);
 
-void score_point_tally(Particle& p, int i_nuclide, const Reaction& rx,
-  int i_product, Direction* v_t);
+void score_point_tally(
+  Particle& p, int i_nuclide, const Reaction& rx, int i_product, Direction v_t);
+
+void score_point_tally(
+  Particle& p, int i_nuclide, const Reaction& rx, int i_product);
 
 void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
   const NuclideMicroXS& micro);

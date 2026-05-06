@@ -787,7 +787,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
   vel = v_n.norm();
 
   if (!model::active_point_tallies.empty()) {
-    score_point_tally(p, i_nuclide, rx, 0, &v_t);
+    score_point_tally(p, i_nuclide, rx, 0, v_t);
   }
 
   // Sample scattering angle, checking if angle distribution is present (assume

@@ -1472,7 +1472,11 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
 
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
-  return std::ceil((r - lower_left_[i]) / width_[i]);
+  if (r == lower_left_[i]) {
+    return 1;
+  } else {
+    return std::ceil((r - lower_left_[i]) / width_[i]);
+  }
 }
 
 const std::string RegularMesh::mesh_type = "regular";

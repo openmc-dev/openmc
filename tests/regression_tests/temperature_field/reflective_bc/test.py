@@ -7,7 +7,7 @@ from tests.testing_harness import PyAPITestHarness
 @pytest.fixture
 def temperature_field_model():
     """Create a temperature field from a regular mesh over a box with
-    different temperature for each cell.
+    different temperature for each cell - reflective boundary conditions.
 
     """
     model = openmc.Model()
@@ -24,7 +24,7 @@ def temperature_field_model():
 
     # Create mesh
     dim = 2
-    lower_left = (0., 0., 0.)
+    lower_left = (0.0, 0.0, 0.0)
     upper_right = (5.0, 5.0, 5.0)
     mesh = openmc.RegularMesh()
     mesh.lower_left = lower_left
@@ -57,6 +57,14 @@ def temperature_field_model():
         space=spatial_dist, constraints={"fissionable": True})
     settings.temperature = {'tolerance': 1000, 'multipole': True}
     model.settings = settings
+
+    # Add tallies
+    mesh_filter = openmc.MeshFilter(mesh)
+    mesh_tally = openmc.Tally(name="total reaction rate")
+    mesh_tally.filters = [mesh_filter]
+    mesh_tally.scores = ["total"]
+    tallies = openmc.Tallies([mesh_tally])
+    model.tallies = tallies
 
     return model
 

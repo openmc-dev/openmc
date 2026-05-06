@@ -45,4 +45,13 @@
     <temperature_multipole>true</temperature_multipole>
     <temperature_tolerance>1000</temperature_tolerance>
   </settings>
-  </model>
+  <tallies>
+    <filter id="1" type="mesh">
+      <bins>1</bins>
+    </filter>
+    <tally id="1" name="total reaction rate">
+      <filters>1</filters>
+      <scores>total</scores>
+    </tally>
+  </tallies>
+</model>

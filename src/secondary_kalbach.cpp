@@ -232,14 +232,18 @@ void KalbachMann::sample(
     mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
   }
 }
-double KalbachMann::sample_energy_and_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double KalbachMann::sample_energy_and_pdf(double E_in, double mu, double& E_out,
+  uint64_t* seed, bool is_com, double awr) const
 {
   double km_r, km_a;
   sample_params(E_in, E_out, km_a, km_r, seed);
 
+  double jac = 1.0;
+  if (is_com)
+    jac = get_jac_and_transform(E_in, mu, E_out, seed, awr);
+
   // https://docs.openmc.org/en/latest/methods/neutron_physics.html#equation-KM-pdf-angle
-  return km_a / (2 * std::sinh(km_a)) *
+  return jac * km_a / (2 * std::sinh(km_a)) *
          (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
 }
 

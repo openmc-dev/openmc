@@ -68,8 +68,6 @@ public:
   void event_calculate_xs();
   void event_advance();
   void event_cross_surface();
-  void event_cross_surface_geometry();
-  void event_cross_surface_temperature_field();
   void event_collide();
   void event_revive_from_secondary();
   void event_death();

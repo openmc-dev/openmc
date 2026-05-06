@@ -129,7 +129,6 @@ void Particle::from_source(const SourceSite* src)
   zero_flux_derivs();
   lifetime() = 0.0;
   if (settings::temperature_field_on) {
-    tf_bin_last() = C_NONE;
     tf_bin() = C_NONE;
     tf_bin_next() = C_NONE;
   }
@@ -325,93 +324,78 @@ void Particle::event_advance()
   }
 }
 
-void Particle::event_cross_surface_temperature_field()
+void Particle::event_cross_surface()
 {
-  // Update temperature field bins
-  tf_bin_last() = tf_bin();
-  tf_bin() = tf_bin_next();
-}
+  if (next_event().cross_surface_geometry) {
 
-void Particle::event_cross_surface_geometry()
-{
-  // Saving previous cell data
-  for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell();
-  }
-  n_coord_last() = n_coord();
+    // Saving previous cell data
+    for (int j = 0; j < n_coord(); ++j) {
+      cell_last(j) = coord(j).cell();
+    }
+    n_coord_last() = n_coord();
 
-  // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface();
-  n_coord() = boundary().coord_level();
+    // Set surface that particle is on and adjust coordinate levels
+    surface() = boundary().surface();
+    n_coord() = boundary().coord_level();
 
-  if (boundary().lattice_translation()[0] != 0 ||
-      boundary().lattice_translation()[1] != 0 ||
-      boundary().lattice_translation()[2] != 0) {
-    // Particle crosses lattice boundary
+    if (boundary().lattice_translation()[0] != 0 ||
+        boundary().lattice_translation()[1] != 0 ||
+        boundary().lattice_translation()[2] != 0) {
+      // Particle crosses lattice boundary
 
-    bool verbose = settings::verbosity >= 10 || trace();
-    cross_lattice(*this, boundary(), verbose);
-    event() = TallyEvent::LATTICE;
+      bool verbose = settings::verbosity >= 10 || trace();
+      cross_lattice(*this, boundary(), verbose); // TODO
+      event() = TallyEvent::LATTICE;
 
-    // Score cell to cell partial currents
-    if (!model::active_surface_tallies.empty()) {
-      auto& lat {*model::lattices[lowest_coord().lattice()]};
-      bool is_valid;
-      Direction normal =
-        lat.get_normal(boundary().lattice_translation(), is_valid);
-      if (is_valid) {
+      // Score cell to cell partial currents
+      if (!model::active_surface_tallies.empty()) {
+        auto& lat {*model::lattices[lowest_coord().lattice()]};
+        bool is_valid;
+        Direction normal =
+          lat.get_normal(boundary().lattice_translation(), is_valid);
+        if (is_valid) {
+          normal /= normal.norm();
+          score_surface_tally(*this, model::active_surface_tallies, normal);
+        }
+      }
+
+    } else {
+
+      const auto& surf {*model::surfaces[surface_index()].get()};
+
+      // Particle crosses surface
+      // If BC, add particle to surface source before crossing surface
+      if (surf.surf_source_ && surf.bc_) {
+        add_surf_source_to_bank(*this, surf);
+      }
+      this->cross_surface(surf);
+      // If no BC, add particle to surface source after crossing surface
+      if (surf.surf_source_ && !surf.bc_) {
+        add_surf_source_to_bank(*this, surf);
+      }
+      if (settings::weight_window_checkpoint_surface) {
+        apply_weight_windows(*this);
+      }
+      event() = TallyEvent::SURFACE;
+
+      // Score cell to cell partial currents
+      if (!model::active_surface_tallies.empty()) {
+        Direction normal = surf.normal(r());
         normal /= normal.norm();
         score_surface_tally(*this, model::active_surface_tallies, normal);
       }
     }
 
-  } else {
-
-    const auto& surf {*model::surfaces[surface_index()].get()};
-
-    // Particle crosses surface
-    // If BC, add particle to surface source before crossing surface
-    if (surf.surf_source_ && surf.bc_) {
-      add_surf_source_to_bank(*this, surf);
-    }
-    this->cross_surface(surf);
-    // If no BC, add particle to surface source after crossing surface
-    if (surf.surf_source_ && !surf.bc_) {
-      add_surf_source_to_bank(*this, surf);
-    }
-    if (settings::weight_window_checkpoint_surface) {
-      apply_weight_windows(*this);
-    }
-    event() = TallyEvent::SURFACE;
-
-    // Score cell to cell partial currents
-    if (!model::active_surface_tallies.empty()) {
-      Direction normal = surf.normal(r());
-      normal /= normal.norm();
-      score_surface_tally(*this, model::active_surface_tallies, normal);
-    }
-  }
-}
-
-void Particle::event_cross_surface()
-{
-  if (next_event().cross_surface_temperature_field) {
-    event_cross_surface_temperature_field();
-  }
-  if (next_event().cross_surface_geometry) {
-    event_cross_surface_geometry();
-  }
-
-  // Update particle temperature if we did not cross the geometry
-  if (!next_event().cross_surface_geometry) {
+  // Update particle temperature from the temperature field
+  } else if (next_event().cross_surface_temperature_field) { 
 
     sqrtkT_last() = sqrtkT();
 
+    tf_bin() = tf_bin_next();
+
     if (tf_bin() != C_NONE) {
-      // Using temperature field if inside the mesh
       sqrtkT() = simulation::temperature_field.get_sqrtkT(tf_bin());
     } else {
-      // Using cell temperature if outside the mesh
       int i_cell = lowest_coord().cell();
       Cell& c {*model::cells[i_cell]};
       sqrtkT() = c.sqrtkT(cell_instance());
@@ -667,6 +651,13 @@ void Particle::cross_surface(const Surface& surf)
     return;
   }
 
+  // Update temperature field bin
+  if (settings::temperature_field_on) {
+    if (next_event().cross_surface_temperature_field) {
+      tf_bin() = tf_bin_next();
+    }
+  }
+
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
@@ -795,12 +786,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   coord(0).cell() = cell_last(0);
   surface() = -surface();
 
-  // Reassign particle's temperature field bin
-  if (settings::temperature_field_on) {
-    if (next_event().cross_surface_temperature_field) {
-      tf_bin() = tf_bin_last();
-    }
-  }
+  // Particle's temperature field bin is unchanged
 
   // If a reflective surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in

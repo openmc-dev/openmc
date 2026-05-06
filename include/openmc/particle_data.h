@@ -431,8 +431,6 @@ public:
   double& density_mult_last() { return density_mult_last_; }
 
   // Temperature field related information
-  int& tf_bin_last() { return tf_bin_last_; }
-  const int& tf_bin_last() const { return tf_bin_last_; }
   int& tf_bin() { return tf_bin_; }
   const int& tf_bin() const { return tf_bin_; }
   int& tf_bin_next() { return tf_bin_next_; }
@@ -469,7 +467,6 @@ private:
   double density_mult_ {1.0};      //!< density multiplier
   double density_mult_last_ {1.0}; //!< last density multiplier
 
-  int tf_bin_last_ = C_NONE; //!< Previous temperature field bin
   int tf_bin_ = C_NONE;      //!< Current temperature field bin
   int tf_bin_next_ = C_NONE; //!< Next temperature field bin
 

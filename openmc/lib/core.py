@@ -112,6 +112,36 @@ _dll.openmc_global_bounding_box.errcheck = _error_handler
 _dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
+#----------------------------------------------------------------------------
+# --- Nuclide functions -----------------------------------------------------
+#----------------------------------------------------------------------------
+_dll.openmc_nuclide_rebuild_derived_xs.argtypes = [c_int]
+_dll.openmc_nuclide_rebuild_derived_xs.restype  = c_int
+_dll.openmc_nuclide_get_energy_grid.argtypes = [c_int, c_int, POINTER(c_double), c_int]
+_dll.openmc_nuclide_get_energy_grid.restype = c_int
+_dll.openmc_nuclide_get_energy_grid_size.argtypes = [c_int, c_int, POINTER(c_int)]
+_dll.openmc_nuclide_get_energy_grid_size.restype = c_int
+_dll.openmc_nuclide_get_xs_size.argtypes = [c_int, c_int, c_int, POINTER(c_int)]
+_dll.openmc_nuclide_get_xs_size.restype = c_int
+_dll.openmc_nuclide_get_xs.argtypes = [c_int, c_int, c_int, POINTER(c_double), c_int]
+_dll.openmc_nuclide_get_xs.restype = c_int
+_dll.openmc_nuclide_get_reaction_threshold_energy.argtypes = [c_int, c_int, c_int, POINTER(c_double)]
+_dll.openmc_nuclide_get_reaction_threshold_energy.restype = c_int
+_dll.openmc_nuclide_get_mt_numbers.argtypes = [c_int, POINTER(c_int), POINTER(c_int)]
+_dll.openmc_nuclide_get_mt_numbers.restype = c_int
+_dll.openmc_nuclide_set_reaction_xs_with_threshold.argtypes = [
+    c_int,                     # index
+    c_int,                     # mt
+    c_int,                     # T_index
+    POINTER(c_double),         # energy
+    POINTER(c_double),         # values
+    c_int,                     # n
+    c_double                   # threshold_energy
+]
+_dll.openmc_nuclide_set_reaction_xs_with_threshold.restype = c_int
+#----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
+
 
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
@@ -824,3 +854,201 @@ def quiet_dll(output=True):
             sys.stdout = initial_stdout
             sys.stdout.flush()
             os.dup2(initial_stdout_fno, 1)
+
+# --- Nuclide functions -----------------------------------------------------
+
+def nuclide_rebuild_derived_xs(index):
+    # C function: int openmc_nuclide_rebuild_derived_xs(int index)
+    """Rebuild derived cross sections for nuclide at given index."""
+    err = _dll.openmc_nuclide_rebuild_derived_xs(index)
+    if err != 0:
+        raise RuntimeError(f"OpenMC core error in nuclide_rebuild_derived_xs (index={index}: {err}")
+
+def nuclide_energy_grid(index, temperature_index=0):
+    """Return the energy grid for a nuclide at a given temperature index."""
+
+    n = c_int()
+
+    err = _dll.openmc_nuclide_get_energy_grid_size(index, temperature_index, byref(n))
+    if err != 0:
+        raise RuntimeError(f"OpenMC error getting energy grid size (index={index}): {err}")
+
+    E = np.empty(n.value, dtype=np.float64)
+
+    err = _dll.openmc_nuclide_get_energy_grid(index, temperature_index, E.ctypes.data_as(POINTER(c_double)),n.value)
+    if err != 0:
+        raise RuntimeError(f"OpenMC core error in nuclide_energy_grid (index={index}: {err}")
+
+    return E
+
+def get_nuclide_xs(index, mt, temperature=0):
+    # Get XS size
+    n = c_int()
+
+    err = _dll.openmc_nuclide_get_xs_size(index, mt, temperature, byref(n))
+    if err != 0:
+        raise RuntimeError(f"OpenMC core error in get_nuclide_xs ref (index={index}, mt={mt}): {err}")
+
+    xs = np.zeros(n.value, dtype=np.float64)
+
+    err = _dll.openmc_nuclide_get_xs(index, mt, temperature, xs.ctypes.data_as(POINTER(c_double)), n.value)
+    if err != 0:
+        raise RuntimeError(f"OpenMC core error in get_nuclide_xs (index={index}, mt={mt}): {err}")
+    
+    return xs
+
+def get_reaction_threshold_energy(index, mt, temperature=0):
+    """Return reaction threshold energy in eV."""
+    threshold = c_double()
+
+    err = _dll.openmc_nuclide_get_reaction_threshold_energy(index, mt, temperature, byref(threshold))
+
+    if err != 0:
+        raise RuntimeError(f"OpenMC core error in get_reaction_threshold_energy (index={index}, mt={mt}): {err}")
+    return threshold.value
+
+def get_nuclide_mt_numbers(index):
+    # First, find how many MTs there are
+
+    n_mts = c_int()
+
+    # We don’t know the array size yet, but C++ sets *n_mts
+    # So call once with a null pointer
+    err = _dll.openmc_nuclide_get_mt_numbers(index, None, byref(n_mts))
+    if err != 0:
+        raise RuntimeError(f"OpenMC error getting MT count: {err}")
+    # Allocate array
+    mts = np.zeros(n_mts.value, dtype=np.int32)
+
+    # Call again to fill it
+    err = _dll.openmc_nuclide_get_mt_numbers(
+        index,
+        mts.ctypes.data_as(POINTER(c_int)),
+        byref(n_mts)
+    )
+    if err != 0:
+        raise RuntimeError(f"OpenMC error getting MT list: {err}")
+
+    return mts
+    
+
+def new_nuclide_xs_with_threshold(
+    index,
+    mt,
+    energy,
+    xs_perturbed,
+    threshold_energy,
+    temperature=0
+):
+    """
+    Set a reaction cross section with a modified threshold.
+
+    Parameters
+    ----------
+    index : int
+        Nuclide index in OpenMC.
+    mt : int
+        MT number of the reaction.
+    energy : numpy.ndarray
+        Full nuclide energy grid (must match OpenMC's grid).
+    xs_perturbed : numpy.ndarray
+        Cross section values defined on the full grid.
+        Must be zero below threshold_energy.
+    threshold_energy : float
+        Threshold energy in eV.
+    temperature : int, optional
+        Temperature index (default is 0).
+    """
+
+    import numpy as np
+
+    # --- Basic validation on Python side ---
+    if not isinstance(energy, np.ndarray) or not isinstance(xs_perturbed, np.ndarray):
+        raise TypeError("energy and xs_perturbed must be numpy arrays")
+
+    if energy.dtype != np.float64:
+        energy = np.asarray(energy, dtype=np.float64)
+
+    if xs_perturbed.dtype != np.float64:
+        xs_perturbed = np.asarray(xs_perturbed, dtype=np.float64)
+
+    if energy.size != xs_perturbed.size:
+        raise ValueError("energy and xs_perturbed must have the same length")
+
+    # --- Call C API ---
+    err = _dll.openmc_nuclide_set_reaction_xs_with_threshold(
+        index,
+        mt,
+        temperature,
+        energy.ctypes.data_as(POINTER(c_double)),
+        xs_perturbed.ctypes.data_as(POINTER(c_double)),
+        energy.size,
+        threshold_energy
+    )
+
+    if err != 0:
+        raise RuntimeError(
+            f"OpenMC core error in new_nuclide_xs_with_threshold "
+            f"(index={index}, mt={mt}, T_index={temperature}): {err}"
+        )
+
+def new_nuclide_xs_with_threshold_old(
+    index,
+    mt,
+    energy,
+    xs_perturbed,
+    threshold_energy,
+    temperature=0
+):
+    """
+    Set a reaction cross section with a modified threshold.
+
+    Parameters
+    ----------
+    index : int
+        Nuclide index in OpenMC.
+    mt : int
+        MT number of the reaction.
+    energy : numpy.ndarray
+        Full nuclide energy grid (must match OpenMC's grid).
+    xs_perturbed : numpy.ndarray
+        Cross section values defined on the full grid.
+        Must be zero below threshold_energy.
+    threshold_energy : float
+        Threshold energy in eV.
+    temperature : int, optional
+        Temperature index (default is 0).
+    """
+
+
+
+    # --- Basic validation on Python side ---
+    if not isinstance(energy, np.ndarray) or not isinstance(xs_perturbed, np.ndarray):
+        raise TypeError("energy and xs_perturbed must be numpy arrays")
+
+    if energy.dtype != np.float64:
+        energy = np.asarray(energy, dtype=np.float64)
+
+    if xs_perturbed.dtype != np.float64:
+        xs_perturbed = np.asarray(xs_perturbed, dtype=np.float64)
+    '''
+    if energy.size != xs_perturbed.size:
+        raise ValueError("energy and xs_perturbed must have the same length")
+    '''
+
+    # --- Call C API ---
+    err = _dll.openmc_nuclide_set_reaction_xs_with_threshold(
+        index,
+        mt,
+        temperature,
+        energy.ctypes.data_as(POINTER(c_double)),
+        xs_perturbed.ctypes.data_as(POINTER(c_double)),
+        energy.size,
+        threshold_energy
+    )
+
+    if err != 0:
+        raise RuntimeError(
+            f"OpenMC core error in new_nuclide_xs_with_threshold "
+            f"(index={index}, mt={mt}, T_index={temperature}): {err}"
+        )

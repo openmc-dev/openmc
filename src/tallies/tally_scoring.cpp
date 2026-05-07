@@ -2794,24 +2794,16 @@ void score_point_tally(
   const auto& nuc {data::nuclides[i_nuclide]};
   double awr = nuc->awr_;
 
-  double vel = std::sqrt(p.E());
-
   // Neutron velocity in LAB
-  Direction v_n = vel * p.u();
+  Direction v_n = std::sqrt(p.E()) * p.u();
 
   // Velocity of center-of-mass
   Direction v_cm = (v_n + awr * v_t) / (awr + 1.0);
 
-  // Transform to CM frame
-  v_n -= v_cm;
-
-  // Find speed of neutron in CM
-  vel = v_n.norm();
-
   double E_com = v_cm.dot(v_cm);
   double E_t = (v_n - v_t).dot(v_n - v_t);
 
-  double E_out = v_n.dot(v_n);
+  double E_out = (v_n - v_cm).dot(v_n - v_cm);
   double E_in = p.E();
   auto u_n = p.u();
   auto& d = rx.products_[i_product].distribution_[0];

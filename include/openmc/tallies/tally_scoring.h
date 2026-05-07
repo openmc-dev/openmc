@@ -128,55 +128,6 @@ void score_surface_tally(
 //! \param tallies A vector of the indices of the tallies to score to
 void score_pulse_height_tally(Particle& p, const vector<int>& tallies);
 
-void score_point_tally(
-  Particle& p, int i_nuclide, const Reaction& rx, int i_product, Direction v_t);
-
-void score_point_tally(
-  Particle& p, int i_nuclide, const Reaction& rx, int i_product);
-
-void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
-  const NuclideMicroXS& micro);
-
-void score_point_tally(SourceSite& site, int source_index);
-
-template<typename PDF>
-void score_point_tally_impl(
-  const Position r, const ParticleType type, const double time, PDF pdffunc)
-{
-  for (auto& det : model::active_point_detectors) {
-    auto u = (det - r);
-    double total_distance = u.norm();
-    u /= total_distance;
-    double E;
-    double pdf = pdffunc(u, E);
-    if (pdf == 0.0)
-      continue;
-    auto p = ParticleRay(r, u, type, time, E);
-    p.Ray::trace();
-    double distance = p.traversal_distance();
-    if (distance < total_distance)
-      continue;
-    double mfp = p.traversal_mfp();
-    double attenuation = std::exp(-mfp);
-
-    // Save the attenuation for point filter handling
-    p.wgt_last() = p.wgt();
-    p.wgt() *= attenuation;
-
-    // Set position state so PointFilter::get_all_bins can match:
-    // r() = detector position (for bin matching),
-    // r_last() = source/scatter position (for 1/r^2 weight)
-    p.r_last() = r;
-    p.r() = det;
-
-    // Set E_last so EnergyFilter::get_all_bins bins correctly
-    p.E_last() = E;
-
-    double flux = p.wgt_last() * pdf;
-    score_tracklength_tally_general(p, flux, model::active_point_tallies);
-  }
-}
-
 } // namespace openmc
 
 #endif // OPENMC_TALLIES_TALLY_SCORING_H

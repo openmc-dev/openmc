@@ -137,10 +137,8 @@ void ReactionProduct::sample(
 double ReactionProduct::sample_energy_and_pdf(double E_in, double mu,
   double& E_out, uint64_t* seed, bool is_com, double awr) const
 {
-  double y = (*yield_)(E_in);
   return sample_dist(E_in, seed)
-           .sample_energy_and_pdf(E_in, mu, E_out, seed, is_com, awr) *
-         y;
+    .sample_energy_and_pdf(E_in, mu, E_out, seed, is_com, awr);
 }
 
 } // namespace openmc

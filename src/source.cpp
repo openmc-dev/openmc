@@ -33,6 +33,7 @@
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
 #include "openmc/string_utils.h"
+#include "openmc/tallies/next_event_scoring.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/xml_interface.h"
 
@@ -708,7 +709,7 @@ SourceSite sample_external_source(uint64_t* seed)
   }
 
   if (!model::active_point_tallies.empty()) {
-    score_point_tally(site, i);
+    score_point_tally_source(site, i);
   }
 
   return site;

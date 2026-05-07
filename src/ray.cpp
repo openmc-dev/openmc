@@ -13,7 +13,7 @@ void Ray::compute_distance()
   boundary() = distance_to_boundary(*this);
 }
 
-void Ray::trace()
+void Ray::trace(double max_distance)
 {
   // To trace the ray from its origin all the way through the model, we have
   // to proceed in two phases. In the first, the ray may or may not be found
@@ -25,6 +25,8 @@ void Ray::trace()
   //
   // After phase one is done, we can starting tracing from cell to cell within
   // the model. This step can use neighbor lists to accelerate the ray tracing.
+
+  double max = max_distance;
 
   bool inside_cell;
   // Check for location if the particle is already known
@@ -120,10 +122,20 @@ void Ray::trace()
     // distance to properly check cell inclusion.
     boundary().distance() += TINY_BIT;
 
+    double distance = std::min(boundary().distance(), max);
+
     // Advance particle, prepare for next intersection
     for (int lev = 0; lev < n_coord(); ++lev) {
-      coord(lev).r() += boundary().distance() * coord(lev).u();
+      coord(lev).r() += distance * coord(lev).u();
     }
+
+    max -= distance;
+
+    if (max == 0.0) {
+      update_distance();
+      break;
+    }
+
     surface() = boundary().surface();
     // Initialize last cells from the current cell, because the cell() variable
     // does not contain the data for the case of a single-segment ray

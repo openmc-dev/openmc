@@ -11,6 +11,7 @@ import traceback as tb
 
 import numpy as np
 from numpy.ctypeslib import as_array
+from ctypes import byref
 
 from . import _dll
 from .error import _error_handler

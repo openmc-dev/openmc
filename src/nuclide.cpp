@@ -493,87 +493,106 @@ void Nuclide::create_derived(
   }
 }
 
-
 //======================================================
-//===================== new code get current xs ========
+//===================== get current xs ========
 
 std::vector<double> Nuclide::get_xs(int MT, int T_index) const
 {
-    // Find reaction index
-    size_t i_rx = reaction_index_.at(MT);
-    if (i_rx == C_NONE) {
-        throw std::runtime_error("No reaction with MT = " + std::to_string(MT));
-    }
+  // Find reaction index
+  size_t i_rx = reaction_index_.at(MT);
+  if (i_rx == C_NONE) {
+    throw std::runtime_error("No reaction with MT = " + std::to_string(MT));
+  }
 
-    const auto& rx = *reactions_[i_rx];
-    if (T_index >= rx.xs_.size()) {
-        throw std::runtime_error("Temperature index out of range");
-    }
+  const auto& rx = *reactions_[i_rx];
+  if (T_index >= rx.xs_.size()) {
+    throw std::runtime_error("Temperature index out of range");
+  }
 
-    return rx.xs_[T_index].value;
+  return rx.xs_[T_index].value;
 }
 
 //===================== end of code get current xs =====
 //======================================================
 
-
 //======================================================
-//== new code Rebuild derived xs_ from reactions_ data =
+//== Rebuild derived xs_ from reactions_ data =
 
-// Rebuild derived xs_ from reactions_ data
 void Nuclide::rebuild_derived_xs()
 {
-  // For each temperature index
-  for (int t = 0; t < kTs_.size(); ++t) {
-    // Zero the existing derived xs array (same shape as before)
-    // xs_[t] = 0.0;
-    xs_[t].fill(0.0);
-
-    // For each reaction
-    for (const auto& rx_ptr : reactions_) {
-      const auto& rx = *rx_ptr;
-
-      // Skip redundant reactions
-      if (rx.redundant_) continue;
-
-      int j = rx.xs_[t].threshold;
-      int n = static_cast<int>(rx.xs_[t].value.size());
-
-      // Make an xtensor view of the new per-reaction values
-      auto vals = xt::adapt(rx.xs_[t].value);
-
-      // Add contribution to totals (XS_TOTAL)
-      auto total = xt::view(xs_[t], xt::range(j, j + n), XS_TOTAL);
-      total += vals;
-
-      // Absorption for disappearance reactions
-      if (is_disappearance(rx.mt_)) {
-        auto absorption = xt::view(xs_[t], xt::range(j, j + n), XS_ABSORPTION);
-        absorption += vals;
-      }
-
-      // Fission contributions
-      if (is_fission(rx.mt_)) {
-        auto fission = xt::view(xs_[t], xt::range(j, j + n), XS_FISSION);
-        fission += vals;
-        // update absorption too for fission
-        auto absorption = xt::view(xs_[t], xt::range(j, j + n), XS_ABSORPTION);
-        absorption += vals;
-      }
-
-      // Photon production and others are left unchanged here; if your
-      // perturbation requires updating XS_PHOTON_PROD or nu-fission, do it here.
+    // Loop over temperature indices
+    for (int t = 0; t < static_cast<int>(kTs_.size()); ++t) {
+        
+        auto& xs_t = xs_[t];
+        
+        // Reset derived cross sections
+        xs_t.fill(0.0);
+        
+        // Loop over all reactions
+        for (const auto& rx_ptr : reactions_) {
+            const auto& rx = *rx_ptr;
+            
+            // Skip redundant reactions
+            if (rx.redundant_){
+                continue;
+            }
+            
+            const int j = rx.xs_[t].threshold;
+            const int n = static_cast<int>(rx.xs_[t].value.size());
+            
+            const auto& vals = rx.xs_[t].value;
+            
+            // -----------------------------
+            // TOTAL CROSS SECTION
+            // -----------------------------
+            for (int k = 0; k < n; ++k) {
+                xs_t(j + k, XS_TOTAL) += vals[k];
+            }
+            
+            // -----------------------------
+            // ABSORPTION (disappearance)
+            // -----------------------------
+            if (is_disappearance(rx.mt_)) {
+                for (int k = 0; k < n; ++k) {
+                    xs_t(j + k, XS_ABSORPTION) += vals[k];
+                }
+            }
+            
+            // -----------------------------
+            // FISSION
+            // -----------------------------
+            if (is_fission(rx.mt_)) {
+                for (int k = 0; k < n; ++k) {
+                    xs_t(j + k, XS_FISSION) += vals[k];
+                    xs_t(j + k, XS_ABSORPTION) += vals[k];
+                }
+            }
+            
+            // -----------------------------
+            // PHOTON
+            // -----------------------------
+            for (const auto& p : rx.products_) {
+                if (p.particle_.is_photon()) {
+                    for (int k = 0; k < n; ++k) {
+                        double E = grid_[t].energy[j + k];
+                        xs_t(j + k, XS_PHOTON_PROD) += vals[k] * (*p.yield_)(E);
+                    }
+                }
+            }
+        }
+        
+        // -----------------------------
+        // NU-FISSION RECONSTRUCTION
+        // -----------------------------
+        if (fissionable_) {
+            const int ngrid = static_cast<int>(grid_[t].energy.size());
+            for (int i = 0; i < ngrid; ++i) {
+                double E = grid_[t].energy[i];
+                xs_t(i, XS_NU_FISSION) =
+                nu(E, EmissionMode::total) * xs_t(i, XS_FISSION);
+            }
+        }
     }
-
-    // If fissionable, recalc nu-fission column
-    if (fissionable_) {
-      int ngrid = grid_[t].energy.size();
-      for (int i = 0; i < ngrid; ++i) {
-        double E = grid_[t].energy[i];
-        xs_[t](i, XS_NU_FISSION) = nu(E, EmissionMode::total) * xs_[t](i, XS_FISSION);
-      }
-    }
-  }
 }
 
 //=end of code Rebuild derived xs_ from reactions_ data=
@@ -1312,10 +1331,8 @@ bool multipole_in_range(const Nuclide& nuc, double E)
   return E >= nuc.multipole_->E_min_ && E <= nuc.multipole_->E_max_;
 }
 
-
 extern "C" int openmc_nuclide_get_xs(
-    int i_nuclide, int MT, int T_index,
-    double* xs_out, int n_values)
+  int i_nuclide, int MT, int T_index, double* xs_out, int n_values)
 {
   using namespace openmc;
 
@@ -1330,9 +1347,10 @@ extern "C" int openmc_nuclide_get_xs(
       return OPENMC_E_DATA;
     }
 
-    //std::memcpy(xs_out, xs.data(), n_values * sizeof(double));
-      for (int i=0; i < n_values; ++i){
-          xs_out[i] = xs[i];}
+    // std::memcpy(xs_out, xs.data(), n_values * sizeof(double));
+    for (int i = 0; i < n_values; ++i) {
+      xs_out[i] = xs[i];
+    }
 
     return 0;
   } catch (const std::exception& e) {
@@ -1344,7 +1362,8 @@ extern "C" int openmc_nuclide_get_xs(
 //======================================================
 //===================== new code get current xs size ===
 
-extern "C" int openmc_nuclide_get_xs_size(int index, int MT, int T_index, int* n)
+extern "C" int openmc_nuclide_get_xs_size(
+  int index, int MT, int T_index, int* n)
 {
   if (index < 0 || index >= data::nuclides.size()) {
     set_errmsg("Index in nuclides vector is out of bounds.");
@@ -1376,27 +1395,27 @@ extern "C" int openmc_nuclide_get_xs_size(int index, int MT, int T_index, int* n
 //===================== end of code get current sizexs ===
 //========================================================
 extern "C" int openmc_nuclide_get_energy_grid(
-    int index, int T_index, double* E, int n)
+  int index, int T_index, double* E, int n)
 {
-    using namespace openmc;
+  using namespace openmc;
 
-    if (index < 0 || index >= data::nuclides.size())
-        return OPENMC_E_INVALID_ARGUMENT;
+  if (index < 0 || index >= data::nuclides.size())
+    return OPENMC_E_INVALID_ARGUMENT;
 
-    try {
-        const auto& nuc = *data::nuclides[index];
-        const auto& grid = nuc.grid_.at(T_index).energy;
+  try {
+    const auto& nuc = *data::nuclides[index];
+    const auto& grid = nuc.grid_.at(T_index).energy;
 
-        if (static_cast<int>(grid.size()) != n)
-            return OPENMC_E_INVALID_ARGUMENT;
+    if (static_cast<int>(grid.size()) != n)
+      return OPENMC_E_INVALID_ARGUMENT;
 
-        std::memcpy(E, grid.data(), n * sizeof(double));
-    } catch (const std::exception& e) {
-        set_errmsg(e.what());
-        return OPENMC_E_DATA;
-    }
+    std::memcpy(E, grid.data(), n * sizeof(double));
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
 
-    return 0;
+  return 0;
 }
 
 extern "C" int openmc_nuclide_rebuild_derived_xs(int index)
@@ -1415,180 +1434,171 @@ extern "C" int openmc_nuclide_rebuild_derived_xs(int index)
 }
 
 extern "C" int openmc_nuclide_get_energy_grid_size(
-    int index, int T_index, int* n)
+  int index, int T_index, int* n)
 {
-    using namespace openmc;
+  using namespace openmc;
 
-    if (index < 0 || index >= data::nuclides.size())
-        return OPENMC_E_INVALID_ARGUMENT;
+  if (index < 0 || index >= data::nuclides.size())
+    return OPENMC_E_INVALID_ARGUMENT;
 
-    try {
-        const auto& nuc = *data::nuclides[index];
-        const auto& grid = nuc.grid_.at(T_index).energy;
+  try {
+    const auto& nuc = *data::nuclides[index];
+    const auto& grid = nuc.grid_.at(T_index).energy;
 
-        *n = static_cast<int>(grid.size());
-    } catch (const std::exception& e) {
-        set_errmsg(e.what());
-        return OPENMC_E_DATA;
-    }
+    *n = static_cast<int>(grid.size());
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
 
-    return 0;
+  return 0;
 }
 
 extern "C" int openmc_nuclide_get_reaction_threshold_energy(
-    int index, int mt, int T_index, double* threshold)
+  int index, int mt, int T_index, double* threshold)
 {
-    using namespace openmc;
+  using namespace openmc;
 
-    if (index < 0 || index >= data::nuclides.size())
-        return OPENMC_E_INVALID_ARGUMENT;
-    if (!threshold) return OPENMC_E_INVALID_ARGUMENT;
+  if (index < 0 || index >= data::nuclides.size())
+    return OPENMC_E_INVALID_ARGUMENT;
+  if (!threshold)
+    return OPENMC_E_INVALID_ARGUMENT;
 
-    try {
-        const auto& nuc = *data::nuclides[index];
+  try {
+    const auto& nuc = *data::nuclides[index];
 
-        // Find reaction
-        const Reaction* r = nullptr;
-        for (const auto& rx : nuc.reactions_) {
-            if (rx && rx->mt_ == mt) {
-                r = rx.get();
-                break;
-            }
-        }
-        if (!r) return OPENMC_E_INVALID_ARGUMENT;
-
-        // Access threshold index in NuclideMicroXS
-        if (T_index < 0 || T_index >= static_cast<int>(r->xs_.size()))
-            return OPENMC_E_INVALID_ARGUMENT;
-
-        int idx = r->xs_[T_index].threshold;
-
-        // Energy grid for this temperature
-        const auto& grid = nuc.grid_.at(T_index).energy;
-
-        if (idx < 0 || idx >= static_cast<int>(grid.size()))
-            return OPENMC_E_INVALID_ARGUMENT;
-
-        *threshold = grid[idx];  // <-- actual energy in eV
+    // Find reaction
+    const Reaction* r = nullptr;
+    for (const auto& rx : nuc.reactions_) {
+      if (rx && rx->mt_ == mt) {
+        r = rx.get();
+        break;
+      }
     }
-    catch (const std::exception& e) {
-        set_errmsg(e.what());
-        return OPENMC_E_DATA;
-    }
+    if (!r)
+      return OPENMC_E_INVALID_ARGUMENT;
 
-    return 0;
+    // Access threshold index in NuclideMicroXS
+    if (T_index < 0 || T_index >= static_cast<int>(r->xs_.size()))
+      return OPENMC_E_INVALID_ARGUMENT;
+
+    int idx = r->xs_[T_index].threshold;
+
+    // Energy grid for this temperature
+    const auto& grid = nuc.grid_.at(T_index).energy;
+
+    if (idx < 0 || idx >= static_cast<int>(grid.size()))
+      return OPENMC_E_INVALID_ARGUMENT;
+
+    *threshold = grid[idx]; // <-- actual energy in eV
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
+
+  return 0;
 }
 
-
-extern "C" int openmc_nuclide_get_mt_numbers(
-    int index, int* mts, int* n_mts)
+extern "C" int openmc_nuclide_get_mt_numbers(int index, int* mts, int* n_mts)
 {
-    using namespace openmc;
+  using namespace openmc;
 
-    if (index < 0 || index >= data::nuclides.size())
-        return OPENMC_E_INVALID_ARGUMENT;
+  if (index < 0 || index >= data::nuclides.size())
+    return OPENMC_E_INVALID_ARGUMENT;
 
-    try {
-        const auto& nuc = *data::nuclides[index];
-        int n = static_cast<int>(nuc.reactions_.size());
-        *n_mts = n;
+  try {
+    const auto& nuc = *data::nuclides[index];
+    int n = static_cast<int>(nuc.reactions_.size());
+    *n_mts = n;
 
-        if (mts == nullptr)
-            return 0;
+    if (mts == nullptr)
+      return 0;
 
-        for (int i = 0; i < n; ++i) {
-            mts[i] = nuc.reactions_[i]->mt_;
-        }
+    for (int i = 0; i < n; ++i) {
+      mts[i] = nuc.reactions_[i]->mt_;
     }
-    catch (const std::exception& e) {
-        set_errmsg(e.what());
-        return OPENMC_E_DATA;
-    }
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
 
-    return 0;
+  return 0;
 }
 
-extern "C" int openmc_nuclide_set_reaction_xs_with_threshold(
-    int index,
-    int mt,
-    int T_index,
-    const double* energy,
-    const double* values,
-    int n,
-    double threshold_energy
-)
+extern "C" int openmc_nuclide_set_reaction_xs_with_threshold(int index, int mt,
+  int T_index, const double* energy, const double* values, int n,
+  double threshold_energy)
 {
-    using namespace openmc;
+  using namespace openmc;
 
-    if (index < 0 || index >= static_cast<int>(data::nuclides.size()))
-        return OPENMC_E_INVALID_ARGUMENT;
-    if (!energy || !values || n <= 0)
-        return OPENMC_E_INVALID_ARGUMENT;
+  if (index < 0 || index >= static_cast<int>(data::nuclides.size()))
+    return OPENMC_E_INVALID_ARGUMENT;
+  if (!energy || !values || n <= 0)
+    return OPENMC_E_INVALID_ARGUMENT;
 
-    try {
-        auto& nuc = *data::nuclides[index];
+  try {
+    auto& nuc = *data::nuclides[index];
 
-        // --- Find reaction ---
-        Reaction* rx = nullptr;
-        for (auto& rx_ptr : nuc.reactions_) {
-            if (rx_ptr && rx_ptr->mt_ == mt) {
-                rx = rx_ptr.get();
-                break;
-            }
-        }
-        if (!rx) return OPENMC_E_INVALID_ARGUMENT;
-
-        if (T_index < 0 || T_index >= static_cast<int>(rx->xs_.size()))
-            return OPENMC_E_INVALID_ARGUMENT;
-
-        auto& xs = rx->xs_[T_index];
-
-        // --- Validate energy grid ---
-        const auto& nuc_grid = nuc.grid_.at(T_index).energy;
-
-        if (static_cast<int>(nuc_grid.size()) != n)
-            return OPENMC_E_INVALID_ARGUMENT;
-
-        for (int i = 0; i < n; ++i) {
-            if (energy[i] != nuc_grid[i])
-                return OPENMC_E_INVALID_ARGUMENT;
-        }
-
-        // --- Compute threshold index ---
-        int thr_idx = -1;
-        for (int i = 0; i < n; ++i) {
-            if (energy[i] >= threshold_energy) {
-                thr_idx = i;
-                break;
-            }
-        }
-        if (thr_idx < 0)
-            return OPENMC_E_INVALID_ARGUMENT;
-
-        // --- Enforce zero below threshold ---
-        for (int i = 0; i < thr_idx; ++i) {
-            if (values[i] != 0.0)
-                return OPENMC_E_INVALID_ARGUMENT;
-        }
-
-        // --- Trim XS ---
-        std::vector<double> new_values;
-        new_values.reserve(n - thr_idx);
-
-        for (int i = thr_idx; i < n; ++i)
-            new_values.push_back(values[i]);
-
-        // --- Update reaction --
-        xs.value     = std::move(new_values);
-        xs.threshold = thr_idx;
+    // --- Find reaction ---
+    Reaction* rx = nullptr;
+    for (auto& rx_ptr : nuc.reactions_) {
+      if (rx_ptr && rx_ptr->mt_ == mt) {
+        rx = rx_ptr.get();
+        break;
+      }
     }
-    catch (const std::exception& e) {
-        set_errmsg(e.what());
-        return OPENMC_E_DATA;
+    if (!rx)
+      return OPENMC_E_INVALID_ARGUMENT;
+
+    if (T_index < 0 || T_index >= static_cast<int>(rx->xs_.size()))
+      return OPENMC_E_INVALID_ARGUMENT;
+
+    auto& xs = rx->xs_[T_index];
+
+    // --- Validate energy grid ---
+    const auto& nuc_grid = nuc.grid_.at(T_index).energy;
+
+    if (static_cast<int>(nuc_grid.size()) != n)
+      return OPENMC_E_INVALID_ARGUMENT;
+
+    for (int i = 0; i < n; ++i) {
+      if (energy[i] != nuc_grid[i])
+        return OPENMC_E_INVALID_ARGUMENT;
     }
 
-    return 0;
+    // --- Compute threshold index ---
+    int thr_idx = -1;
+    for (int i = 0; i < n; ++i) {
+      if (energy[i] >= threshold_energy) {
+        thr_idx = i;
+        break;
+      }
+    }
+    if (thr_idx < 0)
+      return OPENMC_E_INVALID_ARGUMENT;
+
+    // --- Enforce zero below threshold ---
+    for (int i = 0; i < thr_idx; ++i) {
+      if (values[i] != 0.0)
+        return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // --- Trim XS ---
+    std::vector<double> new_values;
+    new_values.reserve(n - thr_idx);
+
+    for (int i = thr_idx; i < n; ++i)
+      new_values.push_back(values[i]);
+
+    // --- Update reaction --
+    xs.value = std::move(new_values);
+    xs.threshold = thr_idx;
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_DATA;
+  }
+
+  return 0;
 }
-
 
 } // namespace openmc

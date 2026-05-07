@@ -149,8 +149,8 @@ void score_point_tally_impl(
     u /= total_distance;
     double E;
     double pdf = pdffunc(u, E);
-    if (pdf < 0.0)
-      fatal_error("negative pdf");
+    if (pdf == 0.0)
+      continue;
     auto p = ParticleRay(r, u, type, time, E);
     p.Ray::trace();
     double distance = p.traversal_distance();

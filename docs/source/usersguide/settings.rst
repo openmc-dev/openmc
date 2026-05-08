@@ -272,6 +272,32 @@ option::
   settings.source = [src1, src2]
   settings.uniform_source_sampling = True
 
+When source strengths represent physical activity rates in Bq, the
+:class:`openmc.stats.PoissonProcess` distribution can be assigned to a source's
+time distribution to generate per-source Poisson timestamps. Each source
+generates an independent ordered sequence of exponentially-distributed
+inter-arrival times at the given rate::
+
+  src1 = openmc.IndependentSource()
+  src1.strength = 1.0e6   # 1 MBq
+  src1.time = openmc.stats.PoissonProcess(rate=1.0e6)
+  ...
+
+  src2 = openmc.IndependentSource()
+  src2.strength = 5.0e5   # 0.5 MBq
+  src2.time = openmc.stats.PoissonProcess(rate=5.0e5)
+  ...
+
+  settings.source = [src1, src2]
+
+As a convenience, :meth:`IndependentSource.set_activity` sets the time
+distribution to a Poisson process using the source strength as the rate::
+
+  src1.set_activity()  # uses src1.strength as rate
+
+This is only used in fixed-source mode. The assigned timestamps can be tallied
+using :class:`openmc.TimeFilter`.
+
 Additionally, sampling from an :class:`openmc.IndependentSource` may be biased
 for local or global variance reduction by modifying the
 :attr:`~openmc.IndependentSource.bias` attribute of each of its four main

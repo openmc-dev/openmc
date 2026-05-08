@@ -4,6 +4,7 @@
 #include "openmc/capi.h"
 #include "openmc/collision_track.h"
 #include "openmc/container_util.h"
+#include "openmc/distribution.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
@@ -40,6 +41,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <string>
 
 //==============================================================================
@@ -323,6 +325,7 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
 vector<int64_t> work_index;
+vector<double> decay_times;
 
 } // namespace simulation
 
@@ -357,6 +360,79 @@ void allocate_banks()
   }
 }
 
+void compute_decay_times()
+{
+  int n_sources = model::external_sources.size();
+
+  // Check each source for a PoissonProcess time distribution
+  vector<double> mean_dts(n_sources, 0.0);
+  bool any_poisson = false;
+  for (int s = 0; s < n_sources; ++s) {
+    auto* indep =
+      dynamic_cast<IndependentSource*>(model::external_sources[s].get());
+    if (indep) {
+      auto* poisson = dynamic_cast<const PoissonProcess*>(indep->time());
+      if (poisson) {
+        double rate = poisson->rate();
+        mean_dts[s] = (rate > 0.0) ? 1.0 / rate : 0.0;
+        any_poisson = true;
+      }
+    }
+  }
+
+  // If no sources use PoissonProcess timing, clear and return
+  if (!any_poisson) {
+    simulation::decay_times.clear();
+    return;
+  }
+
+  int64_t global_start = simulation::work_index[mpi::rank];
+  int64_t global_end = global_start + simulation::work_per_rank;
+
+  // Per-source Poisson process state: RNG seed and cumulative time
+  vector<uint64_t> source_seeds(n_sources);
+  vector<double> cumulative_times(n_sources, 0.0);
+  for (int s = 0; s < n_sources; ++s) {
+    source_seeds[s] = init_seed(
+      simulation::current_batch * (n_sources + 1) + s + 1, STREAM_SOURCE);
+  }
+
+  // Single pass over all global particles up to this rank's end.
+  // For each particle, replicate the source selection, advance that
+  // source's Poisson clock, and store the time if it belongs to this rank.
+  // Non-Poisson sources get NaN so initialize_history() can skip them.
+  simulation::decay_times.resize(simulation::work_per_rank);
+  for (int64_t i = 0; i < global_end; ++i) {
+    // Replicate source selection RNG from sample_external_source
+    int64_t id = (simulation::total_gen + overall_generation() - 1) *
+                   settings::n_particles +
+                 i + 1;
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
+
+    int src_idx;
+    if (settings::uniform_source_sampling) {
+      src_idx = static_cast<int>(prn(&seed) * n_sources);
+      if (src_idx >= n_sources)
+        src_idx = n_sources - 1;
+    } else {
+      src_idx = model::external_sources_probability.sample(&seed);
+    }
+
+    // Advance this source's Poisson clock (or mark NaN for non-Poisson)
+    double decay_time = std::numeric_limits<double>::quiet_NaN();
+    if (mean_dts[src_idx] > 0.0) {
+      cumulative_times[src_idx] +=
+        -mean_dts[src_idx] * std::log(1.0 - prn(&source_seeds[src_idx]));
+      decay_time = cumulative_times[src_idx];
+    }
+
+    // Store if this particle belongs to this rank
+    if (i >= global_start) {
+      simulation::decay_times[i - global_start] = decay_time;
+    }
+  }
+}
+
 void initialize_batch()
 {
   // Increment current batch
@@ -369,6 +445,11 @@ void initialize_batch()
     } else {
       write_message(6, "Simulating batch {}", simulation::current_batch);
     }
+  }
+
+  // Pre-compute decay times for activity-based timing (fixed-source only)
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    compute_decay_times();
   }
 
   // Reset total starting particle weight used for normalizing tallies
@@ -586,6 +667,14 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
+    // Override particle time with decay time if Poisson process timing is used
+    if (!simulation::decay_times.empty()) {
+      double decay_time = simulation::decay_times[index_source - 1];
+      if (!std::isnan(decay_time)) {
+        p.time() = decay_time;
+        p.time_last() = decay_time;
+      }
+    }
   }
   p.current_work() = index_source;
 
@@ -800,6 +889,7 @@ void free_memory_simulation()
 {
   simulation::k_generation.clear();
   simulation::entropy.clear();
+  simulation::decay_times.clear();
 }
 
 void transport_history_based_single_particle(Particle& p)

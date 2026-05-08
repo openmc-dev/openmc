@@ -60,7 +60,7 @@ class SourceBase(ABC):
     def __init__(
         self,
         strength: float | None = 1.0,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None,
     ):
         self.strength = strength
         self.constraints = constraints
@@ -323,7 +323,7 @@ class IndependentSource(SourceBase):
         particle: str | int | ParticleType = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material |
                           openmc.Universe] | None = None,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None,
     ):
         if domains is not None:
             warnings.warn("The 'domains' arguments has been replaced by the "
@@ -411,6 +411,19 @@ class IndependentSource(SourceBase):
     @particle.setter
     def particle(self, particle):
         self._particle = ParticleType(particle)
+
+    def set_activity(self, rate=None):
+        """Set time distribution to a Poisson process.
+
+        Parameters
+        ----------
+        rate : float, optional
+            Activity rate in Bq. If not provided, uses the source strength.
+
+        """
+        if rate is None:
+            rate = self.strength
+        self.time = openmc.stats.PoissonProcess(rate)
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element

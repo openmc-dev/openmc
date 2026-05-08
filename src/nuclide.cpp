@@ -520,79 +520,79 @@ std::vector<double> Nuclide::get_xs(int MT, int T_index) const
 
 void Nuclide::rebuild_derived_xs()
 {
-    // Loop over temperature indices
-    for (int t = 0; t < static_cast<int>(kTs_.size()); ++t) {
-        
-        auto& xs_t = xs_[t];
-        
-        // Reset derived cross sections
-        xs_t.fill(0.0);
-        
-        // Loop over all reactions
-        for (const auto& rx_ptr : reactions_) {
-            const auto& rx = *rx_ptr;
-            
-            // Skip redundant reactions
-            if (rx.redundant_){
-                continue;
-            }
-            
-            const int j = rx.xs_[t].threshold;
-            const int n = static_cast<int>(rx.xs_[t].value.size());
-            
-            const auto& vals = rx.xs_[t].value;
-            
-            // -----------------------------
-            // TOTAL CROSS SECTION
-            // -----------------------------
-            for (int k = 0; k < n; ++k) {
-                xs_t(j + k, XS_TOTAL) += vals[k];
-            }
-            
-            // -----------------------------
-            // ABSORPTION (disappearance)
-            // -----------------------------
-            if (is_disappearance(rx.mt_)) {
-                for (int k = 0; k < n; ++k) {
-                    xs_t(j + k, XS_ABSORPTION) += vals[k];
-                }
-            }
-            
-            // -----------------------------
-            // FISSION
-            // -----------------------------
-            if (is_fission(rx.mt_)) {
-                for (int k = 0; k < n; ++k) {
-                    xs_t(j + k, XS_FISSION) += vals[k];
-                    xs_t(j + k, XS_ABSORPTION) += vals[k];
-                }
-            }
-            
-            // -----------------------------
-            // PHOTON
-            // -----------------------------
-            for (const auto& p : rx.products_) {
-                if (p.particle_.is_photon()) {
-                    for (int k = 0; k < n; ++k) {
-                        double E = grid_[t].energy[j + k];
-                        xs_t(j + k, XS_PHOTON_PROD) += vals[k] * (*p.yield_)(E);
-                    }
-                }
-            }
+  // Loop over temperature indices
+  for (int t = 0; t < static_cast<int>(kTs_.size()); ++t) {
+
+    auto& xs_t = xs_[t];
+
+    // Reset derived cross sections
+    xs_t.fill(0.0);
+
+    // Loop over all reactions
+    for (const auto& rx_ptr : reactions_) {
+      const auto& rx = *rx_ptr;
+
+      // Skip redundant reactions
+      if (rx.redundant_) {
+        continue;
+      }
+
+      const int j = rx.xs_[t].threshold;
+      const int n = static_cast<int>(rx.xs_[t].value.size());
+
+      const auto& vals = rx.xs_[t].value;
+
+      // -----------------------------
+      // TOTAL CROSS SECTION
+      // -----------------------------
+      for (int k = 0; k < n; ++k) {
+        xs_t(j + k, XS_TOTAL) += vals[k];
+      }
+
+      // -----------------------------
+      // ABSORPTION (disappearance)
+      // -----------------------------
+      if (is_disappearance(rx.mt_)) {
+        for (int k = 0; k < n; ++k) {
+          xs_t(j + k, XS_ABSORPTION) += vals[k];
         }
-        
-        // -----------------------------
-        // NU-FISSION RECONSTRUCTION
-        // -----------------------------
-        if (fissionable_) {
-            const int ngrid = static_cast<int>(grid_[t].energy.size());
-            for (int i = 0; i < ngrid; ++i) {
-                double E = grid_[t].energy[i];
-                xs_t(i, XS_NU_FISSION) =
-                nu(E, EmissionMode::total) * xs_t(i, XS_FISSION);
-            }
+      }
+
+      // -----------------------------
+      // FISSION
+      // -----------------------------
+      if (is_fission(rx.mt_)) {
+        for (int k = 0; k < n; ++k) {
+          xs_t(j + k, XS_FISSION) += vals[k];
+          xs_t(j + k, XS_ABSORPTION) += vals[k];
         }
+      }
+
+      // -----------------------------
+      // PHOTON
+      // -----------------------------
+      for (const auto& p : rx.products_) {
+        if (p.particle_.is_photon()) {
+          for (int k = 0; k < n; ++k) {
+            double E = grid_[t].energy[j + k];
+            xs_t(j + k, XS_PHOTON_PROD) += vals[k] * (*p.yield_)(E);
+          }
+        }
+      }
     }
+
+    // -----------------------------
+    // NU-FISSION RECONSTRUCTION
+    // -----------------------------
+    if (fissionable_) {
+      const int ngrid = static_cast<int>(grid_[t].energy.size());
+      for (int i = 0; i < ngrid; ++i) {
+        double E = grid_[t].energy[i];
+        xs_t(i, XS_NU_FISSION) =
+          nu(E, EmissionMode::total) * xs_t(i, XS_FISSION);
+      }
+    }
+  }
 }
 
 //=end of code Rebuild derived xs_ from reactions_ data=

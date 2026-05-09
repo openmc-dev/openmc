@@ -405,6 +405,10 @@ bool read_model_xml()
   write_message(
     fmt::format("Reading model XML file '{}' ...", model_filename), 5);
 
+  // Read chain data before settings so DecaySpectrum source distributions can
+  // resolve nuclides while sources are constructed.
+  read_chain_file_xml();
+
   read_settings_xml(settings_root);
 
   // If other XML files are present, display warning
@@ -419,9 +423,6 @@ bool read_model_xml()
       break;
     }
   }
-
-  // Read data from chain file
-  read_chain_file_xml();
 
   // Read materials and cross sections
   if (!check_for_node(root, "materials")) {
@@ -475,13 +476,14 @@ bool read_model_xml()
 
 void read_separate_xml_files()
 {
+  // Read chain data before settings so DecaySpectrum source distributions can
+  // resolve nuclides while sources are constructed.
+  read_chain_file_xml();
+
   read_settings_xml();
   if (settings::run_mode != RunMode::PLOTTING) {
     read_cross_sections_xml();
   }
-
-  // Read data from chain file
-  read_chain_file_xml();
 
   read_materials_xml();
   read_geometry_xml();

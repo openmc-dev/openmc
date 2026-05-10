@@ -2,7 +2,6 @@
 
 #include <cmath> // for sqrt
 
-#include "openmc/error.h"
 #include "openmc/random_lcg.h"
 
 namespace openmc {
@@ -40,8 +39,7 @@ double get_jac_and_transform(double E_in, double& mu, double& E_out,
     }
   }
   mu = mu_lab * std::sqrt(E_out / E_cm) - std::sqrt(E_com / E_cm);
-  double jac = mult * E_out / (D * std::sqrt(E_cm * E_com)); 
-  return jac;
+  return mult * E_out / (D * std::sqrt(E_cm * E_com));
 }
 
 } // namespace openmc

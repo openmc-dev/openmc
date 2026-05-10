@@ -35,7 +35,8 @@ public:
   virtual ~AngleEnergy() = default;
 };
 
-double get_jac_and_transform(double E_in, double& mu, double& E_out, uint64_t* seed, double awr);
+double get_jac_and_transform(
+  double E_in, double& mu, double& E_out, uint64_t* seed, double awr);
 
 double get_jac_and_transform(double E_in, double& mu, double& E_out,
   uint64_t* seed, double awr, double E_com);

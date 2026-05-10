@@ -21,23 +21,23 @@ void score_point_tally_elastic(
   double E_com = v_cm.dot(v_cm);
   double E_out = (v_n - v_cm).dot(v_n - v_cm);
   double E_in = p.E();
-  auto u_n = p.u();
+  auto u_cm = v_cm / v_cm.norm();
 
   auto& d = rx.products_[i_product].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
 
   auto pdf = [&](Direction u, double& E) {
-    double mu = u.dot(u_n);
+    double mu = u.dot(u_cm);
     E = E_out;
     double jac =
       get_jac_and_transform(E_in, mu, E, p.current_seed(), awr, E_com);
-    //if (!d_->angle().empty()) {
-    //  return jac * d_->angle().evaluate(p.E(), mu) / (2.0 * PI);
-    //} else {
+    if (!d_->angle().empty()) {
+      return jac * d_->angle().evaluate(p.E(), mu) / (2.0 * PI);
+    } else {
       return jac * 0.5 / (2.0 * PI);
-    //}
+    }
   };
-  score_point_tally_impl(p.r(), p.type(), p.time(), pdf); 
+  score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
 }
 
 void score_point_tally_inelastic(
@@ -56,7 +56,6 @@ void score_point_tally_inelastic(
            (2.0 * PI) * yield;
   };
   score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
-  fatal_error("moo1");
 }
 
 void score_point_tally_fission(
@@ -75,7 +74,6 @@ void score_point_tally_fission(
            (2.0 * PI);
   };
   score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
-  fatal_error("moo2");
 }
 
 void score_point_tally_sab(Particle& p, int i_nuclide, const ThermalData& sab,
@@ -92,7 +90,6 @@ void score_point_tally_sab(Particle& p, int i_nuclide, const ThermalData& sab,
            (2.0 * PI);
   };
   score_point_tally_impl(p.r(), p.type(), p.time(), pdf);
-  fatal_error("moo3");
 }
 
 void score_point_tally_source(SourceSite& site, int source_index)

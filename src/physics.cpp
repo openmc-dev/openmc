@@ -719,8 +719,6 @@ void scatter(Particle& p, int i_nuclide)
   if (prob > cutoff && !sampled) {
     // =======================================================================
     // S(A,B) SCATTERING
-    
-    fatal_error("moo oo 3");
 
     sab_scatter(i_nuclide, micro.index_sab, p);
 
@@ -798,11 +796,11 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
   double mu_cm;
   auto& d = rx.products_[0].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-  //if (!d_->angle().empty()) {
-  //  mu_cm = d_->angle().sample(p.E(), p.current_seed());
-  //} else {
+  if (!d_->angle().empty()) {
+    mu_cm = d_->angle().sample(p.E(), p.current_seed());
+  } else {
     mu_cm = uniform_distribution(-1., 1., p.current_seed());
-  //}
+  }
 
   // Determine direction cosines in CM
   Direction u_cm = v_n / vel;

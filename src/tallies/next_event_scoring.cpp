@@ -17,11 +17,10 @@ void score_point_tally_elastic(
 
   // Velocity of center-of-mass
   Direction v_cm = (v_n + awr * v_t) / (awr + 1.0);
+  auto u_cm = v_cm / v_cm.norm();
 
   double E_com = v_cm.dot(v_cm);
   double E_out = (v_n - v_cm).dot(v_n - v_cm);
-  double E_in = p.E();
-  auto u_cm = v_cm / v_cm.norm();
 
   auto& d = rx.products_[i_product].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
@@ -30,7 +29,7 @@ void score_point_tally_elastic(
     double mu = u.dot(u_cm);
     E = E_out;
     double jac =
-      get_jac_and_transform(E_in, mu, E, p.current_seed(), awr, E_com);
+      get_jac_and_transform_impl(E_com, mu, E, p.current_seed(), awr);
     if (!d_->angle().empty()) {
       return jac * d_->angle().evaluate(p.E(), mu) / (2.0 * PI);
     } else {

@@ -10,11 +10,11 @@ double get_jac_and_transform(
   double E_in, double& mu, double& E_out, uint64_t* seed, double awr)
 {
   double E_com = E_in / ((awr + 1.0) * (awr + 1.0));
-  return get_jac_and_transform(E_in, mu, E_out, seed, awr, E_com);
+  return get_jac_and_transform_impl(E_in, mu, E_out, seed, awr, E_com);
 }
 
-double get_jac_and_transform(double E_in, double& mu, double& E_out,
-  uint64_t* seed, double awr, double E_com)
+double get_jac_and_transform_impl(
+  double E_com, double& mu, double& E_out, uint64_t* seed, double awr)
 {
   double E_cm = E_out;
   double mu_lab = mu;

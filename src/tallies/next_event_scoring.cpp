@@ -1,5 +1,7 @@
 #include "openmc/tallies/next_event_scoring.h"
 
+#include <algorithm> // for clamp
+
 #include "openmc/secondary_uncorrelated.h"
 #include "openmc/source.h"
 
@@ -14,11 +16,13 @@ void score_point_tally_elastic(
 
   // Neutron velocity in LAB
   Direction v_n = std::sqrt(p.E()) * p.u();
+  auto u_n = v_n / v_n.norm();
 
   // Velocity of center-of-mass
   Direction v_cm = (v_n + awr * v_t) / (awr + 1.0);
   auto u_cm = v_cm / v_cm.norm();
 
+  double E_in = p.E();
   double E_com = v_cm.dot(v_cm);
   double E_out = (v_n - v_cm).dot(v_n - v_cm);
 
@@ -27,11 +31,15 @@ void score_point_tally_elastic(
 
   auto pdf = [&](Direction u, double& E) {
     double mu = u.dot(u_cm);
+    double mu_l = u.dot(u_n);
     E = E_out;
     double jac =
       get_jac_and_transform_impl(E_com, mu, E, p.current_seed(), awr);
+    double mu_cm =
+      1.0 + mu_l * std::sqrt(E_in * E) / E_out - (E_in + E) / (2.0 * E_out);
+    mu_cm = std::clamp(mu_cm, -1.0, 1.0);
     if (!d_->angle().empty()) {
-      return jac * d_->angle().evaluate(p.E(), mu) / (2.0 * PI);
+      return jac * d_->angle().evaluate(p.E(), mu_cm) / (2.0 * PI);
     } else {
       return jac * 0.5 / (2.0 * PI);
     }

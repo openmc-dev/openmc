@@ -1,7 +1,9 @@
 #include "openmc/angle_energy.h"
 
-#include <cmath> // for sqrt
+#include <algorithm> // for clamp
+#include <cmath>     // for sqrt
 
+#include "openmc/constants.h"
 #include "openmc/random_lcg.h"
 
 namespace openmc {
@@ -23,9 +25,16 @@ double get_jac_and_transform_impl(
     return 0.0;
   D = std::sqrt(D);
 
-  if (mu_lab <= 0.0 && E_cm <= E_cm)
+  if ((mu_lab <= 0.0) && (E_cm <= E_com))
     return 0.0;
-  double E_out1 = E_com * (mu_lab + D) * (mu_lab + D);
+
+  double E_out1;
+  if (mu_lab > 0.0) {
+    E_out1 = E_com * (mu_lab + D) * (mu_lab + D);
+  } else {
+    E_out1 = E_com * ((E_cm / E_com - 1.0) / (D - mu_lab)) *
+             ((E_cm / E_com - 1.0) / (D - mu_lab));
+  }
   double mult;
   if (E_cm > E_com) {
     mult = 1.0;
@@ -39,6 +48,9 @@ double get_jac_and_transform_impl(
     }
   }
   mu = mu_lab * std::sqrt(E_out / E_cm) - std::sqrt(E_com / E_cm);
+
+  if (std::abs(mu) < 1.0 + FP_PRECISION)
+    mu = std::clamp(mu, -1.0, 1.0);
   return mult * E_out / (D * std::sqrt(E_cm * E_com));
 }
 

@@ -24,7 +24,7 @@ public:
    * Traces the ray through the geometry, calling on_intersection
    * at every surface boundary.
    */
-  void trace();
+  void trace(double max_distance = INFTY);
 
   // Stops the ray and exits tracing when called from on_intersection
   void stop() { stop_ = true; }
@@ -58,6 +58,8 @@ public:
     type() = type_;
     time() = time_;
     E() = E_;
+    E_last() = E_;
+    r_last() = r;
   }
 
   void on_intersection() override;

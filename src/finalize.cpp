@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/cmfd_solver.h"
 #include "openmc/collision_track.h"
 #include "openmc/constants.h"
@@ -44,6 +45,7 @@ void free_memory()
   free_memory_photon();
   free_memory_settings();
   free_memory_thermal();
+  free_memory_chain();
   library_clear();
   nuclides_clear();
   free_memory_source();

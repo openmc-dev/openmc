@@ -354,6 +354,19 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
     if (check_for_node(node, "energy")) {
       pugi::xml_node node_dist = node.child("energy");
       energy_ = distribution_from_xml(node_dist);
+
+      // For decay photon sources, use the absolute photon emission rate in
+      // [photons/s] as the source strength
+      if (dynamic_cast<DecaySpectrum*>(energy_.get())) {
+        if (strength_ != 1.0) {
+          warning(fmt::format(
+            "Source strength of {} is ignored because the source uses a "
+            "DecaySpectrum energy distribution. The source strength will be "
+            "set from the DecaySpectrum emission rate.",
+            strength_));
+        }
+        strength_ = energy_->integral();
+      }
     } else {
       // Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
       energy_ = UPtrDist {new Watt(0.988e6, 2.249e-6)};
@@ -414,6 +427,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Check for monoenergetic source above maximum particle energy
     auto p = particle_.transport_index();
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
+    auto decay_spectrum = dynamic_cast<DecaySpectrum*>(energy_.get());
     if (energy_ptr) {
       auto energies =
         tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
@@ -424,10 +438,18 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     }
 
     while (true) {
-      // Sample energy spectrum
-      auto [E, E_wgt_temp] = energy_->sample(seed);
-      site.E = E;
-      E_wgt = E_wgt_temp;
+      // Sample energy spectrum. For decay photon sources, also get the parent
+      // nuclide index to store in the source site for tallying purposes.
+      if (decay_spectrum) {
+        auto sample = decay_spectrum->sample_with_parent(seed);
+        site.E = sample.energy;
+        E_wgt = sample.weight;
+        site.parent_nuclide = sample.parent_nuclide;
+      } else {
+        auto [E, E_wgt_temp] = energy_->sample(seed);
+        site.E = E;
+        E_wgt = E_wgt_temp;
+      }
 
       // Resample if energy falls above maximum particle energy
       if (site.E < data::energy_max[p] &&

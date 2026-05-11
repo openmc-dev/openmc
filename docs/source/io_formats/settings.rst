@@ -1058,17 +1058,19 @@ variable and whose sub-elements/attributes are as follows:
 
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
-  "tabular", "maxwell", "watt", and "mixture". The "uniform" option produces
-  variates sampled from a uniform distribution over a finite interval. The
-  "discrete" option produces random variates that can assume a finite number
-  of values (i.e., a distribution characterized by a probability mass function).
-  The "tabular" option produces random variates sampled from a tabulated
-  distribution where the density function is either a histogram or
+  "tabular", "maxwell", "watt", "mixture", and "decay_spectrum". The "uniform"
+  option produces variates sampled from a uniform distribution over a finite
+  interval. The "discrete" option produces random variates that can assume a
+  finite number of values (i.e., a distribution characterized by a probability
+  mass function). The "tabular" option produces random variates sampled from a
+  tabulated distribution where the density function is either a histogram or
   linearly-interpolated between tabulated points. The "watt" option produces
   random variates is sampled from a Watt fission spectrum (only used for
   energies). The "maxwell" option produce variates sampled from a Maxwell
-  fission spectrum (only used for energies). The "mixture" option produces samples
-  from univariate sub-distributions with given probabilities.
+  fission spectrum (only used for energies). The "mixture" option produces
+  samples from univariate sub-distributions with given probabilities. The
+  "decay_spectrum" option produces photon energies sampled from decay photon
+  spectra in a depletion chain (only used for energies).
 
   *Default*: None
 
@@ -1085,6 +1087,10 @@ variable and whose sub-elements/attributes are as follows:
   For a "discrete" or "tabular" distribution, ``parameters`` provides the
   :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
   points are given first followed by corresponding :math:`p` points.
+
+  For a "decay_spectrum" distribution, ``parameters`` gives the atom densities
+  in [atom/b-cm] for the nuclides listed in the ``nuclides`` element, in the
+  same order.
 
   For a "watt" distribution, ``parameters`` should be given as two real numbers
   :math:`a` and :math:`b` that parameterize the distribution :math:`p(x) dx = c
@@ -1114,6 +1120,21 @@ variable and whose sub-elements/attributes are as follows:
   :dist:
     This sub-element of a ``pair`` element provides information on the
     corresponding univariate distribution.
+
+:volume:
+  For a "decay_spectrum" distribution, this attribute specifies the source
+  region volume in cm\ :sup:`3`. It is used together with atom densities to
+  determine the absolute photon emission rate. When a source uses a
+  "decay_spectrum" energy distribution, the source strength is set from this
+  emission rate.
+
+:nuclides:
+  For a "decay_spectrum" distribution, this element specifies a
+  whitespace-separated list of nuclide names contributing to the decay photon
+  source. The atom densities for these nuclides are given by the ``parameters``
+  element in the same order. Nuclides are resolved against the depletion chain,
+  and nuclides without decay photon spectra do not contribute to the
+  distribution.
 
 :bias:
   This optional element specifies a biased distribution for importance sampling.
@@ -1300,7 +1321,7 @@ The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutof
 ``<surface_grazing_ratio>`` Element
 -----------------------------------
 
-The ``<surface_grazing_ratio>`` element specifies the surface flux cosine 
+The ``<surface_grazing_ratio>`` element specifies the surface flux cosine
 substitution ratio.
 
   *Default*: 0.5

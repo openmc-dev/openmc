@@ -268,10 +268,11 @@ class MeshBase(IDManagerMixin, ABC):
         return string
 
     def _volume_dim_check(self):
-        if self.n_dimension != 3 or \
-           any([d == 0 for d in self.dimension]):
-            raise RuntimeError(f'Mesh {self.id} is not 3D. '
-                               'Volumes cannot be provided.')
+        if any(d == 0 for d in self.dimension):
+            raise RuntimeError(
+                f'Mesh {self.id} has a zero-size dimension. '
+                'Volumes cannot be provided.'
+            )
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):

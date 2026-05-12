@@ -157,6 +157,8 @@ void sample_neutron_reaction(Particle& p)
   // exiting neutron
   const auto& ncrystal_mat = model::materials[p.material()]->ncrystal_mat();
   if (ncrystal_mat && p.E() < NCRYSTAL_MAX_ENERGY) {
+    if (!model::active_point_tallies.empty())
+      fatal_error("Next-Event estimator does not support ncrystal materials");
     ncrystal_mat.scatter(p);
   } else {
     scatter(p, i_nuclide);

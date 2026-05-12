@@ -583,6 +583,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       materialfrom_present);
 
   if (point_present) {
+    if (!settings::run_CE)
+      fatal_error("Cannot use point detectors in multi-group mode.");
     if (simulation::nonvacuum_boundary_present)
       fatal_error(
         "Cannot use point detectors with non-vacuum boundary conditions.");

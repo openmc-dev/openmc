@@ -964,6 +964,7 @@ std::pair<double, int32_t> Region::distance_complex(
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
+  bool in_region = contains_complex(r, u, on_surface);
 
   for (int32_t token : expression_) {
     // Ignore this token if it corresponds to an operator rather than a region.
@@ -978,9 +979,8 @@ std::pair<double, int32_t> Region::distance_complex(
     // Check if this distance is the new minimum.
     if (d < min_dist) {
       if (min_dist - d >= FP_PRECISION * min_dist) {
-        auto p = r + (d - TINY_BIT) * u;
-        if (contains_complex(p + 2 * TINY_BIT * u, u, on_surface) !=
-            contains_complex(p, u, on_surface)) {
+        if (contains_complex(r + (d + TINY_BIT) * u, u, on_surface) !=
+            in_region) {
           min_dist = d;
           i_surf = -token;
         }

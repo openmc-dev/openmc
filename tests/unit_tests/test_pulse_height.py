@@ -1,7 +1,7 @@
 import openmc
 
 
-def test_negative_pulse_height(run_in_tmpdir):
+def test_zero_energy_pulse_heights(run_in_tmpdir):
     surf = openmc.Sphere(r=10.0, boundary_type='vacuum')
     cell = openmc.Cell(region=-surf)
     model = openmc.Model()

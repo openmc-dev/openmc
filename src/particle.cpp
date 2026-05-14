@@ -400,6 +400,10 @@ void Particle::event_cross_surface()
       Cell& c {*model::cells[i_cell]};
       sqrtkT() = c.sqrtkT(cell_instance());
     }
+
+#ifdef OPENMC_DAGMC_ENABLED
+    history().reset();
+#endif
   }
 }
 

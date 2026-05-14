@@ -2755,7 +2755,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       // Skip pulses with zero energy
       if (p.E_last() == 0.0)
         continue;
-      
+
       // Initialize an iterator over valid filter bin combinations. If
       // there are no valid combinations, use a continue statement to ensure
       // we skip the assume_separate break below.

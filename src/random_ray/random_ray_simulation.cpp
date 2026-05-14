@@ -235,6 +235,13 @@ void validate_random_ray_inputs()
       "quality FW-CADIS weight windows. We recommend you use flat source mode "
       "when generating weight windows with an overlaid mesh tally.");
   }
+
+  // Warn about the presence of a temperature field (not supported)
+  ///////////////////////////////////////////////////////////////////
+  if (settings::temperature_field_on) {
+    warning("Temperature fields are not supported with the random ray solver. "
+            "It will be ignored during this simulation.");
+  }
 }
 
 void print_adjoint_header()

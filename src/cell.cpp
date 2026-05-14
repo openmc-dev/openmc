@@ -978,7 +978,9 @@ std::pair<double, int32_t> Region::distance_complex(
     // Check if this distance is the new minimum.
     if (d < min_dist) {
       if (min_dist - d >= FP_PRECISION * min_dist) {
-        if (!contains_complex(r + (d + TINY_BIT) * u, u, on_surface)) {
+        auto p = r + (d - TINY_BIT) * u;
+        if (contains_complex(p + 2 * TINY_BIT * u, u, on_surface) !=
+            contains_complex(p, u, on_surface)) {
           min_dist = d;
           i_surf = -token;
         }

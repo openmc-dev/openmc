@@ -343,8 +343,15 @@ void Particle::event_cross_surface()
         boundary().lattice_translation()[2] != 0) {
       // Particle crosses lattice boundary
 
+      // Update temperature field bin
+      if (settings::temperature_field_on) {
+        if (next_event().cross_surface_temperature_field) {
+          tf_bin() = tf_bin_next();
+        }
+      }
+
       bool verbose = settings::verbosity >= 10 || trace();
-      cross_lattice(*this, boundary(), verbose); // TODO
+      cross_lattice(*this, boundary(), verbose);
       event() = TallyEvent::LATTICE;
 
       // Score cell to cell partial currents
@@ -655,7 +662,7 @@ void Particle::cross_surface(const Surface& surf)
     return;
   }
 
-  // Update temperature field bin
+  // Update temperature field bin after handling boundary conditions
   if (settings::temperature_field_on) {
     if (next_event().cross_surface_temperature_field) {
       tf_bin() = tf_bin_next();

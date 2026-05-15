@@ -1028,10 +1028,10 @@ class Integrator(ABC):
             self.transfer_rates = TransferRates(
                 self.operator, materials, len(self.timesteps))
 
-        if self.external_source_rates is not None and destination_material:
-            raise ValueError('Currently is not possible to set a transfer rate '
-                             'with destination matrial in combination with '
-                             'external source rates.')
+        # if self.external_source_rates is not None and destination_material:
+        #     raise ValueError('Currently is not possible to set a transfer rate '
+        #                      'with destination matrial in combination with '
+        #                      'external source rates.')
 
         self.transfer_rates.set_transfer_rate(
             material, components, transfer_rate, transfer_rate_units,
@@ -1074,10 +1074,10 @@ class Integrator(ABC):
             self.external_source_rates = ExternalSourceRates(
                 self.operator, materials, len(self.timesteps))
 
-        if self.transfer_rates is not None and self.transfer_rates.index_transfer:
-            raise ValueError('Currently is not possible to set an external '
-                             'source rate in combination with transfer rates '
-                             'with destination matrial.')
+        # if self.transfer_rates is not None and self.transfer_rates.index_transfer:
+        #     raise ValueError('Currently is not possible to set an external '
+        #                      'source rate in combination with transfer rates '
+        #                      'with destination matrial.')
 
         self.external_source_rates.set_external_source_rate(
             material, composition, rate, rate_units, timesteps)

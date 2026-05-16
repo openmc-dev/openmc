@@ -1418,6 +1418,9 @@ class Material(IDManagerMixin):
         if volume is None:
             volume = self.volume
 
+        if units in {'Bq', 'Ci'} and volume is None:
+            raise ValueError(f"Volume must be set in order to compute activity in '{units}'.")
+
         if units == 'Bq':
             multiplier = volume
         elif units == 'Bq/cm3':
@@ -1474,6 +1477,8 @@ class Material(IDManagerMixin):
 
         if units == 'W':
             multiplier = volume if volume is not None else self.volume
+            if multiplier is None:
+                raise ValueError("Volume must be set in order to compute total decay heat.")
         elif units == 'W/cm3':
             multiplier = 1
         elif units == 'W/m3':

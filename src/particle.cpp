@@ -351,9 +351,6 @@ void Particle::event_delta_advance()
     distance = -std::log(prn(current_seed())) / majorant();
   }
 
-  // Advance the particle (applying boundary conditions) until it either:
-  // i) Reaches a collision site;
-  // ii) Or leaks out of a vacuum boundary condition.
   while (distance >= 0 && alive()) {
     // update distance to problem boundary
     boundary().distance() = INFTY;
@@ -371,21 +368,31 @@ void Particle::event_delta_advance()
       }
     }
 
-    // We collided before crossing a boundary surface.
-    // Need to advance the particle to the collision site.
-    if (distance < boundary().distance()) {
-      move_distance(distance);
+    if (distance < boundary().distance())
+    {
       break;
     }
 
-    // Advance particle to the boundary surface.
-    move_distance(boundary().distance());
+    // Advance particle to the boundary.
+    r() += (boundary().distance() - TINY_BIT) * u();
     event_cross_surface();
+    material() = C_NONE;
     distance -= boundary().distance();
   }
 
-  // Ensure that cross sections will be re-calculated if
-  // the energy has changed.
+  // Advance particle to the true collision site.
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r() += distance * u();
+    coord(j).reset();
+  }
+
+  // If the particle no longer exists in the geometry, it left through a vacuum BC.
+  if (!exhaustive_find_cell(*this)) {
+    keff_tally_leakage() += wgt();
+    wgt() = 0.0;
+  }
+
+  // Force re-calculation of material properties at the collision site.
   if (E() != E_last()) {
     material_last() = C_NONE;
   }

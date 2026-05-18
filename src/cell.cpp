@@ -991,7 +991,7 @@ std::pair<double, int32_t> Region::distance_complex(
     if (min_dist == INFTY)
       break;
     auto p = r + (min_dist + TINY_BIT) * u;
-    if (contains_complex(p, u, on_su\rface) != in_region)
+    if (contains_complex(p, u, on_surface) != in_region)
       break;
     atleast = min_dist;
   }

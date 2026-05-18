@@ -962,30 +962,38 @@ std::pair<double, int32_t> Region::distance_simple(
 std::pair<double, int32_t> Region::distance_complex(
   Position r, Direction u, int32_t on_surface) const
 {
-  double min_dist {INFTY};
-  int32_t i_surf {std::numeric_limits<int32_t>::max()};
+  double atleast {-1.0};
   bool in_region = contains_complex(r, u, on_surface);
 
-  for (int32_t token : expression_) {
-    // Ignore this token if it corresponds to an operator rather than a region.
-    if (token >= OP_UNION)
-      continue;
+  while (true) {
+    double min_dist {INFTY};
+    int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
-    // Calculate the distance to this surface.
-    // Note the off-by-one indexing
-    bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+    for (int32_t token : expression_) {
+      // Ignore this token if it corresponds to an operator rather than a
+      // region.
+      if (token >= OP_UNION)
+        continue;
 
-    // Check if this distance is the new minimum.
-    if (d < min_dist) {
-      if (min_dist - d >= FP_PRECISION * min_dist) {
-        if (contains_complex(r + (d + TINY_BIT) * u, u, on_surface) !=
-            in_region) {
+      // Calculate the distance to this surface.
+      // Note the off-by-one indexing
+      bool coincident {std::abs(token) == std::abs(on_surface)};
+      double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+
+      // Check if this distance is the new minimum.
+      if ((d > at_least) && (d < min_dist)) {
+        if (min_dist - d >= FP_PRECISION * min_dist) {
           min_dist = d;
           i_surf = -token;
         }
       }
     }
+    if (min_dist == INFTY)
+      break;
+    auto p = r + (min_dist + TINY_BIT) * u;
+    if (contains_complex(p, u, on_su\rface) != in_region)
+      break;
+    atleast = min_dist;
   }
   return {min_dist, i_surf};
 }

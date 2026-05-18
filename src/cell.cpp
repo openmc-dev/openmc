@@ -962,12 +962,14 @@ std::pair<double, int32_t> Region::distance_simple(
 std::pair<double, int32_t> Region::distance_complex(
   Position r, Direction u, int32_t on_surface) const
 {
+  double min_dist;
+  int32_t i_surf;
   double atleast {-1.0};
   bool in_region = contains_complex(r, u, on_surface);
 
   while (true) {
-    double min_dist {INFTY};
-    int32_t i_surf {std::numeric_limits<int32_t>::max()};
+    min_dist = INFTY;
+    i_surf = std::numeric_limits<int32_t>::max();
 
     for (int32_t token : expression_) {
       // Ignore this token if it corresponds to an operator rather than a

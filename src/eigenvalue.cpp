@@ -134,10 +134,11 @@ void synchronize_bank()
 
   // Temporary banks for IFP
   vector<vector<int>> temp_delayed_groups;
+  vector<vector<int>> temp_ancestors;
   vector<vector<double>> temp_lifetimes;
   if (settings::ifp_on) {
-    resize_ifp_data(
-      temp_delayed_groups, temp_lifetimes, 3 * simulation::work_per_rank);
+    resize_ifp_data(temp_delayed_groups, temp_ancestors, temp_lifetimes,
+      3 * simulation::work_per_rank);
   }
 
   // ==========================================================================
@@ -165,8 +166,8 @@ void synchronize_bank()
     int64_t idx = std::floor(tooth) - start;
     temp_sites[index_temp] = simulation::fission_bank[idx];
     if (settings::ifp_on) {
-      copy_ifp_data_from_fission_banks(
-        idx, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
+      copy_ifp_data_from_fission_banks(idx, temp_delayed_groups[index_temp],
+        temp_ancestors[index_temp], temp_lifetimes[index_temp]);
     }
     ++index_temp;
 
@@ -208,7 +209,7 @@ void synchronize_bank()
   int ifp_n_generation;
   if (settings::ifp_on) {
     broadcast_ifp_n_generation(
-      ifp_n_generation, temp_delayed_groups, temp_lifetimes);
+      ifp_n_generation, temp_delayed_groups, temp_ancestors, temp_lifetimes);
   }
 
   int64_t index_local = 0;
@@ -216,6 +217,7 @@ void synchronize_bank()
 
   // IFP send buffers
   vector<int> send_delayed_groups;
+  vector<int> send_ancestors;
   vector<double> send_lifetimes;
 
   if (start < settings::n_particles) {
@@ -226,7 +228,7 @@ void synchronize_bank()
 
     // Resize IFP send buffers
     if (settings::ifp_on && mpi::n_procs > 1) {
-      resize_ifp_data(send_delayed_groups, send_lifetimes,
+      resize_ifp_data(send_delayed_groups, send_ancestors, send_lifetimes,
         ifp_n_generation * 3 * simulation::work_per_rank);
     }
 
@@ -245,9 +247,13 @@ void synchronize_bank()
 
         if (settings::ifp_on) {
           // Send IFP data
-          if (is_beta_effective_or_both())
+          if (is_beta_effective_or_both()) {
             send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
               temp_delayed_groups, send_delayed_groups);
+            if (settings::ifp_beta_nuclide)
+              send_ifp_info(index_local, n, ifp_n_generation + 1, neighbor,
+                requests, temp_ancestors, send_ancestors);
+          }
           if (is_generation_time_or_both())
             send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
               temp_lifetimes, send_lifetimes);
@@ -275,6 +281,7 @@ void synchronize_bank()
 
   // IFP receive buffers
   vector<int> recv_delayed_groups;
+  vector<int> recv_ancestors;
   vector<double> recv_lifetimes;
   vector<DeserializationInfo> deserialization_info;
 
@@ -291,7 +298,7 @@ void synchronize_bank()
 
   // Resize IFP receive buffers
   if (settings::ifp_on && mpi::n_procs > 1) {
-    resize_ifp_data(recv_delayed_groups, recv_lifetimes,
+    resize_ifp_data(recv_delayed_groups, recv_ancestors, recv_lifetimes,
       ifp_n_generation * simulation::work_per_rank);
   }
 
@@ -316,9 +323,13 @@ void synchronize_bank()
 
       if (settings::ifp_on) {
         // Receive IFP data
-        if (is_beta_effective_or_both())
+        if (is_beta_effective_or_both()) {
           receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
             recv_delayed_groups, deserialization_info);
+          if (settings::ifp_beta_nuclide)
+            receive_ifp_data(index_local, n, ifp_n_generation + 1, neighbor,
+              requests, recv_ancestors, deserialization_info);
+        }
         if (is_generation_time_or_both())
           receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
             recv_lifetimes, deserialization_info);
@@ -333,8 +344,8 @@ void synchronize_bank()
         &simulation::source_bank[index_local]);
 
       if (settings::ifp_on) {
-        copy_partial_ifp_data_to_source_banks(
-          index_temp, n, index_local, temp_delayed_groups, temp_lifetimes);
+        copy_partial_ifp_data_to_source_banks(index_temp, n, index_local,
+          temp_delayed_groups, temp_ancestors, temp_lifetimes);
       }
     }
 
@@ -352,9 +363,13 @@ void synchronize_bank()
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
   if (settings::ifp_on) {
-    if (is_beta_effective_or_both())
+    if (is_beta_effective_or_both()) {
       deserialize_ifp_info(ifp_n_generation, recv_delayed_groups,
         simulation::ifp_source_delayed_group_bank, deserialization_info);
+      if (settings::ifp_beta_nuclide)
+        deserialize_ifp_info(ifp_n_generation + 1, recv_ancestors,
+          simulation::ifp_source_ancestor_nuclide_bank, deserialization_info);
+    }
     if (is_generation_time_or_both())
       deserialize_ifp_info(ifp_n_generation, recv_lifetimes,
         simulation::ifp_source_lifetime_bank, deserialization_info);
@@ -364,7 +379,8 @@ void synchronize_bank()
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
     simulation::source_bank.begin());
   if (settings::ifp_on) {
-    copy_complete_ifp_data_to_source_banks(temp_delayed_groups, temp_lifetimes);
+    copy_complete_ifp_data_to_source_banks(
+      temp_delayed_groups, temp_ancestors, temp_lifetimes);
   }
 #endif
 

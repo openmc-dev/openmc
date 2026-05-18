@@ -983,7 +983,7 @@ std::pair<double, int32_t> Region::distance_complex(
       double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
 
       // Check if this distance is the new minimum.
-      if ((d > at_least) && (d < min_dist)) {
+      if ((d > atleast) && (d < min_dist)) {
         if (min_dist - d >= FP_PRECISION * min_dist) {
           min_dist = d;
           i_surf = -token;

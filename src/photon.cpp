@@ -154,8 +154,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
     hid_t tgroup = open_group(rgroup, designator.c_str());
 
-    // Read binding energy energy and number of electrons if atomic relaxation
-    // data is present
+    // Read binding energy if atomic relaxation data is present
     if (attribute_exists(tgroup, "binding_energy")) {
       has_atomic_relaxation_ = true;
       read_attribute(tgroup, "binding_energy", shell.binding_energy);
@@ -174,7 +173,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
         i);
     cross_section = tensor::where(xs > 0, tensor::log(xs), 0);
 
-    if (object_exists(tgroup, "transitions")) {
+    if (settings::atomic_relaxation && object_exists(tgroup, "transitions")) {
       // Determine dimensions of transitions
       dset = open_dataset(tgroup, "transitions");
       auto dims = object_shape(dset);
@@ -206,9 +205,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // Check the maximum size of the atomic relaxation stack
   auto max_size = this->calc_max_stack_size();
   if (max_size > MAX_STACK_SIZE && mpi::master) {
-    warning(fmt::format(
-      "The subshell vacancy stack in atomic relaxation can grow up to {}, but "
-      "the stack size limit is set to {}.",
+    warning(fmt::format("The subshell vacancy stack in atomic relaxation can "
+                        "grow up to {}, but the stack size limit is set to {}.",
       max_size, MAX_STACK_SIZE));
   }
 
@@ -231,7 +229,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
   // Map Compton subshell data to atomic relaxation data by finding the
   // subshell with the equivalent binding energy
-  if (has_atomic_relaxation_) {
+  if (settings::atomic_relaxation && has_atomic_relaxation_) {
     auto is_close = [](double a, double b) {
       return std::abs(a - b) / a < FP_REL_PRECISION;
     };

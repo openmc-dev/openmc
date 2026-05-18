@@ -118,6 +118,10 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (!read_model_xml())
     read_separate_xml_files();
 
+  if (!settings::properties_file.empty()) {
+    openmc_properties_import(settings::properties_file.c_str());
+  }
+
   // Reset locale to previous state
   if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
     fatal_error("Cannot reset locale.");
@@ -296,6 +300,11 @@ int parse_command_line(int argc, char* argv[])
         settings::run_mode = RunMode::VOLUME;
       } else if (arg == "-s" || arg == "--threads") {
         // Read number of threads
+        if (i + 1 >= argc) {
+          std::string msg {"Number of threads not specified."};
+          strcpy(openmc_err_msg, msg.c_str());
+          return OPENMC_E_INVALID_ARGUMENT;
+        }
         i += 1;
 
 #ifdef _OPENMP
@@ -401,6 +410,10 @@ bool read_model_xml()
   write_message(
     fmt::format("Reading model XML file '{}' ...", model_filename), 5);
 
+  // Read chain data before settings so DecaySpectrum source distributions can
+  // resolve nuclides while sources are constructed.
+  read_chain_file_xml();
+
   read_settings_xml(settings_root);
 
   // If other XML files are present, display warning
@@ -415,9 +428,6 @@ bool read_model_xml()
       break;
     }
   }
-
-  // Read data from chain file
-  read_chain_file_xml();
 
   // Read materials and cross sections
   if (!check_for_node(root, "materials")) {
@@ -471,13 +481,14 @@ bool read_model_xml()
 
 void read_separate_xml_files()
 {
+  // Read chain data before settings so DecaySpectrum source distributions can
+  // resolve nuclides while sources are constructed.
+  read_chain_file_xml();
+
   read_settings_xml();
   if (settings::run_mode != RunMode::PLOTTING) {
     read_cross_sections_xml();
   }
-
-  // Read data from chain file
-  read_chain_file_xml();
 
   read_materials_xml();
   read_geometry_xml();

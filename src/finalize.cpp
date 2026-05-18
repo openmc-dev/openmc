@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/cmfd_solver.h"
 #include "openmc/collision_track.h"
 #include "openmc/constants.h"
@@ -44,6 +45,7 @@ void free_memory()
   free_memory_photon();
   free_memory_settings();
   free_memory_thermal();
+  free_memory_chain();
   library_clear();
   nuclides_clear();
   free_memory_source();
@@ -123,6 +125,8 @@ int openmc_finalize()
   settings::restart_run = false;
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
+  settings::surface_grazing_cutoff = 0.001;
+  settings::surface_grazing_ratio = 0.5;
   settings::solver_type = SolverType::MONTE_CARLO;
   settings::source_latest = false;
   settings::source_rejection_fraction = 0.05;
@@ -138,6 +142,7 @@ int openmc_finalize()
   settings::temperature_multipole = false;
   settings::temperature_range = {0.0, 0.0};
   settings::temperature_tolerance = 10.0;
+  settings::properties_file.clear();
   settings::trigger_on = false;
   settings::trigger_predict = false;
   settings::trigger_batch_interval = 1;

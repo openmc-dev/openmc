@@ -197,13 +197,13 @@ _PLOT_PARAMS = dedent("""\
             Assigns colors to specific materials or cells. Keys are instances of
             :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
             4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for example:
+            and alpha should all be integers in the range [0, 255], for example:
 
             .. code-block:: python
 
                 # Make water blue
                 water = openmc.Cell(fill=h2o)
-                universe.plot(..., colors={water: (0., 0., 1.))
+                universe.plot(..., colors={water: (0, 0, 255))
         seed : int
             Seed for the random number generator
         openmc_exec : str

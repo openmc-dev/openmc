@@ -349,7 +349,7 @@ class Material(IDManagerMixin):
         clip_tolerance : float
             Maximum fraction of :math:`\sum_i x_i p_i` for discrete distributions
             that will be discarded.
-        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'}
             Specifies the units on the integral of the distribution.
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
@@ -367,7 +367,7 @@ class Material(IDManagerMixin):
             the total intensity of the photon source in the requested units.
 
         """
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3'})
 
         if exclude_nuclides is not None and include_nuclides is not None:
             raise ValueError("Cannot specify both exclude_nuclides and include_nuclides")
@@ -378,6 +378,8 @@ class Material(IDManagerMixin):
                 raise ValueError("volume must be specified if units='Bq'")
         elif units == 'Bq/cm3':
             multiplier = 1
+        elif units == 'Bq/m3':
+            multiplier = 1e6
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
@@ -1383,16 +1385,16 @@ class Material(IDManagerMixin):
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
                      volume: float | None = None) -> dict[str, float] | float:
-        """Returns the activity of the material or of each nuclide within.
+        """Return the activity of the material or each nuclide within.
 
         .. versionadded:: 0.13.1
 
         Parameters
         ----------
-        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'}
             Specifies the type of activity to return, options include total
             activity [Bq,Ci], specific [Bq/g, Bq/kg] or volumetric activity
-            [Bq/cm3,Ci/m3]. Default is volumetric activity [Bq/cm3].
+            [Bq/cm3, Bq/m3, Ci/m3]. Default is volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -1410,16 +1412,21 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if volume is None:
             volume = self.volume
 
+        if units in {'Bq', 'Ci'} and volume is None:
+            raise ValueError(f"Volume must be set in order to compute activity in '{units}'.")
+
         if units == 'Bq':
             multiplier = volume
         elif units == 'Bq/cm3':
             multiplier = 1
+        elif units == 'Bq/m3':
+            multiplier = 1e6
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
@@ -1438,16 +1445,15 @@ class Material(IDManagerMixin):
 
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
                        volume: float | None = None) -> dict[str, float] | float:
-        """Returns the decay heat of the material or for each nuclide in the
-        material in units of [W], [W/g], [W/kg] or [W/cm3].
+        """Return the decay heat of the material or each nuclide within.
 
         .. versionadded:: 0.13.3
 
         Parameters
         ----------
-        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
+        units : {'W', 'W/g', 'W/kg', 'W/cm3', 'W/m3'}
             Specifies the units of decay heat to return. Options include total
-            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
+            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3, W/m3].
             Default is total heat [W].
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
@@ -1466,13 +1472,17 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3'})
+        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3', 'W/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'W':
             multiplier = volume if volume is not None else self.volume
+            if multiplier is None:
+                raise ValueError("Volume must be set in order to compute total decay heat.")
         elif units == 'W/cm3':
             multiplier = 1
+        elif units == 'W/m3':
+            multiplier = 1e6
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'W/kg':

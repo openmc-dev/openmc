@@ -6,7 +6,7 @@ from openmc.deplete import Chain, R2SManager
 
 
 @pytest.fixture
-def simple_model_and_mesh(tmp_path):
+def simple_model_and_mesh():
     # Define two materials: water and Ni
     h2o = openmc.Material()
     h2o.add_nuclide("H1", 2.0)
@@ -68,7 +68,7 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     nt = Path(outdir) / 'neutron_transport'
     assert (nt / 'fluxes.npy').exists()
     assert (nt / 'micros.h5').exists()
-    assert (nt / 'mesh_material_volumes.npz').exists()
+    assert (nt / 'mesh_material_volumes_0.npz').exists()
     act = Path(outdir) / 'activation'
     assert (act / 'depletion_results.h5').exists()
     pt = Path(outdir) / 'photon_transport'
@@ -78,7 +78,8 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     # Basic results structure checks
     assert len(r2s.results['fluxes']) == 2
     assert len(r2s.results['micros']) == 2
-    assert len(r2s.results['mesh_material_volumes']) == 2
+    assert len(r2s.results['mesh_material_volumes']) == 1
+    assert len(r2s.results['mesh_material_volumes'][0]) == 2
     assert len(r2s.results['activation_materials']) == 2
     assert len(r2s.results['depletion_results']) == 2
 
@@ -93,8 +94,74 @@ def test_r2s_mesh_expected_output(simple_model_and_mesh, tmp_path):
     r2s_loaded.load_results(outdir)
     assert len(r2s_loaded.results['fluxes']) == 2
     assert len(r2s_loaded.results['micros']) == 2
-    assert len(r2s_loaded.results['mesh_material_volumes']) == 2
+    assert len(r2s_loaded.results['mesh_material_volumes']) == 1
+    assert len(r2s_loaded.results['mesh_material_volumes'][0]) == 2
     assert len(r2s_loaded.results['activation_materials']) == 2
+    assert len(r2s_loaded.results['depletion_results']) == 2
+
+
+def test_r2s_multi_mesh(simple_model_and_mesh, tmp_path):
+    model, _, _ = simple_model_and_mesh
+
+    # Two 1x1x1 meshes that together cover the full domain, split along y.
+    # Each mesh element spans the full x range [-10, 10], crossing the x=0
+    # material boundary, so both meshes contain both materials within their
+    # single element.
+    mesh1 = openmc.RegularMesh()
+    mesh1.lower_left = (-10.0, -10.0, -10.0)
+    mesh1.upper_right = (10.0, 0.0, 10.0)
+    mesh1.dimension = (1, 1, 1)
+    mesh2 = openmc.RegularMesh()
+    mesh2.lower_left = (-10.0, 0.0, -10.0)
+    mesh2.upper_right = (10.0, 10.0, 10.0)
+    mesh2.dimension = (1, 1, 1)
+
+    r2s = R2SManager(model, [mesh1, mesh2])
+    chain = Chain.from_xml(Path(__file__).parents[1] / "chain_ni.xml")
+
+    outdir = r2s.run(
+        timesteps=[(1.0, 'd')],
+        source_rates=[1.0],
+        photon_time_indices=[1],
+        output_dir=tmp_path,
+        chain_file=chain,
+    )
+
+    # Check that per-mesh MMV files were written
+    nt = Path(outdir) / 'neutron_transport'
+    assert (nt / 'fluxes.npy').exists()
+    assert (nt / 'micros.h5').exists()
+    assert (nt / 'mesh_material_volumes_0.npz').exists()
+    assert (nt / 'mesh_material_volumes_1.npz').exists()
+    act = Path(outdir) / 'activation'
+    assert (act / 'depletion_results.h5').exists()
+    pt = Path(outdir) / 'photon_transport'
+    assert (pt / 'tally_ids.json').exists()
+    assert (pt / 'time_1' / 'statepoint.10.h5').exists()
+
+    # Two meshes, each with 1 element containing both materials →
+    # 2 element-material combinations per mesh, 4 total
+    assert len(r2s.results['mesh_material_volumes']) == 2
+    assert len(r2s.results['mesh_material_volumes'][0]) == 2
+    assert len(r2s.results['mesh_material_volumes'][1]) == 2
+    assert len(r2s.results['fluxes']) == 4
+    assert len(r2s.results['micros']) == 4
+    assert len(r2s.results['activation_materials']) == 4
+    assert len(r2s.results['depletion_results']) == 2
+
+    # Activation material names encode mesh index
+    amats = r2s.results['activation_materials']
+    assert all(m.depletable for m in amats)
+    assert any('Mesh 0' in m.name for m in amats)
+    assert any('Mesh 1' in m.name for m in amats)
+
+    # Check loading results
+    r2s_loaded = R2SManager(model, [mesh1, mesh2])
+    r2s_loaded.load_results(outdir)
+    assert len(r2s_loaded.results['mesh_material_volumes']) == 2
+    assert len(r2s_loaded.results['mesh_material_volumes'][0]) == 2
+    assert len(r2s_loaded.results['mesh_material_volumes'][1]) == 2
+    assert len(r2s_loaded.results['activation_materials']) == 4
     assert len(r2s_loaded.results['depletion_results']) == 2
 
 

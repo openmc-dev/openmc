@@ -368,9 +368,22 @@ void Particle::event_delta_advance()
       }
     }
 
-    if (distance < boundary().distance())
+    if (distance < (boundary().distance() - TINY_BIT))
     {
       break;
+    }
+
+    if (coord(n_coord() - 1).cell() == C_NONE && cell_last(n_coord() - 1) == C_NONE) {
+      // Try to find the particle.
+      for (int j = 0; j < n_coord(); ++j) {
+        coord(j).reset();
+      }
+      if (!exhaustive_find_cell(*this)) {
+        // We've lost this particle.
+        mark_as_lost("Particle could not be located during the delta tracking loop!");
+        wgt() = 0.0;
+        return;
+      }
     }
 
     // Advance particle to the boundary.
@@ -380,16 +393,23 @@ void Particle::event_delta_advance()
     distance -= boundary().distance();
   }
 
+  // The particle leaked out of the boundary, no need to perform the subsequent steps.
+  if (!alive())
+    return;
+
   // Advance particle to the true collision site.
+  r() += distance * u();
   for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r() += distance * u();
+    //coord(j).r() += distance * u();
     coord(j).reset();
   }
 
-  // If the particle no longer exists in the geometry, it left through a vacuum BC.
+  // Need to locate the particle at the collision site.
   if (!exhaustive_find_cell(*this)) {
-    keff_tally_leakage() += wgt();
+    // We've lost this particle.
+    mark_as_lost("Particle could not be located at the delta tracking collision site!");
     wgt() = 0.0;
+    return;
   }
 
   // Force re-calculation of material properties at the collision site.

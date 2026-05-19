@@ -33,6 +33,12 @@ be specified:
   Runs a fixed-source calculation with a specified external source, specified in
   the :attr:`Settings.source` attribute.
 
+'subcritical multiplication'
+  Runs a subcritical multiplication calculation (as described in :ref:`methods_subcritical-multiplication`). 
+  In this mode, the :attr:`Settings.source` specifies an external source distribution that is used for all 
+  generations. Note that tallies must be manually normalized by :math:`1/(1-k)` for direct comparison with fixed
+  source results.
+
 'volume'
   Runs a stochastic volume calculation.
 

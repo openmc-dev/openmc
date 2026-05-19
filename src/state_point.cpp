@@ -103,6 +103,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     case RunMode::EIGENVALUE:
       write_dataset(file_id, "run_mode", "eigenvalue");
       break;
+    case RunMode::SUBCRITICAL_MULTIPLICATION:
+      write_dataset(file_id, "run_mode", "subcritical multiplication");
+      break;
     default:
       break;
     }
@@ -117,7 +120,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(file_id, "source_present", write_source_);
 
     // Write out information for eigenvalue run
-    if (settings::run_mode == RunMode::EIGENVALUE)
+    if (settings::eigenvalue_like())
       write_eigenvalue_hdf5(file_id);
 
     hid_t tallies_group = create_group(file_id, "tallies");
@@ -311,11 +314,11 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(runtime_group, "simulation",
       time_inactive.elapsed() + time_active.elapsed());
     write_dataset(runtime_group, "transport", time_transport.elapsed());
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::eigenvalue_like()) {
       write_dataset(runtime_group, "inactive batches", time_inactive.elapsed());
     }
     write_dataset(runtime_group, "active batches", time_active.elapsed());
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::eigenvalue_like()) {
       write_dataset(
         runtime_group, "synchronizing fission bank", time_bank.elapsed());
       write_dataset(
@@ -432,6 +435,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
     settings::run_mode = RunMode::FIXED_SOURCE;
   } else if (word == "eigenvalue") {
     settings::run_mode = RunMode::EIGENVALUE;
+  } else if (word == "subcritical multiplication") {
+    settings::run_mode = RunMode::SUBCRITICAL_MULTIPLICATION;
   }
   read_attribute(file_id, "photon_transport", settings::photon_transport);
   read_dataset(file_id, "n_particles", settings::n_particles);
@@ -458,7 +463,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
   read_attribute(file_id, "source_present", source_present);
 
   // Read information specific to eigenvalue run
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::eigenvalue_like()) {
     read_dataset(file_id, "n_inactive", temp);
     read_eigenvalue_hdf5(file_id);
 
@@ -477,7 +482,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
 
   // Set k_sum, keff, and current_batch based on whether restart file is part
   // of active cycle or inactive cycle
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::eigenvalue_like()) {
     restart_set_keff();
   }
 
@@ -528,7 +533,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
   }
 
   // Read source if in eigenvalue mode
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::eigenvalue_like()) {
 
     // Check if source was written out separately
     if (!source_present) {

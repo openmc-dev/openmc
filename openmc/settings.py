@@ -22,6 +22,7 @@ from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsL
 
 class RunMode(Enum):
     EIGENVALUE = 'eigenvalue'
+    SUBCRITICAL_MULTIPLICATION = 'subcritical multiplication'
     FIXED_SOURCE = 'fixed source'
     PLOT = 'plot'
     VOLUME = 'volume'
@@ -252,7 +253,7 @@ class Settings:
         The 'nuclides' list indicates what nuclides the method should be applied
         to. In its absence, the method will be applied to all nuclides with 0 K
         elastic scattering data present.
-    run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
+    run_mode : {'eigenvalue', 'fixed source', 'subcritical multiplication', 'plot', 'volume', 'particle restart'}
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator

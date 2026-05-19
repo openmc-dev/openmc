@@ -302,6 +302,11 @@ int parse_command_line(int argc, char* argv[])
         settings::run_mode = RunMode::VOLUME;
       } else if (arg == "-s" || arg == "--threads") {
         // Read number of threads
+        if (i + 1 >= argc) {
+          std::string msg {"Number of threads not specified."};
+          strcpy(openmc_err_msg, msg.c_str());
+          return OPENMC_E_INVALID_ARGUMENT;
+        }
         i += 1;
 
 #ifdef _OPENMP

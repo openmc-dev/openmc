@@ -561,6 +561,10 @@ def test_get_activity():
     m1.add_element("Fe", 0.7)
     m1.add_element("Li", 0.3)
     m1.set_density('g/cm3', 1.5)
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_activity(units='Bq')
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_activity(units='Ci')
     # activity in Bq/cc and Bq/g should not require volume setting
     assert m1.get_activity(units='Bq/cm3') == 0
     assert m1.get_activity(units='Bq/g') == 0
@@ -619,6 +623,8 @@ def test_get_decay_heat():
     m1.add_nuclide("U235", 0.2)
     m1.add_nuclide("U238", 0.8)
     m1.set_density('g/cm3', 10.5)
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_decay_heat(units='W')
     # decay heat in W/cc and W/g should not require volume setting
     assert m1.get_decay_heat(units='W/cm3') == 0
     assert m1.get_decay_heat(units='W/g') == 0

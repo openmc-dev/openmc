@@ -20,6 +20,7 @@
 #include "openmc/source.h"
 #include "openmc/state_point.h"
 #include "openmc/tallies/derivative.h"
+#include "openmc/tallies/sensitivity.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/trigger.h"
@@ -647,6 +648,57 @@ void initialize_history(Particle& p, int64_t index_source)
   // Prepare to write out particle track.
   if (p.write_track())
     add_particle_track(p);
+  
+  initialize_history_partial(p);
+  initialize_history_in_part(p);
+}
+
+void initialize_history_partial(Particle& p)
+{
+  // Every particle starts with no accumulated flux derivative and 
+  // no accumulated sensitivities.
+  // flux_derivs_ is a vector and cumulative_sensitivities_ is a vector of vectors...
+  // these need to resized to be of size energy_bins or multipole_bins
+  if (!model::active_tallies.empty())
+  {
+    p.resize_flux_derivs(model::tally_derivs.size());
+    p.zero_flux_derivs();
+       
+    p.resize_init_cumulative_sensitivities(model::tally_sens.size());
+    for (int idx=0; idx< model::tally_sens.size();idx++){
+      p.resize_init_cumulative_sensitivities_vec(idx, model::tally_sens[idx].n_bins_);
+    }
+  }
+
+  // Allocate space for tally filter matches
+  p.resize_alloc_filter_matches(model::tally_filters.size());  
+}
+
+void initialize_history_in_part(Particle& p)
+{
+  
+  if (p.type().is_photon()) return;
+  
+  // for n-p coupled simulation
+  // and sensitivity of photon responses (heating, dose) to neutron cross-sections
+  // initialized variable to store derivatives of neutron transport operator 
+  // needed for photon transport sensitivity to neutron data
+  if (!model::active_tallies.empty())
+  {
+       
+    p.resize_init_cum_sens(model::tally_sens.size());
+    for (int idx=0; idx< model::tally_sens.size();idx++){
+      p.resize_init_cum_sens_vec(idx, model::tally_sens[idx].n_bins_);
+    }
+    
+    p.resize_init_pprod_sens(model::tally_sens.size());
+    for (int idx=0; idx< model::tally_sens.size();idx++){
+      p.resize_init_pprod_sens_vec(idx, model::tally_sens[idx].n_bins_);
+    }
+  }
+
+  // Allocate space for tally filter matches
+  // p.resize_alloc_filter_matches(model::tally_filters.size());  
 }
 
 int overall_generation()

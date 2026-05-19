@@ -28,6 +28,7 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/sensitivity.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
@@ -100,6 +101,9 @@ bool Particle::create_secondary(
   bank.r = r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
+  if (settings::run_CE) {
+    bank.E_parent = this->E(); 
+  }
   bank.time = time();
   bank_second_E() += bank.E;
   return true;
@@ -134,6 +138,8 @@ void Particle::from_source(const SourceSite* src)
   n_collision() = 0;
   fission() = false;
   zero_flux_derivs();
+  
+  initialize_cumulative_sensitivities();  
   lifetime() = 0.0;
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
@@ -149,8 +155,10 @@ void Particle::from_source(const SourceSite* src)
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
+  fission_nuclide() = src->fission_nuclide;
   if (settings::run_CE) {
     E() = src->E;
+    E_parent() = src->E_parent;
     g() = 0;
   } else {
     g() = static_cast<int>(src->E);
@@ -168,6 +176,12 @@ void Particle::from_source(const SourceSite* src)
     int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
+  
+  if (type().pdg_number() == PDG_NEUTRON) {
+    initialize_cum_sens();
+    initialize_pprod_sens();
+  }
+  
 }
 
 void Particle::event_calculate_xs()
@@ -290,6 +304,7 @@ void Particle::event_advance()
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) {
     score_track_derivative(*this, distance);
+    score_track_sensitivity(*this, distance); // Score cumulative sensitivity for sensitivity tallies.
   }
 
   // Set particle weight to zero if it hit the time boundary
@@ -441,9 +456,12 @@ void Particle::event_collide()
   }
 
   // Score flux derivative accumulators for differential tallies.
-  if (!model::active_tallies.empty())
+  if (!model::active_tallies.empty()) {
     score_collision_derivative(*this);
-
+    score_collision_sensitivity(*this);  // Score cumulative sensitivity for sensitivity tallies.
+    // score_pprod_sensitivity(*this);
+  }
+  
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
@@ -499,7 +517,7 @@ void Particle::event_revive_from_secondary()
         n_coord_last() = n_coord();
       }
       pht_secondary_particles();
-    }
+    }    
 
     // Enter new particle in particle track file
     if (write_track())

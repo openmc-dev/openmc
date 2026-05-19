@@ -77,6 +77,7 @@ Classes
    Mesh
    MeshFilter
    MeshBornFilter
+   ImportanceFilter
    MeshSurfaceFilter
    MuFilter
    Nuclide
@@ -93,6 +94,7 @@ Classes
    SolidRayTracePlot
    SurfaceFilter
    Tally
+   SensitivityTally
    TemporarySession
    UniverseFilter
    UnstructuredMesh

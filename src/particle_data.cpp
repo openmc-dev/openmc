@@ -10,6 +10,7 @@
 #include "openmc/photon.h"
 #include "openmc/settings.h"
 #include "openmc/tallies/derivative.h"
+#include "openmc/tallies/sensitivity.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 
@@ -100,6 +101,10 @@ ParticleData::ParticleData()
   if (!model::active_tallies.empty() || settings::event_based) {
     flux_derivs_.resize(model::tally_derivs.size());
     zero_flux_derivs();
+  
+    // Every particle starts with no accumulated cumulative sensitivity
+    cumulative_sensitivities_.resize(model::tally_sens.size());
+    initialize_cumulative_sensitivities();
   }
 
   // Allocate space for tally filter matches

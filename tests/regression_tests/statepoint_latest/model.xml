@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="UO2 (2.4%)" depletable="true">
+      <density value="10.29769" units="g/cm3"/>
+      <nuclide name="U234" ao="4.4843e-06"/>
+      <nuclide name="U235" ao="0.00055815"/>
+      <nuclide name="U238" ao="0.022408"/>
+      <nuclide name="O16" ao="0.045829"/>
+    </material>
+    <material id="2" name="Zircaloy">
+      <density value="6.55" units="g/cm3"/>
+      <nuclide name="Zr90" ao="0.021827"/>
+      <nuclide name="Zr91" ao="0.00476"/>
+      <nuclide name="Zr92" ao="0.0072758"/>
+      <nuclide name="Zr94" ao="0.0073734"/>
+      <nuclide name="Zr96" ao="0.0011879"/>
+    </material>
+    <material id="3" name="Hot borated water">
+      <density value="0.740582" units="g/cm3"/>
+      <nuclide name="H1" ao="0.049457"/>
+      <nuclide name="O16" ao="0.024672"/>
+      <nuclide name="B10" ao="8.0042e-06"/>
+      <nuclide name="B11" ao="3.2218e-05"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="Fuel" material="1" region="-1" universe="0"/>
+    <cell id="2" name="Cladding" material="2" region="1 -2" universe="0"/>
+    <cell id="3" name="Water" material="3" region="2 3 -4 5 -6" universe="0"/>
+    <surface id="1" name="Fuel OR" type="z-cylinder" coeffs="0 0 0.39218"/>
+    <surface id="2" name="Clad OR" type="z-cylinder" coeffs="0 0 0.4572"/>
+    <surface id="3" name="left" type="x-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="4" name="right" type="x-plane" boundary="reflective" coeffs="0.63"/>
+    <surface id="5" name="bottom" type="y-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="6" name="top" type="y-plane" boundary="reflective" coeffs="0.63"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>5</batches>
+    <inactive>1</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+    <state_point>
+      <batches>-2</batches>
+    </state_point>
+  </settings>
+  <plots>
+    <plot id="1" color_by="material" type="slice" basis="xy">
+      <pixels>300 300</pixels>
+      <origin>0.0 0.0 0.0</origin>
+      <width>1.26 1.26</width>
+    </plot>
+  </plots>
+</model>

@@ -296,6 +296,8 @@ class Material(IDManagerMixin):
                 mass += nuc.percent
 
         # Compute and return the molar mass
+        if moles == 0.0:
+            raise ValueError("Material has no nuclides; cannot compute molar mass")
         return mass / moles
 
     @property

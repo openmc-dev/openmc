@@ -131,7 +131,6 @@ public:
       fatal_error("Not implemented!");
     }
   }
-  
 
   //! Returns the distance to the next mesh boundary given a particle position
   //! and direction. If the particle is initially outside, the distance will

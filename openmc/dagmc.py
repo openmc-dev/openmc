@@ -623,14 +623,10 @@ class DAGMCCell(openmc.Cell):
         ):
             raise TypeError("DAGMC cell temperature overrides require a "
                             "material fill.")
-        if self.density is not None and self.fill_type not in (
-            'material', 'distribmat'
-        ):
+        if self.density is not None and self.fill_type not in ('material', 'distribmat'):
             raise TypeError("DAGMC cell density overrides require a "
                             "material fill.")
-        if any(getattr(self, attr) is not None for attr in (
-            'translation', 'rotation'
-        )):
+        if any(getattr(self, attr) is not None for attr in ('translation', 'rotation')):
             raise TypeError("DAGMC cell overrides do not support translation "
                             "or rotation.")
         return super().create_xml_subelement(xml_element, memo)
@@ -644,8 +640,8 @@ class DAGMCCell(openmc.Cell):
         elem : lxml.etree._Element
             `<cell>` element containing a DAGMC cell property override
         mats : dict
-            Dictionary mapping material ID strings to
-            :class:`openmc.Material` instances
+            Dictionary mapping material ID strings to :class:`openmc.Material`
+            instances
         universe : DAGMCUniverse
             Universe to add the parsed cell to.
 

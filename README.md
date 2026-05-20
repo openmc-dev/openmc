@@ -1,3 +1,6 @@
+# For Implicit Function development
+This branch aims to develop a framework to create any surface defined by an implicit function. A dedicated solver and architecture is proposed.
+
 # OpenMC Monte Carlo Particle Transport Code
 
 [![License](https://img.shields.io/badge/license-MIT-green)](https://docs.openmc.org/en/latest/license.html)

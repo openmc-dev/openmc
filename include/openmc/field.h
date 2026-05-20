@@ -19,8 +19,6 @@ public:
 
   T evaluate(int bin) const { return values_[bin]; }
 
-  T evaluate(int bin, Position r) const { return values_[bin]; }
-
   void assign(int bin, T value) { values_[bin] = value; }
 
   int size() { return values_.size(); }
@@ -96,10 +94,10 @@ public:
     std::vector<int> v = mesh_ptr()->connectivity(bin);
 
     // Interpolate along x
-    T c00 = value(v[0], r) * (1 - n_r[0]) + value(v[1], r) * n_r[0];
-    T c01 = value(v[4], r) * (1 - n_r[0]) + value(v[5], r) * n_r[0];
-    T c10 = value(v[2], r) * (1 - n_r[0]) + value(v[3], r) * n_r[0];
-    T c11 = value(v[6], r) * (1 - n_r[0]) + value(v[7], r) * n_r[0];
+    T c00 = value(v[0]) * (1 - n_r[0]) + value(v[1]) * n_r[0];
+    T c01 = value(v[4]) * (1 - n_r[0]) + value(v[5]) * n_r[0];
+    T c10 = value(v[2]) * (1 - n_r[0]) + value(v[3]) * n_r[0];
+    T c11 = value(v[6]) * (1 - n_r[0]) + value(v[7]) * n_r[0];
 
     // Interpolate along y
     T c0 = c00 * (1 - n_r[1]) + c10 * n_r[1];
@@ -179,8 +177,6 @@ public:
       return *data_;
     }
   }
-
-  T value(int bin, Position r) const { return data().evaluate(bin, r); }
 
   T value(int bin) const { return data().evaluate(bin); }
 

@@ -422,25 +422,22 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
     :material:
       The material ID to assign to this cell. Use ``void`` for vacuum. Multiple
       space-separated IDs may be given to specify a distribmat (distributed
-      material) assignment. May also be specified as a ``<material>``
-      sub-element. Required.
+      material) assignment. Required.
 
     :temperature:
-      Temperature(s) in Kelvin to assign to the cell. Must be ≥ 0. Multiple
-      space-separated values may be given. May also be specified as a
-      ``<temperature>`` sub-element.
+      Temperature(s) in [K] to assign to the cell. Must be ≥ 0. Multiple
+      space-separated values may be given.
 
       *Default*: None
 
     :density:
-      Density in g/cm³ to assign to the cell. Must be > 0. Requires a non-void
-      material fill. Multiple space-separated values may be given. May also be
-      specified as a ``<density>`` sub-element.
+      Density in [g/cm³] to assign to the cell. Must be > 0. Requires a non-void
+      material fill. Multiple space-separated values may be given.
 
       *Default*: None
 
     :volume:
-      Volume of the cell in cm³.
+      Volume of the cell in [cm³].
 
       .. note:: DAGMC can compute cell volumes exactly from the triangulated
                 mesh surfaces. Specifying a manual volume risks inconsistency

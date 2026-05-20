@@ -137,7 +137,7 @@ void sort_bank(SharedArray<SourceSite>& bank, bool is_fission_bank)
     sorted_bank[idx] = site;
     if (is_fission_bank) {
       copy_ifp_data_from_fission_banks(
-        i, sorted_ifp_delayed_group_bank[idx], sorted_ifp_lifetime_bank[idx]);
+        i, idx, sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
     }
   }
 

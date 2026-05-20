@@ -656,9 +656,18 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model
     return model
 
 
-def _generate_c5g7_materials() -> openmc.Materials:
+def _generate_c5g7_materials(second_temp = False) -> openmc.Materials:
     """Generate materials utilizing multi-group cross sections based on the
     the C5G7 Benchmark.
+
+    Parameters
+    ----------
+    second_temp : bool, optional
+        Whether or not the cross sections should contain two temperature datapoints.
+        The first data point is the C5G7 cross sections, which corresponds to a temperature
+        of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
+        which corresponds to a temperature of 394 K. This temperature dependence is
+        fictitious; it is used for testing temperature feedback in the random ray solver.
 
     Returns
     -------
@@ -672,8 +681,44 @@ def _generate_c5g7_materials() -> openmc.Materials:
     assembly transport calculations without spatial homogenization"
     """
     # Instantiate the energy group data
+    # MGXS for the UO2 pins.
     group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
     groups = openmc.mgxs.EnergyGroups(group_edges)
+
+    uo2_total = np.array([0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
+                          0.5644058])
+    uo2_abs = np.array([8.0248e-03, 3.7174e-03, 2.6769e-02, 9.6236e-02, 3.0020e-02,
+                        1.1126e-01, 2.8278e-01])
+    uo2_scatter_matrix = np.array(
+        [[[0.1275370, 0.0423780, 0.0000094, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.3244560, 0.0016314, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.4509400, 0.0026792, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.4525650, 0.0055664, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0001253, 0.2714010, 0.0102550, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0012968, 0.2658020, 0.0168090],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
+    uo2_scatter_matrix = np.rollaxis(uo2_scatter_matrix, 0, 3)
+    uo2_fission = np.array([7.21206e-03, 8.19301e-04, 6.45320e-03, 1.85648e-02, 1.78084e-02,
+                            8.30348e-02, 2.16004e-01])
+    uo2_nu_fission = np.array([2.005998e-02, 2.027303e-03, 1.570599e-02, 4.518301e-02,
+                               4.334208e-02, 2.020901e-01, 5.257105e-01])
+    uo2_chi = np.array([5.8791e-01, 4.1176e-01, 3.3906e-04, 1.1761e-07, 0.0000e+00,
+                        0.0000e+00, 0.0000e+00])
+
+    # MGXS for the H2O moderator.
+    h2o_total = np.array([0.15920605, 0.412969593, 0.59030986, 0.58435, 0.718, 1.2544497,
+                          2.650379])
+    h2o_abs = np.array([6.0105e-04, 1.5793e-05, 3.3716e-04, 1.9406e-03, 5.7416e-03,
+                        1.5001e-02, 3.7239e-02])
+    h2o_scatter_matrix = np.array(
+        [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
+          [0.0000000, 0.2823340, 0.1299400, 0.0006234, 0.0000480, 0.0000074, 0.0000010],
+          [0.0000000, 0.0000000, 0.3452560, 0.2245700, 0.0169990, 0.0026443, 0.0005034],
+          [0.0000000, 0.0000000, 0.0000000, 0.0910284, 0.4155100, 0.0637320, 0.0121390],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000714, 0.1391380, 0.5118200, 0.0612290],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
+    h2o_scatter_matrix = np.rollaxis(h2o_scatter_matrix, 0, 3)
 
     # Instantiate the 7-group (C5G7) cross section data
     uo2_xsdata = openmc.XSdata('UO2', groups)
@@ -707,29 +752,33 @@ def _generate_c5g7_materials() -> openmc.Materials:
     uo2_xsdata.set_nu_fission(nu_fission)
     uo2_xsdata.set_chi([5.8791e-01, 4.1176e-01, 3.3906e-04, 1.1761e-07, 0.0000e+00,
                         0.0000e+00, 0.0000e+00])
+    uo2_xsdata.set_total(uo2_total, temperature=294.0)
+    uo2_xsdata.set_absorption(uo2_abs, temperature=294.0)
+    uo2_xsdata.set_scatter_matrix(uo2_scatter_matrix, temperature=294.0)
+    uo2_xsdata.set_fission(uo2_fission, temperature=294.0)
+    uo2_xsdata.set_nu_fission(uo2_nu_fission, temperature=294.0)
+    uo2_xsdata.set_chi(uo2_chi, temperature=294.0)
 
     h2o_xsdata = openmc.XSdata('LWTR', groups)
     h2o_xsdata.order = 0
-    h2o_xsdata.set_total([0.15920605, 0.412969593, 0.59030986, 0.58435,
-                          0.718, 1.2544497, 2.650379])
-    h2o_xsdata.set_absorption([6.0105e-04, 1.5793e-05, 3.3716e-04,
-                               1.9406e-03, 5.7416e-03, 1.5001e-02,
-                               3.7239e-02])
-    scatter_matrix = np.array(
-        [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
-          [0.0000000, 0.2823340, 0.1299400, 0.0006234,
-              0.0000480, 0.0000074, 0.0000010],
-          [0.0000000, 0.0000000, 0.3452560, 0.2245700,
-              0.0169990, 0.0026443, 0.0005034],
-          [0.0000000, 0.0000000, 0.0000000, 0.0910284,
-              0.4155100, 0.0637320, 0.0121390],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000714,
-              0.1391380, 0.5118200, 0.0612290],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000,
-              0.0022157, 0.6999130, 0.5373200],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
-    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
-    h2o_xsdata.set_scatter_matrix(scatter_matrix)
+    h2o_xsdata.set_total(h2o_total, temperature=294.0)
+    h2o_xsdata.set_absorption(h2o_abs, temperature=294.0)
+    h2o_xsdata.set_scatter_matrix(h2o_scatter_matrix, temperature=294.0)
+
+    # Add the second temperature data point if requested.
+    if second_temp:
+        uo2_xsdata.add_temperature(394.0)
+        uo2_xsdata.set_total(0.5 * uo2_total, temperature=394.0)
+        uo2_xsdata.set_absorption(0.5 * uo2_abs, temperature=394.0)
+        uo2_xsdata.set_scatter_matrix(0.5 * uo2_scatter_matrix, temperature=394.0)
+        uo2_xsdata.set_fission(0.5 * uo2_fission, temperature=394.0)
+        uo2_xsdata.set_nu_fission(0.5 * uo2_nu_fission, temperature=394.0)
+        uo2_xsdata.set_chi(uo2_chi, temperature=394.0)
+
+        h2o_xsdata.add_temperature(394.0)
+        h2o_xsdata.set_total(0.5 * h2o_total, temperature=394.0)
+        h2o_xsdata.set_absorption(0.5 * h2o_abs, temperature=394.0)
+        h2o_xsdata.set_scatter_matrix(0.5 * h2o_scatter_matrix, temperature=394.0)
 
     mg_cross_sections = openmc.MGXSLibrary(groups)
     mg_cross_sections.add_xsdatas([uo2_xsdata, h2o_xsdata])
@@ -823,9 +872,18 @@ def _generate_subdivided_pin_cell(uo2, water) -> openmc.Universe:
     return pincell
 
 
-def random_ray_pin_cell() -> openmc.Model:
+def random_ray_pin_cell(second_temp = False) -> openmc.Model:
     """Create a PWR pin cell example using C5G7 cross section data.
     cross section data.
+
+    Parameters
+    ----------
+    second_temp : bool, optional
+        Whether or not the cross sections should contain two temperature datapoints.
+        The first data point is the C5G7 cross sections, which corresponds to a temperature
+        of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
+        which corresponds to a temperature of 3934 K. This temperature dependence is
+        fictitious; it is used for testing temperature feedback in the random ray solver.
 
     Returns
     -------
@@ -837,7 +895,7 @@ def random_ray_pin_cell() -> openmc.Model:
 
     ###########################################################################
     # Create Materials for the problem
-    materials = _generate_c5g7_materials()
+    materials = _generate_c5g7_materials(second_temp)
     uo2 = materials[0]
     water = materials[1]
 
@@ -897,12 +955,21 @@ def random_ray_pin_cell() -> openmc.Model:
     return model
 
 
-def random_ray_lattice() -> openmc.Model:
+def random_ray_lattice(second_temp = False) -> openmc.Model:
     """Create a 2x2 PWR pin cell asymmetrical lattice example.
 
     This model is a 2x2 reflective lattice of fuel pins with one of the lattice
     locations having just moderator instead of a fuel pin. It uses C5G7
     cross section data.
+
+    Parameters
+    ----------
+    second_temp : bool, optional
+        Whether or not the cross sections should contain two temperature datapoints.
+        The first data point is the C5G7 cross sections, which corresponds to a temperature
+        of 294 K. The second data point is the C5G7 cross sections multiplied by 1/2,
+        which corresponds to a temperature of 3934 K. This temperature dependence is
+        fictitious; it is used for testing temperature feedback in the random ray solver.
 
     Returns
     -------
@@ -914,7 +981,7 @@ def random_ray_lattice() -> openmc.Model:
 
     ###########################################################################
     # Create Materials for the problem
-    materials = _generate_c5g7_materials()
+    materials = _generate_c5g7_materials(second_temp)
     uo2 = materials[0]
     water = materials[1]
 
@@ -1233,6 +1300,315 @@ def random_ray_three_region_cube() -> openmc.Model:
 
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([source_tally, void_tally, absorber_tally])
+
+    ###########################################################################
+    # Assmble Model
+
+    model.geometry = geometry
+    model.materials = materials_file
+    model.settings = settings
+    model.tallies = tallies
+
+    return model
+
+def random_ray_three_region_cube_with_detectors() -> openmc.Model:
+    """Create a three region cube model with two external tally regions.
+
+    This is an adaptation of the simple monoenergetic problem of a cube with 
+    three concentric cubic regions. The innermost region is near void (with 
+    Sigma_t around 10^-5) and contains an external isotropic source term, the 
+    middle region is a mild scatterer (with Sigma_t around 10^-3), and the 
+    outer region of the cube is a scatterer and absorber (with Sigma_t around 
+    1).
+
+    Two cubic "detector" regions are found outside this geometry, one along the 
+    y-axis near z=0, and the other in the upper right corner of the system. 
+    The size of each detector is scaled to be equal to that of the source 
+    region. The model returned by this function contains cell tallies on each 
+    detector.
+
+    Returns
+    -------
+    model : openmc.Model
+        A three region cube model
+
+    """
+
+    model = openmc.Model()
+
+    ###########################################################################
+    # Helper function creates a 3 region cube with different fills in each region
+    def fill_cube(N, n_1, n_2, fill_1, fill_2, fill_3):
+        cube = [[[0 for _ in range(N)] for _ in range(N)] for _ in range(N)]
+        for i in range(N):
+            for j in range(N):
+                for k in range(N):
+                    if i < n_1 and j >= (N-n_1) and k < n_1:
+                        cube[i][j][k] = fill_1
+                    elif i < n_2 and j >= (N-n_2) and k < n_2:
+                        cube[i][j][k] = fill_2
+                    else:
+                        cube[i][j][k] = fill_3
+        return cube
+
+    ###########################################################################
+    # Create multigroup data
+
+    # Instantiate the energy group data
+    ebins = [1e-5, 20.0e6]
+    groups = openmc.mgxs.EnergyGroups(group_edges=ebins)
+
+    cavity_sigma_a = 4.0e-5
+    cavity_sigma_s = 3.0e-3
+    cavity_mat_data = openmc.XSdata('cavity', groups)
+    cavity_mat_data.order = 0
+    cavity_mat_data.set_total([cavity_sigma_a + cavity_sigma_s])
+    cavity_mat_data.set_absorption([cavity_sigma_a])
+    cavity_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[cavity_sigma_s]]]), 0, 3))
+
+    absorber_sigma_a = 0.50
+    absorber_sigma_s = 0.50
+    absorber_mat_data = openmc.XSdata('absorber', groups)
+    absorber_mat_data.order = 0
+    absorber_mat_data.set_total([absorber_sigma_a + absorber_sigma_s])
+    absorber_mat_data.set_absorption([absorber_sigma_a])
+    absorber_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[absorber_sigma_s]]]), 0, 3))
+
+    multiplier = 0.01
+    source_sigma_a = cavity_sigma_a * multiplier
+    source_sigma_s = cavity_sigma_s * multiplier
+    source_mat_data = openmc.XSdata('source', groups)
+    source_mat_data.order = 0
+    source_mat_data.set_total([source_sigma_a + source_sigma_s])
+    source_mat_data.set_absorption([source_sigma_a])
+    source_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[source_sigma_s]]]), 0, 3))
+
+    mg_cross_sections_file = openmc.MGXSLibrary(groups)
+    mg_cross_sections_file.add_xsdatas(
+        [source_mat_data, cavity_mat_data, absorber_mat_data])
+    mg_cross_sections_file.export_to_hdf5()
+
+    ###########################################################################
+    # Create materials for the problem
+
+    # Instantiate some Macroscopic Data
+    source_data = openmc.Macroscopic('source')
+    cavity_data = openmc.Macroscopic('cavity')
+    absorber_data = openmc.Macroscopic('absorber')
+
+    # Instantiate some Materials and register the appropriate Macroscopic objects
+    source_mat = openmc.Material(name='source')
+    source_mat.set_density('macro', 1.0)
+    source_mat.add_macroscopic(source_data)
+
+    cavity_mat = openmc.Material(name='cavity')
+    cavity_mat.set_density('macro', 1.0)
+    cavity_mat.add_macroscopic(cavity_data)
+
+    absorber_mat = openmc.Material(name='absorber')
+    absorber_mat.set_density('macro', 1.0)
+    absorber_mat.add_macroscopic(absorber_data)
+
+    # Instantiate a Materials collection
+    materials_file = openmc.Materials([source_mat, cavity_mat, absorber_mat])
+    materials_file.cross_sections = "mgxs.h5"
+
+    ###########################################################################
+    # Define problem geometry
+
+    source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
+    cavity_cell = openmc.Cell(fill=cavity_mat, name='cube cavity region')
+    absorber_cell = openmc.Cell(
+        fill=absorber_mat, name='absorber region')
+
+    source_universe = openmc.Universe(name='source universe')
+    source_universe.add_cells([source_cell])
+
+    cavity_universe = openmc.Universe()
+    cavity_universe.add_cells([cavity_cell])
+
+    absorber_universe = openmc.Universe()
+    absorber_universe.add_cells([absorber_cell])
+
+    absorber_width = 30.0
+    n_base = 6
+
+    # This variable can be increased above 1 to refine the FSR mesh resolution further
+    refinement_level = 2
+
+    n = n_base * refinement_level
+    pitch = absorber_width / n
+
+    pattern = fill_cube(n, 1*refinement_level, 5*refinement_level,
+                        source_universe, cavity_universe, absorber_universe)
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = [0.0, 0.0, 0.0]
+    lattice.pitch = [pitch, pitch, pitch]
+    lattice.universes = pattern
+
+    lattice_cell = openmc.Cell(fill=lattice)
+
+    lattice_uni = openmc.Universe()
+    lattice_uni.add_cells([lattice_cell])
+
+    x_low = openmc.XPlane(x0=0.0, boundary_type='reflective')
+    x_high = openmc.XPlane(x0=absorber_width)
+
+    y_low = openmc.YPlane(y0=0.0, boundary_type='reflective')
+    y_high = openmc.YPlane(y0=absorber_width)
+
+    z_low = openmc.ZPlane(z0=0.0, boundary_type='reflective')
+    z_high = openmc.ZPlane(z0=absorber_width)
+
+    cube_domain = openmc.Cell(fill=lattice_uni, region=+x_low & -
+                              x_high & +y_low & -y_high & +z_low & -z_high, name='full domain')
+
+    detect_width = absorber_width / n_base
+    outer_width = absorber_width + detect_width
+
+    x_outer = openmc.XPlane(x0=outer_width, boundary_type='vacuum')
+    y_outer = openmc.YPlane(y0=outer_width, boundary_type='vacuum')
+    z_outer = openmc.ZPlane(z0=outer_width, boundary_type='vacuum')
+
+    detector1_right = openmc.XPlane(x0=detect_width)
+    detector1_top = openmc.ZPlane(z0=detect_width)
+
+    detector1_region = (
+        +x_low & -detector1_right &
+        +y_high & -y_outer &
+        +z_low & -detector1_top
+    )
+    detector1 = openmc.Cell(
+        name='detector 1',
+        fill=absorber_mat,
+        region=detector1_region
+    )
+
+    detector2_region = (
+        +x_high & -x_outer &
+        +y_high & -y_outer &
+        +z_high & -z_outer
+    )
+    detector2 = openmc.Cell(
+        name='detector 2',
+        fill=absorber_mat,
+        region=detector2_region
+    )
+    
+    external_x = (
+        +x_high & +y_low & +z_low & -x_outer & 
+        ((-y_outer & -z_high) | (-y_high & +z_high & -z_outer))
+    )
+    external_y = (
+        +y_high & -y_outer & 
+        (
+            (+detector1_right & -x_high & +z_low & -z_outer) | 
+            (-detector1_right & +x_low & +detector1_top & -z_outer) | 
+            (+x_high & -x_outer & +z_low & -z_high)
+        )
+    )
+    external_z = (
+        +x_low & +y_low & +z_high & -z_outer & 
+        ((-y_outer & -x_high) | (-y_high & +x_high & -x_outer))
+    )
+    external_cell = openmc.Cell(fill=cavity_mat, 
+                                region=(external_x | external_y | external_z), 
+                                name='outside cube')
+
+    root = openmc.Universe(
+        name='root universe', 
+        cells=[cube_domain, detector1, detector2, external_cell]
+    )
+
+    # Create a geometry with the two cells and export to XML
+    geometry = openmc.Geometry(root)
+
+    ###########################################################################
+    # Define problem settings
+
+    # Instantiate a Settings object, set all runtime parameters, and export to XML
+    settings = openmc.Settings()
+    settings.energy_mode = "multi-group"
+    settings.inactive = 5
+    settings.batches = 10
+    settings.particles = 500
+    settings.run_mode = 'fixed source'
+
+    # Create an initial uniform spatial source for ray integration
+    lower_left_ray = [0.0, 0.0, 0.0]
+    upper_right_ray = [outer_width, outer_width, outer_width]
+    uniform_dist_ray = openmc.stats.Box(
+        lower_left_ray, upper_right_ray, only_fissionable=False)
+    rr_source = openmc.IndependentSource(space=uniform_dist_ray)
+
+    settings.random_ray['distance_active'] = 800.0
+    settings.random_ray['distance_inactive'] = 100.0
+    settings.random_ray['ray_source'] = rr_source
+    settings.random_ray['volume_normalized_flux_tallies'] = True
+
+    # Create a rectilinear source region mesh
+    sr_mesh = openmc.RegularMesh()
+    sr_mesh.dimension = (14, 14, 14)
+    sr_mesh.lower_left = (0.0, 0.0, 0.0)
+    sr_mesh.upper_right = (outer_width, outer_width, outer_width)
+    settings.random_ray['source_region_meshes'] = [(sr_mesh, [root])]
+
+    # Create the neutron source in the bottom right of the moderator
+    # Good - fast group appears largest (besides most thermal)
+    strengths = [1.0]
+    midpoints = [100.0]
+    energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+
+    source = openmc.IndependentSource(energy=energy_distribution, constraints={
+                                      'domains': [source_universe]}, strength=3.14)
+
+    settings.source = [source]
+
+    ###########################################################################
+    # Define tallies
+
+    estimator = 'tracklength'
+
+    detector1_filter = openmc.CellFilter(detector1)
+    detector1_tally = openmc.Tally(name="Detector 1 Tally")
+    detector1_tally.filters = [detector1_filter]
+    detector1_tally.scores = ['flux']
+    detector1_tally.estimator = estimator
+
+    detector2_filter = openmc.CellFilter(detector2)
+    detector2_tally = openmc.Tally(name="Detector 2 Tally")
+    detector2_tally.filters = [detector2_filter]
+    detector2_tally.scores = ['flux']
+    detector2_tally.estimator = estimator
+
+    absorber_filter = openmc.MaterialFilter(absorber_mat)
+    absorber_tally = openmc.Tally(name="Absorber Tally")
+    absorber_tally.filters = [absorber_filter]
+    absorber_tally.scores = ['flux']
+    absorber_tally.estimator = estimator
+
+    cavity_filter = openmc.MaterialFilter(cavity_mat)
+    cavity_tally = openmc.Tally(name="Cavity Tally")
+    cavity_tally.filters = [cavity_filter]
+    cavity_tally.scores = ['flux']
+    cavity_tally.estimator = estimator
+
+    source_filter = openmc.MaterialFilter(source_mat)
+    source_tally = openmc.Tally(name="Source Tally")
+    source_tally.filters = [source_filter]
+    source_tally.scores = ['flux']
+    source_tally.estimator = estimator
+
+    # Instantiate a Tallies collection and export to XML
+    tallies = openmc.Tallies([detector1_tally, 
+                              detector2_tally, 
+                              absorber_tally,
+                              cavity_tally,
+                              source_tally])
 
     ###########################################################################
     # Assmble Model

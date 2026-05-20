@@ -1,5 +1,6 @@
 #include "openmc/random_ray/random_ray_simulation.h"
 
+#include "openmc/capi.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
@@ -21,49 +22,6 @@ namespace openmc {
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-void openmc_run_random_ray()
-{
-  //////////////////////////////////////////////////////////
-  // Run forward simulation
-  //////////////////////////////////////////////////////////
-
-  if (mpi::master) {
-    if (FlatSourceDomain::adjoint_) {
-      FlatSourceDomain::adjoint_ = false;
-      openmc::print_adjoint_header();
-      FlatSourceDomain::adjoint_ = true;
-    }
-  }
-
-  // Initialize OpenMC general data structures
-  openmc_simulation_init();
-
-  // Validate that inputs meet requirements for random ray mode
-  if (mpi::master)
-    validate_random_ray_inputs();
-
-  // Initialize Random Ray Simulation Object
-  RandomRaySimulation sim;
-
-  // Initialize fixed sources, if present
-  sim.apply_fixed_sources_and_mesh_domains();
-
-  // Run initial random ray simulation
-  sim.simulate();
-
-  //////////////////////////////////////////////////////////
-  // Run adjoint simulation (if enabled)
-  //////////////////////////////////////////////////////////
-
-  if (sim.adjoint_needed_) {
-    // Setup for adjoint simulation
-    sim.prepare_adjoint_simulation();
-
-    // Run adjoint simulation
-    sim.simulate();
-  }
-}
 
 // Enforces restrictions on inputs in random ray mode.  While there are
 // many features that don't make sense in random ray mode, and are therefore
@@ -120,10 +78,6 @@ void validate_random_ray_inputs()
     if (!material.is_isotropic) {
       fatal_error("Anisotropic MGXS detected. Only isotropic XS data sets "
                   "supported in random ray mode.");
-    }
-    if (material.get_xsdata().size() > 1) {
-      warning("Non-isothermal MGXS detected. Only isothermal XS data sets "
-              "supported in random ray mode. Using lowest temperature.");
     }
     for (int g = 0; g < data::mg.num_energy_groups_; g++) {
       if (material.exists_in_model) {
@@ -214,14 +168,12 @@ void validate_random_ray_inputs()
                     "constrained by domain id (cell, material, or universe) in "
                     "random ray mode.");
       } else if (is->domain_ids().size() > 0 && sp) {
-        // If both a domain constraint and a non-default point source location
-        // are specified, notify user that domain constraint takes precedence.
-        if (sp->r().x == 0.0 && sp->r().y == 0.0 && sp->r().z == 0.0) {
-          warning("Fixed source has both a domain constraint and a point "
-                  "type spatial distribution. The domain constraint takes "
-                  "precedence in random ray mode -- point source coordinate "
-                  "will be ignored.");
-        }
+        // If both a domain constraint and a point source location are
+        // specified, notify user that domain constraint takes precedence.
+        warning("Fixed source has both a domain constraint and a point "
+                "type spatial distribution. The domain constraint takes "
+                "precedence in random ray mode -- point source coordinate "
+                "will be ignored.");
       }
 
       // Check that a discrete energy distribution was used
@@ -231,6 +183,56 @@ void validate_random_ray_inputs()
         fatal_error(
           "Only discrete (multigroup) energy distributions are allowed for "
           "external sources in random ray mode.");
+      }
+    }
+  }
+
+  // Validate adjoint sources
+  ///////////////////////////////////////////////////////////////////
+  if (FlatSourceDomain::adjoint_ && !model::adjoint_sources.empty()) {
+    for (int i = 0; i < model::adjoint_sources.size(); i++) {
+      Source* s = model::adjoint_sources[i].get();
+
+      // Check for independent source
+      IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+
+      if (!is) {
+        fatal_error(
+          "Only IndependentSource adjoint source types are allowed in "
+          "random ray mode");
+      }
+
+      // Check for isotropic source
+      UnitSphereDistribution* angle_dist = is->angle();
+      Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
+      if (!id) {
+        fatal_error(
+          "Invalid source definition -- only isotropic adjoint sources are "
+          "allowed in random ray mode.");
+      }
+
+      // Validate that a domain ID was specified OR that it is a point source
+      auto sp = dynamic_cast<SpatialPoint*>(is->space());
+      if (is->domain_ids().size() == 0 && !sp) {
+        fatal_error("Adjoint sources must be point source or spatially "
+                    "constrained by domain id (cell, material, or universe) in "
+                    "random ray mode.");
+      } else if (is->domain_ids().size() > 0 && sp) {
+        // If both a domain constraint and a point source location are
+        // specified, notify user that domain constraint takes precedence.
+        warning("Adjoint source has both a domain constraint and a point "
+                "type spatial distribution. The domain constraint takes "
+                "precedence in random ray mode -- point source coordinate "
+                "will be ignored.");
+      }
+
+      // Check that a discrete energy distribution was used
+      Distribution* d = is->energy();
+      Discrete* dd = dynamic_cast<Discrete*>(d);
+      if (!dd) {
+        fatal_error(
+          "Only discrete (multigroup) energy distributions are allowed for "
+          "adjoint sources in random ray mode.");
       }
     }
   }
@@ -278,31 +280,22 @@ void validate_random_ray_inputs()
     warning(
       "Linear sources may result in negative fluxes in small source regions "
       "generated by mesh subdivision. Negative sources may result in low "
-      "quality FW-CADIS weight windows. We recommend you use flat source mode "
-      "when generating weight windows with an overlaid mesh tally.");
+      "quality FW-CADIS weight windows. We recommend you use flat source "
+      "mode when generating weight windows with an overlaid mesh tally.");
   }
 }
 
-void openmc_reset_random_ray()
+void openmc_finalize_random_ray()
 {
   FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_ = false;
+  FlatSourceDomain::fw_cadis_local_ = false;
+  FlatSourceDomain::fw_cadis_local_targets_.clear();
   FlatSourceDomain::mesh_domain_map_.clear();
   RandomRay::ray_source_.reset();
   RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
   RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
-}
-
-void print_adjoint_header()
-{
-  if (!FlatSourceDomain::adjoint_)
-    // If we're going to do an adjoint simulation afterwards, report that this
-    // is the initial forward flux solve.
-    header("FORWARD FLUX SOLVE", 3);
-  else
-    // Otherwise report that we are doing the adjoint simulation
-    header("ADJOINT FLUX SOLVE", 3);
 }
 
 //==============================================================================
@@ -335,16 +328,6 @@ RandomRaySimulation::RandomRaySimulation()
   // Convert OpenMC native MGXS into a more efficient format
   // internal to the random ray solver
   domain_->flatten_xs();
-
-  // Check if adjoint calculation is needed. If it is, we will run the forward
-  // calculation first and then the adjoint calculation later.
-  adjoint_needed_ = FlatSourceDomain::adjoint_;
-
-  // Adjoint is always false for the forward calculation
-  FlatSourceDomain::adjoint_ = false;
-
-  // The first simulation is run after initialization
-  is_first_simulation_ = true;
 }
 
 void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
@@ -352,29 +335,51 @@ void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
   domain_->apply_meshes();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // Transfer external source user inputs onto random ray source regions
-    domain_->convert_external_sources();
+    domain_->convert_external_sources(false);
     domain_->count_external_source_regions();
   }
 }
 
-void RandomRaySimulation::prepare_fixed_sources_adjoint()
+void RandomRaySimulation::prepare_fw_fixed_sources_adjoint()
 {
+  // Prepare adjoint fixed sources using forward flux
   domain_->source_regions_.adjoint_reset();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    domain_->set_adjoint_sources();
+    domain_->set_fw_adjoint_sources();
   }
 }
 
-void RandomRaySimulation::prepare_adjoint_simulation()
+void RandomRaySimulation::prepare_local_fixed_sources_adjoint()
 {
-  // Configure the domain for adjoint simulation
-  FlatSourceDomain::adjoint_ = true;
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    domain_->set_local_adjoint_sources();
+  }
+}
 
-  // Reset k-eff
+void RandomRaySimulation::prepare_adjoint_simulation(bool fw_adjoint)
+{
+  reset_timers();
+
+  if (mpi::master)
+    header("ADJOINT FLUX SOLVE", 3);
+
+  if (fw_adjoint) {
+    // Forward simulation has already been run;
+    // Configure the domain for adjoint simulation and
+    // re-initialize OpenMC general data structures
+    FlatSourceDomain::adjoint_ = true;
+
+    openmc_simulation_init();
+
+    prepare_fw_fixed_sources_adjoint();
+  } else {
+    // Initialize adjoint fixed sources
+    domain_->apply_meshes();
+    prepare_local_fixed_sources_adjoint();
+    domain_->count_external_source_regions();
+  }
+
   domain_->k_eff_ = 1.0;
-
-  // Initialize adjoint fixed sources, if present
-  prepare_fixed_sources_adjoint();
 
   // Transpose scattering matrix
   domain_->transpose_scattering_matrix();
@@ -385,18 +390,6 @@ void RandomRaySimulation::prepare_adjoint_simulation()
 
 void RandomRaySimulation::simulate()
 {
-  if (!is_first_simulation_) {
-    if (mpi::master && adjoint_needed_)
-      openmc::print_adjoint_header();
-
-    // Reset the timers and reinitialize the general OpenMC datastructures if
-    // this is after the first simulation
-    reset_timers();
-
-    // Initialize OpenMC general data structures
-    openmc_simulation_init();
-  }
-
   // Begin main simulation timer
   simulation::time_total.start();
 
@@ -492,7 +485,7 @@ void RandomRaySimulation::simulate()
   // End main simulation timer
   simulation::time_total.stop();
 
-  // Normalize and save the final flux
+  // Normalize and save the final forward flux
   double source_normalization_factor =
     domain_->compute_fixed_source_normalization_factor() /
     (settings::n_batches - settings::n_inactive);
@@ -508,11 +501,6 @@ void RandomRaySimulation::simulate()
 
   // Output all simulation results
   output_simulation_results();
-
-  // Toggle that the simulation object has been initialized after the first
-  // simulation
-  if (is_first_simulation_)
-    is_first_simulation_ = false;
 }
 
 void RandomRaySimulation::output_simulation_results() const
@@ -633,9 +621,18 @@ void RandomRaySimulation::print_results_random_ray(
       fatal_error("Invalid random ray source shape");
     }
     fmt::print(" Source Shape                      = {}\n", shape);
-    std::string sample_method =
-      (RandomRay::sample_method_ == RandomRaySampleMethod::PRNG) ? "PRNG"
-                                                                 : "Halton";
+    std::string sample_method;
+    switch (RandomRay::sample_method_) {
+    case RandomRaySampleMethod::PRNG:
+      sample_method = "PRNG";
+      break;
+    case RandomRaySampleMethod::HALTON:
+      sample_method = "Halton";
+      break;
+    case RandomRaySampleMethod::S2:
+      sample_method = "PRNG S2";
+      break;
+    }
     fmt::print(" Sample Method                     = {}\n", sample_method);
 
     if (domain_->is_transport_stabilization_needed_) {
@@ -671,3 +668,67 @@ void RandomRaySimulation::print_results_random_ray(
 }
 
 } // namespace openmc
+
+//==============================================================================
+// C API functions
+//==============================================================================
+
+void openmc_run_random_ray()
+{
+  //////////////////////////////////////////////////////////
+  // Run forward simulation
+  //////////////////////////////////////////////////////////
+
+  // Check if adjoint calculation is needed, and if local adjoint source(s)
+  // are present. If an adjoint calculation is needed and no sources are
+  // specified, we will run a forward calculation first to calculate adjoint
+  // sources for global variance reduction, then perform an adjoint
+  // calculation later.
+  bool adjoint_needed = openmc::FlatSourceDomain::adjoint_;
+  bool fw_adjoint = openmc::model::adjoint_sources.empty() && adjoint_needed;
+
+  // If we're going to do an adjoint simulation with forward-weighted adjoint
+  // sources afterwards, report that this is the initial forward flux solve.
+  if (!adjoint_needed || fw_adjoint) {
+    // Configure the domain for forward simulation
+    openmc::FlatSourceDomain::adjoint_ = false;
+
+    if (adjoint_needed && openmc::mpi::master)
+      openmc::header("FORWARD FLUX SOLVE", 3);
+  } else {
+    // Configure domain for adjoint simulation (later)
+    openmc::FlatSourceDomain::adjoint_ = true;
+  }
+
+  // Initialize OpenMC general data structures
+  openmc_simulation_init();
+
+  // Validate that inputs meet requirements for random ray mode
+  if (openmc::mpi::master)
+    openmc::validate_random_ray_inputs();
+
+  // Initialize Random Ray Simulation Object
+  openmc::RandomRaySimulation sim;
+
+  if (!adjoint_needed || fw_adjoint) {
+    // Initialize fixed sources, if present
+    sim.apply_fixed_sources_and_mesh_domains();
+
+    // Execute random ray simulation
+    sim.simulate();
+  }
+
+  //////////////////////////////////////////////////////////
+  // Run adjoint simulation (if enabled)
+  //////////////////////////////////////////////////////////
+
+  if (!adjoint_needed) {
+    return;
+  }
+
+  // Setup for adjoint simulation
+  sim.prepare_adjoint_simulation(fw_adjoint);
+
+  // Execute random ray simulation
+  sim.simulate();
+}

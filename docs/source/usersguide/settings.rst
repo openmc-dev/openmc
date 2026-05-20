@@ -604,6 +604,13 @@ transport::
 
   settings.photon_transport = True
 
+Atomic relaxation (the cascade of fluorescence photons and Auger electrons
+emitted when an inner-shell vacancy is filled) is enabled by default whenever
+photon transport is on. It can be disabled using the
+:attr:`Settings.atomic_relaxation` attribute::
+
+  settings.atomic_relaxation = False
+
 The way in which OpenMC handles secondary charged particles can be specified
 with the :attr:`Settings.electron_treatment` attribute. By default, the
 :ref:`thick-target bremsstrahlung <ttb>` (TTB) approximation is used to generate

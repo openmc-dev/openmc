@@ -21,6 +21,7 @@ from .function import Tabulated1D, Polynomial
 from .kalbach_mann import KalbachMann
 from .laboratory import LaboratoryAngleEnergy
 from .nbody import NBodyPhaseSpace
+from .photon import _SUBSHELLS
 from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
 
@@ -54,6 +55,10 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 3: "(n,nonelastic)",
                  198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 203: '(n,Xp)',
                  204: '(n,Xd)', 205: '(n,Xt)', 206: '(n,X3He)', 207: '(n,Xa)',
                  301: 'heating', 444: 'damage-energy',
+                 501: 'photon-total', 502: 'coherent-scatter',
+                 504: 'incoherent-scatter', 515: 'pair-production-electron',
+                 516: 'pair-production', 517: 'pair-production-nuclear',
+                 522: 'photoelectric',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)', 891: '(n,2nc)', 901: 'heating-local'}
 REACTION_NAME.update({i: f'(n,n{i - 50})' for i in range(51, 91)})
@@ -63,9 +68,16 @@ REACTION_NAME.update({i: f'(n,t{i - 700})' for i in range(700, 749)})
 REACTION_NAME.update({i: f'(n,3He{i - 750})' for i in range(750, 799)})
 REACTION_NAME.update({i: f'(n,a{i - 800})' for i in range(800, 849)})
 REACTION_NAME.update({i: f'(n,2n{i - 875})' for i in range(875, 891)})
+REACTION_NAME.update(
+    {534 + i: f'photoelectric-{shell}' for i, shell in enumerate(_SUBSHELLS[1:])}
+)
 
 REACTION_MT = {name: mt for mt, name in REACTION_NAME.items()}
+REACTION_MT['total'] = 1
+REACTION_MT['elastic'] = 2
 REACTION_MT['fission'] = 18
+REACTION_MT['absorption'] = 27
+REACTION_MT['capture'] = 102
 
 FISSION_MTS = (18, 19, 20, 21, 38)
 

@@ -30,9 +30,9 @@
 
 #include <fmt/core.h>
 
+#include "openmc/tensor.h"
 #include <algorithm> // for max, min, max_element
 #include <cmath>     // for sqrt, exp, log, abs, copysign
-#include <xtensor/xview.hpp>
 
 namespace openmc {
 
@@ -44,6 +44,7 @@ void collision(Particle& p)
 {
   // Add to collision counter for particle
   ++(p.n_collision());
+  p.secondary_bank_index() = p.local_secondary_bank().size();
 
   // Sample reaction for the material the particle is in
   switch (p.type().pdg_number()) {
@@ -63,8 +64,17 @@ void collision(Particle& p)
     fatal_error("Unsupported particle PDG for collision sampling.");
   }
 
-  if (settings::weight_window_checkpoint_collision)
-    apply_weight_windows(p);
+  if (settings::weight_windows_on) {
+    auto [ww_found, ww] = search_weight_window(p);
+    if (!ww_found && p.type() == ParticleType::neutron()) {
+      // if the weight window is not valid, apply russian roulette for neutrons
+      // (regardless of weight window collision checkpoint setting)
+      apply_russian_roulette(p);
+    } else if (settings::weight_window_checkpoint_collision) {
+      // if collision checkpointing is on, apply weight window
+      apply_weight_window(p, ww);
+    }
+  }
 
   // Kill particle if energy falls below cutoff
   int type = p.type().transport_index();
@@ -117,7 +127,8 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= settings::max_secondaries) {
+      if (p.local_secondary_bank().size() >= settings::max_secondaries &&
+          !settings::use_shared_secondary_bank) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "
@@ -155,18 +166,9 @@ void sample_neutron_reaction(Particle& p)
     advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
-  // Play russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
-    // if survival normalization is on, use normalized weight cutoff and
-    // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
-      }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
-    }
-  }
+  // Play russian roulette if there are no weight windows
+  if (!settings::weight_windows_on)
+    apply_russian_roulette(p);
 }
 
 void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
@@ -227,7 +229,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Set parent and progeny IDs
-    site.parent_id = p.id();
+    site.parent_id = p.current_work();
     site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank
@@ -250,7 +252,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       // Iterated Fission Probability (IFP) method
       ifp(p, idx);
     } else {
-      p.secondary_bank().push_back(site);
+      site.wgt_born = p.wgt_born();
+      site.wgt_ww_born = p.wgt_ww_born();
+      site.n_split = p.n_split();
+      p.local_secondary_bank().push_back(site);
+      p.n_secondaries()++;
     }
 
     // Increment the number of neutrons born delayed
@@ -351,7 +357,8 @@ void sample_photon_reaction(Particle& p)
     // Allow electrons to fill orbital and produce Auger electrons and
     // fluorescent photons. Since Compton subshell data does not match atomic
     // relaxation data, use the mapping between the data to find the subshell
-    if (i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {
+    if (settings::atomic_relaxation && i_shell >= 0 &&
+        element.subshell_map_[i_shell] >= 0) {
       element.atomic_relaxation(element.subshell_map_[i_shell], p);
     }
 
@@ -371,8 +378,9 @@ void sample_photon_reaction(Particle& p)
     // cross sections
     int i_grid = micro.index_grid;
     double f = micro.interp_factor;
-    const auto& xs_lower = xt::row(element.cross_sections_, i_grid);
-    const auto& xs_upper = xt::row(element.cross_sections_, i_grid + 1);
+    tensor::View<const double> xs_lower = element.cross_sections_.slice(i_grid);
+    tensor::View<const double> xs_upper =
+      element.cross_sections_.slice(i_grid + 1);
 
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
       const auto& shell {element.shells_[i_shell]};
@@ -422,7 +430,9 @@ void sample_photon_reaction(Particle& p)
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
-        element.atomic_relaxation(i_shell, p);
+        if (settings::atomic_relaxation) {
+          element.atomic_relaxation(i_shell, p);
+        }
         p.event() = TallyEvent::ABSORB;
         p.event_mt() = 533 + shell.index_subshell;
         p.wgt() = 0.0;
@@ -1217,7 +1227,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
 
     // Tag secondary particle with parent nuclide
     if (created_photon && settings::use_decay_photons) {
-      p.secondary_bank().back().parent_nuclide =
+      p.local_secondary_bank().back().parent_nuclide =
         rx->products_[i_product].parent_nuclide_;
     }
   }

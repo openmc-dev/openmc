@@ -112,7 +112,7 @@ TEST_CASE("Test settings declaration exceptions for a temperature field",
         </mesh>
       </settings>
       )",
-      "A mesh should be given for the temperature field."},
+      "A mesh must be given for the temperature field."},
     {// No values declared -> error
       R"(
       <settings>
@@ -129,7 +129,7 @@ TEST_CASE("Test settings declaration exceptions for a temperature field",
         </mesh>
       </settings>
       )",
-      "Temperature values should be given for the temperature field."},
+      "Temperature values must be given for the temperature field."},
   }));
 
   free_memory_mesh();

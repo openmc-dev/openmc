@@ -8,17 +8,6 @@
 namespace openmc {
 
 // -----------------------------------------------------------
-// Field implementation
-// -----------------------------------------------------------
-
-double Field::distance_to_next_boundary(
-  int current_bin, const Position& r, const Direction& u, int& bin_next)
-{
-  return this->mesh_ptr()->distance_to_next_boundary(
-    current_bin, r, u, bin_next);
-}
-
-// -----------------------------------------------------------
 // TemperatureField implementation
 // -----------------------------------------------------------
 
@@ -119,7 +108,8 @@ extern "C" int openmc_temperature_field_set_temperature(
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  simulation::temperature_field.value(index) = temperature;
+  simulation::temperature_field.assign(index, temperature);
   return 0;
+}
 
 } // namespace openmc

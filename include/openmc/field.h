@@ -15,7 +15,9 @@ class Field;
 template<typename T>
 class FieldData {
 public:
+  virtual T evaluate(int bin) const = 0;
   virtual T evaluate(int bin, Position r) const = 0;
+  virtual void assign(int bin, T value) = 0;
   virtual int size() = 0;
   virtual std::any values() const = 0;
 };
@@ -25,7 +27,11 @@ class SimpleFieldData : public FieldData<T> {
 public:
   SimpleFieldData(std::vector<T> values) { values_ = values; }
 
+  T evaluate(int bin) const { return values_[bin]; }
+
   T evaluate(int bin, Position r) const { return values_[bin]; }
+
+  void assign(int bin, T value) { values_[bin] = value; }
 
   int size() { return values_.size(); }
 
@@ -40,7 +46,11 @@ class NestedFieldData : public FieldData<T> {
 public:
   NestedFieldData(std::vector<Field<T>> values) { values_ = values; }
 
+  T evaluate(int bin) const { fatal_error("Not implemented"); }
+
   T evaluate(int bin, Position r) const { return values_[bin].evaluate(r); }
+
+  void assign(int bin, T value) { fatal_error("Not implemented"); }
 
   int size() { return values_.size(); }
 
@@ -145,11 +155,12 @@ public:
     if (mapping() == FieldMapping::NODAL) {
       return evaluate_inside_cell(bin, r);
     } else if (mapping() == FieldMapping::CELL) {
-      return value(bin, r);
+      return value(bin);
     } else {
       fatal_error("Not implemented!");
     }
   }
+  
 
   //! Returns the distance to the next mesh boundary given a particle position
   //! and direction. If the particle is initially outside, the distance will
@@ -161,7 +172,11 @@ public:
   //! \param[out] bin_next Next bin number
   //! \return The distance in cm to the next mesh boundary
   double distance_to_next_boundary(
-    int current_bin, const Position& r, const Direction& d, int& bin_next);
+    int current_bin, const Position& r, const Direction& u, int& bin_next)
+  {
+    return this->mesh_ptr()->distance_to_next_boundary(
+      current_bin, r, u, bin_next);
+  }
 
   // Mapping accessor
   FieldMapping mapping() { return mapping_; }
@@ -186,7 +201,20 @@ public:
     }
   }
 
+  FieldData<T>& data()
+  {
+    if (data_ == nullptr) {
+      fatal_error("No data found for this field!");
+    } else {
+      return *data_;
+    }
+  }
+
   T value(int bin, Position r) const { return data().evaluate(bin, r); }
+
+  T value(int bin) const { return data().evaluate(bin); }
+
+  void assign(int bin, T value) { data().assign(bin, value); }
 
 private:
   FieldMapping mapping_;               //!< Relationship between values and mesh
@@ -199,7 +227,7 @@ public:
   // Constructors
   TemperatureField() : Field<double>() {};
   TemperatureField(
-    Mesh* mesh_ptr, std::vector<double> values, std::string mapping);
+    Mesh* mesh_ptr, std::vector<double> values, std::string mapping = "cell");
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
@@ -220,9 +248,6 @@ public:
   //! \param[in] r Position of the particle
   //! \return Corresponding bin number or -1 if outside the mesh
   int get_bin(const Position& r);
-
-  //! \return Sqrt(k_Boltzmann * temperature) in eV
-  double get_sqrtkT(const Position& r);
 
   // Runtime cast to go through the values
   // Should be an extremely limited use case

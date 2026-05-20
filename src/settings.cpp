@@ -847,7 +847,7 @@ void read_settings_xml(pugi::xml_node root)
       tf_mesh_ptr = model::meshes[model::mesh_map.at(temp)].get();
     } else {
       throw std::runtime_error(
-        "A mesh should be given for the temperature field.");
+        "A mesh must be given for the temperature field.");
     }
 
     // Values parameter
@@ -864,7 +864,7 @@ void read_settings_xml(pugi::xml_node root)
       }
     } else {
       throw std::runtime_error(
-        "Temperature values should be given for the temperature field.");
+        "Temperature values must be given for the temperature field.");
     }
 
     // Mapping representation
@@ -872,8 +872,7 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_tf, "mapping")) {
       mapping = get_node_value(node_tf, "mapping");
     } else {
-      fatal_error(
-        "A mapping representation must be given for the velocity field.");
+      mapping = "cell";
     }
 
     // Instantiate the temperature field

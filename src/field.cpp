@@ -18,7 +18,7 @@ TemperatureField::TemperatureField(
   set_mapping(mapping);
 
   std::unique_ptr<FieldData<double>> data =
-    std::make_unique<SimpleFieldData<double>>(values);
+    std::make_unique<FieldData<double>>(values);
   set_data(std::move(data));
 }
 
@@ -60,7 +60,7 @@ VelocityField::VelocityField(
   set_mapping(mapping);
 
   std::unique_ptr<FieldData<Direction>> data =
-    std::make_unique<SimpleFieldData<Direction>>(values);
+    std::make_unique<FieldData<Direction>>(values);
   set_data(std::move(data));
 }
 

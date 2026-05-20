@@ -15,17 +15,7 @@ class Field;
 template<typename T>
 class FieldData {
 public:
-  virtual T evaluate(int bin) const = 0;
-  virtual T evaluate(int bin, Position r) const = 0;
-  virtual void assign(int bin, T value) = 0;
-  virtual int size() = 0;
-  virtual std::any values() const = 0;
-};
-
-template<typename T>
-class SimpleFieldData : public FieldData<T> {
-public:
-  SimpleFieldData(std::vector<T> values) { values_ = values; }
+  FieldData(std::vector<T> values) { values_ = values; }
 
   T evaluate(int bin) const { return values_[bin]; }
 
@@ -35,29 +25,10 @@ public:
 
   int size() { return values_.size(); }
 
-  std::any values() const override { return values_; }
+  std::vector<T> values() const { return values_; }
 
 private:
   std::vector<T> values_;
-};
-
-template<typename T>
-class NestedFieldData : public FieldData<T> {
-public:
-  NestedFieldData(std::vector<Field<T>> values) { values_ = values; }
-
-  T evaluate(int bin) const { fatal_error("Not implemented"); }
-
-  T evaluate(int bin, Position r) const { return values_[bin].evaluate(r); }
-
-  void assign(int bin, T value) { fatal_error("Not implemented"); }
-
-  int size() { return values_.size(); }
-
-  std::any values() const override { return values_; }
-
-private:
-  std::vector<Field<T>> values_;
 };
 
 enum class FieldMapping {

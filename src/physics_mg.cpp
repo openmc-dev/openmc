@@ -27,7 +27,7 @@ void collision_mg(Particle& p)
 {
   // Add to the collision counter for the particle
   p.n_collision()++;
-  p.secondary_bank_index() = p.secondary_bank().size();
+  p.secondary_bank_index() = p.local_secondary_bank().size();
 
   // Sample the reaction type
   sample_reaction(p);
@@ -179,7 +179,7 @@ void create_fission_sites(Particle& p)
     }
 
     // Set parent and progeny ID
-    site.parent_id = p.id();
+    site.parent_id = p.current_work();
     site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank
@@ -200,7 +200,10 @@ void create_fission_sites(Particle& p)
         break;
       }
     } else {
-      p.secondary_bank().push_back(site);
+      site.wgt_born = p.wgt_born();
+      site.wgt_ww_born = p.wgt_ww_born();
+      site.n_split = p.n_split();
+      p.local_secondary_bank().push_back(site);
       p.n_secondaries()++;
     }
 

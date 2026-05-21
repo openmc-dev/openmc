@@ -20,6 +20,7 @@ from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
+from .xdg import XDGMesh
 
 
 class MeshMaterialVolumes(Mapping):
@@ -342,8 +343,6 @@ class MeshBase(IDManagerMixin, ABC):
             an openmc mesh object
 
         """
-        from .xdg import XDGMesh
-
         mesh_type = get_text(elem, 'type')
 
         if mesh_type == 'regular' or mesh_type is None:

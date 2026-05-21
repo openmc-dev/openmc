@@ -1,19 +1,14 @@
-from collections.abc import Iterable, Mapping
-from numbers import Integral
+from collections.abc import Iterable
 
 
 import h5py
 import lxml.etree as ET
-import numpy as np
-import warnings
 
 import openmc
 import openmc.checkvalue as cv
 from ._xml import get_text
-from .checkvalue import check_type, check_value, PathLike
-from .mesh import MeshBase
-from .surface import _BOUNDARY_TYPES
 from .bounding_box import BoundingBox
+from .checkvalue import PathLike
 from .utility_funcs import input_path
 
 

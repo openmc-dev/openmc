@@ -651,6 +651,7 @@ def test_mesh_get_homogenized_materials():
 def sphere_model():
     openmc.reset_auto_ids()
     # Model with three materials separated by planes x=0 and z=0
+    openmc.reset_auto_ids()
     mats = []
     for i in range(3):
         mat = openmc.Material()

@@ -3935,7 +3935,7 @@ void AdaptiveLibMesh::set_mesh_tally_amalgamation(
 
       auto elem = *it;
       auto cluster_elem = elem;
-      unsigned int cluster_id =
+      int cluster_id =
         elem->get_extra_integer(clustering_element_integer_index_);
 
       if (cluster_id != -1) {

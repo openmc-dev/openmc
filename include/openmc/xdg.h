@@ -18,6 +18,7 @@ namespace openmc {
 class XDGMesh : public UnstructuredMesh {
 
 public:
+  //----------------------------------------------------------------------------
   // Constructors
   XDGMesh() = default;
   XDGMesh(pugi::xml_node node);
@@ -27,22 +28,13 @@ public:
 
   static const std::string mesh_lib_type;
 
+  //----------------------------------------------------------------------------
+  // Methods
+
   //! Get the underlying XDG instance
   //!
   //! \return Shared pointer to the XDG instance
   const std::shared_ptr<xdg::XDG>& xdg_instance() const { return xdg_; }
-
-  // Overridden Methods
-
-  //! Perform any preparation needed to support use in mesh filters
-  void prepare_for_point_location() override;
-
-  Position sample_element(int32_t bin, uint64_t* seed) const override;
-
-  void bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins, vector<double>& lengths) const override;
-
-  int get_bin(Position r) const override;
 
   //! Check whether a bin index is valid
   //!
@@ -62,6 +54,24 @@ public:
   //! \return Bin index corresponding to the MeshID, or -1 if invalid
   int mesh_id_to_bin(xdg::MeshID id) const;
 
+  //! Get the name of the underlying mesh library
+  //!
+  //! \return Name of the mesh library ("moab" or "libmesh")
+  std::string mesh_library() const;
+
+  //----------------------------------------------------------------------------
+  // Overridden Methods
+
+  //! Perform any preparation needed to support use in mesh filters
+  void prepare_for_point_location() override;
+
+  Position sample_element(int32_t bin, uint64_t* seed) const override;
+
+  void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
+
+  int get_bin(Position r) const override;
+
   int n_bins() const override;
 
   int n_surface_bins() const override;
@@ -70,11 +80,6 @@ public:
     Position plot_ll, Position plot_ur) const override;
 
   std::string library() const override;
-
-  //! Get the name of the underlying mesh library
-  //!
-  //! \return Name of the mesh library ("moab" or "libmesh")
-  std::string mesh_library() const;
 
   //! Add a score to the mesh instance
   void add_score(const std::string& score) override {};
@@ -118,6 +123,8 @@ public:
 private:
   void initialize() override;
 
+  //----------------------------------------------------------------------------
+  // Private data members
   std::shared_ptr<xdg::XDG> xdg_; //!< XDG instance
   xdg::MeshLibrary mesh_library_ {
     xdg::MeshLibrary::LIBMESH}; //!< Mesh library type

@@ -89,14 +89,12 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
     settings::libmesh_comm = &(settings::libmesh_init->comm());
   }
 
-#ifdef OPENMC_XDG_ENABLED
-#ifdef XDG_ENABLE_LIBMESH
+#if defined(OPENMC_XDG_ENABLED) && defined(XDG_ENABLE_LIBMESH)
   // Set the external libMesh initialization and communicator for XDG if
   // libMesh was initialized externally. If libMesh was initialized internally,
   // the XDG config will use the internal initialization and communicator.
   xdg::config::external_libmesh_init = settings::libmesh_init.get();
   xdg::config::external_libmesh_comm = settings::libmesh_comm;
-#endif
 #endif
 
 #endif

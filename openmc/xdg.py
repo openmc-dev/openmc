@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 
-
 import h5py
 import lxml.etree as ET
 

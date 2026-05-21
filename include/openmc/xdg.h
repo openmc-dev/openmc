@@ -27,6 +27,9 @@ public:
 
   static const std::string mesh_lib_type;
 
+  //! Get the underlying XDG instance
+  //!
+  //! \return Shared pointer to the XDG instance
   const std::shared_ptr<xdg::XDG>& xdg_instance() const { return xdg_; }
 
   // Overridden Methods
@@ -41,10 +44,22 @@ public:
 
   int get_bin(Position r) const override;
 
+  //! Check whether a bin index is valid
+  //!
+  //! \param[in] bin Bin index to check
+  //! \return True if the bin index is in [0, n_bins())
   bool bin_is_valid(int bin) const { return bin >= 0 && bin < n_bins(); }
 
+  //! Convert a mesh bin index to an XDG MeshID
+  //!
+  //! \param[in] bin Bin index to convert
+  //! \return XDG MeshID corresponding to the bin
   xdg::MeshID bin_to_mesh_id(int bin) const;
 
+  //! Convert an XDG MeshID to a mesh bin index
+  //!
+  //! \param[in] id XDG MeshID to convert
+  //! \return Bin index corresponding to the MeshID, or -1 if invalid
   int mesh_id_to_bin(xdg::MeshID id) const;
 
   int n_bins() const override;
@@ -56,6 +71,9 @@ public:
 
   std::string library() const override;
 
+  //! Get the name of the underlying mesh library
+  //!
+  //! \return Name of the mesh library ("moab" or "libmesh")
   std::string mesh_library() const;
 
   //! Add a score to the mesh instance

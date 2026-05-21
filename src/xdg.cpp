@@ -1,9 +1,16 @@
-#include <algorithm>
-#include <fstream>
-#include <sstream>
-#include <string>
-
 #include "openmc/xdg.h"
+
+#include <algorithm> // for remove_if
+#include <memory>    // for shared_ptr
+#include <string>    // for string
+#include <utility>   // for pair
+#include <vector>    // for vector
+
+#include <fmt/core.h>
+
+#ifdef OPENMC_XDG_ENABLED
+#include "xdg/xdg.h"
+#endif
 
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
@@ -15,12 +22,6 @@
 #include "openmc/material.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
-
-#include <fmt/core.h>
-
-#ifdef OPENMC_XDG_ENABLED
-#include "xdg/xdg.h"
-#endif
 
 namespace openmc {
 

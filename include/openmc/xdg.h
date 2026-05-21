@@ -5,15 +5,14 @@ namespace openmc {
 extern "C" const bool XDG_ENABLED;
 }
 
-// always include the XML interface header
-#include "openmc/xml_interface.h"
-
 #ifdef OPENMC_XDG_ENABLED
 
 #include "xdg/xdg.h"
 
 #include "openmc/mesh.h"
 #include "openmc/position.h"
+#include "openmc/xml_interface.h"
+
 namespace openmc {
 
 class XDGMesh : public UnstructuredMesh {

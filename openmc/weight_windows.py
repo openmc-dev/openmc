@@ -10,7 +10,10 @@ import numpy as np
 import h5py
 
 import openmc
-from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
+from openmc.mesh import (
+    MeshBase, RegularMesh, RectilinearMesh, CylindricalMesh, SphericalMesh,
+    UnstructuredMesh,
+)
 from openmc.tallies import Tallies
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
@@ -819,6 +822,51 @@ def hdf5_to_wws(path='weight_windows.h5') -> WeightWindowsList:
     return WeightWindowsList.from_hdf5(path)
 
 
+def _write_mesh_group(meshes_grp: h5py.Group, mesh: MeshBase):
+    """Write *mesh* into *meshes_grp* as a ``mesh <id>`` subgroup.
+
+    Matches the layout produced by ``Mesh::to_hdf5`` in src/mesh.cpp so the
+    resulting file is readable by ``openmc_weight_windows_import``.
+    """
+    grp = meshes_grp.create_group(f'mesh {mesh.id}')
+    grp.attrs['id'] = np.int32(mesh.id)
+    grp.create_dataset('name', data=np.bytes_(mesh.name or ''))
+
+    if isinstance(mesh, RegularMesh):
+        grp.create_dataset('type', data=np.bytes_('regular'))
+        grp.create_dataset('dimension',
+                           data=np.asarray(mesh.dimension, dtype=np.int32))
+        grp.create_dataset('lower_left',
+                           data=np.asarray(mesh.lower_left, dtype=float))
+        grp.create_dataset('upper_right',
+                           data=np.asarray(mesh.upper_right, dtype=float))
+        grp.create_dataset('width', data=np.asarray(mesh.width, dtype=float))
+    elif isinstance(mesh, RectilinearMesh):
+        grp.create_dataset('type', data=np.bytes_('rectilinear'))
+        grp.create_dataset('x_grid', data=np.asarray(mesh.x_grid, dtype=float))
+        grp.create_dataset('y_grid', data=np.asarray(mesh.y_grid, dtype=float))
+        grp.create_dataset('z_grid', data=np.asarray(mesh.z_grid, dtype=float))
+    elif isinstance(mesh, CylindricalMesh):
+        grp.create_dataset('type', data=np.bytes_('cylindrical'))
+        grp.create_dataset('r_grid', data=np.asarray(mesh.r_grid, dtype=float))
+        grp.create_dataset('phi_grid', data=np.asarray(mesh.phi_grid, dtype=float))
+        grp.create_dataset('z_grid', data=np.asarray(mesh.z_grid, dtype=float))
+        grp.create_dataset('origin', data=np.asarray(mesh.origin, dtype=float))
+    elif isinstance(mesh, SphericalMesh):
+        grp.create_dataset('type', data=np.bytes_('spherical'))
+        grp.create_dataset('r_grid', data=np.asarray(mesh.r_grid, dtype=float))
+        grp.create_dataset('theta_grid', data=np.asarray(mesh.theta_grid, dtype=float))
+        grp.create_dataset('phi_grid', data=np.asarray(mesh.phi_grid, dtype=float))
+        grp.create_dataset('origin', data=np.asarray(mesh.origin, dtype=float))
+    elif isinstance(mesh, UnstructuredMesh):
+        raise NotImplementedError(
+            "Exporting weight windows on an UnstructuredMesh is not yet "
+            "implemented in Python; use openmc.lib.export_weight_windows()."
+        )
+    else:
+        raise TypeError(f"Unknown mesh type: {type(mesh).__name__}")
+
+
 class WeightWindowsList(list):
     """A list of WeightWindows objects.
 
@@ -1061,29 +1109,66 @@ class WeightWindowsList(list):
     def export_to_hdf5(self, path: PathLike = 'weight_windows.h5', **init_kwargs):
         """Write weight windows to an HDF5 file.
 
+        Writes the file directly via :mod:`h5py`, mirroring the layout
+        produced by :func:`openmc.lib.export_weight_windows`. The previous
+        XML round-trip raised :class:`MemoryError` on multi-GB bound arrays
+        because of the intermediate ASCII allocation inside lxml.
+
         Parameters
         ----------
         path : PathLike
             Path to the file to write weight windows to
         **init_kwargs
-            Keyword arguments passed to :func:`openmc.lib.init`
-
+            Unused. Retained for backward compatibility (previously forwarded
+            to :func:`openmc.lib.init`).
         """
-        import openmc.lib
         cv.check_type('path', path, PathLike)
-
-        # Create a temporary model with the weight windows
-        model = openmc.Model()
-        sph = openmc.Sphere(boundary_type='vacuum')
-        cell = openmc.Cell(region=-sph)
-        model.geometry = openmc.Geometry([cell])
-        model.settings.weight_windows = self
-        model.settings.particles = 100
-        model.settings.batches = 1
-
-        # Get absolute path before moving to temporary directory
         path = Path(path).resolve()
 
-        # Load the model with openmc.lib and then export it to an HDF5 file
-        with openmc.lib.TemporarySession(model, **init_kwargs):
-            openmc.lib.export_weight_windows(path)
+        with h5py.File(path, 'w') as f:
+            f.attrs['filetype'] = np.bytes_('weight_windows')
+            f.attrs['version'] = np.asarray([1, 0], dtype=np.int32)
+
+            meshes_grp = f.create_group('meshes')
+            wws_grp = f.create_group('weight_windows')
+
+            seen_mesh_ids = set()
+            ww_ids = []
+            for ww in self:
+                if ww.mesh.id not in seen_mesh_ids:
+                    _write_mesh_group(meshes_grp, ww.mesh)
+                    seen_mesh_ids.add(ww.mesh.id)
+
+                g = wws_grp.create_group(f'weight_windows_{ww.id}')
+                ww_ids.append(int(ww.id))
+
+                g.create_dataset('mesh', data=np.int32(ww.mesh.id))
+                g.create_dataset('particle_type',
+                                 data=np.bytes_(str(ww.particle_type)))
+                g.create_dataset('energy_bounds',
+                                 data=np.asarray(ww.energy_bounds, dtype=float))
+
+                # 2D (ne, n_voxels) C-contiguous: the C++ reader expects this layout.
+                ne = ww.lower_ww_bounds.shape[-1]
+                lo = np.ascontiguousarray(ww.lower_ww_bounds.T).reshape(ne, -1)
+                up = np.ascontiguousarray(ww.upper_ww_bounds.T).reshape(ne, -1)
+                g.create_dataset('lower_ww_bounds', data=lo)
+                g.create_dataset('upper_ww_bounds', data=up)
+
+                g.create_dataset('survival_ratio',
+                                 data=float(ww.survival_ratio))
+                # max_lower_bound_ratio is read unconditionally by C++; default 1.0 when unset.
+                mlbr = ww.max_lower_bound_ratio
+                g.create_dataset(
+                    'max_lower_bound_ratio',
+                    data=float(mlbr if mlbr is not None else 1.0),
+                )
+                g.create_dataset('max_split', data=np.int32(ww.max_split))
+                g.create_dataset('weight_cutoff',
+                                 data=float(ww.weight_cutoff))
+
+            wws_grp.attrs['ids'] = np.asarray(ww_ids, dtype=np.int32)
+            wws_grp.attrs['n_weight_windows'] = np.int32(len(ww_ids))
+            meshes_grp.attrs['ids'] = np.asarray(sorted(seen_mesh_ids),
+                                                 dtype=np.int32)
+            meshes_grp.attrs['n_meshes'] = np.int32(len(seen_mesh_ids))

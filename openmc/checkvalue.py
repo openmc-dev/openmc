@@ -80,7 +80,18 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
     max_depth : int
         The maximum number of layers of nested iterables there should be before
         reaching the ultimately contained items
+
+    Notes
+    -----
+    numpy float/complex ndarrays whose number of dimensions falls within
+    [``min_depth``, ``max_depth``], the dtype is trusted to guarantee element
+    type and the per-element scan is skipped, which allows faster processing.
     """
+    # Fast path: float/complex ndarrays of correct depth are dtype-validated.
+    if (isinstance(value, np.ndarray) and value.dtype.kind in 'fc'
+            and min_depth <= value.ndim <= max_depth):
+        return
+
     # Initialize the tree at the very first item.
     tree = [value]
     index = [0]

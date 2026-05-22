@@ -975,6 +975,9 @@ void UnstructuredMesh::surface_bins_crossed(
 
 Position UnstructuredMesh::departure_from_mesh(
   Position r0, Position r1, const Direction& u, int& physical_group) const
+
+int UnstructuredMesh::get_last_bin_inside_mesh(
+  Position r0, Position r1, int bin) const
 {
   fatal_error("Not implemented.");
 }
@@ -1498,6 +1501,19 @@ double StructuredMesh::distance_to_next_boundary(
   }
 
   return distance;
+}
+
+int StructuredMesh::get_last_bin_inside_mesh(
+  Position r0, Position r1, int bin) const
+{
+  vector<int> bins;
+  vector<double> lengths;
+  bins_crossed(r0, r1, (r1 - r0) / (r1 - r0).norm(), bins, lengths);
+  if (!bins.empty()) {
+    return bins.back();
+  } else {
+    return bin;
+  }
 }
 
 //==============================================================================

@@ -207,6 +207,10 @@ public:
     const Direction& u, int& physical_group) const = 0;
 
   // TODO - document
+  virtual int get_last_bin_inside_mesh(
+    Position r0, Position r1, int bin) const = 0;
+
+  // TODO - document
   virtual void randomly_place_on_physical_group(
     Position& pa, int& cell, uint64_t* seed, vector<int> physical_groups) = 0;
 
@@ -397,6 +401,8 @@ public:
   double distance_to_next_boundary(
     int current_bin, Position r, Direction u, int& bin_next) const override;
 
+  int get_last_bin_inside_mesh(
+    Position r0, Position r1, int bin) const override;
   Position departure_from_mesh(Position r0, Position r1, const Direction& u,
     int& physical_group) const override;
 
@@ -842,6 +848,9 @@ public:
 
   Position departure_from_mesh(Position r0, Position r1, const Direction& u,
     int& physical_group) const override;
+
+  int get_last_bin_inside_mesh(
+    Position r0, Position r1, int bin) const override;
 
   void randomly_place_on_physical_group(Position& pa, int& cell, uint64_t* seed,
     vector<int> physical_groups) override

@@ -80,7 +80,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
 
     // Integration
     simulation::streamline_integrator->next_step(
-      t_n, y_n, simulation::velocity_field);
+      t_n, y_n, cell_n, simulation::velocity_field);
 
     // Update current cell
     cell_n = simulation::velocity_field.get_mesh_bin(y_n);

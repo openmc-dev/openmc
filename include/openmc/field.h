@@ -123,20 +123,40 @@ public:
   //! \return Mesh bin
   int get_mesh_bin(Position r) { return mesh_ptr()->get_bin(r); }
 
-  //! Evaluate the field at a given position
+  //! Evaluate the field at a given position with prior knowledge of the bin
   //
   //! \param[in] r Position where the field is evaluated
+  //! \param[in] bin Bin corresponding to the current position
   //! \return Value of the field corresponding to the position
-  T evaluate(Position r)
+  T evaluate(Position r, int bin)
   {
-    int bin = get_mesh_bin(r);
-    if (mapping() == FieldMapping::NODAL) {
-      return evaluate_inside_cell(bin, r);
-    } else if (mapping() == FieldMapping::CELL) {
-      return value(bin);
+    if (bin != C_NONE) {
+      if (mapping() == FieldMapping::NODAL) {
+        return evaluate_inside_cell(bin, r);
+      } else if (mapping() == FieldMapping::CELL) {
+        return value(bin);
+      } else {
+        fatal_error("Not implemented!");
+      }
     } else {
-      fatal_error("Not implemented!");
+      fatal_error("Bin outside the mesh.");
     }
+  }
+
+  //! Evaluate the field at a given position with prior knowledge of the bin and
+  //! of the previous position. We assume that the transport between the two
+  //! points is in a straight line, justifying the use of ray-tracing. If the
+  //! next point is outside the mesh, we use the last bin that was located
+  //! inside the mesh.
+  //
+  //! \param[in] r0 Previous position
+  //! \param[in] r1 Current position
+  //! \param[in] bin Bin corresponding to the previous position
+  //! \return Value of the field corresponding to the current position
+  T evaluate(Position r0, Position r1, int bin)
+  {
+    int next_bin = mesh_ptr()->get_last_bin_inside_mesh(r0, r1, bin);
+    return evaluate(r1, next_bin);
   }
 
   //! Returns the distance to the next mesh boundary given a particle position

@@ -17,8 +17,10 @@ public:
   //!
   //! \param [inout] dt Time [s]
   //! \param [inout] y_n Position
+  //! \param [in] cell_n Cell containing the point
   //! \param [in] field Pointer to the velocity field
-  virtual void next_step(double& t_n, Position& y_n, VelocityField& field) = 0;
+  virtual void next_step(
+    double& t_n, Position& y_n, int cell_n, VelocityField& field) = 0;
 
   //! Accessors
   double& dt() { return dt_; }
@@ -42,8 +44,10 @@ public:
   //!
   //! \param [inout] dt Time [s]
   //! \param [inout] y_n Position
+  //! \param [in] cell_n Cell containing the point
   //! \param [in] field Pointer to the velocity field
-  void next_step(double& t_n, Position& y_n, VelocityField& field) override;
+  void next_step(
+    double& t_n, Position& y_n, int cell_n, VelocityField& field) override;
 
 private:
   double convergence_criteria_;          //!< Convergence criteria

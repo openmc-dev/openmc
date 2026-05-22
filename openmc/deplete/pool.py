@@ -143,7 +143,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 #         [vstack([matrix, csc_array((1, matrix.shape[1]))]),
                 #         csc_array((matrix.shape[0] + 1, 1))])
                 #     n[i] = np.append(n[i], 0.0)
-            
+
         # Set transfer rate terms with destination material if present
         if current_timestep in transfer_rates.index_transfer:
             # Gather all on comm.rank 0
@@ -157,7 +157,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
 
                 # Calculate transfer rate terms as diagonal matrices
                 transfer_pair = {}
-                for mat_pair in transfer_rates.index_transfer[current_timestep]:
+                for mat_pair in dict.fromkeys(transfer_rates.index_transfer[current_timestep]):
                     transfer_matrix = chain.form_rr_term(transfer_rates,
                                                          current_timestep,
                                                          mat_pair)
@@ -176,7 +176,6 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                             transfer_matrix = hstack([transfer_matrix, 
                                 csc_array((transfer_matrix.shape[0], 1))])
                     transfer_pair[mat_pair] = transfer_matrix
-
                 # Combine all matrices together in a single matrix of matrices
                 # to be solved in one go
                 n_rows = n_cols = len(transfer_rates.burnable_mats)
@@ -216,12 +215,12 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
             
             else:
                 n_result = None
-
             # Braodcast result to other ranks
             n_result = comm.bcast(n_result)
+            n = comm.bcast(n)
             # Distribute results across MPI
             n_result = _distribute(n_result)
-            breakpoint()
+            n = _distribute(n)
             return n_result
 
     # If only external source rates are present

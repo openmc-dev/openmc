@@ -15,10 +15,20 @@ namespace openmc {
 namespace data {
 std::vector<std::unique_ptr<Majorant>> nuclide_majorants;
 std::unique_ptr<Majorant> n_majorant;
+std::string majorant_file;
 }
 
 void create_majorant() {
   write_message("Creating majorant cross section...");
+  if (data::majorant_file != "") {
+    write_message("Loading majorant from " + data::majorant_file);
+    // We can load the majorant from a file instead.
+    data::n_majorant = std::make_unique<Majorant>(data::majorant_file);
+    data::n_majorant->grid_.init();
+
+    return;
+  }
+
   // create a majorant XS for each nuclide
   for (const auto& nuclide : data::nuclides) {
     data::nuclide_majorants.push_back(std::make_unique<Majorant>());
@@ -177,6 +187,23 @@ Majorant::Majorant(const std::vector<double>& energy,
                    const std::vector<double>& xs) : xs_(xs)
 {
   grid_.energy = energy;
+  grid_.init();
+}
+
+Majorant::Majorant(const std::string & majorant_file)
+{
+  std::ifstream majorant_data(majorant_file);
+
+  std::string line;
+  while (std::getline(majorant_data, line)) {
+    auto delim_pos = line.find(",");
+    auto energy = std::stod(line.substr(0, delim_pos));
+    if (energy > data::energy_max[ParticleType::neutron().transport_index()]) {
+      break;
+    }
+    grid_.energy.push_back(energy);
+    xs_.push_back(std::stod(line.substr(delim_pos + 1)));
+  }
   grid_.init();
 }
 

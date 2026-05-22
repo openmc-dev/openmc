@@ -955,7 +955,7 @@ void Particle::cross_periodic_bc(
 
 void Particle::update_majorant()
 {
-  this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
+  this->majorant() = 1.1 * data::n_majorant->calculate_xs(this->E());
 }
 
 void Particle::mark_as_lost(const char* message)

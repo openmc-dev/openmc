@@ -20,6 +20,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/majorant.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
@@ -1233,6 +1234,10 @@ void read_settings_xml(pugi::xml_node root)
   // Check whether or not to use delta tracking
   if (check_for_node(root, "delta_tracking")) {
     delta_tracking = get_node_value_bool(root, "delta_tracking");
+  }
+
+  if (check_for_node(root, "delta_tracking_majorant_file")) {
+    data::majorant_file = get_node_value(root, "delta_tracking_majorant_file");
   }
 
   // Check whether material cell offsets should be generated

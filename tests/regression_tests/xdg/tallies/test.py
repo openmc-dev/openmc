@@ -229,22 +229,19 @@ def model():
     model.tallies = openmc.Tallies([regular_mesh_tally])
 
     ### Settings ###
-    settings = openmc.Settings()
-    settings.run_mode = 'fixed source'
-    settings.particles = 1000
-    settings.batches = 10
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 1000
+    model.settings.batches = 10
 
     # source setup
     r = openmc.stats.Uniform(a=0.0, b=0.0)
-    cos_theta = openmc.stats.Discrete(x=[1.0], p=[1.0])
-    phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
+    cos_theta = openmc.stats.delta_function(1.0)
+    phi = openmc.stats.delta_function(0.0)
 
     space = openmc.stats.SphericalIndependent(r, cos_theta, phi)
-    energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
+    energy = openmc.stats.delta_function(15e6)
     source = openmc.IndependentSource(space=space, energy=energy)
-    settings.source = source
-
-    model.settings = settings
+    model.settings.source = source
 
     return model
 
@@ -343,6 +340,7 @@ for i, mesh_case in enumerate(MESH_CASES):
         geom_mode = "external-geom" if mesh_case["external_geom"] else "bounded-geom"
         holes = "holes" if mesh_case["holes"] else "solid"
         test_case_ids.append(f"{library}-{mesh_stem}-{holes}-{geom_mode}")
+
 
 @pytest.mark.parametrize("test_opts", test_cases, ids=test_case_ids)
 def test_xdg_mesh_tallies(model, test_opts):

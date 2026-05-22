@@ -9,6 +9,10 @@
 
 namespace openmc {
 
+// -----------------------------------------------------------
+// FieldData
+// -----------------------------------------------------------
+
 template<typename T>
 class Field;
 
@@ -28,6 +32,10 @@ public:
 private:
   std::vector<T> values_;
 };
+
+// -----------------------------------------------------------
+// Field
+// -----------------------------------------------------------
 
 enum class FieldMapping {
   NODAL, // Nodal representation (value defined for each vertex)
@@ -89,6 +97,7 @@ public:
   // Interpolate the field at a given position
   T interpolate(int bin, Position r)
   {
+    // TODO: extrapolation
 
     Position n_r = mesh_ptr()->normalize_position(r);
     std::vector<int> v = mesh_ptr()->connectivity(bin);
@@ -188,6 +197,10 @@ private:
   std::unique_ptr<FieldData<T>> data_; //!< Data associated with the mesh
 };
 
+// -----------------------------------------------------------
+// TemperatureField
+// -----------------------------------------------------------
+
 class TemperatureField : public Field<double> {
 public:
   // Constructors
@@ -224,6 +237,10 @@ public:
     return std::any_cast<std::vector<double>>(data().values());
   }
 };
+
+// -----------------------------------------------------------
+// VelocityField
+// -----------------------------------------------------------
 
 // Boundary conditions type
 enum class BCType { INLET, OUTLET, WALL };

@@ -158,7 +158,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
         break;
       case Actions::BLOCK_AT_LOCATION:
         t_before_decay = decay_time - t_n;
-        return false;
+        return false; // TODO - return true normally
         break;
       default:
         fatal_error("Unrecognized action in DNP transport!");

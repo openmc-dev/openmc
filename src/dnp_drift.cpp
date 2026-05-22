@@ -50,6 +50,9 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
   int cell_n_minus_1;                 // Previous (n-1) cell
   int n_iteration = 0;                // Total number of performed iterations
   double t_before_decay = decay_time; // Time remaining before decay occurs
+  BCType crossed_boundary =
+    BCType::NONE;        // Boundary type of the last crossed surface
+  Position intersection; // Intersection with the mesh boundary
 
   // Localize initial position
   cell_n = simulation::velocity_field.get_mesh_bin(y_n);
@@ -82,8 +85,9 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
     simulation::streamline_integrator->next_step(
       t_n, y_n, cell_n, simulation::velocity_field);
 
-    // Update current cell
-    cell_n = simulation::velocity_field.get_mesh_bin(y_n);
+    // Find the next cell
+    cell_n = simulation::velocity_field.get_next_bin(
+      y_n_minus_1, y_n, cell_n, crossed_boundary, intersection);
 
     // If the distance between two consecutive points is low, we block the point
     // in position
@@ -92,15 +96,8 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
       return true;
     }
 
-    // If the particle left the mesh, we need to locate the intersection
-    // and decide how to handle the next step
+    // If the particle left the mesh
     if (cell_n < 0) {
-
-      // Identify the intersection with the mesh
-      BCType crossed_boundary;
-      Position intersection =
-        simulation::velocity_field.find_departure_from_mesh(
-          y_n, y_n_minus_1, crossed_boundary);
 
       // Update time and position
       _adjust_time(t_n, t_n_minus_1, y_n_minus_1, y_n, intersection);

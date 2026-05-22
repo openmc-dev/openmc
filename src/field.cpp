@@ -64,14 +64,56 @@ VelocityField::VelocityField(
   set_data(std::move(data));
 }
 
-Position VelocityField::find_departure_from_mesh(
-  Position pa, Position pb, BCType& crossed_boundary)
+int VelocityField::get_next_bin(Position r0, Position r1, int current_bin,
+  BCType& crossed_boundary, Position& intersection)
 {
-  int physical_group;
-  Position intersection = mesh_ptr()->departure_from_mesh(
-    pb, pa, (pa - pb) / (pa.distance(pb)), physical_group);
-  crossed_boundary = get_boundary_condition(physical_group);
-  return intersection;
+  // We do not check whether we leave the mesh or not during raytracing yet.
+  // TODO - implement early mesh departure
+
+  // Initialization
+  double total_length = 0.0;
+  vector<int> outward_surface_ids;
+  vector<int> inward_surface_ids;
+  vector<int> bins;
+  vector<double> segment_lengths;
+
+  // Raytracing
+  mesh_ptr()->full_raytracing(
+    r0, r1, outward_surface_ids, inward_surface_ids, bins, segment_lengths);
+
+  // Consistency check
+  if (segment_lengths.size() == 0) {
+    fatal_error("Inconsistency in raytrace results.");
+  }
+
+  // If next point outside the mesh
+  if (outward_surface_ids.size() != inward_surface_ids.size()) {
+
+    // Retrieve ID from the last surface
+    int surface_id = outward_surface_ids.back();
+
+    // Calculate total length travelled from r0 to intersection
+    for (auto l : segment_lengths) {
+      total_length += l;
+    }
+
+    // Calculate intersection
+    intersection = r0 + (r1 - r0) * total_length;
+
+    // Translate surface ID in physical group
+    int physical_group = mesh_ptr()->get_physical_group(surface_id);
+
+    // Determine crossed_boundary type
+    crossed_boundary = get_boundary_condition(physical_group);
+
+    // Return bin default value when outside the mesh
+    return C_NONE;
+  }
+
+  // Next point inside the mesh
+  intersection = r1;
+  crossed_boundary = BCType::NONE;
+  return bins.back();
 }
 
 void VelocityField::randomly_place_on_inlet(

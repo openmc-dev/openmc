@@ -196,15 +196,9 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
-  //! Determine which surface bins were crossed by a particle
-  //
-  //! \param[in] r0 Previous position of the particle
-  //! \param[in] r1 Current position of the particle
-  //! \param[in] u Particle direction
-  //! \param[out] physical_group Physical group
-  //! \return Last intersection registered with the mesh
-  virtual Position departure_from_mesh(Position r0, Position r1,
-    const Direction& u, int& physical_group) const = 0;
+  virtual void full_raytracing(Position r0, Position r1,
+    vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
+    vector<int>& bins, vector<double>& segment_lengths) const = 0;
 
   // TODO - document
   virtual int get_last_bin_inside_mesh(
@@ -398,13 +392,15 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
+  void full_raytracing(Position r0, Position r1,
+    vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
+    vector<int>& bins, vector<double>& segment_lengths) const override;
+
   double distance_to_next_boundary(
     int current_bin, Position r, Direction u, int& bin_next) const override;
 
   int get_last_bin_inside_mesh(
     Position r0, Position r1, int bin) const override;
-  Position departure_from_mesh(Position r0, Position r1, const Direction& u,
-    int& physical_group) const override;
 
   void randomly_place_on_physical_group(Position& pa, int& cell, uint64_t* seed,
     vector<int> physical_groups) override
@@ -846,8 +842,9 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  Position departure_from_mesh(Position r0, Position r1, const Direction& u,
-    int& physical_group) const override;
+  void full_raytracing(Position r0, Position r1,
+    vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
+    vector<int>& bins, vector<double>& segment_lengths) const override;
 
   int get_last_bin_inside_mesh(
     Position r0, Position r1, int bin) const override;

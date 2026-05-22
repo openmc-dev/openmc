@@ -263,7 +263,7 @@ public:
 // -----------------------------------------------------------
 
 // Boundary conditions type
-enum class BCType { INLET, OUTLET, WALL };
+enum class BCType { NONE, INLET, OUTLET, WALL };
 
 // Boundary conditions map type
 using BCMap = std::unordered_map<BCType, std::vector<int>>;
@@ -275,8 +275,8 @@ public:
   VelocityField(
     Mesh* mesh_ptr, std::vector<Direction> values, std::string mapping);
 
-  Position find_departure_from_mesh(
-    Position pa, Position pb, BCType& crossed_boundary);
+  int get_next_bin(Position r0, Position r1, int current_bin,
+    BCType& crossed_boundary, Position& intersection);
 
   void randomly_place_on_inlet(Position& pa, int& cell, uint64_t* seed);
 

@@ -176,14 +176,14 @@ Position XDGMesh::centroid(int bin) const
   auto element_vertices =
     xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
 
-  xdg::Vertex centroid {0.0, 0.0, 0.0};
+  xdg::Vertex center {0.0, 0.0, 0.0};
   for (const auto& v : element_vertices) {
-    centroid += v;
+    center += v;
   }
 
-  centroid /= double(element_vertices.size());
+  center /= double(element_vertices.size());
 
-  return {centroid[0], centroid[1], centroid[2]};
+  return {center[0], center[1], center[2]};
 }
 
 int XDGMesh::n_vertices() const

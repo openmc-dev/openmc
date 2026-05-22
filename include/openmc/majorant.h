@@ -16,6 +16,7 @@ class Majorant;
 namespace data {
   extern std::vector<std::unique_ptr<Majorant>> nuclide_majorants;
   extern std::unique_ptr<Majorant> n_majorant;
+  extern std::string majorant_file;
 }
 
 class Majorant {
@@ -23,6 +24,7 @@ class Majorant {
 public:
   Majorant() = default;
   Majorant(const std::vector<double>& energy, const std::vector<double>& xs);
+  Majorant(const std::string & majorant_file);
 
   struct XS {
     XS(std::vector<double> energies,

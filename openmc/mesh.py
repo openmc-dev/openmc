@@ -20,7 +20,6 @@ from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
-from .xdg import XDGMesh
 
 
 class MeshMaterialVolumes(Mapping):
@@ -354,7 +353,7 @@ class MeshBase(IDManagerMixin, ABC):
         elif mesh_type == 'spherical':
             mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'xdg':
-            mesh = XDGMesh.from_xml_element(elem)
+            mesh = openmc.XDGMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
             mesh = UnstructuredMesh.from_xml_element(elem)
         else:

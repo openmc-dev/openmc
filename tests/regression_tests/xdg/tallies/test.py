@@ -1,9 +1,8 @@
 import glob
-import os
+from pathlib import Path
 
 import numpy as np
 import pytest
-
 import openmc
 import openmc.lib
 from openmc.xdg import XDGMesh
@@ -49,9 +48,7 @@ class XDGMeshTallyTest(PyAPITestHarness):
                     break
 
             assert xdg_mesh is not None
-            assert os.path.basename(xdg_mesh.filename) == os.path.basename(
-                self.mesh_filename
-            )
+            assert Path(xdg_mesh.filename).name == Path(self.mesh_filename).name
 
             if self.mesh_kind == "tet":
                 exp_vertex = (-10.0, -10.0, -10.0)
@@ -113,8 +110,7 @@ class XDGMeshTallyTest(PyAPITestHarness):
         output = glob.glob('tally*.vtk')
         output += glob.glob('tally*.e')
         for f in output:
-            if os.path.exists(f):
-                os.remove(f)
+            Path(f).unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -336,7 +332,7 @@ for i, mesh_case in enumerate(MESH_CASES):
             "library": library,
             **{k: v for k, v in mesh_case.items() if k != "libraries"},
         })
-        mesh_stem = os.path.splitext(mesh_case["mesh_filename"])[0]
+        mesh_stem = Path(mesh_case["mesh_filename"]).stem
         geom_mode = "external-geom" if mesh_case["external_geom"] else "bounded-geom"
         holes = "holes" if mesh_case["holes"] else "solid"
         test_case_ids.append(f"{library}-{mesh_stem}-{holes}-{geom_mode}")

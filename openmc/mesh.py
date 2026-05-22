@@ -306,6 +306,29 @@ class MeshBase(IDManagerMixin, ABC):
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
+    def to_hdf5(self, group: h5py.Group) -> h5py.Group:
+        """Write this mesh into *group* as a subgroup named ``mesh <id>``.
+
+        Subclasses override this method to call ``super().to_hdf5(group)``,
+        write a ``type`` dataset, and append type-specific grid data.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Parent HDF5 group (typically ``/meshes``).
+
+        Returns
+        -------
+        mesh_group : h5py.Group
+            The created ``mesh <id>`` subgroup, ready for subclass extension.
+        """
+        mesh_group = group.create_group(f'mesh {self.id}')
+        mesh_group.attrs['id'] = np.int32(self.id)
+        mesh_group.create_dataset('name', data=np.bytes_(self.name or ''))
+        return mesh_group
+
     def to_xml_element(self):
         """Return XML representation of the mesh
 
@@ -1231,6 +1254,18 @@ class RegularMesh(StructuredMesh):
 
         return mesh
 
+    def to_hdf5(self, group: h5py.Group):
+        mesh_group = super().to_hdf5(group)
+        mesh_group.create_dataset('type', data=np.bytes_('regular'))
+        mesh_group.create_dataset(
+            'dimension', data=np.asarray(self.dimension, dtype=np.int32))
+        mesh_group.create_dataset(
+            'lower_left', data=np.asarray(self.lower_left, dtype=float))
+        mesh_group.create_dataset(
+            'upper_right', data=np.asarray(self.upper_right, dtype=float))
+        mesh_group.create_dataset(
+            'width', data=np.asarray(self.width, dtype=float))
+
     @classmethod
     def from_rect_lattice(
         cls,
@@ -1708,6 +1743,16 @@ class RectilinearMesh(StructuredMesh):
 
         return mesh
 
+    def to_hdf5(self, group: h5py.Group):
+        mesh_group = super().to_hdf5(group)
+        mesh_group.create_dataset('type', data=np.bytes_('rectilinear'))
+        mesh_group.create_dataset(
+            'x_grid', data=np.asarray(self.x_grid, dtype=float))
+        mesh_group.create_dataset(
+            'y_grid', data=np.asarray(self.y_grid, dtype=float))
+        mesh_group.create_dataset(
+            'z_grid', data=np.asarray(self.z_grid, dtype=float))
+
     @classmethod
     def from_xml_element(cls, elem: ET.Element):
         """Generate a rectilinear mesh from an XML element
@@ -2104,6 +2149,18 @@ class CylindricalMesh(StructuredMesh):
 
         return mesh
 
+    def to_hdf5(self, group: h5py.Group):
+        mesh_group = super().to_hdf5(group)
+        mesh_group.create_dataset('type', data=np.bytes_('cylindrical'))
+        mesh_group.create_dataset(
+            'r_grid', data=np.asarray(self.r_grid, dtype=float))
+        mesh_group.create_dataset(
+            'phi_grid', data=np.asarray(self.phi_grid, dtype=float))
+        mesh_group.create_dataset(
+            'z_grid', data=np.asarray(self.z_grid, dtype=float))
+        mesh_group.create_dataset(
+            'origin', data=np.asarray(self.origin, dtype=float))
+
     @classmethod
     def from_bounding_box(
         cls,
@@ -2475,6 +2532,18 @@ class SphericalMesh(StructuredMesh):
             mesh.origin = group['origin'][()]
 
         return mesh
+
+    def to_hdf5(self, group: h5py.Group):
+        mesh_group = super().to_hdf5(group)
+        mesh_group.create_dataset('type', data=np.bytes_('spherical'))
+        mesh_group.create_dataset(
+            'r_grid', data=np.asarray(self.r_grid, dtype=float))
+        mesh_group.create_dataset(
+            'theta_grid', data=np.asarray(self.theta_grid, dtype=float))
+        mesh_group.create_dataset(
+            'phi_grid', data=np.asarray(self.phi_grid, dtype=float))
+        mesh_group.create_dataset(
+            'origin', data=np.asarray(self.origin, dtype=float))
 
     @classmethod
     def from_bounding_box(
@@ -3219,6 +3288,14 @@ class UnstructuredMesh(MeshBase):
             mesh.length_multiplier = group["length_multiplier"][()]
 
         return mesh
+
+    def to_hdf5(self, group: h5py.Group):
+        # Raise before super() so no half-built 'mesh <id>' group is left on disk.
+        raise NotImplementedError(
+            "UnstructuredMesh.to_hdf5 is not implemented in Python. "
+            "Use openmc.lib.export_weight_windows() to export weight "
+            "windows on unstructured meshes."
+        )
 
     def to_xml_element(self):
         """Return XML representation of the mesh

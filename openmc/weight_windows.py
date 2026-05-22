@@ -1061,29 +1061,66 @@ class WeightWindowsList(list):
     def export_to_hdf5(self, path: PathLike = 'weight_windows.h5', **init_kwargs):
         """Write weight windows to an HDF5 file.
 
+        Writes the file directly via :mod:`h5py`, mirroring the layout
+        produced by :func:`openmc.lib.export_weight_windows`. The previous
+        XML round-trip raised :class:`MemoryError` on multi-GB bound arrays
+        because of the intermediate ASCII allocation inside lxml.
+
         Parameters
         ----------
         path : PathLike
             Path to the file to write weight windows to
         **init_kwargs
-            Keyword arguments passed to :func:`openmc.lib.init`
-
+            Unused. Retained for backward compatibility (previously forwarded
+            to :func:`openmc.lib.init`).
         """
-        import openmc.lib
         cv.check_type('path', path, PathLike)
-
-        # Create a temporary model with the weight windows
-        model = openmc.Model()
-        sph = openmc.Sphere(boundary_type='vacuum')
-        cell = openmc.Cell(region=-sph)
-        model.geometry = openmc.Geometry([cell])
-        model.settings.weight_windows = self
-        model.settings.particles = 100
-        model.settings.batches = 1
-
-        # Get absolute path before moving to temporary directory
         path = Path(path).resolve()
 
-        # Load the model with openmc.lib and then export it to an HDF5 file
-        with openmc.lib.TemporarySession(model, **init_kwargs):
-            openmc.lib.export_weight_windows(path)
+        with h5py.File(path, 'w') as f:
+            f.attrs['filetype'] = np.bytes_('weight_windows')
+            f.attrs['version'] = np.asarray([1, 0], dtype=np.int32)
+
+            meshes_grp = f.create_group('meshes')
+            wws_grp = f.create_group('weight_windows')
+
+            seen_mesh_ids = set()
+            ww_ids = []
+            for ww in self:
+                if ww.mesh.id not in seen_mesh_ids:
+                    ww.mesh.to_hdf5(meshes_grp)
+                    seen_mesh_ids.add(ww.mesh.id)
+
+                g = wws_grp.create_group(f'weight_windows_{ww.id}')
+                ww_ids.append(int(ww.id))
+
+                g.create_dataset('mesh', data=np.int32(ww.mesh.id))
+                g.create_dataset('particle_type',
+                                 data=np.bytes_(str(ww.particle_type)))
+                g.create_dataset('energy_bounds',
+                                 data=np.asarray(ww.energy_bounds, dtype=float))
+
+                # 2D (ne, n_voxels) C-contiguous: the C++ reader expects this layout.
+                ne = ww.lower_ww_bounds.shape[-1]
+                lo = np.ascontiguousarray(ww.lower_ww_bounds.T).reshape(ne, -1)
+                up = np.ascontiguousarray(ww.upper_ww_bounds.T).reshape(ne, -1)
+                g.create_dataset('lower_ww_bounds', data=lo)
+                g.create_dataset('upper_ww_bounds', data=up)
+
+                g.create_dataset('survival_ratio',
+                                 data=float(ww.survival_ratio))
+                # max_lower_bound_ratio is read unconditionally by C++; default 1.0 when unset.
+                mlbr = ww.max_lower_bound_ratio
+                g.create_dataset(
+                    'max_lower_bound_ratio',
+                    data=float(mlbr if mlbr is not None else 1.0),
+                )
+                g.create_dataset('max_split', data=np.int32(ww.max_split))
+                g.create_dataset('weight_cutoff',
+                                 data=float(ww.weight_cutoff))
+
+            wws_grp.attrs['ids'] = np.asarray(ww_ids, dtype=np.int32)
+            wws_grp.attrs['n_weight_windows'] = np.int32(len(ww_ids))
+            meshes_grp.attrs['ids'] = np.asarray(sorted(seen_mesh_ids),
+                                                 dtype=np.int32)
+            meshes_grp.attrs['n_meshes'] = np.int32(len(seen_mesh_ids))

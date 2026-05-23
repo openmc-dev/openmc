@@ -13,6 +13,8 @@ from .checkvalue import check_type, check_value, check_length, check_greater_tha
 from .mixin import IDManagerMixin, IDWarning
 from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
+from . import implicit
+from .implicit import ImplicitFunction
 from ._xml import get_elem_list, get_text
 
 
@@ -469,6 +471,10 @@ class Surface(IDManagerMixin, ABC):
         kwargs['name'] = get_text(elem, "name")
         coeffs = get_elem_list(elem, "coeffs", float)
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
+
+        if surf_type == "implicit":
+            kwargs['func'] = ImplicitFunction.from_xml_element(elem.get("function"))
+            kwargs['isovalue'] = float(elem.get("isovalue"))
 
         return cls(**kwargs)
 
@@ -2582,6 +2588,189 @@ class ZTorus(TorusMixin, Surface):
         elif side == '+':
             return BoundingBox.infinite()
 
+class ImplicitSurface(Surface):
+
+    _type = 'implicit'
+    _coeff_keys = ('x0', 'y0', 'z0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i')
+
+    def __init__(self, function:ImplicitFunction, isovalue:float=0., x0=0., y0=0., z0=0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., **kwargs):
+        # Create the surface
+        super().__init__(**kwargs)
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, a, b, c, d, e, f, g, h, i)):
+            setattr(self, key, val)
+        self.function = function
+        self.isovalue = float(isovalue)
+        # Check the implicit surface
+        if not self.boundary_type ==  "transmission":
+            raise ValueError(f"ImplicitSurface boundary type must be 'transmission' but is '{self.boundary_type}'.")
+        if not self._is_valid_rotation():
+            raise ValueError(f"Coefficients a,...,i must form a valid rotation matrix.")
+        if not isinstance(self.function, ImplicitFunction):
+            raise TypeError(f"func expected type is an ImplicitFunction, but a '{type(function)}' type was given.")
+
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    a = SurfaceCoefficient('a')
+    b = SurfaceCoefficient('b')
+    c = SurfaceCoefficient('c')
+    d = SurfaceCoefficient('d')
+    e = SurfaceCoefficient('e')
+    f = SurfaceCoefficient('f')
+    g = SurfaceCoefficient('g')
+    h = SurfaceCoefficient('h')
+    i = SurfaceCoefficient('i')
+
+    def __repr__(self):
+        stringlines = super().__repr__().split('\n')
+        fline = '\n{0: <20}{1}{2}\n'.format('\tFunction', '=\t', self.function)
+        isoline = '{0: <20}{1}{2}\n'.format('\tIsovalue', '=\t', self.isovalue)
+        string = "\n".join(stringlines[:4]) + fline + isoline + "\n".join(stringlines[4:])
+        return string
+
+    def _is_valid_rotation(self):
+        Rmat = self.get_rotation_matrix()
+        if not np.allclose(Rmat @ Rmat.T, np.identity(3), rtol=0., atol=self._atol): return False
+        if not np.isclose(np.linalg.det(Rmat), 1.0, rtol=0., atol=self._atol): return False
+        return True
+
+    def get_rotation_matrix(self):
+        return np.array([[self.a,self.b,self.c],[self.d,self.e,self.f],[self.g,self.h,self.i]])
+
+    def bounding_box(self, side):
+        return BoundingBox.infinite()
+
+    def clone(self, memo=None):
+        if memo is None:
+            memo = {}
+        # If no memoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.function = self.function
+            clone.id = None
+            # Memoize the clone
+            memo[self] = clone
+        return memo[self]
+
+    def normalize(self, coeffs=None):
+        if coeffs is None:
+            coeffs = self._get_base_coeffs()
+        coeffs = np.asarray(coeffs)
+        return tuple([c for c in coeffs])
+
+    def is_equal(self, other: ImplicitSurface):
+        coeffs1 = self._get_base_coeffs()
+        coeffs2 = other._get_base_coeffs()
+        if not np.allclose(coeffs1, coeffs2, rtol=0., atol=self._atol): return False
+        if not np.isclose(self.isovalue, other.isovalue, rtol=0., atol=self._atol): return False
+        if not self.function is other.function: return False
+        return True
+
+    def _get_base_coeffs(self):
+        return self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i
+
+    def evaluate(self, point):
+        Rmat = self.get_rotation_matrix()
+        newpoint = Rmat @ np.array([point[0] - self.x0, point[1] - self.y0, point[2] - self.z0])
+        return self.function.evaluate(newpoint) - self.isovalue
+
+    def translate(self, vector, inplace=False):
+        if np.allclose(vector, 0., rtol=0., atol=self._atol):
+            return self if inplace else self.clone()
+
+        x0, y0, z0 = self._get_base_coeffs()[:3]
+        x0 += vector[0]
+        y0 += vector[1]
+        z0 += vector[2]
+
+        surf = self if inplace else self.clone()
+
+        setattr(surf, surf._coeff_keys[0], x0)
+        setattr(surf, surf._coeff_keys[1], y0)
+        setattr(surf, surf._coeff_keys[2], z0)
+
+        return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        pivot = np.asarray(pivot)
+        rotation = np.asarray(rotation, dtype=float)
+
+        # Allow rotation matrix to be passed in directly, otherwise build it
+        if rotation.ndim == 2:
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
+
+        # Translate surface to pivot
+        surf = self.translate(-pivot, inplace=inplace)
+        x0, y0, z0, a, b, c, d, e, f, g, h, i = surf._get_base_coeffs()
+
+        # Compute new rotated coefficients a, b, c
+        newR = Rmat @ surf.get_rotation_matrix()
+        x0, y0, z0 = Rmat @ np.array([x0, y0, z0])
+        a, b, c = newR[0,:]
+        d, e, f = newR[1,:]
+        g, h, i = newR[2,:]
+
+        kwargs = {'boundary_type': surf.boundary_type,
+                  'albedo': surf.albedo,
+                  'name': surf.name}
+        if inplace:
+            kwargs['surface_id'] = surf.id
+        
+        surf = ImplicitSurface(surf.function, surf.isovalue, x0, y0, z0, a, b, c, d, e, f, g, h, i, **kwargs)
+
+        return surf.translate(pivot, inplace=inplace)
+
+    def to_xml_element(self):
+        root = super().to_xml_element()
+        root.set("isovalue", str(self.isovalue))
+        fnode = ET.Element("function")
+        fnode.append(self.function.to_xml_element([]))
+        root.append(fnode)
+        return root
+    
+    @staticmethod
+    def from_xml_element(elem):
+        return super().from_xml_element(elem)
+
+    @staticmethod
+    def from_hdf5(group):
+        # TODO: implement when c++ ready
+        return super().from_hdf5(group)
+
+class TPMS(ImplicitSurface):
+
+    @classmethod
+    def from_pitch_isovalue(cls, tpms:str, pitch:float, isovalue:float, **kwargs):
+        # Shortcuts
+        X, Y, Z = implicit.X, implicit.Y, implicit.Z
+        Cos, Sin = implicit.Cos, implicit.Sin
+        Cached = implicit.Cached
+        # Get cached or uncached variables, for performance improvement
+        def _get_xyz(cached=False):
+            x = 2 * np.pi * X() / pitch
+            y = 2 * np.pi * Y() / pitch
+            z = 2 * np.pi * Z() / pitch
+            if cached:
+                return Cached(x), Cached(x), Cached(x)
+            else:
+                return x, y, z
+        # Choice of TPMS
+        if tpms.lower() in ["primitive", "schwarz_p"]:
+            x, y, z = _get_xyz(False)
+            func = Cos(x) + Cos(y) + Cos(z)
+        elif tpms.lower() in ["gyroid", "schoen-g"]:
+            x, y, z = _get_xyz(True)
+            func = Sin(x)*Cos(z) + Sin(y)*Cos(x) + Sin(z)*Cos(y)
+        elif tpms.lower() in ["diamond", "schwarz_d"]:
+            x, y, z = _get_xyz(True)
+            func = Sin(x)*Cos(y - z) + Sin(y + z)*Cos(x)
+        else:
+            raise NotImplementedError(f"The TPMS named '{tpms.lower()}' is not implemented.")
+        return cls(func, isovalue, **kwargs)
+
 
 class Halfspace(Region):
     """A positive or negative half-space region.
@@ -2840,3 +3029,5 @@ YCone._virtual_base = Cone
 ZCone._virtual_base = Cone
 Sphere._virtual_base = Sphere
 Quadric._virtual_base = Quadric
+ImplicitSurface._virtual_base = ImplicitSurface
+TPMS._virtual_base = TPMS

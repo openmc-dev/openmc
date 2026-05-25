@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/cmfd_solver.h"
 #include "openmc/collision_track.h"
 #include "openmc/constants.h"
@@ -44,6 +45,7 @@ void free_memory()
   free_memory_photon();
   free_memory_settings();
   free_memory_thermal();
+  free_memory_chain();
   library_clear();
   nuclides_clear();
   free_memory_source();
@@ -147,6 +149,8 @@ int openmc_finalize()
   settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
+  settings::use_decay_photons = false;
+  settings::use_shared_secondary_bank = false;
   settings::verbosity = -1;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
@@ -217,6 +221,7 @@ int openmc_reset()
   settings::cmfd_run = false;
 
   simulation::n_lost_particles = 0;
+  simulation::simulation_tracks_completed = 0;
 
   return 0;
 }

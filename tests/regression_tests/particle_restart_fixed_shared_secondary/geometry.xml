@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <!-- Sphere with no boundary condition -->
+  <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 80.0" />
+  <surface id="2" type="sphere" coeffs="0.0 0.0 0.0 10000.0" boundary="vacuum" />
+  <cell id="1" material="1" region="-1" />
+
+</geometry>

@@ -46,13 +46,13 @@ TEST_CASE("Test TemperatureField functions with a regular mesh")
   // Get sqrtkT
   REQUIRE(temp_field.get_sqrtkT(7) == Catch::Approx(0.083029).margin(1.0E-6));
 
-  // Get bin
-  REQUIRE(temp_field.get_bin(Position(0.5, 0.5, 0.5)) == 7);
-  REQUIRE(temp_field.get_bin(Position(-0.5, -0.5, -0.5)) == 0);
-  REQUIRE(temp_field.get_bin(Position(0.5, -0.5, -0.5)) == 1);
-  REQUIRE(temp_field.get_bin(Position(-0.5, -0.5, 0.5)) == 4);
-  REQUIRE(temp_field.get_bin(Position(0.0, 0.0, 0.0)) == 0);
-  REQUIRE(temp_field.get_bin(Position(2.0, 2.0, 2.0)) == -1);
+  // Get mesh bin
+  REQUIRE(temp_field.get_mesh_bin(Position(0.5, 0.5, 0.5)) == 7);
+  REQUIRE(temp_field.get_mesh_bin(Position(-0.5, -0.5, -0.5)) == 0);
+  REQUIRE(temp_field.get_mesh_bin(Position(0.5, -0.5, -0.5)) == 1);
+  REQUIRE(temp_field.get_mesh_bin(Position(-0.5, -0.5, 0.5)) == 4);
+  REQUIRE(temp_field.get_mesh_bin(Position(0.0, 0.0, 0.0)) == 0);
+  REQUIRE(temp_field.get_mesh_bin(Position(2.0, 2.0, 2.0)) == -1);
 }
 
 TEST_CASE("Test settings declaration exceptions for a temperature field",

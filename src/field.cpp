@@ -39,16 +39,6 @@ double TemperatureField::get_sqrtkT(int bin)
   return -1.0;
 }
 
-int TemperatureField::get_bin(const Position& r)
-{
-  int bin = mesh_ptr()->get_bin(r);
-  if (bin >= 0 && bin < values().size()) {
-    return bin;
-  } else {
-    return C_NONE;
-  }
-}
-
 // -----------------------------------------------------------
 // VelocityField implementation
 // -----------------------------------------------------------

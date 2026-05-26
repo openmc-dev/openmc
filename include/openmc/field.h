@@ -242,12 +242,6 @@ public:
   //! \return Sqrt(k_Boltzmann * temperature) in eV
   double get_sqrtkT(int bin);
 
-  //! Returns the bin number corresponding to the location of the particle.
-  //
-  //! \param[in] r Position of the particle
-  //! \return Corresponding bin number or -1 if outside the mesh
-  int get_bin(const Position& r);
-
   // Runtime cast to go through the values
   // Should be an extremely limited use case
   // TODO - all_values() method instead that would give a flatten

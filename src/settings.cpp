@@ -1323,19 +1323,8 @@ void read_settings_xml(pugi::xml_node root)
           dt = std::stod(get_node_value(node_dnp_drift, "integrator_dt"));
         }
 
-        // Convergence criteria
-        double conv;
-        if (!check_for_node(node_dnp_drift, "convergence_criteria")) {
-          fatal_error("The attribute 'convergence_criteria' is not declared in "
-                      "the DNP drift settings.");
-        } else {
-          conv =
-            std::stod(get_node_value(node_dnp_drift, "convergence_criteria"));
-        }
-
         // Instantiate integrator
-        simulation::streamline_integrator =
-          new RK4StreamlineIntegrator(dt, conv);
+        simulation::streamline_integrator = new RK4StreamlineIntegrator(dt);
 
         // Undefined integration method
       } else {

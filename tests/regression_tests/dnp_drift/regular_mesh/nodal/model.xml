@@ -46,7 +46,6 @@
       </boundary_map>
       <integrator>RK4</integrator>
       <integrator_dt>0.1</integrator_dt>
-      <convergence_criteria>0.005</convergence_criteria>
       <recycling>true</recycling>
       <external_travel_time>2.0</external_travel_time>
     </dnp_drift>

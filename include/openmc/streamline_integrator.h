@@ -17,12 +17,12 @@ public:
   //!
   //! \param [inout] dt Time [s]
   //! \param [inout] y_n Position
-  //! \param [in] cell_n Cell containing the point
+  //! \param [in] cell_n Cell containing y_n
   //! \param [in] field Pointer to the velocity field
   virtual void next_step(
     double& t_n, Position& y_n, int cell_n, VelocityField& field) = 0;
 
-  //! Accessors
+  //! Time step accessors
   double& dt() { return dt_; }
   const double& dt() const { return dt_; }
 
@@ -33,24 +33,16 @@ private:
 //! Runge Kutta 4 integrator
 class RK4StreamlineIntegrator : public StreamlineIntegrator {
 public:
-  //! Instantiate an empty RK4 integrator
-  RK4StreamlineIntegrator(double time_step, double conv)
+  //! Constructor
+  RK4StreamlineIntegrator(double time_step)
   {
     dt() = time_step;
-    convergence_criteria_ = conv;
   }
 
-  //! Advance to the next integration step
-  //!
-  //! \param [inout] dt Time [s]
-  //! \param [inout] y_n Position
-  //! \param [in] cell_n Cell containing the point
-  //! \param [in] field Pointer to the velocity field
   void next_step(
     double& t_n, Position& y_n, int cell_n, VelocityField& field) override;
 
 private:
-  double convergence_criteria_;          //!< Convergence criteria
   std::string method_ = "Runge Kutta 4"; //!< Method name
 };
 

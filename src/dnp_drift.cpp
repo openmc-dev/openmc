@@ -23,7 +23,7 @@ void _adjust_position(Position& y_n, const Position& y_n_minus_1, double t,
     fatal_error("The excess time cannot be greater than the time step dt.");
   }
 
-  double ab = y_n_minus_1.distance(y_n);
+  double ab = (y_n - y_n_minus_1).norm();
 
   if (ab <= 0.0) {
     fatal_error(
@@ -107,7 +107,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
 
     // If the distance between two consecutive points is low, we block the point
     // in position
-    if (y_n_minus_1.distance(y_n) < DNP_DRIFT_DISTANCE_MIN) {
+    if ((y_n - y_n_minus_1).norm() < DNP_DRIFT_DISTANCE_MIN) {
       t_before_decay = 0.;
       return true;
     }

@@ -1,5 +1,9 @@
 #include "openmc/dnp_drift.h"
+#include "openmc/error.h"
 #include "openmc/field.h"
+#include "openmc/particle_data.h"
+#include "openmc/position.h"
+#include "openmc/simulation.h"
 
 namespace openmc {
 
@@ -34,8 +38,20 @@ void _adjust_position(Position& y_n, const Position& y_n_minus_1, double t,
 void _adjust_time(double& t, double ta, const Position& pa, const Position& pb,
   const Position& pc)
 {
-  double ab = pa.distance(pb);
-  double cb = pc.distance(pa);
+  if (t <= ta) {
+    fatal_error(
+      "Time t at point B must be greater than tine ta at point A.");
+  }
+
+  double ab = (pb - pa).norm();
+  double ac = (pc - pa).norm();
+  double cb = (pb - pc).norm();
+
+  if (ab - (ac + cb) > DNP_DRIFT_DISTANCE_MIN) {
+    fatal_error(
+      "Point C must be located between point A and point B.");
+  }
+
   t -= (t - ta) * cb / ab;
 }
 

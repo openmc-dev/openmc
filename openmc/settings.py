@@ -67,6 +67,10 @@ class Settings:
                     (ex: ["(n,fission)", 2, "(n,2n)"] ). (list of str or int)
         :deposited_E_threshold: Number to define the minimum deposited energy during
                      per collision to trigger banking. (float)
+    create_delayed_neutrons : bool
+        Whether delayed neutrons are created in fission.
+
+        .. versionadded:: 0.13.3
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
@@ -256,8 +260,15 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
-    stride : int
-        Number of random numbers allocated for each source particle history
+    shared_secondary_bank : bool
+        Whether to use a shared secondary particle bank. When enabled,
+        secondary particles are collected into a global bank, sorted for
+        reproducibility, and load-balanced across MPI ranks between
+        generations. If not specified, the shared secondary bank is
+        enabled automatically for fixed-source simulations with weight
+        windows active, and disabled otherwise.
+
+        .. versionadded:: 0.15.4
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     source_rejection_fraction : float
@@ -277,6 +288,8 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write statepoint files
+    stride : int
+        Number of random numbers allocated for each source particle history
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 
@@ -373,10 +386,6 @@ class Settings:
 
         .. versionadded:: 0.14.0
 
-    create_delayed_neutrons : bool
-        Whether delayed neutrons are created in fission.
-
-        .. versionadded:: 0.13.3
     weight_windows_on : bool
         Whether weight windows are enabled
 
@@ -482,6 +491,7 @@ class Settings:
         self._weight_window_generators = cv.CheckedList(
             WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
+        self._shared_secondary_bank = None
         self._weight_windows_file = None
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
@@ -1307,6 +1317,15 @@ class Settings:
         self._weight_windows_on = value
 
     @property
+    def shared_secondary_bank(self) -> bool:
+        return self._shared_secondary_bank
+
+    @shared_secondary_bank.setter
+    def shared_secondary_bank(self, value: bool):
+        cv.check_type('shared secondary bank', value, bool)
+        self._shared_secondary_bank = value
+
+    @property
     def weight_window_checkpoints(self) -> dict:
         return self._weight_window_checkpoints
 
@@ -1924,6 +1943,11 @@ class Settings:
             elem = ET.SubElement(root, "weight_windows_on")
             elem.text = str(self._weight_windows_on).lower()
 
+    def _create_shared_secondary_bank_subelement(self, root):
+        if self._shared_secondary_bank is not None:
+            elem = ET.SubElement(root, "shared_secondary_bank")
+            elem.text = str(self._shared_secondary_bank).lower()
+
     def _create_weight_window_generators_subelement(self, root, mesh_memo=None):
         if not self.weight_window_generators:
             return
@@ -2430,6 +2454,11 @@ class Settings:
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
 
+    def _shared_secondary_bank_from_xml_element(self, root):
+        text = get_text(root, 'shared_secondary_bank')
+        if text is not None:
+            self.shared_secondary_bank = text in ('true', '1')
+
     def _weight_windows_file_from_xml_element(self, root):
         text = get_text(root, 'weight_windows_file')
         if text is not None:
@@ -2597,6 +2626,7 @@ class Settings:
         self._create_write_initial_source_subelement(element)
         self._create_weight_windows_subelement(element, mesh_memo)
         self._create_weight_windows_on_subelement(element)
+        self._create_shared_secondary_bank_subelement(element)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
         self._create_weight_window_checkpoints_subelement(element)
@@ -2714,6 +2744,7 @@ class Settings:
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
         settings._weight_windows_on_from_xml_element(elem)
+        settings._shared_secondary_bank_from_xml_element(elem)
         settings._weight_windows_file_from_xml_element(elem)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)

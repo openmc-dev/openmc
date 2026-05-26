@@ -145,6 +145,10 @@ def test_unary_node_has_one_child():
         elem = unary(X(), 1.).to_xml_element([])
         assert len(elem) == 1
 
+def test_wrong_tag():
+    bad_elem = ET.Element("tanh")  # not in the dispatch table
+    with pytest.raises(ValueError, match="Unknown tag 'tanh'"):
+        ImplicitFunction.from_xml_element(bad_elem)
 
 # ── Cached serialisation ───────────────────────────────────────────────────
 
@@ -168,12 +172,13 @@ def test_shared_node_first_to_cache_then_from_cache():
     assert first.get("id") == second.get("id") == "0"
 
 def test_distinct_cached_nodes_get_distinct_ids():
-    node1 = Cached(X())
-    node2 = Cached(Y())
-    _cached = []
-    ex, ey = Add(node1, node2).to_xml_element(_cached)
-    assert ex.get("id") == "0"
-    assert ey.get("id") == "1"
+        node1 = Cached(X())
+        node2 = Cached(Y())
+        _cached = []
+        ex = node1.to_xml_element(_cached)
+        ey = node2.to_xml_element(_cached)
+        assert ex.get("id") == "0"
+        assert ey.get("id") == "1"
 
 def test_cached_in_expression():
     cx   = Cached(X())

@@ -109,7 +109,6 @@ class ImplicitFunction(ABC):
     def __rmul__(self, other: float | ImplicitFunction) -> ImplicitFunction:
         if isinstance(other, (int, float)):
             return Scale(self, float(other))
-        return Mul(self, other)
 
 # ---------------------------------------------------------------------------
 # Terminal nodes
@@ -319,6 +318,21 @@ class Abs(ImplicitFunction):
 # ---------------------------------------------------------------------------
 
 class Cached(ImplicitFunction):
+    """
+    Marks a subexpression for memoisation in C++.
+
+    The Python object identity (id()) is used to detect shared nodes during
+    XML serialisation. This means the SAME Python object must be reused
+    wherever you want sharing to occur — do NOT construct a new Cached()
+    at each use site.
+
+    Correct — one object, two references:
+        cx = Cached(2 * np.pi * X())
+        f  = Sin(cx) * Cos(cx)          # cx serialised once as <to_cache>
+
+    Wrong — two objects, same expression:
+        f  = Sin(Cached(2 * np.pi * X())) * Cos(Cached(2 * np.pi * X()))
+    """
     def __repr__(self): return f"@[{self.f}]"
     def __init__(self, f:ImplicitFunction):
         self.f = f

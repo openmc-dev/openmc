@@ -2727,7 +2727,13 @@ class ImplicitSurface(Surface):
         root = super().to_xml_element()
         root.set("isovalue", str(self.isovalue))
         fnode = ET.Element("function")
-        fnode.append(self.function.to_xml_element([]))
+        cached_list = []
+        fnode.append(self.function.to_xml_element(cached_list))
+        # Check cached nodes
+        from_cache_ids = {int(e.get("id")) for e in fnode.iter("from_cache")}
+        for i in range(len(cached_list)):
+            if i not in from_cache_ids:
+                warn(f"Cached node id={i} has no <from_cache> reference and is only used once. Did you forget to reuse it?", UserWarning)
         root.append(fnode)
         return root
     

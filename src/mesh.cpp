@@ -1375,7 +1375,8 @@ void StructuredMesh::full_raytracing(Position r0, Position r1,
   vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
   vector<int>& bins, vector<double>& segment_lengths) const
 {
-  // TODO: can reconstruct bins and surface_ids instead of explicitly tracking them
+  // TODO: can reconstruct bins and surface_ids instead of explicitly tracking
+  // them
 
   // Helper tally class.
   struct CompleteAggregator {

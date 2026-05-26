@@ -270,7 +270,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     n_sites_stored++;
-  
+
     // Increment the number of neutrons born delayed
     if (site.delayed_group > 0) {
       nu_d[site.delayed_group - 1]++;

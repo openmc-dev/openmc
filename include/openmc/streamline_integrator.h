@@ -1,21 +1,19 @@
 #ifndef OPENMC_STREAMLINE_INTEGRATOR_H
 #define OPENMC_STREAMLINE_INTEGRATOR_H
 
-#include "openmc/error.h"
 #include "openmc/field.h"
-#include "openmc/particle.h"
 #include "openmc/particle_data.h"
 
 #include <string>
 
 namespace openmc {
 
-//! Abstract integrator
+//! Streamline integrator
 class StreamlineIntegrator {
 public:
-  //! Advance to the next integration step
+  //! Advance to the next integration step.
   //!
-  //! \param [inout] dt Time [s]
+  //! \param [inout] dt Time step
   //! \param [inout] y_n Position
   //! \param [in] cell_n Cell containing y_n
   //! \param [in] field Pointer to the velocity field
@@ -27,17 +25,14 @@ public:
   const double& dt() const { return dt_; }
 
 private:
-  double dt_; //!< Time step [s]
+  double dt_; //!< Time step
 };
 
 //! Runge Kutta 4 integrator
 class RK4StreamlineIntegrator : public StreamlineIntegrator {
 public:
   //! Constructor
-  RK4StreamlineIntegrator(double time_step)
-  {
-    dt() = time_step;
-  }
+  RK4StreamlineIntegrator(double time_step) { dt() = time_step; }
 
   void next_step(
     double& t_n, Position& y_n, int cell_n, VelocityField& field) override;

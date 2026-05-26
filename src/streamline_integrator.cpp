@@ -1,5 +1,6 @@
 #include "openmc/streamline_integrator.h"
 #include "openmc/field.h"
+#include "openmc/particle_data.h"
 
 namespace openmc {
 

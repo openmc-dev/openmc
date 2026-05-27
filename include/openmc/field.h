@@ -211,6 +211,11 @@ public:
 
   void assign(int bin, T value) { data().assign(bin, value); }
 
+  //! Returns the list of values corresponding to the data stored in the field.
+  //
+  //! \return List of values
+  const vector<T> values() const { return data().values(); }
+
 private:
   FieldMapping mapping_;               //!< Relationship between values and mesh
   Mesh* mesh_;                         //!< Pointer to the geometric mesh
@@ -241,15 +246,6 @@ public:
   //! \param[in] bin Bin number
   //! \return Sqrt(k_Boltzmann * temperature) in eV
   double get_sqrtkT(int bin);
-
-  // Runtime cast to go through the values
-  // Should be an extremely limited use case
-  // TODO - all_values() method instead that would give a flatten
-  // vector of all possible values so that we do not need std::any
-  const vector<double> values() const
-  {
-    return std::any_cast<std::vector<double>>(data().values());
-  }
 };
 
 // -----------------------------------------------------------

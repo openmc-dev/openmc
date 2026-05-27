@@ -245,6 +245,9 @@ public:
   //! Get the number of mesh cell surfaces.
   virtual int n_surface_bins() const = 0;
 
+  //! Get the number of unique vertices.
+  virtual int n_vertices() const = 0;
+
   int32_t id() const { return id_; }
 
   const std::string& name() const { return name_; }
@@ -385,6 +388,11 @@ public:
   int n_bins() const override;
 
   int n_surface_bins() const override;
+
+  int n_vertices() const override
+  {
+    fatal_error("Not implemented!");
+  };
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
@@ -580,6 +588,8 @@ public:
   RegularMesh(hid_t group);
 
   // Overridden methods
+  int n_vertices() const override;
+
   int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
@@ -880,11 +890,6 @@ public:
   //! \param[in] bin Bin to return the centroid for
   //! \return The centroid of the bin
   virtual Position centroid(int bin) const = 0;
-
-  //! Get the number of vertices in the mesh
-  //
-  //! \return Number of vertices
-  virtual int n_vertices() const = 0;
 
   //! Retrieve a vertex of the mesh
   //

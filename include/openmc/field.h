@@ -70,24 +70,26 @@ public:
     }
   }
 
-  // Set data
+  //! Set data field.
+  //! Returns an error if the size of the data field is not consistent with its
+  //! mapping type.
+  //
+  //! \param[in] data Data field
   void set_data(std::unique_ptr<FieldData<T>> data)
   {
-    // Values/mesh consistency check
-    // Check for nodal representation
+    // Values/mesh size consistency check
     if (mapping() == FieldMapping::NODAL) {
-      // TODO - check consistency compared to total number of expected unique
-      // vertices
-    }
-    // Check for cell-based representation
-    if (mapping() == FieldMapping::CELL) {
+      if (mesh_ptr()->n_vertices() != data->size()) {
+        fatal_error("The number of bins in the mesh is not consistent with the "
+                    "number of values declared for this field!");
+      }
+    } else if (mapping() == FieldMapping::CELL) {
       if (mesh_ptr()->n_bins() != data->size()) {
         fatal_error("The number of bins in the mesh is not consistent with the "
                     "number of values declared for this field!");
       }
     }
 
-    // Store data
     data_ = std::move(data);
   }
 

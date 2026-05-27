@@ -1663,6 +1663,15 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
   }
 }
 
+int RegularMesh::n_vertices() const
+{
+  int n_vertices = 1;
+  for (int i = 0; i < n_dimension_; i++) {
+    n_vertices *= shape_[i] + 1;
+  }
+  return n_vertices;
+}
+
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
   if (r == lower_left_[i]) {

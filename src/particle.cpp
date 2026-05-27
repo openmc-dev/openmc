@@ -953,7 +953,7 @@ void Particle::cross_periodic_bc(
 
 void Particle::update_majorant()
 {
-  this->majorant() = Majorant::safety_factor * data::n_majorant->calculate_xs(this->E());
+  this->majorant() = NeutronMajorant::safety_factor * data::n_majorant->calculate_neutron_xs(this->E());
 }
 
 void Particle::mark_as_lost(const char* message)

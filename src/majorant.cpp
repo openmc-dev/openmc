@@ -12,54 +12,32 @@
 
 namespace openmc {
 
+//==============================================================================
+// Global variables
+//==============================================================================
+
 namespace data {
-std::unique_ptr<Majorant> n_majorant;
+std::unique_ptr<NeutronMajorant> n_majorant;
 std::string majorant_file;
-}
 
-void create_majorant()
+} // namespace data
+
+//==============================================================================
+// Majorant implementation
+//==============================================================================
+
+Majorant::Majorant(const std::string & majorant_file, double min_E_transport, double max_E_transport)
 {
-  write_message("Creating majorant cross section...");
-  if (data::majorant_file != "") {
-    write_message("Loading majorant from " + data::majorant_file);
-    // We can load the majorant from a file instead.
-    data::n_majorant = std::make_unique<Majorant>(data::majorant_file);
-    return;
-  }
-
-  data::n_majorant = std::make_unique<Majorant>();
-  data::n_majorant->write_ascii("macro_majorant.txt");
-}
-
-Majorant::Majorant()
-{
-  // Unionize the grid.
-  compute_unionized_grid();
-
-  // Setup the majorant given the new grid.
-  setup_majorant();
-}
-
-Majorant::Majorant(const std::vector<double>& energy,
-                   const std::vector<double>& xs) : xs_(xs)
-{
-  grid_.energy = energy;
-  grid_.init();
-}
-
-Majorant::Majorant(const std::string & majorant_file)
-{
-  const auto neutron_idx = ParticleType::neutron().transport_index();
   std::ifstream majorant_data(majorant_file);
 
   std::string line;
   while (std::getline(majorant_data, line)) {
     auto delim_pos = line.find(",");
     auto energy = std::stod(line.substr(0, delim_pos));
-    if (energy < data::energy_min[neutron_idx]) {
+    if (energy < min_E_transport) {
       continue;
     }
-    if (energy > data::energy_max[neutron_idx]) {
+    if (energy > max_E_transport) {
       break;
     }
     grid_.energy.push_back(energy);
@@ -69,8 +47,42 @@ Majorant::Majorant(const std::string & majorant_file)
   grid_.init();
 }
 
+void
+Majorant::write_ascii(const std::string& filename) const
+{
+  std::ofstream of(filename);
+  for (int i = 0; i < xs_.size(); i++) {
+    of << grid_.energy[i] << "\t" << xs_[i] << "\n";
+  }
+  of.close();
+}
+
 double
-Majorant::calculate_xs(double energy) const
+Majorant::interpolate_lin_1D(double x_0, double x_1, double y_0, double y_1, double x) const
+{
+  double f = (x - x_0) / (x_1 - x_0);
+  return (1.0 - f) * y_0 + f * y_1;
+}
+
+double
+Majorant::interpolate_log_1D(double x_0, double x_1, double y_0, double y_1, double x) const
+{
+  double f = std::log(x / x_0) / std::log(x_1 / x_0);
+  return std::exp((1.0 - f) * std::log(y_0) + f * std::log(y_1));
+}
+
+//==============================================================================
+// NeutronMajorant implementation
+//==============================================================================
+
+NeutronMajorant::NeutronMajorant(const std::string & majorant_file)
+  : Majorant(majorant_file,
+             data::energy_min[ParticleType::neutron().transport_index()],
+             data::energy_max[ParticleType::neutron().transport_index()])
+{ }
+
+double
+NeutronMajorant::calculate_neutron_xs(double energy) const
 {
   int i_grid = get_i_grid(energy, grid_);
 
@@ -83,32 +95,29 @@ Majorant::calculate_xs(double energy) const
   return xs;
 }
 
-void Majorant::write_ascii(const std::string& filename) const
+void
+NeutronMajorant::init()
 {
-  std::ofstream of(filename);
-  for (int i = 0; i < xs_.size(); i++) {
-    of << grid_.energy[i] << "\t" << xs_[i] << "\n";
-  }
-  of.close();
+  // Unionize the grid.
+  compute_unionized_grid();
+
+  // Setup the majorant given the new grid.
+  setup_majorant();
 }
 
 void
-Majorant::compute_unionized_grid()
+NeutronMajorant::compute_unionized_grid()
 {
   write_message("Unionizing nuclide cross section grids.");
 
   // This function generates a unionized cross section grid between smooth cross
   // sections and URR probability table grids.
   for (const auto & mat : model::materials) {
-    if (mat->ncrystal_mat_) {
-      fatal_error("Delta tracking is not supported when using NCrystal!");
-    }
-
     for (auto nuclide_idx : mat->nuclide_) {
       const auto & nuclide = data::nuclides[nuclide_idx];
 
       // ======================================================================
-      // Unionizing the URR temperature grid. Loop over temperature points.
+      // Unionizing the URR temperature grid.
       if (nuclide->urr_present_ && settings::urr_ptables_on) {
         for (const auto & nuc_urr : nuclide->urr_data_) {
           grid_.energy.insert(grid_.energy.end(), nuc_urr.energy_.begin(), nuc_urr.energy_.end());
@@ -116,7 +125,7 @@ Majorant::compute_unionized_grid()
       }
 
       // ======================================================================
-      // Unionize the smooth cross section grid. Loop over temperature points.
+      // Unionize the smooth cross section grid.
       for (const auto & n_grid : nuclide->grid_) {
         grid_.energy.insert(grid_.energy.end(), n_grid.energy.begin(),n_grid.energy.end());
       }
@@ -125,8 +134,8 @@ Majorant::compute_unionized_grid()
   std::sort(grid_.energy.begin(), grid_.energy.end());
   std::unique(grid_.energy.begin(), grid_.energy.end());
 
-  // remove all values below the minimum neutron energy
   int neutron = ParticleType::neutron().transport_index();
+  // remove all values below the minimum neutron energy
   auto min_it = grid_.energy.begin();
   while (*min_it < data::energy_min[neutron]) { min_it++; }
   grid_.energy.erase(grid_.energy.begin(), min_it + 1);
@@ -144,7 +153,7 @@ Majorant::compute_unionized_grid()
 }
 
 void
-Majorant::setup_majorant()
+NeutronMajorant::setup_majorant()
 {
   // Fill with zeros.
   xs_.resize(grid_.energy.size(), 0.0);
@@ -166,7 +175,7 @@ Majorant::setup_majorant()
 }
 
 void
-Majorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
+NeutronMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
 {
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     const double union_energy = to_grid[i_energy];
@@ -233,7 +242,7 @@ Majorant::fill_material_maj_xs(const Material & mat, const std::vector<double> &
 }
 
 double
-Majorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc) const
+NeutronMajorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc) const
 {
   double max_smooth_tot_xs = 0.0;
   for (int i_temp = 0; i_temp < nuc.kTs_.size(); ++i_temp) {
@@ -248,7 +257,7 @@ Majorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc) const
 }
 
 double
-Majorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth) const
+NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth_xs) const
 {
   if (!nuc.urr_present_) {
     return 0.0;
@@ -260,21 +269,39 @@ Majorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth
       continue;
     }
 
-    // Take the maximum over all CDF and energy points for the URR range.
-    for (const auto & urr_xs : urr.xs_values_) {
-      if (urr.multiply_smooth_) {
-        max_urr_xs = std::max(max_urr_xs, urr_xs.total * smooth);
-      } else {
-        max_urr_xs = std::max(max_urr_xs, urr_xs.total);
-      }
+    int i_energy = lower_bound_index(&urr.energy_.front(), &urr.energy_.back(), energy);
+
+    // Find the maximum URR cross sections for the two bounding energy points.
+    double max_urr_xs_E0 = 0.0;
+    double max_urr_xs_E1 = 0.0;
+    for (int i_cdf = 0; i_cdf < urr.n_cdf(); ++i_cdf) {
+      max_urr_xs_E0 = std::max(max_urr_xs_E0, urr.xs_values_(i_energy, i_cdf).total);
+      max_urr_xs_E1 = std::max(max_urr_xs_E1, urr.xs_values_(i_energy + 1, i_cdf).total);
     }
+
+    // Interpolate the bounding energy points.
+    double interp_urr_xs = 0.0;
+    if (urr.interp_ == Interpolation::lin_lin) {
+      interp_urr_xs =
+        interpolate_lin_1D(urr.energy_[i_energy], urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
+    } else if (urr.interp_ == Interpolation::log_log) {
+      interp_urr_xs =
+        interpolate_log_1D(urr.energy_[i_energy], urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
+    }
+
+    // Multiply by the smooth cross section (after interpolation) if required.
+    if (urr.multiply_smooth_) {
+      interp_urr_xs *= smooth_xs;
+    }
+
+    max_urr_xs = std::max(max_urr_xs, interp_urr_xs);
   }
 
   return max_urr_xs;
 }
 
 double
-Majorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc) const
+NeutronMajorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc) const
 {
   const auto & thermal = data::thermal_scatt[i_sab];
 
@@ -300,10 +327,7 @@ Majorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, co
           ++i_sab_temp;
         }
         // Interpolate the scattering cross sections to the nuclide temperature grid point.
-        double T0_elastic;
-        double T1_elastic;
-        double T0_inelastic;
-        double T1_inelastic;
+        double T0_elastic, T1_elastic, T0_inelastic, T1_inelastic;
         thermal->data_[i_sab_temp].calculate_xs(energy, &T0_elastic, &T0_inelastic);
         thermal->data_[i_sab_temp + 1].calculate_xs(energy, &T1_elastic, &T1_inelastic);
         thermal_elastic = interpolate_lin_1D(tkTs[i_sab_temp], tkTs[i_sab_temp + 1], T0_elastic, T1_elastic, nuc_kT);
@@ -330,7 +354,7 @@ Majorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, co
 }
 
 int
-Majorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
+NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
 {
   // Find energy index on energy grid
   int neutron = ParticleType::neutron().transport_index();
@@ -357,10 +381,23 @@ Majorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
   return i_grid;
 }
 
-double
-Majorant::interpolate_lin_1D(double x_0, double x_1, double y_0, double y_1, double x) const
+//==============================================================================
+// Static functions
+//==============================================================================
+
+void create_majorants()
 {
-  double f = (x - x_0) / (x_1 - x_0);
-  return (1.0 - f) * y_0 + f * y_1;
+  if (data::majorant_file != "") {
+    write_message("Loading majorant from " + data::majorant_file);
+    // We can load the majorant from a file instead.
+    data::n_majorant = std::make_unique<NeutronMajorant>(data::majorant_file);
+    return;
+  }
+
+  write_message("Creating majorant cross section...");
+  data::n_majorant = std::make_unique<NeutronMajorant>();
+  data::n_majorant->init();
+  data::n_majorant->write_ascii("macro_majorant.txt");
 }
+
 } // namespace openmc

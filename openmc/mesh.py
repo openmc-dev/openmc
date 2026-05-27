@@ -723,6 +723,9 @@ class StructuredMesh(MeshBase):
            >>> heating = tally.get_reshaped_data(expand_dims=True)
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
+        if volume_normalization is None:
+            volume_normalization = True
+
         if Path(filename).suffix == ".vtkhdf":
             self._write_vtk_hdf5(filename, datasets, volume_normalization)
             return None
@@ -744,26 +747,20 @@ class StructuredMesh(MeshBase):
             # maintain a list of the datasets as added to the VTK arrays to
             # ensure they persist in memory until the file is written
             datasets_out = []
-            # Regular/Rectilinear meshes store data in C (ijk) order which
-            # matches VTK's expected ordering directly — no transpose needed.
-            # Curvilinear meshes (Cylindrical, Spherical) require a transpose
-            # to convert from C ordering to the Fortran (kji) ordering that VTK
-            # expects.
-            # TODO: update to "C" ordering throughout
-            needs_transpose = not isinstance(
-                self, (RegularMesh, RectilinearMesh))
             for label, dataset in datasets.items():
                 dataset = self._reshape_vtk_dataset(dataset)
                 self._check_vtk_dataset(label, dataset)
+                # If the array data is 3D, assume is in C ordering and transpose
+                # before flattening to match the ordering expected by the VTK
+                # array based on the way mesh indices are ordered in the Python
+                # API
+                # TODO: update to "C" ordering throughout
                 if dataset.ndim == 3:
-                    dataset = dataset.T.ravel() if needs_transpose else dataset.ravel()
+                    dataset = dataset.T.ravel()
                 datasets_out.append(dataset)
 
                 if volume_normalization:
-                    if needs_transpose:
-                        dataset = dataset / self.volumes.T.ravel()
-                    else:
-                        dataset = dataset / self.volumes.ravel()
+                    dataset /= self.volumes.T.ravel()
 
                 dataset_array = vtk.vtkDoubleArray()
                 dataset_array.SetName(label)

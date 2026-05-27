@@ -54,11 +54,10 @@ VelocityField::VelocityField(
   set_data(std::move(data));
 }
 
-int VelocityField::get_next_bin(Position r0, Position r1, int current_bin,
-  BCType& crossed_boundary, Position& intersection)
+int VelocityField::get_next_bin(const Position& r0, const Position& r1,
+  int bin0, BCType& crossed_boundary, Position& intersection)
 {
-  // We do not check whether we leave the mesh or not during raytracing yet.
-  // TODO - implement early mesh departure
+  // TODO - implement early mesh departure detection
 
   // Initialization
   double total_length = 0.0;
@@ -107,10 +106,10 @@ int VelocityField::get_next_bin(Position r0, Position r1, int current_bin,
 }
 
 void VelocityField::randomly_place_on_inlet(
-  Position& pa, int& cell, uint64_t* seed)
+  Position& p, int& bin, uint64_t* seed)
 {
   mesh_ptr()->randomly_place_on_physical_group(
-    pa, cell, seed, bc_map_[BCType::INLET]);
+    p, bin, seed, bc_map_[BCType::INLET]);
 }
 
 BCType VelocityField::get_boundary_condition(int physical_group)

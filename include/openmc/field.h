@@ -1,10 +1,12 @@
 #ifndef OPENMC_FIELD_H
 #define OPENMC_FIELD_H
 
-#include <any>
+#include <memory>
+#include <string>
 #include <unordered_map>
 
 #include "openmc/mesh.h"
+#include "openmc/position.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -19,18 +21,32 @@ class Field;
 template<typename T>
 class FieldData {
 public:
-  FieldData(std::vector<T> values) { values_ = values; }
+  // Constructor
+  FieldData(vector<T> values) { values_ = values; }
 
-  T evaluate(int bin) const { return values_[bin]; }
+  //! Get the value for a given index.
+  //
+  //! \param[in] idx Index
+  //! \return Associated value
+  T evaluate(int idx) const { return values_[idx]; }
 
-  void assign(int bin, T value) { values_[bin] = value; }
+  //! Assign a value at a given index.
+  //
+  //! \param[in] idx Index
+  //! \param[in] value Value to store
+  void assign(int idx, T value) { values_[idx] = value; }
 
+  //! Return the size of the data field.
+  //
+  //! \return Number of values
   int size() { return values_.size(); }
 
-  std::vector<T> values() const { return values_; }
+  // Values accessors
+  vector<T>& values() { return values_; }
+  const vector<T>& values() const { return values_; }
 
 private:
-  std::vector<T> values_;
+  vector<T> values_; //!< Stored data
 };
 
 // -----------------------------------------------------------
@@ -38,17 +54,20 @@ private:
 // -----------------------------------------------------------
 
 enum class FieldMapping {
-  NODAL, // Nodal representation (value defined for each vertex)
-  CELL   // Cell-based representation (value defined for each cell)
+  NODAL, // Nodal representation (values defined for each vertex)
+  CELL   // Cell-based representation (values defined for each cell)
 };
 
 template<typename T>
 class Field {
 public:
-  // Constructors
+  // Constructor
   Field() = default;
 
-  // Set mesh pointer
+  //! Set the mesh pointer.
+  //! Returns an error if the mesh pointer is not valid.
+  //
+  //! \param[in] value Mesh pointer
   void set_mesh(Mesh* value)
   {
     if (value != nullptr) {
@@ -58,7 +77,10 @@ public:
     }
   }
 
-  // Set mapping
+  //! Set the mapping type.
+  //! Returns an error if the mapping type is not valid.
+  //
+  //! \param[in] value Mapping type
   void set_mapping(std::string value)
   {
     if (value == "nodal") {
@@ -93,13 +115,17 @@ public:
     data_ = std::move(data);
   }
 
+  //! Assign a value to a bin.
+  //
+  //! \param[in] bin Bin number
+  //! \param[in] value Value to store
+  void assign(int bin, T value) { data().assign(bin, value); }
 
-
-  //! Return the mesh bin associated with the given position
+  //! Return the mesh bin associated with a given position.
   //
   //! \param[in] r Position
-  //! \return Mesh bin
-  int get_mesh_bin(Position r) { return mesh_ptr()->get_bin(r); }
+  //! \return Bin number
+  int get_mesh_bin(const Position& r) { return mesh_ptr()->get_bin(r); }
 
   //! Evaluate the field at a given position with prior knowledge of the current
   //! bin.
@@ -136,8 +162,8 @@ public:
   //! \param[in] r0 Previous position
   //! \param[in] r1 Current position
   //! \param[in] bin Bin corresponding to the previous position
-  //! \return Value of the field corresponding to the current position
-  T evaluate(Position r0, Position r1, int bin)
+  //! \return Value corresponding to the current position
+  T evaluate(const Position& r0, const Position& r1, int bin)
   {
     int next_bin = mesh_ptr()->get_last_bin_inside_mesh(r0, r1, bin);
     return evaluate(r1, next_bin);
@@ -198,10 +224,6 @@ public:
       current_bin, r, u, bin_next);
   }
 
-  // Mapping accessor
-  FieldMapping mapping() { return mapping_; }
-  const FieldMapping mapping() const { return mapping_; }
-
   // Mesh pointer accessor
   Mesh* mesh_ptr() const
   {
@@ -212,7 +234,12 @@ public:
     }
   }
 
-  const FieldData<T>& data() const
+  // Mapping accessors
+  FieldMapping mapping() { return mapping_; }
+  const FieldMapping mapping() const { return mapping_; }
+
+  // Data field accessor
+  FieldData<T>& data() const
   {
     if (data_ == nullptr) {
       fatal_error("No data found for this field!");
@@ -221,27 +248,13 @@ public:
     }
   }
 
-  FieldData<T>& data()
-  {
-    if (data_ == nullptr) {
-      fatal_error("No data found for this field!");
-    } else {
-      return *data_;
-    }
-  }
-
-  T value(int bin) const { return data().evaluate(bin); }
-
-  void assign(int bin, T value) { data().assign(bin, value); }
-
-  //! Returns the list of values corresponding to the data stored in the field.
-  //
-  //! \return List of values
+  // Data field value accessors
+  const T value(int i) const { return data().evaluate(i); }
   const vector<T> values() const { return data().values(); }
 
 private:
-  FieldMapping mapping_;               //!< Relationship between values and mesh
   Mesh* mesh_;                         //!< Pointer to the geometric mesh
+  FieldMapping mapping_;               //!< Relationship between values and mesh
   std::unique_ptr<FieldData<T>> data_; //!< Data associated with the mesh
 };
 
@@ -254,7 +267,7 @@ public:
   // Constructors
   TemperatureField() : Field<double>() {};
   TemperatureField(
-    Mesh* mesh_ptr, std::vector<double> values, std::string mapping = "cell");
+    Mesh* mesh_ptr, vector<double> values, std::string mapping = "cell");
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
@@ -279,20 +292,49 @@ public:
 enum class BCType { NONE, INLET, OUTLET, WALL };
 
 // Boundary conditions map type
-using BCMap = std::unordered_map<BCType, std::vector<int>>;
+using BCMap = std::unordered_map<BCType, vector<int>>;
 
 class VelocityField : public Field<Direction> {
 public:
   // Constructors
   VelocityField() : Field<Direction>() {};
   VelocityField(
-    Mesh* mesh_ptr, std::vector<Direction> values, std::string mapping);
+    Mesh* mesh_ptr, vector<Direction> values, std::string mapping);
 
-  int get_next_bin(Position r0, Position r1, int current_bin,
+  //! Find next bin associated with a given position (r1) knowing the previous
+  //! position (r0) and the previous bin (bin0). The next bin is evaluated using
+  //! raytracing. If r1 is outside the mesh, crossed_boundary will indicate
+  //! the boundary condition associated with the last surface crossed before
+  //! leaving the mesh. Also, intersection will be the last intersection with
+  //! the mesh. If r1 is still inside the mesh, crossed_boundary will be NONE
+  //! and the intersection will coincide with r1.
+  //!
+  //! We currently do not check whether the mesh was left during the travel,
+  //! meaning that a point can leave and reenter the mesh. It is not problematic
+  //! for convex geometries like regular meshes, but it can be for unstuctured
+  //! meshes.
+  //
+  //! \param[in] r0 First position
+  //! \param[in] r1 Second position
+  //! \param[in] bin0 Bin number corresponding to r0
+  //! \param[out] crossed_boundary Boundary type of the last crossed surface
+  //! \param[out] intersection Last intersection with the mesh (or r1)
+  //! \return Bin number corresponding to r1
+  int get_next_bin(const Position& r0, const Position& r1, int bin0,
     BCType& crossed_boundary, Position& intersection);
 
-  void randomly_place_on_inlet(Position& pa, int& cell, uint64_t* seed);
+  //! Update the position and the bin by moving the point to a random location
+  //! on the inlet physical group.
+  //
+  //! \param[inout] p Position
+  //! \param[inout] bin Bin number corresponding to p
+  //! \param[in] seed Random number generator seed
+  void randomly_place_on_inlet(Position& p, int& bin, uint64_t* seed);
 
+  //! Retrieve the boundary condition associated with a physical group.
+  //
+  //! \param[in] physical_group Physical group
+  //! \return Boundary condition associated with the physical group
   BCType get_boundary_condition(int physical_group);
 
   // Boundary conditions map accessors
@@ -300,8 +342,8 @@ public:
   const BCMap& bc_map() const { return bc_map_; }
 
 private:
-  BCMap bc_map_; //!< Boundary conditions map linking a boundary
-                 //!< condition type to physical group numbers
+  BCMap bc_map_; //!< Boundary conditions map linking a boundary condition type
+                 //!< to physical group numbers
 };
 
 } //  namespace openmc

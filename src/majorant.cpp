@@ -72,27 +72,7 @@ Majorant::Majorant(const std::string & majorant_file)
 double
 Majorant::calculate_xs(double energy) const
 {
-  // Find energy index on energy grid
-  int neutron = ParticleType::neutron().transport_index();
-  int i_log_union = std::log(energy * data::energy_min_rcp[neutron]) * simulation::log_spacing_rcp;
-
-  int i_grid;
-  if (i_log_union < 0) {
-    i_grid = 0;
-  } else if (i_log_union >= (grid_.grid_index.size() - 2)) {
-    i_grid = grid_.energy.size() - 2;
-  } else {
-    // Determine bounding indices based on which equal log-spaced
-    // interval the energy is in
-    int i_low  = grid_.grid_index[i_log_union];
-    int i_high = grid_.grid_index[i_log_union + 1] + 1;
-
-    // Perform binary search over reduced range
-    i_grid = i_low + lower_bound_index(&grid_.energy[i_low], &grid_.energy[i_high], energy);
-  }
-
-  // check for rare case where two energy points are the same
-  if (grid_.energy[i_grid] == grid_.energy[i_grid + 1]) ++i_grid;
+  int i_grid = get_i_grid(energy, grid_);
 
   // calculate interpolation factor
   double f = (energy - grid_.energy[i_grid]) /
@@ -190,8 +170,10 @@ Majorant::fill_material_maj_xs(const Material & mat, const std::vector<double> &
 {
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     const double union_energy = to_grid[i_energy];
+
     int mat_sab_table_idx = 0;
     bool check_sab = (mat.thermal_tables_.size() > 0);
+
     for (int i = 0; i < mat.nuclide_.size(); ++i) {
       const auto & nuclide = data::nuclides[mat.nuclide_[i]];
       // ======================================================================
@@ -210,7 +192,7 @@ Majorant::fill_material_maj_xs(const Material & mat, const std::vector<double> &
 
           // If particle energy is greater than the highest energy for the
           // S(a,b) table, then don't use the S(a,b) table
-          if (union_energy > data::thermal_scatt[i_sab]->energy_max_) {
+          if ((union_energy - 1e-6) > data::thermal_scatt[i_sab]->energy_max_) {
             i_sab = C_NONE;
           }
 
@@ -251,7 +233,7 @@ Majorant::fill_material_maj_xs(const Material & mat, const std::vector<double> &
 }
 
 double
-Majorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc)
+Majorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc) const
 {
   double max_smooth_tot_xs = 0.0;
   for (int i_temp = 0; i_temp < nuc.kTs_.size(); ++i_temp) {
@@ -266,7 +248,7 @@ Majorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc)
 }
 
 double
-Majorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth)
+Majorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth) const
 {
   if (!nuc.urr_present_) {
     return 0.0;
@@ -274,51 +256,25 @@ Majorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth
 
   double max_urr_xs = 0.0;
   for (const auto & urr : nuc.urr_data_) {
-    if (!urr.energy_in_bounds(energy)) {
+    if (!(urr.energy_in_bounds(energy - 1e-6) || urr.energy_in_bounds(energy + 1e-6))) {
       continue;
     }
-    // Linear search to find the left and right interpolation points.
-    // TODO: if this is a problem we can perform binary search in energy
-    int i_energy;
-    for (int i = 0; i < urr.energy_.size() - 1; ++i) {
-      if (urr.energy_[i] <= energy && energy < urr.energy_[i + 1]) {
-        i_energy = i;
-        break;
+
+    // Take the maximum over all CDF and energy points for the URR range.
+    for (const auto & urr_xs : urr.xs_values_) {
+      if (urr.multiply_smooth_) {
+        max_urr_xs = std::max(max_urr_xs, urr_xs.total * smooth);
+      } else {
+        max_urr_xs = std::max(max_urr_xs, urr_xs.total);
       }
     }
-
-    // Find the maximum URR cross sections for the two bounding energy points.
-    double max_urr_xs_E0 = 0.0;
-    double max_urr_xs_E1 = 0.0;
-    for (int i_cdf = 0; i_cdf < urr.n_cdf(); ++i_cdf) {
-      max_urr_xs_E0 = std::max(max_urr_xs_E0, urr.xs_values_(i_energy, i_cdf).total);
-      max_urr_xs_E1 = std::max(max_urr_xs_E1, urr.xs_values_(i_energy + 1, i_cdf).total);
-    }
-
-    // Interpolate the bounding energy points.
-    double interp_urr_xs = 0.0;
-    if (urr.interp_ == Interpolation::lin_lin) {
-      interp_urr_xs =
-        interpolate_lin_1D(urr.energy_[i_energy], urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
-    } else if (urr.interp_ == Interpolation::log_log) {
-      interp_urr_xs =
-        interpolate_log_1D(urr.energy_[i_energy], urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
-    }
-
-    // Multiply by the smooth cross section (after interpolation) if required.
-    if (urr.multiply_smooth_) {
-      interp_urr_xs *= smooth;
-    }
-
-    // Take the maximum over temperature.
-    max_urr_xs = std::max(max_urr_xs, interp_urr_xs);
   }
 
   return max_urr_xs;
 }
 
 double
-Majorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc)
+Majorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc) const
 {
   const auto & thermal = data::thermal_scatt[i_sab];
 
@@ -374,7 +330,7 @@ Majorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, co
 }
 
 int
-Majorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid)
+Majorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
 {
   // Find energy index on energy grid
   int neutron = ParticleType::neutron().transport_index();
@@ -402,16 +358,9 @@ Majorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid)
 }
 
 double
-Majorant::interpolate_lin_1D(double E_0, double E_1, double xs_0, double xs_1, double E)
+Majorant::interpolate_lin_1D(double x_0, double x_1, double y_0, double y_1, double x) const
 {
-  double f = (E - E_0) / (E_1 - E_0);
-  return (1.0 - f) * xs_0 + f * xs_1;
-}
-
-double
-Majorant::interpolate_log_1D(double E_0, double E_1, double xs_0, double xs_1, double E)
-{
-  double f = std::log(E / E_0) / std::log(E_1 / E_0);
-  return std::exp((1.0 - f) * std::log(xs_0) + f * std::log(xs_1));
+  double f = (x - x_0) / (x_1 - x_0);
+  return (1.0 - f) * y_0 + f * y_1;
 }
 } // namespace openmc

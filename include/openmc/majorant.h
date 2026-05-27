@@ -35,7 +35,7 @@ public:
   std::vector<int> nuclides; // index of nuclides applied
   std::vector<double> xs_; // cross section values
   Nuclide::EnergyGrid grid_;
-  constexpr static double safety_factor {1.1};
+  constexpr static double safety_factor {1.01};
 
 private:
   //! \brief Unionize the smooth and URR cross section grids for all nuclides in the problem.
@@ -48,22 +48,19 @@ private:
   void fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj);
 
   //! \brief Compute the maximum smooth cross section for a given energy point.
-  double calculate_max_smooth_xs(double energy, const Nuclide & nuc);
+  double calculate_max_smooth_xs(double energy, const Nuclide & nuc) const;
 
   //! \brief Compute the maximum URR cross section for a given energy point.
-  double calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth);
+  double calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth) const;
 
   //! \brief Compute the maximum correction factor for the S(a,b) total cross section.
-  double calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc);
+  double calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc) const;
 
   //! \brief Get the grid index for energy interpolation.
-  int get_i_grid(double energy, const Nuclide::EnergyGrid & grid);
+  int get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const;
 
   //! \brief Helper function to perform linear-linear interpolation.
-  double interpolate_lin_1D(double E_0, double E_1, double xs_0, double xs_1, double E);
-
-  //! \brief Helper function to perform log-log interpolation.
-  double interpolate_log_1D(double E_0, double E_1, double xs_0, double xs_1, double E);
+  double interpolate_lin_1D(double x_0, double x_1, double y_0, double y_1, double x) const;
 }; // class Majorant
 
   void create_majorant();

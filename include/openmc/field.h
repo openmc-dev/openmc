@@ -91,8 +91,6 @@ public:
     data_ = std::move(data);
   }
 
-  // Evaluate a field value inside a mesh cell (nodal representation)
-  T evaluate_inside_cell(int bin, Position r) { return interpolate(bin, r); }
 
 
   //! Return the mesh bin associated with the given position
@@ -101,20 +99,26 @@ public:
   //! \return Mesh bin
   int get_mesh_bin(Position r) { return mesh_ptr()->get_bin(r); }
 
-  //! Evaluate the field at a given position with prior knowledge of the bin
+  //! Evaluate the field at a given position with prior knowledge of the current
+  //! bin.
   //
-  //! \param[in] r Position where the field is evaluated
-  //! \param[in] bin Bin corresponding to the current position
-  //! \return Value of the field corresponding to the position
-  T evaluate(Position r, int bin)
+  //! \param[in] r Position
+  //! \param[in] bin Bin number corresponding to the current position
+  //! \return Value corresponding to the position
+  T evaluate(const Position& r, int bin)
   {
     if (bin != C_NONE) {
-      if (mapping() == FieldMapping::NODAL) {
-        return evaluate_inside_cell(bin, r);
-      } else if (mapping() == FieldMapping::CELL) {
+      switch (mapping()) {
+      case FieldMapping::NODAL:
+        // TODO: implement other interpolation techniques
+        return trilinear_interpolation(r, bin);
+        break;
+      case FieldMapping::CELL:
         return value(bin);
-      } else {
-        fatal_error("Not implemented!");
+        break;
+      default:
+        fatal_error("Not implemented for this mapping type!");
+        break;
       }
     } else {
       fatal_error("Bin outside the mesh.");

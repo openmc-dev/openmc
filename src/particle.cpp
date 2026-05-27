@@ -380,11 +380,7 @@ void Particle::event_delta_advance()
       }
       if (!exhaustive_find_cell(*this)) {
         // We've lost this particle.
-        mark_as_lost(
-          "Particle "
-          + std::to_string(id())
-          + " could not be located during the delta tracking loop!");
-        wgt() = 0.0;
+        mark_as_lost(fmt::format("Particle {} could not be located during the delta tracking loop!", id()));
         return;
       }
     }
@@ -410,10 +406,7 @@ void Particle::event_delta_advance()
   // Need to locate the particle at the collision site.
   if (!exhaustive_find_cell(*this)) {
     // We've lost this particle.
-    mark_as_lost(
-      "Particle " + std::to_string(id())
-      + " could not be located at the delta tracking collision site!");
-    wgt() = 0.0;
+    mark_as_lost(fmt::format("Particle {} could not be located at the delta tracking collision site!", id()));
     return;
   }
 

@@ -53,6 +53,11 @@ private:
   //! \brief Compute the maximum URR cross section for a given energy point.
   double calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth);
 
+  //! \brief Compute the maximum correction factor for the S(a,b) total cross section.
+  double calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc);
+
+  //!\brief Compute the max free gas elastic scattering cross section.
+
   //! \brief Get the grid index for energy interpolation.
   int get_i_grid(double energy, const Nuclide::EnergyGrid & grid);
 
@@ -61,9 +66,6 @@ private:
 
   //! \brief Helper function to perform log-log interpolation.
   double interpolate_log_1D(double E_0, double E_1, double xs_0, double xs_1, double E);
-
-  //! \brief Compute a union between vectors 'a' and 'b', storing the union in 'result'
-  void vector_union_1D(const std::vector<double> & a, const std::vector<double> & b, std::vector<double> & result);
 }; // class Majorant
 
   void create_majorant();

@@ -1017,6 +1017,16 @@ void transport_delta_tracking_single_particle(Particle& p)
     if (!p.alive())
       break;
     p.event_calculate_xs();
+    if (p.macro_xs().total / p.majorant() > 1.0) {
+      p.mark_as_lost(
+        "Ratio of the total cross section ("
+        + std::to_string(p.macro_xs().total)
+        + ") to the majorant cross section ("
+        + std::to_string(p.majorant())
+        + ") for particle " + std::to_string(p.id())
+        + " with energy " + std::to_string(p.E())
+        + " is greater than unity!");
+    }
     if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
       p.event_collide();
     }

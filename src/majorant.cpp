@@ -29,9 +29,6 @@ void create_majorant()
 
   data::n_majorant = std::make_unique<Majorant>();
   data::n_majorant->write_ascii("macro_majorant.txt");
-
-  // data::n_majorant->grid_.init();
-  // data::n_majorant->write_ascii("macro_majorant.txt");
 }
 
 Majorant::Majorant()

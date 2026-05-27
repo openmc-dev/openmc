@@ -35,7 +35,7 @@ public:
   std::vector<int> nuclides; // index of nuclides applied
   std::vector<double> xs_; // cross section values
   Nuclide::EnergyGrid grid_;
-  constexpr static double safety_factor {1.01};
+  constexpr static double safety_factor {1.1};
 
 private:
   //! \brief Unionize the smooth and URR cross section grids for all nuclides in the problem.
@@ -55,8 +55,6 @@ private:
 
   //! \brief Compute the maximum correction factor for the S(a,b) total cross section.
   double calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc);
-
-  //!\brief Compute the max free gas elastic scattering cross section.
 
   //! \brief Get the grid index for energy interpolation.
   int get_i_grid(double energy, const Nuclide::EnergyGrid & grid);

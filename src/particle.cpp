@@ -380,7 +380,10 @@ void Particle::event_delta_advance()
       }
       if (!exhaustive_find_cell(*this)) {
         // We've lost this particle.
-        mark_as_lost("Particle could not be located during the delta tracking loop!");
+        mark_as_lost(
+          "Particle "
+          + std::to_string(id())
+          + " could not be located during the delta tracking loop!");
         wgt() = 0.0;
         return;
       }
@@ -407,7 +410,9 @@ void Particle::event_delta_advance()
   // Need to locate the particle at the collision site.
   if (!exhaustive_find_cell(*this)) {
     // We've lost this particle.
-    mark_as_lost("Particle could not be located at the delta tracking collision site!");
+    mark_as_lost(
+      "Particle " + std::to_string(id())
+      + " could not be located at the delta tracking collision site!");
     wgt() = 0.0;
     return;
   }
@@ -955,7 +960,7 @@ void Particle::cross_periodic_bc(
 
 void Particle::update_majorant()
 {
-  this->majorant() = 1.1 * data::n_majorant->calculate_xs(this->E());
+  this->majorant() = Majorant::safety_factor * data::n_majorant->calculate_xs(this->E());
 }
 
 void Particle::mark_as_lost(const char* message)

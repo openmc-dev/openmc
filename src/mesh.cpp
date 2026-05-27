@@ -2019,10 +2019,10 @@ Position RegularMesh::normalize_position(const Position& r)
   double zmin = negative_grid_boundary(ijk, 2);
   double zmax = positive_grid_boundary(ijk, 2);
 
-  // Normalize
-  double p_x = (r[0] - xmin) / (xmax - xmin);
-  double p_y = (r[1] - ymin) / (ymax - ymin);
-  double p_z = (r[2] - zmin) / (zmax - zmin);
+  // Normalize and restrict normalized values between 0.0 and 1.0
+  double p_x = std::clamp((r[0] - xmin) / (xmax - xmin), 0.0, 1.0);
+  double p_y = std::clamp((r[1] - ymin) / (ymax - ymin), 0.0, 1.0);
+  double p_z = std::clamp((r[2] - zmin) / (zmax - zmin), 0.0, 1.0);
 
   return Position(p_x, p_y, p_z);
 }

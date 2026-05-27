@@ -94,28 +94,6 @@ public:
   // Evaluate a field value inside a mesh cell (nodal representation)
   T evaluate_inside_cell(int bin, Position r) { return interpolate(bin, r); }
 
-  // Interpolate the field at a given position
-  T interpolate(int bin, Position r)
-  {
-    // TODO: extrapolation
-
-    Position n_r = mesh_ptr()->normalize_position(r);
-    std::vector<int> v = mesh_ptr()->connectivity(bin);
-
-    // Interpolate along x
-    T c00 = value(v[0]) * (1 - n_r[0]) + value(v[1]) * n_r[0];
-    T c01 = value(v[4]) * (1 - n_r[0]) + value(v[5]) * n_r[0];
-    T c10 = value(v[2]) * (1 - n_r[0]) + value(v[3]) * n_r[0];
-    T c11 = value(v[6]) * (1 - n_r[0]) + value(v[7]) * n_r[0];
-
-    // Interpolate along y
-    T c0 = c00 * (1 - n_r[1]) + c10 * n_r[1];
-    T c1 = c01 * (1 - n_r[1]) + c11 * n_r[1];
-
-    // Interpolate along z
-    T result = c0 * (1 - n_r[2]) + c1 * n_r[2];
-    return result;
-  }
 
   //! Return the mesh bin associated with the given position
   //
@@ -157,6 +135,45 @@ public:
   {
     int next_bin = mesh_ptr()->get_last_bin_inside_mesh(r0, r1, bin);
     return evaluate(r1, next_bin);
+  }
+
+  //! Interpolate data field at a given position using trilinear interpolation.
+  //! To avoid extrapolation, any normalized coordinate not in [0.0, 1.0] will
+  //! trigger an error.
+  //
+  //! \param[in] r Position
+  //! \param[in] bin Bin number corresponding to the position
+  //! \return Interpolated value
+  T trilinear_interpolation(const Position& r, int bin)
+  {
+    // Normalize coordinates
+    Position n_r = mesh_ptr()->normalize_position(r);
+
+    // Check that normalized coordinates are in [0.0, 1.0] to avoid
+    // extrapolation
+    for (int i = 0; i < 3; i++) {
+      if ((n_r[i] < 0.0) || (n_r[i] > 1.0)) {
+        fatal_error(
+          "Normalized coordinates must be in [0.0, 1.0] for interpolation!");
+      }
+    }
+
+    // Retrieve vertices
+    vector<int> v = mesh_ptr()->connectivity(bin);
+
+    // Interpolate along x
+    T c00 = value(v[0]) * (1 - n_r[0]) + value(v[1]) * n_r[0];
+    T c01 = value(v[4]) * (1 - n_r[0]) + value(v[5]) * n_r[0];
+    T c10 = value(v[2]) * (1 - n_r[0]) + value(v[3]) * n_r[0];
+    T c11 = value(v[6]) * (1 - n_r[0]) + value(v[7]) * n_r[0];
+
+    // Interpolate along y
+    T c0 = c00 * (1 - n_r[1]) + c10 * n_r[1];
+    T c1 = c01 * (1 - n_r[1]) + c11 * n_r[1];
+
+    // Interpolate along z
+    T result = c0 * (1 - n_r[2]) + c1 * n_r[2];
+    return result;
   }
 
   //! Returns the distance to the next mesh boundary given a particle position

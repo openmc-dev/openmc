@@ -291,6 +291,20 @@ void ThermalData::calculate_xs(
   *inelastic = (*inelastic_.xs)(E);
 }
 
+void
+ThermalData::calculate_max_xs(double* elastic, double* inelastic) const
+{
+   // Calculate thermal elastic scattering cross section
+   if (elastic_.xs) {
+    *elastic = (*elastic_.xs).max();
+  } else {
+    *elastic = 0.0;
+  }
+
+  // Calculate thermal inelastic scattering cross section
+  *inelastic = (*inelastic_.xs).max();
+}
+
 AngleEnergy& ThermalData::sample_dist(
   const NuclideMicroXS& micro_xs, double E, uint64_t* seed) const
 {

@@ -127,3 +127,25 @@ def test_format_similarity(run_in_tmpdir, model):
     np.testing.assert_allclose(data_h5, data_mcpl, rtol=1e-05)
     # tolerance not that low due to the strings that is saved in MCPL,
     # not enough precision!
+
+
+def test_photon_particles(run_in_tmpdir, model):
+    """Test that the collision track can be used to track photon particles."""
+    model.settings.collision_track = {"max_collisions": 200, "cell_ids": [1, 2]}
+
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box(*model.geometry.bounding_box),
+        energy=openmc.stats.Discrete([1e5], [1.0]),
+        particle='photon'
+    )
+    model.run()
+
+    with h5py.File("collision_track.h5", "r") as f:
+        source = f["collision_track_bank"]
+
+        assert len(source) < 200
+
+        allowed_particles = set(openmc.ParticleType(p) for p in ['photon', 'electron'])
+
+        for point in source:
+            assert openmc.ParticleType(point['particle']) in allowed_particles

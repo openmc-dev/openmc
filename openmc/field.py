@@ -1,6 +1,4 @@
-from abc import ABC, abstractmethod
-
-import openmc
+from abc import ABC
 
 
 class ScalarField(ABC):
@@ -15,16 +13,6 @@ class ScalarField(ABC):
 
     """
     def __init__(self, mesh, values):
-        """Initialization.
-
-        Parameters
-        ----------
-        mesh : Mesh
-            Spatial mesh associated with the field
-        values : iterable of float
-            List of values associated with each mesh cell
-
-        """
         self.mesh = mesh
         self.values = values
 
@@ -46,14 +34,4 @@ class TemperatureField(ScalarField):
 
     """
     def __init__(self, mesh, values):
-        """Initialization.
-
-        Parameters
-        ----------
-        mesh : Mesh
-            Spatial mesh associated with the field
-        values : iterable of float
-            List of values associated with each mesh cell
-
-        """
         super().__init__(mesh, values)

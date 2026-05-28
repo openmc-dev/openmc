@@ -59,11 +59,7 @@ TODO:
 
 """
 
-import os
-
-import h5py
 import openmc
-import openmc.lib
 import pytest
 
 from tests.testing_harness import CollisionTrackTestHarness

@@ -1234,6 +1234,10 @@ void read_settings_xml(pugi::xml_node root)
   // Check whether or not to use delta tracking
   if (check_for_node(root, "delta_tracking")) {
     delta_tracking = get_node_value_bool(root, "delta_tracking");
+
+    if (temperature_multipole && delta_tracking) {
+      fatal_error("Delta tracking cannot be used with a windowed multipole temperature treatment.");
+    }
   }
 
   if (check_for_node(root, "delta_tracking_n_majorant_file")) {

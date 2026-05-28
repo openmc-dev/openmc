@@ -278,6 +278,7 @@ TEST_CASE("Test get_index_in_direction - regular mesh")
   auto mesh = RegularMesh(root);
 
   REQUIRE(mesh.get_index_in_direction(-2.0, 0) == 1);
+  REQUIRE(mesh.get_index_in_direction(-1.99, 0) == 1);
 }
 
 TEST_CASE("Test get_index_in_direction - rectilinear mesh")
@@ -302,4 +303,5 @@ TEST_CASE("Test get_index_in_direction - rectilinear mesh")
   auto mesh = RectilinearMesh(root);
 
   REQUIRE(mesh.get_index_in_direction(0.0, 0) == 1);
+  REQUIRE(mesh.get_index_in_direction(0.01, 0) == 1);
 }

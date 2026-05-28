@@ -60,6 +60,9 @@ Material::Material(pugi::xml_node node)
   }
 
   if (check_for_node(node, "cfg")) {
+    if (settings::delta_tracking) {
+      fatal_error("NCrystal materials are presently not supported when running with delta tracking!");
+    }
     auto cfg = get_node_value(node, "cfg");
     write_message(
       5, "NCrystal config string for material #{}: '{}'", this->id(), cfg);

@@ -1035,7 +1035,7 @@ Functions
 
    Set the temperature value of a given cell in the temperature field
 
-   :param int32_t index: Index in the tempererature mesh
+   :param int32_t index: Index in the temperature mesh
    :param double temperature: Temperature in Kelvin
    :return: Return status (negative if an error occurred)
    :rtype: int

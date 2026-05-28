@@ -61,12 +61,24 @@ TODO:
 
 import os
 
+import h5py
 import openmc
 import openmc.lib
 import pytest
 
-from tests.testing_harness import CollisionTrackTestHarness
+from tests.testing_harness import CollisionTrackTestHarness, PyAPITestHarness
 from tests.regression_tests import config
+
+
+class MaxCollisionTrackTestHarness(CollisionTrackTestHarness):
+    """Harness for cases where collision-track output is intentionally capped."""
+
+    def _compare_results(self):
+        PyAPITestHarness._compare_results(self)
+        with h5py.File("collision_track.h5", "r") as fh:
+            assert len(fh["collision_track_bank"]) == (
+                self._model.settings.collision_track["max_collisions"]
+            )
 
 
 @pytest.fixture(scope="function")
@@ -238,18 +250,18 @@ def test_collision_track_several_cases(
 
 
 @pytest.mark.skipif(config["event"], reason="Results from history-based mode.")
-def test_collision_track_2threads(model_1, two_threads, single_process):
+def test_collision_track_2threads(model_1, run_in_tmpdir, two_threads, single_process):
     # This test checks that the `max_collisions` setting is honored:
     # no collisions beyond the specified limit should be recorded.
     #
-    # For the result to be reproducible, the number of threads and
-    # the transport mode (history vs. event) must remain fixed.
+    # The exact set of events in the capped bank is not reproducible with
+    # multiple threads because the bank stores whichever thread appends first
+    # until capacity is reached.
     assert os.environ["OMP_NUM_THREADS"] == "2"
     assert config["mpi_np"] == "1"
     model_1.settings.collision_track = {
         "max_collisions": 200
     }
-    harness = CollisionTrackTestHarness(
-        "statepoint.5.h5", model=model_1, workdir="case_8_2threads"
-    )
-    harness.main()
+    model_1.run()
+    collision_tracks = openmc.read_collision_track_hdf5('collision_track.h5')
+    assert len(collision_tracks) == 200

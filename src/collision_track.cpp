@@ -205,7 +205,7 @@ void collision_track_record(Particle& particle)
   if (particle.event_nuclide() != NUCLIDE_NONE) {
     const auto* nuclide_ptr = data::nuclides[particle.event_nuclide()].get();
     nuclide = nuclide_ptr->name_;
-    nuclide_id = nuclide_ptr->zaid();
+    nuclide_id = nuclide_ptr->pdg_code();
   }
   int universe_id = model::universes[particle.lowest_coord().universe()]->id_;
   double delta_E = particle.E_last() - particle.E();

@@ -87,6 +87,9 @@ public:
   //! Return the ZAID identifier for this nuclide.
   int zaid() const { return 10000 * Z_ + 10 * A_ + metastable_; }
 
+  //! Return the PDG Monte Carlo particle code for this nuclide.
+  int pdg_code() const { return 1000000000 + zaid(); }
+
   //============================================================================
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"

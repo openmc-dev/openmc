@@ -165,6 +165,7 @@ int openmc_finalize()
   simulation::ufs_mesh = nullptr;
 
   simulation::temperature_field = TemperatureField();
+  simulation::velocity_field = VelocityField();
 
   data::energy_max = {INFTY, INFTY, INFTY, INFTY};
   data::energy_min = {0.0, 0.0, 0.0, 0.0};

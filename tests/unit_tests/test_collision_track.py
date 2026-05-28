@@ -34,6 +34,7 @@ def geometry():
         {"max_collisions": 200, "mcpl": True}
 
     ],
+    ids=lambda parameter: str(parameter)
 )
 def test_xml_serialization(parameter, run_in_tmpdir):
     """Check that the different use cases can be written and read in XML."""

@@ -552,7 +552,7 @@ class CollisionTrackTestHarness(PyAPITestHarness):
                 "collision_track.h5"
             ), "collision_track file has not been created."
 
-    def _compare_output(self):
+    def _compare_results(self):
         """Compare collision_track.h5 files."""
         if self._model.settings.collision_track:
             collision_track_true = self._return_collision_track_data(

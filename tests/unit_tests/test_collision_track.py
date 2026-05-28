@@ -153,3 +153,16 @@ def test_photon_particles(run_in_tmpdir, model):
 
             if particle_type == openmc.ParticleType.ELECTRON:
                 assert point['nuclide_id'] == -1
+
+def test_collision_track_two_threads(model, run_in_tmpdir):
+    # This test checks that the `max_collisions` setting is honored:
+    # no collisions beyond the specified limit should be recorded.
+    #
+    # The exact set of events in the capped bank is not reproducible with
+    # multiple threads because the bank stores whichever thread appends first
+    # until capacity is reached.
+    model.settings.collision_track = {"max_collisions": 200}
+    model.run(threads=2, particles=500)
+
+    collision_track = openmc.read_collision_track_hdf5("collision_track.h5")
+    assert len(collision_track) == 200

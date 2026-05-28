@@ -66,31 +66,8 @@ import openmc
 import openmc.lib
 import pytest
 
-from tests.testing_harness import CollisionTrackTestHarness, PyAPITestHarness
+from tests.testing_harness import CollisionTrackTestHarness
 from tests.regression_tests import config
-
-
-class MaxCollisionTrackTestHarness(CollisionTrackTestHarness):
-    """Harness for cases where collision-track output is intentionally capped."""
-
-    def _compare_results(self):
-        PyAPITestHarness._compare_results(self)
-        with h5py.File("collision_track.h5", "r") as fh:
-            assert len(fh["collision_track_bank"]) == (
-                self._model.settings.collision_track["max_collisions"]
-            )
-
-
-@pytest.fixture(scope="function")
-def two_threads(monkeypatch):
-    """Set the number of OMP threads to 2 for the test."""
-    monkeypatch.setenv("OMP_NUM_THREADS", "2")
-
-
-@pytest.fixture(scope="function")
-def single_process(monkeypatch):
-    """Set the number of MPI process to 1 for the test."""
-    monkeypatch.setitem(config, "mpi_np", "1")
 
 
 @pytest.fixture(scope="module")
@@ -247,21 +224,3 @@ def test_collision_track_several_cases(
         "statepoint.5.h5", model=model, workdir=folder
     )
     harness.main()
-
-
-@pytest.mark.skipif(config["event"], reason="Results from history-based mode.")
-def test_collision_track_2threads(model_1, run_in_tmpdir, two_threads, single_process):
-    # This test checks that the `max_collisions` setting is honored:
-    # no collisions beyond the specified limit should be recorded.
-    #
-    # The exact set of events in the capped bank is not reproducible with
-    # multiple threads because the bank stores whichever thread appends first
-    # until capacity is reached.
-    assert os.environ["OMP_NUM_THREADS"] == "2"
-    assert config["mpi_np"] == "1"
-    model_1.settings.collision_track = {
-        "max_collisions": 200
-    }
-    model_1.run()
-    collision_tracks = openmc.read_collision_track_hdf5('collision_track.h5')
-    assert len(collision_tracks) == 200

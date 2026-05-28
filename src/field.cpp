@@ -11,17 +11,6 @@ namespace openmc {
 // TemperatureField implementation
 // -----------------------------------------------------------
 
-TemperatureField::TemperatureField(
-  Mesh* mesh_ptr, std::vector<double> values, std::string mapping)
-{
-  set_mesh(mesh_ptr);
-  set_mapping(mapping);
-
-  std::unique_ptr<FieldData<double>> data =
-    std::make_unique<FieldData<double>>(values);
-  set_data(std::move(data));
-}
-
 double TemperatureField::get_temperature(int bin)
 {
   if (bin >= 0 && bin < values().size()) {
@@ -42,17 +31,6 @@ double TemperatureField::get_sqrtkT(int bin)
 // -----------------------------------------------------------
 // VelocityField implementation
 // -----------------------------------------------------------
-
-VelocityField::VelocityField(
-  Mesh* mesh_ptr, std::vector<Direction> values, std::string mapping)
-{
-  set_mesh(mesh_ptr);
-  set_mapping(mapping);
-
-  std::unique_ptr<FieldData<Direction>> data =
-    std::make_unique<FieldData<Direction>>(values);
-  set_data(std::move(data));
-}
 
 int VelocityField::get_next_bin(const Position& r0, const Position& r1,
   int bin0, BCType& crossed_boundary, Position& intersection)

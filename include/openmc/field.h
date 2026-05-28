@@ -63,6 +63,14 @@ class Field {
 public:
   // Constructor
   Field() = default;
+  Field(Mesh* mesh_ptr, std::vector<T> values, std::string mapping)
+  {
+    set_mesh(mesh_ptr);
+    set_mapping(mapping);
+
+    std::unique_ptr<FieldData<T>> data = std::make_unique<FieldData<T>>(values);
+    set_data(std::move(data));
+  }
 
   //! Set the mesh pointer.
   //! Returns an error if the mesh pointer is not valid.
@@ -267,7 +275,8 @@ public:
   // Constructors
   TemperatureField() : Field<double>() {};
   TemperatureField(
-    Mesh* mesh_ptr, vector<double> values, std::string mapping = "cell");
+    Mesh* mesh_ptr, vector<double> values, std::string mapping = "cell")
+    : Field<double>(mesh_ptr, values, mapping) {};
 
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
@@ -298,8 +307,8 @@ class VelocityField : public Field<Direction> {
 public:
   // Constructors
   VelocityField() : Field<Direction>() {};
-  VelocityField(
-    Mesh* mesh_ptr, vector<Direction> values, std::string mapping);
+  VelocityField(Mesh* mesh_ptr, vector<Direction> values, std::string mapping)
+    : Field<Direction>(mesh_ptr, values, mapping) {};
 
   //! Find next bin associated with a given position (r1) knowing the previous
   //! position (r0) and the previous bin (bin0). The next bin is evaluated using

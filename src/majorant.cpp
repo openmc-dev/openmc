@@ -8,6 +8,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/search.h"
 #include "openmc/simulation.h"
+#include "openmc/settings.h"
 #include "openmc/thermal.h"
 
 namespace openmc {
@@ -18,7 +19,9 @@ namespace openmc {
 
 namespace data {
 std::unique_ptr<NeutronMajorant> n_majorant;
-std::string majorant_file;
+std::unique_ptr<PhotonMajorant> p_majorant;
+std::string n_majorant_file;
+std::string p_majorant_file;
 
 } // namespace data
 
@@ -26,7 +29,7 @@ std::string majorant_file;
 // Majorant implementation
 //==============================================================================
 
-Majorant::Majorant(const std::string & majorant_file, double min_E_transport, double max_E_transport)
+Majorant::Majorant(const std::string & majorant_file, int p_transport_indx)
 {
   std::ifstream majorant_data(majorant_file);
 
@@ -34,17 +37,39 @@ Majorant::Majorant(const std::string & majorant_file, double min_E_transport, do
   while (std::getline(majorant_data, line)) {
     auto delim_pos = line.find(",");
     auto energy = std::stod(line.substr(0, delim_pos));
-    if (energy < min_E_transport) {
+    if (energy < data::energy_min[p_transport_indx]) {
       continue;
     }
-    if (energy > max_E_transport) {
+    if (energy > data::energy_max[p_transport_indx]) {
       break;
     }
     grid_.energy.push_back(energy);
     xs_.push_back(std::stod(line.substr(delim_pos + 1)));
   }
 
-  grid_.init();
+  if (p_transport_indx == ParticleType::neutron().transport_index()) {
+    grid_.init();
+  }
+}
+
+void
+Majorant::compute_majorant()
+{
+  // Fill with zeros.
+  xs_.resize(grid_.energy.size(), 0.0);
+
+  std::vector<double> material_maj_xs;
+  material_maj_xs.resize(grid_.energy.size(), 0.0);
+  for (const auto & mat : model::materials) {
+    // Populate the per-material majorant cross section.
+    fill_material_maj_xs(*mat, grid_.energy, material_maj_xs);
+
+    // Compute the full majorant by taking the max over each material cross section.
+    for (int i_energy = 0; i_energy < xs_.size(); ++i_energy) {
+      xs_[i_energy] = std::max(xs_[i_energy], material_maj_xs[i_energy]);
+    }
+    std::fill(material_maj_xs.begin(), material_maj_xs.end(), 0.0);
+  }
 }
 
 void
@@ -52,7 +77,7 @@ Majorant::write_ascii(const std::string& filename) const
 {
   std::ofstream of(filename);
   for (int i = 0; i < xs_.size(); i++) {
-    of << grid_.energy[i] << "\t" << xs_[i] << "\n";
+    of << grid_.energy[i] << "," << xs_[i] << "\n";
   }
   of.close();
 }
@@ -76,9 +101,7 @@ Majorant::interpolate_log_1D(double x_0, double x_1, double y_0, double y_1, dou
 //==============================================================================
 
 NeutronMajorant::NeutronMajorant(const std::string & majorant_file)
-  : Majorant(majorant_file,
-             data::energy_min[ParticleType::neutron().transport_index()],
-             data::energy_max[ParticleType::neutron().transport_index()])
+  : Majorant(majorant_file, i_neutron)
 { }
 
 double
@@ -90,26 +113,12 @@ NeutronMajorant::calculate_neutron_xs(double energy) const
   double f = (energy - grid_.energy[i_grid]) /
               (grid_.energy[i_grid + 1]- grid_.energy[i_grid]);
 
-  double xs = (1.0 - f) * xs_[i_grid] + f * xs_[i_grid + 1];
-
-  return xs;
-}
-
-void
-NeutronMajorant::init()
-{
-  // Unionize the grid.
-  compute_unionized_grid();
-
-  // Setup the majorant given the new grid.
-  setup_majorant();
+  return (1.0 - f) * xs_[i_grid] + f * xs_[i_grid + 1];
 }
 
 void
 NeutronMajorant::compute_unionized_grid()
 {
-  write_message("Unionizing nuclide cross section grids.");
-
   // This function generates a unionized cross section grid between smooth cross
   // sections and URR probability table grids.
   for (const auto & mat : model::materials) {
@@ -127,57 +136,37 @@ NeutronMajorant::compute_unionized_grid()
       // ======================================================================
       // Unionize the smooth cross section grid.
       for (const auto & n_grid : nuclide->grid_) {
-        grid_.energy.insert(grid_.energy.end(), n_grid.energy.begin(),n_grid.energy.end());
+        grid_.energy.insert(grid_.energy.end(), n_grid.energy.begin(), n_grid.energy.end());
       }
     }
   }
   std::sort(grid_.energy.begin(), grid_.energy.end());
-  std::unique(grid_.energy.begin(), grid_.energy.end());
+  auto unique_end = std::unique(grid_.energy.begin(), grid_.energy.end());
+  grid_.energy.resize(std::distance(grid_.energy.begin(), unique_end));
 
-  int neutron = ParticleType::neutron().transport_index();
   // remove all values below the minimum neutron energy
   auto min_it = grid_.energy.begin();
-  while (*min_it < data::energy_min[neutron]) { min_it++; }
+  while (*min_it < data::energy_min[i_neutron]) { min_it++; }
   grid_.energy.erase(grid_.energy.begin(), min_it + 1);
   // insert the minimum neutron energy at the beginning
-  grid_.energy.insert(grid_.energy.begin(), data::energy_min[neutron]);
+  grid_.energy.insert(grid_.energy.begin(), data::energy_min[i_neutron]);
 
   // remove all values above the maximum neutron energy
   auto max_it = --grid_.energy.end();
-  while (*max_it > data::energy_max[neutron]) { max_it--; }
+  while (*max_it > data::energy_max[i_neutron]) { max_it--; }
   grid_.energy.erase(max_it - 1, grid_.energy.end());
   // insert the maximum neutron energy at the end
-  grid_.energy.insert(grid_.energy.end(), data::energy_max[neutron]);
+  grid_.energy.insert(grid_.energy.end(), data::energy_max[i_neutron]);
 
+  // Initialize the grid for fast lookups.
   grid_.init();
-}
-
-void
-NeutronMajorant::setup_majorant()
-{
-  // Fill with zeros.
-  xs_.resize(grid_.energy.size(), 0.0);
-
-  std::vector<double> material_maj_xs;
-  material_maj_xs.resize(grid_.energy.size(), 0.0);
-  for (const auto & mat : model::materials) {
-    write_message("Computing majorant total cross section for " + mat->name() + ".");
-
-    // Populate the per-material majorant cross section.
-    fill_material_maj_xs((*mat.get()), grid_.energy, material_maj_xs);
-
-    // Compute the full majorant by taking the max over each material cross section.
-    for (int i_energy = 0; i_energy < xs_.size(); ++i_energy) {
-      xs_[i_energy] = std::max(xs_[i_energy], material_maj_xs[i_energy]);
-    }
-    std::fill(material_maj_xs.begin(), material_maj_xs.end(), 0.0);
-  }
 }
 
 void
 NeutronMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
 {
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
+    mat_maj[i_energy] = 0.0;
     const double union_energy = to_grid[i_energy];
 
     int mat_sab_table_idx = 0;
@@ -222,16 +211,16 @@ NeutronMajorant::fill_material_maj_xs(const Material & mat, const std::vector<do
       double micro_smooth_tot_xs = 0.0;
       if (i_sab >= 0) {
         // Thermal scattering cross sections using S(a,b) tables.
-        micro_smooth_tot_xs = calculate_max_sab_tot_xs(union_energy, i_sab, sab_frac, (*nuclide.get()));
+        micro_smooth_tot_xs = calculate_max_sab_tot_xs(union_energy, i_sab, sab_frac, *nuclide);
       } else {
         // Free gas smooth cross section
-        micro_smooth_tot_xs = calculate_max_smooth_xs(union_energy, (*nuclide.get()));
+        micro_smooth_tot_xs = calculate_max_smooth_xs(union_energy, *nuclide);
       }
 
       // ======================================================================
       // Compute the URR cross section. This shouldn't intersect with the
       // S(a,b) cross section.
-      double micro_urr_xs = calculate_max_urr_xs(union_energy, (*nuclide.get()), micro_smooth_tot_xs);
+      double micro_urr_xs = calculate_max_urr_xs(union_energy, *nuclide, micro_smooth_tot_xs);
 
       // ======================================================================
       // Accumulate the macroscopic cross section.
@@ -357,8 +346,7 @@ int
 NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
 {
   // Find energy index on energy grid
-  int neutron = ParticleType::neutron().transport_index();
-  int i_log_union = std::log(energy * data::energy_min_rcp[neutron]) * simulation::log_spacing_rcp;
+  int i_log_union = std::log(energy * data::energy_min_rcp[i_neutron]) * simulation::log_spacing_rcp;
 
   int i_grid;
   if (i_log_union < 0) {
@@ -382,22 +370,184 @@ NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) con
 }
 
 //==============================================================================
+// PhotonMajorant implementation
+//==============================================================================
+
+PhotonMajorant::PhotonMajorant(const std::string & majorant_file)
+  : Majorant(majorant_file, i_photon_)
+{ }
+
+void
+PhotonMajorant::compute_unionized_grid()
+{
+  // This function generates a unionized cross section grid for all elements.
+  for (const auto & mat : model::materials) {
+    for (int i = 0; i < mat->nuclide_.size(); ++i) {
+      const auto & element  = data::elements[mat->element_[i]];
+      grid_.energy.insert(grid_.energy.end(), element->energy_.begin(), element->energy_.end());
+    }
+  }
+  std::sort(grid_.energy.begin(), grid_.energy.end());
+  auto unique_end = std::unique(grid_.energy.begin(), grid_.energy.end());
+  grid_.energy.resize(std::distance(grid_.energy.begin(), unique_end));
+
+  // remove all values below the minimum photon energy
+  auto min_it = grid_.energy.begin();
+  while (*min_it < std::log(data::energy_min[i_photon_])) { min_it++; }
+  grid_.energy.erase(grid_.energy.begin(), min_it + 1);
+  // insert the minimum photon energy at the beginning
+  grid_.energy.insert(grid_.energy.begin(), std::log(data::energy_min[i_photon_]));
+
+  // remove all values above the maximum photon energy
+  auto max_it = --grid_.energy.end();
+  while (*max_it > std::log(data::energy_max[i_photon_])) { max_it--; }
+  grid_.energy.erase(max_it - 1, grid_.energy.end());
+  // insert the maximum photon energy at the end
+  grid_.energy.insert(grid_.energy.end(), std::log(data::energy_max[i_photon_]));
+}
+
+double
+PhotonMajorant::calculate_photon_xs(double energy) const
+{
+  double log_energy = std::log(energy);
+  int i_grid = get_i_grid(log_energy, grid_.energy);
+
+  // calculate interpolation factor
+  double f =
+    (log_energy - grid_.energy[i_grid]) / (grid_.energy[i_grid + 1] - grid_.energy[i_grid]);
+
+  // interpolate the total cross section
+  return std::exp(xs_[i_grid] + f * (xs_[i_grid + 1] - xs_[i_grid]));
+}
+
+void
+PhotonMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
+{
+  for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
+    mat_maj[i_energy] = 0.0;
+    const double union_log_energy = to_grid[i_energy];
+
+    for (int i = 0; i < mat.nuclide_.size(); ++i) {
+      const int i_element = mat.element_[i];
+
+      mat_maj[i_energy] += calculate_elem_tot_xs(union_log_energy, *data::elements[i_element]) * mat.atom_density(i);
+    }
+    mat_maj[i_energy] = std::log(mat_maj[i_energy]);
+  }
+}
+
+double
+PhotonMajorant::calculate_elem_tot_xs(double log_energy, const PhotonInteraction & elem) const
+{
+  int i_grid = get_i_grid(log_energy, elem.energy_);
+
+  // calculate interpolation factor
+  double f =
+    (log_energy - elem.energy_(i_grid)) / (elem.energy_(i_grid + 1) - elem.energy_(i_grid));
+
+  // Calculate microscopic coherent cross section
+  double coherent = std::exp(
+    elem.coherent_(i_grid) + f * (elem.coherent_(i_grid + 1) - elem.coherent_(i_grid)));
+
+  // Calculate microscopic incoherent cross section
+  double incoherent = std::exp(
+    elem.incoherent_(i_grid) + f * (elem.incoherent_(i_grid + 1) - elem.incoherent_(i_grid)));
+
+  // Calculate microscopic photoelectric cross section
+  double photoelectric = 0.0;
+  tensor::View<const double> xs_lower = elem.cross_sections_.slice(i_grid);
+  tensor::View<const double> xs_upper = elem.cross_sections_.slice(i_grid + 1);
+
+  for (int i = 0; i < xs_upper.size(); ++i)
+    if (xs_lower(i) != 0)
+      photoelectric +=
+        std::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
+
+  // Calculate microscopic pair production cross section
+  double pair_production = std::exp(
+    elem.pair_production_total_(i_grid) +
+    f * (elem.pair_production_total_(i_grid + 1) - elem.pair_production_total_(i_grid)));
+
+  // Calculate microscopic total cross section
+  double total =
+    coherent + incoherent + photoelectric + pair_production;
+  return total;
+}
+
+int
+PhotonMajorant::get_i_grid(double log_energy, const std::vector<double> & energy_grid) const
+{
+  int n_grid = energy_grid.size();
+  int i_grid;
+  if (log_energy <= energy_grid[0]) {
+    i_grid = 0;
+  } else if (log_energy > energy_grid[n_grid - 1]) {
+    i_grid = n_grid - 2;
+  } else {
+    // We use upper_bound_index here because sometimes photons are created with
+    // energies that exactly match a grid point
+    i_grid = upper_bound_index(energy_grid.cbegin(), energy_grid.cend(), log_energy);
+  }
+
+  // check for case where two energy points are the same
+  if (energy_grid[i_grid] == energy_grid[i_grid + 1])
+    ++i_grid;
+
+  return i_grid;
+}
+
+int
+PhotonMajorant::get_i_grid(double log_energy, const tensor::Tensor<double> & energy_grid) const
+{
+  int n_grid = energy_grid.size();
+  int i_grid;
+  if (log_energy <= energy_grid[0]) {
+    i_grid = 0;
+  } else if (log_energy > energy_grid(n_grid - 1)) {
+    i_grid = n_grid - 2;
+  } else {
+    // We use upper_bound_index here because sometimes photons are created with
+    // energies that exactly match a grid point
+    i_grid = upper_bound_index(energy_grid.cbegin(), energy_grid.cend(), log_energy);
+  }
+
+  // check for case where two energy points are the same
+  if (energy_grid(i_grid) == energy_grid(i_grid + 1))
+    ++i_grid;
+
+  return i_grid;
+}
+
+//==============================================================================
 // Static functions
 //==============================================================================
 
 void create_majorants()
 {
-  if (data::majorant_file != "") {
-    write_message("Loading majorant from " + data::majorant_file);
-    // We can load the majorant from a file instead.
-    data::n_majorant = std::make_unique<NeutronMajorant>(data::majorant_file);
-    return;
+  if (data::n_majorant_file != "") {
+    write_message("Loading neutron majorant from " + data::n_majorant_file);
+    data::n_majorant = std::make_unique<NeutronMajorant>(data::n_majorant_file);
+  }
+  if (settings::photon_transport && data::p_majorant_file != "") {
+    write_message("Loading photon majorant from " + data::p_majorant_file);
+    data::p_majorant = std::make_unique<PhotonMajorant>(data::p_majorant_file);
   }
 
-  write_message("Creating majorant cross section...");
-  data::n_majorant = std::make_unique<NeutronMajorant>();
-  data::n_majorant->init();
-  data::n_majorant->write_ascii("macro_majorant.txt");
+  if (data::n_majorant_file == "") {
+    write_message("Creating a neutron majorant cross section...");
+    data::n_majorant = std::make_unique<NeutronMajorant>();
+    data::n_majorant->compute_unionized_grid();
+    data::n_majorant->compute_majorant();
+    data::n_majorant->write_ascii("neutron_majorant.txt");
+  }
+
+  if (settings::photon_transport && data::p_majorant_file == "") {
+    write_message("Creating a photon majorant cross section...");
+    data::p_majorant = std::make_unique<PhotonMajorant>();
+    data::p_majorant->compute_unionized_grid();
+    data::p_majorant->compute_majorant();
+    data::p_majorant->write_ascii("photon_majorant.txt");
+  }
 }
 
 } // namespace openmc

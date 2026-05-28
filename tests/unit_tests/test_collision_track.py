@@ -145,7 +145,11 @@ def test_photon_particles(run_in_tmpdir, model):
 
         assert len(source) < 200
 
-        allowed_particles = set(openmc.ParticleType(p) for p in ['photon', 'electron'])
+        allowed_particles = (openmc.ParticleType.PHOTON, openmc.ParticleType.ELECTRON)
 
         for point in source:
-            assert openmc.ParticleType(point['particle']) in allowed_particles
+            particle_type = openmc.ParticleType(point['particle'])
+            assert particle_type in allowed_particles
+
+            if particle_type == openmc.ParticleType.ELECTRON:
+                assert point['nuclide_id'] == -1

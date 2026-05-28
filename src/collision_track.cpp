@@ -202,11 +202,10 @@ void collision_track_record(Particle& particle)
   int cell_id = model::cells[cell_index]->id_;
   std::string nuclide {};
   int nuclide_id {-1};
-  if (particle.type() != ParticleType::electron() && particle.type() != ParticleType::positron())
-  {
+  if (particle.event_nuclide() != NUCLIDE_NONE) {
     const auto* nuclide_ptr = data::nuclides[particle.event_nuclide()].get();
     nuclide = nuclide_ptr->name_;
-    nuclide_id = 10000 * nuclide_ptr->Z_ + 10 * nuclide_ptr->A_ + nuclide_ptr->metastable_;
+    nuclide_id = nuclide_ptr->zaid();
   }
   int universe_id = model::universes[particle.lowest_coord().universe()]->id_;
   double delta_E = particle.E_last() - particle.E();

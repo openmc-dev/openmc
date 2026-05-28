@@ -84,6 +84,9 @@ public:
   double collapse_rate(int MT, double temperature, span<const double> energy,
     span<const double> flux) const;
 
+  //! Return the ZAID identifier for this nuclide.
+  int zaid() const { return 10000 * Z_ + 10 * A_ + metastable_; }
+
   //============================================================================
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"

@@ -98,6 +98,11 @@ sub-elements:
     A list of strings representing the nuclide, to define specific
     define specific target nuclide collisions to be banked.
 
+    .. note::
+        Electron and positron collision-track events are not associated with a
+        specific nuclide. If a ``nuclides`` filter is specified, these events
+        do not match the filter and are omitted.
+
     *Default*: None
 
   :reactions:

@@ -1,5 +1,6 @@
 set(TEST_NAMES
   test_distribution
+  test_dnp_drift
   test_field
   test_file_utils
   test_tally

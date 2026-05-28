@@ -351,7 +351,7 @@ void Particle::event_delta_advance()
     distance = -std::log(prn(current_seed())) / majorant();
   }
 
-  while (distance >= 0 && alive()) {
+  while (distance > 0.0 && alive()) {
     // update distance to problem boundary
     boundary().distance() = INFTY;
     boundary().surface() = 0;
@@ -953,7 +953,11 @@ void Particle::cross_periodic_bc(
 
 void Particle::update_majorant()
 {
-  this->majorant() = NeutronMajorant::safety_factor * data::n_majorant->calculate_neutron_xs(this->E());
+  if (type().is_neutron()) {
+    majorant() = NeutronMajorant::safety_factor_ * data::n_majorant->calculate_neutron_xs(E());
+  } else if (type().is_photon()) {
+    majorant() = PhotonMajorant::safety_factor_ * data::p_majorant->calculate_photon_xs(E());
+  }
 }
 
 void Particle::mark_as_lost(const char* message)

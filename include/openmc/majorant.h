@@ -9,10 +9,12 @@
 #include "openmc/settings.h"
 #include "openmc/nuclide.h"
 #include "openmc/material.h"
+#include "openmc/photon.h"
 
 namespace openmc {
 
 class NeutronMajorant;
+class PhotonMajorant;
 
 //==============================================================================
 // Global variables
@@ -20,7 +22,9 @@ class NeutronMajorant;
 
 namespace data {
   extern std::unique_ptr<NeutronMajorant> n_majorant;
-  extern std::string majorant_file;
+  extern std::unique_ptr<PhotonMajorant> p_majorant;
+  extern std::string n_majorant_file;
+  extern std::string p_majorant_file;
 } // namespace data
 
 //==============================================================================
@@ -31,13 +35,16 @@ public:
   // Constructors
 
   Majorant() = default;
-  Majorant(const std::string & majorant_file, double min_E_transport, double max_E_transport);
+  Majorant(const std::string & majorant_file, int p_transport_indx);
 
   //----------------------------------------------------------------------------
   // Methods
 
-  //! \brief Initialize the majorant cross section.
-  virtual void init() = 0;
+  //! \brief A function to unionize particle energy grids.
+  virtual void compute_unionized_grid() = 0;
+
+  //! \brief Populate the majorant cross section.
+  virtual void compute_majorant();
 
   //! \brief Write the majorant cross section to a CSV file for visualization
   // TODO: remove this when done prototyping.
@@ -45,16 +52,16 @@ public:
   //! \param[in] filename The path/name for the majorant file
   void write_ascii(const std::string& filename) const;
 
-  //----------------------------------------------------------------------------
-  // Data members
-
-  constexpr static double safety_factor {1.01}; //!< A dilation factor to ensure floating-point round
-                                                //!< off and inexact majorant URR and S(a,b) cross sections
-                                                //!< don't bias results
-
 protected:
   //----------------------------------------------------------------------------
   // Protected Methods
+
+  //! \brief Compute a per-material macroscopic majorant cross section in units of [cm^-1]
+  //
+  //! \param[in] mat The material to compute the majorant cross section of
+  //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
+  //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
+  virtual void fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj) = 0;
 
   //! \brief Helper function to perform linear interpolation.
   //
@@ -89,29 +96,34 @@ public:
   //----------------------------------------------------------------------------
   // Public Methods
 
-  virtual void init() override final;
+  virtual void compute_unionized_grid() override final;
 
   //! \brief Calculate the macroscopic majorant cross section in units of [cm^-1]
   //
   //! \param[in] energy The energy to compute the cross section at in [eV]
   double calculate_neutron_xs(double energy) const;
 
-private:
   //----------------------------------------------------------------------------
-  // Private Methods
+  // Data members
 
-  //! \brief A function to unionize the smooth and URR cross section grids for all nuclides in the problem.
-  void compute_unionized_grid();
+  constexpr static double safety_factor_ {1.01}; //!< A dilation factor to ensure floating-point round
+                                                 //!< off and inexact majorant URR and S(a,b) cross sections
+                                                 //!< don't bias results
 
-  //! \brief Compute the majorant cross section.
-  void setup_majorant();
+protected:
+  //----------------------------------------------------------------------------
+  // Protected Methods
 
-  //! \brief Compute a per-material macroscopic majorant cross section in units of [barn]
+  //! \brief Compute a per-material macroscopic majorant cross section in units of [cm^-1]
   //
   //! \param[in] mat The material to compute the majorant cross section of
   //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
-  void fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj);
+  virtual void fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
+
+private:
+  //----------------------------------------------------------------------------
+  // Private Methods
 
   //! \brief Compute the maximum smooth microscopic total cross section in units of [barn].
   //
@@ -139,9 +151,71 @@ private:
   //! \param[in] energy The energy to evaluate the cross section at in [eV]
   //! \param[in] grid The energy grid to search for an energy grid index
   int get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const;
+
+  //----------------------------------------------------------------------------
+  // Private data members
+
+  static constexpr int i_neutron = ParticleType::neutron().transport_index();
 }; // class NeutronMajorant
 
 //==============================================================================
+
+class PhotonMajorant : public Majorant {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors
+
+  PhotonMajorant() = default;
+  PhotonMajorant(const std::string & majorant_file);
+
+  //----------------------------------------------------------------------------
+  // Public Methods
+
+  virtual void compute_unionized_grid() override final;
+
+  //! \brief Calculate the macroscopic majorant cross section in units of [cm^-1]
+  //
+  //! \param[in] energy The energy to compute the cross section at in [eV]
+  double calculate_photon_xs(double energy) const;
+
+  //----------------------------------------------------------------------------
+  // Data members
+
+  constexpr static double safety_factor_ {1.01}; //!< A dilation factor to catch interpolation error
+
+protected:
+  //----------------------------------------------------------------------------
+  // Protected Methods
+
+  //! \brief Compute a per-material macroscopic majorant cross section in units of [cm^-1]
+  //
+  //! \param[in] mat The material to compute the majorant cross section of
+  //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
+  //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
+  virtual void fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
+
+private:
+  //----------------------------------------------------------------------------
+  // Private Methods
+
+  //! \brief Compute the maximum smooth microscopic total cross section in units of [barn].
+  //
+  //! \param[in] energy The energy to evaluate the cross section at in [eV]
+  //! \param[in] nuc The nuclide to compute the microscopic total cross section of
+  double calculate_elem_tot_xs(double log_energy, const PhotonInteraction & elem) const;
+
+  //! \brief Get the grid index for energy interpolation
+  //
+  //! \param[in] energy The energy to evaluate the cross section at in [eV]
+  //! \param[in] grid The energy grid to search for an energy grid index
+  int get_i_grid(double log_energy, const std::vector<double> & energy_grid) const;
+  int get_i_grid(double log_energy, const tensor::Tensor<double> & energy_grid) const;
+
+  //----------------------------------------------------------------------------
+  // Private data members
+
+  static constexpr int i_photon_ = ParticleType::photon().transport_index();
+}; // class PhotonMajorant
 
 //==============================================================================
 // Non-member functions

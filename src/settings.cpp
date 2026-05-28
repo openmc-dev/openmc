@@ -1236,8 +1236,12 @@ void read_settings_xml(pugi::xml_node root)
     delta_tracking = get_node_value_bool(root, "delta_tracking");
   }
 
-  if (check_for_node(root, "delta_tracking_majorant_file")) {
-    data::majorant_file = get_node_value(root, "delta_tracking_majorant_file");
+  if (check_for_node(root, "delta_tracking_n_majorant_file")) {
+    data::n_majorant_file = get_node_value(root, "delta_tracking_n_majorant_file");
+  }
+
+  if (check_for_node(root, "delta_tracking_p_majorant_file")) {
+    data::p_majorant_file = get_node_value(root, "delta_tracking_p_majorant_file");
   }
 
   // Check whether material cell offsets should be generated

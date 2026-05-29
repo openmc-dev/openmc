@@ -3,6 +3,7 @@
 #include <fmt/core.h>
 
 #include "openmc/constants.h"
+#include "openmc/geometry.h"
 #include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
@@ -10,6 +11,7 @@
 #include "openmc/simulation.h"
 #include "openmc/settings.h"
 #include "openmc/thermal.h"
+#include "openmc/universe.h"
 
 namespace openmc {
 
@@ -28,6 +30,12 @@ std::string p_majorant_file;
 //==============================================================================
 // Majorant implementation
 //==============================================================================
+
+Majorant::Majorant(int i_universe)
+  : maj_universe_(i_universe)
+{
+  discover_contained_materials();
+}
 
 Majorant::Majorant(const std::string & majorant_file, int p_transport_indx)
 {
@@ -82,49 +90,76 @@ Majorant::write_ascii(const std::string& filename) const
   of.close();
 }
 
-double
-Majorant::interpolate_lin_1D(double x_0, double x_1, double y_0, double y_1, double x) const
+void
+Majorant::discover_contained_materials()
 {
-  double f = (x - x_0) / (x_1 - x_0);
-  return (1.0 - f) * y_0 + f * y_1;
-}
+  std::set<int> unique_materials;
+  if (maj_universe_ == C_NONE || maj_universe_ >= model::universes.size()) {
+    fatal_error( fmt::format("Invalid majorant universe: {}", maj_universe_));
+  }
 
-double
-Majorant::interpolate_log_1D(double x_0, double x_1, double y_0, double y_1, double x) const
-{
-  double f = std::log(x / x_0) / std::log(x_1 / x_0);
-  return std::exp((1.0 - f) * std::log(y_0) + f * std::log(y_1));
+  const auto & maj_uni = model::universes[maj_universe_];
+  for (int i_cell : maj_uni->cells_) {
+    const auto & cell = model::cells[i_cell];
+    if (cell->type_ == Fill::MATERIAL) {
+      for (auto i_mat : cell->material_) {
+        unique_materials.emplace(i_mat);
+      }
+    } else {
+      const auto contained_cells = cell->get_contained_cells();
+      for (const auto & [i_contained_cell, contained_instances] : contained_cells) {
+        const auto & contained_cell = model::cells[i_contained_cell];
+        for (auto i_mat : contained_cell->material_) {
+          unique_materials.emplace(i_mat);
+        }
+      }
+    }
+  }
+
+  contained_materials_.clear();
+  for (auto i_mat : unique_materials) {
+    contained_materials_.push_back(i_mat);
+  }
 }
 
 //==============================================================================
 // NeutronMajorant implementation
 //==============================================================================
 
+NeutronMajorant::NeutronMajorant(int i_universe)
+  : Majorant(i_universe)
+{ }
+
 NeutronMajorant::NeutronMajorant(const std::string & majorant_file)
-  : Majorant(majorant_file, i_neutron)
+  : Majorant(majorant_file, i_neutron_)
 { }
 
 double
 NeutronMajorant::calculate_neutron_xs(double energy) const
 {
-  int i_grid = get_i_grid(energy, grid_);
-
-  // calculate interpolation factor
-  double f = (energy - grid_.energy[i_grid]) /
-              (grid_.energy[i_grid + 1]- grid_.energy[i_grid]);
-
-  return (1.0 - f) * xs_[i_grid] + f * xs_[i_grid + 1];
+  const int i_grid = get_i_grid(energy, grid_);
+  return interpolate_lin_1D(grid_.energy[i_grid], grid_.energy[i_grid + 1], xs_[i_grid], xs_[i_grid + 1], energy);
 }
 
 void
 NeutronMajorant::compute_unionized_grid()
 {
+  // In the event the majorant needs to be re-generated (e.g. in-memory for
+  // multiphysics), we need to reset the unionized grid.
+  grid_.energy.clear();
+
   // This function generates a unionized cross section grid between smooth cross
   // sections and URR probability table grids.
-  for (const auto & mat : model::materials) {
-    for (auto nuclide_idx : mat->nuclide_) {
-      const auto & nuclide = data::nuclides[nuclide_idx];
+  std::set<int> processed_nuclides;
+  for (int i_mat : contained_materials_) {
+    const auto & mat = model::materials[i_mat];
+    for (auto i_nuclide : mat->nuclide_) {
+      // Only unionize nuclides we haven't checked yet.
+      if (processed_nuclides.count(i_nuclide) > 0) {
+        continue;
+      }
 
+      const auto & nuclide = data::nuclides[i_nuclide];
       // ======================================================================
       // Unionizing the URR temperature grid.
       if (nuclide->urr_present_ && settings::urr_ptables_on) {
@@ -138,6 +173,8 @@ NeutronMajorant::compute_unionized_grid()
       for (const auto & n_grid : nuclide->grid_) {
         grid_.energy.insert(grid_.energy.end(), n_grid.energy.begin(), n_grid.energy.end());
       }
+
+      processed_nuclides.insert(i_nuclide);
     }
   }
   std::sort(grid_.energy.begin(), grid_.energy.end());
@@ -146,17 +183,17 @@ NeutronMajorant::compute_unionized_grid()
 
   // remove all values below the minimum neutron energy
   auto min_it = grid_.energy.begin();
-  while (*min_it < data::energy_min[i_neutron]) { min_it++; }
+  while (*min_it < data::energy_min[i_neutron_]) { min_it++; }
   grid_.energy.erase(grid_.energy.begin(), min_it + 1);
   // insert the minimum neutron energy at the beginning
-  grid_.energy.insert(grid_.energy.begin(), data::energy_min[i_neutron]);
+  grid_.energy.insert(grid_.energy.begin(), data::energy_min[i_neutron_]);
 
   // remove all values above the maximum neutron energy
   auto max_it = --grid_.energy.end();
-  while (*max_it > data::energy_max[i_neutron]) { max_it--; }
+  while (*max_it > data::energy_max[i_neutron_]) { max_it--; }
   grid_.energy.erase(max_it - 1, grid_.energy.end());
   // insert the maximum neutron energy at the end
-  grid_.energy.insert(grid_.energy.end(), data::energy_max[i_neutron]);
+  grid_.energy.insert(grid_.energy.end(), data::energy_max[i_neutron_]);
 
   // Initialize the grid for fast lookups.
   grid_.init();
@@ -346,7 +383,7 @@ int
 NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
 {
   // Find energy index on energy grid
-  int i_log_union = std::log(energy * data::energy_min_rcp[i_neutron]) * simulation::log_spacing_rcp;
+  int i_log_union = std::log(energy * data::energy_min_rcp[i_neutron_]) * simulation::log_spacing_rcp;
 
   int i_grid;
   if (i_log_union < 0) {
@@ -373,6 +410,10 @@ NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) con
 // PhotonMajorant implementation
 //==============================================================================
 
+PhotonMajorant::PhotonMajorant(int i_universe)
+  : Majorant(i_universe)
+{ }
+
 PhotonMajorant::PhotonMajorant(const std::string & majorant_file)
   : Majorant(majorant_file, i_photon_)
 { }
@@ -380,11 +421,24 @@ PhotonMajorant::PhotonMajorant(const std::string & majorant_file)
 void
 PhotonMajorant::compute_unionized_grid()
 {
+  // In the event the majorant needs to be re-generated (e.g. in-memory for
+  // multiphysics), we need to reset the unionized grid.
+  grid_.energy.clear();
+
   // This function generates a unionized cross section grid for all elements.
-  for (const auto & mat : model::materials) {
+  std::set<int> processed_elements;
+  for (int i_mat : contained_materials_) {
+    const auto & mat = model::materials[i_mat];
     for (int i = 0; i < mat->nuclide_.size(); ++i) {
+      // Only unionize elements we haven't checked yet.
+      if (processed_elements.count(mat->element_[i]) > 0) {
+        continue;
+      }
+
       const auto & element  = data::elements[mat->element_[i]];
       grid_.energy.insert(grid_.energy.end(), element->energy_.begin(), element->energy_.end());
+
+      processed_elements.insert(mat->element_[i]);
     }
   }
   std::sort(grid_.energy.begin(), grid_.energy.end());
@@ -535,7 +589,7 @@ void create_majorants()
 
   if (data::n_majorant_file == "") {
     write_message("Creating a neutron majorant cross section...");
-    data::n_majorant = std::make_unique<NeutronMajorant>();
+    data::n_majorant = std::make_unique<NeutronMajorant>(model::root_universe);
     data::n_majorant->compute_unionized_grid();
     data::n_majorant->compute_majorant();
     data::n_majorant->write_ascii("neutron_majorant.txt");
@@ -543,7 +597,7 @@ void create_majorants()
 
   if (settings::photon_transport && data::p_majorant_file == "") {
     write_message("Creating a photon majorant cross section...");
-    data::p_majorant = std::make_unique<PhotonMajorant>();
+    data::p_majorant = std::make_unique<PhotonMajorant>(model::root_universe);
     data::p_majorant->compute_unionized_grid();
     data::p_majorant->compute_majorant();
     data::p_majorant->write_ascii("photon_majorant.txt");

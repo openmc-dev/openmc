@@ -34,7 +34,7 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
 
-  Majorant() = default;
+  Majorant(int i_universe);
   Majorant(const std::string & majorant_file, int p_transport_indx);
 
   //----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ public:
   virtual void compute_unionized_grid() = 0;
 
   //! \brief Populate the majorant cross section.
-  virtual void compute_majorant();
+  void compute_majorant();
 
   //! \brief Write the majorant cross section to a CSV file for visualization
   // TODO: remove this when done prototyping.
@@ -55,6 +55,10 @@ public:
 protected:
   //----------------------------------------------------------------------------
   // Protected Methods
+
+  //! \brief Find materials in maj_universe_ by traversing the geometry tree.
+  //
+  void discover_contained_materials();
 
   //! \brief Compute a per-material macroscopic majorant cross section in units of [cm^-1]
   //
@@ -69,17 +73,34 @@ protected:
   //! \param[in] x_1 The second x coordinate
   //! \param[in] y_0 The y coordinate associated with x_0
   //! \param[in] y_1 The y coordinate associated with x_1
-  //! \param[in] x A x point between x_0 and x_1 to find a y value at
-  double interpolate_lin_1D(double x_0, double x_1, double y_0, double y_1, double x) const;
+  //! \param[in] x The point between x_0 and x_1 to find a y value at
+  inline double interpolate_lin_1D(double x_0, double x_1, double y_0, double y_1, double x) const
+  {
+    const double f = (x - x_0) / (x_1 - x_0);
+    return (1.0 - f) * y_0 + f * y_1;
+  }
 
   //! \brief Helper function to perform log interpolation.
-  double interpolate_log_1D(double x_0, double x_1, double y_0, double y_1, double x) const;
+  //
+  //! \param[in] x_0 The first x coordinate
+  //! \param[in] x_1 The second x coordinate
+  //! \param[in] y_0 The y coordinate associated with x_0
+  //! \param[in] y_1 The y coordinate associated with x_1
+  //! \param[in] x The point between x_0 and x_1 to find a y value at
+  inline double interpolate_log_1D(double x_0, double x_1, double y_0, double y_1, double x) const
+  {
+    const double f = std::log(x / x_0) / std::log(x_1 / x_0);
+    return std::exp((1.0 - f) * std::log(y_0) + f * std::log(y_1));
+  }
 
   //----------------------------------------------------------------------------
   // Protected data members
 
-  Nuclide::EnergyGrid grid_; //!< The unionized energy grid
-  std::vector<double> xs_;   //!< Macroscopic majorant cross sections at each grid point in grid_
+  int maj_universe_ = C_NONE;            //!< Index into the universe array for the universe which this
+                                         //   majorant uses to fetch material properties.
+  std::vector<int> contained_materials_; //!< A vector of materials contained in maj_universe_
+  Nuclide::EnergyGrid grid_;             //!< The unionized energy grid
+  std::vector<double> xs_;               //!< Macroscopic majorant cross sections at each grid point in grid_
 }; // class Majorant
 
 //==============================================================================
@@ -90,7 +111,7 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
 
-  NeutronMajorant() = default;
+  NeutronMajorant(int i_universe);
   NeutronMajorant(const std::string & majorant_file);
 
   //----------------------------------------------------------------------------
@@ -155,7 +176,7 @@ private:
   //----------------------------------------------------------------------------
   // Private data members
 
-  static constexpr int i_neutron = ParticleType::neutron().transport_index();
+  static constexpr int i_neutron_ = ParticleType::neutron().transport_index();
 }; // class NeutronMajorant
 
 //==============================================================================
@@ -165,7 +186,7 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
 
-  PhotonMajorant() = default;
+  PhotonMajorant(int i_universe);
   PhotonMajorant(const std::string & majorant_file);
 
   //----------------------------------------------------------------------------

@@ -51,13 +51,13 @@ Functions
    .. doxygenfile:: capi.h
    to populate this documentation without using
    .. doxygenfunction::
-   for every functions.
+   for every function.
 
 .. doxygenfunction:: openmc_calculate_volumes
 
 .. doxygenfunction:: openmc_cell_get_fill
 
-.. doxygenfunction:: int openmc_cell_get_id
+.. doxygenfunction:: openmc_cell_get_id
 
 .. doxygenfunction:: openmc_cell_get_temperature
 

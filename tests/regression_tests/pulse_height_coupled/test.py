@@ -28,9 +28,8 @@ def sphere_model():
     model.settings.particles = 100
     model.settings.photon_transport = True
     model.settings.source = openmc.IndependentSource(
-        space=openmc.stats.Point(),
         energy=openmc.stats.delta_function(1e6),
-        particle='photon'
+        particle='neutron'
     )
 
     # Define tallies
@@ -44,7 +43,6 @@ def sphere_model():
     return model
 
 
-
-def test_pulse_height(sphere_model):
+def test_pulse_height_coupled(sphere_model):
     harness = PyAPITestHarness('statepoint.5.h5', sphere_model)
     harness.main()

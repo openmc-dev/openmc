@@ -588,7 +588,7 @@ void create_majorants()
   }
 
   if (data::n_majorant_file == "") {
-    write_message("Creating a neutron majorant cross section...");
+    write_message("Creating a neutron majorant cross section");
     data::n_majorant = std::make_unique<NeutronMajorant>(model::root_universe);
     data::n_majorant->compute_unionized_grid();
     data::n_majorant->compute_majorant();
@@ -596,7 +596,7 @@ void create_majorants()
   }
 
   if (settings::photon_transport && data::p_majorant_file == "") {
-    write_message("Creating a photon majorant cross section...");
+    write_message("Creating a photon majorant cross section");
     data::p_majorant = std::make_unique<PhotonMajorant>(model::root_universe);
     data::p_majorant->compute_unionized_grid();
     data::p_majorant->compute_majorant();

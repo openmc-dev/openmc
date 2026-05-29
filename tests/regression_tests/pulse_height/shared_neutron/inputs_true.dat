@@ -23,6 +23,7 @@
       </energy>
     </source>
     <photon_transport>true</photon_transport>
+    <shared_secondary_bank>true</shared_secondary_bank>
   </settings>
   <tallies>
     <filter id="1" type="cell">

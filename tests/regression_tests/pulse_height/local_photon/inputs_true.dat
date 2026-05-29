@@ -2,7 +2,7 @@
 <model>
   <materials>
     <material id="1">
-      <density value="3.7" units="g/cc"/>
+      <density value="3.7" units="g/cm3"/>
       <nuclide name="Na23" ao="1.0"/>
       <nuclide name="I127" ao="1.0"/>
     </material>

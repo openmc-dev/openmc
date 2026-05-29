@@ -4,6 +4,8 @@
 //! \file shared_array.h
 //! \brief Shared array data structure
 
+#include <algorithm> // for copy_n
+
 #include "openmc/memory.h"
 
 namespace openmc {
@@ -30,14 +32,12 @@ public:
   //! Default constructor.
   SharedArray() = default;
 
-  //! Construct a zero size container with space to hold capacity number of
-  //! elements.
+  //! Construct a container with `size` elements and capacity equal to `size`.
   //
-  //! \param capacity The number of elements for the container to allocate
-  //! space for
-  SharedArray(int64_t capacity) : capacity_(capacity)
+  //! \param size The number of elements to allocate and initialize
+  SharedArray(int64_t size) : size_(size), capacity_(size)
   {
-    data_ = make_unique<T[]>(capacity);
+    data_ = make_unique<T[]>(size);
   }
 
   //==========================================================================
@@ -97,8 +97,26 @@ public:
     capacity_ = 0;
   }
 
+  //! Push back an element to the array, with capacity and reallocation behavior
+  //! as if this were a vector. This does not perform any thread safety checks.
+  //! If the size exceeds the capacity, then the capacity will double just as
+  //! with a vector. Data will be reallocated and moved to a new pointer and
+  //! copied in before the new item is appended. Old data will be freed.
+  void thread_unsafe_append(const T& value)
+  {
+    if (size_ == capacity_) {
+      int64_t new_capacity = capacity_ == 0 ? 8 : 2 * capacity_;
+      unique_ptr<T[]> new_data = make_unique<T[]>(new_capacity);
+      std::copy_n(data_.get(), size_, new_data.get());
+      data_ = std::move(new_data);
+      capacity_ = new_capacity;
+    }
+    data_[size_++] = value;
+  }
+
   //! Return the number of elements in the container
   int64_t size() { return size_; }
+  int64_t size() const { return size_; }
 
   //! Resize the container to contain a specified number of elements. This is
   //! useful in cases where the container is written to in a non-thread safe

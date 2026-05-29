@@ -44,7 +44,7 @@ void collision(Particle& p)
 {
   // Add to collision counter for particle
   ++(p.n_collision());
-  p.secondary_bank_index() = p.secondary_bank().size();
+  p.secondary_bank_index() = p.local_secondary_bank().size();
 
   // Sample reaction for the material the particle is in
   switch (p.type().pdg_number()) {
@@ -127,7 +127,8 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= settings::max_secondaries) {
+      if (p.local_secondary_bank().size() >= settings::max_secondaries &&
+          !settings::use_shared_secondary_bank) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "
@@ -228,7 +229,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Set parent and progeny IDs
-    site.parent_id = p.id();
+    site.parent_id = p.current_work();
     site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank
@@ -253,7 +254,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         ifp(p, idx);
       }
     } else {
-      p.secondary_bank().push_back(site);
+      site.wgt_born = p.wgt_born();
+      site.wgt_ww_born = p.wgt_ww_born();
+      site.n_split = p.n_split();
+      p.local_secondary_bank().push_back(site);
       p.n_secondaries()++;
     }
 
@@ -1236,7 +1240,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
 
     // Tag secondary particle with parent nuclide
     if (created_photon && settings::use_decay_photons) {
-      p.secondary_bank().back().parent_nuclide =
+      p.local_secondary_bank().back().parent_nuclide =
         rx->products_[i_product].parent_nuclide_;
     }
   }

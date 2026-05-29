@@ -37,6 +37,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
+    'breathe',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
@@ -117,6 +118,10 @@ pygments_style = 'tango'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+# -- Options breathe + doxygen -------------------------------------------------
+
+breathe_projects = {"OpenMC": "../doxygen/xml"}
+breathe_default_project = "OpenMC"
 
 # -- Options for HTML output ---------------------------------------------------
 

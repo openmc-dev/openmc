@@ -1015,34 +1015,31 @@ void transport_delta_tracking_single_particle(Particle& p)
 {
   p.delta_tracking() = true;
   p.event_calculate_xs();
-  while (true) {
+  while (p.alive()) {
     p.event_delta_advance();
-    if (!p.alive()) {
-      break;
+
+    if (p.alive()) {
+      if (p.type() == ParticleType::electron() || p.type() == ParticleType::positron()) {
+        // Electrons and positrons collide in-place, no need to rejection sample.
+        p.event_collide();
+      } else {
+        // Rejection sample the total to majorant ratio for photons and neutrons.
+        p.event_calculate_xs();
+        if (p.macro_xs().total / p.majorant() > 1.0) {
+          p.mark_as_lost(
+            fmt::format("Ratio of the total cross section ({}) to the majorant "
+                        "cross section ({}) for particle {} ({}) with energy {} is "
+                        "greater than unity!",
+                        p.macro_xs().total, p.majorant(), p.id(), p.type().str(), p.E()));
+          break;
+        }
+        if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
+          p.event_collide();
+        }
+      }
     }
 
-    if (p.type() == ParticleType::electron() || p.type() == ParticleType::positron()) {
-      // Electrons and positrons collide in-place, no need to rejection sample.
-      p.event_collide();
-    } else {
-      // Rejection sample the total to majorant ratio for photons and neutrons.
-      p.event_calculate_xs();
-      if (p.macro_xs().total / p.majorant() > 1.0) {
-        p.mark_as_lost(
-          fmt::format("Ratio of the total cross section ({}) to the majorant "
-                      "cross section ({}) for particle {} ({}) with energy {} is "
-                      "greater than unity!",
-                      p.macro_xs().total, p.majorant(), p.id(), p.type().str(), p.E()));
-        break;
-      }
-      if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
-        p.event_collide();
-      }
-    }
     p.event_check_limit_and_revive();
-    if (!p.alive()) {
-      break;
-    }
   }
 
   p.event_death();

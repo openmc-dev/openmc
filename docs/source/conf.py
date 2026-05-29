@@ -11,7 +11,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import sys, os, subprocess
 
 # Determine if we're on Read the Docs server
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -48,6 +48,7 @@ extensions = [
 ]
 if not on_rtd:
     extensions.append('sphinxcontrib.rsvgconverter')
+    subprocess.run(['doxygen'], cwd='../doxygen')
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

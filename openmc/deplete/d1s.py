@@ -150,7 +150,10 @@ def apply_time_correction(
     Returns
     -------
     openmc.Tally
-        Derived tally with time correction factors applied
+        Derived tally with time correction factors applied. When
+        ``sum_nuclides`` is True the result is a derived tally, for which
+        ``sum`` and ``sum_sq`` are None (as for any derived tally); the
+        meaningful results are ``mean`` and ``std_dev``.
 
     """
     # Make sure the tally contains a ParentNuclideFilter
@@ -186,8 +189,6 @@ def apply_time_correction(
 
     # Apply TCF, broadcasting to the correct dimensions
     tcf.shape = (1, -1, 1, 1, 1)
-    new_tally._sum = tally_sum * tcf
-    new_tally._sum_sq = tally_sum_sq * (tcf*tcf)
     new_tally._mean = tally_mean * tcf
     new_tally._std_dev = tally_std_dev * tcf
 
@@ -200,12 +201,22 @@ def apply_time_correction(
         new_tally._std_dev = np.linalg.norm(new_tally.std_dev, axis=1).reshape(shape)
         new_tally._derived = True
 
+        # The summed tally is derived, so Tally.sum/sum_sq return None
+        # regardless of what is stored. Leave them unset rather than keeping the
+        # per-parent-nuclide arrays, which are shaped inconsistently with the
+        # remaining filters (the ParentNuclideFilter is removed below). This
+        # also avoids two full-size array multiplies per call that are never
+        # read.
+        new_tally._sum = None
+        new_tally._sum_sq = None
+
         # Remove ParentNuclideFilter
         new_tally.filters.pop(i_filter)
     else:
-        # Change shape back to (filter combinations, nuclides, scores)
-        new_tally._sum.shape = shape
-        new_tally._sum_sq.shape = shape
+        # Apply TCF and change shape back to (filter combinations, nuclides,
+        # scores)
+        new_tally._sum = (tally_sum * tcf).reshape(shape)
+        new_tally._sum_sq = (tally_sum_sq * (tcf*tcf)).reshape(shape)
         new_tally._mean.shape = shape
         new_tally._std_dev.shape = shape
 

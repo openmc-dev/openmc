@@ -143,7 +143,9 @@ class WeightWindows(IDManagerMixin):
                              "upper_bound_ratio must be present.")
 
         if upper_bound_ratio:
-            self.upper_ww_bounds = self.lower_ww_bounds * upper_bound_ratio
+            self.upper_ww_bounds = (
+                np.asarray(self.lower_ww_bounds) * upper_bound_ratio
+            )
 
         if upper_ww_bounds is not None:
             self.upper_ww_bounds = upper_ww_bounds

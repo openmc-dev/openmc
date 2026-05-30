@@ -188,19 +188,19 @@ def model_1():
 
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
-    [("case_1_Reactions", "model_1", {"max_collisions": 300, "reactions": ["(n,fission)", 101]}),
+    [("case_1_Reactions", "model_1", {"max_collisions": 30, "reactions": ["(n,fission)", 101]}),
         ("case_2_Cell_ID", "model_1", {
-         "max_collisions": 300, "cell_ids": [22]}),
+         "max_collisions": 30, "cell_ids": [22]}),
         ("case_3_Material_ID", "model_1", {
-         "max_collisions": 300, "material_ids": [1]}),
+         "max_collisions": 30, "material_ids": [1]}),
         ("case_4_Nuclide_ID", "model_1", {
-         "max_collisions": 300, "nuclides": ["O16", "U235"]}),
+         "max_collisions": 30, "nuclides": ["O16", "U235"]}),
         ("case_5_Universe_ID", "model_1", {
-         "max_collisions": 300, "cell_ids": [22], "universe_ids": [77]}),
+         "max_collisions": 30, "cell_ids": [22], "universe_ids": [77]}),
         ("case_6_deposited_energy_threshold", "model_1", {
-         "max_collisions": 300, "deposited_E_threshold": 5.5e5}),
+         "max_collisions": 30, "deposited_E_threshold": 5.5e5}),
         ("case_7_all_parameters_used_together", "model_1", {
-            "max_collisions": 300,
+            "max_collisions": 30,
             "reactions": ["elastic", 18, "(n,disappear)"],
             "material_ids": [1, 11],
             "universe_ids": [77],

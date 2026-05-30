@@ -2026,9 +2026,9 @@ class CylindricalMesh(StructuredMesh):
         return string
 
     def get_indices_at_coords(
-            self,
-            coords: Sequence[float]
-        ) -> tuple[int, int, int]:
+        self,
+        coords: Sequence[float]
+    ) -> tuple[int, int, int]:
         """Finds the index of the mesh element at the specified coordinates.
 
         .. versionadded:: 0.15.0
@@ -2644,9 +2644,9 @@ class SphericalMesh(StructuredMesh):
         return arr
 
     def get_indices_at_coords(
-            self,
-            coords: Sequence[float]
-        ) -> tuple[int, int, int]:
+        self,
+        coords: Sequence[float]
+    ) -> tuple[int, int, int]:
         """Find the mesh cell indices containing the specified coordinates.
 
         .. versionadded:: 0.15.4

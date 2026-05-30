@@ -31,10 +31,9 @@ namespace data {
 class Majorant {
 public:
   //----------------------------------------------------------------------------
-  // Constructors
+  // Constructor
 
   Majorant(int i_universe);
-  Majorant(const std::string & majorant_file, int p_transport_indx);
 
   //----------------------------------------------------------------------------
   // Methods
@@ -55,16 +54,13 @@ protected:
   //----------------------------------------------------------------------------
   // Protected Methods
 
-  //! \brief Find materials in maj_universe_ by traversing the geometry tree.
-  //
-  void discover_contained_materials();
-
   //! \brief Compute a per-material macroscopic majorant cross section in units of [cm^-1]
   //
   //! \param[in] mat The material to compute the majorant cross section of
   //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
-  virtual void fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj) = 0;
+  virtual void fill_material_maj_xs(const Material & mat, double max_density_mult,
+    const std::vector<double> & to_grid, std::vector<double> & mat_maj) = 0;
 
   //! \brief Helper function to perform linear interpolation.
   //
@@ -95,11 +91,13 @@ protected:
   //----------------------------------------------------------------------------
   // Protected data members
 
-  int maj_universe_ = C_NONE;            //!< Index into the universe array for the universe which this
-                                         //   majorant uses to fetch material properties.
-  std::vector<int> contained_materials_; //!< A vector of materials contained in maj_universe_
-  Nuclide::EnergyGrid grid_;             //!< The unionized energy grid
-  std::vector<double> xs_;               //!< Macroscopic majorant cross sections at each grid point in grid_
+  int maj_universe_ = C_NONE;                        //!< Index into the universe array for the universe which this
+                                                     //   majorant uses to fetch material properties.
+  std::vector<int> contained_materials_;             //!< A vector of materials contained in maj_universe_
+  std::unordered_map<int, double> max_density_mult_; //!< A map of each material index and the corresponding
+                                                     //   maximum density multiplier applied to that material by a cell
+  Nuclide::EnergyGrid grid_;                         //!< The unionized energy grid
+  std::vector<double> xs_;                           //!< Macroscopic majorant cross sections at each grid point in grid_
 }; // class Majorant
 
 //==============================================================================
@@ -139,7 +137,8 @@ protected:
   //! \param[in] mat The material to compute the majorant cross section of
   //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
-  virtual void fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
+  virtual void fill_material_maj_xs(const Material & mat, double max_density_mult,
+    const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
 
 private:
   //----------------------------------------------------------------------------
@@ -212,7 +211,8 @@ protected:
   //! \param[in] mat The material to compute the majorant cross section of
   //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
-  virtual void fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
+  virtual void fill_material_maj_xs(const Material & mat, double max_density_mult,
+    const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
 
 private:
   //----------------------------------------------------------------------------

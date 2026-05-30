@@ -35,29 +35,65 @@ std::string p_majorant_file;
 Majorant::Majorant(int i_universe)
   : maj_universe_(i_universe)
 {
-  discover_contained_materials();
-}
-
-Majorant::Majorant(const std::string & majorant_file, int p_transport_indx)
-{
-  std::ifstream majorant_data(majorant_file);
-
-  std::string line;
-  while (std::getline(majorant_data, line)) {
-    auto delim_pos = line.find(",");
-    auto energy = std::stod(line.substr(0, delim_pos));
-    if (energy < data::energy_min[p_transport_indx]) {
-      continue;
-    }
-    if (energy > data::energy_max[p_transport_indx]) {
-      break;
-    }
-    grid_.energy.push_back(energy);
-    xs_.push_back(std::stod(line.substr(delim_pos + 1)));
+  // Find all materials contained in the majorant's universe. This also obtains
+  // the maximum density multiplier applied to that material.
+  std::set<int> unique_materials;
+  if (maj_universe_ == C_NONE || maj_universe_ >= model::universes.size()) {
+    fatal_error( fmt::format("Invalid majorant universe: {}", maj_universe_));
   }
 
-  if (p_transport_indx == ParticleType::neutron().transport_index()) {
-    grid_.init();
+  const auto & maj_uni = model::universes[maj_universe_];
+  for (int i_cell : maj_uni->cells_) {
+    const auto & cell = model::cells[i_cell];
+
+    // If the cell is filled with a material, it won't have any sub-cells.
+    if (cell->type_ == Fill::MATERIAL) {
+      // Loop over instances. TODO: confirm if this is unecessary and use 0 instead?
+      for (int instance = 0; instance < cell->n_instances(); ++instance) {
+        int i_material = cell->material(instance);
+
+        // Check to see if we've found the contained material yet. If not, add to the set
+        // of materials discovered and add to the map of density multipliers.
+        if (unique_materials.count(i_material) == 0) {
+          unique_materials.emplace(i_material);
+          max_density_mult_[i_material] = cell->density_mult(instance);
+        } else {
+          // We've found this material already. Need to take the maximum density multiplier.
+          max_density_mult_.at(i_material) =
+            std::max(max_density_mult_.at(i_material),
+                     cell->density_mult(instance));
+        }
+      }
+    } else {
+      // This cell is filled with a universe or lattice. Need to get the list of cells and
+      // cell instances.
+      const auto contained_cells = cell->get_contained_cells();
+      for (const auto & [i_con_cell, contained_instances] : contained_cells) {
+        const auto & contained_cell = model::cells[i_con_cell];
+
+        // Loop over contained cell instances.
+        for (auto instance : contained_instances) {
+          // Check to see if we've found the contained material instance yet. If not, add
+          // to the set of materials discovered and add to the map of density multipliers.
+          int i_material = contained_cell->material(instance);
+          if (unique_materials.count(i_material) == 0) {
+            unique_materials.emplace(i_material);
+            max_density_mult_[i_material] = cell->density_mult(instance);
+          } else {
+            // We've found this material already. Need to take the maximum density multiplier
+            // for the contained instance.
+            max_density_mult_.at(i_material) =
+              std::max(max_density_mult_.at(i_material), cell->density_mult(instance));
+          }
+        }
+      }
+    }
+  }
+
+  // Clear the contained materials vector and insert the elements from the set.
+  contained_materials_.clear();
+  for (auto i_mat : unique_materials) {
+    contained_materials_.push_back(i_mat);
   }
 }
 
@@ -70,7 +106,8 @@ void Majorant::compute_majorant()
   material_maj_xs.resize(grid_.energy.size(), 0.0);
   for (int i_material : contained_materials_) {
     // Populate the per-material majorant cross section.
-    fill_material_maj_xs(*model::materials[i_material], grid_.energy, material_maj_xs);
+    fill_material_maj_xs(*model::materials[i_material], max_density_mult_.at(i_material),
+      grid_.energy, material_maj_xs);
 
     // Compute the full majorant by taking the max over each material cross section.
     for (int i_energy = 0; i_energy < xs_.size(); ++i_energy) {
@@ -89,47 +126,12 @@ void Majorant::write_ascii(const std::string& filename) const
   of.close();
 }
 
-void Majorant::discover_contained_materials()
-{
-  std::set<int> unique_materials;
-  if (maj_universe_ == C_NONE || maj_universe_ >= model::universes.size()) {
-    fatal_error( fmt::format("Invalid majorant universe: {}", maj_universe_));
-  }
-
-  const auto & maj_uni = model::universes[maj_universe_];
-  for (int i_cell : maj_uni->cells_) {
-    const auto & cell = model::cells[i_cell];
-    if (cell->type_ == Fill::MATERIAL) {
-      for (auto i_mat : cell->material_) {
-        unique_materials.emplace(i_mat);
-      }
-    } else {
-      const auto contained_cells = cell->get_contained_cells();
-      for (const auto & [i_contained_cell, contained_instances] : contained_cells) {
-        const auto & contained_cell = model::cells[i_contained_cell];
-        for (auto i_mat : contained_cell->material_) {
-          unique_materials.emplace(i_mat);
-        }
-      }
-    }
-  }
-
-  contained_materials_.clear();
-  for (auto i_mat : unique_materials) {
-    contained_materials_.push_back(i_mat);
-  }
-}
-
 //==============================================================================
 // NeutronMajorant implementation
 //==============================================================================
 
 NeutronMajorant::NeutronMajorant(int i_universe)
   : Majorant(i_universe)
-{ }
-
-NeutronMajorant::NeutronMajorant(const std::string & majorant_file)
-  : Majorant(majorant_file, i_neutron_)
 { }
 
 double NeutronMajorant::calculate_neutron_xs(double energy) const
@@ -195,7 +197,8 @@ void NeutronMajorant::compute_unionized_grid()
   grid_.init();
 }
 
-void NeutronMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
+void NeutronMajorant::fill_material_maj_xs(const Material & mat, double max_density_mult,
+  const std::vector<double> & to_grid, std::vector<double> & mat_maj)
 {
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
@@ -257,7 +260,7 @@ void NeutronMajorant::fill_material_maj_xs(const Material & mat, const std::vect
       // ======================================================================
       // Accumulate the macroscopic cross section.
       // TODO: density multipliers for per-cell material densities.
-      mat_maj[i_energy] += std::max(micro_smooth_tot_xs, micro_urr_xs) * mat.atom_density(i);
+      mat_maj[i_energy] += std::max(micro_smooth_tot_xs, micro_urr_xs) * mat.atom_density(i, max_density_mult);
     }
   }
 }
@@ -405,10 +408,6 @@ PhotonMajorant::PhotonMajorant(int i_universe)
   : Majorant(i_universe)
 { }
 
-PhotonMajorant::PhotonMajorant(const std::string & majorant_file)
-  : Majorant(majorant_file, i_photon_)
-{ }
-
 void PhotonMajorant::compute_unionized_grid()
 {
   // In the event the majorant needs to be re-generated (e.g. in-memory for
@@ -463,7 +462,8 @@ double PhotonMajorant::calculate_photon_xs(double energy) const
   return std::exp(xs_[i_grid] + f * (xs_[i_grid + 1] - xs_[i_grid]));
 }
 
-void PhotonMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
+void PhotonMajorant::fill_material_maj_xs(const Material & mat, double max_density_mult,
+  const std::vector<double> & to_grid, std::vector<double> & mat_maj)
 {
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
@@ -472,7 +472,7 @@ void PhotonMajorant::fill_material_maj_xs(const Material & mat, const std::vecto
     for (int i = 0; i < mat.nuclide_.size(); ++i) {
       const int i_element = mat.element_[i];
 
-      mat_maj[i_energy] += calculate_elem_tot_xs(union_log_energy, *data::elements[i_element]) * mat.atom_density(i);
+      mat_maj[i_energy] += calculate_elem_tot_xs(union_log_energy, *data::elements[i_element]) * mat.atom_density(i, max_density_mult);
     }
     mat_maj[i_energy] = std::log(mat_maj[i_energy]);
   }
@@ -561,32 +561,13 @@ int PhotonMajorant::get_i_grid(double log_energy, const tensor::Tensor<double> &
 //  exist already.
 void create_majorants()
 {
-  try {
-    if (data::n_majorant_file != "") {
-      write_message("Loading neutron majorant from " + data::n_majorant_file);
-      data::n_majorant = std::make_unique<NeutronMajorant>(data::n_majorant_file);
-    }
-  } catch (const std::exception& e) {
-    fatal_error(fmt::format("Failed to load neutron majorant with error: {}", e.what()).c_str());
-  }
-  try {
-    if (settings::photon_transport && data::p_majorant_file != "") {
-      write_message("Loading photon majorant from " + data::p_majorant_file);
-      data::p_majorant = std::make_unique<PhotonMajorant>(data::p_majorant_file);
-    }
-  } catch (const std::exception& e) {
-    fatal_error(fmt::format("Failed to load photon majorant with error: {}", e.what()).c_str());
-  }
+  write_message("Creating a neutron majorant cross section");
+  data::n_majorant = std::make_unique<NeutronMajorant>(model::root_universe);
+  data::n_majorant->compute_unionized_grid();
+  data::n_majorant->compute_majorant();
+  data::n_majorant->write_ascii("neutron_majorant.txt");
 
-  if (data::n_majorant_file == "") {
-    write_message("Creating a neutron majorant cross section");
-    data::n_majorant = std::make_unique<NeutronMajorant>(model::root_universe);
-    data::n_majorant->compute_unionized_grid();
-    data::n_majorant->compute_majorant();
-    data::n_majorant->write_ascii("neutron_majorant.txt");
-  }
-
-  if (settings::photon_transport && data::p_majorant_file == "") {
+  if (settings::photon_transport) {
     write_message("Creating a photon majorant cross section");
     data::p_majorant = std::make_unique<PhotonMajorant>(model::root_universe);
     data::p_majorant->compute_unionized_grid();

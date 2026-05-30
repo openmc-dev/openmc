@@ -1061,21 +1061,37 @@ class WeightWindowsList(list):
     def export_to_hdf5(self, path: PathLike = 'weight_windows.h5', **init_kwargs):
         """Write weight windows to an HDF5 file.
 
-        Writes the file directly via :mod:`h5py`, mirroring the layout
-        produced by :func:`openmc.lib.export_weight_windows`. The previous
-        XML round-trip raised :class:`MemoryError` on multi-GB bound arrays
-        because of the intermediate ASCII allocation inside lxml.
+        Structured-mesh weight windows are written directly via :mod:`h5py`,
+        avoiding the multi-GB ASCII intermediate that previously caused
+        :class:`MemoryError` on large wwinp inputs.
+
+        Weight windows on an :class:`~openmc.UnstructuredMesh` require
+        LibMesh or MOAB (loaded by :func:`openmc.lib.init`) to materialize
+        the mesh's vertex and connectivity data; for those, this method
+        falls back to :func:`openmc.lib.export_weight_windows`.
 
         Parameters
         ----------
         path : PathLike
             Path to the file to write weight windows to
         **init_kwargs
-            Unused. Retained for backward compatibility (previously forwarded
-            to :func:`openmc.lib.init`).
+            Forwarded to :func:`openmc.lib.init` when the UnstructuredMesh
+            fallback path is used. Unused for the direct h5py path.
         """
         cv.check_type('path', path, PathLike)
         path = Path(path).resolve()
+
+        if any(isinstance(ww.mesh, UnstructuredMesh) for ww in self):
+            import openmc.lib
+            model = openmc.Model()
+            sph = openmc.Sphere(boundary_type='vacuum')
+            model.geometry = openmc.Geometry([openmc.Cell(region=-sph)])
+            model.settings.weight_windows = self
+            model.settings.particles = 100
+            model.settings.batches = 1
+            with openmc.lib.TemporarySession(model, **init_kwargs):
+                openmc.lib.export_weight_windows(path)
+            return
 
         with h5py.File(path, 'w') as f:
             f.attrs['filetype'] = np.bytes_('weight_windows')

@@ -291,7 +291,7 @@ int openmc_next_batch(int* status)
       transport_event_based();
     } else {
       if (settings::delta_tracking) {
-        transport_delta_tracking();
+        transport_delta_history_based();
       } else {
         if (settings::use_shared_secondary_bank) {
           transport_history_based_shared_secondary();
@@ -1014,7 +1014,7 @@ void transport_history_based()
   }
 }
 
-void transport_delta_tracking_single_particle(Particle& p)
+void transport_delta_history_based_single_particle(Particle& p)
 {
   p.delta_tracking() = true;
   p.event_calculate_xs();
@@ -1048,12 +1048,12 @@ void transport_delta_tracking_single_particle(Particle& p)
   p.event_death();
 }
 
-void transport_delta_tracking() {
+void transport_delta_history_based() {
   #pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     initialize_particle_track(p, i_work, false);
-    transport_delta_tracking_single_particle(p);
+    transport_delta_history_based_single_particle(p);
   }
 }
 

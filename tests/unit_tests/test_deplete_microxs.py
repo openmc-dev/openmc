@@ -165,11 +165,11 @@ def test_hybrid_tally_setup():
 
     # Check that both tallies were created with the expected properties
     tally_names = [t.name for t in captured['tallies']]
-    assert 'MicroXS flux' in tally_names
-    assert 'MicroXS RR' in tally_names
+    assert 'MicroXS flux 0' in tally_names
+    assert 'MicroXS RR 0' in tally_names
 
     # Check that the RR tally has the expected nuclides and reactions
-    rr = next(t for t in captured['tallies'] if t.name == 'MicroXS RR')
+    rr = next(t for t in captured['tallies'] if t.name == 'MicroXS RR 0')
     assert rr.nuclides == ['U235']
     assert rr.scores == ['fission']
 

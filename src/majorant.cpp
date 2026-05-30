@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 
+#include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/geometry.h"
 #include "openmc/majorant.h"
@@ -60,17 +61,16 @@ Majorant::Majorant(const std::string & majorant_file, int p_transport_indx)
   }
 }
 
-void
-Majorant::compute_majorant()
+void Majorant::compute_majorant()
 {
   // Fill with zeros.
   xs_.resize(grid_.energy.size(), 0.0);
 
   std::vector<double> material_maj_xs;
   material_maj_xs.resize(grid_.energy.size(), 0.0);
-  for (const auto & mat : model::materials) {
+  for (int i_material : contained_materials_) {
     // Populate the per-material majorant cross section.
-    fill_material_maj_xs(*mat, grid_.energy, material_maj_xs);
+    fill_material_maj_xs(*model::materials[i_material], grid_.energy, material_maj_xs);
 
     // Compute the full majorant by taking the max over each material cross section.
     for (int i_energy = 0; i_energy < xs_.size(); ++i_energy) {
@@ -80,8 +80,7 @@ Majorant::compute_majorant()
   }
 }
 
-void
-Majorant::write_ascii(const std::string& filename) const
+void Majorant::write_ascii(const std::string& filename) const
 {
   std::ofstream of(filename);
   for (int i = 0; i < xs_.size(); i++) {
@@ -90,8 +89,7 @@ Majorant::write_ascii(const std::string& filename) const
   of.close();
 }
 
-void
-Majorant::discover_contained_materials()
+void Majorant::discover_contained_materials()
 {
   std::set<int> unique_materials;
   if (maj_universe_ == C_NONE || maj_universe_ >= model::universes.size()) {
@@ -134,15 +132,13 @@ NeutronMajorant::NeutronMajorant(const std::string & majorant_file)
   : Majorant(majorant_file, i_neutron_)
 { }
 
-double
-NeutronMajorant::calculate_neutron_xs(double energy) const
+double NeutronMajorant::calculate_neutron_xs(double energy) const
 {
   const int i_grid = get_i_grid(energy, grid_);
   return interpolate_lin_1D(grid_.energy[i_grid], grid_.energy[i_grid + 1], xs_[i_grid], xs_[i_grid + 1], energy);
 }
 
-void
-NeutronMajorant::compute_unionized_grid()
+void NeutronMajorant::compute_unionized_grid()
 {
   // In the event the majorant needs to be re-generated (e.g. in-memory for
   // multiphysics), we need to reset the unionized grid.
@@ -199,8 +195,7 @@ NeutronMajorant::compute_unionized_grid()
   grid_.init();
 }
 
-void
-NeutronMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
+void NeutronMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
 {
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
@@ -267,8 +262,7 @@ NeutronMajorant::fill_material_maj_xs(const Material & mat, const std::vector<do
   }
 }
 
-double
-NeutronMajorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc) const
+double NeutronMajorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc) const
 {
   double max_smooth_tot_xs = 0.0;
   for (int i_temp = 0; i_temp < nuc.kTs_.size(); ++i_temp) {
@@ -282,8 +276,7 @@ NeutronMajorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc) con
   return max_smooth_tot_xs;
 }
 
-double
-NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth_xs) const
+double NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth_xs) const
 {
   if (!nuc.urr_present_) {
     return 0.0;
@@ -326,8 +319,7 @@ NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double
   return max_urr_xs;
 }
 
-double
-NeutronMajorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc) const
+double NeutronMajorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc) const
 {
   const auto & thermal = data::thermal_scatt[i_sab];
 
@@ -379,8 +371,7 @@ NeutronMajorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_f
   return max_sab_total;
 }
 
-int
-NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
+int NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
 {
   // Find energy index on energy grid
   int i_log_union = std::log(energy * data::energy_min_rcp[i_neutron_]) * simulation::log_spacing_rcp;
@@ -418,8 +409,7 @@ PhotonMajorant::PhotonMajorant(const std::string & majorant_file)
   : Majorant(majorant_file, i_photon_)
 { }
 
-void
-PhotonMajorant::compute_unionized_grid()
+void PhotonMajorant::compute_unionized_grid()
 {
   // In the event the majorant needs to be re-generated (e.g. in-memory for
   // multiphysics), we need to reset the unionized grid.
@@ -460,8 +450,7 @@ PhotonMajorant::compute_unionized_grid()
   grid_.energy.insert(grid_.energy.end(), std::log(data::energy_max[i_photon_]));
 }
 
-double
-PhotonMajorant::calculate_photon_xs(double energy) const
+double PhotonMajorant::calculate_photon_xs(double energy) const
 {
   double log_energy = std::log(energy);
   int i_grid = get_i_grid(log_energy, grid_.energy);
@@ -474,8 +463,7 @@ PhotonMajorant::calculate_photon_xs(double energy) const
   return std::exp(xs_[i_grid] + f * (xs_[i_grid + 1] - xs_[i_grid]));
 }
 
-void
-PhotonMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
+void PhotonMajorant::fill_material_maj_xs(const Material & mat, const std::vector<double> & to_grid, std::vector<double> & mat_maj)
 {
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
@@ -490,8 +478,7 @@ PhotonMajorant::fill_material_maj_xs(const Material & mat, const std::vector<dou
   }
 }
 
-double
-PhotonMajorant::calculate_elem_tot_xs(double log_energy, const PhotonInteraction & elem) const
+double PhotonMajorant::calculate_elem_tot_xs(double log_energy, const PhotonInteraction & elem) const
 {
   int i_grid = get_i_grid(log_energy, elem.energy_);
 
@@ -528,8 +515,7 @@ PhotonMajorant::calculate_elem_tot_xs(double log_energy, const PhotonInteraction
   return total;
 }
 
-int
-PhotonMajorant::get_i_grid(double log_energy, const std::vector<double> & energy_grid) const
+int PhotonMajorant::get_i_grid(double log_energy, const std::vector<double> & energy_grid) const
 {
   int n_grid = energy_grid.size();
   int i_grid;
@@ -550,8 +536,7 @@ PhotonMajorant::get_i_grid(double log_energy, const std::vector<double> & energy
   return i_grid;
 }
 
-int
-PhotonMajorant::get_i_grid(double log_energy, const tensor::Tensor<double> & energy_grid) const
+int PhotonMajorant::get_i_grid(double log_energy, const tensor::Tensor<double> & energy_grid) const
 {
   int n_grid = energy_grid.size();
   int i_grid;
@@ -572,19 +557,25 @@ PhotonMajorant::get_i_grid(double log_energy, const tensor::Tensor<double> & ene
   return i_grid;
 }
 
-//==============================================================================
-// Static functions
-//==============================================================================
-
+//! Create/load a majorant cross section for photons or neutrons. Errors if they
+//  exist already.
 void create_majorants()
 {
-  if (data::n_majorant_file != "") {
-    write_message("Loading neutron majorant from " + data::n_majorant_file);
-    data::n_majorant = std::make_unique<NeutronMajorant>(data::n_majorant_file);
+  try {
+    if (data::n_majorant_file != "") {
+      write_message("Loading neutron majorant from " + data::n_majorant_file);
+      data::n_majorant = std::make_unique<NeutronMajorant>(data::n_majorant_file);
+    }
+  } catch (const std::exception& e) {
+    fatal_error(fmt::format("Failed to load neutron majorant with error: {}", e.what()).c_str());
   }
-  if (settings::photon_transport && data::p_majorant_file != "") {
-    write_message("Loading photon majorant from " + data::p_majorant_file);
-    data::p_majorant = std::make_unique<PhotonMajorant>(data::p_majorant_file);
+  try {
+    if (settings::photon_transport && data::p_majorant_file != "") {
+      write_message("Loading photon majorant from " + data::p_majorant_file);
+      data::p_majorant = std::make_unique<PhotonMajorant>(data::p_majorant_file);
+    }
+  } catch (const std::exception& e) {
+    fatal_error(fmt::format("Failed to load photon majorant with error: {}", e.what()).c_str());
   }
 
   if (data::n_majorant_file == "") {
@@ -604,4 +595,10 @@ void create_majorants()
   }
 }
 
+//! Reset the photon and neutron majorant cross sections.
+void reset_majorants()
+{
+  openmc::data::n_majorant.reset(nullptr);
+  openmc::data::p_majorant.reset(nullptr);
+}
 } // namespace openmc

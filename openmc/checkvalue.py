@@ -89,8 +89,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
     ``float``, or ``complex``, the dtype guarantees the element type and the
     per-element scan is skipped for faster processing.
     """
-    # Fast path: float/complex ndarrays whose dtype already guarantees the
-    # expected_type can skip the per-element scan.
+    # Fast path: trusted dtype skips the per-element scan (see Notes).
     if (isinstance(value, np.ndarray) and value.dtype.kind in 'fc'
             and min_depth <= value.ndim <= max_depth
             and expected_type in (Real, float, complex)):

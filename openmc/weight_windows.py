@@ -1081,6 +1081,7 @@ class WeightWindowsList(list):
         cv.check_type('path', path, PathLike)
         path = Path(path).resolve()
 
+        # Any unstructured mesh forces the whole list onto the lib fallback.
         if any(isinstance(ww.mesh, UnstructuredMesh) for ww in self):
             import openmc.lib
             model = openmc.Model()

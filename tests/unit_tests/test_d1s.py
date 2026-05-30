@@ -150,3 +150,7 @@ def test_apply_time_correction(run_in_tmpdir):
     result_summed.get_reshaped_data()
     result.get_pandas_dataframe()
     result_summed.get_pandas_dataframe()
+
+    # The summed tally is derived, so sum/sum_sq are None
+    assert result_summed.sum is None
+    assert result_summed.sum_sq is None

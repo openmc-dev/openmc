@@ -186,8 +186,6 @@ def apply_time_correction(
 
     # Apply TCF, broadcasting to the correct dimensions
     tcf.shape = (1, -1, 1, 1, 1)
-    new_tally._sum = tally_sum * tcf
-    new_tally._sum_sq = tally_sum_sq * (tcf*tcf)
     new_tally._mean = tally_mean * tcf
     new_tally._std_dev = tally_std_dev * tcf
 
@@ -196,6 +194,8 @@ def apply_time_correction(
     if sum_nuclides:
         # Sum over parent nuclides (note that when combining different bins for
         # parent nuclide, we can't work directly on sum_sq)
+        new_tally._sum = None
+        new_tally._sum_sq = None
         new_tally._mean = new_tally.mean.sum(axis=1).reshape(shape)
         new_tally._std_dev = np.linalg.norm(new_tally.std_dev, axis=1).reshape(shape)
         new_tally._derived = True
@@ -203,9 +203,10 @@ def apply_time_correction(
         # Remove ParentNuclideFilter
         new_tally.filters.pop(i_filter)
     else:
-        # Change shape back to (filter combinations, nuclides, scores)
-        new_tally._sum.shape = shape
-        new_tally._sum_sq.shape = shape
+        # Apply TCF and change shape back to (filter combinations, nuclides,
+        # scores)
+        new_tally._sum = (tally_sum * tcf).reshape(shape)
+        new_tally._sum_sq = (tally_sum_sq * (tcf*tcf)).reshape(shape)
         new_tally._mean.shape = shape
         new_tally._std_dev.shape = shape
 

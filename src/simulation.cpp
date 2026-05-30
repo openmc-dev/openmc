@@ -290,14 +290,10 @@ int openmc_next_batch(int* status)
       }
       transport_event_based();
     } else {
-      if (settings::delta_tracking) {
-        transport_delta_history_based();
+      if (settings::use_shared_secondary_bank) {
+        transport_history_based_shared_secondary();
       } else {
-        if (settings::use_shared_secondary_bank) {
-          transport_history_based_shared_secondary();
-        } else {
-          transport_history_based();
-        }
+        transport_history_based();
       }
     }
 
@@ -1009,7 +1005,11 @@ void transport_history_based()
 #pragma omp for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       initialize_particle_track(p, i_work, false);
-      transport_history_based_single_particle(p);
+      if (settings::delta_tracking) {
+        transport_delta_history_based_single_particle(p);
+      } else {
+        transport_history_based_single_particle(p);
+      }
     }
   }
 }
@@ -1048,15 +1048,6 @@ void transport_delta_history_based_single_particle(Particle& p)
   p.event_death();
 }
 
-void transport_delta_history_based() {
-  #pragma omp parallel for schedule(runtime)
-  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
-    Particle p;
-    initialize_particle_track(p, i_work, false);
-    transport_delta_history_based_single_particle(p);
-  }
-}
-
 // The shared secondary bank transport algorithm works in two phases. In the
 // first phase, all primary particles are sampled then transported, and their
 // secondary particles are deposited into a shared secondary bank. The second
@@ -1093,7 +1084,11 @@ void transport_history_based_shared_secondary()
 #pragma omp for schedule(runtime)
     for (int64_t i = 1; i <= simulation::work_per_rank; i++) {
       initialize_particle_track(p, i, false);
-      transport_history_based_single_particle(p);
+      if (settings::delta_tracking) {
+        transport_delta_history_based_single_particle(p);
+      } else {
+        transport_history_based_single_particle(p);
+      }
       for (auto& site : p.local_secondary_bank()) {
         thread_bank.push_back(site);
       }
@@ -1153,7 +1148,11 @@ void transport_history_based_shared_secondary()
         initialize_particle_track(p, i, true);
         SourceSite& site = simulation::shared_secondary_bank_read[i - 1];
         p.event_revive_from_secondary(site);
-        transport_history_based_single_particle(p);
+        if (settings::delta_tracking) {
+          transport_delta_history_based_single_particle(p);
+        } else {
+          transport_history_based_single_particle(p);
+        }
         for (auto& secondary_site : p.local_secondary_bank()) {
           thread_bank.push_back(secondary_site);
         }

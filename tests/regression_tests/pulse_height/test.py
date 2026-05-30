@@ -6,22 +6,23 @@ from openmc.utility_funcs import change_directory
 from tests.testing_harness import PyAPITestHarness
 
 
-@pytest.mark.parametrize("shared_secondary,subdir", [
-    (False, "local"),
-    (True, "shared"),
+@pytest.mark.parametrize("shared_secondary,particle", [
+    (False, "photon"),
+    (False, "neutron"),
+    (True, "photon"),
+    (True, "neutron")
 ])
-def test_pulse_height(shared_secondary, subdir):
+def test_pulse_height(shared_secondary, particle):
+    subdir = f"shared_{particle}" if shared_secondary else f"local_{particle}"
     with change_directory(subdir):
         openmc.reset_auto_ids()
         model = openmc.Model()
 
         # Define materials
         NaI = openmc.Material()
-        NaI.set_density('g/cc', 3.7)
+        NaI.set_density('g/cm3', 3.7)
         NaI.add_element('Na', 1.0)
         NaI.add_element('I', 1.0)
-
-        model.materials = openmc.Materials([NaI])
 
         # Define geometry: two spheres in each other
         s1 = openmc.Sphere(r=1)
@@ -38,14 +39,14 @@ def test_pulse_height(shared_secondary, subdir):
         model.settings.shared_secondary_bank = shared_secondary
         model.settings.source = openmc.IndependentSource(
             energy=openmc.stats.delta_function(1e6),
-            particle='photon'
+            particle=particle
         )
 
         # Define tallies
         tally = openmc.Tally(name="pht tally")
         tally.scores = ['pulse-height']
         cell_filter = openmc.CellFilter(inner_sphere)
-        energy_filter = openmc.EnergyFilter(np.linspace(0, 1_000_000, 101))
+        energy_filter = openmc.EnergyFilter(np.linspace(0, 1e6, 101))
         tally.filters = [cell_filter, energy_filter]
         model.tallies = [tally]
 

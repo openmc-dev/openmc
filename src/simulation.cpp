@@ -251,6 +251,9 @@ int openmc_simulation_finalize()
   if (settings::check_overlaps)
     print_overlap_check();
 
+  // Clear majorants as they could change if OpenMC is run again.
+  reset_majorants();
+
   // Reset flags
   simulation::initialized = false;
   return 0;

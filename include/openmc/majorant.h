@@ -6,9 +6,8 @@
 
 #include <vector>
 
-#include "openmc/settings.h"
-#include "openmc/nuclide.h"
 #include "openmc/material.h"
+#include "openmc/nuclide.h"
 #include "openmc/photon.h"
 
 namespace openmc {
@@ -239,11 +238,14 @@ private:
 }; // class PhotonMajorant
 
 //==============================================================================
-// Non-member functions
+// Static functions
 //==============================================================================
 
-//! \brief A function to create the global majorant cross section(s).
+//! \brief A function to create majorant cross sections.
 void create_majorants();
-}
+
+//! \brief A function to reset majorant cross sectiosn.
+void reset_majorants();
+} // namespace openmc
 
 #endif // OPENMC_MAJORANT_H

@@ -73,10 +73,11 @@ def test_mgxs_library_ce_to_mg_multiplicity_matrix():
     # Set the input set to use the pincell model
     model = pwr_pin_cell()
 
-    harness = MGXSTestHarness('statepoint.10.h5', model,
-                              inputs_true='inputs_true_multiplicity_matrix.dat',
-                              scatter_mgxs_type=['nu-scatter matrix',
-                                                 'multiplicity matrix'])
+    harness = MGXSTestHarness(
+        'statepoint.10.h5', model,
+        inputs_true='inputs_true_multiplicity_matrix.dat',
+        scatter_mgxs_type=['nu-scatter matrix', 'multiplicity matrix']
+    )
     harness.main()
 
 

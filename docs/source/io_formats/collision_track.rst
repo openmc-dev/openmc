@@ -10,7 +10,7 @@ may also be written after each batch when multiple files are requested
 (``collision_track.N.h5``) or when the run is performed in parallel. The file
 contains the information needed to reconstruct each recorded collision.
 
-The current revision of the collision track file format is 1.1.
+The current revision of the collision track file format is 1.2.
 
 **/**
 

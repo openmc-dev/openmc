@@ -44,7 +44,7 @@ def test_heating_estimator_with_photon_transport(run_in_tmpdir):
         space=openmc.stats.Point()
     )
 
-    neutron_filter = openmc.ParticleFilter('neutron')
+    neutron_filter = openmc.ParticleFilter(['neutron'])
 
     # Neutron-only heating — should get tracklength estimator
     t_neutron = openmc.Tally(name='heating_neutron')

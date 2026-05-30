@@ -150,10 +150,7 @@ def apply_time_correction(
     Returns
     -------
     openmc.Tally
-        Derived tally with time correction factors applied. When
-        ``sum_nuclides`` is True the result is a derived tally, for which
-        ``sum`` and ``sum_sq`` are None (as for any derived tally); the
-        meaningful results are ``mean`` and ``std_dev``.
+        Derived tally with time correction factors applied
 
     """
     # Make sure the tally contains a ParentNuclideFilter
@@ -197,18 +194,11 @@ def apply_time_correction(
     if sum_nuclides:
         # Sum over parent nuclides (note that when combining different bins for
         # parent nuclide, we can't work directly on sum_sq)
+        new_tally._sum = None
+        new_tally._sum_sq = None
         new_tally._mean = new_tally.mean.sum(axis=1).reshape(shape)
         new_tally._std_dev = np.linalg.norm(new_tally.std_dev, axis=1).reshape(shape)
         new_tally._derived = True
-
-        # The summed tally is derived, so Tally.sum/sum_sq return None
-        # regardless of what is stored. Leave them unset rather than keeping the
-        # per-parent-nuclide arrays, which are shaped inconsistently with the
-        # remaining filters (the ParentNuclideFilter is removed below). This
-        # also avoids two full-size array multiplies per call that are never
-        # read.
-        new_tally._sum = None
-        new_tally._sum_sq = None
 
         # Remove ParentNuclideFilter
         new_tally.filters.pop(i_filter)

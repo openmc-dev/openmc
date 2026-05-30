@@ -1,6 +1,7 @@
 import copy
 import os
 from collections.abc import Iterable
+from numbers import Real
 
 import numpy as np
 
@@ -83,13 +84,16 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
 
     Notes
     -----
-    numpy float/complex ndarrays whose number of dimensions falls within
-    [``min_depth``, ``max_depth``], the dtype is trusted to guarantee element
-    type and the per-element scan is skipped, which allows faster processing.
+    For numpy float/complex ndarrays whose ``ndim`` is within
+    ``[min_depth, max_depth]`` and whose ``expected_type`` is ``Real``,
+    ``float``, or ``complex``, the dtype guarantees the element type and the
+    per-element scan is skipped for faster processing.
     """
-    # Fast path: float/complex ndarrays of correct depth are dtype-validated.
+    # Fast path: float/complex ndarrays whose dtype already guarantees the
+    # expected_type can skip the per-element scan.
     if (isinstance(value, np.ndarray) and value.dtype.kind in 'fc'
-            and min_depth <= value.ndim <= max_depth):
+            and min_depth <= value.ndim <= max_depth
+            and expected_type in (Real, float, complex)):
         return
 
     # Initialize the tree at the very first item.

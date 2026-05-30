@@ -3,7 +3,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
-from math import acos, atan2, pi, sqrt
+import math
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Protocol
@@ -11,12 +11,10 @@ from typing import Protocol
 import h5py
 import lxml.etree as ET
 import numpy as np
-from pathlib import Path
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-from openmc.utility_funcs import change_directory
 from .bounding_box import BoundingBox
 from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
@@ -291,7 +289,7 @@ class MeshBase(IDManagerMixin, ABC):
         """
         mesh_type = 'regular' if 'type' not in group.keys() else group['type'][()].decode()
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-        mesh_name = '' if not 'name' in group else group['name'][()].decode()
+        mesh_name = '' if 'name' not in group else group['name'][()].decode()
 
         if mesh_type == 'regular':
             return RegularMesh.from_hdf5(group, mesh_id, mesh_name)
@@ -1903,7 +1901,7 @@ class CylindricalMesh(StructuredMesh):
         self,
         r_grid: Sequence[float],
         z_grid: Sequence[float],
-        phi_grid: Sequence[float] = (0, 2*pi),
+        phi_grid: Sequence[float] = (0, 2*math.pi),
         origin: Sequence[float] = (0., 0., 0.),
         mesh_id: int | None = None,
         name: str = '',
@@ -1960,7 +1958,7 @@ class CylindricalMesh(StructuredMesh):
         cv.check_length('mesh phi_grid', grid, 2)
         cv.check_increasing('mesh phi_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > 2*pi)):
+        if np.any((grid < 0.0) | (grid > 2*math.pi)):
             raise ValueError("phi_grid values must be in [0, 2π].")
         self._phi_grid = grid
 
@@ -2046,7 +2044,7 @@ class CylindricalMesh(StructuredMesh):
             The r, phi, z indices
 
         """
-        r_value_from_origin = sqrt((coords[0]-self.origin[0])**2 + (coords[1]-self.origin[1])**2)
+        r_value_from_origin = math.hypot(coords[0]-self.origin[0], coords[1]-self.origin[1])
 
         if r_value_from_origin < self.r_grid[0] or r_value_from_origin > self.r_grid[-1]:
             raise ValueError(
@@ -2070,13 +2068,13 @@ class CylindricalMesh(StructuredMesh):
         delta_x = coords[0] - self.origin[0]
         delta_y = coords[1] - self.origin[1]
         # atan2 returns values in -pi to +pi range
-        phi_value = atan2(delta_y, delta_x)
+        phi_value = math.atan2(delta_y, delta_x)
         if delta_x < 0 and delta_y < 0:
             # returned phi_value anticlockwise and negative
-            phi_value += 2 * pi
+            phi_value += 2 * math.pi
         if delta_x > 0 and delta_y < 0:
             # returned phi_value anticlockwise and negative
-            phi_value += 2 * pi
+            phi_value += 2 * math.pi
 
         phi_grid_values = np.array(self.phi_grid)
 
@@ -2111,7 +2109,7 @@ class CylindricalMesh(StructuredMesh):
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         name: str = '',
-        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
+        phi_grid_bounds: Sequence[float] = (0.0, 2*math.pi),
         enclose_domain: bool = False,
     ) -> CylindricalMesh:
         """Create CylindricalMesh from a bounding box.
@@ -2339,8 +2337,8 @@ class SphericalMesh(StructuredMesh):
     def __init__(
         self,
         r_grid: Sequence[float],
-        phi_grid: Sequence[float] = (0, 2*pi),
-        theta_grid: Sequence[float] = (0, pi),
+        phi_grid: Sequence[float] = (0, 2*math.pi),
+        theta_grid: Sequence[float] = (0, math.pi),
         origin: Sequence[float] = (0., 0., 0.),
         mesh_id: int | None = None,
         name: str = '',
@@ -2397,7 +2395,7 @@ class SphericalMesh(StructuredMesh):
         cv.check_length('mesh theta_grid', grid, 2)
         cv.check_increasing('mesh theta_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > pi)):
+        if np.any((grid < 0.0) | (grid > math.pi)):
             raise ValueError("theta_grid values must be in [0, π].")
         self._theta_grid = grid
 
@@ -2411,7 +2409,7 @@ class SphericalMesh(StructuredMesh):
         cv.check_length('mesh phi_grid', grid, 2)
         cv.check_increasing('mesh phi_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > 2*pi)):
+        if np.any((grid < 0.0) | (grid > 2*math.pi)):
             raise ValueError("phi_grid values must be in [0, 2π].")
         self._phi_grid = grid
 
@@ -2483,8 +2481,8 @@ class SphericalMesh(StructuredMesh):
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         name: str = '',
-        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
-        theta_grid_bounds: Sequence[float] = (0.0, pi),
+        phi_grid_bounds: Sequence[float] = (0.0, 2*math.pi),
+        theta_grid_bounds: Sequence[float] = (0.0, math.pi),
         enclose_domain: bool = False,
     ) -> SphericalMesh:
         """Create SphericalMesh from a bounding box.
@@ -2673,7 +2671,7 @@ class SphericalMesh(StructuredMesh):
         dy = coords[1] - self.origin[1]
         dz = coords[2] - self.origin[2]
 
-        r_value = sqrt(dx**2 + dy**2 + dz**2)
+        r_value = math.hypot(dx, dy, dz)
 
         if r_value < self.r_grid[0] or r_value > self.r_grid[-1]:
             raise ValueError(
@@ -2691,10 +2689,10 @@ class SphericalMesh(StructuredMesh):
             theta_value = 0.0
             phi_value = 0.0
         else:
-            theta_value = acos(dz / r_value)
-            phi_value = atan2(dy, dx)
+            theta_value = math.acos(dz / r_value)
+            phi_value = math.atan2(dy, dx)
             if phi_value < 0:
-                phi_value += 2 * pi
+                phi_value += 2 * math.pi
 
         if theta_value < self.theta_grid[0] or theta_value > self.theta_grid[-1]:
             raise ValueError(

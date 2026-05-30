@@ -84,11 +84,8 @@ public:
   double collapse_rate(int MT, double temperature, span<const double> energy,
     span<const double> flux) const;
 
-  //! Return the ZAID identifier for this nuclide.
-  int zaid() const { return 10000 * Z_ + 10 * A_ + metastable_; }
-
-  //! Return the PDG Monte Carlo particle code for this nuclide.
-  int pdg_code() const { return 1000000000 + zaid(); }
+  //! Return a ParticleType object representing this nuclide
+  ParticleType particle_type() const { return {Z_, A_, metastable_}; }
 
   //============================================================================
   // Data members

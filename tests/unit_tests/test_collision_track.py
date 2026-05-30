@@ -34,7 +34,7 @@ def geometry():
         {"max_collisions": 200, "mcpl": True}
 
     ],
-    ids=lambda parameter: str(parameter)
+    ids=str
 )
 def test_xml_serialization(parameter, run_in_tmpdir):
     """Check that the different use cases can be written and read in XML."""
@@ -46,7 +46,7 @@ def test_xml_serialization(parameter, run_in_tmpdir):
     assert read_settings.collision_track == parameter
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def model():
     """Simple hydrogen sphere divided in two hemispheres
     by a z-plane to form 2 cells."""
@@ -136,7 +136,7 @@ def test_photon_particles(run_in_tmpdir, model):
 
     model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Box(*model.geometry.bounding_box),
-        energy=openmc.stats.Discrete([1e5], [1.0]),
+        energy=openmc.stats.delta_function(1e5),
         particle='photon'
     )
     model.run()
@@ -153,7 +153,8 @@ def test_photon_particles(run_in_tmpdir, model):
             assert particle_type in allowed_particles
 
             if particle_type == openmc.ParticleType.ELECTRON:
-                assert point['nuclide_id'] == -1
+                assert point['nuclide_id'] == 0
+
 
 def test_collision_track_two_threads(model, run_in_tmpdir):
     # This test checks that the `max_collisions` setting is honored:

@@ -655,6 +655,6 @@ class CollisionTrackTestHarness(PyAPITestHarness):
             source['time'],
             source['wgt'],
         ]
-        sorted_idx = np.lexsort(tuple(sort_columns[::-1]))
+        sorted_idx = np.lexsort(tuple(reversed(sort_columns)))
 
         return data[sorted_idx]

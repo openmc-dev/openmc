@@ -201,7 +201,7 @@ void collision_track_record(Particle& particle)
 
   int cell_id = model::cells[cell_index]->id_;
   std::string nuclide {};
-  int nuclide_id {-1};
+  int nuclide_id = 0;
   if (particle.event_nuclide() != NUCLIDE_NONE) {
     const auto* nuclide_ptr = data::nuclides[particle.event_nuclide()].get();
     nuclide = nuclide_ptr->name_;

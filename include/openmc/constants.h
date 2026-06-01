@@ -372,7 +372,7 @@ enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
 //==============================================================================
 // Geometry Constants
 
-enum class GeometryType { CSG, DAG };
+enum class GeometryType { CSG, DAG, IMP };
 
 // a surface token cannot be zero due to the unsigned nature of zero for integer
 // representations. This value represents no surface.

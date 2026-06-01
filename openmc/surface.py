@@ -473,7 +473,7 @@ class Surface(IDManagerMixin, ABC):
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
 
         if surf_type == "implicit":
-            kwargs['func'] = ImplicitFunction.from_xml_element(elem.get("function"))
+            kwargs['function'] = ImplicitFunction.from_xml_element(elem.find("function")[0])
             kwargs['isovalue'] = float(elem.get("isovalue"))
 
         return cls(**kwargs)
@@ -513,6 +513,16 @@ class Surface(IDManagerMixin, ABC):
 
         surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
+
+        if surf_type == 'implicit':
+            xml_str   = group['function_xml'][()].decode()
+            func_elem = ET.fromstring(xml_str)
+            func = ImplicitFunction.from_xml_element(func_elem[0])
+            isovalue = float(group['isovalue'][()])
+            kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
+            kwargs['function'] = func
+            kwargs['isovalue'] = isovalue
+            return cls(**kwargs)
 
         return cls(*coeffs, **kwargs)
 
@@ -2707,7 +2717,7 @@ class ImplicitSurface(Surface):
         x0, y0, z0, a, b, c, d, e, f, g, h, i = surf._get_base_coeffs()
 
         # Compute new rotated coefficients a, b, c
-        newR = Rmat @ surf.get_rotation_matrix()
+        newR = surf.get_rotation_matrix() @ Rmat.T
         x0, y0, z0 = Rmat @ np.array([x0, y0, z0])
         a, b, c = newR[0,:]
         d, e, f = newR[1,:]
@@ -2739,12 +2749,11 @@ class ImplicitSurface(Surface):
     
     @staticmethod
     def from_xml_element(elem):
-        return super().from_xml_element(elem)
+        return Surface.from_xml_element(elem)
 
     @staticmethod
     def from_hdf5(group):
-        # TODO: implement when c++ ready
-        return super().from_hdf5(group)
+        return Surface.from_hdf5(group)
 
 class TPMS(ImplicitSurface):
 
@@ -2760,7 +2769,7 @@ class TPMS(ImplicitSurface):
             y = 2 * np.pi * Y() / pitch
             z = 2 * np.pi * Z() / pitch
             if cached:
-                return Cached(x), Cached(x), Cached(x)
+                return Cached(x), Cached(y), Cached(z)
             else:
                 return x, y, z
         # Choice of TPMS

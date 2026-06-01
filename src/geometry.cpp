@@ -365,6 +365,8 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
   double d_surf = INFINITY;
   int32_t level_surf_cross;
   array<int, 3> level_lat_trans {};
+  ++step_cache.epoch; // New geometry step: invalidate implicit surface
+                      // subexpression cache.
 
   // Loop over each coordinate level.
   for (int i = 0; i < p.n_coord(); i++) {

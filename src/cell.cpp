@@ -22,6 +22,7 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
+#include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -949,6 +950,9 @@ std::pair<double, int32_t> Region::distance(
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
+  // Implicit surfaces are deferred until we know min_dist from the
+  // analytical surfaces, which bounds the solver interval.
+  std::vector<int32_t> implicit_tokens;
   for (int32_t token : expression_) {
     // Ignore this token if it corresponds to an operator rather than a region.
     if (token >= OP_UNION)
@@ -956,10 +960,42 @@ std::pair<double, int32_t> Region::distance(
 
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
+    Surface* surf = model::surfaces[std::abs(token) - 1].get();
+
+    // Defer implicit surfaces to pass 2.
+    if (surf->geom_type() == GeometryType::IMP) {
+      implicit_tokens.push_back(token);
+      continue;
+    }
+
     bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+    double d {surf->distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
+    if (d < min_dist) {
+      if (min_dist - d >= FP_PRECISION * min_dist) {
+        min_dist = d;
+        i_surf = -token;
+      }
+    }
+  }
+
+  // Finite region check
+  if (!implicit_tokens.empty() && min_dist == INFTY) {
+    fatal_error(
+      "An implicit surface belongs to a region with no finite analytical "
+      "boundary. Implicit surfaces must be enclosed in a finite region "
+      "defined by standard surfaces (planes, spheres, cylinders, etc.).");
+  }
+
+  // Implicit surfaces treatment
+  for (int32_t token : implicit_tokens) {
+    auto* surf =
+      static_cast<SurfaceImplicit*>(model::surfaces[std::abs(token) - 1].get());
+
+    bool coincident {std::abs(token) == std::abs(on_surface)};
+    double d {surf->distance_finite(r, u, coincident, min_dist)};
+
     if (d < min_dist) {
       if (min_dist - d >= FP_PRECISION * min_dist) {
         min_dist = d;

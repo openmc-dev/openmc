@@ -12,6 +12,8 @@
 #include "openmc/boundary_condition.h"
 #include "openmc/bounding_box.h"
 #include "openmc/constants.h"
+#include "openmc/implicit.h"
+#include "openmc/implicit_solvers.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
@@ -373,6 +375,33 @@ public:
   void to_hdf5_inner(hid_t group_id) const override;
 
   double x0_, y0_, z0_, A_, B_, C_;
+};
+
+//==============================================================================
+//! An implicit surface described by a user specified function
+//==============================================================================
+
+class SurfaceImplicit : public Surface {
+public:
+  explicit SurfaceImplicit(pugi::xml_node surf_node);
+  double evaluate(Position r) const override;
+  double distance_finite(
+    Position r, Direction u, bool coincident, double distance_max) const;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  GeometryType geom_type() const override { return GeometryType::IMP; }
+
+private:
+  //! Apply the surface transform: r_local = R * (r - r0)
+  Position transform(Position r) const;
+  //! Apply rotation only (no translation) for directions: u_local = R * u
+  Direction transform_dir(Direction u) const;
+
+  double x0_, y0_, z0_, A_, B_, C_, D_, E_, F_, G_, H_, I_;
+  double isovalue_;
+  std::shared_ptr<Implicit> function_;
+  std::unique_ptr<ImplicitSolver> solver_;
 };
 
 //==============================================================================

@@ -44,7 +44,6 @@ def test_div():   assert Div(Y(), X()).evaluate(PT)       == 2.0
 def test_scale(): assert Scale(X(), 3.0).evaluate(PT)    == 3.0
 def test_neg():   assert Neg(X()).evaluate(PT)            == -1.0
 def test_pow_int():   assert Pow(Y(), 2).evaluate(PT)    == 4.0
-def test_pow_float(): assert Pow(Y(), 0.5).evaluate(PT)  == pytest.approx(np.sqrt(2.0))
 
 
 # ── transcendentals ────────────────────────────────────────────────────────
@@ -71,6 +70,10 @@ def test_sqrt_negative():
 def test_log_negative():
     with pytest.raises(ValueError, match="negative"):
         Log(Constant(-1.0)).evaluate(PT)
+
+def test_pow_float():
+    with pytest.raises(TypeError):
+        X() ** 2.0
 
 def test_pow_non_scalar_via_operator():
     with pytest.raises(TypeError):
@@ -130,7 +133,7 @@ def test_scale_value_attr():
     assert float(Scale(X(), 2.5).to_xml_element([]).get("value")) == pytest.approx(2.5)
 
 def test_pow_value_attr():
-    assert float(Pow(X(), 3.0).to_xml_element([]).get("value")) == pytest.approx(3.0)
+    assert float(Pow(X(), 3).to_xml_element([]).get("value")) == pytest.approx(3.0)
 
 def test_binary_node_has_two_children():
     for binary in [Add, Sub, Mul, Div]:
@@ -142,7 +145,7 @@ def test_unary_node_has_one_child():
         elem = unary(X()).to_xml_element([])
         assert len(elem) == 1
     for unary in [Scale, Pow]:
-        elem = unary(X(), 1.).to_xml_element([])
+        elem = unary(X(), 1).to_xml_element([])
         assert len(elem) == 1
 
 def test_wrong_tag():

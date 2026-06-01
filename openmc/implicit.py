@@ -56,7 +56,7 @@ class ImplicitFunction(ABC):
             "scale":    lambda: Scale(children[0], float(attrib["value"])),
             "mul":      lambda: Mul(*children),
             "div":      lambda: Div(*children),
-            "pow":      lambda: Pow(children[0], float(attrib["value"])),
+            "pow":      lambda: Pow(children[0], int(attrib["value"])),
             "sin":      lambda: Sin(*children),
             "cos":      lambda: Cos(*children),
             "sqrt":     lambda: Sqrt(*children),
@@ -96,9 +96,11 @@ class ImplicitFunction(ABC):
     def __rtruediv__(self, other: float | ImplicitFunction) -> ImplicitFunction:
         return Div(_to_function(other), _to_function(self))
     
-    def __pow__(self, exp: int | float) -> ImplicitFunction:
-        if not isinstance(exp, (int, float)):
-            raise TypeError(f"Pow exponent must be a scalar, got {type(exp)}")
+    def __pow__(self, exp: int) -> ImplicitFunction:
+        if not isinstance(exp, (int)):
+            raise TypeError(f"Pow exponent must be an int, got {type(exp)}")
+        if exp <= 0.:
+            raise TypeError(f"Pow exponent must be strictly positive, got {exp}")
         return Pow(_to_function(self), exp)
 
     def __mul__(self, other: float | ImplicitFunction) -> ImplicitFunction:
@@ -226,9 +228,13 @@ class Div(ImplicitFunction):
 
 class Pow(ImplicitFunction):
     def __repr__(self): return f"{self.f} ** {self.exp}"
-    def __init__(self, f:ImplicitFunction, exp: int | float):
-        self.f = f
-        self.exp = float(exp)
+    def __init__(self, f:ImplicitFunction, exp: int):
+        if not isinstance(exp, int) or exp <= 0:
+            raise TypeError(
+                f"Pow exponent must be a strictly positive integer, got {exp!r}. "
+                f"For exp=-1 use Div, for exp=0.5 use Sqrt.")
+        self.f   = f
+        self.exp = exp
     def evaluate(self, point): return self.f.evaluate(point) ** self.exp
     def to_xml_element(self, _cached=None):
         if _cached is None: _cached = []

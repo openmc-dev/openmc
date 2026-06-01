@@ -1,4 +1,6 @@
 import h5py
+import numpy as np
+import pytest
 import openmc
 
 
@@ -44,3 +46,26 @@ def test_export_hdf5_format(request, run_in_tmpdir):
         for name in m_grp:
             assert 'id' in m_grp[name].attrs
             assert 'type' in m_grp[name]
+
+
+@pytest.mark.parametrize('library', ('libmesh', 'moab'))
+def test_export_hdf5_unstructured_mesh(request, run_in_tmpdir, library):
+    # UnstructuredMesh can't be serialized from pure Python; export_to_hdf5
+    # routes it through openmc.lib.export_weight_windows (a live session).
+    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip('LibMesh not enabled in this build.')
+    if library == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip('DAGMC (and MOAB) not enabled in this build.')
+
+    mesh = openmc.UnstructuredMesh(
+        str(request.path.with_name('test_mesh_tets.exo')), library)
+    ww = openmc.WeightWindows(mesh, np.ones((12_000,)), upper_bound_ratio=5.0)
+    openmc.WeightWindowsList([ww]).export_to_hdf5('ww.h5')
+
+    with h5py.File('ww.h5') as f:
+        assert f.attrs['filetype'] == b'weight_windows'
+        assert list(f.attrs['version']) == [1, 0]
+        assert int(f['weight_windows'].attrs['n_weight_windows']) == 1
+        m_grp = f['meshes'][f'mesh {mesh.id}']
+        assert m_grp['type'][()] == b'unstructured'
+        assert 'filename' in m_grp

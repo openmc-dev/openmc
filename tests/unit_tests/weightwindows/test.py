@@ -91,7 +91,7 @@ def model():
     # settings
     settings = model.settings
     settings.run_mode = 'fixed source'
-    settings.particles = 500
+    settings.particles = 1000
     settings.batches = 2
     settings.max_history_splits = 100
     settings.photon_transport = True
@@ -202,7 +202,7 @@ def test_weightwindows(model, wws, shared_secondary):
 
             diff = an_source_bin - ww_source_bin
 
-            # check that values are within two combined standard deviations
+            # check that values are within four combined standard deviations
             assert abs(diff.nominal_value) / diff.std_dev < 2.0
 
         compare_results('neutron', analog_tally, ww_tally)

@@ -265,6 +265,46 @@ class Model:
             denom_tally = openmc.Tally(name='IFP denominator')
             denom_tally.scores = ['ifp-denominator']
             self.tallies.append(denom_tally)
+    
+    # TODO: This should also be incorporated into lower-level calls in 
+    # settings.py, but it requires information about the tallies currently
+    # on the active Model
+    def _assign_fw_cadis_tally_IDs(self):
+        # Verify that all tallies assigned as targets on WeightWindowGenerators 
+        # exist within model.tallies. If this is the case, convert the .targets 
+        # attribute of each WeightWindowGenerator to a sequence of tally IDs.
+        if len(self.settings.weight_window_generators) == 0:
+            return
+        
+        # List of valid tally IDs
+        reference_tally_ids = np.asarray([tal.id for tal in self.tallies])
+        
+        for wwg in self.settings.weight_window_generators:
+            # Only proceeds if the "targets" attribute is an openmc.Tallies, 
+            # which means it hasn't been checked against model.tallies.
+            if isinstance(wwg.targets, openmc.Tallies):
+                id_vec = []
+                for tal in wwg.targets:
+                    # check against model tallies for equivalence
+                    id_next = None
+                    for reference_tal in self.tallies:
+                        if tal == reference_tal:
+                            id_next = reference_tal.id
+                            break
+                    
+                    if id_next == None:
+                        raise RuntimeError(
+                            f'Local FW-CADIS target tally {tal.id} not found on model.tallies!')
+                    else:
+                        id_vec.append(id_next)
+
+                wwg.targets = id_vec
+
+            elif isinstance(wwg.targets, np.ndarray):
+                invalid = wwg.targets[~np.isin(wwg.targets, reference_tally_ids)]
+                if len(invalid) > 0:
+                    raise RuntimeError(
+                        f'Local FW-CADIS target tally IDs {invalid} not found on model.tallies!')
 
     @classmethod
     def from_xml(
@@ -427,6 +467,8 @@ class Model:
         This method iterates over all DAGMC universes in the geometry and
         synchronizes their cells with the current material assignments. Requires
         that the model has been initialized via :meth:`Model.init_lib`.
+        Synchronized DAGMC cells can then be edited and exported as nested
+        `<cell>` overrides inside each `<dagmc_universe>` element.
 
         .. versionadded:: 0.15.1
 
@@ -576,6 +618,7 @@ class Model:
         if not d.is_dir():
             d.mkdir(parents=True, exist_ok=True)
 
+        self._assign_fw_cadis_tally_IDs()
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
 
@@ -633,6 +676,9 @@ class Model:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
                           "set the Geometry.merge_surfaces attribute instead.")
             self.geometry.merge_surfaces = True
+
+        # Link FW-CADIS WeightWindowGenerator target tallies, if present
+        self._assign_fw_cadis_tally_IDs()
 
         # provide a memo to track which meshes have been written
         mesh_memo = set()
@@ -1294,8 +1340,9 @@ class Model:
         self,
         n_samples: int = 1000,
         prn_seed: int | None = None,
+        as_array: bool = False,
         **init_kwargs
-    ) -> openmc.ParticleList:
+    ) -> openmc.ParticleList | np.ndarray:
         """Sample external source and return source particles.
 
         .. versionadded:: 0.15.1
@@ -1307,13 +1354,17 @@ class Model:
         prn_seed : int
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
+        as_array : bool
+            If True, return a numpy structured array instead of a
+            :class:`~openmc.ParticleList`.
         **init_kwargs
             Keyword arguments passed to :func:`openmc.lib.init`
 
         Returns
         -------
-        openmc.ParticleList
-            List of samples source particles
+        openmc.ParticleList or numpy.ndarray
+            List of sampled source particles, or a structured array when
+            *as_array* is True.
         """
         import openmc.lib
 
@@ -1324,7 +1375,7 @@ class Model:
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.sample_external_source(
-                n_samples=n_samples, prn_seed=prn_seed
+                n_samples=n_samples, prn_seed=prn_seed, as_array=as_array
             )
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
@@ -1695,8 +1746,8 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
+    @staticmethod
     def _auto_generate_mgxs_lib(
-        self,
         model: openmc.model.model,
         groups: openmc.mgxs.EnergyGroups,
         correction: str | none,
@@ -1861,6 +1912,85 @@ class Model:
 
         return sources
 
+    @staticmethod
+    def _isothermal_infinite_media_mgxs(
+        material: openmc.Material,
+        groups: openmc.mgxs.EnergyGroups,
+        nparticles: int,
+        correction: str | None,
+        directory: PathLike,
+        source: openmc.IndependentSource,
+        temperature_settings: dict,
+        temperature: float | None = None,
+    ) -> openmc.XSdata:
+        """Generate a single MGXS set for one material, where the geometry is an
+        infinite medium composed of that material at an isothermal temperature value.
+
+        Parameters
+        ----------
+        material : openmc.Material
+            The material to generate MGXS for
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        source : openmc.IndependentSource
+            Source to use when generating MGXS.
+        temperature_settings : dict
+            A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings.
+        temperature : float, optional
+            The isothermal temperature value to apply to the material. If not specified,
+            defaults to the temperature in the material.
+
+        Returns
+        -------
+        data : openmc.XSdata
+            The material MGXS for the given temperature isotherm.
+        """
+        model = openmc.Model()
+
+        # Set materials on the model
+        model.materials = [material]
+        if temperature != None:
+          model.materials[-1].temperature = temperature
+
+        # Settings
+        model.settings.batches = 100
+        model.settings.particles = nparticles
+
+        model.settings.source = source
+
+        model.settings.run_mode = 'fixed source'
+        model.settings.create_fission_neutrons = False
+
+        model.settings.output = {'summary': True, 'tallies': False}
+        model.settings.temperature = temperature_settings
+
+        # Geometry
+        box = openmc.model.RectangularPrism(
+            100000.0, 100000.0, boundary_type='reflective')
+        name = material.name
+        infinite_cell = openmc.Cell(name=name, fill=model.materials[-1], region=-box)
+        infinite_universe = openmc.Universe(name=name, cells=[infinite_cell])
+        model.geometry.root_universe = infinite_universe
+
+        # Generate MGXS
+        mgxs_lib = Model._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
+
+        if temperature != None:
+            return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
+                                       temperature=temperature)
+        else:
+            return mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
+
     def _generate_infinite_medium_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
@@ -1869,13 +1999,17 @@ class Model:
         correction: str | None,
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
-    ):
+        temperatures: Sequence[float] | None = None,
+        temperature_settings: dict | None = None,
+    ) -> None:
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
         material. A discrete source is used to sample particles, with an equal
         strength spread across each of the energy groups. This is a highly naive
         method that ignores all spatial self shielding effects and all resonance
-        shielding effects between materials.
+        shielding effects between materials. If temperature data points are provided,
+        isothermal cross sections are generated at each temperature point for
+        each material to build a temperature interpolation table.
 
         Note that in all cases, a discrete source that is uniform over all
         energy groups is created (strength = 0.01) to ensure that total cross
@@ -1907,50 +2041,79 @@ class Model:
         source_energy : openmc.stats.Univariate, optional
             Energy distribution to use when generating MGXS data, replacing any
             existing sources in the model.
+        temperatures : Sequence[float], optional
+            A list of temperatures to generate MGXS at. Each infinite material region
+            is isothermal at a given temperature data point for cross
+            section generation.
+        temperature_settings : dict, optional
+            A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings.
         """
-        mgxs_sets = []
-        for material in self.materials:
-            model = openmc.Model()
 
-            # Set materials on the model
-            model.materials = [material]
+        src = self._create_mgxs_sources(
+            groups,
+            spatial_dist=openmc.stats.Point(),
+            source_energy=source_energy
+        )
 
-            # Settings
-            model.settings.batches = 100
-            model.settings.particles = nparticles
+        temp_settings = {}
+        if temperature_settings == None:
+            temp_settings = self.settings.temperature
+        else:
+            temp_settings = temperature_settings
 
-            model.settings.source = self._create_mgxs_sources(
-                groups,
-                spatial_dist=openmc.stats.Point(),
-                source_energy=source_energy
-            )
+        if temperatures == None:
+            mgxs_sets = []
+            for material in self.materials:
+                xs_data = Model._isothermal_infinite_media_mgxs(
+                    material,
+                    groups,
+                    nparticles,
+                    correction,
+                    directory,
+                    src,
+                    temp_settings
+                )
+                mgxs_sets.append(xs_data)
 
-            model.settings.run_mode = 'fixed source'
-            model.settings.create_fission_neutrons = False
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
+        else:
+            # Build a series of XSData objects, one for each isothermal temperature value.
+            raw_mgxs_sets = {}
+            for temperature in temperatures:
+                raw_mgxs_sets[temperature] = []
+                for material in self.materials:
+                    xs_data = Model._isothermal_infinite_media_mgxs(
+                        material,
+                        groups,
+                        nparticles,
+                        correction,
+                        directory,
+                        src,
+                        temp_settings,
+                        temperature
+                    )
+                    raw_mgxs_sets[temperature].append(xs_data)
 
-            model.settings.output = {'summary': True, 'tallies': False}
+            # Unpack the isothermal XSData objects and build a single XSData object per material.
+            mgxs_sets = []
+            for m in range(len(self.materials)):
+                mgxs_sets.append(openmc.XSdata(self.materials[m].name, groups,
+                                               temperatures=temperatures))
+                mgxs_sets[-1].order = 0
+                for temperature in temperatures:
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][m])
 
-            # Geometry
-            box = openmc.model.RectangularPrism(
-                100000.0, 100000.0, boundary_type='reflective')
-            name = material.name
-            infinite_cell = openmc.Cell(name=name, fill=material, region=-box)
-            infinite_universe = openmc.Universe(name=name, cells=[infinite_cell])
-            model.geometry.root_universe = infinite_universe
-
-            # Add MGXS Tallies
-            mgxs_lib = self._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
-
-            # Create a MGXS File which can then be written to disk
-            mgxs_set = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
-            mgxs_sets.append(mgxs_set)
-
-        # Write the file to disk
-        mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
-        for mgxs_set in mgxs_sets:
-            mgxs_file.add_xsdata(mgxs_set)
-        mgxs_file.export_to_hdf5(mgxs_path)
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
 
     @staticmethod
     def _create_stochastic_slab_geometry(
@@ -2026,6 +2189,89 @@ class Model:
 
         return geometry, box
 
+    @staticmethod
+    def _isothermal_stochastic_slab_mgxs(
+        stoch_geom: openmc.Geometry,
+        groups: openmc.mgxs.EnergyGroups,
+        nparticles: int,
+        correction: str | None,
+        directory: PathLike,
+        source: openmc.IndependentSource,
+        temperature_settings: dict,
+        temperature: float | None = None,
+    ) -> dict[str, openmc.XSdata]:
+        """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
+        slab geometry. If a temperature is specified, all materials in the slab have
+        their temperatures set to be isothermal at this temperature.
+
+        Parameters
+        ----------
+        stoch_geom : openmc.Geometry
+            The stochastic slab geometry.
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        source : openmc.IndependentSource
+            Source to use when generating MGXS.
+        temperature_settings : dict
+            A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings.
+        temperature : float, optional
+            The isothermal temperature value to apply to the materials in the
+            slab. If not specified, defaults to the temperature in the materials.
+
+        Returns
+        -------
+        data : dict[str, openmc.XSdata]
+            A dictionary where the key is the name of the material and the value is the isothermal MGXS.
+        """
+
+        model = openmc.Model()
+        model.geometry = stoch_geom
+
+        if temperature != None:
+            for material in model.geometry.get_all_materials().values():
+                material.temperature = temperature
+
+        # Settings
+        model.settings.batches = 200
+        model.settings.inactive = 100
+        model.settings.particles = nparticles
+        model.settings.output = {'summary': True, 'tallies': False}
+        model.settings.temperature = temperature_settings
+
+        # Define the sources
+        model.settings.source = source
+
+        model.settings.run_mode = 'fixed source'
+        model.settings.create_fission_neutrons = False
+
+        model.settings.output = {'summary': True, 'tallies': False}
+
+        # Generate MGXS
+        mgxs_lib = Model._auto_generate_mgxs_lib(
+                model, groups, correction, directory)
+
+        # Fetch all of the isothermal results.
+        if temperature != None:
+            return {
+                mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
+                                               temperature=temperature)
+                    for mat in mgxs_lib.domains
+            }
+        else:
+            return {
+                mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name)
+                    for mat in mgxs_lib.domains
+            }
+
     def _generate_stochastic_slab_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
@@ -2034,6 +2280,8 @@ class Model:
         correction: str | None,
         directory: PathLike,
         source_energy: openmc.stats.Univariate | None = None,
+        temperatures: Sequence[float] | None = None,
+        temperature_settings: dict | None = None,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -2043,7 +2291,9 @@ class Model:
         will generate cross sections for all materials in the problem regardless
         of type. If this is a fixed source problem, a discrete source is used to
         sample particles, with an equal strength spread across each of the
-        energy groups.
+        energy groups. If temperature data points are provided,
+        isothermal cross sections are generated at each temperature point for
+        the stochastic slab to build a temperature interpolation table.
 
         Parameters
         ----------
@@ -2075,41 +2325,152 @@ class Model:
             no sources are defined on the model and the run mode is
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added.
+        temperatures : Sequence[float], optional
+            A list of temperatures to generate MGXS at. Each infinite material region
+            is isothermal at a given temperature data point for cross
+            section generation.
+        temperature_settings : dict, optional
+            A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings.
         """
-        model = openmc.Model()
-        model.materials = self.materials
+
+        # Stochastic slab geometry
+        geo, spatial_distribution = Model._create_stochastic_slab_geometry(
+            self.materials)
+
+        src = self._create_mgxs_sources(
+            groups,
+            spatial_dist=spatial_distribution,
+            source_energy=source_energy
+        )
+
+        temp_settings = {}
+        if temperature_settings == None:
+            temp_settings = self.settings.temperature
+        else:
+            temp_settings = temperature_settings
+
+        if temperatures == None:
+            mgxs_sets = Model._isothermal_stochastic_slab_mgxs(
+                geo,
+                groups,
+                nparticles,
+                correction,
+                directory,
+                src,
+                temp_settings
+            ).values()
+
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
+        else:
+            # Build a series of XSData objects, one for each isothermal temperature value.
+            raw_mgxs_sets = {}
+            for temperature in temperatures:
+                raw_mgxs_sets[temperature] = Model._isothermal_stochastic_slab_mgxs(
+                    geo,
+                    groups,
+                    nparticles,
+                    correction,
+                    directory,
+                    src,
+                    temp_settings,
+                    temperature
+                )
+
+            # Unpack the isothermal XSData objects and build a single XSData object per material.
+            mgxs_sets = []
+            for mat in self.materials:
+                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures=temperatures))
+                mgxs_sets[-1].order = 0
+                for temperature in temperatures:
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
+
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
+
+    @staticmethod
+    def _isothermal_materialwise_mgxs(
+        input_model: openmc.Model,
+        groups: openmc.mgxs.EnergyGroups,
+        nparticles: int,
+        correction: str | None,
+        directory: PathLike,
+        temperature_settings: dict,
+        temperature: float | None = None,
+    ) -> dict[str, openmc.XSdata]:
+        """Generate a material-wise MGXS library for the model by running the
+        original continuous energy OpenMC simulation. If a temperature is
+        specified, each material in the input model is set to that temperature.
+        Otherwise, the original material temperatures are used. If temperature
+        data points are provided, isothermal cross sections are generated at
+        each temperature point for the whole model to build a temperature
+        interpolation table.
+
+        Parameters
+        ----------
+        input_model : openmc.Model
+            The model to use when computing material-wise MGXS.
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        temperature_settings : dict
+            A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings.
+        temperature : float, optional
+            The isothermal temperature value to apply to the materials in the
+            input model. If not specified, defaults to the temperatures in the
+            materials.
+
+        Returns
+        -------
+        data : dict[str, openmc.XSdata]
+            A dictionary where the key is the name of the material and the value is the isothermal MGXS.
+        """
+        model = copy.deepcopy(input_model)
+        model.tallies = openmc.Tallies()
+
+        if temperature != None:
+            for material in model.geometry.get_all_materials().values():
+                material.temperature = temperature
 
         # Settings
         model.settings.batches = 200
         model.settings.inactive = 100
         model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
+        model.settings.temperature = temperature_settings
 
-        # Stochastic slab geometry
-        model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
-            model.materials)
-
-        # Define the sources
-        model.settings.source = self._create_mgxs_sources(
-            groups,
-            spatial_dist=spatial_distribution,
-            source_energy=source_energy
-        )
-
-        model.settings.run_mode = 'fixed source'
-        model.settings.create_fission_neutrons = False
-
-        model.settings.output = {'summary': True, 'tallies': False}
-
-        # Add MGXS Tallies
-        mgxs_lib = self._auto_generate_mgxs_lib(
+        # Generate MGXS
+        mgxs_lib = Model._auto_generate_mgxs_lib(
                 model, groups, correction, directory)
 
-        names = [mat.name for mat in mgxs_lib.domains]
-
-        # Create a MGXS File which can then be written to disk
-        mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
-        mgxs_file.export_to_hdf5(mgxs_path)
+        # Fetch all of the isothermal results.
+        if temperature != None:
+            return {
+                mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
+                                               temperature=temperature)
+                    for mat in mgxs_lib.domains
+            }
+        else:
+            return {
+                mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name)
+                    for mat in mgxs_lib.domains
+            }
 
     def _generate_material_wise_mgxs(
         self,
@@ -2118,6 +2479,8 @@ class Model:
         mgxs_path: PathLike,
         correction: str | None,
         directory: PathLike,
+        temperatures: Sequence[float] | None = None,
+        temperature_settings: dict | None = None,
     ) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
@@ -2142,36 +2505,75 @@ class Model:
             "P0".
         directory : PathLike
             Directory to run the simulation in, so as to contain XML files.
+        temperatures : Sequence[float], optional
+            A list of temperatures to generate MGXS at. Each infinite material region
+            is isothermal at a given temperature data point for cross
+            section generation.
+        temperature_settings : dict, optional
+            A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings.
         """
-        model = copy.deepcopy(self)
-        model.tallies = openmc.Tallies()
+        temp_settings = {}
+        if temperature_settings == None:
+            temp_settings = self.settings.temperature
+        else:
+            temp_settings = temperature_settings
 
-        # Settings
-        model.settings.batches = 200
-        model.settings.inactive = 100
-        model.settings.particles = nparticles
-        model.settings.output = {'summary': True, 'tallies': False}
+        if temperatures == None:
+            mgxs_sets = Model._isothermal_materialwise_mgxs(
+                self,
+                groups,
+                nparticles,
+                correction,
+                directory,
+                temp_settings
+            ).values()
 
-        # Add MGXS Tallies
-        mgxs_lib = self._auto_generate_mgxs_lib(
-                model, groups, correction, directory)
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
+        else:
+            # Build a series of XSData objects, one for each isothermal temperature value.
+            raw_mgxs_sets = {}
+            for temperature in temperatures:
+                raw_mgxs_sets[temperature] = Model._isothermal_materialwise_mgxs(
+                    self,
+                    groups,
+                    nparticles,
+                    correction,
+                    directory,
+                    temp_settings,
+                    temperature
+                )
 
-        names = [mat.name for mat in mgxs_lib.domains]
+            # Unpack the isothermal XSData objects and build a single XSData object per material.
+            mgxs_sets = []
+            for mat in self.materials:
+                mgxs_sets.append(openmc.XSdata(mat.name, groups, temperatures=temperatures))
+                mgxs_sets[-1].order = 0
+                for temperature in temperatures:
+                    mgxs_sets[-1].add_temperature_data(raw_mgxs_sets[temperature][mat.name])
 
-        # Create a MGXS File which can then be written to disk
-        mgxs_file = mgxs_lib.create_mg_library(
-            xs_type='macro', xsdata_names=names)
-        mgxs_file.export_to_hdf5(mgxs_path)
+            # Write the file to disk.
+            mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+            for mgxs_set in mgxs_sets:
+                mgxs_file.add_xsdata(mgxs_set)
+            mgxs_file.export_to_hdf5(mgxs_path)
 
     def convert_to_multigroup(
         self,
         method: str = "material_wise",
-        groups: str = "CASMO-2",
+        groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
         nparticles: int = 2000,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
         source_energy: openmc.stats.Univariate | None = None,
+        temperatures: Sequence[float] | None = None,
+        temperature_settings: dict | None = None,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2182,9 +2584,13 @@ class Model:
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
             Method to generate the MGXS.
-        groups : openmc.mgxs.EnergyGroups or str, optional
-            Energy group structure for the MGXS or the name of the group
-            structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
+            Energy group structure for the MGXS. Can be an
+            :class:`openmc.mgxs.EnergyGroups` object, a string name of a
+            predefined group structure from :data:`openmc.mgxs.GROUP_STRUCTURES`
+            (e.g., ``"CASMO-2"``), or a sequence of floats specifying energy
+            bin boundaries in eV (e.g., ``[0.0, 1e6]`` for a single group).
+            Defaults to ``"CASMO-2"``.
         nparticles : int, optional
             Number of particles to simulate per batch when generating MGXS.
         overwrite_mgxs_library : bool, optional
@@ -2212,8 +2618,16 @@ class Model:
             'eigenvalue', then a default Watt spectrum source (strength = 0.99)
             is added. Note that this argument is only used when using the
             "stochastic_slab" or "infinite_medium" MGXS generation methods.
+        temperatures : Sequence[float], optional
+            A list of temperatures to generate MGXS at. Each infinite material region
+            is isothermal at a given temperature data point for cross
+            section generation.
+        temperature_settings : dict, optional
+            A dictionary of temperature settings to use when generating MGXS.
+            Valid entries for temperature_settings are the same as the valid
+            entries in openmc.Settings.temperature_settings.
         """
-        if isinstance(groups, str):
+        if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
 
         # Do all work (including MGXS generation) in a temporary directory
@@ -2225,9 +2639,16 @@ class Model:
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():
                 if isinstance(univ, openmc.DAGMCUniverse):
+                    # Initialize in stochastic volume mode (non-transport mode)
+                    # This mode doesn't require
+                    # valid transport settings like particles/batches
+                    original_run_mode = self.settings.run_mode
+                    self.settings.run_mode = 'volume'
                     self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()
+                    # Restore original run mode
+                    self.settings.run_mode = original_run_mode
                     break
 
             # Make sure all materials have a name, and that the name is a valid HDF5
@@ -2241,13 +2662,16 @@ class Model:
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
+                        temperatures, temperature_settings)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir)
+                        groups, nparticles, mgxs_path, correction, tmpdir,
+                        temperatures, temperature_settings)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
-                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy)
+                        groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
+                        temperatures, temperature_settings)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')

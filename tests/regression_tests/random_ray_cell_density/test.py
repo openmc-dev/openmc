@@ -22,7 +22,7 @@ def test_random_ray_basic(run_mode):
         if run_mode == "eigen":
             openmc.reset_auto_ids()
             model = random_ray_lattice()
-            # Double the densities of the lower-left fuel pin -> cell instances [0, 9).
+            # Double the densities of the lower-left fuel pin -> cell instances [0, 8).
             for id, cell in model.geometry.get_all_cells().items():
                 if cell.fill.name == "UO2 fuel":
                     cell.density = [((i < 8) + 1.0) for i in range(24)]

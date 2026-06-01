@@ -4,8 +4,7 @@
 #include <cstdint> // for int64_t
 #include <string>
 
-#include "xtensor/xbuilder.hpp" // for empty_like
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
@@ -22,6 +21,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
+#include "openmc/particle_type.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -276,8 +276,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
           auto& results = tally->results_;
-          write_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.shape()[2], results.data());
+          write_tally_results(tally_group, results.shape(0), results.shape(1),
+            results.shape(2), results.data());
           close_group(tally_group);
         }
       } else {
@@ -516,8 +516,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
           tally->writable_ = false;
         } else {
           auto& results = tally->results_;
-          read_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.shape()[2], results.data());
+          read_tally_results(tally_group, results.shape(0), results.shape(1),
+            results.shape(2), results.data());
 
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
           close_group(tally_group);
@@ -592,8 +592,16 @@ void write_source_point(std::string filename, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index, bool use_mcpl)
 {
   std::string ext = use_mcpl ? "mcpl" : "h5";
+
+  int total_surf_particles = source_bank.size();
+#ifdef OPENMC_MPI
+  int num_particles = source_bank.size();
+  MPI_Allreduce(
+    &num_particles, &total_surf_particles, 1, MPI_INT, MPI_SUM, mpi::intracomm);
+#endif
+
   write_message("Creating source file {}.{} with {} particles ...", filename,
-    ext, source_bank.size(), 5);
+    ext, total_surf_particles, 5);
 
   // Dispatch to appropriate function based on file type
   if (use_mcpl) {
@@ -632,6 +640,7 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
   if (mpi::master || parallel) {
     file_id = file_open(filename_.c_str(), 'w', true);
     write_attribute(file_id, "filetype", "source");
+    write_attribute(file_id, "version", VERSION_STATEPOINT);
   }
 
   // Get pointer to source bank and write to file
@@ -677,6 +686,16 @@ std::string dtype_member_names(hid_t dtype_id)
 void read_source_bank(
   hid_t group_id, vector<SourceSite>& sites, bool distribute)
 {
+  bool legacy_particle_codes = true;
+  if (attribute_exists(group_id, "version")) {
+    array<int, 2> version;
+    read_attribute(group_id, "version", version);
+    if (version[0] > VERSION_STATEPOINT[0] ||
+        (version[0] == VERSION_STATEPOINT[0] && version[1] >= 2)) {
+      legacy_particle_codes = false;
+    }
+  }
+
   hid_t banktype = h5banktype(true);
 
   // Open the dataset
@@ -738,6 +757,12 @@ void read_source_bank(
     H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
+
+  if (legacy_particle_codes) {
+    for (auto& site : sites) {
+      site.particle = legacy_particle_index_to_type(site.particle.pdg_number());
+    }
+  }
 }
 
 void write_unstructured_mesh_results()
@@ -809,7 +834,7 @@ void write_unstructured_mesh_results()
           // construct result vectors
           vector<double> mean_vec(umesh->n_bins()),
             std_dev_vec(umesh->n_bins());
-          for (int j = 0; j < tally->results_.shape()[0]; j++) {
+          for (int j = 0; j < tally->results_.shape(0); j++) {
             // get the volume for this bin
             double volume = umesh->volume(j);
             // compute the mean
@@ -871,7 +896,7 @@ void write_tally_results_nr(hid_t file_id)
 
 #ifdef OPENMC_MPI
   // Reduce global tallies
-  xt::xtensor<double, 2> gt_reduced = xt::empty_like(gt);
+  tensor::Tensor<double> gt_reduced({N_GLOBAL_TALLIES, 3});
   MPI_Reduce(gt.data(), gt_reduced.data(), gt.size(), MPI_DOUBLE, MPI_SUM, 0,
     mpi::intracomm);
 
@@ -900,13 +925,18 @@ void write_tally_results_nr(hid_t file_id)
       write_attribute(file_id, "tallies_present", 1);
     }
 
-    // Get view of accumulated tally values
-    auto values_view = xt::view(t->results_, xt::all(), xt::all(),
-      xt::range(static_cast<int>(TallyResult::SUM),
-        static_cast<int>(TallyResult::SUM_SQ) + 1));
-
-    // Make copy of tally values in contiguous array
-    xt::xtensor<double, 3> values = values_view;
+    // Copy the SUM and SUM_SQ columns from the tally results into a
+    // contiguous array for MPI reduction
+    const int r_start = static_cast<int>(TallyResult::SUM);
+    const int r_end = static_cast<int>(TallyResult::SUM_SQ) + 1;
+    const size_t r_count = r_end - r_start;
+    const size_t ni = t->results_.shape(0);
+    const size_t nj = t->results_.shape(1);
+    tensor::Tensor<double> values({ni, nj, r_count});
+    for (size_t i = 0; i < ni; i++)
+      for (size_t j = 0; j < nj; j++)
+        for (size_t r = 0; r < r_count; r++)
+          values(i, j, r) = t->results_(i, j, r_start + r);
 
     if (mpi::master) {
       // Open group for tally
@@ -920,19 +950,22 @@ void write_tally_results_nr(hid_t file_id)
         MPI_SUM, 0, mpi::intracomm);
 #endif
 
-      // At the end of the simulation, store the results back in the
-      // regular TallyResults array
+      // At the end of the simulation, store the reduced results back
+      // into the tally results array
       if (simulation::current_batch == settings::n_max_batches ||
           simulation::satisfy_triggers) {
-        values_view = values;
+        for (size_t i = 0; i < ni; i++)
+          for (size_t j = 0; j < nj; j++)
+            for (size_t r = 0; r < r_count; r++)
+              t->results_(i, j, r_start + r) = values(i, j, r);
       }
 
-      // Put in temporary tally result
-      xt::xtensor<double, 3> results_copy = xt::zeros_like(t->results_);
-      auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
-        xt::range(static_cast<int>(TallyResult::SUM),
-          static_cast<int>(TallyResult::SUM_SQ) + 1));
-      copy_view = values;
+      // Put reduced values into a full-sized copy for writing to HDF5
+      tensor::Tensor<double> results_copy = tensor::zeros_like(t->results_);
+      for (size_t i = 0; i < ni; i++)
+        for (size_t j = 0; j < nj; j++)
+          for (size_t r = 0; r < r_count; r++)
+            results_copy(i, j, r_start + r) = values(i, j, r);
 
       // Write reduced tally results to file
       auto shape = results_copy.shape();

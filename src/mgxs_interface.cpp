@@ -169,13 +169,13 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
         continue;
 
       // Get temperature of cell (rounding to nearest integer)
-      double sqrtkT =
-        cell->sqrtkT_.size() == 1 ? cell->sqrtkT_[j] : cell->sqrtkT_[0];
-      double kT = sqrtkT * sqrtkT;
+      for (int k = 0; k < cell->sqrtkT_.size(); ++k) {
+        double kT = cell->sqrtkT_[k] * cell->sqrtkT_[k];
 
-      // Add temperature if it hasn't already been added
-      if (!contains(kTs[i_material], kT)) {
-        kTs[i_material].push_back(kT);
+        // Add temperature if it hasn't already been added
+        if (!contains(kTs[i_material], kT)) {
+          kTs[i_material].push_back(kT);
+        }
       }
     }
   }
@@ -237,6 +237,19 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
                 "library file!");
   }
 
+  // Calculate approximate default inverse velocity data
+  for (int i = 0; i < energy_bins_.size() - 1; ++i) {
+    double e_min = std::max(energy_bins_[i + 1], 1e-5);
+    double e_max = energy_bins_[i];
+    double alpha = 1.0 / (C_LIGHT * std::log(e_max / e_min));
+    double k_max = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_max);
+    double k_min = std::sqrt(1 + 2.0 * MASS_NEUTRON_EV / e_min);
+    double inv_v =
+      alpha * (2.0 * (std::atanh(1.0 / k_max) - std::atanh(1.0 / k_min)) -
+                (k_max - k_min));
+    default_inverse_velocity_.push_back(inv_v);
+  }
+
   // Close MGXS HDF5 file
   file_close(file_id);
 }
@@ -244,7 +257,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
 void put_mgxs_header_data_to_globals()
 {
   // Get the minimum and maximum energies
-  int neutron = static_cast<int>(ParticleType::neutron);
+  int neutron = ParticleType::neutron().transport_index();
   data::energy_min[neutron] = data::mg.energy_bins_.back();
   data::energy_max[neutron] = data::mg.energy_bins_.front();
 

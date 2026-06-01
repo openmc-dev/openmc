@@ -1,22 +1,23 @@
+from pathlib import Path
+
 import pytest
 import numpy as np
 
 import openmc
 from openmc.stats import Discrete, Point
+from openmc.utility_funcs import change_directory
 
 from tests.testing_harness import HashedPyAPITestHarness
 
 
-
-@pytest.fixture
-def model():
+def build_model(shared_secondary):
+    openmc.reset_auto_ids()
     model = openmc.Model()
 
     # materials (M4 steel alloy)
     m4 = openmc.Material()
     m4.set_density('g/cc', 2.3)
     m4.add_nuclide('H1', 0.168018676)
-    m4.add_nuclide("H2", 1.93244e-05)
     m4.add_nuclide("O16", 0.561814465)
     m4.add_nuclide("O17", 0.00021401)
     m4.add_nuclide("Na23", 0.021365)
@@ -26,14 +27,9 @@ def model():
     m4.add_nuclide("Si30", 0.006273944)
     m4.add_nuclide("Ca40", 0.018026179)
     m4.add_nuclide("Ca42", 0.00012031)
-    m4.add_nuclide("Ca43", 2.51033e-05)
     m4.add_nuclide("Ca44", 0.000387892)
-    m4.add_nuclide("Ca46", 7.438e-07)
-    m4.add_nuclide("Ca48", 3.47727e-05)
     m4.add_nuclide("Fe54", 0.000248179)
     m4.add_nuclide("Fe56", 0.003895875)
-    m4.add_nuclide("Fe57", 8.99727e-05)
-    m4.add_nuclide("Fe58", 1.19737e-05)
 
     s0 = openmc.Sphere(r=240)
     s1 = openmc.Sphere(r=250, boundary_type='vacuum')
@@ -46,10 +42,13 @@ def model():
     # settings
     settings = model.settings
     settings.run_mode = 'fixed source'
-    settings.particles = 200
+    settings.particles = 500
     settings.batches = 2
     settings.max_history_splits = 200
     settings.photon_transport = True
+    settings.shared_secondary_bank = shared_secondary
+    settings.weight_window_checkpoints = {'surface': True,
+                                          'collision': True}
     space = Point((0.001, 0.001, 0.001))
     energy = Discrete([14E6], [1.0])
 
@@ -76,10 +75,10 @@ def model():
 
     # weight windows
 
-    # load pre-generated weight windows
-    # (created using the same tally as above)
-    ww_n_lower_bnds = np.loadtxt('ww_n.txt')
-    ww_p_lower_bnds = np.loadtxt('ww_p.txt')
+    # load pre-generated weight windows from parent directory
+    parent_dir = Path(__file__).parent
+    ww_n_lower_bnds = np.loadtxt(parent_dir / 'ww_n.txt')
+    ww_p_lower_bnds = np.loadtxt(parent_dir / 'ww_p.txt')
 
     # create a mesh matching the one used
     # to generate the weight windows
@@ -93,6 +92,7 @@ def model():
                                 None,
                                 10.0,
                                 e_bnds,
+                                'neutron',
                                 max_lower_bound_ratio=1.5)
 
     ww_p = openmc.WeightWindows(ww_mesh,
@@ -100,6 +100,7 @@ def model():
                                 None,
                                 10.0,
                                 e_bnds,
+                                'photon',
                                 max_lower_bound_ratio=1.5)
 
     model.settings.weight_windows = [ww_n, ww_p]
@@ -107,9 +108,15 @@ def model():
     return model
 
 
-def test_weightwindows(model):
-    test = HashedPyAPITestHarness('statepoint.2.h5', model)
-    test.main()
+@pytest.mark.parametrize("shared_secondary,subdir", [
+    (False, "local"),
+    (True, "shared"),
+])
+def test_weightwindows(shared_secondary, subdir):
+    with change_directory(subdir):
+        model = build_model(shared_secondary)
+        test = HashedPyAPITestHarness('statepoint.2.h5', model)
+        test.main()
 
 
 def test_wwinp_cylindrical():

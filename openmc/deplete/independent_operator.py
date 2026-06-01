@@ -384,7 +384,7 @@ class IndependentOperator(OpenMCOperator):
         # Return number density vector
         return super().initial_condition(self.materials)
 
-    def __call__(self, vec, source_rate):
+    def __call__(self, vec, source_rate) -> OperatorResult:
         """Obtain the reaction rates
 
         Parameters

@@ -7,6 +7,19 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
 
+-------------------------------
+``<atomic_relaxation>`` Element
+-------------------------------
+
+The ``<atomic_relaxation>`` element determines whether the atomic relaxation
+cascade, the X-ray fluorescence photons and Auger electrons emitted when an
+inner-shell vacancy is filled, is simulated following photoelectric and
+incoherent (Compton) scattering interactions. Disabling this can speed up
+photon transport calculations where the detailed secondary particle cascade is
+not of interest.
+
+  *Default*: true
+
 ---------------------
 ``<batches>`` Element
 ---------------------
@@ -542,6 +555,18 @@ generator during generation of colors in plots.
 
   *Default*: 1
 
+.. _properties_file:
+
+-----------------------------
+``<properties_file>`` Element
+-----------------------------
+
+  The ``properties_file`` element has no attributes and contains the path to a
+  properties HDF5 file to load cell temperatures/densities and material
+  densities.
+
+  *Default*: None
+
 ---------------------
 ``<ptables>`` Element
 ---------------------
@@ -572,11 +597,40 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: None
 
-  :source:
+  :ray_source:
     Specifies the starting ray distribution, and follows the format for
     :ref:`source_element`. It must be uniform in space and angle and cover the
     full domain. It does not represent a physical neutron or photon source -- it
     is only used to sample integrating ray starting locations and directions.
+
+    *Default*: None
+
+  :adjoint_source:
+    Specifies an adjoint fixed source for adjoint transport simulations, and 
+    follows the format for :ref:`source_element`. The distributions which make 
+    up the adjoint source are subject to the same restrictions as forward 
+    fixed sources in Random Ray mode.
+
+    *Default*: None
+  
+  :adjoint:
+    Specifies whether to perform adjoint transport. The default is 'False', 
+    corresponding to forward transport.
+
+    *Default*: None
+  
+  :volume_estimator:
+    Specifies choice of volume estimator for the random ray solver. Options 
+    are 'naive', 'simulation_averaged', or 'hybrid'. The default is 'hybrid'.
+
+    *Default*: None
+
+  :volume_normalized_flux_tallies:
+    Specifies whether to normalize flux tallies by volume (bool). The 
+    default is 'False'. When enabled, flux tallies will be reported in units 
+    of cm/cm^3. When disabled, flux tallies will be reported in units of cm 
+    (i.e., total distance traveled by neutrons in the spatial tally 
+    region).
 
     *Default*: None
 
@@ -687,14 +741,16 @@ pseudo-random number generator.
 
   *Default*: 1
 
---------------------
-``<stride>`` Element
---------------------
+-----------------------------------
+``<shared_secondary_bank>`` Element
+-----------------------------------
 
-The ``stride`` element is used to specify how many random numbers are allocated
-for each source particle history.
-
-  *Default*: 152,917
+  The ``shared_secondary_bank`` element indicates whether to use a shared
+  secondary particle bank. When enabled, secondary particles are collected into
+  a global bank, sorted for reproducibility, and load-balanced across MPI ranks
+  between generations. If not specified, the shared secondary bank is enabled
+  automatically for fixed-source simulations with weight windows active, and
+  disabled otherwise.
 
 .. _source_element:
 
@@ -721,7 +777,10 @@ attributes/sub-elements:
     is present.
 
   :particle:
-    The source particle type, either ``neutron`` or ``photon``.
+    The source particle type, specified as a PDG number or a string alias (e.g.,
+    ``neutron``/``n``, ``photon``/``gamma``, ``electron``, ``positron``,
+    ``proton``/``p``, ``deuteron``/``d``, ``triton``/``t``, ``alpha``, or GNDS
+    nuclide names like ``Fe57``).
 
     *Default*: neutron
 
@@ -811,6 +870,7 @@ attributes/sub-elements:
 
       For a "cylindrical" distribution, no parameters are specified. Instead,
       the ``r``, ``phi``, ``z``, and ``origin`` elements must be specified.
+      Optionally, the ``r_dir`` and ``z_dir`` elements could be specified.
 
       For a "spherical" distribution, no parameters are specified. Instead,
       the ``r``, ``theta``, ``phi``, and ``origin`` elements must be specified.
@@ -842,6 +902,10 @@ attributes/sub-elements:
       of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
+    :r_dir:
+      For "cylindrical" distributions, this element specifies the direction
+      of the cylinder r-axis at phi=0. Defaults to (1.0, 0.0, 0.0).
+
     :theta:
       For a "spherical" distribution, this element specifies the distribution
       of theta-coordinates. The necessary sub-elements/attributes are those of a
@@ -853,6 +917,10 @@ attributes/sub-elements:
       the distribution of phi-coordinates. The necessary
       sub-elements/attributes are those of a univariate probability
       distribution (see the description in :ref:`univariate`).
+
+    :z_dir:
+      For "cylindrical" distributions, this element specifies the direction
+      of the cylinder z-axis. Defaults to (0.0, 0.0, 1.0).
 
     :origin:
       For "cylindrical and "spherical" distributions, this element specifies
@@ -992,17 +1060,19 @@ variable and whose sub-elements/attributes are as follows:
 
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
-  "tabular", "maxwell", "watt", and "mixture". The "uniform" option produces
-  variates sampled from a uniform distribution over a finite interval. The
-  "discrete" option produces random variates that can assume a finite number
-  of values (i.e., a distribution characterized by a probability mass function).
-  The "tabular" option produces random variates sampled from a tabulated
-  distribution where the density function is either a histogram or
+  "tabular", "maxwell", "watt", "mixture", and "decay_spectrum". The "uniform"
+  option produces variates sampled from a uniform distribution over a finite
+  interval. The "discrete" option produces random variates that can assume a
+  finite number of values (i.e., a distribution characterized by a probability
+  mass function). The "tabular" option produces random variates sampled from a
+  tabulated distribution where the density function is either a histogram or
   linearly-interpolated between tabulated points. The "watt" option produces
   random variates is sampled from a Watt fission spectrum (only used for
   energies). The "maxwell" option produce variates sampled from a Maxwell
-  fission spectrum (only used for energies). The "mixture" option produces samples
-  from univariate sub-distributions with given probabilities.
+  fission spectrum (only used for energies). The "mixture" option produces
+  samples from univariate sub-distributions with given probabilities. The
+  "decay_spectrum" option produces photon energies sampled from decay photon
+  spectra in a depletion chain (only used for energies).
 
   *Default*: None
 
@@ -1019,6 +1089,10 @@ variable and whose sub-elements/attributes are as follows:
   For a "discrete" or "tabular" distribution, ``parameters`` provides the
   :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
   points are given first followed by corresponding :math:`p` points.
+
+  For a "decay_spectrum" distribution, ``parameters`` gives the atom densities
+  in [atom/b-cm] for the nuclides listed in the ``nuclides`` element, in the
+  same order.
 
   For a "watt" distribution, ``parameters`` should be given as two real numbers
   :math:`a` and :math:`b` that parameterize the distribution :math:`p(x) dx = c
@@ -1049,6 +1123,21 @@ variable and whose sub-elements/attributes are as follows:
     This sub-element of a ``pair`` element provides information on the
     corresponding univariate distribution.
 
+:volume:
+  For a "decay_spectrum" distribution, this attribute specifies the source
+  region volume in cm\ :sup:`3`. It is used together with atom densities to
+  determine the absolute photon emission rate. When a source uses a
+  "decay_spectrum" energy distribution, the source strength is set from this
+  emission rate.
+
+:nuclides:
+  For a "decay_spectrum" distribution, this element specifies a
+  whitespace-separated list of nuclide names contributing to the decay photon
+  source. The atom densities for these nuclides are given by the ``parameters``
+  element in the same order. Nuclides are resolved against the depletion chain,
+  and nuclides without decay photon spectra do not contribute to the
+  distribution.
+
 :bias:
   This optional element specifies a biased distribution for importance sampling.
   For continuous distributions, the ``bias`` element should contain another
@@ -1068,23 +1157,6 @@ external source sites that must be accepted when applying rejection sampling
 based on constraints.
 
    *Default*: 0.05
-
--------------------------
-``<state_point>`` Element
--------------------------
-
-The ``<state_point>`` element indicates at what batches a state point file
-should be written. A state point file can be used to restart a run or to get
-tally results at any batch. The default behavior when using this tag is to
-write out the source bank in the state_point file. This behavior can be
-customized by using the ``<source_point>`` element. This element has the
-following attributes/sub-elements:
-
-  :batches:
-    A list of integers separated by spaces indicating at what batches a state
-    point file should be written.
-
-    *Default*: Last batch only
 
 --------------------------
 ``<source_point>`` Element
@@ -1134,6 +1206,32 @@ attributes/sub-elements:
     is set to true.
 
     *Default*: false
+
+-------------------------
+``<state_point>`` Element
+-------------------------
+
+The ``<state_point>`` element indicates at what batches a state point file
+should be written. A state point file can be used to restart a run or to get
+tally results at any batch. The default behavior when using this tag is to
+write out the source bank in the state_point file. This behavior can be
+customized by using the ``<source_point>`` element. This element has the
+following attributes/sub-elements:
+
+  :batches:
+    A list of integers separated by spaces indicating at what batches a state
+    point file should be written.
+
+    *Default*: Last batch only
+
+--------------------
+``<stride>`` Element
+--------------------
+
+The ``stride`` element is used to specify how many random numbers are allocated
+for each source particle history.
+
+  *Default*: 152,917
 
 ------------------------------
 ``<surf_source_read>`` Element
@@ -1221,6 +1319,23 @@ attributes/sub-elements:
 .. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
           are not eligible to store any particles when using ``cell``, ``cellfrom``
           or ``cellto`` attributes. It is recommended to use surface IDs instead.
+
+------------------------------------
+``<surface_grazing_cutoff>`` Element
+------------------------------------
+
+The ``<surface_grazing_cutoff>`` element specifies the surface flux cosine cutoff.
+
+  *Default*: 0.001
+
+-----------------------------------
+``<surface_grazing_ratio>`` Element
+-----------------------------------
+
+The ``<surface_grazing_ratio>`` element specifies the surface flux cosine
+substitution ratio.
+
+  *Default*: 0.5
 
 ------------------------------
 ``<survival_biasing>`` Element
@@ -1537,7 +1652,8 @@ sub-elements/attributes:
     *Default*: None
 
   :particle_type:
-    The particle that the weight windows will apply to (e.g., 'neutron')
+    The particle that the weight windows will apply to, specified as a PDG
+    code or string (e.g., ``neutron``).
 
     *Default*: 'neutron'
 
@@ -1597,7 +1713,8 @@ mesh-based weight windows.
     *Default*: None
 
   :particle_type:
-    The particle that the weight windows will apply to (e.g., 'neutron')
+    The particle that the weight windows will apply to, specified as a PDG
+    code or string (e.g., ``neutron``).
 
     *Default*: neutron
 
@@ -1640,6 +1757,14 @@ mesh-based weight windows.
         The ratio of the lower to upper weight window bounds.
 
         *Default*: 5.0
+    
+    For FW-CADIS:
+
+      :targets:
+        A sequence of IDs corresponding to the tallies which cover phase 
+        space regions of interest for local variance reduction.
+
+        *Default*: None
 
 ---------------------------------------
 ``<weight_window_checkpoints>`` Element

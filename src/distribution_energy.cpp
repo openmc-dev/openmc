@@ -4,7 +4,7 @@
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
-#include "xtensor/xview.hpp"
+#include "openmc/tensor.h"
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
@@ -60,11 +60,11 @@ ContinuousTabular::ContinuousTabular(hid_t group)
   hid_t dset = open_dataset(group, "energy");
 
   // Get interpolation parameters
-  xt::xarray<int> temp;
+  tensor::Tensor<int> temp;
   read_attribute(dset, "interpolation", temp);
 
-  auto temp_b = xt::view(temp, 0); // view of breakpoints
-  auto temp_i = xt::view(temp, 1); // view of interpolation parameters
+  tensor::View<int> temp_b = temp.slice(0); // breakpoints
+  tensor::View<int> temp_i = temp.slice(1); // interpolation parameters
 
   std::copy(temp_b.begin(), temp_b.end(), std::back_inserter(breakpoints_));
   for (const auto i : temp_i)
@@ -85,7 +85,7 @@ ContinuousTabular::ContinuousTabular(hid_t group)
   read_attribute(dset, "interpolation", interp);
   read_attribute(dset, "n_discrete_lines", n_discrete);
 
-  xt::xarray<double> eout;
+  tensor::Tensor<double> eout;
   read_dataset(dset, eout);
   close_dataset(dset);
 
@@ -96,7 +96,7 @@ ContinuousTabular::ContinuousTabular(hid_t group)
     if (i < n_energy - 1) {
       n = offsets[i + 1] - j;
     } else {
-      n = eout.shape()[1] - j;
+      n = eout.shape(1) - j;
     }
 
     // Assign interpolation scheme and number of discrete lines
@@ -105,15 +105,15 @@ ContinuousTabular::ContinuousTabular(hid_t group)
     d.n_discrete = n_discrete[i];
 
     // Copy data
-    d.e_out = xt::view(eout, 0, xt::range(j, j + n));
-    d.p = xt::view(eout, 1, xt::range(j, j + n));
+    d.e_out = eout.slice(0, tensor::range(j, j + n));
+    d.p = eout.slice(1, tensor::range(j, j + n));
 
     // To get answers that match ACE data, for now we still use the tabulated
     // CDF values that were passed through to the HDF5 library. At a later
     // time, we can remove the CDF values from the HDF5 library and
     // reconstruct them using the PDF
     if (true) {
-      d.c = xt::view(eout, 2, xt::range(j, j + n));
+      d.c = eout.slice(2, tensor::range(j, j + n));
     } else {
       // Calculate cumulative distribution function -- discrete portion
       for (int k = 0; k < d.n_discrete; ++k) {

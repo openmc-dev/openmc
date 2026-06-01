@@ -122,7 +122,7 @@ void MeshMaterialFilter::get_all_bins(
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    int32_t index_element = model::meshes[mesh_]->get_bin(r);
+    int32_t index_element = model::meshes[mesh_]->get_bin(r, u);
     if (index_element >= 0) {
       auto search = map_.find({index_element, p.material()});
       if (search != map_.end()) {

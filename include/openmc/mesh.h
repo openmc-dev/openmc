@@ -196,8 +196,9 @@ public:
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
+  //! \param[in] u Direction of the particle
   //! \return Mesh bin
-  virtual int get_bin(Position r) const = 0;
+  virtual int get_bin(Position r, Direction u) const = 0;
 
   //! Get the number of mesh cells.
   virtual int n_bins() const = 0;
@@ -321,7 +322,7 @@ public:
 
   virtual Position sample_element(const MeshIndex& ijk, uint64_t* seed) const;
 
-  int get_bin(Position r) const override;
+  int get_bin(Position r, Direction u) const override;
 
   int n_bins() const override;
 
@@ -360,9 +361,10 @@ public:
   //! Get mesh indices given a position
   //
   //! \param[in] r Position to get indices for
+  //! \param[in] u Direction of the particle
   //! \param[out] in_mesh Whether position is in mesh
   //! \return Array of mesh indices
-  virtual MeshIndex get_indices(Position r, bool& in_mesh) const;
+  virtual MeshIndex get_indices(Position r, Direction u, bool& in_mesh) const;
 
   //! Get mesh indices corresponding to a mesh bin
   //
@@ -373,8 +375,9 @@ public:
   //! Get mesh index in a particular direction
   //!
   //! \param[in] r Coordinate to get index for
+  //! \param[in] u Direction of the particle
   //! \param[in] i Direction index
-  virtual int get_index_in_direction(double r, int i) const = 0;
+  virtual int get_index_in_direction(double r, double u, int i) const = 0;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
@@ -484,7 +487,7 @@ public:
   RegularMesh(hid_t group);
 
   // Overridden methods
-  int get_index_in_direction(double r, int i) const override;
+  int get_index_in_direction(double r, double u, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -537,7 +540,7 @@ public:
   RectilinearMesh(hid_t group);
 
   // Overridden methods
-  int get_index_in_direction(double r, int i) const override;
+  int get_index_in_direction(double r, double u, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -580,9 +583,9 @@ public:
   CylindricalMesh(hid_t group);
 
   // Overridden methods
-  virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
+  virtual MeshIndex get_indices(Position r, Direction u, bool& in_mesh) const override;
 
-  int get_index_in_direction(double r, int i) const override;
+  int get_index_in_direction(double r, double u, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -645,9 +648,9 @@ public:
   SphericalMesh(hid_t group);
 
   // Overridden methods
-  virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
+  virtual MeshIndex get_indices(Position r, Direction u, bool& in_mesh) const override;
 
-  int get_index_in_direction(double r, int i) const override;
+  int get_index_in_direction(double r, double u, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -836,7 +839,7 @@ public:
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
-  int get_bin(Position r) const override;
+  int get_bin(Position r, Direction u) const override;
 
   int n_bins() const override;
 
@@ -948,8 +951,9 @@ private:
   //! Get the mesh cell index for a given position
   //
   //! \param[in] r Position to get index for
+  //! \param[in] u Direction of the particle
   //! \param[in,out] in_mesh Whether position is in the mesh
-  int get_index(const Position& r, bool* in_mesh) const;
+  int get_index(const Position& r, const Direction& u, bool* in_mesh) const;
 
   //! Get the mesh cell index from a bin
   //
@@ -1002,7 +1006,7 @@ public:
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 
-  virtual int get_bin(Position r) const override;
+  virtual int get_bin(Position r, Direction u) const override;
 
   int n_bins() const override;
 
@@ -1092,7 +1096,7 @@ public:
 
   void write(const std::string& filename) const override;
 
-  int get_bin(Position r) const override;
+  int get_bin(Position r, Direction u) const override;
 
 protected:
   // Overridden methods

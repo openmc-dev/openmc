@@ -58,7 +58,7 @@ void MeshFilter::get_all_bins(
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(r);
+    auto bin = model::meshes[mesh_]->get_bin(r, u);
     if (bin >= 0) {
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);

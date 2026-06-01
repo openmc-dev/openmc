@@ -290,7 +290,7 @@ std::pair<bool, WeightWindow> WeightWindows::get_weight_window(
 
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
-  int mesh_bin = mesh->get_bin(p.r());
+  int mesh_bin = mesh->get_bin(p.r(), p.u());
 
   // particle is outside the weight window mesh
   if (mesh_bin < 0)

@@ -11,13 +11,14 @@ void MeshBornFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   Position r_born = p.r_born();
+  Direction u_born = p.u_born();
 
   // apply translation if present
   if (translated_) {
     r_born -= translation();
   }
 
-  auto bin = model::meshes[mesh_]->get_bin(r_born);
+  auto bin = model::meshes[mesh_]->get_bin(r_born, u_born);
   if (bin >= 0) {
     match.bins_.push_back(bin);
     match.weights_.push_back(1.0);

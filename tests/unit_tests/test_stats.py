@@ -1,10 +1,11 @@
 from math import pi
+from pathlib import Path
 
 import numpy as np
 import pytest
 import openmc
 import openmc.stats
-from openmc.stats.univariate import _INTERPOLATION_SCHEMES
+from openmc.stats.univariate import _INTERPOLATION_SCHEMES, DecaySpectrum
 from scipy.integrate import trapezoid
 
 from tests.unit_tests import assert_sample_mean
@@ -1013,3 +1014,135 @@ def test_fusion_spectrum_invalid():
     # Temperature above 100 keV should raise an error
     with pytest.raises(ValueError):
         openmc.stats.fusion_neutron_spectrum(101e3, 'DT')
+
+
+@pytest.fixture(autouse=False)
+def decay_spectrum_chain():
+    """Set chain_file for the duration of a test and clear the _photon_integral
+    cache so results from a different chain don't bleed across tests."""
+    CHAIN_FILE = (Path(__file__).parents[1] / 'chain_simple.xml').resolve()
+    DecaySpectrum._photon_integral.cache_clear()
+    with openmc.config.patch('chain_file', CHAIN_FILE):
+        yield
+    DecaySpectrum._photon_integral.cache_clear()
+
+
+def test_decay_spectrum_construction():
+    nuclides = {'I135': 1.5e-3, 'Xe135': 8.2e-4}
+    d = openmc.stats.DecaySpectrum(nuclides, volume=100.0)
+    assert d.nuclides == nuclides
+    assert d.volume == pytest.approx(100.0)
+    assert len(d) == 2
+
+
+def test_decay_spectrum_validation():
+    # nuclides must be a dict
+    with pytest.raises(TypeError):
+        openmc.stats.DecaySpectrum(['I135'], volume=1.0)
+
+    # densities must be > 0
+    with pytest.raises(ValueError):
+        openmc.stats.DecaySpectrum({'I135': -1.0}, volume=1.0)
+
+    # volume must be > 0
+    with pytest.raises(ValueError):
+        openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=-1.0)
+
+    with pytest.raises(ValueError):
+        openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=0.0)
+
+
+def test_decay_spectrum_xml_roundtrip():
+    nuclides = {'I135': 1.5e-3, 'Xe135': 8.2e-4}
+    d = openmc.stats.DecaySpectrum(nuclides, volume=100.0)
+
+    elem = d.to_xml_element('energy')
+    assert elem.get('type') == 'decay_spectrum'
+    assert float(elem.get('volume')) == pytest.approx(100.0)
+    assert elem.findtext('nuclides').split() == list(nuclides)
+    assert [float(x) for x in elem.findtext('parameters').split()] == pytest.approx(
+        list(nuclides.values()))
+
+    # Round-trip via DecaySpectrum.from_xml_element
+    d2 = openmc.stats.DecaySpectrum.from_xml_element(elem)
+    assert d2.nuclides == nuclides
+    assert d2.volume == pytest.approx(100.0)
+
+    # Round-trip via the Univariate dispatcher
+    d3 = openmc.stats.Univariate.from_xml_element(elem)
+    assert isinstance(d3, openmc.stats.DecaySpectrum)
+    assert d3 == d
+
+
+def test_decay_spectrum_to_distribution(decay_spectrum_chain):
+    # Single emitting nuclide -> concrete distribution, not None
+    d = openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=10.0)
+    dist = d.to_distribution()
+    assert dist is not None
+
+    # Result is cached on second call
+    dist2 = d.to_distribution()
+    assert dist2 is dist
+
+    # Nuclide with no photon source -> None
+    d_stable = openmc.stats.DecaySpectrum({'Xe136': 1e-3}, volume=10.0)
+    assert d_stable.to_distribution() is None
+
+    # Mixture of emitters -> non-None combined distribution
+    d_mix = openmc.stats.DecaySpectrum(
+        {'I135': 1e-3, 'Xe135': 5e-4}, volume=10.0
+    )
+    dist_mix = d_mix.to_distribution()
+    assert dist_mix is not None
+
+
+def test_decay_spectrum_integral(decay_spectrum_chain):
+    # For an emitting nuclide, integral should be > 0
+    d = openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=10.0)
+    assert d.integral() > 0.0
+
+    # Proportional to density: doubling density doubles integral
+    d2 = openmc.stats.DecaySpectrum({'I135': 2e-3}, volume=10.0)
+    assert d2.integral() == pytest.approx(2.0 * d.integral())
+
+    # Proportional to volume
+    d3 = openmc.stats.DecaySpectrum({'I135': 1e-3}, volume=20.0)
+    assert d3.integral() == pytest.approx(2.0 * d.integral())
+
+    # Pure non-emitter -> 0.0
+    d_stable = openmc.stats.DecaySpectrum({'Xe136': 1e-3}, volume=10.0)
+    assert d_stable.integral() == pytest.approx(0.0)
+
+
+def test_decay_spectrum_clip(decay_spectrum_chain):
+    # Stable / non-emitting nuclides are removed unconditionally
+    d = openmc.stats.DecaySpectrum(
+        {'I135': 1e-3, 'Xe135': 5e-4, 'Xe136': 1.0, 'Cs135': 1.0},
+        volume=10.0,
+    )
+    d_clip = d.clip()
+    assert 'Xe136' not in d_clip.nuclides
+    assert 'Cs135' not in d_clip.nuclides
+    assert 'I135' in d_clip.nuclides
+    assert 'Xe135' in d_clip.nuclides
+    # Original is unchanged
+    assert 'Xe136' in d.nuclides
+
+    # inplace=True modifies and returns the same object
+    d_same = d.clip(inplace=True)
+    assert d_same is d
+    assert 'Xe136' not in d.nuclides
+
+    # A nuclide with negligible emission rate is removed by tolerance clipping.
+    # U235 has a very small integral (~4e-17 Bq/atom) compared with I135 (~4e-5)
+    d_tight = openmc.stats.DecaySpectrum(
+        {'I135': 1e-3, 'U235': 1e-3}, volume=10.0
+    )
+    d_tight_clip = d_tight.clip(tolerance=1e-9)
+    assert 'U235' not in d_tight_clip.nuclides
+    assert 'I135' in d_tight_clip.nuclides
+
+    # All non-emitters -> empty nuclides dict
+    d_empty = openmc.stats.DecaySpectrum({'Xe136': 1e-3}, volume=10.0)
+    d_empty.clip(inplace=True)
+    assert d_empty.nuclides == {}

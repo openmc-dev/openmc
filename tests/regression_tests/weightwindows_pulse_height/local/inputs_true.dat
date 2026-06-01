@@ -15,17 +15,35 @@
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>10000</particles>
-    <batches>1</batches>
+    <particles>100</particles>
+    <batches>5</batches>
     <source type="independent" strength="1.0" particle="photon">
-      <space type="point">
-        <parameters>0.0 0.0 0.0</parameters>
-      </space>
       <energy type="discrete">
         <parameters>1000000.0 1.0</parameters>
       </energy>
     </source>
     <photon_transport>true</photon_transport>
+    <weight_windows id="1">
+      <mesh>1</mesh>
+      <particle_type>photon</particle_type>
+      <energy_bounds>0.0 2000000.0</energy_bounds>
+      <lower_ww_bounds>0.01</lower_ww_bounds>
+      <upper_ww_bounds>0.05</upper_ww_bounds>
+      <survival_ratio>3.0</survival_ratio>
+      <max_split>10</max_split>
+      <weight_cutoff>1e-38</weight_cutoff>
+    </weight_windows>
+    <mesh id="1">
+      <dimension>1 1 1</dimension>
+      <lower_left>-2 -2 -2</lower_left>
+      <upper_right>2 2 2</upper_right>
+    </mesh>
+    <shared_secondary_bank>false</shared_secondary_bank>
+    <weight_window_checkpoints>
+      <collision>true</collision>
+      <surface>true</surface>
+    </weight_window_checkpoints>
+    <max_history_splits>50</max_history_splits>
   </settings>
   <tallies>
     <filter id="1" type="cell">

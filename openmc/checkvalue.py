@@ -84,15 +84,15 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
 
     Notes
     -----
-    For numpy float/complex ndarrays whose ``ndim`` is within
-    ``[min_depth, max_depth]`` and whose ``expected_type`` is ``Real``,
-    ``float``, or ``complex``, the dtype guarantees the element type and the
-    per-element scan is skipped for faster processing.
+    For numpy float ndarrays whose ``ndim`` is within
+    ``[min_depth, max_depth]`` and whose ``expected_type`` is ``Real`` or
+    ``float``, the dtype guarantees the element type and the per-element scan
+    is skipped for faster processing.
     """
-    # Fast path: trusted dtype skips the per-element scan (see Notes).
-    if (isinstance(value, np.ndarray) and value.dtype.kind in 'fc'
+    # Fast path: trusted float dtype skips the per-element scan (see Notes).
+    if (isinstance(value, np.ndarray) and value.dtype.kind == 'f'
             and min_depth <= value.ndim <= max_depth
-            and expected_type in (Real, float, complex)):
+            and expected_type in (Real, float)):
         return
 
     # Initialize the tree at the very first item.

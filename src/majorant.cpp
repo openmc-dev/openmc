@@ -23,8 +23,6 @@ namespace openmc {
 namespace data {
 std::unique_ptr<NeutronMajorant> n_majorant;
 std::unique_ptr<PhotonMajorant> p_majorant;
-std::string n_majorant_file;
-std::string p_majorant_file;
 
 } // namespace data
 

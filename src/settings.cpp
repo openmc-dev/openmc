@@ -1240,14 +1240,6 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  if (check_for_node(root, "delta_tracking_n_majorant_file")) {
-    data::n_majorant_file = get_node_value(root, "delta_tracking_n_majorant_file");
-  }
-
-  if (check_for_node(root, "delta_tracking_p_majorant_file")) {
-    data::p_majorant_file = get_node_value(root, "delta_tracking_p_majorant_file");
-  }
-
   // Check whether material cell offsets should be generated
   if (check_for_node(root, "material_cell_offsets")) {
     material_cell_offsets = get_node_value_bool(root, "material_cell_offsets");

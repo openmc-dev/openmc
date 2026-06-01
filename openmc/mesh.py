@@ -3,7 +3,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
-from math import pi, sqrt, atan2
+import math
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Protocol
@@ -11,12 +11,10 @@ from typing import Protocol
 import h5py
 import lxml.etree as ET
 import numpy as np
-from pathlib import Path
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-from openmc.utility_funcs import change_directory
 from .bounding_box import BoundingBox
 from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
@@ -291,7 +289,7 @@ class MeshBase(IDManagerMixin, ABC):
         """
         mesh_type = 'regular' if 'type' not in group.keys() else group['type'][()].decode()
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-        mesh_name = '' if not 'name' in group else group['name'][()].decode()
+        mesh_name = '' if 'name' not in group else group['name'][()].decode()
 
         if mesh_type == 'regular':
             return RegularMesh.from_hdf5(group, mesh_id, mesh_name)
@@ -1903,7 +1901,7 @@ class CylindricalMesh(StructuredMesh):
         self,
         r_grid: Sequence[float],
         z_grid: Sequence[float],
-        phi_grid: Sequence[float] = (0, 2*pi),
+        phi_grid: Sequence[float] = (0, 2*math.pi),
         origin: Sequence[float] = (0., 0., 0.),
         mesh_id: int | None = None,
         name: str = '',
@@ -1960,7 +1958,7 @@ class CylindricalMesh(StructuredMesh):
         cv.check_length('mesh phi_grid', grid, 2)
         cv.check_increasing('mesh phi_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > 2*pi)):
+        if np.any((grid < 0.0) | (grid > 2*math.pi)):
             raise ValueError("phi_grid values must be in [0, 2π].")
         self._phi_grid = grid
 
@@ -2028,9 +2026,9 @@ class CylindricalMesh(StructuredMesh):
         return string
 
     def get_indices_at_coords(
-            self,
-            coords: Sequence[float]
-        ) -> tuple[int, int, int]:
+        self,
+        coords: Sequence[float]
+    ) -> tuple[int, int, int]:
         """Finds the index of the mesh element at the specified coordinates.
 
         .. versionadded:: 0.15.0
@@ -2046,7 +2044,7 @@ class CylindricalMesh(StructuredMesh):
             The r, phi, z indices
 
         """
-        r_value_from_origin = sqrt((coords[0]-self.origin[0])**2 + (coords[1]-self.origin[1])**2)
+        r_value_from_origin = math.hypot(coords[0]-self.origin[0], coords[1]-self.origin[1])
 
         if r_value_from_origin < self.r_grid[0] or r_value_from_origin > self.r_grid[-1]:
             raise ValueError(
@@ -2070,13 +2068,13 @@ class CylindricalMesh(StructuredMesh):
         delta_x = coords[0] - self.origin[0]
         delta_y = coords[1] - self.origin[1]
         # atan2 returns values in -pi to +pi range
-        phi_value = atan2(delta_y, delta_x)
+        phi_value = math.atan2(delta_y, delta_x)
         if delta_x < 0 and delta_y < 0:
             # returned phi_value anticlockwise and negative
-            phi_value += 2 * pi
+            phi_value += 2 * math.pi
         if delta_x > 0 and delta_y < 0:
             # returned phi_value anticlockwise and negative
-            phi_value += 2 * pi
+            phi_value += 2 * math.pi
 
         phi_grid_values = np.array(self.phi_grid)
 
@@ -2111,7 +2109,7 @@ class CylindricalMesh(StructuredMesh):
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         name: str = '',
-        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
+        phi_grid_bounds: Sequence[float] = (0.0, 2*math.pi),
         enclose_domain: bool = False,
     ) -> CylindricalMesh:
         """Create CylindricalMesh from a bounding box.
@@ -2339,8 +2337,8 @@ class SphericalMesh(StructuredMesh):
     def __init__(
         self,
         r_grid: Sequence[float],
-        phi_grid: Sequence[float] = (0, 2*pi),
-        theta_grid: Sequence[float] = (0, pi),
+        phi_grid: Sequence[float] = (0, 2*math.pi),
+        theta_grid: Sequence[float] = (0, math.pi),
         origin: Sequence[float] = (0., 0., 0.),
         mesh_id: int | None = None,
         name: str = '',
@@ -2397,7 +2395,7 @@ class SphericalMesh(StructuredMesh):
         cv.check_length('mesh theta_grid', grid, 2)
         cv.check_increasing('mesh theta_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > pi)):
+        if np.any((grid < 0.0) | (grid > math.pi)):
             raise ValueError("theta_grid values must be in [0, π].")
         self._theta_grid = grid
 
@@ -2411,7 +2409,7 @@ class SphericalMesh(StructuredMesh):
         cv.check_length('mesh phi_grid', grid, 2)
         cv.check_increasing('mesh phi_grid', grid)
         grid = np.asarray(grid, dtype=float)
-        if np.any((grid < 0.0) | (grid > 2*pi)):
+        if np.any((grid < 0.0) | (grid > 2*math.pi)):
             raise ValueError("phi_grid values must be in [0, 2π].")
         self._phi_grid = grid
 
@@ -2483,8 +2481,8 @@ class SphericalMesh(StructuredMesh):
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         name: str = '',
-        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
-        theta_grid_bounds: Sequence[float] = (0.0, pi),
+        phi_grid_bounds: Sequence[float] = (0.0, 2*math.pi),
+        theta_grid_bounds: Sequence[float] = (0.0, math.pi),
         enclose_domain: bool = False,
     ) -> SphericalMesh:
         """Create SphericalMesh from a bounding box.
@@ -2645,10 +2643,82 @@ class SphericalMesh(StructuredMesh):
         arr[..., 2] = z + origin[2]
         return arr
 
-    def get_indices_at_coords(self, coords: Sequence[float]) -> tuple:
-        raise NotImplementedError(
-            "get_indices_at_coords is not yet implemented for SphericalMesh"
-        )
+    def get_indices_at_coords(
+        self,
+        coords: Sequence[float]
+    ) -> tuple[int, int, int]:
+        """Find the mesh cell indices containing the specified coordinates.
+
+        .. versionadded:: 0.15.4
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            Cartesian coordinates of the point as (x, y, z).
+
+        Returns
+        -------
+        tuple[int, int, int]
+            The r, theta, phi indices.
+
+        Raises
+        ------
+        ValueError
+            If the coordinates fall outside the mesh grid boundaries.
+
+        """
+        dx = coords[0] - self.origin[0]
+        dy = coords[1] - self.origin[1]
+        dz = coords[2] - self.origin[2]
+
+        r_value = math.hypot(dx, dy, dz)
+
+        if r_value < self.r_grid[0] or r_value > self.r_grid[-1]:
+            raise ValueError(
+                f'The r value {r_value} computed from the specified '
+                f'coordinates is outside the r grid range '
+                f'[{self.r_grid[0]}, {self.r_grid[-1]}].'
+            )
+
+        r_index = int(min(
+            np.searchsorted(self.r_grid, r_value, side='right') - 1,
+            len(self.r_grid) - 2
+        ))
+
+        if r_value == 0.0:
+            theta_value = 0.0
+            phi_value = 0.0
+        else:
+            theta_value = math.acos(dz / r_value)
+            phi_value = math.atan2(dy, dx)
+            if phi_value < 0:
+                phi_value += 2 * math.pi
+
+        if theta_value < self.theta_grid[0] or theta_value > self.theta_grid[-1]:
+            raise ValueError(
+                f'The theta value {theta_value} computed from the specified '
+                f'coordinates is outside the theta grid range '
+                f'[{self.theta_grid[0]}, {self.theta_grid[-1]}].'
+            )
+
+        theta_index = int(min(
+            np.searchsorted(self.theta_grid, theta_value, side='right') - 1,
+            len(self.theta_grid) - 2
+        ))
+
+        if phi_value < self.phi_grid[0] or phi_value > self.phi_grid[-1]:
+            raise ValueError(
+                f'The phi value {phi_value} computed from the specified '
+                f'coordinates is outside the phi grid range '
+                f'[{self.phi_grid[0]}, {self.phi_grid[-1]}].'
+            )
+
+        phi_index = int(min(
+            np.searchsorted(self.phi_grid, phi_value, side='right') - 1,
+            len(self.phi_grid) - 2
+        ))
+
+        return (r_index, theta_index, phi_index)
 
 
 def require_statepoint_data(func):
@@ -2738,7 +2808,8 @@ class UnstructuredMesh(MeshBase):
     _UNSUPPORTED_ELEM = -1
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
-    _VTK_TETRA = 10
+    _VTK_TET = 10
+    _VTK_HEX = 12
 
     def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
@@ -3049,7 +3120,9 @@ class UnstructuredMesh(MeshBase):
                 n_skipped += 1
                 continue
             else:
-                raise RuntimeError(f"Invalid element type {elem_type} found")
+                raise RuntimeError(
+                    f"Invalid element type {elem_type} found in mesh {self.id}"
+                )
 
             for i, c in enumerate(conn):
                 if c == -1:
@@ -3106,35 +3179,42 @@ class UnstructuredMesh(MeshBase):
         datasets: dict | None = None,
         volume_normalization: bool = True,
     ):
-        def append_dataset(dset, array):
-            """Convenience function to append data to an HDF5 dataset"""
-            origLen = dset.shape[0]
-            dset.resize(origLen + array.shape[0], axis=0)
-            dset[origLen:] = array
+        # This writer supports linear tetrahedra and linear hexahedra elements
+        conn_list = []           # flattened connectivity ids
+        cell_sizes = []          # number of points per cell
+        vtk_types = []           # VTK cell types per cell (uint8)
+        n_skipped = 0
 
-        if self.library != "moab":
-            raise NotImplementedError("VTKHDF output is only supported for MOAB meshes")
-
-        # the self.connectivity contains arrays of length 8 to support hex
-        # elements as well, in the case of tetrahedra mesh elements, the
-        # last 4 values are -1 and are removed
-        trimmed_connectivity = []
-        for cell in self.connectivity:
-            # Find the index of the first -1 value, if any
-            first_negative_index = np.where(cell == -1)[0]
-            if first_negative_index.size > 0:
-                # Slice the array up to the first -1 value
-                trimmed_connectivity.append(cell[: first_negative_index[0]])
+        for conn, etype in zip(self.connectivity, self.element_types):
+            if etype == self._LINEAR_TET:
+                ids = conn[:4]
+                vtk_types.append(self._VTK_TET)
+            elif etype == self._LINEAR_HEX:
+                ids = conn[:8]
+                vtk_types.append(self._VTK_HEX)
+            elif etype == self._UNSUPPORTED_ELEM:
+                n_skipped += 1
+                continue
             else:
-                # No -1 values, append the whole cell
-                trimmed_connectivity.append(cell)
-        trimmed_connectivity = np.array(trimmed_connectivity, dtype="int32").flatten()
+                raise RuntimeError(
+                    f"Invalid element type {etype} found in mesh {self.id}"
+                )
+            conn_list.extend(ids.tolist())
+            cell_sizes.append(len(ids))
 
-        # MOAB meshes supports tet elements only so we know it has 4 points per cell
-        points_per_cell = 4
+        if n_skipped > 0:
+            warnings.warn(
+                f"{n_skipped} elements were not written because "
+                "they are not of type linear tet/hex"
+            )
 
-        # offsets are the indices of the first point of each cell in the array of points
-        offsets = np.arange(0, self.n_elements * points_per_cell + 1, points_per_cell)
+        connectivity = np.asarray(conn_list, dtype=np.int64)
+
+        # Offsets must be length (numCells + 1) with a leading 0 and
+        # cumulative end-indices thereafter, per VTK's layout
+        cell_sizes_arr = np.asarray(cell_sizes, dtype=np.int64)
+        offsets = np.zeros(cell_sizes_arr.size + 1, dtype=np.int64)
+        np.cumsum(cell_sizes_arr, out=offsets[1:])
 
         for name, data in datasets.items():
             if data.shape != self.dimension:
@@ -3156,42 +3236,27 @@ class UnstructuredMesh(MeshBase):
                 dtype=h5py.string_dtype("ascii", len(ascii_type)),
             )
 
-            # create hdf5 file structure
-            root.create_dataset("NumberOfPoints", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Types", (0,), maxshape=(None,), dtype="uint8")
-            root.create_dataset("Points", (0, 3), maxshape=(None, 3), dtype="f")
-            root.create_dataset(
-                "NumberOfConnectivityIds", (0,), maxshape=(None,), dtype="i8"
-            )
-            root.create_dataset("NumberOfCells", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Offsets", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Connectivity", (0,), maxshape=(None,), dtype="i8")
+            # Create HDF5 file structure compliant with VTKHDF UnstructuredGrid
+            n_points = int(len(self.vertices))
+            n_cells = int(len(cell_sizes))
+            n_conn_ids = int(len(connectivity))
 
-            append_dataset(root["NumberOfPoints"], np.array([len(self.vertices)]))
-            append_dataset(root["Points"], self.vertices)
-            append_dataset(
-                root["NumberOfConnectivityIds"],
-                np.array([len(trimmed_connectivity)]),
-            )
-            append_dataset(root["Connectivity"], trimmed_connectivity)
-            append_dataset(root["NumberOfCells"], np.array([self.n_elements]))
-            append_dataset(root["Offsets"], offsets)
-
-            append_dataset(
-                root["Types"], np.full(self.n_elements, self._VTK_TETRA, dtype="uint8")
-            )
+            root.create_dataset("NumberOfPoints", data=(n_points,), dtype="i8")
+            root.create_dataset("NumberOfCells", data=(n_cells,), dtype="i8")
+            root.create_dataset("NumberOfConnectivityIds", data=(n_conn_ids,), dtype="i8")
+            root.create_dataset("Points", data=self.vertices.astype(np.float64, copy=False), dtype="f8")
+            root.create_dataset("Types", data=np.asarray(vtk_types, dtype=np.uint8), dtype="uint8")
+            root.create_dataset("Offsets", data=offsets.astype("i8"), dtype="i8")
+            root.create_dataset("Connectivity", data=connectivity.astype("i8"), dtype="i8")
 
             cell_data_group = root.create_group("CellData")
 
             for name, data in datasets.items():
-
-                cell_data_group.create_dataset(
-                    name, (0,), maxshape=(None,), dtype="float64", chunks=True
-                )
-
                 if volume_normalization:
                     data /= self.volumes
-                append_dataset(cell_data_group[name], data)
+                cell_data_group.create_dataset(
+                    name, data=data, dtype="float64", chunks=True
+                )
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):

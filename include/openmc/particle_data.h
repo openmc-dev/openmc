@@ -352,6 +352,10 @@ public:
   Position& r_born() { return r_born_; }
   const Position& r_born() const { return r_born_; }
 
+  // Direction at birth
+  Direction& u_born() { return u_born_; }
+  const Direction& u_born() const { return u_born_; }
+
   // Coordinates of last collision or reflective/periodic surface
   // crossing for current tallies
   Position& r_last_current() { return r_last_current_; }
@@ -426,6 +430,7 @@ private:
   vector<int> cell_last_; //!< coordinates for all levels
 
   Position r_born_;         //!< coordinates at birth
+  Position u_born_;         //!< direction at birth
   Position r_last_current_; //!< coordinates of the last collision or
                             //!< reflective/periodic surface crossing for
                             //!< current tallies

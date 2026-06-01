@@ -289,32 +289,20 @@ double NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc,
       continue;
     }
 
-    int i_energy = lower_bound_index(&urr.energy_.front(), &urr.energy_.back(), energy);
-
-    // Find the maximum URR cross sections for the two bounding energy points.
-    double max_urr_xs_E0 = 0.0;
-    double max_urr_xs_E1 = 0.0;
+    // Find the maximum URR cross section.
+    double max_urr_xs_at_temp = 0.0;
     for (int i_cdf = 0; i_cdf < urr.n_cdf(); ++i_cdf) {
-      max_urr_xs_E0 = std::max(max_urr_xs_E0, urr.xs_values_(i_energy, i_cdf).total);
-      max_urr_xs_E1 = std::max(max_urr_xs_E1, urr.xs_values_(i_energy + 1, i_cdf).total);
-    }
-
-    // Interpolate the bounding energy points.
-    double interp_urr_xs = 0.0;
-    if (urr.interp_ == Interpolation::lin_lin) {
-      interp_urr_xs =
-        interpolate_lin_1D(urr.energy_[i_energy], urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
-    } else if (urr.interp_ == Interpolation::log_log) {
-      interp_urr_xs =
-        interpolate_log_1D(urr.energy_[i_energy], urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
+      for (int i_energy = 0; i_energy < urr.energy_.size(); ++i_energy) {
+        max_urr_xs_at_temp = std::max(max_urr_xs_at_temp, urr.xs_values_(i_energy, i_cdf).total);
+      }
     }
 
     // Multiply by the smooth cross section (after interpolation) if required.
     if (urr.multiply_smooth_) {
-      interp_urr_xs *= smooth_xs;
+      max_urr_xs_at_temp *= smooth_xs;
     }
 
-    max_urr_xs = std::max(max_urr_xs, interp_urr_xs);
+    max_urr_xs = std::max(max_urr_xs, max_urr_xs_at_temp);
   }
 
   return max_urr_xs;

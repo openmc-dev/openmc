@@ -22,8 +22,6 @@ class PhotonMajorant;
 namespace data {
   extern std::unique_ptr<NeutronMajorant> n_majorant;
   extern std::unique_ptr<PhotonMajorant> p_majorant;
-  extern std::string n_majorant_file;
-  extern std::string p_majorant_file;
 } // namespace data
 
 //==============================================================================

@@ -306,6 +306,7 @@ class MeshBase(IDManagerMixin, ABC):
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
+    @abstractmethod
     def to_hdf5(self, group: h5py.Group) -> h5py.Group:
         """Write this mesh into *group* as a subgroup named ``mesh <id>``.
 
@@ -3290,7 +3291,6 @@ class UnstructuredMesh(MeshBase):
         return mesh
 
     def to_hdf5(self, group: h5py.Group):
-        # Raise before super() so no half-built 'mesh <id>' group is left on disk.
         raise NotImplementedError(
             "UnstructuredMesh.to_hdf5 is not implemented in Python. "
             "Use openmc.lib.export_weight_windows() to export weight "

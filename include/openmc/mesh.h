@@ -583,7 +583,8 @@ public:
   CylindricalMesh(hid_t group);
 
   // Overridden methods
-  virtual MeshIndex get_indices(Position r, Direction u, bool& in_mesh) const override;
+  virtual MeshIndex get_indices(
+    Position r, Direction u, bool& in_mesh) const override;
 
   int get_index_in_direction(double r, double u, int i) const override;
 
@@ -648,7 +649,8 @@ public:
   SphericalMesh(hid_t group);
 
   // Overridden methods
-  virtual MeshIndex get_indices(Position r, Direction u, bool& in_mesh) const override;
+  virtual MeshIndex get_indices(
+    Position r, Direction u, bool& in_mesh) const override;
 
   int get_index_in_direction(double r, double u, int i) const override;
 

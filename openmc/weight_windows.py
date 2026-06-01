@@ -1058,7 +1058,7 @@ class WeightWindowsList(list):
 
         return wws
 
-    def export_to_hdf5(self, path: PathLike = 'weight_windows.h5', **init_kwargs):
+    def export_to_hdf5(self, path: PathLike = 'weight_windows.h5'):
         """Write weight windows to an HDF5 file.
 
         Structured-mesh weight windows are written directly via :mod:`h5py`,
@@ -1068,15 +1068,12 @@ class WeightWindowsList(list):
         Weight windows on an :class:`~openmc.UnstructuredMesh` require
         LibMesh or MOAB (loaded by :func:`openmc.lib.init`) to materialize
         the mesh's vertex and connectivity data; for those, this method
-        falls back to :func:`openmc.lib.export_weight_windows`.
+        uses the c-api under the hood.
 
         Parameters
         ----------
         path : PathLike
             Path to the file to write weight windows to
-        **init_kwargs
-            Forwarded to :func:`openmc.lib.init` when the UnstructuredMesh
-            fallback path is used. Unused for the direct h5py path.
         """
         cv.check_type('path', path, PathLike)
         path = Path(path).resolve()

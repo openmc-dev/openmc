@@ -2843,6 +2843,27 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
     index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
+extern "C" int openmc_unstructured_mesh_export_hdf5(
+  int32_t index, hid_t mesh_group)
+{
+  if (int err = check_mesh_type<UnstructuredMesh>(index))
+    return err;
+  UnstructuredMesh* m =
+    dynamic_cast<UnstructuredMesh*>(model::meshes[index].get());
+
+  // Write mesh type
+  write_dataset(mesh_group, "type", m->get_mesh_type());
+
+  // Write mesh ID
+  write_attribute(mesh_group, "id", m->id_);
+
+  // Write mesh name
+  write_dataset(mesh_group, "name", m->name_);
+
+  m->to_hdf5_inner(mesh_group);
+  return 0;
+}
+
 #ifdef OPENMC_DAGMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";

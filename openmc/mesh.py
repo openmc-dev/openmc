@@ -3295,11 +3295,20 @@ class UnstructuredMesh(MeshBase):
         return mesh
 
     def to_hdf5(self, group: h5py.Group):
-        raise NotImplementedError(
-            "UnstructuredMesh.to_hdf5 is not implemented in Python. "
-            "Use openmc.lib.export_weight_windows() to export weight "
-            "windows on unstructured meshes."
+        import openmc.lib
+        mesh_group = super().to_hdf5(group)
+        model = openmc.Model()
+        sph = openmc.Sphere(boundary_type='vacuum')
+        model.geometry = openmc.Geometry([openmc.Cell(region=-sph)])
+        model.settings.particles = 100
+        model.settings.batches = 1
+        wwg = openmc.WeightWindowGenerator(
+              method='magic',
+              mesh=self,
         )
+        model.settings.weight_window_generators = [wwg] 
+        with openmc.lib.TemporarySession(model):
+            openmc.lib.export_unstructured_mesh(self, mesh_group)
 
     def to_xml_element(self):
         """Return XML representation of the mesh

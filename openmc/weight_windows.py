@@ -1081,19 +1081,6 @@ class WeightWindowsList(list):
         cv.check_type('path', path, PathLike)
         path = Path(path).resolve()
 
-        # Any unstructured mesh forces the whole list onto the lib fallback.
-        if any(isinstance(ww.mesh, UnstructuredMesh) for ww in self):
-            import openmc.lib
-            model = openmc.Model()
-            sph = openmc.Sphere(boundary_type='vacuum')
-            model.geometry = openmc.Geometry([openmc.Cell(region=-sph)])
-            model.settings.weight_windows = self
-            model.settings.particles = 100
-            model.settings.batches = 1
-            with openmc.lib.TemporarySession(model, **init_kwargs):
-                openmc.lib.export_weight_windows(path)
-            return
-
         with h5py.File(path, 'w') as f:
             f.attrs['filetype'] = np.bytes_('weight_windows')
             f.attrs['version'] = np.asarray([1, 0], dtype=np.int32)

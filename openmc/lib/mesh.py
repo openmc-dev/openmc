@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, c_void_p,
+from ctypes import (c_int, c_int32, c_int64, c_char_p, c_double, POINTER, c_void_p,
                     create_string_buffer, c_size_t)
 from math import sqrt
 import sys
@@ -18,7 +18,7 @@ from ..mesh import MeshMaterialVolumes
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
-    'SphericalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes'
+    'SphericalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes', 'export_unstructured_mesh'
 ]
 
 
@@ -107,6 +107,10 @@ _dll.openmc_spherical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
     c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
 _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
+
+_dll.openmc_unstructured_mesh_export_hdf5.argtypes = [c_int32, c_int64]
+_dll.openmc_unstructured_mesh_export_hdf5.restype = c_int
+_dll.openmc_unstructured_mesh_export_hdf5.errcheck = _error_handler
 
 
 class Mesh(_FortranObjectWithID):
@@ -738,6 +742,12 @@ _MESH_TYPE_MAP = {
     'spherical': SphericalMesh,
     'unstructured': UnstructuredMesh
 }
+
+
+def export_unstructured_mesh(mesh, group):
+    index = c_int32()
+    _dll.openmc_get_mesh_index(mesh.id, index)
+    _dll.openmc_unstructured_mesh_export_hdf5(index.value, int(group.id.id))
 
 
 def _get_mesh(index):

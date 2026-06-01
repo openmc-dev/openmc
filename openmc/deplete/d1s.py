@@ -147,10 +147,7 @@ def apply_time_correction(
     index : iterable of int, optional
         Indices of the times of interest. If N timesteps are provided in
         :func:`time_correction_factors`, there are N + 1 times to select from.
-        The default is ``(-1,)`` which corresponds to the final time. The tally
-        arrays are read and reshaped once and shared across all indices, so
-        evaluating many times (e.g. for a D1S mesh tally) is much cheaper than
-        repeated single-index calls.
+        The default is ``(-1,)`` which corresponds to the final time.
     sum_nuclides : bool
         Whether to sum over the parent nuclides
 

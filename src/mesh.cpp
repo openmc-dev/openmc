@@ -1720,9 +1720,25 @@ int RectilinearMesh::set_grid()
   return 0;
 }
 
-int RectilinearMesh::get_index_in_direction(double r, int i) const
+int RectilinearMesh::get_index_in_direction(double r, double u, int i) const
 {
-  return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
+  int idx = lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
+
+  // If on lower boundary with negative direction, use previous index
+  if (r == grid_[i][idx - 1]) {
+    if (u < 0) {
+      idx--;
+    }
+  }
+
+  // If on upper boundary with positive direction, use next index
+  if (r == grid_[i][idx]) {
+    if (u > 0) {
+      idx++;
+    }
+  }
+
+  return idx;
 }
 
 std::pair<vector<double>, vector<double>> RectilinearMesh::plot(

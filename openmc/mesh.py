@@ -1266,6 +1266,7 @@ class RegularMesh(StructuredMesh):
             'upper_right', data=np.asarray(self.upper_right, dtype=float))
         mesh_group.create_dataset(
             'width', data=np.asarray(self.width, dtype=float))
+        return mesh_group
 
     @classmethod
     def from_rect_lattice(
@@ -1753,6 +1754,7 @@ class RectilinearMesh(StructuredMesh):
             'y_grid', data=np.asarray(self.y_grid, dtype=float))
         mesh_group.create_dataset(
             'z_grid', data=np.asarray(self.z_grid, dtype=float))
+        return mesh_group
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element):
@@ -2161,6 +2163,7 @@ class CylindricalMesh(StructuredMesh):
             'z_grid', data=np.asarray(self.z_grid, dtype=float))
         mesh_group.create_dataset(
             'origin', data=np.asarray(self.origin, dtype=float))
+        return mesh_group
 
     @classmethod
     def from_bounding_box(
@@ -2545,6 +2548,7 @@ class SphericalMesh(StructuredMesh):
             'phi_grid', data=np.asarray(self.phi_grid, dtype=float))
         mesh_group.create_dataset(
             'origin', data=np.asarray(self.origin, dtype=float))
+        return mesh_group
 
     @classmethod
     def from_bounding_box(

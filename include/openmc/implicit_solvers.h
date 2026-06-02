@@ -20,8 +20,8 @@ namespace openmc {
 
 class ImplicitSolver {
 public:
-  ImplicitSolver(double atol = 1e-8, int max_iter = 1000000)
-    : atol_(atol), max_iter_(max_iter)
+  ImplicitSolver(double atol = 1e-8, double ftol = 1e-7, int max_iter = 1000000)
+    : atol_(atol), ftol_(ftol), max_iter_(max_iter)
   {}
   virtual ~ImplicitSolver() = default;
 
@@ -32,8 +32,12 @@ public:
   // access atol outside the solver
   double get_atol() const { return atol_; }
 
+  static std::unique_ptr<ImplicitSolver> create(
+    const std::string& name, int max_iter, double atol, double ftol);
+
 protected:
   double atol_;
+  double ftol_;
   int max_iter_;
 };
 
@@ -67,6 +71,13 @@ private:
   //! Returns the root to within atol_.
   double bisect(const Implicit& func, Position r, Direction u, double ta,
     double tb, double fa, double fb, double isovalue) const;
+};
+
+class FastLipschitz : public ImplicitSolver {
+public:
+  using ImplicitSolver::ImplicitSolver;
+  double solve(const Implicit& function, Position r, Direction u, double t0,
+    double t1, double isovalue) const override;
 };
 
 } // namespace openmc

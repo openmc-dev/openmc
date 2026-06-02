@@ -154,6 +154,13 @@ int verbosity {-1};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 
+// implicit surface
+int implicit_max_iter {1000000};
+std::string implicit_solver {"fast"};
+double implicit_atol {1.e-8};
+double implicit_ftol {1.e-7};
+double implicit_margin {1.e-7};
+
 } // namespace settings
 
 //==============================================================================
@@ -1340,6 +1347,27 @@ void read_settings_xml(pugi::xml_node root)
         "Particle local secondary banks will be used instead.");
     } else if (run_mode == RunMode::FIXED_SOURCE) {
       settings::use_shared_secondary_bank = true;
+    }
+  }
+  // Implicit surfaces settings
+  if (check_for_node(root, "implicit")) {
+    xml_node implicit_node = root.child("implicit");
+    if (check_for_node(implicit_node, "max_iter")) {
+      implicit_max_iter = std::stoi(get_node_value(implicit_node, "max_iter"));
+    }
+    if (check_for_node(implicit_node, "name")) {
+      implicit_solver = get_node_value(implicit_node, "name");
+      if (implicit_solver != "naive" && implicit_solver != "fast")
+        fatal_error("Unrecognized implicit solver name: " + implicit_solver);
+    }
+    if (check_for_node(implicit_node, "atol")) {
+      implicit_atol = std::stod(get_node_value(implicit_node, "atol"));
+    }
+    if (check_for_node(implicit_node, "ftol")) {
+      implicit_ftol = std::stod(get_node_value(implicit_node, "ftol"));
+    }
+    if (check_for_node(implicit_node, "margin")) {
+      implicit_margin = std::stod(get_node_value(implicit_node, "margin"));
     }
   }
 }

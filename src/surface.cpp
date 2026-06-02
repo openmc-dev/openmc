@@ -1183,7 +1183,9 @@ SurfaceImplicit::SurfaceImplicit(pugi::xml_node surf_node) : Surface(surf_node)
   if (!func_node)
     fatal_error(fmt::format("Surface {} missing <function> element.", id_));
   function_ = Implicit::from_xml_element(func_node.first_child());
-  solver_ = std::make_unique<NaiveLipschitz>();
+  solver_ = ImplicitSolver::create(settings::implicit_solver,
+    settings::implicit_max_iter, settings::implicit_atol,
+    settings::implicit_ftol);
 }
 void SurfaceImplicit::to_hdf5_inner(hid_t group_id) const
 {
@@ -1214,13 +1216,13 @@ double SurfaceImplicit::distance_finite(
   Position r, Direction u, bool coincident, double distance_max) const
 {
   double f0 = function_->evaluate(r);
-  double t0 = (std::abs(f0) <= FP_COINCIDENT || coincident)
-                ? 10.0 * solver_->get_atol()
+  double t0 = (std::abs(f0) <= settings::implicit_ftol || coincident)
+                ? settings::implicit_margin
                 : 0.0;
   Position r_tr = transform(r);
   Direction u_tr = transform_dir(u);
   return solver_->solve(*function_, r_tr, u_tr, t0, distance_max, isovalue_) +
-         10.0 * solver_->get_atol();
+         settings::implicit_margin;
 }
 double SurfaceImplicit::distance(Position r, Direction u, bool coincident) const
 {

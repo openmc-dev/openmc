@@ -288,7 +288,6 @@ int openmc_next_batch(int* status)
       } else {
         transport_event_based();
       }
-      transport_event_based();
     } else {
       if (settings::use_shared_secondary_bank) {
         transport_history_based_shared_secondary();
@@ -1014,7 +1013,7 @@ void transport_delta_history_based_single_particle(Particle& p)
       if (p.collision_distance() < p.boundary().distance()) {
         // Collided before hitting an external boundary. Rejection sample the majorant.
         p.event_calculate_xs();
-        if (p.alive() && p.macro_xs().total / p.majorant() > 1.0) {
+        if (p.alive() && (p.macro_xs().total / p.majorant() > 1.0)) {
           p.mark_as_lost(
             fmt::format("Ratio of the total cross section ({}) to the majorant "
                         "cross section ({}) for particle {} ({}) with energy {} is "
@@ -1195,8 +1194,13 @@ void transport_event_based()
       std::min(remaining_work, settings::max_particles_in_flight);
 
     // Initialize all particle histories for this subiteration
-    process_init_events(n_particles, source_offset);
-    process_transport_events();
+    if (settings::delta_tracking) {
+      process_delta_init_events(n_particles, source_offset);
+      process_delta_transport_events();
+    } else {
+      process_init_events(n_particles, source_offset);
+      process_transport_events();
+    }
     process_death_events(n_particles);
 
     // Adjust remaining work and source offset variables
@@ -1230,8 +1234,13 @@ void transport_event_based_shared_secondary()
     int64_t n_particles =
       std::min(remaining_work, settings::max_particles_in_flight);
 
-    process_init_events(n_particles, source_offset);
-    process_transport_events();
+    if (settings::delta_tracking) {
+      process_delta_init_events(n_particles, source_offset);
+      process_delta_transport_events();
+    } else {
+      process_init_events(n_particles, source_offset);
+      process_transport_events();
+    }
     process_death_events(n_particles);
 
     collect_event_secondary_banks(n_particles);
@@ -1293,9 +1302,15 @@ void transport_event_based_shared_secondary()
       int64_t n_particles =
         std::min(sec_remaining, settings::max_particles_in_flight);
 
-      process_init_secondary_events(
-        n_particles, sec_offset, simulation::shared_secondary_bank_read);
-      process_transport_events();
+      if (settings::delta_tracking) {
+        process_delta_init_secondary_events(
+          n_particles, sec_offset, simulation::shared_secondary_bank_read);
+        process_delta_transport_events();
+      } else {
+        process_init_secondary_events(
+          n_particles, sec_offset, simulation::shared_secondary_bank_read);
+        process_transport_events();
+      }
       process_death_events(n_particles);
 
       collect_event_secondary_banks(n_particles);

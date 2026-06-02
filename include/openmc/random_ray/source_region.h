@@ -690,7 +690,7 @@ private:
   // Private Methods
 
   // Helper function for indexing
-  inline int index(int64_t sr, int g) const { return sr * negroups_ + g; }
+  inline int64_t index(int64_t sr, int g) const { return sr * negroups_ + g; }
 };
 
 } // namespace openmc

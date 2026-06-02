@@ -512,7 +512,7 @@ void Tally::set_strides()
   // longest stride.
   auto n = filters_.size();
   strides_.resize(n, 0);
-  int stride = 1;
+  int64_t stride = 1;
   for (int i = n - 1; i >= 0; --i) {
     strides_[i] = stride;
     stride *= model::tally_filters[filters_[i]]->n_bins();

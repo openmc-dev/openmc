@@ -169,6 +169,143 @@ void process_collision_events()
   simulation::time_event_collision.stop();
 }
 
+void process_delta_init_events(int64_t n_particles, int64_t source_offset)
+{
+  simulation::time_event_init.start();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    simulation::particles[i].delta_tracking() = true;
+    initialize_particle_track(
+      simulation::particles[i], source_offset + i + 1, false);
+    simulation::particles[i].event_calculate_xs();
+
+    simulation::advance_particle_queue[i] = {simulation::particles[i], i};
+  }
+  simulation::advance_particle_queue.resize(n_particles);
+  simulation::time_event_init.stop();
+}
+
+void process_delta_calculate_xs_events(SharedArray<EventQueueItem>& queue)
+{
+  simulation::time_event_calculate_xs.start();
+
+  // TODO: If using C++17, we could perform a parallel sort of the queue by
+  // particle type, material type, and then energy, in order to improve cache
+  // locality and reduce thread divergence on GPU. However, the parallel
+  // algorithms typically require linking against an additional library (Intel
+  // TBB). Prior to C++17, std::sort is a serial only operation, which in this
+  // case makes it too slow to be practical for most test problems.
+  //
+  // std::sort(std::execution::par_unseq, queue.data(), queue.data() +
+  // queue.size());
+
+  int64_t offset = simulation::collision_queue.size();
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < queue.size(); i++) {
+    Particle* p = &simulation::particles[queue[i].idx];
+    p->event_calculate_xs();
+
+    // After executing a calculate_xs event in delta tracking, particles will
+    // always require a collision event. Therefore, we don't need to use
+    // the protected enqueuing function.
+    simulation::collision_queue[offset + i] = queue[i];
+  }
+
+  simulation::collision_queue.resize(offset + queue.size());
+
+  queue.resize(0);
+
+  simulation::time_event_calculate_xs.stop();
+}
+
+void process_delta_advance_particle_events()
+{
+  simulation::time_event_advance_particle.start();
+
+  #pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
+    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_delta_advance();
+    if (!p.alive())
+      continue;
+
+    if (p.type() == ParticleType::electron() || p.type() == ParticleType::positron()) {
+      simulation::collision_queue.thread_safe_append({p, buffer_idx});
+    }
+
+    if (p.collision_distance() < p.boundary().distance()) {
+      // We need to compute cross sections prior to processing a collision.
+      dispatch_xs_event(buffer_idx);
+    } else {
+      simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
+    }
+  }
+
+  simulation::advance_particle_queue.resize(0);
+
+  simulation::time_event_advance_particle.stop();
+}
+
+void process_delta_surface_crossing_events()
+{
+  simulation::time_event_surface_crossing.start();
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
+    int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_cross_surface();
+    p.event_check_limit_and_revive();
+    if (p.alive())
+      simulation::advance_particle_queue.thread_safe_append({p, buffer_idx});
+  }
+
+  simulation::surface_crossing_queue.resize(0);
+
+  simulation::time_event_surface_crossing.stop();
+}
+
+void process_delta_collision_events()
+{
+  simulation::time_event_collision.start();
+
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
+    int64_t buffer_idx = simulation::collision_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+
+    if (p.type() == ParticleType::electron() || p.type() == ParticleType::positron()) {
+      p.event_collide();
+    } else {
+      if (p.macro_xs().total / p.majorant() > 1.0) {
+        p.mark_as_lost(
+          fmt::format("Ratio of the total cross section ({}) to the majorant "
+                      "cross section ({}) for particle {} ({}) with energy {} is "
+                      "greater than unity!",
+                      p.macro_xs().total, p.majorant(), p.id(), p.type().str(), p.E()));
+        continue;
+      }
+
+      if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
+        // Real collision, need to process the collision prior to enqueuing an
+        // advance event.
+        p.event_collide();
+      }
+    }
+
+    p.event_check_limit_and_revive();
+    if (p.alive()) {
+      simulation::advance_particle_queue.thread_safe_append({p, buffer_idx});
+    }
+  }
+
+  simulation::collision_queue.resize(0);
+
+  simulation::time_event_collision.stop();
+}
+
 void process_death_events(int64_t n_particles)
 {
   simulation::time_event_death.start();
@@ -205,6 +342,31 @@ void process_transport_events()
   }
 }
 
+void process_delta_transport_events()
+{
+  while (true) {
+    int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.size(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.size(),
+      simulation::collision_queue.size()});
+
+    if (max == 0) {
+      break;
+    } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+      process_delta_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+    } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+      process_delta_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+    } else if (max == simulation::advance_particle_queue.size()) {
+      process_delta_advance_particle_events();
+    } else if (max == simulation::surface_crossing_queue.size()) {
+      process_delta_surface_crossing_events();
+    } else if (max == simulation::collision_queue.size()) {
+      process_delta_collision_events();
+    }
+  }
+}
+
 void process_init_secondary_events(int64_t n_particles, int64_t offset,
   const SharedArray<SourceSite>& shared_secondary_bank)
 {
@@ -216,6 +378,25 @@ void process_init_secondary_events(int64_t n_particles, int64_t offset,
     simulation::particles[i].event_revive_from_secondary(site);
     if (simulation::particles[i].alive()) {
       dispatch_xs_event(i);
+    }
+  }
+  simulation::time_event_init.stop();
+}
+
+void process_delta_init_secondary_events(int64_t n_particles, int64_t offset,
+  const SharedArray<SourceSite>& shared_secondary_bank)
+{
+  simulation::time_event_init.start();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    simulation::particles[i].delta_tracking() = true;
+    initialize_particle_track(simulation::particles[i], offset + i + 1, true);
+    const SourceSite& site = shared_secondary_bank[offset + i];
+    simulation::particles[i].event_revive_from_secondary(site);
+
+    if (simulation::particles[i].alive()) {
+      simulation::particles[i].event_calculate_xs();
+      simulation::advance_particle_queue.thread_safe_append({simulation::particles[i], i});
     }
   }
   simulation::time_event_init.stop();

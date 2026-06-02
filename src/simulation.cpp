@@ -1001,17 +1001,20 @@ void transport_delta_history_based_single_particle(Particle& p)
 {
   p.delta_tracking() = true;
   p.event_calculate_xs();
+
   while (p.alive()) {
     p.event_delta_advance();
 
     if (p.alive()) {
+      // Electrons and positrons collide in-place, no need to rejection sample.
       if (p.type() == ParticleType::electron() || p.type() == ParticleType::positron()) {
-        // Electrons and positrons collide in-place, no need to rejection sample.
         p.event_collide();
-      } else {
-        // Rejection sample the total to majorant ratio for photons and neutrons.
+      }
+
+      if (p.collision_distance() < p.boundary().distance()) {
+        // Collided before hitting an external boundary. Rejection sample the majorant.
         p.event_calculate_xs();
-        if (p.macro_xs().total / p.majorant() > 1.0) {
+        if (p.alive() && p.macro_xs().total / p.majorant() > 1.0) {
           p.mark_as_lost(
             fmt::format("Ratio of the total cross section ({}) to the majorant "
                         "cross section ({}) for particle {} ({}) with energy {} is "
@@ -1019,15 +1022,17 @@ void transport_delta_history_based_single_particle(Particle& p)
                         p.macro_xs().total, p.majorant(), p.id(), p.type().str(), p.E()));
           break;
         }
-        if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
+        if (p.alive() && (prn(p.current_seed()) < (p.macro_xs().total / p.majorant()))) {
           p.event_collide();
         }
+      } else {
+        // Crossed an external boundary before colliding.
+        p.event_cross_surface();
       }
     }
 
     p.event_check_limit_and_revive();
   }
-
   p.event_death();
 }
 

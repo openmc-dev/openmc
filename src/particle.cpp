@@ -342,78 +342,31 @@ void Particle::event_delta_advance()
     update_majorant();
   }
 
-  // sample distance to next position
-  double distance;
+  // Sample distance to next position
   if (type() == ParticleType::electron() || type() == ParticleType::positron()) {
-    distance = 0.0;
+    // Electrons/positrons don't move
+    collision_distance() = 0.0;
   } else {
-    // calculate majorant value for this energy
-    distance = -std::log(prn(current_seed())) / majorant();
+    // Sample collision distance based on the majorant for this energy.
+    collision_distance() = -std::log(prn(current_seed())) / majorant();
   }
 
-  while (distance > 0.0 && alive()) {
-    // update distance to problem boundary
-    boundary().distance() = INFTY;
-    boundary().surface() = 0;
-    boundary().coord_level() = 1;
-    for (auto s_idx : model::boundary_surfaces) {
-      const auto& s = model::surfaces[s_idx];
-      double surf_dist = s->distance(r(), u(), false);
-      if (surf_dist < boundary().distance()) {
-        boundary().distance() = surf_dist;
-        boundary().surface() = s_idx + 1;
-        if (s->sense(r(), u())) {
-          boundary().surface() *= -1;
-        }
-      }
-    }
+  // Update distance to problem boundary
+  boundary() = distance_to_external_boundary(*this);
 
-    if (distance < (boundary().distance() - TINY_BIT))
-    {
-      break;
-    }
+  // Move to the external boundary or delta tracking collision site.
+  double distance = std::min(collision_distance(), boundary().distance());
+  r() += (distance - TINY_BIT) * u();
 
-    if (coord(n_coord() - 1).cell() == C_NONE && cell_last(n_coord() - 1) == C_NONE) {
-      // Try to find the particle.
-      for (int j = 0; j < n_coord(); ++j) {
-        coord(j).reset();
-      }
-      if (!exhaustive_find_cell(*this)) {
-        // We've lost this particle.
-        mark_as_lost(fmt::format("Particle {} could not be located during the delta tracking loop!", id()));
-        return;
-      }
-    }
-
-    // Advance particle to the boundary.
-    r() += (boundary().distance() - TINY_BIT) * u();
-    event_cross_surface();
-    material() = C_NONE;
-    distance -= boundary().distance();
-  }
-
-  // The particle leaked out of the boundary, no need to perform the subsequent steps.
-  if (!alive())
-    return;
-
-  // Advance particle to the true collision site.
-  r() += distance * u();
-  for (int j = 0; j < n_coord(); ++j) {
-    //coord(j).r() += distance * u();
-    coord(j).reset();
-  }
-
-  // Need to locate the particle at the collision site.
+  // Need to locate the particle at the collision site or boundary.
   if (!exhaustive_find_cell(*this)) {
     // We've lost this particle.
-    mark_as_lost(fmt::format("Particle {} could not be located at the delta tracking collision site!", id()));
+    mark_as_lost(fmt::format("Particle {} could not be located while running delta tracking!", id()));
     return;
   }
 
   // Force re-calculation of material properties at the collision site.
-  if (E() != E_last()) {
-    material_last() = C_NONE;
-  }
+  material_last() = C_NONE;
 }
 
 void Particle::event_cross_surface()

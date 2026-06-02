@@ -478,6 +478,30 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
 }
 
 //==============================================================================
+
+BoundaryInfo distance_to_external_boundary(GeometryState& p)
+{
+  BoundaryInfo info;
+
+  info.distance() = INFTY;
+  info.surface() = 0;
+  info.coord_level() = 1;
+  for (auto s_idx : model::boundary_surfaces) {
+    const auto& s = model::surfaces[s_idx];
+    double surf_dist = s->distance(p.r(), p.u(), false);
+    if (surf_dist < info.distance()) {
+      info.distance() = surf_dist;
+      info.surface() = s_idx + 1;
+      if (s->sense(p.r(), p.u())) {
+        info.surface() *= -1;
+      }
+    }
+  }
+
+  return info;
+}
+
+//==============================================================================
 // C API
 //==============================================================================
 

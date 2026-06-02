@@ -111,6 +111,12 @@ void cross_lattice(
 
 BoundaryInfo distance_to_boundary(GeometryState& p);
 
+//==============================================================================
+//! Find the next external boundary a particle will intersect.
+//==============================================================================
+
+BoundaryInfo distance_to_external_boundary(GeometryState& p);
+
 } // namespace openmc
 
 #endif // OPENMC_GEOMETRY_H

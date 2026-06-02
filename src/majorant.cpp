@@ -157,7 +157,7 @@ void NeutronMajorant::compute_unionized_grid()
 
       const auto & nuclide = data::nuclides[i_nuclide];
       // ======================================================================
-      // Unionizing the URR temperature grid.
+      // Unionizing the URR energy grids.
       if (nuclide->urr_present_ && settings::urr_ptables_on) {
         for (const auto & nuc_urr : nuclide->urr_data_) {
           grid_.energy.insert(grid_.energy.end(), nuc_urr.energy_.begin(), nuc_urr.energy_.end());
@@ -165,9 +165,9 @@ void NeutronMajorant::compute_unionized_grid()
       }
 
       // ======================================================================
-      // Unionize the smooth cross section grid.
-      for (const auto & n_grid : nuclide->grid_) {
-        grid_.energy.insert(grid_.energy.end(), n_grid.energy.begin(), n_grid.energy.end());
+      // Unionize the smooth cross section energy grids.
+      for (const auto & nuc_grid : nuclide->grid_) {
+        grid_.energy.insert(grid_.energy.end(), nuc_grid.energy.begin(), nuc_grid.energy.end());
       }
 
       processed_nuclides.insert(i_nuclide);
@@ -257,7 +257,6 @@ void NeutronMajorant::fill_material_maj_xs(const Material & mat, double max_dens
 
       // ======================================================================
       // Accumulate the macroscopic cross section.
-      // TODO: density multipliers for per-cell material densities.
       mat_maj[i_energy] += std::max(micro_smooth_tot_xs, micro_urr_xs) * mat.atom_density(i, max_density_mult);
     }
   }
@@ -289,20 +288,32 @@ double NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc,
       continue;
     }
 
-    // Find the maximum URR cross section.
-    double max_urr_xs_at_temp = 0.0;
+    int i_energy = lower_bound_index(&urr.energy_.front(), &urr.energy_.back(), energy);
+
+    // Find the maximum URR cross sections for the two bounding energy points.
+    double max_urr_xs_E0 = 0.0;
+    double max_urr_xs_E1 = 0.0;
     for (int i_cdf = 0; i_cdf < urr.n_cdf(); ++i_cdf) {
-      for (int i_energy = 0; i_energy < urr.energy_.size(); ++i_energy) {
-        max_urr_xs_at_temp = std::max(max_urr_xs_at_temp, urr.xs_values_(i_energy, i_cdf).total);
-      }
+      max_urr_xs_E0 = std::max(max_urr_xs_E0, urr.xs_values_(i_energy, i_cdf).total);
+      max_urr_xs_E1 = std::max(max_urr_xs_E1, urr.xs_values_(i_energy + 1, i_cdf).total);
+    }
+
+    // Interpolate the bounding energy points.
+    double interp_urr_xs = 0.0;
+    if (urr.interp_ == Interpolation::lin_lin) {
+      interp_urr_xs =
+        interpolate_lin_1D(urr.energy_[i_energy], urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
+    } else if (urr.interp_ == Interpolation::log_log) {
+      interp_urr_xs =
+        interpolate_log_1D(urr.energy_[i_energy], urr.energy_[i_energy + 1], max_urr_xs_E0, max_urr_xs_E1, energy);
     }
 
     // Multiply by the smooth cross section (after interpolation) if required.
     if (urr.multiply_smooth_) {
-      max_urr_xs_at_temp *= smooth_xs;
+      interp_urr_xs *= smooth_xs;
     }
 
-    max_urr_xs = std::max(max_urr_xs, max_urr_xs_at_temp);
+    max_urr_xs = std::max(max_urr_xs, interp_urr_xs);
   }
 
   return max_urr_xs;

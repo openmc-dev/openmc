@@ -8,7 +8,7 @@ from uncertainties import UFloat
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_elem_list, get_text
+from ._xml import _check_text_size, get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .plots import add_plot_params
 from .region import Region, Complement
@@ -640,6 +640,7 @@ class Cell(IDManagerMixin):
             matlist_str = " ".join(
                 ["void" if m is None else str(m.id) for m in self.fill]
             )
+            _check_text_size(matlist_str, f"cell {self.id} material")
             material_subelement.text = matlist_str
 
         elif self.fill_type in ('universe', 'lattice'):
@@ -681,14 +682,18 @@ class Cell(IDManagerMixin):
         if self.temperature is not None:
             if isinstance(self.temperature, Iterable):
                 temperature_subelement= ET.SubElement(element, "temperature")
-                temperature_subelement.text = ' '.join(str(t) for t in self.temperature)
+                text = ' '.join(str(t) for t in self.temperature)
+                _check_text_size(text, f"cell {self.id} temperature")
+                temperature_subelement.text = text
             else:
                 element.set("temperature", str(self.temperature))
 
         if self.density is not None:
             if isinstance(self.density, Iterable):
                 density_subelement= ET.SubElement(element, "density")
-                density_subelement.text =  ' '.join(str(d) for d in self.density)
+                text = ' '.join(str(d) for d in self.density)
+                _check_text_size(text, f"cell {self.id} density")
+                density_subelement.text = text
             else:
                 element.set("density", str(self.density))
 

@@ -1,3 +1,31 @@
+_LXML_MAX_TEXT_SIZE = 2 * 1024**3  # 2 GB
+
+
+def _check_text_size(text, context=""):
+    """Raise an error if *text* exceeds the lxml 2 GB limit.
+
+    Parameters
+    ----------
+    text : str
+        Text that will be assigned to an XML element or attribute.
+    context : str
+        Human-readable description of what is being written, used in the
+        error message.
+
+    Raises
+    ------
+    ValueError
+        If len(text) >= 2 GB.
+    """
+    if len(text) >= _LXML_MAX_TEXT_SIZE:
+        size_gb = len(text) / 1024**3
+        raise ValueError(
+            f"The text content for {context!r} is ~{size_gb:.1f} GB, which "
+            f"exceeds the lxml limit of 2 GB. lxml will silently produce an "
+            f"empty element. Consider reducing the number of entries."
+        )
+
+
 def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True):
     """Set indentation of XML element and its sub-elements.
     Copied and pasted from https://effbot.org/zone/element-lib.htm#prettyprint.

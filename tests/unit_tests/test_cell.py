@@ -433,3 +433,9 @@ def test_plot(run_in_tmpdir):
     # ensure that calling the plot method doesn't
     # affect the universe ID space
     assert u_before.id + 1 == u_after.id
+
+
+def test_xml_text_size_check():
+    from openmc._xml import _check_text_size, _LXML_MAX_TEXT_SIZE
+    with pytest.raises(ValueError, match="exceeds the lxml limit"):
+        _check_text_size("x" * _LXML_MAX_TEXT_SIZE, "test element")

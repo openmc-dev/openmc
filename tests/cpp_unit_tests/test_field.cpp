@@ -133,7 +133,7 @@ TEST_CASE("Test Field - regular mesh", "[generators]")
   REQUIRE(next_bin == -1);
 }
 
-TEST_CASE("Test TemperatureField - regular mesh - cell-based")
+TEST_CASE("Test TemperatureField - regular mesh - cell-based only")
 {
   // The XML data as a string
   std::string xml_string = R"(
@@ -166,14 +166,99 @@ TEST_CASE("Test TemperatureField - regular mesh - cell-based")
 
   // Get sqrtkT
   REQUIRE(temp_field.get_sqrtkT(7) == Catch::Approx(0.083029).margin(1.0E-6));
+}
 
-  // Get mesh bin
-  REQUIRE(temp_field.get_mesh_bin(Position(0.5, 0.5, 0.5)) == 7);
-  REQUIRE(temp_field.get_mesh_bin(Position(-0.5, -0.5, -0.5)) == 0);
-  REQUIRE(temp_field.get_mesh_bin(Position(0.5, -0.5, -0.5)) == 1);
-  REQUIRE(temp_field.get_mesh_bin(Position(-0.5, -0.5, 0.5)) == 4);
-  REQUIRE(temp_field.get_mesh_bin(Position(0.0, 0.0, 0.0)) == 0);
-  REQUIRE(temp_field.get_mesh_bin(Position(2.0, 2.0, 2.0)) == -1);
+TEST_CASE("Test VelocityField - regular mesh")
+{
+  auto [mapping, values] = GENERATE(table<std::string, vector<Direction>>(
+    {{"cell", {Direction(10.0, 10.0, 10.0), Direction(20.0, 20.0, 20.0),
+                Direction(30.0, 30.0, 30.0), Direction(40.0, 40.0, 40.0),
+                Direction(50.0, 50.0, 50.0), Direction(60.0, 60.0, 60.0),
+                Direction(70.0, 70.0, 70.0), Direction(80.0, 80.0, 80.0)}},
+      {"nodal", {Direction(10.0, 10.0, 10.0), Direction(11.0, 11.0, 11.0),
+                  Direction(12.0, 12.0, 12.0), Direction(13.0, 13.0, 13.0),
+                  Direction(14.0, 14.0, 14.0), Direction(15.0, 15.0, 15.0),
+                  Direction(16.0, 16.0, 16.0), Direction(17.0, 17.0, 17.0),
+                  Direction(18.0, 18.0, 18.0), Direction(19.0, 19.0, 19.0),
+                  Direction(20.0, 20.0, 20.0), Direction(21.0, 21.0, 21.0),
+                  Direction(22.0, 22.0, 22.0), Direction(23.0, 23.0, 23.0),
+                  Direction(24.0, 24.0, 24.0), Direction(25.0, 25.0, 25.0),
+                  Direction(26.0, 26.0, 26.0), Direction(27.0, 27.0, 27.0),
+                  Direction(28.0, 28.0, 28.0), Direction(29.0, 29.0, 29.0),
+                  Direction(30.0, 30.0, 30.0), Direction(31.0, 31.0, 31.0),
+                  Direction(32.0, 32.0, 32.0), Direction(33.0, 33.0, 33.0),
+                  Direction(34.0, 34.0, 34.0), Direction(35.0, 35.0, 35.0),
+                  Direction(36.0, 36.0, 36.0)}}}));
+
+  // The XML data as a string
+  std::string xml_string = R"(
+        <mesh id="1">
+            <dimension>2 2 2</dimension>
+            <lower_left>-1 -1 -1</lower_left>
+            <upper_right>1 1 1</upper_right>
+      </mesh>
+    )";
+
+  // Create the mesh from a file
+  pugi::xml_document doc;
+  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+  pugi::xml_node root = doc.child("mesh");
+  auto mesh = RegularMesh(root);
+
+  // Add physical group map
+  mesh.pg_map() = {{1, {0, 24, 12, 36}}, {2, {7, 31, 19, 43}},
+    {3, {15, 39, 21, 45, 2, 26, 8, 32, 4, 16}}, {4, {10, 22, 29, 41, 35, 47}}};
+
+  // Create a temperature field
+  VelocityField velocity_field = VelocityField(&mesh, values, mapping);
+
+  // Add boundary conditions map
+  velocity_field.bc_map() = {
+    {BCType::INLET, {1}}, {BCType::OUTLET, {2}}, {BCType::WALL, {3, 4}}};
+
+  // Get next bin
+  Position r0;
+  Position r1;
+  int bin0;
+  int bin1;
+  BCType crossed_boundary;
+  Position intersection;
+
+  // - Next point is inside the mesh
+  r0 = Position(-0.5, -0.5, -0.5);
+  r1 = Position(0.5, 0.5, 0.5);
+  bin0 = 0;
+  bin1 =
+    velocity_field.get_next_bin(r0, r1, bin0, crossed_boundary, intersection);
+  REQUIRE(bin1 == 7);
+  REQUIRE(crossed_boundary == BCType::NONE);
+  REQUIRE(intersection == r1);
+
+  // - Next point is outside the mesh
+  r0 = Position(-0.5, -0.5, -0.5);
+  r1 = Position(-0.5, -0.5, 1.5);
+  bin0 = 0;
+  bin1 =
+    velocity_field.get_next_bin(r0, r1, bin0, crossed_boundary, intersection);
+  REQUIRE(bin1 == -1);
+  REQUIRE(crossed_boundary == BCType::WALL);
+  REQUIRE(intersection == Position(-0.5, -0.5, 1.0));
+
+  // Randomly place on inlet
+  Position p = Position(0., 0., 0.);
+  int bin = 0;
+  uint64_t seed = 1;
+  velocity_field.randomly_place_on_inlet(p, bin, &seed);
+  REQUIRE(p.x == -1.0);
+  REQUIRE(p.y == Catch::Approx(0.7529960058).margin(1.0E-10));
+  REQUIRE(p.z == Catch::Approx(-0.6698810112).margin(1.0E-10));
+  REQUIRE(bin == 2);
+
+  // Get boundary conditions
+  REQUIRE(velocity_field.get_boundary_condition(1) == BCType::INLET);
+  REQUIRE(velocity_field.get_boundary_condition(2) == BCType::OUTLET);
+  REQUIRE(velocity_field.get_boundary_condition(3) == BCType::WALL);
+  REQUIRE(velocity_field.get_boundary_condition(4) == BCType::WALL);
 }
 
 TEST_CASE(

@@ -2846,6 +2846,9 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
 extern "C" int openmc_unstructured_mesh_export_hdf5(
   int32_t index, hid_t mesh_group)
 {
+  if (!mpi::master)
+    return 0;
+
   if (int err = check_mesh_type<UnstructuredMesh>(index))
     return err;
   UnstructuredMesh* m =

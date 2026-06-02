@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-if (h5py.h5.get_libversion() >= (1, 12, 1)):
+if (h5py.h5.get_libversion() >= (1, 10, 0)):
     c_hid_t = c_int64
 else:
     c_hid_t = c_int32

@@ -74,6 +74,7 @@ int openmc_get_n_batches(int* n_batches, bool get_max_batches);
 int openmc_get_nuclide_index(const char name[], int* index);
 int openmc_add_unstructured_mesh(
   const char filename[], const char library[], int* id);
+int openmc_unstructured_mesh_export_hdf5(int32_t index, hid_t mesh_group);
 int64_t openmc_get_seed();
 uint64_t openmc_get_stride();
 int openmc_get_tally_index(int32_t id, int32_t* index);

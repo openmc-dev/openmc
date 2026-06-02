@@ -1227,6 +1227,17 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Create the secondary photon
     bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon());
 
+    // Pre-add photon energy to pht_storage so pht_secondary_particles()
+    // subtraction results in net zero
+    if (created_photon && !model::active_pulse_height_tallies.empty()) {
+      auto it = std::find(model::pulse_height_cells.begin(),
+        model::pulse_height_cells.end(), p.lowest_coord().cell());
+      if (it != model::pulse_height_cells.end()) {
+        int index = std::distance(model::pulse_height_cells.begin(), it);
+        p.pht_storage()[index] += E;
+      }
+    }
+
     // Tag secondary particle with parent nuclide
     if (created_photon && settings::use_decay_photons) {
       p.local_secondary_bank().back().parent_nuclide =

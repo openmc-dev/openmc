@@ -148,6 +148,18 @@ def test_h2o_endf(endf_data):
                                 '600K', '650K', '800K']
 
 
+def test_from_endf_material(endf_data):
+    filename = os.path.join(endf_data, 'thermal_scatt', 'tsl-HinH2O.endf')
+    material = openmc.data.endf.get_evaluations(filename)[0]
+
+    h2o = openmc.data.ThermalScattering.from_endf(
+        material, divide_incoherent_elastic=True)
+
+    assert not h2o.elastic
+    assert h2o.atomic_weight_ratio == pytest.approx(0.99917)
+    assert h2o.temperatures[0] == '294K'
+
+
 def test_hzrh_attributes(hzrh):
     assert hzrh.atomic_weight_ratio == pytest.approx(0.99917)
     assert hzrh.energy_max == pytest.approx(1.9734)

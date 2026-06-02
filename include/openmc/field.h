@@ -165,9 +165,9 @@ public:
   //! of the previous position. We assume that the transport between the two
   //! points is in a straight line, justifying the use of ray-tracing. If the
   //! next point is outside the mesh, we use the last bin that was located
-  //! inside the mesh.
+  //! inside the mesh. It is assumed that r0 is located inside the mesh.
   //
-  //! \param[in] r0 Previous position
+  //! \param[in] r0 Previous position located inside the mesh
   //! \param[in] r1 Current position
   //! \param[in] bin Bin corresponding to the previous position
   //! \return Value corresponding to the current position
@@ -224,7 +224,7 @@ public:
   //! \param[in] r Position of the particle
   //! \param[in] u Direction of the particle
   //! \param[out] bin_next Next bin number
-  //! \return The distance in cm to the next mesh boundary
+  //! \return Distance to the next mesh boundary
   double distance_to_next_boundary(
     int current_bin, const Position& r, const Direction& u, int& bin_next)
   {
@@ -343,7 +343,7 @@ public:
   //! Retrieve the boundary condition associated with a physical group.
   //
   //! \param[in] physical_group Physical group
-  //! \return Boundary condition associated with the physical group
+  //! \return Boundary condition
   BCType get_boundary_condition(int physical_group);
 
   // Boundary conditions map accessors

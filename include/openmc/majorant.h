@@ -43,7 +43,7 @@ public:
   void compute_majorant();
 
   //! \brief Write the majorant cross section to a CSV file for visualization
-  // TODO: remove this when done prototyping.
+  //         TODO: remove this when done prototyping.
   //
   //! \param[in] filename The path/name for the majorant file
   void write_ascii(const std::string& filename) const;

@@ -5,6 +5,7 @@ from math import sqrt
 import sys
 from weakref import WeakValueDictionary
 
+import h5py
 import numpy as np
 from numpy.ctypeslib import as_array
 
@@ -21,6 +22,11 @@ __all__ = [
     'SphericalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes', 'export_unstructured_mesh'
 ]
 
+
+if (h5py.h5.get_libversion() >= (1, 12, 1)):
+    c_hid_t = c_int64
+else:
+    c_hid_t = c_int32
 
 arr_2d_int32 = np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='CONTIGUOUS')
 arr_2d_double = np.ctypeslib.ndpointer(dtype=np.double, ndim=2, flags='CONTIGUOUS')
@@ -108,7 +114,7 @@ _dll.openmc_spherical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
 _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
 
-_dll.openmc_unstructured_mesh_export_hdf5.argtypes = [c_int32, c_int64]
+_dll.openmc_unstructured_mesh_export_hdf5.argtypes = [c_int32, c_hid_t]
 _dll.openmc_unstructured_mesh_export_hdf5.restype = c_int
 _dll.openmc_unstructured_mesh_export_hdf5.errcheck = _error_handler
 

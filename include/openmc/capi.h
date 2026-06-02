@@ -1,6 +1,8 @@
 #ifndef OPENMC_CAPI_H
 #define OPENMC_CAPI_H
 
+#include "hdf5.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

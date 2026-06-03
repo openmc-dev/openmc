@@ -355,8 +355,8 @@ void Particle::event_delta_advance()
   boundary() = distance_to_external_boundary(*this);
 
   // Move to the external boundary or delta tracking collision site.
-  double distance = std::min(collision_distance(), boundary().distance());
-  r() += (distance - TINY_BIT) * u();
+  double distance = std::min(collision_distance(), boundary().distance() - TINY_BIT);
+  r() += distance * u();
 
   // Need to locate the particle at the collision site or boundary.
   if (!exhaustive_find_cell(*this)) {

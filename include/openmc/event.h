@@ -71,7 +71,7 @@ extern vector<Particle> particles;
 } // namespace simulation
 
 //==============================================================================
-// Functions
+// Surface tracking functions
 //==============================================================================
 
 //! Allocate space for the event queues and particle buffer
@@ -107,6 +107,28 @@ void process_surface_crossing_events();
 //! Execute the collision event for all particles in this event's buffer
 void process_collision_events();
 
+//! Execute the death event for all particles
+//
+//! \param n_particles The number of particles in the particle buffer
+void process_death_events(int64_t n_particles);
+
+//! Process event queues until all are empty. Each iteration processes the
+//! longest queue first to maximize vectorization efficiency.
+void process_transport_events();
+
+//! Initialize secondary particles from a shared secondary bank for
+//! event-based transport
+//
+//! \param n_particles The number of particles to initialize
+//! \param offset The offset index in the shared secondary bank
+//! \param shared_secondary_bank The shared secondary bank to read from
+void process_init_secondary_events(int64_t n_particles, int64_t offset,
+  const SharedArray<SourceSite>& shared_secondary_bank);
+
+//==============================================================================
+// Delta tracking functions
+//==============================================================================
+
 //! Specialization of process_init_events() for delta tracking.
 //
 //! \param n_particles The number of particles in the particle buffer
@@ -127,26 +149,8 @@ void process_delta_surface_crossing_events();
 //! Execute the delta tracking collision event for all particles in this event's buffer
 void process_delta_collision_events();
 
-//! Execute the death event for all particles
-//
-//! \param n_particles The number of particles in the particle buffer
-void process_death_events(int64_t n_particles);
-
-//! Process event queues until all are empty. Each iteration processes the
-//! longest queue first to maximize vectorization efficiency.
-void process_transport_events();
-
 //! Specialization of process_transport_events() for delta tracking.
 void process_delta_transport_events();
-
-//! Initialize secondary particles from a shared secondary bank for
-//! event-based transport
-//
-//! \param n_particles The number of particles to initialize
-//! \param offset The offset index in the shared secondary bank
-//! \param shared_secondary_bank The shared secondary bank to read from
-void process_init_secondary_events(int64_t n_particles, int64_t offset,
-  const SharedArray<SourceSite>& shared_secondary_bank);
 
 //! Specialization of process_init_secondary_events() for delta tracking.
 //

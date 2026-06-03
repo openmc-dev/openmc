@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
@@ -39,7 +40,27 @@ inline bool coincident(double d1, double d2)
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
 
-bool check_cell_overlap(GeometryState& p, bool error = true);
+// OverlapKey to store cell and universe data of a single overlap
+
+struct OverlapKey {
+  int universe_id;
+  int cell1_id;
+  int cell2_id;
+
+  bool operator==(const OverlapKey& other) const {
+    return universe_id == other.universe_id &&
+           cell1_id == other.cell1_id &&
+           cell2_id == other.cell2_id;
+  }
+};
+
+// OverlapResult struct to store per-pixel information on overlaps
+
+struct OverlapResult {
+  std::vector<OverlapKey> pairs;
+};
+
+OverlapResult check_cell_overlap(GeometryState& p, bool error = true);
 
 //==============================================================================
 //! Get the cell instance for a particle at the specified universe level

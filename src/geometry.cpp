@@ -32,8 +32,9 @@ vector<int64_t> overlap_check_count;
 // Non-member functions
 //==============================================================================
 
-bool check_cell_overlap(GeometryState& p, bool error)
+OverlapResult check_cell_overlap(GeometryState& p, bool error)
 {
+  OverlapResult overlaps;
   int n_coord = p.n_coord();
 
   // Loop through each coordinate level
@@ -50,7 +51,19 @@ bool check_cell_overlap(GeometryState& p, bool error)
               fmt::format("Overlapping cells detected: {}, {} on universe {}",
                 c.id_, model::cells[p.coord(j).cell()]->id_, univ.id_));
           }
-          return true;
+
+          // With no fatal error (plotter is calling), now adds overlaps and calls them
+          // Ensures order does not matter when making an overlap key
+          int cell_a = model::cells[index_cell]->id_;
+          int cell_b = model::cells[p.coord(j).cell()]->id_;
+          int a = std::min(cell_a, cell_b);
+          int b = std::max(cell_a, cell_b);
+          OverlapKey key{univ.id_, a, b};
+
+          // in case of duplicates 
+          if (std::find(overlaps.pairs.begin(), overlaps.pairs.end(), key) == overlaps.pairs.end()) {
+            overlaps.pairs.push_back(key);
+          }
         }
 #pragma omp atomic
         ++model::overlap_check_count[index_cell];
@@ -58,7 +71,7 @@ bool check_cell_overlap(GeometryState& p, bool error)
     }
   }
 
-  return false;
+  return overlaps;
 }
 
 //==============================================================================

@@ -444,6 +444,43 @@ def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
 
     return geom_data, property_data
 
+# Overlap function bindings
+
+_dll.openmc_slice_plot_overlap_count.argtypes = [
+    c_int32, c_int32, POINTER(c_int32)
+]
+_dll.openmc_slice_plot_overlap_count.restype = c_int
+_dll.openmc_slice_plot_overlap_count.errcheck = _error_handler
+
+_dll.openmc_slice_plot_overlap_data.argtypes = [
+    c_int32, c_int32,
+    POINTER(c_int32), POINTER(c_int32), POINTER(c_int32)
+]
+_dll.openmc_slice_plot_overlap_data.restype = c_int
+_dll.openmc_slice_plot_overlap_data.errcheck = _error_handler
+
+# Python wrappings for overlap functions
+
+def slice_plot_overlap_count(x, y):
+    count = c_int32()
+    _dll.openmc_slice_plot_overlap_count(x, y, count)
+    return count.value
+
+def slice_plot_overlap_data(x, y):
+    n = slice_plot_overlap_count(x, y)
+    cell1 = np.empty(n, dtype=np.int32)
+    cell2 = np.empty(n, dtype=np.int32)
+    universe = np.empty(n, dtype=np.int32)
+
+    if n > 0:
+        _dll.openmc_slice_plot_overlap_data(
+            x, y,
+            cell1.ctypes.data_as(POINTER(c_int32)),
+            cell2.ctypes.data_as(POINTER(c_int32)),
+            universe.ctypes.data_as(POINTER(c_int32)),
+        )
+
+    return cell1, cell2, universe
 
 _dll.openmc_get_plot_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_plot_index.restype = c_int

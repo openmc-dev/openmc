@@ -73,7 +73,7 @@ void IdData::set_value(size_t y, size_t x, const Particle& p, int level,
   }
 }
 
-void IdData::set_overlap(size_t y, size_t x)
+void IdData::set_overlap(size_t y, size_t x, const std::vector<OverlapKey>& /*pairs*/)
 {
   for (size_t k = 0; k < data_.shape(2); ++k)
     data_(y, x, k) = OVERLAP;
@@ -94,7 +94,7 @@ void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level,
   }
 }
 
-void PropertyData::set_overlap(size_t y, size_t x)
+void PropertyData::set_overlap(size_t y, size_t x, const std::vector<OverlapKey>& /*pairs*/)
 {
   data_(y, x) = OVERLAP;
 }
@@ -106,7 +106,8 @@ void PropertyData::set_overlap(size_t y, size_t x)
 RasterData::RasterData(size_t h_res, size_t v_res, bool include_filter)
   : id_data_({v_res, h_res, include_filter ? 4u : 3u}, NOT_FOUND),
     property_data_({v_res, h_res, 2}, static_cast<double>(NOT_FOUND)),
-    include_filter_(include_filter)
+    include_filter_(include_filter),
+    pixel_overlaps_(h_res * v_res)
 {}
 
 void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
@@ -154,7 +155,7 @@ void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
   }
 }
 
-void RasterData::set_overlap(size_t y, size_t x)
+void RasterData::set_overlap(size_t y, size_t x, const std::vector<OverlapKey>& pairs)
 {
   // Set cell, instance, and material to OVERLAP, but preserve filter bin
   id_data_(y, x, 0) = OVERLAP;
@@ -165,6 +166,9 @@ void RasterData::set_overlap(size_t y, size_t x)
 
   property_data_(y, x, 0) = OVERLAP;
   property_data_(y, x, 1) = OVERLAP;
+
+  size_t pix = y * id_data_.shape(1) + x;
+  pixel_overlaps_[pix] = pairs;
 }
 
 //==============================================================================
@@ -176,6 +180,8 @@ namespace model {
 std::unordered_map<int, int> plot_map;
 vector<std::unique_ptr<PlottableInterface>> plots;
 uint64_t plotter_seed = 1;
+
+std::unique_ptr<RasterData> last_slice_plot;
 
 } // namespace model
 
@@ -1970,17 +1976,84 @@ extern "C" int openmc_slice_plot(const double origin[3], const double u_span[3],
     // Use get_map<RasterData> to generate data
     auto data = plot_params.get_map<RasterData>(filter_index);
 
-    // Copy geometry data
-    std::copy(data.id_data_.begin(), data.id_data_.end(), geom_data);
+    // Copy overlap data to unique_ptr structure to be saved for plotting
+    model::last_slice_plot = std::make_unique<RasterData>(std::move(data));
 
-    // Copy property data if requested
+    std::copy(model::last_slice_plot->id_data_.begin(),
+          model::last_slice_plot->id_data_.end(),
+          geom_data);
+
     if (property_data != nullptr) {
-      std::copy(
-        data.property_data_.begin(), data.property_data_.end(), property_data);
+      std::copy(model::last_slice_plot->property_data_.begin(), 
+      model::last_slice_plot->property_data_.end(), property_data);
     }
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;
+  }
+
+  return 0;
+}
+
+// Gets the number of overlaps for a specific pixel
+extern "C" int openmc_slice_plot_overlap_count(
+  int32_t x, int32_t y, int32_t* count)
+{
+  if (!model::last_slice_plot) {
+    set_errmsg("No slice plot data available.");
+    return OPENMC_E_UNASSIGNED;
+  }
+  if (!count) {
+    set_errmsg("Null pointer passed for overlap count.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  size_t width = model::last_slice_plot->id_data_.shape(1);
+  size_t height = model::last_slice_plot->id_data_.shape(0);
+
+  if (x < 0 || y < 0 || static_cast<size_t>(x) >= width ||
+      static_cast<size_t>(y) >= height) {
+    set_errmsg("Pixel indices out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  size_t pix = static_cast<size_t>(y) * width + static_cast<size_t>(x);
+  *count = static_cast<int32_t>(
+    model::last_slice_plot->pixel_overlaps_[pix].size());
+
+  return 0;
+}
+
+// Gets the overlap data for a specific pixel
+// User pre-allocates array sizes based on what is returned with overlap_count
+extern "C" int openmc_slice_plot_overlap_data(
+  int32_t x, int32_t y, int32_t* cell1, int32_t* cell2, int32_t* universe)
+{
+  if (!model::last_slice_plot) {
+    set_errmsg("No slice plot data available.");
+    return OPENMC_E_UNASSIGNED;
+  }
+  if (!cell1 || !cell2 || !universe) {
+    set_errmsg("Null pointer passed for overlap data.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  size_t width = model::last_slice_plot->id_data_.shape(1);
+  size_t height = model::last_slice_plot->id_data_.shape(0);
+
+  if (x < 0 || y < 0 || static_cast<size_t>(x) >= width ||
+      static_cast<size_t>(y) >= height) {
+    set_errmsg("Pixel indices out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  size_t pix = static_cast<size_t>(y) * width + static_cast<size_t>(x);
+  const auto& pairs = model::last_slice_plot->pixel_overlaps_[pix];
+
+  for (size_t i = 0; i < pairs.size(); ++i) {
+    cell1[i] = pairs[i].cell1_id;
+    cell2[i] = pairs[i].cell2_id;
+    universe[i] = pairs[i].universe_id;
   }
 
   return 0;

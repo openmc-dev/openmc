@@ -62,6 +62,21 @@ void dispatch_xs_event(int64_t buffer_idx)
   }
 }
 
+void process_death_events(int64_t n_particles)
+{
+  simulation::time_event_death.start();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    Particle& p = simulation::particles[i];
+    p.event_death();
+  }
+  simulation::time_event_death.stop();
+}
+
+//==============================================================================
+// Functions for surface tracking
+//==============================================================================
+
 void process_init_events(int64_t n_particles, int64_t source_offset)
 {
   simulation::time_event_init.start();
@@ -169,17 +184,6 @@ void process_collision_events()
   simulation::time_event_collision.stop();
 }
 
-void process_death_events(int64_t n_particles)
-{
-  simulation::time_event_death.start();
-#pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < n_particles; i++) {
-    Particle& p = simulation::particles[i];
-    p.event_death();
-  }
-  simulation::time_event_death.stop();
-}
-
 void process_transport_events()
 {
   while (true) {
@@ -220,6 +224,10 @@ void process_init_secondary_events(int64_t n_particles, int64_t offset,
   }
   simulation::time_event_init.stop();
 }
+
+//==============================================================================
+// Functions for delta tracking
+//==============================================================================
 
 void process_delta_init_events(int64_t n_particles, int64_t source_offset)
 {

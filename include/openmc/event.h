@@ -71,7 +71,7 @@ extern vector<Particle> particles;
 } // namespace simulation
 
 //==============================================================================
-// Surface tracking functions
+// Functions
 //==============================================================================
 
 //! Allocate space for the event queues and particle buffer
@@ -86,6 +86,15 @@ void free_event_queues(void);
 //
 //! \param buffer_idx The particle's actual index in the particle buffer
 void dispatch_xs_event(int64_t buffer_idx);
+
+//! Execute the death event for all particles
+//
+//! \param n_particles The number of particles in the particle buffer
+void process_death_events(int64_t n_particles);
+
+//==============================================================================
+// Surface tracking
+//==============================================================================
 
 //! Execute the initialization event for all particles
 //
@@ -107,11 +116,6 @@ void process_surface_crossing_events();
 //! Execute the collision event for all particles in this event's buffer
 void process_collision_events();
 
-//! Execute the death event for all particles
-//
-//! \param n_particles The number of particles in the particle buffer
-void process_death_events(int64_t n_particles);
-
 //! Process event queues until all are empty. Each iteration processes the
 //! longest queue first to maximize vectorization efficiency.
 void process_transport_events();
@@ -126,7 +130,7 @@ void process_init_secondary_events(int64_t n_particles, int64_t offset,
   const SharedArray<SourceSite>& shared_secondary_bank);
 
 //==============================================================================
-// Delta tracking functions
+// Delta tracking
 //==============================================================================
 
 //! Specialization of process_init_events() for delta tracking.

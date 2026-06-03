@@ -895,19 +895,23 @@ def test_load_nuclide(lib_init):
         openmc.lib.load_nuclide('Pu3')
 
 
+class LegacySlicePlot:
+    origin = (0.0, 0.0, 0.0)
+    width = 1.26
+    height = 1.26
+    basis = 'xy'
+    h_res = 3
+    v_res = 3
+    level = -1
+
+
 def test_id_map(lib_init):
     expected_ids = np.array([[(3, 0, 3), (2, 0, 2), (3, 0, 3)],
                              [(2, 0, 2), (1, 0, 1), (2, 0, 2)],
                              [(3, 0, 3), (2, 0, 2), (3, 0, 3)]], dtype='int32')
 
     with pytest.warns(FutureWarning, match="deprecated"):
-        ids = openmc.lib.plot.id_map(
-            origin=(0.0, 0.0, 0.0),
-            width=(1.26, 1.26),
-            basis='xy',
-            pixels=(3, 3),
-            level=-1
-        )
+        ids = openmc.lib.id_map(LegacySlicePlot())
     assert np.array_equal(expected_ids, ids)
 
 
@@ -918,13 +922,7 @@ def test_property_map(lib_init):
          [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
 
     with pytest.warns(FutureWarning, match="deprecated"):
-        properties = openmc.lib.plot.property_map(
-            origin=(0.0, 0.0, 0.0),
-            width=(1.26, 1.26),
-            basis='xy',
-            pixels=(3, 3),
-            level=-1
-        )
+        properties = openmc.lib.property_map(LegacySlicePlot())
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 

@@ -219,8 +219,7 @@ def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
     return geom_data, property_data
 
 
-def id_map(plot=None, *, origin=None, width=None, basis='xy', u_span=None,
-           v_span=None, pixels=None, color_overlaps=False, level=-1):
+def id_map(plot):
     """Deprecated compatibility wrapper for geometry ID maps.
 
     This function is kept for compatibility and will be removed in a future
@@ -229,35 +228,15 @@ def id_map(plot=None, *, origin=None, width=None, basis='xy', u_span=None,
     warnings.warn(
         "openmc.lib.id_map is deprecated and will be removed in a future "
         "release; use openmc.lib.slice_plot(..., include_properties=False).",
-        FutureWarning, stacklevel=2
+        FutureWarning,
     )
 
-    if plot is not None:
-        if any(value is not None for value in (origin, width, u_span, v_span, pixels)):
-            raise ValueError(
-                "plot cannot be combined with explicit origin/width/u_span/"
-                "v_span/pixels arguments."
-            )
-        kwargs = _extract_slice_plot_args(plot)
-    else:
-        kwargs = {
-            'origin': origin,
-            'width': width,
-            'basis': basis,
-            'u_span': u_span,
-            'v_span': v_span,
-            'pixels': pixels,
-            'color_overlaps': color_overlaps,
-            'level': level,
-        }
-
+    kwargs = _extract_slice_plot_args(plot)
     geom_data, _ = slice_plot(include_properties=False, **kwargs)
     return geom_data[:, :, :3]
 
 
-def property_map(plot=None, *, origin=None, width=None, basis='xy',
-                 u_span=None, v_span=None, pixels=None, color_overlaps=False,
-                 level=-1):
+def property_map(plot):
     """Deprecated compatibility wrapper for temperature/density maps.
 
     This function is kept for compatibility and will be removed in a future
@@ -267,28 +246,10 @@ def property_map(plot=None, *, origin=None, width=None, basis='xy',
         "openmc.lib.property_map is deprecated and will be removed in a "
         "future release; use openmc.lib.slice_plot(..., "
         "include_properties=True).",
-        FutureWarning, stacklevel=2
+        FutureWarning,
     )
 
-    if plot is not None:
-        if any(value is not None for value in (origin, width, u_span, v_span, pixels)):
-            raise ValueError(
-                "plot cannot be combined with explicit origin/width/u_span/"
-                "v_span/pixels arguments."
-            )
-        kwargs = _extract_slice_plot_args(plot)
-    else:
-        kwargs = {
-            'origin': origin,
-            'width': width,
-            'basis': basis,
-            'u_span': u_span,
-            'v_span': v_span,
-            'pixels': pixels,
-            'color_overlaps': color_overlaps,
-            'level': level,
-        }
-
+    kwargs = _extract_slice_plot_args(plot)
     _, prop_data = slice_plot(include_properties=True, **kwargs)
     return prop_data
 

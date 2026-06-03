@@ -2854,16 +2854,7 @@ extern "C" int openmc_unstructured_mesh_export_hdf5(
   UnstructuredMesh* m =
     dynamic_cast<UnstructuredMesh*>(model::meshes[index].get());
 
-  // Write mesh type
-  write_dataset(mesh_group, "type", m->get_mesh_type());
-
-  // Write mesh ID
-  write_attribute(mesh_group, "id", m->id_);
-
-  // Write mesh name
-  write_dataset(mesh_group, "name", m->name_);
-
-  m->to_hdf5_inner(mesh_group);
+  m->to_hdf5(mesh_group);
   return 0;
 }
 

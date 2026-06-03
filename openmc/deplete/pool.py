@@ -101,6 +101,8 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
     else:
         matrices = map(matrix_func, repeat(chain), rates, fission_yields,
                        *matrix_args)
+
+    n_solve = n
     if (transfer_rates is not None and
         current_timestep in transfer_rates.external_timesteps):
         # Calculate transfer rate terms as diagonal matrices
@@ -121,6 +123,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         # Add external sources if present
         if (external_source_rates is not None and
             current_timestep in external_source_rates.external_timesteps):
+            n_solve = [arr.copy() for arr in n]
             sources = map(chain.form_ext_source_term, repeat(external_source_rates),
                           repeat(current_timestep), external_source_rates.local_mats)
 
@@ -137,7 +140,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
             for i, matrix in enumerate(matrices):
                 if matrix.shape[0] + 1 == matrix.shape[1]:
                     matrices[i] = vstack([matrix, csc_array((1, matrix.shape[1]))])
-                    n[i] = np.append(n[i], 1.0)
+                    n_solve[i] = np.append(n_solve[i], 1.0)
                 # else:
                 #     matrices[i] = hstack(
                 #         [vstack([matrix, csc_array((1, matrix.shape[1]))]),
@@ -148,7 +151,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         if current_timestep in transfer_rates.index_transfer:
             # Gather all on comm.rank 0
             matrices = comm.gather(matrices)
-            n = comm.gather(n)
+            n = comm.gather(n_solve)
 
             if comm.rank == 0:
                 # Expand lists
@@ -207,7 +210,6 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 # Remove extra value at the end of the nuclide vectors if external source rates are present
                 if (external_source_rates is not None and
                     current_timestep in external_source_rates.external_timesteps):
-                    external_source_rates.reformat_nuclide_vectors(n)
                     external_source_rates.reformat_nuclide_vectors(n_result)
                     #Clamp negative values to 0
                     for n_material in n_result:
@@ -217,15 +219,14 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 n_result = None
             # Braodcast result to other ranks
             n_result = comm.bcast(n_result)
-            n = comm.bcast(n)
             # Distribute results across MPI
             n_result = _distribute(n_result)
-            n = _distribute(n)
             return n_result
 
     # If only external source rates are present
     elif (external_source_rates is not None and
         current_timestep in external_source_rates.external_timesteps):
+        n_solve = [arr.copy() for arr in n]
         # Calculate external source term vectors
         sources = map(chain.form_ext_source_term, repeat(external_source_rates),
                       repeat(current_timestep), external_source_rates.local_mats)
@@ -240,9 +241,9 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         for i, matrix in enumerate(matrices):
             if matrix.shape[0] + 1 == matrix.shape[1]:
                 matrices[i] = vstack([matrix, csc_array((1, matrix.shape[1]))])
-                n[i] = np.append(n[i], 1.0)
+                n_solve[i] = np.append(n_solve[i], 1.0)
     
-    inputs = zip(matrices, n, repeat(dt), repeat(substeps))
+    inputs = zip(matrices, n_solve, repeat(dt), repeat(substeps))
 
     if USE_MULTIPROCESSING:
         with Pool(NUM_PROCESSES) as pool:
@@ -253,7 +254,6 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
     # Remove extra value at the end of the nuclide vectors if external source rates are present
     if (external_source_rates is not None and
         current_timestep in external_source_rates.external_timesteps):
-        external_source_rates.reformat_nuclide_vectors(n)
         external_source_rates.reformat_nuclide_vectors(n_result)
         #Clamp negative values to 0
         for n_material in n_result:

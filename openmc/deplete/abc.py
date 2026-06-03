@@ -941,9 +941,8 @@ class Integrator(ABC):
                 n, res, keff_search_root = self._get_bos_data(i, source_rate, n)
 
                 # Solve Bateman equations over time interval
-                breakpoint()
                 proc_time, n_end = self(n, res.rates, dt, source_rate, i)
-                breakpoint()
+
                 StepResult.save(
                     self.operator,
                     n,

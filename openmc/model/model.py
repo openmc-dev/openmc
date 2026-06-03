@@ -1125,27 +1125,16 @@ class Model:
             array contains cell IDs, cell instances, and material IDs (in that
             order).
         """
-        import openmc.lib
-
-        origin, width, pixels = self._set_plot_defaults(
-            origin, width, pixels, basis)
-
-        # Silence output by default. Also set arguments to start in volume
-        # calculation mode to avoid loading cross sections
-        init_kwargs.setdefault('output', False)
-        init_kwargs.setdefault('args', ['-c'])
-
-        with openmc.lib.TemporarySession(self, **init_kwargs):
-            ids, _ = openmc.lib.slice_plot(
-                origin=origin,
-                width=width,
-                basis=basis,
-                pixels=pixels,
-                color_overlaps=color_overlaps,
-                level=-1,
-                include_properties=False,
-            )
-
+        ids, _ = self.slice_plot(
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            color_overlaps=color_overlaps,
+            level=-1,
+            include_properties=False,
+            **init_kwargs,
+        )
         return ids
 
     def slice_plot(

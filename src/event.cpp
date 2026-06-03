@@ -237,7 +237,6 @@ void process_delta_init_events(int64_t n_particles, int64_t source_offset)
     simulation::particles[i].delta_tracking() = true;
     initialize_particle_track(
       simulation::particles[i], source_offset + i + 1, false);
-    simulation::particles[i].event_calculate_xs();
 
     simulation::advance_particle_queue[i] = {simulation::particles[i], i};
   }

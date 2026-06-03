@@ -999,7 +999,6 @@ void transport_history_based_single_particle(Particle& p)
 void transport_delta_history_based_single_particle(Particle& p)
 {
   p.delta_tracking() = true;
-  p.event_calculate_xs();
 
   while (p.alive()) {
     p.event_delta_advance();

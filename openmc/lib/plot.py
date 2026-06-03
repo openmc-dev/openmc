@@ -116,6 +116,7 @@ def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
         Filter for bin index lookup
     include_properties : bool, optional
         Whether to compute temperature/density
+
     Returns
     -------
     geom_data : numpy.ndarray

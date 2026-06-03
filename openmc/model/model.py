@@ -265,22 +265,22 @@ class Model:
             denom_tally = openmc.Tally(name='IFP denominator')
             denom_tally.scores = ['ifp-denominator']
             self.tallies.append(denom_tally)
-    
-    # TODO: This should also be incorporated into lower-level calls in 
+
+    # TODO: This should also be incorporated into lower-level calls in
     # settings.py, but it requires information about the tallies currently
     # on the active Model
     def _assign_fw_cadis_tally_IDs(self):
-        # Verify that all tallies assigned as targets on WeightWindowGenerators 
-        # exist within model.tallies. If this is the case, convert the .targets 
+        # Verify that all tallies assigned as targets on WeightWindowGenerators
+        # exist within model.tallies. If this is the case, convert the .targets
         # attribute of each WeightWindowGenerator to a sequence of tally IDs.
         if len(self.settings.weight_window_generators) == 0:
             return
-        
+
         # List of valid tally IDs
         reference_tally_ids = np.asarray([tal.id for tal in self.tallies])
-        
+
         for wwg in self.settings.weight_window_generators:
-            # Only proceeds if the "targets" attribute is an openmc.Tallies, 
+            # Only proceeds if the "targets" attribute is an openmc.Tallies,
             # which means it hasn't been checked against model.tallies.
             if isinstance(wwg.targets, openmc.Tallies):
                 id_vec = []
@@ -291,8 +291,8 @@ class Model:
                         if tal == reference_tal:
                             id_next = reference_tal.id
                             break
-                    
-                    if id_next == None:
+
+                    if id_next is None:
                         raise RuntimeError(
                             f'Local FW-CADIS target tally {tal.id} not found on model.tallies!')
                     else:
@@ -1234,13 +1234,18 @@ class Model:
 
         # If filter does not already appear in the model, temporarily add a
         # tally with the filter
-        filter_ids = {f.id for t in self.tallies for f in t.filters}
         original_length = len(self.tallies)
-        if filter is not None and filter.id not in filter_ids:
-            temp_tally = openmc.Tally()
-            temp_tally.filters = [filter]
-            temp_tally.scores = ['flux']
-            self.tallies.append(temp_tally)
+        if filter is not None:
+            filter_ids = {f.id for t in self.tallies for f in t.filters}
+            if filter.id not in filter_ids:
+                # Create temporary tally while preserving ID assignment
+                next_id = openmc.Tally.next_id
+                temp_tally = openmc.Tally()
+                temp_tally.filters = [filter]
+                temp_tally.scores = ['flux']
+                self.tallies.append(temp_tally)
+                openmc.Tally.used_ids.remove(temp_tally.id)
+                openmc.Tally.next_id = next_id
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             geom_data, property_data = openmc.lib.slice_plot(

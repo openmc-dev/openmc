@@ -62,7 +62,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         Time in [s] to deplete for
     current_timestep : int
         Current timestep index
-    maxtrix_func : callable, optional
+    matrix_func : callable, optional
         Function to form the depletion matrix after calling ``matrix_func(chain,
         rates, fission_yields)``, where ``fission_yields = {parent: {product:
         yield_frac}}`` Expected to return the depletion matrix required by

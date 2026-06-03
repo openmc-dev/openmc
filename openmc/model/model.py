@@ -1328,13 +1328,14 @@ class Model:
                                        "openmc.config before plotting.")
                 break
 
-        # Get ID map from the C API
-        id_map = self.id_map(
+        # Get plot IDs from the C API
+        id_map, _ = self.slice_plot(
             origin=origin,
             width=width,
             pixels=pixels,
             basis=basis,
-            color_overlaps=show_overlaps
+            color_overlaps=show_overlaps,
+            include_properties=False,
         )
 
         # Generate colors if not provided

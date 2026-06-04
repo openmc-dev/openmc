@@ -265,22 +265,22 @@ class Model:
             denom_tally = openmc.Tally(name='IFP denominator')
             denom_tally.scores = ['ifp-denominator']
             self.tallies.append(denom_tally)
-    
-    # TODO: This should also be incorporated into lower-level calls in 
+
+    # TODO: This should also be incorporated into lower-level calls in
     # settings.py, but it requires information about the tallies currently
     # on the active Model
     def _assign_fw_cadis_tally_IDs(self):
-        # Verify that all tallies assigned as targets on WeightWindowGenerators 
-        # exist within model.tallies. If this is the case, convert the .targets 
+        # Verify that all tallies assigned as targets on WeightWindowGenerators
+        # exist within model.tallies. If this is the case, convert the .targets
         # attribute of each WeightWindowGenerator to a sequence of tally IDs.
         if len(self.settings.weight_window_generators) == 0:
             return
-        
+
         # List of valid tally IDs
         reference_tally_ids = np.asarray([tal.id for tal in self.tallies])
-        
+
         for wwg in self.settings.weight_window_generators:
-            # Only proceeds if the "targets" attribute is an openmc.Tallies, 
+            # Only proceeds if the "targets" attribute is an openmc.Tallies,
             # which means it hasn't been checked against model.tallies.
             if isinstance(wwg.targets, openmc.Tallies):
                 id_vec = []
@@ -291,7 +291,7 @@ class Model:
                         if tal == reference_tal:
                             id_next = reference_tal.id
                             break
-                    
+
                     if id_next == None:
                         raise RuntimeError(
                             f'Local FW-CADIS target tally {tal.id} not found on model.tallies!')
@@ -1750,8 +1750,8 @@ class Model:
     def _auto_generate_mgxs_lib(
         model: openmc.model.model,
         groups: openmc.mgxs.EnergyGroups,
-        correction: str | none,
-        directory: pathlike,
+        correction: str | None,
+        directory: PathLike,
     ) -> openmc.mgxs.Library:
         """
         Automatically generate a multi-group cross section libray from a model
@@ -1958,7 +1958,7 @@ class Model:
 
         # Set materials on the model
         model.materials = [material]
-        if temperature != None:
+        if temperature is not None:
           model.materials[-1].temperature = temperature
 
         # Settings
@@ -1985,7 +1985,7 @@ class Model:
         mgxs_lib = Model._auto_generate_mgxs_lib(
                 model, groups, correction, directory)
 
-        if temperature != None:
+        if temperature is not None:
             return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
                                        temperature=temperature)
         else:
@@ -2058,12 +2058,12 @@ class Model:
         )
 
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = []
             for material in self.materials:
                 xs_data = Model._isothermal_infinite_media_mgxs(
@@ -2236,7 +2236,7 @@ class Model:
         model = openmc.Model()
         model.geometry = stoch_geom
 
-        if temperature != None:
+        if temperature is not None:
             for material in model.geometry.get_all_materials().values():
                 material.temperature = temperature
 
@@ -2260,7 +2260,7 @@ class Model:
                 model, groups, correction, directory)
 
         # Fetch all of the isothermal results.
-        if temperature != None:
+        if temperature is not None:
             return {
                 mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
                                                temperature=temperature)
@@ -2346,12 +2346,12 @@ class Model:
         )
 
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = Model._isothermal_stochastic_slab_mgxs(
                 geo,
                 groups,
@@ -2444,7 +2444,7 @@ class Model:
         model = copy.deepcopy(input_model)
         model.tallies = openmc.Tallies()
 
-        if temperature != None:
+        if temperature is not None:
             for material in model.geometry.get_all_materials().values():
                 material.temperature = temperature
 
@@ -2460,7 +2460,7 @@ class Model:
                 model, groups, correction, directory)
 
         # Fetch all of the isothermal results.
-        if temperature != None:
+        if temperature is not None:
             return {
                 mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
                                                temperature=temperature)
@@ -2515,12 +2515,12 @@ class Model:
             entries in openmc.Settings.temperature_settings.
         """
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = Model._isothermal_materialwise_mgxs(
                 self,
                 groups,

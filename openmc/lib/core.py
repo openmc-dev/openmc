@@ -34,7 +34,8 @@ class _SourceSite(Structure):
                 ('progeny_id', c_int64),
                 ('wgt_born', c_double),
                 ('wgt_ww_born', c_double),
-                ('n_split', c_int64)]
+                ('n_split', c_int64),
+                ('n_collision', c_int)]
 
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous

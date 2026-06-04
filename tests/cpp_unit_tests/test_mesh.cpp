@@ -263,7 +263,8 @@ protected:
   RegularMesh mesh;
 
 public:
-  RegularMeshFixture() {
+  RegularMeshFixture()
+  {
     // The XML data as a string
     std::string xml_string = R"(
           <mesh id="1">
@@ -336,7 +337,8 @@ protected:
   RectilinearMesh mesh;
 
 public:
-  RectilinearMeshFixture() {
+  RectilinearMeshFixture()
+  {
     // The XML data as a string
     std::string xml_string = R"(
           <mesh id="1" type="rectilinear">

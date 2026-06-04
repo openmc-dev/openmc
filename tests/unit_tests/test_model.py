@@ -572,6 +572,24 @@ def test_model_xml(run_in_tmpdir):
     new_model.export_to_xml()
 
 
+def test_model_description(run_in_tmpdir):
+    model = openmc.examples.pwr_pin_cell()
+    model.description = "PWR pin cell test model"
+    model.export_to_model_xml()
+
+    reloaded = openmc.Model.from_model_xml()
+    assert reloaded.description == "PWR pin cell test model"
+
+    # Verify that an empty description is not written to XML
+    model2 = openmc.examples.pwr_pin_cell()
+    model2.export_to_model_xml('model_no_desc.xml')
+    with open('model_no_desc.xml') as f:
+        assert '<description>' not in f.read()
+
+    reloaded2 = openmc.Model.from_model_xml('model_no_desc.xml')
+    assert reloaded2.description == ''
+
+
 def test_single_xml_exec(run_in_tmpdir):
 
     pincell_model = openmc.examples.pwr_pin_cell()

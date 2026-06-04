@@ -60,6 +60,8 @@ class Model:
         Tallies information
     plots : openmc.Plots, optional
         Plot information
+    description : str, optional
+        A description of the model
 
     Attributes
     ----------
@@ -73,6 +75,8 @@ class Model:
         Tallies information
     plots : openmc.Plots
         Plot information
+    description : str
+        A description of the model
 
     """
 
@@ -83,12 +87,14 @@ class Model:
         settings: openmc.Settings | None = None,
         tallies: openmc.Tallies | None = None,
         plots: openmc.Plots | None = None,
+        description: str = '',
     ):
         self.geometry = openmc.Geometry() if geometry is None else geometry
         self.materials = openmc.Materials() if materials is None else materials
         self.settings = openmc.Settings() if settings is None else settings
         self.tallies = openmc.Tallies() if tallies is None else tallies
         self.plots = openmc.Plots() if plots is None else plots
+        self.description = description
 
     @property
     def geometry(self) -> openmc.Geometry:
@@ -155,6 +161,15 @@ class Model:
             del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @description.setter
+    def description(self, description):
+        check_type('description', description, str)
+        self._description = description
 
     @property
     def bounding_box(self) -> openmc.BoundingBox:
@@ -364,6 +379,10 @@ class Model:
         root = tree.getroot()
 
         model = cls()
+
+        desc_elem = root.find('description')
+        if desc_elem is not None and desc_elem.text:
+            model.description = desc_elem.text
 
         meshes = {}
         model.settings = openmc.Settings.from_xml_element(
@@ -701,6 +720,8 @@ class Model:
             # write the XML header
             fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
             fh.write("<model>\n")
+            if self.description:
+                fh.write(f"  <description>{self.description}</description>\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
             materials._write_xml(fh, False, level=1,

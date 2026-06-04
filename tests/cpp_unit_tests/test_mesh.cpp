@@ -474,3 +474,17 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test return_vertex_unique_id()")
   // mesh.return_vertex_unique_id({1, 1, 1}, -1); // should fail
   // mesh.return_vertex_unique_id({1, 1, 1}, 8); // should fail
 }
+
+TEST_CASE_METHOD(RegularMeshFixture, "Test connectivity()")
+{
+  // Lower left element
+  vector<int> expected = {0, 1, 3, 4, 9, 10, 12, 13};
+  REQUIRE(mesh.connectivity(0) == expected);
+
+  // Upper right element
+  expected = {13, 14, 16, 17, 22, 23, 25, 26};
+  REQUIRE(mesh.connectivity(7) == expected);
+
+  // mesh.connectivity(-1); // should fail
+  // mesh.connectivity(8); // should fail
+}

@@ -1993,9 +1993,12 @@ int RegularMesh::return_vertex_unique_id(
 
 std::vector<int> RegularMesh::connectivity(int id) const
 {
-  // Only implemented in 3D
   if (n_dimension_ != 3) {
     fatal_error("Only implemented in 3D!");
+  }
+
+  if ((id < 0) || (id >= n_bins())) {
+    fatal_error("Element ID out of bounds!");
   }
 
   MeshIndex ijk = get_indices_from_bin(id);

@@ -52,7 +52,6 @@ TEST_CASE("Test add/set_filter")
   tally->set_filters(filters);
   REQUIRE(tally->filters().size() == 1);
   REQUIRE(model::filter_map[cell_filter->id()] == tally->filters(0));
-
 }
 
 // Regression test for 64-bit tally filter-bin counts (mesh x groups > 2^31).

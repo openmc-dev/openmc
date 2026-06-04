@@ -578,8 +578,8 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
 //! collision estimator.
 
 void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
-  int64_t filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -1112,8 +1112,8 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 //! is not used for analog tallies.
 
 void score_general_ce_analog(Particle& p, int i_tally, int start_index,
-  int64_t filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -1615,8 +1615,8 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
 //! argument is really just used for filter weights.
 
 void score_general_mg(Particle& p, int i_tally, int start_index,
-  int64_t filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   auto& tally {*model::tallies[i_tally]};
 

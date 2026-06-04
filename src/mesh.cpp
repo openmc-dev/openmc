@@ -2854,7 +2854,7 @@ extern "C" int openmc_unstructured_mesh_export_hdf5(
   UnstructuredMesh* m =
     dynamic_cast<UnstructuredMesh*>(model::meshes[index].get());
 
-  m->to_hdf5(mesh_group);
+  m->to_hdf5_inner(mesh_group);
   return 0;
 }
 

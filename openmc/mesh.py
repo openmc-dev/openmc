@@ -3367,6 +3367,8 @@ class UnstructuredMesh(MeshBase):
     def to_hdf5(self, group: h5py.Group):
         import openmc.lib
         
+        mesh_group = super().to_hdf5(group)
+        mesh_group.create_dataset('type', data=np.bytes_('unstructured'))
         model = openmc.Model()
         sph = openmc.Sphere(boundary_type='vacuum')
         model.geometry = openmc.Geometry([openmc.Cell(region=-sph)])
@@ -3377,8 +3379,9 @@ class UnstructuredMesh(MeshBase):
               mesh=self,
         )
         model.settings.weight_window_generators = [wwg] 
-        with openmc.lib.TemporarySession(model, args=["-s", "1"]):
-            openmc.lib.export_unstructured_mesh(self, group)
+        with openmc.lib.TemporarySession(model):
+            openmc.lib.export_unstructured_mesh(self, mesh_group)
+        return mesh_group
 
     def to_xml_element(self):
         """Return XML representation of the mesh

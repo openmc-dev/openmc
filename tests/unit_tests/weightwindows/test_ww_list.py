@@ -5,8 +5,6 @@ import openmc
 
 
 def test_ww_roundtrip(request, run_in_tmpdir):
-    openmc.reset_auto_ids()
-    
     # Load weight windows from a wwinp file
     wwinp_file = request.path.with_name('wwinp_n')
     wws = openmc.WeightWindowsList.from_wwinp(wwinp_file)
@@ -29,8 +27,6 @@ def test_ww_roundtrip(request, run_in_tmpdir):
 
 
 def test_export_hdf5_format(request, run_in_tmpdir):
-    openmc.reset_auto_ids()
-    
     # C++ openmc_weight_windows_import expects this on-disk layout.
     wws = openmc.WeightWindowsList.from_wwinp(request.path.with_name('wwinp_n'))
     wws.export_to_hdf5('ww.h5')
@@ -54,8 +50,6 @@ def test_export_hdf5_format(request, run_in_tmpdir):
 
 @pytest.mark.parametrize('library', ('libmesh', 'moab'))
 def test_export_hdf5_unstructured_mesh(request, run_in_tmpdir, library):
-    openmc.reset_auto_ids()
-    
     # UnstructuredMesh can't be serialized from pure Python; export_to_hdf5
     # routes it through openmc.lib.export_weight_windows (a live session).
     if library == 'libmesh' and not openmc.lib._libmesh_enabled():

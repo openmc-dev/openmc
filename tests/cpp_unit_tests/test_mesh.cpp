@@ -281,8 +281,7 @@ public:
   }
 };
 
-TEST_CASE_METHOD(
-  RegularMeshFixture, "Test distance_to_next_boundary() - regular")
+TEST_CASE_METHOD(RegularMeshFixture, "Test distance_to_next_boundary()")
 {
   // Test distance_to_next_boundary()
   int current_bin;
@@ -355,8 +354,7 @@ public:
   }
 };
 
-TEST_CASE_METHOD(
-  RectilinearMeshFixture, "Test distance_to_next_boundary() - rectilinear")
+TEST_CASE_METHOD(RectilinearMeshFixture, "Test distance_to_next_boundary()")
 {
   // Test distance_to_next_boundary()
   int current_bin;
@@ -406,7 +404,7 @@ TEST_CASE_METHOD(
   REQUIRE(next_bin == -1);
 }
 
-TEST_CASE_METHOD(RegularMeshFixture, "Test face_area() - regular")
+TEST_CASE_METHOD(RegularMeshFixture, "Test face_area()")
 {
   REQUIRE(mesh.face_area(0) == 1.0);
   REQUIRE(mesh.face_area(1) == 1.0);
@@ -419,7 +417,7 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test face_area() - regular")
   // mesh.face_area(48); // should fail
 }
 
-TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_face() - regular")
+TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_face()")
 {
   // Check that sampled points are on the expected surface for different seeds
 
@@ -443,7 +441,7 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_face() - regular")
   // mesh.sample_on_face(100, &seed); // should fail
 }
 
-TEST_CASE_METHOD(RegularMeshFixture, "Regression test sample_on_face() - regular")
+TEST_CASE_METHOD(RegularMeshFixture, "Regression test sample_on_face()")
 {
   // Check that the other 2 coordinates are sampled
 
@@ -455,7 +453,7 @@ TEST_CASE_METHOD(RegularMeshFixture, "Regression test sample_on_face() - regular
   REQUIRE(result.z == Catch::Approx(-0.2470039942).margin(1.0E-10));
 }
 
-TEST_CASE_METHOD(RegularMeshFixture, "Test return_vertex_unique_id() - regular")
+TEST_CASE_METHOD(RegularMeshFixture, "Test return_vertex_unique_id()")
 {
   // Lower left
   REQUIRE(mesh.return_vertex_unique_id({1, 1, 1}, 0) == 0);

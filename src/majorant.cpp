@@ -379,7 +379,7 @@ int NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid)
   int i_grid;
   if (energy < grid.energy.front()) {
     i_grid = 0;
-  } else if (energy > grid.energy.back()) {
+  } else if (energy >= grid.energy.back()) {
     i_grid = grid.energy.size() - 2;
   } else {
     // Determine bounding indices based on which equal log-spaced

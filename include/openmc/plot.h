@@ -210,8 +210,8 @@ public:
   // Members
 public:
   Position origin_;           //!< Plot origin in geometry
-  Position u_span_;           //!< Full-width span vector in geometry
-  Position v_span_;           //!< Full-height span vector in geometry
+  Direction u_span_;          //!< Full-width span vector in geometry
+  Direction v_span_;          //!< Full-height span vector in geometry
   array<size_t, 3> pixels_;   //!< Plot size in pixels
   bool slice_color_overlaps_; //!< Show overlapping cells?
   int slice_level_ {-1};      //!< Plot universe level
@@ -236,8 +236,8 @@ T SlicePlotBase::get_map(int32_t filter_index) const
   T data(width, height, include_filter);
 
   // compute pixel steps and top-left pixel center
-  Position u_step = u_span_ / static_cast<double>(width);
-  Position v_step = v_span_ / static_cast<double>(height);
+  Direction u_step = u_span_ / static_cast<double>(width);
+  Direction v_step = v_span_ / static_cast<double>(height);
 
   Position start =
     origin_ - 0.5 * u_span_ + 0.5 * v_span_ + 0.5 * u_step - 0.5 * v_step;

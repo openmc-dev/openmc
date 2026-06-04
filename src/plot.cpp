@@ -1953,8 +1953,8 @@ extern "C" int openmc_slice_plot(const double origin[3], const double u_span[3],
   int level, int32_t filter_index, int32_t* geom_data, double* property_data)
 {
   // Validate span vectors
-  Position u_span_pos {u_span[0], u_span[1], u_span[2]};
-  Position v_span_pos {v_span[0], v_span[1], v_span[2]};
+  Direction u_span_pos {u_span[0], u_span[1], u_span[2]};
+  Direction v_span_pos {v_span[0], v_span[1], v_span[2]};
   double u_norm = u_span_pos.norm();
   double v_norm = v_span_pos.norm();
   if (u_norm == 0.0 || v_norm == 0.0) {

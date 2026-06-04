@@ -133,19 +133,12 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 for matrix, source in zip(matrices, sources)
             ]
 
-            # Add a last row of zeroes to the matrices and append 1 to the last row
-            # of the nuclide vectors if the matrix is not square
-            # otherwise if the matrix is square, add a row and column of zeroes to the 
-            # matrix and append 0 to the last row of the nuclide vector 
+            # Homogenize diagonal matrices to be square
             for i, matrix in enumerate(matrices):
                 if matrix.shape[0] + 1 == matrix.shape[1]:
+                    # Add a row of zeroes to the matrix and append 1 to the last row of the nuclide vector
                     matrices[i] = vstack([matrix, csc_array((1, matrix.shape[1]))])
                     n_solve[i] = np.append(n_solve[i], 1.0)
-                # else:
-                #     matrices[i] = hstack(
-                #         [vstack([matrix, csc_array((1, matrix.shape[1]))]),
-                #         csc_array((matrix.shape[0] + 1, 1))])
-                #     n[i] = np.append(n[i], 0.0)
 
         # Set transfer rate terms with destination material if present
         if current_timestep in transfer_rates.index_transfer:
@@ -179,8 +172,8 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                             transfer_matrix = hstack([transfer_matrix, 
                                 csc_array((transfer_matrix.shape[0], 1))])
                     transfer_pair[mat_pair] = transfer_matrix
-                # Combine all matrices together in a single matrix of matrices
-                # to be solved in one go
+                # Combine all matrices together in a single block matrix of matrices
+                # to be solved on one rank
                 n_rows = n_cols = len(transfer_rates.burnable_mats)
                 rows = []
                 for row in range(n_rows):

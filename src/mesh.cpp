@@ -1907,9 +1907,12 @@ void RegularMesh::sample_on_physical_groups(
 
 Position RegularMesh::sample_on_face(int face_id, uint64_t* seed)
 {
-  // Only implemented in 3D
   if (n_dimension_ != 3) {
     fatal_error("Only implemented in 3D!");
+  }
+
+  if ((face_id < 0) || (face_id >= (n_bins() * 2 * n_dimension_))) {
+    fatal_error("Face ID out of bounds!");
   }
 
   int bin_id = face_id / (2 * n_dimension_);

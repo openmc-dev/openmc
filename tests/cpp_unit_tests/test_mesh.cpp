@@ -4,6 +4,7 @@
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <pugixml.hpp>
 
 #include "openmc/hdf5_interface.h"
@@ -416,4 +417,40 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test face_area() - regular")
 
   // mesh.face_area(-1); // should fail
   // mesh.face_area(48); // should fail
+}
+
+TEST_CASE_METHOD(RegularMeshFixture, "Test sample_on_face() - regular")
+{
+  // Check that sampled points are on the expected surface for different seeds
+
+  uint64_t seed = GENERATE(1, 2);
+
+  REQUIRE(mesh.sample_on_face(0, &seed).x == -1.0);
+  REQUIRE(mesh.sample_on_face(1, &seed).x == 0.0);
+  REQUIRE(mesh.sample_on_face(2, &seed).y == -1.0);
+  REQUIRE(mesh.sample_on_face(3, &seed).y == 0.0);
+  REQUIRE(mesh.sample_on_face(4, &seed).z == -1.0);
+  REQUIRE(mesh.sample_on_face(5, &seed).z == 0.0);
+
+  REQUIRE(mesh.sample_on_face(42, &seed).x == 0.0);
+  REQUIRE(mesh.sample_on_face(43, &seed).x == 1.0);
+  REQUIRE(mesh.sample_on_face(44, &seed).y == 0.0);
+  REQUIRE(mesh.sample_on_face(45, &seed).y == 1.0);
+  REQUIRE(mesh.sample_on_face(46, &seed).z == 0.0);
+  REQUIRE(mesh.sample_on_face(47, &seed).z == 1.0);
+
+  // mesh.sample_on_face(-1, &seed); // should fail
+  // mesh.sample_on_face(100, &seed); // should fail
+}
+
+TEST_CASE_METHOD(RegularMeshFixture, "Regression test sample_on_face() - regular")
+{
+  // Check that the other 2 coordinates are sampled
+
+  uint64_t seed = 1;
+
+  Position result = mesh.sample_on_face(0, &seed);
+  REQUIRE(result.x == -1.0);
+  REQUIRE(result.y == Catch::Approx(-0.2891826401).margin(1.0E-10));
+  REQUIRE(result.z == Catch::Approx(-0.2470039942).margin(1.0E-10));
 }

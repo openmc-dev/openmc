@@ -103,7 +103,8 @@ class Results(list):
         mat: Material | str,
         units: str = "Bq/cm3",
         by_nuclide: bool = False,
-        volume: float | None = None
+        volume: float | None = None,
+        chain=None
     ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
         """Get activity of material over time.
 
@@ -122,6 +123,14 @@ class Results(list):
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
+        chain : openmc.deplete.Chain or PathLike, optional
+            Depletion chain to use for half-life values. If provided, half-life
+            values from the chain are preferred over the default ENDF/B-VIII.0
+            values. Can be a Chain object or path to a chain XML file. For
+            nuclides not in the chain, the default values are used as a
+            fallback.
+
+            .. versionadded:: 0.15.1
 
         Returns
         -------
@@ -133,12 +142,17 @@ class Results(list):
             by_nuclide = True.
 
         """
+        from openmc.deplete import Chain
+
         if isinstance(mat, Material):
             mat_id = str(mat.id)
         elif isinstance(mat, str):
             mat_id = mat
         else:
             raise TypeError('mat should be of type openmc.Material or str')
+
+        if chain is not None and not isinstance(chain, Chain):
+            chain = Chain.from_xml(chain)
 
         times = np.empty_like(self, dtype=float)
         if by_nuclide:
@@ -149,7 +163,8 @@ class Results(list):
         # Evaluate activity for each depletion time
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume)
+            activities[i] = result.get_material(mat_id).get_activity(
+                units, by_nuclide, volume, chain=chain)
 
         return times, activities
 

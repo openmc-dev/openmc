@@ -66,6 +66,31 @@ void free_memory()
 
 using namespace openmc;
 
+int openmc_before_exit()
+{
+#ifdef OPENMC_LIBMESH_ENABLED
+  settings::libmesh_init.reset();
+#endif
+
+  // Free all MPI types
+#ifdef OPENMC_MPI
+  if (mpi::source_site != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::source_site);
+  }
+  if (mpi::collision_track_site != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::collision_track_site);
+  }
+#endif
+
+  openmc_finalize_random_ray();
+
+  // If MPI is in use and enabled, terminate it
+#ifdef OPENMC_MPI
+  MPI_Finalize();
+#endif
+  return 0;
+}
+
 int openmc_finalize()
 {
   if (simulation::initialized)
@@ -179,18 +204,6 @@ int openmc_finalize()
 
   // Deallocate arrays
   free_memory();
-
-  // Free all MPI types
-#ifdef OPENMC_MPI
-  if (mpi::source_site != MPI_DATATYPE_NULL) {
-    MPI_Type_free(&mpi::source_site);
-  }
-  if (mpi::collision_track_site != MPI_DATATYPE_NULL) {
-    MPI_Type_free(&mpi::collision_track_site);
-  }
-#endif
-
-  openmc_finalize_random_ray();
 
   return 0;
 }

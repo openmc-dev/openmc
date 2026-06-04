@@ -2010,14 +2010,13 @@ std::vector<int> RegularMesh::connectivity(int id) const
   return v;
 }
 
-Position RegularMesh::normalize_position(const Position& r)
+Position RegularMesh::normalize_coordinates(const Position& r, int bin)
 {
   // Only implemented in 3D
   if (n_dimension_ != 3) {
     fatal_error("Only implemented in 3D!");
   }
 
-  int bin = get_bin(r);
   MeshIndex ijk = get_indices_from_bin(bin);
 
   // Retrieve dimensions

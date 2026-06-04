@@ -181,16 +181,17 @@ public:
   //! To avoid extrapolation, any normalized coordinate not in [0.0, 1.0] will
   //! trigger an error.
   //
+  //! The position r and the bin number does not have to be related.
+  //
   //! \param[in] r Position
-  //! \param[in] bin Bin number corresponding to the position
+  //! \param[in] bin Bin number
   //! \return Interpolated value
   T trilinear_interpolation(const Position& r, int bin)
   {
     // Normalize coordinates
-    Position n_r = mesh_ptr()->normalize_position(r);
+    Position n_r = mesh_ptr()->normalize_coordinates(r, bin);
 
-    // Check that normalized coordinates are in [0.0, 1.0] to avoid
-    // extrapolation
+    // Protect from extrapolation
     for (int i = 0; i < 3; i++) {
       if ((n_r[i] < 0.0) || (n_r[i] > 1.0)) {
         fatal_error(

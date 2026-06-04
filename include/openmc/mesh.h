@@ -208,8 +208,12 @@ public:
   virtual void randomly_place_on_physical_group(
     Position& pa, int& cell, uint64_t* seed, vector<int> physical_groups) = 0;
 
-  // TODO - document
-  virtual Position normalize_position(const Position& r)
+  //! Normalize coordinates by scaling them to the dimensions of a given bin
+  //
+  //! \param[in] r Position
+  //! \param[in] bin Bin
+  //! \return Normalized position
+  virtual Position normalize_coordinates(const Position& r, int bin)
   {
     fatal_error("Not implemented!");
   }

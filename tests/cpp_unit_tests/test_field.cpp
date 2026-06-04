@@ -48,13 +48,13 @@ TEST_CASE("Test Field - regular mesh", "[generators]")
   REQUIRE(field.data().values()[2] == 150.0);
   field.data().values()[2] = saved_value; // Reassign back
 
-  // Get mesh bin
-  REQUIRE(field.get_mesh_bin(Position(0.5, 0.5, 0.5)) == 7);
-  REQUIRE(field.get_mesh_bin(Position(-0.5, -0.5, -0.5)) == 0);
-  REQUIRE(field.get_mesh_bin(Position(0.5, -0.5, -0.5)) == 1);
-  REQUIRE(field.get_mesh_bin(Position(-0.5, -0.5, 0.5)) == 4);
-  REQUIRE(field.get_mesh_bin(Position(0.0, 0.0, 0.0)) == 0);
-  REQUIRE(field.get_mesh_bin(Position(2.0, 2.0, 2.0)) == -1);
+  // Get bin
+  REQUIRE(field.get_bin(Position(0.5, 0.5, 0.5)) == 7);
+  REQUIRE(field.get_bin(Position(-0.5, -0.5, -0.5)) == 0);
+  REQUIRE(field.get_bin(Position(0.5, -0.5, -0.5)) == 1);
+  REQUIRE(field.get_bin(Position(-0.5, -0.5, 0.5)) == 4);
+  REQUIRE(field.get_bin(Position(0.0, 0.0, 0.0)) == 0);
+  REQUIRE(field.get_bin(Position(2.0, 2.0, 2.0)) == -1);
 
   // Evaluate (current position, current bin)
   REQUIRE(field.evaluate(Position(0.5, 0.5, 0.5), 7) == outputs[0]);

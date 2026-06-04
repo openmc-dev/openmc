@@ -71,7 +71,7 @@ bool transport_dnp(SourceSite& site, double decay_time, uint64_t* seed)
   Position intersection; // Intersection with the mesh boundary
 
   // Localize initial position
-  cell_n = simulation::velocity_field.get_mesh_bin(y_n);
+  cell_n = simulation::velocity_field.get_bin(y_n);
   if (cell_n < 0) {
     //  Particle can be close to the wall of the mesh so it can be stopped at
     //  the initial location because we generally put no slip boundary

@@ -133,7 +133,7 @@ public:
   //
   //! \param[in] r Position
   //! \return Bin number
-  int get_mesh_bin(const Position& r) { return mesh_ptr()->get_bin(r); }
+  int get_bin(const Position& r) { return mesh_ptr()->get_bin(r); }
 
   //! Evaluate the field at a given position with prior knowledge of the current
   //! bin.

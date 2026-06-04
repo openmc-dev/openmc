@@ -191,7 +191,7 @@ void Particle::event_calculate_xs()
 
     // Define temperature field cell
     if (settings::temperature_field_on) {
-      tf_bin() = simulation::temperature_field.get_mesh_bin(r());
+      tf_bin() = simulation::temperature_field.get_bin(r());
     }
 
     if (!exhaustive_find_cell(*this)) {
@@ -541,7 +541,7 @@ void Particle::event_revive_from_secondary()
 
         // Define temperature field cell
         if (settings::temperature_field_on) {
-          tf_bin() = simulation::temperature_field.get_mesh_bin(r());
+          tf_bin() = simulation::temperature_field.get_bin(r());
         }
 
         if (!exhaustive_find_cell(*this, verbose)) {
@@ -851,7 +851,7 @@ void Particle::cross_periodic_bc(
 
   // Reassign particle's temperature field bin
   if (settings::temperature_field_on) {
-    tf_bin() = simulation::temperature_field.get_mesh_bin(r());
+    tf_bin() = simulation::temperature_field.get_bin(r());
   }
 
   // Figure out what cell particle is in now

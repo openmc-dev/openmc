@@ -12,7 +12,30 @@
 
 using namespace openmc;
 
-TEST_CASE("Test Field - regular mesh", "[generators]")
+class RegularMeshFixture {
+protected:
+  RegularMesh mesh;
+
+public:
+  RegularMeshFixture() {
+    // The XML data as a string
+    std::string xml_string = R"(
+          <mesh id="1">
+              <dimension>2 2 2</dimension>
+              <lower_left>-1 -1 -1</lower_left>
+              <upper_right>1 1 1</upper_right>
+        </mesh>
+      )";
+
+    // Create the mesh from a file
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+    pugi::xml_node root = doc.child("mesh");
+    mesh = RegularMesh(root);
+  }
+};
+
+TEST_CASE_METHOD(RegularMeshFixture, "Test Field - regular mesh")
 {
   auto [mapping, values, outputs] =
     GENERATE(table<std::string, vector<double>, vector<double>>(
@@ -23,21 +46,6 @@ TEST_CASE("Test Field - regular mesh", "[generators]")
             21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0,
             32.0, 33.0, 34.0, 35.0, 36.0},
           {29.5, 16.5, 17.5, 25.5, 23.0, 10.0}}}));
-
-  // The XML data as a string
-  std::string xml_string = R"(
-        <mesh id="1">
-            <dimension>2 2 2</dimension>
-            <lower_left>-1 -1 -1</lower_left>
-            <upper_right>1 1 1</upper_right>
-      </mesh>
-    )";
-
-  // Create the mesh from a file
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-  pugi::xml_node root = doc.child("mesh");
-  auto mesh = RegularMesh(root);
 
   // Create a temperature field
   Field<double> field = Field<double>(&mesh, values, mapping);
@@ -133,7 +141,8 @@ TEST_CASE("Test Field - regular mesh", "[generators]")
   REQUIRE(next_bin == -1);
 }
 
-TEST_CASE("Test TemperatureField - regular mesh - cell-based only")
+TEST_CASE_METHOD(
+  RegularMeshFixture, "Test TemperatureField - regular mesh - cell-based only")
 {
   // The XML data as a string
   std::string xml_string = R"(
@@ -168,7 +177,7 @@ TEST_CASE("Test TemperatureField - regular mesh - cell-based only")
   REQUIRE(temp_field.get_sqrtkT(7) == Catch::Approx(0.083029).margin(1.0E-6));
 }
 
-TEST_CASE("Test VelocityField - regular mesh")
+TEST_CASE_METHOD(RegularMeshFixture, "Test VelocityField - regular mesh")
 {
   auto [mapping, values] = GENERATE(table<std::string, vector<Direction>>(
     {{"cell", {Direction(10.0, 10.0, 10.0), Direction(20.0, 20.0, 20.0),

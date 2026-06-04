@@ -257,30 +257,40 @@ TEST_CASE("Test multiple meshes HDF5 roundtrip - spherical")
   REQUIRE(regular_mesh_hdf5->upper_right() == regular_mesh_xml->upper_right());
 }
 
-TEST_CASE("Test distance_to_next_boundary() - regular")
+class RegularMeshFixture {
+protected:
+  RegularMesh mesh;
+
+public:
+  RegularMeshFixture() {
+    // The XML data as a string
+    std::string xml_string = R"(
+          <mesh id="1">
+              <dimension>2 2 2</dimension>
+              <lower_left>-1 -1 -1</lower_left>
+              <upper_right>1 1 1</upper_right>
+        </mesh>
+      )";
+
+    // Create the mesh from a file
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+    pugi::xml_node root = doc.child("mesh");
+    mesh = RegularMesh(root);
+  }
+};
+
+TEST_CASE_METHOD(
+  RegularMeshFixture, "Test distance_to_next_boundary() - regular")
 {
-  // The XML data as a string
-  std::string xml_string = R"(
-        <mesh id="1">
-            <dimension>2 2 2</dimension>
-            <lower_left>-1 -1 -1</lower_left>
-            <upper_right>1 1 1</upper_right>
-      </mesh>
-    )";
-
-  // Create the mesh from a file
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-  pugi::xml_node root = doc.child("mesh");
-  auto mesh = RegularMesh(root);
-
+  // Test distance_to_next_boundary()
   int current_bin;
   Position r;
   Position u;
   int next_bin;
   double distance;
 
-  // Test inside the mesh
+  // - Test inside the mesh
   current_bin = 0;
   r = Position(0.0, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
@@ -288,7 +298,7 @@ TEST_CASE("Test distance_to_next_boundary() - regular")
   REQUIRE(distance == 1.0);
   REQUIRE(next_bin == -1);
 
-  // Test outside the mesh, going toward the mesh
+  // - Test outside the mesh, going toward the mesh
   current_bin = -1;
   r = Position(-2.5, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
@@ -296,7 +306,7 @@ TEST_CASE("Test distance_to_next_boundary() - regular")
   REQUIRE(distance == 1.5);
   REQUIRE(next_bin == 0);
 
-  // Test outside the mesh, not going toward the mesh
+  // - Test outside the mesh, not going toward the mesh
   current_bin = -1;
   r = Position(-2.0, 0.0, 0.0);
   u = Position(-1.0, 0.0, 0.0);
@@ -304,7 +314,7 @@ TEST_CASE("Test distance_to_next_boundary() - regular")
   REQUIRE(distance == INFTY);
   REQUIRE(next_bin == -1);
 
-  // Test on the mesh boundary, leaving the mesh
+  // - Test on the mesh boundary, leaving the mesh
   current_bin = 1;
   r = Position(1.0, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
@@ -312,7 +322,7 @@ TEST_CASE("Test distance_to_next_boundary() - regular")
   REQUIRE(distance == INFTY);
   REQUIRE(next_bin == -1);
 
-  // Test close to the mesh boundary
+  // - Test close to the mesh boundary
   current_bin = 1;
   r = Position(0.99999999999, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
@@ -321,30 +331,40 @@ TEST_CASE("Test distance_to_next_boundary() - regular")
   REQUIRE(next_bin == -1);
 }
 
-TEST_CASE("Test distance_to_next_boundary() - rectilinear")
+class RectilinearMeshFixture {
+protected:
+  RectilinearMesh mesh;
+
+public:
+  RectilinearMeshFixture() {
+    // The XML data as a string
+    std::string xml_string = R"(
+          <mesh id="1" type="rectilinear">
+              <x_grid>-1.0 0.5 1.0</x_grid>
+              <y_grid>-1.0 0.1 1.0</y_grid>
+              <z_grid>-1.0 0.2 1.0</z_grid>
+          </mesh>
+      )";
+
+    // Create the mesh from a file
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+    pugi::xml_node root = doc.child("mesh");
+    mesh = RectilinearMesh(root);
+  }
+};
+
+TEST_CASE_METHOD(
+  RectilinearMeshFixture, "Test distance_to_next_boundary() - rectilinear")
 {
-  // The XML data as a string
-  std::string xml_string = R"(
-        <mesh id="1" type="rectilinear">
-            <x_grid>-1.0 0.5 1.0</x_grid>
-            <y_grid>-1.0 0.1 1.0</y_grid>
-            <z_grid>-1.0 0.2 1.0</z_grid>
-        </mesh>
-    )";
-
-  // Create the mesh from a file
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
-  pugi::xml_node root = doc.child("mesh");
-  auto mesh = RectilinearMesh(root);
-
+  // Test distance_to_next_boundary()
   int current_bin;
   Position r;
   Position u;
   int next_bin;
   double distance;
 
-  // Test inside the mesh
+  // - Test inside the mesh
   current_bin = 0;
   r = Position(0.5, 0.1, 0.2);
   u = Position(1.0, 0.0, 0.0);
@@ -352,7 +372,7 @@ TEST_CASE("Test distance_to_next_boundary() - rectilinear")
   REQUIRE(distance == 0.5);
   REQUIRE(next_bin == -1);
 
-  // Test outside the mesh, going toward the mesh
+  // - Test outside the mesh, going toward the mesh
   current_bin = -1;
   r = Position(-2.5, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
@@ -360,7 +380,7 @@ TEST_CASE("Test distance_to_next_boundary() - rectilinear")
   REQUIRE(distance == 1.5);
   REQUIRE(next_bin == 0);
 
-  // Test outside the mesh, not going toward the mesh
+  // - Test outside the mesh, not going toward the mesh
   current_bin = -1;
   r = Position(-2.0, 0.0, 0.0);
   u = Position(-1.0, 0.0, 0.0);
@@ -368,7 +388,7 @@ TEST_CASE("Test distance_to_next_boundary() - rectilinear")
   REQUIRE(distance == INFTY);
   REQUIRE(next_bin == -1);
 
-  // Test on the mesh boundary, leaving the mesh
+  // - Test on the mesh boundary, leaving the mesh
   current_bin = 1;
   r = Position(1.0, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);
@@ -376,7 +396,7 @@ TEST_CASE("Test distance_to_next_boundary() - rectilinear")
   REQUIRE(distance == INFTY);
   REQUIRE(next_bin == -1);
 
-  // Test close to the mesh boundary
+  // - Test close to the mesh boundary
   current_bin = 1;
   r = Position(0.99999999999, 0.0, 0.0);
   u = Position(1.0, 0.0, 0.0);

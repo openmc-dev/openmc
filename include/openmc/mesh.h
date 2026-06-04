@@ -543,7 +543,11 @@ public:
   //! \param[in] u direction of flight
   //! \return distance to the mesh boundary
   virtual double distance_to_mesh_boundary_from_outside(
-    int k, const Position& r, const Direction& u) const = 0;
+    int k, const Position& r, const Direction& u) const
+  {
+    fatal_error("Not implemented");
+    return -1.0;
+  }
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
@@ -596,13 +600,6 @@ public:
   {
     return r - origin_;
   };
-
-  double distance_to_mesh_boundary_from_outside(
-    int k, const Position& r, const Direction& u) const override
-  {
-    fatal_error("Not implemented");
-    return -1.0;
-  }
 
   // Data members
   Position origin_ {0.0, 0.0, 0.0}; //!< Origin of the mesh
@@ -676,7 +673,7 @@ public:
 
   std::vector<int> connectivity(int id) const override;
 
-  Position normalize_position(const Position& r) override;
+  Position normalize_coordinates(const Position& r, int bin) override;
 
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element

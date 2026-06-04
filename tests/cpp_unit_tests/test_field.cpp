@@ -77,13 +77,13 @@ TEST_CASE("Test Field - regular mesh", "[generators]")
       field.trilinear_interpolation(Position(0.0, 0.0, 0.0), 0) == outputs[4]);
   }
 
-  // Evaluate (previous position, current position, previous bin)
-  REQUIRE(field.evaluate(Position(0.5, 0.5, 0.5), Position(-0.5, -0.5, -0.5),
-            7) == outputs[1]);
-  REQUIRE(field.evaluate(Position(-0.5, -0.5, -0.5), Position(0.5, 0.5, 0.5),
-            0) == outputs[0]);
-  REQUIRE(field.evaluate(Position(0.0, 0.0, 0.0), Position(-1.0, -1.0, -1.0),
-            0) == outputs[5]);
+  // Evaluate clamped (previous position, current position, previous bin)
+  REQUIRE(field.evaluate_clamped(Position(0.5, 0.5, 0.5),
+            Position(-0.5, -0.5, -0.5), 7) == outputs[1]);
+  REQUIRE(field.evaluate_clamped(Position(-0.5, -0.5, -0.5),
+            Position(0.5, 0.5, 0.5), 0) == outputs[0]);
+  REQUIRE(field.evaluate_clamped(Position(0.0, 0.0, 0.0),
+            Position(-1.0, -1.0, -1.0), 0) == outputs[5]);
 
   // Distance to next boundary
   int current_bin;

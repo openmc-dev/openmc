@@ -14,15 +14,15 @@ void RK4StreamlineIntegrator::next_step(
 
   // Calculate k2
   Position p2 = yn + k1 / 2.;
-  Direction k2 = field.evaluate(yn, p2, cell_n) * dt();
+  Direction k2 = field.evaluate_clamped(yn, p2, cell_n) * dt();
 
   // Calculate k3
   Position p3 = yn + k2 / 2.;
-  Direction k3 = field.evaluate(yn, p3, cell_n) * dt();
+  Direction k3 = field.evaluate_clamped(yn, p3, cell_n) * dt();
 
   // Calculate k4
   Position p4 = yn + k3;
-  Direction k4 = field.evaluate(yn, p4, cell_n) * dt();
+  Direction k4 = field.evaluate_clamped(yn, p4, cell_n) * dt();
 
   // Step forward
   yn += (k1 + k2 * 2 + k3 * 2 + k4) / 6.;

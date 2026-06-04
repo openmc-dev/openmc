@@ -161,17 +161,20 @@ public:
     }
   }
 
-  //! Evaluate the field at a given position with prior knowledge of the bin and
-  //! of the previous position. We assume that the transport between the two
-  //! points is in a straight line, justifying the use of ray-tracing. If the
-  //! next point is outside the mesh, we use the last bin that was located
-  //! inside the mesh. It is assumed that r0 is located inside the mesh.
+  //! Evaluate field at a given position knowing the previous position and bin.
   //
-  //! \param[in] r0 Previous position located inside the mesh
+  //! The bin used to evaluate the field at r1 can either be:
+  //! - the bin corresponding to r1, if r1 is inside the mesh,
+  //! - the bin corresponding to the last crossed bin inside the mesh during ray
+  //!   traversal analysis between r0 and r1, if r1 is outside the mesh,
+  //! - bin0, if r1 is outside the mesh and no bins were found during ray
+  //!   traversal.
+  //
+  //! \param[in] r0 Previous position (inside the mesh)
   //! \param[in] r1 Current position
-  //! \param[in] bin Bin corresponding to the previous position
-  //! \return Value corresponding to the current position
-  T evaluate(const Position& r0, const Position& r1, int bin)
+  //! \param[in] bin0 Bin corresponding to r0
+  //! \return Value corresponding to r1 relative to a clamped bin
+  T evaluate_clamped(const Position& r0, const Position& r1, int bin0)
   {
     int next_bin = mesh_ptr()->get_bin_clamped(r0, r1, bin0);
     return evaluate_in_mesh(r1, next_bin);

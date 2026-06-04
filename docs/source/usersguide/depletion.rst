@@ -449,3 +449,25 @@ to transfer xenon from one material to another, you'd use::
     ...
 
     integrator.add_transfer_rate(mat1, ['Xe'], 0.1, destination_material=mat2)
+
+Comparing to Other Codes
+========================
+
+Getting OpenMC results to match with other codes (e.g., MCNP or Serpent) can be
+very challenging because of all the inputs that go in to the code. This is
+especially true for depletion, where we are now concerned not only with getting
+the transport solution to match but also the depletion integration methods,
+decay/FPY data, approximations, etc. In order to get a perfect match, you'll
+need to ensure:
+
+- The model geometry/material definitions are equivalent
+- The same neutron cross sections are being used (e.g., ENDF/B-VIII.0)
+- Same treatment for thermal scattering / probability tables
+- Same decay data (depletion chain)
+- Same fission product yields (depletion chain)
+- Same fission product yield interpolation method (``CoupledOperator(fission_yield_mode=...)``)
+- Same reaction rate normalization; e.g., using the same fission Q values (``CoupledOperator(fission_q=...)``)
+- Same depletion integration method (``PredictorIntegrator``, ``CECMIntegrator``, etc.)
+
+Even when all of these are the same, it's still entirely possible to see
+differences because of other appoximations in the codes that cannot be changed.

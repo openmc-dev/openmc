@@ -355,14 +355,13 @@ void Particle::event_delta_advance()
   boundary() = distance_to_external_boundary(*this);
 
   // Move to the external boundary or delta tracking collision site.
-  double distance = std::min(collision_distance(), boundary().distance() - TINY_BIT);
+  double distance = std::min(collision_distance(), boundary().distance() - FP_REL_PRECISION);
   r() += distance * u();
 
   // Need to locate the particle at the collision site or boundary.
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).reset();
   }
-
   if (!exhaustive_find_cell(*this)) {
     // We've lost this particle.
     mark_as_lost(fmt::format("Particle {} could not be located while running delta tracking!", id()));

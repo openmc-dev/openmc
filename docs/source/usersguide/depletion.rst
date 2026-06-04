@@ -453,21 +453,30 @@ to transfer xenon from one material to another, you'd use::
 Comparing to Other Codes
 ========================
 
-Getting OpenMC results to match with other codes (e.g., MCNP or Serpent) can be
-very challenging because of all the inputs that go in to the code. This is
-especially true for depletion, where we are now concerned not only with getting
-the transport solution to match but also the depletion integration methods,
-decay/FPY data, approximations, etc. In order to get a perfect match, you'll
-need to ensure:
+Comparing depletion results from OpenMC with those from another code, such as
+MCNP or Serpent, requires more than constructing equivalent transport models.
+At each depletion step, differences in the transport solution, nuclear data,
+reaction rate normalization, and numerical integration can all affect the
+result. Small differences can also accumulate over successive depletion steps.
 
-- The model geometry/material definitions are equivalent
-- The same neutron cross sections are being used (e.g., ENDF/B-VIII.0)
-- Same treatment for thermal scattering / probability tables
-- Same decay data (depletion chain)
-- Same fission product yields (depletion chain)
-- Same fission product yield interpolation method (``CoupledOperator(fission_yield_mode=...)``)
-- Same reaction rate normalization; e.g., using the same fission Q values (``CoupledOperator(fission_q=...)``)
-- Same depletion integration method (``PredictorIntegrator``, ``CECMIntegrator``, etc.)
+For a meaningful comparison, align as many of the following inputs and methods
+as possible:
 
-Even when all of these are the same, it's still entirely possible to see
-differences because of other appoximations in the codes that cannot be changed.
+- Geometry and material definitions
+- Neutron cross section library (e.g., ENDF/B-VIII.0)
+- Treatment of thermal scattering and unresolved resonance probability tables
+- Neutron reactions accounted for in the depletion chain
+- Decay data in the depletion chain
+- Fission product yields in the depletion chain
+- Fission product yield interpolation method
+  (``CoupledOperator(fission_yield_mode=...)``)
+- Reaction rate normalization, including fission Q values
+  (``CoupledOperator(fission_q=...)``)
+- Depletion integration method (``PredictorIntegrator``, ``CECMIntegrator``,
+  etc.) and time-step sizes
+
+Even after these choices have been aligned, exact agreement should not be
+expected. Codes may use different approximations or numerical methods that
+cannot be configured identically. When investigating a discrepancy, first
+compare transport results and one-group reaction rates at the initial time, then
+compare changes over subsequent timesteps.

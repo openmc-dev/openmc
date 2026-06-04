@@ -661,14 +661,30 @@ public:
 
   int set_grid();
 
+  //! Calculate the area of a face given its ID number
+  //
+  //! \param[in] face_id Face ID number (without inward information)
+  //! \return Area of the face
   double face_area(int face_id);
 
   void sample_on_physical_groups(Position& pa, int& cell, uint64_t* seed,
     vector<int> physical_groups) override;
 
-  // face_id is on the ID system where the inward flag is not taken into account
+  //! Sample a position on a face given its ID number
+  //
+  //! \param[in] face_id Face ID number (without inward information)
+  //! \param[in] seed Random number generator seed
+  //! \return Sampled position
   Position sample_on_face(int face_id, uint64_t* seed);
 
+  //! Return the unique ID of a vertex
+  //
+  //! The vertex unique ID system ensures that vertices from different bins
+  //! located at the same position in space share the same unique ID.
+  //
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] local_verted_idx Local index of a vertex relative to a bin
+  //! \return Vertex unique ID
   int return_vertex_unique_id(MeshIndex ijk, int local_vertex_idx) const;
 
   std::vector<int> connectivity(int id) const override;

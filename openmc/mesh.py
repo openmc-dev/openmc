@@ -3377,7 +3377,7 @@ class UnstructuredMesh(MeshBase):
               mesh=self,
         )
         model.settings.weight_window_generators = [wwg] 
-        with openmc.lib.TemporarySession(model):
+        with openmc.lib.TemporarySession(model, threads=1):
             openmc.lib.export_unstructured_mesh(self, group)
 
     def to_xml_element(self):

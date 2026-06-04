@@ -135,6 +135,7 @@ void Particle::split(double wgt)
   bank.wgt_born = wgt_born();
   bank.wgt_ww_born = wgt_ww_born();
   bank.n_split = n_split();
+  bank.n_collision = n_collision();
   bank.parent_id = current_work();
   if (settings::use_shared_secondary_bank) {
     bank.progeny_id = n_progeny()++;
@@ -150,7 +151,7 @@ void Particle::from_source(const SourceSite* src)
   surface() = SURFACE_NONE;
   cell_born() = C_NONE;
   material() = C_NONE;
-  n_collision() = 0;
+  n_collision() = src->n_collision;
   fission() = false;
   zero_flux_derivs();
   lifetime() = 0.0;

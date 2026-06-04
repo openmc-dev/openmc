@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>        // for uint64_t
 #include <cstring>        // for memcpy
+#include <limits>
 #define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>          // for ceil
 #include <cstddef>        // for size_t
@@ -1080,13 +1081,26 @@ int StructuredMesh::get_bin(Position r) const
 
 int StructuredMesh::n_bins() const
 {
-  return std::accumulate(
-    shape_.begin(), shape_.begin() + n_dimension_, 1, std::multiplies<>());
+  // Bin indices are stored as 32-bit ints in the tally system.
+  int64_t n = 1;
+  for (int i = 0; i < n_dimension_; ++i)
+    n *= shape_[i];
+  if (n > std::numeric_limits<int>::max()) {
+    fatal_error(fmt::format(
+      "Mesh {} has too many bins ({}) for 32-bit tally indexing", id_, n));
+  }
+  return static_cast<int>(n);
 }
 
 int StructuredMesh::n_surface_bins() const
 {
-  return 4 * n_dimension_ * n_bins();
+  // Surface bin indices are stored as 32-bit ints in the tally system.
+  int64_t n = static_cast<int64_t>(n_bins()) * 4 * n_dimension_;
+  if (n > std::numeric_limits<int>::max()) {
+    fatal_error(fmt::format(
+      "Mesh {} has too many surface bins ({}) for tally indexing", id_, n));
+  }
+  return static_cast<int>(n);
 }
 
 tensor::Tensor<double> StructuredMesh::count_sites(

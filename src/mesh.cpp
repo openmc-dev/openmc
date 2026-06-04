@@ -1865,20 +1865,22 @@ double RegularMesh::face_area(int face_id)
   return area;
 }
 
-void RegularMesh::randomly_place_on_physical_group(
-  Position& pa, int& cell, uint64_t* seed, vector<int> physical_groups)
+void RegularMesh::sample_on_physical_groups(
+  Position& p, int& bin, uint64_t* seed, vector<int> physical_groups)
 {
   // Only implemented in 3D
   if (n_dimension_ != 3) {
     fatal_error("Only implemented in 3D!");
   }
 
-  // Retrieve the face IDs from the physical groups
+  // Retrieve the face IDs from physical groups
   vector<int> face_ids;
   for (auto g : physical_groups) {
     vector<int> temp = get_face_ids(g);
     face_ids.insert(face_ids.end(), temp.begin(), temp.end());
   }
+
+  // TODO: remove any duplicates to avoid sampling bias
 
   // Retrieve the face area of each face and calculate the total
   double total_area = 0.;
@@ -1902,10 +1904,10 @@ void RegularMesh::randomly_place_on_physical_group(
   }
 
   // Sample a new position on the selected face
-  pa = sample_on_face(selected_face_id, seed);
+  p = sample_on_face(selected_face_id, seed);
 
-  // Returns cell as well
-  cell = selected_face_id / (2 * n_dimension_);
+  // Returns bin as well
+  bin = selected_face_id / (2 * n_dimension_);
 }
 
 Position RegularMesh::sample_on_face(int face_id, uint64_t* seed)

@@ -86,8 +86,7 @@ int VelocityField::get_next_bin(const Position& r0, const Position& r1,
 void VelocityField::randomly_place_on_inlet(
   Position& p, int& bin, uint64_t* seed)
 {
-  mesh_ptr()->randomly_place_on_physical_group(
-    p, bin, seed, bc_map_[BCType::INLET]);
+  mesh_ptr()->sample_on_physical_groups(p, bin, seed, bc_map_[BCType::INLET]);
 }
 
 BCType VelocityField::get_boundary_condition(int physical_group)

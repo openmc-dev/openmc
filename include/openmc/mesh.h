@@ -217,9 +217,17 @@ public:
   virtual int get_last_bin_inside_mesh(
     Position r0, Position r1, int bin) const = 0;
 
-  // TODO - document
-  virtual void randomly_place_on_physical_group(
-    Position& pa, int& cell, uint64_t* seed, vector<int> physical_groups) = 0;
+  //! Sample a position on mesh faces belonging to one or more physical groups
+  //
+  //! \param[out] p Sampled position
+  //! \param[out] bin Bin number corresponding to r
+  //! \param[in] seed Random number generator seed
+  //! \param[in] physical_groups Physical groups considered
+  virtual void sample_on_physical_groups(
+    Position& p, int& bin, uint64_t* seed, vector<int> physical_groups)
+  {
+    fatal_error("Not implemented!");
+  }
 
   //! Normalize coordinates by scaling them to the dimensions of a given bin
   //
@@ -427,9 +435,6 @@ public:
   int get_last_bin_inside_mesh(
     Position r0, Position r1, int bin) const override;
 
-  void randomly_place_on_physical_group(Position& pa, int& cell, uint64_t* seed,
-    vector<int> physical_groups) override
-  {}
 
   std::vector<int> connectivity(int id) const override
   {
@@ -651,7 +656,7 @@ public:
 
   double face_area(int face_id);
 
-  void randomly_place_on_physical_group(Position& pa, int& cell, uint64_t* seed,
+  void sample_on_physical_groups(Position& pa, int& cell, uint64_t* seed,
     vector<int> physical_groups) override;
 
   // face_id is on the ID system where the inward flag is not taken into account
@@ -872,10 +877,6 @@ public:
 
   int get_last_bin_inside_mesh(
     Position r0, Position r1, int bin) const override;
-
-  void randomly_place_on_physical_group(Position& pa, int& cell, uint64_t* seed,
-    vector<int> physical_groups) override
-  {}
 
   void to_hdf5_inner(hid_t group) const override;
 

@@ -196,9 +196,22 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
-  virtual void full_raytracing(Position r0, Position r1,
+  //! Determine which bins and surface bins were crossed by a particle.
+  //
+  //! Surface bins are identified without the inward flag.
+  //
+  //! \param[in] r0 Previous position
+  //! \param[in] r1 Current position
+  //! \param[out] outward_surface_ids Outward surface bins that were crossed
+  //! \param[out] inward_surface_ids Inward surface bins that were crossed
+  //! \param[out] bins Bins that were crossed
+  //! \param[out] segment_length Fraction of tracklength in each bin
+  virtual void bins_and_surface_bins_crossed(Position r0, Position r1,
     vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
-    vector<int>& bins, vector<double>& segment_lengths) const = 0;
+    vector<int>& bins, vector<double>& segment_lengths) const
+  {
+    fatal_error("Not implemented.");
+  }
 
   // TODO - document
   virtual int get_last_bin_inside_mesh(
@@ -404,7 +417,7 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  void full_raytracing(Position r0, Position r1,
+  void bins_and_surface_bins_crossed(Position r0, Position r1,
     vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
     vector<int>& bins, vector<double>& segment_lengths) const override;
 
@@ -856,9 +869,6 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  void full_raytracing(Position r0, Position r1,
-    vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
-    vector<int>& bins, vector<double>& segment_lengths) const override;
 
   int get_last_bin_inside_mesh(
     Position r0, Position r1, int bin) const override;

@@ -973,12 +973,6 @@ void UnstructuredMesh::surface_bins_crossed(
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
 
-void UnstructuredMesh::full_raytracing(Position r0, Position r1,
-  vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
-  vector<int>& bins, vector<double>& segment_lengths) const
-{
-  fatal_error("Not implemented.");
-}
 
 int UnstructuredMesh::get_last_bin_inside_mesh(
   Position r0, Position r1, int bin) const
@@ -1370,8 +1364,7 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
-// Get next bin using raytracing
-void StructuredMesh::full_raytracing(Position r0, Position r1,
+void StructuredMesh::bins_and_surface_bins_crossed(Position r0, Position r1,
   vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
   vector<int>& bins, vector<double>& segment_lengths) const
 {

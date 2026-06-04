@@ -45,7 +45,7 @@ int VelocityField::get_next_bin(const Position& r0, const Position& r1,
   vector<double> segment_lengths;
 
   // Raytracing
-  mesh_ptr()->full_raytracing(
+  mesh_ptr()->bins_and_surface_bins_crossed(
     r0, r1, outward_surface_ids, inward_surface_ids, bins, segment_lengths);
 
   // Consistency check

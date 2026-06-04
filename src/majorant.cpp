@@ -374,25 +374,27 @@ double NeutronMajorant::calculate_max_sab_tot_xs(double energy, int i_sab, doubl
 int NeutronMajorant::get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const
 {
   // Find energy index on energy grid
-  int i_log_union = std::log(energy * data::energy_min_rcp[i_neutron_]) * simulation::log_spacing_rcp;
+  int i_log_union = std::log(energy / data::energy_min[i_neutron_]) / simulation::log_spacing;
 
   int i_grid;
-  if (i_log_union < 0) {
+  if (energy < grid.energy.front()) {
     i_grid = 0;
-  } else if (i_log_union >= (grid.grid_index.size() - 2)) {
+  } else if (energy > grid.energy.back()) {
     i_grid = grid.energy.size() - 2;
   } else {
     // Determine bounding indices based on which equal log-spaced
     // interval the energy is in
-    int i_low  = grid.grid_index[i_log_union];
+    int i_low = grid.grid_index[i_log_union];
     int i_high = grid.grid_index[i_log_union + 1] + 1;
 
     // Perform binary search over reduced range
-    i_grid = i_low + lower_bound_index(&grid.energy[i_low], &grid.energy[i_high], energy);
+    i_grid = i_low + lower_bound_index(
+                        &grid.energy[i_low], &grid.energy[i_high], energy);
   }
 
   // check for rare case where two energy points are the same
-  if (grid.energy[i_grid] == grid.energy[i_grid + 1]) ++i_grid;
+  if (grid.energy[i_grid] == grid.energy[i_grid + 1])
+    ++i_grid;
 
   return i_grid;
 }

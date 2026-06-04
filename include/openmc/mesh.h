@@ -213,9 +213,21 @@ public:
     fatal_error("Not implemented.");
   }
 
-  // TODO - document
-  virtual int get_last_bin_inside_mesh(
-    Position r0, Position r1, int bin) const = 0;
+  //! Get bin at a given position r1 if r1 is inside the mesh. If r1 is located
+  //! outside the mesh, this function returns the nearest valid bin inside the
+  //! mesh, if bins were crossed during ray traversal between r0 and r1, or
+  //! bin0.
+  //
+  //! \param[in] r0 Previous position
+  //! \param[in] r1 Current position
+  //! \param[in] bin0 Bin corresponding to r0
+  //! \return If r1 is inside the mesh: bin corresponding to r1,
+  //! if r1 outside the mesh: last bin inside the mesh when travelling from r0
+  //! to r1 or bin0 if no bins were crossed.
+  virtual int get_bin_clamped(Position r0, Position r1, int bin0) const
+  {
+    fatal_error("Not implemented.");
+  }
 
   //! Sample a position on mesh faces belonging to one or more physical groups
   //
@@ -432,9 +444,7 @@ public:
   double distance_to_next_boundary(
     int current_bin, Position r, Direction u, int& bin_next) const override;
 
-  int get_last_bin_inside_mesh(
-    Position r0, Position r1, int bin) const override;
-
+  int get_bin_clamped(Position r0, Position r1, int bin0) const override;
 
   std::vector<int> connectivity(int id) const override
   {
@@ -873,10 +883,6 @@ public:
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
-
-
-  int get_last_bin_inside_mesh(
-    Position r0, Position r1, int bin) const override;
 
   void to_hdf5_inner(hid_t group) const override;
 

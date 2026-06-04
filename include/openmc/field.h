@@ -173,7 +173,7 @@ public:
   //! \return Value corresponding to the current position
   T evaluate(const Position& r0, const Position& r1, int bin)
   {
-    int next_bin = mesh_ptr()->get_last_bin_inside_mesh(r0, r1, bin);
+    int next_bin = mesh_ptr()->get_bin_clamped(r0, r1, bin0);
     return evaluate_in_mesh(r1, next_bin);
   }
 

@@ -973,13 +973,6 @@ void UnstructuredMesh::surface_bins_crossed(
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
 
-
-int UnstructuredMesh::get_last_bin_inside_mesh(
-  Position r0, Position r1, int bin) const
-{
-  fatal_error("Not implemented.");
-}
-
 std::string UnstructuredMesh::bin_label(int bin) const
 {
   return fmt::format("Mesh Index ({})", bin);
@@ -1494,8 +1487,7 @@ double StructuredMesh::distance_to_next_boundary(
   return distance;
 }
 
-int StructuredMesh::get_last_bin_inside_mesh(
-  Position r0, Position r1, int bin) const
+int StructuredMesh::get_bin_clamped(Position r0, Position r1, int bin0) const
 {
   vector<int> bins;
   vector<double> lengths;
@@ -1503,7 +1495,7 @@ int StructuredMesh::get_last_bin_inside_mesh(
   if (!bins.empty()) {
     return bins.back();
   } else {
-    return bin;
+    return bin0;
   }
 }
 

@@ -454,3 +454,23 @@ TEST_CASE_METHOD(RegularMeshFixture, "Regression test sample_on_face() - regular
   REQUIRE(result.y == Catch::Approx(-0.2891826401).margin(1.0E-10));
   REQUIRE(result.z == Catch::Approx(-0.2470039942).margin(1.0E-10));
 }
+
+TEST_CASE_METHOD(RegularMeshFixture, "Test return_vertex_unique_id() - regular")
+{
+  // Lower left
+  REQUIRE(mesh.return_vertex_unique_id({1, 1, 1}, 0) == 0);
+
+  // Upper right
+  REQUIRE(mesh.return_vertex_unique_id({2, 2, 2}, 7) == 26);
+
+  // Middle from lower left bin
+  REQUIRE(mesh.return_vertex_unique_id({1, 1, 1}, 7) == 13);
+
+  // Middle from upper right bin
+  REQUIRE(mesh.return_vertex_unique_id({2, 2, 2}, 0) == 13);
+
+  // mesh.return_vertex_unique_id({0, 0, 0}, 0); // should fail
+  // mesh.return_vertex_unique_id({3, 3, 3}, 0); // should fail
+  // mesh.return_vertex_unique_id({1, 1, 1}, -1); // should fail
+  // mesh.return_vertex_unique_id({1, 1, 1}, 8); // should fail
+}

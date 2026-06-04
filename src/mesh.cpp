@@ -1944,9 +1944,14 @@ Position RegularMesh::sample_on_face(int face_id, uint64_t* seed)
 int RegularMesh::return_vertex_unique_id(
   MeshIndex ijk, int local_vertex_idx) const
 {
-  // Only implemented in 3D
   if (n_dimension_ != 3) {
     fatal_error("Only implemented in 3D!");
+  }
+
+  for (int k = 0; k < n_dimension_; ++k) {
+    if ((ijk[k] < 1) || (ijk[k] > shape_[k])) {
+      fatal_error("Indices out of bounds!");
+    }
   }
 
   switch (local_vertex_idx) {
@@ -1979,7 +1984,7 @@ int RegularMesh::return_vertex_unique_id(
   case 7:
     break;
   default:
-    fatal_error("Local vertex index out of bound!");
+    fatal_error("Local vertex index out of bounds!");
   }
 
   return ijk[0] + ijk[1] * (shape_[0] + 1) +

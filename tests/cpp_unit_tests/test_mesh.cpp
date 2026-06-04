@@ -404,3 +404,16 @@ TEST_CASE_METHOD(
   REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));
   REQUIRE(next_bin == -1);
 }
+
+TEST_CASE_METHOD(RegularMeshFixture, "Test face_area() - regular")
+{
+  REQUIRE(mesh.face_area(0) == 1.0);
+  REQUIRE(mesh.face_area(1) == 1.0);
+  REQUIRE(mesh.face_area(2) == 1.0);
+  REQUIRE(mesh.face_area(3) == 1.0);
+  REQUIRE(mesh.face_area(4) == 1.0);
+  REQUIRE(mesh.face_area(5) == 1.0);
+
+  // mesh.face_area(-1); // should fail
+  // mesh.face_area(48); // should fail
+}

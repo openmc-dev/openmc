@@ -1837,9 +1837,12 @@ double RegularMesh::volume(const MeshIndex& ijk) const
 
 double RegularMesh::face_area(int face_id)
 {
-  // Only implemented in 3D
   if (n_dimension_ != 3) {
     fatal_error("Only implemented in 3D!");
+  }
+
+  if ((face_id < 0) || (face_id >= (n_bins() * 2 * n_dimension_))) {
+    fatal_error("Face ID out of bounds!");
   }
 
   int face_local_id = face_id % 6;

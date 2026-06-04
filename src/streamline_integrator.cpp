@@ -10,7 +10,7 @@ void RK4StreamlineIntegrator::next_step(
   int datacell_id;
 
   // Calculate k1
-  Direction k1 = field.evaluate(yn, cell_n) * dt();
+  Direction k1 = field.evaluate_in_mesh(yn, cell_n) * dt();
 
   // Calculate k2
   Position p2 = yn + k1 / 2.;

@@ -135,13 +135,13 @@ public:
   //! \return Bin number
   int get_bin(const Position& r) { return mesh_ptr()->get_bin(r); }
 
-  //! Evaluate the field at a given position with prior knowledge of the current
+  //! Evaluate field at a given position inside the mesh knowing the current
   //! bin.
   //
   //! \param[in] r Position
-  //! \param[in] bin Bin number corresponding to the current position
-  //! \return Value corresponding to the position
-  T evaluate(const Position& r, int bin)
+  //! \param[in] bin Bin number corresponding to r
+  //! \return Value corresponding to r
+  T evaluate_in_mesh(const Position& r, int bin)
   {
     if (bin != C_NONE) {
       switch (mapping()) {
@@ -174,7 +174,7 @@ public:
   T evaluate(const Position& r0, const Position& r1, int bin)
   {
     int next_bin = mesh_ptr()->get_last_bin_inside_mesh(r0, r1, bin);
-    return evaluate(r1, next_bin);
+    return evaluate_in_mesh(r1, next_bin);
   }
 
   //! Interpolate data field at a given position using trilinear interpolation.

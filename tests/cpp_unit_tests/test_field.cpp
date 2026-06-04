@@ -56,12 +56,12 @@ TEST_CASE("Test Field - regular mesh", "[generators]")
   REQUIRE(field.get_bin(Position(0.0, 0.0, 0.0)) == 0);
   REQUIRE(field.get_bin(Position(2.0, 2.0, 2.0)) == -1);
 
-  // Evaluate (current position, current bin)
-  REQUIRE(field.evaluate(Position(0.5, 0.5, 0.5), 7) == outputs[0]);
-  REQUIRE(field.evaluate(Position(-0.5, -0.5, -0.5), 0) == outputs[1]);
-  REQUIRE(field.evaluate(Position(0.5, -0.5, -0.5), 1) == outputs[2]);
-  REQUIRE(field.evaluate(Position(-0.5, -0.5, 0.5), 4) == outputs[3]);
-  REQUIRE(field.evaluate(Position(0.0, 0.0, 0.0), 0) == outputs[4]);
+  // Evaluate in mesh (current position, current bin)
+  REQUIRE(field.evaluate_in_mesh(Position(0.5, 0.5, 0.5), 7) == outputs[0]);
+  REQUIRE(field.evaluate_in_mesh(Position(-0.5, -0.5, -0.5), 0) == outputs[1]);
+  REQUIRE(field.evaluate_in_mesh(Position(0.5, -0.5, -0.5), 1) == outputs[2]);
+  REQUIRE(field.evaluate_in_mesh(Position(-0.5, -0.5, 0.5), 4) == outputs[3]);
+  REQUIRE(field.evaluate_in_mesh(Position(0.0, 0.0, 0.0), 0) == outputs[4]);
 
   // Trilinear interpolation
   if (mapping == "nodal") {

@@ -12,15 +12,6 @@
 
 namespace openmc {
 
-// Identifies which solve a random ray run is currently executing. A forward
-// solve that feeds a later adjoint solve (FW-CADIS) is distinguished from a
-// standalone forward solve so its intermediate output files can be tagged.
-enum class RandomRaySolve {
-  FORWARD,
-  FORWARD_FOR_ADJOINT,
-  ADJOINT,
-};
-
 /*
  * The FlatSourceDomain class encompasses data and methods for storing
  * scalar flux and source region for all flat source regions in a

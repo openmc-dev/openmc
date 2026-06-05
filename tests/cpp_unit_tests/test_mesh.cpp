@@ -10,6 +10,8 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/mesh.h"
 
+#include "matchers/equals_position.hpp"
+
 using namespace openmc;
 
 TEST_CASE("Test mesh hdf5 roundtrip - regular")
@@ -448,11 +450,8 @@ TEST_CASE_METHOD(RegularMeshFixture, "Regression test sample_on_face()")
   // Check that the other 2 coordinates are sampled
 
   uint64_t seed = 1;
-
-  Position result = mesh.sample_on_face(0, &seed);
-  REQUIRE(result.x == -1.0);
-  REQUIRE(result.y == Catch::Approx(-0.2891826401).margin(1.0E-10));
-  REQUIRE(result.z == Catch::Approx(-0.2470039942).margin(1.0E-10));
+  REQUIRE_THAT(mesh.sample_on_face(0, &seed),
+    EqualsPosition(Position(-1.0, -0.2891826401, -0.2470039942), 1.0e-10));
 }
 
 TEST_CASE_METHOD(RegularMeshFixture, "Test return_vertex_unique_id()")

@@ -14,7 +14,7 @@ def implicit_sphere_model():
     material.add_nuclide('U238', 95.0)
     material.set_density('g/cm3', 16.0)
  
-    # Gyroid
+    # Diamond
     x0 = openmc.XPlane(-0.5, boundary_type="periodic")
     x1 = openmc.XPlane(+0.5, boundary_type="periodic")
     y0 = openmc.YPlane(-0.5, boundary_type="periodic")

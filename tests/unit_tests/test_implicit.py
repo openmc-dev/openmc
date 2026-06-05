@@ -9,7 +9,7 @@ from openmc.implicit import (
     ImplicitFunction,
     X, Y, Z, Constant,
     Add, Sub, Mul, Div, Scale, Neg, Pow,
-    Sin, Cos, Sqrt, Exp, Log, Abs,
+    Sin, Cos, Sqrt, Exp, Log, Abs, Min, Max,
     Cached,
 )
 
@@ -81,7 +81,6 @@ def test_pow_neg():
     with pytest.raises(TypeError):
         X() ** -2
 
-
 def test_pow_non_scalar_via_operator():
     with pytest.raises(TypeError):
         X() ** Y()
@@ -89,16 +88,16 @@ def test_pow_non_scalar_via_operator():
 
 # ── operator overloading ───────────────────────────────────────────────────
 
-def test_add():          assert (X() + Y()).evaluate(PT)    == 3.0
-def test_radd():         assert (1.0 + X()).evaluate(PT)    == 2.0
-def test_sub():          assert (X() - Y()).evaluate(PT)    == -1.0
-def test_rsub():         assert (3.0 - X()).evaluate(PT)    == 2.0
-def test_mul_func():     assert (X() * Y()).evaluate(PT)    == 2.0
+def test_add():          assert (X() + Y()).evaluate(PT)   == 3.0
+def test_radd():         assert (1.0 + X()).evaluate(PT)   == 2.0
+def test_sub():          assert (X() - Y()).evaluate(PT)   == -1.0
+def test_rsub():         assert (3.0 - X()).evaluate(PT)   == 2.0
+def test_mul_func():     assert (X() * Y()).evaluate(PT)   == 2.0
 def test_mul_scalar():   assert (X() * 3.0).evaluate(PT)   == 3.0
 def test_rmul_scalar():  assert (3.0 * X()).evaluate(PT)   == 3.0
-def test_div():          assert (Y() / X()).evaluate(PT)    == 2.0
+def test_div():          assert (Y() / X()).evaluate(PT)   == 2.0
 def test_rdiv():         assert (2.0 / Y()).evaluate(PT)   == 1.0
-def test_neg():          assert (-X()).evaluate(PT)         == -1.0
+def test_neg():          assert (-X()).evaluate(PT)        == -1.0
 def test_pow():          assert (Y() ** 2).evaluate(PT)    == 4.0
 
 def test_scalar_mul_produces_Scale(): assert isinstance(2 * X(), Scale)
@@ -129,6 +128,8 @@ def test_nested():
     (Exp(X()),        "exp"),
     (Log(X()),        "log"),
     (Abs(X()),        "abs"),
+    (Min(X(), Y()),   "min"),
+    (Max(X(), Y()),   "max"),
 ])
 def test_tag(node, expected_tag):
     assert node.to_xml_element([]).tag == expected_tag
@@ -220,6 +221,8 @@ def test_cached_in_expression():
     (Log(Constant(1.0)),         0.0),
     (Abs(Neg(Y())),              2.0),
     (X()**2 + Y()**2 + Z()**2,  14.0),
+    (Min(Y(), X()),              1.0),
+    (Max(Y(), X()),              2.0),
 ])
 def test_roundtrip(func, expected):
     assert xml_roundtrip(func) == pytest.approx(expected)

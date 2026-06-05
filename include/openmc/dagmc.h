@@ -74,7 +74,7 @@ public:
   bool contains(Position r, Direction u, int32_t on_surface) const override;
 
   std::pair<double, int32_t> distance(Position r, Direction u,
-    int32_t on_surface, GeometryState* p) const override;
+    int32_t on_surface, GeometryState* p, double max_distance=INFTY) const override;
 
   BoundingBox bounding_box() const override;
 

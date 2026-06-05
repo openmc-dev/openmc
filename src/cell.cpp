@@ -944,7 +944,7 @@ std::string Region::str() const
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance(
-  Position r, Direction u, int32_t on_surface) const
+  Position r, Direction u, int32_t on_surface, double max_distance) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};

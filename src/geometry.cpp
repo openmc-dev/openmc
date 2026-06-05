@@ -358,7 +358,7 @@ void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
 
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(GeometryState& p)
+BoundaryInfo distance_to_boundary(GeometryState& p, double max_distance)
 {
   BoundaryInfo info;
   double d_lat = INFINITY;

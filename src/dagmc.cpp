@@ -807,7 +807,7 @@ DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx) {};
 
 std::pair<double, int32_t> DAGCell::distance(
-  Position r, Direction u, int32_t on_surface, GeometryState* p) const
+  Position r, Direction u, int32_t on_surface, GeometryState* p, double max_distance) const
 {
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
@@ -826,8 +826,9 @@ std::pair<double, int32_t> DAGCell::distance(
     fatal_error("DAGMC call made for particle in a non-DAGMC universe");
 
   // initialize to lost particle conditions
+  // surface idx of 1 and distance of infinity occur when no previous collisions recorded
   int surf_idx = -1;
-  double dist = INFINITY;
+  double dist = max_distance;
 
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   moab::EntityHandle hit_surf;
@@ -840,7 +841,7 @@ std::pair<double, int32_t> DAGCell::distance(
   if (hit_surf != 0) {
     surf_idx =
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
-  } else if (!dagmc_ptr_->is_implicit_complement(vol) ||
+  } else if (dist == INFTY && !dagmc_ptr_->is_implicit_complement(vol) ||
              is_root_universe(dag_univ->id_)) {
     // surface boundary conditions are ignored for projection plotting, meaning
     // that the particle may move through the graveyard (bounding) volume and

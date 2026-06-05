@@ -3,10 +3,10 @@
 #include <cassert>
 #include <cstdint>        // for uint64_t
 #include <cstring>        // for memcpy
-#include <limits>
 #define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>          // for ceil
 #include <cstddef>        // for size_t
+#include <limits>
 #include <numeric>        // for accumulate
 #include <string>
 

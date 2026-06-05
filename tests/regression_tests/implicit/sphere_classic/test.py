@@ -12,13 +12,10 @@ def implicit_sphere_model():
     material = openmc.Material()
     material.add_nuclide('U235', 1.0)
     material.set_density('g/cm3', 16.0)
- 
-    # Geometry: implicit sphere enclosed in an analytic vacuum sphere.
-    # The outer analytic sphere provides the finite region required by
-    # the two-pass Region::distance algorithm.
+
     R     = 10.0
     outer = openmc.Sphere(r=R * 1.1, boundary_type='vacuum')
-    impl  = ImplicitSurface(function=X()**2 + Y()**2 + Z()**2, isovalue=R**2)
+    impl  = openmc.Sphere(r=R)
  
     fuel_cell = openmc.Cell(region=-impl & -outer, fill=material)
     void_cell = openmc.Cell(region=+impl & -outer)
@@ -29,7 +26,6 @@ def implicit_sphere_model():
     settings.particles = 1000
     settings.batches   = 20
     settings.inactive  = 5
-    settings.implicit = {"name": "fast", "atol":1e-10, "ftol":1e-10, "margin":5e-9}
  
     model = openmc.Model(settings=settings, geometry=geometry)
     model.settings.source = openmc.IndependentSource(

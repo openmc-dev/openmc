@@ -19,32 +19,20 @@
     <surface id="7" type="implicit" coeffs="0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" isovalue="0.0">
       <function>
         <add>
-          <add>
-            <mul>
-              <sin>
-                <to_cache id="0">
-                  <div>
-                    <scale value="6.283185307179586">
-                      <x/>
-                    </scale>
-                    <constant value="1.0"/>
-                  </div>
-                </to_cache>
-              </sin>
-              <cos>
+          <mul>
+            <sin>
+              <to_cache id="0">
+                <div>
+                  <scale value="6.283185307179586">
+                    <x/>
+                  </scale>
+                  <constant value="1.0"/>
+                </div>
+              </to_cache>
+            </sin>
+            <cos>
+              <sub>
                 <to_cache id="1">
-                  <div>
-                    <scale value="6.283185307179586">
-                      <z/>
-                    </scale>
-                    <constant value="1.0"/>
-                  </div>
-                </to_cache>
-              </cos>
-            </mul>
-            <mul>
-              <sin>
-                <to_cache id="2">
                   <div>
                     <scale value="6.283185307179586">
                       <y/>
@@ -52,18 +40,26 @@
                     <constant value="1.0"/>
                   </div>
                 </to_cache>
-              </sin>
-              <cos>
-                <from_cache id="0"/>
-              </cos>
-            </mul>
-          </add>
+                <to_cache id="2">
+                  <div>
+                    <scale value="6.283185307179586">
+                      <z/>
+                    </scale>
+                    <constant value="1.0"/>
+                  </div>
+                </to_cache>
+              </sub>
+            </cos>
+          </mul>
           <mul>
             <sin>
-              <from_cache id="1"/>
+              <add>
+                <from_cache id="1"/>
+                <from_cache id="2"/>
+              </add>
             </sin>
             <cos>
-              <from_cache id="2"/>
+              <from_cache id="0"/>
             </cos>
           </mul>
         </add>

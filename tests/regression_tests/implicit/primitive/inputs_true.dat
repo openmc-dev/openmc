@@ -20,52 +20,31 @@
       <function>
         <add>
           <add>
-            <mul>
-              <sin>
-                <to_cache id="0">
-                  <div>
-                    <scale value="6.283185307179586">
-                      <x/>
-                    </scale>
-                    <constant value="1.0"/>
-                  </div>
-                </to_cache>
-              </sin>
-              <cos>
-                <to_cache id="1">
-                  <div>
-                    <scale value="6.283185307179586">
-                      <z/>
-                    </scale>
-                    <constant value="1.0"/>
-                  </div>
-                </to_cache>
-              </cos>
-            </mul>
-            <mul>
-              <sin>
-                <to_cache id="2">
-                  <div>
-                    <scale value="6.283185307179586">
-                      <y/>
-                    </scale>
-                    <constant value="1.0"/>
-                  </div>
-                </to_cache>
-              </sin>
-              <cos>
-                <from_cache id="0"/>
-              </cos>
-            </mul>
-          </add>
-          <mul>
-            <sin>
-              <from_cache id="1"/>
-            </sin>
             <cos>
-              <from_cache id="2"/>
+              <div>
+                <scale value="6.283185307179586">
+                  <x/>
+                </scale>
+                <constant value="1.0"/>
+              </div>
             </cos>
-          </mul>
+            <cos>
+              <div>
+                <scale value="6.283185307179586">
+                  <y/>
+                </scale>
+                <constant value="1.0"/>
+              </div>
+            </cos>
+          </add>
+          <cos>
+            <div>
+              <scale value="6.283185307179586">
+                <z/>
+              </scale>
+              <constant value="1.0"/>
+            </div>
+          </cos>
         </add>
       </function>
     </surface>

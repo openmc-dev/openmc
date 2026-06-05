@@ -10,18 +10,25 @@ from tests.testing_harness import PyAPITestHarness
 def implicit_sphere_model():
     # Material
     material = openmc.Material()
-    material.add_nuclide('U235', 1.0)
+    material.add_nuclide('U235',  5.0)
+    material.add_nuclide('U238', 95.0)
     material.set_density('g/cm3', 16.0)
  
-    # Geometry: implicit sphere enclosed in an analytic vacuum sphere.
-    # The outer analytic sphere provides the finite region required by
-    # the two-pass Region::distance algorithm.
-    R     = 2.0
-    outer = openmc.Sphere(r=R, boundary_type='vacuum')
+    # Gyroid
+    x0 = openmc.XPlane(-0.5, boundary_type="periodic")
+    x1 = openmc.XPlane(+0.5, boundary_type="periodic")
+    y0 = openmc.YPlane(-0.5, boundary_type="periodic")
+    y1 = openmc.YPlane(+0.5, boundary_type="periodic")
+    z0 = openmc.ZPlane(-0.5, boundary_type="periodic")
+    z1 = openmc.ZPlane(+0.5, boundary_type="periodic")
+    x0.periodic_surface = x1
+    y0.periodic_surface = y1
+    z0.periodic_surface = z1
+    box = +x0 & -x1 & +y0 & -y1 & +z0 & -z1
     impl  = openmc.TPMS.from_pitch_isovalue("gyroid", 1., 0.)
  
-    fuel_cell = openmc.Cell(region=-impl & -outer, fill=material)
-    void_cell = openmc.Cell(region=+impl & -outer)
+    fuel_cell = openmc.Cell(region=-impl & box, fill=material)
+    void_cell = openmc.Cell(region=+impl & box)
     geometry  = openmc.Geometry([fuel_cell, void_cell])
  
     # Settings
@@ -29,6 +36,7 @@ def implicit_sphere_model():
     settings.particles = 1000
     settings.batches   = 20
     settings.inactive  = 5
+    settings.implicit = {"name": "fast", "atol":1e-10, "ftol":1e-10, "margin":5e-9}
  
     model = openmc.Model(settings=settings, geometry=geometry)
     model.settings.source = openmc.IndependentSource(

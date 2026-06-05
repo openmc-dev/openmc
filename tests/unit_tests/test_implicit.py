@@ -74,6 +74,13 @@ def test_log_negative():
 def test_pow_float():
     with pytest.raises(TypeError):
         X() ** 2.0
+    with pytest.raises(TypeError):
+        Pow(X(), 0.5)
+
+def test_pow_neg():
+    with pytest.raises(TypeError):
+        X() ** -2
+
 
 def test_pow_non_scalar_via_operator():
     with pytest.raises(TypeError):
@@ -175,13 +182,13 @@ def test_shared_node_first_to_cache_then_from_cache():
     assert first.get("id") == second.get("id") == "0"
 
 def test_distinct_cached_nodes_get_distinct_ids():
-        node1 = Cached(X())
-        node2 = Cached(Y())
-        _cached = []
-        ex = node1.to_xml_element(_cached)
-        ey = node2.to_xml_element(_cached)
-        assert ex.get("id") == "0"
-        assert ey.get("id") == "1"
+    node1 = Cached(X())
+    node2 = Cached(Y())
+    _cached = []
+    ex = node1.to_xml_element(_cached)
+    ey = node2.to_xml_element(_cached)
+    assert ex.get("id") == "0"
+    assert ey.get("id") == "1"
 
 def test_cached_in_expression():
     cx   = Cached(X())

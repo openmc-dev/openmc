@@ -10,23 +10,7 @@
     <cell id="1" material="1" region="-2 -1" universe="1"/>
     <cell id="2" material="void" region="2 -1" universe="1"/>
     <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 11.0"/>
-    <surface id="2" type="implicit" coeffs="0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" isovalue="100.0">
-      <function>
-        <add>
-          <add>
-            <pow value="2">
-              <x/>
-            </pow>
-            <pow value="2">
-              <y/>
-            </pow>
-          </add>
-          <pow value="2">
-            <z/>
-          </pow>
-        </add>
-      </function>
-    </surface>
+    <surface id="2" type="sphere" coeffs="0.0 0.0 0.0 10.0"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

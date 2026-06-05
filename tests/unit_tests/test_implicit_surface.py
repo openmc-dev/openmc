@@ -7,6 +7,8 @@ Run with:  pytest test_implicit_surface.py -v
 import warnings
 
 import numpy as np
+import h5py
+import lxml.etree as ET
 import pytest
 
 import openmc.implicit as impl
@@ -101,6 +103,14 @@ def test_repr_does_not_crash():
     assert "Function" in s
     assert "Isovalue" in s
 
+def test_normalize():
+    surf = ImplicitSurface(
+        function=X(), isovalue=3.14,
+        x0=1., y0=2., z0=3.)
+    coeffs = surf.normalize()
+    assert coeffs[0]==1.
+    assert coeffs[1]==2.
+    assert coeffs[2]==3.
 
 # ==============================================================================
 # evaluate
@@ -276,6 +286,12 @@ def test_pivot_translates_origin():
     assert rotated.y0 == pytest.approx(5., abs=1e-10)
     assert rotated.z0 == pytest.approx(0., abs=1e-10)
 
+def test_rotate_inplace_modifies_same_object():
+    """inplace=True modifies and returns the same object."""
+    surf = ImplicitSurface(function=X(), x0=1.)
+    result = surf.rotate([0., 0., 90.], inplace=True)
+    assert result.id == surf.id
+    assert result.y0 == pytest.approx(1.)
 
 # ==============================================================================
 # is_equal and clone
@@ -409,6 +425,30 @@ def test_reused_cached_no_warning():
         warnings.simplefilter("error", UserWarning)
         surf.to_xml_element()   # must not raise
 
+def test_implicit_surface_from_hdf5():
+    func = X()**2 + Y()**2 + Z()**2
+    orig = ImplicitSurface(function=func, isovalue=25.)
+
+    # Build the XML string that C++ to_xml_string() produces
+    fnode = ET.Element("function")
+    fnode.append(func.to_xml_element([]))
+    xml_str = ET.tostring(fnode, encoding='unicode').encode()
+
+    with h5py.File('test.h5', 'w', driver='core', backing_store=False) as f:
+        g = f.create_group('surface 1')
+        g.create_dataset('type',          data=b'implicit')
+        g.create_dataset('boundary_type', data=b'transmission')
+        g.create_dataset('coefficients',
+                         data=np.array([0.,0.,0.,1.,0.,0.,0.,1.,0.,0.,0.,1.]))
+        g.create_dataset('isovalue',      data=25.)
+        g.create_dataset('function_xml',  data=xml_str)
+
+        surf = ImplicitSurface.from_hdf5(g)
+
+    assert isinstance(surf, ImplicitSurface)
+    assert surf.isovalue == pytest.approx(25.)
+    for pt in [(0.,0.,0.), (3.,4.,0.), (5.,0.,0.), (6.,0.,0.)]:
+        assert surf.evaluate(pt) == pytest.approx(orig.evaluate(pt), abs=1e-10)
 
 # ==============================================================================
 # TPMS

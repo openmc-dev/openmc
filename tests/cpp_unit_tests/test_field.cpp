@@ -226,32 +226,29 @@ TEST_CASE_METHOD(RegularMeshFixture, "Test VelocityField - regular mesh")
     {BCType::INLET, {1}}, {BCType::OUTLET, {2}}, {BCType::WALL, {3, 4}}};
 
   // Get next bin
-  Position r0;
-  Position r1;
-  int bin0;
   int bin1;
   BCType crossed_boundary;
   Position intersection;
 
   // - Next point is inside the mesh
-  r0 = Position(-0.5, -0.5, -0.5);
-  r1 = Position(0.5, 0.5, 0.5);
-  bin0 = 0;
-  bin1 =
-    velocity_field.get_next_bin(r0, r1, bin0, crossed_boundary, intersection);
+  bin1 = velocity_field.get_next_bin(Position(-0.5, -0.5, -0.5),
+    Position(0.5, 0.5, 0.5), 0, crossed_boundary, intersection);
   REQUIRE(bin1 == 7);
   REQUIRE(crossed_boundary == BCType::NONE);
-  REQUIRE(intersection == r1);
+  REQUIRE(intersection == Position(0.5, 0.5, 0.5));
 
   // - Next point is outside the mesh
-  r0 = Position(-0.5, -0.5, -0.5);
-  r1 = Position(-0.5, -0.5, 1.5);
-  bin0 = 0;
-  bin1 =
-    velocity_field.get_next_bin(r0, r1, bin0, crossed_boundary, intersection);
+  bin1 = velocity_field.get_next_bin(Position(-0.5, -0.5, -0.5),
+    Position(-0.5, -0.5, 1.5), 0, crossed_boundary, intersection);
   REQUIRE(bin1 == -1);
   REQUIRE(crossed_boundary == BCType::WALL);
   REQUIRE(intersection == Position(-0.5, -0.5, 1.0));
+
+  // - r0 is outside the mesh based on bin0 - should fail
+  // bin1 = velocity_field.get_next_bin(
+  //   Position(), Position(), -1, crossed_boundary, intersection);
+  // bin1 = velocity_field.get_next_bin(
+  //   Position(), Position(), 8, crossed_boundary, intersection);
 
   // Randomly place on inlet
   Position p = Position(0., 0., 0.);

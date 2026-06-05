@@ -37,18 +37,21 @@ int VelocityField::get_next_bin(const Position& r0, const Position& r1,
 {
   // TODO - implement early mesh departure detection
 
-  // Initialization
+  // The algorithm used to determine if r1 is outside the mesh assumes that
+  // r0 is inside the mesh
+  if (bin0 < 0 || bin0 >= mesh_ptr()->n_bins()) {
+    fatal_error("r0 must be inside the mesh!");
+  }
+
   double total_length = 0.0;
   vector<int> outward_surface_ids;
   vector<int> inward_surface_ids;
   vector<int> bins;
   vector<double> segment_lengths;
 
-  // Raytracing
   mesh_ptr()->bins_and_surface_bins_crossed(
     r0, r1, outward_surface_ids, inward_surface_ids, bins, segment_lengths);
 
-  // Consistency check
   if (segment_lengths.size() == 0) {
     fatal_error("Inconsistency in raytrace results.");
   }

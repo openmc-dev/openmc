@@ -716,7 +716,7 @@ void openmc_run_random_ray()
   // Run the adjoint solve
   if (run_adjoint) {
     FlatSourceDomain::solve_ = RandomRaySolve::ADJOINT;
-    sim.prepare_adjoint_simulation(/*from_forward=*/run_forward);
+    sim.prepare_adjoint_simulation(run_forward);
     sim.simulate();
   }
 }

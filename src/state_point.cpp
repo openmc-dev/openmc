@@ -49,7 +49,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
     // Tag statepoints written during the forward solve of an adjoint run
     const char* forward =
-      FlatSourceDomain::outputs_are_intermediate() ? "forward." : "";
+      (FlatSourceDomain::solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT)
+        ? "forward."
+        : "";
 
     // Set filename for state point
     filename_ = fmt::format("{0}statepoint.{3}{1:0{2}}.h5",

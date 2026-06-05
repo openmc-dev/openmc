@@ -557,7 +557,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
   // If we are in adjoint mode of a fixed source problem, the external
   // source is already normalized, such that all resulting fluxes are
   // also normalized.
-  if (adjoint()) {
+  if (solve_ == RandomRaySolve::ADJOINT) {
     return 1.0;
   }
 
@@ -797,7 +797,7 @@ void FlatSourceDomain::output_to_vtk() const
     std::string filename = openmc_plot->path_plot();
 
     // Tag plots written during the forward solve of an adjoint run
-    if (outputs_are_intermediate()) {
+    if (solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT) {
       auto dot = filename.find_last_of('.');
       filename = filename.substr(0, dot) + ".forward" + filename.substr(dot);
     }
@@ -1009,9 +1009,10 @@ void FlatSourceDomain::output_to_vtk() const
 void FlatSourceDomain::apply_external_source_to_source_region(
   int src_idx, SourceRegionHandle& srh)
 {
-  auto s = (adjoint() && !model::adjoint_sources.empty())
-             ? model::adjoint_sources[src_idx].get()
-             : model::external_sources[src_idx].get();
+  auto s =
+    (solve_ == RandomRaySolve::ADJOINT && !model::adjoint_sources.empty())
+      ? model::adjoint_sources[src_idx].get()
+      : model::external_sources[src_idx].get();
   auto is = dynamic_cast<IndependentSource*>(s);
   auto discrete = dynamic_cast<Discrete*>(is->energy());
   double strength_factor = is->strength();

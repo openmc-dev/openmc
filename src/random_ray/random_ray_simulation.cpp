@@ -602,7 +602,8 @@ void RandomRaySimulation::print_results_random_ray(
     }
     fmt::print(" Volume Estimator Type             = {}\n", estimator);
 
-    std::string adjoint_true = (FlatSourceDomain::adjoint()) ? "ON" : "OFF";
+    std::string adjoint_true =
+      (FlatSourceDomain::solve_ == RandomRaySolve::ADJOINT) ? "ON" : "OFF";
     fmt::print(" Adjoint Flux Mode                 = {}\n", adjoint_true);
 
     std::string shape;

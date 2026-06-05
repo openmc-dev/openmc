@@ -206,7 +206,7 @@ int openmc_simulation_finalize()
   // adjoint (FW-CADIS) run, where only the adjoint-derived weight windows
   // are meaningful.
   if (variance_reduction::weight_windows_generators.size() > 0 &&
-      !FlatSourceDomain::outputs_are_intermediate()) {
+      FlatSourceDomain::solve_ != RandomRaySolve::FORWARD_FOR_ADJOINT) {
     openmc_weight_windows_export();
   }
 

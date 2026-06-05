@@ -623,7 +623,9 @@ void write_tallies()
 
   // Tag tallies.out written during the forward solve of an adjoint run
   const char* forward =
-    FlatSourceDomain::outputs_are_intermediate() ? "forward." : "";
+    (FlatSourceDomain::solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT)
+      ? "forward."
+      : "";
 
   // Set filename for tallies_out
   std::string filename =

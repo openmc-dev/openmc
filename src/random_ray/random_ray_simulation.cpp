@@ -676,12 +676,11 @@ void openmc_run_random_ray()
 {
   using namespace openmc;
 
-  // A run executes a forward solve, an adjoint solve, or both, determined by
-  // two facts from the user input: whether adjoint-flux results were requested,
-  // and whether the user supplied their own adjoint source. An adjoint solve
-  // runs exactly when requested; a forward solve runs unless a user-specified
-  // adjoint source is present. When both solves run (FW-CADIS), the forward
-  // solve is intermediate and feeds the adjoint source.
+  // Determine which solves to run. If adjoint results are requested and no
+  // user-defined adjoint source is present, an initial forward solve is needed
+  // to construct the adjoint source from the forward flux (FW-CADIS). If the
+  // user has defined an adjoint source, the forward solve is skipped and only
+  // the adjoint solve is run.
   const bool run_adjoint = FlatSourceDomain::adjoint_requested_;
   const bool have_adjoint_source = !model::adjoint_sources.empty();
   const bool run_forward = !(run_adjoint && have_adjoint_source);

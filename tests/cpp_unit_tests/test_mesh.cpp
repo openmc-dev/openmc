@@ -5,6 +5,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_vector.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <pugixml.hpp>
 
 #include "openmc/hdf5_interface.h"
@@ -406,6 +408,47 @@ TEST_CASE_METHOD(RectilinearMeshFixture, "Test distance_to_next_boundary()")
   distance = mesh.distance_to_next_boundary(current_bin, r, u, next_bin);
   REQUIRE(distance == Catch::Approx(0.00000000001).margin(1.0E-12));
   REQUIRE(next_bin == -1);
+}
+
+TEST_CASE_METHOD(RegularMeshFixture, "Test bins_and_surface_bins_crossed()")
+{
+  // Test cases:
+  // - r0 inside and r1 inside
+  // - r0 inside and r1 outside
+  // - r0 outside and r1 inside
+  // - r0 outside and r1 outside
+  // - r0 inside and r1 inside: corner check
+  auto [r0, r1, expected_leaving_surface_ids, expected_entering_surface_ids,
+    expected_bins, expected_length_fractions] =
+    GENERATE(table<Position, Position, vector<int>, vector<int>, vector<int>,
+      vector<double>>({{Position(-0.5, -0.5, -0.5), Position(0.5, -0.5, -0.5),
+                         {1}, {6}, {0, 1}, {0.5, 0.5}},
+      {Position(-0.5, -0.5, -0.5), Position(2.0, -0.5, -0.5), {1, 7}, {6},
+        {0, 1}, {0.2, 0.4}},
+      {Position(-2.0, -0.5, -0.5), Position(0.5, -0.5, -0.5), {1}, {0, 6},
+        {0, 1}, {0.4, 0.2}},
+      {Position(-2.0, -0.5, -0.5), Position(2.0, -0.5, -0.5), {1, 7}, {0, 6},
+        {0, 1}, {0.25, 0.25}},
+      {Position(-0.5, -0.5, -0.5), Position(0.5, 0.5, 0.5), {1, 9, 23},
+        {6, 20, 46}, {0, 1, 3, 7}, {0.5, 0.0, 0.0, 0.5}}}));
+
+  vector<int> leaving_surface_ids;
+  vector<int> entering_surface_ids;
+  vector<int> bins;
+  vector<double> length_fractions;
+
+  mesh.bins_and_surface_bins_crossed(
+    r0, r1, leaving_surface_ids, entering_surface_ids, bins, length_fractions);
+  REQUIRE_THAT(
+    leaving_surface_ids, Catch::Matchers::Equals(expected_leaving_surface_ids));
+  REQUIRE_THAT(entering_surface_ids,
+    Catch::Matchers::Equals(expected_entering_surface_ids));
+  REQUIRE_THAT(bins, Catch::Matchers::Equals(expected_bins));
+  REQUIRE(length_fractions.size() == expected_length_fractions.size());
+  for (size_t i = 0; i < expected_length_fractions.size(); i++) {
+    REQUIRE_THAT(length_fractions[i],
+      Catch::Matchers::WithinAbs(expected_length_fractions[i], 1.0e-10));
+  }
 }
 
 TEST_CASE_METHOD(RegularMeshFixture, "Test normalize_coordinates()")

@@ -7,7 +7,7 @@
 #include <cmath>          // for ceil
 #include <cstddef>        // for size_t
 #include <limits>
-#include <numeric>        // for accumulate
+#include <numeric> // for accumulate
 #include <string>
 
 #ifdef _MSC_VER

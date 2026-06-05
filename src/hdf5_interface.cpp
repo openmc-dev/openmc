@@ -705,6 +705,7 @@ void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
 
 bool using_mpio_device(hid_t obj_id)
 {
+#ifdef OPENMC_MPI
   // Determine file that this object is part of
   hid_t file_id = H5Iget_file_id(obj_id);
 
@@ -719,6 +720,9 @@ bool using_mpio_device(hid_t obj_id)
   H5Fclose(file_id);
 
   return driver == H5FD_MPIO;
+#else
+  return false;
+#endif
 }
 
 // Specializations of the H5TypeMap template struct

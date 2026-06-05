@@ -63,5 +63,6 @@ int main(int argc, char* argv[])
   err = openmc_finalize();
   if (err)
     fatal_error(openmc_err_msg);
-  openmc_before_exit();
+
+  openmc_cleanup();
 }

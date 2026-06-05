@@ -11,7 +11,6 @@
 extern "C" {
 #endif
 
-int openmc_before_exit();
 int openmc_calculate_volumes();
 int openmc_cell_filter_get_bins(
   int32_t index, const int32_t** cells, int32_t* n);
@@ -36,6 +35,7 @@ int openmc_cell_set_density(int32_t index, double rho, const int32_t* instance,
   bool set_contained = false);
 int openmc_cell_set_translation(int32_t index, const double xyz[]);
 int openmc_cell_set_rotation(int32_t index, const double rot[], size_t rot_len);
+int openmc_cleanup();
 int openmc_dagmc_universe_get_cell_ids(
   int32_t univ_id, int32_t* ids, size_t* n);
 int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n);

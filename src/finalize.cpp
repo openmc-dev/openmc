@@ -66,7 +66,7 @@ void free_memory()
 
 using namespace openmc;
 
-int openmc_before_exit()
+int openmc_cleanup()
 {
 #ifdef OPENMC_LIBMESH_ENABLED
   settings::libmesh_init.reset();

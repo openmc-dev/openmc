@@ -622,7 +622,8 @@ void write_tallies()
     return;
 
   // Tag the tallies file "forward" for an adjoint run's forward solve.
-  const char* forward = simulation::adjoint_forward_pass ? "forward." : "";
+  const char* forward =
+    FlatSourceDomain::outputs_are_intermediate() ? "forward." : "";
 
   // Set filename for tallies_out
   std::string filename =

@@ -12,6 +12,15 @@
 
 namespace openmc {
 
+// Identifies which solve a random ray run is currently executing. A forward
+// solve that feeds a later adjoint solve (FW-CADIS) is distinguished from a
+// standalone forward solve so its intermediate output files can be tagged.
+enum class RandomRaySolve {
+  FORWARD,
+  FORWARD_FOR_ADJOINT,
+  ADJOINT,
+};
+
 /*
  * The FlatSourceDomain class encompasses data and methods for storing
  * scalar flux and source region for all flat source regions in a
@@ -73,10 +82,25 @@ public:
   int64_t lookup_mesh_bin(int64_t sr, Position r) const;
   int lookup_mesh_idx(int64_t sr) const;
 
+  // True when the current solve is the adjoint solve (drives adjoint physics).
+  static bool adjoint() { return solve_ == RandomRaySolve::ADJOINT; }
+
+  // True when the current solve's output is intermediate -- the forward solve
+  // of a FW-CADIS run -- so its files are tagged "forward".
+  static bool outputs_are_intermediate()
+  {
+    return solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT;
+  }
+
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
-  static bool adjoint_; // If the user wants outputs based on the adjoint flux
+  // Whether the user requested adjoint-flux results (run-level config, set from
+  // input); distinct from the per-solve mode tracked by solve_.
+  static bool adjoint_requested_;
+
+  // The solve currently being executed, set as each solve begins.
+  static RandomRaySolve solve_;
   static bool fw_cadis_local_;
   static double
     diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization

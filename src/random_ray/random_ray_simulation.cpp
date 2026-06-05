@@ -189,7 +189,7 @@ void validate_random_ray_inputs()
 
   // Validate adjoint sources
   ///////////////////////////////////////////////////////////////////
-  if (FlatSourceDomain::adjoint_ && !model::adjoint_sources.empty()) {
+  if (FlatSourceDomain::adjoint_requested_ && !model::adjoint_sources.empty()) {
     for (int i = 0; i < model::adjoint_sources.size(); i++) {
       Source* s = model::adjoint_sources[i].get();
 
@@ -289,9 +289,9 @@ void openmc_finalize_random_ray()
 {
   FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
-  FlatSourceDomain::adjoint_ = false;
+  FlatSourceDomain::adjoint_requested_ = false;
+  FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
   FlatSourceDomain::fw_cadis_local_ = false;
-  simulation::adjoint_forward_pass = false;
   FlatSourceDomain::fw_cadis_local_targets_.clear();
   FlatSourceDomain::mesh_domain_map_.clear();
   RandomRay::ray_source_.reset();
@@ -357,19 +357,17 @@ void RandomRaySimulation::prepare_local_fixed_sources_adjoint()
   }
 }
 
-void RandomRaySimulation::prepare_adjoint_simulation(bool fw_adjoint)
+void RandomRaySimulation::prepare_adjoint_simulation(bool from_forward)
 {
   reset_timers();
 
   if (mpi::master)
     header("ADJOINT FLUX SOLVE", 3);
 
-  if (fw_adjoint) {
-    // Forward simulation has already been run;
-    // Configure the domain for adjoint simulation and
-    // re-initialize OpenMC general data structures
-    FlatSourceDomain::adjoint_ = true;
-
+  if (from_forward) {
+    // The forward solve has already run. Re-initialize OpenMC's general data
+    // structures for the adjoint solve and derive the adjoint source from the
+    // forward flux.
     openmc_simulation_init();
 
     prepare_fw_fixed_sources_adjoint();
@@ -604,7 +602,7 @@ void RandomRaySimulation::print_results_random_ray(
     }
     fmt::print(" Volume Estimator Type             = {}\n", estimator);
 
-    std::string adjoint_true = (FlatSourceDomain::adjoint_) ? "ON" : "OFF";
+    std::string adjoint_true = (FlatSourceDomain::adjoint()) ? "ON" : "OFF";
     fmt::print(" Adjoint Flux Mode                 = {}\n", adjoint_true);
 
     std::string shape;
@@ -676,65 +674,50 @@ void RandomRaySimulation::print_results_random_ray(
 
 void openmc_run_random_ray()
 {
-  //////////////////////////////////////////////////////////
-  // Run forward simulation
-  //////////////////////////////////////////////////////////
+  using namespace openmc;
 
-  // Check if adjoint calculation is needed, and if local adjoint source(s)
-  // are present. If an adjoint calculation is needed and no sources are
-  // specified, we will run a forward calculation first to calculate adjoint
-  // sources for global variance reduction, then perform an adjoint
-  // calculation later.
-  bool adjoint_needed = openmc::FlatSourceDomain::adjoint_;
-  bool fw_adjoint = openmc::model::adjoint_sources.empty() && adjoint_needed;
+  // A run executes a forward solve, an adjoint solve, or both, determined by
+  // two facts from the user input: whether adjoint-flux results were requested,
+  // and whether the user supplied their own adjoint source. A forward solve
+  // runs unless a user-specified adjoint source is present; when both solves
+  // run (FW-CADIS), the forward solve is intermediate and feeds the adjoint
+  // source.
+  const bool want_adjoint = FlatSourceDomain::adjoint_requested_;
+  const bool have_adjoint_source = !model::adjoint_sources.empty();
+  const bool run_forward = !(want_adjoint && have_adjoint_source);
+  const bool run_adjoint = want_adjoint;
 
-  // If we're going to do an adjoint simulation with forward-weighted adjoint
-  // sources afterwards, report that this is the initial forward flux solve.
-  if (!adjoint_needed || fw_adjoint) {
-    // Configure the domain for forward simulation
-    openmc::FlatSourceDomain::adjoint_ = false;
-
-    if (adjoint_needed && openmc::mpi::master)
-      openmc::header("FORWARD FLUX SOLVE", 3);
+  // Configure the first solve so OpenMC initializes in the matching mode.
+  if (!run_forward) {
+    FlatSourceDomain::solve_ = RandomRaySolve::ADJOINT;
+  } else if (run_adjoint) {
+    FlatSourceDomain::solve_ = RandomRaySolve::FORWARD_FOR_ADJOINT;
   } else {
-    // Configure domain for adjoint simulation (later)
-    openmc::FlatSourceDomain::adjoint_ = true;
+    FlatSourceDomain::solve_ = RandomRaySolve::FORWARD;
   }
 
   // Initialize OpenMC general data structures
   openmc_simulation_init();
 
   // Validate that inputs meet requirements for random ray mode
-  if (openmc::mpi::master)
-    openmc::validate_random_ray_inputs();
+  if (mpi::master)
+    validate_random_ray_inputs();
 
   // Initialize Random Ray Simulation Object
-  openmc::RandomRaySimulation sim;
+  RandomRaySimulation sim;
 
-  if (!adjoint_needed || fw_adjoint) {
-    // Initialize fixed sources, if present
+  // Forward solve (final on its own, or intermediate when an adjoint follows).
+  if (run_forward) {
+    if (run_adjoint && mpi::master)
+      header("FORWARD FLUX SOLVE", 3);
     sim.apply_fixed_sources_and_mesh_domains();
-
-    // FW-CADIS forward solve: tag its outputs "forward", skip weight windows.
-    openmc::simulation::adjoint_forward_pass = fw_adjoint;
-
-    // Execute random ray simulation
     sim.simulate();
-
-    openmc::simulation::adjoint_forward_pass = false;
   }
 
-  //////////////////////////////////////////////////////////
-  // Run adjoint simulation (if enabled)
-  //////////////////////////////////////////////////////////
-
-  if (!adjoint_needed) {
-    return;
+  // Adjoint solve.
+  if (run_adjoint) {
+    FlatSourceDomain::solve_ = RandomRaySolve::ADJOINT;
+    sim.prepare_adjoint_simulation(/*from_forward=*/run_forward);
+    sim.simulate();
   }
-
-  // Setup for adjoint simulation
-  sim.prepare_adjoint_simulation(fw_adjoint);
-
-  // Execute random ray simulation
-  sim.simulate();
 }

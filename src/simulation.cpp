@@ -16,6 +16,7 @@
 #include "openmc/particle.h"
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
@@ -204,7 +205,7 @@ int openmc_simulation_finalize()
   // write a weight windows file
   // Skip weight windows for the forward solve of an adjoint (FW-CADIS) run.
   if (variance_reduction::weight_windows_generators.size() > 0 &&
-      !simulation::adjoint_forward_pass) {
+      !FlatSourceDomain::outputs_are_intermediate()) {
     openmc_weight_windows_export();
   }
 
@@ -337,7 +338,6 @@ int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
-bool adjoint_forward_pass {false};
 int ssw_current_file;
 int total_gen {0};
 double total_weight;

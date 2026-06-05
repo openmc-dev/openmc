@@ -22,6 +22,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle_type.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -47,7 +48,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     int w = std::to_string(settings::n_max_batches).size();
 
     // Tag the statepoint "forward" for an adjoint run's forward solve.
-    const char* forward = simulation::adjoint_forward_pass ? "forward." : "";
+    const char* forward =
+      FlatSourceDomain::outputs_are_intermediate() ? "forward." : "";
 
     // Set filename for state point
     filename_ = fmt::format("{0}statepoint.{3}{1:0{2}}.h5",

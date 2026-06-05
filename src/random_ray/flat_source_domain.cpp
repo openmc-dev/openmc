@@ -30,7 +30,8 @@ namespace openmc {
 RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
-bool FlatSourceDomain::adjoint_ {false};
+bool FlatSourceDomain::adjoint_requested_ {false};
+RandomRaySolve FlatSourceDomain::solve_ {RandomRaySolve::FORWARD};
 bool FlatSourceDomain::fw_cadis_local_ {false};
 double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
@@ -556,7 +557,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
   // If we are in adjoint mode of a fixed source problem, the external
   // source is already normalized, such that all resulting fluxes are
   // also normalized.
-  if (adjoint_) {
+  if (adjoint()) {
     return 1.0;
   }
 
@@ -796,7 +797,7 @@ void FlatSourceDomain::output_to_vtk() const
     std::string filename = openmc_plot->path_plot();
 
     // Tag the plot "forward" for an adjoint run's forward solve.
-    if (simulation::adjoint_forward_pass) {
+    if (outputs_are_intermediate()) {
       auto dot = filename.find_last_of('.');
       filename = filename.substr(0, dot) + ".forward" + filename.substr(dot);
     }
@@ -1008,7 +1009,7 @@ void FlatSourceDomain::output_to_vtk() const
 void FlatSourceDomain::apply_external_source_to_source_region(
   int src_idx, SourceRegionHandle& srh)
 {
-  auto s = (adjoint_ && !model::adjoint_sources.empty())
+  auto s = (adjoint() && !model::adjoint_sources.empty())
              ? model::adjoint_sources[src_idx].get()
              : model::external_sources[src_idx].get();
   auto is = dynamic_cast<IndependentSource*>(s);

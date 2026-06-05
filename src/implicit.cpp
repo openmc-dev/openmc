@@ -98,6 +98,10 @@ std::shared_ptr<Implicit> Implicit::from_xml_element(pugi::xml_node node,
     return std::make_shared<implicit::Log>(children[0]);
   if (tag == "abs")
     return std::make_shared<implicit::Abs>(children[0]);
+  if (tag == "max")
+    return std::make_shared<implicit::Max>(children[0], children[1]);
+  if (tag == "min")
+    return std::make_shared<implicit::Min>(children[0], children[1]);
 
   throw std::runtime_error(
     "Implicit::from_xml_element: unknown tag '" + tag + "'.");
@@ -930,6 +934,85 @@ pugi::xml_node Abs::to_xml_element(pugi::xml_node parent,
 {
   auto node = parent.append_child("abs");
   arg_->to_xml_element(node, cache_map);
+  return node;
+}
+
+//==============================================================================
+// Min
+//==============================================================================
+
+std::string Min::expression() const
+{
+  return "Min(" + f_->expression() + ", " + g_->expression() + ")";
+}
+double Min::evaluate(Position r) const
+{
+  return std::min(f_->evaluate(r), g_->evaluate(r));
+}
+Gradient Min::gradient(Position r) const
+{
+  return (f_->evaluate(r) <= g_->evaluate(r)) ? f_->gradient(r)
+                                              : g_->gradient(r);
+}
+double Min::compute_lipschitz(
+  Position r, Direction u, double t0, double t1) const
+{
+  // L(min(f,g)) = max(L_f, L_g)  — same argument as Max by symmetry.
+  return std::max(
+    f_->compute_lipschitz(r, u, t0, t1), g_->compute_lipschitz(r, u, t0, t1));
+}
+std::pair<double, double> Min::compute_f_min_max(
+  Position r, Direction u, double t0, double t1) const
+{
+  auto [f_min, f_max] = f_->compute_f_min_max(r, u, t0, t1);
+  auto [g_min, g_max] = g_->compute_f_min_max(r, u, t0, t1);
+  return {std::min(f_min, g_min), std::min(f_max, g_max)};
+}
+pugi::xml_node Min::to_xml_element(pugi::xml_node parent,
+  std::unordered_map<const Implicit*, int>& cache_map) const
+{
+  auto node = parent.append_child("min");
+  f_->to_xml_element(node, cache_map);
+  g_->to_xml_element(node, cache_map);
+  return node;
+}
+
+//==============================================================================
+// Max
+//==============================================================================
+
+std::string Max::expression() const
+{
+  return "Max(" + f_->expression() + ", " + g_->expression() + ")";
+}
+double Max::evaluate(Position r) const
+{
+  return std::max(f_->evaluate(r), g_->evaluate(r));
+}
+Gradient Max::gradient(Position r) const
+{
+  return (f_->evaluate(r) >= g_->evaluate(r)) ? f_->gradient(r)
+                                              : g_->gradient(r);
+}
+double Max::compute_lipschitz(
+  Position r, Direction u, double t0, double t1) const
+{
+  return std::max(
+    f_->compute_lipschitz(r, u, t0, t1), g_->compute_lipschitz(r, u, t0, t1));
+}
+std::pair<double, double> Max::compute_f_min_max(
+  Position r, Direction u, double t0, double t1) const
+{
+  auto [f_min, f_max] = f_->compute_f_min_max(r, u, t0, t1);
+  auto [g_min, g_max] = g_->compute_f_min_max(r, u, t0, t1);
+  return {std::max(f_min, g_min), std::max(f_max, g_max)};
+}
+pugi::xml_node Max::to_xml_element(pugi::xml_node parent,
+  std::unordered_map<const Implicit*, int>& cache_map) const
+{
+  auto node = parent.append_child("max");
+  f_->to_xml_element(node, cache_map);
+  g_->to_xml_element(node, cache_map);
   return node;
 }
 

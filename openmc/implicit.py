@@ -16,6 +16,16 @@ def _to_function(f: int | float | ImplicitFunction) -> ImplicitFunction:
 # ------------------------------------------------------------------
 
 class ImplicitFunction(ABC):
+    """Abstract base class for nodes in an implicit function expression tree.
+
+    Subclasses represent either terminal values (coordinates, constants) or
+    operations that combine child nodes.  The tree is evaluated by calling
+    :meth:`evaluate` and serialised to XML via :meth:`to_xml_element`.
+
+    Operator overloading allows trees to be built with natural Python syntax::
+
+        f = Sin(2 * X()) * Cos(Z()) + Constant(1.)
+    """
 
     @abstractmethod
     def __repr__(self) -> str: ...
@@ -63,6 +73,8 @@ class ImplicitFunction(ABC):
             "exp":      lambda: Exp(*children),
             "log":      lambda: Log(*children),
             "abs":      lambda: Abs(*children),
+            "max":      lambda: Max(*children),
+            "min":      lambda: Min(*children),
         }
 
         if tag not in dispatch:
@@ -71,7 +83,7 @@ class ImplicitFunction(ABC):
         return dispatch[tag]()
 
     # ------------------------------------------------------------------
-    # Operator overloading — enables natural Python expression syntax
+    # Operator overloading - enables natural Python expression syntax
     # e.g.  Sin(X()) * Cos(Z()) + Constant(1)
     # ------------------------------------------------------------------
 
@@ -117,21 +129,31 @@ class ImplicitFunction(ABC):
 # ---------------------------------------------------------------------------
 
 class X(ImplicitFunction):
+    """The x-coordinate: f(x, y, z) = x."""
     def __repr__(self): return "X"
     def evaluate(self, point): return point[0]
     def to_xml_element(self, _cached=None): return ET.Element("x")
 
 class Y(ImplicitFunction):
+    """The y-coordinate: f(x, y, z) = y."""
     def __repr__(self): return "Y"
     def evaluate(self, point): return point[1]
     def to_xml_element(self, _cached=None): return ET.Element("y")
 
 class Z(ImplicitFunction):
+    """The z-coordinate: f(x, y, z) = z."""
     def __repr__(self): return "Z"
     def evaluate(self, point): return point[2]
     def to_xml_element(self, _cached=None): return ET.Element("z")
 
 class Constant(ImplicitFunction):
+    """A scalar constant: f(x, y, z) = value.
+
+    Parameters
+    ----------
+    value : float
+        The constant value.
+    """
     def __repr__(self): return f"{self.value}"
     def __init__(self, value: float) -> None:
         self.value = float(value)
@@ -146,7 +168,13 @@ class Constant(ImplicitFunction):
 # ---------------------------------------------------------------------------
 
 class Add(ImplicitFunction):
+    """Element-wise sum: f(x, y, z) = f(x,y,z) + g(x,y,z).
 
+    Parameters
+    ----------
+    f, g : ImplicitFunction
+        Operands.
+    """
     def __repr__(self): return f"{self.f} + {self.g}"
     def __init__(self, f:ImplicitFunction, g:ImplicitFunction):
         self.f = f
@@ -160,6 +188,13 @@ class Add(ImplicitFunction):
         return element
 
 class Neg(ImplicitFunction):
+    """Negation: f(x, y, z) = -f(x, y, z).
+
+    Parameters
+    ----------
+    f : ImplicitFunction
+        Operand.
+    """
     def __repr__(self): return f"-{self.f}"
     def __init__(self, f:ImplicitFunction):
         self.f = f
@@ -171,6 +206,13 @@ class Neg(ImplicitFunction):
         return element
 
 class Sub(ImplicitFunction):
+    """Element-wise difference: h(x, y, z) = f(x,y,z) - g(x,y,z).
+
+    Parameters
+    ----------
+    f, g : ImplicitFunction
+        Operands.
+    """
     def __repr__(self): return f"{self.f} - {self.g}"
     def __init__(self, f:ImplicitFunction, g:ImplicitFunction):
         self.f = f
@@ -184,6 +226,18 @@ class Sub(ImplicitFunction):
         return element
 
 class Scale(ImplicitFunction):
+    """Multiplication by a scalar constant: h = scalar * f.
+
+    Prefer this over ``Mul(Constant(k), f)`` when one factor is a plain
+    number - the Lipschitz constant and interval bounds are tighter.
+
+    Parameters
+    ----------
+    f : ImplicitFunction
+        Function to scale.
+    scalar : float
+        Scalar multiplier.
+    """
     def __repr__(self): return f"{self.scalar} * {self.f}"
     def __init__(self, f:ImplicitFunction, scalar: float):
         self.f = f
@@ -197,6 +251,15 @@ class Scale(ImplicitFunction):
         return element
     
 class Mul(ImplicitFunction):
+    """Point-wise product of two functions: h = f * g.
+
+    Use :class:`Scale` instead when one factor is a plain number.
+
+    Parameters
+    ----------
+    f, g : ImplicitFunction
+        Operands.
+    """
     def __repr__(self): return f"{self.f} * {self.g}"
     def __init__(self, f:ImplicitFunction, g:ImplicitFunction):
         self.f = f
@@ -210,6 +273,18 @@ class Mul(ImplicitFunction):
         return element
     
 class Div(ImplicitFunction):
+    """Point-wise quotient: h = f / g.
+
+    Parameters
+    ----------
+    f, g : ImplicitFunction
+        Numerator and denominator.
+
+    Raises
+    ------
+    ValueError
+        If ``g`` evaluates to zero at the query point.
+    """
     def __repr__(self): return f"{self.f} / {self.g}"
     def __init__(self, f:ImplicitFunction, g:ImplicitFunction):
         self.f = f
@@ -227,6 +302,22 @@ class Div(ImplicitFunction):
     
 
 class Pow(ImplicitFunction):
+    """Integer power: h = f ** exp.
+
+    Parameters
+    ----------
+    f : ImplicitFunction
+        Base.
+    exp : int
+        Exponent - must be a strictly positive integer.
+        Use ``Div(Constant(1.), f)`` for exp = -1 and
+        ``Sqrt(f)`` for exp = 0.5.
+
+    Raises
+    ------
+    TypeError
+        If ``exp`` is not a strictly positive integer.
+    """
     def __repr__(self): return f"{self.f} ** {self.exp}"
     def __init__(self, f:ImplicitFunction, exp: int):
         if not isinstance(exp, int) or exp <= 0:
@@ -248,6 +339,13 @@ class Pow(ImplicitFunction):
 # ---------------------------------------------------------------------------
 
 class Sin(ImplicitFunction):
+    """Sine: h(x, y, z) = sin(arg(x, y, z)).
+
+    Parameters
+    ----------
+    arg : ImplicitFunction
+        Argument in radians.
+    """
     def __repr__(self): return f"Sin({self.arg})"
     def __init__(self, arg:ImplicitFunction):
         self.arg = arg
@@ -259,6 +357,13 @@ class Sin(ImplicitFunction):
         return element
 
 class Cos(ImplicitFunction):
+    """Cosine: h(x, y, z) = cos(arg(x, y, z)).
+
+    Parameters
+    ----------
+    arg : ImplicitFunction
+        Argument in radians.
+    """
     def __repr__(self): return f"Cos({self.arg})"
     def __init__(self, arg:ImplicitFunction):
         self.arg = arg
@@ -270,6 +375,18 @@ class Cos(ImplicitFunction):
         return element
     
 class Sqrt(ImplicitFunction):
+    """Square root: h(x, y, z) = sqrt(arg(x, y, z)).
+
+    Parameters
+    ----------
+    arg : ImplicitFunction
+        Argument - must be non-negative at every evaluation point.
+
+    Raises
+    ------
+    ValueError
+        If ``arg`` evaluates to a negative value.
+    """
     def __repr__(self): return f"Sqrt({self.arg})"
     def __init__(self, arg:ImplicitFunction):
         self.arg = arg
@@ -284,6 +401,13 @@ class Sqrt(ImplicitFunction):
         return element
 
 class Exp(ImplicitFunction):
+    """Natural exponential: h(x, y, z) = exp(arg(x, y, z)).
+
+    Parameters
+    ----------
+    arg : ImplicitFunction
+        Exponent.
+    """
     def __repr__(self): return f"Exp({self.arg})"
     def __init__(self, arg:ImplicitFunction):
         self.arg = arg
@@ -295,6 +419,18 @@ class Exp(ImplicitFunction):
         return element
 
 class Log(ImplicitFunction):
+    """Natural logarithm: h(x, y, z) = log(arg(x, y, z)).
+
+    Parameters
+    ----------
+    arg : ImplicitFunction
+        Argument - must be strictly positive at every evaluation point.
+
+    Raises
+    ------
+    ValueError
+        If ``arg`` evaluates to a non-positive value.
+    """
     def __repr__(self): return f"Log({self.arg})"
     def __init__(self, arg:ImplicitFunction):
         self.arg = arg
@@ -309,6 +445,13 @@ class Log(ImplicitFunction):
         return element
 
 class Abs(ImplicitFunction):
+    """Absolute value: h(x, y, z) = |arg(x, y, z)|.
+
+    Parameters
+    ----------
+    arg : ImplicitFunction
+        Argument.
+    """
     def __repr__(self): return f"|{self.arg}|"
     def __init__(self, arg:ImplicitFunction):
         self.arg = arg
@@ -317,6 +460,48 @@ class Abs(ImplicitFunction):
         if _cached is None: _cached = []
         element = ET.Element("abs")
         element.append(self.arg.to_xml_element(_cached))
+        return element
+
+class Min(ImplicitFunction):
+    """Point-wise minimum: h(x,y,z) = min(f(x,y,z), g(x,y,z)).
+
+    Parameters
+    ----------
+    f, g : ImplicitFunction
+        Operands.
+    """
+    def __repr__(self): return f"Min({self.f}, {self.g})"
+    def __init__(self, f: ImplicitFunction, g: ImplicitFunction):
+        self.f = f
+        self.g = g
+    def evaluate(self, point):
+        return np.min((self.f.evaluate(point), self.g.evaluate(point)))
+    def to_xml_element(self, _cached=None):
+        if _cached is None: _cached = []
+        element = ET.Element("min")
+        element.append(self.f.to_xml_element(_cached))
+        element.append(self.g.to_xml_element(_cached))
+        return element
+
+class Max(ImplicitFunction):
+    """Point-wise maximum: h(x,y,z) = max(f(x,y,z), g(x,y,z)).
+
+    Parameters
+    ----------
+    f, g : ImplicitFunction
+        Operands.
+    """
+    def __repr__(self): return f"Max({self.f}, {self.g})"
+    def __init__(self, f:ImplicitFunction, g:ImplicitFunction):
+        self.f = f
+        self.g = g
+    def evaluate(self, point):
+        return np.max((self.f.evaluate(point), self.g.evaluate(point)))
+    def to_xml_element(self, _cached=None):
+        if _cached is None: _cached = []
+        element = ET.Element("max")
+        element.append(self.f.to_xml_element(_cached))
+        element.append(self.g.to_xml_element(_cached))
         return element
 
 # ---------------------------------------------------------------------------
@@ -329,14 +514,14 @@ class Cached(ImplicitFunction):
 
     The Python object identity (id()) is used to detect shared nodes during
     XML serialisation. This means the SAME Python object must be reused
-    wherever you want sharing to occur — do NOT construct a new Cached()
+    wherever you want sharing to occur - do NOT construct a new Cached()
     at each use site.
 
-    Correct — one object, two references:
+    Correct - one object, two references:
         cx = Cached(2 * np.pi * X())
         f  = Sin(cx) * Cos(cx)          # cx serialised once as <to_cache>
 
-    Wrong — two objects, same expression:
+    Wrong - two objects, same expression:
         f  = Sin(Cached(2 * np.pi * X())) * Cos(Cached(2 * np.pi * X()))
     """
     def __repr__(self): return f"@[{self.f}]"

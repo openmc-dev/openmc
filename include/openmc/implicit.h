@@ -429,6 +429,44 @@ private:
   std::shared_ptr<Implicit> arg_;
 };
 
+class Min final : public Implicit {
+public:
+  explicit Min(std::shared_ptr<Implicit> f, std::shared_ptr<Implicit> g)
+    : f_(std::move(f)), g_(std::move(g))
+  {}
+  std::string expression() const override;
+  double evaluate(Position r) const override;
+  Gradient gradient(Position r) const override;
+  double compute_lipschitz(
+    Position r, Direction u, double t0, double t1) const override;
+  std::pair<double, double> compute_f_min_max(
+    Position r, Direction u, double t0, double t1) const override;
+  pugi::xml_node to_xml_element(pugi::xml_node parent,
+    std::unordered_map<const Implicit*, int>& cache_map) const override;
+
+private:
+  std::shared_ptr<Implicit> f_, g_;
+};
+
+class Max final : public Implicit {
+public:
+  explicit Max(std::shared_ptr<Implicit> f, std::shared_ptr<Implicit> g)
+    : f_(std::move(f)), g_(std::move(g))
+  {}
+  std::string expression() const override;
+  double evaluate(Position r) const override;
+  Gradient gradient(Position r) const override;
+  double compute_lipschitz(
+    Position r, Direction u, double t0, double t1) const override;
+  std::pair<double, double> compute_f_min_max(
+    Position r, Direction u, double t0, double t1) const override;
+  pugi::xml_node to_xml_element(pugi::xml_node parent,
+    std::unordered_map<const Implicit*, int>& cache_map) const override;
+
+private:
+  std::shared_ptr<Implicit> f_, g_;
+};
+
 // ============================================================================
 // Cached node
 //

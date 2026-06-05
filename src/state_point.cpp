@@ -47,7 +47,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Determine width for zero padding
     int w = std::to_string(settings::n_max_batches).size();
 
-    // Tag the statepoint "forward" for an adjoint run's forward solve.
+    // Tag statepoints written during the forward solve of an adjoint run
     const char* forward =
       FlatSourceDomain::outputs_are_intermediate() ? "forward." : "";
 

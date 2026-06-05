@@ -82,11 +82,13 @@ public:
   int64_t lookup_mesh_bin(int64_t sr, Position r) const;
   int lookup_mesh_idx(int64_t sr) const;
 
-  // True when the current solve is the adjoint solve (drives adjoint physics).
+  // True while the adjoint solve is executing
   static bool adjoint() { return solve_ == RandomRaySolve::ADJOINT; }
 
-  // True when the current solve's output is intermediate -- the forward solve
-  // of a FW-CADIS run -- so its files are tagged "forward".
+  // True while the initial forward solve of an adjoint (FW-CADIS) run is
+  // executing. Output files written by this solve are tagged "forward" so that
+  // the subsequent adjoint solve does not overwrite them, and no weight window
+  // file is written.
   static bool outputs_are_intermediate()
   {
     return solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT;
@@ -95,11 +97,9 @@ public:
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
-  // Whether the user requested adjoint-flux results (run-level config, set from
-  // input); distinct from the per-solve mode tracked by solve_.
+  // If the user wants outputs based on the adjoint flux
   static bool adjoint_requested_;
-
-  // The solve currently being executed, set as each solve begins.
+  // The solve currently being executed
   static RandomRaySolve solve_;
   static bool fw_cadis_local_;
   static double

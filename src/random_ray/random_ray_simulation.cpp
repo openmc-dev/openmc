@@ -685,7 +685,7 @@ void openmc_run_random_ray()
   const bool have_adjoint_source = !model::adjoint_sources.empty();
   const bool run_forward = !(run_adjoint && have_adjoint_source);
 
-  // Configure the first solve so OpenMC initializes in the matching mode.
+  // Set the initial solve type
   if (!run_forward) {
     FlatSourceDomain::solve_ = RandomRaySolve::ADJOINT;
   } else if (run_adjoint) {
@@ -704,15 +704,16 @@ void openmc_run_random_ray()
   // Initialize Random Ray Simulation Object
   RandomRaySimulation sim;
 
-  // Forward solve (final on its own, or intermediate when an adjoint follows).
+  // Run the forward solve
   if (run_forward) {
+    // When an adjoint solve follows, report this as the initial forward solve
     if (run_adjoint && mpi::master)
       header("FORWARD FLUX SOLVE", 3);
     sim.apply_fixed_sources_and_mesh_domains();
     sim.simulate();
   }
 
-  // Adjoint solve.
+  // Run the adjoint solve
   if (run_adjoint) {
     FlatSourceDomain::solve_ = RandomRaySolve::ADJOINT;
     sim.prepare_adjoint_simulation(/*from_forward=*/run_forward);

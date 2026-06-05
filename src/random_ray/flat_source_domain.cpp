@@ -796,7 +796,7 @@ void FlatSourceDomain::output_to_vtk() const
     double z_delta = width.z / Nz;
     std::string filename = openmc_plot->path_plot();
 
-    // Tag the plot "forward" for an adjoint run's forward solve.
+    // Tag plots written during the forward solve of an adjoint run
     if (outputs_are_intermediate()) {
       auto dot = filename.find_last_of('.');
       filename = filename.substr(0, dot) + ".forward" + filename.substr(dot);

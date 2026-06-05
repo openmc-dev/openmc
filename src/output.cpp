@@ -621,7 +621,7 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
-  // Tag the tallies file "forward" for an adjoint run's forward solve.
+  // Tag tallies.out written during the forward solve of an adjoint run
   const char* forward =
     FlatSourceDomain::outputs_are_intermediate() ? "forward." : "";
 

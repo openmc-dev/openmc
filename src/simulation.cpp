@@ -201,9 +201,10 @@ int openmc_simulation_finalize()
   if (settings::output_tallies && mpi::master)
     write_tallies();
 
-  // If weight window generators are present in this simulation,
-  // write a weight windows file
-  // Skip weight windows for the forward solve of an adjoint (FW-CADIS) run.
+  // If weight window generators are present in this simulation, write a
+  // weight windows file. This is skipped during the forward solve of an
+  // adjoint (FW-CADIS) run, where only the adjoint-derived weight windows
+  // are meaningful.
   if (variance_reduction::weight_windows_generators.size() > 0 &&
       !FlatSourceDomain::outputs_are_intermediate()) {
     openmc_weight_windows_export();

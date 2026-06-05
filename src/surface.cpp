@@ -1184,7 +1184,7 @@ SurfaceImplicit::SurfaceImplicit(pugi::xml_node surf_node) : Surface(surf_node)
     fatal_error(fmt::format("Surface {} missing <function> element.", id_));
   function_ = Implicit::from_xml_element(func_node.first_child());
   solver_ = ImplicitSolver::create(settings::implicit_solver,
-    settings::implicit_max_iter, settings::implicit_atol,
+    settings::implicit_maxiter, settings::implicit_atol,
     settings::implicit_ftol);
 }
 void SurfaceImplicit::to_hdf5_inner(hid_t group_id) const

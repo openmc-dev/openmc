@@ -982,10 +982,39 @@ std::pair<double, int32_t> Region::distance(
 
   // Finite region check
   if (!implicit_tokens.empty() && min_dist == INFTY) {
-    fatal_error(
-      "An implicit surface belongs to a region with no finite analytical "
-      "boundary. Implicit surfaces must be enclosed in a finite region "
-      "defined by standard surfaces (planes, spheres, cylinders, etc.).");
+    // Ensure we are actually in the region: False errors sometimes comes with
+    // SolidRayTracing
+    bool isInCell = true;
+    for (int32_t token : expression_) {
+      if (token >= OP_UNION)
+        continue;
+      Surface* surf = model::surfaces[std::abs(token) - 1].get();
+      if (surf->geom_type() != GeometryType::CSG)
+        continue;
+
+      double f = surf->evaluate(r);
+      bool in_halfspace = (token < 0) ? (f < 0.) : (f > 0.);
+      if (!in_halfspace) {
+        isInCell = false;
+        break;
+      }
+    }
+    // If we are actually in the region: throw error, if not, return min dist.
+    if (isInCell) {
+      fatal_error(
+        "An implicit surface belongs to a region with no finite analytical "
+        "boundary. Implicit surfaces must be enclosed in a finite region "
+        "defined by standard surfaces (planes, spheres, cylinders, etc.)."
+        "r=(" +
+        std::to_string(r.x) + ", " + std::to_string(r.y) + ", " +
+        std::to_string(r.z) +
+        ")"
+        "u=(" +
+        std::to_string(u.x) + ", " + std::to_string(u.y) + ", " +
+        std::to_string(u.z) + ")");
+    } else {
+      return {min_dist, i_surf};
+    }
   }
 
   // Implicit surfaces treatment

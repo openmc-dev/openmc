@@ -3,6 +3,22 @@ This branch aims to develop a framework to create any surface defined by an impl
 
 Developer cross sections : https://anl.box.com/shared/static/teaup95cqv8s9nn56hfn7ku8mmelr95p.xz
 
+## Quick install
+
+```sh
+conda create -n openmc-IF compilers=1.9.0 cmake hdf5 python libpng
+git clone --recurse-submodules git@github.inl.gov:paul-ferney/openmc-dev.git
+cd openmc
+git checkout ImplicitFunction
+mkdir build
+cd build
+cmake -DOPENMC_ENABLE_STRICT_FP=on -DOPENMC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/home/fernpa/miniforge/envs/openmc-IF/ ..
+make -j 12
+make install
+cd ..
+python -m pip install .[test]
+```
+
 # OpenMC Monte Carlo Particle Transport Code
 
 [![License](https://img.shields.io/badge/license-MIT-green)](https://docs.openmc.org/en/latest/license.html)

@@ -36,6 +36,7 @@ struct CacheEntry {
   Position pos {};
   double val {0.0};
   Gradient grad {0.0, 0.0, 0.0};
+  bool grad_valid {false};
 };
 
 struct StepCache {

@@ -155,7 +155,7 @@ double weight_cutoff {0.25};
 double weight_survive {1.0};
 
 // implicit surface
-int implicit_max_iter {1000000};
+int implicit_maxiter {1000000};
 std::string implicit_solver {"fast"};
 double implicit_atol {1.e-8};
 double implicit_ftol {1.e-7};
@@ -1352,8 +1352,8 @@ void read_settings_xml(pugi::xml_node root)
   // Implicit surfaces settings
   if (check_for_node(root, "implicit")) {
     xml_node implicit_node = root.child("implicit");
-    if (check_for_node(implicit_node, "max_iter")) {
-      implicit_max_iter = std::stoi(get_node_value(implicit_node, "max_iter"));
+    if (check_for_node(implicit_node, "maxiter")) {
+      implicit_maxiter = std::stoi(get_node_value(implicit_node, "maxiter"));
     }
     if (check_for_node(implicit_node, "name")) {
       implicit_solver = get_node_value(implicit_node, "name");

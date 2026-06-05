@@ -944,7 +944,7 @@ void Cached::refresh(Position r) const
   if (entry.epoch != step_cache.epoch || r.x != entry.pos.x ||
       r.y != entry.pos.y || r.z != entry.pos.z) {
     entry.val = child_->evaluate(r);
-    entry.grad = child_->gradient(r);
+    entry.grad_valid = false; // gradient invalidated, computed on demand
     entry.epoch = step_cache.epoch;
     entry.pos = r;
   }
@@ -961,7 +961,12 @@ double Cached::evaluate(Position r) const
 Gradient Cached::gradient(Position r) const
 {
   refresh(r);
-  return step_cache.node_cache.at(this).grad;
+  auto& entry = step_cache.node_cache.at(this);
+  if (!entry.grad_valid) {
+    entry.grad = child_->gradient(r); // only computed when needed
+    entry.grad_valid = true;
+  }
+  return entry.grad;
 }
 double Cached::compute_lipschitz(
   Position r, Direction u, double t0, double t1) const

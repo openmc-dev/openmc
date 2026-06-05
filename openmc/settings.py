@@ -1513,6 +1513,7 @@ class Settings:
                 cv.check_greater_than('ftol', value, 0.0)
             elif key == 'name':
                 cv.check_type('name', value, str)
+                cv.check_value('name', value, ['fast', 'naive'])
             elif key == 'margin':
                 cv.check_type('margin', value, Real)
                 cv.check_greater_than('margin', value, 0.0, True)
@@ -2602,14 +2603,10 @@ class Settings:
         elem = root.find('implicit')
         if elem is not None:
             self.implicit = {}
-
-        elem = root.find('implicit')
-        if elem is not None:
-            self.implicit = {}
             for child in elem:
                 if child.tag in ('atol', 'ftol', 'margin'):
                     self.implicit[child.tag] = float(child.text)
-                elif child.tag == 'max_iter':
+                elif child.tag == 'maxiter':
                     self.implicit[child.tag] = int(child.text)
                 elif child.tag == 'name':
                     self.implicit[child.tag] = str(child.text)

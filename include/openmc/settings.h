@@ -205,7 +205,7 @@ extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
 
 // implicit solvers
-extern int implicit_max_iter;
+extern int implicit_maxiter;
 extern std::string implicit_solver;
 extern double implicit_atol;
 extern double implicit_ftol;

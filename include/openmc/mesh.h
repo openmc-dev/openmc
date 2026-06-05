@@ -202,13 +202,13 @@ public:
   //
   //! \param[in] r0 Previous position
   //! \param[in] r1 Current position
-  //! \param[out] outward_surface_ids Outward surface bins that were crossed
-  //! \param[out] inward_surface_ids Inward surface bins that were crossed
+  //! \param[out] leaving_surface_ids Surface bins that were left
+  //! \param[out] entering_surface_ids Surface bins that were entered
   //! \param[out] bins Bins that were crossed
-  //! \param[out] segment_length Fraction of tracklength in each bin
+  //! \param[out] length_fractions Fraction of tracklength in each bin
   virtual void bins_and_surface_bins_crossed(Position r0, Position r1,
-    vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
-    vector<int>& bins, vector<double>& segment_lengths) const
+    vector<int>& leaving_surface_ids, vector<int>& entering_surface_ids,
+    vector<int>& bins, vector<double>& length_fractions) const
   {
     fatal_error("Not implemented.");
   }
@@ -438,8 +438,8 @@ public:
     vector<int>& bins) const override;
 
   void bins_and_surface_bins_crossed(Position r0, Position r1,
-    vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
-    vector<int>& bins, vector<double>& segment_lengths) const override;
+    vector<int>& leaving_surface_ids, vector<int>& entering_surface_ids,
+    vector<int>& bins, vector<double>& length_fractions) const override;
 
   double distance_to_next_boundary(
     int current_bin, Position r, Direction u, int& bin_next) const override;

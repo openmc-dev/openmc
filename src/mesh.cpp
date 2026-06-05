@@ -1358,8 +1358,8 @@ void StructuredMesh::surface_bins_crossed(
 }
 
 void StructuredMesh::bins_and_surface_bins_crossed(Position r0, Position r1,
-  vector<int>& outward_surface_ids, vector<int>& inward_surface_ids,
-  vector<int>& bins, vector<double>& segment_lengths) const
+  vector<int>& leaving_surface_ids, vector<int>& entering_surface_ids,
+  vector<int>& bins, vector<double>& length_fractions) const
 {
   // TODO: can reconstruct bins and surface_ids instead of explicitly tracking
   // them
@@ -1367,10 +1367,11 @@ void StructuredMesh::bins_and_surface_bins_crossed(Position r0, Position r1,
   // Helper tally class.
   struct CompleteAggregator {
     CompleteAggregator(const StructuredMesh* _mesh,
-      vector<int>& _outward_surface_ids, vector<int>& _inward_surface_ids,
-      vector<int>& _bins, vector<double>& _lengths)
-      : mesh(_mesh), outward_surface_ids(_outward_surface_ids),
-        inward_surface_ids(_inward_surface_ids), bins(_bins), lengths(_lengths)
+      vector<int>& _leaving_surface_ids, vector<int>& _entering_surface_ids,
+      vector<int>& _bins, vector<double>& _length_fractions)
+      : mesh(_mesh), leaving_surface_ids(_leaving_surface_ids),
+        entering_surface_ids(_entering_surface_ids), bins(_bins),
+        length_fractions(_length_fractions)
     {}
     // Returns surface ID without the inward information
     // This is different from the other representation with the inward
@@ -1383,22 +1384,22 @@ void StructuredMesh::bins_and_surface_bins_crossed(Position r0, Position r1,
         surface_id += 1;
 
       if (inward) {
-        inward_surface_ids.push_back(surface_id);
+        entering_surface_ids.push_back(surface_id);
       } else {
-        outward_surface_ids.push_back(surface_id);
+        leaving_surface_ids.push_back(surface_id);
       }
     }
     void track(const MeshIndex& ijk, double l) const
     {
       bins.push_back(mesh->get_bin_from_indices(ijk));
-      lengths.push_back(l);
+      length_fractions.push_back(l);
     }
 
     const StructuredMesh* mesh;
-    vector<int>& outward_surface_ids;
-    vector<int>& inward_surface_ids;
+    vector<int>& leaving_surface_ids;
+    vector<int>& entering_surface_ids;
     vector<int>& bins;
-    vector<double>& lengths;
+    vector<double>& length_fractions;
   };
 
   // Determine direction
@@ -1407,7 +1408,7 @@ void StructuredMesh::bins_and_surface_bins_crossed(Position r0, Position r1,
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u,
     CompleteAggregator(
-      this, outward_surface_ids, inward_surface_ids, bins, segment_lengths));
+      this, leaving_surface_ids, entering_surface_ids, bins, length_fractions));
 }
 
 double StructuredMesh::distance_to_next_boundary(

@@ -408,6 +408,21 @@ TEST_CASE_METHOD(RectilinearMeshFixture, "Test distance_to_next_boundary()")
   REQUIRE(next_bin == -1);
 }
 
+TEST_CASE_METHOD(RegularMeshFixture, "Test normalize_coordinates()")
+{
+  // r inside bin
+  REQUIRE_THAT(mesh.normalize_coordinates(Position(-0.5, -0.5, -0.5), 0),
+    EqualsPosition(Position(0.5, 0.5, 0.5), 1.0e-10));
+  REQUIRE_THAT(mesh.normalize_coordinates(Position(-0.1, -0.7, -0.2), 0),
+    EqualsPosition(Position(0.9, 0.3, 0.8), 1.0e-10));
+
+  // r outside bin
+  REQUIRE_THAT(mesh.normalize_coordinates(Position(0.5, -0.5, -0.5), 0),
+    EqualsPosition(Position(1.0, 0.5, 0.5), 1.0e-10));
+  REQUIRE_THAT(mesh.normalize_coordinates(Position(-0.5, -0.5, -0.5), 1),
+    EqualsPosition(Position(0.0, 0.5, 0.5), 1.0e-10));
+}
+
 TEST_CASE_METHOD(RegularMeshFixture, "Test face_area()")
 {
   REQUIRE(mesh.face_area(0) == 1.0);

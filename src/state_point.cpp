@@ -46,9 +46,12 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Determine width for zero padding
     int w = std::to_string(settings::n_max_batches).size();
 
+    // Tag the statepoint "forward" for an adjoint run's forward solve.
+    const char* forward = simulation::adjoint_forward_pass ? "forward." : "";
+
     // Set filename for state point
-    filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5", settings::path_output,
-      simulation::current_batch, w);
+    filename_ = fmt::format("{0}statepoint.{3}{1:0{2}}.h5",
+      settings::path_output, simulation::current_batch, w, forward);
   }
 
   // If a file name was specified, ensure it has .h5 file extension

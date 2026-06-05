@@ -143,7 +143,8 @@ class TestHarness:
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""
         output = glob.glob('statepoint.*.h5')
-        output += ['tallies.out', 'results_test.dat', 'summary.h5']
+        output += ['tallies.out', 'tallies.forward.out']
+        output += ['results_test.dat', 'summary.h5']
         output += glob.glob('volume_*.h5')
         for f in output:
             if os.path.exists(f):

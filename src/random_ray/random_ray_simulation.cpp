@@ -291,6 +291,7 @@ void openmc_finalize_random_ray()
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
   FlatSourceDomain::adjoint_ = false;
   FlatSourceDomain::fw_cadis_local_ = false;
+  simulation::adjoint_forward_pass = false;
   FlatSourceDomain::fw_cadis_local_targets_.clear();
   FlatSourceDomain::mesh_domain_map_.clear();
   RandomRay::ray_source_.reset();
@@ -714,8 +715,13 @@ void openmc_run_random_ray()
     // Initialize fixed sources, if present
     sim.apply_fixed_sources_and_mesh_domains();
 
+    // FW-CADIS forward solve: tag its outputs "forward", skip weight windows.
+    openmc::simulation::adjoint_forward_pass = fw_adjoint;
+
     // Execute random ray simulation
     sim.simulate();
+
+    openmc::simulation::adjoint_forward_pass = false;
   }
 
   //////////////////////////////////////////////////////////

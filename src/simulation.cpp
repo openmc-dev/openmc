@@ -202,7 +202,9 @@ int openmc_simulation_finalize()
 
   // If weight window generators are present in this simulation,
   // write a weight windows file
-  if (variance_reduction::weight_windows_generators.size() > 0) {
+  // Skip weight windows for the forward solve of an adjoint (FW-CADIS) run.
+  if (variance_reduction::weight_windows_generators.size() > 0 &&
+      !simulation::adjoint_forward_pass) {
     openmc_weight_windows_export();
   }
 
@@ -335,6 +337,7 @@ int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
+bool adjoint_forward_pass {false};
 int ssw_current_file;
 int total_gen {0};
 double total_weight;

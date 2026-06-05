@@ -1105,10 +1105,15 @@ external source is present in the problem. Simulation settings (e.g., number of
 rays, batches, etc.) will be identical for both calculations. At the 
 conclusion of the run, all results (e.g., tallies, plots, etc.) will be 
 derived from the adjoint flux rather than the forward flux but are not labeled 
-any differently. The initial forward flux solution will not be stored or 
-available in the final statepoint file. Those wishing to do analysis requiring 
-both the forward and adjoint solutions will need to run two separate 
-simulations and load both statepoint files.
+any differently. When an initial forward solve is performed (i.e., when no
+user-specified adjoint source is present), its output files are also written to
+disk with a ``forward`` infix, so they are not overwritten by the subsequent
+adjoint solve. This applies to the statepoint, ``tallies.out``, and any voxel
+plots, e.g. ``statepoint.forward.N.h5`` and ``tallies.forward.out``; the adjoint
+solve keeps the usual file names. This allows analyses requiring both the
+forward and adjoint solutions to be performed from a single run. When
+generating FW-CADIS weight windows, no weight window file is written for the
+forward solve, as only the final adjoint-derived weight windows are meaningful.
 
 .. note::
     Use of the automated 

@@ -621,8 +621,12 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
+  // Tag the tallies file "forward" for an adjoint run's forward solve.
+  const char* forward = simulation::adjoint_forward_pass ? "forward." : "";
+
   // Set filename for tallies_out
-  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+  std::string filename =
+    fmt::format("{}tallies.{}out", settings::path_output, forward);
 
   // Open the tallies.out file.
   std::ofstream tallies_out;

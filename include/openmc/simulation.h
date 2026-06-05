@@ -43,6 +43,10 @@ extern "C" int total_gen;          //!< total number of generations simulated
 extern double total_weight;        //!< Total source weight in a batch
 extern int64_t work_per_rank;      //!< number of particles per MPI rank
 
+//! True during a random ray adjoint run's initial forward solve: its output
+//! files are tagged "forward" and weight windows are not written.
+extern bool adjoint_forward_pass;
+
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 

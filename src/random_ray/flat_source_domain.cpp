@@ -795,6 +795,12 @@ void FlatSourceDomain::output_to_vtk() const
     double z_delta = width.z / Nz;
     std::string filename = openmc_plot->path_plot();
 
+    // Tag the plot "forward" for an adjoint run's forward solve.
+    if (simulation::adjoint_forward_pass) {
+      auto dot = filename.find_last_of('.');
+      filename = filename.substr(0, dot) + ".forward" + filename.substr(dot);
+    }
+
     // Perform sanity checks on file size
     uint64_t bytes = Nx * Ny * Nz * (negroups_ + 1 + 1 + 1) * sizeof(float);
     write_message(5, "Processing plot {}: {}... (Estimated size is {} MB)",

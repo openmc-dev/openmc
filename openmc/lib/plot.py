@@ -52,8 +52,8 @@ class _Position(Structure):
         return f"({self.x}, {self.y}, {self.z})"
 
 
-def _extract_slice_plot_args(plot):
-    """Convert a legacy plot-like object into slice_plot keyword arguments."""
+def _extract_slice_data_args(plot):
+    """Convert a legacy plot-like object into slice_data keyword arguments."""
     try:
         kwargs = {
             'origin': tuple(plot.origin),
@@ -71,7 +71,7 @@ def _extract_slice_plot_args(plot):
     return kwargs
 
 
-_dll.openmc_slice_plot.argtypes = [
+_dll.openmc_slice_data.argtypes = [
     POINTER(c_double * 3),   # origin
     POINTER(c_double * 3),   # u_span
     POINTER(c_double * 3),   # v_span
@@ -82,11 +82,11 @@ _dll.openmc_slice_plot.argtypes = [
     POINTER(c_int32),        # geom_data
     POINTER(c_double),       # property_data (can be None)
 ]
-_dll.openmc_slice_plot.restype = c_int
-_dll.openmc_slice_plot.errcheck = _error_handler
+_dll.openmc_slice_data.restype = c_int
+_dll.openmc_slice_data.errcheck = _error_handler
 
 
-def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
+def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
                 pixels=None, color_overlaps=False, level=-1, filter=None,
                 include_properties=True):
     """Generate a 2D raster of geometry and property data for plotting.
@@ -205,7 +205,7 @@ def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
         property_data = None
         prop_ptr = None
 
-    _dll.openmc_slice_plot(
+    _dll.openmc_slice_data(
         origin_arr,
         u_span_arr,
         v_span_arr,
@@ -224,16 +224,16 @@ def id_map(plot):
     """Deprecated compatibility wrapper for geometry ID maps.
 
     This function is kept for compatibility and will be removed in a future
-    release. Use `slice_plot(..., include_properties=False)` instead.
+    release. Use `slice_data(..., include_properties=False)` instead.
     """
     warnings.warn(
         "openmc.lib.id_map is deprecated and will be removed in a future "
-        "release; use openmc.lib.slice_plot(..., include_properties=False).",
+        "release; use openmc.lib.slice_data(..., include_properties=False).",
         FutureWarning,
     )
 
-    kwargs = _extract_slice_plot_args(plot)
-    geom_data, _ = slice_plot(include_properties=False, **kwargs)
+    kwargs = _extract_slice_data_args(plot)
+    geom_data, _ = slice_data(include_properties=False, **kwargs)
     return geom_data[:, :, :3]
 
 
@@ -241,17 +241,17 @@ def property_map(plot):
     """Deprecated compatibility wrapper for temperature/density maps.
 
     This function is kept for compatibility and will be removed in a future
-    release. Use `slice_plot(..., include_properties=True)` instead.
+    release. Use `slice_data(..., include_properties=True)` instead.
     """
     warnings.warn(
         "openmc.lib.property_map is deprecated and will be removed in a "
-        "future release; use openmc.lib.slice_plot(..., "
+        "future release; use openmc.lib.slice_data(..., "
         "include_properties=True).",
         FutureWarning,
     )
 
-    kwargs = _extract_slice_plot_args(plot)
-    _, prop_data = slice_plot(include_properties=True, **kwargs)
+    kwargs = _extract_slice_data_args(plot)
+    _, prop_data = slice_data(include_properties=True, **kwargs)
     return prop_data
 
 

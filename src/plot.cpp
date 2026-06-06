@@ -1899,7 +1899,7 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
   static bool warned {false};
   if (!warned) {
     warning("openmc_id_map is deprecated and will be removed in a future "
-            "release. Use openmc_slice_plot.");
+            "release. Use openmc_slice_data.");
     warned = true;
   }
 
@@ -1926,7 +1926,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
   static bool warned {false};
   if (!warned) {
     warning("openmc_property_map is deprecated and will be removed in a future "
-            "release. Use openmc_slice_plot.");
+            "release. Use openmc_slice_data.");
     warned = true;
   }
 
@@ -1948,7 +1948,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
   return 0;
 }
 
-extern "C" int openmc_slice_plot(const double origin[3], const double u_span[3],
+extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
   const double v_span[3], const size_t pixels[2], bool color_overlaps,
   int level, int32_t filter_index, int32_t* geom_data, double* property_data)
 {

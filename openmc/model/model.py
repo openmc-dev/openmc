@@ -1125,7 +1125,7 @@ class Model:
             array contains cell IDs, cell instances, and material IDs (in that
             order).
         """
-        ids, _ = self.slice_plot(
+        ids, _ = self.slice_data(
             origin=origin,
             width=width,
             pixels=pixels,
@@ -1137,7 +1137,7 @@ class Model:
         )
         return ids
 
-    def slice_plot(
+    def slice_data(
         self,
         origin: Sequence[float] | None = None,
         width: Sequence[float] | None = None,
@@ -1248,7 +1248,7 @@ class Model:
                 openmc.Tally.next_id = next_id
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            geom_data, property_data = openmc.lib.slice_plot(
+            geom_data, property_data = openmc.lib.slice_data(
                 origin=origin,
                 width=width,
                 basis=basis,
@@ -1334,7 +1334,7 @@ class Model:
                 break
 
         # Get plot IDs from the C API
-        id_map, _ = self.slice_plot(
+        id_map, _ = self.slice_data(
             origin=origin,
             width=width,
             pixels=pixels,

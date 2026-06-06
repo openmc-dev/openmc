@@ -445,7 +445,7 @@ class Log(ImplicitFunction):
         return element
 
 class Abs(ImplicitFunction):
-    """Absolute value: h(x, y, z) = |arg(x, y, z)|.
+    """Absolute value: h(x, y, z) = Abs(arg(x, y, z)).
 
     Parameters
     ----------

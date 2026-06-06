@@ -45,6 +45,7 @@ or class.
    model
    examples
    deplete
+   implicit
    mgxs
    stats
    data

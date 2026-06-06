@@ -2754,9 +2754,170 @@ class ImplicitSurface(Surface):
     @staticmethod
     def from_hdf5(group):
         return Surface.from_hdf5(group)
+"""An implicit surface defined by a user-specified function f(x, y, z) = c.
+
+    The surface is the set of points where ``function(R @ (r - r0)) = isovalue``,
+    where ``r0 = (x0, y0, z0)`` is the translation vector and ``R`` is the
+    3x3 rotation matrix encoded by coefficients ``a`` through ``i``.
+
+    Unlike algebraic surfaces (planes, spheres, quadrics), the function is an
+    arbitrary smooth expression built from :mod:`openmc.implicit` nodes and
+    evaluated at runtime by the C++ NaiveLipschitz or FastLipschitz solver.
+    This makes ImplicitSurface suitable for TPMS geometries (gyroid, Schwartz-P,
+    diamond) and any other smooth level-set surface.
+
+    Parameters
+    ----------
+    function : ImplicitFunction
+        Expression tree representing f(x, y, z).  Built from nodes in
+        :mod:`openmc.implicit` (``X()``, ``Sin``, ``Cos``, etc.).
+    isovalue : float, optional
+        Level-set value c such that the surface is f = c.  Defaults to 0.
+    x0, y0, z0 : float, optional
+        Translation of the surface origin in world coordinates.  Defaults to 0.
+    a, b, c, d, e, f, g, h, i : float, optional
+        Coefficients of the 3x3 rotation matrix R, stored row-major::
+
+            R = [[a, b, c],
+                 [d, e, f],
+                 [g, h, i]]
+
+        Must form a valid rotation matrix (orthogonal, det = +1).
+        Defaults to the identity matrix.
+    boundary_type : str, optional
+        Must be ``'transmission'`` (the only supported boundary condition).
+    surface_id : int, optional
+        Unique identifier.  Assigned automatically if not specified.
+    name : str, optional
+        Human-readable label.
+
+    Raises
+    ------
+    ValueError
+        If ``boundary_type`` is not ``'transmission'``.
+    ValueError
+        If the a-i coefficients do not form a valid rotation matrix.
+    TypeError
+        If ``function`` is not an :class:`~openmc.implicit.ImplicitFunction`.
+
+    Notes
+    -----
+    **Finite region requirement.** The C++ solver computes the distance to the
+    implicit surface using the distance to surrounding analytical surfaces as an
+    upper bound.  Every cell containing an ImplicitSurface must therefore also
+    reference at least one finite analytical surface (plane, sphere, cylinder,
+    etc.) so that ``Region::distance`` can establish a bound for the solver.
+    A fatal error is raised at runtime if this condition is not met.
+
+    **Caching.** Sub-expressions that appear more than once should be wrapped
+    in :class:`~openmc.implicit.Cached` to avoid redundant evaluations in the
+    C++ solver.  See the :class:`~openmc.implicit.Cached` docstring for the
+    correct usage pattern.
+
+    **Transform convention.** The surface evaluates the function in local
+    coordinates ``r_local = R @ (r - r0)``.  Translating by ``v`` adds ``v``
+    to ``r0``.  Rotating by ``Rmat`` updates ``R ← R @ Rmat^T`` and
+    ``r0 ← Rmat @ r0``.
+
+    Examples
+    --------
+    A sphere of radius 5 defined implicitly:
+
+    >>> from openmc.implicit import X, Y, Z
+    >>> func = X()**2 + Y()**2 + Z()**2
+    >>> sphere = ImplicitSurface(function=func, isovalue=25.)
+
+    A Schwartz-P TPMS with pitch 1 cm:
+
+    >>> from openmc.surface import TPMS
+    >>> tpms = TPMS.from_pitch_isovalue('primitive', pitch=1.0, isovalue=0.)
+    """
 
 class TPMS(ImplicitSurface):
+    """A Triply Periodic Minimal Surface (TPMS) implicit surface.
 
+    Convenience subclass of :class:`ImplicitSurface` that constructs the
+    expression tree for common TPMS families from a pitch length and isovalue.
+    The resulting surface is periodic in all three Cartesian directions with
+    the given pitch.
+
+    Do not instantiate directly — use the factory method
+    :meth:`from_pitch_isovalue`.
+
+    Notes
+    -----
+    TPMS geometries are widely used in nuclear fuel design for their high
+    surface-area-to-volume ratio, mechanical isotropy, and tuneable porosity.
+    The isovalue controls the volume fraction: at isovalue = 0 the surface
+    divides space into two equal-volume phases; positive values shift the
+    balance toward the positive half-space.
+
+    The gyroid and diamond expressions use :class:`~openmc.implicit.Cached`
+    nodes for the scaled coordinates ``2π x / pitch``, ``2π y / pitch``,
+    ``2π z / pitch``, since each appears in two trigonometric sub-expressions.
+
+    Examples
+    --------
+    >>> gyroid  = TPMS.from_pitch_isovalue('gyroid',    pitch=1.0, isovalue=0.)
+    >>> prim    = TPMS.from_pitch_isovalue('primitive', pitch=0.5, isovalue=0.3)
+    >>> diamond = TPMS.from_pitch_isovalue('diamond',   pitch=1.0, isovalue=0.,
+    ...                                    surface_id=5)
+    """
+
+    @classmethod
+    def from_pitch_isovalue(cls, tpms: str, pitch: float, isovalue: float,
+                             **kwargs) -> 'TPMS':
+        """Construct a TPMS surface from a pitch length and isovalue.
+
+        Parameters
+        ----------
+        tpms : str
+            Name of the TPMS family.  Case-insensitive.  Supported values:
+
+            +-----------------------+------------------------------------------+
+            | Name                  | Equation                                 |
+            +=======================+==========================================+
+            | ``'primitive'``,      | cos(x') + cos(y') + cos(z') = c         |
+            | ``'schwarz_p'``       |                                          |
+            +-----------------------+------------------------------------------+
+            | ``'gyroid'``,         | sin(x')cos(z') + sin(y')cos(x')         |
+            | ``'schoen-g'``        | + sin(z')cos(y') = c                     |
+            +-----------------------+------------------------------------------+
+            | ``'diamond'``,        | sin(x')cos(y'-z')                        |
+            | ``'schwarz_d'``       | + sin(y'+z')cos(x') = c                  |
+            +-----------------------+------------------------------------------+
+
+            where ``x' = 2π x / pitch``, and similarly for y' and z'.
+
+        pitch : float
+            Spatial period of the surface in [cm].  All three Cartesian
+            directions share the same pitch.
+        isovalue : float
+            Level-set value c.  At ``isovalue = 0`` the surface is a true
+            minimal surface dividing space into two equal-volume phases.
+            Increasing the isovalue increases the volume fraction of the
+            negative half-space (the ``-surf`` region).
+        **kwargs
+            Additional keyword arguments passed to :class:`ImplicitSurface`
+            (e.g. ``surface_id``, ``name``, transform coefficients).
+
+        Returns
+        -------
+        TPMS
+            Constructed TPMS surface ready for use in cell definitions.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``tpms`` is not one of the supported names.
+
+        Examples
+        --------
+        >>> surf = TPMS.from_pitch_isovalue('gyroid', pitch=1.0, isovalue=0.)
+        >>> surf.evaluate((0., 0., 0.))   # gyroid passes through the origin
+        0.0
+        """
+        
     @classmethod
     def from_pitch_isovalue(cls, tpms:str, pitch:float, isovalue:float, **kwargs):
         # Shortcuts

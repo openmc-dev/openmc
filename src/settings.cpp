@@ -157,8 +157,8 @@ double weight_survive {1.0};
 // implicit surface
 int implicit_maxiter {1000000};
 std::string implicit_solver {"fast"};
-double implicit_atol {1.e-8};
-double implicit_ftol {1.e-7};
+double implicit_atol {1.e-9};
+double implicit_ftol {1.e-9};
 double implicit_margin {1.e-7};
 
 } // namespace settings

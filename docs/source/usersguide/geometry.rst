@@ -157,6 +157,320 @@ work::
   (array([-0.8660254,       -inf,       -inf]),
    array([ 0.8660254,        inf,        inf]))
 
+Implicit Surface with custom equations
+--------------------------------------
+
+In addition to the algebraic surfaces listed above, OpenMC supports
+**implicit surfaces** defined by an arbitrary smooth function
+:math:`f(x, y, z) = c`. This makes it possible to model geometries that
+cannot be expressed as polynomials - most notably Triply Periodic Minimal
+Surfaces (`TPMS <https://www.sciencedirect.com/science/article/pii/S014919702300330X>`_).
+
+The surface is the level set:
+
+.. math::
+
+    f\!\left(\mathbf{R}(\mathbf{r} - \mathbf{r}_0)\right) = c
+
+where :math:`\mathbf{r}_0` is a translation vector, :math:`\mathbf{R}` is a
+rotation matrix, and :math:`c` is the isovalue.  The negative half-space
+(:math:`f < c`) is the "inside" and the positive half-space (:math:`f > c`)
+is the "outside". This formulation separates the surface geometry from the
+coordinate transform, simplifying translation and rotation without modifying
+the function itself.
+
+Defining a custom function
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Functions are built as expression trees using nodes from the
+:mod:`openmc.implicit` module.  Each node represents either a terminal value
+or an operation, and they compose with natural Python syntax::
+
+    from openmc.implicit import X, Y, Z, Sin, Cos, Cached
+    import numpy as np
+
+    # Sphere: f(x,y,z) = x² + y² + z² = R²
+    sphere_func = X()**2 + Y()**2 + Z()**2
+    sphere = openmc.ImplicitSurface(function=sphere_func, isovalue=100.)
+
+    # Gyroid TPMS with pitch L
+    L = 1.0
+    cx = Cached(2 * np.pi * X() / L)
+    cy = Cached(2 * np.pi * Y() / L)
+    cz = Cached(2 * np.pi * Z() / L)
+    gyroid_func = Sin(cx)*Cos(cz) + Sin(cy)*Cos(cx) + Sin(cz)*Cos(cy)
+    gyroid = openmc.ImplicitSurface(function=gyroid_func, isovalue=0.)
+
+Alternatively, common TPMS families can be constructed directly from a pitch
+and isovalue using the :class:`openmc.TPMS` convenience class::
+
+    gyroid  = openmc.TPMS.from_pitch_isovalue('gyroid',    pitch=1.0, isovalue=0.)
+    prim    = openmc.TPMS.from_pitch_isovalue('primitive', pitch=1.0, isovalue=0.)
+    diamond = openmc.TPMS.from_pitch_isovalue('diamond',   pitch=1.0, isovalue=0.)
+
+Available node types
+~~~~~~~~~~~~~~~~~~~~
+
+The following node types are available in :mod:`openmc.implicit`:
+
+.. table:: Terminal nodes
+
+    +--------------------+---------------------------+
+    | Node               | Value                     |
+    +====================+===========================+
+    | ``X()``            | :math:`x`                 |
+    +--------------------+---------------------------+
+    | ``Y()``            | :math:`y`                 |
+    +--------------------+---------------------------+
+    | ``Z()``            | :math:`z`                 |
+    +--------------------+---------------------------+
+    | ``Constant(v)``    | :math:`v`                 |
+    +--------------------+---------------------------+
+
+.. table:: Arithmetic nodes
+
+    +--------------------+----------------------------------+
+    | Node               | Value                            |
+    +====================+==================================+
+    | ``f + g``          | :math:`f + g`                    |
+    +--------------------+----------------------------------+
+    | ``f - g``          | :math:`f - g`                    |
+    +--------------------+----------------------------------+
+    | ``k * f``          | :math:`k \cdot f` (scalar)       |
+    +--------------------+----------------------------------+
+    | ``f * g``          | :math:`f \cdot g`                |
+    +--------------------+----------------------------------+
+    | ``f / g``          | :math:`f / g` :math:`g \ne 0`    |
+    +--------------------+----------------------------------+
+    | ``f ** n``         | :math:`f^n` (positive int only)  |
+    +--------------------+----------------------------------+
+    | ``Min(f, g)``      | :math:`\min(f, g)`               |
+    +--------------------+----------------------------------+
+    | ``Max(f, g)``      | :math:`\max(f, g)`               |
+    +--------------------+----------------------------------+
+
+.. table:: Transcendental nodes
+
+    +--------------------+-------------------------------+
+    | Node               | Value                         |
+    +====================+===============================+
+    | ``Sin(f)``         | :math:`\sin(f)`               |
+    +--------------------+-------------------------------+
+    | ``Cos(f)``         | :math:`\cos(f)`               |
+    +--------------------+-------------------------------+
+    | ``Sqrt(f)``        | :math:`\sqrt{f}`, :math:`f>0` |
+    +--------------------+-------------------------------+
+    | ``Exp(f)``         | :math:`e^f`                   |
+    +--------------------+-------------------------------+
+    | ``Log(f)``         | :math:`\ln f`, :math:`f>0`    |
+    +--------------------+-------------------------------+
+    | ``Abs(f)``         | :math:`|f|`                   |
+    +--------------------+-------------------------------+
+
+.. note::
+
+    ``Pow`` only accepts strictly positive integer exponents.  Use
+    ``Div(Constant(1.), f)`` for :math:`f^{-1}` and ``Sqrt(f)`` for
+    :math:`f^{0.5}`.
+
+Sub-expression caching
+~~~~~~~~~~~~~~~~~~~~~~
+
+When the same sub-expression appears multiple times in a function - as
+``cx``, ``cy``, ``cz`` do in the gyroid example above - wrapping it in
+:class:`~openmc.implicit.Cached` tells the C++ solver to compute it once and
+reuse the result within each geometry step.  This can significantly reduce
+the number of function evaluations for complex TPMS expressions.
+
+The **same Python object** must be reused at every occurrence for sharing to
+take effect.  Constructing a new ``Cached(...)`` at each use site produces
+independent caches with no benefit::
+
+    # Correct - one object, two references
+    cx = Cached(2 * np.pi * X())
+    f  = Sin(cx) + Cos(cx)
+
+    # Wrong - two independent caches, no sharing
+    f  = Sin(Cached(2 * np.pi * X())) + Cos(Cached(2 * np.pi * X()))
+
+Finite region requirement
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The implicit surface solver needs an upper bound on how far to search along
+a ray.  This bound is provided automatically by the nearest analytical surface
+in the same cell region.  **Every cell containing an implicit surface must
+therefore also reference at least one finite analytical surface** (plane,
+sphere, cylinder, etc.) to enclose it::
+
+    R     = 10.0
+    outer = openmc.Sphere(r=R * 1.1, boundary_type='vacuum')
+    impl  = openmc.ImplicitSurface(function=gyroid_func, isovalue=0.)
+
+    fuel_cell = openmc.Cell(region=-impl & -outer, fill=fuel)
+    void_cell = openmc.Cell(region=+impl & -outer)
+
+A fatal error is raised at runtime if an implicit surface is placed in a
+region with no finite analytical boundary.
+
+Bounding region and Lipschitz computation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The size of the analytical bounding region matters beyond simply excluding
+geometrically invalid points. Even when the implicit surface is well-defined
+everywhere inside the cell, the solver may fail because it computes Lipschitz
+bounds **over the entire ray interval** - from the particle's current position
+to the nearest analytical boundary. If that interval passes through a region
+where a node's domain condition is violated, the Lipschitz computation throws
+a domain error before the solver begins marching.
+
+Consider the following example. The function involves ``Sqrt(x² + y² + z²)``,
+which requires a strictly positive argument. The domain condition is satisfied
+at every point in the shell :math:`1 \leq r \leq 5`, so the geometry appears
+valid::
+
+    # Bounding shell
+    inner = openmc.Sphere(r=1.0)
+    outer = openmc.Sphere(r=5.0)
+    shell = +inner & -outer
+
+    # Vacuum boundary
+    world = openmc.Sphere(r=20.0, boundary_type='vacuum')
+
+    # Implicit surface
+    r    = Sqrt(X()**2 + Y()**2 + Z()**2)
+    surf = ImplicitSurface(function=r, isovalue=5.)
+
+    # Cells
+    fuel_cell  = openmc.Cell(region=-surf &  shell, fill=material)
+    void_cell  = openmc.Cell(region=+surf &  shell)
+    outer_cell = openmc.Cell(region=        ~shell & -world)
+    geometry   = openmc.Geometry([fuel_cell, void_cell, outer_cell])
+
+This crashes with::
+
+    std::domain_error: Sqrt::compute_lipschitz: argument reaches zero or
+    negative on ray between r=(1.057, 0.571, -1.830) and r=(-4.235, -2.657,
+    0.047) in expression X**2 + Y**2 + Z**2
+
+The ray interval spans from the particle's current position to the nearest
+bounding surface. Even though both endpoints lie within the shell, the ray is
+a straight line whose closest approach to the origin can be much smaller than
+either endpoint's radius - potentially passing through the region :math:`r = 0`
+where ``Sqrt`` derivative is undefined.
+
+The fix is to subdivide the geometry into cells whose bounding regions
+guarantee that the function is well-defined over every possible ray interval
+within each cell.
+
+Ray-surface intersection solvers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Finding where a neutron ray crosses an implicit surface is not trivial - unlike
+algebraic surfaces, there is no closed-form intersection formula.  OpenMC uses
+a **Lipschitz-marching** algorithm that guarantees no root is missed.
+
+The key insight is the Lipschitz condition: for a smooth function :math:`f`,
+the rate of change along a ray is bounded by a constant :math:`L` (the
+Lipschitz constant):
+
+.. math::
+
+    |f(t + \delta) - f(t)| \leq L \cdot \delta
+
+This means that if the function currently has value :math:`f(t)`, it cannot
+reach zero before advancing at least :math:`|f(t)| / L` along the ray.  The
+solver exploits this to take large, guaranteed-safe steps, only slowing down
+as it approaches a root.
+
+Two solvers are available:
+
+``naive``
+    Computes :math:`L` once over the full ray interval and marches with steps
+    of size :math:`|f| / L`.  When a sign change is detected, bisection
+    refines the root location.  Simple and robust, but can be slow when
+    :math:`L` is large relative to the actual function variation (e.g. for
+    highly oscillatory TPMS over long rays).
+
+``fast``
+    Subdivides the ray interval into a stack of sub-intervals and recomputes
+    tight Lipschitz bounds on each one.  Sub-intervals where :math:`f` has
+    constant sign are discarded immediately; only intervals containing a root
+    are refined further.  Significantly faster than ``naive`` for TPMS
+    geometries where the global :math:`L` is large but local bounds are tight.
+
+The solver is selected via :attr:`openmc.Settings.implicit`::
+
+    settings.implicit = {'name': 'fast'}   # default
+
+Tuning solver parameters
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Several parameters control the accuracy and robustness of the solver and can
+be set through :attr:`openmc.Settings.implicit`.
+
+``atol`` - geometric tolerance
+    The solver stops as soon as the estimated distance to the root is smaller
+    than ``atol`` [cm].  Decreasing ``atol`` gives a more accurate root
+    location at the cost of more function evaluations.  The default value of
+    ``1e-9`` cm is appropriate for most
+    applications::
+
+        settings.implicit = {'atol': 1e-9}
+
+``ftol`` - function value tolerance
+    A root is also accepted when the function value :math:`|f - c|` falls
+    below ``ftol``.  This can be useful when the surface passes through a
+    nearly-flat region where the gradient is small and the geometric distance
+    to the root is hard to estimate from :math:`L` alone.  Defaults to
+    ``1e-9``::
+
+        settings.implicit = {'ftol': 1e-9}
+
+``maxiter`` - maximum solver iterations
+    Safety cap on the number of marching steps.  If the solver reaches
+    ``maxiter`` without finding a root, it skips the surface and emits a
+    warning.  This prevents an infinite loop when the function has very
+    small gradients over a long ray segment.  The default of ``1 000 000``
+    is rarely reached in practice but can be lowered for faster failure
+    detection during debugging::
+
+        settings.implicit = {'maxiter': 10000}
+
+    If you see the warning
+
+    .. code-block:: none
+
+        WARNING: NaiveLipschitz reached max iterations.
+
+    it might mean that the solver steps are very small relative to the length
+    of the bounding interval because of a large Lipschitz constant. Switching
+    to ``'fast'`` (which recomputes tighter per-interval bounds) may eliminate
+    the issue.
+
+``margin`` - coincident surface margin
+    After the solver finds a root, the intersection point is nudged forward
+    by ``margin`` [cm] to ensure the particle lands unambiguously on the
+    destination side of the surface.  Without this nudge, floating-point
+    rounding can place the particle within the tolerance band of the surface,
+    causing OpenMC's ``sense()`` function to invoke the surface normal for a
+    tiebreak - which may fail for functions with restricted gradient domains.
+    The default of ``1e-7`` cm is sufficient for all tested geometries::
+
+        settings.implicit = {'margin': 1e-7}
+
+    Increasing ``margin`` slightly can resolve rare geometry errors where a
+    particle appears to bounce back across a surface it just crossed.
+
+All parameters can be combined in a single assignment::
+
+    settings.implicit = {
+        'name':    'fast',
+        'atol':    1e-9,
+        'ftol':    1e-9,
+        'maxiter': 1000000,
+        'margin':  1e-7,
+    }
+
 Boundary Conditions
 -------------------
 

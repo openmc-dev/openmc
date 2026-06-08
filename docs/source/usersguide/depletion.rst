@@ -462,11 +462,13 @@ result. Small differences can also accumulate over successive depletion steps.
 For a meaningful comparison, align as many of the following inputs and methods
 as possible:
 
-- Geometry and material definitions
+- Geometry and material definitions and associated physical properties such as
+  temperature
 - Neutron cross section library (e.g., ENDF/B-VIII.0)
 - Treatment of thermal scattering and unresolved resonance probability tables
 - Neutron reactions accounted for in the depletion chain
 - Decay data in the depletion chain
+- Isomeric branching ratios for reactions in the depletion chain
 - Fission product yields in the depletion chain
 - Fission product yield interpolation method
   (``CoupledOperator(fission_yield_mode=...)``)
@@ -474,6 +476,12 @@ as possible:
   (``CoupledOperator(fission_q=...)``)
 - Depletion integration method (``PredictorIntegrator``, ``CECMIntegrator``,
   etc.) and time-step sizes
+
+When comparing to codes that use ACE format cross sections, it is recommended to
+directly convert the ACE files to HDF5 format using functionality from the
+:mod:`openmc.data` module (see :ref:`create_xs_library`). Some of the
+LANL-distributed ACE libraries used with MCNP have also been converted to HDF5
+format and are available for download at https://openmc.org/data.
 
 Even after these choices have been aligned, exact agreement should not be
 expected. Codes may use different approximations or numerical methods that

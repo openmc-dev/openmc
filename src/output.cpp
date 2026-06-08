@@ -439,6 +439,9 @@ void print_runtime()
   // display time elapsed for various sections
   show_time("Total time for initialization", time_initialize.elapsed());
   show_time("Reading cross sections", time_read_xs.elapsed(), 1);
+  if (settings::delta_tracking) {
+    show_time("Constructing majorants", time_build_majorant.elapsed());
+  }
   show_time("Total time in simulation",
     time_inactive.elapsed() + time_active.elapsed());
   show_time("Time in transport only", time_transport.elapsed(), 1);

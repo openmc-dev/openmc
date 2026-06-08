@@ -6,9 +6,7 @@
 
 #include <vector>
 
-#include "openmc/material.h"
 #include "openmc/nuclide.h"
-#include "openmc/photon.h"
 
 namespace openmc {
 
@@ -57,7 +55,7 @@ protected:
   //! \param[in] mat The material to compute the majorant cross section of
   //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
-  virtual void fill_material_maj_xs(const Material & mat, double max_density_mult,
+  virtual void fill_material_maj_xs(int i_material, double max_density_mult,
     const std::vector<double> & to_grid, std::vector<double> & mat_maj) = 0;
 
   //! \brief Helper function to perform linear interpolation.
@@ -131,10 +129,10 @@ protected:
 
   //! \brief Compute a per-material macroscopic majorant cross section in units of [cm^-1]
   //
-  //! \param[in] mat The material to compute the majorant cross section of
+  //! \param[in] i_material Index into the materials array
   //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
-  virtual void fill_material_maj_xs(const Material & mat, double max_density_mult,
+  virtual void fill_material_maj_xs(int i_material, double max_density_mult,
     const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
 
 private:
@@ -143,16 +141,16 @@ private:
 
   //! \brief Compute the maximum smooth microscopic total cross section in units of [barn].
   //
+  //! \param[in] i_nuclide Index into the nuclides array
   //! \param[in] energy The energy to evaluate the cross section at in [eV]
-  //! \param[in] nuc The nuclide to compute the microscopic total cross section of
-  double calculate_max_smooth_xs(double energy, const Nuclide & nuc) const;
+  double calculate_max_smooth_xs(int i_nuclide, double energy) const;
 
   //! \brief Compute the maximum microscopic total URR cross section in units of [barn].
   //
+  //! \param[in] i_nuclide Index into the nuclides array
   //! \param[in] energy The energy to evaluate the cross section at in [eV]
-  //! \param[in] nuc The nuclide to compute the microscopic total cross section of
   //! \param[in] smooth_xs The smooth total cross section in units of [eV] to use (if needed by the ptable)
-  double calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth_xs) const;
+  double calculate_max_urr_xs(int i_nuclide, double energy, double smooth_xs) const;
 
   //! \brief Compute the maximum microscopic S(a,b) total cross section in units of [barn]
   //
@@ -160,7 +158,7 @@ private:
   //! \param[in] i_sab The index into the thermal scattering table array for this nuclide
   //! \param[in] sab_frac The fraction of the bound cross section to use vs the free gas cross section
   //! \param[in] nuc The nuclide to compute the microscopic total cross section of
-  double calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc) const;
+  double calculate_max_sab_tot_xs(int i_nuclide, int i_sab, double sab_frac, double energy) const;
 
   //! \brief Get the grid index for energy interpolation
   //
@@ -204,10 +202,10 @@ protected:
 
   //! \brief Compute a per-material macroscopic majorant cross section in units of [cm^-1]
   //
-  //! \param[in] mat The material to compute the majorant cross section of
+  //! \param[in] i_material Index into the materials array
   //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
-  virtual void fill_material_maj_xs(const Material & mat, double max_density_mult,
+  virtual void fill_material_maj_xs(int i_material, double max_density_mult,
     const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
 
 private:
@@ -216,9 +214,9 @@ private:
 
   //! \brief Compute the maximum smooth microscopic total cross section in units of [barn].
   //
+  //! \param[in] i_element Index in the elements array
   //! \param[in] energy The energy to evaluate the cross section at in [eV]
-  //! \param[in] nuc The nuclide to compute the microscopic total cross section of
-  double calculate_elem_tot_xs(double log_energy, const PhotonInteraction & elem) const;
+  double calculate_elem_tot_xs(int i_element, double log_energy) const;
 
   //! \brief Get the grid index for energy interpolation
   //

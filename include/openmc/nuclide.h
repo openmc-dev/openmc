@@ -33,9 +33,10 @@ public:
   // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
-    // init method
+    // Init method.
     void init();
-    // data members
+
+    // Data members.
     vector<int> grid_index;
     vector<double> energy;
   };

@@ -292,7 +292,7 @@ class Model:
                             id_next = reference_tal.id
                             break
 
-                    if id_next == None:
+                    if id_next is None:
                         raise RuntimeError(
                             f'Local FW-CADIS target tally {tal.id} not found on model.tallies!')
                     else:
@@ -1127,28 +1127,148 @@ class Model:
             array contains cell IDs, cell instances, and material IDs (in that
             order).
         """
+        ids, _ = self.slice_data(
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            show_overlaps=color_overlaps,
+            level=-1,
+            include_properties=False,
+            **init_kwargs,
+        )
+        return ids
+
+    def slice_data(
+        self,
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        u_span: Sequence[float] | None = None,
+        v_span: Sequence[float] | None = None,
+        show_overlaps: bool = False,
+        level: int = -1,
+        filter: openmc.Filter | None = None,
+        include_properties: bool = True,
+        **init_kwargs
+    ) -> tuple[np.ndarray, np.ndarray | None]:
+        """Generate geometry and property data for a 2D plot slice.
+
+        This method combines the functionality of :meth:`id_map` and property
+        mapping into a single call, avoiding duplicate geometry lookups. It also
+        supports filter bin index lookup for tally visualization.
+
+        .. versionadded:: 0.16.0
+
+        Parameters
+        ----------
+        origin : Sequence[float], optional
+            Origin of the plot. If unspecified, this argument defaults to the
+            center of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (0.0, 0.0, 0.0).
+        width : Sequence[float], optional
+            Width of the plot. If unspecified, this argument defaults to the
+            width of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (10.0, 10.0).
+        pixels : int | Sequence[int], optional
+            If an iterable of ints is provided then this directly sets the
+            number of pixels to use in each basis direction. If a single int is
+            provided then this sets the total number of pixels in the plot and
+            the number of pixels in each basis direction is calculated from this
+            total and the image aspect ratio based on the width argument.
+        basis : {'xy', 'yz', 'xz'}, optional
+            Basis of the plot.
+        u_span : Sequence[float], optional
+            Full-width span vector for an oriented slice (3 values). Mutually
+            exclusive with width.
+        v_span : Sequence[float], optional
+            Full-height span vector for an oriented slice (3 values). Mutually
+            exclusive with width.
+        show_overlaps : bool, optional
+            Whether to identify and assign unique IDs (-3) to overlapping
+            regions. If False, overlapping regions will be assigned the ID of
+            the lowest-numbered cell that occupies that region. Defaults to
+            False.
+        level : int, optional
+            Universe level to plot (-1 for deepest). Defaults to -1.
+        filter : openmc.Filter, optional
+            If provided, the information for each pixel also includes an index
+            in the filter corresponding to the pixel position.
+        include_properties : bool, optional
+            Whether to include temperature/density data. Defaults to True.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        -------
+        geom_data : numpy.ndarray
+            Shape (v_res, h_res, 3) or (v_res, h_res, 4) int32 array. Contains
+            [cell_id, cell_instance, material_id] when no filter, or [cell_id,
+            cell_instance, material_id, filter_bin] with filter.
+        property_data : numpy.ndarray or None
+            Shape (v_res, h_res, 2) float64 array with [temperature, density],
+            or None if include_properties=False.
+        """
         import openmc.lib
 
-        origin, width, pixels = self._set_plot_defaults(
-            origin, width, pixels, basis)
+        if width is not None and (u_span is not None or v_span is not None):
+            raise ValueError("width is mutually exclusive with u_span/v_span.")
 
-        # initialize the openmc.lib.plot._PlotBase object
-        plot_obj = openmc.lib.plot._PlotBase()
-        plot_obj.origin = origin
-        plot_obj.width = width[0]
-        plot_obj.height = width[1]
-        plot_obj.h_res = pixels[0]
-        plot_obj.v_res = pixels[1]
-        plot_obj.basis = basis
-        plot_obj.color_overlaps = color_overlaps
+        if u_span is not None or v_span is not None:
+            if u_span is None or v_span is None:
+                raise ValueError("Both u_span and v_span must be provided.")
+            if origin is None:
+                origin = (0.0, 0.0, 0.0)
+            if isinstance(pixels, int):
+                u_norm = np.linalg.norm(u_span)
+                v_norm = np.linalg.norm(v_span)
+                aspect_ratio = u_norm / v_norm
+                pixels_y = math.sqrt(pixels / aspect_ratio)
+                pixels = (int(pixels / pixels_y), int(pixels_y))
+        else:
+            origin, width, pixels = self._set_plot_defaults(
+                origin, width, pixels, basis)
 
         # Silence output by default. Also set arguments to start in volume
         # calculation mode to avoid loading cross sections
         init_kwargs.setdefault('output', False)
         init_kwargs.setdefault('args', ['-c'])
 
+        # If filter does not already appear in the model, temporarily add a
+        # tally with the filter
+        original_length = len(self.tallies)
+        if filter is not None:
+            filter_ids = {f.id for t in self.tallies for f in t.filters}
+            if filter.id not in filter_ids:
+                # Create temporary tally while preserving ID assignment
+                next_id = openmc.Tally.next_id
+                temp_tally = openmc.Tally()
+                temp_tally.filters = [filter]
+                temp_tally.scores = ['flux']
+                self.tallies.append(temp_tally)
+                openmc.Tally.used_ids.remove(temp_tally.id)
+                openmc.Tally.next_id = next_id
+
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            return openmc.lib.id_map(plot_obj)
+            geom_data, property_data = openmc.lib.slice_data(
+                origin=origin,
+                width=width,
+                basis=basis,
+                u_span=u_span,
+                v_span=v_span,
+                pixels=pixels,
+                show_overlaps=show_overlaps,
+                level=level,
+                filter=filter,
+                include_properties=include_properties,
+            )
+
+        # If filter was temporarily added, remove it
+        if len(self.tallies) > original_length:
+            self.tallies.pop()
+
+        return geom_data, property_data
 
     @add_plot_params
     def plot(
@@ -1216,13 +1336,14 @@ class Model:
                                        "openmc.config before plotting.")
                 break
 
-        # Get ID map from the C API
-        id_map = self.id_map(
+        # Get plot IDs from the C API
+        id_map, _ = self.slice_data(
             origin=origin,
             width=width,
             pixels=pixels,
             basis=basis,
-            color_overlaps=show_overlaps
+            show_overlaps=show_overlaps,
+            include_properties=False,
         )
 
         # Generate colors if not provided
@@ -1748,7 +1869,7 @@ class Model:
 
     @staticmethod
     def _auto_generate_mgxs_lib(
-        model: openmc.model.model,
+        model: openmc.model.Model,
         groups: openmc.mgxs.EnergyGroups,
         correction: str | None,
         directory: PathLike,

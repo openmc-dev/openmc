@@ -100,6 +100,28 @@ def test_fpy(u235_yields):
     ufloat_close(thermal['I135'], ufloat(0.0292737, 0.000819663))
 
 
+def test_decay_from_endf_material(endf_data):
+    filename = os.path.join(endf_data, 'decay', 'dec-041_Nb_090.endf')
+    material = openmc.data.endf.get_evaluations(filename)[0]
+
+    data = openmc.data.Decay.from_endf(material)
+
+    assert data.nuclide['name'] == 'Nb90'
+    assert not data.nuclide['stable']
+    assert len(data.modes) == 2
+
+
+def test_fpy_from_endf_material(endf_data):
+    filename = os.path.join(endf_data, 'nfy', 'nfy-092_U_235.endf')
+    material = openmc.data.endf.get_evaluations(filename)[0]
+
+    data = openmc.data.FissionProductYields.from_endf(material)
+
+    assert data.nuclide['name'] == 'U235'
+    assert data.energies == pytest.approx([0.0253, 500.e3, 1.4e7])
+    assert 'I135' in data.cumulative[0]
+
+
 def test_sources(ba137m, nb90):
     # Running .sources twice should give same objects
     sources = ba137m.sources

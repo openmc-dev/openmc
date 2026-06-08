@@ -467,6 +467,8 @@ class Model:
         This method iterates over all DAGMC universes in the geometry and
         synchronizes their cells with the current material assignments. Requires
         that the model has been initialized via :meth:`Model.init_lib`.
+        Synchronized DAGMC cells can then be edited and exported as nested
+        `<cell>` overrides inside each `<dagmc_universe>` element.
 
         .. versionadded:: 0.15.1
 
@@ -2077,7 +2079,7 @@ class Model:
 
         # Set materials on the model
         model.materials = [material]
-        if temperature != None:
+        if temperature is not None:
           model.materials[-1].temperature = temperature
 
         # Settings
@@ -2104,7 +2106,7 @@ class Model:
         mgxs_lib = Model._auto_generate_mgxs_lib(
                 model, groups, correction, directory)
 
-        if temperature != None:
+        if temperature is not None:
             return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
                                        temperature=temperature)
         else:
@@ -2177,12 +2179,12 @@ class Model:
         )
 
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = []
             for material in self.materials:
                 xs_data = Model._isothermal_infinite_media_mgxs(
@@ -2355,7 +2357,7 @@ class Model:
         model = openmc.Model()
         model.geometry = stoch_geom
 
-        if temperature != None:
+        if temperature is not None:
             for material in model.geometry.get_all_materials().values():
                 material.temperature = temperature
 
@@ -2379,7 +2381,7 @@ class Model:
                 model, groups, correction, directory)
 
         # Fetch all of the isothermal results.
-        if temperature != None:
+        if temperature is not None:
             return {
                 mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
                                                temperature=temperature)
@@ -2465,12 +2467,12 @@ class Model:
         )
 
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = Model._isothermal_stochastic_slab_mgxs(
                 geo,
                 groups,
@@ -2563,7 +2565,7 @@ class Model:
         model = copy.deepcopy(input_model)
         model.tallies = openmc.Tallies()
 
-        if temperature != None:
+        if temperature is not None:
             for material in model.geometry.get_all_materials().values():
                 material.temperature = temperature
 
@@ -2579,7 +2581,7 @@ class Model:
                 model, groups, correction, directory)
 
         # Fetch all of the isothermal results.
-        if temperature != None:
+        if temperature is not None:
             return {
                 mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
                                                temperature=temperature)
@@ -2634,12 +2636,12 @@ class Model:
             entries in openmc.Settings.temperature_settings.
         """
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = Model._isothermal_materialwise_mgxs(
                 self,
                 groups,

@@ -904,10 +904,6 @@ void initialize_data()
     }
   }
 
-  // set energy recipricals
-  data::energy_min_rcp[neutron] = 1.0 / data::energy_min[neutron];
-  if (settings::photon_transport) data::energy_min_rcp[photon] = 1.0 / data::energy_min[photon];
-
   // Show which nuclide results in lowest energy for neutron transport
   for (const auto& nuc : data::nuclides) {
     // If a nuclide is present in a material that's not used in the model, its

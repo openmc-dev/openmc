@@ -180,7 +180,6 @@ void Particle::from_source(const SourceSite* src)
     E() = data::mg.energy_bin_avg_[g()];
   }
   E_last() = E();
-
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
@@ -226,8 +225,8 @@ void Particle::event_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
-        mark_as_lost("Could not find the cell containing particle " +
-                     std::to_string(id()));
+      mark_as_lost(
+        "Could not find the cell containing particle " + std::to_string(id()));
       return;
     }
 
@@ -578,7 +577,7 @@ void Particle::event_revive_from_secondary(const SourceSite& site)
 void Particle::event_check_limit_and_revive()
 {
   // If particle has too many events, display warning and kill it
-  ++n_event();
+  n_event()++;
   if (n_event() == settings::max_particle_events && !delta_tracking()) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
@@ -840,10 +839,11 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type() != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
-    exhaustive_find_cell(*this);
-    this->mark_as_lost("Couldn't find particle after reflecting from surface " +
-                       std::to_string(surf.id_) + ".");
-    return;
+    if (!exhaustive_find_cell(*this)) {
+      mark_as_lost("Couldn't find particle after reflecting from surface " +
+                   std::to_string(surf.id_) + ".");
+      return;
+    }
   }
 
   // Set previous coordinate going slightly past surface crossing

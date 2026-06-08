@@ -43,12 +43,6 @@ public:
   //! \param[out] inelastic Inelastic scattering cross section in [b]
   void calculate_xs(double E, double* elastic, double* inelastic) const;
 
-  //! Calculate the maximum cross section
-  //
-  //! \param[out] elastic Elastic scattering cross section in [b]
-  //! \param[out] inelastic Inelastic scattering cross section in [b]
-  void calculate_max_xs(double* elastic, double* inelastic) const;
-
   //! Sample an outgoing energy and angle
   //
   //! \param[in] micro_xs Microscopic cross sections

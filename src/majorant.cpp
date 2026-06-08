@@ -273,13 +273,16 @@ double NeutronMajorant::calculate_max_smooth_xs(double energy, const Nuclide & n
 
 double NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth_xs) const
 {
+  // A tolerance on the URR check to make sure we include the URR energy grid bounds.
+  constexpr double URR_FUZZY_CHECK = 1e-6;
+
   if (!nuc.urr_present_) {
     return 0.0;
   }
 
   double max_urr_xs = 0.0;
   for (const auto & urr : nuc.urr_data_) {
-    if (!urr.energy_in_bounds(energy)) {
+    if (!(urr.energy_in_bounds(energy - URR_FUZZY_CHECK) || urr.energy_in_bounds(energy + URR_FUZZY_CHECK))) {
       continue;
     }
 

@@ -284,7 +284,13 @@ void Particle::event_advance()
 
   // Find distance to nearest boundary;
   // cap bvh traversal distance to collision distance
-  double max_distance = std::min(collision_distance(), distance_cutoff);
+  double max_distance = INFTY;
+  const auto& univ = model::universes[lowest_coord().universe()];
+  if (auto* dag_univ = dynamic_cast<DAGUniverse*>(univ.get())) {
+    if (dag_univ->use_collision_distance_cap()) {
+      max_distance = std::min(collision_distance(), distance_cutoff);
+    }
+  }
   boundary() = distance_to_boundary(*this, max_distance);
 
   // Select smaller of the three distances

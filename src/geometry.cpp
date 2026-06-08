@@ -374,7 +374,7 @@ BoundaryInfo distance_to_boundary(GeometryState& p, double max_distance)
     Cell& c {*model::cells[coord.cell()]};
 
     // Find the oncoming surface in this cell and the distance to it.
-    auto surface_distance = c.distance(r, u, p.surface(), &p);
+    auto surface_distance = c.distance(r, u, p.surface(), &p, max_distance);
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
 

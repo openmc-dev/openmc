@@ -106,13 +106,15 @@ public:
   //! \param[in] auto_geom_ids Whether or not to automatically assign cell and
   //! surface IDs \param[in] auto_mat_ids Whether or not to automatically assign
   //! material IDs
+  //! \param[in] use_collision_distance_cap Whether or not to cap the distance to
+  //! boundaries to the collision distance when finding the next boundary
   explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false,
-    bool auto_mat_ids = false);
+    bool auto_mat_ids = false, bool use_collision_distance_cap = false);
 
   //! Alternative DAGMC universe constructor for external DAGMC instance
   explicit DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
     const std::string& filename = "", bool auto_geom_ids = false,
-    bool auto_mat_ids = false);
+    bool auto_mat_ids = false, bool use_collision_distance_cap = false);
 
   //! Initialize the DAGMC accel. data structures, indices, material
   //! assignments, etc.
@@ -191,6 +193,7 @@ public:
   // Accessors
   moab::DagMC* dagmc_ptr() const { return dagmc_instance_.get(); }
   bool has_graveyard() const { return has_graveyard_; }
+  bool use_collision_distance_cap() const { return use_collision_distance_cap_; }
 
 private:
   void set_id();        //!< Deduce the universe id from model::universes
@@ -212,6 +215,9 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
+  bool use_collision_distance_cap_; //!< Indicates whether or not to cap the
+                                  //!< distance to boundaries to the collision
+                                  //!< distance when finding the next boundary
 };
 
 //==============================================================================

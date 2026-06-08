@@ -80,6 +80,11 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
+  use_collision_distance_cap_ = false;
+  if (check_for_node(node, "use_collision_distance_cap")) {
+    use_collision_distance_cap_ = get_node_value_bool(node, "use_collision_distance_cap");
+  }
+
   // Get material assignment overrides from nested DAGMC cell elements.
   if (node.child("cell")) {
     for (pugi::xml_node cell_node : node.children("cell")) {
@@ -154,18 +159,18 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 }
 
 DAGUniverse::DAGUniverse(
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids, bool use_collision_distance_cap)
   : filename_(filename), adjust_geometry_ids_(auto_geom_ids),
-    adjust_material_ids_(auto_mat_ids)
+    adjust_material_ids_(auto_mat_ids), use_collision_distance_cap_(use_collision_distance_cap)
 {
   set_id();
   initialize();
 }
 
 DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids, bool use_collision_distance_cap)
   : dagmc_instance_(dagmc_ptr), filename_(filename),
-    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
+    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids), use_collision_distance_cap_(use_collision_distance_cap)
 {
   MaterialOverrides material_overrides;
   TemperatureOverrides temperature_overrides;
@@ -829,7 +834,7 @@ std::pair<double, int32_t> DAGCell::distance(Position r, Direction u,
   // surface idx of 1 and distance of infinity occur when no previous collisions
   // recorded
   int surf_idx = -1;
-  double dist = max_distance;
+  double dist = INFTY;
 
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   moab::EntityHandle hit_surf;
@@ -838,12 +843,12 @@ std::pair<double, int32_t> DAGCell::distance(Position r, Direction u,
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   MB_CHK_ERR_CONT(
-    dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history()));
+    dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history(), max_distance));
   if (hit_surf != 0) {
     surf_idx =
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
-  } else if (dist == INFTY && !dagmc_ptr_->is_implicit_complement(vol) ||
-             is_root_universe(dag_univ->id_)) {
+  } else if (max_distance == INFTY && (!dagmc_ptr_->is_implicit_complement(vol) ||
+             is_root_universe(dag_univ->id_))) {
     // surface boundary conditions are ignored for projection plotting, meaning
     // that the particle may move through the graveyard (bounding) volume and
     // into the implicit complement on the other side where no intersection will

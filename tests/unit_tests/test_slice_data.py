@@ -69,7 +69,7 @@ def test_slice_data_overlaps(run_in_tmpdir):
         origin=(0, 0, 0),
         width=(1.0, 1.0),
         pixels=(50, 50),
-        color_overlaps=True,
+        show_overlaps=True,
         include_properties=False
     )
 
@@ -90,7 +90,7 @@ def test_slice_data_overlaps_with_filter(run_in_tmpdir):
         width=(1.0, 1.0),
         pixels=(50, 50),
         filter=cell_filter,
-        color_overlaps=True,
+        show_overlaps=True,
         include_properties=False
     )
 

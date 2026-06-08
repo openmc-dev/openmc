@@ -851,7 +851,7 @@ Plot::Plot(pugi::xml_node plot_node, PlotType type)
   set_width(plot_node);
   set_meshlines(plot_node);
   slice_level_ = level_; // Copy level employed in SlicePlotBase::get_map
-  slice_color_overlaps_ = color_overlaps_;
+  show_overlaps_ = color_overlaps_;
 }
 
 //==============================================================================
@@ -1114,7 +1114,7 @@ void Plot::create_voxel() const
   pltbase.u_span_ = {width_.x, 0.0, 0.0};
   pltbase.v_span_ = {0.0, width_.y, 0.0};
   pltbase.pixels() = pixels();
-  pltbase.slice_color_overlaps_ = color_overlaps_;
+  pltbase.show_overlaps_ = color_overlaps_;
 
   ProgressBar pb;
   for (int z = 0; z < pixels()[2]; z++) {
@@ -1909,7 +1909,7 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
+  if (plt->show_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 
@@ -1936,7 +1936,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
+  if (plt->show_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 
@@ -1988,7 +1988,7 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     plot_params.v_span_ = v_span_pos;
     plot_params.pixels_[0] = pixels[0];
     plot_params.pixels_[1] = pixels[1];
-    plot_params.slice_color_overlaps_ = color_overlaps;
+    plot_params.show_overlaps_ = color_overlaps;
     plot_params.slice_level_ = level;
 
     // Use get_map<RasterData> to generate data

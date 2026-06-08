@@ -1130,7 +1130,7 @@ class Model:
             width=width,
             pixels=pixels,
             basis=basis,
-            color_overlaps=color_overlaps,
+            show_overlaps=color_overlaps,
             level=-1,
             include_properties=False,
             **init_kwargs,
@@ -1145,7 +1145,7 @@ class Model:
         basis: str = 'xy',
         u_span: Sequence[float] | None = None,
         v_span: Sequence[float] | None = None,
-        color_overlaps: bool = False,
+        show_overlaps: bool = False,
         level: int = -1,
         filter: openmc.Filter | None = None,
         include_properties: bool = True,
@@ -1183,10 +1183,11 @@ class Model:
         v_span : Sequence[float], optional
             Full-height span vector for an oriented slice (3 values). Mutually
             exclusive with width.
-        color_overlaps : bool, optional
-            Whether to assign unique IDs (-3) to overlapping regions. If False,
-            overlapping regions will be assigned the ID of the lowest-numbered
-            cell that occupies that region. Defaults to False.
+        show_overlaps : bool, optional
+            Whether to identify and assign unique IDs (-3) to overlapping
+            regions. If False, overlapping regions will be assigned the ID of
+            the lowest-numbered cell that occupies that region. Defaults to
+            False.
         level : int, optional
             Universe level to plot (-1 for deepest). Defaults to -1.
         filter : openmc.Filter, optional
@@ -1200,12 +1201,12 @@ class Model:
         Returns
         -------
         geom_data : numpy.ndarray
-            Shape (v_res, h_res, 3) or (v_res, h_res, 4) int32 array.
-            Contains [cell_id, cell_instance, material_id] when no filter,
-            or [cell_id, cell_instance, material_id, filter_bin] with filter.
+            Shape (v_res, h_res, 3) or (v_res, h_res, 4) int32 array. Contains
+            [cell_id, cell_instance, material_id] when no filter, or [cell_id,
+            cell_instance, material_id, filter_bin] with filter.
         property_data : numpy.ndarray or None
-            Shape (v_res, h_res, 2) float64 array with
-            [temperature, density], or None if include_properties=False.
+            Shape (v_res, h_res, 2) float64 array with [temperature, density],
+            or None if include_properties=False.
         """
         import openmc.lib
 
@@ -1255,7 +1256,7 @@ class Model:
                 u_span=u_span,
                 v_span=v_span,
                 pixels=pixels,
-                color_overlaps=color_overlaps,
+                show_overlaps=show_overlaps,
                 level=level,
                 filter=filter,
                 include_properties=include_properties,
@@ -1339,7 +1340,7 @@ class Model:
             width=width,
             pixels=pixels,
             basis=basis,
-            color_overlaps=show_overlaps,
+            show_overlaps=show_overlaps,
             include_properties=False,
         )
 

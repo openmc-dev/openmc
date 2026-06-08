@@ -76,7 +76,7 @@ _dll.openmc_slice_data.argtypes = [
     POINTER(c_double * 3),   # u_span
     POINTER(c_double * 3),   # v_span
     POINTER(c_size_t * 2),   # pixels
-    c_bool,                  # color_overlaps
+    c_bool,                  # show_overlaps
     c_int,                   # level
     c_int32,                 # filter_index
     POINTER(c_int32),        # geom_data
@@ -87,7 +87,7 @@ _dll.openmc_slice_data.errcheck = _error_handler
 
 
 def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
-                pixels=None, color_overlaps=False, level=-1, filter=None,
+                pixels=None, show_overlaps=False, level=-1, filter=None,
                 include_properties=True):
     """Generate a 2D raster of geometry and property data for plotting.
 
@@ -108,7 +108,7 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
         exclusive with width.
     pixels : sequence of int
         Number of pixels [horizontal, vertical]
-    color_overlaps : bool, optional
+    show_overlaps : bool, optional
         Whether to detect overlapping cells
     level : int, optional
         Universe level (-1 for deepest)
@@ -210,7 +210,7 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
         u_span_arr,
         v_span_arr,
         pixels_arr,
-        color_overlaps,
+        show_overlaps,
         level,
         filter_index,
         geom_data.ctypes.data_as(POINTER(c_int32)),

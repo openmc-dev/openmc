@@ -209,12 +209,12 @@ public:
 
   // Members
 public:
-  Position origin_;           //!< Plot origin in geometry
-  Direction u_span_;          //!< Full-width span vector in geometry
-  Direction v_span_;          //!< Full-height span vector in geometry
-  array<size_t, 3> pixels_;   //!< Plot size in pixels
-  bool slice_color_overlaps_; //!< Show overlapping cells?
-  int slice_level_ {-1};      //!< Plot universe level
+  Position origin_;         //!< Plot origin in geometry
+  Direction u_span_;        //!< Full-width span vector in geometry
+  Direction v_span_;        //!< Full-height span vector in geometry
+  array<size_t, 3> pixels_; //!< Plot size in pixels
+  bool show_overlaps_;      //!< Show overlapping cells?
+  int slice_level_ {-1};    //!< Plot universe level
 private:
 };
 
@@ -278,7 +278,7 @@ T SlicePlotBase::get_map(int32_t filter_index) const
         if (found_cell) {
           data.set_value(y, x, p, j, filter, &match);
         }
-        if (slice_color_overlaps_ && check_cell_overlap(p, false)) {
+        if (show_overlaps_ && check_cell_overlap(p, false)) {
           data.set_overlap(y, x);
         }
       } // inner for

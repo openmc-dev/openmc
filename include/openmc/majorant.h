@@ -107,7 +107,6 @@ public:
   // Constructors
 
   NeutronMajorant(int i_universe);
-  NeutronMajorant(const std::string & majorant_file);
 
   //----------------------------------------------------------------------------
   // Public Methods
@@ -183,7 +182,6 @@ public:
   // Constructors
 
   PhotonMajorant(int i_universe);
-  PhotonMajorant(const std::string & majorant_file);
 
   //----------------------------------------------------------------------------
   // Public Methods

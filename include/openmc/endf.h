@@ -47,8 +47,6 @@ bool mt_matches(int event_mt, int target_mt);
 class Function1D {
 public:
   virtual double operator()(double x) const = 0;
-  virtual double max() const = 0;
-  virtual double max(double min_E, double max_E) const = 0;
   virtual ~Function1D() = default;
 };
 
@@ -71,9 +69,6 @@ public:
   //! \return Polynomial evaluated at x
   double operator()(double x) const override;
 
-  double max() const override;
-  double max(double min_e, double max_E) const override;
-
 private:
   vector<double> coef_; //!< Polynomial coefficients
 };
@@ -94,9 +89,6 @@ public:
   //! \param[in] x independent variable
   //! \return Function evaluated at x
   double operator()(double x) const override;
-
-  double max() const override;
-  double max(double min_E, double max_E) const override;
 
   // Accessors
   const vector<double>& x() const { return x_; }
@@ -121,9 +113,6 @@ public:
 
   double operator()(double E) const override;
 
-  double max() const override;
-  double max(double min_E, double max_E) const override;
-
   const vector<double>& bragg_edges() const { return bragg_edges_; }
   const vector<double>& factors() const { return factors_; }
 
@@ -141,9 +130,6 @@ public:
   explicit IncoherentElasticXS(hid_t dset);
 
   double operator()(double E) const override;
-
-  double max() const override;
-  double max(double min_E, double max_E) const override;
 
 private:
   double bound_xs_; //!< Characteristic bound xs in [b]
@@ -164,9 +150,6 @@ public:
   //! \param[in] x independent variable
   //! \return Function evaluated at x
   double operator()(double E) const override;
-
-  double max() const override;
-  double max(double min_E, double max_E) const override;
 
   const unique_ptr<Function1D>& functions(int i) const { return functions_[i]; }
 

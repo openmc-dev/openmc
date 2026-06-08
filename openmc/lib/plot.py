@@ -60,7 +60,7 @@ def _extract_slice_data_args(plot):
             'width': (plot.width, plot.height),
             'basis': plot.basis,
             'pixels': (plot.h_res, plot.v_res),
-            'color_overlaps': getattr(plot, 'color_overlaps', False),
+            'show_overlaps': getattr(plot, 'color_overlaps', False),
             'level': getattr(plot, 'level', -1),
         }
     except AttributeError as exc:

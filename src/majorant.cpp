@@ -8,10 +8,12 @@
 #include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
+#include "openmc/photon.h"
 #include "openmc/search.h"
 #include "openmc/simulation.h"
 #include "openmc/settings.h"
 #include "openmc/thermal.h"
+#include "openmc/timer.h"
 #include "openmc/universe.h"
 
 namespace openmc {
@@ -103,7 +105,7 @@ void Majorant::compute_majorant()
   material_maj_xs.resize(grid_.energy.size(), 0.0);
   for (int i_material : contained_materials_) {
     // Populate the per-material majorant cross section.
-    fill_material_maj_xs(*model::materials[i_material], max_density_mult_.at(i_material),
+    fill_material_maj_xs(i_material, max_density_mult_.at(i_material),
       grid_.energy, material_maj_xs);
 
     // Compute the full majorant by taking the max over each material cross section.
@@ -190,9 +192,11 @@ void NeutronMajorant::compute_unionized_grid()
   grid_.init();
 }
 
-void NeutronMajorant::fill_material_maj_xs(const Material & mat, double max_density_mult,
+void NeutronMajorant::fill_material_maj_xs(int i_material, double max_density_mult,
   const std::vector<double> & to_grid, std::vector<double> & mat_maj)
 {
+  const auto & mat = *model::materials[i_material];
+
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
     const double union_energy = to_grid[i_energy];
@@ -201,7 +205,6 @@ void NeutronMajorant::fill_material_maj_xs(const Material & mat, double max_dens
     bool check_sab = (mat.thermal_tables_.size() > 0);
 
     for (int i = 0; i < mat.nuclide_.size(); ++i) {
-      const auto & nuclide = data::nuclides[mat.nuclide_[i]];
       // ======================================================================
       // CHECK FOR S(A,B) TABLE
       int i_sab = C_NONE;
@@ -239,16 +242,16 @@ void NeutronMajorant::fill_material_maj_xs(const Material & mat, double max_dens
       double micro_smooth_tot_xs = 0.0;
       if (i_sab >= 0) {
         // Thermal scattering cross sections using S(a,b) tables.
-        micro_smooth_tot_xs = calculate_max_sab_tot_xs(union_energy, i_sab, sab_frac, *nuclide);
+        micro_smooth_tot_xs = calculate_max_sab_tot_xs(mat.nuclide_[i], i_sab, sab_frac, union_energy);
       } else {
         // Free gas smooth cross section
-        micro_smooth_tot_xs = calculate_max_smooth_xs(union_energy, *nuclide);
+        micro_smooth_tot_xs = calculate_max_smooth_xs(mat.nuclide_[i], union_energy);
       }
 
       // ======================================================================
       // Compute the URR cross section. This shouldn't intersect with the
       // S(a,b) cross section.
-      double micro_urr_xs = calculate_max_urr_xs(union_energy, *nuclide, micro_smooth_tot_xs);
+      double micro_urr_xs = calculate_max_urr_xs(mat.nuclide_[i], union_energy, micro_smooth_tot_xs);
 
       // ======================================================================
       // Accumulate the macroscopic cross section.
@@ -257,8 +260,10 @@ void NeutronMajorant::fill_material_maj_xs(const Material & mat, double max_dens
   }
 }
 
-double NeutronMajorant::calculate_max_smooth_xs(double energy, const Nuclide & nuc) const
+double NeutronMajorant::calculate_max_smooth_xs(int i_nuclide, double energy) const
 {
+  const auto & nuc = *data::nuclides[i_nuclide];
+
   double max_smooth_tot_xs = 0.0;
   for (int i_temp = 0; i_temp < nuc.kTs_.size(); ++i_temp) {
     const auto & nuc_grid = nuc.grid_[i_temp];
@@ -271,18 +276,20 @@ double NeutronMajorant::calculate_max_smooth_xs(double energy, const Nuclide & n
   return max_smooth_tot_xs;
 }
 
-double NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc, double smooth_xs) const
+double NeutronMajorant::calculate_max_urr_xs(int i_nuclide, double energy, double smooth_xs) const
 {
   // A tolerance on the URR check to make sure we include the URR energy grid bounds.
   constexpr double URR_FUZZY_CHECK = 1e-6;
 
+  const auto & nuc = *data::nuclides[i_nuclide];
   if (!nuc.urr_present_) {
     return 0.0;
   }
 
   double max_urr_xs = 0.0;
   for (const auto & urr : nuc.urr_data_) {
-    if (!(urr.energy_in_bounds(energy - URR_FUZZY_CHECK) || urr.energy_in_bounds(energy + URR_FUZZY_CHECK))) {
+    if (!(urr.energy_in_bounds(energy - URR_FUZZY_CHECK)
+          || urr.energy_in_bounds(energy + URR_FUZZY_CHECK))) {
       continue;
     }
 
@@ -317,9 +324,10 @@ double NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc,
   return max_urr_xs;
 }
 
-double NeutronMajorant::calculate_max_sab_tot_xs(double energy, int i_sab, double sab_frac, const Nuclide & nuc) const
+double NeutronMajorant::calculate_max_sab_tot_xs(int i_nuclide, int i_sab, double sab_frac, double energy) const
 {
-  const auto & thermal = data::thermal_scatt[i_sab];
+  const auto & nuc = *data::nuclides[i_nuclide];
+  const auto & thermal = *data::thermal_scatt[i_sab];
 
   // Loop over the nuclide's temperature grid to ensure we're consistent.
   double max_sab_total = 0.0;
@@ -330,12 +338,12 @@ double NeutronMajorant::calculate_max_sab_tot_xs(double energy, int i_sab, doubl
     // cross sections are interpolated to match the nuclide temperature point.
     double thermal_elastic;
     double thermal_inelastic;
-    const auto & tkTs = thermal->kTs_;
+    const auto & tkTs = thermal.kTs_;
     if (tkTs.size() > 1) {
       if (nuc_kT < tkTs.front()) {
-        thermal->data_.front().calculate_xs(energy, &thermal_elastic, &thermal_inelastic);
+        thermal.data_.front().calculate_xs(energy, &thermal_elastic, &thermal_inelastic);
       } else if (nuc_kT > tkTs.back()) {
-        thermal->data_.back().calculate_xs(energy, &thermal_elastic, &thermal_inelastic);
+        thermal.data_.back().calculate_xs(energy, &thermal_elastic, &thermal_inelastic);
       } else {
         // Find temperatures that bound the actual temperature
         int i_sab_temp = 0;
@@ -344,13 +352,13 @@ double NeutronMajorant::calculate_max_sab_tot_xs(double energy, int i_sab, doubl
         }
         // Interpolate the scattering cross sections to the nuclide temperature grid point.
         double T0_elastic, T1_elastic, T0_inelastic, T1_inelastic;
-        thermal->data_[i_sab_temp].calculate_xs(energy, &T0_elastic, &T0_inelastic);
-        thermal->data_[i_sab_temp + 1].calculate_xs(energy, &T1_elastic, &T1_inelastic);
+        thermal.data_[i_sab_temp].calculate_xs(energy, &T0_elastic, &T0_inelastic);
+        thermal.data_[i_sab_temp + 1].calculate_xs(energy, &T1_elastic, &T1_inelastic);
         thermal_elastic = interpolate_lin_1D(tkTs[i_sab_temp], tkTs[i_sab_temp + 1], T0_elastic, T1_elastic, nuc_kT);
         thermal_inelastic = interpolate_lin_1D(tkTs[i_sab_temp], tkTs[i_sab_temp + 1], T0_inelastic, T1_inelastic, nuc_kT);
       }
     } else {
-      thermal->data_[0].calculate_xs(energy, &thermal_elastic, &thermal_inelastic);
+      thermal.data_[0].calculate_xs(energy, &thermal_elastic, &thermal_inelastic);
     }
 
     // Compute the free gas total and elastic cross sections interpolated on the majorant grid.
@@ -455,9 +463,11 @@ double PhotonMajorant::calculate_photon_xs(double energy) const
   return std::exp(xs_[i_grid] + f * (xs_[i_grid + 1] - xs_[i_grid]));
 }
 
-void PhotonMajorant::fill_material_maj_xs(const Material & mat, double max_density_mult,
+void PhotonMajorant::fill_material_maj_xs(int i_material, double max_density_mult,
   const std::vector<double> & to_grid, std::vector<double> & mat_maj)
 {
+  const auto & mat = *model::materials[i_material];
+
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
     const double union_log_energy = to_grid[i_energy];
@@ -465,14 +475,15 @@ void PhotonMajorant::fill_material_maj_xs(const Material & mat, double max_densi
     for (int i = 0; i < mat.nuclide_.size(); ++i) {
       const int i_element = mat.element_[i];
 
-      mat_maj[i_energy] += calculate_elem_tot_xs(union_log_energy, *data::elements[i_element]) * mat.atom_density(i, max_density_mult);
+      mat_maj[i_energy] += calculate_elem_tot_xs(i_element, union_log_energy) * mat.atom_density(i, max_density_mult);
     }
     mat_maj[i_energy] = std::log(mat_maj[i_energy]);
   }
 }
 
-double PhotonMajorant::calculate_elem_tot_xs(double log_energy, const PhotonInteraction & elem) const
+double PhotonMajorant::calculate_elem_tot_xs(int i_element, double log_energy) const
 {
+  const auto & elem = *data::elements[i_element];
   int i_grid = get_i_grid(log_energy, elem.energy_);
 
   // calculate interpolation factor
@@ -553,19 +564,23 @@ int PhotonMajorant::get_i_grid(double log_energy, const tensor::Tensor<double> &
 //! Create a majorant cross section for photons or neutrons.
 void create_majorants()
 {
-  write_message("Creating a neutron majorant cross section");
+  simulation::time_build_majorant.start();
+
+  write_message("Constructing a neutron majorant cross section");
   data::n_majorant = std::make_unique<NeutronMajorant>(model::root_universe);
   data::n_majorant->compute_unionized_grid();
   data::n_majorant->compute_majorant();
   data::n_majorant->write_ascii("neutron_majorant.txt");
 
   if (settings::photon_transport) {
-    write_message("Creating a photon majorant cross section");
+    write_message("Constructing a photon majorant cross section");
     data::p_majorant = std::make_unique<PhotonMajorant>(model::root_universe);
     data::p_majorant->compute_unionized_grid();
     data::p_majorant->compute_majorant();
     data::p_majorant->write_ascii("photon_majorant.txt");
   }
+
+  simulation::time_build_majorant.stop();
 }
 
 //! Reset the photon and neutron majorant cross sections.

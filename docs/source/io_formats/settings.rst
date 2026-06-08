@@ -98,6 +98,11 @@ sub-elements:
     A list of strings representing the nuclide, to define specific
     define specific target nuclide collisions to be banked.
 
+    .. note::
+      Electron and positron collision-track events are not associated with
+      a specific nuclide. If a ``nuclides`` entry is specified, these events
+      are omitted.
+
     *Default*: None
 
   :reactions:
@@ -606,30 +611,30 @@ found in the :ref:`random ray user guide <random_ray>`.
     *Default*: None
 
   :adjoint_source:
-    Specifies an adjoint fixed source for adjoint transport simulations, and 
-    follows the format for :ref:`source_element`. The distributions which make 
-    up the adjoint source are subject to the same restrictions as forward 
+    Specifies an adjoint fixed source for adjoint transport simulations, and
+    follows the format for :ref:`source_element`. The distributions which make
+    up the adjoint source are subject to the same restrictions as forward
     fixed sources in Random Ray mode.
 
     *Default*: None
-  
+
   :adjoint:
-    Specifies whether to perform adjoint transport. The default is 'False', 
+    Specifies whether to perform adjoint transport. The default is 'False',
     corresponding to forward transport.
 
     *Default*: None
-  
+
   :volume_estimator:
-    Specifies choice of volume estimator for the random ray solver. Options 
+    Specifies choice of volume estimator for the random ray solver. Options
     are 'naive', 'simulation_averaged', or 'hybrid'. The default is 'hybrid'.
 
     *Default*: None
 
   :volume_normalized_flux_tallies:
-    Specifies whether to normalize flux tallies by volume (bool). The 
-    default is 'False'. When enabled, flux tallies will be reported in units 
-    of cm/cm^3. When disabled, flux tallies will be reported in units of cm 
-    (i.e., total distance traveled by neutrons in the spatial tally 
+    Specifies whether to normalize flux tallies by volume (bool). The
+    default is 'False'. When enabled, flux tallies will be reported in units
+    of cm/cm^3. When disabled, flux tallies will be reported in units of cm
+    (i.e., total distance traveled by neutrons in the spatial tally
     region).
 
     *Default*: None
@@ -1757,11 +1762,11 @@ mesh-based weight windows.
         The ratio of the lower to upper weight window bounds.
 
         *Default*: 5.0
-    
+
     For FW-CADIS:
 
       :targets:
-        A sequence of IDs corresponding to the tallies which cover phase 
+        A sequence of IDs corresponding to the tallies which cover phase
         space regions of interest for local variance reduction.
 
         *Default*: None

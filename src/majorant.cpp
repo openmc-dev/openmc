@@ -1,5 +1,3 @@
-#include <fstream>
-
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
@@ -114,15 +112,6 @@ void Majorant::compute_majorant()
     }
     std::fill(material_maj_xs.begin(), material_maj_xs.end(), 0.0);
   }
-}
-
-void Majorant::write_ascii(const std::string& filename) const
-{
-  std::ofstream of(filename);
-  for (int i = 0; i < xs_.size(); i++) {
-    of << grid_.energy[i] << "," << xs_[i] << "\n";
-  }
-  of.close();
 }
 
 //==============================================================================
@@ -570,14 +559,12 @@ void create_majorants()
   data::n_majorant = std::make_unique<NeutronMajorant>(model::root_universe);
   data::n_majorant->compute_unionized_grid();
   data::n_majorant->compute_majorant();
-  data::n_majorant->write_ascii("neutron_majorant.txt");
 
   if (settings::photon_transport) {
     write_message("Constructing a photon majorant cross section");
     data::p_majorant = std::make_unique<PhotonMajorant>(model::root_universe);
     data::p_majorant->compute_unionized_grid();
     data::p_majorant->compute_majorant();
-    data::p_majorant->write_ascii("photon_majorant.txt");
   }
 
   simulation::time_build_majorant.stop();

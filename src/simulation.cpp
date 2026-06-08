@@ -346,7 +346,6 @@ double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
 double log_spacing;
-double log_spacing_rcp;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
@@ -929,7 +928,6 @@ void initialize_data()
   simulation::log_spacing =
     std::log(data::energy_max[neutron] / data::energy_min[neutron]) /
     settings::n_log_bins;
-  simulation::log_spacing_rcp = 1.0 / simulation::log_spacing;
 }
 
 #ifdef OPENMC_MPI

@@ -89,7 +89,6 @@ Majorant::Majorant(int i_universe)
   }
 
   // Clear the contained materials vector and insert the elements from the set.
-  contained_materials_.clear();
   for (auto i_mat : unique_materials) {
     contained_materials_.push_back(i_mat);
   }
@@ -140,10 +139,6 @@ double NeutronMajorant::calculate_neutron_xs(double energy) const
 
 void NeutronMajorant::compute_unionized_grid()
 {
-  // In the event the majorant needs to be re-generated (e.g. in-memory for
-  // multiphysics), we need to reset the unionized grid.
-  grid_.energy.clear();
-
   // This function generates a unionized cross section grid between smooth cross
   // sections and URR probability table grids.
   std::set<int> processed_nuclides;
@@ -223,7 +218,7 @@ void NeutronMajorant::fill_material_maj_xs(const Material & mat, double max_dens
 
           // If particle energy is greater than the highest energy for the
           // S(a,b) table, then don't use the S(a,b) table
-          if ((union_energy - 1e-6) > data::thermal_scatt[i_sab]->energy_max_) {
+          if (union_energy > data::thermal_scatt[i_sab]->energy_max_) {
             i_sab = C_NONE;
           }
 
@@ -284,7 +279,7 @@ double NeutronMajorant::calculate_max_urr_xs(double energy, const Nuclide & nuc,
 
   double max_urr_xs = 0.0;
   for (const auto & urr : nuc.urr_data_) {
-    if (!(urr.energy_in_bounds(energy - 1e-6) || urr.energy_in_bounds(energy + 1e-6))) {
+    if (!urr.energy_in_bounds(energy)) {
       continue;
     }
 
@@ -409,10 +404,6 @@ PhotonMajorant::PhotonMajorant(int i_universe)
 
 void PhotonMajorant::compute_unionized_grid()
 {
-  // In the event the majorant needs to be re-generated (e.g. in-memory for
-  // multiphysics), we need to reset the unionized grid.
-  grid_.energy.clear();
-
   // This function generates a unionized cross section grid for all elements.
   std::set<int> processed_elements;
   for (int i_mat : contained_materials_) {
@@ -556,8 +547,7 @@ int PhotonMajorant::get_i_grid(double log_energy, const tensor::Tensor<double> &
   return i_grid;
 }
 
-//! Create/load a majorant cross section for photons or neutrons. Errors if they
-//  exist already.
+//! Create a majorant cross section for photons or neutrons.
 void create_majorants()
 {
   write_message("Creating a neutron majorant cross section");

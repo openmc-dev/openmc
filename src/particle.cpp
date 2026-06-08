@@ -179,8 +179,8 @@ void Particle::from_source(const SourceSite* src)
     g_last() = static_cast<int>(src->E);
     E() = data::mg.energy_bin_avg_[g()];
   }
+  E_last() = E();
 
-  E_last() = E(); // maybe should be 0.0?
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
@@ -226,12 +226,8 @@ void Particle::event_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
-      if (!delta_tracking()) {
-        wgt() = 0.0;
-      } else {
         mark_as_lost("Could not find the cell containing particle " +
                      std::to_string(id()));
-      }
       return;
     }
 

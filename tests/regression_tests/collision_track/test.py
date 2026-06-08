@@ -166,7 +166,7 @@ def model_1():
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.particles = 50
+    model.settings.particles = 80
     model.settings.batches = 5
     model.settings.inactive = 4
     model.settings.seed = 1
@@ -188,19 +188,19 @@ def model_1():
 
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
-    [("case_1_Reactions", "model_1", {"max_collisions": 50, "reactions": ["(n,fission)", 101]}),
+    [("case_1_Reactions", "model_1", {"max_collisions": 100, "reactions": ["(n,fission)", 101]}),
         ("case_2_Cell_ID", "model_1", {
-         "max_collisions": 50, "cell_ids": [22]}),
+         "max_collisions": 100, "cell_ids": [22]}),
         ("case_3_Material_ID", "model_1", {
-         "max_collisions": 50, "material_ids": [1]}),
+         "max_collisions": 100, "material_ids": [1]}),
         ("case_4_Nuclide_ID", "model_1", {
-         "max_collisions": 50, "nuclides": ["O16", "U235"]}),
+         "max_collisions": 100, "nuclides": ["O16", "U235"]}),
         ("case_5_Universe_ID", "model_1", {
-         "max_collisions": 50, "cell_ids": [22], "universe_ids": [77]}),
+         "max_collisions": 100, "cell_ids": [22], "universe_ids": [77]}),
         ("case_6_deposited_energy_threshold", "model_1", {
-         "max_collisions": 50, "deposited_E_threshold": 5.5e5}),
+         "max_collisions": 100, "deposited_E_threshold": 5.5e5}),
         ("case_7_all_parameters_used_together", "model_1", {
-            "max_collisions": 50,
+            "max_collisions": 100,
             "reactions": ["elastic", 18, "(n,disappear)"],
             "material_ids": [1, 11],
             "universe_ids": [77],

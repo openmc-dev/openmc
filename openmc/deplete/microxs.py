@@ -6,6 +6,8 @@ IndependentOperator class for depletion.
 
 from __future__ import annotations
 from collections.abc import Sequence
+from contextlib import nullcontext
+from dataclasses import dataclass
 import shutil
 from tempfile import TemporaryDirectory
 from typing import Union, TypeAlias, Self
@@ -140,6 +142,8 @@ def get_microxs_and_flux(
     chain = _get_chain(chain_file)
     if reactions is None:
         reactions = chain.reactions
+    nuclides_with_data = None
+    cross_sections = None
     if not nuclides:
         cross_sections = _find_cross_sections(model)
         nuclides_with_data = _get_nuclides_with_data(cross_sections)
@@ -309,14 +313,15 @@ def get_microxs_and_flux(
                 MicroXS(xs_i, rr_nuclides, rr_reactions) for xs_i in xs)
 
     if reaction_rate_mode == 'flux':
-        # Compute flux-collapsed microscopic XS
-        flux_micros = [MicroXS.from_multigroup_flux(
-            energies=collapse_energies,
-            multigroup_flux=flux_i,
-            chain_file=chain_file,
-            nuclides=nuclides,
-            reactions=reactions
-        ) for flux_i in fluxes]
+        # Resolve data availability if the caller passed nuclides explicitly
+        if nuclides_with_data is None:
+            cross_sections = _find_cross_sections(model)
+            nuclides_with_data = _get_nuclides_with_data(cross_sections)
+        # Build the XS table once and collapse every domain against it; looping
+        # from_multigroup_flux per domain would rebuild the table each call.
+        flux_micros = _flux_collapse_micros(
+            nuclides, reactions, collapse_energies, fluxes,
+            nuclides_with_data, cross_sections=cross_sections)
 
         # We need to return one-group fluxes to match the microscopic cross
         # sections, which are always one-group by virtue of the collapse
@@ -334,6 +339,215 @@ def get_microxs_and_flux(
     model.tallies = original_tallies
 
     return fluxes, micros
+
+
+@dataclass
+class _SparseXSTable:
+    """Sparse storage of group cross sections for vectorized flux collapse.
+
+    Stores only the non-zero ``(nuclide, reaction)`` pairs. ``xs_matrix`` has
+    shape ``(nnz, n_groups)``; ``nuc_indices`` and ``rxn_indices`` map each row
+    to its position in the dense ``(n_nuclides, n_reactions)`` result.
+
+    Parameters
+    ----------
+    nuclides : list of str
+        Nuclide names defining the result's nuclide axis.
+    reactions : list of str
+        Reaction names defining the result's reaction axis.
+    n_groups : int
+        Number of energy groups.
+    xs_matrix : numpy.ndarray
+        Group cross sections for the stored rows, shape ``(nnz, n_groups)``.
+    nuc_indices : numpy.ndarray
+        Row-to-nuclide index map, shape ``(nnz,)``.
+    rxn_indices : numpy.ndarray
+        Row-to-reaction index map, shape ``(nnz,)``.
+
+    Notes
+    -----
+    Provider-agnostic: rows may be filled from continuous-energy data
+    (:func:`_build_xs_table_ce`) or any other group cross section source.
+
+    """
+    nuclides: list[str]
+    reactions: list[str]
+    n_groups: int
+    xs_matrix: np.ndarray
+    nuc_indices: np.ndarray
+    rxn_indices: np.ndarray
+
+    def collapse(self, phi_norm: np.ndarray) -> np.ndarray:
+        """Collapse the table to one-group cross sections.
+
+        Parameters
+        ----------
+        phi_norm : numpy.ndarray
+            Normalized group flux, shape ``(n_groups,)``. Should sum to 1.
+
+        Returns
+        -------
+        numpy.ndarray
+            Dense ``(n_nuclides, n_reactions)`` one-group cross sections.
+
+        """
+        if len(phi_norm) != self.n_groups:
+            raise ValueError(
+                f'phi_norm has length {len(phi_norm)} but table expects '
+                f'{self.n_groups} groups')
+        collapsed_sparse = self.xs_matrix @ phi_norm
+        result = np.zeros((len(self.nuclides), len(self.reactions)))
+        result[self.nuc_indices, self.rxn_indices] = collapsed_sparse
+        return result
+
+
+def _build_xs_table_ce(
+    nuclides: Sequence[str],
+    reactions: Sequence[str],
+    energies: Sequence[float],
+    temperature: float,
+    nuclides_with_data: set,
+    cross_sections=None,
+    **init_kwargs,
+) -> _SparseXSTable:
+    """Build a sparse group cross section table from continuous-energy data.
+
+    For each requested ``(nuclide, reaction)`` the group-averaged cross sections
+    are computed once via the :meth:`openmc.lib.Nuclide.group_xs` C API and
+    stored as one sparse row, so every domain can later be collapsed with a
+    single matrix-vector product. Rows that are entirely zero (reaction absent,
+    or threshold above the whole group structure) are skipped. Cross sections
+    are evaluated inside a single :class:`openmc.lib.TemporarySession`, loading
+    each nuclide once.
+
+    Parameters
+    ----------
+    nuclides : sequence of str
+        Nuclide names defining the result's nuclide axis.
+    reactions : sequence of str
+        Reaction names defining the result's reaction axis.
+    energies : sequence of float
+        Energy group boundaries in [eV], ascending, length ``n_groups + 1``.
+    temperature : float
+        Temperature in [K] for cross section evaluation.
+    nuclides_with_data : set
+        Nuclides available in the cross section library; others are skipped.
+    cross_sections : PathLike, optional
+        Cross section library for the session, so it matches the one
+        ``nuclides_with_data`` was resolved from. Defaults to ``openmc.config``.
+    **init_kwargs : dict
+        Keyword arguments passed to :func:`openmc.lib.init` via the temporary
+        session.
+
+    Returns
+    -------
+    _SparseXSTable
+
+    """
+    mts = [REACTION_MT[name] for name in reactions]
+    energies = np.asarray(energies, dtype=float)
+    n_groups = len(energies) - 1
+
+    rows = []
+    nuc_idx_list = []
+    rxn_idx_list = []
+    # Load against the same library nuclides_with_data was resolved from
+    library = (openmc.config.patch('cross_sections', cross_sections)
+               if cross_sections is not None else nullcontext())
+    with library, openmc.lib.TemporarySession(**init_kwargs):
+        for nuc_idx, nuc in enumerate(nuclides):
+            if nuc not in nuclides_with_data:
+                continue
+            lib_nuc = openmc.lib.load_nuclide(nuc)
+            # Index by reaction, not MT, so fission/(n,fission) stay separate
+            for rxn_idx, mt in enumerate(mts):
+                xs_g = lib_nuc.group_xs(mt, temperature, energies)
+                if xs_g.any():
+                    rows.append(xs_g)
+                    nuc_idx_list.append(nuc_idx)
+                    rxn_idx_list.append(rxn_idx)
+
+    if rows:
+        xs_matrix = np.vstack(rows)
+    else:
+        xs_matrix = np.empty((0, n_groups))
+
+    return _SparseXSTable(
+        nuclides=list(nuclides),
+        reactions=list(reactions),
+        n_groups=n_groups,
+        xs_matrix=xs_matrix,
+        nuc_indices=np.array(nuc_idx_list, dtype=np.int32),
+        rxn_indices=np.array(rxn_idx_list, dtype=np.int32),
+    )
+
+
+def _collapse_fluxes(
+    table: _SparseXSTable,
+    fluxes: Sequence[np.ndarray],
+    nuclides: Sequence[str],
+    reactions: Sequence[str],
+) -> list[MicroXS]:
+    """Collapse each domain's multigroup flux against a built XS table.
+
+    Each flux is validated (finite, non-negative) and normalized to sum 1 before
+    being collapsed; a zero-sum flux yields an all-zero :class:`MicroXS`.
+
+    Parameters
+    ----------
+    table : _SparseXSTable
+        Pre-built group cross section table.
+    fluxes : sequence of numpy.ndarray
+        One ``(n_groups,)`` group-flux vector per domain.
+    nuclides : sequence of str
+        Nuclide axis of the output MicroXS objects.
+    reactions : sequence of str
+        Reaction axis of the output MicroXS objects.
+
+    Returns
+    -------
+    list of MicroXS
+        One per domain, each of shape ``(n_nuclides, n_reactions, 1)``.
+
+    """
+    micros = []
+    for flux in fluxes:
+        flux = np.asarray(flux, dtype=float)
+        if not np.isfinite(flux).all():
+            raise ValueError('Multigroup flux contains non-finite values')
+        if (flux < 0).any():
+            raise ValueError('Multigroup flux contains negative values')
+        flux_sum = flux.sum()
+        if flux_sum == 0.0:
+            micros.append(MicroXS(
+                np.zeros((len(nuclides), len(reactions), 1)),
+                nuclides, reactions))
+            continue
+        collapsed = table.collapse(flux / flux_sum)
+        micros.append(MicroXS(collapsed[:, :, np.newaxis],
+                              nuclides, reactions))
+    return micros
+
+
+def _flux_collapse_micros(
+    nuclides: Sequence[str],
+    reactions: Sequence[str],
+    energies: Sequence[float],
+    fluxes: Sequence[np.ndarray],
+    nuclides_with_data: set,
+    temperature: float = 293.6,
+    cross_sections=None,
+    **init_kwargs,
+) -> list[MicroXS]:
+    """Build the CE group XS table once, then collapse each domain's flux.
+
+    Returns one :class:`MicroXS` per entry in ``fluxes``.
+
+    """
+    table = _build_xs_table_ce(
+        nuclides, reactions, energies, temperature, nuclides_with_data,
+        cross_sections=cross_sections, **init_kwargs)
+    return _collapse_fluxes(table, fluxes, nuclides, reactions)
 
 
 class MicroXS:
@@ -407,7 +621,8 @@ class MicroXS:
         energies : iterable of float or str
             Energy group boundaries in [eV] or the name of the group structure
         multigroup_flux : iterable of float
-            Energy-dependent multigroup flux values
+            Energy-dependent multigroup flux values. Must be finite and
+            non-negative.
         chain_file : PathLike or Chain, optional
             Path to the depletion chain XML file or an instance of
             openmc.deplete.Chain. Defaults to ``openmc.config['chain_file']``.
@@ -450,36 +665,15 @@ class MicroXS:
             nuclides = chain.nuclides
             nuclides = [nuc.name for nuc in nuclides]
 
-        # Get reaction MT values. If no reactions specified, default to the
-        # reactions available in the chain file
+        # If no reactions specified, default to those in the chain file
         if reactions is None:
             reactions = chain.reactions
-        mts = [REACTION_MT[name] for name in reactions]
 
-        # Create 3D array for microscopic cross sections
-        microxs_arr = np.zeros((len(nuclides), len(mts), 1))
-
-        # If flux is zero, safely return zero cross sections
-        multigroup_flux = np.array(multigroup_flux)
-        if (flux_sum := multigroup_flux.sum()) == 0.0:
-            return cls(microxs_arr, nuclides, reactions)
-
-        # Normalize multigroup flux
-        multigroup_flux /= flux_sum
-
-        # Compute microscopic cross sections within a temporary session
-        with openmc.lib.TemporarySession(**init_kwargs):
-            # For each nuclide and reaction, compute the flux-averaged xs
-            for nuc_index, nuc in enumerate(nuclides):
-                if nuc not in nuclides_with_data:
-                    continue
-                lib_nuc = openmc.lib.load_nuclide(nuc)
-                for mt_index, mt in enumerate(mts):
-                    microxs_arr[nuc_index, mt_index, 0] = lib_nuc.collapse_rate(
-                        mt, temperature, energies, multigroup_flux
-                    )
-
-        return cls(microxs_arr, nuclides, reactions)
+        # Delegate to the shared build-and-collapse engine (single-flux case)
+        return _flux_collapse_micros(
+            nuclides, reactions, energies, [multigroup_flux],
+            nuclides_with_data, temperature, cross_sections=cross_sections,
+            **init_kwargs)[0]
 
     @classmethod
     def from_csv(cls, csv_file, **kwargs):

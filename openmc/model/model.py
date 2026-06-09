@@ -1150,7 +1150,7 @@ class Model:
 
         return ids
 
-    def slice_plot(
+    def slice_data(
         self,
         origin: Sequence[float] | None = None,
         width: Sequence[float] | None = None,
@@ -1256,7 +1256,7 @@ class Model:
             self.tallies.append(temp_tally)
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            geom_data, property_data = openmc.lib.slice_plot(
+            geom_data, property_data = openmc.lib.slice_data(
                 origin=origin,
                 width=width,
                 basis=basis,

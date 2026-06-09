@@ -297,7 +297,7 @@ def property_map(plot):
     return prop_data
 
 
-_dll.openmc_slice_plot.argtypes = [
+_dll.openmc_slice_data.argtypes = [
     POINTER(c_double * 3),   # origin
     POINTER(c_double * 3),   # u_span
     POINTER(c_double * 3),   # v_span
@@ -308,11 +308,11 @@ _dll.openmc_slice_plot.argtypes = [
     POINTER(c_int32),        # geom_data
     POINTER(c_double),       # property_data (can be None)
 ]
-_dll.openmc_slice_plot.restype = c_int
-_dll.openmc_slice_plot.errcheck = _error_handler
+_dll.openmc_slice_data.restype = c_int
+_dll.openmc_slice_data.errcheck = _error_handler
 
 
-def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
+def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
                 pixels=None, color_overlaps=False, level=-1, filter=None,
                 include_properties=True):
     """Generate a 2D raster of geometry and property data for plotting.
@@ -430,7 +430,7 @@ def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
         property_data = None
         prop_ptr = None
 
-    _dll.openmc_slice_plot(
+    _dll.openmc_slice_data(
         origin_arr,
         u_span_arr,
         v_span_arr,
@@ -446,34 +446,34 @@ def slice_plot(origin, width=None, basis='xy', u_span=None, v_span=None,
 
 # Overlap function bindings
 
-_dll.openmc_slice_plot_overlap_count.argtypes = [
+_dll.openmc_slice_data_overlap_count.argtypes = [
     c_int32, c_int32, POINTER(c_int32)
 ]
-_dll.openmc_slice_plot_overlap_count.restype = c_int
-_dll.openmc_slice_plot_overlap_count.errcheck = _error_handler
+_dll.openmc_slice_data_overlap_count.restype = c_int
+_dll.openmc_slice_data_overlap_count.errcheck = _error_handler
 
-_dll.openmc_slice_plot_overlap_data.argtypes = [
+_dll.openmc_slice_data_overlap_info.argtypes = [
     c_int32, c_int32,
     POINTER(c_int32), POINTER(c_int32), POINTER(c_int32)
 ]
-_dll.openmc_slice_plot_overlap_data.restype = c_int
-_dll.openmc_slice_plot_overlap_data.errcheck = _error_handler
+_dll.openmc_slice_data_overlap_info.restype = c_int
+_dll.openmc_slice_data_overlap_info.errcheck = _error_handler
 
 # Python wrappings for overlap functions
 
-def slice_plot_overlap_count(x, y):
+def slice_data_overlap_count(x, y):
     count = c_int32()
-    _dll.openmc_slice_plot_overlap_count(x, y, count)
+    _dll.openmc_slice_data_overlap_count(x, y, count)
     return count.value
 
-def slice_plot_overlap_data(x, y):
-    n = slice_plot_overlap_count(x, y)
+def slice_data_overlap_info(x, y):
+    n = slice_data_overlap_count(x, y)
     cell1 = np.empty(n, dtype=np.int32)
     cell2 = np.empty(n, dtype=np.int32)
     universe = np.empty(n, dtype=np.int32)
 
     if n > 0:
-        _dll.openmc_slice_plot_overlap_data(
+        _dll.openmc_slice_data_overlap_info(
             x, y,
             cell1.ctypes.data_as(POINTER(c_int32)),
             cell2.ctypes.data_as(POINTER(c_int32)),

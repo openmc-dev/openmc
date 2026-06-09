@@ -131,7 +131,11 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
 
    If you need to improve the fidelity of the MGXS library, there is more
    information on generating multigroup cross sections via OpenMC in the
-   :ref:`random ray MGXS guide <mgxs_gen>`.
+   :ref:`random ray MGXS guide <mgxs_gen>`. In particular, if some materials sit
+   far behind shielding (a common situation in fusion analysis) such that the
+   high-fidelity ``"material_wise"`` method cannot reach them with an analog
+   solve, the cross section generation itself can be accelerated with weight
+   windows produced by an earlier run; see :ref:`mgxs_bootstrap`.
 
 2. Add in a :class:`~openmc.WeightWindowGenerator` in a similar manner as for
    MAGIC generation with Monte Carlo and set the :attr:`method` attribute set to

@@ -945,6 +945,11 @@ void apply_weight_windows(Particle& p)
   if (!settings::weight_windows_on)
     return;
 
+  // Random ray rays are not Monte Carlo particles and must not be biased by
+  // weight windows; the solver generates weight windows but never applies them
+  if (settings::solver_type == SolverType::RANDOM_RAY)
+    return;
+
   // WW on photon and neutron only
   if (!p.type().is_neutron() && !p.type().is_photon())
     return;

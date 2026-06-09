@@ -672,7 +672,9 @@ of these methods is given below:
          both spatial and resonance self shielding effects
      - * Potentially slower as the full geometry must be run
        * If a material is only present far from the source and doesn't get tallied
-         to in the CE simulation, the MGXS will be zero for that material.
+         to in the CE simulation, the MGXS will be zero for that material. This
+         can be mitigated by supplying weight windows via the
+         ``weight_windows_file`` argument (see :ref:`mgxs_bootstrap`).
    * - ``stochastic_slab``
      - * Medium Fidelity
        * Runs a CE simulation with a greatly simplified geometry, where materials
@@ -756,6 +758,61 @@ useful in that they can provide a good starting point for a random ray
 simulation, and if more fidelity is needed the user may wish to follow the
 instructions below or experiment with transport correction techniques to improve
 the fidelity of the generated MGXS data.
+
+.. _mgxs_bootstrap:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Bootstrapping Material-Wise MGXS with Weight Windows
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``"material_wise"`` method runs a continuous energy simulation of the
+original geometry, so it produces the highest fidelity cross sections of the
+three methods. However, it has a notable weakness: if a material only appears
+far from the source (for example, a detector or structural material located
+outside a thick shield), an analog continuous energy simulation may be unable to
+transport any particles to that material. No tallies are scored there, and the
+resulting cross sections for that material are zero. This situation is common in
+fusion shielding problems.
+
+This limitation can be overcome by "bootstrapping" the cross section generation
+with weight windows. The idea is to first cheaply produce a set of weight windows
+that cover the entire problem, and then reuse them to push particles into the far
+regions during the higher fidelity ``"material_wise"`` solve. The weight windows
+are generated using the ``"stochastic_slab"`` method (which produces cross
+sections for *all* materials regardless of their location) together with the
+random ray solver and a :class:`~openmc.WeightWindowGenerator`, exactly as
+described in the :ref:`FW-CADIS user guide <usersguide_fw_cadis>`. The resulting
+``weight_windows.h5`` file is then passed to a second, higher fidelity
+``"material_wise"`` cross section generation via the ``weight_windows_file``
+argument::
+
+    # First, generate weight windows with the stochastic slab method and random
+    # ray (see the FW-CADIS user guide), producing a weight_windows.h5 file.
+    ...
+
+    # Then, bootstrap a higher fidelity material-wise library, applying those
+    # weight windows during the continuous energy solve so that particles can
+    # reach materials far from the source.
+    model.convert_to_multigroup(
+        method="material_wise",
+        weight_windows_file="weight_windows.h5",
+        overwrite_mgxs_library=True,
+    )
+
+The ``weight_windows_file`` argument is only used with the ``"material_wise"``
+method, as the ``"stochastic_slab"`` and ``"infinite_medium"`` methods use
+simplified surrogate geometries that are incompatible with a weight window mesh
+defined over the original geometry (and do not need weight windows, since they
+already tally all materials). A warning is issued and the argument is ignored if
+it is supplied to another method.
+
+.. note::
+    For the weight windows to take effect, they must be defined over a mesh that
+    covers the original problem geometry. This is automatically the case when the
+    weight windows are generated from the same model, as described above. The
+    resulting bootstrapped cross sections can then be used to seed a second, more
+    accurate random ray solve -- for example, to generate improved FW-CADIS
+    weight windows for a subsequent Monte Carlo simulation.
 
 ~~~~~~~~~~~~
 The Hard Way

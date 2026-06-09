@@ -46,9 +46,7 @@ jobs:
         python-version: ["3.12"]
         mpi: [n, y]
         omp: [n, y]
-        dagmc: [n]
-        xdg: [n]
-        libmesh: [n]
+        umesh_libs: [n, y]
         event: [n]
 
         include:
@@ -83,18 +81,17 @@ jobs:
             omp: y
             mpi: n
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
-      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
-      xdg=${{ matrix.xdg }}, libmesh=${{ matrix.libmesh }},
+      mpi=${{ matrix.mpi }}, umesh_libs=${{ matrix.umesh_libs }},
       event=${{ matrix.event }}"
 
     env:
       MPI: ${{ matrix.mpi }}
       PHDF5: ${{ matrix.mpi }}
       OMP: ${{ matrix.omp }}
-      DAGMC: ${{ matrix.dagmc }}
-      XDG: ${{ matrix.xdg }}
+      DAGMC: ${{ matrix.umesh_libs }}
+      XDG: ${{ matrix.umesh_libs }}
       EVENT: ${{ matrix.event }}
-      LIBMESH: ${{ matrix.libmesh }}
+      LIBMESH: ${{ matrix.umesh_libs }}
       NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
       OPENBLAS_NUM_THREADS: 1
       PYTEST_ADDOPTS: --cov=openmc --cov-report=lcov:coverage-python.lcov

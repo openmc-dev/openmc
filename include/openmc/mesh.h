@@ -47,12 +47,6 @@ namespace openmc {
 
 enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
-struct NextMeshCell {
-  double distance {INFTY};
-  int face_idx {-1};
-  std::array<int, 3> next_ijk;
-};
-
 //==============================================================================
 // Global variables
 //==============================================================================

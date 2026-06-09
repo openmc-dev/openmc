@@ -51,6 +51,7 @@
       <lower_left>0.0 0.0 0.0</lower_left>
       <upper_right>160.0 160.0 160.0</upper_right>
     </mesh>
+    <shared_secondary_bank>true</shared_secondary_bank>
     <weight_window_checkpoints>
       <collision>true</collision>
       <surface>true</surface>

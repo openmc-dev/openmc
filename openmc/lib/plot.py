@@ -9,6 +9,7 @@ from .core import _FortranObjectWithID
 from .error import _error_handler
 
 import numpy as np
+import warnings
 
 
 class _Position(Structure):
@@ -51,250 +52,23 @@ class _Position(Structure):
         return f"({self.x}, {self.y}, {self.z})"
 
 
-class _PlotBase(Structure):
-    """A structure defining a 2-D geometry slice with underlying c-types
-
-    C-Type Attributes
-    -----------------
-    origin_ : openmc.lib.plot._Position
-        A position defining the origin of the plot.
-    u_span_ : openmc.lib.plot._Position
-        Full-width span vector defining the plot's horizontal axis.
-    v_span_ : openmc.lib.plot._Position
-        Full-height span vector defining the plot's vertical axis.
-    width_ : openmc.lib.plot._Position
-        The width of the plot along the x, y, and z axes, respectively
-    basis_ : c_int
-        The axes basis of the plot view.
-    pixels_ : c_size_t[3]
-        The resolution of the plot in the horizontal and vertical dimensions
-    color_overlaps_ : c_bool
-        Whether to assign unique IDs (-3) to overlapping regions.
-    level_ : c_int
-        The universe level for the plot view
-
-    Attributes
-    ----------
-    origin : tuple or list of ndarray
-        Origin (center) of the plot
-    width : float
-        The horizontal dimension of the plot in geometry units (cm)
-    height : float
-        The vertical dimension of the plot in geometry units (cm)
-    basis : string
-        One of {'xy', 'xz', 'yz'} indicating the horizontal and vertical
-        axes of the plot.
-    h_res : int
-        The horizontal resolution of the plot in pixels
-    v_res : int
-        The vertical resolution of the plot in pixels
-    level : int
-        The universe level for the plot (default: -1 -> all universes shown)
-    """
-    _fields_ = [('origin_', _Position),
-                ('u_span_', _Position),
-                ('v_span_', _Position),
-                ('width_', _Position),
-                ('basis_', c_int),
-                ('pixels_', 3*c_size_t),
-                ('color_overlaps_', c_bool),
-                ('level_', c_int)]
-
-    def __init__(self):
-        self.level_ = -1
-        self.basis_ = 1
-        self.color_overlaps_ = False
-        self._update_spans()
-
-    def _update_spans(self):
-        if self.basis_ == 1:
-            self.u_span_.x = self.width_.x
-            self.u_span_.y = 0.0
-            self.u_span_.z = 0.0
-            self.v_span_.x = 0.0
-            self.v_span_.y = self.width_.y
-            self.v_span_.z = 0.0
-        elif self.basis_ == 2:
-            self.u_span_.x = self.width_.x
-            self.u_span_.y = 0.0
-            self.u_span_.z = 0.0
-            self.v_span_.x = 0.0
-            self.v_span_.y = 0.0
-            self.v_span_.z = self.width_.y
-        elif self.basis_ == 3:
-            self.u_span_.x = 0.0
-            self.u_span_.y = self.width_.x
-            self.u_span_.z = 0.0
-            self.v_span_.x = 0.0
-            self.v_span_.y = 0.0
-            self.v_span_.z = self.width_.y
-
-    @property
-    def origin(self):
-        return self.origin_
-
-    @origin.setter
-    def origin(self, origin):
-        self.origin_.x = origin[0]
-        self.origin_.y = origin[1]
-        self.origin_.z = origin[2]
-
-    @property
-    def width(self):
-        return self.width_.x
-
-    @width.setter
-    def width(self, width):
-        self.width_.x = width
-        self._update_spans()
-
-    @property
-    def height(self):
-        return self.width_.y
-
-    @height.setter
-    def height(self, height):
-        self.width_.y = height
-        self._update_spans()
-
-    @property
-    def basis(self):
-        if self.basis_ == 1:
-            return 'xy'
-        elif self.basis_ == 2:
-            return 'xz'
-        elif self.basis_ == 3:
-            return 'yz'
-
-        raise ValueError(f"Plot basis {self.basis_} is invalid")
-
-    @basis.setter
-    def basis(self, basis):
-        if isinstance(basis, str):
-            valid_bases = ('xy', 'xz', 'yz')
-            basis = basis.lower()
-            if basis not in valid_bases:
-                raise ValueError(f"{basis} is not a valid plot basis.")
-
-            if basis == 'xy':
-                self.basis_ = 1
-            elif basis == 'xz':
-                self.basis_ = 2
-            elif basis == 'yz':
-                self.basis_ = 3
-            self._update_spans()
-            return
-
-        if isinstance(basis, int):
-            valid_bases = (1, 2, 3)
-            if basis not in valid_bases:
-                raise ValueError(f"{basis} is not a valid plot basis.")
-            self.basis_ = basis
-            self._update_spans()
-            return
-
-        raise ValueError(f"{basis} of type {type(basis)} is an invalid plot basis")
-
-    @property
-    def h_res(self):
-        return self.pixels_[0]
-
-    @h_res.setter
-    def h_res(self, h_res):
-        self.pixels_[0] = h_res
-
-    @property
-    def v_res(self):
-        return self.pixels_[1]
-
-    @v_res.setter
-    def v_res(self, v_res):
-        self.pixels_[1] = v_res
-
-    @property
-    def level(self):
-        return int(self.level_)
-
-    @level.setter
-    def level(self, level):
-        self.level_ = level
-
-    @property
-    def color_overlaps(self):
-        return self.color_overlaps_
-
-    @color_overlaps.setter
-    def color_overlaps(self, color_overlaps):
-        self.color_overlaps_ = color_overlaps
-
-    def __repr__(self):
-        out_str = ["-----",
-                   "Plot:",
-                   "-----",
-                   f"Origin: {self.origin}",
-                   f"Width: {self.width}",
-                   f"Height: {self.height}",
-                   f"Basis: {self.basis}",
-                   f"HRes: {self.h_res}",
-                   f"VRes: {self.v_res}",
-                   f"Color Overlaps: {self.color_overlaps}",
-                   f"Level: {self.level}"]
-        return '\n'.join(out_str)
-
-
-_dll.openmc_id_map.argtypes = [POINTER(_PlotBase), POINTER(c_int32)]
-_dll.openmc_id_map.restype = c_int
-_dll.openmc_id_map.errcheck = _error_handler
-
-
-def id_map(plot):
-    """
-    Generate a 2-D map of cell and material IDs. Used for in-memory image
-    generation.
-
-    Parameters
-    ----------
-    plot : openmc.lib.plot._PlotBase
-        Object describing the slice of the model to be generated
-
-    Returns
-    -------
-    id_map : numpy.ndarray
-        A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
-        OpenMC property ids with dtype int32. The last dimension of the array
-        contains, in order, cell IDs, cell instances, and material IDs.
-
-    """
-    img_data = np.zeros((plot.v_res, plot.h_res, 3), dtype=np.int32)
-    _dll.openmc_id_map(plot, img_data.ctypes.data_as(POINTER(c_int32)))
-    return img_data
-
-
-_dll.openmc_property_map.argtypes = [POINTER(_PlotBase), POINTER(c_double)]
-_dll.openmc_property_map.restype = c_int
-_dll.openmc_property_map.errcheck = _error_handler
-
-
-def property_map(plot):
-    """
-    Generate a 2-D map of cell temperatures and material densities. Used for
-    in-memory image generation.
-
-    Parameters
-    ----------
-    plot : openmc.lib.plot._PlotBase
-        Object describing the slice of the model to be generated
-
-    Returns
-    -------
-    property_map : numpy.ndarray
-        A NumPy array with shape (vertical pixels, horizontal pixels, 2) of
-        OpenMC property ids with dtype float
-
-    """
-    prop_data = np.zeros((plot.v_res, plot.h_res, 2))
-    _dll.openmc_property_map(plot, prop_data.ctypes.data_as(POINTER(c_double)))
-    return prop_data
+def _extract_slice_data_args(plot):
+    """Convert a legacy plot-like object into slice_data keyword arguments."""
+    try:
+        kwargs = {
+            'origin': tuple(plot.origin),
+            'width': (plot.width, plot.height),
+            'basis': plot.basis,
+            'pixels': (plot.h_res, plot.v_res),
+            'show_overlaps': getattr(plot, 'color_overlaps', False),
+            'level': getattr(plot, 'level', -1),
+        }
+    except AttributeError as exc:
+        raise TypeError(
+            "plot must be a legacy plot-like object with origin, width, "
+            "height, basis, h_res, and v_res attributes."
+        ) from exc
+    return kwargs
 
 
 _dll.openmc_slice_data.argtypes = [
@@ -302,7 +76,7 @@ _dll.openmc_slice_data.argtypes = [
     POINTER(c_double * 3),   # u_span
     POINTER(c_double * 3),   # v_span
     POINTER(c_size_t * 2),   # pixels
-    c_bool,                  # color_overlaps
+    c_bool,                  # show_overlaps
     c_int,                   # level
     c_int32,                 # filter_index
     POINTER(c_int32),        # geom_data
@@ -313,7 +87,7 @@ _dll.openmc_slice_data.errcheck = _error_handler
 
 
 def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
-                pixels=None, color_overlaps=False, level=-1, filter=None,
+                pixels=None, show_overlaps=False, level=-1, filter=None,
                 include_properties=True):
     """Generate a 2D raster of geometry and property data for plotting.
 
@@ -334,7 +108,7 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
         exclusive with width.
     pixels : sequence of int
         Number of pixels [horizontal, vertical]
-    color_overlaps : bool, optional
+    show_overlaps : bool, optional
         Whether to detect overlapping cells
     level : int, optional
         Universe level (-1 for deepest)
@@ -342,6 +116,7 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
         Filter for bin index lookup
     include_properties : bool, optional
         Whether to compute temperature/density
+
     Returns
     -------
     geom_data : numpy.ndarray
@@ -435,7 +210,7 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
         u_span_arr,
         v_span_arr,
         pixels_arr,
-        color_overlaps,
+        show_overlaps,
         level,
         filter_index,
         geom_data.ctypes.data_as(POINTER(c_int32)),
@@ -444,20 +219,41 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
 
     return geom_data, property_data
 
-# Overlap function bindings
 
-_dll.openmc_slice_data_overlap_count.argtypes = [
-    c_int32, c_int32, POINTER(c_int32)
-]
-_dll.openmc_slice_data_overlap_count.restype = c_int
-_dll.openmc_slice_data_overlap_count.errcheck = _error_handler
+def id_map(plot):
+    """Deprecated compatibility wrapper for geometry ID maps.
 
-_dll.openmc_slice_data_overlap_info.argtypes = [
-    c_int32, c_int32,
-    POINTER(c_int32), POINTER(c_int32), POINTER(c_int32)
-]
-_dll.openmc_slice_data_overlap_info.restype = c_int
-_dll.openmc_slice_data_overlap_info.errcheck = _error_handler
+    This function is kept for compatibility and will be removed in a future
+    release. Use `slice_data(..., include_properties=False)` instead.
+    """
+    warnings.warn(
+        "openmc.lib.id_map is deprecated and will be removed in a future "
+        "release; use openmc.lib.slice_data(..., include_properties=False).",
+        FutureWarning,
+    )
+
+    kwargs = _extract_slice_data_args(plot)
+    geom_data, _ = slice_data(include_properties=False, **kwargs)
+    return geom_data[:, :, :3]
+
+
+def property_map(plot):
+    """Deprecated compatibility wrapper for temperature/density maps.
+
+    This function is kept for compatibility and will be removed in a future
+    release. Use `slice_data(..., include_properties=True)` instead.
+    """
+    warnings.warn(
+        "openmc.lib.property_map is deprecated and will be removed in a "
+        "future release; use openmc.lib.slice_data(..., "
+        "include_properties=True).",
+        FutureWarning,
+    )
+
+    kwargs = _extract_slice_data_args(plot)
+    _, prop_data = slice_data(include_properties=True, **kwargs)
+    return prop_data
+
 
 # Python wrappings for overlap functions
 

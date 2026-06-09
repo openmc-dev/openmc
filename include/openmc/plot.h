@@ -213,14 +213,12 @@ public:
 
   // Members
 public:
-  Position origin_;           //!< Plot origin in geometry
-  Position u_span_;           //!< Full-width span vector in geometry
-  Position v_span_;           //!< Full-height span vector in geometry
-  Position width_;            //!< Axis-aligned plot width in geometry
-  PlotBasis basis_;           //!< Plot basis (XY/XZ/YZ) for axis-aligned slices
-  array<size_t, 3> pixels_;   //!< Plot size in pixels
-  bool slice_color_overlaps_; //!< Show overlapping cells?
-  int slice_level_ {-1};      //!< Plot universe level
+  Position origin_;         //!< Plot origin in geometry
+  Direction u_span_;        //!< Full-width span vector in geometry
+  Direction v_span_;        //!< Full-height span vector in geometry
+  array<size_t, 3> pixels_; //!< Plot size in pixels
+  bool show_overlaps_;      //!< Show overlapping cells?
+  int slice_level_ {-1};    //!< Plot universe level
 private:
 };
 
@@ -242,8 +240,8 @@ T SlicePlotBase::get_map(int32_t filter_index) const
   T data(width, height, include_filter);
 
   // compute pixel steps and top-left pixel center
-  Position u_step = u_span_ / static_cast<double>(width);
-  Position v_step = v_span_ / static_cast<double>(height);
+  Direction u_step = u_span_ / static_cast<double>(width);
+  Direction v_step = v_span_ / static_cast<double>(height);
 
   Position start =
     origin_ - 0.5 * u_span_ + 0.5 * v_span_ + 0.5 * u_step - 0.5 * v_step;
@@ -322,6 +320,8 @@ public:
   void print_info() const override;
 
   PlotType type_;                 //!< Plot type (Slice/Voxel)
+  Position width_;                //!< Axis-aligned width from plot.xml
+  PlotBasis basis_;               //!< Basis from plot.xml for slice plots
   int meshlines_width_;           //!< Width of lines added to the plot
   int index_meshlines_mesh_ {-1}; //!< Index of the mesh to draw on the plot
   RGBColor meshlines_color_;      //!< Color of meshlines on the plot

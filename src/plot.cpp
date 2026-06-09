@@ -857,7 +857,7 @@ Plot::Plot(pugi::xml_node plot_node, PlotType type)
   set_width(plot_node);
   set_meshlines(plot_node);
   slice_level_ = level_; // Copy level employed in SlicePlotBase::get_map
-  slice_color_overlaps_ = color_overlaps_;
+  show_overlaps_ = color_overlaps_;
 }
 
 //==============================================================================
@@ -954,21 +954,37 @@ void Plot::draw_mesh_lines(ImageData& data) const
   rgb = meshlines_color_;
 
   int ax1, ax2;
+  Position expected_u {};
+  Position expected_v {};
   switch (basis_) {
   case PlotBasis::xy:
     ax1 = 0;
     ax2 = 1;
+    expected_u = {width_[0], 0.0, 0.0};
+    expected_v = {0.0, width_[1], 0.0};
     break;
   case PlotBasis::xz:
     ax1 = 0;
     ax2 = 2;
+    expected_u = {width_[0], 0.0, 0.0};
+    expected_v = {0.0, 0.0, width_[1]};
     break;
   case PlotBasis::yz:
     ax1 = 1;
     ax2 = 2;
+    expected_u = {0.0, width_[0], 0.0};
+    expected_v = {0.0, 0.0, width_[1]};
     break;
   default:
     UNREACHABLE();
+  }
+
+  // Meshlines rely on axis-aligned indexing in global coordinates.
+  constexpr double rel_tol {1e-12};
+  double span_tol = rel_tol * (1.0 + u_span_.norm() + v_span_.norm());
+  if ((u_span_ - expected_u).norm() > span_tol ||
+      (v_span_ - expected_v).norm() > span_tol) {
+    fatal_error("Meshlines are only supported for axis-aligned slice plots.");
   }
 
   Position ll_plot {origin_};
@@ -1100,13 +1116,11 @@ void Plot::create_voxel() const
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
   SlicePlotBase pltbase;
-  pltbase.width_ = width_;
   pltbase.origin_ = origin_;
-  pltbase.basis_ = PlotBasis::xy;
   pltbase.u_span_ = {width_.x, 0.0, 0.0};
   pltbase.v_span_ = {0.0, width_.y, 0.0};
   pltbase.pixels() = pixels();
-  pltbase.slice_color_overlaps_ = color_overlaps_;
+  pltbase.show_overlaps_ = color_overlaps_;
 
   ProgressBar pb;
   for (int z = 0; z < pixels()[2]; z++) {
@@ -1888,6 +1902,12 @@ void PhongRay::on_intersection()
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 {
+  static bool warned {false};
+  if (!warned) {
+    warning("openmc_id_map is deprecated and will be removed in a future "
+            "release. Use openmc_slice_data.");
+    warned = true;
+  }
 
   auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
   if (!plt) {
@@ -1895,7 +1915,7 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
+  if (plt->show_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 
@@ -1909,6 +1929,12 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 
 extern "C" int openmc_property_map(const void* plot, double* data_out)
 {
+  static bool warned {false};
+  if (!warned) {
+    warning("openmc_property_map is deprecated and will be removed in a future "
+            "release. Use openmc_slice_data.");
+    warned = true;
+  }
 
   auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
   if (!plt) {
@@ -1916,7 +1942,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
+  if (plt->show_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 
@@ -1933,8 +1959,8 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
   int level, int32_t filter_index, int32_t* geom_data, double* property_data)
 {
   // Validate span vectors
-  Position u_span_pos {u_span[0], u_span[1], u_span[2]};
-  Position v_span_pos {v_span[0], v_span[1], v_span[2]};
+  Direction u_span_pos {u_span[0], u_span[1], u_span[2]};
+  Direction v_span_pos {v_span[0], v_span[1], v_span[2]};
   double u_norm = u_span_pos.norm();
   double v_norm = v_span_pos.norm();
   if (u_norm == 0.0 || v_norm == 0.0) {
@@ -1966,11 +1992,9 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     plot_params.origin_ = Position {origin[0], origin[1], origin[2]};
     plot_params.u_span_ = u_span_pos;
     plot_params.v_span_ = v_span_pos;
-    plot_params.width_ = Position {u_norm, v_norm, 0.0};
-    plot_params.basis_ = SlicePlotBase::PlotBasis::xy;
     plot_params.pixels_[0] = pixels[0];
     plot_params.pixels_[1] = pixels[1];
-    plot_params.slice_color_overlaps_ = color_overlaps;
+    plot_params.show_overlaps_ = color_overlaps;
     plot_params.slice_level_ = level;
 
     // Use get_map<RasterData> to generate data

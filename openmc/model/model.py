@@ -265,22 +265,22 @@ class Model:
             denom_tally = openmc.Tally(name='IFP denominator')
             denom_tally.scores = ['ifp-denominator']
             self.tallies.append(denom_tally)
-    
-    # TODO: This should also be incorporated into lower-level calls in 
+
+    # TODO: This should also be incorporated into lower-level calls in
     # settings.py, but it requires information about the tallies currently
     # on the active Model
     def _assign_fw_cadis_tally_IDs(self):
-        # Verify that all tallies assigned as targets on WeightWindowGenerators 
-        # exist within model.tallies. If this is the case, convert the .targets 
+        # Verify that all tallies assigned as targets on WeightWindowGenerators
+        # exist within model.tallies. If this is the case, convert the .targets
         # attribute of each WeightWindowGenerator to a sequence of tally IDs.
         if len(self.settings.weight_window_generators) == 0:
             return
-        
+
         # List of valid tally IDs
         reference_tally_ids = np.asarray([tal.id for tal in self.tallies])
-        
+
         for wwg in self.settings.weight_window_generators:
-            # Only proceeds if the "targets" attribute is an openmc.Tallies, 
+            # Only proceeds if the "targets" attribute is an openmc.Tallies,
             # which means it hasn't been checked against model.tallies.
             if isinstance(wwg.targets, openmc.Tallies):
                 id_vec = []
@@ -291,8 +291,8 @@ class Model:
                         if tal == reference_tal:
                             id_next = reference_tal.id
                             break
-                    
-                    if id_next == None:
+
+                    if id_next is None:
                         raise RuntimeError(
                             f'Local FW-CADIS target tally {tal.id} not found on model.tallies!')
                     else:
@@ -467,6 +467,8 @@ class Model:
         This method iterates over all DAGMC universes in the geometry and
         synchronizes their cells with the current material assignments. Requires
         that the model has been initialized via :meth:`Model.init_lib`.
+        Synchronized DAGMC cells can then be edited and exported as nested
+        `<cell>` overrides inside each `<dagmc_universe>` element.
 
         .. versionadded:: 0.15.1
 
@@ -1125,29 +1127,16 @@ class Model:
             array contains cell IDs, cell instances, and material IDs (in that
             order).
         """
-        import openmc.lib
-
-        origin, width, pixels = self._set_plot_defaults(
-            origin, width, pixels, basis)
-
-        # initialize the openmc.lib.plot._PlotBase object
-        plot_obj = openmc.lib.plot._PlotBase()
-        plot_obj.origin = origin
-        plot_obj.width = width[0]
-        plot_obj.height = width[1]
-        plot_obj.h_res = pixels[0]
-        plot_obj.v_res = pixels[1]
-        plot_obj.basis = basis
-        plot_obj.color_overlaps = color_overlaps
-
-        # Silence output by default. Also set arguments to start in volume
-        # calculation mode to avoid loading cross sections
-        init_kwargs.setdefault('output', False)
-        init_kwargs.setdefault('args', ['-c'])
-
-        with openmc.lib.TemporarySession(self, **init_kwargs):
-            ids = openmc.lib.id_map(plot_obj)
-
+        ids, _ = self.slice_data(
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            show_overlaps=color_overlaps,
+            level=-1,
+            include_properties=False,
+            **init_kwargs,
+        )
         return ids
 
     def slice_data(
@@ -1158,7 +1147,7 @@ class Model:
         basis: str = 'xy',
         u_span: Sequence[float] | None = None,
         v_span: Sequence[float] | None = None,
-        color_overlaps: bool = False,
+        show_overlaps: bool = False,
         level: int = -1,
         filter: openmc.Filter | None = None,
         include_properties: bool = True,
@@ -1196,10 +1185,11 @@ class Model:
         v_span : Sequence[float], optional
             Full-height span vector for an oriented slice (3 values). Mutually
             exclusive with width.
-        color_overlaps : bool, optional
-            Whether to assign unique IDs (-3) to overlapping regions. If False,
-            overlapping regions will be assigned the ID of the lowest-numbered
-            cell that occupies that region. Defaults to False.
+        show_overlaps : bool, optional
+            Whether to identify and assign unique IDs (-3) to overlapping
+            regions. If False, overlapping regions will be assigned the ID of
+            the lowest-numbered cell that occupies that region. Defaults to
+            False.
         level : int, optional
             Universe level to plot (-1 for deepest). Defaults to -1.
         filter : openmc.Filter, optional
@@ -1213,12 +1203,12 @@ class Model:
         Returns
         -------
         geom_data : numpy.ndarray
-            Shape (v_res, h_res, 3) or (v_res, h_res, 4) int32 array.
-            Contains [cell_id, cell_instance, material_id] when no filter,
-            or [cell_id, cell_instance, material_id, filter_bin] with filter.
+            Shape (v_res, h_res, 3) or (v_res, h_res, 4) int32 array. Contains
+            [cell_id, cell_instance, material_id] when no filter, or [cell_id,
+            cell_instance, material_id, filter_bin] with filter.
         property_data : numpy.ndarray or None
-            Shape (v_res, h_res, 2) float64 array with
-            [temperature, density], or None if include_properties=False.
+            Shape (v_res, h_res, 2) float64 array with [temperature, density],
+            or None if include_properties=False.
         """
         import openmc.lib
 
@@ -1247,13 +1237,18 @@ class Model:
 
         # If filter does not already appear in the model, temporarily add a
         # tally with the filter
-        filter_ids = {f.id for t in self.tallies for f in t.filters}
         original_length = len(self.tallies)
-        if filter is not None and filter.id not in filter_ids:
-            temp_tally = openmc.Tally()
-            temp_tally.filters = [filter]
-            temp_tally.scores = ['flux']
-            self.tallies.append(temp_tally)
+        if filter is not None:
+            filter_ids = {f.id for t in self.tallies for f in t.filters}
+            if filter.id not in filter_ids:
+                # Create temporary tally while preserving ID assignment
+                next_id = openmc.Tally.next_id
+                temp_tally = openmc.Tally()
+                temp_tally.filters = [filter]
+                temp_tally.scores = ['flux']
+                self.tallies.append(temp_tally)
+                openmc.Tally.used_ids.remove(temp_tally.id)
+                openmc.Tally.next_id = next_id
 
         with openmc.lib.TemporarySession(self, **init_kwargs):
             geom_data, property_data = openmc.lib.slice_data(
@@ -1263,7 +1258,7 @@ class Model:
                 u_span=u_span,
                 v_span=v_span,
                 pixels=pixels,
-                color_overlaps=color_overlaps,
+                show_overlaps=show_overlaps,
                 level=level,
                 filter=filter,
                 include_properties=include_properties,
@@ -1341,13 +1336,14 @@ class Model:
                                        "openmc.config before plotting.")
                 break
 
-        # Get ID map from the C API
-        id_map = self.id_map(
+        # Get plot IDs from the C API
+        id_map, _ = self.slice_data(
             origin=origin,
             width=width,
             pixels=pixels,
             basis=basis,
-            color_overlaps=show_overlaps
+            show_overlaps=show_overlaps,
+            include_properties=False,
         )
 
         # Generate colors if not provided
@@ -2083,7 +2079,7 @@ class Model:
 
         # Set materials on the model
         model.materials = [material]
-        if temperature != None:
+        if temperature is not None:
           model.materials[-1].temperature = temperature
 
         # Settings
@@ -2110,7 +2106,7 @@ class Model:
         mgxs_lib = Model._auto_generate_mgxs_lib(
                 model, groups, correction, directory)
 
-        if temperature != None:
+        if temperature is not None:
             return mgxs_lib.get_xsdata(domain=material, xsdata_name=name,
                                        temperature=temperature)
         else:
@@ -2183,12 +2179,12 @@ class Model:
         )
 
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = []
             for material in self.materials:
                 xs_data = Model._isothermal_infinite_media_mgxs(
@@ -2361,7 +2357,7 @@ class Model:
         model = openmc.Model()
         model.geometry = stoch_geom
 
-        if temperature != None:
+        if temperature is not None:
             for material in model.geometry.get_all_materials().values():
                 material.temperature = temperature
 
@@ -2385,7 +2381,7 @@ class Model:
                 model, groups, correction, directory)
 
         # Fetch all of the isothermal results.
-        if temperature != None:
+        if temperature is not None:
             return {
                 mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
                                                temperature=temperature)
@@ -2471,12 +2467,12 @@ class Model:
         )
 
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = Model._isothermal_stochastic_slab_mgxs(
                 geo,
                 groups,
@@ -2569,7 +2565,7 @@ class Model:
         model = copy.deepcopy(input_model)
         model.tallies = openmc.Tallies()
 
-        if temperature != None:
+        if temperature is not None:
             for material in model.geometry.get_all_materials().values():
                 material.temperature = temperature
 
@@ -2585,7 +2581,7 @@ class Model:
                 model, groups, correction, directory)
 
         # Fetch all of the isothermal results.
-        if temperature != None:
+        if temperature is not None:
             return {
                 mat.name : mgxs_lib.get_xsdata(domain=mat, xsdata_name=mat.name,
                                                temperature=temperature)
@@ -2640,12 +2636,12 @@ class Model:
             entries in openmc.Settings.temperature_settings.
         """
         temp_settings = {}
-        if temperature_settings == None:
+        if temperature_settings is None:
             temp_settings = self.settings.temperature
         else:
             temp_settings = temperature_settings
 
-        if temperatures == None:
+        if temperatures is None:
             mgxs_sets = Model._isothermal_materialwise_mgxs(
                 self,
                 groups,

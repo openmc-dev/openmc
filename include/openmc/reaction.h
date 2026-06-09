@@ -52,6 +52,16 @@ public:
   double collapse_rate(int64_t i_temp, span<const double> energy,
     span<const double> flux, const vector<double>& grid) const;
 
+  //! Calculate group-averaged cross sections over a group structure
+  //
+  //! \param[in]  i_temp Temperature index
+  //! \param[in]  energy Energy group boundaries in [eV] (size n_groups+1)
+  //! \param[in]  grid   Nuclide energy grid at i_temp
+  //! \param[out] xs     Group-averaged cross section in each energy group;
+  //!   must be zeroed on entry
+  void group_xs(int64_t i_temp, span<const double> energy,
+    const vector<double>& grid, span<double> xs) const;
+
   //! Cross section at a single temperature
   struct TemperatureXS {
     int threshold;

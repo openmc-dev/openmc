@@ -407,6 +407,71 @@ private:
   double integral_;       //!< Integral of distribution
 };
 
+//==============================================================================
+// DecaySpectrum — non-owning mixture of decay photon distributions
+//==============================================================================
+
+//! Energy distribution formed by mixing multiple decay photon spectra.
+//!
+//! Unlike the general Mixture distribution, this class holds non-owning
+//! pointers to the component distributions (which live in
+//! data::chain_nuclides). Each component is weighted by the activity
+//! (atoms * decay_constant) of the corresponding nuclide.
+
+class DecaySpectrum : public Distribution {
+public:
+  //============================================================================
+  // Types, aliases
+
+  struct Sample {
+    double energy;
+    double weight;
+    int parent_nuclide;
+  };
+
+  //============================================================================
+  // Constructors
+
+  //! Construct from an XML node containing nuclide names and atom densities.
+  //!
+  //! Reads child ``<nuclide>`` elements with ``name`` and ``density``
+  //! attributes, resolves them against the loaded depletion chain, and
+  //! constructs the mixed distribution.
+  explicit DecaySpectrum(pugi::xml_node node);
+
+  //============================================================================
+  // Methods
+
+  //! Sample a value from the distribution and return the parent nuclide index
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (Sampled energy, sample weight, chain nuclide index)
+  Sample sample_with_parent(uint64_t* seed) const;
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  double integral() const override;
+
+protected:
+  //! Sample a value (unbiased) from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  double sample_unbiased(uint64_t* seed) const override;
+
+private:
+  //! Initialize decay spectrum sampling data
+  //! \param nuclide_indices  Indices of decay photon emitters in
+  //!   data::chain_nuclides
+  //! \param atoms  Number of atoms for each component.
+  void init(vector<int> nuclide_indices, const vector<double>& atoms);
+
+  vector<int> nuclide_indices_; //!< Indices of emitting nuclides in the chain
+  DiscreteIndex di_;            //!< Discrete index for component selection
+  double integral_;             //!< Total photon emission rate
+};
+
 } // namespace openmc
 
 #endif // OPENMC_DISTRIBUTION_H

@@ -22,6 +22,7 @@ Univariate Probability Distributions
    openmc.stats.Legendre
    openmc.stats.Mixture
    openmc.stats.Normal
+   openmc.stats.DecaySpectrum
 
 .. autosummary::
    :toctree: generated

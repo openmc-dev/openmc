@@ -319,16 +319,16 @@ class Chain:
 
         String arguments in ``decay_files``, ``fpy_files``, and
         ``neutron_files`` will be treated as file names to be read.
-        Alternatively, :class:`openmc.data.endf.Evaluation` instances
-        can be included in these arguments.
+        Alternatively, :class:`openmc.data.endf.Evaluation` or
+        ``endf.Material`` instances can be included in these arguments.
 
         Parameters
         ----------
-        decay_files : list of str or openmc.data.endf.Evaluation
+        decay_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF decay sub-library files
-        fpy_files : list of str or openmc.data.endf.Evaluation
+        fpy_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF neutron-induced fission product yield sub-library files
-        neutron_files : list of str or openmc.data.endf.Evaluation
+        neutron_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF neutron reaction sub-library files
         reactions : iterable of str, optional
             Transmutation reactions to include in the depletion chain, e.g.,
@@ -363,7 +363,7 @@ class Chain:
             print('Processing neutron sub-library files...')
         reactions = {}
         for f in neutron_files:
-            evaluation = openmc.data.endf.Evaluation(f)
+            evaluation = openmc.data.endf.as_evaluation(f)
             name = evaluation.gnds_name
             reactions[name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:

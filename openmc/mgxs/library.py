@@ -1290,6 +1290,14 @@ class Library:
                       'are ignored since multiplicity or nu-scatter matrices '\
                       'were not tallied for ' + xsdata_name
                 warn(msg, RuntimeWarning)
+
+                if 'scatter matrix' in self.mgxs_types:
+                    scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
+                elif 'consistent scatter matrix' in self.mgxs_types:
+                    scatt_mgxs = self.get_mgxs(domain, 'consistent scatter matrix')
+                else:
+                    raise ValueError(f'No scatter matrix found for {xsdata_name}.')
+
                 xsdata.set_scatter_matrix_mgxs(scatt_mgxs, temperature=temperature,
                                                xs_type=xs_type,
                                                nuclide=[nuclide],

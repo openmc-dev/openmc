@@ -84,6 +84,9 @@ public:
   double collapse_rate(int MT, double temperature, span<const double> energy,
     span<const double> flux) const;
 
+  //! Return a ParticleType object representing this nuclide
+  ParticleType particle_type() const { return {Z_, A_, metastable_}; }
+
   //============================================================================
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"

@@ -14,7 +14,8 @@ from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
 from .data import gnds_name, zam
 from .function import INTERPOLATION_SCHEME
-from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
+from .endf import (
+    as_evaluation, get_head_record, get_list_record, get_tab1_record)
 
 
 # Gives name and (change in A, change in Z) resulting from decay
@@ -75,7 +76,7 @@ class FissionProductYields(EqualityMixin):
 
     Parameters
     ----------
-    ev_or_filename : str of openmc.data.endf.Evaluation
+    ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
         ENDF fission product yield evaluation to read from. If given as a
         string, it is assumed to be the filename for the ENDF file.
 
@@ -133,11 +134,7 @@ class FissionProductYields(EqualityMixin):
 
             return energies, data
 
-        # Get evaluation if str is passed
-        if isinstance(ev_or_filename, Evaluation):
-            ev = ev_or_filename
-        else:
-            ev = Evaluation(ev_or_filename)
+        ev = as_evaluation(ev_or_filename)
 
         # Assign basic nuclide properties
         self.nuclide = {
@@ -164,7 +161,7 @@ class FissionProductYields(EqualityMixin):
 
         Parameters
         ----------
-        ev_or_filename : str or openmc.data.endf.Evaluation
+        ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
             ENDF fission product yield evaluation to read from. If given as a
             string, it is assumed to be the filename for the ENDF file.
 
@@ -292,7 +289,7 @@ class Decay(EqualityMixin):
 
     Parameters
     ----------
-    ev_or_filename : str of openmc.data.endf.Evaluation
+    ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
         ENDF radioactive decay data evaluation to read from. If given as a
         string, it is assumed to be the filename for the ENDF file.
 
@@ -323,11 +320,7 @@ class Decay(EqualityMixin):
 
     """
     def __init__(self, ev_or_filename):
-        # Get evaluation if str is passed
-        if isinstance(ev_or_filename, Evaluation):
-            ev = ev_or_filename
-        else:
-            ev = Evaluation(ev_or_filename)
+        ev = as_evaluation(ev_or_filename)
 
         file_obj = StringIO(ev.section[8, 457])
 
@@ -486,7 +479,7 @@ class Decay(EqualityMixin):
 
         Parameters
         ----------
-        ev_or_filename : str or openmc.data.endf.Evaluation
+        ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
             ENDF radioactive decay data evaluation to read from. If given as a
             string, it is assumed to be the filename for the ENDF file.
 
@@ -649,5 +642,3 @@ def decay_energy(nuclide: str):
             warn(f"Chain file '{chain_file}' does not have any decay energy.")
 
     return _DECAY_ENERGY.get(nuclide, 0.0)
-
-

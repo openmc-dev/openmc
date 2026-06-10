@@ -1008,10 +1008,10 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
   if (p.ww_factor() > 1.0)
     weight_window.scale(p.ww_factor());
 
-  // if particle's weight is above the weight window split until they are
-  // within the window. The comparisons use a relative dead band so that the
-  // branch taken is insensitive to bit-level differences in the window bounds
-  // (see WEIGHT_WINDOW_REL_TOL).
+  // If the particle's weight is above the weight window, split it until the
+  // resulting particles are within the window. The comparisons use a relative
+  // dead band so that the branch taken is insensitive to bit-level differences
+  // in the window bounds (see WEIGHT_WINDOW_REL_TOL).
   if (weight > weight_window.upper_weight * (1.0 + WEIGHT_WINDOW_REL_TOL)) {
     // do not further split the particle if above the limit
     if (p.n_split() >= settings::max_history_splits)

@@ -48,7 +48,7 @@
     <batches>10</batches>
     <source type="independent" strength="1.0" particle="neutron">
       <space type="spherical" origin="0.0 0.0 0.0">
-        <r type="uniform" parameters="0.0 0.0"/>
+        <r type="uniform" parameters="0.0 9.0"/>
         <cos_theta type="discrete">
           <parameters>1.0 1.0</parameters>
         </cos_theta>

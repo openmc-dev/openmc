@@ -20,27 +20,27 @@
     </material>
   </materials>
   <geometry>
-    <cell id="1" name="fuel" material="1" region="1 -2 3 -4 5 -6" universe="1"/>
-    <cell id="2" name="clad" material="2" region="(-1 | 2 | -3 | 4 | -5 | 6) (7 -8 9 -10 11 -12)" universe="1"/>
-    <cell id="3" name="water" material="3" region="(-7 | 8 | -9 | 10 | -11 | 12) (13 -14 15 -16 17 -18)" universe="1"/>
-    <surface id="1" name="minimum x" type="x-plane" coeffs="-5.0"/>
-    <surface id="2" name="maximum x" type="x-plane" coeffs="5.0"/>
-    <surface id="3" name="minimum y" type="y-plane" coeffs="-5.0"/>
-    <surface id="4" name="maximum y" type="y-plane" coeffs="5.0"/>
-    <surface id="5" name="minimum z" type="z-plane" coeffs="-5.0"/>
-    <surface id="6" name="maximum z" type="z-plane" coeffs="5.0"/>
-    <surface id="7" name="minimum x" type="x-plane" coeffs="-6.0"/>
-    <surface id="8" name="maximum x" type="x-plane" coeffs="6.0"/>
-    <surface id="9" name="minimum y" type="y-plane" coeffs="-6.0"/>
-    <surface id="10" name="maximum y" type="y-plane" coeffs="6.0"/>
-    <surface id="11" name="minimum z" type="z-plane" coeffs="-6.0"/>
-    <surface id="12" name="maximum z" type="z-plane" coeffs="6.0"/>
-    <surface id="13" name="minimum x" type="x-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="14" name="maximum x" type="x-plane" boundary="vacuum" coeffs="10.0"/>
-    <surface id="15" name="minimum y" type="y-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="16" name="maximum y" type="y-plane" boundary="vacuum" coeffs="10.0"/>
-    <surface id="17" name="minimum z" type="z-plane" boundary="vacuum" coeffs="-10.0"/>
-    <surface id="18" name="maximum z" type="z-plane" boundary="vacuum" coeffs="10.0"/>
+    <cell id="1" name="fuel" material="1" region="-2 1 -4 3 -6 5" universe="1"/>
+    <cell id="2" name="clad" material="2" region="(2 | -1 | 4 | -3 | 6 | -5) (-8 7 -10 9 -12 11)" universe="1"/>
+    <cell id="3" name="water" material="3" region="(8 | -7 | 10 | -9 | 12 | -11) (-14 13 -16 15 -18 17)" universe="1"/>
+    <surface id="1" type="x-plane" coeffs="-5.0"/>
+    <surface id="2" type="x-plane" coeffs="5.0"/>
+    <surface id="3" type="y-plane" coeffs="-5.0"/>
+    <surface id="4" type="y-plane" coeffs="5.0"/>
+    <surface id="5" type="z-plane" coeffs="-5.0"/>
+    <surface id="6" type="z-plane" coeffs="5.0"/>
+    <surface id="7" type="x-plane" coeffs="-6.0"/>
+    <surface id="8" type="x-plane" coeffs="6.0"/>
+    <surface id="9" type="y-plane" coeffs="-6.0"/>
+    <surface id="10" type="y-plane" coeffs="6.0"/>
+    <surface id="11" type="z-plane" coeffs="-6.0"/>
+    <surface id="12" type="z-plane" coeffs="6.0"/>
+    <surface id="13" type="x-plane" boundary="vacuum" coeffs="-10.0"/>
+    <surface id="14" type="x-plane" boundary="vacuum" coeffs="10.0"/>
+    <surface id="15" type="y-plane" boundary="vacuum" coeffs="-10.0"/>
+    <surface id="16" type="y-plane" boundary="vacuum" coeffs="10.0"/>
+    <surface id="17" type="z-plane" boundary="vacuum" coeffs="-10.0"/>
+    <surface id="18" type="z-plane" boundary="vacuum" coeffs="10.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
@@ -48,7 +48,7 @@
     <batches>10</batches>
     <source type="independent" strength="1.0" particle="neutron">
       <space type="spherical" origin="0.0 0.0 0.0">
-        <r type="uniform" parameters="0.0 0.0"/>
+        <r type="uniform" parameters="0.0 9.0"/>
         <cos_theta type="discrete">
           <parameters>1.0 1.0</parameters>
         </cos_theta>

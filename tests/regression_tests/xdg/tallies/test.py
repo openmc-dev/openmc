@@ -141,69 +141,24 @@ def model():
     model.materials = materials
 
     ### Geometry ###
-    fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
-    fuel_max_x = openmc.XPlane(5.0, name="maximum x")
-
-    fuel_min_y = openmc.YPlane(-5.0, name="minimum y")
-    fuel_max_y = openmc.YPlane(5.0, name="maximum y")
-
-    fuel_min_z = openmc.ZPlane(-5.0, name="minimum z")
-    fuel_max_z = openmc.ZPlane(5.0, name="maximum z")
+    fuel_boundary = openmc.model.RectangularParallelepiped(*[-5.0, 5.0]*3)
+    clad_boundary = openmc.model.RectangularParallelepiped(*[-6.0, 6.0]*3)
 
     fuel_cell = openmc.Cell(name="fuel")
-    fuel_cell.region = +fuel_min_x & -fuel_max_x & \
-                       +fuel_min_y & -fuel_max_y & \
-                       +fuel_min_z & -fuel_max_z
+    fuel_cell.region = -fuel_boundary
     fuel_cell.fill = fuel_mat
 
-    clad_min_x = openmc.XPlane(-6.0, name="minimum x")
-    clad_max_x = openmc.XPlane(6.0, name="maximum x")
-
-    clad_min_y = openmc.YPlane(-6.0, name="minimum y")
-    clad_max_y = openmc.YPlane(6.0, name="maximum y")
-
-    clad_min_z = openmc.ZPlane(-6.0, name="minimum z")
-    clad_max_z = openmc.ZPlane(6.0, name="maximum z")
-
     clad_cell = openmc.Cell(name="clad")
-    clad_cell.region = (-fuel_min_x | +fuel_max_x |
-                        -fuel_min_y | +fuel_max_y |
-                        -fuel_min_z | +fuel_max_z) & \
-                        (+clad_min_x & -clad_max_x &
-                         +clad_min_y & -clad_max_y &
-                         +clad_min_z & -clad_max_z)
+    clad_cell.region = +fuel_boundary & -clad_boundary
     clad_cell.fill = zirc_mat
 
     # set bounding cell dimension to one
     # this will be updated later according to the test case parameters
-    water_min_x = openmc.XPlane(x0=-1.0,
-                                name="minimum x",
-                                boundary_type='vacuum')
-    water_max_x = openmc.XPlane(x0=1.0,
-                                name="maximum x",
-                                boundary_type='vacuum')
-
-    water_min_y = openmc.YPlane(y0=-1.0,
-                                name="minimum y",
-                                boundary_type='vacuum')
-    water_max_y = openmc.YPlane(y0=1.0,
-                                name="maximum y",
-                                boundary_type='vacuum')
-
-    water_min_z = openmc.ZPlane(z0=-1.0,
-                                name="minimum z",
-                                boundary_type='vacuum')
-    water_max_z = openmc.ZPlane(z0=1.0,
-                                name="maximum z",
-                                boundary_type='vacuum')
+    boundary = openmc.model.RectangularParallelepiped(*[-1.0, 1.0]*3,
+                                                      boundary_type='vacuum')
 
     water_cell = openmc.Cell(name="water")
-    water_cell.region = (-clad_min_x | +clad_max_x |
-                         -clad_min_y | +clad_max_y |
-                         -clad_min_z | +clad_max_z) & \
-                         (+water_min_x & -water_max_x &
-                          +water_min_y & -water_max_y &
-                          +water_min_z & -water_max_z)
+    water_cell.region = +clad_boundary & -boundary
     water_cell.fill = water_mat
 
     # create a containing universe
@@ -230,7 +185,7 @@ def model():
     model.settings.batches = 10
 
     # source setup
-    r = openmc.stats.Uniform(a=0.0, b=0.0)
+    r = openmc.stats.Uniform(a=0.0, b=9.0)
     cos_theta = openmc.stats.delta_function(1.0)
     phi = openmc.stats.delta_function(0.0)
 
@@ -306,21 +261,7 @@ MESH_CASES = (
         "elem_per_voxel": 12,
         "external_geom": True,
         "libraries": ("libmesh",),
-    },
-    # {
-    #     "mesh_filename": "test_mesh_hexes.e",
-    #     "mesh_kind": "hex",
-    #     "holes": None,
-    #     "elem_per_voxel": 1,
-    #     "libraries": ("libmesh",),
-    # },
-    # {
-    #     "mesh_filename": "test_mesh_hexes.exo",
-    #     "mesh_kind": "hex",
-    #     "holes": None,
-    #     "elem_per_voxel": 1,
-    #     "libraries": ("libmesh",),
-    # },
+    }
 )
 
 test_cases = []

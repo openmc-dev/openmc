@@ -1238,6 +1238,10 @@ void read_settings_xml(pugi::xml_node root)
     if (temperature_multipole && delta_tracking) {
       fatal_error("Delta tracking cannot be used with a windowed multipole temperature treatment.");
     }
+
+    if (!run_CE && delta_tracking) {
+      fatal_error("At present, delta tracking can only be used in continuous energy simulations.");
+    }
   }
 
   // Check whether material cell offsets should be generated

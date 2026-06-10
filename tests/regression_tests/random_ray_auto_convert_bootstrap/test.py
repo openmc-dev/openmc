@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 import openmc
+import openmc.mgxs
 from openmc.examples import sphere_with_shielded_pocket
 
 from tests.testing_harness import TolerantPyAPITestHarness
@@ -11,161 +12,27 @@ from tests.testing_harness import TolerantPyAPITestHarness
 GROUPS = 'CASMO-4'
 
 
-def mgxs_coverage(path):
-    """Return (covered, uncovered) material name lists for an MGXS library.
-
-    A material is "covered" if its total cross section is finite with at least
-    one positive value; materials that received no tallies during generation
-    have all-zero cross sections.
-    """
-    library = openmc.MGXSLibrary.from_hdf5(path)
-    covered, uncovered = [], []
-    for xsdata in library.xsdatas:
-        total = np.asarray(xsdata.total[0], dtype=float)
-        if np.all(np.isfinite(total)) and np.any(total > 0.0):
-            covered.append(xsdata.name)
-        else:
-            uncovered.append(xsdata.name)
-    return covered, uncovered
-
-
-class MGXSBootstrapTestHarness(TolerantPyAPITestHarness):
-    """Runs the full MGXS bootstrap workflow.
-
-    The harness model is the random ray FW-CADIS weight window generation run
-    (stage 1). After it executes, the analog (stage 2) and bootstrapped
-    (stage 3) material-wise MGXS generation solves are run from the original
-    continuous energy model.
-
-    The compared results contain the stochastic slab, analog, and bootstrapped
-    MGXS libraries along with the generated weight window bounds, so subtle
-    changes anywhere in the chain -- the MGXS generation methods, the random
-    ray solver, the weight window generation, or the weight window application
-    (splitting/roulette) in the Monte Carlo solve -- are detected. All stages
-    run at the ambient thread count: multithreaded reductions leave ulp-level
-    noise in the tallies and weight window bounds they produce, and transport
-    through the resulting weight windows is required to be robust to that
-    noise (see WEIGHT_WINDOW_REL_TOL), so this test also guards against any
-    regression of that robustness.
-    """
-
-    def __init__(self, statepoint_name, model, ce_model):
-        super().__init__(statepoint_name, model)
-        self._ce_model = ce_model
-        self._analog_uncovered = None
-        self._boot_uncovered = None
-
-    def _run_openmc(self):
-        # Stage 1: random ray FW-CADIS solve producing weight_windows.h5
-        super()._run_openmc()
-
-        # Stage 2 (negative control): the analog material_wise solve cannot
-        # reach the steel pocket, so its MGXS must come out zero.
-        analog = copy.deepcopy(self._ce_model)
-        analog.convert_to_multigroup(
-            method='material_wise', groups=GROUPS, nparticles=1,
-            overwrite_mgxs_library=True, mgxs_path='mgxs_analog.h5')
-        _, self._analog_uncovered = mgxs_coverage('mgxs_analog.h5')
-
-        # Stage 3: the same solve bootstrapped with the stage 1 weight windows
-        # reaches the pocket and produces a complete library.
-        boot = copy.deepcopy(self._ce_model)
-        boot.convert_to_multigroup(
-            method='material_wise', groups=GROUPS, nparticles=1,
-            overwrite_mgxs_library=True, mgxs_path='mgxs_boot.h5',
-            weight_windows_file='weight_windows.h5')
-        _, self._boot_uncovered = mgxs_coverage('mgxs_boot.h5')
-
-        # Hard semantic asserts (in addition to the reference comparison) so
-        # that a broken feature can never be baked into the reference files by
-        # an --update run.
-        assert self._analog_uncovered == ['Steel']
-        assert self._boot_uncovered == []
-
-    def _mgxs_lines(self, label, path):
-        lines = []
-        library = openmc.MGXSLibrary.from_hdf5(path)
-        for xsdata in sorted(library.xsdatas, key=lambda x: x.name):
-            lines.append(f'{label} MGXS {xsdata.name}')
-            for name, array in (('total', xsdata.total[0]),
-                                ('absorption', xsdata.absorption[0]),
-                                ('scatter', xsdata.scatter_matrix[0])):
-                lines.append(name)
-                lines += [f'{v:.6e}' for v in
-                          np.asarray(array, dtype=float).flatten()]
-        return lines
-
-    def _get_results(self):
-        """Digest the coverage verdicts, the three MGXS libraries, and the
-        weight window bounds."""
-        lines = [f'analog uncovered: {sorted(self._analog_uncovered)}',
-                 f'bootstrap uncovered: {sorted(self._boot_uncovered)}']
-        lines += self._mgxs_lines('slab', 'mgxs_slab.h5')
-        lines += self._mgxs_lines('analog', 'mgxs_analog.h5')
-        lines += self._mgxs_lines('bootstrap', 'mgxs_boot.h5')
-
-        ww = openmc.WeightWindowsList.from_hdf5()[0]
-        lines.append(str(ww.mesh))
-        lines.append('Lower Bounds')
-        lines += [f'{x:.6e}' for x in ww.lower_ww_bounds.flatten()]
-        lines.append('Upper Bounds')
-        lines += [f'{x:.6e}' for x in ww.upper_ww_bounds.flatten()]
-        return '\n'.join(lines) + '\n'
-
+class MGXSTestHarness(TolerantPyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
-        for f in ('weight_windows.h5', 'mgxs_slab.h5', 'mgxs_analog.h5',
-                  'mgxs_boot.h5'):
+        for f in ('mgxs.h5', 'weight_windows.h5'):
             if os.path.exists(f):
                 os.remove(f)
 
 
-def test_random_ray_auto_convert_bootstrap():
-    """Bootstrapped material-wise MGXS generation with weight windows.
-
-    The example model holds a steel pocket behind ~1 m of concrete, which a
-    ~200 history analog solve reaches with probability well below 1%. The
-    "material_wise" MGXS method therefore produces zero cross sections for the
-    steel unless the continuous energy solve applies weight windows, supplied
-    via the weight_windows_file argument from a stochastic_slab + random ray
-    FW-CADIS generation pass.
-    """
-    openmc.reset_auto_ids()
-    model = sphere_with_shielded_pocket()
-
-    # Inherited by every continuous energy solve below. Weight window
-    # checkpoints assist the bootstrapped solve; they also propagate into the
-    # random ray weight window generation run, where they must have no effect
-    # on the rays (random ray generates weight windows but never applies
-    # them).
-    model.settings.weight_window_checkpoints = {
-        'collision': True, 'surface': True}
-    model.settings.max_history_splits = 100_000
-
-    # Convert a copy to multigroup with the stochastic_slab method and set up
-    # the random ray FW-CADIS weight window generation run (stage 1).
-    mg_model = copy.deepcopy(model)
-    mg_model.convert_to_multigroup(
-        method='stochastic_slab', groups=GROUPS, nparticles=50,
-        overwrite_mgxs_library=True, mgxs_path='mgxs_slab.h5')
-    mg_model.convert_to_random_ray()
-
-    # Overlay a ~10 cm source region / weight window mesh on the geometry
-    bbox = mg_model.geometry.bounding_box
-    ll = np.asarray(bbox.lower_left)
-    ur = np.asarray(bbox.upper_right)
-    mesh = openmc.RegularMesh()
-    mesh.dimension = np.round((ur - ll) / 10.0).astype(int)
-    mesh.lower_left = ll
-    mesh.upper_right = ur
-
-    rr = mg_model.settings.random_ray
-    rr['source_region_meshes'] = [(mesh, [mg_model.geometry.root_universe])]
+def configure_random_ray(model, mesh):
+    """Convert the model to random ray mode, with settings shared by the
+    weight window generation solve and the final solve."""
+    model.convert_to_random_ray()
+    rr = model.settings.random_ray
+    rr['source_region_meshes'] = [(mesh, [model.geometry.root_universe])]
     rr['distance_inactive'] = 100.0
     rr['distance_active'] = 400.0
     # convert_to_random_ray samples ray origins from the bounding box, which
     # for a spherical geometry includes regions outside the geometry. Sample
     # from the box inscribed in the sphere instead.
+    ll = np.asarray(mesh.lower_left)
+    ur = np.asarray(mesh.upper_right)
     center = (ll + ur) / 2
     half = (ur - ll).min() / 2 / np.sqrt(3.0) * 0.99
     rr['ray_source'] = openmc.IndependentSource(
@@ -173,13 +40,66 @@ def test_random_ray_auto_convert_bootstrap():
     rr['source_shape'] = 'flat'
     rr['sample_method'] = 'halton'
     rr['volume_estimator'] = 'hybrid'
+    model.settings.particles = 1000
+    model.settings.batches = 20
+    model.settings.inactive = 15
 
-    mg_model.settings.particles = 1000
-    mg_model.settings.batches = 20
-    mg_model.settings.inactive = 15
+
+def test_random_ray_auto_convert_bootstrap():
+    # Tests the weight window bootstrapped MGXS generation workflow: cheap
+    # global weight windows (stochastic_slab MGXS + random ray FW-CADIS) feed a
+    # material_wise generation via the weight_windows_file argument. The
+    # example's steel pocket sits behind ~1 m of concrete, which the
+    # material_wise generation solve essentially never reaches without weight
+    # windows, so the pocket flux tallied in the final solve depends on the
+    # bootstrapped steel cross sections being generated correctly.
+    openmc.reset_auto_ids()
+    model = sphere_with_shielded_pocket()
+
+    # Inherited by the continuous energy generation solves below: weight window
+    # checkpoints help the bootstrapped solve reach the pocket, and must have
+    # no effect on the random ray solves (random ray generates weight windows
+    # but never applies them).
+    model.settings.weight_window_checkpoints = {
+        'collision': True, 'surface': True}
+    model.settings.max_history_splits = 100_000
+
+    # Overlay a ~10 cm source region / weight window mesh on the geometry
+    bbox = model.geometry.bounding_box
+    mesh = openmc.RegularMesh()
+    mesh.dimension = np.round(
+        (np.asarray(bbox.upper_right) - np.asarray(bbox.lower_left)) / 10.0
+    ).astype(int)
+    mesh.lower_left = bbox.lower_left
+    mesh.upper_right = bbox.upper_right
+
+    # Generate weight windows covering the whole problem with the
+    # stochastic_slab method and a random ray FW-CADIS solve
+    mg_model = copy.deepcopy(model)
+    mg_model.convert_to_multigroup(
+        method='stochastic_slab', groups=GROUPS, nparticles=50,
+        overwrite_mgxs_library=True, mgxs_path='mgxs.h5')
+    configure_random_ray(mg_model, mesh)
     mg_model.settings.weight_window_generators = openmc.WeightWindowGenerator(
         method='fw_cadis', mesh=mesh, max_realizations=20,
         energy_bounds=openmc.mgxs.EnergyGroups(GROUPS).group_edges)
+    mg_model.run()
 
-    harness = MGXSBootstrapTestHarness('statepoint.20.h5', mg_model, model)
+    # Bootstrap the material-wise MGXS generation with those weight windows
+    model.convert_to_multigroup(
+        method='material_wise', groups=GROUPS, nparticles=1,
+        overwrite_mgxs_library=True, mgxs_path='mgxs.h5',
+        weight_windows_file='weight_windows.h5')
+
+    # Run a random ray solve with the bootstrapped library, tallying the flux
+    # in every region
+    configure_random_ray(model, mesh)
+    tally = openmc.Tally(name='flux')
+    tally.filters = [
+        openmc.CellFilter(list(model.geometry.get_all_cells().values())),
+        openmc.EnergyFilter(openmc.mgxs.EnergyGroups(GROUPS).group_edges)]
+    tally.scores = ['flux']
+    model.tallies = openmc.Tallies([tally])
+
+    harness = MGXSTestHarness('statepoint.20.h5', model)
     harness.main()

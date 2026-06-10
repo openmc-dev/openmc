@@ -1674,10 +1674,16 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     ###########################################################################
     # Geometry
 
-    # Concrete sphere, offset along +x so that the full shielding depth exists
-    # only between the source and the pocket.
-    r_sphere = 66.0
-    x_offset = 54.0
+    # The concrete sphere spans x = -12 to x = 120: the pocket sits flush with
+    # the outer surface at x = 120 behind ~92 cm of concrete, while only ~6 cm
+    # of concrete backs the source cavity on the -x side. Offsetting the sphere
+    # this way confines the deep shielding to the solid angle subtended by the
+    # pocket; the sphere center and radius below are just the midpoint and
+    # half-width of that span.
+    sphere_x_min = -12.0
+    sphere_x_max = 120.0
+    r_sphere = (sphere_x_max - sphere_x_min) / 2
+    x_offset = (sphere_x_max + sphere_x_min) / 2
     cavity_half_width = 6.0
     pocket_inner_face = 98.0
     pocket_half_width = 4.0
@@ -1690,7 +1696,7 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     # The pocket box extends past the sphere surface and is clipped by it, so
     # the pocket sits flush with (and just inside) the outer surface.
     pocket_box = openmc.model.RectangularParallelepiped(
-        pocket_inner_face, x_offset + r_sphere + 1.0,
+        pocket_inner_face, sphere_x_max + 1.0,
         -pocket_half_width, pocket_half_width,
         -pocket_half_width, pocket_half_width)
 

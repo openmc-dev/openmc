@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <cross_sections>mgxs_slab.h5</cross_sections>
+    <cross_sections>mgxs.h5</cross_sections>
     <material id="1" name="Air">
       <density value="1.0" units="macro"/>
       <macroscopic name="Air"/>
@@ -52,22 +52,6 @@
       </constraints>
     </source>
     <energy_mode>multi-group</energy_mode>
-    <weight_window_generators>
-      <weight_windows_generator>
-        <mesh>1</mesh>
-        <energy_bounds>0.0 0.625 5530.0 821000.0 20000000.0</energy_bounds>
-        <particle_type>neutron</particle_type>
-        <max_realizations>20</max_realizations>
-        <update_interval>1</update_interval>
-        <on_the_fly>true</on_the_fly>
-        <method>fw_cadis</method>
-      </weight_windows_generator>
-    </weight_window_generators>
-    <mesh id="1">
-      <dimension>13 13 13</dimension>
-      <lower_left>-12.0 -66.0 -66.0</lower_left>
-      <upper_right>120.0 66.0 66.0</upper_right>
-    </mesh>
     <weight_window_checkpoints>
       <collision>true</collision>
       <surface>true</surface>
@@ -92,5 +76,22 @@
       <sample_method>halton</sample_method>
       <volume_estimator>hybrid</volume_estimator>
     </random_ray>
+    <mesh id="1">
+      <dimension>13 13 13</dimension>
+      <lower_left>-12.0 -66.0 -66.0</lower_left>
+      <upper_right>120.0 66.0 66.0</upper_right>
+    </mesh>
   </settings>
-  </model>
+  <tallies>
+    <filter id="193" type="cell">
+      <bins>1 2 3</bins>
+    </filter>
+    <filter id="194" type="energy">
+      <bins>0.0 0.625 5530.0 821000.0 20000000.0</bins>
+    </filter>
+    <tally id="405" name="flux">
+      <filters>193 194</filters>
+      <scores>flux</scores>
+    </tally>
+  </tallies>
+</model>

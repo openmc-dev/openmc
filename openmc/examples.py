@@ -1619,3 +1619,103 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     model.tallies = tallies
 
     return model
+
+def sphere_with_shielded_pocket() -> openmc.Model:
+    """Create a continuous energy deep-shielding model with a far detector pocket.
+
+    A 2 MeV isotropic neutron source sits in a small air cavity at the origin,
+    inside a concrete sphere whose center is offset along the +x axis. A small
+    steel pocket is embedded flush with the sphere surface on the +x axis,
+    behind roughly a meter of concrete, while the concrete is much thinner in
+    every other direction. The geometry is designed for testing weight window
+    and variance reduction workflows:
+
+    - The probability that an analog source neutron reaches the steel pocket is
+      ~4e-5 (the product of the concrete attenuation and the pocket's small
+      solid angle), so an analog simulation with a few hundred histories
+      essentially never tallies the steel, while even crude global weight
+      windows allow particles to reach it reliably.
+    - Because the sphere is offset, deep shielding (and thus a wide weight
+      window dynamic range) exists only within the small solid angle subtended
+      by the pocket, which keeps weight window splitting cheap and convergent
+      and the whole model fast enough for regression testing.
+
+    Returns
+    -------
+    model : openmc.Model
+        A deep-shielding model with a steel pocket behind a thick concrete
+        shield
+
+    """
+    model = openmc.Model()
+
+    ###########################################################################
+    # Materials (few nuclides, to keep data loading cheap in multi-solve tests)
+
+    air = openmc.Material(name='Air')
+    air.set_density('g/cm3', 0.001225)
+    air.add_nuclide('N14', 0.79, 'ao')
+    air.add_nuclide('O16', 0.21, 'ao')
+
+    concrete = openmc.Material(name='Concrete')
+    concrete.set_density('g/cm3', 2.3)
+    concrete.add_nuclide('H1', 0.168759, 'ao')
+    concrete.add_nuclide('O16', 0.562489, 'ao')
+    concrete.add_nuclide('Si28', 0.203031, 'ao')
+    concrete.add_nuclide('Ca40', 0.044849, 'ao')
+    concrete.add_nuclide('Al27', 0.020872, 'ao')
+
+    steel = openmc.Material(name='Steel')
+    steel.set_density('g/cm3', 7.87)
+    steel.add_nuclide('Fe56', 1.0)
+
+    model.materials = openmc.Materials([air, concrete, steel])
+
+    ###########################################################################
+    # Geometry
+
+    # Concrete sphere, offset along +x so that the full shielding depth exists
+    # only between the source and the pocket.
+    r_sphere = 66.0
+    x_offset = 54.0
+    cavity_half_width = 6.0
+    pocket_inner_face = 98.0
+    pocket_half_width = 4.0
+
+    sphere = openmc.Sphere(x0=x_offset, r=r_sphere, boundary_type='vacuum')
+    cavity_box = openmc.model.RectangularParallelepiped(
+        -cavity_half_width, cavity_half_width,
+        -cavity_half_width, cavity_half_width,
+        -cavity_half_width, cavity_half_width)
+    # The pocket box extends past the sphere surface and is clipped by it, so
+    # the pocket sits flush with (and just inside) the outer surface.
+    pocket_box = openmc.model.RectangularParallelepiped(
+        pocket_inner_face, x_offset + r_sphere + 1.0,
+        -pocket_half_width, pocket_half_width,
+        -pocket_half_width, pocket_half_width)
+
+    cavity_cell = openmc.Cell(name='cavity', fill=air, region=-cavity_box)
+    pocket_cell = openmc.Cell(name='pocket', fill=steel,
+                              region=-pocket_box & -sphere)
+    concrete_cell = openmc.Cell(
+        name='concrete', fill=concrete,
+        region=-sphere & +cavity_box & ~(-pocket_box & -sphere))
+
+    model.geometry = openmc.Geometry([cavity_cell, pocket_cell, concrete_cell])
+
+    ###########################################################################
+    # Source and settings
+
+    source = openmc.IndependentSource()
+    source.space = openmc.stats.Box([-cavity_half_width] * 3,
+                                    [cavity_half_width] * 3)
+    source.constraints = {'domains': [cavity_cell]}
+    source.angle = openmc.stats.Isotropic()
+    source.energy = openmc.stats.Discrete([2.0e6], [1.0])
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = source
+    model.settings.particles = 1000
+    model.settings.batches = 10
+
+    return model

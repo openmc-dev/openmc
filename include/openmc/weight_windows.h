@@ -65,6 +65,9 @@ struct WeightWindow {
     lower_weight *= factor;
     upper_weight *= factor;
     survival_weight *= factor;
+    // The cutoff is scaled with the window bounds so that it sits at the same
+    // relative depth below the window in any normalization frame
+    weight_cutoff *= factor;
   }
 };
 

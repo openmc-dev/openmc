@@ -119,6 +119,30 @@ def test_weightwindows(shared_secondary, subdir):
         test.main()
 
 
+def test_zero_bound_windows_play_no_game(tmp_path):
+    # A weight window lower bound of zero means no weight window information
+    # exists there (MCNP wwinp files use zero to turn the game off in a cell),
+    # so transport must proceed as if weight windows were disabled. Previously,
+    # zero-bound windows demanded a split at every checkpoint (weight/0 ->
+    # max_split), multiplying the particle population until terminated by the
+    # split or weight cutoff limits.
+    model = build_model(False)
+    for ww in model.settings.weight_windows:
+        ww.lower_ww_bounds = np.zeros_like(ww.lower_ww_bounds)
+        ww.upper_ww_bounds = np.zeros_like(ww.upper_ww_bounds)
+    sp_zero = model.run(cwd=tmp_path / 'zero_windows')
+
+    model.settings.weight_windows_on = False
+    sp_off = model.run(cwd=tmp_path / 'windows_off')
+
+    with openmc.StatePoint(sp_zero) as sp:
+        flux_zero = list(sp.tallies.values())[0].mean
+    with openmc.StatePoint(sp_off) as sp:
+        flux_off = list(sp.tallies.values())[0].mean
+
+    np.testing.assert_allclose(flux_zero, flux_off, rtol=1e-12)
+
+
 def test_wwinp_cylindrical():
 
     ww = openmc.WeightWindowsList.from_wwinp('ww_n_cyl.txt')[0]

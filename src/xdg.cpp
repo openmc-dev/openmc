@@ -105,7 +105,6 @@ void XDGMesh::prepare_for_point_location()
 
 Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
-  // MeshIDs are 1-indexed, so we add 1 to the bin, which is 0-indexed
   auto vertices = xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
   return this->sample_tet<xdg::Vertex>(vertices, seed);
 }
@@ -113,10 +112,9 @@ Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const
 void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   vector<int>& bins, vector<double>& lengths) const
 {
-  // TODO: Make more robust (including mesh entrance/re-entrance)
   xdg::Position p0 {r0.x, r0.y, r0.z};
   xdg::Position p1 {r1.x, r1.y, r1.z};
-  double length_rcp = 1 / (p1 - p0).length();
+  double inv_length = 1 / (p1 - p0).length();
   auto track_segments = xdg_->segments(p0, p1);
   // remove elements with lengths of zero
   track_segments.erase(
@@ -125,7 +123,7 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     track_segments.end());
   for (const auto& track_segment : track_segments) {
     bins.push_back(mesh_id_to_bin(track_segment.first));
-    lengths.push_back(track_segment.second * length_rcp);
+    lengths.push_back(track_segment.second * inv_length);
   }
 }
 

@@ -1008,27 +1008,25 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
   if (p.ww_factor() > 1.0)
     weight_window.scale(p.ww_factor());
 
-  // The window comparisons use a small relative dead band. Roulette survivors
-  // are assigned weights derived from the window bounds themselves
-  // (survival_ratio * lower bound), and integer splitting can later land a
-  // particle's weight exactly back on a bound value, in which case the branch
-  // taken would be decided by the last ulp of the bound. Window data carries
-  // ulp-level noise (e.g., from non-associative parallel reductions in the
-  // solver that generated it), so without the dead band, transport results
-  // would be chaotically sensitive to bit-level differences in the weight
-  // window file. Weights within the band are treated as inside the window,
-  // which is statistically negligible; weight window games are unbiased
-  // regardless of where the thresholds sit.
-  constexpr double rel_tol = 1e-9;
-
-  // if particle's weight is above the weight window split until they are within
-  // the window
-  if (weight > weight_window.upper_weight * (1.0 + rel_tol)) {
+  // if particle's weight is above the weight window split until they are
+  // within the window. The comparisons use a relative dead band so that the
+  // branch taken is insensitive to bit-level differences in the window bounds
+  // (see WEIGHT_WINDOW_REL_TOL).
+  if (weight > weight_window.upper_weight * (1.0 + WEIGHT_WINDOW_REL_TOL)) {
     // do not further split the particle if above the limit
     if (p.n_split() >= settings::max_history_splits)
       return;
 
-    double n_split = std::ceil(weight / weight_window.upper_weight);
+    // The (1 - WEIGHT_WINDOW_REL_TOL) factor keeps the number of splits
+    // stable when the weight-to-bound ratio sits within rounding of an exact
+    // integer, which the weight window arithmetic itself can produce (e.g., a
+    // roulette survivor assigned weight * max_split, later split against an
+    // upper bound that is an exact multiple of the same lower bound). Ratios
+    // within the dead band of an integer consistently round down; the lower
+    // clamp of 2 preserves the guarantee that the split branch always splits.
+    double n_split = std::max(2.0,
+      std::ceil((1.0 - WEIGHT_WINDOW_REL_TOL) * weight /
+                weight_window.upper_weight));
     double max_split = weight_window.max_split;
     n_split = std::min(n_split, max_split);
 
@@ -1042,7 +1040,8 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
     // remaining weight is applied to current particle
     p.wgt() = weight / n_split;
 
-  } else if (weight < weight_window.lower_weight * (1.0 - rel_tol)) {
+  } else if (weight <
+             weight_window.lower_weight * (1.0 - WEIGHT_WINDOW_REL_TOL)) {
     // if the particle weight is below the window, play Russian roulette
     double weight_survive =
       std::min(weight * weight_window.max_split, weight_window.survival_weight);

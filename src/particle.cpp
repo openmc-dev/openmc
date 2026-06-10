@@ -428,12 +428,6 @@ void Particle::event_cross_surface()
 
 void Particle::event_collide()
 {
-  // Store pre-collision particle properties
-  wgt_last() = wgt();
-  E_last() = E();
-  u_last() = u();
-  r_last() = r();
-
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;

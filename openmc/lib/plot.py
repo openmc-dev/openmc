@@ -278,6 +278,14 @@ def slice_data_overlap_info(x, y):
 
     return cell1, cell2, universe
 
+_dll.openmc_slice_data_overlap_count.argtypes = [c_int32, c_int32, POINTER(c_int32)]
+_dll.openmc_slice_data_overlap_count.restype = c_int
+_dll.openmc_slice_data_overlap_count.errcheck = _error_handler
+
+_dll.openmc_slice_data_overlap_info.argtypes = [c_int32, c_int32, POINTER(c_int32), POINTER(c_int32), POINTER(c_int32)]
+_dll.openmc_slice_data_overlap_info.restype = c_int
+_dll.openmc_slice_data_overlap_info.errcheck = _error_handler
+
 _dll.openmc_get_plot_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_plot_index.restype = c_int
 _dll.openmc_get_plot_index.errcheck = _error_handler

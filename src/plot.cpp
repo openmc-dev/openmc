@@ -1986,6 +1986,10 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     model::overlap_check_count.resize(model::cells.size());
   }
 
+  if (color_overlaps) {
+    settings::check_overlaps = true;
+  }
+
   try {
     // Create a temporary SlicePlotBase object to reuse get_map logic
     SlicePlotBase plot_params;
@@ -2016,13 +2020,13 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     return OPENMC_E_UNASSIGNED;
   }
 
-  return 0;
+    return 0;
 }
 
 // Gets the number of overlaps for a specific pixel
 extern "C" int openmc_slice_data_overlap_count(
   int32_t x, int32_t y, int32_t* count)
-{
+{  
   if (!model::last_slice_data) {
     set_errmsg("No slice plot data available.");
     return OPENMC_E_UNASSIGNED;

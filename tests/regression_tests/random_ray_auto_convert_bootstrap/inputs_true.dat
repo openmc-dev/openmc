@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs_slab.h5</cross_sections>
+    <material id="1" name="Air">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="Air"/>
+    </material>
+    <material id="2" name="Concrete">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="Concrete"/>
+    </material>
+    <material id="3" name="Steel">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="Steel"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="cavity" material="1" region="-3 2 -5 4 -7 6" universe="1"/>
+    <cell id="2" name="pocket" material="3" region="-9 8 -11 10 -13 12 -1" universe="1"/>
+    <cell id="3" name="concrete" material="2" region="-1 (3 | -2 | 5 | -4 | 7 | -6) (9 | -8 | 11 | -10 | 13 | -12 | 1)" universe="1"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="54.0 0.0 0.0 66.0"/>
+    <surface id="2" type="x-plane" coeffs="-6.0"/>
+    <surface id="3" type="x-plane" coeffs="6.0"/>
+    <surface id="4" type="y-plane" coeffs="-6.0"/>
+    <surface id="5" type="y-plane" coeffs="6.0"/>
+    <surface id="6" type="z-plane" coeffs="-6.0"/>
+    <surface id="7" type="z-plane" coeffs="6.0"/>
+    <surface id="8" type="x-plane" coeffs="98.0"/>
+    <surface id="9" type="x-plane" coeffs="121.0"/>
+    <surface id="10" type="y-plane" coeffs="-4.0"/>
+    <surface id="11" type="y-plane" coeffs="4.0"/>
+    <surface id="12" type="z-plane" coeffs="-4.0"/>
+    <surface id="13" type="z-plane" coeffs="4.0"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>1000</particles>
+    <batches>20</batches>
+    <inactive>15</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-6.0 -6.0 -6.0 6.0 6.0 6.0</parameters>
+      </space>
+      <angle type="isotropic"/>
+      <energy type="discrete">
+        <parameters>2000000.0 1.0</parameters>
+      </energy>
+      <constraints>
+        <domain_type>cell</domain_type>
+        <domain_ids>1</domain_ids>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <weight_window_generators>
+      <weight_windows_generator>
+        <mesh>1</mesh>
+        <energy_bounds>0.0 0.625 5530.0 821000.0 20000000.0</energy_bounds>
+        <particle_type>neutron</particle_type>
+        <max_realizations>20</max_realizations>
+        <update_interval>1</update_interval>
+        <on_the_fly>true</on_the_fly>
+        <method>fw_cadis</method>
+      </weight_windows_generator>
+    </weight_window_generators>
+    <mesh id="1">
+      <dimension>13 13 13</dimension>
+      <lower_left>-12.0 -66.0 -66.0</lower_left>
+      <upper_right>120.0 66.0 66.0</upper_right>
+    </mesh>
+    <weight_window_checkpoints>
+      <collision>true</collision>
+      <surface>true</surface>
+    </weight_window_checkpoints>
+    <max_history_splits>100000</max_history_splits>
+    <random_ray>
+      <ray_source>
+        <source type="independent" strength="1.0" particle="neutron">
+          <space type="box">
+            <parameters>16.275933411149857 -37.72406658885014 -37.72406658885014 91.72406658885015 37.72406658885014 37.72406658885014</parameters>
+          </space>
+        </source>
+      </ray_source>
+      <distance_inactive>100.0</distance_inactive>
+      <distance_active>400.0</distance_active>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="1" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+      <source_shape>flat</source_shape>
+      <sample_method>halton</sample_method>
+      <volume_estimator>hybrid</volume_estimator>
+    </random_ray>
+  </settings>
+  </model>

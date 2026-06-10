@@ -51,6 +51,11 @@ XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node)
   } else if (mesh_lib == "libmesh") {
     mesh_library_ = xdg::MeshLibrary::LIBMESH;
   }
+  else {
+    fatal_error(fmt::format("Invalid mesh library specified in XML: {}. "
+      "Valid options are 'moab' and 'libmesh'.", mesh_lib));
+  }
+
   initialize();
 }
 

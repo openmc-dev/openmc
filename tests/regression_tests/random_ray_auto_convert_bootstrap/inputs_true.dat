@@ -1,33 +1,37 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <cross_sections>mgxs.h5</cross_sections>
     <material id="1" name="Air">
-      <density value="1.0" units="macro"/>
-      <macroscopic name="Air"/>
+      <density value="0.001225" units="g/cm3"/>
+      <nuclide name="N14" ao="0.79"/>
+      <nuclide name="O16" ao="0.21"/>
     </material>
     <material id="2" name="Concrete">
-      <density value="1.0" units="macro"/>
-      <macroscopic name="Concrete"/>
+      <density value="2.3" units="g/cm3"/>
+      <nuclide name="H1" ao="0.168759"/>
+      <nuclide name="O16" ao="0.562489"/>
+      <nuclide name="Si28" ao="0.203031"/>
+      <nuclide name="Ca40" ao="0.044849"/>
+      <nuclide name="Al27" ao="0.020872"/>
     </material>
     <material id="3" name="Steel">
-      <density value="1.0" units="macro"/>
-      <macroscopic name="Steel"/>
+      <density value="7.87" units="g/cm3"/>
+      <nuclide name="Fe56" ao="1.0"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" name="cavity" material="1" region="-3 2 -5 4 -7 6" universe="1"/>
     <cell id="2" name="pocket" material="3" region="-9 8 -11 10 -13 12 -1" universe="1"/>
     <cell id="3" name="concrete" material="2" region="-1 (3 | -2 | 5 | -4 | 7 | -6) (9 | -8 | 11 | -10 | 13 | -12 | 1)" universe="1"/>
-    <surface id="1" type="sphere" boundary="vacuum" coeffs="54.0 0.0 0.0 66.0"/>
-    <surface id="2" type="x-plane" coeffs="-6.0"/>
-    <surface id="3" type="x-plane" coeffs="6.0"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 66.0"/>
+    <surface id="2" type="x-plane" coeffs="-60.0"/>
+    <surface id="3" type="x-plane" coeffs="-48.0"/>
     <surface id="4" type="y-plane" coeffs="-6.0"/>
     <surface id="5" type="y-plane" coeffs="6.0"/>
     <surface id="6" type="z-plane" coeffs="-6.0"/>
     <surface id="7" type="z-plane" coeffs="6.0"/>
-    <surface id="8" type="x-plane" coeffs="98.0"/>
-    <surface id="9" type="x-plane" coeffs="121.0"/>
+    <surface id="8" type="x-plane" coeffs="44.0"/>
+    <surface id="9" type="x-plane" coeffs="67.0"/>
     <surface id="10" type="y-plane" coeffs="-4.0"/>
     <surface id="11" type="y-plane" coeffs="4.0"/>
     <surface id="12" type="z-plane" coeffs="-4.0"/>
@@ -35,12 +39,11 @@
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>1000</particles>
-    <batches>20</batches>
-    <inactive>15</inactive>
+    <particles>20</particles>
+    <batches>10</batches>
     <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
-        <parameters>-6.0 -6.0 -6.0 6.0 6.0 6.0</parameters>
+        <parameters>-60.0 -6.0 -6.0 -48.0 6.0 6.0</parameters>
       </space>
       <angle type="isotropic"/>
       <energy type="discrete">
@@ -51,46 +54,20 @@
         <domain_ids>1</domain_ids>
       </constraints>
     </source>
-    <energy_mode>multi-group</energy_mode>
+    <weight_windows_on>true</weight_windows_on>
+    <weight_windows_file>weight_windows.h5</weight_windows_file>
     <weight_window_checkpoints>
       <collision>true</collision>
       <surface>true</surface>
     </weight_window_checkpoints>
     <max_history_splits>100000</max_history_splits>
-    <random_ray>
-      <ray_source>
-        <source type="independent" strength="1.0" particle="neutron">
-          <space type="box">
-            <parameters>16.275933411149857 -37.72406658885014 -37.72406658885014 91.72406658885015 37.72406658885014 37.72406658885014</parameters>
-          </space>
-        </source>
-      </ray_source>
-      <distance_inactive>100.0</distance_inactive>
-      <distance_active>400.0</distance_active>
-      <source_region_meshes>
-        <mesh id="1">
-          <domain id="1" type="universe"/>
-        </mesh>
-      </source_region_meshes>
-      <source_shape>flat</source_shape>
-      <sample_method>halton</sample_method>
-      <volume_estimator>hybrid</volume_estimator>
-    </random_ray>
-    <mesh id="1">
-      <dimension>13 13 13</dimension>
-      <lower_left>-12.0 -66.0 -66.0</lower_left>
-      <upper_right>120.0 66.0 66.0</upper_right>
-    </mesh>
   </settings>
   <tallies>
     <filter id="193" type="cell">
       <bins>1 2 3</bins>
     </filter>
-    <filter id="194" type="energy">
-      <bins>0.0 0.625 5530.0 821000.0 20000000.0</bins>
-    </filter>
     <tally id="405" name="flux">
-      <filters>193 194</filters>
+      <filters>193</filters>
       <scores>flux</scores>
     </tally>
   </tallies>

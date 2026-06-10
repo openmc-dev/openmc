@@ -1623,22 +1623,23 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
 def sphere_with_shielded_pocket() -> openmc.Model:
     """Create a continuous energy deep-shielding model with a far detector pocket.
 
-    A 2 MeV isotropic neutron source sits in a small air cavity at the origin,
-    inside a concrete sphere whose center is offset along the +x axis. A small
-    steel pocket is embedded flush with the sphere surface on the +x axis,
-    behind roughly a meter of concrete, while the concrete is much thinner in
-    every other direction. The geometry is designed for testing weight window
-    and variance reduction workflows:
+    A concrete sphere is centered at the origin. A 2 MeV isotropic neutron
+    source sits in a small air cavity just inside the sphere surface on the -x
+    side, and a small steel pocket is embedded flush with the surface on the
+    +x axis, so roughly a meter of concrete separates the source from the
+    pocket while only a few centimeters of concrete back the cavity. The
+    geometry is designed for testing weight window and variance reduction
+    workflows:
 
     - The probability that an analog source neutron reaches the steel pocket is
       ~4e-5 (the product of the concrete attenuation and the pocket's small
       solid angle), so an analog simulation with a few hundred histories
       essentially never tallies the steel, while even crude global weight
       windows allow particles to reach it reliably.
-    - Because the sphere is offset, deep shielding (and thus a wide weight
-      window dynamic range) exists only within the small solid angle subtended
-      by the pocket, which keeps weight window splitting cheap and convergent
-      and the whole model fast enough for regression testing.
+    - Because the cavity sits near the surface, deep shielding (and thus a wide
+      weight window dynamic range) exists only within the small solid angle
+      subtended by the pocket, which keeps weight window splitting cheap and
+      convergent and the whole model fast enough for regression testing.
 
     Returns
     -------
@@ -1674,29 +1675,24 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     ###########################################################################
     # Geometry
 
-    # The concrete sphere spans x = -12 to x = 120: the pocket sits flush with
-    # the outer surface at x = 120 behind ~92 cm of concrete, while only ~6 cm
-    # of concrete backs the source cavity on the -x side. Offsetting the sphere
-    # this way confines the deep shielding to the solid angle subtended by the
-    # pocket; the sphere center and radius below are just the midpoint and
-    # half-width of that span.
-    sphere_x_min = -12.0
-    sphere_x_max = 120.0
-    r_sphere = (sphere_x_max - sphere_x_min) / 2
-    x_offset = (sphere_x_max + sphere_x_min) / 2
+    # ~92 cm of concrete separates the cavity from the pocket face, while only
+    # ~6 cm of concrete backs the cavity on the -x side, so deep shielding is
+    # confined to the solid angle subtended by the pocket.
+    r_sphere = 66.0
+    cavity_center_x = -54.0
     cavity_half_width = 6.0
-    pocket_inner_face = 98.0
+    pocket_inner_face = 44.0
     pocket_half_width = 4.0
 
-    sphere = openmc.Sphere(x0=x_offset, r=r_sphere, boundary_type='vacuum')
+    sphere = openmc.Sphere(r=r_sphere, boundary_type='vacuum')
     cavity_box = openmc.model.RectangularParallelepiped(
-        -cavity_half_width, cavity_half_width,
+        cavity_center_x - cavity_half_width, cavity_center_x + cavity_half_width,
         -cavity_half_width, cavity_half_width,
         -cavity_half_width, cavity_half_width)
     # The pocket box extends past the sphere surface and is clipped by it, so
     # the pocket sits flush with (and just inside) the outer surface.
     pocket_box = openmc.model.RectangularParallelepiped(
-        pocket_inner_face, sphere_x_max + 1.0,
+        pocket_inner_face, r_sphere + 1.0,
         -pocket_half_width, pocket_half_width,
         -pocket_half_width, pocket_half_width)
 
@@ -1713,8 +1709,11 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     # Source and settings
 
     source = openmc.IndependentSource()
-    source.space = openmc.stats.Box([-cavity_half_width] * 3,
-                                    [cavity_half_width] * 3)
+    source.space = openmc.stats.Box(
+        [cavity_center_x - cavity_half_width,
+         -cavity_half_width, -cavity_half_width],
+        [cavity_center_x + cavity_half_width,
+         cavity_half_width, cavity_half_width])
     source.constraints = {'domains': [cavity_cell]}
     source.angle = openmc.stats.Isotropic()
     source.energy = openmc.stats.Discrete([2.0e6], [1.0])

@@ -44,13 +44,25 @@ protected:
   //----------------------------------------------------------------------------
   // Protected Methods
 
-  //! \brief Compute a per-material macroscopic majorant cross section in units of [cm^-1]
+  //! \brief Compute a per-material macroscopic majorant cross section in units
+  //!        of [cm^-1]
   //
   //! \param[in] mat The material to compute the majorant cross section of
   //! \param[in] to_grid The grid points to evaluate the majorant at in [eV]
-  //! \param[out] mat_maj The array to write the macroscopic majorant to. The resulting cross section has units of [cm^-1]
+  //! \param[out] mat_maj The array to write the macroscopic majorant to.
+  //!                     The resulting cross section has units of [cm^-1]
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
     const std::vector<double> & to_grid, std::vector<double> & mat_maj) = 0;
+
+  //! \brief Post-processes the energy grid by calling std::sort(), std::unique().
+  //!        This also removes all energy values below the transport minimum and
+  //!        above the transport maximum for a given particle type.
+  //!
+  //! \param[in] particle_type the particle type transport index to use when
+  //!            fetching transport minimum / maximum energies
+  //! \param[out] grid the energy grid to post-process. This is performed
+  //!                  in-place.
+  void post_process_grid(int particle_type, Nuclide::EnergyGrid & grid);
 
   //! \brief Helper function to perform linear interpolation.
   //

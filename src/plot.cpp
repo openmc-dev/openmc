@@ -2049,7 +2049,7 @@ extern "C" int openmc_slice_data_overlap_count(
 }
 
 // Gets the overlap data for a specific pixel
-// User pre-allocates array sizes based on what is returned with overlap_count
+// Plotter pre-allocates array sizes based on what is returned with overlap_count
 extern "C" int openmc_slice_data_overlap_info(
   int32_t x, int32_t y, int32_t* cell1, int32_t* cell2, int32_t* universe)
 {

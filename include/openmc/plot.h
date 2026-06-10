@@ -282,7 +282,7 @@ T SlicePlotBase::get_map(int32_t filter_index) const
         if (found_cell) {
           data.set_value(y, x, p, j, filter, &match);
         }
-        if (slice_color_overlaps_) {
+        if (show_overlaps_) {
           auto overlap = check_cell_overlap(p, false);
           if (!overlap.pairs.empty()) {
             data.set_overlap(y, x, overlap.pairs);

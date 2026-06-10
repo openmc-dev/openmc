@@ -47,9 +47,9 @@ struct OverlapKey {
   int cell1_id;
   int cell2_id;
 
-  bool operator==(const OverlapKey& other) const {
-    return universe_id == other.universe_id &&
-           cell1_id == other.cell1_id &&
+  bool operator==(const OverlapKey& other) const
+  {
+    return universe_id == other.universe_id && cell1_id == other.cell1_id &&
            cell2_id == other.cell2_id;
   }
 };

@@ -1,14 +1,38 @@
 import copy
 import os
+from contextlib import contextmanager
 
 import numpy as np
 import openmc
 from openmc.examples import sphere_with_shielded_pocket
 
+from tests.regression_tests import config
 from tests.testing_harness import TolerantPyAPITestHarness
 
 
 GROUPS = 'CASMO-4'
+
+
+@contextmanager
+def single_thread():
+    """Pin subprocess OpenMC runs to a single thread.
+
+    The stages that produce the weight windows must be bit-reproducible:
+    multithreaded tally and random ray flux accumulations carry last-ulp
+    ordering jitter, and the weight window split/roulette decisions downstream
+    amplify even one-ulp window perturbations into order-unity tally changes
+    (particle weights are set from the window bounds, so weight-window
+    comparisons can sit exactly on decision boundaries).
+    """
+    old = os.environ.get('OMP_NUM_THREADS')
+    os.environ['OMP_NUM_THREADS'] = '1'
+    try:
+        yield
+    finally:
+        if old is None:
+            del os.environ['OMP_NUM_THREADS']
+        else:
+            os.environ['OMP_NUM_THREADS'] = old
 
 
 def mgxs_coverage(path):
@@ -37,15 +61,15 @@ class MGXSBootstrapTestHarness(TolerantPyAPITestHarness):
     (stage 3) material-wise MGXS generation solves are run from the original
     continuous energy model.
 
-    The compared results contain the generated weight window bounds and the
-    analog MGXS data, both of which are reproducible across runs and thread
-    counts, so they detect subtle changes anywhere in the random ray solver,
-    the weight window generation machinery, or the MGXS generation chain. The
-    bootstrapped MGXS values are deliberately NOT value-compared: a Monte
-    Carlo solve with weight window splitting is not reproducible run-to-run
-    when multithreaded (the splitting order perturbs the tracking), so only
-    its binary material coverage -- which is the feature guarantee -- is
-    asserted.
+    The compared results contain the stochastic slab, analog, and bootstrapped
+    MGXS libraries along with the generated weight window bounds, so subtle
+    changes anywhere in the chain -- the MGXS generation methods, the random
+    ray solver, the weight window generation, or the weight window application
+    (splitting/roulette) in the Monte Carlo solve -- are detected. The whole
+    chain is reproducible across runs and thread counts because the stages
+    that produce the weight windows are pinned to a single thread (see
+    single_thread); given bit-identical windows, the weight-window-split Monte
+    Carlo solve is itself reproducible to the last ulp across thread counts.
     """
 
     def __init__(self, statepoint_name, model, ce_model):
@@ -55,8 +79,15 @@ class MGXSBootstrapTestHarness(TolerantPyAPITestHarness):
         self._boot_uncovered = None
 
     def _run_openmc(self):
-        # Stage 1: random ray FW-CADIS solve producing weight_windows.h5
-        super()._run_openmc()
+        # Stage 1: random ray FW-CADIS solve producing weight_windows.h5,
+        # single-threaded so the window bounds are bit-reproducible.
+        if config['mpi']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(threads=1, openmc_exec=config['exe'],
+                       mpi_args=mpi_args, event_based=config['event'])
+        else:
+            openmc.run(threads=1, openmc_exec=config['exe'],
+                       event_based=config['event'])
 
         # Stage 2 (negative control): the analog material_wise solve cannot
         # reach the steel pocket, so its MGXS must come out zero.
@@ -75,37 +106,40 @@ class MGXSBootstrapTestHarness(TolerantPyAPITestHarness):
             weight_windows_file='weight_windows.h5')
         _, self._boot_uncovered = mgxs_coverage('mgxs_boot.h5')
 
-        # Hard semantic asserts (rather than reference comparisons) so that a
-        # broken feature can never be baked into the reference files by an
-        # --update run.
+        # Hard semantic asserts (in addition to the reference comparison) so
+        # that a broken feature can never be baked into the reference files by
+        # an --update run.
         assert self._analog_uncovered == ['Steel']
         assert self._boot_uncovered == []
 
-    def _get_results(self):
-        """Digest the weight window bounds, the coverage verdicts, and the
-        analog MGXS data."""
-        # Weight window bounds from the random ray FW-CADIS generation
-        ww = openmc.WeightWindowsList.from_hdf5()[0]
-        lines = [str(ww.mesh), 'Lower Bounds']
-        lines += [f'{x:.2e}' for x in ww.lower_ww_bounds.flatten()]
-        lines.append('Upper Bounds')
-        lines += [f'{x:.2e}' for x in ww.upper_ww_bounds.flatten()]
-
-        # Material coverage verdicts from the two material_wise solves
-        lines.append(f'analog uncovered: {sorted(self._analog_uncovered)}')
-        lines.append(f'bootstrap uncovered: {sorted(self._boot_uncovered)}')
-
-        # Analog MGXS data (the bootstrapped library is excluded; see class
-        # docstring)
-        library = openmc.MGXSLibrary.from_hdf5('mgxs_analog.h5')
+    def _mgxs_lines(self, label, path):
+        lines = []
+        library = openmc.MGXSLibrary.from_hdf5(path)
         for xsdata in sorted(library.xsdatas, key=lambda x: x.name):
-            lines.append(f'analog MGXS {xsdata.name}')
-            for label, array in (('total', xsdata.total[0]),
-                                 ('absorption', xsdata.absorption[0]),
-                                 ('scatter', xsdata.scatter_matrix[0])):
-                lines.append(label)
+            lines.append(f'{label} MGXS {xsdata.name}')
+            for name, array in (('total', xsdata.total[0]),
+                                ('absorption', xsdata.absorption[0]),
+                                ('scatter', xsdata.scatter_matrix[0])):
+                lines.append(name)
                 lines += [f'{v:.6e}' for v in
                           np.asarray(array, dtype=float).flatten()]
+        return lines
+
+    def _get_results(self):
+        """Digest the coverage verdicts, the three MGXS libraries, and the
+        weight window bounds."""
+        lines = [f'analog uncovered: {sorted(self._analog_uncovered)}',
+                 f'bootstrap uncovered: {sorted(self._boot_uncovered)}']
+        lines += self._mgxs_lines('slab', 'mgxs_slab.h5')
+        lines += self._mgxs_lines('analog', 'mgxs_analog.h5')
+        lines += self._mgxs_lines('bootstrap', 'mgxs_boot.h5')
+
+        ww = openmc.WeightWindowsList.from_hdf5()[0]
+        lines.append(str(ww.mesh))
+        lines.append('Lower Bounds')
+        lines += [f'{x:.6e}' for x in ww.lower_ww_bounds.flatten()]
+        lines.append('Upper Bounds')
+        lines += [f'{x:.6e}' for x in ww.upper_ww_bounds.flatten()]
         return '\n'.join(lines) + '\n'
 
     def _cleanup(self):
@@ -139,11 +173,14 @@ def test_random_ray_auto_convert_bootstrap():
     model.settings.max_history_splits = 100_000
 
     # Convert a copy to multigroup with the stochastic_slab method and set up
-    # the random ray FW-CADIS weight window generation run (stage 1).
+    # the random ray FW-CADIS weight window generation run (stage 1). The slab
+    # solve feeds the weight windows, so it runs single-threaded to be
+    # bit-reproducible (see single_thread).
     mg_model = copy.deepcopy(model)
-    mg_model.convert_to_multigroup(
-        method='stochastic_slab', groups=GROUPS, nparticles=50,
-        overwrite_mgxs_library=True, mgxs_path='mgxs_slab.h5')
+    with single_thread():
+        mg_model.convert_to_multigroup(
+            method='stochastic_slab', groups=GROUPS, nparticles=50,
+            overwrite_mgxs_library=True, mgxs_path='mgxs_slab.h5')
     mg_model.convert_to_random_ray()
 
     # Overlay a ~10 cm source region / weight window mesh on the geometry

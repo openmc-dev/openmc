@@ -28,12 +28,6 @@ def generate_weight_windows(model, mesh):
     rr['source_region_meshes'] = [(mesh, [model.geometry.root_universe])]
     rr['distance_inactive'] = 100.0
     rr['distance_active'] = 400.0
-    # convert_to_random_ray samples ray origins from the bounding box, which
-    # for a spherical geometry includes regions outside the geometry. Sample
-    # from the box inscribed in the sphere instead.
-    half = np.asarray(mesh.upper_right).min() / np.sqrt(3.0) * 0.99
-    rr['ray_source'] = openmc.IndependentSource(
-        space=openmc.stats.Box([-half] * 3, [half] * 3))
     rr['source_shape'] = 'flat'
     rr['sample_method'] = 'halton'
     rr['volume_estimator'] = 'hybrid'

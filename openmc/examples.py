@@ -1628,8 +1628,10 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     side, and a small steel pocket is embedded flush with the surface on the
     +x axis, so roughly a meter of concrete separates the source from the
     pocket while only a few centimeters of concrete back the cavity. The
-    geometry is designed for testing weight window and variance reduction
-    workflows:
+    sphere is enclosed in a vacuum-bounded box, with a void gap in between, so
+    that solvers which sample uniformly over a rectangular domain (e.g.,
+    random ray) can be applied directly. The geometry is designed for testing
+    weight window and variance reduction workflows:
 
     - The probability that an analog source neutron reaches the steel pocket is
       ~4e-5 (the product of the concrete attenuation and the pocket's small
@@ -1679,12 +1681,17 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     # ~6 cm of concrete backs the cavity on the -x side, so deep shielding is
     # confined to the solid angle subtended by the pocket.
     r_sphere = 66.0
+    box_half_width = 70.0
     cavity_center_x = -54.0
     cavity_half_width = 6.0
     pocket_inner_face = 44.0
     pocket_half_width = 4.0
 
-    sphere = openmc.Sphere(r=r_sphere, boundary_type='vacuum')
+    sphere = openmc.Sphere(r=r_sphere)
+    outer_box = openmc.model.RectangularParallelepiped(
+        -box_half_width, box_half_width,
+        -box_half_width, box_half_width,
+        -box_half_width, box_half_width, boundary_type='vacuum')
     cavity_box = openmc.model.RectangularParallelepiped(
         cavity_center_x - cavity_half_width, cavity_center_x + cavity_half_width,
         -cavity_half_width, cavity_half_width,
@@ -1702,8 +1709,10 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     concrete_cell = openmc.Cell(
         name='concrete', fill=concrete,
         region=-sphere & +cavity_box & ~(-pocket_box & -sphere))
+    void_cell = openmc.Cell(name='void', region=+sphere & -outer_box)
 
-    model.geometry = openmc.Geometry([cavity_cell, pocket_cell, concrete_cell])
+    model.geometry = openmc.Geometry(
+        [cavity_cell, pocket_cell, concrete_cell, void_cell])
 
     ###########################################################################
     # Source and settings

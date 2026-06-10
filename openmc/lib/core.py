@@ -47,9 +47,9 @@ _array_1d_dble = np.ctypeslib.ndpointer(dtype=np.double, ndim=1,
 _dll.openmc_calculate_volumes.restype = c_int
 _dll.openmc_calculate_volumes.errcheck = _error_handler
 _dll.openmc_cleanup.restype = c_int
-dll.openmc_cleanup.errcheck = _error_handler
+_dll.openmc_cleanup.errcheck = _error_handler
 
-atexit.register(openmc_cleanup)
+atexit.register(_dll.openmc_cleanup)
 
 _dll.openmc_cmfd_reweight.argtypes = c_bool, _array_1d_dble
 _dll.openmc_cmfd_reweight.restype = None

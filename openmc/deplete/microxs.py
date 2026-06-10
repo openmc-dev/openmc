@@ -142,8 +142,6 @@ def get_microxs_and_flux(
     chain = _get_chain(chain_file)
     if reactions is None:
         reactions = chain.reactions
-    nuclides_with_data = None
-    cross_sections = None
     if not nuclides:
         cross_sections = _find_cross_sections(model)
         nuclides_with_data = _get_nuclides_with_data(cross_sections)
@@ -313,15 +311,12 @@ def get_microxs_and_flux(
                 MicroXS(xs_i, rr_nuclides, rr_reactions) for xs_i in xs)
 
     if reaction_rate_mode == 'flux':
-        # Resolve data availability if the caller passed nuclides explicitly
-        if nuclides_with_data is None:
-            cross_sections = _find_cross_sections(model)
-            nuclides_with_data = _get_nuclides_with_data(cross_sections)
-        # Build the XS table once and collapse every domain against it; looping
-        # from_multigroup_flux per domain would rebuild the table each call.
-        flux_micros = _flux_collapse_micros(
-            nuclides, reactions, collapse_energies, fluxes,
-            nuclides_with_data, cross_sections=cross_sections)
+        # Resolve the library from the model (from_multigroup_flux defaults to config)
+        cross_sections = _find_cross_sections(model)
+        # Collapse all domains against one table, built once
+        flux_micros = MicroXS.from_multigroup_flux(
+            collapse_energies, fluxes, chain_file=chain, nuclides=nuclides,
+            reactions=reactions, cross_sections=cross_sections)
 
         # We need to return one-group fluxes to match the microscopic cross
         # sections, which are always one-group by virtue of the collapse
@@ -529,27 +524,6 @@ def _collapse_fluxes(
     return micros
 
 
-def _flux_collapse_micros(
-    nuclides: Sequence[str],
-    reactions: Sequence[str],
-    energies: Sequence[float],
-    fluxes: Sequence[np.ndarray],
-    nuclides_with_data: set,
-    temperature: float = 293.6,
-    cross_sections=None,
-    **init_kwargs,
-) -> list[MicroXS]:
-    """Build the CE group XS table once, then collapse each domain's flux.
-
-    Returns one :class:`MicroXS` per entry in ``fluxes``.
-
-    """
-    table = _build_xs_table_ce(
-        nuclides, reactions, energies, temperature, nuclides_with_data,
-        cross_sections=cross_sections, **init_kwargs)
-    return _collapse_fluxes(table, fluxes, nuclides, reactions)
-
-
 class MicroXS:
     """Microscopic cross section data for use in transport-independent depletion.
 
@@ -597,18 +571,24 @@ class MicroXS:
     def from_multigroup_flux(
         cls,
         energies: Sequence[float] | str,
-        multigroup_flux: Sequence[float],
+        multigroup_flux: Sequence[float] | Sequence[Sequence[float]],
         chain_file: PathLike | None = None,
         temperature: float = 293.6,
         nuclides: Sequence[str] | None = None,
         reactions: Sequence[str] | None = None,
+        *,
+        cross_sections: PathLike | None = None,
         **init_kwargs: dict,
-    ) -> MicroXS:
+    ) -> MicroXS | list[MicroXS]:
         """Generated microscopic cross sections from a known flux.
 
         The size of the MicroXS matrix depends on the chain file and cross
         sections available. MicroXS entry will be 0 if the nuclide cross section
         is not found.
+
+        Multiple fluxes can be collapsed at once by passing a 2-D array (or a
+        list of 1-D arrays); the group cross section table is then built only
+        once and reused for every flux.
 
         It is recommended to make repeated calls to this method within a context
         manager using the :class:`openmc.lib.TemporarySession` class to avoid
@@ -616,13 +596,19 @@ class MicroXS:
 
         .. versionadded:: 0.15.0
 
+        .. versionchanged:: 0.15.4
+            ``multigroup_flux`` may be 2-D (or a list of 1-D arrays) to collapse
+            several fluxes against a single shared cross section table, returning
+            a list of :class:`MicroXS`. Added the ``cross_sections`` argument.
+
         Parameters
         ----------
         energies : iterable of float or str
             Energy group boundaries in [eV] or the name of the group structure
-        multigroup_flux : iterable of float
+        multigroup_flux : iterable of float or iterable of iterable of float
             Energy-dependent multigroup flux values. Must be finite and
-            non-negative.
+            non-negative. A 1-D input is a single flux; a 2-D input (or a list of
+            1-D arrays) is a batch of fluxes that share the same group structure.
         chain_file : PathLike or Chain, optional
             Path to the depletion chain XML file or an instance of
             openmc.deplete.Chain. Defaults to ``openmc.config['chain_file']``.
@@ -634,12 +620,18 @@ class MicroXS:
         reactions : list of str, optional
             Reactions to get cross sections for. If not specified, all neutron
             reactions listed in the depletion chain file are used.
+        cross_sections : PathLike, optional
+            Cross section library used to resolve nuclide data availability and
+            evaluate cross sections. Defaults to ``openmc.config['cross_sections']``.
         **init_kwargs : dict
             Keyword arguments passed to :func:`openmc.lib.init`
 
         Returns
         -------
-        MicroXS
+        MicroXS or list of MicroXS
+            A single :class:`MicroXS` for a 1-D ``multigroup_flux``; a list with
+            one entry per flux for a 2-D input (a 1-row batch returns a
+            1-element list, not an unwrapped :class:`MicroXS`).
         """
 
         check_type("temperature", temperature, (int, float))
@@ -652,28 +644,38 @@ class MicroXS:
             if not np.all(np.diff(energies) > 0):
                 raise ValueError('Energy group boundaries must be in ascending order')
 
-        # check dimension consistency
-        if len(multigroup_flux) != len(energies) - 1:
-            raise ValueError('Length of flux array should be len(energies)-1')
+        # A 1-D flux is a single domain; 2-D (or a list of 1-D) is a batch
+        flux_array = np.asarray(multigroup_flux, dtype=float)
+        if flux_array.ndim not in (1, 2):
+            raise ValueError('multigroup_flux must be 1-D or 2-D')
+        single = flux_array.ndim == 1
+        fluxes = [flux_array] if single else list(flux_array)
 
-        chain = _get_chain(chain_file)
-        cross_sections = _find_cross_sections(model=None)
+        # check dimension consistency per flux
+        n_groups = len(energies) - 1
+        for flux in fluxes:
+            if len(flux) != n_groups:
+                raise ValueError('Length of flux array should be len(energies)-1')
+
+        # Resolve the library once; data availability is derived from it
+        if cross_sections is None:
+            cross_sections = _find_cross_sections(model=None)
         nuclides_with_data = _get_nuclides_with_data(cross_sections)
 
-        # If no nuclides were specified, default to all nuclides from the chain
-        if not nuclides:
-            nuclides = chain.nuclides
-            nuclides = [nuc.name for nuc in nuclides]
+        # Default nuclides/reactions from the chain only when needed
+        if not nuclides or reactions is None:
+            chain = _get_chain(chain_file)
+            if not nuclides:
+                nuclides = [nuc.name for nuc in chain.nuclides]
+            if reactions is None:
+                reactions = chain.reactions
 
-        # If no reactions specified, default to those in the chain file
-        if reactions is None:
-            reactions = chain.reactions
-
-        # Delegate to the shared build-and-collapse engine (single-flux case)
-        return _flux_collapse_micros(
-            nuclides, reactions, energies, [multigroup_flux],
-            nuclides_with_data, temperature, cross_sections=cross_sections,
-            **init_kwargs)[0]
+        # Build the XS table once and collapse every flux against it
+        table = _build_xs_table_ce(
+            nuclides, reactions, energies, temperature, nuclides_with_data,
+            cross_sections=cross_sections, **init_kwargs)
+        micros = _collapse_fluxes(table, fluxes, nuclides, reactions)
+        return micros[0] if single else micros
 
     @classmethod
     def from_csv(cls, csv_file, **kwargs):

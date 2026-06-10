@@ -153,3 +153,93 @@ def test_collapse_fluxes_guards():
     zero = _collapse_fluxes(table, [np.zeros(n_groups)], nuclides, reactions)[0]
     assert zero.data.shape == (1, 1, 1)
     assert np.all(zero.data == 0.0)
+
+
+def test_from_multigroup_flux_batch():
+    """A 2-D batch builds one shared table and matches the per-flux singular
+    result and the old per-domain collapse_rate reference, including a threshold
+    reaction and a zero-flux row, without mutating the input.
+    """
+    nuclides = ['U235', 'U238', 'O16']
+    reactions = ['fission', '(n,gamma)', '(n,2n)']  # (n,2n) is a threshold reaction
+    mts = [REACTION_MT[r] for r in reactions]
+    energies = _energies()
+    n_groups = energies.size - 1
+
+    rng = np.random.default_rng(2)
+    fluxes = np.vstack([rng.random(n_groups), rng.random(n_groups),
+                        np.zeros(n_groups)])
+    flux_copy = fluxes.copy()
+
+    batch = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=fluxes, chain_file=CHAIN_FILE,
+        nuclides=nuclides, reactions=reactions)
+    assert isinstance(batch, list)
+    assert len(batch) == len(fluxes)
+    assert all(isinstance(m, MicroXS) for m in batch)
+
+    # The batch call must not mutate its input
+    assert np.array_equal(fluxes, flux_copy)
+
+    # Each batch element equals the per-flux singular call ...
+    for row, micro in zip(fluxes, batch):
+        single = MicroXS.from_multigroup_flux(
+            energies=energies, multigroup_flux=row, chain_file=CHAIN_FILE,
+            nuclides=nuclides, reactions=reactions)
+        assert isinstance(single, MicroXS)
+        assert micro.data == pytest.approx(single.data, rel=1e-9, abs=1e-12)
+
+    # ... and the old per-domain collapse_rate reference
+    ref = _reference_micros(nuclides, reactions, mts, energies, fluxes, TEMPERATURE)
+    for micro, ref_data in zip(batch, ref):
+        assert micro.data == pytest.approx(ref_data, rel=1e-9, abs=1e-12)
+
+    # Zero-flux row -> all-zero MicroXS
+    assert np.all(batch[-1].data == 0.0)
+
+
+def test_from_multigroup_flux_one_row_batch():
+    """A 1-row 2-D batch returns a 1-element list, not an unwrapped MicroXS."""
+    energies = _energies()
+    n_groups = energies.size - 1
+    flux = np.random.default_rng(3).random((1, n_groups))
+
+    result = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=flux, chain_file=CHAIN_FILE,
+        nuclides=['U235'], reactions=['fission'])
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], MicroXS)
+
+
+def test_from_multigroup_flux_invalid_shape():
+    """ndim 0/3 and ragged fluxes raise ValueError."""
+    energies = _energies()
+    n_groups = energies.size - 1
+    kwargs = dict(energies=energies, chain_file=CHAIN_FILE,
+                  nuclides=['U235'], reactions=['fission'])
+
+    with pytest.raises(ValueError):
+        MicroXS.from_multigroup_flux(multigroup_flux=1.0, **kwargs)
+
+    with pytest.raises(ValueError):
+        MicroXS.from_multigroup_flux(
+            multigroup_flux=np.ones((2, 1, n_groups)), **kwargs)
+
+    with pytest.raises(ValueError):
+        MicroXS.from_multigroup_flux(
+            multigroup_flux=[np.ones(n_groups), np.ones(n_groups - 1)], **kwargs)
+
+
+def test_from_multigroup_flux_explicit_chain_no_config(monkeypatch):
+    """An explicit chain_file works even when openmc.config has no chain_file."""
+    monkeypatch.delitem(openmc.config, 'chain_file', raising=False)
+    energies = _energies()
+    n_groups = energies.size - 1
+    flux = np.random.default_rng(4).random(n_groups)
+
+    # With no nuclides/reactions the chain must be resolved from chain_file
+    micro = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=flux, chain_file=CHAIN_FILE)
+    assert isinstance(micro, MicroXS)
+    assert len(micro.nuclides) > 0

@@ -455,21 +455,6 @@ int openmc_get_keff(double* k_combined)
   // Copy estimates of k-effective and its variance (not variance of the mean)
   const auto& gt = simulation::global_tallies;
 
-  if (settings::delta_tracking) {
-    array<double, 2> kv {};
-    tensor::Tensor<double> cov = tensor::Tensor<double>({2, 2});
-
-    kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
-    kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
-
-    cov(0, 0) = (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n*kv[0]*kv[0]) / (n -1);
-    cov(1, 1) = (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n*kv[1]*kv[1]) / (n - 1);
-
-    // Calculate covariances based on sums with Bessel's correction
-    cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
-    cov(1, 0) = cov(0, 1);
-  }
-
   array<double, 3> kv {};
   tensor::Tensor<double> cov = tensor::zeros<double>({3, 3});
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
@@ -500,38 +485,37 @@ int openmc_get_keff(double* k_combined)
   // exceptions and an expression specifically derived for the combination of
   // two estimators (vice three) should be used instead.
 
-  // First we will identify if there are any matching estimators
+  // If delta tracking is enabled, use the collision and absorption estimators only.
+  // Otherwise, we will identify if there are any matching estimators. If none match,
+  // all three estimates are used.
   int i, j;
   bool use_three = false;
-  if ((std::abs(kv[0] - kv[1]) / kv[0] < FP_REL_PRECISION) &&
-      (std::abs(cov(0, 0) - cov(1, 1)) / cov(0, 0) < FP_REL_PRECISION)) {
-    // 0 and 1 match, so only use 0 and 2 in our comparisons
-    i = 0;
-    j = 2;
-
-  } else if ((std::abs(kv[0] - kv[2]) / kv[0] < FP_REL_PRECISION) &&
-             (std::abs(cov(0, 0) - cov(2, 2)) / cov(0, 0) < FP_REL_PRECISION)) {
-    // 0 and 2 match, so only use 0 and 1 in our comparisons
-    i = 0;
-    j = 1;
-
-  } else if ((std::abs(kv[1] - kv[2]) / kv[1] < FP_REL_PRECISION) &&
-             (std::abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) {
-    // 1 and 2 match, so only use 0 and 1 in our comparisons
-    i = 0;
-    j = 1;
-
-  } else {
-    // No two estimators match, so set boolean to use all three estimators.
-    use_three = true;
-  }
-
-  // if delta tracking is enabled, use the collision and absorption
-  // estimators only
   if (settings::delta_tracking) {
     i = 0;
     j = 1;
-    use_three = false;
+  } else {
+    if ((std::abs(kv[0] - kv[1]) / kv[0] < FP_REL_PRECISION) &&
+        (std::abs(cov(0, 0) - cov(1, 1)) / cov(0, 0) < FP_REL_PRECISION)) {
+      // 0 and 1 match, so only use 0 and 2 in our comparisons
+      i = 0;
+      j = 2;
+
+    } else if ((std::abs(kv[0] - kv[2]) / kv[0] < FP_REL_PRECISION) &&
+              (std::abs(cov(0, 0) - cov(2, 2)) / cov(0, 0) < FP_REL_PRECISION)) {
+      // 0 and 2 match, so only use 0 and 1 in our comparisons
+      i = 0;
+      j = 1;
+
+    } else if ((std::abs(kv[1] - kv[2]) / kv[1] < FP_REL_PRECISION) &&
+              (std::abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) {
+      // 1 and 2 match, so only use 0 and 1 in our comparisons
+      i = 0;
+      j = 1;
+
+    } else {
+      // No two estimators match, so set boolean to use all three estimators.
+      use_three = true;
+    }
   }
 
   if (use_three) {

@@ -569,7 +569,7 @@ void Particle::event_check_limit_and_revive()
 {
   // If particle has too many events, display warning and kill it
   n_event()++;
-  if (n_event() == settings::max_particle_events && !delta_tracking()) {
+  if (n_event() == settings::max_particle_events) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
     wgt() = 0.0;

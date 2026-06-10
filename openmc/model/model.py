@@ -2660,6 +2660,8 @@ class Model:
             This argument is only used with the ``"material_wise"`` method; a
             warning is issued and the argument is ignored for the
             ``"stochastic_slab"`` and ``"infinite_medium"`` methods.
+
+            .. versionadded:: 0.15.4
         """
         if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)

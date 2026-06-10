@@ -77,16 +77,15 @@ constexpr double MINIMUM_MACRO_XS {1e-6};
 
 // Relative dead band applied to weight window comparisons: particles split
 // only above upper * (1 + tol) and roulette only below lower * (1 - tol).
-// Roulette survivors are assigned weights derived from the window bounds
-// themselves (survival_ratio * lower bound), and integer splitting can later
-// land a particle's weight exactly back on a bound value, in which case the
-// branch taken would be decided by the last ulp of the bound. Window data
-// carries ulp-level noise (e.g., from non-associative parallel reductions in
-// the solver that generated it), so without the dead band, transport results
-// are chaotically sensitive to bit-level differences in the weight window
-// file. Weights within the band are treated as inside the window, which is
-// statistically negligible; weight window games are unbiased regardless of
-// where the thresholds sit.
+// Weight window arithmetic can land a particle's weight exactly back on a
+// bound value (e.g., a roulette survivor is assigned survival_ratio * lower
+// and a later split divides that back down), in which case the branch taken
+// would be decided by the last ulp of the bound. Since window data carries
+// ulp-level noise from non-associative parallel reductions in the solver that
+// generated it, transport results would otherwise be chaotically sensitive to
+// bit-level differences in the weight window file. Treating weights within
+// the band as inside the window is statistically negligible, and weight
+// window games are unbiased regardless of where the thresholds sit.
 constexpr double WEIGHT_WINDOW_REL_TOL {1e-9};
 
 // ============================================================================

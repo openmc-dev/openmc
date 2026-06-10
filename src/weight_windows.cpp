@@ -1024,9 +1024,9 @@ void apply_weight_window(Particle& p, WeightWindow weight_window)
     // upper bound that is an exact multiple of the same lower bound). Ratios
     // within the dead band of an integer consistently round down; the lower
     // clamp of 2 preserves the guarantee that the split branch always splits.
-    double n_split = std::max(2.0,
-      std::ceil((1.0 - WEIGHT_WINDOW_REL_TOL) * weight /
-                weight_window.upper_weight));
+    double n_split =
+      std::max(2.0, std::ceil((1.0 - WEIGHT_WINDOW_REL_TOL) * weight /
+                              weight_window.upper_weight));
     double max_split = weight_window.max_split;
     n_split = std::min(n_split, max_split);
 

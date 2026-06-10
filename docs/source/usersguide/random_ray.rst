@@ -806,14 +806,6 @@ defined over the original geometry (and do not need weight windows, since they
 already tally all materials). A warning is issued and the argument is ignored if
 it is supplied to another method.
 
-.. note::
-    For the weight windows to take effect, they must be defined over a mesh that
-    covers the original problem geometry. This is automatically the case when the
-    weight windows are generated from the same model, as described above. The
-    resulting bootstrapped cross sections can then be used to seed a second, more
-    accurate random ray solve -- for example, to generate improved FW-CADIS
-    weight windows for a subsequent Monte Carlo simulation.
-
 ~~~~~~~~~~~~
 The Hard Way
 ~~~~~~~~~~~~

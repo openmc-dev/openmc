@@ -344,7 +344,7 @@ const std::unique_ptr<Mesh>& Mesh::create(
     model::meshes.push_back(make_unique<MOABMesh>(dataset));
 #endif
 #ifdef OPENMC_XDG_ENABLED
-  } else if (mesh_type == "xdg") {
+  } else if (mesh_type == XDGMesh::mesh_type) {
     model::meshes.push_back(make_unique<XDGMesh>(dataset));
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED

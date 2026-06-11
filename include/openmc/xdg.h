@@ -26,7 +26,7 @@ public:
   XDGMesh(const std::string& filename, double length_multiplier = 1.0);
   XDGMesh(std::shared_ptr<xdg::XDG> external_xdg);
 
-  static const std::string mesh_lib_type;
+  static const std::string mesh_type;
 
   //----------------------------------------------------------------------------
   // Methods
@@ -56,8 +56,8 @@ public:
 
   //! Get the name of the underlying mesh library
   //!
-  //! \return Name of the mesh library ("moab" or "libmesh")
-  std::string mesh_library() const;
+  //! \return Name of the mesh library being used in XDG
+  std::string library() const override;
 
   //----------------------------------------------------------------------------
   // Overridden Methods
@@ -78,8 +78,6 @@ public:
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
-
-  std::string library() const override;
 
   //! Add a score to the mesh instance
   void add_score(const std::string& score) override {};

@@ -41,7 +41,7 @@ namespace openmc {
 // XDG Mesh implementation
 //==============================================================================
 
-const std::string XDGMesh::mesh_lib_type = "xdg";
+const std::string XDGMesh::mesh_type = "xdg";
 
 XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
@@ -67,6 +67,10 @@ XDGMesh::XDGMesh(hid_t group) : UnstructuredMesh(group)
     mesh_library_ = xdg::MeshLibrary::MOAB;
   } else if (mesh_lib == "libmesh") {
     mesh_library_ = xdg::MeshLibrary::LIBMESH;
+  }
+  else {
+    fatal_error(fmt::format("Invalid mesh library specified in HDF5: {}. "
+      "Valid options are 'moab' and 'libmesh'.", mesh_lib));
   }
   initialize();
 }
@@ -156,11 +160,6 @@ std::pair<vector<double>, vector<double>> XDGMesh::plot(
 }
 
 std::string XDGMesh::library() const
-{
-  return mesh_lib_type;
-}
-
-std::string XDGMesh::mesh_library() const
 {
   if (mesh_library_ == xdg::MeshLibrary::LIBMESH) {
     return "libmesh";

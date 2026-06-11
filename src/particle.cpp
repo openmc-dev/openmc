@@ -349,7 +349,9 @@ void Particle::event_delta_advance()
   // Update distance to problem boundary
   boundary() = distance_to_external_boundary(*this);
 
-  // Move to the external boundary or delta tracking collision site.
+  // Move to the external boundary or delta tracking collision site. Particles with
+  // large majorant cross sections will tunnel out of the domain if a floating point
+  // tolerance is not specified on the boundary distance calculation.
   double distance = std::min(collision_distance(), boundary().distance() - FP_REL_PRECISION);
   r() += distance * u();
 
@@ -880,10 +882,15 @@ void Particle::cross_periodic_bc(
   // Figure out what cell particle is in now
   n_coord() = 1;
 
+  // Need to nudge the particle back into the domain as event_delta_advance()
+  // does not go right up to the surface to fix tunneling.
+  if (delta_tracking()) {
+    r() += FP_REL_PRECISION * u();
+  }
   if (!neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after hitting periodic "
-                 "boundary on surface " +
-                 std::to_string(surf.id_) + ".");
+      "boundary on surface " +
+      std::to_string(surf.id_) + ".");
     return;
   }
 

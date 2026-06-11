@@ -182,7 +182,7 @@ def test_tallies():
         azimuthal_tally1, azimuthal_tally2, azimuthal_tally3,
         cellborn_tally, dg_tally, energy_tally, energyout_tally,
         transfer_tally, material_tally, mu_tally1, mu_tally2,
-        polar_tally1, polar_tally2, polar_tally3, 
+        polar_tally1, polar_tally2, polar_tally3,
         legendre_tally, spatial_legendre_tally, spatial_fourier_tally,
         harmonics_tally, harmonics_tally2, harmonics_tally3,
         universe_tally, collision_tally]

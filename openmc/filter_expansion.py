@@ -139,7 +139,7 @@ class LegendreFilter(ExpansionFilter):
 
 class SpatialExpansionFilter(ExpansionFilter):
     """Abstract base class for spatial functional expansion filters.
-    
+
     This class provides common functionality for filters that expand
     tally data along a spatial axis (x, y, or z) within a bounded region.
     Subclasses must implement the order setter to define their specific

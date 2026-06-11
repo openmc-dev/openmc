@@ -743,6 +743,7 @@ _FILTER_TYPE_MAP = {
     'polar': PolarFilter,
     'reaction': ReactionFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,
+    'spatialfourier': SpatialFourierFilter,
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
     'time': TimeFilter,

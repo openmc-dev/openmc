@@ -3,17 +3,15 @@
 
 #include <string>
 
-#include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_sptl_expansion.h"
 
 namespace openmc {
-
-enum class LegendreAxis { x, y, z };
 
 //==============================================================================
 //! Gives Legendre moments of the particle's normalized position along an axis
 //==============================================================================
 
-class SpatialLegendreFilter : public Filter {
+class SpatialLegendreFilter : public SpatialExpansionFilter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -26,42 +24,15 @@ public:
   std::string type_str() const override { return "spatiallegendre"; }
   FilterType type() const override { return FilterType::SPATIAL_LEGENDRE; }
 
-  void from_xml(pugi::xml_node node) override;
-
   void get_all_bins(const Particle& p, TallyEstimator estimator,
     FilterMatch& match) const override;
-
-  void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
 
   //----------------------------------------------------------------------------
   // Accessors
 
-  int order() const { return order_; }
-  void set_order(int order);
-
-  LegendreAxis axis() const { return axis_; }
-  void set_axis(LegendreAxis axis);
-
-  double min() const { return min_; }
-  double max() const { return max_; }
-  void set_minmax(double min, double max);
-
-private:
-  //----------------------------------------------------------------------------
-  // Data members
-
-  int order_;
-
-  //! The Cartesian coordinate axis that the Legendre expansion is applied to.
-  LegendreAxis axis_;
-
-  //! The minimum coordinate along the reference axis that the expansion covers.
-  double min_;
-
-  //! The maximum coordinate along the reference axis that the expansion covers.
-  double max_;
+  void set_order(int order) override;
 };
 
 } // namespace openmc

@@ -7,34 +7,8 @@
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
-#include "openmc/xml_interface.h"
 
 namespace openmc {
-
-void SpatialLegendreFilter::from_xml(pugi::xml_node node)
-{
-  this->set_order(std::stoi(get_node_value(node, "order")));
-
-  auto axis = get_node_value(node, "axis");
-  switch (axis[0]) {
-  case 'x':
-    this->set_axis(LegendreAxis::x);
-    break;
-  case 'y':
-    this->set_axis(LegendreAxis::y);
-    break;
-  case 'z':
-    this->set_axis(LegendreAxis::z);
-    break;
-  default:
-    throw std::runtime_error {
-      "Axis for SpatialLegendreFilter must be 'x', 'y', or 'z'"};
-  }
-
-  double min = std::stod(get_node_value(node, "min"));
-  double max = std::stod(get_node_value(node, "max"));
-  this->set_minmax(min, max);
-}
 
 void SpatialLegendreFilter::set_order(int order)
 {
@@ -45,33 +19,11 @@ void SpatialLegendreFilter::set_order(int order)
   n_bins_ = order_ + 1;
 }
 
-void SpatialLegendreFilter::set_axis(LegendreAxis axis)
-{
-  axis_ = axis;
-}
-
-void SpatialLegendreFilter::set_minmax(double min, double max)
-{
-  if (max <= min) {
-    throw std::invalid_argument {
-      "Maximum value must be greater than minimum value"};
-  }
-  min_ = min;
-  max_ = max;
-}
-
 void SpatialLegendreFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get the coordinate along the axis of interest.
-  double x;
-  if (axis_ == LegendreAxis::x) {
-    x = p.r().x;
-  } else if (axis_ == LegendreAxis::y) {
-    x = p.r().y;
-  } else {
-    x = p.r().z;
-  }
+  double x = this->position(p);
 
   if (x >= min_ && x <= max_) {
     // Compute the normalized coordinate value.
@@ -87,30 +39,10 @@ void SpatialLegendreFilter::get_all_bins(
   }
 }
 
-void SpatialLegendreFilter::to_statepoint(hid_t filter_group) const
-{
-  Filter::to_statepoint(filter_group);
-  write_dataset(filter_group, "order", order_);
-  if (axis_ == LegendreAxis::x) {
-    write_dataset(filter_group, "axis", "x");
-  } else if (axis_ == LegendreAxis::y) {
-    write_dataset(filter_group, "axis", "y");
-  } else {
-    write_dataset(filter_group, "axis", "z");
-  }
-  write_dataset(filter_group, "min", min_);
-  write_dataset(filter_group, "max", max_);
-}
-
 std::string SpatialLegendreFilter::text_label(int bin) const
 {
-  if (axis_ == LegendreAxis::x) {
-    return fmt::format("Legendre expansion, x axis, P{}", bin);
-  } else if (axis_ == LegendreAxis::y) {
-    return fmt::format("Legendre expansion, y axis, P{}", bin);
-  } else {
-    return fmt::format("Legendre expansion, z axis, P{}", bin);
-  }
+  return fmt::format(
+    "Legendre expansion, {} axis, P{}", this->axis_label(), bin);
 }
 
 //==============================================================================
@@ -196,7 +128,7 @@ extern "C" int openmc_spatial_legendre_filter_set_params(
 
   // Update the filter.
   if (axis)
-    filt->set_axis(static_cast<LegendreAxis>(*axis));
+    filt->set_axis(static_cast<SpatialExpansionFilter::Axis>(*axis));
   if (min && max)
     filt->set_minmax(*min, *max);
   return 0;

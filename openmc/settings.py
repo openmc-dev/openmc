@@ -94,6 +94,10 @@ class Settings:
         release of delayed photons.
 
         .. versionadded:: 0.12
+    delta_tracking : bool
+        Whether transport should be performed with delta tracking or not.
+
+        .. versionadded:: 0.15.4
     electron_treatment : {'led', 'ttb'}
         Whether to deposit all energy from electrons locally ('led') or create
         secondary bremsstrahlung photons ('ttb').
@@ -2011,10 +2015,6 @@ class Settings:
         if self._max_tracks is not None:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
-    def _create_delta_tracking_subelement(self, root):
-        if self._delta_tracking:
-            elem = ET.SubElement(root, "delta_tracking")
-            elem.text = str(self._delta_tracking).lower()
 
     def _create_random_ray_subelement(self, root, mesh_memo=None):
         if self._random_ray:
@@ -2074,6 +2074,11 @@ class Settings:
         if self._free_gas_threshold is not None:
             element = ET.SubElement(root, "free_gas_threshold")
             element.text = str(self._free_gas_threshold)
+
+    def _create_delta_tracking_subelement(self, root):
+        if self._delta_tracking:
+            elem = ET.SubElement(root, "delta_tracking")
+            elem.text = str(self._delta_tracking).lower()
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -2573,6 +2578,11 @@ class Settings:
         if text is not None:
             self.free_gas_threshold = float(text)
 
+    def _delta_tracking_from_xml_element(self, root):
+        text = get_text(root, 'delta_tracking')
+        if text is not None:
+            self.delta_tracking = text in ('true', '1')
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2769,6 +2779,7 @@ class Settings:
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)
         settings._free_gas_threshold_from_xml_element(elem)
+        settings._delta_tracking_from_xml_element(elem)
 
         return settings
 

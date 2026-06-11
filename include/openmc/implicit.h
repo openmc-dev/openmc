@@ -33,17 +33,25 @@ using Gradient = Position;
 
 struct CacheEntry {
   uint64_t epoch {std::numeric_limits<uint64_t>::max()};
-  Position pos {};
-  double val {0.0};
+  Position r {0.0, 0.0, 0.0};
+  double eval {0.0};
   Gradient grad {0.0, 0.0, 0.0};
   bool grad_valid {false};
+
+  // Interval cache — keyed on (u, t0, t1); r is covered by r + epoch.
+  Direction u {0.0, 0.0, 1.0};
+  double t0 {0.0}, t1 {0.0};
+  double L {1.0};
+  bool L_valid {false};
+  std::pair<double, double> min_max {0.0, 0.0};
+  bool min_max_valid {false};
 };
 
 struct StepCache {
   uint64_t epoch {0};
-  // Per-thread cache keyed by node address.
-  // Grows to at most one entry per Cached node in the model — bounded and tiny.
-  std::unordered_map<const void*, CacheEntry> node_cache;
+  // Per-thread cache indexed by Cached::slot_.
+  // Grows to exactly one entry per Cached node in the model — bounded and tiny.
+  std::vector<CacheEntry> node_cache;
 };
 
 extern thread_local StepCache step_cache;
@@ -478,13 +486,13 @@ private:
 // at many different positions within a single step, so the position check
 // is essential for correctness.
 //
-// compute_lipschitz and compute_f_min_max are NOT cached — they operate on
-// intervals, not single points, so the per-point cache does not apply.
-// Both methods delegate directly to the child.
+// compute_lipschitz and compute_f_min_max are cached per ray query,
+// keyed on (epoch, r, u, t0, t1).  Within one solver call the three
+// branches of a shared subtree hit the cache on the 2nd and 3rd traversal.
 //
 // Thread safety: Cached has no mutable members. All cache data lives in
-// thread_local step_cache.node_cache, keyed by node address. Each thread
-// maintains a fully independent cache — no shared mutable state, no data race.
+// thread_local step_cache.node_cache, indexed by slot. Each thread maintains
+// a fully independent cache — no shared mutable state, no data race.
 //
 // The map grows to at most one entry per Cached node in the model and is
 // never cleared — entries are simply overwritten when the epoch or position
@@ -499,7 +507,10 @@ private:
 
 class Cached final : public Implicit {
 public:
-  explicit Cached(std::shared_ptr<Implicit> child) : child_(std::move(child)) {}
+  explicit Cached(std::shared_ptr<Implicit> child)
+    : child_(std::move(child)), slot_(next_slot_++)
+  {}
+
   std::string expression() const override;
   double evaluate(Position r) const override;
   Gradient gradient(Position r) const override;
@@ -511,10 +522,24 @@ public:
     std::unordered_map<const Implicit*, int>& cache_map) const override;
 
 private:
-  //! Recompute value and gradient if epoch or position changed.
-  void refresh(Position r) const;
+  //! Return this node's cache entry.
+  //! Grows the thread-local cache vector on first access.
+  CacheEntry& get_cache_entry() const;
+
+  //! Recompute eval if the epoch or position changed.
+  CacheEntry& refresh(Position r) const;
+
+  //! Like refresh, but additionally invalidates the interval cache
+  //! (L, min_max) if the ray parameters (u, t0, t1) changed.
+  CacheEntry& refresh_interval(
+    Position r, Direction u, double t0, double t1) const;
+
+  //! Global counter assigning a unique slot to each Cached node.
+  //! Only incremented during model construction (single-threaded).
+  static std::atomic<int> next_slot_;
 
   std::shared_ptr<Implicit> child_;
+  int slot_;
 };
 
 } // namespace implicit

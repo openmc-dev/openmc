@@ -756,7 +756,7 @@ Gradient Sqrt::gradient(Position r) const
 double Sqrt::compute_lipschitz(
   Position r, Direction u, double t0, double t1) const
 {
-  // L(√f) = L(f) / (2 * √f_min) — derivative 1/(2√f) is largest at f_min
+  // L(√f) = L(f) / (2 * √f_min) - derivative 1/(2√f) is largest at f_min
   double lipschitz_arg = arg_->compute_lipschitz(r, u, t0, t1);
   auto [arg_min, arg_max] = arg_->compute_f_min_max(r, u, t0, t1);
   if (arg_min <= 0.0)
@@ -957,7 +957,7 @@ Gradient Min::gradient(Position r) const
 double Min::compute_lipschitz(
   Position r, Direction u, double t0, double t1) const
 {
-  // L(min(f,g)) = max(L_f, L_g)  — same argument as Max by symmetry.
+  // L(min(f,g)) = max(L_f, L_g)  - same argument as Max by symmetry.
   return std::max(
     f_->compute_lipschitz(r, u, t0, t1), g_->compute_lipschitz(r, u, t0, t1));
 }
@@ -1020,58 +1020,103 @@ pugi::xml_node Max::to_xml_element(pugi::xml_node parent,
 // Cached
 //==============================================================================
 
-void Cached::refresh(Position r) const
-{
-  auto& entry = step_cache.node_cache[this]; // creates default entry if absent
+std::atomic<int> Cached::next_slot_ {0};
 
-  if (entry.epoch != step_cache.epoch || r.x != entry.pos.x ||
-      r.y != entry.pos.y || r.z != entry.pos.z) {
-    entry.val = child_->evaluate(r);
-    entry.grad_valid = false; // gradient invalidated, computed on demand
-    entry.epoch = step_cache.epoch;
-    entry.pos = r;
+CacheEntry& Cached::get_cache_entry() const
+{
+  auto& cache = step_cache.node_cache;
+  if (static_cast<size_t>(slot_) >= cache.size()) {
+    // First access on this thread - grow to cover all slots assigned so far.
+    cache.resize(next_slot_.load());
   }
+  return cache[slot_];
 }
+
+CacheEntry& Cached::refresh(Position r) const
+{
+  CacheEntry& entry = get_cache_entry();
+  bool pos_match = entry.r.x == r.x && entry.r.y == r.y && entry.r.z == r.z;
+  bool epoch_match = entry.epoch == step_cache.epoch;
+  if (!epoch_match || !pos_match) {
+    entry.eval = child_->evaluate(r);
+    entry.grad_valid = false;
+    entry.L_valid = false;
+    entry.min_max_valid = false;
+    entry.epoch = step_cache.epoch;
+    entry.r = r;
+  }
+  return entry;
+}
+
+CacheEntry& Cached::refresh_interval(
+  Position r, Direction u, double t0, double t1) const
+{
+  CacheEntry& entry = refresh(r);
+  bool dir_match = entry.u.x == u.x && entry.u.y == u.y && entry.u.z == u.z;
+  bool interval_match = entry.t0 == t0 && entry.t1 == t1;
+  if (!dir_match || !interval_match) {
+    entry.L_valid = false;
+    entry.min_max_valid = false;
+    entry.u = u;
+    entry.t0 = t0;
+    entry.t1 = t1;
+  }
+  return entry;
+}
+
 std::string Cached::expression() const
 {
   return "@[" + child_->expression() + "]";
 }
+
 double Cached::evaluate(Position r) const
 {
-  refresh(r);
-  return step_cache.node_cache.at(this).val;
+  return refresh(r).eval;
 }
+
 Gradient Cached::gradient(Position r) const
 {
-  refresh(r);
-  auto& entry = step_cache.node_cache.at(this);
+  CacheEntry& entry = refresh(r);
   if (!entry.grad_valid) {
-    entry.grad = child_->gradient(r); // only computed when needed
+    entry.grad = child_->gradient(r);
     entry.grad_valid = true;
   }
   return entry.grad;
 }
+
 double Cached::compute_lipschitz(
   Position r, Direction u, double t0, double t1) const
 {
-  return child_->compute_lipschitz(r, u, t0, t1);
+  CacheEntry& entry = refresh_interval(r, u, t0, t1);
+  if (!entry.L_valid) {
+    entry.L = child_->compute_lipschitz(r, u, t0, t1);
+    entry.L_valid = true;
+  }
+  return entry.L;
 }
+
 std::pair<double, double> Cached::compute_f_min_max(
   Position r, Direction u, double t0, double t1) const
 {
-  return child_->compute_f_min_max(r, u, t0, t1);
+  CacheEntry& entry = refresh_interval(r, u, t0, t1);
+  if (!entry.min_max_valid) {
+    entry.min_max = child_->compute_f_min_max(r, u, t0, t1);
+    entry.min_max_valid = true;
+  }
+  return entry.min_max;
 }
+
 pugi::xml_node Cached::to_xml_element(pugi::xml_node parent,
   std::unordered_map<const Implicit*, int>& cache_map) const
 {
   auto it = cache_map.find(this);
   if (it != cache_map.end()) {
-    // Already emitted — write a back-reference
+    // Already emitted - write a back-reference
     auto node = parent.append_child("from_cache");
     node.append_attribute("id") = it->second;
     return node;
   }
-  // First visit — register and emit the full subtree
+  // First visit - register and emit the full subtree
   int id = static_cast<int>(cache_map.size());
   cache_map[this] = id;
   auto node = parent.append_child("to_cache");

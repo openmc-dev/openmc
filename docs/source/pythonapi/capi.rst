@@ -87,6 +87,7 @@ Classes
    ReactionFilter
    RectilinearMesh
    RegularMesh
+   SpatialFourierFilter
    SpatialLegendreFilter
    SphericalHarmonicsFilter
    SphericalMesh

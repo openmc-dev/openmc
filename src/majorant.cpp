@@ -112,25 +112,39 @@ void Majorant::compute_majorant()
   }
 }
 
-void Majorant::post_process_grid(int particle_type, Nuclide::EnergyGrid & grid)
+void Majorant::post_process_grid(int particle_type, Nuclide::EnergyGrid & grid) const
 {
-  std::sort(grid_.energy.begin(), grid_.energy.end());
-  auto unique_end = std::unique(grid_.energy.begin(), grid_.energy.end());
-  grid_.energy.resize(std::distance(grid_.energy.begin(), unique_end));
+  // Photons use a logarithmic energy grid.
+  double E_min = data::energy_min[particle_type];
+  double E_max = data::energy_max[particle_type];
+  if (particle_type == ParticleType::photon().transport_index()) {
+    E_min = std::log(E_min);
+    E_max = std::log(E_max);
+  }
 
-  // remove all values below the minimum neutron energy
-  auto min_it = grid_.energy.begin();
-  while (*min_it < data::energy_min[particle_type]) { min_it++; }
-  grid_.energy.erase(grid_.energy.begin(), min_it + 1);
-  // insert the minimum neutron energy at the beginning
-  grid_.energy.insert(grid_.energy.begin(), data::energy_min[particle_type]);
+  std::sort(grid.energy.begin(), grid.energy.end());
+  auto unique_end = std::unique(grid.energy.begin(), grid.energy.end());
+  grid.energy.resize(std::distance(grid.energy.begin(), unique_end));
 
-  // remove all values above the maximum neutron energy
-  auto max_it = --grid_.energy.end();
-  while (*max_it > data::energy_max[particle_type]) { max_it--; }
-  grid_.energy.erase(max_it - 1, grid_.energy.end());
-  // insert the maximum neutron energy at the end
-  grid_.energy.insert(grid_.energy.end(), data::energy_max[particle_type]);
+  // Remove all values below the minimum neutron energy.
+  auto min_it = grid.energy.begin();
+  while (*min_it < E_min) {
+    min_it++;
+  }
+  grid.energy.erase(grid.energy.begin(), min_it + 1);
+
+  // Insert the minimum neutron energy at the beginning.
+  grid.energy.insert(grid.energy.begin(), E_min);
+
+  // Remove all values above the maximum neutron energy.
+  auto max_it = --grid.energy.end();
+  while (*max_it > E_max) {
+    max_it--;
+  }
+  grid.energy.erase(max_it - 1, grid.energy.end());
+
+  // Insert the maximum neutron energy at the end.
+  grid.energy.insert(grid.energy.end(), E_max);
 }
 
 //==============================================================================

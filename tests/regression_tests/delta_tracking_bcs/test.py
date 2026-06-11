@@ -5,8 +5,7 @@ from openmc.utility_funcs import change_directory
 from tests.testing_harness import PyAPITestHarness
 
 
-@pytest.fixture
-def model():
+def model(boundary_type):
     openmc.reset_auto_ids()
     model = openmc.Model()
 
@@ -33,7 +32,7 @@ def model():
     box = openmc.model.RectangularPrism(
         2.0 * d, 2.0 * d,
         origin=(0.0, 0.0),
-        boundary_type='reflective'
+        boundary_type=boundary_type
     )
 
     model.geometry = openmc.Geometry([openmc.Cell(fill=lattice, region=-box)])
@@ -58,9 +57,11 @@ def model():
 
 
 @pytest.mark.parametrize("photon", [False, True])
-def test_lattice(model, photon):
-    with change_directory(str(photon)):
-        model.settings.photon_transport = photon
+@pytest.mark.parametrize("boundary", ['vacuum', 'reflective', 'periodic', 'white'])
+def test_lattice(photon, boundary):
+    m = model(boundary)
+    with change_directory(boundary+str(photon)):
+        m.settings.photon_transport = photon
         if photon:
             msh = openmc.RegularMesh(mesh_id=1)
             msh.lower_left = (-1.0, -1.0)
@@ -70,6 +71,6 @@ def test_lattice(model, photon):
             t.filters = [openmc.ParticleFilter(bins='photon'), openmc.MeshFilter(mesh=msh)]
             t.scores = ['total']
             t.estimator = 'collision'
-            model.tallies.append(t)
-        harness = PyAPITestHarness('statepoint.10.h5', model)
+            m.tallies.append(t)
+        harness = PyAPITestHarness('statepoint.10.h5', m)
         harness.main()

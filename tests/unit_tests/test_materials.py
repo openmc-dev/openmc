@@ -6,6 +6,7 @@ import pytest
 
 import openmc
 import openmc.deplete
+import openmc.deplete.microxs as microxs_mod
 import openmc.lib
 from openmc.deplete import Chain
 
@@ -138,8 +139,6 @@ def test_materials_deplete_groups_by_energy_temperature(monkeypatch):
     cross section table is built once per distinct group, the micros keep
     material order, and each equals the ungrouped from_multigroup_flux result.
     """
-    import openmc.deplete.microxs as microxs_mod
-
     chain = Path(__file__).parents[1] / "chain_ni.xml"
     energy = "VITAMIN-J-42"
     n_groups = 42
@@ -168,11 +167,8 @@ def test_materials_deplete_groups_by_energy_temperature(monkeypatch):
     build_spy = mock.MagicMock(wraps=microxs_mod._build_xs_table_ce)
     monkeypatch.setattr(microxs_mod, "_build_xs_table_ce", build_spy)
 
-    captured = {}
-    def fake_operator(*args, **kwargs):
-        captured["micros"] = kwargs["micros"]
-        raise StopIteration
-    monkeypatch.setattr(openmc.deplete, "IndependentOperator", fake_operator)
+    op_spy = mock.MagicMock(side_effect=StopIteration)
+    monkeypatch.setattr(openmc.deplete, "IndependentOperator", op_spy)
 
     with pytest.raises(StopIteration):
         mats.deplete(
@@ -186,7 +182,7 @@ def test_materials_deplete_groups_by_energy_temperature(monkeypatch):
     # Two distinct (energy, temperature) groups -> two builds, not three
     assert build_spy.call_count == 2
 
-    micros = captured["micros"]
+    micros = op_spy.call_args.kwargs["micros"]
     assert len(micros) == 3
     assert all(m is not None for m in micros)
 

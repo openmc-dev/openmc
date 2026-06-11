@@ -119,12 +119,9 @@ class Nuclide(_FortranObject):
     def group_xs(self, MT, temperature, energy):
         """Calculate group-averaged microscopic cross sections.
 
-        Computes the cross section averaged over each energy group,
-        ``integral(sigma dE) / dE_group``, for a given reaction. This is a
-        flat-in-bin average -- it assumes the flux is constant within each
-        group -- so the group cross sections do not depend on the per-group
-        flux magnitudes and the collapsed reaction rate ``sum(flux * group_xs)``
-        matches :meth:`collapse_rate`, which makes the same assumption.
+        The average over each group, ``integral(sigma dE) / dE_group``,
+        assumes a flat flux within the group, so the collapsed rate
+        ``sum(flux * group_xs)`` matches :meth:`collapse_rate`.
 
         Parameters
         ----------
@@ -138,8 +135,7 @@ class Nuclide(_FortranObject):
         Returns
         -------
         numpy.ndarray
-            Group-averaged cross section in [b] for each of the
-            ``len(energy) - 1`` energy groups
+            Group-averaged cross section in [b] for each energy group
 
         """
         energy = np.asarray(energy, dtype=float)

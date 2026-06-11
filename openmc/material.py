@@ -2347,18 +2347,14 @@ class Materials(cv.CheckedList):
                     )
                 fluxes.append(material.volume)
                 temperature = material.temperature or 293.6
-                if isinstance(energy, str):
-                    energy_key = energy
-                else:
-                    energy = np.asarray(energy, dtype=float)
-                    energy_key = energy.tobytes()
-                groups.setdefault((energy_key, temperature), []).append(
-                    (i, energy, flux))
+                key = (energy if isinstance(energy, str)
+                       else np.asarray(energy, dtype=float).tobytes())
+                groups.setdefault((key, temperature), (energy, []))[1].append(
+                    (i, flux))
 
             # Collapse each group's fluxes against a single shared table
-            for (_, temperature), members in groups.items():
-                energy = members[0][1]
-                group_fluxes = [flux for _, _, flux in members]
+            for (_, temperature), (energy, members) in groups.items():
+                indices, group_fluxes = zip(*members)
                 micros_grp = openmc.deplete.MicroXS.from_multigroup_flux(
                     energies=energy,
                     multigroup_flux=group_fluxes,
@@ -2366,7 +2362,7 @@ class Materials(cv.CheckedList):
                     temperature=temperature,
                     reactions=reactions,
                 )
-                for (i, _, _), micro in zip(members, micros_grp):
+                for i, micro in zip(indices, micros_grp):
                     micros[i] = micro
 
         # Create a single operator for all materials

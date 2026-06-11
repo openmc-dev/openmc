@@ -1088,19 +1088,15 @@ void Nuclide::group_xs(
   const auto& rx = reactions_[i_rx];
 
   // Determine temperature index
-  int64_t i_temp;
-  double f;
-  std::tie(i_temp, f) = this->find_temperature(temperature);
+  auto [i_temp, f] = this->find_temperature(temperature);
 
   // Get group-averaged cross sections at lower temperature
-  const auto& grid_low = grid_[i_temp].energy;
-  rx->group_xs(i_temp, energy, grid_low, xs);
+  rx->group_xs(i_temp, energy, grid_[i_temp].energy, xs);
 
   if (f > 0.0) {
     // Interpolate element-wise between lower and higher temperature
-    const auto& grid_high = grid_[i_temp + 1].energy;
     vector<double> xs_high(xs.size(), 0.0);
-    rx->group_xs(i_temp + 1, energy, grid_high, xs_high);
+    rx->group_xs(i_temp + 1, energy, grid_[i_temp + 1].energy, xs_high);
     for (std::size_t g = 0; g < xs.size(); ++g)
       xs[g] += f * (xs_high[g] - xs[g]);
   }

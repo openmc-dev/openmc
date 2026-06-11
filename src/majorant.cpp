@@ -42,30 +42,30 @@ Majorant::Majorant(int i_universe)
 
   const auto & maj_uni = model::universes[maj_universe_];
   for (int i_cell : maj_uni->cells_) {
-    const auto & cell = model::cells[i_cell];
+    const auto & uni_cell = model::cells[i_cell];
 
     // If the cell is filled with a material, it won't have any sub-cells.
-    if (cell->type_ == Fill::MATERIAL) {
+    if (uni_cell->type_ == Fill::MATERIAL) {
       // Loop over instances. TODO: confirm if this is unecessary and use 0 instead?
-      for (int instance = 0; instance < cell->n_instances(); ++instance) {
-        int i_material = cell->material(instance);
+      for (int instance = 0; instance < uni_cell->n_instances(); ++instance) {
+        int i_material = uni_cell->material(instance);
 
         // Check to see if we've found the contained material yet. If not, add to the set
         // of materials discovered and add to the map of density multipliers.
         if (unique_materials.count(i_material) == 0) {
           unique_materials.emplace(i_material);
-          max_density_mult_[i_material] = cell->density_mult(instance);
+          max_density_mult_[i_material] = uni_cell->density_mult(instance);
         } else {
           // We've found this material already. Need to take the maximum density multiplier.
           max_density_mult_.at(i_material) =
             std::max(max_density_mult_.at(i_material),
-                     cell->density_mult(instance));
+                     uni_cell->density_mult(instance));
         }
       }
     } else {
       // This cell is filled with a universe or lattice. Need to get the list of cells and
       // cell instances.
-      const auto contained_cells = cell->get_contained_cells();
+      const auto contained_cells = uni_cell->get_contained_cells();
       for (const auto & [i_con_cell, contained_instances] : contained_cells) {
         const auto & contained_cell = model::cells[i_con_cell];
 
@@ -76,12 +76,12 @@ Majorant::Majorant(int i_universe)
           int i_material = contained_cell->material(instance);
           if (unique_materials.count(i_material) == 0) {
             unique_materials.emplace(i_material);
-            max_density_mult_[i_material] = cell->density_mult(instance);
+            max_density_mult_[i_material] = contained_cell->density_mult(instance);
           } else {
             // We've found this material already. Need to take the maximum density multiplier
             // for the contained instance.
             max_density_mult_.at(i_material) =
-              std::max(max_density_mult_.at(i_material), cell->density_mult(instance));
+              std::max(max_density_mult_.at(i_material), contained_cell->density_mult(instance));
           }
         }
       }

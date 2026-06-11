@@ -62,7 +62,7 @@ protected:
   //!   fetching transport minimum / maximum energies
   //! \param[out] grid The energy grid to post-process. This is performed
   //!   in-place.
-  void post_process_grid(int particle_type, Nuclide::EnergyGrid & grid);
+  void post_process_grid(int particle_type, Nuclide::EnergyGrid & grid) const;
 
   //! Helper function to perform linear interpolation.
   //!

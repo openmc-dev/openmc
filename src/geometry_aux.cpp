@@ -270,7 +270,8 @@ void get_temperatures(
 
 //==============================================================================
 
-void detect_boundary_surfaces() {
+void detect_boundary_surfaces()
+{
   for (int i = 0; i < model::surfaces.size(); i++) {
     // if the surface has a non-transmission boundary condition,
     // add it to the list of surfaces to track during delta tracking

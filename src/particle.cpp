@@ -882,11 +882,6 @@ void Particle::cross_periodic_bc(
   // Figure out what cell particle is in now
   n_coord() = 1;
 
-  // Need to nudge the particle back into the domain as event_delta_advance()
-  // does not go right up to the surface to fix tunneling.
-  if (delta_tracking()) {
-    r() += FP_REL_PRECISION * u();
-  }
   if (!neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after hitting periodic "
       "boundary on surface " +

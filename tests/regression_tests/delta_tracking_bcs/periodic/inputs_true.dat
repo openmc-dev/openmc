@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material id="1" name="UO2" depletable="true">
+    <material id="5" name="UO2" depletable="true">
       <density value="10.0" units="g/cm3"/>
       <nuclide name="U235" ao="1.0"/>
       <nuclide name="O16" ao="2.0"/>
     </material>
-    <material id="2" name="light water">
+    <material id="6" name="light water">
       <density value="1.0" units="g/cm3"/>
       <nuclide name="H1" ao="2.0"/>
       <nuclide name="O16" ao="1.0"/>
@@ -14,24 +14,22 @@
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" region="-1" universe="1">
-      <density>10.0 20.0 10.0 20.0</density>
-    </cell>
-    <cell id="2" material="2" region="1" universe="1"/>
-    <cell id="3" fill="2" region="2 -3 4 -5" universe="3"/>
-    <lattice id="2">
+    <cell id="7" material="5" region="-11" universe="7"/>
+    <cell id="8" material="6" region="11" universe="7"/>
+    <cell id="9" fill="8" region="12 -13 14 -15" universe="9"/>
+    <lattice id="8">
       <pitch>1.26 1.26</pitch>
       <dimension>2 2</dimension>
       <lower_left>-1.26 -1.26</lower_left>
       <universes>
-1 1 
-1 1 </universes>
+7 7 
+7 7 </universes>
     </lattice>
-    <surface id="1" type="z-cylinder" coeffs="0.0 0.0 0.4"/>
-    <surface id="2" name="minimum x" type="x-plane" boundary="reflective" coeffs="-1.26"/>
-    <surface id="3" name="maximum x" type="x-plane" boundary="reflective" coeffs="1.26"/>
-    <surface id="4" name="minimum y" type="y-plane" boundary="reflective" coeffs="-1.26"/>
-    <surface id="5" name="maximum y" type="y-plane" boundary="reflective" coeffs="1.26"/>
+    <surface id="11" type="z-cylinder" coeffs="0.0 0.0 0.4"/>
+    <surface id="12" name="minimum x" type="x-plane" boundary="periodic" coeffs="-1.26" periodic_surface_id="13"/>
+    <surface id="13" name="maximum x" type="x-plane" boundary="periodic" coeffs="1.26" periodic_surface_id="12"/>
+    <surface id="14" name="minimum y" type="y-plane" boundary="periodic" coeffs="-1.26" periodic_surface_id="15"/>
+    <surface id="15" name="maximum y" type="y-plane" boundary="periodic" coeffs="1.26" periodic_surface_id="14"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
@@ -42,19 +40,19 @@
     <delta_tracking>true</delta_tracking>
   </settings>
   <tallies>
-    <mesh id="1">
+    <mesh id="3">
       <dimension>2 2</dimension>
       <lower_left>-1.26 -1.26</lower_left>
       <upper_right>1.26 1.26</upper_right>
     </mesh>
-    <filter id="1" type="particle">
+    <filter id="5" type="particle">
       <bins>neutron</bins>
     </filter>
-    <filter id="2" type="mesh">
-      <bins>1</bins>
+    <filter id="6" type="mesh">
+      <bins>3</bins>
     </filter>
-    <tally id="1">
-      <filters>1 2</filters>
+    <tally id="3">
+      <filters>5 6</filters>
       <scores>total</scores>
       <estimator>collision</estimator>
     </tally>

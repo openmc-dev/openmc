@@ -18,18 +18,18 @@
     <cell id="2" material="2" region="1" universe="1"/>
     <cell id="3" fill="2" region="2 -3 4 -5" universe="3"/>
     <lattice id="2">
-      <pitch>1.0 1.0</pitch>
+      <pitch>1.26 1.26</pitch>
       <dimension>2 2</dimension>
-      <lower_left>-1.0 -1.0</lower_left>
+      <lower_left>-1.26 -1.26</lower_left>
       <universes>
 1 1 
 1 1 </universes>
     </lattice>
     <surface id="1" type="z-cylinder" coeffs="0.0 0.0 0.4"/>
-    <surface id="2" name="minimum x" type="x-plane" boundary="reflective" coeffs="-1.0"/>
-    <surface id="3" name="maximum x" type="x-plane" boundary="reflective" coeffs="1.0"/>
-    <surface id="4" name="minimum y" type="y-plane" boundary="reflective" coeffs="-1.0"/>
-    <surface id="5" name="maximum y" type="y-plane" boundary="reflective" coeffs="1.0"/>
+    <surface id="2" name="minimum x" type="x-plane" boundary="reflective" coeffs="-1.26"/>
+    <surface id="3" name="maximum x" type="x-plane" boundary="reflective" coeffs="1.26"/>
+    <surface id="4" name="minimum y" type="y-plane" boundary="reflective" coeffs="-1.26"/>
+    <surface id="5" name="maximum y" type="y-plane" boundary="reflective" coeffs="1.26"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
@@ -40,16 +40,16 @@
     <delta_tracking>true</delta_tracking>
   </settings>
   <tallies>
-    <mesh id="0">
+    <mesh id="1">
       <dimension>2 2</dimension>
-      <lower_left>-1.0 -1.0</lower_left>
-      <upper_right>1.0 1.0</upper_right>
+      <lower_left>-1.26 -1.26</lower_left>
+      <upper_right>1.26 1.26</upper_right>
     </mesh>
     <filter id="1" type="particle">
       <bins>neutron</bins>
     </filter>
     <filter id="2" type="mesh">
-      <bins>0</bins>
+      <bins>1</bins>
     </filter>
     <tally id="1">
       <filters>1 2</filters>

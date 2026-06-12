@@ -65,7 +65,7 @@ collision is sampled with Equation :eq:`sample-distance-2`. Then, the distance
 to the nearest surface from the particle position along its current trajectory
 is computed (discussed in the :ref:`methods_geometry` section). If the distance
 to the nearest surface is smaller than the distance to the next collision, the
-sampled distance is not statistically valid and the particle is moved to the
+sampled distance is not statistically valid. The particle is moved to the
 surface and is considered to be contained by the next geometric region. Cross
 sections are recomputed, and a new distance to the next collision is sampled
 with Equation :eq:`sample-distance-2`. This process repeats until the distance

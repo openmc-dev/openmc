@@ -268,6 +268,8 @@ void get_temperatures(
   }
 }
 
+//==============================================================================
+
 void detect_boundary_surfaces() {
   for (int i = 0; i < model::surfaces.size(); i++) {
     // if the surface has a non-transmission boundary condition,
@@ -291,6 +293,8 @@ void finalize_geometry()
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
 
+  // Find all boundary surfaces. Used in delta tracking to trace through the
+  // geometry.
   detect_boundary_surfaces();
 
   // Determine number of nested coordinate levels in the geometry

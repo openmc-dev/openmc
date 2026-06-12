@@ -52,7 +52,7 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to.
   //!   The resulting cross section has units of [cm^-1]
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double> & to_grid, std::vector<double> & mat_maj) = 0;
+    const std::vector<double> & to_grid, std::vector<double> & mat_maj) const = 0;
 
   //! Post-processes the energy grid by calling std::sort(), std::unique().
   //! This also removes all energy values below the transport minimum and
@@ -148,7 +148,7 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to.
   //!   The resulting cross section has units of [cm^-1].
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
+    const std::vector<double> & to_grid, std::vector<double> & mat_maj) const override;
 
 private:
   //----------------------------------------------------------------------------
@@ -232,7 +232,7 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The
   //!   resulting cross section has units of [cm^-1]
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double> & to_grid, std::vector<double> & mat_maj) override;
+    const std::vector<double> & to_grid, std::vector<double> & mat_maj) const override;
 
 private:
   //----------------------------------------------------------------------------

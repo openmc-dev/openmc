@@ -59,7 +59,6 @@ void calculate_generation_keff()
       simulation::keff_generation;
   }
 
-
   double keff_reduced;
 #ifdef OPENMC_MPI
   if (settings::solver_type != SolverType::RANDOM_RAY) {
@@ -485,9 +484,9 @@ int openmc_get_keff(double* k_combined)
   // exceptions and an expression specifically derived for the combination of
   // two estimators (vice three) should be used instead.
 
-  // If delta tracking is enabled, use the collision and absorption estimators only.
-  // Otherwise, we will identify if there are any matching estimators. If none match,
-  // all three estimates are used.
+  // If delta tracking is enabled, use the collision and absorption estimators
+  // only. Otherwise, we will identify if there are any matching estimators. If
+  // none match, all three estimates are used.
   int i, j;
   bool use_three = false;
   if (settings::delta_tracking) {
@@ -501,13 +500,15 @@ int openmc_get_keff(double* k_combined)
       j = 2;
 
     } else if ((std::abs(kv[0] - kv[2]) / kv[0] < FP_REL_PRECISION) &&
-              (std::abs(cov(0, 0) - cov(2, 2)) / cov(0, 0) < FP_REL_PRECISION)) {
+               (std::abs(cov(0, 0) - cov(2, 2)) / cov(0, 0) <
+                 FP_REL_PRECISION)) {
       // 0 and 2 match, so only use 0 and 1 in our comparisons
       i = 0;
       j = 1;
 
     } else if ((std::abs(kv[1] - kv[2]) / kv[1] < FP_REL_PRECISION) &&
-              (std::abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) {
+               (std::abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) <
+                 FP_REL_PRECISION)) {
       // 1 and 2 match, so only use 0 and 1 in our comparisons
       i = 0;
       j = 1;

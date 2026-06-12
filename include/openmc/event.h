@@ -144,13 +144,15 @@ void process_delta_init_events(int64_t n_particles, int64_t source_offset);
 //! \param queue A reference to the desired XS lookup queue
 void process_delta_calculate_xs_events(SharedArray<EventQueueItem>& queue);
 
-//! Execute the delta advance particle event for all particles in this advance buffer
+//! Execute the delta advance particle event for all particles in this advance
+//! buffer
 void process_delta_advance_particle_events();
 
 //! Specialization of process_surface_crossing_events() for delta tracking.
 void process_delta_surface_crossing_events();
 
-//! Execute the delta tracking collision event for all particles in this event's buffer
+//! Execute the delta tracking collision event for all particles in this event's
+//! buffer
 void process_delta_collision_events();
 
 //! Specialization of process_transport_events() for delta tracking.

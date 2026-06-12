@@ -139,7 +139,8 @@ void TranslationalPeriodicBC::handle_particle(
   int new_surface = p.surface() > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
 
   // Need to nudge the particle back into the domain when using delta tracking
-  // as event_delta_advance() does not go right up to the surface to fix tunneling.
+  // as event_delta_advance() does not go right up to the surface to fix
+  // tunneling.
   if (p.delta_tracking()) {
     new_r += FP_REL_PRECISION * p.u();
   }

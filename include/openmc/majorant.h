@@ -18,8 +18,8 @@ class PhotonMajorant;
 //==============================================================================
 
 namespace data {
-  extern std::unique_ptr<NeutronMajorant> n_majorant;
-  extern std::unique_ptr<PhotonMajorant> p_majorant;
+extern std::unique_ptr<NeutronMajorant> n_majorant;
+extern std::unique_ptr<PhotonMajorant> p_majorant;
 } // namespace data
 
 //==============================================================================
@@ -52,7 +52,7 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to.
   //!   The resulting cross section has units of [cm^-1]
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double> & to_grid, std::vector<double> & mat_maj) const = 0;
+    const std::vector<double>& to_grid, std::vector<double>& mat_maj) const = 0;
 
   //! Post-processes the energy grid by calling std::sort(), std::unique().
   //! This also removes all energy values below the transport minimum and
@@ -62,7 +62,7 @@ protected:
   //!   fetching transport minimum / maximum energies
   //! \param[out] grid The energy grid to post-process. This is performed
   //!   in-place.
-  void post_process_grid(int particle_type, Nuclide::EnergyGrid & grid) const;
+  void post_process_grid(int particle_type, Nuclide::EnergyGrid& grid) const;
 
   //! Helper function to perform linear interpolation.
   //!
@@ -72,7 +72,8 @@ protected:
   //! \param[in] y_1 The y coordinate associated with x_1.
   //! \param[in] x The point between x_0 and x_1 to find a y value at.
   //! \return The linear interpolant of the given points.
-  inline double interpolate_lin_1D(double x_0, double x_1, double y_0, double y_1, double x) const
+  inline double interpolate_lin_1D(
+    double x_0, double x_1, double y_0, double y_1, double x) const
   {
     const double f = (x - x_0) / (x_1 - x_0);
     return (1.0 - f) * y_0 + f * y_1;
@@ -86,7 +87,8 @@ protected:
   //! \param[in] y_1 The y coordinate associated with x_1.
   //! \param[in] x The point between x_0 and x_1 to find a y value at.
   //! \return The log interpolant of the given points.
-  inline double interpolate_log_1D(double x_0, double x_1, double y_0, double y_1, double x) const
+  inline double interpolate_log_1D(
+    double x_0, double x_1, double y_0, double y_1, double x) const
   {
     const double f = std::log(x / x_0) / std::log(x_1 / x_0);
     return std::exp((1.0 - f) * std::log(y_0) + f * std::log(y_1));
@@ -148,7 +150,8 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to.
   //!   The resulting cross section has units of [cm^-1].
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double> & to_grid, std::vector<double> & mat_maj) const override;
+    const std::vector<double>& to_grid,
+    std::vector<double>& mat_maj) const override;
 
 private:
   //----------------------------------------------------------------------------
@@ -168,7 +171,8 @@ private:
   //! \param[in] smooth_xs The smooth total cross section in units of [eV] to
   //!   use (if needed by the ptable).
   //! \return The maximum URR total cross section in [barn].
-  double calculate_max_urr_xs(int i_nuclide, double energy, double smooth_xs) const;
+  double calculate_max_urr_xs(
+    int i_nuclide, double energy, double smooth_xs) const;
 
   //! Compute the maximum microscopic S(a,b) total cross section.
   //!
@@ -180,14 +184,15 @@ private:
   //! \param[in] nuc The nuclide to compute the microscopic total cross section
   //!   of.
   //! \return The maximum S(a,b) total cross section in [barn].
-  double calculate_max_sab_tot_xs(int i_nuclide, int i_sab, double sab_frac, double energy) const;
+  double calculate_max_sab_tot_xs(
+    int i_nuclide, int i_sab, double sab_frac, double energy) const;
 
   //! Get the grid index for energy interpolation.
   //!
   //! \param[in] energy The energy to evaluate the cross section at in [eV].
   //! \param[in] grid The energy grid to search for an energy grid index.
   //! \return The grid index.
-  int get_i_grid(double energy, const Nuclide::EnergyGrid & grid) const;
+  int get_i_grid(double energy, const Nuclide::EnergyGrid& grid) const;
 
   //----------------------------------------------------------------------------
   // Private data members
@@ -232,7 +237,8 @@ protected:
   //! \param[out] mat_maj The array to write the macroscopic majorant to. The
   //!   resulting cross section has units of [cm^-1]
   virtual void fill_material_maj_xs(int i_material, double max_density_mult,
-    const std::vector<double> & to_grid, std::vector<double> & mat_maj) const override;
+    const std::vector<double>& to_grid,
+    std::vector<double>& mat_maj) const override;
 
 private:
   //----------------------------------------------------------------------------
@@ -250,8 +256,10 @@ private:
   //! \param[in] energy The energy to evaluate the cross section at in [eV].
   //! \param[in] grid The energy grid to search for an energy grid index.
   //! \return The grid index.
-  int get_i_grid(double log_energy, const std::vector<double> & energy_grid) const;
-  int get_i_grid(double log_energy, const tensor::Tensor<double> & energy_grid) const;
+  int get_i_grid(
+    double log_energy, const std::vector<double>& energy_grid) const;
+  int get_i_grid(
+    double log_energy, const tensor::Tensor<double>& energy_grid) const;
 
   //----------------------------------------------------------------------------
   // Private data members

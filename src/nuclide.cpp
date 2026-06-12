@@ -512,10 +512,11 @@ void Nuclide::EnergyGrid::init()
   // equal-logarithmic grid
   int j = 0;
   for (int k = 0; k <= M; ++k) {
-    while (std::log(energy[j + 1]/E_min) <= umesh(k)) {
+    while (std::log(energy[j + 1] / E_min) <= umesh(k)) {
       // Ensure that for isotopes where maxval(grid.energy) << E_max that
       // there are no out-of-bounds issues.
-      if (j + 2 == energy.size()) break;
+      if (j + 2 == energy.size())
+        break;
       ++j;
     }
     grid_index[k] = j;
@@ -524,8 +525,7 @@ void Nuclide::EnergyGrid::init()
 
 void Nuclide::init_grid()
 {
-  for (auto& grid : grid_)
-  {
+  for (auto& grid : grid_) {
     grid.init();
   }
 }

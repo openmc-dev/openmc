@@ -1236,11 +1236,13 @@ void read_settings_xml(pugi::xml_node root)
     delta_tracking = get_node_value_bool(root, "delta_tracking");
 
     if (temperature_multipole && delta_tracking) {
-      fatal_error("Delta tracking cannot be used with a windowed multipole temperature treatment.");
+      fatal_error("Delta tracking cannot be used with a windowed multipole "
+                  "temperature treatment.");
     }
 
     if (!run_CE && delta_tracking) {
-      fatal_error("At present, delta tracking can only be used in continuous energy simulations.");
+      fatal_error("At present, delta tracking can only be used in continuous "
+                  "energy simulations.");
     }
   }
 

@@ -282,7 +282,7 @@ void process_delta_advance_particle_events()
 {
   simulation::time_event_advance_particle.start();
 
-  #pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
@@ -290,9 +290,10 @@ void process_delta_advance_particle_events()
     if (!p.alive())
       continue;
 
-    if (p.type() == ParticleType::electron() || p.type() == ParticleType::positron()) {
-      // Electrons / positrons collide in place and don't require cross section calculations.
-      // Can append to the collision queue directly.
+    if (p.type() == ParticleType::electron() ||
+        p.type() == ParticleType::positron()) {
+      // Electrons / positrons collide in place and don't require cross section
+      // calculations. Can append to the collision queue directly.
       simulation::collision_queue.thread_safe_append({p, buffer_idx});
       continue;
     }
@@ -338,15 +339,16 @@ void process_delta_collision_events()
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
 
-    if (p.type() == ParticleType::electron() || p.type() == ParticleType::positron()) {
+    if (p.type() == ParticleType::electron() ||
+        p.type() == ParticleType::positron()) {
       p.event_collide();
     } else {
       if (p.macro_xs().total / p.majorant() > 1.0) {
-        p.mark_as_lost(
-          fmt::format("Ratio of the total cross section ({}) to the majorant "
-                      "cross section ({}) for particle {} ({}) with energy {} is "
-                      "greater than unity!",
-                      p.macro_xs().total, p.majorant(), p.id(), p.type().str(), p.E()));
+        p.mark_as_lost(fmt::format(
+          "Ratio of the total cross section ({}) to the majorant "
+          "cross section ({}) for particle {} ({}) with energy {} is "
+          "greater than unity!",
+          p.macro_xs().total, p.majorant(), p.id(), p.type().str(), p.E()));
         continue;
       }
 
@@ -406,7 +408,8 @@ void process_delta_init_secondary_events(int64_t n_particles, int64_t offset,
 
     if (simulation::particles[i].alive()) {
       simulation::particles[i].event_calculate_xs();
-      simulation::advance_particle_queue.thread_safe_append({simulation::particles[i], i});
+      simulation::advance_particle_queue.thread_safe_append(
+        {simulation::particles[i], i});
     }
   }
   simulation::time_event_init.stop();

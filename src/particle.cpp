@@ -316,7 +316,8 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron() && !delta_tracking()) {
+  if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron() &&
+      !delta_tracking()) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -338,7 +339,8 @@ void Particle::event_delta_advance()
   }
 
   // Sample distance to next position
-  if (type() == ParticleType::electron() || type() == ParticleType::positron()) {
+  if (type() == ParticleType::electron() ||
+      type() == ParticleType::positron()) {
     // Electrons/positrons don't move
     collision_distance() = 0.0;
   } else {
@@ -349,10 +351,12 @@ void Particle::event_delta_advance()
   // Update distance to problem boundary
   boundary() = distance_to_external_boundary(*this);
 
-  // Move to the external boundary or delta tracking collision site. Particles with
-  // large majorant cross sections will tunnel out of the domain if a floating point
-  // tolerance is not specified on the boundary distance calculation.
-  double distance = std::min(collision_distance(), boundary().distance() - FP_REL_PRECISION);
+  // Move to the external boundary or delta tracking collision site. Particles
+  // with large majorant cross sections will tunnel out of the domain if a
+  // floating point tolerance is not specified on the boundary distance
+  // calculation.
+  double distance =
+    std::min(collision_distance(), boundary().distance() - FP_REL_PRECISION);
   r() += distance * u();
 
   // Need to locate the particle at the collision site or boundary.
@@ -361,7 +365,8 @@ void Particle::event_delta_advance()
   }
   if (!exhaustive_find_cell(*this)) {
     // We've lost this particle.
-    mark_as_lost(fmt::format("Particle {} could not be located while running delta tracking!", id()));
+    mark_as_lost(fmt::format(
+      "Particle {} could not be located while running delta tracking!", id()));
     return;
   }
 
@@ -884,8 +889,8 @@ void Particle::cross_periodic_bc(
 
   if (!neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after hitting periodic "
-      "boundary on surface " +
-      std::to_string(surf.id_) + ".");
+                 "boundary on surface " +
+                 std::to_string(surf.id_) + ".");
     return;
   }
 
@@ -901,9 +906,11 @@ void Particle::cross_periodic_bc(
 void Particle::update_majorant()
 {
   if (type().is_neutron()) {
-    majorant() = NeutronMajorant::safety_factor_ * data::n_majorant->calculate_neutron_xs(E());
+    majorant() = NeutronMajorant::safety_factor_ *
+                 data::n_majorant->calculate_neutron_xs(E());
   } else if (type().is_photon()) {
-    majorant() = PhotonMajorant::safety_factor_ * data::p_majorant->calculate_photon_xs(E());
+    majorant() = PhotonMajorant::safety_factor_ *
+                 data::p_majorant->calculate_photon_xs(E());
   }
 }
 

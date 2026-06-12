@@ -203,7 +203,7 @@ void NeutronMajorant::compute_unionized_grid()
 }
 
 void NeutronMajorant::fill_material_maj_xs(int i_material, double max_density_mult,
-  const std::vector<double> & to_grid, std::vector<double> & mat_maj)
+  const std::vector<double> & to_grid, std::vector<double> & mat_maj) const
 {
   const auto & mat = *model::materials[i_material];
 
@@ -465,7 +465,7 @@ double PhotonMajorant::calculate_photon_xs(double energy) const
 }
 
 void PhotonMajorant::fill_material_maj_xs(int i_material, double max_density_mult,
-  const std::vector<double> & to_grid, std::vector<double> & mat_maj)
+  const std::vector<double> & to_grid, std::vector<double> & mat_maj) const
 {
   const auto & mat = *model::materials[i_material];
 

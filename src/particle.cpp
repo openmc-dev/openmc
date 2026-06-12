@@ -33,6 +33,7 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
+#include "openmc/particle_restart.h"
 
 #ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
@@ -837,11 +838,20 @@ void Particle::cross_periodic_bc(
 
 void Particle::mark_as_lost(const char* message)
 {
+  // Skip if we are already replaying a lost particle
+  if (in_lost_track) {
+    wgt() = 0.0;
+    return;
+  }
+
   // Print warning and write lost particle file
   warning(message);
   if (settings::max_write_lost_particles < 0 ||
       simulation::n_lost_particles < settings::max_write_lost_particles) {
     write_restart();
+    if (settings::run_mode != RunMode::PARTICLE && !settings::write_all_tracks) {
+      run_lost_particle_track(*this);
+    }
   }
   // Increment number of lost particles
   wgt() = 0.0;
@@ -856,7 +866,14 @@ void Particle::mark_as_lost(const char* message)
   // reached
   if (simulation::n_lost_particles >= settings::max_lost_particles &&
       simulation::n_lost_particles >= settings::rel_max_lost_particles * n) {
-    fatal_error("Maximum number of lost particles has been reached.");
+  #pragma omp critical(FinalizeParticleTrack)
+    {
+      if (lost_particle_track_file_open) {
+        close_track_file();
+        lost_particle_track_file_open = false;
+      }
+    }
+      fatal_error("Maximum number of lost particles has been reached.");
   }
 }
 
@@ -867,7 +884,7 @@ void Particle::write_restart() const
     return;
 
   // Set up file name
-  auto filename = fmt::format("{}particle_{}_{}.h5", settings::path_output,
+  auto filename = fmt::format("{}batch_{}_particle_{}.h5", settings::path_output,
     simulation::current_batch, id());
 
 #pragma omp critical(WriteParticleRestart)

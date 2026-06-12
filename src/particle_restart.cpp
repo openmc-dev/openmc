@@ -7,7 +7,6 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
-#include "openmc/particle.h"
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
@@ -15,6 +14,7 @@
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/track_output.h"
+#include "openmc/source.h"
 
 #include <algorithm> // for copy
 #include <stdexcept>
@@ -137,6 +137,59 @@ void run_particle_restart()
   if (settings::write_all_tracks) {
     close_track_file();
   }
+}
+
+void run_lost_particle_track(Particle& lost)
+{
+  if (in_lost_track)
+    return;
+  in_lost_track = true;
+
+#pragma omp critical(LostParticleTrack)
+  {
+    if (!lost_particle_track_file_open) {
+      open_track_file();
+      lost_particle_track_file_open = true;
+    }
+  }
+
+  Particle p;
+  p.id() = lost.id();
+
+  int64_t i = lost.current_work();
+  SourceSite site;
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    site = simulation::source_bank[i];
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
+              settings::use_shared_secondary_bank &&
+              i < simulation::shared_secondary_bank_read.size()) {
+    site = simulation::shared_secondary_bank_read[i];
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    int64_t id = compute_transport_seed(compute_particle_id(i + 1));
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
+    site = sample_external_source(&seed);
+  }
+
+  p.wgt() = site.wgt;
+  p.E() = site.E;
+  p.r() = site.r;
+  p.u() = site.u;
+  p.time() = site.time;
+  p.type() = lost.type();
+
+  int64_t particle_seed = compute_transport_seed(p.id());
+  init_particle_seeds(particle_seed, p.seeds());
+
+  if (settings::run_CE) {
+    p.invalidate_neutron_xs();
+  }
+
+  p.write_track() = true;
+  add_particle_track(p);
+  transport_history_based_single_particle(p);
+  // finalize_particle_track called internally by transport, don't call again
+
+  in_lost_track = false;
 }
 
 } // namespace openmc

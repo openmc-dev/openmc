@@ -188,6 +188,10 @@ int openmc_simulation_finalize()
   if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
     close_track_file();
   }
+  if (lost_particle_track_file_open) {
+    close_track_file();
+    lost_particle_track_file_open = false;
+  }
 
   // Increment total number of generations
   simulation::total_gen += simulation::current_batch * settings::gen_per_batch;

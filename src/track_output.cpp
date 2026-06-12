@@ -10,7 +10,7 @@
 
 #include "openmc/tensor.h"
 #include <fmt/core.h>
-#include <hdf5.h>
+// #include <hdf5.h>
 
 #include <cstddef> // for size_t
 #include <string>
@@ -21,9 +21,11 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-hid_t track_file;     //! HDF5 identifier for track file
-hid_t track_dtype;    //! HDF5 identifier for track datatype
+hid_t track_file {-1};     //! HDF5 identifier for track file
+hid_t track_dtype {-1};    //! HDF5 identifier for track datatype
 int n_tracks_written; //! Number of tracks written
+bool lost_particle_track_file_open {false};
+thread_local bool in_lost_track {false};
 
 //==============================================================================
 // Non-member functions
@@ -85,6 +87,10 @@ void close_track_file()
   H5Tclose(track_dtype);
   file_close(track_file);
 
+  // Reset initial states after close for thread safety
+  track_file = -1;
+  track_dtype = -1;
+
   // Reset number of tracks written
   n_tracks_written = 0;
 }
@@ -130,29 +136,31 @@ void finalize_particle_track(Particle& p)
 
 #pragma omp critical(FinalizeParticleTrack)
   {
-    // Create name for dataset
-    std::string dset_name = fmt::format("track_{}_{}_{}",
-      simulation::current_batch, simulation::current_gen, p.id());
+    // Guard against writing to a closed file
+    if (track_file >= 0) {
+      // Create name for dataset
+      std::string dset_name = fmt::format("track_{}_{}_{}",
+        simulation::current_batch, simulation::current_gen, p.id());
 
-    // Write array of TrackState to file
-    hsize_t dims[] {static_cast<hsize_t>(tracks.size())};
-    hid_t dspace = H5Screate_simple(1, dims, nullptr);
-    hid_t dset = H5Dcreate(track_file, dset_name.c_str(), track_dtype, dspace,
-      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(dset, track_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, tracks.data());
+      // Write array of TrackState to file
+      hsize_t dims[] {static_cast<hsize_t>(tracks.size())};
+      hid_t dspace = H5Screate_simple(1, dims, nullptr);
+      hid_t dset = H5Dcreate(track_file, dset_name.c_str(), track_dtype, dspace,
+        H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dset, track_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, tracks.data());
 
-    // Write attributes
-    write_attribute(dset, "n_particles", p.tracks().size());
-    write_attribute(dset, "offsets", offsets);
-    write_attribute(dset, "particles", particles);
+      // Write attributes
+      write_attribute(dset, "n_particles", p.tracks().size());
+      write_attribute(dset, "offsets", offsets);
+      write_attribute(dset, "particles", particles);
 
-    // Free resources
-    H5Dclose(dset);
-    H5Sclose(dspace);
+      // Free resources
+      H5Dclose(dset);
+      H5Sclose(dspace);
+    }
   }
-
-  // Clear particle tracks
-  p.tracks().clear();
+    // Clear particle tracks
+    p.tracks().clear();
 }
 
 } // namespace openmc

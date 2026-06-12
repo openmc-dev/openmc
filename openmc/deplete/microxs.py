@@ -36,7 +36,8 @@ DomainTypes: TypeAlias = Union[
     Sequence[openmc.Cell],
     Sequence[openmc.Universe],
     openmc.MeshBase,
-    openmc.Filter
+    openmc.Filter,
+    Sequence[openmc.Filter]
 ]
 
 
@@ -69,8 +70,12 @@ def get_microxs_and_flux(
     ----------
     model : openmc.Model
         OpenMC model object. Must contain geometry, materials, and settings.
-    domains : list of openmc.Material or openmc.Cell or openmc.Universe, or openmc.MeshBase, or openmc.Filter
+    domains : list of openmc.Material or openmc.Cell or openmc.Universe, or openmc.MeshBase, or openmc.Filter, or list of openmc.Filter
         Domains in which to tally reaction rates, or a spatial tally filter.
+        A list of filters can be provided to create one set of tallies per
+        filter (e.g., one :class:`~openmc.MeshMaterialFilter` per mesh) that
+        are all evaluated in a single transport solve. Results are
+        concatenated across all filters in order.
     nuclides : list of str
         Nuclides to get cross sections for. If not specified, all burnable
         nuclides from the depletion chain file are used.
@@ -142,26 +147,24 @@ def get_microxs_and_flux(
     else:
         energy_filter = openmc.EnergyFilter(energies)
 
+    # Build list of domain filters
     if isinstance(domains, openmc.Filter):
-        domain_filter = domains
+        domain_filters = [domains]
     elif isinstance(domains, openmc.MeshBase):
-        domain_filter = openmc.MeshFilter(domains)
+        domain_filters = [openmc.MeshFilter(domains)]
+    elif isinstance(domains, Sequence) and len(domains) > 0 and \
+            isinstance(domains[0], openmc.Filter):
+        domain_filters = list(domains)
     elif isinstance(domains[0], openmc.Material):
-        domain_filter = openmc.MaterialFilter(domains)
+        domain_filters = [openmc.MaterialFilter(domains)]
     elif isinstance(domains[0], openmc.Cell):
-        domain_filter = openmc.CellFilter(domains)
+        domain_filters = [openmc.CellFilter(domains)]
     elif isinstance(domains[0], openmc.Universe):
-        domain_filter = openmc.UniverseFilter(domains)
+        domain_filters = [openmc.UniverseFilter(domains)]
     else:
         raise ValueError(f"Unsupported domain type: {type(domains[0])}")
 
-    flux_tally = openmc.Tally(name='MicroXS flux')
-    flux_tally.filters = [domain_filter, energy_filter]
-    flux_tally.scores = ['flux']
-    model.tallies = [flux_tally]
-
-    # Prepare reaction-rate tally for 'direct' or subset for 'flux' with opts
-    rr_tally = None
+    # Prepare reaction-rate nuclides/reactions
     rr_nuclides: list[str] = []
     rr_reactions: list[str] = []
     if reaction_rate_mode == 'direct':
@@ -177,20 +180,33 @@ def get_microxs_and_flux(
         if rr_reactions:
             rr_reactions = [r for r in rr_reactions if r in set(reactions)]
 
-    # Only construct tally if both lists are non-empty
-    if rr_nuclides and rr_reactions:
-        rr_tally = openmc.Tally(name='MicroXS RR')
-        # Use 1-group energy filter for RR in flux mode
-        if reaction_rate_mode == 'flux':
-            rr_energy_filter = openmc.EnergyFilter(
-                [energy_filter.values[0], energy_filter.values[-1]])
-        else:
-            rr_energy_filter = energy_filter
-        rr_tally.filters = [domain_filter, rr_energy_filter]
-        rr_tally.nuclides = rr_nuclides
-        rr_tally.multiply_density = False
-        rr_tally.scores = rr_reactions
-        model.tallies.append(rr_tally)
+    # Use 1-group energy filter for RR in flux mode
+    has_rr = bool(rr_nuclides and rr_reactions)
+    if has_rr and reaction_rate_mode == 'flux':
+        rr_energy_filter = openmc.EnergyFilter(
+            [energy_filter.values[0], energy_filter.values[-1]])
+    else:
+        rr_energy_filter = energy_filter
+
+    # Create one flux tally (and optionally one RR tally) per domain filter.
+    flux_tallies = []
+    rr_tallies = []
+    model.tallies = []
+    for i, domain_filter in enumerate(domain_filters):
+        flux_tally = openmc.Tally(name=f'MicroXS flux {i}')
+        flux_tally.filters = [domain_filter, energy_filter]
+        flux_tally.scores = ['flux']
+        model.tallies.append(flux_tally)
+        flux_tallies.append(flux_tally)
+
+        if has_rr:
+            rr_tally = openmc.Tally(name=f'MicroXS RR {i}')
+            rr_tally.filters = [domain_filter, rr_energy_filter]
+            rr_tally.nuclides = rr_nuclides
+            rr_tally.multiply_density = False
+            rr_tally.scores = rr_reactions
+            model.tallies.append(rr_tally)
+            rr_tallies.append(rr_tally)
 
     if openmc.lib.is_initialized:
         openmc.lib.finalize()
@@ -227,40 +243,41 @@ def get_microxs_and_flux(
 
         # Read in tally results (on all ranks)
         with StatePoint(statepoint_path) as sp:
-            if rr_tally is not None:
-                rr_tally = sp.tallies[rr_tally.id]
-                rr_tally._read_results()
-            flux_tally = sp.tallies[flux_tally.id]
-            flux_tally._read_results()
+            for i in range(len(flux_tallies)):
+                flux_tallies[i] = sp.tallies[flux_tallies[i].id]
+                flux_tallies[i]._read_results()
+                if rr_tallies:
+                    rr_tallies[i] = sp.tallies[rr_tallies[i].id]
+                    rr_tallies[i]._read_results()
 
-    # Get flux values and make energy groups last dimension
-    flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
-    flux = np.moveaxis(flux, 1, -1)  # (domains, 1, 1, groups)
+    # Concatenate results across all domain filters
+    fluxes = []
+    all_flux_arrays = []
+    for flux_tally in flux_tallies:
+        # Get flux values and make energy groups last dimension
+        flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
+        flux = np.moveaxis(flux, 1, -1)  # (domains, 1, 1, groups)
+        all_flux_arrays.append(flux)
+        fluxes.extend(flux.squeeze((1, 2)))
 
-    # Create list where each item corresponds to one domain
-    fluxes = list(flux.squeeze((1, 2)))
+    # If we built reaction-rate tallies, compute microscopic cross sections
+    if rr_tallies:
+        direct_micros = []
+        for flux_arr, rr_tally in zip(all_flux_arrays, rr_tallies):
+            flux = flux_arr
+            # Get reaction rates and make energy groups last dimension
+            reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
+            reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
 
-    # If we built a reaction-rate tally, compute microscopic cross sections
-    if rr_tally is not None:
-        # Get reaction rates
-        reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
+            # If RR is 1-group, sum flux over groups
+            if reaction_rate_mode == "flux":
+                flux = flux.sum(axis=-1, keepdims=True)
 
-        # Make energy groups last dimension
-        reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
-
-        # If RR is 1-group, sum flux over groups
-        if reaction_rate_mode == "flux":
-            flux = flux.sum(axis=-1, keepdims=True)  # (domains, 1, 1, 1)
-
-        # Divide RR by flux to get microscopic cross sections. The indexing
-        # ensures that only non-zero flux values are used, and broadcasting is
-        # applied to align the shapes of reaction_rates and flux for division.
-        xs = np.zeros_like(reaction_rates)  # (domains, nuclides, reactions, groups)
-        d, _, _, g = np.nonzero(flux)
-        xs[d, ..., g] = reaction_rates[d, ..., g] / flux[d, :, :, g]
-
-        # Create lists where each item corresponds to one domain
-        direct_micros = [MicroXS(xs_i, rr_nuclides, rr_reactions) for xs_i in xs]
+            xs = np.zeros_like(reaction_rates)
+            d, _, _, g = np.nonzero(flux)
+            xs[d, ..., g] = reaction_rates[d, ..., g] / flux[d, :, :, g]
+            direct_micros.extend(
+                MicroXS(xs_i, rr_nuclides, rr_reactions) for xs_i in xs)
 
     # If using flux mode, compute flux-collapsed microscopic XS
     if reaction_rate_mode == 'flux':
@@ -273,9 +290,9 @@ def get_microxs_and_flux(
         ) for flux_i in fluxes]
 
     # Decide which micros to use and merge if needed
-    if reaction_rate_mode == 'flux' and rr_tally is not None:
+    if reaction_rate_mode == 'flux' and rr_tallies:
         micros = [m1.merge(m2) for m1, m2 in zip(flux_micros, direct_micros)]
-    elif rr_tally is not None:
+    elif rr_tallies:
         micros = direct_micros
     else:
         micros = flux_micros

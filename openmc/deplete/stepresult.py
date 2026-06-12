@@ -12,11 +12,12 @@ import h5py
 import numpy as np
 
 import openmc
-from openmc.mpi import comm, MPI
 from openmc.checkvalue import PathLike
+from openmc.mpi import MPI, comm
+
 from .reaction_rates import ReactionRates
 
-VERSION_RESULTS = (1, 2)
+VERSION_RESULTS = (1, 3)
 
 
 __all__ = ["StepResult"]
@@ -57,6 +58,8 @@ class StepResult:
     proc_time : int
         Average time spent depleting a material across all
         materials and processes
+    keff_search_root : float
+        The root returned by the keff search control.
 
     """
     def __init__(self):
@@ -73,6 +76,7 @@ class StepResult:
         self.name_list = None
 
         self.data = None
+        self.keff_search_root = None
 
     def __repr__(self):
         t = self.time[0]
@@ -153,14 +157,14 @@ class StepResult:
         full_burn_list : list of str
             List of all burnable material IDs
         name_list : list of str, optional
-            Material names corresponding to materials in burn_list
+            Material names corresponding to materials in full_burn_list
 
         """
         self.volume = copy.deepcopy(volume)
         self.index_nuc = {nuc: i for i, nuc in enumerate(nuc_list)}
         self.index_mat = {mat: i for i, mat in enumerate(burn_list)}
         self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
-        self.mat_to_name = dict(zip(burn_list, name_list)) if name_list is not None else {}
+        self.mat_to_name = dict(zip(full_burn_list, name_list)) if name_list is not None else {}
 
         # Create storage array
         self.data = np.zeros((self.n_mat, self.n_nuc))
@@ -196,15 +200,15 @@ class StepResult:
         new.rates = self.rates[ranges]
         return new
 
-    def get_material(self, mat_id):
+    def get_material(self, mat_id: str | int) -> openmc.Material:
         """Return material object for given depleted composition
 
         .. versionadded:: 0.13.2
 
         Parameters
         ----------
-        mat_id : str
-            Material ID as a string
+        mat_id : str or int
+            Material ID as a string or integer
 
         Returns
         -------
@@ -217,6 +221,9 @@ class StepResult:
             If specified material ID is not found in the StepResult
 
         """
+        # Coerce to str since internal dictionaries use str keys
+        mat_id = str(mat_id)
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', openmc.IDWarning)
             material = openmc.Material(material_id=int(mat_id))
@@ -364,6 +371,10 @@ class StepResult:
             "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
+        handle.create_dataset(
+            "keff_search_root", (1,), maxshape=(None,),
+            dtype="float64")
+
     def _to_hdf5(self, handle, index, parallel=False, write_rates: bool = False):
         """Converts results object into an hdf5 object.
 
@@ -396,6 +407,7 @@ class StepResult:
         time_dset = handle["/time"]
         source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
+        keff_search_root_dset = handle["/keff_search_root"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -429,6 +441,10 @@ class StepResult:
             proc_shape[0] = new_shape
             proc_time_dset.resize(proc_shape)
 
+            keff_search_root_shape = list(keff_search_root_dset.shape)
+            keff_search_root_shape[0] = new_shape
+            keff_search_root_dset.resize(keff_search_root_shape)
+
         # If nothing to write, just return
         if len(self.index_mat) == 0:
             return
@@ -448,6 +464,7 @@ class StepResult:
                 proc_time_dset[index] = (
                     self.proc_time / (comm.size * self.n_hdf5_mats)
                 )
+            keff_search_root_dset[index] = self.keff_search_root
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -495,6 +512,10 @@ class StepResult:
             proc_time_dset = handle["/depletion time"]
             if step < proc_time_dset.shape[0]:
                 results.proc_time = proc_time_dset[step]
+
+        if "keff_search_root" in handle:
+            keff_search_root_dset = handle["/keff_search_root"]
+            results.keff_search_root = keff_search_root_dset[step]
 
         if results.proc_time is None:
             results.proc_time = np.array([np.nan])
@@ -550,6 +571,7 @@ class StepResult:
         step_ind,
         proc_time=None,
         write_rates: bool = False,
+        keff_search_root=None,
         path: PathLike = "depletion_results.h5"
     ):
         """Creates and writes depletion results to disk
@@ -574,6 +596,8 @@ class StepResult:
             processes.
         write_rates : bool, optional
             Whether reaction rates should be written to the results file.
+        keff_search_root : float
+            The root returned by the keff search control.
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
@@ -601,6 +625,7 @@ class StepResult:
         results.proc_time = proc_time
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
+        results.keff_search_root = keff_search_root
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)

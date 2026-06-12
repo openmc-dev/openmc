@@ -33,6 +33,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/tallies/filter.h"
 
 namespace openmc {
 
@@ -44,10 +45,12 @@ constexpr int PLOT_LEVEL_LOWEST {-1}; //!< lower bound on plot universe level
 constexpr int32_t NOT_FOUND {-2};
 constexpr int32_t OVERLAP {-3};
 
-IdData::IdData(size_t h_res, size_t v_res) : data_({v_res, h_res, 3}, NOT_FOUND)
+IdData::IdData(size_t h_res, size_t v_res, bool /*include_filter*/)
+  : data_({v_res, h_res, 3}, NOT_FOUND)
 {}
 
-void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
+void IdData::set_value(size_t y, size_t x, const Particle& p, int level,
+  Filter* /*filter*/, FilterMatch* /*match*/)
 {
   // set cell data
   if (p.n_coord() <= level) {
@@ -64,7 +67,6 @@ void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
   Cell* c = model::cells.at(p.lowest_coord().cell()).get();
   if (p.material() == MATERIAL_VOID) {
     data_(y, x, 2) = MATERIAL_VOID;
-    return;
   } else if (c->type_ == Fill::MATERIAL) {
     Material* m = model::materials.at(p.material()).get();
     data_(y, x, 2) = m->id_;
@@ -77,12 +79,12 @@ void IdData::set_overlap(size_t y, size_t x)
     data_(y, x, k) = OVERLAP;
 }
 
-PropertyData::PropertyData(size_t h_res, size_t v_res)
+PropertyData::PropertyData(size_t h_res, size_t v_res, bool /*include_filter*/)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 {}
 
-void PropertyData::set_value(
-  size_t y, size_t x, const GeometryState& p, int level)
+void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level,
+  Filter* /*filter*/, FilterMatch* /*match*/)
 {
   Cell* c = model::cells.at(p.lowest_coord().cell()).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
@@ -95,6 +97,74 @@ void PropertyData::set_value(
 void PropertyData::set_overlap(size_t y, size_t x)
 {
   data_(y, x) = OVERLAP;
+}
+
+//==============================================================================
+// RasterData implementation
+//==============================================================================
+
+RasterData::RasterData(size_t h_res, size_t v_res, bool include_filter)
+  : id_data_({v_res, h_res, include_filter ? 4u : 3u}, NOT_FOUND),
+    property_data_({v_res, h_res, 2}, static_cast<double>(NOT_FOUND)),
+    include_filter_(include_filter)
+{}
+
+void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
+  Filter* filter, FilterMatch* match)
+{
+  // set cell data
+  if (p.n_coord() <= level) {
+    id_data_(y, x, 0) = NOT_FOUND;
+    id_data_(y, x, 1) = NOT_FOUND;
+  } else {
+    id_data_(y, x, 0) = model::cells.at(p.coord(level).cell())->id_;
+    id_data_(y, x, 1) = level == p.n_coord() - 1
+                          ? p.cell_instance()
+                          : cell_instance_at_level(p, level);
+  }
+
+  // set material data
+  Cell* c = model::cells.at(p.lowest_coord().cell()).get();
+  if (p.material() == MATERIAL_VOID) {
+    id_data_(y, x, 2) = MATERIAL_VOID;
+  } else if (c->type_ == Fill::MATERIAL) {
+    Material* m = model::materials.at(p.material()).get();
+    id_data_(y, x, 2) = m->id_;
+  }
+
+  // set filter index (only if filter is being used)
+  if (include_filter_ && filter) {
+    filter->get_all_bins(p, TallyEstimator::COLLISION, *match);
+    if (match->bins_.empty()) {
+      id_data_(y, x, 3) = -1;
+    } else {
+      id_data_(y, x, 3) = match->bins_[0];
+    }
+    match->bins_.clear();
+    match->weights_.clear();
+  }
+
+  // set temperature (in K)
+  property_data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
+
+  // set density (g/cm³)
+  if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
+    Material* m = model::materials.at(p.material()).get();
+    property_data_(y, x, 1) = m->density_gpcc_;
+  }
+}
+
+void RasterData::set_overlap(size_t y, size_t x)
+{
+  // Set cell, instance, and material to OVERLAP, but preserve filter bin
+  id_data_(y, x, 0) = OVERLAP;
+  id_data_(y, x, 1) = OVERLAP;
+  id_data_(y, x, 2) = OVERLAP;
+  // Note: id_data_(y, x, 3) is NOT overwritten - preserves filter bin for tally
+  // plotting
+
+  property_data_(y, x, 0) = OVERLAP;
+  property_data_(y, x, 1) = OVERLAP;
 }
 
 //==============================================================================
@@ -450,6 +520,22 @@ void Plot::set_width(pugi::xml_node plot_node)
     if (pl_width.size() == 2) {
       width_.x = pl_width[0];
       width_.y = pl_width[1];
+      switch (basis_) {
+      case PlotBasis::xy:
+        u_span_ = {width_.x, 0.0, 0.0};
+        v_span_ = {0.0, width_.y, 0.0};
+        break;
+      case PlotBasis::xz:
+        u_span_ = {width_.x, 0.0, 0.0};
+        v_span_ = {0.0, 0.0, width_.y};
+        break;
+      case PlotBasis::yz:
+        u_span_ = {0.0, width_.x, 0.0};
+        v_span_ = {0.0, 0.0, width_.y};
+        break;
+      default:
+        UNREACHABLE();
+      }
     } else {
       fatal_error(
         fmt::format("<width> must be length 2 in slice plot {}", id()));
@@ -765,7 +851,7 @@ Plot::Plot(pugi::xml_node plot_node, PlotType type)
   set_width(plot_node);
   set_meshlines(plot_node);
   slice_level_ = level_; // Copy level employed in SlicePlotBase::get_map
-  slice_color_overlaps_ = color_overlaps_;
+  show_overlaps_ = color_overlaps_;
 }
 
 //==============================================================================
@@ -862,21 +948,37 @@ void Plot::draw_mesh_lines(ImageData& data) const
   rgb = meshlines_color_;
 
   int ax1, ax2;
+  Position expected_u {};
+  Position expected_v {};
   switch (basis_) {
   case PlotBasis::xy:
     ax1 = 0;
     ax2 = 1;
+    expected_u = {width_[0], 0.0, 0.0};
+    expected_v = {0.0, width_[1], 0.0};
     break;
   case PlotBasis::xz:
     ax1 = 0;
     ax2 = 2;
+    expected_u = {width_[0], 0.0, 0.0};
+    expected_v = {0.0, 0.0, width_[1]};
     break;
   case PlotBasis::yz:
     ax1 = 1;
     ax2 = 2;
+    expected_u = {0.0, width_[0], 0.0};
+    expected_v = {0.0, 0.0, width_[1]};
     break;
   default:
     UNREACHABLE();
+  }
+
+  // Meshlines rely on axis-aligned indexing in global coordinates.
+  constexpr double rel_tol {1e-12};
+  double span_tol = rel_tol * (1.0 + u_span_.norm() + v_span_.norm());
+  if ((u_span_ - expected_u).norm() > span_tol ||
+      (v_span_ - expected_v).norm() > span_tol) {
+    fatal_error("Meshlines are only supported for axis-aligned slice plots.");
   }
 
   Position ll_plot {origin_};
@@ -1008,11 +1110,11 @@ void Plot::create_voxel() const
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
   SlicePlotBase pltbase;
-  pltbase.width_ = width_;
   pltbase.origin_ = origin_;
-  pltbase.basis_ = PlotBasis::xy;
+  pltbase.u_span_ = {width_.x, 0.0, 0.0};
+  pltbase.v_span_ = {0.0, width_.y, 0.0};
   pltbase.pixels() = pixels();
-  pltbase.slice_color_overlaps_ = color_overlaps_;
+  pltbase.show_overlaps_ = color_overlaps_;
 
   ProgressBar pb;
   for (int z = 0; z < pixels()[2]; z++) {
@@ -1794,6 +1896,12 @@ void PhongRay::on_intersection()
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 {
+  static bool warned {false};
+  if (!warned) {
+    warning("openmc_id_map is deprecated and will be removed in a future "
+            "release. Use openmc_slice_data.");
+    warned = true;
+  }
 
   auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
   if (!plt) {
@@ -1801,7 +1909,7 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
+  if (plt->show_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 
@@ -1815,14 +1923,20 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 
 extern "C" int openmc_property_map(const void* plot, double* data_out)
 {
+  static bool warned {false};
+  if (!warned) {
+    warning("openmc_property_map is deprecated and will be removed in a future "
+            "release. Use openmc_slice_data.");
+    warned = true;
+  }
 
   auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
   if (!plt) {
-    set_errmsg("Invalid slice pointer passed to openmc_id_map");
+    set_errmsg("Invalid slice pointer passed to openmc_property_map");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
+  if (plt->show_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 
@@ -1830,6 +1944,68 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
 
   // write id data to array
   std::copy(props.data_.begin(), props.data_.end(), data_out);
+
+  return 0;
+}
+
+extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
+  const double v_span[3], const size_t pixels[2], bool color_overlaps,
+  int level, int32_t filter_index, int32_t* geom_data, double* property_data)
+{
+  // Validate span vectors
+  Direction u_span_pos {u_span[0], u_span[1], u_span[2]};
+  Direction v_span_pos {v_span[0], v_span[1], v_span[2]};
+  double u_norm = u_span_pos.norm();
+  double v_norm = v_span_pos.norm();
+  if (u_norm == 0.0 || v_norm == 0.0) {
+    set_errmsg("Slice span vectors must be non-zero.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  constexpr double ORTHO_REL_TOL = 1e-10;
+  double dot = u_span_pos.dot(v_span_pos);
+  if (std::abs(dot) > ORTHO_REL_TOL * u_norm * v_norm) {
+    set_errmsg("Slice span vectors must be orthogonal.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // Validate filter index if provided
+  if (filter_index >= 0) {
+    if (int err = verify_filter(filter_index))
+      return err;
+  }
+
+  // Initialize overlap check vector if needed
+  if (color_overlaps && model::overlap_check_count.size() == 0) {
+    model::overlap_check_count.resize(model::cells.size());
+  }
+
+  try {
+    // Create a temporary SlicePlotBase object to reuse get_map logic
+    SlicePlotBase plot_params;
+    plot_params.origin_ = Position {origin[0], origin[1], origin[2]};
+    plot_params.u_span_ = u_span_pos;
+    plot_params.v_span_ = v_span_pos;
+    plot_params.pixels_[0] = pixels[0];
+    plot_params.pixels_[1] = pixels[1];
+    plot_params.show_overlaps_ = color_overlaps;
+    plot_params.slice_level_ = level;
+
+    // Use get_map<RasterData> to generate data
+    auto data = plot_params.get_map<RasterData>(filter_index);
+
+    // Copy geometry data
+    std::copy(data.id_data_.begin(), data.id_data_.end(), geom_data);
+
+    // Copy property data if requested
+    if (property_data != nullptr) {
+      std::copy(
+        data.property_data_.begin(), data.property_data_.end(), property_data);
+    }
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
 
   return 0;
 }

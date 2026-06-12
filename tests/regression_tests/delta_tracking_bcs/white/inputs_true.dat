@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material id="7" name="UO2" depletable="true">
+    <material id="1" name="UO2" depletable="true">
       <density value="10.0" units="g/cm3"/>
       <nuclide name="U235" ao="1.0"/>
       <nuclide name="O16" ao="2.0"/>
     </material>
-    <material id="8" name="light water">
+    <material id="2" name="light water">
       <density value="1.0" units="g/cm3"/>
       <nuclide name="H1" ao="2.0"/>
       <nuclide name="O16" ao="1.0"/>
@@ -14,22 +14,22 @@
     </material>
   </materials>
   <geometry>
-    <cell id="10" material="7" region="-16" universe="10"/>
-    <cell id="11" material="8" region="16" universe="10"/>
-    <cell id="12" fill="11" region="17 -18 19 -20" universe="12"/>
-    <lattice id="11">
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <cell id="2" material="2" region="1" universe="1"/>
+    <cell id="3" fill="2" region="2 -3 4 -5" universe="3"/>
+    <lattice id="2">
       <pitch>1.26 1.26</pitch>
       <dimension>2 2</dimension>
       <lower_left>-1.26 -1.26</lower_left>
       <universes>
-10 10 
-10 10 </universes>
+1 1 
+1 1 </universes>
     </lattice>
-    <surface id="16" type="z-cylinder" coeffs="0.0 0.0 0.4"/>
-    <surface id="17" name="minimum x" type="x-plane" boundary="white" coeffs="-1.26"/>
-    <surface id="18" name="maximum x" type="x-plane" boundary="white" coeffs="1.26"/>
-    <surface id="19" name="minimum y" type="y-plane" boundary="white" coeffs="-1.26"/>
-    <surface id="20" name="maximum y" type="y-plane" boundary="white" coeffs="1.26"/>
+    <surface id="1" type="z-cylinder" coeffs="0.0 0.0 0.4"/>
+    <surface id="2" name="minimum x" type="x-plane" boundary="white" coeffs="-1.26"/>
+    <surface id="3" name="maximum x" type="x-plane" boundary="white" coeffs="1.26"/>
+    <surface id="4" name="minimum y" type="y-plane" boundary="white" coeffs="-1.26"/>
+    <surface id="5" name="maximum y" type="y-plane" boundary="white" coeffs="1.26"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
@@ -40,19 +40,19 @@
     <delta_tracking>true</delta_tracking>
   </settings>
   <tallies>
-    <mesh id="4">
+    <mesh id="1">
       <dimension>2 2</dimension>
       <lower_left>-1.26 -1.26</lower_left>
       <upper_right>1.26 1.26</upper_right>
     </mesh>
-    <filter id="7" type="particle">
+    <filter id="1" type="particle">
       <bins>neutron</bins>
     </filter>
-    <filter id="8" type="mesh">
-      <bins>4</bins>
+    <filter id="2" type="mesh">
+      <bins>1</bins>
     </filter>
-    <tally id="4">
-      <filters>7 8</filters>
+    <tally id="1">
+      <filters>1 2</filters>
       <scores>total</scores>
       <estimator>collision</estimator>
     </tally>

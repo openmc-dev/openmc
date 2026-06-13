@@ -216,8 +216,6 @@ void NeutronMajorant::fill_material_maj_xs(int i_material,
   const auto& mat = *model::materials[i_material];
 
   mat_maj.resize(to_grid.size());
-  std::fill(mat_maj.begin(), mat_maj.end(), 0.0);
-
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
     const double union_energy = to_grid[i_energy];
@@ -322,8 +320,15 @@ double NeutronMajorant::calculate_max_urr_xs(
       continue;
     }
 
-    int i_energy =
-      lower_bound_index(&urr.energy_.front(), &urr.energy_.back(), energy);
+    int i_energy;
+    if (energy < urr.energy_.front()) {
+      i_energy = 0;
+    } else if (energy > urr.energy_.back()) {
+      i_energy = urr.energy_.size() - 2;
+    } else {
+      i_energy =
+        lower_bound_index(&urr.energy_.front(), &urr.energy_.back(), energy);
+    }
 
     // Find the maximum URR cross sections for the two bounding energy points.
     double max_urr_xs_E0 = 0.0;
@@ -506,8 +511,6 @@ void PhotonMajorant::fill_material_maj_xs(int i_material,
   const auto& mat = *model::materials[i_material];
 
   mat_maj.resize(to_grid.size());
-  std::fill(mat_maj.begin(), mat_maj.end(), 0.0);
-
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
     const double union_log_energy = to_grid[i_energy];

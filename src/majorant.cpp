@@ -321,9 +321,9 @@ double NeutronMajorant::calculate_max_urr_xs(
     }
 
     int i_energy;
-    if (energy < urr.energy_.front()) {
+    if (energy <= urr.energy_.front()) {
       i_energy = 0;
-    } else if (energy > urr.energy_.back()) {
+    } else if (energy >= urr.energy_.back()) {
       i_energy = urr.energy_.size() - 2;
     } else {
       i_energy =
@@ -437,7 +437,7 @@ int NeutronMajorant::get_i_grid(
     std::log(energy / data::energy_min[i_neutron_]) / simulation::log_spacing;
 
   int i_grid;
-  if (energy < grid.energy.front()) {
+  if (energy <= grid.energy.front()) {
     i_grid = 0;
   } else if (energy >= grid.energy.back()) {
     i_grid = grid.energy.size() - 2;
@@ -447,9 +447,14 @@ int NeutronMajorant::get_i_grid(
     int i_low = grid.grid_index[i_log_union];
     int i_high = grid.grid_index[i_log_union + 1] + 1;
 
-    // Perform binary search over reduced range
-    i_grid = i_low + lower_bound_index(
-                       &grid.energy[i_low], &grid.energy[i_high], energy);
+    // This catches the very rare case where floating point comparisons fail.
+    if (i_low >= grid.energy.size() || i_high >= grid.energy.size()) {
+      i_grid = grid.energy.size() - 2;
+    } else {
+      // Perform binary search over reduced range
+      i_grid = i_low + lower_bound_index(
+                         &grid.energy[i_low], &grid.energy[i_high], energy);
+    }
   }
 
   // check for rare case where two energy points are the same

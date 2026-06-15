@@ -291,6 +291,48 @@ example, the following would generate a photon source::
 For a full list of all classes related to statistical distributions, see
 :ref:`pythonapi_stats`.
 
+Tokamak Plasma Sources
+----------------------
+
+For fusion applications, the :class:`openmc.TokamakSource` class provides a
+native parametric neutron source for tokamak plasmas. Rather than specifying
+spatial, angular, and energy distributions separately, the source is defined by
+the plasma geometry (using a Miller-style flux-surface parameterization) and a
+radial emission profile. Source sites are sampled directly from the plasma
+volume without rejection.
+
+The plasma shape is described by the major radius :math:`R_0`, minor radius
+:math:`a`, elongation :math:`\kappa`, triangularity :math:`\delta`, and
+Shafranov shift :math:`\Delta`. The neutron birth profile is given as an
+emission density :math:`S(r/a)` tabulated on a normalized minor-radius grid that
+runs from 0 (magnetic axis) to 1 (last closed flux surface); only the shape of
+the profile matters, since it is normalized internally. For example::
+
+  import numpy as np
+
+  r_over_a = np.linspace(0.0, 1.0, 50)
+  emission = (1.0 - r_over_a**2)**2  # peaked on-axis profile
+
+  source = openmc.TokamakSource(
+      major_radius=620.0,    # cm
+      minor_radius=200.0,    # cm
+      elongation=1.8,
+      triangularity=0.45,
+      shafranov_shift=10.0,  # cm
+      r_over_a=r_over_a,
+      emission_density=emission,
+      energy=openmc.stats.muir(e0=14.08e6, m_rat=5.0, kt=20000.0),
+  )
+
+  settings.source = source
+
+The ``energy`` argument accepts either a single
+:class:`~openmc.stats.Univariate` distribution applied at all radii, or a
+sequence with one distribution per ``r_over_a`` grid point to model a
+radially-varying neutron spectrum. The toroidal extent can be restricted with
+``phi_start`` and ``phi_extent`` to model a sector of the plasma, and
+``vertical_shift`` translates the plasma center along the z-axis.
+
 File-based Sources
 ------------------
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
-from numbers import Real
+from numbers import Integral, Real
 from pathlib import Path
 import warnings
 from typing import Any
@@ -913,7 +913,7 @@ class TokamakSource(SourceBase):
     where R0 is major radius, a is minor radius, κ is elongation, δ is
     triangularity, and Δ is the Shafranov shift.
 
-    .. versionadded:: 0.15.1
+    .. versionadded:: 0.15.4
 
     Parameters
     ----------
@@ -930,10 +930,14 @@ class TokamakSource(SourceBase):
     r_over_a : numpy.ndarray
         Normalized minor radius grid points, must start at 0 and end at 1
     emission_density : numpy.ndarray
-        Emission density S(r) at each r/a point (arbitrary units, must be >= 0)
+        Emission density S(r) at each r/a point (arbitrary units, must be >= 0).
+        Must have the same length as ``r_over_a``.
     energy : openmc.stats.Univariate or Sequence[openmc.stats.Univariate]
-        Energy distribution(s). Either a single distribution for all r, or
-        one distribution per r/a grid point.
+        Energy distribution(s). Either a single distribution used at all radii,
+        or one distribution per ``r_over_a`` grid point. When one distribution
+        per grid point is given, the energy of a sampled particle is drawn from
+        the distribution at the bracketing grid point nearest its sampled
+        radius (no interpolation between distributions is performed).
     phi_start : float
         Starting toroidal angle in [rad] (default: 0)
     phi_extent : float
@@ -1012,12 +1016,27 @@ class TokamakSource(SourceBase):
         self.phi_extent = phi_extent
         self.n_alpha = n_alpha
         self.vertical_shift = vertical_shift
+        self.energy = energy
 
-        # Handle energy as single distribution or sequence
-        if isinstance(energy, Univariate):
-            self._energy = [energy]
-        else:
-            self._energy = list(energy)
+        # Cross-field consistency checks (each setter only validates its own
+        # field, so the relationships between fields are verified here)
+        if self.minor_radius >= self.major_radius:
+            raise ValueError(
+                f"minor_radius ({self.minor_radius}) must be smaller than "
+                f"major_radius ({self.major_radius})")
+        if self.shafranov_shift >= 0.5 * self.minor_radius:
+            raise ValueError(
+                f"shafranov_shift ({self.shafranov_shift}) must be smaller "
+                f"than half the minor_radius ({0.5 * self.minor_radius})")
+        if len(self.emission_density) != len(self.r_over_a):
+            raise ValueError(
+                f"emission_density (length {len(self.emission_density)}) must "
+                f"have the same length as r_over_a (length {len(self.r_over_a)})")
+        if len(self.energy) not in (1, len(self.r_over_a)):
+            raise ValueError(
+                f"Number of energy distributions ({len(self.energy)}) must be "
+                f"either 1 or equal to the number of r_over_a grid points "
+                f"({len(self.r_over_a)})")
 
     @property
     def type(self) -> str:
@@ -1142,7 +1161,7 @@ class TokamakSource(SourceBase):
 
     @n_alpha.setter
     def n_alpha(self, value: int):
-        cv.check_type('n_alpha', value, int)
+        cv.check_type('n_alpha', value, Integral)
         cv.check_greater_than('n_alpha', value, 2)
         self._n_alpha = value
 

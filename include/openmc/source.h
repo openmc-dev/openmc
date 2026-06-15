@@ -281,12 +281,15 @@ private:
 //! 3. Sample energy from user-provided distribution(s)
 //! 4. Sample isotropic direction
 //! 5. Sample toroidal angle phi uniformly in [phi_start, phi_start + phi_extent]
-//! 6. Transform (r, alpha, phi) to Cartesian (x, y, z)
+//! 6. Transform (r, alpha, phi) to Cartesian (x, y, z), applying the optional
+//!    vertical shift of the plasma center
 //!
-//! The user provides the emission rate S(r) directly (e.g., from transport
+//! The user provides the emission density S(r) directly (e.g., from transport
 //! codes like TRANSP, ASTRA, etc.), allowing full flexibility in reaction
-//! physics calculations. Energy distributions can be specified as either a
-//! single distribution for all r, or one distribution per radial point.
+//! physics calculations. S(r) is a profile in arbitrary units sampled on the
+//! r_over_a grid; only its shape matters, since it is normalized internally.
+//! Energy distributions can be specified as either a single distribution for
+//! all r, or one distribution per radial point.
 //==============================================================================
 
 class TokamakSource : public Source {

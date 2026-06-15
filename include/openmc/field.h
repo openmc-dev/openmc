@@ -74,7 +74,7 @@ public:
   //! Returns the temperature in Kelvin corresponding to a given bin number
   //! relative to the mesh.
   //
-  //! \param[in] r Position of the particle
+  //! \param[in] bin Bin number
   //! \return Temperature in Kelvin
   double get_temperature(int bin);
 

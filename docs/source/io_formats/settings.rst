@@ -1329,6 +1329,19 @@ a material default temperature.
 
   *Default*: 293.6 K
 
+.. _temperature_field:
+
+---------------------------------
+``<temperature_field>`` Element
+---------------------------------
+
+The ``<temperature_field>`` element specifies temperatures in a model in Kelvin
+using a temperature field based on a geometric mesh. Temperatures declared using
+a temperature field take precedence over all other temperature definition (cell,
+material, and global).
+
+  *Default*: None
+
 .. _temperature_method:
 
 --------------------------------

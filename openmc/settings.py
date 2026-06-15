@@ -332,8 +332,8 @@ class Settings:
         be used to evaluate resolved resonance cross sections.
     temperature_field : openmc.TemperatureField
         Temperature field based on a geometric mesh used to specify temperatures
-        in a model. Temperatures declared from a mesh take precedence over
-        all other temperature definition (cell, material, and global).
+        in a model. Temperatures declared from a temperature field take precedence
+        over all other temperature definition (cell, material, and global).
     trace : tuple or list
         Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number

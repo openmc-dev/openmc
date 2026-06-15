@@ -1771,6 +1771,12 @@ class Settings:
         subelement = ET.SubElement(element, "mesh")
         subelement.text = str(self.temperature_field.mesh.id)
 
+        # Add temperature values
+        subelement = ET.SubElement(element, "values")
+        subelement.text = "\n        ".join(
+            textwrap.wrap(" ".join(
+                [str(i) for i in self.temperature_field.values]), 80))
+
         # If this mesh has already been written outside the
         # settings element, skip writing it again
         if mesh_memo and self.temperature_field.mesh.id in mesh_memo:
@@ -1782,12 +1788,6 @@ class Settings:
             root.append(self.temperature_field.mesh.to_xml_element())
             if mesh_memo is not None:
                 mesh_memo.add(self.temperature_field.mesh.id)
-
-        # Add temperature values
-        subelement = ET.SubElement(element, "values")
-        subelement.text = "\n        ".join(
-            textwrap.wrap(" ".join(
-                [str(i) for i in self.temperature_field.values]), 80))
 
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:

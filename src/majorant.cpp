@@ -216,6 +216,8 @@ void NeutronMajorant::fill_material_maj_xs(int i_material,
   const auto& mat = *model::materials[i_material];
 
   mat_maj.resize(to_grid.size());
+
+  #pragma omp parallel for
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
     const double union_energy = to_grid[i_energy];
@@ -516,6 +518,8 @@ void PhotonMajorant::fill_material_maj_xs(int i_material,
   const auto& mat = *model::materials[i_material];
 
   mat_maj.resize(to_grid.size());
+
+  #pragma omp parallel for
   for (int i_energy = 0; i_energy < to_grid.size(); ++i_energy) {
     mat_maj[i_energy] = 0.0;
     const double union_log_energy = to_grid[i_energy];

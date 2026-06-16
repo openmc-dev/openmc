@@ -343,12 +343,7 @@ void process_delta_collision_events()
         p.type() == ParticleType::positron()) {
       p.event_collide();
     } else {
-      if (p.macro_xs().total / p.majorant() > 1.0) {
-        p.mark_as_lost(fmt::format(
-          "Ratio of the total cross section ({}) to the majorant "
-          "cross section ({}) for particle {} ({}) with energy {} is "
-          "greater than unity!",
-          p.macro_xs().total, p.majorant(), p.id(), p.type().str(), p.E()));
+      if (p.kill_invalid_maj()) {
         continue;
       }
 

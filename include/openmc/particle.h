@@ -115,6 +115,13 @@ public:
   //! Update the cached majorant cross section for this particle.
   void update_majorant();
 
+  //! Check if the majorant is valid. If its not, the particle is killed and
+  //! a restart file is written.
+  //
+  //! \return true if the majorant is invalid, false if not. If true,
+  //!   the particle is also killed.
+  bool kill_invalid_maj();
+
   //! create a particle restart HDF5 file
   void write_restart() const;
 

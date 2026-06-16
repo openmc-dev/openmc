@@ -343,6 +343,10 @@ void Particle::event_delta_advance()
       type() == ParticleType::positron()) {
     // Electrons/positrons don't move
     collision_distance() = 0.0;
+  } else if (majorant() == 0.0) {
+    // For a void majorant (rare but possible for a source in a void),
+    // the collision distance is infinity.
+    collision_distance() = INFINITY;
   } else {
     // Sample collision distance based on the majorant for this energy.
     collision_distance() = -std::log(prn(current_seed())) / majorant();
@@ -912,6 +916,19 @@ void Particle::update_majorant()
     majorant() = PhotonMajorant::safety_factor_ *
                  data::p_majorant->calculate_photon_xs(E());
   }
+}
+
+bool Particle::kill_invalid_maj()
+{
+  if (alive() && (macro_xs().total / majorant() > 1.0)) {
+    mark_as_lost(
+      fmt::format("Ratio of the total cross section ({}) to the majorant "
+                  "cross section ({}) for particle {} ({}) with energy {} is "
+                  "greater than unity!",
+        macro_xs().total, majorant(), id(), type().str(), E()));
+    return true;
+  }
+  return false;
 }
 
 void Particle::mark_as_lost(const char* message)

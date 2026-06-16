@@ -180,6 +180,7 @@ public:
   float* source_;
   float* external_source_;
   double* scalar_flux_final_;
+  vector<double>* angular_flux_new_;
 
   MomentArray* source_gradients_;
   MomentArray* flux_moments_old_;
@@ -279,6 +280,9 @@ public:
   double& scalar_flux_final(int g) { return scalar_flux_final_[g]; }
   const double scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
 
+  double& angular_flux_new(int g, int angle) { return angular_flux_new_[g]; }
+  const double angular_flux_new(int g) const { return angular_flux_new_[g]; }
+
   float& source(int g) { return source_[g]; }
   const float source(int g) const { return source_[g]; }
 
@@ -374,6 +378,9 @@ public:
   vector<double> scalar_flux_final_; //!< The scalar flux accumulated over all
                                      //!< active iterations (used for plotting,
                                      //!< or computing adjoint sources)
+
+  vector<double>
+    angular_flux_new_; //!< The angular flux from the current iteration
 
   vector<MomentArray> source_gradients_; //!< The linear source gradients
   vector<MomentArray>
@@ -572,6 +579,20 @@ public:
     return scalar_flux_final_[se];
   }
 
+  double& angular_flux_new(int64_t sr, int g)
+  {
+    return angular_flux_new_[index(sr, g)];
+  }
+  const double angular_flux_new(int64_t sr, int g) const
+  {
+    return angular_flux_new_[index(sr, g)];
+  }
+  double& angular_flux_new(int64_t se) { return angular_flux_new_[se]; }
+  const double angular_flux_new(int64_t se) const
+  {
+    return angular_flux_new_[se];
+  }
+
   float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
   const float source(int64_t sr, int g) const { return source_[index(sr, g)]; }
   float& source(int64_t se) { return source_[se]; }
@@ -671,6 +692,7 @@ private:
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
+  vector<double> angular_flux_new_;
   vector<float> source_;
   vector<float> external_source_;
 

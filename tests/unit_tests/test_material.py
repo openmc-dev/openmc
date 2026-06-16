@@ -561,6 +561,10 @@ def test_get_activity():
     m1.add_element("Fe", 0.7)
     m1.add_element("Li", 0.3)
     m1.set_density('g/cm3', 1.5)
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_activity(units='Bq')
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_activity(units='Ci')
     # activity in Bq/cc and Bq/g should not require volume setting
     assert m1.get_activity(units='Bq/cm3') == 0
     assert m1.get_activity(units='Bq/g') == 0
@@ -594,6 +598,8 @@ def test_get_activity():
     assert pytest.approx(m4.get_activity(units='Bq/g', by_nuclide=True)["H3"]) == 355978108155965.94  # [Bq/g]
     assert pytest.approx(m4.get_activity(units='Bq/cm3')) == 355978108155965.94*3/2 # [Bq/cc]
     assert pytest.approx(m4.get_activity(units='Bq/cm3', by_nuclide=True)["H3"]) == 355978108155965.94*3/2 # [Bq/cc]
+    assert pytest.approx(m4.get_activity(units='Bq/m3')) == 355978108155965.94*3/2*1e6 # [Bq/m3]
+    assert pytest.approx(m4.get_activity(units='Bq/m3', by_nuclide=True)["H3"]) == 355978108155965.94*3/2*1e6 # [Bq/m3]
     # volume is required to calculate total activity
     m4.volume = 10.
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
@@ -617,6 +623,8 @@ def test_get_decay_heat():
     m1.add_nuclide("U235", 0.2)
     m1.add_nuclide("U238", 0.8)
     m1.set_density('g/cm3', 10.5)
+    with pytest.raises(ValueError, match="Volume must be set"):
+        m1.get_decay_heat(units='W')
     # decay heat in W/cc and W/g should not require volume setting
     assert m1.get_decay_heat(units='W/cm3') == 0
     assert m1.get_decay_heat(units='W/g') == 0
@@ -650,6 +658,8 @@ def test_get_decay_heat():
     assert pytest.approx(m4.get_decay_heat(units='W/g', by_nuclide=True)["I135"]) == 40175.15720273193 # [W/g]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3')) == 40175.15720273193*3/2 # [W/cc]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2 #[W/cc]
+    assert pytest.approx(m4.get_decay_heat(units='W/m3')) == 40175.15720273193*3/2*1e6 # [W/m3]
+    assert pytest.approx(m4.get_decay_heat(units='W/m3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2*1e6 # [W/m3]
     # volume is required to calculate total decay heat
     m4.volume = 10.
     assert pytest.approx(m4.get_decay_heat(units='W')) == 40175.15720273193*3/2*10 # [W]
@@ -680,6 +690,8 @@ def test_decay_photon_energy():
     src_per_bqg = m.get_decay_photon_energy(units='Bq/g')
     src_per_bqkg = m.get_decay_photon_energy(units='Bq/kg')
     assert pytest.approx(src_per_bqg.integral()) == src_per_bqkg.integral() / 1000.
+    src_per_bqm3 = m.get_decay_photon_energy(units='Bq/m3')
+    assert pytest.approx(src_per_bqm3.integral()) == src_per_cm3.integral() * 1e6
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution

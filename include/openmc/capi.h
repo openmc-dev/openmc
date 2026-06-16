@@ -123,8 +123,13 @@ int openmc_new_filter(const char* type, int32_t* index);
 int openmc_next_batch(int* status);
 int openmc_nuclide_name(int index, const char** name);
 int openmc_plot_geometry();
+// Deprecated; use openmc_slice_data.
 int openmc_id_map(const void* slice, int32_t* data_out);
+// Deprecated; use openmc_slice_data.
 int openmc_property_map(const void* slice, double* data_out);
+int openmc_slice_data(const double origin[3], const double u_span[3],
+  const double v_span[3], const size_t pixels[2], bool show_overlaps, int level,
+  int32_t filter_index, int32_t* geom_data, double* property_data);
 int openmc_get_plot_index(int32_t id, int32_t* index);
 int openmc_plot_get_id(int32_t index, int32_t* id);
 int openmc_plot_set_id(int32_t index, int32_t id);

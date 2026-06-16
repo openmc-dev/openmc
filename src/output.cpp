@@ -321,7 +321,6 @@ void print_build_info()
   std::string png(n);
   std::string profiling(n);
   std::string coverage(n);
-  std::string mcpl(n);
   std::string uwuw(n);
   std::string strict_fp(n);
 
@@ -336,9 +335,6 @@ void print_build_info()
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED
   libmesh = y;
-#endif
-#ifdef OPENMC_MCPL
-  mcpl = y;
 #endif
 #ifdef USE_LIBPNG
   png = y;
@@ -369,7 +365,6 @@ void print_build_info()
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
-    fmt::print("MCPL support:          {}\n", mcpl);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
     fmt::print("UWUW support:          {}\n", uwuw);
@@ -510,6 +505,14 @@ void print_runtime()
     show_rate("Calculation Rate (inactive)", speed_inactive);
   }
   show_rate("Calculation Rate (active)", speed_active);
+
+  // Display track rate when weight windows are enabled
+  if (settings::weight_windows_on) {
+    double speed_tracks =
+      simulation::simulation_tracks_completed / time_active.elapsed();
+    fmt::print(
+      " {:<33} = {:.6} tracks/second\n", "Track Rate (active)", speed_tracks);
+  }
 }
 
 //==============================================================================

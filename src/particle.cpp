@@ -20,6 +20,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle_data.h"
+#include "openmc/particle_restart.h"
 #include "openmc/photon.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
@@ -33,7 +34,6 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
-#include "openmc/particle_restart.h"
 
 #ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
@@ -849,7 +849,8 @@ void Particle::mark_as_lost(const char* message)
   if (settings::max_write_lost_particles < 0 ||
       simulation::n_lost_particles < settings::max_write_lost_particles) {
     write_restart();
-    if (settings::run_mode != RunMode::PARTICLE && !settings::write_all_tracks) {
+    if (settings::run_mode != RunMode::PARTICLE &&
+        !settings::write_all_tracks) {
       run_lost_particle_track(*this);
     }
   }
@@ -866,14 +867,14 @@ void Particle::mark_as_lost(const char* message)
   // reached
   if (simulation::n_lost_particles >= settings::max_lost_particles &&
       simulation::n_lost_particles >= settings::rel_max_lost_particles * n) {
-  #pragma omp critical(FinalizeParticleTrack)
+#pragma omp critical(FinalizeParticleTrack)
     {
       if (lost_particle_track_file_open) {
         close_track_file();
         lost_particle_track_file_open = false;
       }
     }
-      fatal_error("Maximum number of lost particles has been reached.");
+    fatal_error("Maximum number of lost particles has been reached.");
   }
 }
 
@@ -884,8 +885,8 @@ void Particle::write_restart() const
     return;
 
   // Set up file name
-  auto filename = fmt::format("{}batch_{}_particle_{}.h5", settings::path_output,
-    simulation::current_batch, id());
+  auto filename = fmt::format("{}batch_{}_particle_{}.h5",
+    settings::path_output, simulation::current_batch, id());
 
 #pragma omp critical(WriteParticleRestart)
   {

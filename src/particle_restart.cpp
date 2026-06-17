@@ -11,10 +11,10 @@
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/source.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/track_output.h"
-#include "openmc/source.h"
 
 #include <algorithm> // for copy
 #include <stdexcept>
@@ -161,8 +161,8 @@ void run_lost_particle_track(Particle& lost)
   if (settings::run_mode == RunMode::EIGENVALUE) {
     site = simulation::source_bank[i];
   } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
-              settings::use_shared_secondary_bank &&
-              i < simulation::shared_secondary_bank_read.size()) {
+             settings::use_shared_secondary_bank &&
+             i < simulation::shared_secondary_bank_read.size()) {
     site = simulation::shared_secondary_bank_read[i];
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     int64_t id = compute_transport_seed(compute_particle_id(i + 1));

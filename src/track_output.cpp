@@ -21,8 +21,8 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-hid_t track_file {-1};     //! HDF5 identifier for track file
-hid_t track_dtype {-1};    //! HDF5 identifier for track datatype
+hid_t track_file {-1};  //! HDF5 identifier for track file
+hid_t track_dtype {-1}; //! HDF5 identifier for track datatype
 int n_tracks_written; //! Number of tracks written
 bool lost_particle_track_file_open {false};
 thread_local bool in_lost_track {false};
@@ -159,8 +159,8 @@ void finalize_particle_track(Particle& p)
       H5Sclose(dspace);
     }
   }
-    // Clear particle tracks
-    p.tracks().clear();
+  // Clear particle tracks
+  p.tracks().clear();
 }
 
 } // namespace openmc

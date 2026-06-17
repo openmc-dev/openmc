@@ -358,10 +358,21 @@ void Particle::event_delta_advance()
   boundary() = distance_to_external_boundary(*this);
   boundary().distance() -= FP_REL_PRECISION;
 
-  // Move to the external boundary or delta tracking collision site.
+  double speed = this->speed();
+  double time_cutoff = settings::time_cutoff[type().transport_index()];
+  double distance_cutoff =
+    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
+  // Move to the external boundary, delta tracking collision site, or time
+  // cutoff distance.
   double distance =
-    std::min(collision_distance(), boundary().distance());
-  r() += distance * u();
+    std::min({collision_distance(), boundary().distance(), distance_cutoff});
+  move_distance(distance);
+
+  // Advance particle in time.
+  double dt = distance / speed;
+  time() += dt;
+  lifetime() += dt;
 
   // Need to locate the particle at the collision site or boundary.
   for (int j = 0; j < n_coord(); ++j) {
@@ -376,6 +387,11 @@ void Particle::event_delta_advance()
 
   // Force re-calculation of material properties at the collision site.
   material_last() = C_NONE;
+
+  // Set particle weight to zero if it hit the time boundary
+  if (distance == distance_cutoff) {
+    wgt() = 0.0;
+  }
 }
 
 void Particle::event_cross_surface()

@@ -701,9 +701,18 @@ class Geometry:
             key = (surf._type, surf._boundary_type) + coeffs
             redundancies[key].append(surf)
 
-        redundant_surfaces = {replace.id: keep
-                              for keep, *redundant in redundancies.values()
-                              for replace in redundant}
+        redundant_surfaces = {}
+        for group in redundancies.values():
+            kept = [group[0]]
+            for surf in group[1:]:
+                equivalent = next(
+                    (keep for keep in kept if surf.is_equal(keep)),
+                    None
+                )
+                if equivalent is not None:
+                    redundant_surfaces[surf.id] = equivalent
+                else:
+                    kept.append(surf)
 
         if redundant_surfaces:
             # Iterate through all cells contained in the geometry

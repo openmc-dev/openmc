@@ -352,15 +352,15 @@ void Particle::event_delta_advance()
     collision_distance() = -std::log(prn(current_seed())) / majorant();
   }
 
-  // Update distance to problem boundary
+  // Update distance to problem boundary. Particles with large majorant
+  // cross sections will tunnel out of the domain if a floating point
+  // tolerance is not specified on the boundary distance calculation.
   boundary() = distance_to_external_boundary(*this);
+  boundary().distance() -= FP_REL_PRECISION;
 
-  // Move to the external boundary or delta tracking collision site. Particles
-  // with large majorant cross sections will tunnel out of the domain if a
-  // floating point tolerance is not specified on the boundary distance
-  // calculation.
+  // Move to the external boundary or delta tracking collision site.
   double distance =
-    std::min(collision_distance(), boundary().distance() - FP_REL_PRECISION);
+    std::min(collision_distance(), boundary().distance());
   r() += distance * u();
 
   // Need to locate the particle at the collision site or boundary.

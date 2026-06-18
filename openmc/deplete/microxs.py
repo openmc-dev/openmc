@@ -567,12 +567,12 @@ class MicroXS:
             if not np.all(np.diff(energies) > 0):
                 raise ValueError('Energy group boundaries must be in ascending order')
 
-        # A 1-D flux is a single domain; 2-D (or a list of 1-D) is a batch
-        flux_array = np.asarray(multigroup_flux, dtype=float)
-        if flux_array.ndim not in (1, 2):
-            raise ValueError('multigroup_flux must be 1-D or 2-D')
-        single = flux_array.ndim == 1
-        fluxes = [flux_array] if single else list(flux_array)
+        # A 1-D flux is a single domain; 2-D (or a list of 1-D arrays) is a batch
+        try:
+            single = {1: True, 2: False}[1 + np.ndim(multigroup_flux[0])]
+        except (TypeError, IndexError, KeyError):
+            raise ValueError('multigroup_flux must be 1-D or 2-D') from None
+        fluxes = [np.asarray(multigroup_flux, dtype=float)] if single else multigroup_flux
 
         # check dimension consistency per flux
         n_groups = len(energies) - 1

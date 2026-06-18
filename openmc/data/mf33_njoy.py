@@ -46,6 +46,20 @@ def _read_mat_from_endf(endf_path: Path) -> int:
         raise ValueError(f"Could not infer MAT from ENDF file: {endf_path}")
     return first_nonzero
 
+def _endf_has_mf33(endf_path: Path, mat: int) -> bool:
+    """Return True if the ENDF tape contains any MF=33 section for this MAT."""
+    with endf_path.open("r", errors="ignore") as f:
+        for line in f:
+            if len(line) < 75:
+                continue
+            try:
+                m  = int(line[66:70])
+                mf = int(line[70:72])
+            except ValueError:
+                continue
+            if m == mat and mf == 33:
+                return True
+    return False
 
 def _validate_energy_grid_ev(ek: Sequence[float]) -> List[float]:
     ek = [float(x) for x in ek]
@@ -130,7 +144,7 @@ def _errorr_mf33_input(
     mat: int,
     temperature: float,
     ek: Sequence[float],
-    iwt: int = 2,
+    iwt: int = 6,
     spectrum: Optional[Sequence[float]] = None,
     relative: bool = True,
     irespr: int = 1,
@@ -288,12 +302,12 @@ def generate_errorr_mf33(
     temperature: float = 293.6,
     # processing chain
     err: float = NJOY_tolerance,
-    minimal_processing: bool = True,
+    minimal_processing: bool = False,
     thermr: bool = False,
-    unresr: bool = False,
-    purr: bool = False,
+    unresr: bool = True,
+    purr: bool = True,
     # ERRORR options
-    iwt: int = 2,
+    iwt: int = 6,
     spectrum: Optional[Sequence[float]] = None,
     relative: bool = True,
     irespr: int = 1,
@@ -349,6 +363,12 @@ def generate_errorr_mf33(
     ek = _validate_energy_grid_ev(energy_grid_ev)
     if mat is None:
         mat = _read_mat_from_endf(endf_path)
+
+    if not _endf_has_mf33(endf_path, mat):
+        raise ValueError(
+            f"ENDF file {endf_path.name} (MAT={mat}) contains no MF=33 "
+            f"covariance data; nothing for ERRORR to process."
+        )
 
     if minimal_processing:
         thermr = unresr = purr = False

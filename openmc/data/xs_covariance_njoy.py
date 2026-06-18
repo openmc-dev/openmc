@@ -562,16 +562,16 @@ class NeutronXSCovariances:
                 else:
                     n_cross += 1
                     cross_pairs.append((int(mt_key), int(mt1_key)))
-        log.debug(
+        log.info(
             "ERRORR tape33 parsed: %d MT section(s), "
             "%d self-covariance block(s), %d cross-covariance block(s)",
             len(reactions), n_self, n_cross,
         )
         if cross_pairs:
             for mt_a, mt1_a in cross_pairs:
-                log.debug("  cross-covariance: MT %d <-> MT %d", mt_a, mt1_a)
+                log.info("  cross-covariance: MT %d <-> MT %d", mt_a, mt1_a)
         else:
-            log.debug(
+            log.info(
                 "  No explicit cross-covariance blocks in ERRORR output.  "
                 "Cross-reaction correlations (if any) are handled implicitly "
                 "via NC-type derivation relations in the evaluation."
@@ -589,7 +589,7 @@ class NeutronXSCovariances:
                     )
                 elif qa.status == "warn":
                     n_warnings += 1
-                    log.debug(
+                    log.info(
                         "Stage-1 MF=33 warning for MT %s -> MT1 %s: %s",
                         mt, mt1, "; ".join(qa.messages)
                     )
@@ -602,7 +602,7 @@ class NeutronXSCovariances:
                 fcache[mt_key] = {}
                 for mt1, M in sec.get("COVS", {}).items():
                     if int(mt_key) != int(mt1):
-                        log.debug(
+                        log.info(
                             "  MT %s -> MT1 %s: cross-block (%d x %d), "
                             "stored raw (no factorization)",
                             mt_key, mt1,
@@ -616,7 +616,7 @@ class NeutronXSCovariances:
                     fcache[mt_key][mt1] = result
                     if result.method == "eigen_qr":
                         n_eigen_qr += 1
-                    log.debug(
+                    log.info(
                         "  MT %s -> MT1 %s: method=%-9s  rank=%d/%d  ",
                         mt_key, mt1,
                         result.method,

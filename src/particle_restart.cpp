@@ -145,9 +145,9 @@ void run_lost_particle_track(Particle& lost)
     return;
   in_lost_track = true;
 
-#pragma omp critical(LostParticleTrack)
+#pragma omp critical(TrackFile)
   {
-    if (!lost_particle_track_file_open) {
+    if (track_file < 0 && !lost_particle_track_file_open) {
       open_track_file();
       lost_particle_track_file_open = true;
     }

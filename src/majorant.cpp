@@ -94,7 +94,9 @@ Majorant::Majorant(int i_universe) : maj_universe_(i_universe)
 
   // Clear the contained materials vector and insert the elements from the set.
   for (auto i_mat : unique_materials) {
-    contained_materials_.push_back(i_mat);
+    if (i_mat != MATERIAL_VOID) {
+      contained_materials_.push_back(i_mat);
+    }
   }
 }
 

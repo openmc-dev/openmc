@@ -150,7 +150,7 @@ def pwr_core() -> openmc.Model:
     rpv_steel.add_nuclide('Ni60', 0.0026776, 'wo')
     rpv_steel.add_nuclide('Mn55', 0.01, 'wo')
     rpv_steel.add_nuclide('Cr52', 0.002092475, 'wo')
-    rpv_steel.add_nuclide('C0', 0.0025, 'wo')
+    rpv_steel.add_element('C', 0.0025, 'wo')
     rpv_steel.add_nuclide('Cu63', 0.0013696, 'wo')
 
     lower_rad_ref = openmc.Material(6, name='Lower radial reflector')

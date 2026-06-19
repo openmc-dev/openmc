@@ -180,92 +180,64 @@ def test_hybrid_tally_setup():
     assert ef.values[-1] == pytest.approx(energies[-1])
 
 
-def test_hybrid_tally_defaults_to_all_nuclides():
+def _simple_model():
     model = openmc.Model()
-    mat = openmc.Material(components={'U235': 1.0, 'O16': 2.0})
+    mat = openmc.Material(components={'H1': 1.0, 'H2': 1.0},
+                          density=5.0, density_units='g/cm3')
     sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
     cell = openmc.Cell(region=-sphere, fill=mat)
     model.geometry = openmc.Geometry([cell])
-    model.settings.batches = 2
-    model.settings.particles = 10
-
-    captured = {}
-    def capture_run(**kwargs):
-        captured['tallies'] = list(model.tallies)
-        raise StopIteration
-
-    with patch.object(model, 'run', side_effect=capture_run):
-        with pytest.raises(StopIteration):
-            get_microxs_and_flux(
-                model, [mat],
-                nuclides=['U235', 'O16'],
-                reactions=['fission', '(n,gamma)'],
-                energies=[0., 0.625, 2.0e7],
-                reaction_rate_mode='flux',
-                reaction_rate_opts={'reactions': ['fission']},
-                chain_file=CHAIN_FILE,
-            )
-
-    rr = next(t for t in captured['tallies'] if t.name == 'MicroXS RR 0')
-    assert rr.nuclides == ['U235', 'O16']
-    assert rr.scores == ['fission']
+    model.settings.particles = 100
+    model.settings.batches = 5
+    model.settings.run_mode = 'fixed source'
+    return model, mat
 
 
-def test_flux_mode_returns_one_group_flux():
-    model = openmc.Model()
-    mat = openmc.Material(components={'U235': 1.0})
-    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
-    cell = openmc.Cell(region=-sphere, fill=mat)
-    model.geometry = openmc.Geometry([cell])
-    model.settings.batches = 2
-    model.settings.particles = 10
+def test_hybrid_tally_defaults_to_all_nuclides(run_in_tmpdir):
     energies = [0., 0.625, 2.0e7]
+    kwargs = {
+        'nuclides': ['H1', 'H2'],
+        'reactions': ['(n,2n)', '(n,gamma)'],
+        'energies': energies,
+        'reaction_rate_mode': 'flux',
+        'chain_file': CHAIN_FILE,
+    }
 
-    captured = {}
+    model, mat = _simple_model()
+    default_fluxes, default_micros = get_microxs_and_flux(
+        model, [mat], reaction_rate_opts={'reactions': ['(n,2n)']}, **kwargs
+    )
 
-    class FakeTally:
-        def __init__(self, data):
-            self._data = data
+    model, mat = _simple_model()
+    explicit_fluxes, explicit_micros = get_microxs_and_flux(
+        model, [mat],
+        reaction_rate_opts={
+            'nuclides': ['H1', 'H2'],
+            'reactions': ['(n,2n)']
+        },
+        **kwargs
+    )
 
-        def _read_results(self):
-            pass
+    np.testing.assert_allclose(default_fluxes[0], explicit_fluxes[0])
+    np.testing.assert_allclose(default_micros[0].data, explicit_micros[0].data)
+    assert default_micros[0].nuclides == explicit_micros[0].nuclides
+    assert default_micros[0].reactions == explicit_micros[0].reactions
 
-        def get_reshaped_data(self):
-            return self._data
 
-    class FakeStatePoint:
-        def __init__(self, path):
-            self.tallies = {
-                tally.id: FakeTally(np.array([[[[1.0]], [[2.0]]]]))
-                for tally in captured['tallies']
-            }
+def test_flux_mode_returns_one_group_flux(run_in_tmpdir):
+    model, mat = _simple_model()
+    fluxes, micros = get_microxs_and_flux(
+        model, [mat],
+        nuclides=['H1'],
+        reactions=['(n,2n)'],
+        energies=[0., 0.625, 2.0e7],
+        reaction_rate_mode='flux',
+        chain_file=CHAIN_FILE,
+    )
 
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    def capture_run(**kwargs):
-        captured['tallies'] = list(model.tallies)
-        return 'statepoint.test.h5'
-
-    with patch.object(model, 'run', side_effect=capture_run), \
-            patch('openmc.deplete.microxs.StatePoint', FakeStatePoint), \
-            patch.object(MicroXS, 'from_multigroup_flux',
-                         return_value=MicroXS(np.ones((1, 1, 1)),
-                                              ['U235'], ['fission'])):
-        fluxes, micros = get_microxs_and_flux(
-            model, [mat],
-            nuclides=['U235'],
-            reactions=['fission'],
-            energies=energies,
-            reaction_rate_mode='flux',
-            chain_file=CHAIN_FILE,
-        )
-
-    assert fluxes[0] == pytest.approx([3.0])
+    assert fluxes[0].shape == (1,)
     assert micros[0].data.shape == (1, 1, 1)
+    assert fluxes[0][0] > 0.0
 
 # ---------------------------------------------------------------------------
 # Tests for MicroXS.merge()

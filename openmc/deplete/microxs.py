@@ -84,7 +84,12 @@ def get_microxs_and_flux(
         reactions listed in the depletion chain file are used.
     energies : iterable of float or str
         Energy group boundaries in [eV] or the name of the group structure.
-        If left as None energies will default to [0.0, 100e6]
+        If left as None energies will default to [0.0, 100e6]. When
+        `reaction_rate_mode` is "direct", these boundaries define the output
+        flux and microscopic cross section energy group structure. When
+        `reaction_rate_mode` is "flux", these boundaries define the multigroup
+        flux tally used to collapse continuous-energy cross sections; returned
+        fluxes and microscopic cross sections are one-group.
     reaction_rate_mode : {"direct", "flux"}, optional
         The "direct" method tallies reaction rates directly (per energy
         group). The "flux" method tallies a multigroup flux spectrum and then
@@ -110,7 +115,9 @@ def get_microxs_and_flux(
     reaction_rate_opts : dict, optional
         When `reaction_rate_mode="flux"`, allows selecting a subset of
         nuclide/reaction pairs to be computed via direct reaction-rate tallies
-        (per energy group). Supported keys: "nuclides", "reactions".
+        over one energy bin spanning the full `energies` range. Supported keys:
+        "nuclides", "reactions". If "reactions" are specified without
+        "nuclides", all selected nuclides are used.
 
     Returns
     -------
@@ -172,8 +179,11 @@ def get_microxs_and_flux(
         rr_reactions = list(reactions)
     elif reaction_rate_mode == 'flux' and reaction_rate_opts:
         opts = reaction_rate_opts or {}
-        rr_nuclides = list(opts.get('nuclides', []))
         rr_reactions = list(opts.get('reactions', []))
+        if rr_reactions:
+            rr_nuclides = list(opts.get('nuclides', nuclides))
+        else:
+            rr_nuclides = list(opts.get('nuclides', []))
         # Keep only requested pairs within overall sets
         if rr_nuclides:
             rr_nuclides = [n for n in rr_nuclides if n in set(nuclides)]
@@ -296,6 +306,9 @@ def get_microxs_and_flux(
         micros = direct_micros
     else:
         micros = flux_micros
+
+    if reaction_rate_mode == 'flux':
+        fluxes = [np.array([flux.sum()]) for flux in fluxes]
 
     # Reset tallies
     model.tallies = original_tallies

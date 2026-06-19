@@ -307,8 +307,10 @@ def get_microxs_and_flux(
     else:
         micros = flux_micros
 
+    # In flux mode, return one-group fluxes to match the microscopic cross
+    # sections, which are always one-group by virtue of the collapse
     if reaction_rate_mode == 'flux':
-        fluxes = [np.array([flux.sum()]) for flux in fluxes]
+        fluxes = [flux.sum(keepdims=True) for flux in fluxes]
 
     # Reset tallies
     model.tallies = original_tallies

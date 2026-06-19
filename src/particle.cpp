@@ -871,12 +871,12 @@ void Particle::mark_as_lost(const char* message)
   {
     if (simulation::n_lost_particles >= settings::max_lost_particles &&
         simulation::n_lost_particles >= settings::rel_max_lost_particles * n) {
-      // close track file
+      // close track file manually
       if (track_file >= 0) {
-            H5Tclose(track_dtype);
-            file_close(track_file);
-            track_file = -1;
-            track_dtype = -1;
+        H5Tclose(track_dtype);
+        file_close(track_file);
+        track_file = -1;
+        track_dtype = -1;
       }
       lost_particle_track_file_open = false;
       fatal_error("Maximum number of lost particles has been reached.");

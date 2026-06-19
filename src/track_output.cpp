@@ -23,7 +23,7 @@ namespace openmc {
 
 hid_t track_file {-1};  //! HDF5 identifier for track file
 hid_t track_dtype {-1}; //! HDF5 identifier for track datatype
-int n_tracks_written; //! Number of tracks written
+int n_tracks_written;   //! Number of tracks written
 bool lost_particle_track_file_open {false};
 thread_local bool in_lost_track {false};
 
@@ -51,7 +51,7 @@ void open_track_file()
     track_file = -1;
     track_dtype = -1;
   }
-  
+
   // Open file and write filetype/version -- when MPI is enabled and there is
   // more than one rank, each rank writes its own file
 #ifdef OPENMC_MPI
@@ -92,16 +92,16 @@ void open_track_file()
 
 void close_track_file()
 {
-  #pragma omp critical(TrackFile)  
-    {
-        if (track_file >= 0) {       
-            H5Tclose(track_dtype);
-            file_close(track_file);
-            track_file = -1;
-            track_dtype = -1;
-            n_tracks_written = 0;
-        }
+#pragma omp critical(TrackFile)
+  {
+    if (track_file >= 0) {
+      H5Tclose(track_dtype);
+      file_close(track_file);
+      track_file = -1;
+      track_dtype = -1;
+      n_tracks_written = 0;
     }
+  }
 }
 
 bool check_track_criteria(const Particle& p)
@@ -143,6 +143,8 @@ void finalize_particle_track(Particle& p)
   }
   offsets.push_back(offset);
 
+  // Thread safe by ensuring opening and closing of HDF5 file is not
+  // simultaneous
 #pragma omp critical(TrackFile)
   {
     // Guard against writing to a closed file
@@ -151,10 +153,11 @@ void finalize_particle_track(Particle& p)
 
       // Create name for dataset
       std::string dset_name = fmt::format("track_{}_{}_{}",
-          simulation::current_batch, simulation::current_gen, p.id());
+        simulation::current_batch, simulation::current_gen, p.id());
 
+      // In case ID already exists (no duplicates in HDF5)
       if (H5Lexists(track_file, dset_name.c_str(), H5P_DEFAULT) > 0) {
-          dset_name = fmt::format("{}_{}", dset_name, track_index++);
+        dset_name = fmt::format("{}_{}", dset_name, track_index++);
       }
 
       // Write array of TrackState to file

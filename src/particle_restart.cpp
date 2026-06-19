@@ -139,6 +139,7 @@ void run_particle_restart()
   }
 }
 
+// Function for automatically creating tracks file for lost particles
 void run_lost_particle_track(Particle& lost)
 {
   if (in_lost_track)

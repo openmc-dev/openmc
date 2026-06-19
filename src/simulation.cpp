@@ -80,6 +80,11 @@ int openmc_simulation_init()
   if (simulation::initialized)
     return 0;
 
+  // Reset lost particle track file state for new simulation
+  lost_particle_track_file_open = false;
+  in_lost_track = false;
+  simulation::n_lost_particles = 0;
+
   // Initialize nuclear data (energy limits, log grid)
   if (settings::run_CE) {
     initialize_data();

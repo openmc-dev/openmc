@@ -179,6 +179,94 @@ def test_hybrid_tally_setup():
     assert ef.values[0] == pytest.approx(energies[0])
     assert ef.values[-1] == pytest.approx(energies[-1])
 
+
+def test_hybrid_tally_defaults_to_all_nuclides():
+    model = openmc.Model()
+    mat = openmc.Material(components={'U235': 1.0, 'O16': 2.0})
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(region=-sphere, fill=mat)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.batches = 2
+    model.settings.particles = 10
+
+    captured = {}
+    def capture_run(**kwargs):
+        captured['tallies'] = list(model.tallies)
+        raise StopIteration
+
+    with patch.object(model, 'run', side_effect=capture_run):
+        with pytest.raises(StopIteration):
+            get_microxs_and_flux(
+                model, [mat],
+                nuclides=['U235', 'O16'],
+                reactions=['fission', '(n,gamma)'],
+                energies=[0., 0.625, 2.0e7],
+                reaction_rate_mode='flux',
+                reaction_rate_opts={'reactions': ['fission']},
+                chain_file=CHAIN_FILE,
+            )
+
+    rr = next(t for t in captured['tallies'] if t.name == 'MicroXS RR 0')
+    assert rr.nuclides == ['U235', 'O16']
+    assert rr.scores == ['fission']
+
+
+def test_flux_mode_returns_one_group_flux():
+    model = openmc.Model()
+    mat = openmc.Material(components={'U235': 1.0})
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(region=-sphere, fill=mat)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.batches = 2
+    model.settings.particles = 10
+    energies = [0., 0.625, 2.0e7]
+
+    captured = {}
+
+    class FakeTally:
+        def __init__(self, data):
+            self._data = data
+
+        def _read_results(self):
+            pass
+
+        def get_reshaped_data(self):
+            return self._data
+
+    class FakeStatePoint:
+        def __init__(self, path):
+            self.tallies = {
+                tally.id: FakeTally(np.array([[[[1.0]], [[2.0]]]]))
+                for tally in captured['tallies']
+            }
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    def capture_run(**kwargs):
+        captured['tallies'] = list(model.tallies)
+        return 'statepoint.test.h5'
+
+    with patch.object(model, 'run', side_effect=capture_run), \
+            patch('openmc.deplete.microxs.StatePoint', FakeStatePoint), \
+            patch.object(MicroXS, 'from_multigroup_flux',
+                         return_value=MicroXS(np.ones((1, 1, 1)),
+                                              ['U235'], ['fission'])):
+        fluxes, micros = get_microxs_and_flux(
+            model, [mat],
+            nuclides=['U235'],
+            reactions=['fission'],
+            energies=energies,
+            reaction_rate_mode='flux',
+            chain_file=CHAIN_FILE,
+        )
+
+    assert fluxes[0] == pytest.approx([3.0])
+    assert micros[0].data.shape == (1, 1, 1)
+
 # ---------------------------------------------------------------------------
 # Tests for MicroXS.merge()
 # ---------------------------------------------------------------------------

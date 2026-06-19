@@ -289,8 +289,8 @@ def get_microxs_and_flux(
             direct_micros.extend(
                 MicroXS(xs_i, rr_nuclides, rr_reactions) for xs_i in xs)
 
-    # If using flux mode, compute flux-collapsed microscopic XS
     if reaction_rate_mode == 'flux':
+        # Compute flux-collapsed microscopic XS
         flux_micros = [MicroXS.from_multigroup_flux(
             energies=energies,
             multigroup_flux=flux_i,
@@ -299,6 +299,10 @@ def get_microxs_and_flux(
             reactions=reactions
         ) for flux_i in fluxes]
 
+        # We need to return one-group fluxes to match the microscopic cross
+        # sections, which are always one-group by virtue of the collapse
+        fluxes = [flux.sum(keepdims=True) for flux in fluxes]
+
     # Decide which micros to use and merge if needed
     if reaction_rate_mode == 'flux' and rr_tallies:
         micros = [m1.merge(m2) for m1, m2 in zip(flux_micros, direct_micros)]
@@ -306,11 +310,6 @@ def get_microxs_and_flux(
         micros = direct_micros
     else:
         micros = flux_micros
-
-    # In flux mode, return one-group fluxes to match the microscopic cross
-    # sections, which are always one-group by virtue of the collapse
-    if reaction_rate_mode == 'flux':
-        fluxes = [flux.sum(keepdims=True) for flux in fluxes]
 
     # Reset tallies
     model.tallies = original_tallies

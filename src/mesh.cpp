@@ -3641,6 +3641,7 @@ void LibMesh::initialize()
   for (int i = 0; i < num_threads(); i++) {
     pl_.emplace_back(m_->sub_point_locator());
     pl_.back()->set_contains_point_tol(FP_COINCIDENT);
+    pl_.back()->unset_close_to_point_tol();
     pl_.back()->enable_out_of_mesh_mode();
   }
 

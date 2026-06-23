@@ -3670,7 +3670,7 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
   // Get tet vertex coordinates from LibMesh
   std::array<Position, 4> tet_verts;
   for (int i = 0; i < elem.n_nodes(); i++) {
-    auto node_ref = elem.node_ref(i);
+    const auto& node_ref = elem.node_ref(i);
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
@@ -3700,7 +3700,7 @@ int LibMesh::n_vertices() const
 
 Position LibMesh::vertex(int vertex_id) const
 {
-  const auto node_ref = m_->node_ref(vertex_id);
+  const auto& node_ref = m_->node_ref(vertex_id);
   if (length_multiplier_ > 0.0) {
     return length_multiplier_ * Position(node_ref(0), node_ref(1), node_ref(2));
   } else {

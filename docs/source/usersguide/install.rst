@@ -331,11 +331,11 @@ Prerequisites
 
       This option allows OpenMC to read and write MCPL (Monte Carlo Particle
       Lists) files instead of .h5 files for sources (external source
-      distribution, k-eigenvalue source distribution, and surface sources). To
-      turn this option on in the CMake configuration step, add the following
-      option::
-
-          cmake -DOPENMC_USE_MCPL=on ..
+      distribution, k-eigenvalue source distribution, and surface sources). 
+      OpenMC does not need any particular build option to use this, but MCPL
+      must be installed on the system in order to do so. Refer to the 
+      `MCPL documentation <https://github.com/mctools/mcpl/blob/HEAD/INSTALL.md>`_
+      for instructions on how to accomplish this.
 
     * NCrystal_ library for defining materials with enhanced thermal neutron transport
 

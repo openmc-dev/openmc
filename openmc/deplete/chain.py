@@ -319,16 +319,16 @@ class Chain:
 
         String arguments in ``decay_files``, ``fpy_files``, and
         ``neutron_files`` will be treated as file names to be read.
-        Alternatively, :class:`openmc.data.endf.Evaluation` instances
-        can be included in these arguments.
+        Alternatively, :class:`openmc.data.endf.Evaluation` or
+        ``endf.Material`` instances can be included in these arguments.
 
         Parameters
         ----------
-        decay_files : list of str or openmc.data.endf.Evaluation
+        decay_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF decay sub-library files
-        fpy_files : list of str or openmc.data.endf.Evaluation
+        fpy_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF neutron-induced fission product yield sub-library files
-        neutron_files : list of str or openmc.data.endf.Evaluation
+        neutron_files : list of str, openmc.data.endf.Evaluation, or endf.Material
             List of ENDF neutron reaction sub-library files
         reactions : iterable of str, optional
             Transmutation reactions to include in the depletion chain, e.g.,
@@ -363,7 +363,7 @@ class Chain:
             print('Processing neutron sub-library files...')
         reactions = {}
         for f in neutron_files:
-            evaluation = openmc.data.endf.Evaluation(f)
+            evaluation = openmc.data.endf.as_evaluation(f)
             name = evaluation.gnds_name
             reactions[name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:
@@ -413,6 +413,8 @@ class Chain:
                     type_ = ','.join(mode.modes)
                     if mode.daughter in decay_data:
                         target = mode.daughter
+                    elif 'sf' in type_:
+                        target = None
                     else:
                         print('missing {} {} {}'.format(
                             parent, type_, mode.daughter))
@@ -641,7 +643,7 @@ class Chain:
 
                         # Allow for total annihilation for debug purposes
                         if branch_val != 0.0:
-                            if target is not None:
+                            if target is not None and 'sf' not in decay_type:
                                 k = self.nuclide_dict[target]
                                 setval(k, i, branch_val)
 
@@ -731,11 +733,12 @@ class Chain:
 
                     # Determine light nuclide production, e.g., (n,d) should
                     # produce H2
-                    light_nucs = REACTIONS[r_type].secondaries
-                    for light_nuc in light_nucs:
-                        k = self.nuclide_dict.get(light_nuc)
-                        if k is not None:
-                            setval(k, i, path_rate * br)
+                    if path_rate != 0.0:
+                        light_nucs = REACTIONS[r_type].secondaries
+                        for light_nuc in light_nucs:
+                            k = self.nuclide_dict.get(light_nuc)
+                            if k is not None:
+                                setval(k, i, path_rate * br)
 
                 else:
                     for product, y in fission_yields[nuc.name].items():

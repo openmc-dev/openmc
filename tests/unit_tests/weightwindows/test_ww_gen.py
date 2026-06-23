@@ -366,8 +366,7 @@ def test_ww_generation_with_dagmc(run_in_tmpdir):
     rr_model.convert_to_multigroup(
         method="stochastic_slab",
         overwrite_mgxs_library=True,
-        particles=10,
-        threshold=None,
+        nparticles=10,
         groups="CASMO-2"
     )
 

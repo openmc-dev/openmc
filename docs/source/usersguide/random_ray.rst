@@ -642,11 +642,7 @@ model to use these multigroup cross sections. An example is given below::
   model.convert_to_multigroup(
       method="material_wise",
       groups="CASMO-2",
-      particles=2000,
-      batches=100,
-      inactive=50,
-      max_batches=1000,
-      threshold=1e-2,
+      nparticles=2000,
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
       correction=None,
@@ -697,13 +693,10 @@ of these methods is given below:
 
 When selecting a non-default energy group structure, you can manually define
 group boundaries or specify the name of a known group structure (a list of which
-can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The main knob controlling
-the accuracy/compute tradeoff is ``threshold`` (the ``rel_err`` convergence
-target applied to each MGXS tally); tighten it to improve fidelity. The
-``particles``, ``batches``, and ``max_batches`` parameters control simulation
-size; set ``threshold=None`` to disable the trigger and run exactly ``batches``
-batches. The ``correction`` parameter can be set to ``"P0"`` to enable P0
-transport correction. The ``overwrite_mgxs_library`` parameter can be set to
+can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The ``nparticles``
+parameter can be adjusted upward to improve the fidelity of the generated cross
+section library. The ``correction`` parameter can be set to ``"P0"`` to enable
+P0 transport correction. The ``overwrite_mgxs_library`` parameter can be set to
 ``True`` to overwrite an existing MGXS library file, or ``False`` to skip
 generation and use an existing library file.
 
@@ -951,6 +944,8 @@ as::
 which will greatly improve the quality of the linear source term in 2D
 simulations.
 
+.. _usersguide_random_ray_run_modes:
+
 ---------------------------------
 Fixed Source and Eigenvalue Modes
 ---------------------------------
@@ -1080,22 +1075,47 @@ The adjoint flux random ray solver mode can be enabled as::
 
     settings.random_ray['adjoint'] = True
 
-When enabled, OpenMC will first run a forward transport simulation followed by
-an adjoint transport simulation. The purpose of the forward solve is to compute
-the adjoint external source when an external source is present in the
-simulation. Simulation settings (e.g., number of rays, batches, etc.) will be
-identical for both simulations. At the conclusion of the run, all results (e.g.,
-tallies, plots, etc.) will be derived from the adjoint flux rather than the
-forward flux but are not labeled any differently. The initial forward flux
-solution will not be stored or available in the final statepoint file. Those
-wishing to do analysis requiring both the forward and adjoint solutions will
-need to run two separate simulations and load both statepoint files.
+When enabled, OpenMC will first run a forward transport simulation if there are 
+no user-specified adjoint sources present, followed by an adjoint transport 
+simulation. Fixed adjoint sources can be specified on the 
+:attr:`openmc.Settings.random_ray` dictionary as follows::
+
+    # Geometry definition
+    ...
+    detector_cell = openmc.Cell(fill=detector_mat, name='cell where detector will be')
+    ...
+    # Define fixed adjoint neutron source
+    strengths = [1.0]
+    midpoints = [1.0e-4]
+    energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+
+    adj_source = openmc.IndependentSource(
+        energy=energy_distribution, 
+        constraints={'domains': [detector_cell]}
+    )
+
+    # Add to random_ray dict
+    settings.random_ray['adjoint_source'] = adj_source
+
+The same constraints apply to the user-defined adjoint source as to the forward 
+source, described in the :ref:`Fixed Source and Eigenvalue section 
+<usersguide_random_ray_run_modes>`. If this source is not provided, a forward 
+solve must take place to compute the adjoint external source when a forward 
+external source is present in the problem. Simulation settings (e.g., number of 
+rays, batches, etc.) will be identical for both calculations. At the 
+conclusion of the run, all results (e.g., tallies, plots, etc.) will be 
+derived from the adjoint flux rather than the forward flux but are not labeled 
+any differently. The initial forward flux solution will not be stored or 
+available in the final statepoint file. Those wishing to do analysis requiring 
+both the forward and adjoint solutions will need to run two separate 
+simulations and load both statepoint files.
 
 .. note::
-    When adjoint mode is selected, OpenMC will always perform a full forward
-    solve and then run a full adjoint solve immediately afterwards. Statepoint
-    and tally results will be derived from the adjoint flux, but will not be
-    labeled any differently.
+    Use of the automated 
+    :ref:`FW-CADIS weight window generator<usersguide_fw_cadis>` is not 
+    currently compatible with user-defined adjoint sources. Instead, the 
+    initial forward calculation is used to assign "forward-weighted" adjoint 
+    sources to the tally regions of interest.
 
 ---------------------------------------
 Putting it All Together: Example Inputs

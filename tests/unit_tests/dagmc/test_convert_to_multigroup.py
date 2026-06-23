@@ -45,8 +45,7 @@ def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
     model.convert_to_multigroup(
         method='material_wise',
         groups='CASMO-2',
-        particles=10,
-        threshold=None,
+        nparticles=10,
         overwrite_mgxs_library=True
     )
 

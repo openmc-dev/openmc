@@ -13,8 +13,8 @@ from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
 from .correlated import CorrelatedAngleEnergy
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
-from .endf import get_head_record, get_tab1_record, get_list_record, \
-    get_tab2_record, get_cont_record
+from .endf import as_evaluation, get_head_record, get_tab1_record, \
+    get_list_record, get_tab2_record, get_cont_record
 from .energy_distribution import EnergyDistribution, LevelInelastic, \
     DiscretePhoton
 from .function import Tabulated1D, Polynomial
@@ -1151,7 +1151,7 @@ class Reaction(EqualityMixin):
 
         Parameters
         ----------
-        ev : openmc.data.endf.Evaluation
+        ev : openmc.data.endf.Evaluation or endf.Material
             ENDF evaluation
         mt : int
             The MT value of the reaction to get data for
@@ -1162,6 +1162,7 @@ class Reaction(EqualityMixin):
             Reaction data
 
         """
+        ev = as_evaluation(ev)
         rx = Reaction(mt)
 
         # Integrated cross section

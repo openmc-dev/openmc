@@ -7,6 +7,8 @@ import warnings
 import h5py
 import lxml.etree as ET
 import numpy as np
+import os
+import re
 
 import openmc
 import openmc.checkvalue as cv
@@ -353,6 +355,66 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
     writer.Write()
 
     return output
+
+# Function for generating a vtk file for lost particle tracks
+def tracks_to_vtk(tracks_file="tracks.h5", output_dir="vtk_files",
+                        batch=None, gen=None, particle=None):
+    import vtk
+
+    # Creates directory output structure for vtk files
+    os.makedirs(output_dir, exist_ok=True)
+
+    with h5py.File(tracks_file, "r") as f:
+        for name in f.keys():
+            # handle both track_b_g_p and track_b_g_p_repeat
+            match = re.match(r"track_(\d+)_(\d+)_(\d+)(?:_(\d+))?$", name)
+            if not match:
+                continue
+
+            b, g, p = int(match.group(1)), int(match.group(2)), int(match.group(3))
+            repeat  = int(match.group(4)) if match.group(4) is not None else None
+
+            # In case one specific track is specified
+            if batch    is not None and b != batch:
+                continue
+            if gen      is not None and g != gen:
+                continue
+            if particle is not None and p != particle:
+                continue
+
+            data     = f[name][:]
+            n_points = len(data)
+
+            points = vtk.vtkPoints()
+            lines  = vtk.vtkCellArray()
+
+            point_ids = []
+            for state in data:
+                x   = float(state['r']['x'])
+                y   = float(state['r']['y'])
+                z   = float(state['r']['z'])
+                pid = points.InsertNextPoint(x, y, z)
+                point_ids.append(pid)
+
+            polyline = vtk.vtkPolyLine()
+            polyline.GetPointIds().SetNumberOfIds(n_points)
+            for i, pid in enumerate(point_ids):
+                polyline.GetPointIds().SetId(i, pid)
+            lines.InsertNextCell(polyline)
+
+            polydata = vtk.vtkPolyData()
+            polydata.SetPoints(points)
+            polydata.SetLines(lines)
+
+            out_path = os.path.join(output_dir, f"{name}.vtp")
+            writer   = vtk.vtkXMLPolyDataWriter()
+            writer.SetFileName(out_path)
+            writer.SetInputData(polydata)
+            writer.Write()
+
+            print(f"  Written {out_path}")
+
+    print(f"Done. Files written to '{output_dir}/'")
 
 
 def id_map_to_rgb(

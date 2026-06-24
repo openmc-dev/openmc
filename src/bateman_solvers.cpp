@@ -155,7 +155,7 @@ void triangular_solve_lu(const vector<double>& b,
 //
 // Coefficients from M. Pusa, "Higher-Order Chebyshev Rational Approximation
 // Method and Application to Burnup Equations," Nucl. Sci. Eng., 182:3,
-// 297-318 (2016). Values match openmc/deplete/cram.py exactly.
+// 297-318 (2016).
 //==============================================================================
 
 namespace {

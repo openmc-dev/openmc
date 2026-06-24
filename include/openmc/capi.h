@@ -330,10 +330,6 @@ int openmc_properties_import(const char* filename);
 //! The transmutation matrix A is provided in CSC (Compressed Sparse Column)
 //! format. The result is written to a caller-allocated output buffer.
 //!
-//! Implementation note: the CSC arrays are copied into internal storage on
-//! entry. A non-owning view may be added later if this copy becomes a
-//! bottleneck (e.g. with a future in-tree C++ depletion driver).
-//!
 //! All pointer arguments must be non-null. CSC row indices within each
 //! column must be sorted in ascending order.
 //!

@@ -584,19 +584,12 @@ public:
   // Methods and accessors
 
   // Cross section caches
-  NuclideMicroXS& neutron_xs(int i)
-  {
-    ensure_neutron_xs_cache();
-    return neutron_xs_[i];
-  } // Microscopic neutron cross sections
+  // Microscopic neutron cross sections
+  NuclideMicroXS& neutron_xs(int i) { return neutron_xs_[i]; }
   const NuclideMicroXS& neutron_xs(int i) const { return neutron_xs_[i]; }
 
   // Microscopic photon cross sections
-  ElementMicroXS& photon_xs(int i)
-  {
-    ensure_photon_xs_cache();
-    return photon_xs_[i];
-  }
+  ElementMicroXS& photon_xs(int i) { return photon_xs_[i]; }
   const ElementMicroXS& photon_xs(int i) const { return photon_xs_[i]; }
 
   void ensure_xs_cache_for_type();

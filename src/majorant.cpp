@@ -343,6 +343,9 @@ double NeutronMajorant::calculate_max_urr_xs(
       max_urr_xs_E1 =
         std::max(max_urr_xs_E1, urr.xs_values_(i_energy + 1, i_cdf).total);
     }
+    // Handle the rare case where the points could be negative.
+    max_urr_xs_E0 = std::max(max_urr_xs_E0, 0.0);
+    max_urr_xs_E1 = std::max(max_urr_xs_E1, 0.0);
 
     // Interpolate the bounding energy points.
     double interp_urr_xs = 0.0;
@@ -359,7 +362,7 @@ double NeutronMajorant::calculate_max_urr_xs(
       interp_urr_xs *= smooth_xs;
     }
 
-    max_urr_xs = std::max(max_urr_xs, interp_urr_xs);
+    max_urr_xs = std::max({max_urr_xs, interp_urr_xs, smooth_xs});
   }
 
   return max_urr_xs;

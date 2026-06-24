@@ -891,7 +891,7 @@ void Particle::write_restart() const
     return;
 
   // Set up file name
-  auto filename = fmt::format("{}batch_{}_particle_{}.h5",
+  auto filename = fmt::format("{}particle_{}_{}.h5",
     settings::path_output, simulation::current_batch, id());
 
 #pragma omp critical(WriteParticleRestart)

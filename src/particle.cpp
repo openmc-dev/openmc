@@ -160,6 +160,7 @@ void Particle::from_source(const SourceSite* src)
 
   // Copy attributes from source bank site
   type() = src->particle;
+  ensure_xs_cache_for_type();
   wgt() = src->wgt;
   wgt_last() = src->wgt;
   r() = src->r;

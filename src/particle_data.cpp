@@ -105,14 +105,50 @@ ParticleData::ParticleData()
   // Allocate space for tally filter matches
   filter_matches_.resize(model::tally_filters.size());
 
-  // Create microscopic cross section caches
-  neutron_xs_.resize(data::nuclides.size());
-  photon_xs_.resize(data::elements.size());
-
   // Creates the pulse-height storage for the particle
   if (!model::pulse_height_cells.empty()) {
     pht_storage_.resize(model::pulse_height_cells.size(), 0.0);
   }
+}
+
+void ParticleData::ensure_xs_cache_for_type()
+{
+  if (type().is_neutron()) {
+    ensure_neutron_xs_cache();
+    release_photon_xs_cache();
+  } else if (type().is_photon()) {
+    ensure_photon_xs_cache();
+    release_neutron_xs_cache();
+  } else {
+    release_neutron_xs_cache();
+    release_photon_xs_cache();
+  }
+}
+
+void ParticleData::ensure_neutron_xs_cache()
+{
+  if (neutron_xs_.size() != data::nuclides.size()) {
+    neutron_xs_.resize(data::nuclides.size());
+  }
+}
+
+void ParticleData::ensure_photon_xs_cache()
+{
+  if (photon_xs_.size() != data::elements.size()) {
+    photon_xs_.resize(data::elements.size());
+  }
+}
+
+void ParticleData::release_neutron_xs_cache()
+{
+  vector<NuclideMicroXS> empty;
+  neutron_xs_.swap(empty);
+}
+
+void ParticleData::release_photon_xs_cache()
+{
+  vector<ElementMicroXS> empty;
+  photon_xs_.swap(empty);
 }
 
 TrackState ParticleData::get_track_state() const

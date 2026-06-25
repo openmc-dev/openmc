@@ -2705,11 +2705,7 @@ class Model:
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
             Method to generate the MGXS. One cross section is produced per
-            material (keyed by material name), so a material that fills several
-            cells with differing spectra is represented by a single,
-            spectrum-averaged cross section. To resolve location-specific
-            spectra, give each region its own material with a distinct name;
-            conversion raises an error if distinct materials share a name.
+            material (keyed by material name).
         groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
             Energy group structure for the MGXS. Can be an
             :class:`openmc.mgxs.EnergyGroups` object, a string name of a

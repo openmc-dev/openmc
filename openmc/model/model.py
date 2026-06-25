@@ -2869,6 +2869,147 @@ class Model:
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
 
+    # Geometry debugging function in 3D
+    def geometry_debug(self, lower_left, upper_right, n_samples, print_summary=False):
+        _OVERLAP = -3
+        _NOT_FOUND = -2
+
+        # Accepts 3 separate samples (for x y and z) or just one number
+        if isinstance(n_samples, int):
+            nx = ny = nz = n_samples
+        else:
+            if len(n_samples) != 3:
+                raise ValueError("n_samples must be an int or a length-3 iterable")
+            nx, ny, nz = n_samples
+
+        nx = int(nx)
+        ny = int(ny)
+        nz = int(nz)
+
+        if nx <= 0 or ny <= 0 or nz <= 0:
+            raise ValueError("All n_samples values must be positive")
+
+        if len(lower_left) != 3:
+            raise ValueError("lower_left must be a length-3 iterable")
+        if len(upper_right) != 3:
+            raise ValueError("upper_right must be a length-3 iterable")
+
+        x0, y0, z0 = lower_left
+        x1, y1, z1 = upper_right
+
+        dx = (x1 - x0) / nx
+        dy = (y1 - y0) / ny
+        dz = (z1 - z0) / nz
+
+        u_span = (x1 - x0, 0.0, 0.0)
+        v_span = (0.0, y1 - y0, 0.0)
+        
+        unique_overlaps = set()
+        overlap_points = []
+        undefined_points = []
+
+        n_overlap_samples = 0
+        n_undefined_samples = 0
+
+        max_examples = 10
+
+        for k in range(nz):
+            z = z0 + (k + 0.5) * dz
+            origin = ((x0 + x1) / 2.0, (y0 + y1) / 2.0, z)
+
+            geom_data, property_data = openmc.lib.slice_data(
+                origin=origin,
+                u_span=u_span,
+                v_span=v_span,
+                pixels=(nx, ny),
+                show_overlaps=True,
+                level=-1,
+            )
+
+            cell_ids = geom_data[:, :, 0]
+
+            overlap_mask = (cell_ids == _OVERLAP)
+            undefined_mask = (cell_ids == _NOT_FOUND)
+
+            overlap_pixels = np.argwhere(overlap_mask)
+            undefined_pixels = np.argwhere(undefined_mask)
+
+            n_overlap_samples += len(overlap_pixels)
+            n_undefined_samples += len(undefined_pixels)
+
+            # Record unique overlap pairs and example coordinates
+            for y, x in overlap_pixels:
+                x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
+                y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
+
+                if len(overlap_points) < max_examples:
+                    overlap_points.append((float(x_coord), float(y_coord), float(z)))
+
+                cell1, cell2, universe = openmc.lib.slice_plot_overlap_data(int(x), int(y))
+                for c1, c2, u in zip(cell1, cell2, universe):
+                    a = min(int(c1), int(c2))
+                    b = max(int(c1), int(c2))
+                    unique_overlaps.add((int(u), a, b))
+
+            # Record undefined sample coordinates
+            for y, x in undefined_pixels:
+                x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
+                y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
+
+                if len(undefined_points) < max_examples:
+                    undefined_points.append((float(x_coord), float(y_coord), float(z)))
+
+        result = {
+            "n_overlap_samples": n_overlap_samples,
+            "n_undefined_samples": n_undefined_samples,
+            "overlap_points": overlap_points,
+            "undefined_points": undefined_points,
+            "n_more_overlap_points": max(0, n_overlap_samples - len(overlap_points)),
+            "n_more_undefined_points": max(0, n_undefined_samples - len(undefined_points)),                
+            "unique_overlaps": [
+                {"universe_id": u, "cell1_id": c1, "cell2_id": c2}
+                for (u, c1, c2) in sorted(unique_overlaps)
+            ],
+        }
+
+        if print_summary:
+            print("Geometry debug summary:")
+            print(f"  Overlap sample points found: {result['n_overlap_samples']}")
+            print(f"  Undefined sample points found: {result['n_undefined_samples']}")
+            print(f"  Unique overlap pairs found: {len(result['unique_overlaps'])}")
+
+            if result["overlap_points"]:
+                print("  Example overlap points:")
+                for pt in result["overlap_points"]:
+                    print(f"    {pt}")
+                if result["n_more_overlap_points"] > 0:
+                    print(f"    ... and {result['n_more_overlap_points']} more")
+            else:
+                print("  Example overlap points: None")
+
+            if result["undefined_points"]:
+                print("  Example undefined points:")
+                for pt in result["undefined_points"]:
+                    print(f"    {pt}")
+                if result["n_more_undefined_points"] > 0:
+                    print(f"    ... and {result['n_more_undefined_points']} more")
+            else:
+                print("  Example undefined points: None")
+
+            if result["unique_overlaps"]:
+                print("  Unique overlaps:")
+                for entry in result["unique_overlaps"][:10]:
+                    print(
+                        f"    Universe {entry['universe_id']}: "
+                        f"cells {entry['cell1_id']} and {entry['cell2_id']}"
+                    )
+                if len(result["unique_overlaps"]) > 10:
+                    print(f"    ... and {len(result['unique_overlaps']) - 10} more")
+            else:
+                print("  Unique overlaps: None")
+
+        return result
+
     def keff_search(
         self,
         func: ModelModifier,

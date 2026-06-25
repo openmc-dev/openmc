@@ -999,6 +999,25 @@ def test_keff_search(run_in_tmpdir):
     assert result.total_batches > 0
 
 
+def test_convert_to_multigroup_material_wise_warns_for_shared_material():
+    """material_wise generation warns when one material fills multiple cells, as
+    its cross section is then averaged over locations with possibly different
+    spectra."""
+    steel = openmc.Material(name="steel")
+    steel.add_element("Fe", 1.0)
+    steel.set_density("g/cm3", 7.9)
+
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type="vacuum")
+    # The same material object fills two separate cells (two "locations").
+    c1 = openmc.Cell(fill=steel, region=-s1)
+    c2 = openmc.Cell(fill=steel, region=+s1 & -s2)
+    model = openmc.Model(openmc.Geometry([c1, c2]), openmc.Materials([steel]))
+
+    with pytest.warns(UserWarning, match="differentiate_mats"):
+        model._warn_material_wise_spectral_averaging()
+
+
 def test_id_map_to_rgb():
     """Test conversion of ID map to RGB image array."""
     # Create a simple model

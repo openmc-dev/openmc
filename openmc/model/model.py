@@ -2593,6 +2593,32 @@ class Model:
                     for mat in mgxs_lib.domains
             }
 
+    def _warn_material_wise_spectral_averaging(self) -> None:
+        """Warn when a material fills more than one cell.
+
+        The "material_wise" method produces one flux-weighted cross section per
+        material, so a material spanning regions with different spectra (e.g.
+        steel near the source and deep inside a shield) is collapsed to a single
+        spectrum-averaged cross section. :meth:`Model.differentiate_mats` gives
+        each region its own material, and so its own cross section.
+        """
+        counts = {}
+        for cell in self.geometry.get_all_material_cells().values():
+            # A distribmat fill is a list that may contain None for void.
+            fills = cell.fill if cell.fill_type == 'distribmat' else [cell.fill]
+            for mat in fills:
+                if mat is not None:
+                    counts[mat] = counts.get(mat, 0) + 1
+
+        if any(n > 1 for n in counts.values()):
+            warnings.warn(
+                "The 'material_wise' method produces one spectrum-averaged "
+                "cross section per material, but one or more materials fill "
+                "multiple cells and will be averaged over locations that may "
+                "have different spectra. Use Model.differentiate_mats() to "
+                "generate a separate cross section per location."
+            )
+
     def _generate_material_wise_mgxs(
         self,
         groups: openmc.mgxs.EnergyGroups,
@@ -2635,6 +2661,8 @@ class Model:
             Valid entries for temperature_settings are the same as the valid
             entries in openmc.Settings.temperature_settings.
         """
+        self._warn_material_wise_spectral_averaging()
+
         temp_settings = {}
         if temperature_settings is None:
             temp_settings = self.settings.temperature

@@ -84,7 +84,12 @@ def get_microxs_and_flux(
         reactions listed in the depletion chain file are used.
     energies : iterable of float or str
         Energy group boundaries in [eV] or the name of the group structure.
-        If left as None energies will default to [0.0, 100e6]
+        If left as None, no energy filter is applied to the flux tally. When
+        `reaction_rate_mode` is "direct", these boundaries define the output
+        flux and microscopic cross section energy group structure. When
+        `reaction_rate_mode` is "flux", these boundaries define the multigroup
+        flux tally used to collapse continuous-energy cross sections; returned
+        fluxes and microscopic cross sections are one-group.
     reaction_rate_mode : {"direct", "flux"}, optional
         The "direct" method tallies reaction rates directly (per energy
         group). The "flux" method tallies a multigroup flux spectrum and then
@@ -110,7 +115,9 @@ def get_microxs_and_flux(
     reaction_rate_opts : dict, optional
         When `reaction_rate_mode="flux"`, allows selecting a subset of
         nuclide/reaction pairs to be computed via direct reaction-rate tallies
-        (per energy group). Supported keys: "nuclides", "reactions".
+        over one energy bin spanning the full `energies` range. Supported keys:
+        "nuclides", "reactions". If "reactions" are specified without
+        "nuclides", all selected nuclides are used.
 
     Returns
     -------
@@ -139,10 +146,14 @@ def get_microxs_and_flux(
         nuclides = [nuc.name for nuc in chain.nuclides
                     if nuc.name in nuclides_with_data]
 
-    # Set up the reaction rate and flux tallies
+    # Set up the reaction rate and flux tallies. When energies are omitted, no
+    # energy filter is needed for the transport calculation. A one-group energy
+    # range is still needed later if flux collapse is requested.
+    collapse_energies = energies
     if energies is None:
-        energies = [0.0, 100.0e6]
-    if isinstance(energies, str):
+        energy_filter = None
+        collapse_energies = [0.0, 100.0e6]
+    elif isinstance(energies, str):
         energy_filter = openmc.EnergyFilter.from_group_structure(energies)
     else:
         energy_filter = openmc.EnergyFilter(energies)
@@ -172,8 +183,11 @@ def get_microxs_and_flux(
         rr_reactions = list(reactions)
     elif reaction_rate_mode == 'flux' and reaction_rate_opts:
         opts = reaction_rate_opts or {}
-        rr_nuclides = list(opts.get('nuclides', []))
         rr_reactions = list(opts.get('reactions', []))
+        if rr_reactions:
+            rr_nuclides = list(opts.get('nuclides', nuclides))
+        else:
+            rr_nuclides = list(opts.get('nuclides', []))
         # Keep only requested pairs within overall sets
         if rr_nuclides:
             rr_nuclides = [n for n in rr_nuclides if n in set(nuclides)]
@@ -182,7 +196,7 @@ def get_microxs_and_flux(
 
     # Use 1-group energy filter for RR in flux mode
     has_rr = bool(rr_nuclides and rr_reactions)
-    if has_rr and reaction_rate_mode == 'flux':
+    if has_rr and reaction_rate_mode == 'flux' and energy_filter is not None:
         rr_energy_filter = openmc.EnergyFilter(
             [energy_filter.values[0], energy_filter.values[-1]])
     else:
@@ -194,14 +208,18 @@ def get_microxs_and_flux(
     model.tallies = []
     for i, domain_filter in enumerate(domain_filters):
         flux_tally = openmc.Tally(name=f'MicroXS flux {i}')
-        flux_tally.filters = [domain_filter, energy_filter]
+        flux_tally.filters = [domain_filter]
+        if energy_filter is not None:
+            flux_tally.filters.append(energy_filter)
         flux_tally.scores = ['flux']
         model.tallies.append(flux_tally)
         flux_tallies.append(flux_tally)
 
         if has_rr:
             rr_tally = openmc.Tally(name=f'MicroXS RR {i}')
-            rr_tally.filters = [domain_filter, rr_energy_filter]
+            rr_tally.filters = [domain_filter]
+            if rr_energy_filter is not None:
+                rr_tally.filters.append(rr_energy_filter)
             rr_tally.nuclides = rr_nuclides
             rr_tally.multiply_density = False
             rr_tally.scores = rr_reactions
@@ -255,8 +273,12 @@ def get_microxs_and_flux(
     all_flux_arrays = []
     for flux_tally in flux_tallies:
         # Get flux values and make energy groups last dimension
-        flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
-        flux = np.moveaxis(flux, 1, -1)  # (domains, 1, 1, groups)
+        flux = flux_tally.get_reshaped_data()
+        if energy_filter is None:
+            flux = flux[..., np.newaxis]  # (domains, 1, 1, groups)
+        else:
+            # (domains, groups, 1, 1) -> (domains, 1, 1, groups)
+            flux = np.moveaxis(flux, 1, -1)
         all_flux_arrays.append(flux)
         fluxes.extend(flux.squeeze((1, 2)))
 
@@ -266,8 +288,15 @@ def get_microxs_and_flux(
         for flux_arr, rr_tally in zip(all_flux_arrays, rr_tallies):
             flux = flux_arr
             # Get reaction rates and make energy groups last dimension
-            reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
-            reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
+            reaction_rates = rr_tally.get_reshaped_data()
+            if rr_energy_filter is None:
+                # (domains, nuclides, reactions) ->
+                # (domains, nuclides, reactions, groups)
+                reaction_rates = reaction_rates[..., np.newaxis]
+            else:
+                # (domains, groups, nuclides, reactions) ->
+                # (domains, nuclides, reactions, groups)
+                reaction_rates = np.moveaxis(reaction_rates, 1, -1)
 
             # If RR is 1-group, sum flux over groups
             if reaction_rate_mode == "flux":
@@ -279,15 +308,19 @@ def get_microxs_and_flux(
             direct_micros.extend(
                 MicroXS(xs_i, rr_nuclides, rr_reactions) for xs_i in xs)
 
-    # If using flux mode, compute flux-collapsed microscopic XS
     if reaction_rate_mode == 'flux':
+        # Compute flux-collapsed microscopic XS
         flux_micros = [MicroXS.from_multigroup_flux(
-            energies=energies,
+            energies=collapse_energies,
             multigroup_flux=flux_i,
             chain_file=chain_file,
             nuclides=nuclides,
             reactions=reactions
         ) for flux_i in fluxes]
+
+        # We need to return one-group fluxes to match the microscopic cross
+        # sections, which are always one-group by virtue of the collapse
+        fluxes = [flux.sum(keepdims=True) for flux in fluxes]
 
     # Decide which micros to use and merge if needed
     if reaction_rate_mode == 'flux' and rr_tallies:

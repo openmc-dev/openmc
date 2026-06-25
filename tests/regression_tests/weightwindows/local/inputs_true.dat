@@ -64,6 +64,7 @@
       <max_split>10</max_split>
       <weight_cutoff>1e-38</weight_cutoff>
     </weight_windows>
+    <shared_secondary_bank>false</shared_secondary_bank>
     <weight_window_checkpoints>
       <collision>true</collision>
       <surface>true</surface>

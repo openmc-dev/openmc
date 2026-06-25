@@ -32,7 +32,10 @@ class _SourceSite(Structure):
                 ('particle', c_int32),
                 ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
-                ('progeny_id', c_int64)]
+                ('progeny_id', c_int64),
+                ('wgt_born', c_double),
+                ('wgt_ww_born', c_double),
+                ('n_split', c_int64)]
 
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous

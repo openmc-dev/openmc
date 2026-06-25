@@ -1038,3 +1038,25 @@ def test_id_map_to_rgb():
     )
     # Check that overlap region is green
     assert np.allclose(rgb_overlap[5:, 5:], [0.0, 1.0, 0.0])
+
+
+def test_convert_to_multigroup_raises_on_duplicate_material_names(run_in_tmpdir):
+    """Distinct materials that share a name must raise rather than silently
+    collapse to a single cross section in the MGXS library."""
+    steel_a = openmc.Material(name="steel")
+    steel_a.add_element("Fe", 1.0)
+    steel_a.set_density("g/cm3", 7.9)
+    steel_b = openmc.Material(name="steel")
+    steel_b.add_element("Fe", 1.0)
+    steel_b.set_density("g/cm3", 7.9)
+
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type="vacuum")
+    c1 = openmc.Cell(fill=steel_a, region=-s1)
+    c2 = openmc.Cell(fill=steel_b, region=+s1 & -s2)
+    model = openmc.Model(
+        openmc.Geometry([c1, c2]), openmc.Materials([steel_a, steel_b])
+    )
+
+    with pytest.raises(ValueError, match="unique name"):
+        model.convert_to_multigroup(method="material_wise")

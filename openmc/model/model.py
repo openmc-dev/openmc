@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
+from collections import deque
 import copy
 from dataclasses import dataclass, field
 from functools import cache
@@ -2869,10 +2870,114 @@ class Model:
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
 
-    # Geometry debugging function in 3D
-    def geometry_debug(self, lower_left, upper_right, n_samples, print_summary=False):
-        _OVERLAP = -3
+    @staticmethod
+    def _classify_undefined_regions(cell_ids: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Classify undefined pixels in a 2D cell-ID slice.
+
+        Undefined pixels are identified by the `_NOT_FOUND` sentinel and split
+        into two groups: boundary-connected undefined pixels (`outside`) and
+        non-boundary-connected undefined pixels (`internal`). This classification
+        is based only on connectivity within the sampled pixel grid, so it does
+        not guarantee true geometric exterior/interior classification. To be 
+        reused in the plotter for undefined region visualization.
+
+        Parameters
+        ----------
+        cell_ids : numpy.ndarray
+            Two-dimensional array of cell IDs for a slice, intended to be 
+            gotten from the slice_data function.
+        """
+
         _NOT_FOUND = -2
+        if cell_ids is None:
+            return None, None, None
+
+        undefined = (cell_ids == _NOT_FOUND)
+        h, w = undefined.shape
+
+        outside = np.zeros_like(undefined, dtype=bool)
+        q = deque()
+
+        # Start with border undefined pixels at the edge of the plot
+        for x in range(w):
+            if undefined[0, x]:
+                outside[0, x] = True
+                q.append((0, x))
+            if undefined[h - 1, x] and not outside[h - 1, x]:
+                outside[h - 1, x] = True
+                q.append((h - 1, x))
+
+        for y in range(h):
+            if undefined[y, 0] and not outside[y, 0]:
+                outside[y, 0] = True
+                q.append((y, 0))
+            if undefined[y, w - 1] and not outside[y, w - 1]:
+                outside[y, w - 1] = True
+                q.append((y, w - 1))
+
+        neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        while q:
+            y, x = q.popleft()
+            for dy, dx in neighbors:
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < h and 0 <= nx < w:
+                    if undefined[ny, nx] and not outside[ny, nx]:
+                        outside[ny, nx] = True
+                        q.append((ny, nx))
+
+        internal = undefined & ~outside
+
+        # Guard: undefined regions exist, but none connect to the slice boundary.
+        # In this case, all undefined pixels are treated as internal in the
+        # sampled image, which may indicate a fully enclosed undefined region,
+        # a cropped plotting window, or insufficient resolution.
+        if undefined.any() and not outside.any():
+            warnings.warn(
+                "Undefined pixels were found, but none are connected to the "
+                "slice boundary. All undefined pixels are being classified as "
+                "internal for this slice. Consider increasing slice resolution."
+            )
+        return undefined, outside, internal
+
+    def geometry_debug(
+        self,
+        lower_left,
+        upper_right,
+        n_samples,
+        print_summary=False,
+        **init_kwargs,
+    ):
+        """Sample a 3D region to identify overlap and undefined locations.
+
+        The region between `lower_left` and `upper_right` is sampled on a regular
+        3D grid by taking a sequence of 2D slices in z. Overlap and undefined
+        locations are identified from cells marked with the overlap and undefined
+        sentinels, respectively. Example coordinates and unique overlap pairs
+        found in the slices are returned in a summary dictionary. This function
+        is meant to be called from an input file on a 3D box encapsulating the
+        entire model.
+
+        Parameters
+        ----------
+        lower_left : Sequence[float]
+            Lower-left corner of the sampled 3D region.
+        upper_right : Sequence[float]
+            Upper-right corner of the sampled 3D region.
+        n_samples : int or Sequence[int]
+            Number of sample points in the x, y, and z directions. If a single
+            integer is given, the same value is used for all three directions.
+        print_summary : bool, optional
+            Whether to print a summary of overlap and undefined sample results.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
+        """
+        import openmc.lib
+
+        _OVERLAP = -3
+
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
 
         # Accepts 3 separate samples (for x y and z) or just one number
         if isinstance(n_samples, int):
@@ -2897,13 +3002,11 @@ class Model:
         x0, y0, z0 = lower_left
         x1, y1, z1 = upper_right
 
-        dx = (x1 - x0) / nx
-        dy = (y1 - y0) / ny
         dz = (z1 - z0) / nz
 
         u_span = (x1 - x0, 0.0, 0.0)
         v_span = (0.0, y1 - y0, 0.0)
-        
+
         unique_overlaps = set()
         overlap_points = []
         undefined_points = []
@@ -2913,51 +3016,52 @@ class Model:
 
         max_examples = 10
 
-        for k in range(nz):
-            z = z0 + (k + 0.5) * dz
-            origin = ((x0 + x1) / 2.0, (y0 + y1) / 2.0, z)
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            for k in range(nz):
+                z = z0 + (k + 0.5) * dz
+                origin = ((x0 + x1) / 2.0, (y0 + y1) / 2.0, z)
 
-            geom_data, property_data = openmc.lib.slice_data(
-                origin=origin,
-                u_span=u_span,
-                v_span=v_span,
-                pixels=(nx, ny),
-                show_overlaps=True,
-                level=-1,
-            )
+                geom_data, property_data = openmc.lib.slice_data(
+                    origin=origin,
+                    u_span=u_span,
+                    v_span=v_span,
+                    pixels=(nx, ny),
+                    show_overlaps=True,
+                    level=-1,
+                )
 
-            cell_ids = geom_data[:, :, 0]
+                cell_ids = geom_data[:, :, 0]
 
-            overlap_mask = (cell_ids == _OVERLAP)
-            undefined_mask = (cell_ids == _NOT_FOUND)
+                overlap_mask = (cell_ids == _OVERLAP)
+                undefined, outside, internal = Model._classify_undefined_regions(cell_ids)
 
-            overlap_pixels = np.argwhere(overlap_mask)
-            undefined_pixels = np.argwhere(undefined_mask)
+                overlap_pixels = np.argwhere(overlap_mask)
+                undefined_pixels = np.argwhere(internal)
 
-            n_overlap_samples += len(overlap_pixels)
-            n_undefined_samples += len(undefined_pixels)
+                n_overlap_samples += len(overlap_pixels)
+                n_undefined_samples += len(undefined_pixels)
 
-            # Record unique overlap pairs and example coordinates
-            for y, x in overlap_pixels:
-                x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
-                y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
+                # Record unique overlap pairs and example coordinates
+                for y, x in overlap_pixels:
+                    x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
+                    y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
 
-                if len(overlap_points) < max_examples:
-                    overlap_points.append((float(x_coord), float(y_coord), float(z)))
+                    if len(overlap_points) < max_examples:
+                        overlap_points.append((float(x_coord), float(y_coord), float(z)))
 
-                cell1, cell2, universe = openmc.lib.slice_plot_overlap_data(int(x), int(y))
-                for c1, c2, u in zip(cell1, cell2, universe):
-                    a = min(int(c1), int(c2))
-                    b = max(int(c1), int(c2))
-                    unique_overlaps.add((int(u), a, b))
+                    cell1, cell2, universe = openmc.lib.slice_data_overlap_info(int(x), int(y))
+                    for c1, c2, u in zip(cell1, cell2, universe):
+                        a = min(int(c1), int(c2))
+                        b = max(int(c1), int(c2))
+                        unique_overlaps.add((int(u), a, b))
 
-            # Record undefined sample coordinates
-            for y, x in undefined_pixels:
-                x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
-                y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
+                # Record internal undefined sample coordinates
+                for y, x in undefined_pixels:
+                    x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
+                    y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
 
-                if len(undefined_points) < max_examples:
-                    undefined_points.append((float(x_coord), float(y_coord), float(z)))
+                    if len(undefined_points) < max_examples:
+                        undefined_points.append((float(x_coord), float(y_coord), float(z)))
 
         result = {
             "n_overlap_samples": n_overlap_samples,
@@ -2965,7 +3069,7 @@ class Model:
             "overlap_points": overlap_points,
             "undefined_points": undefined_points,
             "n_more_overlap_points": max(0, n_overlap_samples - len(overlap_points)),
-            "n_more_undefined_points": max(0, n_undefined_samples - len(undefined_points)),                
+            "n_more_undefined_points": max(0, n_undefined_samples - len(undefined_points)),
             "unique_overlaps": [
                 {"universe_id": u, "cell1_id": c1, "cell2_id": c2}
                 for (u, c1, c2) in sorted(unique_overlaps)

@@ -380,7 +380,8 @@ void collect_sorted_history_secondary_banks(
     simulation::progeny_per_particle.end(),
     simulation::progeny_per_particle.begin(), 0);
 
-  simulation::shared_secondary_bank_write = SharedArray<SourceSite>(n_progeny);
+  simulation::shared_secondary_bank_write.resize(0);
+  simulation::shared_secondary_bank_write.extend_uninitialized(n_progeny);
 
   for (const auto& bank : thread_banks) {
     for (const auto& site : bank) {
@@ -1074,6 +1075,9 @@ void transport_history_based_shared_secondary()
         p.local_secondary_bank().clear();
       }
     } // End of transport loop over tracks in shared secondary bank
+    simulation::shared_secondary_bank_write =
+      std::move(simulation::shared_secondary_bank_read);
+    simulation::shared_secondary_bank_read = SharedArray<SourceSite>();
     collect_sorted_history_secondary_banks(thread_banks);
     thread_banks.clear();
     n_generation_depth++;

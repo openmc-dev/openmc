@@ -42,6 +42,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 #include <string>
 
 //==============================================================================
@@ -357,22 +358,47 @@ int64_t simulation_tracks_completed {0};
 
 namespace {
 
-void collect_history_secondary_banks(vector<vector<SourceSite>>& thread_banks)
+void collect_sorted_history_secondary_banks(
+  vector<vector<SourceSite>>& thread_banks)
 {
-  int64_t total = 0;
+  int64_t n_collected = 0;
   for (const auto& bank : thread_banks) {
-    total += bank.size();
+    n_collected += bank.size();
   }
 
-  simulation::shared_secondary_bank_write = SharedArray<SourceSite>(total);
+  int64_t n_progeny = 0;
+  for (int64_t count : simulation::progeny_per_particle) {
+    n_progeny += count;
+  }
 
-  int64_t offset = 0;
+  if (n_collected != n_progeny) {
+    fatal_error("Mismatch detected between sum of all particle progeny and "
+                "secondary bank size during collection.");
+  }
+
+  std::exclusive_scan(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(),
+    simulation::progeny_per_particle.begin(), 0);
+
+  simulation::shared_secondary_bank_write = SharedArray<SourceSite>(n_progeny);
+
   for (const auto& bank : thread_banks) {
-    if (!bank.empty()) {
-      std::copy(bank.cbegin(), bank.cend(),
-        simulation::shared_secondary_bank_write.data() + offset);
+    for (const auto& site : bank) {
+      if (site.parent_id < 0 ||
+          site.parent_id >=
+            static_cast<int64_t>(simulation::progeny_per_particle.size())) {
+        fatal_error(fmt::format("Invalid parent_id {} for banked site "
+                                "(expected range [0, {})).",
+          site.parent_id, simulation::progeny_per_particle.size()));
+      }
+      int64_t idx =
+        simulation::progeny_per_particle[site.parent_id] + site.progeny_id;
+      if (idx < 0 || idx >= n_progeny) {
+        fatal_error("Mismatch detected between sum of all particle progeny and "
+                    "secondary bank size during collection.");
+      }
+      simulation::shared_secondary_bank_write[idx] = site;
     }
-    offset += bank.size();
   }
 }
 
@@ -988,7 +1014,7 @@ void transport_history_based_shared_secondary()
       p.local_secondary_bank().clear();
     }
   }
-  collect_history_secondary_banks(thread_banks);
+  collect_sorted_history_secondary_banks(thread_banks);
   thread_banks.clear();
 
   simulation::simulation_tracks_completed += settings::n_particles;
@@ -998,10 +1024,6 @@ void transport_history_based_shared_secondary()
   int n_generation_depth = 1;
   int64_t alive_secondary = 1;
   while (alive_secondary) {
-
-    // Sort the shared secondary bank by parent ID then progeny ID to
-    // ensure reproducibility.
-    sort_bank(simulation::shared_secondary_bank_write, false);
 
     // Synchronize the shared secondary bank amongst all MPI ranks, such
     // that each MPI rank has an approximately equal number of secondary
@@ -1052,7 +1074,7 @@ void transport_history_based_shared_secondary()
         p.local_secondary_bank().clear();
       }
     } // End of transport loop over tracks in shared secondary bank
-    collect_history_secondary_banks(thread_banks);
+    collect_sorted_history_secondary_banks(thread_banks);
     thread_banks.clear();
     n_generation_depth++;
     simulation::simulation_tracks_completed += alive_secondary;

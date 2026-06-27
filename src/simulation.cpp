@@ -12,6 +12,7 @@
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/photon.h"
@@ -353,6 +354,53 @@ vector<int64_t> work_index;
 int64_t simulation_tracks_completed {0};
 
 } // namespace simulation
+
+namespace {
+
+void collect_history_secondary_banks(vector<vector<SourceSite>>& thread_banks)
+{
+  int64_t total = 0;
+  for (const auto& bank : thread_banks) {
+    total += bank.size();
+  }
+
+  simulation::shared_secondary_bank_write = SharedArray<SourceSite>(total);
+
+  int64_t offset = 0;
+  for (const auto& bank : thread_banks) {
+    if (!bank.empty()) {
+      std::copy(bank.cbegin(), bank.cend(),
+        simulation::shared_secondary_bank_write.data() + offset);
+    }
+    offset += bank.size();
+  }
+}
+
+void collect_event_secondary_banks(int64_t n_particles)
+{
+  vector<int64_t> offsets(n_particles);
+  int64_t total = 0;
+  for (int64_t i = 0; i < n_particles; ++i) {
+    offsets[i] = total;
+    total += simulation::particles[i].local_secondary_bank().size();
+  }
+
+  int64_t bank_offset =
+    simulation::shared_secondary_bank_write.extend_uninitialized(total);
+
+#pragma omp parallel for schedule(static)
+  for (int64_t i = 0; i < n_particles; ++i) {
+    auto& local_bank = simulation::particles[i].local_secondary_bank();
+    if (!local_bank.empty()) {
+      std::copy(local_bank.cbegin(), local_bank.cend(),
+        simulation::shared_secondary_bank_write.data() + bank_offset +
+          offsets[i]);
+      local_bank.clear();
+    }
+  }
+}
+
+} // namespace
 
 //==============================================================================
 // Non-member functions
@@ -921,11 +969,13 @@ void transport_history_based_shared_secondary()
   std::fill(simulation::progeny_per_particle.begin(),
     simulation::progeny_per_particle.end(), 0);
 
+  vector<vector<SourceSite>> thread_banks(num_threads());
+
   // Phase 1: Transport primary particles and deposit first generation of
   // secondaries in the shared secondary bank
 #pragma omp parallel
   {
-    vector<SourceSite> thread_bank;
+    auto& thread_bank = thread_banks[thread_num()];
     Particle p;
 
 #pragma omp for schedule(runtime)
@@ -937,15 +987,9 @@ void transport_history_based_shared_secondary()
       }
       p.local_secondary_bank().clear();
     }
-
-    // Drain thread-local bank into the shared secondary bank (once per thread)
-#pragma omp critical(SharedSecondaryBank)
-    {
-      for (auto& site : thread_bank) {
-        simulation::shared_secondary_bank_write.thread_unsafe_append(site);
-      }
-    }
   }
+  collect_history_secondary_banks(thread_banks);
+  thread_banks.clear();
 
   simulation::simulation_tracks_completed += settings::n_particles;
 
@@ -987,11 +1031,12 @@ void transport_history_based_shared_secondary()
       simulation::shared_secondary_bank_read.size());
     std::fill(simulation::progeny_per_particle.begin(),
       simulation::progeny_per_particle.end(), 0);
+    thread_banks.resize(num_threads());
 
     // Transport all secondary tracks from the shared secondary bank
 #pragma omp parallel
     {
-      vector<SourceSite> thread_bank;
+      auto& thread_bank = thread_banks[thread_num()];
       Particle p;
 
 #pragma omp for schedule(runtime)
@@ -1006,17 +1051,9 @@ void transport_history_based_shared_secondary()
         }
         p.local_secondary_bank().clear();
       }
-
-      // Drain thread-local bank into the shared secondary bank (once per
-      // thread)
-#pragma omp critical(SharedSecondaryBank)
-      {
-        for (auto& secondary_site : thread_bank) {
-          simulation::shared_secondary_bank_write.thread_unsafe_append(
-            secondary_site);
-        }
-      }
     } // End of transport loop over tracks in shared secondary bank
+    collect_history_secondary_banks(thread_banks);
+    thread_banks.clear();
     n_generation_depth++;
     simulation::simulation_tracks_completed += alive_secondary;
   } // End of loop over secondary generations
@@ -1080,13 +1117,7 @@ void transport_event_based_shared_secondary()
     process_transport_events();
     process_death_events(n_particles);
 
-    // Collect secondaries from all particle buffers into shared bank
-    for (int64_t i = 0; i < n_particles; i++) {
-      for (auto& site : simulation::particles[i].local_secondary_bank()) {
-        simulation::shared_secondary_bank_write.thread_unsafe_append(site);
-      }
-      simulation::particles[i].local_secondary_bank().clear();
-    }
+    collect_event_secondary_banks(n_particles);
 
     remaining_work -= n_particles;
     source_offset += n_particles;
@@ -1150,13 +1181,7 @@ void transport_event_based_shared_secondary()
       process_transport_events();
       process_death_events(n_particles);
 
-      // Collect secondaries from all particle buffers into shared bank
-      for (int64_t i = 0; i < n_particles; i++) {
-        for (auto& site : simulation::particles[i].local_secondary_bank()) {
-          simulation::shared_secondary_bank_write.thread_unsafe_append(site);
-        }
-        simulation::particles[i].local_secondary_bank().clear();
-      }
+      collect_event_secondary_banks(n_particles);
 
       sec_remaining -= n_particles;
       sec_offset += n_particles;

@@ -58,7 +58,6 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   read_dataset(file_id, "type", type);
   p.type() = legacy_particle_codes ? legacy_particle_index_to_type(type)
                                    : ParticleType {type};
-  p.ensure_xs_cache_for_type();
   read_dataset(file_id, "weight", p.wgt());
   read_dataset(file_id, "energy", p.E());
   read_dataset(file_id, "xyz", p.r());

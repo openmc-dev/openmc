@@ -160,7 +160,6 @@ void Particle::from_source(const SourceSite* src)
 
   // Copy attributes from source bank site
   type() = src->particle;
-  ensure_xs_cache_for_type();
   wgt() = src->wgt;
   wgt_last() = src->wgt;
   r() = src->r;
@@ -192,13 +191,6 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
-
-  // Force CE neutron cross sections to be recalculated after source state is
-  // known. For shared secondary transport, this avoids allocating a neutron
-  // cache before a secondary's actual particle type has been applied.
-  if (settings::run_CE) {
-    invalidate_neutron_xs();
-  }
 }
 
 void Particle::event_calculate_xs()

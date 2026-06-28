@@ -681,6 +681,11 @@ void initialize_particle_track(
     simulation::total_weight += p.wgt();
   }
 
+  // Force calculation of cross-sections by setting last energy to zero
+  if (settings::run_CE) {
+    p.invalidate_neutron_xs();
+  }
+
   // Prepare to write out particle track.
   if (p.write_track())
     add_particle_track(p);

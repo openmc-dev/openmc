@@ -1,8 +1,6 @@
 #ifndef OPENMC_PARTICLE_DATA_H
 #define OPENMC_PARTICLE_DATA_H
 
-#include <cstddef>
-
 #include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/particle_type.h"
@@ -590,13 +588,6 @@ public:
 
   // Microscopic photon cross sections
   ElementMicroXS& photon_xs(int i) { return photon_xs_[i]; }
-  const ElementMicroXS& photon_xs(int i) const { return photon_xs_[i]; }
-
-  void ensure_xs_cache_for_type();
-  void ensure_neutron_xs_cache();
-  void ensure_photon_xs_cache();
-  size_t neutron_xs_cache_size() const { return neutron_xs_.size(); }
-  size_t photon_xs_cache_size() const { return photon_xs_.size(); }
 
   // Macroscopic cross sections
   MacroXS& macro_xs() { return macro_xs_; }
@@ -781,9 +772,6 @@ public:
   //! Force recalculation of neutron xs by setting last energy to zero
   void invalidate_neutron_xs()
   {
-    if (!type().is_neutron())
-      return;
-    ensure_neutron_xs_cache();
     for (auto& micro : neutron_xs_)
       micro.last_E = 0.0;
   }
@@ -804,10 +792,6 @@ public:
       d = 0;
     }
   }
-
-private:
-  void release_neutron_xs_cache();
-  void release_photon_xs_cache();
 };
 
 } // namespace openmc

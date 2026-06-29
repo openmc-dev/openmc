@@ -58,8 +58,8 @@ CSCMatrix::CSCMatrix(
 {
   if (static_cast<int>(data_.size()) != pattern_.nnz()) {
     throw std::invalid_argument {
-      fmt::format("CSCMatrix: data size ({}) != pattern nnz ({})",
-        data_.size(), pattern_.nnz())};
+      fmt::format("CSCMatrix: data size ({}) != pattern nnz ({})", data_.size(),
+        pattern_.nnz())};
   }
 }
 

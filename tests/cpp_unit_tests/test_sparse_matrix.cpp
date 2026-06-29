@@ -140,28 +140,22 @@ TEST_CASE("CSCMatrix default constructor")
 TEST_CASE("CSCPattern rejects malformed inputs")
 {
   // indptr size mismatch (n=3 requires 4 entries)
-  CHECK_THROWS_AS(
-    CSCPattern(3, {0, 1, 2}, {0, 1}), std::invalid_argument);
+  CHECK_THROWS_AS(CSCPattern(3, {0, 1, 2}, {0, 1}), std::invalid_argument);
 
   // indptr[0] must be 0
-  CHECK_THROWS_AS(
-    CSCPattern(2, {1, 1, 2}, {0, 1}), std::invalid_argument);
+  CHECK_THROWS_AS(CSCPattern(2, {1, 1, 2}, {0, 1}), std::invalid_argument);
 
   // indptr[n] must equal nnz
-  CHECK_THROWS_AS(
-    CSCPattern(2, {0, 1, 3}, {0, 1}), std::invalid_argument);
+  CHECK_THROWS_AS(CSCPattern(2, {0, 1, 3}, {0, 1}), std::invalid_argument);
 
   // Row index out of bounds
-  CHECK_THROWS_AS(
-    CSCPattern(2, {0, 1, 2}, {0, 5}), std::invalid_argument);
+  CHECK_THROWS_AS(CSCPattern(2, {0, 1, 2}, {0, 5}), std::invalid_argument);
 
   // Unsorted row indices within a column
-  CHECK_THROWS_AS(
-    CSCPattern(3, {0, 2, 2, 2}, {2, 0}), std::invalid_argument);
+  CHECK_THROWS_AS(CSCPattern(3, {0, 2, 2, 2}, {2, 0}), std::invalid_argument);
 
   // Duplicate row indices within a column (not strictly ascending)
-  CHECK_THROWS_AS(
-    CSCPattern(3, {0, 2, 2, 2}, {1, 1}), std::invalid_argument);
+  CHECK_THROWS_AS(CSCPattern(3, {0, 2, 2, 2}, {1, 1}), std::invalid_argument);
 }
 
 TEST_CASE("CSCMatrix rejects data/nnz size mismatch")

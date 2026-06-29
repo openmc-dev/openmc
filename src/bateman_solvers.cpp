@@ -62,7 +62,8 @@ void numeric_factorize_cram(const CSCMatrix& A, double dt,
 
   for (int j = 0; j < n; ++j) {
 
-    // Scatter the shifted operator column: M[:, j] = dt * A[:, j] - theta * I[:, j]
+    // Scatter the shifted operator column: M[:, j] = dt * A[:, j] - theta *
+    // I[:, j]
     {
       int a_pos = a_indptr[j];
       int a_end = a_indptr[j + 1];

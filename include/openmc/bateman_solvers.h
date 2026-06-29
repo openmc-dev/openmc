@@ -55,9 +55,8 @@ public:
   //! \param dt  Time interval [s]
   //! \param substeps Number of substeps to use within dt
   //! \return    Final atom densities [n]
-  virtual vector<double> solve(
-    const CSCMatrix& A, const vector<double>& n0, double dt,
-    int substeps = 1) = 0;
+  virtual vector<double> solve(const CSCMatrix& A, const vector<double>& n0,
+    double dt, int substeps = 1) = 0;
 };
 
 //==============================================================================
@@ -87,16 +86,15 @@ public:
   explicit IPFCramSolver(int order = 48);
 
   //! Solve using full LU factorization (general transmutation matrix).
-  vector<double> solve(
-    const CSCMatrix& A, const vector<double>& n0, double dt,
+  vector<double> solve(const CSCMatrix& A, const vector<double>& n0, double dt,
     int substeps = 1) override;
 
 private:
   // --- CRAM coefficients (non-owning views of the static tables) ---
-  int n_poles_;                               //!< Number of poles (k/2)
-  const std::complex<double>* alpha_;         //!< Residues [n_poles]
-  const std::complex<double>* theta_;         //!< Poles [n_poles]
-  double alpha0_;                             //!< Limit at infinity
+  int n_poles_;                       //!< Number of poles (k/2)
+  const std::complex<double>* alpha_; //!< Residues [n_poles]
+  const std::complex<double>* theta_; //!< Poles [n_poles]
+  double alpha0_;                     //!< Limit at infinity
 };
 
 } // namespace openmc

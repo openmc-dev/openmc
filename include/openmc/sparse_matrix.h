@@ -76,8 +76,7 @@ private:
 //! Symbolic LU factorization for CSC matrices
 //!
 //! Stores the shared structural information for left-looking column LU
-//! factorization without pivoting. The input pattern must already contain the
-//! diagonal whenever the numeric phase expects diagonal entries to be present.
+//! factorization without pivoting.
 //==============================================================================
 
 struct SymbolicLUFactorization {

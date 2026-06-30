@@ -652,8 +652,8 @@ model to use these multigroup cross sections. An example is given below::
   )
 
 The most important parameter to set is the ``method`` parameter, which can be
-either "stochastic_slab", "material_wise", or "infinite_medium". An overview
-of these methods is given below:
+one of "material_wise", "cell_wise", "stochastic_slab", or
+"infinite_medium". An overview of these methods is given below:
 
 .. list-table:: Comparison of Automatic MGXS Generation Methods
    :header-rows: 1
@@ -673,6 +673,17 @@ of these methods is given below:
      - * Potentially slower as the full geometry must be run
        * If a material is only present far from the source and doesn't get tallied
          to in the CE simulation, the MGXS will be zero for that material.
+   * - ``cell_wise``
+     - * Highest Fidelity
+       * Like ``material_wise``, but clones the material in each cell so every
+         cell gets its own cross sections (each material-filled cell is assigned a
+         distinct macroscopic).
+     - * Resolves intra-material spatial variation that ``material_wise`` averages
+         away, e.g. a thick shield or a steep flux gradient within a single material
+       * Captures spatial self shielding between cells filled with the same material
+     - * Most expensive (one cross section set per cell) and a larger library
+       * Same far-from-source limitation as ``material_wise``: a cell that is not
+         tallied to yields zero cross sections for that cell
    * - ``stochastic_slab``
      - * Medium Fidelity
        * Runs a CE simulation with a greatly simplified geometry, where materials

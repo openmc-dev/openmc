@@ -2703,8 +2703,12 @@ class Model:
 
         Parameters
         ----------
-        method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
-            Method to generate the MGXS.
+        method : {"material_wise", "stochastic_slab", "infinite_medium", \
+                  "cell_wise"}, optional
+            Method to generate the MGXS. "cell_wise" is like
+            "material_wise" but gives each cell its own cross sections. The
+            material in each material-filled cell is cloned, so the per-material
+            generation produces one cross section set per cell.
         groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
             Energy group structure for the MGXS. Can be an
             :class:`openmc.mgxs.EnergyGroups` object, a string name of a
@@ -2772,6 +2776,18 @@ class Model:
                     self.settings.run_mode = original_run_mode
                     break
 
+            # For "cell_wise", give each cell its own cross sections by
+            # cloning the material in every material-filled cell. Each clone gets
+            # a unique id, so the per-material generation below produces (and
+            # assigns) one cross section set per cell.
+            if method == "cell_wise":
+                cell_materials = []
+                for cell in self.geometry.get_all_cells().values():
+                    if isinstance(cell.fill, openmc.Material):
+                        cell.fill = cell.fill.clone()
+                        cell_materials.append(cell.fill)
+                self.materials = openmc.Materials(cell_materials)
+
             # Temporarily replace each material's name with a unique, valid HDF5
             # dataset name (its name plus ID) for use as its MGXS library entry
             # and macroscopic. The ID keeps the name unique even when materials
@@ -2788,7 +2804,7 @@ class Model:
                     self._generate_infinite_medium_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
                         temperatures, temperature_settings)
-                elif method == "material_wise":
+                elif method in ("material_wise", "cell_wise"):
                     self._generate_material_wise_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir,
                         temperatures, temperature_settings)

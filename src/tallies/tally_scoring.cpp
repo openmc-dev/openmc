@@ -360,7 +360,7 @@ double score_particle_heating(const Particle& p, const Tally& tally,
 
     // The energy deposited is the sum of the incident energy and the reaction
     // Q-value less the energy of any outgoing particles
-    double score = E + Q - p.E() - p.bank_second_E();
+    double score = E + Q + p.secondary_q() - p.E() - p.bank_second_E();
 
     score *= p.wgt_last();
 

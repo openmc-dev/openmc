@@ -522,6 +522,7 @@ private:
 
   int n_bank_ {0};
   double bank_second_E_ {0.0};
+  double secondary_q_ {0.0};
   double wgt_bank_ {0.0};
   int n_delayed_bank_[MAX_DELAYED_GROUPS];
 
@@ -668,6 +669,9 @@ public:
     return bank_second_E_;
   } // energy of last reaction secondaries
   const double& bank_second_E() const { return bank_second_E_; }
+
+  double& secondary_q() { return secondary_q_; }
+  const double& secondary_q() const { return secondary_q_; }
 
   int& n_bank() { return n_bank_; }        // number of banked fission sites
   double& wgt_bank() { return wgt_bank_; } // weight of banked fission sites

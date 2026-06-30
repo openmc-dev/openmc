@@ -27,9 +27,7 @@ public:
   void output_simulation_results() const;
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
-  void print_results_random_ray(uint64_t total_geometric_intersections,
-    double avg_miss_rate, int negroups, int64_t n_source_regions,
-    int64_t n_external_source_regions) const;
+  void print_results_random_ray() const;
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -60,6 +58,10 @@ private:
 
 void validate_random_ray_inputs();
 void openmc_finalize_random_ray();
+
+//! Write data related to randaom ray to statepoint
+//! \param[in] group HDF5 group
+void write_random_ray_hdf5(hid_t group);
 
 } // namespace openmc
 

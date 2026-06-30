@@ -241,6 +241,11 @@ unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
 RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
 
+double RandomRay::avg_miss_rate_;
+int64_t RandomRay::n_source_regions_;
+int64_t RandomRay::n_external_source_regions_;
+uint64_t RandomRay::total_geometric_intersections_;
+
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
     delta_psi_(data::mg.num_energy_groups_),

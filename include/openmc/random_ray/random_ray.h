@@ -51,6 +51,15 @@ public:
   static RandomRaySourceShape source_shape_; // Flag for linear source
   static RandomRaySampleMethod sample_method_; // Flag for sampling method
 
+  static double avg_miss_rate_;              // Average ray miss rate per
+                                             // iteration for reporting
+  static int64_t n_source_regions_;          // Total number of source regions
+  static int64_t n_external_source_regions_; // Total number of source regions
+                                             // with non-zero external source
+                                             // terms
+  static uint64_t total_geometric_intersections_; // Tracks the total number of
+                                                  // geometric intersections by
+                                                  // all rays for reporting
   //----------------------------------------------------------------------------
   // Public data members
   vector<float> angular_flux_;

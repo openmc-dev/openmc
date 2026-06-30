@@ -57,6 +57,10 @@ class StatePoint:
         Number of batches simulated
     date_and_time : datetime.datetime
         Date and time at which statepoint was written
+    energy_mode : str
+        'continuous-energy', 'multi-group'
+
+        .. versionadded:: 0.16.0
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
     filters : dict
@@ -85,6 +89,10 @@ class StatePoint:
         .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
+    n_energy_groups : int
+        Number of energy groups used in a multi-group simulation.
+
+        .. versionadded:: 0.16.0
     n_batches : int
         Number of batches
     n_inactive : int
@@ -97,6 +105,40 @@ class StatePoint:
         Working directory for simulation
     photon_transport : bool
         Indicate whether photon transport is active
+    random_ray : dict
+        Dictionary for random ray solver parameters and results.
+        Acceptable keys are:
+
+        :adjoint_mode:
+            Indicate whether random ray solve was in adjoint mode
+        :avg_miss_rate:
+            The random ray average source region miss rate per iteration
+            expressed as a percent
+        :distance_active:
+            Indicates the total active distance in [cm] for each ray
+        :distance_inactive:
+            Indicates the total inactive distance in [cm] for each ray
+        :sample_method:
+            Sampling method for the ray starting location and direction of
+            travel, e.g. `prng` or 'halton`
+        :source_shape:
+            Assumed shape of the source distribution within each source region,
+            e.g. 'flat' (default), 'linear', or 'linear_xy'
+        :n_external_source_regions:
+            Number of external source regions in random ray simulation
+        :n_geometric_intersections:
+            Total number of geometric intersections in random ray simulation
+        :n_integrations:
+            Total number of integrations in random ray simulation
+        :n_source_regions:
+            Number of source regions in random ray simulation
+        :volume_estimator:
+            Choice of volume estimator for the random ray solver, e.g.
+            'naive', 'simulation_averaged', or 'hybrid'
+        :volume_normalized_flux_tallies:
+            Indicates whether volume normalized flux tallies are used or not.
+
+        .. versionadded:: 0.16.0
     run_mode : str
         Simulation run mode, e.g. 'eigenvalue'
     runtime : dict
@@ -104,8 +146,14 @@ class StatePoint:
         and whose values are time values in seconds.
     seed : int
         Pseudorandom number generator seed
+    solver_type : str
+        Transport method, e.g. 'monte carlo' or 'random ray'
     stride : int
         Number of random numbers allocated for each particle history
+    solver_type : str
+        'monte carlo', 'random ray'
+
+        .. versionadded:: 0.16.0
     source : numpy.ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'r', 'u',
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
@@ -137,6 +185,7 @@ class StatePoint:
         self._filters = {}
         self._tallies = {}
         self._derivs = {}
+        self._random_ray = {}
 
         # Check filetype and version
         cv.check_filetype_version(self._f, 'statepoint', _VERSION_STATEPOINT)
@@ -149,6 +198,7 @@ class StatePoint:
         self._global_tallies = None
         self._sparse = False
         self._derivs_read = False
+        self._random_ray_read = False
 
         # Automatically link in a summary file if one exists
         if autolink:
@@ -209,6 +259,10 @@ class StatePoint:
     def date_and_time(self):
         s = self._f.attrs['date_and_time'].decode()
         return datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
+
+    @property
+    def energy_mode(self):
+        return self._f['energy_mode'][()].decode()
 
     @property
     def entropy(self):
@@ -324,6 +378,13 @@ class StatePoint:
         return self._meshes
 
     @property
+    def n_energy_groups(self):
+        if self.energy_mode == 'multi-group':
+            return self._f['n_energy_groups'][()]
+        else:
+            return None
+
+    @property
     def n_batches(self):
         return self._f['n_batches'][()]
 
@@ -351,6 +412,41 @@ class StatePoint:
         return self._f.attrs['photon_transport'] > 0
 
     @property
+    def solver_type(self):
+        return self._f['solver_type'][()].decode()
+
+    @property
+    def random_ray(self):
+        if self.solver_type == 'random ray':
+            if not self._random_ray_read:
+                rr_dict = self._f['random_ray']
+                self._random_ray['adjoint_mode'] = (
+                    True if rr_dict['adjoint_mode'][()] else False
+                )
+                self._random_ray['avg_miss_rate'] = rr_dict['avg_miss_rate'][()]
+                self._random_ray['distance_active'] = rr_dict['distance_active'][()]
+                self._random_ray['distance_inactive'] = rr_dict['distance_inactive'][()]
+                self._random_ray['sample_method'] = rr_dict['sample_method'][()].decode()
+                self._random_ray['source_shape'] = rr_dict['source_shape'][()].decode()
+                self._random_ray['n_external_source_regions'] = \
+                        rr_dict['n_external_source_regions'][()]
+                self._random_ray['n_geometric_intersections'] = \
+                        rr_dict['n_geometric_intersections'][()]
+                self._random_ray['n_integrations'] = rr_dict['n_integrations'][()]
+                self._random_ray['n_source_regions'] = rr_dict['n_source_regions'][()]
+                self._random_ray['volume_estimator'] = \
+                        rr_dict['volume_estimator'][()].decode()
+                self._random_ray['volume_normalized_flux_tallies'] = (
+                    True if rr_dict['volume_normalized_flux_tallies'][()] else False
+                )
+
+                self._random_ray_read = True
+
+            return self._random_ray
+        else:
+            return None
+
+    @property
     def run_mode(self):
         return self._f['run_mode'][()].decode()
 
@@ -366,6 +462,10 @@ class StatePoint:
     @property
     def stride(self):
         return self._f['stride'][()]
+
+    @property
+    def solver_type(self):
+        return self._f['solver_type'][()].decode()
 
     @property
     def source(self):

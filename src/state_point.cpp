@@ -22,6 +22,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle_type.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -96,6 +97,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Write run information
     write_dataset(file_id, "energy_mode",
       settings::run_CE ? "continuous-energy" : "multi-group");
+    if (!settings::run_CE) {
+      write_dataset(file_id, "n_energy_groups", data::mg.num_energy_groups_);
+    }
     switch (settings::run_mode) {
     case RunMode::FIXED_SOURCE:
       write_dataset(file_id, "run_mode", "fixed source");
@@ -106,6 +110,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     default:
       break;
     }
+
     write_attribute(file_id, "photon_transport", settings::photon_transport);
     write_dataset(file_id, "n_particles", settings::n_particles);
     write_dataset(file_id, "n_batches", settings::n_batches);
@@ -119,6 +124,16 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Write out information for eigenvalue run
     if (settings::run_mode == RunMode::EIGENVALUE)
       write_eigenvalue_hdf5(file_id);
+
+    switch (settings::solver_type) {
+    case SolverType::RANDOM_RAY:
+      write_dataset(file_id, "solver_type", "random ray");
+      write_random_ray_hdf5(file_id);
+      break;
+    default:
+      write_dataset(file_id, "solver_type", "monte carlo");
+      break;
+    }
 
     hid_t tallies_group = create_group(file_id, "tallies");
 

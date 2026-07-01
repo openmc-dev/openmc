@@ -979,8 +979,6 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   }
 
   SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
-  SourceRegionHandle srh =
-    domain_->get_subdivided_source_region_handle(sr_key, r(), u());
 
   if (mpi::n_procs > 1){
     // Check if ray sampling site belongs to subdomain
@@ -996,6 +994,9 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       return;
     }
   }
+
+  SourceRegionHandle srh =
+    domain_->get_subdivided_source_region_handle(sr_key, r(), u());
 
   if (!srh.is_numerical_fp_artifact_) {
     for (int g = 0; g < negroups_; g++) {

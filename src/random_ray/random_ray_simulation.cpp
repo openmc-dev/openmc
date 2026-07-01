@@ -634,7 +634,11 @@ void RandomRaySimulation::print_results_random_ray(
 
   if (settings::verbosity >= 6) {
     double total_integrations = total_geometric_intersections * negroups;
-    double time_transport_total = time_transport.elapsed() - time_ray_buffering.elapsed();
+    
+    // Transport time varies between ranks, so we need to compute the total transport time as the sum of the max transport time across all ranks, i.e.  
+    // the transport time of the master rank plus the time the master rank spends waiting for slowest other rank to finish.
+    double time_transport_total = time_transport.elapsed() - time_ray_buffering.elapsed() + time_mpi_imbalance.elapsed();
+    
     double time_per_integration = time_transport_total / total_integrations;
     double time_domain_decomposition = time_decomposition_handling.elapsed()
       + time_generate_voronoi_centers.elapsed() + time_load_balance.elapsed() 
@@ -725,7 +729,11 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Total time for initialization", time_initialize.elapsed());
     show_time("Reading cross sections", time_read_xs.elapsed(), 1);
     show_time("Total simulation time", time_total.elapsed());
-    show_time("Transport sweep only", time_transport_total, 1);
+    if (mpi::n_procs > 1){
+      show_time("Transport sweep only (incl. rank wait time)", time_transport_total, 1);
+    } else {
+      show_time("Transport sweep only", time_transport_total, 1);
+    }
     show_time("Source update only", time_update_src.elapsed(), 1);
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
     if (mpi::n_procs > 1){
@@ -832,6 +840,11 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
             }
           }
       simulation::time_transport.stop();
+
+      // Capture wait time resulting from other transport sweeps
+      simulation::time_mpi_imbalance.start();
+      MPI_Barrier(mpi::intracomm);
+      simulation::time_mpi_imbalance.stop();
 
       // Update ray bank by communicating rays in buffer to new owner ranks and removing terminated ranks
       simulation::time_ray_comms.start();

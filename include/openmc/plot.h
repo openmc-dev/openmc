@@ -156,7 +156,7 @@ struct IdData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x, const std::vector<OverlapKey>& pairs);
+  void set_overlap(size_t y, size_t x, size_t overlap_idx);
 
   // Members
   tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
@@ -169,7 +169,7 @@ struct PropertyData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x, const std::vector<OverlapKey>& pairs);
+  void set_overlap(size_t y, size_t x, size_t overlap_idx);
 
   // Members
   tensor::Tensor<double> data_; //!< 2D array of temperature & density data
@@ -182,7 +182,7 @@ struct RasterData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x, const std::vector<OverlapKey>& pairs);
+  void set_overlap(size_t y, size_t x, size_t overlap_idx);
 
   // Members
   tensor::Tensor<int32_t>
@@ -190,9 +190,6 @@ struct RasterData {
   tensor::Tensor<double>
     property_data_;     //!< [v_res, h_res, 2]: temperature, density
   bool include_filter_; //!< Whether filter bin index is included
-
-  // Vector for storing overlaps to later be flattened and sent through the API
-  std::vector<std::vector<OverlapKey>> pixel_overlaps_;
 };
 
 //===============================================================================
@@ -283,9 +280,9 @@ T SlicePlotBase::get_map(int32_t filter_index) const
           data.set_value(y, x, p, j, filter, &match);
         }
         if (show_overlaps_) {
-          auto overlap = check_cell_overlap(p, false);
-          if (!overlap.pairs.empty()) {
-            data.set_overlap(y, x, overlap.pairs);
+          auto overlap_idx = check_cell_overlap(p, false);
+          if (overlap_idx != SIZE_MAX) {
+            data.set_overlap(y, x, overlap_idx);
           }
         }
       } // inner for

@@ -26,25 +26,33 @@ int n_coord_levels;
 
 vector<int64_t> overlap_check_count;
 
+vector<OverlapKey> overlap_keys;
+unordered_map<OverlapKey, size_t> overlap_key_index;
+
 } // namespace model
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-OverlapResult check_cell_overlap(GeometryState& p, bool error)
+size_t check_cell_overlap(GeometryState& p, bool error)
 {
-  OverlapResult overlaps;
   int n_coord = p.n_coord();
 
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
+
+    // If no overlap found, return a nonphysical index
+    size_t overlap_index = SIZE_MAX;
     Universe& univ = *model::universes[p.coord(j).universe()];
 
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
       Cell& c = *model::cells[index_cell];
       if (c.contains(p.coord(j).r(), p.coord(j).u(), p.surface())) {
+#pragma omp atomic
+        ++model::overlap_check_count[index_cell];
+
         if (index_cell != p.coord(j).cell()) {
           if (error) {
             fatal_error(
@@ -60,19 +68,21 @@ OverlapResult check_cell_overlap(GeometryState& p, bool error)
           int b = std::max(cell_a, cell_b);
           OverlapKey key {univ.id_, a, b};
 
-          // in case of duplicates
-          if (std::find(overlaps.pairs.begin(), overlaps.pairs.end(), key) ==
-              overlaps.pairs.end()) {
-            overlaps.pairs.push_back(key);
+          auto it = overlap_key_index.find(key);
+          if (it != overlap_key_index.end()) {
+            overlap_index = it->second; // already exists, reuse index
+          } else {
+            size_t idx = overlap_keys.size();
+            overlap_keys.push_back(key);
+            overlap_key_index[key] = idx;
+            overlap_index = idx;
           }
+          break;
         }
-#pragma omp atomic
-        ++model::overlap_check_count[index_cell];
       }
     }
   }
-
-  return overlaps;
+  return overlap_index;
 }
 
 //==============================================================================

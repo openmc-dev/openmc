@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #include "openmc/array.h"
@@ -24,6 +25,10 @@ extern int root_universe;      //!< Index of root universe
 extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
 extern vector<int64_t> overlap_check_count;
+
+// Overlap data structures get cleared every slice_data run
+extern vector<OverlapKey> overlap_keys;
+extern unordered_map<OverlapKey, size_t> overlap_key_index;
 
 } // namespace model
 
@@ -56,9 +61,9 @@ struct OverlapKey {
 
 // OverlapResult struct to store per-pixel information on overlaps
 
-struct OverlapResult {
-  std::vector<OverlapKey> pairs;
-};
+// struct OverlapResult {
+//   std::vector<OverlapKey> pairs;
+// };
 
 OverlapResult check_cell_overlap(GeometryState& p, bool error = true);
 

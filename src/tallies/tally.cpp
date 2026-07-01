@@ -887,7 +887,7 @@ void Tally::accumulate()
     if (higher_moments_) {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
-      for (int i = 0; i < results_.shape(0); ++i) {
+      for (int64_t i = 0; i < results_.shape(0); ++i) {
         // score bins (flux, total reaction rate, fission reaction rate, etc.)
         for (int j = 0; j < results_.shape(1); ++j) {
           double val = results_(i, j, TallyResult::VALUE) * norm;
@@ -902,7 +902,7 @@ void Tally::accumulate()
     } else {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
-      for (int i = 0; i < results_.shape(0); ++i) {
+      for (int64_t i = 0; i < results_.shape(0); ++i) {
         // score bins (flux, total reaction rate, fission reaction rate, etc.)
         for (int j = 0; j < results_.shape(1); ++j) {
           double val = results_(i, j, TallyResult::VALUE) * norm;

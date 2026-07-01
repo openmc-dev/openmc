@@ -110,6 +110,9 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+#          cache: 'pip' # caching pip dependencies
+#          cache-dependency-path: |
+#            requirements-pip.txt
 
       - name: Environment Variables
         run: |
@@ -146,6 +149,51 @@ jobs:
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
 
+      - name: cache-xs
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/nndc_hdf5
+            ~/endf-b-vii.1
+          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
+
+      - name: Get dependency cache keys
+        shell: bash
+        run: $GITHUB_WORKSPACE/tools/ci/gha-cache-keys.sh
+
+      - name: Restore NJOY2016
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/NJOY2016/metaconfigure
+            ~/NJOY2016/build/njoy
+            ~/NJOY2016/build/libnjoy.so
+          key: NJOY2016-${{ env.NJOY_HASH }} 
+
+      - name: Restore MOAB
+        if: ${{ matrix.dagmc == 'y' }}
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/MOAB
+          key: MOAB-${{ env.MOAB_HASH }}
+        
+      - name: Restore DAGMC
+        if: ${{ matrix.dagmc == 'y' }}
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/DAGMC
+          key: DAGMC-${{ env.DAGMC_HASH }}
+
+      - name: Restore libmesh
+        if: ${{ matrix.libmesh == 'y' }} 
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/LIBMESH
+          key: libmesh-mpi-${{matrix.mpi}}-${{ env.LB_HASH }} 
+
       - name: install
         shell: bash
         run: |
@@ -154,16 +202,7 @@ jobs:
 
       - name: display-config
         shell: bash
-        run: |
-          openmc -v
-
-      - name: cache-xs
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/nndc_hdf5
-            ~/endf-b-vii.1
-          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
+        run: openmc -v
 
       - name: before
         shell: bash
@@ -174,13 +213,13 @@ jobs:
         run: |
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
-
+ 
       - name: Setup tmate debug session
         continue-on-error: true
         if: ${{ failure() && contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 10
-
+ 
       - name: Generate C++ coverage (gcovr)
         shell: bash
         run: |
@@ -198,13 +237,13 @@ jobs:
             --merge-mode-functions=separate \
             --print-summary \
             --lcov -o coverage-cpp.lcov || true
-
+ 
       - name: Merge C++ and Python coverage
         shell: bash
         run: |
           # Merge C++ and Python LCOV into a single file for upload
           cat coverage-cpp.lcov coverage-python.lcov > coverage.lcov
-
+ 
       - name: Upload coverage to Coveralls
         if: ${{ hashFiles('coverage.lcov') != '' }}
         uses: coverallsapp/github-action@v2
@@ -214,7 +253,7 @@ jobs:
           flag-name: C++ and Python
           path-to-lcov: coverage.lcov
           fail-on-error: false
-
+ 
   coverage:
     needs: [filter-changes, main]
     if: ${{ always() }}
@@ -227,7 +266,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true
           fail-on-error: false
-
+ 
   ci-pass:
     needs: [filter-changes, main, coverage]
     name: Check CI status

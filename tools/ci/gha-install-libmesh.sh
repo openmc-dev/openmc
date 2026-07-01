@@ -17,5 +17,7 @@ else
 fi
 make -j4 install
 rm -rf $HOME/LIBMESH/build
+rm -rf $HOME/LIBMESH/libmesh
+rm -rf $HOME/LIBMESH/examples
 
 popd

@@ -98,14 +98,15 @@ BoundaryInfo distance_to_boundary(GeometryState& p);
 } // namespace openmc
 
 // Hash specialization for use in std::unordered_map
-template <>
+template<>
 struct std::hash<openmc::OverlapKey> {
-    size_t operator()(const openmc::OverlapKey& k) const noexcept {
-        size_t h = std::hash<int>{}(k.universe_id);
-        h ^= std::hash<int>{}(k.cell1_id) + 0x9e3779b9 + (h << 6) + (h >> 2);
-        h ^= std::hash<int>{}(k.cell2_id) + 0x9e3779b9 + (h << 6) + (h >> 2);
-        return h;
-    }
+  size_t operator()(const openmc::OverlapKey& k) const noexcept
+  {
+    size_t h = std::hash<int> {}(k.universe_id);
+    h ^= std::hash<int> {}(k.cell1_id) + 0x9e3779b9 + (h << 6) + (h >> 2);
+    h ^= std::hash<int> {}(k.cell2_id) + 0x9e3779b9 + (h << 6) + (h >> 2);
+    return h;
+  }
 };
 
 #endif // OPENMC_GEOMETRY_H

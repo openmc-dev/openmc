@@ -157,9 +157,9 @@ void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
 void RasterData::set_overlap(size_t y, size_t x, size_t overlap_idx)
 {
   // Set cell, instance, and material to OVERLAP, but preserve filter bin
-  id_data_(y, x, 0) = OVERLAP - overlap_idx - 1;
+  id_data_(y, x, 0) = OVERLAP;
   id_data_(y, x, 1) = OVERLAP;
-  id_data_(y, x, 2) = OVERLAP;
+  id_data_(y, x, 2) = OVERLAP - overlap_idx - 1;
   // Note: id_data_(y, x, 3) is NOT overwritten - preserves filter bin for tally
   // plotting
 
@@ -1998,8 +1998,8 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     plot_params.slice_level_ = level;
 
     // Clear overlap data structures on new slice call
-    overlap_keys.clear();
-    overlap_key_index.clear();
+    model::overlap_keys.clear();
+    model::overlap_key_index.clear();
 
     // Use get_map<RasterData> to generate data
     auto data = plot_params.get_map<RasterData>(filter_index);
@@ -2026,7 +2026,7 @@ extern "C" int openmc_slice_data_overlap_count(size_t* count)
     set_errmsg("Null pointer passed for overlap count.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
-  *count = overlap_keys.size();
+  *count = model::overlap_keys.size();
 
   return 0;
 }
@@ -2037,9 +2037,9 @@ extern "C" int openmc_slice_data_overlap_info(
   size_t count, int32_t* overlap_info)
 {
   for (size_t i = 0; i < count; ++i) {
-    overlap_info[i] = overlap_keys[i].universe_id;
-    overlap_info[i + 1] = overlap_keys[i].cell1_id;
-    overlap_info[i + 2] = overlap_keys[i].cell2_id;
+    overlap_info[i * 3] = model::overlap_keys[i].universe_id;
+    overlap_info[i * 3 + 1] = model::overlap_keys[i].cell1_id;
+    overlap_info[i * 3 + 2] = model::overlap_keys[i].cell2_id;
   }
 
   return 0;

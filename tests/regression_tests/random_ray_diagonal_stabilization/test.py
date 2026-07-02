@@ -22,8 +22,10 @@ def test_random_ray_diagonal_stabilization():
     # and transport correction enabled. This will generate
     # MGXS data with some negatives on the diagonal, in order
     # to trigger diagonal correction.
+    mgxs_settings = model.mgxs_generation_settings('material_wise')
+    mgxs_settings.particles = 13
     model.convert_to_multigroup(
-        method='material_wise', groups='CASMO-70', nparticles=13,
+        method='material_wise', groups='CASMO-70', settings=mgxs_settings,
         overwrite_mgxs_library=True, mgxs_path="mgxs.h5", correction='P0'
     )
 

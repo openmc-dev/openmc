@@ -1,5 +1,6 @@
 import copy
 import os
+from pathlib import Path
 
 import numpy as np
 import openmc
@@ -71,18 +72,22 @@ def test_random_ray_auto_convert_bootstrap():
     # Generate weight windows covering the whole problem with the
     # stochastic_slab method and a random ray FW-CADIS solve
     slab_model = copy.deepcopy(model)
+    slab_settings = slab_model.mgxs_generation_settings('stochastic_slab')
+    slab_settings.particles = 50
     slab_model.convert_to_multigroup(
-        method='stochastic_slab', groups=GROUPS, nparticles=50,
+        method='stochastic_slab', groups=GROUPS, settings=slab_settings,
         overwrite_mgxs_library=True, mgxs_path='mgxs.h5')
     generate_weight_windows(slab_model, mesh)
 
     # Bootstrap the material-wise MGXS generation with those weight windows,
     # then regenerate the weight windows from the higher-fidelity library
     boot_model = copy.deepcopy(model)
+    boot_settings = boot_model.mgxs_generation_settings('material_wise')
+    boot_settings.particles = 1
     boot_model.convert_to_multigroup(
-        method='material_wise', groups=GROUPS, nparticles=1,
+        method='material_wise', groups=GROUPS, settings=boot_settings,
         overwrite_mgxs_library=True, mgxs_path='mgxs.h5',
-        weight_windows_file='weight_windows.h5')
+        weight_windows_file=Path('weight_windows.h5').resolve())
     generate_weight_windows(boot_model, mesh)
 
     # Run the continuous energy model with the improved weight windows,

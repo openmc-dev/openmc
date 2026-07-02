@@ -1,5 +1,4 @@
 from collections.abc import Iterable, Mapping, MutableSequence, Sequence
-import copy
 from enum import Enum
 import itertools
 from math import ceil
@@ -514,51 +513,6 @@ class Settings:
                 msg = msg.strip().split(maxsplit=1)[-1]
                 warnings.warn(msg, stacklevel=2)
         super().__setattr__(name, value)
-
-    def update(self, other: 'Settings'):
-        """Update this object with all populated attributes of another instance.
-
-        Every attribute of `other` that has been populated -- i.e., that is
-        not None and not an empty collection -- is copied to this object,
-        overwriting any existing value. Attributes that were never set on
-        `other` leave the corresponding attribute of this object untouched.
-        This allows a sparsely-populated Settings object to be applied as a
-        set of overrides on top of fully-populated defaults.
-
-        Note that :attr:`run_mode` always carries a value, so an explicitly
-        assigned 'eigenvalue' run mode cannot be distinguished from the
-        default; the run mode is therefore only copied from `other` when it
-        differs from 'eigenvalue'.
-
-        .. versionadded:: 0.15.4
-
-        Parameters
-        ----------
-        other : openmc.Settings
-            Settings object whose populated attributes are applied to this
-            object.
-
-        """
-        cv.check_type('other', other, Settings)
-        for name, value in vars(other).items():
-            # run_mode defaults to 'eigenvalue' rather than to an "unset"
-            # state, so only a non-default value is detectable (see note in
-            # the docstring).
-            if name == '_run_mode':
-                if value is not RunMode.EIGENVALUE:
-                    self._run_mode = value
-                continue
-
-            # None or an empty collection means the attribute was never set
-            # on `other` -- the same convention to_xml_element() relies on
-            # to decide which elements to export.
-            if value is None or (hasattr(value, '__len__') and len(value) == 0):
-                continue
-
-            # Values on `other` were already validated by its property
-            # setters; deepcopy so later mutations of `other` cannot leak
-            # into this object.
-            setattr(self, name, copy.deepcopy(value))
 
     @property
     def run_mode(self) -> str:

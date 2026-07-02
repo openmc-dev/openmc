@@ -642,13 +642,11 @@ model to use these multigroup cross sections. An example is given below::
   model.convert_to_multigroup(
       method="material_wise",
       groups="CASMO-2",
-      nparticles=2000,
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
       correction=None,
       source_energy=None,
-      temperatures=None,
-      temperature_settings=None
+      temperatures=None
   )
 
 The most important parameter to set is the ``method`` parameter, which can be
@@ -695,12 +693,22 @@ of these methods is given below:
 
 When selecting a non-default energy group structure, you can manually define
 group boundaries or specify the name of a known group structure (a list of which
-can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The ``nparticles``
-parameter can be adjusted upward to improve the fidelity of the generated cross
-section library. The ``correction`` parameter can be set to ``"P0"`` to enable
-P0 transport correction. The ``overwrite_mgxs_library`` parameter can be set to
-``True`` to overwrite an existing MGXS library file, or ``False`` to skip
-generation and use an existing library file.
+can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The ``correction``
+parameter can be set to ``"P0"`` to enable P0 transport correction. The
+``overwrite_mgxs_library`` parameter can be set to ``True`` to overwrite an
+existing MGXS library file, or ``False`` to skip generation and use an existing
+library file.
+
+The continuous energy simulations used to generate the cross section library
+can be customized via the ``settings`` parameter. To do so, start from the
+default settings returned by :meth:`openmc.Model.mgxs_generation_settings`,
+modify them as desired, and pass the result back. For example, the number of
+particles per batch (2,000 by default) can be increased to improve the fidelity
+of the generated cross section library as::
+
+  settings = model.mgxs_generation_settings(method="material_wise")
+  settings.particles = 100_000
+  model.convert_to_multigroup(method="material_wise", settings=settings)
 
 .. note::
     MGXS transport correction (via setting the ``correction`` parameter in the
@@ -741,12 +749,10 @@ The ``temperatures`` parameter can be provided if temperature-dependent
 multi-group cross sections are desired for multi-physics simulations. An
 individual cross section generation calculation is run for each temperature
 provided, where the materials in the model are set to the temperature. The
-temperature settings used during cross section generation can be specified with the
-``temperature_settings`` parameter. If no ``temperature_settings`` are provided,
-the settings contained in the model will be used. The valid keys and values in the
-``temperature_settings`` dictionary are identical to
-:attr:`openmc.Settings.temperature_settings`; more information can be found in
-:class:`openmc.Settings` . This approach yields isothermal cross section interpolation
+temperature settings used during cross section generation default to those
+contained in the model and can be customized by setting
+:attr:`openmc.Settings.temperature` on the object passed via the ``settings``
+parameter. This approach yields isothermal cross section interpolation
 tables, which can be inaccurate for systems with large differences between temperatures
 in each material (often the case in fission reactors). If a more sophisticated
 temperature-dependence is required, we recommend generating cross sections manually.

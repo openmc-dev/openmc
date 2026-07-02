@@ -98,6 +98,47 @@ def test_surface_filter_flux_angled(two_cell_model, run_in_tmpdir):
     assert flux_mean == pytest.approx(1.0 / mu)
 
 
+def test_surface_tally_during_lattice_crossing(run_in_tmpdir):
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    xmin = openmc.XPlane(-1.0, boundary_type="vacuum")
+    xmax = openmc.XPlane(1.0, boundary_type="vacuum")
+    ymin = openmc.YPlane(-1.0, boundary_type="vacuum")
+    ymax = openmc.YPlane(1.0, boundary_type="vacuum")
+    zmin = openmc.ZPlane(-1.0, boundary_type="vacuum")
+    zmax = openmc.ZPlane(1.0, boundary_type="vacuum")
+
+    tile_cell = openmc.Cell()
+    tile_univ = openmc.Universe(cells=[tile_cell])
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-1.0, -1.0)
+    lattice.pitch = (1.0, 2.0)
+    lattice.universes = [[tile_univ, tile_univ]]
+
+    root_cell = openmc.Cell(
+        fill=lattice, region=+xmin & -xmax & +ymin & -ymax & +zmin & -zmax)
+    model.geometry = openmc.Geometry([root_cell])
+
+    src = openmc.IndependentSource()
+    src.space = openmc.stats.Point((-0.5, 0.0, 0.0))
+    src.angle = openmc.stats.Monodirectional((1.0, 0.0, 0.0))
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 1
+    model.settings.particles = 5
+    model.settings.source = src
+
+    current_tally = openmc.Tally()
+    current_tally.filters = [openmc.SurfaceFilter(xmax)]
+    current_tally.scores = ['current']
+    model.tallies = [current_tally]
+
+    model.run(apply_tally_results=True)
+    assert current_tally.mean.flat[0] == pytest.approx(1.0)
+
+
 def test_cellfrom_filter_flux_directional(two_cell_model, run_in_tmpdir):
     """SurfaceFilter + CellFromFilter + flux scores only the correct direction."""
     model, xmid, cell1, cell2 = two_cell_model

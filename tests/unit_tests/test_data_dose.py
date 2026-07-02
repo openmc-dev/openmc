@@ -33,24 +33,16 @@ def test_dose_coefficients():
     assert dose[0] == approx(1.68)
     assert energy[-1] == approx(20.0e6)
     assert dose[-1] == approx(338.0)
-    
-    energy, dose = dose_coefficients('neutron', 'LLAT', data_source='icrp74')
-    assert energy[0] == approx(1e-3)
-    assert dose[0] == approx(1.68)
-    assert energy[-1] == approx(20.0e6)
-    assert dose[-1] == approx(338.0)
-    
-    energy, dose = dose_coefficients('neutron', 
-                                     data_source='icrp74',
-                                     dose_type = 'ambient')
+
+    energy, dose = dose_coefficients(
+        'neutron', data_source='icrp74', dose_quantity='ambient')
     assert energy[0] == approx(1e-3)
     assert dose[0] == approx(6.60)
     assert energy[-1] == approx(20.0e6)
     assert dose[-1] == approx(600)
-    
-    energy, dose = dose_coefficients('photon', 
-                                     data_source='icrp74',
-                                     dose_type = 'ambient')
+
+    energy, dose = dose_coefficients(
+        'photon', data_source='icrp74', dose_quantity='ambient')
     assert energy[0] == approx(0.01e6)
     assert dose[0] == approx(0.061)
     assert energy[-1] == approx(10e6)
@@ -64,9 +56,13 @@ def test_dose_coefficients():
     with raises(ValueError):
         dose_coefficients('neutron', data_source='icrp7000')
     with raises(ValueError):
-        dose_coefficients('neutron', 
-                          data_source='icrp116',
-                          dose_type='ambient')
+        dose_coefficients('neutron', dose_quantity='banana')
+    with raises(ValueError):
+        dose_coefficients(
+            'neutron', data_source='icrp116', dose_quantity='ambient')
+    with raises(ValueError):
+        dose_coefficients(
+            'neutron', 'ISO', data_source='icrp74', dose_quantity='ambient')
     with raises(ValueError) as excinfo:
         dose_coefficients("photons", data_source="icrp116")
     expected_particles = [
@@ -83,7 +79,8 @@ def test_dose_coefficients():
         "proton",
     ]
     expected_msg = (
-        "'photons' has no effective dose data in data source icrp116."
-        f" Available particles for icrp116 are: {expected_particles}"
+        "'photons' has no effective dose data in data source icrp116. "
+        "Available particles for icrp116 with dose quantity effective are: "
+        f"{expected_particles}"
     )
     assert str(excinfo.value) == expected_msg

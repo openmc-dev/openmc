@@ -6,6 +6,8 @@ import random
 import numpy as np
 import pytest
 import openmc.data
+from openmc.data.thermal import _THERMAL_NAMES
+from openmc.data.njoy import _THERMAL_DATA
 
 from . import needs_njoy
 
@@ -146,6 +148,18 @@ def test_h2o_endf(endf_data):
                                 '600K', '650K', '800K']
 
 
+def test_from_endf_material(endf_data):
+    filename = os.path.join(endf_data, 'thermal_scatt', 'tsl-HinH2O.endf')
+    material = openmc.data.endf.get_evaluations(filename)[0]
+
+    h2o = openmc.data.ThermalScattering.from_endf(
+        material, divide_incoherent_elastic=True)
+
+    assert not h2o.elastic
+    assert h2o.atomic_weight_ratio == pytest.approx(0.99917)
+    assert h2o.temperatures[0] == '294K'
+
+
 def test_hzrh_attributes(hzrh):
     assert hzrh.atomic_weight_ratio == pytest.approx(0.99917)
     assert hzrh.energy_max == pytest.approx(1.9734)
@@ -256,6 +270,27 @@ def test_get_thermal_name():
 
         # Names that don't remotely match anything
         assert f('boogie_monster') == 'c_boogie_monster'
+
+
+def test_thermal_names_data_consistency():
+    # Check that keys in _THERMAL_NAMES are also in _THERMAL_DATA
+    names_only = set(_THERMAL_NAMES.keys()) - set(_THERMAL_DATA.keys())
+    assert not names_only, f"Keys in _THERMAL_NAMES but not in _THERMAL_DATA: {names_only}"
+
+    # Check that keys in _THERMAL_DATA are also in _THERMAL_NAMES
+    data_only = set(_THERMAL_DATA.keys()) - set(_THERMAL_NAMES.keys())
+    assert not data_only, f"Keys in _THERMAL_DATA but not in _THERMAL_NAMES: {data_only}"
+
+    # Check that the name from each ThermalTuple in _THERMAL_DATA appears as
+    # a recognized alias in _THERMAL_NAMES for the same key
+    missing_aliases = []
+    for key, thermal_tuple in _THERMAL_DATA.items():
+        name = thermal_tuple.name
+        if name not in _THERMAL_NAMES[key]:
+            missing_aliases.append((key, name, _THERMAL_NAMES[key]))
+    assert not missing_aliases, (
+        f"ThermalTuple names not in _THERMAL_NAMES aliases: {missing_aliases}"
+    )
 
 
 @pytest.fixture

@@ -19,9 +19,10 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
-  void compute_segment_correction_factors();
   void apply_fixed_sources_and_mesh_domains();
-  void prepare_fixed_sources_adjoint();
+  void prepare_fw_fixed_sources_adjoint();
+  void prepare_local_fixed_sources_adjoint();
+  void prepare_adjoint_simulation(bool from_forward);
   void simulate();
   void output_simulation_results() const;
   void instability_check(
@@ -57,9 +58,8 @@ private:
 //! Non-member functions
 //============================================================================
 
-void openmc_run_random_ray();
 void validate_random_ray_inputs();
-void openmc_reset_random_ray();
+void openmc_finalize_random_ray();
 
 } // namespace openmc
 

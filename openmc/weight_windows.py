@@ -10,13 +10,13 @@ import numpy as np
 import h5py
 
 import openmc
-from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
+from openmc.tallies import Tallies
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_elem_list, get_text, clean_indentation
 from .mixin import IDManagerMixin
-from .utility_funcs import change_directory
+from .particle_type import ParticleType
 
 
 class WeightWindows(IDManagerMixin):
@@ -51,7 +51,7 @@ class WeightWindows(IDManagerMixin):
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin. If no energy bins are provided, the
         maximum and minimum energy for the data available at runtime.
-    particle_type : {'neutron', 'photon'}
+    particle_type : str or int or openmc.ParticleType
         Particle type the weight windows apply to
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
@@ -116,7 +116,7 @@ class WeightWindows(IDManagerMixin):
         upper_ww_bounds: Iterable[float] | None = None,
         upper_bound_ratio: float | None = None,
         energy_bounds: Iterable[Real] | None = None,
-        particle_type: str = 'neutron',
+        particle_type: str | int | openmc.ParticleType = 'neutron',
         survival_ratio: float = 3.0,
         max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
@@ -213,13 +213,15 @@ class WeightWindows(IDManagerMixin):
         self._mesh = mesh
 
     @property
-    def particle_type(self) -> str:
+    def particle_type(self) -> ParticleType:
         return self._particle_type
 
     @particle_type.setter
-    def particle_type(self, pt: str):
-        cv.check_value('Particle type', pt, _PARTICLES)
-        self._particle_type = pt
+    def particle_type(self, pt):
+        ptype = ParticleType(pt)
+        if ptype not in {ParticleType.NEUTRON, ParticleType.PHOTON}:
+            raise ValueError("Weight windows can only be applied for neutrons or photons")
+        self._particle_type = ptype
 
     @property
     def energy_bounds(self) -> Iterable[Real]:
@@ -329,7 +331,7 @@ class WeightWindows(IDManagerMixin):
         subelement.text = str(self.mesh.id)
 
         subelement = ET.SubElement(element, 'particle_type')
-        subelement.text = self.particle_type
+        subelement.text = str(self.particle_type)
 
         if self.energy_bounds is not None:
             subelement = ET.SubElement(element, 'energy_bounds')
@@ -494,10 +496,12 @@ class WeightWindowGenerator:
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin. If no energy bins are provided, the
         maximum and minimum energy for the data available at runtime.
-    particle_type : {'neutron', 'photon'}
+    particle_type : str or int or openmc.ParticleType
         Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
+    targets : :class:`openmc.Tallies` or iterable of int
+        Target tallies for local variance reduction via FW-CADIS.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -513,10 +517,12 @@ class WeightWindowGenerator:
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
-    particle_type : {'neutron', 'photon'}
+    particle_type : openmc.ParticleType
         Particle type the weight windows apply to
     method : {'magic', 'fw_cadis'}
         The weight window generation methodology applied during an update.
+    targets : :class:`openmc.Tallies` or numpy.ndarray
+        Target tallies for local variance reduction via FW-CADIS.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -528,14 +534,15 @@ class WeightWindowGenerator:
         Whether or not to apply weight windows on the fly.
     """
 
-    _MAGIC_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
+    _WWG_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
 
     def __init__(
         self,
         mesh: openmc.MeshBase,
         energy_bounds: Sequence[float] | None = None,
-        particle_type: str = 'neutron',
+        particle_type: str | int | openmc.ParticleType = 'neutron',
         method: str = 'magic',
+        targets: openmc.Tallies | Iterable[int] | None = None,
         max_realizations: int = 1,
         update_interval: int = 1,
         on_the_fly: bool = True
@@ -548,6 +555,7 @@ class WeightWindowGenerator:
             self.energy_bounds = energy_bounds
         self.particle_type = particle_type
         self.method = method
+        self.targets = targets
         self.max_realizations = max_realizations
         self.update_interval = update_interval
         self.on_the_fly = on_the_fly
@@ -555,7 +563,7 @@ class WeightWindowGenerator:
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += f'\t{"Mesh":<20}=\t{self.mesh.id}\n'
-        string += f'\t{"Particle:":<20}=\t{self.particle_type}\n'
+        string += f'\t{"Particle:":<20}=\t{str(self.particle_type)}\n'
         string += f'\t{"Energy Bounds:":<20}=\t{self.energy_bounds}\n'
         string += f'\t{"Method":<20}=\t{self.method}\n'
         string += f'\t{"Max Realizations:":<20}=\t{self.max_realizations}\n'
@@ -586,13 +594,15 @@ class WeightWindowGenerator:
         self._energy_bounds = eb
 
     @property
-    def particle_type(self) -> str:
+    def particle_type(self) -> ParticleType:
         return self._particle_type
 
     @particle_type.setter
-    def particle_type(self, pt: str):
-        cv.check_value('particle type', pt, ('neutron', 'photon'))
-        self._particle_type = pt
+    def particle_type(self, pt):
+        ptype = ParticleType(pt)
+        if ptype not in {ParticleType.NEUTRON, ParticleType.PHOTON}:
+            raise ValueError("Weight windows can only be applied for neutrons or photons")
+        self._particle_type = ptype
 
     @property
     def method(self) -> str:
@@ -608,6 +618,22 @@ class WeightWindowGenerator:
                 self._check_update_parameters()
             except (TypeError, KeyError):
                 warnings.warn(f'Update parameters are invalid for the "{m}" method.')
+    
+    @property
+    def targets(self) -> openmc.Tallies:
+        return self._targets
+
+    @targets.setter
+    def targets(self, t):
+        if t is None:
+            self._targets = t
+        else:
+            cv.check_type('Local FW-CADIS target tallies', t, Iterable)
+            cv.check_greater_than('Local FW-CADIS target tallies', len(t), 0)
+            if not isinstance(t, openmc.Tallies):
+                cv.check_iterable_type('Local FW-CADIS target tallies', t, int)
+                t = np.asarray(list(t), dtype=int)
+            self._targets = t
 
     @property
     def max_realizations(self) -> int:
@@ -635,13 +661,13 @@ class WeightWindowGenerator:
 
     def _check_update_parameters(self, params: dict):
         if self.method == 'magic' or self.method == 'fw_cadis':
-            check_params = self._MAGIC_PARAMS
+            check_params = self._WWG_PARAMS
 
         for key, val in params.items():
             if key not in check_params:
                 raise ValueError(f'Invalid param "{key}" for {self.method} '
                                   'weight window generation')
-            cv.check_type(f'weight window generation param: "{key}"', val, self._MAGIC_PARAMS[key])
+            cv.check_type(f'weight window generation param: "{key}"', val, self._WWG_PARAMS[key])
 
     @update_parameters.setter
     def update_parameters(self, params: dict):
@@ -678,7 +704,7 @@ class WeightWindowGenerator:
             The update parameters as-read from the XML node (keys: str, values: str)
         """
         if method == 'magic' or method == 'fw_cadis':
-            check_params = cls._MAGIC_PARAMS
+            check_params = cls._WWG_PARAMS
 
         for param, param_type in check_params.items():
             if param in update_parameters:
@@ -695,7 +721,7 @@ class WeightWindowGenerator:
             subelement = ET.SubElement(element, 'energy_bounds')
             subelement.text = ' '.join(str(e) for e in self.energy_bounds)
         particle_elem = ET.SubElement(element, 'particle_type')
-        particle_elem.text = self.particle_type
+        particle_elem.text = str(self.particle_type)
         realizations_elem = ET.SubElement(element, 'max_realizations')
         realizations_elem.text = str(self.max_realizations)
         update_interval_elem = ET.SubElement(element, 'update_interval')
@@ -704,6 +730,20 @@ class WeightWindowGenerator:
         otf_elem.text = str(self.on_the_fly).lower()
         method_elem = ET.SubElement(element, 'method')
         method_elem.text = self.method
+        if self.targets is not None:
+            if self.method != 'fw_cadis':
+                raise ValueError(
+                    "FW-CADIS update method is required in order to use " \
+                    "target tallies for WeightWindowGenerator.")
+            elif isinstance(self.targets, openmc.Tallies):
+                raise RuntimeError(
+                    "FW-CADIS target tallies must be checked to ensure they are " \
+                    "present on model.tallies. Use model.export_to_xml() or " \
+                    "model.export_to_model_xml() to link FW-CADIS target tallies.")
+            else:
+                targets_elem = ET.SubElement(element, 'targets')
+                targets_elem.text = ' '.join(str(tally_id) for tally_id in self.targets)
+
         if self.update_parameters is not None:
             self._update_parameters_subelement(element)
 
@@ -731,7 +771,7 @@ class WeightWindowGenerator:
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
         
-        energy_bounds = get_elem_list(elem, "energy_bounds, float")
+        energy_bounds = get_elem_list(elem, "energy_bounds", float)
         particle_type = get_text(elem, 'particle_type')
 
         wwg = cls(mesh, energy_bounds, particle_type)
@@ -740,6 +780,14 @@ class WeightWindowGenerator:
         wwg.update_interval = int(get_text(elem, 'update_interval'))
         wwg.on_the_fly = bool(get_text(elem, 'on_the_fly'))
         wwg.method = get_text(elem, 'method')
+        targets_elem = elem.find('targets')
+        if targets_elem is not None:
+            if wwg.method != 'fw_cadis':
+                raise ValueError(
+                    "FW-CADIS update method is required in order to use " \
+                    "target tallies for WeightWindowGenerator.")
+            else:
+                wwg.targets = get_elem_list(elem, "targets")
 
         if elem.find('update_parameters') is not None:
             update_parameters = {}

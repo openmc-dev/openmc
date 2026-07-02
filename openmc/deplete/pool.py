@@ -5,10 +5,11 @@ Provided to avoid some circular imports
 from itertools import repeat, starmap
 from multiprocessing import Pool
 
-from scipy.sparse import bmat, hstack, vstack, csc_matrix
 import numpy as np
+from scipy.sparse import hstack
 
 from openmc.mpi import comm
+from .._sparse_compat import block_array
 
 # Configurable switch that enables / disables the use of
 # multiprocessing routines during depletion
@@ -41,14 +42,15 @@ def _distribute(items):
         j += chunk_size
 
 def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
-            transfer_rates=None, external_source_rates=None, *matrix_args):
+            transfer_rates=None, external_source_rates=None, substeps=1,
+            *matrix_args):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
     ----------
     func : callable
         Function to use to get new compositions. Expected to have the signature
-        ``func(A, n0, t) -> n1``
+        ``func(A, n0, t, substeps=1) -> n1``.
     chain : openmc.deplete.Chain
         Depletion chain
     n : list of numpy.ndarray
@@ -73,6 +75,8 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         External source rates for continuous removal/feed.
 
         .. versionadded:: 0.15.3
+    substeps : int, optional
+        Number of substeps to pass to solvers that support substepping.
     matrix_args: Any, optional
         Additional arguments passed to matrix_func
 
@@ -159,11 +163,11 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                             cols.append(None)
 
                     rows.append(cols)
-                matrix = bmat(rows)
+                matrix = block_array(rows)
 
                 # Concatenate vectors of nuclides in one
                 n_multi = np.concatenate(n)
-                n_result = func(matrix, n_multi, dt)
+                n_result = func(matrix, n_multi, dt, substeps)
 
                 # Split back the nuclide vector result into the original form
                 n_result = np.split(n_result, np.cumsum([len(i) for i in n])[:-1])
@@ -194,10 +198,10 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         # of the nuclide vectors
         for i, matrix in enumerate(matrices):
             if not np.equal(*matrix.shape):
-                matrices[i] = vstack([matrix, csc_matrix([0]*matrix.shape[1])])
+                matrix.resize(matrix.shape[1], matrix.shape[1])
                 n[i] = np.append(n[i], 1.0)
 
-    inputs = zip(matrices, n, repeat(dt))
+    inputs = zip(matrices, n, repeat(dt), repeat(substeps))
 
     if USE_MULTIPROCESSING:
         with Pool(NUM_PROCESSES) as pool:

@@ -2,7 +2,6 @@ from collections.abc import Iterable
 from functools import cached_property
 from io import StringIO
 from math import log
-import re
 from warnings import warn
 
 import numpy as np
@@ -13,9 +12,10 @@ import openmc.checkvalue as cv
 from openmc.exceptions import DataError
 from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
-from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
+from .data import gnds_name, zam
 from .function import INTERPOLATION_SCHEME
-from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
+from .endf import (
+    as_evaluation, get_head_record, get_list_record, get_tab1_record)
 
 
 # Gives name and (change in A, change in Z) resulting from decay
@@ -76,7 +76,7 @@ class FissionProductYields(EqualityMixin):
 
     Parameters
     ----------
-    ev_or_filename : str of openmc.data.endf.Evaluation
+    ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
         ENDF fission product yield evaluation to read from. If given as a
         string, it is assumed to be the filename for the ENDF file.
 
@@ -126,9 +126,7 @@ class FissionProductYields(EqualityMixin):
                 for j in range(n_products):
                     Z, A = divmod(int(values[4*j]), 1000)
                     isomeric_state = int(values[4*j + 1])
-                    name = ATOMIC_SYMBOL[Z] + str(A)
-                    if isomeric_state > 0:
-                        name += f'_m{isomeric_state}'
+                    name = gnds_name(Z, A, isomeric_state)
                     yield_j = ufloat(values[4*j + 2], values[4*j + 3])
                     yields[name] = yield_j
 
@@ -136,11 +134,7 @@ class FissionProductYields(EqualityMixin):
 
             return energies, data
 
-        # Get evaluation if str is passed
-        if isinstance(ev_or_filename, Evaluation):
-            ev = ev_or_filename
-        else:
-            ev = Evaluation(ev_or_filename)
+        ev = as_evaluation(ev_or_filename)
 
         # Assign basic nuclide properties
         self.nuclide = {
@@ -167,7 +161,7 @@ class FissionProductYields(EqualityMixin):
 
         Parameters
         ----------
-        ev_or_filename : str or openmc.data.endf.Evaluation
+        ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
             ENDF fission product yield evaluation to read from. If given as a
             string, it is assumed to be the filename for the ENDF file.
 
@@ -243,9 +237,7 @@ class DecayMode(EqualityMixin):
     @property
     def daughter(self):
         # Determine atomic number and mass number of parent
-        symbol, A = re.match(r'([A-Zn][a-z]*)(\d+)', self.parent).groups()
-        A = int(A)
-        Z = ATOMIC_NUMBER[symbol]
+        Z, A, _ = zam(self.parent)
 
         # Process changes
         for mode in self.modes:
@@ -255,11 +247,11 @@ class DecayMode(EqualityMixin):
                         delta_A, delta_Z = changes
                         A += delta_A
                         Z += delta_Z
+                        break
+                    else:
+                        return None
 
-        if self._daughter_state > 0:
-            return f'{ATOMIC_SYMBOL[Z]}{A}_m{self._daughter_state}'
-        else:
-            return f'{ATOMIC_SYMBOL[Z]}{A}'
+        return gnds_name(Z, A, self._daughter_state)
 
     @property
     def parent(self):
@@ -297,7 +289,7 @@ class Decay(EqualityMixin):
 
     Parameters
     ----------
-    ev_or_filename : str of openmc.data.endf.Evaluation
+    ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
         ENDF radioactive decay data evaluation to read from. If given as a
         string, it is assumed to be the filename for the ENDF file.
 
@@ -328,11 +320,7 @@ class Decay(EqualityMixin):
 
     """
     def __init__(self, ev_or_filename):
-        # Get evaluation if str is passed
-        if isinstance(ev_or_filename, Evaluation):
-            ev = ev_or_filename
-        else:
-            ev = Evaluation(ev_or_filename)
+        ev = as_evaluation(ev_or_filename)
 
         file_obj = StringIO(ev.section[8, 457])
 
@@ -348,10 +336,7 @@ class Decay(EqualityMixin):
         self.nuclide['atomic_number'] = Z
         self.nuclide['mass_number'] = A
         self.nuclide['isomeric_state'] = metastable
-        if metastable > 0:
-            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}_m{metastable}'
-        else:
-            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}'
+        self.nuclide['name'] = gnds_name(Z, A, metastable)
         self.nuclide['mass'] = items[1]  # AWR
         self.nuclide['excited_state'] = items[2]  # State of the original nuclide
         self.nuclide['stable'] = (items[4] == 1)  # Nucleus stability flag
@@ -494,7 +479,7 @@ class Decay(EqualityMixin):
 
         Parameters
         ----------
-        ev_or_filename : str or openmc.data.endf.Evaluation
+        ev_or_filename : str, openmc.data.endf.Evaluation, or endf.Material
             ENDF radioactive decay data evaluation to read from. If given as a
             string, it is assumed to be the filename for the ENDF file.
 
@@ -657,5 +642,3 @@ def decay_energy(nuclide: str):
             warn(f"Chain file '{chain_file}' does not have any decay energy.")
 
     return _DECAY_ENERGY.get(nuclide, 0.0)
-
-

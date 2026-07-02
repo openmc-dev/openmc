@@ -1,6 +1,9 @@
 #include "openmc/event.h"
 
+#include "openmc/bank.h"
+#include "openmc/error.h"
 #include "openmc/material.h"
+#include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
 
@@ -64,7 +67,8 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   simulation::time_event_init.start();
 #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
-    initialize_history(simulation::particles[i], source_offset + i + 1);
+    initialize_particle_track(
+      simulation::particles[i], source_offset + i + 1, false);
     dispatch_xs_event(i);
   }
   simulation::time_event_init.stop();
@@ -136,7 +140,7 @@ void process_surface_crossing_events()
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_cross_surface();
-    p.event_revive_from_secondary();
+    p.event_check_limit_and_revive();
     if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
@@ -155,7 +159,7 @@ void process_collision_events()
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_collide();
-    p.event_revive_from_secondary();
+    p.event_check_limit_and_revive();
     if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
@@ -174,6 +178,47 @@ void process_death_events(int64_t n_particles)
     p.event_death();
   }
   simulation::time_event_death.stop();
+}
+
+void process_transport_events()
+{
+  while (true) {
+    int64_t max = std::max({simulation::calculate_fuel_xs_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.size(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.size(),
+      simulation::collision_queue.size()});
+
+    if (max == 0) {
+      break;
+    } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+      process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+    } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+      process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+    } else if (max == simulation::advance_particle_queue.size()) {
+      process_advance_particle_events();
+    } else if (max == simulation::surface_crossing_queue.size()) {
+      process_surface_crossing_events();
+    } else if (max == simulation::collision_queue.size()) {
+      process_collision_events();
+    }
+  }
+}
+
+void process_init_secondary_events(int64_t n_particles, int64_t offset,
+  const SharedArray<SourceSite>& shared_secondary_bank)
+{
+  simulation::time_event_init.start();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    initialize_particle_track(simulation::particles[i], offset + i + 1, true);
+    const SourceSite& site = shared_secondary_bank[offset + i];
+    simulation::particles[i].event_revive_from_secondary(site);
+    if (simulation::particles[i].alive()) {
+      dispatch_xs_event(i);
+    }
+  }
+  simulation::time_event_init.stop();
 }
 
 } // namespace openmc

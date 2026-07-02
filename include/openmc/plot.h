@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "openmc/tensor.h"
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
 
 #include "hdf5.h"
 #include "openmc/cell.h"
@@ -17,6 +17,9 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
+#include "openmc/ray.h"
+#include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_match.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -83,19 +86,27 @@ const RGBColor BLACK {0, 0, 0};
  * \class PlottableInterface
  * \brief Interface for plottable objects.
  *
- * PlottableInterface classes must have a unique ID in the plots.xml file.
- * They guarantee the ability to create output in some form. This interface
- * is designed to be implemented by classes that produce plot-relevant data
- * which can be visualized.
+ * PlottableInterface classes must have unique IDs. If no ID (or -1) is
+ * provided, the next available ID is assigned automatically. They guarantee
+ * the ability to create output in some form. This interface is designed to be
+ * implemented by classes that produce plot-relevant data which can be
+ * visualized.
  */
+
+typedef tensor::Tensor<RGBColor> ImageData;
 class PlottableInterface {
+public:
+  PlottableInterface() = default;
+
+  void set_default_colors();
+
 private:
   void set_id(pugi::xml_node plot_node);
-  int id_; // unique plot ID
+  int id_ {C_NONE}; // unique plot ID
 
   void set_bg_color(pugi::xml_node plot_node);
   void set_universe(pugi::xml_node plot_node);
-  void set_default_colors(pugi::xml_node plot_node);
+  void set_color_by(pugi::xml_node plot_node);
   void set_user_colors(pugi::xml_node plot_node);
   void set_overlap_color(pugi::xml_node plot_node);
   void set_mask(pugi::xml_node plot_node);
@@ -107,8 +118,14 @@ protected:
 public:
   enum class PlotColorBy { cells = 0, mats = 1 };
 
+  // Generates image data based on plot parameters and returns it
+  virtual ImageData create_image() const = 0;
+
   // Creates the output image named path_plot_
   virtual void create_output() const = 0;
+
+  // Write populated image data to file
+  void write_image(const ImageData& data) const;
 
   // Print useful info to the terminal
   virtual void print_info() const = 0;
@@ -116,43 +133,62 @@ public:
   const std::string& path_plot() const { return path_plot_; }
   std::string& path_plot() { return path_plot_; }
   int id() const { return id_; }
+  void set_id(int id = C_NONE);
   int level() const { return level_; }
+  PlotColorBy color_by() const { return color_by_; }
 
   // Public color-related data
   PlottableInterface(pugi::xml_node plot_node);
   virtual ~PlottableInterface() = default;
-  int level_;                    // Universe level to plot
-  bool color_overlaps_;          // Show overlapping cells?
-  PlotColorBy color_by_;         // Plot coloring (cell/material)
-  RGBColor not_found_ {WHITE};   // Plot background color
-  RGBColor overlap_color_ {RED}; // Plot overlap color
-  vector<RGBColor> colors_;      // Plot colors
+  int level_ {-1};                           // Universe level to plot
+  bool color_overlaps_ {false};              // Show overlapping cells?
+  PlotColorBy color_by_ {PlotColorBy::mats}; // Plot coloring (cell/material)
+  RGBColor not_found_ {WHITE};               // Plot background color
+  RGBColor overlap_color_ {RED};             // Plot overlap color
+  vector<RGBColor> colors_;                  // Plot colors
 };
-
-typedef xt::xtensor<RGBColor, 2> ImageData;
 
 struct IdData {
   // Constructor
-  IdData(size_t h_res, size_t v_res);
+  IdData(size_t h_res, size_t v_res, bool include_filter = false);
 
   // Methods
-  void set_value(size_t y, size_t x, const GeometryState& p, int level);
+  void set_value(size_t y, size_t x, const Particle& p, int level,
+    Filter* filter = nullptr, FilterMatch* match = nullptr);
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
+  tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
 };
 
 struct PropertyData {
   // Constructor
-  PropertyData(size_t h_res, size_t v_res);
+  PropertyData(size_t h_res, size_t v_res, bool include_filter = false);
 
   // Methods
-  void set_value(size_t y, size_t x, const GeometryState& p, int level);
+  void set_value(size_t y, size_t x, const Particle& p, int level,
+    Filter* filter = nullptr, FilterMatch* match = nullptr);
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
+  tensor::Tensor<double> data_; //!< 2D array of temperature & density data
+};
+
+struct RasterData {
+  // Constructor
+  RasterData(size_t h_res, size_t v_res, bool include_filter = false);
+
+  // Methods
+  void set_value(size_t y, size_t x, const Particle& p, int level,
+    Filter* filter = nullptr, FilterMatch* match = nullptr);
+  void set_overlap(size_t y, size_t x);
+
+  // Members
+  tensor::Tensor<int32_t>
+    id_data_; //!< [v_res, h_res, 3 or 4]: cell, instance, mat, [filter_bin]
+  tensor::Tensor<double>
+    property_data_;     //!< [v_res, h_res, 2]: temperature, density
+  bool include_filter_; //!< Whether filter bin index is included
 };
 
 //===============================================================================
@@ -162,76 +198,76 @@ struct PropertyData {
 class SlicePlotBase {
 public:
   template<class T>
-  T get_map() const;
+  T get_map(int32_t filter_index = -1) const;
 
   enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
 
+  // Accessors
+
+  const std::array<size_t, 3>& pixels() const { return pixels_; }
+  std::array<size_t, 3>& pixels() { return pixels_; }
+
   // Members
 public:
-  Position origin_;           //!< Plot origin in geometry
-  Position width_;            //!< Plot width in geometry
-  PlotBasis basis_;           //!< Plot basis (XY/XZ/YZ)
-  array<size_t, 3> pixels_;   //!< Plot size in pixels
-  bool slice_color_overlaps_; //!< Show overlapping cells?
-  int slice_level_ {-1};      //!< Plot universe level
+  Position origin_;         //!< Plot origin in geometry
+  Direction u_span_;        //!< Full-width span vector in geometry
+  Direction v_span_;        //!< Full-height span vector in geometry
+  array<size_t, 3> pixels_; //!< Plot size in pixels
+  bool show_overlaps_;      //!< Show overlapping cells?
+  int slice_level_ {-1};    //!< Plot universe level
 private:
 };
 
 template<class T>
-T SlicePlotBase::get_map() const
+T SlicePlotBase::get_map(int32_t filter_index) const
 {
 
   size_t width = pixels_[0];
   size_t height = pixels_[1];
 
-  // get pixel size
-  double in_pixel = (width_[0]) / static_cast<double>(width);
-  double out_pixel = (width_[1]) / static_cast<double>(height);
-
-  // size data array
-  T data(width, height);
-
-  // setup basis indices and initial position centered on pixel
-  int in_i, out_i;
-  Position xyz = origin_;
-  switch (basis_) {
-  case PlotBasis::xy:
-    in_i = 0;
-    out_i = 1;
-    break;
-  case PlotBasis::xz:
-    in_i = 0;
-    out_i = 2;
-    break;
-  case PlotBasis::yz:
-    in_i = 1;
-    out_i = 2;
-    break;
-  default:
-    UNREACHABLE();
+  // Determine if filter is being used
+  bool include_filter = (filter_index >= 0);
+  Filter* filter = nullptr;
+  if (include_filter) {
+    filter = model::tally_filters[filter_index].get();
   }
 
-  // set initial position
-  xyz[in_i] = origin_[in_i] - width_[0] / 2. + in_pixel / 2.;
-  xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
+  // size data array
+  T data(width, height, include_filter);
 
-  // arbitrary direction
-  Direction dir = {1. / std::sqrt(2.), 1. / std::sqrt(2.), 0.0};
+  // compute pixel steps and top-left pixel center
+  Direction u_step = u_span_ / static_cast<double>(width);
+  Direction v_step = v_span_ / static_cast<double>(height);
+
+  Position start =
+    origin_ - 0.5 * u_span_ + 0.5 * v_span_ + 0.5 * u_step - 0.5 * v_step;
+
+  // Validate that span vectors define a valid plane
+  Position cross = u_span_.cross(v_span_);
+  if (cross.norm() == 0.0) {
+    fatal_error("Slice span vectors are invalid (zero area).");
+  }
+
+  // Use an arbitrary direction that is not aligned with any coordinate axis.
+  // The direction has no physical meaning for plotting but is used by
+  // Surface::sense() to break ties when a pixel is coincident with a surface.
+  Direction dir = {1.0 / std::sqrt(2.0), 1.0 / std::sqrt(2.0), 0.0};
 
 #pragma omp parallel
   {
-    GeometryState p;
-    p.r() = xyz;
+    Particle p;
+    p.r() = start;
     p.u() = dir;
     p.coord(0).universe() = model::root_universe;
     int level = slice_level_;
     int j {};
+    FilterMatch match;
 
 #pragma omp for
     for (int y = 0; y < height; y++) {
-      p.r()[out_i] = xyz[out_i] - out_pixel * y;
+      Position row = start - v_step * static_cast<double>(y);
       for (int x = 0; x < width; x++) {
-        p.r()[in_i] = xyz[in_i] + in_pixel * x;
+        p.r() = row + u_step * static_cast<double>(x);
         p.n_coord() = 1;
         // local variables
         bool found_cell = exhaustive_find_cell(p);
@@ -240,9 +276,9 @@ T SlicePlotBase::get_map() const
           j = level;
         }
         if (found_cell) {
-          data.set_value(y, x, p, j);
+          data.set_value(y, x, p, j, filter, &match);
         }
-        if (slice_color_overlaps_ && check_cell_overlap(p, false)) {
+        if (show_overlaps_ && check_cell_overlap(p, false)) {
           data.set_overlap(y, x);
         }
       } // inner for
@@ -270,13 +306,15 @@ private:
 public:
   // Add mesh lines to ImageData
   void draw_mesh_lines(ImageData& data) const;
-  void create_image() const;
+  ImageData create_image() const override;
   void create_voxel() const;
 
-  virtual void create_output() const;
-  virtual void print_info() const;
+  void create_output() const override;
+  void print_info() const override;
 
   PlotType type_;                 //!< Plot type (Slice/Voxel)
+  Position width_;                //!< Axis-aligned width from plot.xml
+  PlotBasis basis_;               //!< Basis from plot.xml for slice plots
   int meshlines_width_;           //!< Width of lines added to the plot
   int index_meshlines_mesh_ {-1}; //!< Index of the mesh to draw on the plot
   RGBColor meshlines_color_;      //!< Color of meshlines on the plot
@@ -294,17 +332,32 @@ public:
  */
 class RayTracePlot : public PlottableInterface {
 public:
+  RayTracePlot() = default;
   RayTracePlot(pugi::xml_node plot);
 
   // Standard getters. No setting since it's done from XML.
   const Position& camera_position() const { return camera_position_; }
+  Position& camera_position() { return camera_position_; }
   const Position& look_at() const { return look_at_; }
+  Position& look_at() { return look_at_; }
+
   const double& horizontal_field_of_view() const
   {
     return horizontal_field_of_view_;
   }
+  double& horizontal_field_of_view() { return horizontal_field_of_view_; }
 
-  virtual void print_info() const;
+  void print_info() const override;
+
+  const std::array<int, 2>& pixels() const { return pixels_; }
+  std::array<int, 2>& pixels() { return pixels_; }
+
+  const Direction& up() const { return up_; }
+  Direction& up() { return up_; }
+
+  //! brief Updates the cached camera-to-model matrix after changes to
+  //! camera parameters.
+  void update_view();
 
 protected:
   Direction camera_x_axis() const
@@ -330,8 +383,6 @@ protected:
    */
   std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
 
-  std::array<int, 2> pixels_; // pixel dimension of resulting image
-
 private:
   void set_look_at(pugi::xml_node node);
   void set_camera_position(pugi::xml_node node);
@@ -341,9 +392,9 @@ private:
 
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
   Position camera_position_;               // where camera is
-  Position look_at_; // point camera is centered looking at
-
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+  Position look_at_;                     // point camera is centered looking at
+  std::array<int, 2> pixels_ {100, 100}; // pixel dimension of resulting image
+  Direction up_ {0.0, 0.0, 1.0};         // which way is up
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
@@ -377,8 +428,9 @@ class WireframeRayTracePlot : public RayTracePlot {
 public:
   WireframeRayTracePlot(pugi::xml_node plot);
 
-  virtual void create_output() const;
-  virtual void print_info() const;
+  ImageData create_image() const override;
+  void create_output() const override;
+  void print_info() const override;
 
 private:
   void set_opacities(pugi::xml_node node);
@@ -434,10 +486,22 @@ class SolidRayTracePlot : public RayTracePlot {
   friend class PhongRay;
 
 public:
+  SolidRayTracePlot() = default;
+
   SolidRayTracePlot(pugi::xml_node plot);
 
-  virtual void create_output() const;
-  virtual void print_info() const;
+  ImageData create_image() const override;
+  void create_output() const override;
+  void print_info() const override;
+
+  const std::unordered_set<int>& opaque_ids() const { return opaque_ids_; }
+  std::unordered_set<int>& opaque_ids() { return opaque_ids_; }
+
+  const Position& light_location() const { return light_location_; }
+  Position& light_location() { return light_location_; }
+
+  const double& diffuse_fraction() const { return diffuse_fraction_; }
+  double& diffuse_fraction() { return diffuse_fraction_; }
 
 private:
   void set_opaque_ids(pugi::xml_node node);
@@ -452,43 +516,6 @@ private:
   Position light_location_;
 };
 
-// Base class that implements ray tracing logic, not necessarily through
-// defined regions of the geometry but also outside of it.
-class Ray : public GeometryState {
-
-public:
-  Ray(Position r, Direction u) { init_from_r_u(r, u); }
-
-  // Called at every surface intersection within the model
-  virtual void on_intersection() = 0;
-
-  /*
-   * Traces the ray through the geometry, calling on_intersection
-   * at every surface boundary.
-   */
-  void trace();
-
-  // Stops the ray and exits tracing when called from on_intersection
-  void stop() { stop_ = true; }
-
-  // Sets the dist_ variable
-  void compute_distance();
-
-protected:
-  // Records how far the ray has traveled
-  double traversal_distance_ {0.0};
-
-private:
-  // Max intersections before we assume ray tracing is caught in an infinite
-  // loop:
-  static const int MAX_INTERSECTIONS = 1000000;
-
-  bool hit_something_ {false};
-  bool stop_ {false};
-
-  unsigned event_counter_ {0};
-};
-
 class ProjectionRay : public Ray {
 public:
   ProjectionRay(Position r, Direction u, const WireframeRayTracePlot& plot,
@@ -496,7 +523,7 @@ public:
     : Ray(r, u), plot_(plot), line_segments_(line_segments)
   {}
 
-  virtual void on_intersection() override;
+  void on_intersection() override;
 
 private:
   /* Store a reference to the plot object which is running this ray, in order
@@ -519,7 +546,7 @@ public:
     result_color_ = plot_.not_found_;
   }
 
-  virtual void on_intersection() override;
+  void on_intersection() override;
 
   const RGBColor& result_color() { return result_color_; }
 

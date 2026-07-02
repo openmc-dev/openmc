@@ -80,9 +80,13 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
   }
 }
 
-Position CartesianIndependent::sample(uint64_t* seed) const
+std::pair<Position, double> CartesianIndependent::sample(uint64_t* seed) const
 {
-  return {x_->sample(seed), y_->sample(seed), z_->sample(seed)};
+  auto [x_val, x_wgt] = x_->sample(seed);
+  auto [y_val, y_wgt] = y_->sample(seed);
+  auto [z_val, z_wgt] = z_->sample(seed);
+  Position xi {x_val, y_val, z_val};
+  return {xi, x_wgt * y_wgt * z_wgt};
 }
 
 //==============================================================================
@@ -137,16 +141,51 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     // If no coordinates were specified, default to (0, 0, 0)
     origin_ = {0.0, 0.0, 0.0};
   }
+
+  // Read cylinder z_dir
+  if (check_for_node(node, "z_dir")) {
+    auto z_dir = get_node_array<double>(node, "z_dir");
+    if (z_dir.size() == 3) {
+      z_dir_ = z_dir;
+      z_dir_ /= z_dir_.norm();
+    } else {
+      fatal_error("z_dir for cylindrical source distribution must be length 3");
+    }
+  } else {
+    // If no z_dir was specified, default to (0, 0, 1)
+    z_dir_ = {0.0, 0.0, 1.0};
+  }
+
+  // Read cylinder r_dir
+  if (check_for_node(node, "r_dir")) {
+    auto r_dir = get_node_array<double>(node, "r_dir");
+    if (r_dir.size() == 3) {
+      r_dir_ = r_dir;
+      r_dir_ /= r_dir_.norm();
+    } else {
+      fatal_error("r_dir for cylindrical source distribution must be length 3");
+    }
+  } else {
+    // If no r_dir was specified, default to (1, 0, 0)
+    r_dir_ = {1.0, 0.0, 0.0};
+  }
+
+  if (r_dir_.dot(z_dir_) > 1e-12)
+    fatal_error("r_dir must be perpendicular to z_dir");
+
+  auto phi_dir = z_dir_.cross(r_dir_);
+  phi_dir /= phi_dir.norm();
+  phi_dir_ = phi_dir;
 }
 
-Position CylindricalIndependent::sample(uint64_t* seed) const
+std::pair<Position, double> CylindricalIndependent::sample(uint64_t* seed) const
 {
-  double r = r_->sample(seed);
-  double phi = phi_->sample(seed);
-  double x = r * cos(phi) + origin_.x;
-  double y = r * sin(phi) + origin_.y;
-  double z = z_->sample(seed) + origin_.z;
-  return {x, y, z};
+  auto [r, r_wgt] = r_->sample(seed);
+  auto [phi, phi_wgt] = phi_->sample(seed);
+  auto [z, z_wgt] = z_->sample(seed);
+  Position xi =
+    r * (cos(phi) * r_dir_ + sin(phi) * phi_dir_) + z * z_dir_ + origin_;
+  return {xi, r_wgt * phi_wgt * z_wgt};
 }
 
 //==============================================================================
@@ -203,16 +242,17 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
   }
 }
 
-Position SphericalIndependent::sample(uint64_t* seed) const
+std::pair<Position, double> SphericalIndependent::sample(uint64_t* seed) const
 {
-  double r = r_->sample(seed);
-  double cos_theta = cos_theta_->sample(seed);
-  double phi = phi_->sample(seed);
+  auto [r, r_wgt] = r_->sample(seed);
+  auto [cos_theta, cos_theta_wgt] = cos_theta_->sample(seed);
+  auto [phi, phi_wgt] = phi_->sample(seed);
   // sin(theta) by sin**2 + cos**2 = 1
   double x = r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x;
   double y = r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y;
   double z = r * cos_theta + origin_.z;
-  return {x, y, z};
+  Position xi {x, y, z};
+  return {xi, r_wgt * cos_theta_wgt * phi_wgt};
 }
 
 //==============================================================================
@@ -260,6 +300,37 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   }
 
   elem_idx_dist_.assign(strengths);
+
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+
+    if (check_for_node(bias_node, "strengths")) {
+      std::vector<double> bias_strengths(n_bins, 1.0);
+      bias_strengths = get_node_array<double>(node, "strengths");
+
+      if (bias_strengths.size() != n_bins) {
+        fatal_error(
+          fmt::format("Number of entries in the bias strengths array {} does "
+                      "not match the number of entities in mesh {} ({}).",
+            bias_strengths.size(), mesh_id, n_bins));
+      }
+
+      if (get_node_value_bool(node, "volume_normalized")) {
+        for (int i = 0; i < n_bins; i++) {
+          bias_strengths[i] *= this->mesh()->volume(i);
+        }
+      }
+
+      // Compute importance weights
+      weight_ = compute_importance_weights(strengths, bias_strengths);
+
+      // Re-initialize DiscreteIndex with bias strengths for sampling
+      elem_idx_dist_.assign(bias_strengths);
+    } else {
+      fatal_error(fmt::format(
+        "Bias node for mesh {} found without strengths array.", mesh_id));
+    }
+  }
 }
 
 MeshSpatial::MeshSpatial(int32_t mesh_idx, span<const double> strengths)
@@ -295,9 +366,11 @@ std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
   return {elem_idx, mesh()->sample_element(elem_idx, seed)};
 }
 
-Position MeshSpatial::sample(uint64_t* seed) const
+std::pair<Position, double> MeshSpatial::sample(uint64_t* seed) const
 {
-  return this->sample_mesh(seed).second;
+  auto [elem_idx, u] = this->sample_mesh(seed);
+  double wgt = weight_.empty() ? 1.0 : weight_[elem_idx];
+  return {u, wgt};
 }
 
 //==============================================================================
@@ -328,6 +401,31 @@ PointCloud::PointCloud(pugi::xml_node node)
   }
 
   point_idx_dist_.assign(strengths);
+
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+
+    if (check_for_node(bias_node, "strengths")) {
+      std::vector<double> bias_strengths(point_cloud_.size(), 1.0);
+      bias_strengths = get_node_array<double>(node, "strengths");
+
+      if (bias_strengths.size() != point_cloud_.size()) {
+        fatal_error(
+          fmt::format("Number of entries in the bias strengths array {} does "
+                      "not match the number of spatial points provided {}.",
+            bias_strengths.size(), point_cloud_.size()));
+      }
+
+      // Compute importance weights
+      weight_ = compute_importance_weights(strengths, bias_strengths);
+
+      // Re-initialize DiscreteIndex with bias strengths for sampling
+      point_idx_dist_.assign(bias_strengths);
+    } else {
+      fatal_error(
+        fmt::format("Bias node for PointCloud found without strengths array."));
+    }
+  }
 }
 
 PointCloud::PointCloud(
@@ -337,10 +435,11 @@ PointCloud::PointCloud(
   point_idx_dist_.assign(strengths);
 }
 
-Position PointCloud::sample(uint64_t* seed) const
+std::pair<Position, double> PointCloud::sample(uint64_t* seed) const
 {
   int32_t index = point_idx_dist_.sample(seed);
-  return point_cloud_[index];
+  double wgt = weight_.empty() ? 1.0 : weight_[index];
+  return {point_cloud_[index], wgt};
 }
 
 //==============================================================================
@@ -360,10 +459,15 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
   upper_right_ = Position {params[3], params[4], params[5]};
 }
 
-Position SpatialBox::sample(uint64_t* seed) const
+SpatialBox::SpatialBox(Position lower_left, Position upper_right, bool fission)
+  : lower_left_(lower_left), upper_right_(upper_right),
+    only_fissionable_(fission)
+{}
+
+std::pair<Position, double> SpatialBox::sample(uint64_t* seed) const
 {
   Position xi {prn(seed), prn(seed), prn(seed)};
-  return lower_left_ + xi * (upper_right_ - lower_left_);
+  return {lower_left_ + xi * (upper_right_ - lower_left_), 1.0};
 }
 
 //==============================================================================
@@ -382,9 +486,9 @@ SpatialPoint::SpatialPoint(pugi::xml_node node)
   r_ = Position {params.data()};
 }
 
-Position SpatialPoint::sample(uint64_t* seed) const
+std::pair<Position, double> SpatialPoint::sample(uint64_t* seed) const
 {
-  return r_;
+  return {r_, 1.0};
 }
 
 } // namespace openmc

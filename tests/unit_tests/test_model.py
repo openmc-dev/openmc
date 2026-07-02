@@ -7,6 +7,7 @@ import pytest
 
 import openmc
 import openmc.lib
+from openmc.plots import id_map_to_rgb
 
 
 @pytest.fixture(scope='function')
@@ -73,13 +74,13 @@ def pin_model_attributes():
     tal.scores = ['flux', 'fission']
     tals.append(tal)
 
-    plot1 = openmc.Plot(plot_id=1)
+    plot1 = openmc.SlicePlot(plot_id=1)
     plot1.origin = (0., 0., 0.)
     plot1.width = (pitch, pitch)
     plot1.pixels = (300, 300)
     plot1.color_by = 'material'
     plot1.filename = 'test'
-    plot2 = openmc.Plot(plot_id=2)
+    plot2 = openmc.SlicePlot(plot_id=2)
     plot2.origin = (0., 0., 0.)
     plot2.width = (pitch, pitch)
     plot2.pixels = (300, 300)
@@ -264,8 +265,8 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # Check to see that values are assigned to the C and python representations
     # First python
     cell = model.geometry.get_all_cells()[1]
-    assert cell.temperature == [600.0]
-    assert cell.density == [pytest.approx(10.0, 1e-5)]
+    assert cell.temperature == 600.0
+    assert cell.density == pytest.approx(10.0, 1e-5)
     assert cell.fill.get_mass_density() == pytest.approx(5.0)
     # Now C
     assert openmc.lib.cells[1].get_temperature() == 600.
@@ -285,8 +286,8 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
         'with_properties/settings.xml'
     )
     cell = model_with_properties.geometry.get_all_cells()[1]
-    assert cell.temperature == [600.0]
-    assert cell.density == [pytest.approx(10.0, 1e-5)]
+    assert cell.temperature == 600.0
+    assert cell.density == pytest.approx(10.0, 1e-5)
     assert cell.fill.get_mass_density() == pytest.approx(5.0)
 
 
@@ -902,6 +903,32 @@ def test_id_map_aligned_model():
     assert tr_material == 5, f"Expected material ID 5 at top-right corner, got {tr_material}"
 
 
+def test_id_map_model_with_overlaps():
+    """Test id_map with a model that has overlaps and color_overlaps option"""
+    surface1 = openmc.Sphere(r=50, boundary_type="vacuum")
+    surface2 = openmc.Sphere(r=30)
+    cell1 = openmc.Cell(region=-surface1)
+    cell2 = openmc.Cell(region=-surface2)
+    geometry = openmc.Geometry([cell1, cell2])
+    settings = openmc.Settings()
+    model = openmc.Model(geometry=geometry, settings=settings)
+    id_slice = model.id_map(
+        pixels=(10, 10),
+        basis='xy',
+        origin=(0, 0, 0),
+        width=(100, 100),
+    )
+    assert -3 not in id_slice  # -3 indicates overlap region
+    id_slice = model.id_map(
+        pixels=(10, 10),
+        basis='xy',
+        origin=(0, 0, 0),
+        width=(100, 100),
+        color_overlaps=True,  # enables id_map to return -3 for overlaps
+    )
+    assert -3 in id_slice
+
+
 def test_setter_from_list():
     mat = openmc.Material()
     model = openmc.Model(materials=[mat])
@@ -911,7 +938,7 @@ def test_setter_from_list():
     model = openmc.Model(tallies=[tally])
     assert isinstance(model.tallies, openmc.Tallies)
 
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     model = openmc.Model(plots=[plot])
     assert isinstance(model.plots, openmc.Plots)
 
@@ -970,3 +997,73 @@ def test_keff_search(run_in_tmpdir):
     # Check that total_batches property works
     assert result.total_batches == sum(result.batches)
     assert result.total_batches > 0
+
+
+def test_id_map_to_rgb():
+    """Test conversion of ID map to RGB image array."""
+    # Create a simple model
+    mat = openmc.Material()
+    mat.set_density('g/cm3', 1.0)
+    mat.add_nuclide('Li7', 1.0)
+
+    sphere = openmc.Sphere(r=5.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sphere)
+    geometry = openmc.Geometry([cell])
+    settings = openmc.Settings(
+        batches=10, particles=100, run_mode='fixed source'
+    )
+    model = openmc.Model(geometry, settings=settings)
+
+    id_data = np.zeros((10, 10, 3), dtype=np.int32)
+    id_data[:, :, 0] = cell.id  # Cell IDs
+    id_data[:, :, 2] = mat.id   # Material IDs
+
+    # Test color_by with default colors
+    for color_by in ['cell', 'material']:
+        rgb = id_map_to_rgb(id_data, color_by=color_by)
+        assert rgb.shape == (10, 10, 3)
+        assert rgb.dtype == float
+        assert np.all((rgb >= 0) & (rgb <= 1))  # RGB values in [0, 1]
+
+    # Test with custom colors
+    colors = {cell.id: (255, 0, 0)}  # Red
+    rgb_custom = id_map_to_rgb(id_data, color_by='cell', colors=colors)
+    assert np.allclose(rgb_custom, [1.0, 0.0, 0.0])  # All pixels should be red
+
+    # Test with overlaps
+    id_data_overlap = id_data.copy()
+    id_data_overlap[5:, 5:, 0] = -3  # Mark some pixels as overlaps
+    rgb_overlap = id_map_to_rgb(
+        id_data_overlap, overlap_color=(0, 255, 0)
+    )
+    # Check that overlap region is green
+    assert np.allclose(rgb_overlap[5:, 5:], [0.0, 1.0, 0.0])
+
+
+def test_convert_to_multigroup_preserves_material_names(run_in_tmpdir):
+    """convert_to_multigroup leaves the user's material names unchanged and keys
+    the MGXS library by a unique sanitised name + id, so distinct materials that
+    share a name do not collapse to a single cross section."""
+    a = openmc.Material(name="Steel Plate #1")
+    a.add_element("Fe", 1.0)
+    a.set_density("g/cm3", 7.9)
+    b = openmc.Material(name="Steel Plate #1")  # same name, distinct material
+    b.add_element("Fe", 1.0)
+    b.set_density("g/cm3", 7.9)
+
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type="vacuum")
+    c1 = openmc.Cell(fill=a, region=-s1)
+    c2 = openmc.Cell(fill=b, region=+s1 & -s2)
+    model = openmc.Model(openmc.Geometry([c1, c2]), openmc.Materials([a, b]))
+
+    # Pre-create the library so MGXS generation (and transport) is skipped.
+    Path("mgxs.h5").touch()
+    model.convert_to_multigroup(method="material_wise", mgxs_path="mgxs.h5")
+
+    # User names are preserved, not sanitised or de-duplicated.
+    assert [m.name for m in model.materials] == ["Steel Plate #1", "Steel Plate #1"]
+    # Each material reads a unique, sanitised library entry (name + id).
+    macro = [m._macroscopic for m in model.materials]
+    assert macro == [f"Steel_Plate__1_{a.id}", f"Steel_Plate__1_{b.id}"]
+    assert len(set(macro)) == 2

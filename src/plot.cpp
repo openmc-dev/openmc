@@ -177,8 +177,6 @@ std::unordered_map<int, int> plot_map;
 vector<std::unique_ptr<PlottableInterface>> plots;
 uint64_t plotter_seed = 1;
 
-std::unique_ptr<RasterData> last_slice_data;
-
 } // namespace model
 
 //==============================================================================

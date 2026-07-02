@@ -27,7 +27,7 @@ int n_coord_levels;
 vector<int64_t> overlap_check_count;
 
 vector<OverlapKey> overlap_keys;
-std::unordered_map<OverlapKey, size_t> overlap_key_index;
+std::unordered_map<OverlapKey, int, OverlapKeyHash> overlap_key_index;
 
 } // namespace model
 
@@ -35,12 +35,12 @@ std::unordered_map<OverlapKey, size_t> overlap_key_index;
 // Non-member functions
 //==============================================================================
 
-size_t check_cell_overlap(GeometryState& p, bool error)
+int check_cell_overlap(GeometryState& p, bool error)
 {
   int n_coord = p.n_coord();
 
   // If no overlap found, return a nonphysical index
-  size_t overlap_index = SIZE_MAX;
+  int overlap_index = -1;
 
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
@@ -67,15 +67,17 @@ size_t check_cell_overlap(GeometryState& p, bool error)
           int a = std::min(cell_a, cell_b);
           int b = std::max(cell_a, cell_b);
           OverlapKey key {univ.id_, a, b};
-
-          auto it = model::overlap_key_index.find(key);
-          if (it != model::overlap_key_index.end()) {
-            overlap_index = it->second; // already exists, reuse index
-          } else {
-            size_t idx = model::overlap_keys.size();
-            model::overlap_keys.push_back(key);
-            model::overlap_key_index[key] = idx;
-            overlap_index = idx;
+#pragma omp critical(overlap_key_update)
+          {
+            auto it = model::overlap_key_index.find(key);
+            if (it != model::overlap_key_index.end()) {
+              overlap_index = it->second; // already exists, reuse index
+            } else {
+              int idx = int(model::overlap_keys.size());
+              model::overlap_keys.push_back(key);
+              model::overlap_key_index[key] = idx;
+              overlap_index = idx;
+            }
           }
           break;
         }

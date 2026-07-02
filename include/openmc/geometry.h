@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "openmc/random_ray/source_region.h"  // For hash_combine
+
 #include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/vector.h"
@@ -15,7 +17,10 @@ namespace openmc {
 class BoundaryInfo;
 class GeometryState;
 
-// OverlapKey to store cell and universe data of a single overlap
+//==============================================================================
+//! OverlapKey to store cell and universe data of a single overlap, along with 
+//! a functor for hashing an OverlapKey into an unordered_map.
+//==============================================================================
 struct OverlapKey {
   int universe_id;
   int cell1_id;
@@ -25,6 +30,17 @@ struct OverlapKey {
   {
     return universe_id == other.universe_id && cell1_id == other.cell1_id &&
            cell2_id == other.cell2_id;
+  }
+};
+
+struct OverlapKeyHash {
+  std::size_t operator()(const OverlapKey& k) const
+  {
+    size_t seed = 0;
+    hash_combine(seed, k.universe_id);
+    hash_combine(seed, k.cell1_id);
+    hash_combine(seed, k.cell2_id);
+    return seed;
   }
 };
 
@@ -41,7 +57,7 @@ extern vector<int64_t> overlap_check_count;
 
 // Overlap data structures get cleared every slice_data run
 extern vector<OverlapKey> overlap_keys;
-extern std::unordered_map<OverlapKey, size_t> overlap_key_index;
+extern std::unordered_map<OverlapKey, int, OverlapKeyHash> overlap_key_index;
 
 } // namespace model
 
@@ -57,7 +73,7 @@ inline bool coincident(double d1, double d2)
 //==============================================================================
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
-size_t check_cell_overlap(GeometryState& p, bool error = true);
+int check_cell_overlap(GeometryState& p, bool error = true);
 
 //==============================================================================
 //! Get the cell instance for a particle at the specified universe level
@@ -96,17 +112,5 @@ void cross_lattice(
 BoundaryInfo distance_to_boundary(GeometryState& p);
 
 } // namespace openmc
-
-// Hash specialization for use in std::unordered_map
-template<>
-struct std::hash<openmc::OverlapKey> {
-  size_t operator()(const openmc::OverlapKey& k) const noexcept
-  {
-    size_t h = std::hash<int> {}(k.universe_id);
-    h ^= std::hash<int> {}(k.cell1_id) + 0x9e3779b9 + (h << 6) + (h >> 2);
-    h ^= std::hash<int> {}(k.cell2_id) + 0x9e3779b9 + (h << 6) + (h >> 2);
-    return h;
-  }
-};
 
 #endif // OPENMC_GEOMETRY_H

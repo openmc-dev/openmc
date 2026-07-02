@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 from ctypes import (c_bool, c_int, c_size_t, c_int32,
-                    c_double, c_uint8, Structure, POINTER,
-                    byref)
+                    c_double, c_uint8, Structure, POINTER)
 from weakref import WeakValueDictionary
 
 from ..exceptions import AllocationError, InvalidIDError
@@ -260,7 +259,7 @@ def property_map(plot):
 
 def slice_data_overlap_count():
     count = c_size_t()
-    _dll.openmc_slice_data_overlap_count(byref(count))
+    _dll.openmc_slice_data_overlap_count(count)
     return count.value
 
 def slice_data_overlap_info():

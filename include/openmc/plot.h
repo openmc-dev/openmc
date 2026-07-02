@@ -280,8 +280,8 @@ T SlicePlotBase::get_map(int32_t filter_index) const
           data.set_value(y, x, p, j, filter, &match);
         }
         if (show_overlaps_) {
-          auto overlap_idx = check_cell_overlap(p, false);
-          if (overlap_idx != SIZE_MAX) {
+          int overlap_idx = check_cell_overlap(p, false);
+          if (overlap_idx >= 0) {
             data.set_overlap(y, x, overlap_idx);
           }
         }

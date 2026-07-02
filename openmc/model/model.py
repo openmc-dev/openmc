@@ -2043,6 +2043,7 @@ class Model:
         source: openmc.IndependentSource,
         temperature_settings: dict,
         temperature: float | None = None,
+        settings: openmc.Settings | None = None,
     ) -> openmc.XSdata:
         """Generate a single MGXS set for one material, where the geometry is an
         infinite medium composed of that material at an isothermal temperature value.
@@ -2069,6 +2070,9 @@ class Model:
         temperature : float, optional
             The isothermal temperature value to apply to the material. If not specified,
             defaults to the temperature in the material.
+        settings : openmc.Settings, optional
+            User settings applied on top of the generation defaults. See
+            :meth:`Model.convert_to_multigroup` for the resolution rules.
 
         Returns
         -------
@@ -2082,17 +2086,20 @@ class Model:
         if temperature is not None:
           model.materials[-1].temperature = temperature
 
-        # Settings
+        # Settings for the generation run: defaults first, overridden by any
+        # populated attributes of the user-provided settings
         model.settings.batches = 100
         model.settings.particles = nparticles
-
-        model.settings.source = source
-
-        model.settings.run_mode = 'fixed source'
-        model.settings.create_fission_neutrons = False
-
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.temperature = temperature_settings
+        if settings is not None:
+            model.settings.update(settings)
+
+        # These fields are owned by the infinite medium method and cannot be
+        # overridden by user settings
+        model.settings.source = source
+        model.settings.run_mode = 'fixed source'
+        model.settings.create_fission_neutrons = False
 
         # Geometry
         box = openmc.model.RectangularPrism(
@@ -2122,6 +2129,7 @@ class Model:
         source_energy: openmc.stats.Univariate | None = None,
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
+        settings: openmc.Settings | None = None,
     ) -> None:
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
@@ -2170,6 +2178,9 @@ class Model:
             A dictionary of temperature settings to use when generating MGXS.
             Valid entries for temperature_settings are the same as the valid
             entries in openmc.Settings.temperature_settings.
+        settings : openmc.Settings, optional
+            User settings applied on top of the generation defaults. See
+            :meth:`Model.convert_to_multigroup` for the resolution rules.
         """
 
         src = self._create_mgxs_sources(
@@ -2194,7 +2205,8 @@ class Model:
                     correction,
                     directory,
                     src,
-                    temp_settings
+                    temp_settings,
+                    settings=settings
                 )
                 mgxs_sets.append(xs_data)
 
@@ -2217,7 +2229,8 @@ class Model:
                         directory,
                         src,
                         temp_settings,
-                        temperature
+                        temperature,
+                        settings=settings
                     )
                     raw_mgxs_sets[temperature].append(xs_data)
 
@@ -2320,6 +2333,7 @@ class Model:
         source: openmc.IndependentSource,
         temperature_settings: dict,
         temperature: float | None = None,
+        settings: openmc.Settings | None = None,
     ) -> dict[str, openmc.XSdata]:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. If a temperature is specified, all materials in the slab have
@@ -2347,6 +2361,9 @@ class Model:
         temperature : float, optional
             The isothermal temperature value to apply to the materials in the
             slab. If not specified, defaults to the temperature in the materials.
+        settings : openmc.Settings, optional
+            User settings applied on top of the generation defaults. See
+            :meth:`Model.convert_to_multigroup` for the resolution rules.
 
         Returns
         -------
@@ -2361,20 +2378,21 @@ class Model:
             for material in model.geometry.get_all_materials().values():
                 material.temperature = temperature
 
-        # Settings
+        # Settings for the generation run: defaults first, overridden by any
+        # populated attributes of the user-provided settings
         model.settings.batches = 200
         model.settings.inactive = 100
         model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.temperature = temperature_settings
+        if settings is not None:
+            model.settings.update(settings)
 
-        # Define the sources
+        # These fields are owned by the stochastic slab method and cannot be
+        # overridden by user settings
         model.settings.source = source
-
         model.settings.run_mode = 'fixed source'
         model.settings.create_fission_neutrons = False
-
-        model.settings.output = {'summary': True, 'tallies': False}
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
@@ -2403,6 +2421,7 @@ class Model:
         source_energy: openmc.stats.Univariate | None = None,
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
+        settings: openmc.Settings | None = None,
     ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
@@ -2454,6 +2473,9 @@ class Model:
             A dictionary of temperature settings to use when generating MGXS.
             Valid entries for temperature_settings are the same as the valid
             entries in openmc.Settings.temperature_settings.
+        settings : openmc.Settings, optional
+            User settings applied on top of the generation defaults. See
+            :meth:`Model.convert_to_multigroup` for the resolution rules.
         """
 
         # Stochastic slab geometry
@@ -2480,7 +2502,8 @@ class Model:
                 correction,
                 directory,
                 src,
-                temp_settings
+                temp_settings,
+                settings=settings
             ).values()
 
             # Write the file to disk.
@@ -2500,7 +2523,8 @@ class Model:
                     directory,
                     src,
                     temp_settings,
-                    temperature
+                    temperature,
+                    settings=settings
                 )
 
             # Unpack the isothermal XSData objects and build a single XSData object per material.
@@ -2527,6 +2551,7 @@ class Model:
         temperature_settings: dict,
         temperature: float | None = None,
         weight_windows_file: PathLike | None = None,
+        settings: openmc.Settings | None = None,
     ) -> dict[str, openmc.XSdata]:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation. If a temperature is
@@ -2561,6 +2586,9 @@ class Model:
             Path to a weight windows file to load and apply during the
             continuous energy solve. See :meth:`Model.convert_to_multigroup`
             for details.
+        settings : openmc.Settings, optional
+            User settings applied on top of the generation defaults. See
+            :meth:`Model.convert_to_multigroup` for the resolution rules.
 
         Returns
         -------
@@ -2574,12 +2602,29 @@ class Model:
             for material in model.geometry.get_all_materials().values():
                 material.temperature = temperature
 
-        # Settings
+        # Settings for the generation run: the input model's own settings are
+        # the base (via the deepcopy above), the generation defaults replace
+        # the values that are tuned for the final multigroup solve, and any
+        # populated attributes of the user-provided settings take precedence
+        # over both
         model.settings.batches = 200
         model.settings.inactive = 100
         model.settings.particles = nparticles
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.temperature = temperature_settings
+        if settings is not None:
+            model.settings.update(settings)
+            # Catch a half-overridden batch specification early: the error
+            # OpenMC would otherwise emit at run time would not explain
+            # where the inactive batches came from
+            if (model.settings.run_mode == 'eigenvalue'
+                    and model.settings.inactive >= model.settings.batches):
+                raise ValueError(
+                    f'The requested "settings.batches" '
+                    f'({model.settings.batches}) must exceed the number of '
+                    f'inactive batches ({model.settings.inactive}, which '
+                    'defaults to 100 for MGXS generation); set '
+                    '"settings.inactive" as well.')
 
         # If a weight window file was provided, load and apply the weight
         # windows during the continuous energy solve. This allows materials far
@@ -2616,6 +2661,7 @@ class Model:
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
         weight_windows_file: PathLike | None = None,
+        settings: openmc.Settings | None = None,
     ) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
@@ -2652,6 +2698,9 @@ class Model:
             Path to a weight windows file to load and apply during the
             continuous energy solve. See :meth:`Model.convert_to_multigroup`
             for details.
+        settings : openmc.Settings, optional
+            User settings applied on top of the generation defaults. See
+            :meth:`Model.convert_to_multigroup` for the resolution rules.
         """
         temp_settings = {}
         if temperature_settings is None:
@@ -2667,7 +2716,8 @@ class Model:
                 correction,
                 directory,
                 temp_settings,
-                weight_windows_file=weight_windows_file
+                weight_windows_file=weight_windows_file,
+                settings=settings
             ).values()
 
             # Write the file to disk.
@@ -2687,7 +2737,8 @@ class Model:
                     directory,
                     temp_settings,
                     temperature,
-                    weight_windows_file=weight_windows_file
+                    weight_windows_file=weight_windows_file,
+                    settings=settings
                 )
 
             # Unpack the isothermal XSData objects and build a single XSData object per material.
@@ -2708,7 +2759,7 @@ class Model:
         self,
         method: str = "material_wise",
         groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
-        nparticles: int = 2000,
+        nparticles: int | None = None,
         overwrite_mgxs_library: bool = False,
         mgxs_path: PathLike = "mgxs.h5",
         correction: str | None = None,
@@ -2716,6 +2767,7 @@ class Model:
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
         weight_windows_file: PathLike | None = None,
+        settings: openmc.Settings | None = None,
     ):
         """Convert all materials from continuous energy to multigroup.
 
@@ -2735,6 +2787,8 @@ class Model:
             Defaults to ``"CASMO-2"``.
         nparticles : int, optional
             Number of particles to simulate per batch when generating MGXS.
+            Defaults to 2000. Specifying both this argument and a
+            ``settings`` object with ``particles`` set is an error.
         overwrite_mgxs_library : bool, optional
             Whether to overwrite an existing MGXS library file.
         mgxs_path : str, optional
@@ -2783,9 +2837,72 @@ class Model:
             ``"stochastic_slab"`` and ``"infinite_medium"`` methods.
 
             .. versionadded:: 0.15.4
+        settings : openmc.Settings, optional
+            Settings for customizing the continuous energy simulation(s) used
+            to generate the MGXS library. Only attributes that are populated
+            override the generation defaults, so a sparse object may be used
+            to adjust just a few fields, e.g.
+            ``settings=openmc.Settings(particles=100_000)`` only increases
+            the particle count. The settings of the generation run are
+            resolved in three layers, with later layers taking precedence:
+            (1) the model's own settings for the ``"material_wise"`` method,
+            or a fresh :class:`openmc.Settings` object for the
+            surrogate-geometry methods; (2) the generation defaults (200
+            batches with 100 inactive for ``"material_wise"`` and
+            ``"stochastic_slab"``, 100 batches for ``"infinite_medium"``,
+            2000 particles, summary-only output, and the model's temperature
+            settings); (3) all populated attributes of this object (see
+            :meth:`openmc.Settings.update`). A few attributes are owned by
+            the generation method and cannot be overridden here: the
+            ``"stochastic_slab"`` and ``"infinite_medium"`` methods always
+            force ``run_mode``, ``source`` and ``create_fission_neutrons``,
+            while the ``"material_wise"`` method always takes its run mode
+            from the model. A ``weight_windows_file`` set on this object is
+            handled exactly as if it had been passed via the
+            ``weight_windows_file`` argument. Specifying an attribute both
+            here and via the corresponding argument (``nparticles``,
+            ``temperature_settings`` or ``weight_windows_file``) is an
+            error.
+
+            .. versionadded:: 0.15.4
         """
         if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
+
+        # Reconcile user-provided settings with the arguments they overlap
+        # with. A deepcopy is taken so the caller's object is never mutated.
+        if settings is not None:
+            check_type('settings', settings, openmc.Settings)
+            if nparticles is not None and settings.particles is not None:
+                raise ValueError(
+                    'Only one of the "nparticles" argument and '
+                    '"settings.particles" may be specified.')
+            if temperature_settings is not None and settings.temperature:
+                raise ValueError(
+                    'Only one of the "temperature_settings" argument and '
+                    '"settings.temperature" may be specified.')
+            settings = copy.deepcopy(settings)
+
+            # A weight windows file given via settings is funneled through
+            # the same validation and path resolution as the argument below.
+            if settings.weight_windows_file is not None:
+                if weight_windows_file is not None:
+                    raise ValueError(
+                        'Only one of the "weight_windows_file" argument and '
+                        '"settings.weight_windows_file" may be specified.')
+                weight_windows_file = settings.weight_windows_file
+                settings.weight_windows_file = None
+
+            # The surrogate-geometry methods construct their own sources
+            if method != "material_wise" and len(settings.source) > 0:
+                warnings.warn(
+                    'The sources defined in "settings" are ignored by the '
+                    f'"{method}" MGXS generation method, which constructs '
+                    'its own sources.')
+                settings.source = []
+
+        if nparticles is None:
+            nparticles = 2000
 
         # Weight windows are only applicable to the "material_wise" method,
         # which runs a continuous energy simulation of the original geometry
@@ -2848,15 +2965,16 @@ class Model:
                 if method == "infinite_medium":
                     self._generate_infinite_medium_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
-                        temperatures, temperature_settings)
+                        temperatures, temperature_settings, settings)
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir,
-                        temperatures, temperature_settings, weight_windows_file)
+                        temperatures, temperature_settings, weight_windows_file,
+                        settings)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
                         groups, nparticles, mgxs_path, correction, tmpdir, source_energy,
-                        temperatures, temperature_settings)
+                        temperatures, temperature_settings, settings)
                 else:
                     raise ValueError(
                         f'MGXS generation method "{method}" not recognized')

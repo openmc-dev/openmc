@@ -1067,3 +1067,160 @@ def test_convert_to_multigroup_preserves_material_names(run_in_tmpdir):
     macro = [m._macroscopic for m in model.materials]
     assert macro == [f"Steel_Plate__1_{a.id}", f"Steel_Plate__1_{b.id}"]
     assert len(set(macro)) == 2
+
+
+class _GenerationCaptured(Exception):
+    """Raised by the patched MGXS library builder to end generation early."""
+
+
+def _steel_water_model():
+    a = openmc.Material(name='steel')
+    a.add_element('Fe', 1.0)
+    a.set_density('g/cm3', 7.9)
+    b = openmc.Material(name='water')
+    b.add_element('H', 2.0)
+    b.add_element('O', 1.0)
+    b.set_density('g/cm3', 1.0)
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type='vacuum')
+    c1 = openmc.Cell(fill=a, region=-s1)
+    c2 = openmc.Cell(fill=b, region=+s1 & -s2)
+    return openmc.Model(openmc.Geometry([c1, c2]), openmc.Materials([a, b]))
+
+
+def _capture_generation_settings(monkeypatch, model, **kwargs):
+    """Return the resolved Settings of the MGXS generation run by capturing
+    the generation model just before transport would start."""
+    captured = {}
+
+    def fake_auto_generate(gen_model, groups, correction, directory):
+        captured['settings'] = gen_model.settings
+        raise _GenerationCaptured()
+
+    monkeypatch.setattr(openmc.Model, '_auto_generate_mgxs_lib',
+                        fake_auto_generate)
+    with pytest.raises(_GenerationCaptured):
+        model.convert_to_multigroup(**kwargs)
+    return captured['settings']
+
+
+def test_convert_to_multigroup_settings_material_wise(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
+    model.settings.photon_transport = True
+
+    user = openmc.Settings(particles=12345, seed=7)
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='material_wise', settings=user)
+
+    # User-populated attributes take precedence
+    assert gen.particles == 12345
+    assert gen.seed == 7
+    # Generation defaults fill whatever the user left unset
+    assert gen.batches == 200
+    assert gen.inactive == 100
+    assert gen.output == {'summary': True, 'tallies': False}
+    # The model's own settings pass through where not overridden
+    assert gen.photon_transport is True
+    assert len(gen.source) == 1
+    # The run mode comes from the model even though the user's sparse
+    # settings object carries the constructor default of 'eigenvalue'
+    assert gen.run_mode == 'fixed source'
+    # The caller's settings object is never mutated
+    assert user.batches is None
+    assert user.run_mode == 'eigenvalue'
+
+
+def test_convert_to_multigroup_settings_stochastic_slab(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+
+    user = openmc.Settings()
+    user.particles = 999
+    user.batches = 50
+    user.inactive = 20
+    user.max_history_splits = 42
+    user.run_mode = 'volume'  # owned by the method: ignored
+    user.source = openmc.IndependentSource(space=openmc.stats.Point())
+
+    with pytest.warns(UserWarning, match='constructs its own'):
+        gen = _capture_generation_settings(
+            monkeypatch, model, method='stochastic_slab', settings=user)
+
+    assert gen.particles == 999
+    assert gen.batches == 50
+    assert gen.inactive == 20
+    assert gen.max_history_splits == 42
+    # Method-owned attributes cannot be overridden: the run mode and sources
+    # are forced, and the user's source was discarded with a warning
+    assert gen.run_mode == 'fixed source'
+    assert gen.create_fission_neutrons is False
+    assert len(gen.source) > 0
+    assert all(s is not user.source[0] for s in gen.source)
+
+
+def test_convert_to_multigroup_settings_infinite_medium(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='infinite_medium',
+        settings=openmc.Settings(particles=777))
+
+    assert gen.particles == 777
+    assert gen.batches == 100
+    assert gen.run_mode == 'fixed source'
+    assert gen.create_fission_neutrons is False
+
+
+def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatch):
+    model = _steel_water_model()
+    Path('ww.h5').touch()
+
+    user = openmc.Settings()
+    user.weight_windows_file = 'ww.h5'
+    gen = _capture_generation_settings(
+        monkeypatch, model, method='material_wise', settings=user)
+
+    # A weight windows file given via settings goes through the same handling
+    # as the weight_windows_file argument: resolved to an absolute path and
+    # weight windows turned on
+    assert Path(gen.weight_windows_file).is_absolute()
+    assert Path(gen.weight_windows_file).name == 'ww.h5'
+    assert gen.weight_windows_on is True
+
+
+def test_convert_to_multigroup_settings_conflicts(run_in_tmpdir):
+    model = _steel_water_model()
+
+    with pytest.raises(TypeError):
+        model.convert_to_multigroup(settings={'particles': 100})
+
+    with pytest.raises(ValueError, match='nparticles'):
+        model.convert_to_multigroup(
+            nparticles=1000, settings=openmc.Settings(particles=2000))
+
+    with pytest.raises(ValueError, match='temperature_settings'):
+        model.convert_to_multigroup(
+            temperature_settings={'method': 'interpolation'},
+            settings=openmc.Settings(temperature={'method': 'interpolation'}))
+
+    Path('ww.h5').touch()
+    user = openmc.Settings()
+    user.weight_windows_file = 'ww.h5'
+    with pytest.raises(ValueError, match='weight_windows_file'):
+        model.convert_to_multigroup(weight_windows_file='ww.h5', settings=user)
+
+
+def test_convert_to_multigroup_settings_inactive_guard(run_in_tmpdir, monkeypatch):
+    # Setting batches below the default number of inactive batches without
+    # also setting inactive raises a helpful error for eigenvalue models
+    model = _steel_water_model()
+
+    def fake_auto_generate(gen_model, groups, correction, directory):
+        raise _GenerationCaptured()
+
+    monkeypatch.setattr(openmc.Model, '_auto_generate_mgxs_lib',
+                        fake_auto_generate)
+    with pytest.raises(ValueError, match='inactive'):
+        model.convert_to_multigroup(
+            method='material_wise', settings=openmc.Settings(batches=50))

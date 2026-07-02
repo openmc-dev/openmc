@@ -246,3 +246,66 @@ def test_properties_file_load(tmp_path, mpi_intracomm):
             assert mat.get_density('atom/b-cm') == pytest.approx(
                 orig_density * density_factor, rel=1e-5
             )
+
+
+def test_settings_update():
+    base = openmc.Settings()
+    base.batches = 100
+    base.inactive = 10
+    base.particles = 1000
+    base.photon_transport = True
+    base.output = {'summary': False}
+    base.source = openmc.IndependentSource(space=openmc.stats.Point())
+
+    overrides = openmc.Settings()
+    overrides.particles = 5000
+    overrides.seed = 7
+    overrides.output = {'tallies': True}
+
+    base.update(overrides)
+
+    # Populated attributes overwrite the base values
+    assert base.particles == 5000
+    assert base.seed == 7
+    assert base.output == {'tallies': True}
+
+    # Unpopulated attributes (None or empty collections) leave the base
+    # values untouched
+    assert base.batches == 100
+    assert base.inactive == 10
+    assert base.photon_transport is True
+    assert len(base.source) == 1
+
+    # Copied values are deep copies: mutating the source object afterwards
+    # does not affect the updated object
+    overrides.output['tallies'] = False
+    assert base.output == {'tallies': True}
+
+    with pytest.raises(TypeError):
+        base.update({'particles': 100})
+
+
+def test_settings_update_run_mode():
+    # A non-default run mode is copied over...
+    base = openmc.Settings()
+    base.update(openmc.Settings(run_mode='fixed source'))
+    assert base.run_mode == 'fixed source'
+
+    # ...but 'eigenvalue' is indistinguishable from the default and is not
+    base = openmc.Settings(run_mode='fixed source')
+    base.update(openmc.Settings(run_mode='eigenvalue'))
+    assert base.run_mode == 'fixed source'
+
+
+def test_settings_update_unset_detection():
+    # update() infers "never set" from a value of None or an empty
+    # collection. If this assertion fails, a new Settings attribute was
+    # given a default that update() cannot distinguish from a user-assigned
+    # value: either make the attribute default to None/empty or special-case
+    # it in update() the way run_mode is.
+    populated = {
+        name for name, value in vars(openmc.Settings()).items()
+        if value is not None
+        and not (hasattr(value, '__len__') and len(value) == 0)
+    }
+    assert populated == {'_run_mode'}

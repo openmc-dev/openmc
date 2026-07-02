@@ -22,6 +22,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle_type.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -46,9 +47,15 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Determine width for zero padding
     int w = std::to_string(settings::n_max_batches).size();
 
+    // Tag statepoints written during the forward solve of an adjoint run
+    const char* forward =
+      (FlatSourceDomain::solve_ == RandomRaySolve::FORWARD_FOR_ADJOINT)
+        ? "forward."
+        : "";
+
     // Set filename for state point
-    filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5", settings::path_output,
-      simulation::current_batch, w);
+    filename_ = fmt::format("{0}statepoint.{3}{1:0{2}}.h5",
+      settings::path_output, simulation::current_batch, w, forward);
   }
 
   // If a file name was specified, ensure it has .h5 file extension

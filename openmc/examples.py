@@ -150,7 +150,7 @@ def pwr_core() -> openmc.Model:
     rpv_steel.add_nuclide('Ni60', 0.0026776, 'wo')
     rpv_steel.add_nuclide('Mn55', 0.01, 'wo')
     rpv_steel.add_nuclide('Cr52', 0.002092475, 'wo')
-    rpv_steel.add_nuclide('C0', 0.0025, 'wo')
+    rpv_steel.add_element('C', 0.0025, 'wo')
     rpv_steel.add_nuclide('Cu63', 0.0013696, 'wo')
 
     lower_rad_ref = openmc.Material(6, name='Lower radial reflector')
@@ -1314,17 +1314,17 @@ def random_ray_three_region_cube() -> openmc.Model:
 def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     """Create a three region cube model with two external tally regions.
 
-    This is an adaptation of the simple monoenergetic problem of a cube with 
-    three concentric cubic regions. The innermost region is near void (with 
-    Sigma_t around 10^-5) and contains an external isotropic source term, the 
-    middle region is a mild scatterer (with Sigma_t around 10^-3), and the 
-    outer region of the cube is a scatterer and absorber (with Sigma_t around 
+    This is an adaptation of the simple monoenergetic problem of a cube with
+    three concentric cubic regions. The innermost region is near void (with
+    Sigma_t around 10^-5) and contains an external isotropic source term, the
+    middle region is a mild scatterer (with Sigma_t around 10^-3), and the
+    outer region of the cube is a scatterer and absorber (with Sigma_t around
     1).
 
-    Two cubic "detector" regions are found outside this geometry, one along the 
-    y-axis near z=0, and the other in the upper right corner of the system. 
-    The size of each detector is scaled to be equal to that of the source 
-    region. The model returned by this function contains cell tallies on each 
+    Two cubic "detector" regions are found outside this geometry, one along the
+    y-axis near z=0, and the other in the upper right corner of the system.
+    The size of each detector is scaled to be equal to that of the source
+    region. The model returned by this function contains cell tallies on each
     detector.
 
     Returns
@@ -1498,29 +1498,29 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
         fill=absorber_mat,
         region=detector2_region
     )
-    
+
     external_x = (
-        +x_high & +y_low & +z_low & -x_outer & 
+        +x_high & +y_low & +z_low & -x_outer &
         ((-y_outer & -z_high) | (-y_high & +z_high & -z_outer))
     )
     external_y = (
-        +y_high & -y_outer & 
+        +y_high & -y_outer &
         (
-            (+detector1_right & -x_high & +z_low & -z_outer) | 
-            (-detector1_right & +x_low & +detector1_top & -z_outer) | 
+            (+detector1_right & -x_high & +z_low & -z_outer) |
+            (-detector1_right & +x_low & +detector1_top & -z_outer) |
             (+x_high & -x_outer & +z_low & -z_high)
         )
     )
     external_z = (
-        +x_low & +y_low & +z_high & -z_outer & 
+        +x_low & +y_low & +z_high & -z_outer &
         ((-y_outer & -x_high) | (-y_high & +x_high & -x_outer))
     )
-    external_cell = openmc.Cell(fill=cavity_mat, 
-                                region=(external_x | external_y | external_z), 
+    external_cell = openmc.Cell(fill=cavity_mat,
+                                region=(external_x | external_y | external_z),
                                 name='outside cube')
 
     root = openmc.Universe(
-        name='root universe', 
+        name='root universe',
         cells=[cube_domain, detector1, detector2, external_cell]
     )
 
@@ -1604,8 +1604,8 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     source_tally.estimator = estimator
 
     # Instantiate a Tallies collection and export to XML
-    tallies = openmc.Tallies([detector1_tally, 
-                              detector2_tally, 
+    tallies = openmc.Tallies([detector1_tally,
+                              detector2_tally,
                               absorber_tally,
                               cavity_tally,
                               source_tally])
@@ -1619,6 +1619,7 @@ def random_ray_three_region_cube_with_detectors() -> openmc.Model:
     model.tallies = tallies
 
     return model
+
 
 def sphere_with_shielded_pocket() -> openmc.Model:
     """Create a continuous energy deep-shielding model with a far detector pocket.

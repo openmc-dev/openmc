@@ -16,6 +16,7 @@
 #include "openmc/particle.h"
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
@@ -200,9 +201,12 @@ int openmc_simulation_finalize()
   if (settings::output_tallies && mpi::master)
     write_tallies();
 
-  // If weight window generators are present in this simulation,
-  // write a weight windows file
-  if (variance_reduction::weight_windows_generators.size() > 0) {
+  // If weight window generators are present in this simulation, write a
+  // weight windows file. This is skipped during the forward solve of an
+  // adjoint (FW-CADIS) run, where only the adjoint-derived weight windows
+  // are meaningful.
+  if (variance_reduction::weight_windows_generators.size() > 0 &&
+      FlatSourceDomain::solve_ != RandomRaySolve::FORWARD_FOR_ADJOINT) {
     openmc_weight_windows_export();
   }
 

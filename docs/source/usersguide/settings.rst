@@ -792,6 +792,11 @@ collision_track.h5 file at the end of the simulation. The file contains
 300 recorded collisions that occurred in materials with IDs 1 or 2, involving
 fission or (n,2n) reactions on the nuclides U-238 or O-16, within cells
 with IDs 5 and 12.
+
+.. note::
+   Electron and positron collision-track events are not associated with a
+   specific nuclide. If a ``nuclides`` entry is specified, these events are omitted.
+
 The file can be read using :func:`openmc.read_collision_track_file`.
 The example below shows how to extract the data from the collision_track
 feature and displays the fields stored in the file:

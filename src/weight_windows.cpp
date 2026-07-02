@@ -791,7 +791,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   if (method_string == "magic") {
     method_ = WeightWindowUpdateMethod::MAGIC;
     if (settings::solver_type == SolverType::RANDOM_RAY &&
-        FlatSourceDomain::adjoint_) {
+        FlatSourceDomain::adjoint_requested_) {
       fatal_error("Random ray weight window generation with MAGIC cannot be "
                   "done in adjoint mode.");
     }
@@ -800,7 +800,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     if (settings::solver_type != SolverType::RANDOM_RAY) {
       fatal_error("FW-CADIS can only be run in random ray solver mode.");
     }
-    FlatSourceDomain::adjoint_ = true;
+    FlatSourceDomain::adjoint_requested_ = true;
     if (check_for_node(node, "targets")) {
       FlatSourceDomain::fw_cadis_local_ = true;
       targets_ = get_node_array<size_t>(node, "targets");

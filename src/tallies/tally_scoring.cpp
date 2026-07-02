@@ -158,7 +158,7 @@ void score_fission_delayed_dg(int i_tally, int d_bin, double score,
   dg_match.bins_[i_bin] = d_bin;
 
   // Determine the filter scoring index
-  auto filter_index = 0;
+  int64_t filter_index = 0;
   double filter_weight = 1.;
   for (auto i = 0; i < tally.filters().size(); ++i) {
     auto i_filt = tally.filters(i);
@@ -449,7 +449,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
         (score_bin == SCORE_PROMPT_NU_FISSION && g == 0)) {
 
       // Find the filter scoring index for this filter combination
-      int filter_index = 0;
+      int64_t filter_index = 0;
       double filter_weight = 1.0;
       for (auto j = 0; j < tally.filters().size(); ++j) {
         auto i_filt = tally.filters(j);
@@ -497,7 +497,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       } else {
 
         // Find the filter index and weight for this filter combination
-        int filter_index = 0;
+        int64_t filter_index = 0;
         double filter_weight = 1.;
         for (auto j = 0; j < tally.filters().size(); ++j) {
           auto i_filt = tally.filters(j);
@@ -578,8 +578,8 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
 //! collision estimator.
 
 void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -1112,8 +1112,8 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 //! is not used for analog tallies.
 
 void score_general_ce_analog(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -1615,8 +1615,8 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
 //! argument is really just used for filter weights.
 
 void score_general_mg(Particle& p, int i_tally, int start_index,
-  int filter_index, double filter_weight, int i_nuclide, double atom_density,
-  double flux)
+  int64_t filter_index, double filter_weight, int i_nuclide,
+  double atom_density, double flux)
 {
   auto& tally {*model::tallies[i_tally]};
 

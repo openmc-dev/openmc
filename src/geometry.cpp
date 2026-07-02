@@ -27,7 +27,7 @@ int n_coord_levels;
 vector<int64_t> overlap_check_count;
 
 vector<OverlapKey> overlap_keys;
-unordered_map<OverlapKey, size_t> overlap_key_index;
+std::unordered_map<OverlapKey, size_t> overlap_key_index;
 
 } // namespace model
 
@@ -39,11 +39,11 @@ size_t check_cell_overlap(GeometryState& p, bool error)
 {
   int n_coord = p.n_coord();
 
+  // If no overlap found, return a nonphysical index
+  size_t overlap_index = SIZE_MAX;
+
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
-
-    // If no overlap found, return a nonphysical index
-    size_t overlap_index = SIZE_MAX;
     Universe& univ = *model::universes[p.coord(j).universe()];
 
     // Loop through each cell on this level
@@ -68,13 +68,13 @@ size_t check_cell_overlap(GeometryState& p, bool error)
           int b = std::max(cell_a, cell_b);
           OverlapKey key {univ.id_, a, b};
 
-          auto it = overlap_key_index.find(key);
-          if (it != overlap_key_index.end()) {
+          auto it = model::overlap_key_index.find(key);
+          if (it != model::overlap_key_index.end()) {
             overlap_index = it->second; // already exists, reuse index
           } else {
-            size_t idx = overlap_keys.size();
-            overlap_keys.push_back(key);
-            overlap_key_index[key] = idx;
+            size_t idx = model::overlap_keys.size();
+            model::overlap_keys.push_back(key);
+            model::overlap_key_index[key] = idx;
             overlap_index = idx;
           }
           break;

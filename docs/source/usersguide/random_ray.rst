@@ -761,9 +761,9 @@ the fidelity of the generated MGXS data.
 
 .. _mgxs_bootstrap:
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Bootstrapping Material-Wise MGXS with Weight Windows
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``"material_wise"`` method runs a continuous energy simulation of the
 original geometry, so it produces the highest fidelity cross sections of the
@@ -772,15 +772,15 @@ far from the source (for example, a detector or structural material located
 outside a thick shield), an analog continuous energy simulation may be unable to
 transport any particles to that material. No tallies are scored there, and the
 resulting cross sections for that material are zero. This situation is common in
-fusion shielding problems.
+shielding problems.
 
 This limitation can be overcome by "bootstrapping" the cross section generation
-with weight windows. The idea is to first cheaply produce a set of weight windows
-that cover the entire problem, and then reuse them to push particles into the far
-regions during the higher fidelity ``"material_wise"`` solve. The weight windows
-are generated using the ``"stochastic_slab"`` method (which produces cross
-sections for *all* materials regardless of their location) together with the
-random ray solver and a :class:`~openmc.WeightWindowGenerator`, exactly as
+with weight windows. The idea is to first cheaply produce a set of weight
+windows that cover the entire problem and then reuse them to push particles into
+the far regions during the higher fidelity ``"material_wise"`` solve. The weight
+windows are generated using the ``"stochastic_slab"`` method (which produces
+cross sections for *all* materials regardless of their location) together with
+the random ray solver and a :class:`~openmc.WeightWindowGenerator`, exactly as
 described in the :ref:`FW-CADIS user guide <usersguide_fw_cadis>`. The resulting
 ``weight_windows.h5`` file is then passed to a second, higher fidelity
 ``"material_wise"`` cross section generation via the ``weight_windows_file``
@@ -1124,9 +1124,9 @@ The adjoint flux random ray solver mode can be enabled as::
 
     settings.random_ray['adjoint'] = True
 
-When enabled, OpenMC will first run a forward transport simulation if there are 
-no user-specified adjoint sources present, followed by an adjoint transport 
-simulation. Fixed adjoint sources can be specified on the 
+When enabled, OpenMC will first run a forward transport simulation if there are
+no user-specified adjoint sources present, followed by an adjoint transport
+simulation. Fixed adjoint sources can be specified on the
 :attr:`openmc.Settings.random_ray` dictionary as follows::
 
     # Geometry definition
@@ -1139,21 +1139,21 @@ simulation. Fixed adjoint sources can be specified on the
     energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
 
     adj_source = openmc.IndependentSource(
-        energy=energy_distribution, 
+        energy=energy_distribution,
         constraints={'domains': [detector_cell]}
     )
 
     # Add to random_ray dict
     settings.random_ray['adjoint_source'] = adj_source
 
-The same constraints apply to the user-defined adjoint source as to the forward 
-source, described in the :ref:`Fixed Source and Eigenvalue section 
-<usersguide_random_ray_run_modes>`. If this source is not provided, a forward 
-solve must take place to compute the adjoint external source when a forward 
-external source is present in the problem. Simulation settings (e.g., number of 
-rays, batches, etc.) will be identical for both calculations. At the 
-conclusion of the run, all results (e.g., tallies, plots, etc.) will be 
-derived from the adjoint flux rather than the forward flux but are not labeled 
+The same constraints apply to the user-defined adjoint source as to the forward
+source, described in the :ref:`Fixed Source and Eigenvalue section
+<usersguide_random_ray_run_modes>`. If this source is not provided, a forward
+solve must take place to compute the adjoint external source when a forward
+external source is present in the problem. Simulation settings (e.g., number of
+rays, batches, etc.) will be identical for both calculations. At the
+conclusion of the run, all results (e.g., tallies, plots, etc.) will be
+derived from the adjoint flux rather than the forward flux but are not labeled
 any differently. When an initial forward solve is performed (i.e., when no
 user-specified adjoint source is present), its output files are also written to
 disk with a ``forward`` infix, so they are not overwritten by the subsequent
@@ -1165,10 +1165,10 @@ generating FW-CADIS weight windows, no weight window file is written for the
 forward solve, as only the final adjoint-derived weight windows are meaningful.
 
 .. note::
-    Use of the automated 
-    :ref:`FW-CADIS weight window generator<usersguide_fw_cadis>` is not 
-    currently compatible with user-defined adjoint sources. Instead, the 
-    initial forward calculation is used to assign "forward-weighted" adjoint 
+    Use of the automated
+    :ref:`FW-CADIS weight window generator<usersguide_fw_cadis>` is not
+    currently compatible with user-defined adjoint sources. Instead, the
+    initial forward calculation is used to assign "forward-weighted" adjoint
     sources to the tally regions of interest.
 
 ---------------------------------------

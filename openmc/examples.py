@@ -1673,8 +1673,6 @@ def sphere_with_shielded_pocket() -> openmc.Model:
     steel.set_density('g/cm3', 7.87)
     steel.add_nuclide('Fe56', 1.0)
 
-    model.materials = openmc.Materials([air, concrete, steel])
-
     ###########################################################################
     # Geometry
 
@@ -1726,7 +1724,7 @@ def sphere_with_shielded_pocket() -> openmc.Model:
          cavity_half_width, cavity_half_width])
     source.constraints = {'domains': [cavity_cell]}
     source.angle = openmc.stats.Isotropic()
-    source.energy = openmc.stats.Discrete([2.0e6], [1.0])
+    source.energy = openmc.stats.delta_function(2.0e6)
 
     model.settings.run_mode = 'fixed source'
     model.settings.source = source

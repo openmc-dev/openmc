@@ -966,4 +966,5 @@ bool isclose(double a, double b, double rel_tol, double abs_tol)
   return std::abs(a - b) <=
          std::max(rel_tol * std::max(std::abs(a), std::abs(b)), abs_tol);
 }
+
 } // namespace openmc

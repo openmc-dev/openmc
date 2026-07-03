@@ -261,35 +261,37 @@ std::pair<double, array<int, 3>> RectLattice::distance(
   // Determine the oncoming edge.
   double x0 {copysign(0.5 * pitch_[0], u.x)};
   double y0 {copysign(0.5 * pitch_[1], u.y)};
-  double z0;
 
-  // Evaluate axial distances.
+  // Evaluate the distance to each oncoming edge independently. Comparing these
+  // distances directly (rather than reconstructing the crossing position)
+  // avoids the floating-point cancellation that occurs for large pitches.
   double dx = u.x != 0.0 ? (x0 - x) / u.x : INFTY;
   double dy = u.y != 0.0 ? (y0 - y) / u.y : INFTY;
-  double dz = is_3d_ ? (u.z != 0.0 ? (z0 - z) / u.z : INFTY) : INFTY;
-
+  double dz = INFTY;
   if (is_3d_) {
-    z0 = std::copysign(0.5 * pitch_[2], u.z);
-    dz = (u.z != 0.0) ? (z0 - z) / u.z : INFTY;
+    double z0 {copysign(0.5 * pitch_[2], u.z)};
+    dz = u.z != 0.0 ? (z0 - z) / u.z : INFTY;
   }
 
-  // Minimum distance
+  // The distance to the nearest lattice boundary is the smallest axial
+  // distance.
   double d = std::min({dx, dy, dz});
 
+  // Determine which lattice boundaries are being crossed. The axis attaining
+  // the minimum is exactly equal to d, so at least one translation is always
+  // set for a finite crossing; a near-equal second axis indicates a corner
+  // crossing.
   array<int, 3> lattice_trans = {0, 0, 0};
-
-  // Determine which directions are crossed
-  if (isclose(d, dx, 1e-12, FP_PRECISION))
-    lattice_trans[0] = std::copysign(1, u.x);
-
-  if (isclose(d, dy, 1e-12, FP_PRECISION))
-    lattice_trans[1] = std::copysign(1, u.y);
-
-  if (is_3d_ && isclose(d, dz, 1e-12, FP_PRECISION))
-    lattice_trans[2] = std::copysign(1, u.z);
+  if (isclose(d, dx, FP_COINCIDENT, FP_PRECISION))
+    lattice_trans[0] = copysign(1, u.x);
+  if (isclose(d, dy, FP_COINCIDENT, FP_PRECISION))
+    lattice_trans[1] = copysign(1, u.y);
+  if (is_3d_ && isclose(d, dz, FP_COINCIDENT, FP_PRECISION))
+    lattice_trans[2] = copysign(1, u.z);
 
   return {d, lattice_trans};
 }
+
 //==============================================================================
 
 void RectLattice::get_indices(

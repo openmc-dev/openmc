@@ -28,7 +28,6 @@
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
-#include "openmc/math_functions.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/openmp_interface.h"
@@ -1862,13 +1861,13 @@ double CylindricalMesh::find_r_crossing(
   // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
 
   const double r0 = grid_[0][shell];
-  if (isclose(r0, 0.0, 0.0, FP_PRECISION))
+  if (r0 == 0.0)
     return INFTY;
 
   const double denominator = u.x * u.x + u.y * u.y;
 
   // Direction of flight is in z-direction. Will never intersect r.
-  if (isclose(denominator, 0.0, 0.0, FP_PRECISION))
+  if (std::abs(denominator) < FP_PRECISION)
     return INFTY;
 
   // inverse of dominator to help the compiler to speed things up
@@ -1884,7 +1883,7 @@ double CylindricalMesh::find_r_crossing(
   D = std::sqrt(D);
 
   // Particle is already on the shell surface; avoid spurious crossing
-  if (isclose(R, r0, RADIAL_MESH_TOL, FP_PRECISION))
+  if (std::abs(R - r0) <= RADIAL_MESH_TOL * (1.0 + std::abs(r0)))
     return INFTY;
 
   // Check -p - D first because it is always smaller as -p + D
@@ -2158,14 +2157,14 @@ double SphericalMesh::find_r_crossing(
   // solve |r+s*u| = r0
   // |r+s*u| = |r| + 2*s*r*u + s^2 (|u|==1 !)
   const double r0 = grid_[0][shell];
-  if (isclose(r0, 0.0, 0.0, FP_PRECISION))
+  if (r0 == 0.0)
     return INFTY;
   const double p = r.dot(u);
   double R = r.norm();
   double D = p * p - (R - r0) * (R + r0);
 
   // Particle is already on the shell surface; avoid spurious crossing
-  if (isclose(R, r0, RADIAL_MESH_TOL, FP_PRECISION))
+  if (std::abs(R - r0) <= RADIAL_MESH_TOL * (1.0 + std::abs(r0)))
     return INFTY;
 
   if (D >= 0.0) {

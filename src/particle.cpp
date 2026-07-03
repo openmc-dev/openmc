@@ -597,10 +597,9 @@ void Particle::event_death()
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  const auto progeny = n_progeny();
-  if (progeny != 0 && (settings::run_mode == RunMode::EIGENVALUE ||
-                        settings::use_shared_secondary_bank)) {
-    simulation::progeny_per_particle[current_work()] = progeny;
+  if (settings::run_mode == RunMode::EIGENVALUE ||
+      settings::use_shared_secondary_bank) {
+    simulation::progeny_per_particle[current_work()] = n_progeny();
   }
 }
 

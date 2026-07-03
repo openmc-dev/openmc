@@ -50,10 +50,10 @@ XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node)
     mesh_library_ = xdg::MeshLibrary::MOAB;
   } else if (mesh_lib == "libmesh") {
     mesh_library_ = xdg::MeshLibrary::LIBMESH;
-  }
-  else {
+  } else {
     fatal_error(fmt::format("Invalid mesh library specified in XML: {}. "
-      "Valid options are 'moab' and 'libmesh'.", mesh_lib));
+                            "Valid options are 'moab' and 'libmesh'.",
+      mesh_lib));
   }
 
   initialize();
@@ -67,10 +67,10 @@ XDGMesh::XDGMesh(hid_t group) : UnstructuredMesh(group)
     mesh_library_ = xdg::MeshLibrary::MOAB;
   } else if (mesh_lib == "libmesh") {
     mesh_library_ = xdg::MeshLibrary::LIBMESH;
-  }
-  else {
+  } else {
     fatal_error(fmt::format("Invalid mesh library specified in HDF5: {}. "
-      "Valid options are 'moab' and 'libmesh'.", mesh_lib));
+                            "Valid options are 'moab' and 'libmesh'.",
+      mesh_lib));
   }
   initialize();
 }

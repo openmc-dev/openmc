@@ -106,7 +106,6 @@ public:
   //! \return Volume of the bin
   double volume(int bin) const override;
 
-
 private:
   void initialize() override;
 

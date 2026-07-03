@@ -6,9 +6,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "openmc/random_ray/source_region.h" // For hash_combine
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/random_ray/source_region.h" // For hash_combine
 #include "openmc/vector.h"
 
 namespace openmc {

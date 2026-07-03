@@ -108,8 +108,11 @@ def test_surface_tally_during_lattice_crossing(run_in_tmpdir):
     ymax = openmc.YPlane(1.0, boundary_type="vacuum")
     zmin = openmc.ZPlane(-1.0, boundary_type="vacuum")
     zmax = openmc.ZPlane(1.0, boundary_type="vacuum")
+    
+    inner_cell = openmc.Cell()
+    inner_univ = openmc.Universe(cells=[inner_cell])
 
-    tile_cell = openmc.Cell()
+    tile_cell = openmc.Cell(fill=inner_univ)
     tile_univ = openmc.Universe(cells=[tile_cell])
 
     lattice = openmc.RectLattice()

@@ -139,8 +139,7 @@ jobs:
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
-                              libeigen3-dev \
-                              libembree-dev
+                              libeigen3-dev
 
       - name: Optional apt dependencies for MPI
         shell: bash
@@ -154,7 +153,7 @@ jobs:
 
       - name: Optional apt dependencies for XDG
         shell: bash
-        if: ${{ matrix.xdg == 'y' }}
+        if: ${{ matrix.umesh_libs == 'y' }}
         run: |
           sudo apt install -y libembree-dev
 

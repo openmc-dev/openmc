@@ -139,7 +139,8 @@ jobs:
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
-                              libeigen3-dev
+                              libeigen3-dev \
+                              libembree-dev
 
       - name: Optional apt dependencies for MPI
         shell: bash

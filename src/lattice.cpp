@@ -349,6 +349,26 @@ Position RectLattice::get_local_position(
 
 //==============================================================================
 
+Direction RectLattice::get_normal(
+  const array<int, 3>& i_xyz, bool& is_valid) const
+{
+  is_valid = false;
+  Direction dir = {0.0, 0.0, 0.0};
+  if ((std::abs(i_xyz[0]) == 1) && (i_xyz[1] == 0) && (i_xyz[2] == 0)) {
+    is_valid = true;
+    dir[0] = std::copysign(1.0, i_xyz[0]);
+  } else if ((i_xyz[0] == 0) && (std::abs(i_xyz[1]) == 1) && (i_xyz[2] == 0)) {
+    is_valid = true;
+    dir[1] = std::copysign(1.0, i_xyz[1]);
+  } else if ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (std::abs(i_xyz[2]) == 1)) {
+    is_valid = true;
+    dir[2] = std::copysign(1.0, i_xyz[2]);
+  }
+  return dir;
+}
+
+//==============================================================================
+
 int32_t& RectLattice::offset(int map, const array<int, 3>& i_xyz)
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
@@ -991,6 +1011,91 @@ Position HexLattice::get_local_position(
   }
 
   return r;
+}
+
+//==============================================================================
+
+Direction HexLattice::get_normal(
+  const array<int, 3>& i_xyz, bool& is_valid) const
+{
+  // Short description of the direction vectors used here.  The beta, gamma, and
+  // delta vectors point towards the flat sides of each hexagonal tile.
+  // Y - orientation:
+  //   basis0 = (1, 0)
+  //   basis1 = (-1/sqrt(3), 1)   = +120 degrees from basis0
+  //   beta   = (sqrt(3)/2, 1/2)  = +30 degrees from basis0
+  //   gamma  = (sqrt(3)/2, -1/2) = -60 degrees from beta
+  //   delta  = (0, 1)            = +60 degrees from beta
+  // X - orientation:
+  //   basis0 = (1/sqrt(3), -1)
+  //   basis1 = (0, 1)            = +120 degrees from basis0
+  //   beta   = (1, 0)            = +30 degrees from basis0
+  //   gamma  = (1/2, -sqrt(3)/2) = -60 degrees from beta
+  //   delta  = (1/2, sqrt(3)/2)  = +60 degrees from beta
+
+  is_valid = false;
+  Direction dir = {0.0, 0.0, 0.0};
+  if ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (std::abs(i_xyz[2]) == 1)) {
+    is_valid = true;
+    dir[2] = std::copysign(1.0, i_xyz[2]);
+  } else if ((i_xyz[2] == 0) &&
+             std::max({std::abs(i_xyz[0]), std::abs(i_xyz[1]),
+               std::abs(i_xyz[0] + i_xyz[1])}) == 1) {
+    is_valid = true;
+    // beta direction
+    if ((i_xyz[0] == 1) && (i_xyz[1] == 0)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.5 * std::sqrt(3.0);
+        dir[1] = 0.5;
+      } else {
+        dir[0] = 1.0;
+        dir[1] = 0.0;
+      }
+    } else if ((i_xyz[0] == -1) && (i_xyz[1] == 0)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = -0.5 * std::sqrt(3.0);
+        dir[1] = -0.5;
+      } else {
+        dir[0] = -1.0;
+        dir[1] = 0.0;
+      }
+      // gamma direction
+    } else if ((i_xyz[0] == 1) && (i_xyz[1] == -1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.5 * std::sqrt(3.0);
+        dir[1] = -0.5;
+      } else {
+        dir[0] = 0.5;
+        dir[1] = -0.5 * std::sqrt(3.0);
+      }
+    } else if ((i_xyz[0] == -1) && (i_xyz[1] == 1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = -0.5 * std::sqrt(3.0);
+        dir[1] = 0.5;
+      } else {
+        dir[0] = -0.5;
+        dir[1] = 0.5 * std::sqrt(3.0);
+      }
+      // delta direction
+    } else if ((i_xyz[0] == 0) && (i_xyz[1] == 1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = 1.0;
+      } else {
+        dir[0] = 0.5;
+        dir[1] = 0.5 * std::sqrt(3.0);
+      }
+    } else if ((i_xyz[0] == 0) && (i_xyz[1] == -1)) {
+      if (orientation_ == Orientation::y) {
+        dir[0] = 0.0;
+        dir[1] = -1.0;
+      } else {
+        dir[0] = -0.5;
+        dir[1] = -0.5 * std::sqrt(3.0);
+      }
+    }
+  }
+  return dir;
 }
 
 //==============================================================================

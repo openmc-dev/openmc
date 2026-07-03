@@ -83,6 +83,7 @@ bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool use_decay_photons {false};
+bool use_shared_secondary_bank {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -97,6 +98,7 @@ std::string path_sourcepoint;
 std::string path_statepoint;
 const char* path_statepoint_c {path_statepoint.c_str()};
 std::string weight_windows_file;
+std::string properties_file;
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
@@ -279,8 +281,9 @@ void get_run_parameters(pugi::xml_node node_base)
     } else {
       fatal_error("Specify random ray inactive distance in settings XML");
     }
-    if (check_for_node(random_ray_node, "source")) {
-      xml_node source_node = random_ray_node.child("source");
+    if (check_for_node(random_ray_node, "ray_source")) {
+      xml_node ray_source_node = random_ray_node.child("ray_source");
+      xml_node source_node = ray_source_node.child("source");
       // Get point to list of <source> elements and make sure there is at least
       // one
       RandomRay::ray_source_ = Source::create(source_node);
@@ -319,7 +322,7 @@ void get_run_parameters(pugi::xml_node node_base)
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
     }
     if (check_for_node(random_ray_node, "adjoint")) {
-      FlatSourceDomain::adjoint_ =
+      FlatSourceDomain::adjoint_requested_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
     if (check_for_node(random_ray_node, "sample_method")) {
@@ -366,6 +369,13 @@ void get_run_parameters(pugi::xml_node node_base)
           FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
         fatal_error("Random ray diagonal stabilization rho factor must be "
                     "between 0 and 1");
+      }
+    }
+    if (check_for_node(random_ray_node, "adjoint_source")) {
+      pugi::xml_node adj_source_node = random_ray_node.child("adjoint_source");
+      for (pugi::xml_node source_node : adj_source_node.children("source")) {
+        // Find any local adjoint sources
+        model::adjoint_sources.push_back(Source::create(source_node));
       }
     }
   }
@@ -748,6 +758,14 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "time_positron")) {
       time_cutoff[3] = std::stod(get_node_value(node_cutoff, "time_positron"));
+    }
+  }
+
+  // read properties from file
+  if (check_for_node(root, "properties_file")) {
+    properties_file = get_node_value(root, "properties_file");
+    if (!file_exists(properties_file)) {
+      fatal_error(fmt::format("File '{}' does not exist.", properties_file));
     }
   }
 
@@ -1267,6 +1285,16 @@ void read_settings_xml(pugi::xml_node root)
         break;
       }
     }
+    // If any weight window generators have local FW-CADIS target tallies,
+    // user-defined adjoint sources cannot be used at the same time.
+    if (!model::adjoint_sources.empty()) {
+      for (const auto& wwg : variance_reduction::weight_windows_generators) {
+        if (!wwg->targets_.empty()) {
+          fatal_error("Cannot use both user-defined adjoint sources and "
+                      "FW-CADIS target tallies at the same time.");
+        }
+      }
+    }
   }
 
   // Set up weight window checkpoints
@@ -1292,6 +1320,27 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "use_decay_photons")) {
     settings::use_decay_photons =
       get_node_value_bool(root, "use_decay_photons");
+  }
+
+  // If weight windows are on, also enable shared secondary bank (unless
+  // explicitly disabled by user).
+  if (check_for_node(root, "shared_secondary_bank")) {
+    bool val = get_node_value_bool(root, "shared_secondary_bank");
+    if (val && run_mode == RunMode::EIGENVALUE) {
+      warning(
+        "Shared secondary bank is not supported in eigenvalue calculations. "
+        "Setting will be ignored.");
+    } else {
+      settings::use_shared_secondary_bank = val;
+    }
+  } else if (settings::weight_windows_on) {
+    if (run_mode == RunMode::EIGENVALUE) {
+      warning(
+        "Shared secondary bank is not supported in eigenvalue calculations. "
+        "Particle local secondary banks will be used instead.");
+    } else if (run_mode == RunMode::FIXED_SOURCE) {
+      settings::use_shared_secondary_bank = true;
+    }
   }
 }
 

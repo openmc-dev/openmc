@@ -73,7 +73,7 @@ void IdData::set_value(size_t y, size_t x, const Particle& p, int level,
   }
 }
 
-void IdData::set_overlap(size_t y, size_t x, size_t /*overlap_idx*/)
+void IdData::set_overlap(size_t y, size_t x, int /*overlap_idx*/)
 {
   for (size_t k = 0; k < data_.shape(2); ++k)
     data_(y, x, k) = OVERLAP;
@@ -94,7 +94,7 @@ void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level,
   }
 }
 
-void PropertyData::set_overlap(size_t y, size_t x, size_t /*overlap_idx*/)
+void PropertyData::set_overlap(size_t y, size_t x, int /*overlap_idx*/)
 {
   data_(y, x) = OVERLAP;
 }
@@ -154,7 +154,7 @@ void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
   }
 }
 
-void RasterData::set_overlap(size_t y, size_t x, size_t overlap_idx)
+void RasterData::set_overlap(size_t y, size_t x, int overlap_idx)
 {
   // Set cell, instance, and material to OVERLAP, but preserve filter bin
   id_data_(y, x, 0) = OVERLAP;
@@ -1980,9 +1980,9 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     model::overlap_check_count.resize(model::cells.size());
   }
 
-  if (color_overlaps) {
-    settings::check_overlaps = true;
-  }
+  // if (color_overlaps) {
+  //   settings::check_overlaps = true;
+  // }
 
   try {
     // Create a temporary SlicePlotBase object to reuse get_map logic
@@ -2008,7 +2008,6 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
       std::copy(
         data.property_data_.begin(), data.property_data_.end(), property_data);
     }
-
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;

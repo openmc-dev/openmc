@@ -52,7 +52,6 @@ int check_cell_overlap(GeometryState& p, bool error)
       if (c.contains(p.coord(j).r(), p.coord(j).u(), p.surface())) {
 #pragma omp atomic
         ++model::overlap_check_count[index_cell];
-
         if (index_cell != p.coord(j).cell()) {
           if (error) {
             fatal_error(

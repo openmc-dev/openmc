@@ -256,7 +256,6 @@ def property_map(plot):
 
 
 # Python wrappings for overlap functions
-
 def slice_data_overlap_count():
     count = c_size_t()
     _dll.openmc_slice_data_overlap_count(count)
@@ -271,7 +270,6 @@ def slice_data_overlap_info():
             n,
             overlap_info.ctypes.data_as(POINTER(c_int32)),
         )
-
     return overlap_info, n
 
 _dll.openmc_slice_data_overlap_count.argtypes = [POINTER(c_size_t)]

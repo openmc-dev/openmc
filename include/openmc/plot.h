@@ -156,7 +156,7 @@ struct IdData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x, size_t overlap_idx);
+  void set_overlap(size_t y, size_t x, int overlap_idx);
 
   // Members
   tensor::Tensor<int32_t> data_; //!< 2D array of cell & material ids
@@ -169,7 +169,7 @@ struct PropertyData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x, size_t overlap_idx);
+  void set_overlap(size_t y, size_t x, int overlap_idx);
 
   // Members
   tensor::Tensor<double> data_; //!< 2D array of temperature & density data
@@ -182,7 +182,7 @@ struct RasterData {
   // Methods
   void set_value(size_t y, size_t x, const Particle& p, int level,
     Filter* filter = nullptr, FilterMatch* match = nullptr);
-  void set_overlap(size_t y, size_t x, size_t overlap_idx);
+  void set_overlap(size_t y, size_t x, int overlap_idx);
 
   // Members
   tensor::Tensor<int32_t>

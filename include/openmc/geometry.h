@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "openmc/random_ray/source_region.h" // For hash_combine
-
 #include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/vector.h"
@@ -21,6 +20,7 @@ class GeometryState;
 //! OverlapKey to store cell and universe data of a single overlap, along with
 //! a functor for hashing an OverlapKey into an unordered_map.
 //==============================================================================
+
 struct OverlapKey {
   int universe_id;
   int cell1_id;

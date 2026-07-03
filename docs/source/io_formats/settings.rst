@@ -1073,9 +1073,18 @@ attributes/sub-elements:
     For a tokamak source, one or more ``energy`` sub-elements specify the
     neutron energy distribution(s). Either a single distribution is given (used
     at all radii) or exactly one distribution per ``r_over_a`` grid point is
-    given, in which case the energy is sampled from the distribution at the grid
-    point nearest the sampled radius. Each follows the format of a univariate
+    given, in which case the energy is sampled from one of the two
+    distributions bracketing the sampled radius, selected stochastically with
+    probability proportional to the proximity of the radius to each grid point
+    (stochastic interpolation). Each follows the format of a univariate
     probability distribution (see :ref:`univariate`).
+
+  :time:
+    An optional ``time`` sub-element specifying the time distribution of source
+    particles, following the format of a univariate probability distribution
+    (see :ref:`univariate`).
+
+    *Default*: particles are born at :math:`t=0`
 
   .. note:: Biased sampling can be applied to the spatial and energy distributions
             of a source by using the ``<bias>`` sub-element (see

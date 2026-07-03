@@ -936,8 +936,13 @@ class TokamakSource(SourceBase):
         Energy distribution(s). Either a single distribution used at all radii,
         or one distribution per ``r_over_a`` grid point. When one distribution
         per grid point is given, the energy of a sampled particle is drawn from
-        the distribution at the bracketing grid point nearest its sampled
-        radius (no interpolation between distributions is performed).
+        one of the two distributions bracketing its sampled radius, selected
+        stochastically with probability proportional to the proximity of the
+        radius to each grid point (stochastic interpolation).
+    time : openmc.stats.Univariate, optional
+        Time distribution of the source. If None, particles are born at
+        :math:`t=0`, matching the default behavior of
+        :class:`openmc.IndependentSource`.
     phi_start : float
         Starting toroidal angle in [rad] (default: 0)
     phi_extent : float
@@ -970,6 +975,8 @@ class TokamakSource(SourceBase):
         Emission density S(r) at each r/a point
     energy : list of openmc.stats.Univariate
         Energy distribution(s)
+    time : openmc.stats.Univariate or None
+        Time distribution of the source
     phi_start : float
         Starting toroidal angle in [rad]
     phi_extent : float
@@ -997,6 +1004,7 @@ class TokamakSource(SourceBase):
         r_over_a: Sequence[float],
         emission_density: Sequence[float],
         energy: Univariate | Sequence[Univariate],
+        time: Univariate | None = None,
         phi_start: float = 0.0,
         phi_extent: float = 2.0 * np.pi,
         n_alpha: int = 101,
@@ -1017,6 +1025,7 @@ class TokamakSource(SourceBase):
         self.n_alpha = n_alpha
         self.vertical_shift = vertical_shift
         self.energy = energy
+        self.time = time
 
         # Cross-field consistency checks (each setter only validates its own
         # field, so the relationships between fields are verified here)
@@ -1136,6 +1145,16 @@ class TokamakSource(SourceBase):
             self._energy = list(value)
 
     @property
+    def time(self) -> Univariate | None:
+        return self._time
+
+    @time.setter
+    def time(self, value: Univariate | None):
+        if value is not None:
+            cv.check_type('time distribution', value, Univariate)
+        self._time = value
+
+    @property
     def phi_start(self) -> float:
         return self._phi_start
 
@@ -1209,6 +1228,10 @@ class TokamakSource(SourceBase):
         for dist in self.energy:
             element.append(dist.to_xml_element('energy'))
 
+        # Time distribution
+        if self.time is not None:
+            element.append(self.time.to_xml_element('time'))
+
     @classmethod
     def from_xml_element(cls, elem: ET.Element) -> TokamakSource:
         """Generate tokamak source from an XML element
@@ -1253,6 +1276,10 @@ class TokamakSource(SourceBase):
         if len(energy) == 1:
             energy = energy[0]
 
+        # Read time distribution
+        time_elem = elem.find('time')
+        time = Univariate.from_xml_element(time_elem) if time_elem is not None else None
+
         # Read constraints and strength
         constraints = cls._get_constraints(elem)
         strength_text = get_text(elem, 'strength')
@@ -1267,6 +1294,7 @@ class TokamakSource(SourceBase):
             r_over_a=r_over_a,
             emission_density=emission_density,
             energy=energy,
+            time=time,
             phi_start=phi_start,
             phi_extent=phi_extent,
             n_alpha=n_alpha,

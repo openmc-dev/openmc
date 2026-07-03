@@ -5,9 +5,9 @@
 #define OPENMC_SOURCE_H
 
 #include <atomic>
-#include <cmath>
 #include <limits>
 #include <unordered_set>
+#include <utility> // for pair
 
 #include "pugixml.hpp"
 
@@ -278,9 +278,10 @@ private:
 //! 1. Sample minor radius r from precomputed CDF of S(r) * Jacobian
 //! 2. Sample poloidal angle alpha from conditional P(alpha|r) using mixture
 //!    of precomputed CDFs weighted by functions of r
-//! 3. Sample energy from user-provided distribution(s)
+//! 3. Sample energy and time from user-provided distribution(s)
 //! 4. Sample isotropic direction
-//! 5. Sample toroidal angle phi uniformly in [phi_start, phi_start + phi_extent]
+//! 5. Sample toroidal angle phi uniformly in [phi_start, phi_start +
+//! phi_extent]
 //! 6. Transform (r, alpha, phi) to Cartesian (x, y, z), applying the optional
 //!    vertical shift of the plasma center
 //!
@@ -329,8 +330,8 @@ private:
   //! Sample energy from the distribution(s)
   //! \param r_norm Normalized minor radius r/a (for distribution selection)
   //! \param seed Pseudorandom seed pointer
-  //! \return Sampled energy [eV]
-  double sample_energy(double r_norm, uint64_t* seed) const;
+  //! \return (Sampled energy [eV], importance weight)
+  std::pair<double, double> sample_energy(double r_norm, uint64_t* seed) const;
 
   //! Transform from flux coordinates (r, alpha, phi) to Cartesian (x, y, z)
   //! \param r Minor radius [cm]
@@ -343,11 +344,14 @@ private:
   // Data members
 
   // Emission profile (input)
-  vector<double> r_over_a_;     //!< Normalized minor radius grid points
+  vector<double> r_over_a_;         //!< Normalized minor radius grid points
   vector<double> emission_density_; //!< Emission density S(r) at grid points
 
   // Energy distribution(s): either 1 for all r, or one per r point
   vector<unique_ptr<Distribution>> energy_dists_;
+
+  // Time distribution (defaults to a delta distribution at t=0)
+  UPtrDist time_;
 
   // Angular distribution (isotropic)
   UPtrAngle angle_;
@@ -361,8 +365,8 @@ private:
   double vertical_shift_;  //!< Vertical shift of plasma center [cm]
 
   // Normalized geometry parameters (precomputed for efficiency)
-  double epsilon_;      //!< Inverse aspect ratio a/R0
-  double delta_tilde_;  //!< Normalized Shafranov shift Delta/a
+  double epsilon_;     //!< Inverse aspect ratio a/R0
+  double delta_tilde_; //!< Normalized Shafranov shift Delta/a
 
   // Toroidal angle bounds
   double phi_start_;  //!< Starting toroidal angle [rad]
@@ -385,8 +389,8 @@ private:
   // weights w_k(r_tilde) that are products of Bernstein polynomials.
   // CDFs are computed on [0, pi] exploiting up-down symmetry.
   static constexpr int N_POLOIDAL_BASIS = 6; //!< Number of basis functions
-  int n_alpha_;                              //!< Number of poloidal angle grid points
-  vector<double> poloidal_alpha_grid_;       //!< alpha grid for CDF lookup [0, pi]
+  int n_alpha_;                        //!< Number of poloidal angle grid points
+  vector<double> poloidal_alpha_grid_; //!< alpha grid for CDF lookup [0, pi]
   array<vector<double>, N_POLOIDAL_BASIS>
     poloidal_cdfs_; //!< CDFs for each basis function g_k(alpha)
   array<double, N_POLOIDAL_BASIS>

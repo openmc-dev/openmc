@@ -25,7 +25,7 @@ def make_source(**kwargs):
 def test_tokamak_source_roundtrip():
     src = make_source(
         phi_start=0.1, phi_extent=np.pi, n_alpha=51, vertical_shift=5.0,
-        strength=2.0)
+        strength=2.0, time=openmc.stats.Uniform(0.0, 1e-6))
 
     elem = src.to_xml_element()
     assert elem.get('type') == 'tokamak'
@@ -45,6 +45,20 @@ def test_tokamak_source_roundtrip():
     np.testing.assert_allclose(new.r_over_a, src.r_over_a)
     np.testing.assert_allclose(new.emission_density, src.emission_density)
     assert len(new.energy) == 1
+    assert isinstance(new.time, openmc.stats.Uniform)
+    assert new.time.a == src.time.a
+    assert new.time.b == src.time.b
+
+
+def test_tokamak_source_default_time():
+    src = make_source()
+    assert src.time is None
+
+    new = openmc.SourceBase.from_xml_element(src.to_xml_element())
+    assert new.time is None
+
+    with pytest.raises(TypeError):
+        make_source(time=1.0)
 
 
 def test_tokamak_source_multiple_energies():

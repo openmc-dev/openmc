@@ -5,7 +5,7 @@
 #endif
 
 #include <algorithm> // for lower_bound, max, distance
-#include <cmath>     // for cyl_bessel_j (Bessel functions)
+#include <cmath>     // for sin, cos, abs
 #include <utility>   // for move
 
 #ifdef HAS_DYNAMIC_LINKING
@@ -18,12 +18,14 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/math_functions.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
@@ -707,7 +709,7 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   if (check_for_node(node, "phi_extent")) {
     phi_extent_ = std::stod(get_node_value(node, "phi_extent"));
   } else {
-    phi_extent_ = 2.0 * M_PI;
+    phi_extent_ = 2.0 * PI;
   }
   if (check_for_node(node, "n_alpha")) {
     n_alpha_ = std::stoi(get_node_value(node, "n_alpha"));
@@ -724,10 +726,20 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
     energy_dists_.push_back(distribution_from_xml(energy_node));
   }
 
+  // Read optional time distribution; default to a delta distribution at t=0
+  // for the same behavior as IndependentSource
+  if (check_for_node(node, "time")) {
+    time_ = distribution_from_xml(node.child("time"));
+  } else {
+    double T[] {0.0};
+    double p[] {1.0};
+    time_ = UPtrDist {new Discrete {T, p, 1}};
+  }
+
   // Validate inputs
   if (emission_density_.size() != r_over_a_.size()) {
-    fatal_error(
-      "TokamakSource: emission_density and r_over_a must have the same length.");
+    fatal_error("TokamakSource: emission_density and r_over_a must have the "
+                "same length.");
   }
   if (r_over_a_.size() < 2) {
     fatal_error(
@@ -762,17 +774,16 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
     fatal_error("TokamakSource: elongation must be > 0.");
   }
   if (triangularity_ < -1.0 || triangularity_ > 1.0) {
-    fatal_error(
-      "TokamakSource: triangularity must be in the range [-1, 1].");
+    fatal_error("TokamakSource: triangularity must be in the range [-1, 1].");
   }
   if (shafranov_shift_ < 0.0) {
     fatal_error("TokamakSource: shafranov_shift must be >= 0.");
   }
   if (shafranov_shift_ >= 0.5 * minor_radius_) {
-    fatal_error(
-      "TokamakSource: shafranov_shift must be less than half the minor radius.");
+    fatal_error("TokamakSource: shafranov_shift must be less than half the "
+                "minor radius.");
   }
-  if (phi_extent_ <= 0.0 || phi_extent_ > 2.0 * M_PI) {
+  if (phi_extent_ <= 0.0 || phi_extent_ > 2.0 * PI) {
     fatal_error("TokamakSource: phi_extent must be > 0 and <= 2*pi.");
   }
   if (n_alpha_ <= 2) {
@@ -791,7 +802,7 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
   delta_tilde_ = shafranov_shift_ / minor_radius_;
 
   // Initialize isotropic angular distribution
-  angle_ = UPtrAngle{new Isotropic()};
+  angle_ = UPtrAngle {new Isotropic()};
 
   precompute_sampling_cdfs();
 }
@@ -799,8 +810,8 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
 void TokamakSource::precompute_sampling_cdfs()
 {
   // Use precomputed normalized geometry parameters
-  double eps = epsilon_;       // Inverse aspect ratio (a/R0)
-  double Dt = delta_tilde_;    // Normalized Shafranov shift (Delta/a)
+  double eps = epsilon_;    // Inverse aspect ratio (a/R0)
+  double Dt = delta_tilde_; // Normalized Shafranov shift (Delta/a)
   double delta = triangularity_;
 
   //==========================================================================
@@ -817,33 +828,22 @@ void TokamakSource::precompute_sampling_cdfs()
   //   c0 = J_0(delta) + J_2(delta)
   //   c1 = (J_1(2*delta) + J_3(2*delta)) / c0
   //
-  // For delta -> 0, c0 -> 1 and c1 -> 0, giving the circular cross-section limit.
+  // For delta -> 0, c0 -> 1 and c1 -> 0, giving the circular cross-section
+  // limit.
 
-  // Compute Bessel function coefficients
-  // Note: std::cyl_bessel_j requires non-negative argument, but Bessel functions
-  // of integer order n satisfy: J_n(-x) = (-1)^n * J_n(x)
-  double c0, c1;
-  if (std::abs(delta) < 1e-10) {
-    // Limiting case for circular cross-section (delta -> 0)
-    // J_0(0) = 1, J_2(0) = 0, J_1(0) = 0, J_3(0) = 0
-    c0 = 1.0;
-    c1 = 0.0;
-  } else {
-    double abs_delta = std::abs(delta);
-    double sign_delta = (delta >= 0) ? 1.0 : -1.0;
-    // J_0(-x) = J_0(x), J_2(-x) = J_2(x) (even order)
-    double J0_d = std::cyl_bessel_j(0, abs_delta);
-    double J2_d = std::cyl_bessel_j(2, abs_delta);
-    // J_1(-x) = -J_1(x), J_3(-x) = -J_3(x) (odd order)
-    double J1_2d = sign_delta * std::cyl_bessel_j(1, 2.0 * abs_delta);
-    double J3_2d = sign_delta * std::cyl_bessel_j(3, 2.0 * abs_delta);
-    c0 = J0_d + J2_d;
-    c1 = (J1_2d + J3_2d) / c0;
-  }
+  // Compute Bessel function coefficients. openmc::cyl_bessel_j handles
+  // negative arguments (negative triangularity) via the parity relation
+  // J_n(-x) = (-1)^n * J_n(x).
+  double J0_d = cyl_bessel_j(0, delta);
+  double J2_d = cyl_bessel_j(2, delta);
+  double J1_2d = cyl_bessel_j(1, 2.0 * delta);
+  double J3_2d = cyl_bessel_j(3, 2.0 * delta);
+  double c0 = J0_d + J2_d;
+  double c1 = (J1_2d + J3_2d) / c0;
 
   // Coefficients for the radial polynomial: A*r - B*r^2 - C*r^3
   radial_poly_a_ = 1.0 + eps * Dt;
-  radial_poly_b_ = 0.375 * c1 * eps;  // 3/8 * c1 * eps
+  radial_poly_b_ = 0.375 * c1 * eps; // 3/8 * c1 * eps
   radial_poly_c_ = 2.0 * eps * Dt;
 
   // Build the radial CDF on the user-provided r_over_a grid
@@ -868,7 +868,7 @@ void TokamakSource::precompute_sampling_cdfs()
     radial_cdf_[i] = radial_cdf_[i - 1] + avg * dr;
   }
 
-  // Normalize CDF 
+  // Normalize CDF
   double total = radial_cdf_[n_r - 1];
   if (total <= 0.0) {
     fatal_error(
@@ -900,8 +900,8 @@ void TokamakSource::precompute_sampling_cdfs()
 
   // Compute static weights analytically
   poloidal_integrals_[0] = 1.0 + eps * Dt;
-  poloidal_integrals_[1] = 1.0 + eps * Dt - 0.1875 * c1 * eps;  // 3/16 = 0.1875
-  poloidal_integrals_[2] = 1.0 - 0.375 * c1 * eps;              // 3/8 = 0.375
+  poloidal_integrals_[1] = 1.0 + eps * Dt - 0.1875 * c1 * eps; // 3/16 = 0.1875
+  poloidal_integrals_[2] = 1.0 - 0.375 * c1 * eps;             // 3/8 = 0.375
   poloidal_integrals_[3] = 1.0 + eps * Dt;
   poloidal_integrals_[4] = 1.0 + 0.5 * eps * Dt - 0.1875 * c1 * eps;
   poloidal_integrals_[5] = 1.0 - eps * Dt - 0.375 * c1 * eps;
@@ -909,7 +909,7 @@ void TokamakSource::precompute_sampling_cdfs()
   // Build the alpha grid on [0, pi] (half domain due to up-down symmetry)
   int n_alpha = n_alpha_;
   poloidal_alpha_grid_.resize(n_alpha);
-  double dalpha = M_PI / (n_alpha - 1);
+  double dalpha = PI / (n_alpha - 1);
   for (int i = 0; i < n_alpha; ++i) {
     poloidal_alpha_grid_[i] = i * dalpha;
   }
@@ -945,9 +945,10 @@ void TokamakSource::precompute_sampling_cdfs()
     double b0 = 1.0 + eps * Dt;
     double b1 = b0 + 0.5 * eps * cos_psi;
     double b2 = 1.0 + eps * cos_psi;
-    double b3 = std::cos(delta_sin_alpha) +
-                0.25 * delta * (std::cos(alpha - delta_sin_alpha) -
-                                std::cos(3.0 * alpha + delta_sin_alpha));
+    double b3 =
+      std::cos(delta_sin_alpha) + 0.25 * delta *
+                                    (std::cos(alpha - delta_sin_alpha) -
+                                      std::cos(3.0 * alpha + delta_sin_alpha));
     double b4 = b3 - 2.0 * Dt * cos_alpha;
 
     // 6 basis functions g_k(alpha) = b_i * b_j
@@ -1031,7 +1032,8 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   // The conditional is: P(alpha | r) ~ sum_k w_k(r) * I_hat_k * p_k(alpha)
   // where:
   //   - w_k(r) are the "dynamic" Bernstein weight functions
-  //   - I_hat_k are the "static" normalized integrals (precomputed in poloidal_integrals_)
+  //   - I_hat_k are the "static" normalized integrals (precomputed in
+  //   poloidal_integrals_)
   //   - p_k(alpha) are the normalized basis distributions (precomputed CDFs)
   //
   // The normalization sum_k w_k(r) * I_hat_k equals the radial geometric
@@ -1043,8 +1045,8 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   // 3. Sample alpha from CDF_k using inverse transform
 
   // Analytical normalization: sum_k w_k(r) * I_hat_k
-  double total = radial_poly_a_ - radial_poly_b_ * r_norm -
-                 radial_poly_c_ * r_norm * r_norm;
+  double total =
+    radial_poly_a_ - radial_poly_b_ * r_norm - radial_poly_c_ * r_norm * r_norm;
   double xi = prn(seed) * total;
 
   // Sample component via lazy evaluation with early exit
@@ -1087,16 +1089,17 @@ double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
   // Exploit up-down symmetry: randomly flip to [pi, 2*pi] with 50% probability
   // This is equivalent to flipping the sign of Z in the final position
   if (prn(seed) >= 0.5) {
-    alpha = 2.0 * M_PI - alpha;
+    alpha = 2.0 * PI - alpha;
   }
   return alpha;
 }
 
-double TokamakSource::sample_energy(double r_norm, uint64_t* seed) const
+std::pair<double, double> TokamakSource::sample_energy(
+  double r_norm, uint64_t* seed) const
 {
   if (energy_dists_.size() == 1) {
     // Single distribution for all r
-    return energy_dists_[0]->sample(seed).first;
+    return energy_dists_[0]->sample(seed);
   }
 
   // Multiple distributions: stochastic selection between bracketing r points
@@ -1108,14 +1111,14 @@ double TokamakSource::sample_energy(double r_norm, uint64_t* seed) const
 
   // Handle boundary cases
   if (i >= energy_dists_.size() - 1) {
-    return energy_dists_.back()->sample(seed).first;
+    return energy_dists_.back()->sample(seed);
   }
 
   // Stochastic interpolation: randomly select one of the two bracketing
   // distributions based on distance to each
   double t = (r_norm - r_over_a_[i]) / (r_over_a_[i + 1] - r_over_a_[i]);
   size_t idx = (prn(seed) < t) ? i + 1 : i;
-  return energy_dists_[idx]->sample(seed).first;
+  return energy_dists_[idx]->sample(seed);
 }
 
 Position TokamakSource::flux_to_cartesian(
@@ -1131,8 +1134,8 @@ Position TokamakSource::flux_to_cartesian(
   double psi = alpha + triangularity_ * std::sin(alpha);
   double r_over_a_sq = (r * r) / (minor_radius_ * minor_radius_);
 
-  double R = major_radius_ + r * std::cos(psi) +
-             shafranov_shift_ * (1.0 - r_over_a_sq);
+  double R =
+    major_radius_ + r * std::cos(psi) + shafranov_shift_ * (1.0 - r_over_a_sq);
   double Z = elongation_ * r * std::sin(alpha);
 
   double x = R * std::cos(phi);
@@ -1148,7 +1151,6 @@ SourceSite TokamakSource::sample(uint64_t* seed) const
   site.particle = ParticleType::neutron();
   site.wgt = 1.0;
   site.delayed_group = 0;
-  site.time = 0.0;
 
   // 1. Sample r/a from radial CDF
   double r_norm = sample_r_over_a(seed);
@@ -1171,8 +1173,16 @@ SourceSite TokamakSource::sample(uint64_t* seed) const
   // 5. Sample isotropic direction
   site.u = angle_->sample(seed).first;
 
-  // 6. Sample energy from distribution(s)
-  site.E = sample_energy(r_norm, seed);
+  // 6. Sample energy from distribution(s), applying the importance weight so
+  // that biased distributions are handled correctly
+  auto [E, E_wgt] = sample_energy(r_norm, seed);
+  site.E = E;
+
+  // 7. Sample particle creation time
+  auto [time, time_wgt] = time_->sample(seed);
+  site.time = time;
+
+  site.wgt *= E_wgt * time_wgt;
 
   return site;
 }

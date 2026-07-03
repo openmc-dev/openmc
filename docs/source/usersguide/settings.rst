@@ -329,7 +329,10 @@ the profile matters, since it is normalized internally. For example::
 The ``energy`` argument accepts either a single
 :class:`~openmc.stats.Univariate` distribution applied at all radii, or a
 sequence with one distribution per ``r_over_a`` grid point to model a
-radially-varying neutron spectrum. The toroidal extent can be restricted with
+radially-varying neutron spectrum (energies are then sampled by stochastic
+interpolation between the two distributions bracketing the sampled radius). A
+time distribution can be given with the ``time`` argument; by default,
+particles are born at :math:`t=0`. The toroidal extent can be restricted with
 ``phi_start`` and ``phi_extent`` to model a sector of the plasma, and
 ``vertical_shift`` translates the plasma center along the z-axis.
 

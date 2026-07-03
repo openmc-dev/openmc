@@ -110,9 +110,9 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-#          cache: 'pip' # caching pip dependencies
-#          cache-dependency-path: |
-#            requirements-pip.txt
+          cache: 'pip' 
+          cache-dependency-path: |
+            $GITHUB_WORKSPACE/tools/ci/requirements.txt
 
       - name: Environment Variables
         run: |

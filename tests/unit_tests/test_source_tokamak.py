@@ -4,6 +4,8 @@ import pytest
 import openmc
 import openmc.stats
 
+from tests.unit_tests import assert_sample_mean
+
 
 def make_source(**kwargs):
     """Build a valid TokamakSource, overriding defaults via kwargs."""
@@ -98,3 +100,78 @@ def test_tokamak_source_invalid_triangularity(value):
 def test_tokamak_source_invalid_n_alpha():
     with pytest.raises(ValueError):
         make_source(n_alpha=2)
+
+
+@pytest.mark.flaky(reruns=1)
+def test_tokamak_source_sampling(run_in_tmpdir):
+    """Exercise the compiled C++ sampling path and check invariants.
+
+    Sampled moments are compared against direct numerical quadrature of the
+    exact source density S(r)*R*|J|, where the Jacobian J of the flux-surface
+    map is computed from analytic partial derivatives. This check is
+    independent of the Bernstein-mixture factorization used by the
+    implementation.
+    """
+    R0, a, kappa, delta = 620.0, 200.0, 1.8, -0.5
+    shafranov, zshift = 40.0, 25.0
+    phi_start, phi_extent = 0.5, np.pi / 2
+
+    # Fine grids to make discretization error negligible relative to
+    # statistical uncertainty
+    r_over_a = np.linspace(0.0, 1.0, 200)
+    src = make_source(
+        major_radius=R0, minor_radius=a, elongation=kappa,
+        triangularity=delta, shafranov_shift=shafranov, vertical_shift=zshift,
+        r_over_a=r_over_a, emission_density=1.0 - r_over_a**2,
+        phi_start=phi_start, phi_extent=phi_extent, n_alpha=201,
+        energy=openmc.stats.Discrete([14.07e6], [1.0]))
+
+    sphere = openmc.Sphere(r=2000.0, boundary_type='vacuum')
+    cell = openmc.Cell(region=-sphere)
+    settings = openmc.Settings(
+        particles=100, batches=1, run_mode='fixed source', source=src)
+    model = openmc.Model(geometry=openmc.Geometry([cell]), settings=settings)
+
+    n_samples = 20_000
+    sites = model.sample_external_source(n_samples)
+
+    xyz = np.array([s.r for s in sites])
+    R = np.hypot(xyz[:, 0], xyz[:, 1])
+    z = xyz[:, 2]
+
+    # Energy, weight, and time invariants
+    assert np.all([s.E == 14.07e6 for s in sites])
+    assert np.all([s.wgt == 1.0 for s in sites])
+    assert np.all([s.time == 0.0 for s in sites])
+
+    # Toroidal angle within the requested sector
+    phi = np.arctan2(xyz[:, 1], xyz[:, 0])
+    assert phi.min() >= phi_start
+    assert phi.max() <= phi_start + phi_extent
+
+    # Positions bounded by the last closed flux surface
+    assert R.min() >= R0 - a
+    assert R.max() <= R0 + a + shafranov
+    assert np.abs(z - zshift).max() <= kappa * a
+
+    # Up-down symmetry about the vertical shift
+    assert_sample_mean(z, zshift)
+
+    # Reference moments by 2D quadrature of the exact density
+    r = np.linspace(0.0, 1.0, 1001)[:, np.newaxis]  # r/a
+    alpha = np.linspace(0.0, 2 * np.pi, 2001)[np.newaxis, :]
+    psi = alpha + delta * np.sin(alpha)
+    R_map = R0 + a * r * np.cos(psi) + shafranov * (1.0 - r**2)
+    Z_map = kappa * a * r * np.sin(alpha)
+    dR_dr = a * np.cos(psi) - 2.0 * shafranov * r
+    dR_da = -a * r * np.sin(psi) * (1.0 + delta * np.cos(alpha))
+    dZ_dr = kappa * a * np.sin(alpha) * np.ones_like(psi)
+    dZ_da = kappa * a * r * np.cos(alpha)
+    jac = np.abs(dR_dr * dZ_da - dR_da * dZ_dr)
+    dens = (1.0 - r**2) * R_map * jac
+    norm = dens.sum()
+    expected_R = (R_map * dens).sum() / norm
+    expected_z2 = (Z_map**2 * dens).sum() / norm
+
+    assert_sample_mean(R, expected_R)
+    assert_sample_mean((z - zshift)**2, expected_z2)

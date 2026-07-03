@@ -1980,10 +1980,6 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     model::overlap_check_count.resize(model::cells.size());
   }
 
-  // if (color_overlaps) {
-  //   settings::check_overlaps = true;
-  // }
-
   try {
     // Create a temporary SlicePlotBase object to reuse get_map logic
     SlicePlotBase plot_params;

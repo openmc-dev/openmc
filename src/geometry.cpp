@@ -60,7 +60,7 @@ int check_cell_overlap(GeometryState& p, bool error)
           }
 
           // With no fatal error (plotter is calling), now adds overlaps and
-          // calls them; ensures order does not matter when making overlap key
+          // ensures order does not matter when making overlap key
           int cell_a = model::cells[index_cell]->id_;
           int cell_b = model::cells[p.coord(j).cell()]->id_;
           int a = std::min(cell_a, cell_b);

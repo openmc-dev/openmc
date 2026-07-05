@@ -725,7 +725,7 @@ void FlatSourceDomain::random_ray_tally()
     for (int i = 0; i < model::tallies.size(); i++) {
       Tally& tally {*model::tallies[i]};
 #pragma omp parallel for
-      for (int bin = 0; bin < tally.n_filter_bins(); bin++) {
+      for (int64_t bin = 0; bin < tally.n_filter_bins(); bin++) {
         for (int score_idx = 0; score_idx < tally.n_scores(); score_idx++) {
           auto score_type = tally.scores_[score_idx];
           if (score_type == SCORE_FLUX) {

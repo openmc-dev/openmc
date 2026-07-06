@@ -575,8 +575,7 @@ double PhotonMajorant::calculate_elem_tot_xs(
                    elem.pair_production_total_(i_grid)));
 
   // Calculate microscopic total cross section
-  double total = coherent + incoherent + photoelectric + pair_production;
-  return total;
+  return coherent + incoherent + photoelectric + pair_production;
 }
 
 int PhotonMajorant::get_i_grid(

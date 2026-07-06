@@ -357,7 +357,7 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
     return output
 
 # Function for generating a vtk file for lost particle tracks
-def tracks_to_vtk(tracks_file="tracks.h5", output_dir="vtk_files",
+def lost_particle_tracks_to_vtk(tracks_file="tracks.h5", output_dir="vtk_files",
                         batch=None, gen=None, particle=None):
     """
     Convert an OpenMC tracks HDF5 file to VTK polydata (.vtp) files.

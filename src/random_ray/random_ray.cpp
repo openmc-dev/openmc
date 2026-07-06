@@ -397,10 +397,21 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 
     // Loop over all mesh bins and attenuate flux
     for (int b = 0; b < mesh_bins_.size(); b++) {
+      double physical_length = reduced_distance * mesh_fractional_lengths_[b];
+
       if (mpi::n_procs > 1) {
           mpi::decomp_map.num_mesh_bin_RT_[sr] += 1;
       }
-      double physical_length = reduced_distance * mesh_fractional_lengths_[b];
+
+      // Very flat angles can result in very small physical lengths, 
+      // despite the TINY_BIT adjustment for Position start. If this happens at an
+      // MPI boundary, this can cause rays to bounce back and forth indefinitely. 
+      // Very small lengths are therefore skipped.
+      if (physical_length <= TINY_BIT) {
+        start += physical_length * u();
+        continue;
+      }
+
       attenuate_flux_inner(
         physical_length, is_active, sr, mesh_bins_[b], start);
 

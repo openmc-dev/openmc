@@ -3,12 +3,14 @@ import numpy as np
 import openmc
 import openmc.lib
 
+from tests import cdtemp
+
 # Sentinel value matching _OVERLAP in plotmodel.py and OVERLAP in plot.cpp
 _OVERLAP = -3
 
 
-@pytest.fixture
-def overlap_model(tmp_path):
+@pytest.fixture(scope='module')
+def overlap_model():
     openmc.reset_auto_ids()
     # Three cylinders: cyl1 and cyl2 overlap near x=0, cyl2 and cyl3 overlap
     # near x=4. This gives us two spatially distinct overlap regions in one model.
@@ -47,20 +49,17 @@ def overlap_model(tmp_path):
     )
 
     model = openmc.Model(geometry=geometry, settings=settings)
-    model.export_to_xml(tmp_path)
-    return tmp_path
+    with cdtemp():
+        model.export_to_xml()
+        yield
 
 
-@pytest.fixture
-def lib_session(overlap_model, monkeypatch):
-    # Set OMP_NUM_THREADS=1 BEFORE init so OpenMP reads it at thread pool
-    # creation time.
-    monkeypatch.setenv('OMP_NUM_THREADS', '1')
-    # Change to the model directory so openmc.lib.init finds the XML files
-    monkeypatch.chdir(overlap_model)
-    openmc.lib.init()
-    yield  # tests run here
-    openmc.lib.finalize()  # always runs, even if the test fails
+@pytest.fixture(scope='module')
+def lib_session(overlap_model):
+    # Use a single thread to ensure reproducibility of overlap map indices
+    openmc.lib.init(args=['-s', '1'])
+    yield
+    openmc.lib.finalize()
 
 
 def run_slice(origin=(0.0, 0.0, 0.0), width=(10.0, 6.0), show_overlaps=True):

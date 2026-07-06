@@ -364,7 +364,7 @@ def tracks_to_vtk(tracks_file="tracks.h5", output_dir="vtk_files",
 
     One .vtp file is written per track into output_dir, named after the
     track dataset (e.g. track_1_1_35.vtp). Handles repeated lost particle
-    tracks with a fourth index (e.g. track_1_1_35_0).
+    tracks with a fourth index for safety (e.g. track_1_1_35_0).
 
     Parameters
     ----------
@@ -382,7 +382,7 @@ def tracks_to_vtk(tracks_file="tracks.h5", output_dir="vtk_files",
     If no particle parameters specified, all tracks in 
     tracks_file are converted.
     """
-
+    # imported vtk only if used as vtk is an option dependency
     import vtk
 
     # Creates directory output structure for vtk files
@@ -396,7 +396,6 @@ def tracks_to_vtk(tracks_file="tracks.h5", output_dir="vtk_files",
                 continue
 
             b, g, p = int(match.group(1)), int(match.group(2)), int(match.group(3))
-            repeat  = int(match.group(4)) if match.group(4) is not None else None
 
             # In case one specific track is specified
             if batch    is not None and b != batch:
@@ -408,22 +407,23 @@ def tracks_to_vtk(tracks_file="tracks.h5", output_dir="vtk_files",
 
             data     = f[name][:]
             n_points = len(data)
+            if n_points == 0:
+                continue
 
             points = vtk.vtkPoints()
             lines  = vtk.vtkCellArray()
 
-            point_ids = []
-            for state in data:
-                x   = float(state['r']['x'])
-                y   = float(state['r']['y'])
-                z   = float(state['r']['z'])
-                pid = points.InsertNextPoint(x, y, z)
-                point_ids.append(pid)
-
             polyline = vtk.vtkPolyLine()
             polyline.GetPointIds().SetNumberOfIds(n_points)
-            for i, pid in enumerate(point_ids):
-                polyline.GetPointIds().SetId(i, pid)
+
+            for i, state in enumerate(data):
+                points.InsertNextPoint(
+                    float(state['r']['x']),
+                    float(state['r']['y']),
+                    float(state['r']['z'])
+                )
+                polyline.GetPointIds().SetId(i, i)
+
             lines.InsertNextCell(polyline)
 
             polydata = vtk.vtkPolyData()
@@ -431,12 +431,14 @@ def tracks_to_vtk(tracks_file="tracks.h5", output_dir="vtk_files",
             polydata.SetLines(lines)
 
             out_path = os.path.join(output_dir, f"{name}.vtp")
-            writer   = vtk.vtkXMLPolyDataWriter()
+            writer = vtk.vtkXMLPolyDataWriter()
             writer.SetFileName(out_path)
             writer.SetInputData(polydata)
-            writer.Write()
 
-            print(f"  Written {out_path}")
+            if not writer.Write():
+                print(f"  WARNING: failed to write {out_path}")
+            else:
+                print(f"  Written {out_path}")
 
     print(f"Done. Files written to '{output_dir}/'")
 

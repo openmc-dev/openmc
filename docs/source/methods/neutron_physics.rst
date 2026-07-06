@@ -144,12 +144,12 @@ cross section samples in Equation :eq:`delta-real-collision`. Delta tracking
 often performs better than surface tracking in problems where the particle
 mean free path is larger than the distance between surfaces. Problems
 containing small regions with large total cross sections (such as burnable
-absorbers) will have majorant cross sections several orders of magnitude in
+absorbers) will have majorant cross sections several orders of magnitude
 larger than the total cross section over the majority of the domain
 [Leppänen]_. This decreases the number of accepted collisions, and therefore
 the effectiveness of delta tracking. Material discontinuities are not
 considered in delta tracking, which prohibits the use of track length
-estimators and forces the use of the higher- variance collision estimator
+estimators and forces the use of the higher-variance collision estimator
 (discussed in detail in the :ref:`methods_tallies` section).
 
 ----------------------------------------------------

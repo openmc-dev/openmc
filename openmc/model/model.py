@@ -2772,12 +2772,15 @@ class Model:
                     self.settings.run_mode = original_run_mode
                     break
 
-            # Make sure all materials have a name, and that the name is a valid HDF5
-            # dataset name
+            # Temporarily replace each material's name with a unique, valid HDF5
+            # dataset name (its name plus ID) for use as its MGXS library entry
+            # and macroscopic. The ID keeps the name unique even when materials
+            # share a name; the original names are restored at the end.
+            original_names = [material.name for material in self.materials]
             for material in self.materials:
-                if not material.name or not material.name.strip():
-                    material.name = f"material {material.id}"
-                material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
+                base = material.name if material.name and material.name.strip() \
+                    else "material"
+                material.name = re.sub(r'[^a-zA-Z0-9]', '_', base) + f"_{material.id}"
 
             # If needed, generate the needed MGXS data library file
             if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
@@ -2808,6 +2811,10 @@ class Model:
                 material.add_macroscopic(material.name)
 
             self.settings.energy_mode = 'multi-group'
+
+            # Restore the user's original material names.
+            for material, name in zip(self.materials, original_names):
+                material.name = name
 
     def convert_to_random_ray(self):
         """Convert a multigroup model to use random ray.

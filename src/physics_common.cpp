@@ -2,6 +2,7 @@
 
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 
 namespace openmc {
 
@@ -22,6 +23,10 @@ void apply_russian_roulette(Particle& p)
 {
   // Exit if survival biasing is turned off
   if (!settings::survival_biasing)
+    return;
+
+  // Exit if cell importances are used
+  if (simulation::cell_importances)
     return;
 
   // if survival normalization is on, use normalized weight cutoff and

@@ -97,6 +97,47 @@ int cell_instance_at_level(const GeometryState& p, int level)
   return instance;
 }
 
+double cell_importance_at_level(
+  const GeometryState& p, ParticleType type, int level)
+{
+  // throw error if the requested level is too deep for the geometry
+  if (level > model::n_coord_levels) {
+    fatal_error(
+      fmt::format("Cell importance at level {} requested, but only {} "
+                  "levels exist in the geometry.",
+        level, p.n_coord()));
+  }
+  int j = -1;
+  if (type.is_neutron())
+    j = 0;
+  else if (type.is_photon())
+    j = 1;
+  else
+    return 1.0;
+
+  // determine the cell instance
+  Cell& c {*model::cells[p.coord(level).cell()]};
+
+  // compute the cell's instance and importance
+  int instance = 0.0;
+  double importance = 1.0;
+  for (int i = 0; i < level; i++) {
+    const auto& c_i {*model::cells[p.coord(i).cell()]};
+    if (c_i.type_ == Fill::UNIVERSE) {
+      instance += c_i.offset_[c.distribcell_index_];
+    } else if (c_i.type_ == Fill::LATTICE) {
+      instance += c_i.offset_[c.distribcell_index_];
+      auto& lat {*model::lattices[p.coord(i + 1).lattice()]};
+      const auto& i_xyz {p.coord(i + 1).lattice_index()};
+      if (lat.are_valid_indices(i_xyz)) {
+        instance += lat.offset(c.distribcell_index_, i_xyz);
+      }
+    }
+    importance *= c_i.importance(j, instance);
+  }
+  return importance;
+}
+
 //==============================================================================
 
 bool find_cell_inner(

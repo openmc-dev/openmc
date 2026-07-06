@@ -252,6 +252,13 @@ public:
   //! \return Density in [g/cm3]
   double density(int32_t instance = -1) const;
 
+  //! Get the importance of a cell instance
+  //! \param[in] index 0 for neutrons and 1 for photons.
+  //! \param[in] instance Instance index. If -1 is given, the importance for
+  //! the first instance is returned.
+  //! \return Importance
+  double importance(int index, int32_t instance = -1) const;
+
   //! Set the temperature of a cell instance
   //! \param[in] T Temperature in [K]
   //! \param[in] instance Instance index. If -1 is given, the temperature for
@@ -382,6 +389,11 @@ public:
 
   //! \brief Unitless density multiplier(s) within this cell.
   vector<double> density_mult_;
+
+  //! \brief Importance for this cell per particle type
+  //!
+  //! May be multiple for distribcell.
+  vector<vector<double>> importance_ {{1.0}, {1.0}};
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;

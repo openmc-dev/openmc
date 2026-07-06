@@ -2,12 +2,14 @@
 
 #include "openmc/bank.h"
 #include "openmc/bremsstrahlung.h"
+#include "openmc/cell.h"
 #include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
+#include "openmc/geometry.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
@@ -140,7 +142,9 @@ void sample_neutron_reaction(Particle& p)
 
   // Create secondary photons
   if (settings::photon_transport) {
-    sample_secondary_photons(p, i_nuclide);
+    if (cell_importance_at_level(p, ParticleType::photon(), p.n_coord() - 1) >
+        0.0)
+      sample_secondary_photons(p, i_nuclide);
   }
 
   // If survival biasing is being used, the following subroutine adjusts the

@@ -329,6 +329,9 @@ void Particle::event_cross_surface()
   }
   n_coord_last() = n_coord();
 
+  if (simulation::cell_importances && material() != MATERIAL_VOID)
+    importance_last() = cell_importance_at_level(*this, type(), n_coord() - 1);
+
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
@@ -365,12 +368,46 @@ void Particle::event_cross_surface()
       add_surf_source_to_bank(*this, surf);
     }
     this->cross_surface(surf);
+    double importance = cell_importance_at_level(*this, type(), n_coord() - 1);
+    if (importance == 0.0) {
+      wgt() = 0.0;
+      return;
+    }
     // If no BC, add particle to surface source after crossing surface
     if (surf.surf_source_ && !surf.bc_) {
       add_surf_source_to_bank(*this, surf);
     }
     if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);
+    }
+    if (simulation::cell_importances && material() != MATERIAL_VOID) {
+      if (importance != importance_last()) {
+        if (importance < importance_last()) {
+          if (importance_last() * prn(current_seed()) < importance) {
+            wgt() *= importance_last() / importance;
+          } else {
+            wgt() = 0.;
+            return;
+          }
+        } else {
+          // do not further split the particle if above the limit
+          if (n_split() >= settings::max_history_splits)
+            return;
+          double n_s = importance / importance_last();
+          int n = static_cast<int>(n_s);
+          if (prn(current_seed()) <= n_s - n)
+            ++n;
+          n = std::min(n, settings::max_history_splits);
+          n_split() += n;
+
+          // Create secondaries and divide weight among all particles
+          for (int l = 0; l < n - 1; l++) {
+            split(wgt() / n);
+          }
+          // remaining weight is applied to current particle
+          wgt() /= n;
+        }
+      }
     }
     event() = TallyEvent::SURFACE;
 

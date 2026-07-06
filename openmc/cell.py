@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from math import cos, sin, pi
 from numbers import Real
 
@@ -69,6 +69,9 @@ class Cell(IDManagerMixin):
     rotation_matrix : numpy.ndarray
         The rotation matrix defined by the angles specified in the
         :attr:`Cell.rotation` property.
+    importance : dict
+        Dictionary containing importance of the cell for neutrons and photons. Defaults to 1.0.
+        Multiple importances can be given to give each distributed cell instance a unique importance.
     temperature : float or iterable of float
         Temperature of the cell in Kelvin.  Multiple temperatures can be given
         to give each distributed cell instance a unique temperature.
@@ -110,6 +113,7 @@ class Cell(IDManagerMixin):
         self.name = name
         self.fill = fill
         self.region = region
+        self._importance = {}
         self._rotation = None
         self._rotation_matrix = None
         self._temperature = None
@@ -238,6 +242,35 @@ class Cell(IDManagerMixin):
     @property
     def rotation_matrix(self):
         return self._rotation_matrix
+    
+    @property
+    def importance(self) -> dict:
+        return self._importance
+
+    @importance.setter
+    def importance(self, importance):
+        # Make sure importances are positive
+        cv.check_type('cell importance', importance, (Mapping, Iterable, Real))
+        if isinstance(importance, Mapping):
+            for key, value in importance.items():
+                cv.check_type('cell importance key', key, ('neutron', 'photon'))
+                cv.check_type('cell importance value', value, (Iterable, Real))
+                if isinstance(value, Iterable):
+                    cv.check_type('cell importance value', value, Iterable, Real)
+                    for i, val in enumerate(importance):
+                        cv.check_greater_than(f'cell importance value[{i}]', val, 0.0, True)
+                else:
+                    cv.check_greater_than('cell importance value', value, 0.0, True)
+            self._importance = importance
+                
+        else:
+            if isinstance(importance, Iterable):
+                cv.check_type('cell importance', importance, Iterable, Real)
+                for i, val in enumerate(importance):
+                    cv.check_greater_than(f'cell importance[{i}]', val, 0.0, True)
+            else:
+                cv.check_greater_than('cell importance', importance, 0.0, True)
+            self._importance = {'neutron': importance, 'photon': importance}
 
     @property
     def temperature(self):
@@ -692,6 +725,14 @@ class Cell(IDManagerMixin):
             else:
                 element.set("density", str(self.density))
 
+        for key in ('neutron', 'photon'):
+            if self.importance.get(key, 1.0) != 1.0:
+                if isinstance(self.importance[key], Iterable):
+                    importance_subelement = ET.SubElement(element, f"importance_{key}")
+                    importance_subelement.text = ' '.join(str(val) for val in self.importance[key])
+                else:
+                    element.set("importance", str(self.importance[key]))
+
         if self.translation is not None:
             element.set("translation", ' '.join(map(str, self.translation)))
 
@@ -750,6 +791,16 @@ class Cell(IDManagerMixin):
         v = get_text(elem, 'volume')
         if v is not None:
             c.volume = float(v)
+        importance = {}
+        
+        for key in ('neutron', 'photon'):
+            values = get_elem_list(elem, f"importance_{key}", float)
+            if values is not None:
+                if len(values) == 1:
+                    values = values[0]
+                importance[f"importance_{key}"] = values
+        setattr(c, "importance", importance)
+        
         for key in ('temperature', 'density', 'rotation', 'translation'):
             values = get_elem_list(elem, key, float)
             if values is not None:

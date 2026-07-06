@@ -6,6 +6,7 @@
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/particle.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -51,6 +52,21 @@ bool check_cell_overlap(GeometryState& p, bool error = true);
 //==============================================================================
 
 int cell_instance_at_level(const GeometryState& p, int level);
+
+//==============================================================================
+//! Get the cell importance for a particle at the specified
+//! type and universe level.
+//!
+//! \param p A particle for which to compute the instance using
+//!   its coordinates
+//! \param type ParticleType to get importance for
+//! \param level The level (zero indexed) of the geometry where the instance
+//! should be computed. \return The importance of the cell at the specified
+//! level.
+//==============================================================================
+
+double cell_importance_at_level(
+  const GeometryState& p, const ParticleType type, int level);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.

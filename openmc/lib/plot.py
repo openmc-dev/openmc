@@ -255,11 +255,21 @@ def property_map(plot):
     return prop_data
 
 
+_dll.openmc_slice_data_overlap_count.argtypes = [POINTER(c_size_t)]
+_dll.openmc_slice_data_overlap_count.restype = c_int
+_dll.openmc_slice_data_overlap_count.errcheck = _error_handler
+
+_dll.openmc_slice_data_overlap_info.argtypes = [c_size_t, POINTER(c_int32)]
+_dll.openmc_slice_data_overlap_info.restype = c_int
+_dll.openmc_slice_data_overlap_info.errcheck = _error_handler
+
+
 # Python wrappings for overlap functions
 def slice_data_overlap_count():
     count = c_size_t()
     _dll.openmc_slice_data_overlap_count(count)
     return count.value
+
 
 def slice_data_overlap_info():
     n = slice_data_overlap_count()
@@ -272,13 +282,6 @@ def slice_data_overlap_info():
         )
     return overlap_info, n
 
-_dll.openmc_slice_data_overlap_count.argtypes = [POINTER(c_size_t)]
-_dll.openmc_slice_data_overlap_count.restype = c_int
-_dll.openmc_slice_data_overlap_count.errcheck = _error_handler
-
-_dll.openmc_slice_data_overlap_info.argtypes = [c_size_t, POINTER(c_int32)]
-_dll.openmc_slice_data_overlap_info.restype = c_int
-_dll.openmc_slice_data_overlap_info.errcheck = _error_handler
 
 _dll.openmc_get_plot_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_plot_index.restype = c_int

@@ -9,36 +9,34 @@ _OVERLAP = -3
 
 @pytest.fixture
 def overlap_model(tmp_path):
+    openmc.reset_auto_ids()
     # Three cylinders: cyl1 and cyl2 overlap near x=0, cyl2 and cyl3 overlap
     # near x=4. This gives us two spatially distinct overlap regions in one model.
-    mat_water = openmc.Material(material_id=1, name='water')
+    mat_water = openmc.Material()
     mat_water.add_nuclide('H1', 2.0)
     mat_water.add_nuclide('O16', 1.0)
     mat_water.set_density('g/cm3', 1.0)
 
-    mat_iron = openmc.Material(material_id=2, name='iron')
+    mat_iron = openmc.Material()
     mat_iron.add_nuclide('Fe56', 1.0)
     mat_iron.set_density('g/cm3', 7.87)
 
-    mat_lead = openmc.Material(material_id=3, name='lead')
+    mat_lead = openmc.Material()
     mat_lead.add_nuclide('Pb208', 1.0)
     mat_lead.set_density('g/cm3', 11.34)
 
     # cyl1 and cyl2 overlap on the left, cyl2 and cyl3 overlap on the right
     cyl1 = openmc.ZCylinder(x0=-2.0, y0=0.0, r=2.5)
-    cyl2 = openmc.ZCylinder(x0= 0.0, y0=0.0, r=2.5)
-    cyl3 = openmc.ZCylinder(x0= 2.0, y0=0.0, r=2.5)
+    cyl2 = openmc.ZCylinder(x0=0.0, y0=0.0, r=2.5)
+    cyl3 = openmc.ZCylinder(x0=2.0, y0=0.0, r=2.5)
     boundary = openmc.Sphere(r=20.0, boundary_type='vacuum')
 
-    cell1 = openmc.Cell(cell_id=1, region=-cyl1, fill=mat_water)
-    cell2 = openmc.Cell(cell_id=2, region=-cyl2, fill=mat_iron)
-    cell3 = openmc.Cell(cell_id=3, region=-cyl3, fill=mat_lead)
-    cell_outside = openmc.Cell(
-        cell_id=4, region=~(-cyl1 | -cyl2 | -cyl3) & -boundary
-    )
+    cell1 = openmc.Cell(region=-cyl1, fill=mat_water)
+    cell2 = openmc.Cell(region=-cyl2, fill=mat_iron)
+    cell3 = openmc.Cell(region=-cyl3, fill=mat_lead)
+    cell_outside = openmc.Cell(region=+cyl1 & +cyl2 & +cyl3 & -boundary)
 
-    universe = openmc.Universe(universe_id=1, cells=[cell1, cell2, cell3, cell_outside])
-    geometry = openmc.Geometry(universe)
+    geometry = openmc.Geometry([cell1, cell2, cell3, cell_outside])
 
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
@@ -48,11 +46,7 @@ def overlap_model(tmp_path):
         space=openmc.stats.Point((0, 0, 0))
     )
 
-    model = openmc.Model(
-        geometry=geometry,
-        materials=openmc.Materials([mat_water, mat_iron, mat_lead]),
-        settings=settings
-    )
+    model = openmc.Model(geometry=geometry, settings=settings)
     model.export_to_xml(tmp_path)
     return tmp_path
 

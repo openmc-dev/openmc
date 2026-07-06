@@ -3007,7 +3007,6 @@ class Model:
         u_span = (x1 - x0, 0.0, 0.0)
         v_span = (0.0, y1 - y0, 0.0)
 
-        unique_overlaps = set()
         overlap_points = []
         undefined_points = []
 
@@ -3021,19 +3020,20 @@ class Model:
                 z = z0 + (k + 0.5) * dz
                 origin = ((x0 + x1) / 2.0, (y0 + y1) / 2.0, z)
 
-                geom_data, property_data = openmc.lib.slice_data(
+                geom_data, _ = openmc.lib.slice_data(
                     origin=origin,
                     u_span=u_span,
                     v_span=v_span,
                     pixels=(nx, ny),
                     show_overlaps=True,
                     level=-1,
+                    include_properties=False,
                 )
 
                 cell_ids = geom_data[:, :, 0]
 
                 overlap_mask = (cell_ids == _OVERLAP)
-                undefined, outside, internal = Model._classify_undefined_regions(cell_ids)
+                _, _, internal = Model._classify_undefined_regions(cell_ids)
 
                 overlap_pixels = np.argwhere(overlap_mask)
                 undefined_pixels = np.argwhere(internal)
@@ -3041,19 +3041,13 @@ class Model:
                 n_overlap_samples += len(overlap_pixels)
                 n_undefined_samples += len(undefined_pixels)
 
-                # Record unique overlap pairs and example coordinates
+                # Record example coordinates
                 for y, x in overlap_pixels:
                     x_coord = x0 + (x + 0.5) * (x1 - x0) / nx
                     y_coord = y1 - (y + 0.5) * (y1 - y0) / ny
 
                     if len(overlap_points) < max_examples:
                         overlap_points.append((float(x_coord), float(y_coord), float(z)))
-
-                    cell1, cell2, universe = openmc.lib.slice_data_overlap_info(int(x), int(y))
-                    for c1, c2, u in zip(cell1, cell2, universe):
-                        a = min(int(c1), int(c2))
-                        b = max(int(c1), int(c2))
-                        unique_overlaps.add((int(u), a, b))
 
                 # Record internal undefined sample coordinates
                 for y, x in undefined_pixels:
@@ -3070,17 +3064,12 @@ class Model:
             "undefined_points": undefined_points,
             "n_more_overlap_points": max(0, n_overlap_samples - len(overlap_points)),
             "n_more_undefined_points": max(0, n_undefined_samples - len(undefined_points)),
-            "unique_overlaps": [
-                {"universe_id": u, "cell1_id": c1, "cell2_id": c2}
-                for (u, c1, c2) in sorted(unique_overlaps)
-            ],
         }
 
         if print_summary:
             print("Geometry debug summary:")
             print(f"  Overlap sample points found: {result['n_overlap_samples']}")
             print(f"  Undefined sample points found: {result['n_undefined_samples']}")
-            print(f"  Unique overlap pairs found: {len(result['unique_overlaps'])}")
 
             if result["overlap_points"]:
                 print("  Example overlap points:")
@@ -3099,18 +3088,6 @@ class Model:
                     print(f"    ... and {result['n_more_undefined_points']} more")
             else:
                 print("  Example undefined points: None")
-
-            if result["unique_overlaps"]:
-                print("  Unique overlaps:")
-                for entry in result["unique_overlaps"][:10]:
-                    print(
-                        f"    Universe {entry['universe_id']}: "
-                        f"cells {entry['cell1_id']} and {entry['cell2_id']}"
-                    )
-                if len(result["unique_overlaps"]) > 10:
-                    print(f"    ... and {len(result['unique_overlaps']) - 10} more")
-            else:
-                print("  Unique overlaps: None")
 
         return result
 

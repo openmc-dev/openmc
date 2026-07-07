@@ -106,14 +106,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip' 
-          cache-dependency-path: |
-            $GITHUB_WORKSPACE/tools/ci/requirements.txt
-
       - name: Environment Variables
         run: |
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
@@ -157,9 +149,19 @@ jobs:
             ~/endf-b-vii.1
           key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
 
-      - name: Get dependency cache keys
+      - name: Get dependency cache keys and mpi-dep versions
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-cache-keys.sh
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip' 
+          cache-dependency-path: |
+            $GITHUB_WORKSPACE/tools/ci/mpi-deps.txt
+            $GITHUB_WORKSPACE/tools/ci/requirements-mpi-${{ matrix.mpi }}.txt
+            
 
       - name: Restore NJOY2016
         uses: actions/cache@v6

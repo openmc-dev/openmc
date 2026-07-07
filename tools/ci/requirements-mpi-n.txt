@@ -1,3 +1,4 @@
+# requirements-mpi-n.txt
 numpy
 h5py
 scipy
@@ -15,4 +16,3 @@ colorama
 openpyxl
 coverage>=7.4
 gcovr>=7.2
-mpi4py

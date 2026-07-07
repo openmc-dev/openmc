@@ -16,3 +16,14 @@ if [[ "$LIBMESH" == 'y' ]]; then
     echo "LB_HASH=$(git ls-remote https://github.com/libmesh/libmesh \
     --tags v1.7.1 | head -c 15)" >> $GITHUB_ENV
 fi
+
+if [[ "$MPI" == 'y' ]]; then
+    dpkg-query -W libmpich-dev libhdf5-mpich-dev > $GITHUB_WORKSPACE/tools/ci/mpi-deps.txt
+    cat $GITHUB_WORKSPACE/tools/ci/mpi-deps.txt
+    sha256sum $GITHUB_WORKSPACE/tools/ci/requirements-mpi-y.txt
+    sha256sum $GITHUB_WORKSPACE/tools/ci/mpi-deps.txt
+else
+    touch $GITHUB_WORKSPACE/tools/ci/mpi-deps.txt
+    sha256sum $GITHUB_WORKSPACE/tools/ci/requirements-mpi-n.txt
+    sha256sum $GITHUB_WORKSPACE/tools/ci/mpi-deps.txt
+fi

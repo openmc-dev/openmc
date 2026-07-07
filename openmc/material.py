@@ -296,6 +296,8 @@ class Material(IDManagerMixin):
                 mass += nuc.percent
 
         # Compute and return the molar mass
+        if moles == 0.0:
+            raise ValueError("Material has no nuclides; cannot compute molar mass")
         return mass / moles
 
     @property
@@ -2287,7 +2289,7 @@ class Materials(cv.CheckedList):
         multigroup_fluxes: Sequence[Sequence[float]]
             Energy-dependent multigroup flux values, where each sublist corresponds
             to a specific material. Will be normalized so that it sums to 1.
-        energy_group_structures': Sequence[Sequence[float] | str]
+        energy_group_structures: Sequence[Sequence[float] | str]
             Energy group boundaries in [eV] or the name of the group structure.
         timesteps : iterable of float or iterable of tuple
             Array of timesteps. Note that values are not cumulative. The units are
@@ -2322,6 +2324,11 @@ class Materials(cv.CheckedList):
         for mat in self:
             mat.depletable = True
 
+        if len(multigroup_fluxes) != len(self):
+            raise ValueError("multigroup_fluxes length must match number of materials")
+        if len(energy_group_structures) != len(self):
+            raise ValueError("energy_group_structures length must match number of materials")
+
         chain = _get_chain(chain_file)
 
         # Create MicroXS objects for all materials
@@ -2332,6 +2339,10 @@ class Materials(cv.CheckedList):
             for material, flux, energy in zip(
                 self, multigroup_fluxes, energy_group_structures
             ):
+                if material.volume is None:
+                    raise ValueError(
+                        f"Material {material.id} has no volume; cannot deplete"
+                    )
                 temperature = material.temperature or 293.6
                 micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
                     energies=energy,

@@ -355,3 +355,24 @@ TEST_CASE("Test broaden_wmp_polynomials")
     REQUIRE_THAT(ref_val, Catch::Matchers::Approx(test_val));
   }
 }
+
+TEST_CASE("Test isclose")
+{
+  using openmc::isclose;
+
+  // Identical values are always close, regardless of tolerances.
+  REQUIRE(isclose(1.0, 1.0, 0.0, 0.0));
+  REQUIRE(isclose(0.0, 0.0, 0.0, 0.0));
+
+  // Absolute tolerance governs comparisons near zero.
+  REQUIRE(isclose(0.0, 1e-15, 0.0, 1e-14));
+  REQUIRE_FALSE(isclose(0.0, 1e-13, 0.0, 1e-14));
+
+  // Relative tolerance scales with the magnitude of the operands.
+  REQUIRE(isclose(1.0e12, 1.0e12 + 1.0, 1e-12, 0.0));
+  REQUIRE_FALSE(isclose(1.0e12, 1.0e12 + 10.0, 1e-12, 0.0));
+
+  // The looser of the two tolerances wins.
+  REQUIRE(isclose(1.0, 1.0 + 1e-13, 0.0, 1e-12));
+  REQUIRE(isclose(1.0e6, 1.0e6 + 1e-4, 1e-9, 0.0));
+}

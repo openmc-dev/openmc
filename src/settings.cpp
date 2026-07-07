@@ -83,6 +83,7 @@ bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool use_decay_photons {false};
+bool use_shared_secondary_bank {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -321,7 +322,7 @@ void get_run_parameters(pugi::xml_node node_base)
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
     }
     if (check_for_node(random_ray_node, "adjoint")) {
-      FlatSourceDomain::adjoint_ =
+      FlatSourceDomain::adjoint_requested_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
     if (check_for_node(random_ray_node, "sample_method")) {
@@ -1319,6 +1320,27 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "use_decay_photons")) {
     settings::use_decay_photons =
       get_node_value_bool(root, "use_decay_photons");
+  }
+
+  // If weight windows are on, also enable shared secondary bank (unless
+  // explicitly disabled by user).
+  if (check_for_node(root, "shared_secondary_bank")) {
+    bool val = get_node_value_bool(root, "shared_secondary_bank");
+    if (val && run_mode == RunMode::EIGENVALUE) {
+      warning(
+        "Shared secondary bank is not supported in eigenvalue calculations. "
+        "Setting will be ignored.");
+    } else {
+      settings::use_shared_secondary_bank = val;
+    }
+  } else if (settings::weight_windows_on) {
+    if (run_mode == RunMode::EIGENVALUE) {
+      warning(
+        "Shared secondary bank is not supported in eigenvalue calculations. "
+        "Particle local secondary banks will be used instead.");
+    } else if (run_mode == RunMode::FIXED_SOURCE) {
+      settings::use_shared_secondary_bank = true;
+    }
   }
 }
 

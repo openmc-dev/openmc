@@ -1390,7 +1390,7 @@ class Material(IDManagerMixin):
         units: str = 'Bq/cm3',
         by_nuclide: bool = False,
         volume: float | None = None,
-        chain_file: PathLike | "openmc.deplete.Chain" | None | bool = None
+        chain_file=None
     ) -> dict[str, float] | float:
         """Return the activity of the material or each nuclide within.
 

@@ -264,6 +264,8 @@ RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
 uint64_t RandomRay::transport_history_based_single_ray()
 {
   using namespace openmc;
+  int n_start = n_event();
+
   while (alive()) {
     event_advance_ray();
 
@@ -278,7 +280,8 @@ uint64_t RandomRay::transport_history_based_single_ray()
     }
   }
 
-  return n_event();
+  int delta_n = n_event() - n_start;
+  return delta_n;
 }
 
 // Transports ray across a single source region
@@ -862,7 +865,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
 
   // Restore particle event counter from the transmitted ray 
   // This preserves the event count across MPI rank boundaries
-  n_event() = data.n_event + 1;
+  n_event() = data.n_event;
 
   is_active_ = data.is_active;
 

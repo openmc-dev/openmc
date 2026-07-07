@@ -135,18 +135,6 @@ def test_zam():
     with pytest.raises(ValueError):
         openmc.data.zam('Am242-m1')
 
-def _chain_with_half_lives():
-    chain = Chain()
-
-    h3 = Nuclide("H3")
-    h3.half_life = 1.0
-    chain.add_nuclide(h3)
-
-    am242 = Nuclide("Am242")
-    chain.add_nuclide(am242)
-
-    return chain
-
 
 def test_half_life(tmp_path):
     assert openmc.data.half_life('H2') is None
@@ -158,7 +146,15 @@ def test_half_life(tmp_path):
     assert openmc.data.decay_constant('Am242') == pytest.approx(log(2.0)/57672.0)
     assert openmc.data.decay_constant('Am242_m1') == pytest.approx(log(2.0)/4449622000.0)
 
-    chain = _chain_with_half_lives()
+    # Create minimal chain with H3 and Am242 to test half-life and decay
+    # constant retrieval from chain file
+    chain = Chain()
+    h3 = Nuclide("H3")
+    h3.half_life = 1.0
+    chain.add_nuclide(h3)
+    am242 = Nuclide("Am242")
+    chain.add_nuclide(am242)
+
     assert openmc.data.half_life('H3', chain_file=chain) == 1.0
     assert openmc.data.decay_constant('H3', chain_file=chain) == pytest.approx(log(2.0))
 

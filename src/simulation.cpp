@@ -886,11 +886,14 @@ void transport_history_based_single_particle(Particle& p)
 
 void transport_history_based()
 {
-#pragma omp parallel for schedule(runtime)
-  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+#pragma omp parallel
+  {
     Particle p;
-    initialize_particle_track(p, i_work, false);
-    transport_history_based_single_particle(p);
+#pragma omp for schedule(runtime)
+    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+      initialize_particle_track(p, i_work, false);
+      transport_history_based_single_particle(p);
+    }
   }
 }
 

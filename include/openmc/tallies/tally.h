@@ -97,9 +97,9 @@ public:
   //! Given already-set filters, set the stride lengths
   void set_strides();
 
-  int32_t strides(int i) const { return strides_[i]; }
+  int64_t strides(int i) const { return strides_[i]; }
 
-  int32_t n_filter_bins() const { return n_filter_bins_; }
+  int64_t n_filter_bins() const { return n_filter_bins_; }
 
   bool multiply_density() const { return multiply_density_; }
 
@@ -184,9 +184,9 @@ private:
   vector<int32_t> filters_; //!< Filter indices in global filters array
 
   //! Index strides assigned to each filter to support 1D indexing.
-  vector<int32_t> strides_;
+  vector<int64_t> strides_;
 
-  int32_t n_filter_bins_ {0};
+  int64_t n_filter_bins_ {0};
 
   //! Whether to multiply by atom density for reaction rates
   bool multiply_density_ {true};

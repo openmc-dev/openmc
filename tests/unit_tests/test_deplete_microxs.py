@@ -179,6 +179,66 @@ def test_hybrid_tally_setup():
     assert ef.values[0] == pytest.approx(energies[0])
     assert ef.values[-1] == pytest.approx(energies[-1])
 
+
+def _simple_model():
+    model = openmc.Model()
+    mat = openmc.Material(components={'H1': 1.0, 'H2': 1.0},
+                          density=5.0, density_units='g/cm3')
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(region=-sphere, fill=mat)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.particles = 100
+    model.settings.batches = 5
+    model.settings.run_mode = 'fixed source'
+    return model, mat
+
+
+def test_hybrid_tally_defaults_to_all_nuclides(run_in_tmpdir):
+    energies = [0., 0.625, 2.0e7]
+    kwargs = {
+        'nuclides': ['H1', 'H2'],
+        'reactions': ['(n,2n)', '(n,gamma)'],
+        'energies': energies,
+        'reaction_rate_mode': 'flux',
+        'chain_file': CHAIN_FILE,
+    }
+
+    model, mat = _simple_model()
+    default_fluxes, default_micros = get_microxs_and_flux(
+        model, [mat], reaction_rate_opts={'reactions': ['(n,2n)']}, **kwargs
+    )
+
+    model, mat = _simple_model()
+    explicit_fluxes, explicit_micros = get_microxs_and_flux(
+        model, [mat],
+        reaction_rate_opts={
+            'nuclides': ['H1', 'H2'],
+            'reactions': ['(n,2n)']
+        },
+        **kwargs
+    )
+
+    np.testing.assert_allclose(default_fluxes[0], explicit_fluxes[0])
+    np.testing.assert_allclose(default_micros[0].data, explicit_micros[0].data)
+    assert default_micros[0].nuclides == explicit_micros[0].nuclides
+    assert default_micros[0].reactions == explicit_micros[0].reactions
+
+
+def test_flux_mode_returns_one_group_flux(run_in_tmpdir):
+    model, mat = _simple_model()
+    fluxes, micros = get_microxs_and_flux(
+        model, [mat],
+        nuclides=['H1'],
+        reactions=['(n,2n)'],
+        energies=[0., 0.625, 2.0e7],
+        reaction_rate_mode='flux',
+        chain_file=CHAIN_FILE,
+    )
+
+    assert fluxes[0].shape == (1,)
+    assert micros[0].data.shape == (1, 1, 1)
+    assert fluxes[0][0] > 0.0
+
 # ---------------------------------------------------------------------------
 # Tests for MicroXS.merge()
 # ---------------------------------------------------------------------------

@@ -836,8 +836,8 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
                             "specified for weight window generation",
       ratio_));
   if (ratio_ <= 1.0)
-    fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
-                            "specified for weight window generation"));
+    fatal_error(fmt::format(fmt::runtime("Invalid weight window ratio '{}' (<= 1.0) "
+					 "specified for weight window generation")));
 
   // create a matching weight windows object
   auto wws = WeightWindows::create();

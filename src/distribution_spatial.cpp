@@ -264,7 +264,7 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 
   if (get_node_value(node, "type", true, true) != "mesh") {
     fatal_error(fmt::format(
-      "Incorrect spatial type '{}' for a MeshSpatial distribution"));
+			    fmt::runtime("Incorrect spatial type '{}' for a MeshSpatial distribution")));
   }
 
   // No in-tet distributions implemented, could include distributions for the

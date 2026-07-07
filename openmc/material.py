@@ -1385,10 +1385,13 @@ class Material(IDManagerMixin):
         return densities
 
 
-    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: float | None = None,
-                     chain=None
-                     ) -> dict[str, float] | float:
+    def get_activity(
+        self,
+        units: str = 'Bq/cm3',
+        by_nuclide: bool = False,
+        volume: float | None = None,
+        chain_file: PathLike | "openmc.deplete.Chain" | None | bool = None
+    ) -> dict[str, float] | float:
         """Return the activity of the material or each nuclide within.
 
         .. versionadded:: 0.13.1
@@ -1407,22 +1410,23 @@ class Material(IDManagerMixin):
             :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
-        chain : openmc.deplete.Chain, optional
-            Depletion chain to use for half-life values. If provided, half-life
-            values from the chain are preferred over the default ENDF/B-VIII.0
-            values. For nuclides not in the chain, the default values are used
-            as a fallback.
+        chain_file : False, None, PathLike, or openmc.deplete.Chain, optional
+            Source of half-life values. If ``False``, only ENDF/B-VIII.0 data is
+            used. If ``None``, the chain specified by
+            ``openmc.config['chain_file']`` is used when available. If a path or
+            :class:`openmc.deplete.Chain` is given, that chain is used. For
+            ``None`` or an explicit chain, nuclides absent from the chain fall
+            back to ENDF/B-VIII.0 data.
 
-            .. versionadded:: 0.15.1
+            .. versionadded:: 0.15.4
 
         Returns
         -------
         Union[dict, float]
-            If by_nuclide is True then a dictionary whose keys are nuclide
-            names and values are activity is returned. Otherwise the activity
-            of the material is returned as a float.
+            If by_nuclide is True then a dictionary whose keys are nuclide names
+            and values are activity is returned. Otherwise the activity of the
+            material is returned as a float.
         """
-        import math
 
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Bq/m3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
@@ -1448,18 +1452,10 @@ class Material(IDManagerMixin):
         elif units == 'Ci/m3':
             multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
-        chain_nuclides = {}
-        if chain is not None:
-            for nuc in chain.nuclides:
-                chain_nuclides[nuc.name] = nuc.half_life
-
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            if nuclide in chain_nuclides and chain_nuclides[nuclide] is not None:
-                t = chain_nuclides[nuclide]
-                inv_seconds = math.log(2) / t if t > 0.0 else 0.0
-            else:
-                inv_seconds = openmc.data.decay_constant(nuclide)
+            inv_seconds = openmc.data.decay_constant(
+                nuclide, chain_file=chain_file)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())

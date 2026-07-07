@@ -9,6 +9,8 @@ from warnings import warn
 from endf.data import (ATOMIC_NUMBER, ATOMIC_SYMBOL, ELEMENT_SYMBOL,
                        EV_PER_MEV, K_BOLTZMANN, gnds_name, zam)
 
+import openmc
+
 gnds_name.__module__ = __name__
 zam.__module__ = __name__
 
@@ -296,25 +298,7 @@ def atomic_weight(element):
         raise ValueError(f"No naturally-occurring isotopes for element '{element}'.")
 
 
-def half_life(isotope):
-    """Return half-life of isotope in seconds or None if isotope is stable
-
-    Half-life values are from the `ENDF/B-VIII.0 decay sublibrary
-    <https://www.nndc.bnl.gov/endf-b8.0/download.html>`_.
-
-    .. versionadded:: 0.13.1
-
-    Parameters
-    ----------
-    isotope : str
-        Name of isotope, e.g., 'Pu239'
-
-    Returns
-    -------
-    float
-        Half-life of isotope in [s]
-
-    """
+def _half_life_from_endf(isotope):
     global _HALF_LIFE
     if not _HALF_LIFE:
         # Load ENDF/B-VIII.0 data from JSON file
@@ -324,7 +308,50 @@ def half_life(isotope):
     return _HALF_LIFE.get(isotope.lower())
 
 
-def decay_constant(isotope):
+def half_life(isotope, chain_file=False):
+    """Return half-life of isotope in seconds or None if isotope is stable
+
+    By default, half-life values are from the `ENDF/B-VIII.0 decay sublibrary
+    <https://www.nndc.bnl.gov/endf-b8.0/download.html>`_. A depletion chain can
+    also be used as the source of half-life values.
+
+    .. versionadded:: 0.13.1
+
+    .. versionchanged:: 0.15.4
+        Added the ``chain_file`` argument.
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g., 'Pu239'
+    chain_file : False, None, PathLike, or openmc.deplete.Chain, optional
+        Source of half-life values. If ``False``, only ENDF/B-VIII.0 data is
+        used. If ``None``, the chain specified by
+        ``openmc.config['chain_file']`` is used when available. If a path or
+        :class:`openmc.deplete.Chain` is given, that chain is used. For ``None``
+        or an explicit chain, nuclides absent from the chain fall back to
+        ENDF/B-VIII.0 data.
+
+    Returns
+    -------
+    float or None
+        Half-life of isotope in [s], or None if the isotope is stable
+
+    """
+    if chain_file is not False:
+        if chain_file is None:
+            if openmc.config.get('chain_file') is None:
+                return _half_life_from_endf(isotope)
+
+        from openmc.deplete.chain import _get_chain
+        chain = _get_chain(chain_file)
+        if isotope in chain:
+            return chain[isotope].half_life
+
+    return _half_life_from_endf(isotope)
+
+
+def decay_constant(isotope, chain_file=False):
     """Return decay constant of isotope in [s^-1]
 
     Decay constants are based on half-life values from the
@@ -333,10 +360,20 @@ def decay_constant(isotope):
 
     .. versionadded:: 0.13.1
 
+    .. versionchanged:: 0.15.4
+        Added the ``chain_file`` argument.
+
     Parameters
     ----------
     isotope : str
         Name of isotope, e.g., 'Pu239'
+    chain_file : False, None, PathLike, or openmc.deplete.Chain, optional
+        Source of half-life values. If ``False``, only ENDF/B-VIII.0 data is
+        used. If ``None``, the chain specified by
+        ``openmc.config['chain_file']`` is used when available. If a path or
+        :class:`openmc.deplete.Chain` is given, that chain is used. For ``None``
+        or an explicit chain, nuclides absent from the chain fall back to
+        ENDF/B-VIII.0 data.
 
     Returns
     -------
@@ -348,7 +385,7 @@ def decay_constant(isotope):
     openmc.data.half_life
 
     """
-    t = half_life(isotope)
+    t = half_life(isotope, chain_file)
     return _LOG_TWO / t if t else 0.0
 
 
@@ -496,5 +533,3 @@ def isotopes(element: str) -> list[tuple[str, float]]:
             result.append(kv)
 
     return result
-
-

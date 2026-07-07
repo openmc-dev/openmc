@@ -298,16 +298,6 @@ def atomic_weight(element):
         raise ValueError(f"No naturally-occurring isotopes for element '{element}'.")
 
 
-def _half_life_from_endf(isotope):
-    global _HALF_LIFE
-    if not _HALF_LIFE:
-        # Load ENDF/B-VIII.0 data from JSON file
-        half_life_path = Path(__file__).with_name('half_life.json')
-        _HALF_LIFE = json.loads(half_life_path.read_text())
-
-    return _HALF_LIFE.get(isotope.lower())
-
-
 def half_life(isotope, chain_file=False):
     """Return half-life of isotope in seconds or None if isotope is stable
 
@@ -339,16 +329,20 @@ def half_life(isotope, chain_file=False):
 
     """
     if chain_file is not False:
-        if chain_file is None:
-            if openmc.config.get('chain_file') is None:
-                return _half_life_from_endf(isotope)
+        if chain_file is not None or openmc.config.get('chain_file') is not None:
+            # Local import avoids a circular dependency
+            from openmc.deplete.chain import _get_chain
+            chain = _get_chain(chain_file)
+            if isotope in chain:
+                return chain[isotope].half_life
 
-        from openmc.deplete.chain import _get_chain
-        chain = _get_chain(chain_file)
-        if isotope in chain:
-            return chain[isotope].half_life
+    global _HALF_LIFE
+    if not _HALF_LIFE:
+        # Load ENDF/B-VIII.0 data from JSON file
+        half_life_path = Path(__file__).with_name('half_life.json')
+        _HALF_LIFE = json.loads(half_life_path.read_text())
 
-    return _half_life_from_endf(isotope)
+    return _HALF_LIFE.get(isotope.lower())
 
 
 def decay_constant(isotope, chain_file=False):

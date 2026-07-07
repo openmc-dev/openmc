@@ -7,6 +7,8 @@ from warnings import warn
 import h5py
 import numpy as np
 
+import openmc
+from .chain import _get_chain
 from .stepresult import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
 from openmc.data import atomic_mass, AVOGADRO
@@ -152,12 +154,9 @@ class Results(list):
 
         if chain_file is not False:
             if chain_file is None:
-                import openmc
                 if openmc.config.get('chain_file') is not None:
-                    from openmc.deplete.chain import _get_chain
                     chain_file = _get_chain(None)
             else:
-                from openmc.deplete.chain import _get_chain
                 chain_file = _get_chain(chain_file)
 
         times = np.empty_like(self, dtype=float)

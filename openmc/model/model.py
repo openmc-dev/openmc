@@ -24,7 +24,7 @@ from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 from openmc.plots import add_plot_params, _BASIS_INDICES, id_map_to_rgb
-from openmc.utility_funcs import change_directory, input_path
+from openmc.utility_funcs import change_directory
 
 
 # Protocol for a function that is passed to search_keff
@@ -2840,7 +2840,7 @@ class Model:
             settings = copy.deepcopy(settings)
 
             # A weight windows file given via settings is funneled through
-            # the same validation and path resolution as the argument below
+            # the same handling as the argument below
             if settings.weight_windows_file is not None:
                 if weight_windows_file is not None:
                     raise ValueError(
@@ -2862,25 +2862,13 @@ class Model:
         # that geometry). The "stochastic_slab" and "infinite_medium" methods
         # use simplified surrogate geometries for which the provided weight
         # windows are neither applicable nor needed.
-        if weight_windows_file is not None:
-            if method == "material_wise":
-                # Normalize the path in the same way as the
-                # Settings.weight_windows_file setter (resolved to an absolute
-                # path by default) and verify that it exists, since the
-                # generation run occurs in a temporary directory
-                weight_windows_file = input_path(weight_windows_file)
-                if not weight_windows_file.is_file():
-                    raise FileNotFoundError(
-                        f'Weight windows file "{weight_windows_file}" could '
-                        'not be found.'
-                    )
-            else:
-                warnings.warn(
-                    'The "weight_windows_file" argument is only applicable to '
-                    'the "material_wise" MGXS generation method and will be '
-                    f'ignored for the "{method}" method.'
-                )
-                weight_windows_file = None
+        if weight_windows_file is not None and method != "material_wise":
+            warnings.warn(
+                'The "weight_windows_file" argument is only applicable to '
+                'the "material_wise" MGXS generation method and will be '
+                f'ignored for the "{method}" method.'
+            )
+            weight_windows_file = None
 
         # Do all work (including MGXS generation) in a temporary directory
         # to avoid polluting the working directory with residual XML files

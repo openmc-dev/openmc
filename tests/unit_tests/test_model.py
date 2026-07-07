@@ -1192,7 +1192,6 @@ def test_convert_to_multigroup_settings_stochastic_slab(run_in_tmpdir, monkeypat
 def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatch):
     model = _steel_water_model()
     ww_path = Path('ww.h5').resolve()
-    ww_path.touch()
 
     user = model.mgxs_generation_settings('material_wise')
     user.weight_windows_file = ww_path
@@ -1200,8 +1199,8 @@ def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatc
         monkeypatch, model, method='material_wise', settings=user)
 
     # A weight windows file given via settings goes through the same handling
-    # as the weight_windows_file argument: validated for existence and
-    # applied to the generation run with weight windows turned on
+    # as the weight_windows_file argument: applied to the generation run with
+    # weight windows turned on
     assert gen.weight_windows_file == ww_path
     assert gen.weight_windows_on is True
     # The caller's object is never mutated
@@ -1231,7 +1230,6 @@ def test_convert_to_multigroup_settings_validation(run_in_tmpdir):
             settings=settings)
 
     # A weight windows file cannot be given both ways
-    Path('ww.h5').touch()
     settings = model.mgxs_generation_settings()
     settings.weight_windows_file = 'ww.h5'
     with pytest.raises(ValueError, match='weight_windows_file'):

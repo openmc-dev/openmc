@@ -127,11 +127,11 @@ private:
   //! BoundingBox if the particle is in a complex cell.
   BoundingBox bounding_box_complex(vector<int32_t> postfix) const;
 
-  //! Enfource precedence: Parenthases, Complement, Intersection, Union
-  void add_precedence();
+  //! Enforce precedence between intersections and unions
+  void enforce_precedence();
 
   //! Add parenthesis to enforce precedence
-  int64_t add_parentheses(int64_t start);
+  void add_parentheses(int64_t start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();
@@ -148,6 +148,30 @@ private:
   vector<int32_t> expression_;
   bool simple_; //!< Does the region contain only intersections?
 };
+
+//==============================================================================
+// XML parsing helpers for <cell> nodes
+//==============================================================================
+
+//! Parse material IDs from a <cell> XML node.
+//! \param node XML node containing a "material" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of material IDs (MATERIAL_VOID for "void")
+vector<int32_t> parse_cell_material_xml(pugi::xml_node node, int32_t cell_id);
+
+//! Parse temperatures in [K] from a <cell> XML node.
+//! Validates that all values are non-negative and the list is non-empty.
+//! \param node XML node containing a "temperature" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of temperatures in [K]
+vector<double> parse_cell_temperature_xml(pugi::xml_node node, int32_t cell_id);
+
+//! Parse densities in [g/cm³] from a <cell> XML node.
+//! Validates that all values are positive and the list is non-empty.
+//! \param node XML node containing a "density" attribute or child element
+//! \param cell_id Cell ID used in error messages
+//! \return Vector of densities in [g/cm³]
+vector<double> parse_cell_density_xml(pugi::xml_node node, int32_t cell_id);
 
 //==============================================================================
 

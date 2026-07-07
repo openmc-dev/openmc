@@ -103,6 +103,7 @@ def _run(args, output, cwd):
         # If OpenMC is finished, break loop
         line = p.stdout.readline()
         if not line and p.poll() is not None:
+            p.stdout.close()
             break
 
         lines.append(line)
@@ -164,7 +165,7 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', path_input=None):
 
     Parameters
     ----------
-    plots : Iterable of openmc.Plot
+    plots : Iterable of openmc.PlotBase
         Plots to display
     openmc_exec : str
         Path to OpenMC executable

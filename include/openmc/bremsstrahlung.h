@@ -3,7 +3,7 @@
 
 #include "openmc/particle.h"
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 
 namespace openmc {
 
@@ -14,9 +14,9 @@ namespace openmc {
 class BremsstrahlungData {
 public:
   // Data
-  xt::xtensor<double, 2> pdf;   //!< Bremsstrahlung energy PDF
-  xt::xtensor<double, 2> cdf;   //!< Bremsstrahlung energy CDF
-  xt::xtensor<double, 1> yield; //!< Photon yield
+  tensor::Tensor<double> pdf;   //!< Bremsstrahlung energy PDF
+  tensor::Tensor<double> cdf;   //!< Bremsstrahlung energy CDF
+  tensor::Tensor<double> yield; //!< Photon yield
 };
 
 class Bremsstrahlung {
@@ -32,9 +32,9 @@ public:
 
 namespace data {
 
-extern xt::xtensor<double, 1>
+extern tensor::Tensor<double>
   ttb_e_grid; //! energy T of incident electron in [eV]
-extern xt::xtensor<double, 1>
+extern tensor::Tensor<double>
   ttb_k_grid; //! reduced energy W/T of emitted photon
 
 } // namespace data

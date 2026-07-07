@@ -38,9 +38,15 @@
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
+<<<<<<< HEAD
     <particles>100</particles>
     <batches>5</batches>
     <inactive>1</inactive>
+=======
+    <particles>80</particles>
+    <batches>5</batches>
+    <inactive>4</inactive>
+>>>>>>> source/develop
     <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>-2.0 -2.0 -2.0 2.0 2.0 2.0</parameters>
@@ -51,7 +57,11 @@
     </source>
     <collision_track>
       <material_ids>1</material_ids>
+<<<<<<< HEAD
       <max_collisions>300</max_collisions>
+=======
+      <max_collisions>100</max_collisions>
+>>>>>>> source/develop
     </collision_track>
     <seed>1</seed>
   </settings>

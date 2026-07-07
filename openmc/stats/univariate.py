@@ -1,17 +1,22 @@
 from __future__ import annotations
-import math
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from copy import deepcopy
+from functools import cache
+from math import sqrt, pi, exp, log
 from numbers import Real
+from pathlib import Path
 from warnings import warn
 
 import lxml.etree as ET
 import numpy as np
 from scipy.integrate import trapezoid
+from scipy.special import exprel, hyp1f1, lambertw
+import scipy
 
 import openmc.checkvalue as cv
+from openmc.data import atomic_mass, NEUTRON_MASS
+import openmc.data
 from .._xml import get_elem_list, get_text
 from ..mixin import EqualityMixin
 
@@ -24,13 +29,71 @@ _INTERPOLATION_SCHEMES = {
 }
 
 
+def exprel2(x):
+    """Evaluate 2*(exp(x)-1-x)/x^2 without loss of precision near 0"""
+    return hyp1f1(1, 3, x)
+
+
+def log1prel(x):
+    """Evaluate log(1+x)/x without loss of precision near 0"""
+    return np.where(np.abs(x) < 1e-16, 1.0, np.log1p(x) / x)
+
+
 class Univariate(EqualityMixin, ABC):
     """Probability distribution of a single random variable.
 
     The Univariate class is an abstract class that can be derived to implement a
     specific probability distribution.
 
+    Parameters
+    ----------
+    bias : Iterable of float, optional
+        Distribution or discrete probabilities for biased sampling or discrete
+        probabilities for biased sampling.
+
     """
+    def __init__(self, bias: Univariate | Sequence[float] | None = None):
+        self.bias = bias
+
+    @property
+    def bias(self):
+        return self._bias
+
+    @bias.setter
+    def bias(self, bias):
+        check_bias_support(self, bias)
+        self._bias = bias
+
+    def _append_bias_to_xml(self, element: ET.Element) -> None:
+        """Append bias distribution element to XML if present."""
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias.')
+            bias_elem = self.bias.to_xml_element("bias")
+            element.append(bias_elem)
+
+    @classmethod
+    def _read_bias_from_xml(cls, elem: ET.Element):
+        """Read bias distribution from XML element if present."""
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            return Univariate.from_xml_element(bias_elem)
+        return None
+
+    def _append_array_bias_to_xml(self, element: ET.Element) -> None:
+        """Append array-based bias probabilities to XML."""
+        if self.bias is not None:
+            bias_elem = ET.SubElement(element, "bias")
+            bias_elem.text = ' '.join(map(str, self.bias))
+
+    @classmethod
+    def _read_array_bias_from_xml(cls, elem: ET.Element):
+        """Read array-based bias probabilities from XML."""
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            return get_elem_list(elem, "bias", float)
+        return None
+
     @abstractmethod
     def to_xml_element(self, element_name):
         return ''
@@ -64,10 +127,12 @@ class Univariate(EqualityMixin, ABC):
             return Legendre.from_xml_element(elem)
         elif distribution == 'mixture':
             return Mixture.from_xml_element(elem)
+        elif distribution == 'decay_spectrum':
+            return DecaySpectrum.from_xml_element(elem)
 
     @abstractmethod
-    def sample(n_samples: int = 1, seed: int | None = None):
-        """Sample the univariate distribution
+    def _sample_unbiased(self, n_samples: int = 1, seed: int | None = None):
+        """Sample without bias handling.
 
         Parameters
         ----------
@@ -79,9 +144,34 @@ class Univariate(EqualityMixin, ABC):
         Returns
         -------
         numpy.ndarray
-            A 1-D array of sampled values
+            The array of sampled values
         """
         pass
+
+    def sample(self, n_samples: int = 1, seed: int | None = None):
+        """Sample the univariate distribution, handling biasing automatically.
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of sampled values to generate
+        seed : int or None
+            Initial random number seed.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            A tuple of (samples, weights)
+        """
+        if self.bias is None:
+            x = self._sample_unbiased(n_samples, seed)
+            return x, np.ones_like(x)
+        else:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias.')
+            x, _ = self.bias.sample(n_samples=n_samples, seed=seed)
+            weight = self.evaluate(x) / self.bias.evaluate(x)
+            return x, weight
 
     def integral(self):
         """Return integral of distribution
@@ -95,6 +185,36 @@ class Univariate(EqualityMixin, ABC):
         """
         return 1.0
 
+    @abstractmethod
+    def evaluate(self, x: float | Sequence[float]):
+        """Evaluate the probability density at the provided value.
+
+        Parameters
+        ----------
+        x : float or sequence of float
+            Location to evaluate p(x)
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Value of p(x)
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def support(self):
+        """Return the support of the probability distribution.
+
+        Returns
+        -------
+        set or tuple of float or dict
+            Returns the set of unique points assigned probability mass in a
+            discrete distribution, the sampling interval for a continuous
+            distribution, or a dictionary storing the discrete and continuous
+            parts of the support of a mixed random variable
+        """
+        pass
 
 def _intensity_clip(intensity: Sequence[float], tolerance: float = 1e-6) -> np.ndarray:
     """Clip low-importance points from an array of intensities.
@@ -148,6 +268,9 @@ class Discrete(Univariate):
         Values of the random variable
     p : Iterable of float
         Discrete probability for each value
+    bias : Iterable of float, optional
+        Alternative discrete probabilities for biased sampling. Defaults to
+        None for unbiased sampling.
 
     Attributes
     ----------
@@ -155,12 +278,18 @@ class Discrete(Univariate):
         Values of the random variable
     p : numpy.ndarray
         Discrete probability for each value
+    support : set
+        Values of the random variable over which the distribution is
+        nonzero-valued
+    bias : numpy.ndarray or None
+        Discrete probabilities for biased sampling
 
     """
 
-    def __init__(self, x, p):
+    def __init__(self, x, p, bias=None):
         self.x = x
         self.p = p
+        super().__init__(bias)
 
     def __len__(self):
         return len(self.x)
@@ -189,10 +318,42 @@ class Discrete(Univariate):
             cv.check_greater_than('discrete probability', pk, 0.0, True)
         self._p = np.array(p, dtype=float)
 
+    @property
+    def support(self):
+        return set(np.unique(self._x))
+
+    @Univariate.bias.setter
+    def bias(self, bias):
+        if bias is None:
+            self._bias = bias
+        else:
+            if isinstance(bias, Real):
+                bias = [bias]
+            cv.check_type('discrete bias probabilities', bias, Iterable, Real)
+            for bk in bias:
+                cv.check_greater_than('discrete probability', bk, 0.0, True)
+            if len(bias) != len(self.x):
+                raise RuntimeError("Discrete distribution has unequal number of "
+                                   "biased and unbiased probability entries.")
+            self._bias = np.array(bias, dtype=float)
+
     def cdf(self):
         return np.insert(np.cumsum(self.p), 0, 0.0)
 
     def sample(self, n_samples=1, seed=None):
+        if self.bias is None:
+            samples = self._sample_unbiased(n_samples, seed)
+            return samples, np.ones_like(samples)
+        else:
+            rng = np.random.RandomState(seed)
+            p = self.p / self.p.sum()
+            b = self.bias / self.bias.sum()
+            indices = rng.choice(self.x.size, n_samples, p=b)
+            biased_sample = self.x[indices]
+            wgt = p[indices] / b[indices]
+            return biased_sample, wgt
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         p = self.p / self.p.sum()
         return rng.choice(self.x, n_samples, p=p)
@@ -201,6 +362,9 @@ class Discrete(Univariate):
         """Normalize the probabilities stored on the distribution"""
         norm = sum(self.p)
         self.p = [val / norm for val in self.p]
+
+    def evaluate(self, x):
+        raise NotImplementedError
 
     def to_xml_element(self, element_name):
         """Return XML representation of the discrete distribution
@@ -221,7 +385,7 @@ class Discrete(Univariate):
 
         params = ET.SubElement(element, "parameters")
         params.text = ' '.join(map(str, self.x)) + ' ' + ' '.join(map(str, self.p))
-
+        self._append_array_bias_to_xml(element)
         return element
 
     @classmethod
@@ -242,13 +406,14 @@ class Discrete(Univariate):
         params = get_elem_list(elem, "parameters", float)
         x = params[:len(params)//2]
         p = params[len(params)//2:]
-        return cls(x, p)
+        bias_dist = cls._read_array_bias_from_xml(elem)
+        return cls(x, p, bias=bias_dist)
 
     @classmethod
     def merge(
         cls,
         dists: Sequence[Discrete],
-        probs: Sequence[int]
+        probs: Sequence[float]
     ):
         """Merge multiple discrete distributions into a single distribution
 
@@ -270,18 +435,52 @@ class Discrete(Univariate):
         if len(dists) != len(probs):
             raise ValueError("Number of distributions and probabilities must match.")
 
+        biasing = False
+        for d in dists:
+            if d.bias is not None:
+                # If we find that at least one distribution is biased, all
+                # distributions which are not biased will be assigned their
+                # default probability vector as a "bias" so that biased
+                # sampling can occur on the merged distribution.
+                biasing = True
+                break
+
         # Combine distributions accounting for duplicate x values
         x_merged = set()
         p_merged = defaultdict(float)
-        for dist, p_dist in zip(dists, probs):
-            for x, p in zip(dist.x, dist.p):
-                x_merged.add(x)
-                p_merged[x] += p*p_dist
+        new_bias = None
 
-        # Create values and probabilities as arrays
-        x_arr = np.array(sorted(x_merged))
+        if biasing:
+            b_merged = defaultdict(float)
+
+            # Generate any missing bias distributions
+            dists = dists.copy()
+            for i, d in enumerate(dists):
+                if d.bias is None:
+                    dists[i] = Discrete(d.x, d.p, bias=d.p)
+
+            for dist, p_dist in zip(dists, probs):
+                for x, p, b in zip(dist.x, dist.p, dist.bias):
+                    x_merged.add(x)
+                    p_merged[x] += p*p_dist
+                    b_merged[x] += b*p_dist
+
+            # Create values and bias probabilities as arrays
+            x_arr = np.array(sorted(x_merged))
+            new_bias = np.array([b_merged[x] for x in x_arr])
+
+        else:
+            for dist, p_dist in zip(dists, probs):
+                for x, p in zip(dist.x, dist.p):
+                    x_merged.add(x)
+                    p_merged[x] += p*p_dist
+
+            # Create values as array
+            x_arr = np.array(sorted(x_merged))
+
+        # Create probabilities as array
         p_arr = np.array([p_merged[x] for x in x_arr])
-        return cls(x_arr, p_arr)
+        return cls(x_arr, p_arr, new_bias)
 
     def integral(self):
         """Return integral of distribution
@@ -318,6 +517,9 @@ class Discrete(Univariate):
         function will remove any low-importance points such that :math:`\sum_i
         x_i p_i` is preserved to within some threshold.
 
+        For biased distributions, clipping should be performed before the bias
+        probabilities are added.
+
         .. versionadded:: 0.14.0
 
         Parameters
@@ -332,6 +534,10 @@ class Discrete(Univariate):
         Discrete distribution with low-importance points removed
 
         """
+        if self.bias is not None:
+            raise RuntimeError("Biased discrete distributions should be clipped "
+                               "before applying bias.")
+
         cv.check_less_than("tolerance", tolerance, 1.0, equality=True)
         cv.check_greater_than("tolerance", tolerance, 0.0, equality=True)
 
@@ -382,6 +588,8 @@ class Uniform(Univariate):
         Lower bound of the sampling interval. Defaults to zero.
     b : float, optional
         Upper bound of the sampling interval. Defaults to unity.
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -389,12 +597,19 @@ class Uniform(Univariate):
         Lower bound of the sampling interval
     b : float
         Upper bound of the sampling interval
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the
+        distribution is nonzero-valued
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     """
 
-    def __init__(self, a: float = 0.0, b: float = 1.0):
+    def __init__(self, a: float = 0.0, b: float = 1.0,
+                 bias: Univariate | None = None):
         self.a = a
         self.b = b
+        super().__init__(bias)
 
     def __len__(self):
         return 2
@@ -417,15 +632,24 @@ class Uniform(Univariate):
         cv.check_type('Uniform b', b, Real)
         self._b = b
 
+    @property
+    def support(self):
+        return (self._a, self._b)
+
     def to_tabular(self):
+        if self.bias is not None:
+            raise RuntimeError("to_tabular() is not permitted for biased distributions.")
         prob = 1./(self.b - self.a)
         t = Tabular([self.a, self.b], [prob, prob], 'histogram')
         t.c = [0., 1.]
         return t
 
-    def sample(self, n_samples=1, seed=None):
+    def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         return rng.uniform(self.a, self.b, n_samples)
+
+    def evaluate(self, x):
+        return np.where((self.a <= x) & (x <= self.b), 1/(self.b - self.a), 0.0)
 
     def mean(self) -> float:
         """Return mean of the uniform distribution
@@ -456,6 +680,7 @@ class Uniform(Univariate):
         element = ET.Element(element_name)
         element.set("type", "uniform")
         element.set("parameters", f'{self.a} {self.b}')
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -474,7 +699,8 @@ class Uniform(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-        return cls(*params)
+        bias_dist = cls._read_bias_from_xml(elem)
+        return cls(*params, bias=bias_dist)
 
 
 class PowerLaw(Univariate):
@@ -493,6 +719,8 @@ class PowerLaw(Univariate):
     n : float, optional
         Power law exponent. Defaults to zero, which is equivalent to a uniform
         distribution.
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -502,16 +730,23 @@ class PowerLaw(Univariate):
         Upper bound of the sampling interval
     n : float
         Power law exponent
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the
+        distribution is nonzero-valued
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     """
 
-    def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.):
+    def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.,
+                 bias: Univariate | None = None):
         if a >= b:
             raise ValueError(
                 "Lower bound of sampling interval must be less than upper bound.")
         self.a = a
         self.b = b
         self.n = n
+        super().__init__(bias)
 
     def __len__(self):
         return 3
@@ -549,13 +784,21 @@ class PowerLaw(Univariate):
         cv.check_type('power law exponent', n, Real)
         self._n = n
 
-    def sample(self, n_samples=1, seed=None):
+    @property
+    def support(self):
+        return (self._a, self._b)
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         xi = rng.random(n_samples)
         pwr = self.n + 1
         offset = self.a**pwr
         span = self.b**pwr - offset
         return np.power(offset + xi * span, 1/pwr)
+
+    def evaluate(self, x):
+        c = (self.n + 1)/(self.b**(self.n + 1) - self.a**(self.n + 1))
+        return np.where((self.a <= x) & (x <= self.b), c * np.abs(x)**self.n, 0.0)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the power law distribution
@@ -574,6 +817,7 @@ class PowerLaw(Univariate):
         element = ET.Element(element_name)
         element.set("type", "powerlaw")
         element.set("parameters", f'{self.a} {self.b} {self.n}')
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -592,7 +836,8 @@ class PowerLaw(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-        return cls(*params)
+        bias_dist = cls._read_bias_from_xml(elem)
+        return cls(*map(float, params), bias=bias_dist)
 
 
 class Maxwell(Univariate):
@@ -606,16 +851,24 @@ class Maxwell(Univariate):
     ----------
     theta : float
         Effective temperature for distribution in eV
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
 
     Attributes
     ----------
     theta : float
         Effective temperature for distribution in eV
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the
+        distribution is nonzero-valued
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     """
 
-    def __init__(self, theta):
+    def __init__(self, theta, bias: Univariate | None = None):
         self.theta = theta
+        super().__init__(bias)
 
     def __len__(self):
         return 1
@@ -630,7 +883,11 @@ class Maxwell(Univariate):
         cv.check_greater_than('Maxwell temperature', theta, 0.0)
         self._theta = theta
 
-    def sample(self, n_samples=1, seed=None):
+    @property
+    def support(self):
+        return (0.0, np.inf)
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         return self.sample_maxwell(self.theta, n_samples, rng=rng)
 
@@ -638,9 +895,10 @@ class Maxwell(Univariate):
     def sample_maxwell(t, n_samples: int, rng=None):
         if rng is None:
             rng = np.random.default_rng()
-        r1, r2, r3 = rng.random((3, n_samples))
-        c = np.cos(0.5 * np.pi * r3)
-        return -t * (np.log(r1) + np.log(r2) * c * c)
+        return rng.gamma(1.5, t, n_samples)
+
+    def evaluate(self, E):
+        return scipy.stats.gamma.pdf(E, 1.5, scale=self.theta)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Maxwellian distribution
@@ -659,6 +917,7 @@ class Maxwell(Univariate):
         element = ET.Element(element_name)
         element.set("type", "maxwell")
         element.set("parameters", str(self.theta))
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -677,7 +936,8 @@ class Maxwell(Univariate):
 
         """
         theta = float(get_text(elem, 'parameters'))
-        return cls(theta)
+        bias_dist = cls._read_bias_from_xml(elem)
+        return cls(theta, bias=bias_dist)
 
 
 class Watt(Univariate):
@@ -693,6 +953,8 @@ class Watt(Univariate):
         First parameter of distribution in units of eV
     b : float
         Second parameter of distribution in units of 1/eV
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -700,12 +962,18 @@ class Watt(Univariate):
         First parameter of distribution in units of eV
     b : float
         Second parameter of distribution in units of 1/eV
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the
+        distribution is nonzero-valued
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     """
 
-    def __init__(self, a=0.988e6, b=2.249e-6):
+    def __init__(self, a=0.988e6, b=2.249e-6, bias: Univariate | None = None):
         self.a = a
         self.b = b
+        super().__init__(bias)
 
     def __len__(self):
         return 2
@@ -730,12 +998,20 @@ class Watt(Univariate):
         cv.check_greater_than('Watt b', b, 0.0)
         self._b = b
 
-    def sample(self, n_samples=1, seed=None):
+    @property
+    def support(self):
+        return (0.0, np.inf)
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         w = Maxwell.sample_maxwell(self.a, n_samples, rng=rng)
         u = rng.uniform(-1., 1., n_samples)
         aab = self.a * self.a * self.b
         return w + 0.25*aab + u*np.sqrt(aab*w)
+
+    def evaluate(self, E):
+        c = 2.0/(sqrt(pi * self.b) * (self.a**1.5) * exp(self.a*self.b/4))
+        return c*np.exp(-E/self.a)*np.sinh(np.sqrt(self.b*E))
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Watt distribution
@@ -754,6 +1030,7 @@ class Watt(Univariate):
         element = ET.Element(element_name)
         element.set("type", "watt")
         element.set("parameters", f'{self.a} {self.b}')
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -772,22 +1049,34 @@ class Watt(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-        return cls(*params)
+        bias_dist = cls._read_bias_from_xml(elem)
+        return cls(*map(float, params), bias=bias_dist)
 
 
 class Normal(Univariate):
-    r"""Normally distributed sampling.
+    r"""Normally distributed sampling with optional truncation.
 
-    The Normal Distribution is characterized by two parameters
-    :math:`\mu` and :math:`\sigma` and has density function
-    :math:`p(X) dX = 1/(\sqrt{2\pi}\sigma) e^{-(X-\mu)^2/(2\sigma^2)}`
+    The normal distribution is characterized by parameters :math:`\mu` and
+    :math:`\sigma` and has density function :math:`p(X) = 1/(\sqrt{2\pi}\sigma)
+    e^{-(X-\mu)^2/(2\sigma^2)}`. When truncated to the interval [lower, upper],
+    the distribution is renormalized so that the PDF integrates to 1 over the
+    truncation interval.
+
+    .. versionchanged:: 0.15.4
+        Added optional truncation bounds via `lower` and `upper` parameters.
 
     Parameters
     ----------
     mean_value : float
-        Mean value of the  distribution
+        Mean value of the distribution
     std_dev : float
         Standard deviation of the Normal distribution
+    lower : float, optional
+        Lower truncation bound. Defaults to -infinity (no lower bound).
+    upper : float, optional
+        Upper truncation bound. Defaults to +infinity (no upper bound).
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -795,13 +1084,29 @@ class Normal(Univariate):
         Mean of the Normal distribution
     std_dev : float
         Standard deviation of the Normal distribution
+    lower : float
+        Lower truncation bound
+    upper : float
+        Upper truncation bound
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the
+        distribution is nonzero-valued
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
     """
 
-    def __init__(self, mean_value, std_dev):
+    def __init__(self, mean_value, std_dev, lower=-np.inf, upper=np.inf,
+                 bias: Univariate | None = None):
         self.mean_value = mean_value
         self.std_dev = std_dev
+        self.lower = lower
+        self.upper = upper
+        self._compute_normalization()
+        super().__init__(bias)
 
     def __len__(self):
+        if self._is_truncated:
+            return 4
         return 2
 
     @property
@@ -823,9 +1128,69 @@ class Normal(Univariate):
         cv.check_greater_than('Normal std_dev', std_dev, 0.0)
         self._std_dev = std_dev
 
-    def sample(self, n_samples=1, seed=None):
+    @property
+    def lower(self):
+        return self._lower
+
+    @lower.setter
+    def lower(self, lower):
+        cv.check_type('Normal lower bound', lower, Real)
+        self._lower = lower
+
+    @property
+    def upper(self):
+        return self._upper
+
+    @upper.setter
+    def upper(self, upper):
+        cv.check_type('Normal upper bound', upper, Real)
+        self._upper = upper
+
+    def _compute_normalization(self):
+        """Compute normalization factor for truncated distribution."""
+        # Check if truncation bounds are finite
+        self._is_truncated = (self._lower > -np.inf or self._upper < np.inf)
+
+        if self._lower >= self._upper:
+            raise ValueError("Normal distribution lower bound must be less "
+                             "than upper bound.")
+
+        if self._is_truncated:
+            alpha = (self._lower - self._mean_value) / self._std_dev
+            beta = (self._upper - self._mean_value) / self._std_dev
+            cdf_diff = scipy.stats.norm.cdf(beta) - scipy.stats.norm.cdf(alpha)
+            if cdf_diff <= 0:
+                raise ValueError("Truncation bounds exclude entire distribution")
+            self._norm_factor = 1.0 / cdf_diff
+        else:
+            self._norm_factor = 1.0
+
+    @property
+    def support(self):
+        return (self._lower, self._upper)
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
-        return rng.normal(self.mean_value, self.std_dev, n_samples)
+        if not self._is_truncated:
+            return rng.normal(self.mean_value, self.std_dev, n_samples)
+        else:
+            # Use scipy's truncated normal for efficient direct sampling
+            a = (self._lower - self._mean_value) / self._std_dev
+            b = (self._upper - self._mean_value) / self._std_dev
+            return scipy.stats.truncnorm.rvs(
+                a, b, loc=self._mean_value, scale=self._std_dev,
+                size=n_samples, random_state=rng
+            )
+
+    def evaluate(self, x):
+        """Evaluate PDF at x, returning normalized value for truncated dist."""
+        x = np.asarray(x)
+        f = scipy.stats.norm.pdf(x, self.mean_value, self.std_dev)
+        if self._is_truncated:
+            # PDF is zero outside bounds
+            in_bounds = (x >= self._lower) & (x <= self._upper)
+            f = np.where(in_bounds, f * self._norm_factor, 0.0)
+        return f
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Normal distribution
@@ -838,12 +1203,17 @@ class Normal(Univariate):
         Returns
         -------
         element : lxml.etree._Element
-            XML element containing Watt distribution data
+            XML element containing Normal distribution data
 
         """
         element = ET.Element(element_name)
         element.set("type", "normal")
-        element.set("parameters", f'{self.mean_value} {self.std_dev}')
+        if self._is_truncated:
+            element.set("parameters",
+                f'{self.mean_value} {self.std_dev} {self.lower} {self.upper}')
+        else:
+            element.set("parameters", f'{self.mean_value} {self.std_dev}')
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -862,10 +1232,14 @@ class Normal(Univariate):
 
         """
         params = get_elem_list(elem, "parameters", float)
-        return cls(*params)
+        bias_dist = cls._read_bias_from_xml(elem)
+        if len(params) == 4:
+            return cls(params[0], params[1], params[2], params[3], bias=bias_dist)
+        else:
+            return cls(params[0], params[1], bias=bias_dist)
 
 
-def muir(e0: float, m_rat: float, kt: float):
+def muir(e0: float, m_rat: float, kt: float, bias: Univariate | None = None):
     """Generate a Muir energy spectrum
 
     The Muir energy spectrum is a normal distribution, but for convenience
@@ -883,6 +1257,8 @@ def muir(e0: float, m_rat: float, kt: float):
         Ratio of the sum of the masses of the reaction inputs to 1 amu
     kt : float
          Ion temperature for the Muir distribution in [eV]
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
 
     Returns
     -------
@@ -891,8 +1267,8 @@ def muir(e0: float, m_rat: float, kt: float):
 
     """
     # https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-    std_dev = math.sqrt(2 * e0 * kt / m_rat)
-    return Normal(e0, std_dev)
+    std_dev = sqrt(2 * e0 * kt / m_rat)
+    return Normal(e0, std_dev, bias=bias)
 
 
 # Retain deprecated name for the time being
@@ -904,6 +1280,138 @@ def Muir(*args, **kwargs):
         FutureWarning
     )
     return muir(*args, **kwargs)
+
+
+def fusion_neutron_spectrum(
+    ion_temp: float,
+    reactants: str = 'DD',
+    bias: Univariate | None = None
+) -> Normal:
+    r"""Return a Gaussian energy distribution for fusion neutron emission.
+
+    Computes the mean energy and spectral width of the neutron energy spectrum
+    from thermonuclear fusion reactions in a plasma with Maxwellian ion velocity
+    distributions. The mean neutron energy is calculated as
+
+    .. math::
+
+        \langle E_n \rangle = E_0 + \Delta E_\text{th}
+
+    where :math:`E_0` is the neutron energy at zero ion temperature and
+    :math:`\Delta E_\text{th}` is the thermal peak shift due to the motion of
+    the reacting ions. The spectral width is characterized by the FWHM:
+
+    .. math::
+
+        W_{1/2} = \omega_0 (1 + \delta_\omega) \sqrt{T_i}
+
+    where :math:`\omega_0` is the width at the :math:`T_i \to 0` limit and
+    :math:`\delta_\omega` is a temperature-dependent correction term. Both
+    :math:`\Delta E_\text{th}` and :math:`\delta_\omega` are evaluated using
+    interpolation formulas from `Ballabio et al.
+    <https://doi.org/10.1088/0029-5515/38/11/310>`_: Table III for :math:`0 <
+    T_i \le 40` keV and Table IV for :math:`40 < T_i < 100` keV. The returned
+    distribution is a normal (Gaussian) approximation to the spectrum.
+
+    .. versionadded:: 0.15.4
+
+    Parameters
+    ----------
+    ion_temp : float
+        Ion temperature of the plasma in [eV].
+    reactants : {'DD', 'DT'}
+        Fusion reactants. 'DD' corresponds to the D(d,n)\ :sup:`3`\ He reaction
+        and 'DT' to the T(d,n)\ :math:`\alpha` reaction.
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
+
+    Returns
+    -------
+    openmc.stats.Normal
+        Normal distribution with mean and standard deviation corresponding to
+        the first and second moments of the fusion neutron energy spectrum. Both
+        the mean and standard deviation are in [eV].
+
+    """
+    if ion_temp < 0.0 or ion_temp > 100e3:
+        raise ValueError("Ion temperature must be between 0 and 100 keV.")
+
+    # Formulas from doi:10.1088/0029-5515/38/11/310
+    mn = NEUTRON_MASS
+    md = atomic_mass('H2')
+    ev_per_c2 = 931.49410372*1e6
+    if reactants == 'DD':
+        mhe3 = atomic_mass('He3')
+        Q = (md + md - mhe3 - mn)*ev_per_c2
+        E_n = mhe3/(mhe3 + mn)*Q
+        w0 = 82.542
+
+        # Low-T constants for peak shift (Table III)
+        a1 = 4.69515
+        a2 = -0.040729
+        a3 = 0.47
+        a4 = 0.81844
+
+        # Low-T constants for width correction (Table III)
+        b1 = 1.7013e-3
+        b2 = 0.16888
+        b3 = 0.49
+        b4 = 7.9460e-4
+
+        # High-T constants for peak shift (Table IV)
+        a5 = 18.225
+        a6 = 2.1525
+
+        # High-T constants for width correction (Table IV)
+        b5 = 8.4619e-3
+        b6 = 8.3241e-4
+
+    elif reactants == 'DT':
+        mt = atomic_mass('H3')
+        ma = atomic_mass('He4')
+        Q = (md + mt - ma - mn)*ev_per_c2
+        E_n = ma/(ma + mn)*Q
+        w0 = 177.259
+
+        # Low-T constants for peak shift (Table III)
+        a1 = 5.30509
+        a2 = 2.4736e-3
+        a3 = 1.84
+        a4 = 1.3818
+
+        # Low-T constants for width correction (Table III)
+        b1 = 5.1068e-4
+        b2 = 7.6223e-3
+        b3 = 1.78
+        b4 = 8.7691e-5
+
+        # High-T constants for peak shift (Table IV)
+        a5 = 37.771
+        a6 = 0.92181
+
+        # High-T constants for width correction (Table IV)
+        b5 = 2.0199e-3
+        b6 = 5.9501e-5
+    else:
+        raise ValueError("Invalid reactants specified. Must be 'DD' or 'DT'.")
+
+    # Ion temperature in keV
+    T = ion_temp * 1e-3
+
+    if T <= 40.0:
+        # Low-temperature interpolation (Table III, 0 < T_i <= 40 keV)
+        Delta_E = a1/(1 + a2*T**a3)*T**(2/3) + a4*T
+        delta_w = b1/(1 + b2*T**b3)*T**(2/3) + b4*T
+    else:
+        # High-temperature interpolation (Table IV, 40 < T_i < 100 keV)
+        Delta_E = a5 + a6*T
+        delta_w = b5 + b6*T
+
+    # Calculate FWHM
+    fwhm = (w0*(1 + delta_w) * sqrt(T))*1e3
+
+    sigma = fwhm / (2*sqrt(2*log(2)))
+    return Normal(E_n + Delta_E * 1e3, sigma, bias=bias)
 
 
 class Tabular(Univariate):
@@ -926,6 +1434,8 @@ class Tabular(Univariate):
         points. Defaults to 'linear-linear'.
     ignore_negative : bool
         Ignore negative probabilities
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling.
 
     Attributes
     ----------
@@ -936,6 +1446,11 @@ class Tabular(Univariate):
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the
+        distribution is nonzero-valued
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     Notes
     -----
@@ -953,7 +1468,8 @@ class Tabular(Univariate):
             x: Sequence[float],
             p: Sequence[float],
             interpolation: str = 'linear-linear',
-            ignore_negative: bool = False
+            ignore_negative: bool = False,
+            bias: Univariate | None = None
         ):
         self.interpolation = interpolation
 
@@ -975,6 +1491,7 @@ class Tabular(Univariate):
 
         self._x = x
         self._p = p
+        super().__init__(bias)
 
     def __len__(self):
         return self.p.size
@@ -996,6 +1513,10 @@ class Tabular(Univariate):
         cv.check_value('interpolation', interpolation, _INTERPOLATION_SCHEMES)
         self._interpolation = interpolation
 
+    @property
+    def support(self):
+        return (self._x[0], self._x[-1])
+
     def cdf(self):
         c = np.zeros_like(self.x)
         x = self.x
@@ -1005,51 +1526,71 @@ class Tabular(Univariate):
             c[1:] = p[:x.size-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
             c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
+        elif self.interpolation == "linear-log":
+            m = np.diff(p) / np.diff(np.log(x))
+            c[1:] = p[:-1] * np.diff(x) + m * (
+                x[1:] * (np.diff(np.log(x)) - 1.0) + x[:-1]
+            )
+        elif self.interpolation == "log-linear":
+            m = np.diff(np.log(p)) / np.diff(x)
+            c[1:] = p[:-1] * np.diff(x) * exprel(m * np.diff(x))
+        elif self.interpolation == "log-log":
+            m = np.diff(np.log(x * p)) / np.diff(np.log(x))
+            c[1:] = (x * p)[:-1] * np.diff(np.log(x)) * exprel(m * np.diff(np.log(x)))
         else:
-            raise NotImplementedError('Can only generate CDFs for tabular '
-                                      'distributions using histogram or '
-                                      'linear-linear interpolation')
-
+            raise NotImplementedError(
+                f"Cannot generate CDFs for tabular "
+                f"distributions using {self.interpolation} interpolation"
+            )
 
         return np.cumsum(c)
 
     def mean(self):
         """Compute the mean of the tabular distribution"""
-        if self.interpolation == 'linear-linear':
-            mean = 0.0
-            for i in range(1, len(self.x)):
-                y_min = self.p[i-1]
-                y_max = self.p[i]
-                x_min = self.x[i-1]
-                x_max = self.x[i]
 
-                m = (y_max - y_min) / (x_max - x_min)
+        # use normalized probabilities when computing mean
+        p = self.p / self.cdf().max()
+        x = self.x
+        x_min = x[:-1]
+        x_max = x[1:]
+        p_min = p[: x.size - 1]
 
-                exp_val = (1./3.) * m * (x_max**3 - x_min**3)
-                exp_val += 0.5 * m * x_min * (x_min**2 - x_max**2)
-                exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
-                mean += exp_val
-
-        elif self.interpolation == 'histogram':
-            x_l = self.x[:-1]
-            x_r = self.x[1:]
-            p_l = self.p[:self.x.size-1]
-            mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
+        if self.interpolation == "linear-linear":
+            m = np.diff(p) / np.diff(x)
+            mean = ((1.0 / 3.0) * m * np.diff(x**3)
+                    + 0.5 * (p_min - m * x_min) * np.diff(x**2)).sum()
+        elif self.interpolation == "linear-log":
+            m = np.diff(p) / np.diff(np.log(x))
+            mean = (
+                (1.0 / 4.0) * m * x_min**2
+                * ((x_max / x_min)**2 * (2 * np.diff(np.log(x)) - 1) + 1)
+                + 0.5 * p_min * np.diff(x**2)
+            ).sum()
+        elif self.interpolation == "log-linear":
+            m = np.diff(np.log(p)) / np.diff(x)
+            mean = (p_min * (
+                np.diff(x) ** 2
+                * ((0.5 * exprel2(m * np.diff(x)) * (m * np.diff(x) - 1) + 1))
+                + np.diff(x) * x_min * exprel(m * np.diff(x)))
+            ).sum()
+        elif self.interpolation == "log-log":
+            m = np.diff(np.log(p)) / np.diff(np.log(x))
+            mean = (p_min * x_min**2 * np.diff(np.log(x))
+                    * exprel((m + 2) * np.diff(np.log(x)))).sum()
+        elif self.interpolation == "histogram":
+            mean = (0.5 * (x_min + x_max) * np.diff(x) * p_min).sum()
         else:
-            raise NotImplementedError('Can only compute mean for tabular '
-                                      'distributions using histogram '
-                                      'or linear-linear interpolation.')
-
-        # Normalize for when integral of distribution is not 1
-        mean /= self.integral()
-
+            raise NotImplementedError(
+                f"Cannot compute mean for tabular "
+                f"distributions using {self.interpolation} interpolation"
+            )
         return mean
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
         self._p /= self.cdf().max()
 
-    def sample(self, n_samples: int = 1, seed: int | None = None):
+    def _sample_unbiased(self, n_samples: int = 1, seed: int | None = None):
         rng = np.random.RandomState(seed)
         xi = rng.random(n_samples)
 
@@ -1101,14 +1642,92 @@ class Tabular(Univariate):
             quad[quad < 0.0] = 0.0
             m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
             samples_out = m
+        elif self.interpolation == "linear-log":
+            # get variable and probability values for the
+            # next entry
+            x_i1 = self.x[cdf_idx + 1]
+            p_i1 = p[cdf_idx + 1]
+            # compute slope between entries
+            m = (p_i1 - p_i) / np.log(x_i1 / x_i)
+            # set values for zero slope
+            zero = m == 0.0
+            m[zero] = x_i[zero] + (xi[zero] - c_i[zero]) / p_i[zero]
 
+            positive = m > 0
+            negative = m < 0
+            a = p_i / m - 1
+            m[positive] = (
+                x_i
+                * ((xi - c_i) / (m * x_i) + a)
+                / np.real(lambertw((((xi - c_i) / (m * x_i) + a)) * np.exp(a)))
+            )[positive]
+            m[negative] = (
+                x_i
+                * ((xi - c_i) / (m * x_i) + a)
+                / np.real(lambertw((((xi - c_i) / (m * x_i) + a)) * np.exp(a), -1.0))
+            )[negative]
+            samples_out = m
+        elif self.interpolation == "log-linear":
+            # get variable and probability values for the
+            # next entry
+            x_i1 = self.x[cdf_idx + 1]
+            p_i1 = p[cdf_idx + 1]
+            # compute slope between entries
+            m = np.log(p_i1 / p_i) / (x_i1 - x_i)
+            f = (xi - c_i) / p_i
+
+            samples_out = x_i + f * log1prel(m * f)
+        elif self.interpolation == "log-log":
+            # get variable and probability values for the
+            # next entry
+            x_i1 = self.x[cdf_idx + 1]
+            p_i1 = p[cdf_idx + 1]
+            # compute slope between entries
+            m = np.log((x_i1 * p_i1) / (x_i * p_i)) / np.log(x_i1 / x_i)
+            f = (xi - c_i) / (x_i * p_i)
+
+            samples_out = x_i * np.exp(f * log1prel(m * f))
         else:
-            raise NotImplementedError('Can only sample tabular distributions '
-                                      'using histogram or '
-                                      'linear-linear interpolation')
+            raise NotImplementedError(
+                f"Cannot sample tabular distributions "
+                f"for {self.inteprolation} interpolation "
+            )
 
         assert all(samples_out < self.x[-1])
         return samples_out
+
+    def sample(self, n_samples: int = 1, seed: int | None = None):
+        if self.bias is None:
+            samples = self._sample_unbiased(n_samples, seed)
+            return samples, np.ones_like(samples)
+        else:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias.')
+            biased_sample, _ = self.bias.sample(n_samples=n_samples, seed=seed)
+            self.normalize()  # must have normalized probabilities to apply correct weights
+            wgt = np.array([self.evaluate(s) / self.bias.evaluate(s) for s in biased_sample])
+            return biased_sample, wgt
+
+    def evaluate(self, x):
+        if self.interpolation == 'linear-linear':
+            i = np.searchsorted(self.x, x, side='left') - 1
+            if i < 0 or i >= len(self.p) - 1:
+                return 0.0
+            x0, x1 = self.x[i], self.x[i + 1]
+            p0, p1 = self.p[i], self.p[i + 1]
+            t = (x - x0) / (x1 - x0)
+            return (1 - t) * p0 + t * p1
+
+        elif self.interpolation == 'histogram':
+            i = np.searchsorted(self.x, x, side='right') - 1
+            if i < 0 or i >= len(self.p):
+                return 0.0
+            return self.p[i]
+
+        else:
+            raise NotImplementedError('Can only evaluate tabular '
+                                      'distributions using histogram '
+                                      'or linear-linear interpolation.')
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the tabular distribution
@@ -1130,7 +1749,7 @@ class Tabular(Univariate):
 
         params = ET.SubElement(element, "parameters")
         params.text = ' '.join(map(str, self.x)) + ' ' + ' '.join(map(str, self.p))
-
+        self._append_bias_to_xml(element)
         return element
 
     @classmethod
@@ -1153,7 +1772,8 @@ class Tabular(Univariate):
         m = (len(params) + 1)//2  # +1 for when len(params) is odd
         x = params[:m]
         p = params[m:]
-        return cls(x, p, interpolation)
+        bias_dist = cls._read_bias_from_xml(elem)
+        return cls(x, p, interpolation, bias=bias_dist)
 
     def integral(self):
         """Return integral of distribution
@@ -1169,9 +1789,22 @@ class Tabular(Univariate):
             return np.sum(np.diff(self.x) * self.p[:self.x.size-1])
         elif self.interpolation == 'linear-linear':
             return trapezoid(self.p, self.x)
+        elif self.interpolation == "linear-log":
+            m = np.diff(self.p) / np.diff(np.log(self.x))
+            return np.sum(
+                self.p[:-1] * np.diff(self.x)
+                + m * (self.x[1:] * (np.diff(np.log(self.x)) - 1.0) + self.x[:-1])
+            )
+        elif self.interpolation == "log-linear":
+            m = np.diff(np.log(self.p)) / np.diff(self.x)
+            return np.sum(self.p[:-1] * np.diff(self.x) * exprel(m * np.diff(self.x)))
+        elif self.interpolation == "log-log":
+            m = np.diff(np.log(self.p)) / np.diff(np.log(self.x))
+            return np.sum(self.p[:-1] * self.x[:-1] * np.diff(np.log(self.x))
+                          * exprel((m + 1) * np.diff(np.log(self.x))))
         else:
             raise NotImplementedError(
-                f'integral() not supported for {self.inteprolation} interpolation')
+                f'integral() not supported for {self.interpolation} interpolation')
 
 
 class Legendre(Univariate):
@@ -1183,16 +1816,24 @@ class Legendre(Univariate):
     coefficients : Iterable of Real
         Expansion coefficients :math:`a_\ell`. Note that the :math:`(2\ell +
         1)/2` factor should not be included.
+    bias : openmc.stats.Univariate or None, optional
+        Distribution for biased sampling.
 
     Attributes
     ----------
     coefficients : Iterable of Real
         Expansion coefficients :math:`a_\ell`. Note that the :math:`(2\ell +
         1)/2` factor should not be included.
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the
+        distribution is nonzero-valued
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     """
 
-    def __init__(self, coefficients: Sequence[float]):
+    def __init__(self, coefficients: Sequence[float], bias: Univariate | None = None):
+        super().__init__(bias)
         self.coefficients = coefficients
         self._legendre_poly = None
 
@@ -1216,7 +1857,17 @@ class Legendre(Univariate):
     def coefficients(self, coefficients):
         self._coefficients = np.asarray(coefficients)
 
+    @property
+    def support(self):
+        raise NotImplementedError
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        raise NotImplementedError
+
     def sample(self, n_samples=1, seed=None):
+        raise NotImplementedError
+
+    def evaluate(self, x):
         raise NotImplementedError
 
     def to_xml_element(self, element_name):
@@ -1236,6 +1887,9 @@ class Mixture(Univariate):
         Probability of selecting a particular distribution
     distribution : Iterable of Univariate
         List of distributions with corresponding probabilities
+    bias : Iterable of Real, optional
+        Probability of selecting a particular distribution under biased
+        sampling
 
     Attributes
     ----------
@@ -1243,14 +1897,20 @@ class Mixture(Univariate):
         Probability of selecting a particular distribution
     distribution : Iterable of Univariate
         List of distributions with corresponding probabilities
+    support : dict
+        Dictionary containing discrete and continuous parts of the support
+    bias : numpy.ndarray or None
+        Probability of selecting each distribution under biased sampling
 
     """
 
     def __init__(
         self,
         probability: Sequence[float],
-        distribution: Sequence[Univariate]
+        distribution: Sequence[Univariate],
+        bias: Sequence[float] | None = None
     ):
+        super().__init__(bias)
         self.probability = probability
         self.distribution = distribution
 
@@ -1280,10 +1940,52 @@ class Mixture(Univariate):
                       Iterable, Univariate)
         self._distribution = distribution
 
+    @Univariate.bias.setter
+    def bias(self, bias):
+        if bias is None:
+            self._bias = bias
+        else:
+            cv.check_type('biased mixture distribution probabilities', bias,
+                          Iterable, Real)
+            for b in bias:
+                cv.check_greater_than('biased mixture distribution probabilities',
+                                      b, 0.0, True)
+            self._bias = np.array(bias, dtype=float)
+
+    @property
+    def support(self):
+        discrete_points = set()
+        intervals = []
+
+        for dist in self.distribution:
+            if isinstance(dist, Discrete):
+                discrete_points |= dist.support
+            else:
+                intervals.append(tuple(dist.support))
+
+        if intervals:
+            # simplify union by combining intervals when able
+            sorted_intervals = sorted(intervals, key=lambda x: x[0])
+            merged = [sorted_intervals[0]]
+
+            for current in sorted_intervals[1:]:
+                prev_start, prev_end = merged[-1]
+                curr_start, curr_end = current
+
+                if curr_start <= prev_end:
+                    merged[-1] = (prev_start, max(prev_end, curr_end))
+                else:
+                    merged.append(current)
+
+            intervals = merged
+
+        return {"discrete": discrete_points, "continuous": intervals}
+
     def cdf(self):
         return np.insert(np.cumsum(self.probability), 0, 0.0)
 
-    def sample(self, n_samples=1, seed=None):
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        # Mixture uses internal bias mechanism, not base class bias
         rng = np.random.RandomState(seed)
 
         # Get probability of each distribution accounting for its intensity
@@ -1296,11 +1998,49 @@ class Mixture(Univariate):
 
         # Draw samples from the distributions sampled above
         out = np.empty_like(idx, dtype=float)
+        out_wgt = np.empty_like(idx, dtype=float)
         for i in np.unique(idx):
             n_dist_samples = np.count_nonzero(idx == i)
-            samples = self.distribution[i].sample(n_dist_samples)
+            samples, weights = self.distribution[i].sample(n_dist_samples)
             out[idx == i] = samples
-        return out
+            out_wgt[idx == i] = weights
+        return out, out_wgt
+
+    def sample(self, n_samples=1, seed=None):
+        # Mixture uses internal bias mechanism, not base class bias
+        if self.bias is None:
+            return self._sample_unbiased(n_samples, seed)
+
+        rng = np.random.RandomState(seed)
+
+        # Get probability of each distribution accounting for its intensity
+        p = np.array([prob*dist.integral() for prob, dist in
+                      zip(self.probability, self.distribution)])
+        p /= p.sum()
+
+        b = np.array([prob*dist.integral() for prob, dist in
+                      zip(self.bias, self.distribution)])
+        b /= b.sum()
+
+        # Sample from the distributions using biased probabilities
+        idx = rng.choice(range(len(self.distribution)), n_samples, p=b)
+        idx_wgt = np.ones(n_samples)
+        for i in np.unique(idx):
+            idx_wgt[idx == i] = p[i]/b[i]
+
+        # Draw samples from the distributions sampled above
+        out = np.empty_like(idx, dtype=float)
+        out_wgt = np.empty_like(idx, dtype=float)
+        for i in np.unique(idx):
+            n_dist_samples = np.count_nonzero(idx == i)
+            samples, weights = self.distribution[i].sample(n_dist_samples)
+            out[idx == i] = samples
+            out_wgt[idx == i] = weights * idx_wgt[idx == i]
+        return out, out_wgt
+
+    def evaluate(self, x):
+        raise NotImplementedError(
+            "evaluate() is undefined for Mixture distributions")
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -1331,6 +2071,7 @@ class Mixture(Univariate):
           data.set("probability", str(p))
           data.append(d.to_xml_element("dist"))
 
+        self._append_array_bias_to_xml(element)
         return element
 
     @classmethod
@@ -1356,7 +2097,8 @@ class Mixture(Univariate):
             probability.append(float(get_text(pair, 'probability')))
             distribution.append(Univariate.from_xml_element(pair.find("dist")))
 
-        return cls(probability, distribution)
+        bias_dist = cls._read_array_bias_from_xml(elem)
+        return cls(probability, distribution, bias=bias_dist)
 
     def integral(self):
         """Return integral of the distribution
@@ -1459,54 +2201,421 @@ class Mixture(Univariate):
         return new_dist
 
 
+class DecaySpectrum(Univariate):
+    """Energy distribution from decay photon spectra of a mixture of nuclides.
+
+    This distribution stores nuclide names, their atom densities, and the volume
+    of the region. When written to XML and read by the C++ solver, the nuclide
+    names are resolved against the depletion chain to obtain the decay photon
+    energy spectra and decay constants. The resulting distribution is a mixture
+    of per-nuclide photon spectra weighted by absolute activity. The volume is
+    necessary so that the C++ solver can compute the total photon emission rate
+    in [photons/s], which is used as the source strength.
+
+    .. versionadded:: 0.15.4
+
+    Parameters
+    ----------
+    nuclides : dict
+        Dictionary mapping nuclide name (str) to atom density (float) in units
+        of [atom/b-cm].
+    volume : float
+        Volume of the source region in [cm³]. Used together with atom densities
+        to compute the absolute photon emission rate.
+
+    Attributes
+    ----------
+    nuclides : dict
+        Dictionary mapping nuclide name to atom density in [atom/b-cm].
+    volume : float
+        Volume of the source region in [cm³].
+
+    """
+
+    def __init__(self, nuclides: dict[str, float], volume: float):
+        super().__init__(bias=None)
+        self._dist_cache = None
+        self._dist_cache_key = None
+        self.nuclides = nuclides
+        self.volume = volume
+
+    def __len__(self):
+        return len(self.nuclides)
+
+    @property
+    def nuclides(self):
+        return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_type('nuclides', nuclides, dict)
+        for name, density in nuclides.items():
+            cv.check_type('nuclide name', name, str)
+            cv.check_type(f'atom density for {name}', density, Real)
+            cv.check_greater_than(f'atom density for {name}', density, 0.0, True)
+        self._nuclides = dict(nuclides)
+        self._dist_cache = None
+        self._dist_cache_key = None
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @volume.setter
+    def volume(self, volume):
+        cv.check_type('volume', volume, Real)
+        cv.check_greater_than('volume', volume, 0.0)
+        self._volume = float(volume)
+        self._dist_cache = None
+        self._dist_cache_key = None
+
+    @staticmethod
+    def _chain_file_cache_key():
+        """Return a hashable key for the active depletion chain."""
+        chain_file = openmc.config.get('chain_file')
+        if chain_file is None:
+            return None
+
+        path = Path(chain_file).resolve()
+        try:
+            stat = path.stat()
+        except OSError:
+            return (path, None, None)
+        return (path, stat.st_mtime, stat.st_size)
+
+    def to_distribution(self):
+        """Convert to a concrete distribution using decay chain data.
+
+        Builds a combined photon energy distribution by looking up each nuclide
+        in the depletion chain via :func:`openmc.data.decay_photon_energy` and
+        weighting by absolute atom count (``density * 1e24 * volume``). The
+        result is cached on the object; the cache is invalidated automatically
+        when :attr:`nuclides` or :attr:`volume` are reassigned.
+
+        Requires ``openmc.config['chain_file']`` to be set.
+
+        Returns
+        -------
+        openmc.stats.Univariate or None
+            Combined photon energy distribution, or ``None`` if no nuclide in
+            :attr:`nuclides` has a photon source in the chain.
+
+        """
+        chain_key = self._chain_file_cache_key()
+        if self._dist_cache is not None and self._dist_cache_key == chain_key:
+            return self._dist_cache
+
+        dists = []
+        weights = []
+        for name, density in self.nuclides.items():
+            dist = openmc.data.decay_photon_energy(name)
+            if dist is not None:
+                dists.append(dist)
+                weights.append(density * 1e24 * self.volume)
+
+        if not dists:
+            return None
+
+        self._dist_cache = combine_distributions(dists, weights)
+        self._dist_cache_key = chain_key
+        return self._dist_cache
+
+    def to_xml_element(self, element_name: str):
+        """Return XML representation of the decay photon distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing decay photon distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "decay_spectrum")
+        element.set("volume", str(self.volume))
+        nuclides = ET.SubElement(element, "nuclides")
+        nuclides.text = ' '.join(self.nuclides)
+        parameters = ET.SubElement(element, "parameters")
+        parameters.text = ' '.join(str(density) for density in self.nuclides.values())
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate decay photon distribution from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.DecaySpectrum
+            Decay photon distribution generated from XML element
+
+        """
+        volume = float(elem.get('volume'))
+        names = get_elem_list(elem, 'nuclides', str)
+        densities = get_elem_list(elem, 'parameters', float)
+        nuclides = dict(zip(names, densities))
+        return cls(nuclides, volume)
+
+    def _sample_unbiased(self, n_samples=1, seed=None):
+        dist = self.to_distribution()
+        if dist is None:
+            raise RuntimeError(
+                "DecaySpectrum._sample_unbiased requires chain data but none "
+                "was found. Ensure openmc.config['chain_file'] is set and the "
+                "chain contains photon sources for the nuclides present."
+            )
+        return dist.sample(n_samples, seed)[0]
+
+    def integral(self):
+        """Return integral of the distribution
+
+        Returns the total photon emission rate in [photons/s] by delegating to
+        :meth:`to_distribution`. Returns ``0.0`` when no chain data is
+        available (e.g., ``openmc.config['chain_file']`` is not set).
+
+        Returns
+        -------
+        float
+            Total photon emission rate in [photons/s], or ``0.0`` if chain
+            data is unavailable.
+        """
+        try:
+            dist = self.to_distribution()
+        except Exception:
+            return 0.0
+        if dist is None:
+            return 0.0
+        return dist.integral()
+
+    @staticmethod
+    @cache
+    def _photon_integral(nuclide: str, chain_key) -> float | None:
+        """Return the per-atom photon emission integral for a nuclide"""
+        dist = openmc.data.decay_photon_energy(nuclide)
+        return dist.integral() if dist is not None else None
+
+    def clip(self, tolerance: float = 1e-9, inplace: bool = False):
+        """Remove nuclides with negligible contribution to photon emission.
+
+        Nuclides that are stable or have no photon source in the depletion
+        chain are removed unconditionally.  The remaining nuclides are ranked
+        by their photon emission rate (proportional to
+        ``atom_density * decay_constant * photon_yield``) and the least
+        important are discarded until the cumulative discarded fraction of the
+        total emission rate exceeds *tolerance*.
+
+        Requires ``openmc.config['chain_file']`` to be set.
+
+        Parameters
+        ----------
+        tolerance : float
+            Maximum fraction of total photon emission rate that may be
+            discarded.
+        inplace : bool
+            Whether to modify the current object in-place or return a new one.
+
+        Returns
+        -------
+        openmc.stats.DecaySpectrum
+            Distribution with negligible nuclides removed.
+
+        """
+        # Compute per-nuclide emission rate; drop non-emitters
+        emitting_names = []
+        emitting_densities = []
+        rates = []
+        chain_key = self._chain_file_cache_key()
+        for name, density in self.nuclides.items():
+            integral = DecaySpectrum._photon_integral(name, chain_key)
+            if integral is None:
+                continue
+            emitting_names.append(name)
+            emitting_densities.append(density)
+            rates.append(density * self.volume * integral)
+
+        if not emitting_names:
+            new_nuclides = {}
+        else:
+            indices = _intensity_clip(rates, tolerance=tolerance)
+            new_nuclides = {
+                emitting_names[i]: emitting_densities[i] for i in indices
+            }
+
+        if inplace:
+            self._nuclides = new_nuclides
+            self._dist_cache = None
+            self._dist_cache_key = None
+            return self
+        return type(self)(new_nuclides, self.volume)
+
+    @property
+    def support(self):
+        return (0.0, np.inf)
+
+    def evaluate(self, x):
+        """Evaluate the probability density at a given value.
+
+        Delegates to the combined distribution built from chain data. Raises
+        ``NotImplementedError`` if the combined distribution is a
+        :class:`~openmc.stats.Mixture` (which does not support
+        ``evaluate()``).
+
+        Parameters
+        ----------
+        x : float
+            Value at which to evaluate the PDF.
+
+        Returns
+        -------
+        float
+            Probability density at *x*.
+        """
+        dist = self.to_distribution()
+        if dist is None:
+            raise RuntimeError(
+                "DecaySpectrum.evaluate requires chain data. Ensure "
+                "openmc.config['chain_file'] is set."
+            )
+        return dist.evaluate(x)
+
+    def mean(self):
+        """Return the mean of the distribution.
+
+        Delegates to the combined distribution built from chain data.
+
+        Returns
+        -------
+        float
+            Mean photon energy in [eV].
+        """
+        dist = self.to_distribution()
+        if dist is None:
+            raise RuntimeError(
+                "DecaySpectrum.mean requires chain data. Ensure "
+                "openmc.config['chain_file'] is set."
+            )
+        return dist.mean()
+
+
 def combine_distributions(
-    dists: Sequence[Univariate],
+    dists: Sequence[Discrete | Tabular | Mixture],
     probs: Sequence[float]
 ):
     """Combine distributions with specified probabilities
 
     This function can be used to combine multiple instances of
-    :class:`~openmc.stats.Discrete` and `~openmc.stats.Tabular`. Multiple
-    discrete distributions are merged into a single distribution and the
-    remainder of the distributions are put into a :class:`~openmc.stats.Mixture`
-    distribution.
+    :class:`~openmc.stats.Discrete`, :class:`~openmc.stats.Tabular` and
+    :class:`~openmc.stats.Mixture` of them. Multiple discrete distributions are
+    merged into a single distribution and the remainder of the distributions are
+    put into a :class:`~openmc.stats.Mixture` distribution.
 
     .. versionadded:: 0.13.1
 
     Parameters
     ----------
-    dists : iterable of openmc.stats.Univariate
+    dists : sequence of openmc.stats.Discrete, openmc.stats.Tabular, or openmc.stats.Mixture
         Distributions to combine
-    probs : iterable of float
+    probs : sequence of float
         Probability (or intensity) of each distribution
 
     """
-    # Get copy of distribution list so as not to modify the argument
-    dist_list = deepcopy(dists)
+    new_probs = []
+    new_dists = []
+    for i, dist in enumerate(dists):
+        cv.check_type(f'dists[{i}]', dist, (Discrete, Tabular, Mixture))
+        cv.check_type(f'probs[{i}]', probs[i], Real)
+        cv.check_greater_than(f'probs[{i}]', probs[i], 0.0)
+        if isinstance(dist, Mixture):
+            if dist.bias is not None:
+                warn("A Mixture distribution with a bias specified was passed "
+                     "to combine_distributions. The bias will be discarded "
+                     "during flattening.")
+            for j, d in enumerate(dist.distribution):
+                cv.check_type(f'dists[{i}].distribution[{j}]', d, (Discrete, Tabular))
+                new_probs.append(probs[i]*dist.probability[j])
+                new_dists.append(d)
+        else:
+            new_probs.append(probs[i])
+            new_dists.append(dist)
+
+    probs = new_probs
+    dists = new_dists
 
     # Get list of discrete/continuous distribution indices
-    discrete_index = [i for i, d in enumerate(dist_list) if isinstance(d, Discrete)]
-    cont_index = [i for i, d in enumerate(dist_list) if isinstance(d, Tabular)]
+    discrete_index = [i for i, d in enumerate(dists) if isinstance(d, Discrete)]
+    cont_index = [i for i, d in enumerate(dists) if isinstance(d, Tabular)]
 
-    # Apply probabilites to continuous distributions
-    for i in cont_index:
-        dist = dist_list[i]
-        dist._p *= probs[i]
+    cont_dists = [dists[i] for i in cont_index]
+    cont_probs = [probs[i] for i in cont_index]
 
     if discrete_index:
         # Create combined discrete distribution
-        dist_discrete = [dist_list[i] for i in discrete_index]
+        dist_discrete = [dists[i] for i in discrete_index]
         discrete_probs = [probs[i] for i in discrete_index]
         combined_dist = Discrete.merge(dist_discrete, discrete_probs)
+        if cont_index:
+            return Mixture(cont_probs + [1.0], cont_dists + [combined_dist])
+        else:
+            return combined_dist
+    else:
+        if len(cont_dists) == 1:
+            dist = cont_dists[0]
+            return Tabular(dist.x, dist.p * cont_probs[0],
+                           dist.interpolation, bias=dist.bias)
+        else:
+            return Mixture(cont_probs, cont_dists)
 
-        # Replace multiple discrete distributions with merged
-        for idx in reversed(discrete_index):
-            dist_list.pop(idx)
-        dist_list.append(combined_dist)
 
-    # Combine discrete and continuous if present
-    if len(dist_list) > 1:
-        probs = [1.0]*len(dist_list)
-        dist_list[:] = [Mixture(probs, dist_list.copy())]
+def check_bias_support(parent: Univariate, bias: Univariate | None):
+    """Ensure that bias distributions share the support of the univariate
+    distribution they are biasing.
 
-    return dist_list[0]
+    Parameters
+    ----------
+    parent : openmc.stats.Univariate
+        Distributions to be biased
+    bias : openmc.stats.Univariate or None
+        Proposed bias distribution
+
+    """
+    if bias is None:
+        return
+
+    def mismatch_error(err_type, msg):
+        raise err_type(f"Support of parent {type(parent).__name__} and bias "
+                       f"{type(bias).__name__} distributions do not match. "
+                       f"{msg}")
+
+    p_sup, b_sup = parent.support, bias.support
+
+    if isinstance(p_sup, set) or isinstance(b_sup, set):
+        raise RuntimeError("Discrete distributions cannot be used as biasing "
+                           "distributions or be biased by another Univariate "
+                           "distribution. Instead, assign a vector of "
+                           "alternate probabilities to the bias attribute.")
+
+    elif isinstance(p_sup, dict) or isinstance (b_sup, dict):
+        raise RuntimeError("Mixture distributions cannot be used as biasing "
+                           "distributions or be biased by another Univariate "
+                           "distribution. Instead, instantiate the Mixture "
+                           "object using biased member distributions, or "
+                           "assign a vector of alternative probabilities to "
+                           "the bias attribute.")
+
+    elif isinstance(p_sup, tuple):
+        if isinstance(b_sup, tuple):
+            if p_sup != b_sup:
+                mismatch_error(ValueError, "")
+        else:
+            mismatch_error(TypeError, "Incompatible support types.")
+
+    else:
+        raise TypeError("Unrecognized type for parent distribution support")

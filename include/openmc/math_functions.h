@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include "openmc/position.h"
+#include "openmc/search.h"
 
 namespace openmc {
 
@@ -199,6 +200,50 @@ std::complex<double> faddeeva(std::complex<double> z);
 //! \param order Order of the derivative
 //! \return Derivative of Faddeeva function evaluated at z
 std::complex<double> w_derivative(std::complex<double> z, int order);
+
+//! Evaluate relative exponential function
+//!
+//! \param x Real argument
+//! \return (exp(x)-1)/x without loss of precision near 0
+double exprel(double x);
+
+//! Evaluate relative logarithm function
+//!
+//! \param x Real argument
+//! \return log(1+x)/x without loss of precision near 0
+double log1prel(double x);
+
+//! Helper function to get index and interpolation function on an incident
+//! energy grid
+//!
+//! \param energies energy grid
+//! \param E incident energy
+//! \param i grid index
+//! \param f interpolation factor
+void get_energy_index(
+  const vector<double>& energies, double E, int& i, double& f);
+
+//==============================================================================
+//! Calculate the cumulative distribution function of the standard normal
+//! distribution at a given value.
+//!
+//! \param z The value at which to evaluate the CDF
+//! \return Phi(z) = P(X <= z) for X ~ N(0,1)
+//==============================================================================
+
+double standard_normal_cdf(double z);
+
+//==============================================================================
+//! Return true if two floating-point values are approximately equal within a
+//! combined relative and absolute tolerance.
+//!
+//! \param a first floating point value
+//! \param b second floating point value
+//! \param rel_tol relative tolerance
+//! \param abs_tol absolute tolerance
+//! \return true if a and b are approximately equal, false otherwise
+//==============================================================================
+bool isclose(double a, double b, double rel_tol, double abs_tol);
 
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

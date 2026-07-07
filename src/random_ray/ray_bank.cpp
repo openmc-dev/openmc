@@ -9,6 +9,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/timer.h"
 #include "openmc/geometry.h"
+#include <numeric>
 
 namespace openmc {
 

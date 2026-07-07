@@ -513,6 +513,7 @@ Supported scores:
     - total
     - fission
     - nu-fission
+    - kappa-fission
     - events
 
 Supported Estimators:
@@ -645,7 +646,9 @@ model to use these multigroup cross sections. An example is given below::
       overwrite_mgxs_library=False,
       mgxs_path="mgxs.h5",
       correction=None,
-      source_energy=None
+      source_energy=None,
+      temperatures=None,
+      temperature_settings=None
   )
 
 The most important parameter to set is the ``method`` parameter, which can be
@@ -731,6 +734,20 @@ case, the user may wish to provide a discrete 2.45 MeV energy source
 distribution for MGXS generation as::
 
   source_energy = openmc.stats.delta_function(2.45e6)
+
+The ``temperatures`` parameter can be provided if temperature-dependent
+multi-group cross sections are desired for multi-physics simulations. An
+individual cross section generation calculation is run for each temperature
+provided, where the materials in the model are set to the temperature. The
+temperature settings used during cross section generation can be specified with the
+``temperature_settings`` parameter. If no ``temperature_settings`` are provided,
+the settings contained in the model will be used. The valid keys and values in the
+``temperature_settings`` dictionary are identical to
+:attr:`openmc.Settings.temperature_settings`; more information can be found in
+:class:`openmc.Settings` . This approach yields isothermal cross section interpolation
+tables, which can be inaccurate for systems with large differences between temperatures
+in each material (often the case in fission reactors). If a more sophisticated
+temperature-dependence is required, we recommend generating cross sections manually.
 
 Ultimately, the methods described above are all just approximations.
 Approximations in the generated MGXS data will fundamentally limit the potential
@@ -927,6 +944,8 @@ as::
 which will greatly improve the quality of the linear source term in 2D
 simulations.
 
+.. _usersguide_random_ray_run_modes:
+
 ---------------------------------
 Fixed Source and Eigenvalue Modes
 ---------------------------------
@@ -1056,22 +1075,52 @@ The adjoint flux random ray solver mode can be enabled as::
 
     settings.random_ray['adjoint'] = True
 
-When enabled, OpenMC will first run a forward transport simulation followed by
-an adjoint transport simulation. The purpose of the forward solve is to compute
-the adjoint external source when an external source is present in the
-simulation. Simulation settings (e.g., number of rays, batches, etc.) will be
-identical for both simulations. At the conclusion of the run, all results (e.g.,
-tallies, plots, etc.) will be derived from the adjoint flux rather than the
-forward flux but are not labeled any differently. The initial forward flux
-solution will not be stored or available in the final statepoint file. Those
-wishing to do analysis requiring both the forward and adjoint solutions will
-need to run two separate simulations and load both statepoint files.
+When enabled, OpenMC will first run a forward transport simulation if there are 
+no user-specified adjoint sources present, followed by an adjoint transport 
+simulation. Fixed adjoint sources can be specified on the 
+:attr:`openmc.Settings.random_ray` dictionary as follows::
+
+    # Geometry definition
+    ...
+    detector_cell = openmc.Cell(fill=detector_mat, name='cell where detector will be')
+    ...
+    # Define fixed adjoint neutron source
+    strengths = [1.0]
+    midpoints = [1.0e-4]
+    energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+
+    adj_source = openmc.IndependentSource(
+        energy=energy_distribution, 
+        constraints={'domains': [detector_cell]}
+    )
+
+    # Add to random_ray dict
+    settings.random_ray['adjoint_source'] = adj_source
+
+The same constraints apply to the user-defined adjoint source as to the forward 
+source, described in the :ref:`Fixed Source and Eigenvalue section 
+<usersguide_random_ray_run_modes>`. If this source is not provided, a forward 
+solve must take place to compute the adjoint external source when a forward 
+external source is present in the problem. Simulation settings (e.g., number of 
+rays, batches, etc.) will be identical for both calculations. At the 
+conclusion of the run, all results (e.g., tallies, plots, etc.) will be 
+derived from the adjoint flux rather than the forward flux but are not labeled 
+any differently. When an initial forward solve is performed (i.e., when no
+user-specified adjoint source is present), its output files are also written to
+disk with a ``forward`` infix, so they are not overwritten by the subsequent
+adjoint solve. This applies to the statepoint, ``tallies.out``, and any voxel
+plots, e.g., ``statepoint.forward.N.h5`` and ``tallies.forward.out``; the
+adjoint solve keeps the usual file names. This allows analyses requiring both
+the forward and adjoint solutions to be performed from a single run. When
+generating FW-CADIS weight windows, no weight window file is written for the
+forward solve, as only the final adjoint-derived weight windows are meaningful.
 
 .. note::
-    When adjoint mode is selected, OpenMC will always perform a full forward
-    solve and then run a full adjoint solve immediately afterwards. Statepoint
-    and tally results will be derived from the adjoint flux, but will not be
-    labeled any differently.
+    Use of the automated 
+    :ref:`FW-CADIS weight window generator<usersguide_fw_cadis>` is not 
+    currently compatible with user-defined adjoint sources. Instead, the 
+    initial forward calculation is used to assign "forward-weighted" adjoint 
+    sources to the tally regions of interest.
 
 ---------------------------------------
 Putting it All Together: Example Inputs
@@ -1131,11 +1180,10 @@ given below:
     tallies.export_to_xml()
 
     # Create voxel plot
-    plot = openmc.Plot()
+    plot = openmc.VoxelPlot()
     plot.origin = [0, 0, 0]
     plot.width = [2*pitch, 2*pitch, 1]
     plot.pixels = [1000, 1000, 1]
-    plot.type = 'voxel'
 
     # Instantiate a Plots collection and export to XML
     plots = openmc.Plots([plot])
@@ -1215,11 +1263,10 @@ given below:
     tallies.export_to_xml()
 
     # Create voxel plot
-    plot = openmc.Plot()
+    plot = openmc.VoxelPlot()
     plot.origin = [0, 0, 0]
     plot.width = [2*pitch, 2*pitch, 1]
     plot.pixels = [1000, 1000, 1]
-    plot.type = 'voxel'
 
     # Instantiate a Plots collection and export to XML
     plots = openmc.Plots([plot])

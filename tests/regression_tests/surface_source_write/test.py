@@ -634,7 +634,7 @@ def return_surface_source_data(filepath):
         wgt = point.wgt
         delayed_group = point.delayed_group
         surf_id = point.surf_id
-        particle = point.particle
+        particle = point.particle.pdg_number
         key = (
             f"{r[0]:.10e} {r[1]:.10e} {r[2]:.10e} {u[0]:.10e} {u[1]:.10e} {u[2]:.10e}"
             f"{e:.10e} {time:.10e} {wgt:.10e} {delayed_group} {surf_id} {particle}"

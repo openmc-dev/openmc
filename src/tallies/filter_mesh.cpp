@@ -6,6 +6,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
+#include "openmc/position.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -30,6 +31,10 @@ void MeshFilter::from_xml(pugi::xml_node node)
   if (check_for_node(node, "translation")) {
     set_translation(get_node_array<double>(node, "translation"));
   }
+  // Read the rotation transform.
+  if (check_for_node(node, "rotation")) {
+    set_rotation(get_node_array<double>(node, "rotation"));
+  }
 }
 
 void MeshFilter::get_all_bins(
@@ -44,6 +49,12 @@ void MeshFilter::get_all_bins(
   if (translated_) {
     last_r -= translation();
     r -= translation();
+  }
+  // apply rotation if present
+  if (!rotation_.empty()) {
+    last_r = last_r.rotate(rotation_);
+    r = r.rotate(rotation_);
+    u = u.rotate(rotation_);
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {
@@ -64,6 +75,9 @@ void MeshFilter::to_statepoint(hid_t filter_group) const
   write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
   if (translated_) {
     write_dataset(filter_group, "translation", translation_);
+  }
+  if (rotated_) {
+    write_dataset(filter_group, "rotation", rotation_);
   }
 }
 
@@ -91,6 +105,40 @@ void MeshFilter::set_translation(const Position& translation)
 void MeshFilter::set_translation(const double translation[3])
 {
   this->set_translation({translation[0], translation[1], translation[2]});
+}
+
+void MeshFilter::set_rotation(const vector<double>& rot)
+{
+  rotated_ = true;
+
+  // Compute and store the inverse rotation matrix for the angles given.
+  rotation_.clear();
+  rotation_.reserve(rot.size() == 9 ? 9 : 12);
+  if (rot.size() == 3) {
+    double phi = -rot[0] * PI / 180.0;
+    double theta = -rot[1] * PI / 180.0;
+    double psi = -rot[2] * PI / 180.0;
+    rotation_.push_back(std::cos(theta) * std::cos(psi));
+    rotation_.push_back(-std::cos(phi) * std::sin(psi) +
+                        std::sin(phi) * std::sin(theta) * std::cos(psi));
+    rotation_.push_back(std::sin(phi) * std::sin(psi) +
+                        std::cos(phi) * std::sin(theta) * std::cos(psi));
+    rotation_.push_back(std::cos(theta) * std::sin(psi));
+    rotation_.push_back(std::cos(phi) * std::cos(psi) +
+                        std::sin(phi) * std::sin(theta) * std::sin(psi));
+    rotation_.push_back(-std::sin(phi) * std::cos(psi) +
+                        std::cos(phi) * std::sin(theta) * std::sin(psi));
+    rotation_.push_back(-std::sin(theta));
+    rotation_.push_back(std::sin(phi) * std::cos(theta));
+    rotation_.push_back(std::cos(phi) * std::cos(theta));
+
+    // When user specifies angles, write them at end of vector
+    rotation_.push_back(rot[0]);
+    rotation_.push_back(rot[1]);
+    rotation_.push_back(rot[2]);
+  } else {
+    std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
+  }
 }
 
 //==============================================================================
@@ -198,6 +246,50 @@ extern "C" int openmc_mesh_filter_set_translation(
   // Set the translation
   mesh_filter->set_translation(translation);
 
+  return 0;
+}
+
+//! Return the rotation matrix of a mesh filter
+extern "C" int openmc_mesh_filter_get_rotation(
+  int32_t index, double rot[], size_t* n)
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index))
+    return err;
+
+  // Check the filter type
+  const auto& filter = model::tally_filters[index];
+  if (filter->type() != FilterType::MESH) {
+    set_errmsg("Tried to get a rotation from a non-mesh filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  // Get rotation from the mesh filter and set value
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+  *n = mesh_filter->rotation().size();
+  std::memcpy(rot, mesh_filter->rotation().data(),
+    *n * sizeof(mesh_filter->rotation()[0]));
+  return 0;
+}
+
+//! Set the flattened rotation matrix of a mesh filter
+extern "C" int openmc_mesh_filter_set_rotation(
+  int32_t index, const double rot[], size_t rot_len)
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index))
+    return err;
+
+  const auto& filter = model::tally_filters[index];
+  // Check the filter type
+  if (filter->type() != FilterType::MESH) {
+    set_errmsg("Tried to set a rotation from a non-mesh filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  // Get a pointer to the filter and downcast
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+  std::vector<double> vec_rot(rot, rot + rot_len);
+  mesh_filter->set_rotation(vec_rot);
   return 0;
 }
 

@@ -57,7 +57,7 @@ void Cell::set_rotation(const vector<double>& rot)
     fatal_error(fmt::format("Non-3D rotation vector applied to cell {}", id_));
   }
 
-  // Compute and store the rotation matrix.
+  // Compute and store the inverse rotation matrix for the angles given.
   rotation_.clear();
   rotation_.reserve(rot.size() == 9 ? 9 : 12);
   if (rot.size() == 3) {
@@ -341,6 +341,63 @@ void Cell::to_hdf5(hid_t cell_group) const
 }
 
 //==============================================================================
+// XML parsing helpers for <cell> nodes
+//==============================================================================
+
+vector<int32_t> parse_cell_material_xml(pugi::xml_node node, int32_t cell_id)
+{
+  vector<std::string> mats {
+    get_node_array<std::string>(node, "material", true)};
+  if (mats.empty()) {
+    fatal_error(fmt::format(
+      "An empty material element was specified for cell {}", cell_id));
+  }
+  vector<int32_t> material;
+  material.reserve(mats.size());
+  for (const auto& mat : mats) {
+    if (mat == "void") {
+      material.push_back(MATERIAL_VOID);
+    } else {
+      material.push_back(std::stoi(mat));
+    }
+  }
+  return material;
+}
+
+vector<double> parse_cell_temperature_xml(pugi::xml_node node, int32_t cell_id)
+{
+  auto temperatures = get_node_array<double>(node, "temperature");
+  if (temperatures.empty()) {
+    fatal_error(fmt::format(
+      "An empty temperature element was specified for cell {}", cell_id));
+  }
+  for (auto T : temperatures) {
+    if (T < 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a negative temperature", cell_id));
+    }
+  }
+  return temperatures;
+}
+
+vector<double> parse_cell_density_xml(pugi::xml_node node, int32_t cell_id)
+{
+  auto densities = get_node_array<double>(node, "density");
+  if (densities.empty()) {
+    fatal_error(fmt::format(
+      "An empty density element was specified for cell {}", cell_id));
+  }
+  for (auto rho : densities) {
+    if (rho <= 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a density less than or equal to zero",
+        cell_id));
+    }
+  }
+  return densities;
+}
+
+//==============================================================================
 // CSGCell implementation
 //==============================================================================
 
@@ -390,26 +447,12 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // universe), more than one material (distribmats), and some materials may
   // be "void".
   if (material_present) {
-    vector<std::string> mats {
-      get_node_array<std::string>(cell_node, "material", true)};
-    if (mats.size() > 0) {
-      material_.reserve(mats.size());
-      for (std::string mat : mats) {
-        if (mat.compare("void") == 0) {
-          material_.push_back(MATERIAL_VOID);
-        } else {
-          material_.push_back(std::stoi(mat));
-        }
-      }
-    } else {
-      fatal_error(fmt::format(
-        "An empty material element was specified for cell {}", id_));
-    }
+    material_ = parse_cell_material_xml(cell_node, id_);
   }
 
   // Read the temperature element which may be distributed like materials.
   if (check_for_node(cell_node, "temperature")) {
-    sqrtkT_ = get_node_array<double>(cell_node, "temperature");
+    sqrtkT_ = parse_cell_temperature_xml(cell_node, id_);
     sqrtkT_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
@@ -418,14 +461,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
         "Cell {} was specified with a temperature but no material. Temperature"
         "specification is only valid for cells filled with a material.",
         id_));
-    }
-
-    // Make sure all temperatures are non-negative.
-    for (auto T : sqrtkT_) {
-      if (T < 0) {
-        fatal_error(fmt::format(
-          "Cell {} was specified with a negative temperature", id_));
-      }
     }
 
     // Convert to sqrt(k*T).
@@ -440,7 +475,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Note: calculating the actual density multiplier is deferred until materials
   // are finalized. density_mult_ contains the true density in the meantime.
   if (check_for_node(cell_node, "density")) {
-    density_mult_ = get_node_array<double>(cell_node, "density");
+    density_mult_ = parse_cell_density_xml(cell_node, id_);
     density_mult_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
@@ -458,15 +493,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
           "Cell {} was specified with a density, but contains a void "
           "material. Density specification is only valid for cells "
           "filled with a non-void material.",
-          id_));
-      }
-    }
-
-    // Make sure all densities are non-negative and greater than zero.
-    for (auto rho : density_mult_) {
-      if (rho <= 0) {
-        fatal_error(fmt::format(
-          "Cell {} was specified with a density less than or equal to zero",
           id_));
       }
     }
@@ -660,7 +686,7 @@ Region::Region(std::string region_spec, int32_t cell_id)
       if (token == OP_UNION) {
         simple_ = false;
         // Ensure intersections have precedence over unions
-        add_precedence();
+        enforce_precedence();
         break;
       }
     }
@@ -703,7 +729,7 @@ void Region::apply_demorgan(
 //! precedence than unions using parentheses.
 //==============================================================================
 
-int64_t Region::add_parentheses(int64_t start)
+void Region::add_parentheses(int64_t start)
 {
   int32_t start_token = expression_[start];
   // Add left parenthesis and set new position to be after parenthesis
@@ -711,14 +737,6 @@ int64_t Region::add_parentheses(int64_t start)
     start += 2;
   }
   expression_.insert(expression_.begin() + start - 1, OP_LEFT_PAREN);
-
-  // Keep track of return iterator distance. If we don't encounter a left
-  // parenthesis, we return an iterator corresponding to wherever the right
-  // parenthesis is inserted. If a left parenthesis is encountered, an iterator
-  // corresponding to the left parenthesis is returned. Also note that we keep
-  // track of a *distance* instead of an iterator because the underlying memory
-  // allocation may change.
-  std::size_t return_it_dist = 0;
 
   // Add right parenthesis
   // While the start iterator is within the bounds of infix
@@ -733,7 +751,6 @@ int64_t Region::add_parentheses(int64_t start)
       // in the region, when the operator is an intersection then include the
       // operator and next surface
       if (expression_[start] == OP_LEFT_PAREN) {
-        return_it_dist = start;
         int depth = 1;
         do {
           start++;
@@ -750,54 +767,73 @@ int64_t Region::add_parentheses(int64_t start)
           --start;
         }
         expression_.insert(expression_.begin() + start, OP_RIGHT_PAREN);
-        if (return_it_dist > 0) {
-          return return_it_dist;
-        } else {
-          return start - 1;
-        }
+        return;
       }
     }
   }
-  // If we get here a right parenthesis hasn't been placed,
-  // return iterator
+  // If we get here a right parenthesis hasn't been placed
   expression_.push_back(OP_RIGHT_PAREN);
-  if (return_it_dist > 0) {
-    return return_it_dist;
-  } else {
-    return start - 1;
-  }
 }
 
 //==============================================================================
+//! Add parentheses to enforce operator precedence in region expressions
+//!
+//! This function ensures that intersection operators have higher precedence
+//! than union operators by adding parentheses where needed. For example:
+//!   "1 2 | 3" becomes "(1 2) | 3"
+//!   "1 | 2 3" becomes "1 | (2 3)"
+//!
+//! The algorithm uses stacks to track the current operator type and its
+//! position at each parenthesis depth level. When it encounters a different
+//! operator at the same depth, it adds parentheses to group the
+//! higher-precedence operations.
+//==============================================================================
 
-void Region::add_precedence()
+void Region::enforce_precedence()
 {
-  int32_t current_op = 0;
-  std::size_t current_dist = 0;
+  // Stack tracking the operator type at each depth (0 = no operator seen yet)
+  vector<int32_t> op_stack = {0};
 
-  for (int64_t i = 0; i < expression_.size(); i++) {
+  // Stack tracking where the operator sequence started at each depth
+  vector<std::size_t> pos_stack = {0};
+
+  for (int64_t i = 0; i < expression_.size(); ++i) {
     int32_t token = expression_[i];
 
-    if (token == OP_UNION || token == OP_INTERSECTION) {
-      if (current_op == 0) {
-        // Set the current operator if is hasn't been set
-        current_op = token;
-        current_dist = i;
-      } else if (token != current_op) {
-        // If the current operator doesn't match the token, add parenthesis to
-        // assert precedence
-        if (current_op == OP_INTERSECTION) {
-          i = add_parentheses(current_dist);
-        } else {
-          i = add_parentheses(i);
-        }
-        current_op = 0;
-        current_dist = 0;
+    if (token == OP_LEFT_PAREN) {
+      // Entering a new parenthesis level - push new tracking state
+      op_stack.push_back(0);
+      pos_stack.push_back(0);
+      continue;
+    } else if (token == OP_RIGHT_PAREN) {
+      // Exiting a parenthesis level - pop tracking state (keep at least one)
+      if (op_stack.size() > 1) {
+        op_stack.pop_back();
+        pos_stack.pop_back();
       }
-    } else if (token > OP_COMPLEMENT) {
-      // If the token is a parenthesis reset the current operator
-      current_op = 0;
-      current_dist = 0;
+      continue;
+    }
+
+    if (token == OP_UNION || token == OP_INTERSECTION) {
+      if (op_stack.back() == 0) {
+        // First operator at this depth - record it and its position
+        op_stack.back() = token;
+        pos_stack.back() = i;
+      } else if (token != op_stack.back()) {
+        // Encountered a different operator at the same depth - need to add
+        // parentheses to enforce precedence. Intersection has higher
+        // precedence, so we parenthesize the intersection terms.
+        if (op_stack.back() == OP_INTERSECTION) {
+          add_parentheses(pos_stack.back());
+        } else {
+          add_parentheses(i);
+        }
+
+        // Restart the scan since we modified the expression
+        i = -1; // Will be incremented to 0 by the for loop
+        op_stack = {0};
+        pos_stack = {0};
+      }
     }
   }
 }
@@ -1334,14 +1370,14 @@ extern "C" int openmc_cell_bounding_box(
   bbox = c->bounding_box();
 
   // set lower left corner values
-  llc[0] = bbox.xmin;
-  llc[1] = bbox.ymin;
-  llc[2] = bbox.zmin;
+  llc[0] = bbox.min.x;
+  llc[1] = bbox.min.y;
+  llc[2] = bbox.min.z;
 
   // set upper right corner values
-  urc[0] = bbox.xmax;
-  urc[1] = bbox.ymax;
-  urc[2] = bbox.zmax;
+  urc[0] = bbox.max.x;
+  urc[1] = bbox.max.y;
+  urc[2] = bbox.max.z;
 
   return 0;
 }

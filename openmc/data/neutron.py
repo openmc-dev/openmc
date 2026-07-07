@@ -13,7 +13,8 @@ from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Library, Table, get_table, get_metadata
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV, gnds_name
 from .endf import (
-    Evaluation, SUM_RULES, get_head_record, get_tab1_record, get_evaluations)
+    Evaluation, SUM_RULES, as_evaluation, get_head_record, get_tab1_record,
+    get_evaluations)
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .njoy import make_ace, make_pendf
@@ -652,7 +653,7 @@ class IncidentNeutron(EqualityMixin):
 
         Parameters
         ----------
-        ev_or_filename : openmc.data.endf.Evaluation or str
+        ev_or_filename : openmc.data.endf.Evaluation, endf.Material, or str
             ENDF evaluation to read from. If given as a string, it is assumed to
             be the filename for the ENDF file.
 
@@ -666,10 +667,7 @@ class IncidentNeutron(EqualityMixin):
             Incident neutron continuous-energy data
 
         """
-        if isinstance(ev_or_filename, Evaluation):
-            ev = ev_or_filename
-        else:
-            ev = Evaluation(ev_or_filename)
+        ev = as_evaluation(ev_or_filename)
 
         atomic_number = ev.target['atomic_number']
         mass_number = ev.target['mass_number']
@@ -765,6 +763,11 @@ class IncidentNeutron(EqualityMixin):
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
 
+            # Use name based on ENDF evaluation. The name assigned by from_ace
+            # may be wrong for higher metastable states (e.g., Hf178_m2)
+            ev = evaluation if evaluation is not None else Evaluation(filename)
+            data.name = ev.gnds_name
+
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:
                 pendf = Evaluation(kwargs['pendf'])
@@ -775,7 +778,6 @@ class IncidentNeutron(EqualityMixin):
                 data[2].xs['0K'] = xs
 
             # Add fission energy release data
-            ev = evaluation if evaluation is not None else Evaluation(filename)
             if (1, 458) in ev.section:
                 data.fission_energy = f = FissionEnergyRelease.from_endf(ev, data)
             else:
@@ -801,9 +803,7 @@ class IncidentNeutron(EqualityMixin):
             # Helper function to get a cross section from an ENDF file on a
             # given energy grid
             def get_file3_xs(ev, mt, E):
-                file_obj = StringIO(ev.section[3, mt])
-                get_head_record(file_obj)
-                _, xs = get_tab1_record(file_obj)
+                xs = ev.section_data[3, mt]['sigma']
                 return xs(E)
 
             heating_local = Reaction(901)

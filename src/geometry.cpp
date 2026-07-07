@@ -26,15 +26,21 @@ int n_coord_levels;
 
 vector<int64_t> overlap_check_count;
 
+vector<OverlapKey> overlap_keys;
+std::unordered_map<OverlapKey, int, OverlapKeyHash> overlap_key_index;
+
 } // namespace model
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-bool check_cell_overlap(GeometryState& p, bool error)
+int check_cell_overlap(GeometryState& p, bool error)
 {
   int n_coord = p.n_coord();
+
+  // If no overlap found, return a nonphysical index
+  int overlap_index = -1;
 
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
@@ -44,21 +50,40 @@ bool check_cell_overlap(GeometryState& p, bool error)
     for (auto index_cell : univ.cells_) {
       Cell& c = *model::cells[index_cell];
       if (c.contains(p.coord(j).r(), p.coord(j).u(), p.surface())) {
+#pragma omp atomic
+        ++model::overlap_check_count[index_cell];
         if (index_cell != p.coord(j).cell()) {
           if (error) {
             fatal_error(
               fmt::format("Overlapping cells detected: {}, {} on universe {}",
                 c.id_, model::cells[p.coord(j).cell()]->id_, univ.id_));
           }
-          return true;
+
+          // With no fatal error (plotter is calling), now adds overlaps and
+          // ensures order does not matter when making overlap key
+          int cell_a = model::cells[index_cell]->id_;
+          int cell_b = model::cells[p.coord(j).cell()]->id_;
+          int a = std::min(cell_a, cell_b);
+          int b = std::max(cell_a, cell_b);
+          OverlapKey key {univ.id_, a, b};
+#pragma omp critical(overlap_key_update)
+          {
+            auto it = model::overlap_key_index.find(key);
+            if (it != model::overlap_key_index.end()) {
+              overlap_index = it->second; // already exists, reuse index
+            } else {
+              int idx = int(model::overlap_keys.size());
+              model::overlap_keys.push_back(key);
+              model::overlap_key_index[key] = idx;
+              overlap_index = idx;
+            }
+          }
+          break;
         }
-#pragma omp atomic
-        ++model::overlap_check_count[index_cell];
       }
     }
   }
-
-  return false;
+  return overlap_index;
 }
 
 //==============================================================================
@@ -480,14 +505,14 @@ extern "C" int openmc_global_bounding_box(double* llc, double* urc)
   auto bbox = model::universes.at(model::root_universe)->bounding_box();
 
   // set lower left corner values
-  llc[0] = bbox.xmin;
-  llc[1] = bbox.ymin;
-  llc[2] = bbox.zmin;
+  llc[0] = bbox.min.x;
+  llc[1] = bbox.min.y;
+  llc[2] = bbox.min.z;
 
   // set upper right corner values
-  urc[0] = bbox.xmax;
-  urc[1] = bbox.ymax;
-  urc[2] = bbox.zmax;
+  urc[0] = bbox.max.x;
+  urc[1] = bbox.max.y;
+  urc[2] = bbox.max.z;
 
   return 0;
 }

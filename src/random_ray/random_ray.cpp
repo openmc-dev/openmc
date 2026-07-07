@@ -10,6 +10,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/cell.h"
+#include <numeric>
 
 #include "openmc/distribution_spatial.h"
 #include "openmc/random_dist.h"
@@ -522,10 +523,13 @@ void RandomRay::attenuate_flux_flat_source(
 
   // Get material
   int material = srh.material();
+  int temp = srh.temperature_idx();
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
-    float sigma_t = domain_->sigma_t_[material * negroups_ + g];
+    float sigma_t =
+      domain_->sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      srh.density_mult();
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
@@ -625,6 +629,7 @@ void RandomRay::attenuate_flux_linear_source(
   n_event()++;
 
   int material = srh.material();
+  int temp = srh.temperature_idx();
 
   Position& centroid = srh.centroid();
   Position midpoint = r + u() * (distance / 2.0);
@@ -653,7 +658,9 @@ void RandomRay::attenuate_flux_linear_source(
   for (int g = 0; g < negroups_; g++) {
 
     // Compute tau, the optical thickness of the ray segment
-    float sigma_t = domain_->sigma_t_[material * negroups_ + g];
+    float sigma_t =
+      domain_->sigma_t_[(material * ntemperature_ + temp) * negroups_ + g] *
+      srh.density_mult();
     float tau = sigma_t * distance;
 
     // If tau is very small, set it to zero to avoid numerical issues.
@@ -862,6 +869,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
   domain_ = domain;
   distance_travelled_ = data.distance_travelled;
   owner_rank_ = mpi::rank;
+  ntemperature_ = domain->ntemperature_;
 
   // Restore particle event counter from the transmitted ray 
   // This preserves the event count across MPI rank boundaries
@@ -913,7 +921,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
 #endif
   
   // Set particle type and energy (for random ray, these are not actually used)
-  type() = ParticleType::neutron;
+  type() = ParticleType::neutron();
   E() = 0.0;
 
   // No need to call exhaustive_find_cell() since we have the full geometry state!
@@ -951,8 +959,8 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, flo
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 {
   domain_ = domain;
-
   owner_rank_ = mpi::rank;
+  ntemperature_ = domain->ntemperature_;
 
   // Reset particle event counter
   n_event() = 0;
@@ -972,6 +980,9 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     break;
   case RandomRaySampleMethod::HALTON:
     site = sample_halton();
+    break;
+  case RandomRaySampleMethod::S2:
+    site = sample_s2();
     break;
   default:
     fatal_error("Unknown sample method for random ray transport.");
@@ -1125,6 +1136,29 @@ void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_bu
  }
 #endif
 
+}
+
+SourceSite RandomRay::sample_s2()
+{
+  // set random number seed
+  int64_t particle_seed =
+    (simulation::current_batch - 1) * settings::n_particles + id();
+  init_particle_seeds(particle_seed, seeds());
+  stream() = STREAM_TRACKING;
+
+  // Get spatial component of the ray_source_
+  SpatialDistribution* space =
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space();
+
+  SourceSite site;
+
+  // Sample spatial distribution
+  site.r = space->sample(current_seed()).first;
+
+  // Sample either left or right for S2 (flashlight) transport.
+  site.u = {prn(current_seed()) < 0.5 ? -1.0 : 1.0, 0.0, 0.0};
+
+  return site;
 }
 
 } // namespace openmc

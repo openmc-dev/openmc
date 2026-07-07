@@ -38,13 +38,13 @@ mesh_resolution_multiplier = 7
 # Plots
 ###############################################################################
 
-plot_1 = openmc.Plot(plot_id=1)
+plot_1 = openmc.VoxelPlot(plot_id=1)
 plot_1.filename = 'plot_1'
 plot_1.origin = [0.0, 0.0, 0.0]
 plot_1.width = [64.26, 64.26, 1.0]
 plot_1.pixels = [1000, 1000, 1]
 # plot_1.pixels = [3000, 3000, 1]
-plot_1.type = 'voxel'
+# plot_1.type = 'voxel'
 
 # Instantiate a Plots collection and export to XML
 plot_file = openmc.Plots([plot_1])

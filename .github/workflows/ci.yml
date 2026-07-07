@@ -1,4 +1,4 @@
-name: CI
+name: Tests and Coverage
 
 on:
   # allows us to run workflows manually
@@ -21,49 +21,64 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  filter-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      source_changed: ${{ steps.filter.outputs.source_changed }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+      - name: Examine changed files
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            source_changed:
+              - '!docs/**'
+              - '!**/*.md'
+          predicate-quantifier: 'every'
   main:
+    needs: filter-changes
+    if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
         libmesh: [n]
         event: [n]
-        vectfit: [n]
 
         include:
-          - python-version: "3.12"
-            omp: n
-            mpi: n
           - python-version: "3.13"
             omp: n
             mpi: n
+          - python-version: "3.14"
+            omp: n
+            mpi: n
+          - python-version: "3.14t"
+            omp: n
+            mpi: n
           - dagmc: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.11"
+            python-version: "3.12"
             mpi: n
             omp: y
           - event: y
-            python-version: "3.11"
+            python-version: "3.12"
             omp: y
             mpi: n
-          - vectfit: y
-            python-version: "3.11"
-            omp: n
-            mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
       mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
-      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
-      vectfit=${{ matrix.vectfit }})"
+      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}"
 
     env:
       MPI: ${{ matrix.mpi }}
@@ -71,7 +86,6 @@ jobs:
       OMP: ${{ matrix.omp }}
       DAGMC: ${{ matrix.dagmc }}
       EVENT: ${{ matrix.event }}
-      VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
       NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
       OPENBLAS_NUM_THREADS: 1
@@ -88,12 +102,12 @@ jobs:
           cmake-version: '3.31'
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -132,11 +146,6 @@ jobs:
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
 
-      - name: Optional apt dependencies for vectfit
-        shell: bash
-        if: ${{ matrix.vectfit == 'y' }}
-        run: sudo apt install -y libblas-dev liblapack-dev
-
       - name: install
         shell: bash
         run: |
@@ -149,12 +158,12 @@ jobs:
           openmc -v
 
       - name: cache-xs
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/nndc_hdf5
             ~/endf-b-vii.1
-          key: ${{ runner.os }}-build-xs-cache
+          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
 
       - name: before
         shell: bash
@@ -168,7 +177,7 @@ jobs:
 
       - name: Setup tmate debug session
         continue-on-error: true
-        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        if: ${{ failure() && contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 10
 
@@ -186,6 +195,7 @@ jobs:
             --gcov-ignore-errors source_not_found \
             --gcov-ignore-errors output_error \
             --gcov-ignore-parse-errors suspicious_hits.warn \
+            --merge-mode-functions=separate \
             --print-summary \
             --lcov -o coverage-cpp.lcov || true
 
@@ -203,13 +213,36 @@ jobs:
           parallel: true
           flag-name: C++ and Python
           path-to-lcov: coverage.lcov
+          fail-on-error: false
 
-  finish:
-    needs: main
+  coverage:
+    needs: [filter-changes, main]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
+        if: ${{ needs.filter-changes.outputs.source_changed == 'true' }}
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true
+          fail-on-error: false
+
+  ci-pass:
+    needs: [filter-changes, main, coverage]
+    name: Check CI status
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI status
+        run: |
+          if [[ "${{ needs.filter-changes.outputs.source_changed }}" == "false" ]]; then
+            echo "Documentation-only change - CI skipped successfully"
+            exit 0
+          fi
+          if [[ "${{ needs.main.result }}" == "success" && "${{ needs.coverage.result }}" == "success" ]]; then
+            echo "CI passed"
+            exit 0
+          fi
+          echo "CI failed"
+          exit 1

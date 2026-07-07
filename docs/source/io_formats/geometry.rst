@@ -38,11 +38,9 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :boundary:
      The boundary condition for the surface. This can be "transmission",
-     "vacuum", "reflective", or "periodic". Periodic boundary conditions can
-     only be applied to x-, y-, and z-planes. Only axis-aligned periodicity is
-     supported, i.e., x-planes can only be paired with x-planes. Specify which
-     planes are periodic and the code will automatically identify which planes
-     are paired together.
+     "vacuum", "reflective", or "periodic". Specify which planes are
+     periodic and the code will automatically identify which planes are
+     paired together.
 
     *Default*: "transmission"
 
@@ -318,9 +316,10 @@ the following attributes or sub-elements:
     *Default*: None
 
   :orientation:
-    The orientation of the hexagonal lattice. The string "x" indicates that two
-    sides of the lattice are parallel to the x-axis, whereas the string "y"
-    indicates that two sides are parallel to the y-axis.
+    The orientation of the hexagonal lattice. The string "x" indicates that each
+    lattice element has two faces that are perpendicular to the x-axis, whereas
+    the string "y" indicates that each lattice element has two faces that are
+    perpendicular to the y-axis.
 
     *Default*: "y"
 
@@ -407,24 +406,55 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
     *Default*: None
 
-  :material_overrides:
-    This element contains information on material overrides to be applied to the
-    DAGMC universe. It has the following attributes and sub-elements:
+  :cell:
+    Zero or more ``<cell>`` sub-elements may appear to override properties of
+    individual DAGMC volumes. Each ``<cell>`` element supports the following
+    attributes and sub-elements:
 
-    :cell:
-      Material override information for a single cell. It contains the following
-      attributes and sub-elements:
+    :id:
+      The integer cell ID in the DAGMC geometry to override. Required.
 
-      :id:
-        The cell ID in the DAGMC geometry for which the material override will
-        apply.
+    :name:
+      An optional string label for the cell.
 
-      :materials:
-        A list of material IDs that will apply to instances of the cell. If the
-        list contains only one ID, it will replace the original material
-        assignment of all instances of the DAGMC cell. If the list contains more
-        than one material, each material ID of the list will be assigned to the
-        various instances of the DAGMC cell.
+      *Default*: None
+
+    :material:
+      The material ID to assign to this cell. Use ``void`` for vacuum. Multiple
+      space-separated IDs may be given to specify a distribmat (distributed
+      material) assignment. Required.
+
+    :temperature:
+      Temperature(s) in [K] to assign to the cell. Must be ≥ 0. Multiple
+      space-separated values may be given.
+
+      *Default*: None
+
+    :density:
+      Density in [g/cm³] to assign to the cell. Must be > 0. Requires a non-void
+      material fill. Multiple space-separated values may be given.
+
+      *Default*: None
+
+    :volume:
+      Volume of the cell in [cm³].
+
+      .. note:: DAGMC can compute cell volumes exactly from the triangulated
+                mesh surfaces. Specifying a manual volume risks inconsistency
+                with that capability.
+
+      *Default*: None
+
+    The following standard ``<cell>`` attributes are **not** supported inside
+    ``<dagmc_universe>`` and will raise an error if present: ``region``,
+    ``fill``, ``universe``, ``translation``, ``rotation``.
+
+    .. deprecated::
+      The ``<material_overrides>`` sub-element (containing ``<cell_override>``
+      children with ``<material_ids>``) is deprecated. A deprecation warning is
+      emitted and the overrides are converted to the ``<cell>`` format at parse
+      time. It is an error to specify both ``<material_overrides>`` and
+      ``<cell>`` sub-elements on the same ``<dagmc_universe>``.
 
     *Default*: None
 

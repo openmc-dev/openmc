@@ -6,7 +6,7 @@
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
-#include "xtensor/xtensor.hpp"
+#include "openmc/tensor.h"
 #include <hdf5.h>
 
 #include <string>
@@ -62,14 +62,14 @@ public:
   int64_t index_;    //!< Index in global elements vector
 
   // Microscopic cross sections
-  xt::xtensor<double, 1> energy_;
-  xt::xtensor<double, 1> coherent_;
-  xt::xtensor<double, 1> incoherent_;
-  xt::xtensor<double, 1> photoelectric_total_;
-  xt::xtensor<double, 1> pair_production_total_;
-  xt::xtensor<double, 1> pair_production_electron_;
-  xt::xtensor<double, 1> pair_production_nuclear_;
-  xt::xtensor<double, 1> heating_;
+  tensor::Tensor<double> energy_;
+  tensor::Tensor<double> coherent_;
+  tensor::Tensor<double> incoherent_;
+  tensor::Tensor<double> photoelectric_total_;
+  tensor::Tensor<double> pair_production_total_;
+  tensor::Tensor<double> pair_production_electron_;
+  tensor::Tensor<double> pair_production_nuclear_;
+  tensor::Tensor<double> heating_;
 
   // Form factors
   Tabulated1D incoherent_form_factor_;
@@ -81,27 +81,27 @@ public:
   // stored separately to improve memory access pattern when calculating the
   // total cross section
   vector<ElectronSubshell> shells_;
-  xt::xtensor<double, 2> cross_sections_;
+  tensor::Tensor<double> cross_sections_;
 
   // Compton profile data
-  xt::xtensor<double, 2> profile_pdf_;
-  xt::xtensor<double, 2> profile_cdf_;
-  xt::xtensor<double, 1> binding_energy_;
-  xt::xtensor<double, 1> electron_pdf_;
+  tensor::Tensor<double> profile_pdf_;
+  tensor::Tensor<double> profile_cdf_;
+  tensor::Tensor<double> binding_energy_;
+  tensor::Tensor<double> electron_pdf_;
 
   // Map subshells from Compton profile data obtained from Biggs et al,
   // "Hartree-Fock Compton profiles for the elements" to ENDF/B atomic
   // relaxation data
-  xt::xtensor<int, 1> subshell_map_;
+  tensor::Tensor<int> subshell_map_;
 
   // Stopping power data
   double I_; // mean excitation energy
-  xt::xtensor<int, 1> n_electrons_;
-  xt::xtensor<double, 1> ionization_energy_;
-  xt::xtensor<double, 1> stopping_power_radiative_;
+  tensor::Tensor<int> n_electrons_;
+  tensor::Tensor<double> ionization_energy_;
+  tensor::Tensor<double> stopping_power_radiative_;
 
   // Bremsstrahlung scaled DCS
-  xt::xtensor<double, 2> dcs_;
+  tensor::Tensor<double> dcs_;
 
   // Whether atomic relaxation data is present
   bool has_atomic_relaxation_ {false};
@@ -137,7 +137,7 @@ void free_memory_photon();
 
 namespace data {
 
-extern xt::xtensor<double, 1>
+extern tensor::Tensor<double>
   compton_profile_pz; //! Compton profile momentum grid
 
 //! Photon interaction data for each element

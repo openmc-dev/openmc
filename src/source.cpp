@@ -10,7 +10,7 @@
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
 #endif
 
-#include "xtensor/xadapt.hpp"
+#include "openmc/tensor.h"
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
@@ -37,6 +37,23 @@
 
 namespace openmc {
 
+std::atomic<int64_t> source_n_accept {0};
+std::atomic<int64_t> source_n_reject {0};
+
+namespace {
+
+void validate_particle_type(ParticleType type, const std::string& context)
+{
+  if (type.is_transportable())
+    return;
+
+  fatal_error(
+    fmt::format("Unsupported source particle type '{}' (PDG {}) in {}.",
+      type.str(), type.pdg_number(), context));
+}
+
+} // namespace
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -44,6 +61,8 @@ namespace openmc {
 namespace model {
 
 vector<unique_ptr<Source>> external_sources;
+
+vector<unique_ptr<Source>> adjoint_sources;
 
 DiscreteIndex external_sources_probability;
 
@@ -177,9 +196,8 @@ void check_rejection_fraction(int64_t n_reject, int64_t n_accept)
 SourceSite Source::sample_with_constraints(uint64_t* seed) const
 {
   bool accepted = false;
-  static int64_t n_reject = 0;
-  static int64_t n_accept = 0;
-  SourceSite site;
+  int64_t n_local_reject = 0;
+  SourceSite site {};
 
   while (!accepted) {
     // Sample a source site without considering constraints yet
@@ -193,9 +211,13 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
       if (!accepted) {
-        // Increment number of rejections and check against minimum fraction
-        ++n_reject;
-        check_rejection_fraction(n_reject, n_accept);
+        ++n_local_reject;
+
+        // Check per-particle rejection limit
+        if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+          fatal_error("Exceeded maximum number of source rejections per "
+                      "sample. Please check your source definition.");
+        }
 
         // For the "kill" strategy, accept particle but set weight to 0 so that
         // it is terminated immediately
@@ -207,8 +229,13 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
     }
   }
 
-  // Increment number of accepted samples
-  ++n_accept;
+  // Flush local rejection count, update accept counter, and check overall
+  // rejection fraction
+  if (n_local_reject > 0) {
+    source_n_reject += n_local_reject;
+  }
+  ++source_n_accept;
+  check_rejection_fraction(source_n_reject, source_n_accept);
 
   return site;
 }
@@ -284,22 +311,15 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
-    auto temp_str = get_node_value(node, "particle", true, true);
-    if (temp_str == "neutron") {
-      particle_ = ParticleType::neutron;
-    } else if (temp_str == "photon") {
-      particle_ = ParticleType::photon;
+    auto temp_str = get_node_value(node, "particle", false, true);
+    particle_ = ParticleType(temp_str);
+    if (particle_ == ParticleType::photon() ||
+        particle_ == ParticleType::electron() ||
+        particle_ == ParticleType::positron()) {
       settings::photon_transport = true;
-    } else if (temp_str == "electron") {
-      particle_ = ParticleType::electron;
-      settings::photon_transport = true;
-    } else if (temp_str == "positron") {
-      particle_ = ParticleType::positron;
-      settings::photon_transport = true;
-    } else {
-      fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }
   }
+  validate_particle_type(particle_, "IndependentSource");
 
   // Check for external source file
   if (check_for_node(node, "file")) {
@@ -334,6 +354,19 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
     if (check_for_node(node, "energy")) {
       pugi::xml_node node_dist = node.child("energy");
       energy_ = distribution_from_xml(node_dist);
+
+      // For decay photon sources, use the absolute photon emission rate in
+      // [photons/s] as the source strength
+      if (dynamic_cast<DecaySpectrum*>(energy_.get())) {
+        if (strength_ != 1.0) {
+          warning(fmt::format(
+            "Source strength of {} is ignored because the source uses a "
+            "DecaySpectrum energy distribution. The source strength will be "
+            "set from the DecaySpectrum emission rate.",
+            strength_));
+        }
+        strength_ = energy_->integral();
+      }
     } else {
       // Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
       energy_ = UPtrDist {new Watt(0.988e6, 2.249e-6)};
@@ -354,64 +387,93 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 
 SourceSite IndependentSource::sample(uint64_t* seed) const
 {
-  SourceSite site;
+  SourceSite site {};
   site.particle = particle_;
+  double r_wgt = 1.0;
+  double E_wgt = 1.0;
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
-  static int64_t n_reject = 0;
-  static int64_t n_accept = 0;
+  int64_t n_local_reject = 0;
 
   while (!accepted) {
 
     // Sample spatial distribution
-    site.r = space_->sample(seed);
+    auto [r, r_wgt_temp] = space_->sample(seed);
+    site.r = r;
+    r_wgt = r_wgt_temp;
 
     // Check if sampled position satisfies spatial constraints
     accepted = satisfies_spatial_constraints(site.r);
 
     // Check for rejection
     if (!accepted) {
-      ++n_reject;
-      check_rejection_fraction(n_reject, n_accept);
+      ++n_local_reject;
+      if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+        fatal_error("Exceeded maximum number of source rejections per "
+                    "sample. Please check your source definition.");
+      }
     }
   }
 
   // Sample angle
-  site.u = angle_->sample(seed);
+  auto [u, u_wgt] = angle_->sample(seed);
+  site.u = u;
+
+  site.wgt = r_wgt * u_wgt;
 
   // Sample energy and time for neutron and photon sources
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
-    auto p = static_cast<int>(particle_);
+    auto p = particle_.transport_index();
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
+    auto decay_spectrum = dynamic_cast<DecaySpectrum*>(energy_.get());
     if (energy_ptr) {
-      auto energies = xt::adapt(energy_ptr->x());
-      if (xt::any(energies > data::energy_max[p])) {
+      auto energies =
+        tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
+      if ((energies > data::energy_max[p]).any()) {
         fatal_error("Source energy above range of energies of at least "
                     "one cross section table");
       }
     }
 
     while (true) {
-      // Sample energy spectrum
-      site.E = energy_->sample(seed);
+      // Sample energy spectrum. For decay photon sources, also get the parent
+      // nuclide index to store in the source site for tallying purposes.
+      if (decay_spectrum) {
+        auto sample = decay_spectrum->sample_with_parent(seed);
+        site.E = sample.energy;
+        E_wgt = sample.weight;
+        site.parent_nuclide = sample.parent_nuclide;
+      } else {
+        auto [E, E_wgt_temp] = energy_->sample(seed);
+        site.E = E;
+        E_wgt = E_wgt_temp;
+      }
 
       // Resample if energy falls above maximum particle energy
       if (site.E < data::energy_max[p] &&
           (satisfies_energy_constraints(site.E)))
         break;
 
-      n_reject++;
-      check_rejection_fraction(n_reject, n_accept);
+      ++n_local_reject;
+      if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+        fatal_error("Exceeded maximum number of source rejections per "
+                    "sample. Please check your source definition.");
+      }
     }
 
     // Sample particle creation time
-    site.time = time_->sample(seed);
+    auto [time, time_wgt] = time_->sample(seed);
+    site.time = time;
+
+    site.wgt *= (E_wgt * time_wgt);
   }
 
-  // Increment number of accepted samples
-  ++n_accept;
+  // Flush local rejection count into global counter
+  if (n_local_reject > 0) {
+    source_n_reject += n_local_reject;
+  }
 
   return site;
 }
@@ -459,6 +521,18 @@ void FileSource::load_sites_from_file(const std::string& path)
 
     // Close file
     file_close(file_id);
+  }
+
+  // Make sure particles in source file have valid types. If any particle is a
+  // photon, electron, or positron, enable photon transport so that the
+  // appropriate cross sections are loaded.
+  for (const auto& site : this->sites_) {
+    validate_particle_type(site.particle, "FileSource");
+    if (site.particle == ParticleType::photon() ||
+        site.particle == ParticleType::electron() ||
+        site.particle == ParticleType::positron()) {
+      settings::photon_transport = true;
+    }
   }
 }
 
@@ -537,9 +611,9 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 // MeshElementSpatial implementation
 //==============================================================================
 
-Position MeshElementSpatial::sample(uint64_t* seed) const
+std::pair<Position, double> MeshElementSpatial::sample(uint64_t* seed) const
 {
-  return model::meshes[mesh_index_]->sample_element(elem_index_, seed);
+  return {model::meshes[mesh_index_]->sample_element(elem_index_, seed), 1.0};
 }
 
 //==============================================================================
@@ -571,6 +645,11 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   for (int elem_index = 0; elem_index < sources_.size(); ++elem_index) {
     sources_[elem_index]->set_space(
       std::make_unique<MeshElementSpatial>(mesh_idx, elem_index));
+  }
+
+  // Make sure sources use valid particle types
+  for (const auto& src : sources_) {
+    validate_particle_type(src->particle_type(), "MeshSource");
   }
 
   // the number of source distributions should either be one or equal to the
@@ -662,6 +741,14 @@ SourceSite sample_external_source(uint64_t* seed)
 void free_memory_source()
 {
   model::external_sources.clear();
+  model::adjoint_sources.clear();
+  reset_source_rejection_counters();
+}
+
+void reset_source_rejection_counters()
+{
+  source_n_accept = 0;
+  source_n_reject = 0;
 }
 
 //==============================================================================
@@ -682,8 +769,15 @@ extern "C" int openmc_sample_external_source(
   }
 
   auto sites_array = static_cast<SourceSite*>(sites);
+
+  // Derive independent per-particle seeds from the base seed so that
+  // each iteration has its own RNG state for thread-safe parallel sampling.
+  uint64_t base_seed = *seed;
+
+#pragma omp parallel for schedule(static)
   for (size_t i = 0; i < n; ++i) {
-    sites_array[i] = sample_external_source(seed);
+    uint64_t particle_seed = init_seed(base_seed + i, STREAM_SOURCE);
+    sites_array[i] = sample_external_source(&particle_seed);
   }
   return 0;
 }

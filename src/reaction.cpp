@@ -70,9 +70,8 @@ Reaction::Reaction(
 
   if (settings::use_decay_photons) {
     // Remove photon products for D1S method
-    products_.erase(
-      std::remove_if(products_.begin(), products_.end(),
-        [](const auto& p) { return p.particle_ == ParticleType::photon; }),
+    products_.erase(std::remove_if(products_.begin(), products_.end(),
+                      [](const auto& p) { return p.particle_.is_photon(); }),
       products_.end());
 
     // Determine product for D1S method
@@ -310,6 +309,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {N_XA, "(n,Xa)"},
   {HEATING, "heating"},
   {DAMAGE_ENERGY, "damage-energy"},
+  {PHOTON_TOTAL, "photon-total"},
   {COHERENT, "coherent-scatter"},
   {INCOHERENT, "incoherent-scatter"},
   {PAIR_PROD_ELEC, "pair-production-electron"},
@@ -347,13 +347,24 @@ void initialize_maps()
   // Create photoelectric subshells
   for (int mt = 534; mt <= 572; ++mt) {
     REACTION_NAME_MAP[mt] =
-      fmt::format("photoelectric, {} subshell", SUBSHELLS[mt - 534]);
+      fmt::format("photoelectric-{}", SUBSHELLS[mt - 534]);
   }
 
   // Invert name map to create type map
   for (const auto& kv : REACTION_NAME_MAP) {
     REACTION_TYPE_MAP[kv.second] = kv.first;
   }
+
+  // Alternate names
+  REACTION_TYPE_MAP["elastic"] = ELASTIC;
+  REACTION_TYPE_MAP["n2n"] = N_2N;
+  REACTION_TYPE_MAP["n3n"] = N_3N;
+  REACTION_TYPE_MAP["n4n"] = N_4N;
+  REACTION_TYPE_MAP["H1-production"] = N_XP;
+  REACTION_TYPE_MAP["H2-production"] = N_XD;
+  REACTION_TYPE_MAP["H3-production"] = N_XT;
+  REACTION_TYPE_MAP["He3-production"] = N_X3HE;
+  REACTION_TYPE_MAP["He4-production"] = N_XA;
 }
 
 std::string reaction_name(int mt)
@@ -371,62 +382,42 @@ std::string reaction_name(int mt)
   }
 }
 
-int reaction_type(std::string name)
+int reaction_tally_mt(std::string name)
 {
-  // Initialize remainder of name map and all of type map
+  // All "total" scores should map to the special SCORE_TOTAL
+  if (name == "total" || name == "(n,total)" || name == "photon-total")
+    return SCORE_TOTAL;
+
+  // All fission scores should map to the special SCORE_FISSION
+  if (name == "fission" || name == "(n,fission)")
+    return SCORE_FISSION;
+
+  // Delegate everything else to reaction_mt()
+  return reaction_mt(name);
+}
+
+int reaction_mt(const std::string& name)
+{
+  // Initialize maps if needed
   if (REACTION_TYPE_MAP.empty())
     initialize_maps();
 
-  // (n,total) exists in REACTION_TYPE_MAP for MT=1, but we need this to return
-  // the special SCORE_TOTAL score
-  if (name == "(n,total)")
-    return SCORE_TOTAL;
-
-  // Check if type map has an entry for this reaction name
+  // Look up directly in type map (no score indirection)
   auto it = REACTION_TYPE_MAP.find(name);
   if (it != REACTION_TYPE_MAP.end()) {
-    return it->second;
+    int mt = it->second;
+    return mt;
   }
 
-  // Alternate names for several reactions
-  if (name == "elastic") {
-    return ELASTIC;
-  } else if (name == "n2n") {
-    return N_2N;
-  } else if (name == "n3n") {
-    return N_3N;
-  } else if (name == "n4n") {
-    return N_4N;
-  } else if (name == "H1-production") {
-    return N_XP;
-  } else if (name == "H2-production") {
-    return N_XD;
-  } else if (name == "H3-production") {
-    return N_XT;
-  } else if (name == "He3-production") {
-    return N_X3HE;
-  } else if (name == "He4-production") {
-    return N_XA;
-  }
-
-  // Assume the given string is a reaction MT number.  Make sure it's a natural
-  // number then return.
+  // Assume the given string is an MT number
   int MT = 0;
   try {
     MT = std::stoi(name);
   } catch (const std::invalid_argument& ex) {
-    throw std::invalid_argument(
-      "Invalid tally score \"" + name +
-      "\". See the docs "
-      "for details: "
-      "https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
+    throw std::invalid_argument("Unknown reaction name \"" + name + "\".");
   }
   if (MT < 1)
-    throw std::invalid_argument(
-      "Invalid tally score \"" + name +
-      "\". See the docs "
-      "for details: "
-      "https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
+    throw std::invalid_argument("Unknown reaction name \"" + name + "\".");
   return MT;
 }
 

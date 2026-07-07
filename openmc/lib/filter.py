@@ -22,9 +22,10 @@ __all__ = [
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
     'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
-    'ParentNuclideFilter', 'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
-    'SpatialLegendreFilter', 'SurfaceFilter', 'TimeFilter', 'UniverseFilter',
-    'WeightFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
+    'ParentNuclideFilter', 'ParticleFilter', 'ParticleProductionFilter', 'PolarFilter',
+    'ReactionFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter',
+    'SurfaceFilter', 'TimeFilter', 'UniverseFilter', 'WeightFilter', 'ZernikeFilter',
+    'ZernikeRadialFilter', 'filters'
 ]
 
 # Tally functions
@@ -97,6 +98,14 @@ _dll.openmc_mesh_filter_get_translation.errcheck = _error_handler
 _dll.openmc_mesh_filter_set_translation.argtypes = [c_int32, POINTER(c_double*3)]
 _dll.openmc_mesh_filter_set_translation.restype = c_int
 _dll.openmc_mesh_filter_set_translation.errcheck = _error_handler
+_dll.openmc_mesh_filter_get_rotation.argtypes = [c_int32, POINTER(c_double),
+    POINTER(c_size_t)]
+_dll.openmc_mesh_filter_get_rotation.restype = c_int
+_dll.openmc_mesh_filter_get_rotation.errcheck = _error_handler
+_dll.openmc_mesh_filter_set_rotation.argtypes = [
+    c_int32, POINTER(c_double), c_size_t]
+_dll.openmc_mesh_filter_set_rotation.restype = c_int
+_dll.openmc_mesh_filter_set_rotation.errcheck = _error_handler
 _dll.openmc_meshborn_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_meshborn_filter_get_mesh.restype = c_int
 _dll.openmc_meshborn_filter_get_mesh.errcheck = _error_handler
@@ -124,6 +133,9 @@ _dll.openmc_meshsurface_filter_set_translation.errcheck = _error_handler
 _dll.openmc_new_filter.argtypes = [c_char_p, POINTER(c_int32)]
 _dll.openmc_new_filter.restype = c_int
 _dll.openmc_new_filter.errcheck = _error_handler
+_dll.openmc_particle_filter_get_bins.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_particle_filter_get_bins.restype = c_int
+_dll.openmc_particle_filter_get_bins.errcheck = _error_handler
 _dll.openmc_spatial_legendre_filter_get_order.argtypes = [c_int32, POINTER(c_int)]
 _dll.openmc_spatial_legendre_filter_get_order.restype = c_int
 _dll.openmc_spatial_legendre_filter_get_order.errcheck = _error_handler
@@ -393,6 +405,10 @@ class MeshFilter(Filter):
         Mesh used for the filter
     translation : Iterable of float
         3-D coordinates of the translation vector
+    rotation : Iterable of float
+        The rotation matrix or angles of the filter mesh. This can either be
+        a fully specified 3 x 3 rotation matrix or an Iterable of length 3
+        with the angles in degrees about the x, y, and z axes, respectively.
 
     """
     filter_type = 'mesh'
@@ -422,6 +438,34 @@ class MeshFilter(Filter):
     def translation(self, translation):
         _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
 
+    @property
+    def rotation(self):
+        rotation_data = np.zeros(12)
+        rot_size = c_size_t()
+
+        _dll.openmc_mesh_filter_get_rotation(
+            self._index, rotation_data.ctypes.data_as(POINTER(c_double)),
+            rot_size)
+        rot_size = rot_size.value
+
+        if rot_size == 9:
+            return rotation_data[:rot_size].shape(3, 3)
+        elif rot_size in (0, 12):
+            # If size is 0, rotation_data[9:] will be zeros. This indicates no
+            # rotation and is the most straightforward way to always return
+            # an iterable of floats
+            return rotation_data[9:]
+        else:
+            raise ValueError(
+                f'Invalid size of rotation matrix: {rot_size}')
+
+    @rotation.setter
+    def rotation(self, rotation_data):
+        flat_rotation = np.asarray(rotation_data, dtype=float).flatten()
+
+        _dll.openmc_mesh_filter_set_rotation(
+            self._index, flat_rotation.ctypes.data_as(POINTER(c_double)),
+            c_size_t(len(flat_rotation)))
 
 class MeshBornFilter(Filter):
     """MeshBorn filter stored internally.
@@ -558,14 +602,22 @@ class ParticleFilter(Filter):
 
     @property
     def bins(self):
-        particle_i = np.zeros((self.n_bins,), dtype=c_int)
+        particle_i = np.zeros((self.n_bins,), dtype=c_int32)
         _dll.openmc_particle_filter_get_bins(
-            self._index, particle_i.ctypes.data_as(POINTER(c_int)))
+            self._index, particle_i.ctypes.data_as(POINTER(c_int32)))
         return [ParticleType(i) for i in particle_i]
+
+
+class ParticleProductionFilter(Filter):
+    filter_type = 'particleproduction'
 
 
 class PolarFilter(Filter):
     filter_type = 'polar'
+
+
+class ReactionFilter(Filter):
+    filter_type = 'reaction'
 
 
 class SphericalHarmonicsFilter(Filter):
@@ -668,7 +720,9 @@ _FILTER_TYPE_MAP = {
     'musurface': MuSurfaceFilter,
     'parentnuclide': ParentNuclideFilter,
     'particle': ParticleFilter,
+    'particleproduction': ParticleProductionFilter,
     'polar': PolarFilter,
+    'reaction': ReactionFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,

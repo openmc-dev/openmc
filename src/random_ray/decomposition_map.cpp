@@ -10,6 +10,7 @@
 #include "openmc/cell.h"
 #include "openmc/simulation.h"
 #include "openmc/constants.h"
+#include <numeric>
 
 namespace openmc {
 

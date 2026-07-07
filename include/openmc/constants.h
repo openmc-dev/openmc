@@ -9,6 +9,7 @@
 #include <limits>
 
 #include "openmc/array.h"
+#include "openmc/atomic_mass.h"
 #include "openmc/vector.h"
 #include "openmc/version.h"
 
@@ -25,16 +26,16 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {18, 1};
-constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr array<int, 2> VERSION_TRACK {3, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 2};
+constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 1};
+constexpr array<int, 2> VERSION_TRACK {3, 1};
 constexpr array<int, 2> VERSION_SUMMARY {6, 1};
 constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 1};
 constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
-constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 0};
+constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 2};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -95,10 +96,10 @@ constexpr double INFTY {std::numeric_limits<double>::max()};
 // (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
 // Physical constants
-constexpr double MASS_NEUTRON {1.00866491595}; // mass of a neutron in amu
+constexpr double AMU_EV {
+  9.3149410242e8}; // atomic mass unit energy equivalent in eV/c^2
 constexpr double MASS_NEUTRON_EV {
-  939.56542052e6};                             // mass of a neutron in eV/c^2
-constexpr double MASS_PROTON {1.007276466621}; // mass of a proton in amu
+  939.56542052e6}; // neutron mass energy equivalent in eV/c^2
 constexpr double MASS_ELECTRON_EV {
   0.51099895000e6}; // electron mass energy equivalent in eV/c^2
 constexpr double FINE_STRUCTURE {
@@ -235,6 +236,7 @@ enum ReactionType {
   N_XA = 207,
   HEATING = 301,
   DAMAGE_ENERGY = 444,
+  PHOTON_TOTAL = 501,
   COHERENT = 502,
   INCOHERENT = 504,
   PAIR_PROD_ELEC = 515,
@@ -310,7 +312,7 @@ enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
 enum class TallyEvent { SURFACE, LATTICE, KILL, SCATTER, ABSORB };
 
 // Tally score type -- if you change these, make sure you also update the
-// _SCORES dictionary in openmc/capi/tally.py
+// _SCORES dictionary in openmc/lib/tally.py
 //
 // These are kept as a normal enum and made negative, since variables which
 // store one of these enum values usually also may be responsible for storing
@@ -375,7 +377,8 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 enum class RandomRayGeomDim { TWO_DIM, THREE_DIM };
-enum class RandomRaySampleMethod { PRNG, HALTON };
+enum class RandomRaySampleMethod { PRNG, HALTON, S2 };
+enum class RandomRaySolve { FORWARD, FORWARD_FOR_ADJOINT, ADJOINT };
 
 //==============================================================================
 // Geometry Constants

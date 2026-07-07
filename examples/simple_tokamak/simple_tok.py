@@ -65,7 +65,7 @@ model.convert_to_multigroup(
     nparticles = 10000,
     groups='CASMO-8',
     correction=None,
-    overwrite_mgxs_library=False
+    overwrite_mgxs_library=True
 )
 
 model.convert_to_random_ray()  
@@ -93,7 +93,7 @@ model.settings.particles = 1000000
 model.settings.batches   = 10
 model.settings.inactive  = 1
 
-plot = openmc.Plot()
+plot = openmc.VoxelPlot()
 box = model.geometry.bounding_box
 plot.origin = (0.5*(box.lower_left[0]+box.upper_right[0]),
                0.5*(box.lower_left[1]+box.upper_right[1]),

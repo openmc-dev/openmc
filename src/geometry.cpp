@@ -24,6 +24,8 @@ namespace model {
 int root_universe {-1};
 int n_coord_levels;
 
+vector<int> boundary_surfaces;
+
 vector<int64_t> overlap_check_count;
 
 vector<OverlapKey> overlap_keys;

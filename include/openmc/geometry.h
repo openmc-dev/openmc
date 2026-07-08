@@ -53,6 +53,8 @@ namespace model {
 extern int root_universe;      //!< Index of root universe
 extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
+extern vector<int> boundary_surfaces; //!< The surfaces with boundary conditions
+
 extern vector<int64_t> overlap_check_count;
 
 // Overlap data structures get cleared every slice_data run

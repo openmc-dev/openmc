@@ -779,8 +779,9 @@ void initialize_particle_track(
     write_message("Simulating Particle {}", p.id());
   }
 
-  // Compute the majorant.
+  // Compute the majorant and set the delta tracking flag.
   if (settings::delta_tracking) {
+    p.delta_tracking() = true;
     p.update_majorant();
   }
 
@@ -992,8 +993,6 @@ void transport_history_based_single_particle(Particle& p)
 
 void transport_delta_history_based_single_particle(Particle& p)
 {
-  p.delta_tracking() = true;
-
   while (p.alive()) {
     p.event_delta_advance();
 

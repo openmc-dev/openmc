@@ -260,6 +260,8 @@ void process_delta_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 
   int64_t offset = simulation::collision_queue.size();
 
+  simulation::collision_queue.resize(offset + queue.size());
+
 #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
     Particle* p = &simulation::particles[queue[i].idx];
@@ -270,8 +272,6 @@ void process_delta_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     // the protected enqueuing function.
     simulation::collision_queue[offset + i] = queue[i];
   }
-
-  simulation::collision_queue.resize(offset + queue.size());
 
   queue.resize(0);
 

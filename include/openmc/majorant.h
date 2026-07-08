@@ -224,17 +224,19 @@ protected:
   //----------------------------------------------------------------------------
   // Protected Methods
 
-  //! Minimum neutron transport energy.
+  //! Minimum photon transport energy.
   //
-  //! \return The minimum transport energy associated with the majorant [eV]
+  //! \return The log of the minimum transport energy associated with the
+  //! majorant
   virtual double min_transport_energy() const override
   {
     return std::log(data::energy_min[i_photon_]);
   }
 
-  //! Maximum neutron transport energy.
+  //! Maximum photon transport energy.
   //
-  //! \return The maximum transport energy associated with the majorant [eV]
+  //! \return The log of the maximum transport energy associated with the
+  //! majorant
   virtual double max_transport_energy() const override
   {
     return std::log(data::energy_max[i_photon_]);

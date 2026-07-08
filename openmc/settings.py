@@ -501,6 +501,11 @@ class Settings:
 
         self._random_ray = {}
 
+        # MGXS generation method recorded by Model.mgxs_generation_settings()
+        # and read back by Model.convert_to_multigroup; provenance only, not
+        # written to XML
+        self._mgxs_generation_method = None
+
         for key, value in kwargs.items():
             setattr(self, key, value)
 

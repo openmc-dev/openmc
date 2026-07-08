@@ -2773,7 +2773,10 @@ class Model:
         # mgxs_generation_settings) is used, defaulting to "material_wise".
         # Conflicting specifications are rejected, since the generation
         # defaults differ by method.
-        settings_method = getattr(settings, '_mgxs_generation_method', None)
+        if settings is not None:
+            check_type('settings', settings, openmc.Settings)
+        settings_method = (settings._mgxs_generation_method
+                           if settings is not None else None)
         if method is None:
             method = settings_method or 'material_wise'
         elif settings_method is not None and method != settings_method:
@@ -2817,7 +2820,6 @@ class Model:
             if temperature_settings is not None:
                 settings.temperature = temperature_settings
         else:
-            check_type('settings', settings, openmc.Settings)
             # batches and particles are required for any OpenMC transport
             # run; catch their absence here so a hand-built settings object
             # fails with a pointer to the defaults rather than a mysterious

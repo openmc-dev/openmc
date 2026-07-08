@@ -46,7 +46,6 @@ jobs:
         python-version: ["3.12"]
         mpi: [n, y]
         omp: [n, y]
-        umesh_libs: [n, y]
         event: [n]
 
         include:
@@ -59,23 +58,10 @@ jobs:
           - python-version: "3.14t"
             omp: n
             mpi: n
-          - dagmc: y
-            python-version: "3.12"
-            mpi: y
-            omp: y
-          - xdg: y
-            python-version: "3.12"
-            libmesh: y
+          - python-version: "3.12"
+            omp: n
             mpi: n
-            omp: y
-          - libmesh: y
-            python-version: "3.12"
-            mpi: y
-            omp: y
-          - libmesh: y
-            python-version: "3.12"
-            mpi: n
-            omp: y
+            umesh_libs: y
           - event: y
             python-version: "3.12"
             omp: y

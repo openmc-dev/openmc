@@ -33,12 +33,12 @@ std::unique_ptr<PhotonMajorant> p_majorant;
 
 Majorant::Majorant(int i_universe) : maj_universe_(i_universe)
 {
-  // Find all materials contained in the majorant's universe. This also obtains
-  // the maximum density multiplier applied to that material.
-  std::set<int> unique_materials;
   if (maj_universe_ == C_NONE || maj_universe_ >= model::universes.size()) {
     fatal_error(fmt::format("Invalid majorant universe: {}", maj_universe_));
   }
+
+  // First, find unique cells contained in this universe.
+  std::unordered_set<int> unique_mat_cells;
 
   const auto& maj_uni = model::universes[maj_universe_];
   for (int i_cell : maj_uni->cells_) {
@@ -46,59 +46,51 @@ Majorant::Majorant(int i_universe) : maj_universe_(i_universe)
 
     // If the cell is filled with a material, it won't have any sub-cells.
     if (uni_cell->type_ == Fill::MATERIAL) {
-      // Loop over instances. TODO: confirm if this is unecessary and use 0
-      // instead?
-      for (int instance = 0; instance < uni_cell->n_instances(); ++instance) {
-        int i_material = uni_cell->material(instance);
-
-        // Check to see if we've found the contained material yet. If not, add
-        // to the set of materials discovered and add to the map of density
-        // multipliers.
-        if (unique_materials.count(i_material) == 0) {
-          unique_materials.emplace(i_material);
-          max_density_mult_[i_material] = uni_cell->density_mult(instance);
-        } else {
-          // We've found this material already. Need to take the maximum density
-          // multiplier.
-          max_density_mult_.at(i_material) = std::max(
-            max_density_mult_.at(i_material), uni_cell->density_mult(instance));
-        }
+      if (unique_mat_cells.count(i_cell) == 0) {
+        unique_mat_cells.emplace(i_cell);
       }
     } else {
       // This cell is filled with a universe or lattice. Need to get the list of
       // cells and cell instances.
       const auto contained_cells = uni_cell->get_contained_cells();
       for (const auto& [i_con_cell, contained_instances] : contained_cells) {
-        const auto& contained_cell = model::cells[i_con_cell];
-
-        // Loop over contained cell instances.
-        for (auto instance : contained_instances) {
-          // Check to see if we've found the contained material instance yet. If
-          // not, add to the set of materials discovered and add to the map of
-          // density multipliers.
-          int i_material = contained_cell->material(instance);
-          if (unique_materials.count(i_material) == 0) {
-            unique_materials.emplace(i_material);
-            max_density_mult_[i_material] =
-              contained_cell->density_mult(instance);
-          } else {
-            // We've found this material already. Need to take the maximum
-            // density multiplier for the contained instance.
-            max_density_mult_.at(i_material) =
-              std::max(max_density_mult_.at(i_material),
-                contained_cell->density_mult(instance));
-          }
+        if (unique_mat_cells.count(i_con_cell) == 0) {
+          unique_mat_cells.emplace(i_con_cell);
         }
       }
     }
   }
 
-  // Clear the contained materials vector and insert the elements from the set.
-  for (auto i_mat : unique_materials) {
-    if (i_mat != MATERIAL_VOID) {
-      contained_materials_.push_back(i_mat);
+  // Next, find all materials contained in the majorant's universe. This also
+  // obtains the maximum density multiplier applied to that material.
+  std::unordered_set<int> unique_materials;
+  for (int i_cell : unique_mat_cells) {
+    auto& cell = model::cells[i_cell];
+
+    for (int instance = 0; instance < cell->n_instances(); ++instance) {
+      int i_material = cell->material(instance);
+      // Skip over void materials.
+      if (i_material == MATERIAL_VOID) {
+        continue;
+      }
+
+      // Check to see if we've found the contained material yet. If not, add
+      // to the set of materials discovered and add to the map of density
+      // multipliers.
+      if (unique_materials.count(i_material) == 0) {
+        unique_materials.emplace(i_material);
+        max_density_mult_[i_material] = cell->density_mult(instance);
+      } else {
+        // We've found this material already. Need to take the maximum density
+        // multiplier.
+        max_density_mult_.at(i_material) = std::max(
+          max_density_mult_.at(i_material), cell->density_mult(instance));
+      }
     }
   }
+
+  // Insert the elements from the set.
+  contained_materials_.assign(unique_materials.begin(), unique_materials.end());
 }
 
 void Majorant::compute_majorant()
@@ -108,7 +100,13 @@ void Majorant::compute_majorant()
 
   std::vector<double> material_maj_xs;
   for (int i_material : contained_materials_) {
-    // Populate the per-material majorant cross section.
+    // Populate the per-material majorant cross section. We pass in
+    // 'material_maj_xs' instead of returning a vector with the per-material
+    // majorant every time to avoid costly reallocations and copy operations,
+    // which have a fairly large impact on the time it takes to build the
+    // majorant. The function 'fill_material_maj_xs(...)' is responsible for
+    // resizing 'material_maj_xs' and populating each value at a given energy
+    // grid point.
     fill_material_maj_xs(i_material, max_density_mult_.at(i_material),
       grid_.energy, material_maj_xs);
 
@@ -120,16 +118,11 @@ void Majorant::compute_majorant()
   }
 }
 
-void Majorant::post_process_grid(
-  int particle_type, Nuclide::EnergyGrid& grid) const
+void Majorant::post_process_grid(Nuclide::EnergyGrid& grid) const
 {
-  // Photons use a logarithmic energy grid.
-  double E_min = data::energy_min[particle_type];
-  double E_max = data::energy_max[particle_type];
-  if (particle_type == ParticleType::photon().transport_index()) {
-    E_min = std::log(E_min);
-    E_max = std::log(E_max);
-  }
+  // Fetch the minimum and maximum transport energies from the superclass.
+  const double E_min = min_transport_energy();
+  const double E_max = max_transport_energy();
 
   std::sort(grid.energy.begin(), grid.energy.end());
   auto unique_end = std::unique(grid.energy.begin(), grid.energy.end());
@@ -173,7 +166,7 @@ void NeutronMajorant::compute_unionized_grid()
 {
   // This function generates a unionized cross section grid between smooth cross
   // sections and URR probability table grids.
-  std::set<int> processed_nuclides;
+  std::unordered_set<int> processed_nuclides;
   for (int i_mat : contained_materials_) {
     const auto& mat = model::materials[i_mat];
     for (auto i_nuclide : mat->nuclide_) {
@@ -206,7 +199,7 @@ void NeutronMajorant::compute_unionized_grid()
   // Post-process the energy grid now that all points from nuclides are
   // included. This sorts the energy points, removes duplicates, and removes all
   // energies exceeding neutron transport bounds.
-  post_process_grid(i_neutron_, grid_);
+  post_process_grid(grid_);
 
   // Initialize the grid for fast lookups. This only applies to neutrons.
   grid_.init();
@@ -481,7 +474,7 @@ PhotonMajorant::PhotonMajorant(int i_universe) : Majorant(i_universe) {}
 void PhotonMajorant::compute_unionized_grid()
 {
   // This function generates a unionized cross section grid for all elements.
-  std::set<int> processed_elements;
+  std::unordered_set<int> processed_elements;
   for (int i_mat : contained_materials_) {
     const auto& mat = model::materials[i_mat];
     for (int i = 0; i < mat->nuclide_.size(); ++i) {
@@ -501,13 +494,13 @@ void PhotonMajorant::compute_unionized_grid()
   // Post-process the energy grid now that all points from photon interactions
   // are included. This sorts the energy points, removes duplicates, and removes
   // all energies exceeding photon transport bounds.
-  post_process_grid(i_photon_, grid_);
+  post_process_grid(grid_);
 }
 
 double PhotonMajorant::calculate_photon_xs(double energy) const
 {
   double log_energy = std::log(energy);
-  int i_grid = get_i_grid(log_energy, grid_.energy);
+  int i_grid = get_i_grid<std::vector<double>>(log_energy, grid_.energy);
 
   // calculate interpolation factor
   double f = (log_energy - grid_.energy[i_grid]) /
@@ -544,7 +537,7 @@ double PhotonMajorant::calculate_elem_tot_xs(
   int i_element, double log_energy) const
 {
   const auto& elem = *data::elements[i_element];
-  int i_grid = get_i_grid(log_energy, elem.energy_);
+  int i_grid = get_i_grid<tensor::Tensor<double>>(log_energy, elem.energy_);
 
   // calculate interpolation factor
   double f = (log_energy - elem.energy_(i_grid)) /
@@ -577,52 +570,6 @@ double PhotonMajorant::calculate_elem_tot_xs(
 
   // Calculate microscopic total cross section
   return coherent + incoherent + photoelectric + pair_production;
-}
-
-int PhotonMajorant::get_i_grid(
-  double log_energy, const std::vector<double>& energy_grid) const
-{
-  int n_grid = energy_grid.size();
-  int i_grid;
-  if (log_energy <= energy_grid[0]) {
-    i_grid = 0;
-  } else if (log_energy > energy_grid[n_grid - 1]) {
-    i_grid = n_grid - 2;
-  } else {
-    // We use upper_bound_index here because sometimes photons are created with
-    // energies that exactly match a grid point
-    i_grid =
-      upper_bound_index(energy_grid.cbegin(), energy_grid.cend(), log_energy);
-  }
-
-  // check for case where two energy points are the same
-  if (energy_grid[i_grid] == energy_grid[i_grid + 1])
-    ++i_grid;
-
-  return i_grid;
-}
-
-int PhotonMajorant::get_i_grid(
-  double log_energy, const tensor::Tensor<double>& energy_grid) const
-{
-  int n_grid = energy_grid.size();
-  int i_grid;
-  if (log_energy <= energy_grid[0]) {
-    i_grid = 0;
-  } else if (log_energy > energy_grid(n_grid - 1)) {
-    i_grid = n_grid - 2;
-  } else {
-    // We use upper_bound_index here because sometimes photons are created with
-    // energies that exactly match a grid point
-    i_grid =
-      upper_bound_index(energy_grid.cbegin(), energy_grid.cend(), log_energy);
-  }
-
-  // check for case where two energy points are the same
-  if (energy_grid(i_grid) == energy_grid(i_grid + 1))
-    ++i_grid;
-
-  return i_grid;
 }
 
 //! Create a majorant cross section for photons or neutrons.

@@ -44,6 +44,16 @@ protected:
   //----------------------------------------------------------------------------
   // Protected Methods
 
+  //! Virtual function for the minimum transport energy in the majorant.
+  //!
+  //! \return The minimum transport energy associated with the majorant
+  virtual double min_transport_energy() const = 0;
+
+  //! Virtual function for the maximum transport energy in the majorant.
+  //!
+  //! \return The maximum transport energy associated with the majorant
+  virtual double max_transport_energy() const = 0;
+
   //! Compute a per-material macroscopic majorant cross section in units
   //! of [cm^-1]
   //!
@@ -58,11 +68,9 @@ protected:
   //! This also removes all energy values below the transport minimum and
   //! above the transport maximum for a given particle type.
   //!
-  //! \param[in] particle_type The particle type transport index to use when
-  //!   fetching transport minimum / maximum energies
   //! \param[out] grid The energy grid to post-process. This is performed
   //!   in-place.
-  void post_process_grid(int particle_type, Nuclide::EnergyGrid& grid) const;
+  void post_process_grid(Nuclide::EnergyGrid& grid) const;
 
   //----------------------------------------------------------------------------
   // Protected data members
@@ -112,6 +120,16 @@ public:
 protected:
   //----------------------------------------------------------------------------
   // Protected Methods
+
+  //! Minimum neutron transport energy.
+  //
+  //! \return The minimum transport energy associated with the majorant [eV]
+  virtual double min_transport_energy() const override { return data::energy_min[i_neutron_]; }
+
+  //! Maximum neutron transport energy.
+  //
+  //! \return The maximum transport energy associated with the majorant [eV]
+  virtual double max_transport_energy() const override { return data::energy_max[i_neutron_]; }
 
   //! Compute a per-material macroscopic majorant cross section.
   //!
@@ -200,6 +218,16 @@ protected:
   //----------------------------------------------------------------------------
   // Protected Methods
 
+  //! Minimum neutron transport energy.
+  //
+  //! \return The minimum transport energy associated with the majorant [eV]
+  virtual double min_transport_energy() const override { return std::log(data::energy_min[i_photon_]); }
+
+  //! Maximum neutron transport energy.
+  //
+  //! \return The maximum transport energy associated with the majorant [eV]
+  virtual double max_transport_energy() const override { return std::log(data::energy_max[i_photon_]); }
+
   //! Compute a per-material macroscopic majorant cross section.
   //!
   //! \param[in] i_material Index into the materials array
@@ -221,15 +249,33 @@ private:
   //! \return The maximum microscopic total cross section in [barn].
   double calculate_elem_tot_xs(int i_element, double log_energy) const;
 
-  //! Get the grid index for energy interpolation.
+  //! Get the grid index for energy interpolation. This is templated due to the
+  //! use of tensor::Tensor<double> in PhotonInteraction.
   //!
   //! \param[in] energy The energy to evaluate the cross section at in [eV].
   //! \param[in] grid The energy grid to search for an energy grid index.
   //! \return The grid index.
-  int get_i_grid(
-    double log_energy, const std::vector<double>& energy_grid) const;
-  int get_i_grid(
-    double log_energy, const tensor::Tensor<double>& energy_grid) const;
+  template <typename T>
+  int get_i_grid(double log_energy, const T& energy_grid) const {
+    int n_grid = energy_grid.size();
+    int i_grid;
+    if (log_energy <= energy_grid[0]) {
+      i_grid = 0;
+    } else if (log_energy > energy_grid[n_grid - 1]) {
+      i_grid = n_grid - 2;
+    } else {
+      // We use upper_bound_index here because sometimes photons are created with
+      // energies that exactly match a grid point
+      i_grid =
+        upper_bound_index(energy_grid.cbegin(), energy_grid.cend(), log_energy);
+    }
+
+    // check for case where two energy points are the same
+    if (energy_grid[i_grid] == energy_grid[i_grid + 1])
+      ++i_grid;
+
+    return i_grid;
+  }
 
   //----------------------------------------------------------------------------
   // Private data members

@@ -265,22 +265,40 @@ _dll.openmc_slice_data_overlap_info.errcheck = _error_handler
 
 
 # Python wrappings for overlap functions
-def slice_data_overlap_count():
+def slice_data_overlap_count() -> int:
+    """Return the number of unique overlaps from the last slice plot.
+
+    Returns
+    -------
+    int
+        Number of unique overlapping cell pairs detected by the most recent
+        :func:`slice_data` call with overlap checking enabled.
+    """
     count = c_size_t()
     _dll.openmc_slice_data_overlap_count(count)
     return count.value
 
 
-def slice_data_overlap_info():
+def slice_data_overlap_info() -> np.ndarray:
+    """Return identifying information for overlaps from the last slice plot.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(n, 3)`` with int32 dtype, where ``n`` is the number
+        of unique overlaps detected by the most recent :func:`slice_data` call
+        with overlap checking enabled. Each row contains ``[universe_id,
+        cell1_id, cell2_id]``.
+    """
     n = slice_data_overlap_count()
-    overlap_info = np.empty(n * 3, dtype=np.int32)
+    overlap_info = np.empty((n, 3), dtype=np.int32)
 
     if n > 0:
         _dll.openmc_slice_data_overlap_info(
             n,
             overlap_info.ctypes.data_as(POINTER(c_int32)),
         )
-    return overlap_info, n
+    return overlap_info
 
 
 _dll.openmc_get_plot_index.argtypes = [c_int32, POINTER(c_int32)]

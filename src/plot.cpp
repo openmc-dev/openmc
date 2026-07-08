@@ -156,12 +156,12 @@ void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
 
 void RasterData::set_overlap(size_t y, size_t x, int overlap_idx)
 {
-  // Set cell, instance, and material to OVERLAP, but preserve filter bin
-  id_data_(y, x, 0) = OVERLAP;
+  // Set cell, instance, and material to OVERLAP, but preserve filter bin for
+  // tally plotting. Cell encodes the overlap index as a negative number so that
+  // it can be used to look up overlap information in the plotter.
+  id_data_(y, x, 0) = OVERLAP - overlap_idx - 1;
   id_data_(y, x, 1) = OVERLAP;
-  id_data_(y, x, 2) = OVERLAP - overlap_idx - 1;
-  // Note: id_data_(y, x, 3) is NOT overwritten - preserves filter bin for tally
-  // plotting
+  id_data_(y, x, 2) = OVERLAP;
 
   property_data_(y, x, 0) = OVERLAP;
   property_data_(y, x, 1) = OVERLAP;

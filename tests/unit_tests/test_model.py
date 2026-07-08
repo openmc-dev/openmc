@@ -1198,12 +1198,21 @@ def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatc
     gen = _capture_generation_settings(
         monkeypatch, model, method='material_wise', settings=user)
 
-    # A weight windows file given via settings goes through the same handling
-    # as the weight_windows_file argument: applied to the generation run with
-    # weight windows turned on
+    # A weight windows file on the generation settings is applied to the
+    # "material_wise" generation run with weight windows turned on
     assert gen.weight_windows_file == ww_path
     assert gen.weight_windows_on is True
     # The caller's object is never mutated
+    assert user.weight_windows_file == ww_path
+    assert user.weight_windows_on is None
+
+    # The surrogate-geometry methods ignore the file with a warning
+    user = model.mgxs_generation_settings('stochastic_slab')
+    user.weight_windows_file = ww_path
+    with pytest.warns(UserWarning, match='material_wise'):
+        gen = _capture_generation_settings(
+            monkeypatch, model, method='stochastic_slab', settings=user)
+    assert gen.weight_windows_file is None
     assert user.weight_windows_file == ww_path
 
 
@@ -1228,13 +1237,6 @@ def test_convert_to_multigroup_settings_validation(run_in_tmpdir):
         model.convert_to_multigroup(
             temperature_settings={'method': 'interpolation'},
             settings=settings)
-
-    # A weight windows file cannot be given both ways
-    settings = model.mgxs_generation_settings()
-    settings.weight_windows_file = 'ww.h5'
-    with pytest.raises(ValueError, match='weight_windows_file'):
-        model.convert_to_multigroup(weight_windows_file='ww.h5',
-                                    settings=settings)
 
 
 def test_convert_to_multigroup_deprecated_args(run_in_tmpdir, monkeypatch):

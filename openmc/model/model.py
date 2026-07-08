@@ -2478,7 +2478,6 @@ class Model:
         correction: str | None,
         directory: PathLike,
         temperature: float | None = None,
-        weight_windows_file: PathLike | None = None,
     ) -> dict[str, openmc.XSdata]:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation. If a temperature is
@@ -2505,10 +2504,6 @@ class Model:
             The isothermal temperature value to apply to the materials in the
             input model. If not specified, defaults to the temperatures in the
             materials.
-        weight_windows_file : PathLike, optional
-            Path to a weight windows file to load and apply during the
-            continuous energy solve. See :meth:`Model.convert_to_multigroup`
-            for details.
 
         Returns
         -------
@@ -2524,14 +2519,6 @@ class Model:
 
         # The provided settings are used verbatim
         model.settings = copy.deepcopy(settings)
-
-        # If a weight window file was provided, load and apply the weight
-        # windows during the continuous energy solve. This allows materials far
-        # from the source -- which an analog simulation may struggle to reach --
-        # to still be tallied, and thus obtain nonzero cross sections.
-        if weight_windows_file is not None:
-            model.settings.weight_windows_file = weight_windows_file
-            model.settings.weight_windows_on = True
 
         # Generate MGXS
         mgxs_lib = Model._auto_generate_mgxs_lib(
@@ -2558,7 +2545,6 @@ class Model:
         correction: str | None,
         directory: PathLike,
         temperatures: Sequence[float] | None = None,
-        weight_windows_file: PathLike | None = None,
     ) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
@@ -2587,20 +2573,10 @@ class Model:
             A list of temperatures to generate MGXS at. Each infinite material region
             is isothermal at a given temperature data point for cross
             section generation.
-        weight_windows_file : PathLike, optional
-            Path to a weight windows file to load and apply during the
-            continuous energy solve. See :meth:`Model.convert_to_multigroup`
-            for details.
         """
         if temperatures is None:
             mgxs_sets = Model._isothermal_materialwise_mgxs(
-                self,
-                groups,
-                settings,
-                correction,
-                directory,
-                weight_windows_file=weight_windows_file
-            ).values()
+                self, groups, settings, correction, directory).values()
 
             # Write the file to disk.
             mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
@@ -2612,14 +2588,7 @@ class Model:
             raw_mgxs_sets = {}
             for temperature in temperatures:
                 raw_mgxs_sets[temperature] = Model._isothermal_materialwise_mgxs(
-                    self,
-                    groups,
-                    settings,
-                    correction,
-                    directory,
-                    temperature,
-                    weight_windows_file=weight_windows_file
-                )
+                    self, groups, settings, correction, directory, temperature)
 
             # Unpack the isothermal XSData objects and build a single XSData object per material.
             mgxs_sets = []
@@ -2697,7 +2666,6 @@ class Model:
         source_energy: openmc.stats.Univariate | None = None,
         temperatures: Sequence[float] | None = None,
         temperature_settings: dict | None = None,
-        weight_windows_file: PathLike | None = None,
         settings: openmc.Settings | None = None,
     ):
         """Convert all materials from continuous energy to multigroup.
@@ -2760,21 +2728,6 @@ class Model:
             .. deprecated:: 0.15.4
                 Set ``temperature`` on the object passed via the ``settings``
                 argument instead.
-        weight_windows_file : PathLike, optional
-            Path to a weight windows file (e.g., ``"weight_windows.h5"``) to
-            load and apply during the continuous energy MGXS generation
-            simulation. Applying weight windows allows the simulation to obtain
-            tallies -- and thus nonzero cross sections -- for materials located
-            far from the source, for example behind a thick shield, which an
-            analog simulation may be unable to reach. A typical use case is to
-            first generate weight windows with the ``"stochastic_slab"`` method
-            and the random ray solver, then "bootstrap" a higher-fidelity
-            ``"material_wise"`` library by passing those weight windows here.
-            This argument is only used with the ``"material_wise"`` method; a
-            warning is issued and the argument is ignored for the
-            ``"stochastic_slab"`` and ``"infinite_medium"`` methods.
-
-            .. versionadded:: 0.15.4
         settings : openmc.Settings, optional
             Settings used verbatim for the continuous energy simulation(s)
             that generate the MGXS library. If not provided, defaults are
@@ -2783,9 +2736,20 @@ class Model:
             result here. Note that the ``"stochastic_slab"`` and
             ``"infinite_medium"`` methods construct their own fixed source
             and set ``run_mode``, ``source``, and
-            ``create_fission_neutrons`` accordingly, and that a
-            ``weight_windows_file`` set on this object is handled exactly as
-            if it had been passed via the ``weight_windows_file`` argument.
+            ``create_fission_neutrons`` accordingly. If the settings include
+            a ``weight_windows_file`` (e.g., ``"weight_windows.h5"``), the
+            ``"material_wise"`` method loads and applies those weight
+            windows during the continuous energy generation simulation
+            (``weight_windows_on`` is enabled automatically). Applying
+            weight windows allows the simulation to obtain tallies -- and
+            thus nonzero cross sections -- for materials located far from
+            the source, for example behind a thick shield, which an analog
+            simulation may be unable to reach. A typical use case is to
+            first generate weight windows with the ``"stochastic_slab"``
+            method and the random ray solver, then "bootstrap" a
+            higher-fidelity ``"material_wise"`` library by setting those
+            weight windows here; a warning is issued and the file is ignored
+            for the ``"stochastic_slab"`` and ``"infinite_medium"`` methods.
             Cannot be combined with the deprecated ``nparticles`` or
             ``temperature_settings`` arguments.
 
@@ -2839,16 +2803,6 @@ class Model:
                     'rather than building a Settings object from scratch.')
             settings = copy.deepcopy(settings)
 
-            # A weight windows file given via settings is funneled through
-            # the same handling as the argument below
-            if settings.weight_windows_file is not None:
-                if weight_windows_file is not None:
-                    raise ValueError(
-                        'Only one of the "weight_windows_file" argument and '
-                        '"settings.weight_windows_file" may be specified.')
-                weight_windows_file = settings.weight_windows_file
-                settings.weight_windows_file = None
-
             # The surrogate-geometry methods construct their own sources
             if method != "material_wise" and len(settings.source) > 0:
                 warnings.warn(
@@ -2856,19 +2810,25 @@ class Model:
                     f'"{method}" MGXS generation method, which constructs '
                     'its own sources.')
 
-        # Weight windows are only applicable to the "material_wise" method,
-        # which runs a continuous energy simulation of the original geometry
-        # (and is therefore compatible with a weight window mesh defined over
-        # that geometry). The "stochastic_slab" and "infinite_medium" methods
-        # use simplified surrogate geometries for which the provided weight
-        # windows are neither applicable nor needed.
-        if weight_windows_file is not None and method != "material_wise":
-            warnings.warn(
-                'The "weight_windows_file" argument is only applicable to '
-                'the "material_wise" MGXS generation method and will be '
-                f'ignored for the "{method}" method.'
-            )
-            weight_windows_file = None
+        # A weight windows file on the generation settings is loaded and
+        # applied during the "material_wise" method's continuous energy
+        # simulation of the original geometry, allowing materials far from
+        # the source -- which an analog simulation may struggle to reach --
+        # to still be tallied, and thus obtain nonzero cross sections. The
+        # "stochastic_slab" and "infinite_medium" methods use simplified
+        # surrogate geometries for which weight windows defined over the
+        # original geometry are neither applicable nor needed.
+        if settings.weight_windows_file is not None:
+            if method == "material_wise":
+                settings.weight_windows_on = True
+            else:
+                warnings.warn(
+                    'The weight windows file set on the generation settings '
+                    'is only applicable to the "material_wise" MGXS '
+                    f'generation method and will be ignored for the '
+                    f'"{method}" method.'
+                )
+                settings.weight_windows_file = None
 
         # Do all work (including MGXS generation) in a temporary directory
         # to avoid polluting the working directory with residual XML files
@@ -2910,7 +2870,7 @@ class Model:
                 elif method == "material_wise":
                     self._generate_material_wise_mgxs(
                         groups, settings, mgxs_path, correction, tmpdir,
-                        temperatures, weight_windows_file)
+                        temperatures)
                 elif method == "stochastic_slab":
                     self._generate_stochastic_slab_mgxs(
                         groups, settings, mgxs_path, correction, tmpdir,

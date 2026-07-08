@@ -671,8 +671,8 @@ of these methods is given below:
      - * Potentially slower as the full geometry must be run
        * If a material is only present far from the source and doesn't get tallied
          to in the CE simulation, the MGXS will be zero for that material. This
-         can be mitigated by supplying weight windows via the
-         ``weight_windows_file`` argument (see :ref:`mgxs_bootstrap`).
+         can be mitigated by supplying weight windows via the generation
+         settings (see :ref:`mgxs_bootstrap`).
    * - ``stochastic_slab``
      - * Medium Fidelity
        * Runs a CE simulation with a greatly simplified geometry, where materials
@@ -788,9 +788,9 @@ windows are generated using the ``"stochastic_slab"`` method (which produces
 cross sections for *all* materials regardless of their location) together with
 the random ray solver and a :class:`~openmc.WeightWindowGenerator`, exactly as
 described in the :ref:`FW-CADIS user guide <usersguide_fw_cadis>`. The resulting
-``weight_windows.h5`` file is then passed to a second, higher fidelity
-``"material_wise"`` cross section generation via the ``weight_windows_file``
-argument::
+``weight_windows.h5`` file is then supplied to a second, higher fidelity
+``"material_wise"`` cross section generation by setting ``weight_windows_file``
+on the generation settings::
 
     # First, generate weight windows with the stochastic slab method and random
     # ray (see the FW-CADIS user guide), producing a weight_windows.h5 file.
@@ -799,18 +799,20 @@ argument::
     # Then, bootstrap a higher fidelity material-wise library, applying those
     # weight windows during the continuous energy solve so that particles can
     # reach materials far from the source.
+    settings = model.mgxs_generation_settings(method="material_wise")
+    settings.weight_windows_file = "weight_windows.h5"
     model.convert_to_multigroup(
         method="material_wise",
-        weight_windows_file="weight_windows.h5",
+        settings=settings,
         overwrite_mgxs_library=True,
     )
 
-The ``weight_windows_file`` argument is only used with the ``"material_wise"``
-method, as the ``"stochastic_slab"`` and ``"infinite_medium"`` methods use
-simplified surrogate geometries that are incompatible with a weight window mesh
-defined over the original geometry (and do not need weight windows, since they
-already tally all materials). A warning is issued and the argument is ignored if
-it is supplied to another method.
+A weight windows file on the generation settings is only used with the
+``"material_wise"`` method, as the ``"stochastic_slab"`` and
+``"infinite_medium"`` methods use simplified surrogate geometries that are
+incompatible with a weight window mesh defined over the original geometry (and
+do not need weight windows, since they already tally all materials). A warning
+is issued and the file is ignored if it is supplied to another method.
 
 ~~~~~~~~~~~~
 The Hard Way

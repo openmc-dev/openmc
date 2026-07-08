@@ -84,10 +84,10 @@ def test_random_ray_auto_convert_bootstrap():
     boot_model = copy.deepcopy(model)
     boot_settings = boot_model.mgxs_generation_settings('material_wise')
     boot_settings.particles = 1
+    boot_settings.weight_windows_file = Path('weight_windows.h5').resolve()
     boot_model.convert_to_multigroup(
         method='material_wise', groups=GROUPS, settings=boot_settings,
-        overwrite_mgxs_library=True, mgxs_path='mgxs.h5',
-        weight_windows_file=Path('weight_windows.h5').resolve())
+        overwrite_mgxs_library=True, mgxs_path='mgxs.h5')
     generate_weight_windows(boot_model, mesh)
 
     # Run the continuous energy model with the improved weight windows,

@@ -706,9 +706,9 @@ modify them as desired, and pass the result back. For example, the number of
 particles per batch (2,000 by default) can be increased to improve the fidelity
 of the generated cross section library as::
 
-  settings = model.mgxs_generation_settings(method="material_wise")
+  settings = model.mgxs_generation_settings()
   settings.particles = 100_000
-  model.convert_to_multigroup(method="material_wise", settings=settings)
+  model.convert_to_multigroup(settings=settings)
 
 .. note::
     MGXS transport correction (via setting the ``correction`` parameter in the
@@ -799,13 +799,9 @@ on the generation settings::
     # Then, bootstrap a higher fidelity material-wise library, applying those
     # weight windows during the continuous energy solve so that particles can
     # reach materials far from the source.
-    settings = model.mgxs_generation_settings(method="material_wise")
+    settings = model.mgxs_generation_settings()
     settings.weight_windows_file = "weight_windows.h5"
-    model.convert_to_multigroup(
-        method="material_wise",
-        settings=settings,
-        overwrite_mgxs_library=True,
-    )
+    model.convert_to_multigroup(settings=settings, overwrite_mgxs_library=True)
 
 A weight windows file on the generation settings is only used with the
 ``"material_wise"`` method, as the ``"stochastic_slab"`` and

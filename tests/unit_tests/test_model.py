@@ -1216,6 +1216,25 @@ def test_convert_to_multigroup_settings_weight_windows(run_in_tmpdir, monkeypatc
     assert user.weight_windows_file == ww_path
 
 
+def test_convert_to_multigroup_settings_method_recorded(run_in_tmpdir,
+                                                        monkeypatch):
+    model = _steel_water_model()
+
+    # Settings record the method they were generated for, so a non-default
+    # method only needs to be given to mgxs_generation_settings()
+    user = model.mgxs_generation_settings('stochastic_slab')
+    gen = _capture_generation_settings(monkeypatch, model, settings=user)
+    assert gen.run_mode == 'fixed source'
+    assert gen.create_fission_neutrons is False
+    # The stochastic slab generation constructs its own source, proving the
+    # slab method was dispatched
+    assert len(gen.source) > 0
+
+    # An explicit method that conflicts with the settings is rejected
+    with pytest.raises(ValueError, match='stochastic_slab'):
+        model.convert_to_multigroup(method='material_wise', settings=user)
+
+
 def test_convert_to_multigroup_settings_validation(run_in_tmpdir):
     model = _steel_water_model()
 

@@ -75,18 +75,18 @@ def test_random_ray_auto_convert_bootstrap():
     slab_settings = slab_model.mgxs_generation_settings('stochastic_slab')
     slab_settings.particles = 50
     slab_model.convert_to_multigroup(
-        method='stochastic_slab', groups=GROUPS, settings=slab_settings,
+        groups=GROUPS, settings=slab_settings,
         overwrite_mgxs_library=True, mgxs_path='mgxs.h5')
     generate_weight_windows(slab_model, mesh)
 
     # Bootstrap the material-wise MGXS generation with those weight windows,
     # then regenerate the weight windows from the higher-fidelity library
     boot_model = copy.deepcopy(model)
-    boot_settings = boot_model.mgxs_generation_settings('material_wise')
+    boot_settings = boot_model.mgxs_generation_settings()
     boot_settings.particles = 1
     boot_settings.weight_windows_file = Path('weight_windows.h5').resolve()
     boot_model.convert_to_multigroup(
-        method='material_wise', groups=GROUPS, settings=boot_settings,
+        groups=GROUPS, settings=boot_settings,
         overwrite_mgxs_library=True, mgxs_path='mgxs.h5')
     generate_weight_windows(boot_model, mesh)
 

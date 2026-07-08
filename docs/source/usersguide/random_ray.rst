@@ -710,6 +710,14 @@ of the generated cross section library as::
   settings.particles = 100_000
   model.convert_to_multigroup(settings=settings)
 
+The settings returned by :meth:`openmc.Model.mgxs_generation_settings` record
+the method they were generated for, so a non-default method only needs to be
+given once::
+
+  settings = model.mgxs_generation_settings("stochastic_slab")
+  settings.particles = 100_000
+  model.convert_to_multigroup(settings=settings)
+
 .. note::
     MGXS transport correction (via setting the ``correction`` parameter in the
     :meth:`openmc.Model.convert_to_multigroup` method to ``"P0"``) may

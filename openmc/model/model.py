@@ -2624,6 +2624,10 @@ class Model:
             settings.particles = 100_000
             model.convert_to_multigroup(settings=settings)
 
+        The returned object records the method it was generated for, which
+        :meth:`Model.convert_to_multigroup` uses as its default ``method``,
+        so a non-default method only needs to be given here.
+
         .. versionadded:: 0.15.4
 
         Parameters
@@ -2653,11 +2657,13 @@ class Model:
             settings.inactive = 100
         settings.particles = 2000
         settings.output = {'summary': True, 'tallies': False}
+        # Record the method so convert_to_multigroup can default to it
+        settings._mgxs_generation_method = method
         return settings
 
     def convert_to_multigroup(
         self,
-        method: str = "material_wise",
+        method: str | None = None,
         groups: str | Sequence[float] | openmc.mgxs.EnergyGroups = "CASMO-2",
         nparticles: int | None = None,
         overwrite_mgxs_library: bool = False,
@@ -2676,7 +2682,11 @@ class Model:
         Parameters
         ----------
         method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
-            Method to generate the MGXS.
+            Method to generate the MGXS. If not given, defaults to the
+            method that the ``settings`` object was generated for by
+            :meth:`Model.mgxs_generation_settings`, or ``"material_wise"``
+            otherwise. Giving a method here that conflicts with the one the
+            settings were generated for is an error.
         groups : openmc.mgxs.EnergyGroups, str, or sequence of float, optional
             Energy group structure for the MGXS. Can be an
             :class:`openmc.mgxs.EnergyGroups` object, a string name of a
@@ -2757,6 +2767,23 @@ class Model:
         """
         if not isinstance(groups, openmc.mgxs.EnergyGroups):
             groups = openmc.mgxs.EnergyGroups(groups)
+
+        # Resolve the generation method: an explicit argument wins, otherwise
+        # the method the provided settings were generated for (recorded by
+        # mgxs_generation_settings) is used, defaulting to "material_wise".
+        # Conflicting specifications are rejected, since the generation
+        # defaults differ by method.
+        settings_method = getattr(settings, '_mgxs_generation_method', None)
+        if method is None:
+            method = settings_method or 'material_wise'
+        elif settings_method is not None and method != settings_method:
+            raise ValueError(
+                f'The "{method}" generation method conflicts with the '
+                'provided settings, which were generated for the '
+                f'"{settings_method}" method by '
+                'Model.mgxs_generation_settings().')
+        check_value('method', method,
+                    ('material_wise', 'stochastic_slab', 'infinite_medium'))
 
         # The model may reference its materials only through the geometry.
         # The materials are converted in place and library-wide attributes

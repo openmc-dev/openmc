@@ -124,12 +124,18 @@ protected:
   //! Minimum neutron transport energy.
   //
   //! \return The minimum transport energy associated with the majorant [eV]
-  virtual double min_transport_energy() const override { return data::energy_min[i_neutron_]; }
+  virtual double min_transport_energy() const override
+  {
+    return data::energy_min[i_neutron_];
+  }
 
   //! Maximum neutron transport energy.
   //
   //! \return The maximum transport energy associated with the majorant [eV]
-  virtual double max_transport_energy() const override { return data::energy_max[i_neutron_]; }
+  virtual double max_transport_energy() const override
+  {
+    return data::energy_max[i_neutron_];
+  }
 
   //! Compute a per-material macroscopic majorant cross section.
   //!
@@ -221,12 +227,18 @@ protected:
   //! Minimum neutron transport energy.
   //
   //! \return The minimum transport energy associated with the majorant [eV]
-  virtual double min_transport_energy() const override { return std::log(data::energy_min[i_photon_]); }
+  virtual double min_transport_energy() const override
+  {
+    return std::log(data::energy_min[i_photon_]);
+  }
 
   //! Maximum neutron transport energy.
   //
   //! \return The maximum transport energy associated with the majorant [eV]
-  virtual double max_transport_energy() const override { return std::log(data::energy_max[i_photon_]); }
+  virtual double max_transport_energy() const override
+  {
+    return std::log(data::energy_max[i_photon_]);
+  }
 
   //! Compute a per-material macroscopic majorant cross section.
   //!
@@ -255,8 +267,9 @@ private:
   //! \param[in] energy The energy to evaluate the cross section at in [eV].
   //! \param[in] grid The energy grid to search for an energy grid index.
   //! \return The grid index.
-  template <typename T>
-  int get_i_grid(double log_energy, const T& energy_grid) const {
+  template<typename T>
+  int get_i_grid(double log_energy, const T& energy_grid) const
+  {
     int n_grid = energy_grid.size();
     int i_grid;
     if (log_energy <= energy_grid[0]) {
@@ -264,8 +277,8 @@ private:
     } else if (log_energy > energy_grid[n_grid - 1]) {
       i_grid = n_grid - 2;
     } else {
-      // We use upper_bound_index here because sometimes photons are created with
-      // energies that exactly match a grid point
+      // We use upper_bound_index here because sometimes photons are created
+      // with energies that exactly match a grid point
       i_grid =
         upper_bound_index(energy_grid.cbegin(), energy_grid.cend(), log_energy);
     }
